@@ -31,7 +31,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${idToken}`
         },
-        body: JSON.stringify({ walletAddress })
+        body: JSON.stringify({ address: walletAddress })
       });
 
       if (response.ok) {

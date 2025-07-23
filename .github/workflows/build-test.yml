@@ -50,9 +50,19 @@ jobs:
           yarn install
           yarn build
           mkdir -p .next/standalone
+          # Debug: Check what files exist before copying
+          echo "=== Checking build output ==="
+          ls -la .next/
+          ls -la .next/static/ || echo "No .next/static directory"
+          find .next/static -name "*.css" || echo "No CSS files found"
           # Copy static assets required for standalone build
-          cp -r .next/static .next/standalone/.next/static || true
-          cp -r public .next/standalone/public || true
+          mkdir -p .next/standalone/.next
+          cp -r .next/static .next/standalone/.next/static || echo "Failed to copy static"
+          cp -r public .next/standalone/public || echo "Failed to copy public"
+          # Debug: Check what was copied
+          echo "=== Checking copied files ==="
+          ls -la .next/standalone/.next/static/ || echo "No copied static files"
+          find .next/standalone -name "*.css" || echo "No CSS files in standalone"
 
       # Docker steps
       - name: Login to GitHub Container Registry

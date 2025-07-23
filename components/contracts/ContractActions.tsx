@@ -24,7 +24,7 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction 
     setLoadingMessage('Raising dispute...');
     
     try {
-      const web3authProvider = (window as any).web3auth?.provider;
+      const web3authProvider = (window as any).web3authProvider;
       if (!web3authProvider) {
         throw new Error('Wallet not connected');
       }
@@ -66,7 +66,7 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction 
     setLoadingMessage('Claiming funds...');
     
     try {
-      const web3authProvider = (window as any).web3auth?.provider;
+      const web3authProvider = (window as any).web3authProvider;
       if (!web3authProvider) {
         throw new Error('Wallet not connected');
       }

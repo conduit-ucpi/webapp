@@ -87,7 +87,7 @@ export default function ConnectWallet() {
         }
 
         // Store provider globally for Web3Service
-        (window as any).web3auth.provider = web3authProvider;
+        (window as any).web3authProvider = web3authProvider;
 
         const user = await web3authInstance.getUserInfo();
         const accounts = await web3authProvider.request({ method: 'eth_accounts' }) as string[];
@@ -114,7 +114,7 @@ export default function ConnectWallet() {
       }
 
       // Store provider globally for Web3Service
-      (window as any).web3auth.provider = web3authProvider;
+      (window as any).web3authProvider = web3authProvider;
 
       const user = await web3authInstance.getUserInfo();
       const accounts = await web3authProvider.request({ method: 'eth_accounts' }) as string[];

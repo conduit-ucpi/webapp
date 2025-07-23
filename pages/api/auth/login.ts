@@ -6,6 +6,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
+    console.log('Login API called with:', {
+      userServiceUrl: process.env.USER_SERVICE_URL,
+      authorization: req.headers.authorization ? 'present' : 'missing',
+      body: req.body
+    });
+
     const response = await fetch(`${process.env.USER_SERVICE_URL}/api/user/login`, {
       method: 'POST',
       headers: {
@@ -18,6 +24,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       body: JSON.stringify(req.body)
     });
 
+    console.log('UserService response:', response.status, response.statusText);
     const data = await response.json();
     
     const cookies = response.headers.get('set-cookie');
@@ -27,6 +34,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     res.status(response.status).json(data);
   } catch (error) {
+    console.error('Login API error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 }

@@ -50,6 +50,9 @@ jobs:
           yarn install
           yarn build
           mkdir -p .next/standalone
+          # Copy static assets required for standalone build
+          cp -r .next/static .next/standalone/.next/static || true
+          cp -r public .next/standalone/public || true
 
       # Docker steps
       - name: Login to GitHub Container Registry

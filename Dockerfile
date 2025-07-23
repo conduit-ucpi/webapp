@@ -1,6 +1,6 @@
 FROM node:20-alpine
 # Set working directory
-WORKDIR /app/standalone
+WORKDIR /app
 
 # Copy the standalone build output to the correct location
 COPY .next/standalone ./

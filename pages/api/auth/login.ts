@@ -10,7 +10,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       method: 'POST',
       headers: {
         'Authorization': req.headers.authorization || '',
-        'X-Clear-Cookies': req.headers['x-clear-cookies'] || '',
+        'X-Clear-Cookies': Array.isArray(req.headers['x-clear-cookies']) 
+          ? req.headers['x-clear-cookies'][0] || ''
+          : req.headers['x-clear-cookies'] || '',
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(req.body)

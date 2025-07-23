@@ -93,10 +93,12 @@ jobs:
               --network ${{ vars.DOCKER_NETWORK }} \
               --restart unless-stopped \
               -e CHAIN_ID=${{ vars.CHAIN_ID }} \
+              -e RPC_URL=${{ vars.RPC_URL }} \
               -e CHAIN_SERVICE_URL=${{ vars.CHAIN_SERVICE_URL }} \
               -e USER_SERVICE_URL=${{ vars.USER_SERVICE_URL }} \
               -e WEB3AUTH_CLIENT_ID=${{ secrets.WEB3AUTH_CLIENT_ID }} \
               -e WEB3AUTH_NETWORK=${{ vars.WEB3AUTH_NETWORK }} \
+              -e MOONPAY_API_KEY=${{ secrets.MOONPAY_API_KEY }} \
               -e GIT_TAG=$(git describe --tags --abbrev=0) \
               -e GIT_SHA=$(git rev-parse --short HEAD) \
               -e COOKIE_DOMAIN=${{ vars.COOKIE_DOMAIN }} \

@@ -100,7 +100,7 @@ export class Web3Service {
 
     const amountWei = ethers.parseUnits(amount, 6); // USDC has 6 decimals
     
-    const tx = await factoryContract.populateTransaction.createEscrowContract(
+    const tx = await factoryContract.createEscrowContract.populateTransaction(
       sellerAddress,
       amountWei,
       expiryTimestamp,
@@ -118,7 +118,7 @@ export class Web3Service {
       signer
     );
 
-    const tx = await factoryContract.populateTransaction.raiseDispute(contractAddress);
+    const tx = await factoryContract.raiseDispute.populateTransaction(contractAddress);
     return await signer.signTransaction(tx);
   }
 
@@ -130,7 +130,7 @@ export class Web3Service {
       signer
     );
 
-    const tx = await factoryContract.populateTransaction.claimFunds(contractAddress);
+    const tx = await factoryContract.claimFunds.populateTransaction(contractAddress);
     return await signer.signTransaction(tx);
   }
 }

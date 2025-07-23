@@ -39,9 +39,10 @@ export default function ConnectWallet() {
       chainConfig,
       privateKeyProvider,
       uiConfig: {
-        theme: 'light',
+        mode: 'light',
         loginMethodsOrder: ['google', 'facebook', 'twitter', 'github', 'discord'],
-        appLogo: 'https://web3auth.io/images/w3a-L-Favicon-1.svg',
+        logoLight: 'https://web3auth.io/images/w3a-L-Favicon-1.svg',
+        logoDark: 'https://web3auth.io/images/w3a-L-Favicon-1.svg',
       },
     });
 
@@ -89,7 +90,7 @@ export default function ConnectWallet() {
         (window as any).web3auth.provider = web3authProvider;
 
         const user = await web3authInstance.getUserInfo();
-        const accounts = await web3authProvider.request({ method: 'eth_accounts' });
+        const accounts = await web3authProvider.request({ method: 'eth_accounts' }) as string[];
         
         if (!accounts || accounts.length === 0) {
           throw new Error('No accounts found');
@@ -116,7 +117,7 @@ export default function ConnectWallet() {
       (window as any).web3auth.provider = web3authProvider;
 
       const user = await web3authInstance.getUserInfo();
-      const accounts = await web3authProvider.request({ method: 'eth_accounts' });
+      const accounts = await web3authProvider.request({ method: 'eth_accounts' }) as string[];
       
       if (!accounts || accounts.length === 0) {
         throw new Error('No accounts found');

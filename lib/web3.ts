@@ -26,7 +26,12 @@ export class Web3Service {
   }
 
   async initializeProvider(web3authProvider: any) {
-    this.provider = new ethers.BrowserProvider(web3authProvider);
+    try {
+      this.provider = new ethers.BrowserProvider(web3authProvider);
+    } catch (error) {
+      console.error('Failed to initialize ethers provider:', error);
+      throw new Error('Provider initialization failed: ' + (error as Error).message);
+    }
   }
 
   async getSigner() {

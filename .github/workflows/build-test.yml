@@ -90,7 +90,7 @@ jobs:
             docker rm ${{ vars.SERVICE_NAME }} || true
             docker run -d \
               --name ${{ vars.SERVICE_NAME }} \
-              --network ${{ vars.DOCKER_NETWORK \
+              --network ${{ vars.DOCKER_NETWORK }} \
               --restart unless-stopped \
               -e CHAIN_ID=${{ vars.CHAIN_ID }} \
               -e CHAIN_SERVICE_URL=${{ vars.CHAIN_SERVICE_URL }} \

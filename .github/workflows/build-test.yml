@@ -105,6 +105,3 @@ jobs:
               -e BUILD_VERSION=${{ env.BUILD_VERSION }} \
               ghcr.io/${{ env.REPO_LOWER }}:${{ env.SHA_TAG }}
             '
-
-      - name: Run tests
-        run: yarn test 

@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react';
+import { useRouter } from 'next/router';
 import { User, AuthContextType } from '@/types';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -6,10 +7,11 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const router = useRouter();
 
   const checkAuthStatus = async () => {
     try {
-      const response = await fetch('/api/auth/identity');
+      const response = await fetch(`${router.basePath}/api/auth/identity`);
       if (response.ok) {
         const userData = await response.json();
         setUser(userData);
@@ -23,7 +25,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (idToken: string, walletAddress: string) => {
     try {
-      const response = await fetch('/api/auth/login', {
+      const response = await fetch(`${router.basePath}/api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -46,7 +48,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
-      await fetch('/api/auth/logout', { method: 'POST' });
+      await fetch(`${router.basePath}/api/auth/logout`, { method: 'POST' });
       setUser(null);
     } catch (error) {
       console.error('Logout error:', error);

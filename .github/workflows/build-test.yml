@@ -80,9 +80,9 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H ${{ secrets.VM_IP }} >> ~/.ssh/known_hosts
+          ssh-keyscan -H ${{ vars.VM_IP }} >> ~/.ssh/known_hosts
           
-          ssh -i ~/.ssh/deploy_key -l gituser ${{ secrets.VM_IP }} -vv '
+          ssh -i ~/.ssh/deploy_key -l gituser ${{ vars.VM_IP }} -vv '
              # Login to GitHub Container Registry
             docker login ghcr.io -u ${{ github.actor }} -p "${{ secrets.GITHUB_TOKEN }}"
             docker pull ghcr.io/${{ env.REPO_LOWER }}:${{ env.SHA_TAG }}

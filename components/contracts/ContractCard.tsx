@@ -11,8 +11,8 @@ interface ContractCardProps {
 export default function ContractCard({ contract, onAction }: ContractCardProps) {
   const { user } = useAuth();
   
-  const isBuyer = user?.walletAddress.toLowerCase() === contract.buyerAddress.toLowerCase();
-  const isSeller = user?.walletAddress.toLowerCase() === contract.sellerAddress.toLowerCase();
+  const isBuyer = user?.walletAddress?.toLowerCase() === contract.buyerAddress?.toLowerCase();
+  const isSeller = user?.walletAddress?.toLowerCase() === contract.sellerAddress?.toLowerCase();
   
   const getStatusColor = (status: Contract['status']) => {
     switch (status) {

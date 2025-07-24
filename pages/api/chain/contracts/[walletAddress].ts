@@ -42,16 +42,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const responseText = await response.text();
-    console.log('Chain service response body:', responseText.substring(0, 200));
+    console.log('Chain service response body:', responseText.substring(0, 1000));
 
     try {
       const data = JSON.parse(responseText);
+      
+      // Map the response to match our frontend interface
+      if (data.contracts && Array.isArray(data.contracts)) {
+        data.contracts = data.contracts.map((contract: any) => ({
+          ...contract,
+          buyerAddress: contract.buyer || contract.buyerAddress,
+          sellerAddress: contract.seller || contract.sellerAddress
+        }));
+      }
+      
       res.status(200).json(data);
     } catch (parseError) {
       console.error('Failed to parse JSON response:', parseError);
       res.status(500).json({ 
         error: 'Invalid JSON response from chain service',
-        response: responseText.substring(0, 200)
+        response: responseText.substring(0, 1000)
       });
     }
   } catch (error) {

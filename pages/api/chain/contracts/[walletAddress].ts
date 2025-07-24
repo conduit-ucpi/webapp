@@ -8,17 +8,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const { walletAddress } = req.query;
 
   try {
-    console.log('Environment check:');
-    console.log('CHAIN_SERVICE_URL:', process.env.CHAIN_SERVICE_URL);
-    console.log('USER_SERVICE_URL:', process.env.USER_SERVICE_URL);
+    // Extract the AUTH-TOKEN from cookies
+    const cookies = req.headers.cookie || '';
+    const authTokenMatch = cookies.match(/AUTH-TOKEN=([^;]+)/);
+    const authToken = authTokenMatch ? authTokenMatch[1] : null;
+
+    if (!authToken) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
     
     const chainServiceUrl = `${process.env.CHAIN_SERVICE_URL}/api/chain/contracts/${walletAddress}`;
     console.log('Fetching contracts from:', chainServiceUrl);
-    console.log('With cookies:', req.headers.cookie || 'None');
 
     const response = await fetch(chainServiceUrl, {
       headers: {
-        'Cookie': req.headers.cookie || '',
+        'Authorization': `Bearer ${authToken}`,
+        'Cookie': cookies,
         'Accept': 'application/json',
         'Content-Type': 'application/json'
       }

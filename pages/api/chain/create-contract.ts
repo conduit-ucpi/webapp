@@ -6,17 +6,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
+    // Extract the AUTH-TOKEN from cookies
+    const cookies = req.headers.cookie || '';
+    const authTokenMatch = cookies.match(/AUTH-TOKEN=([^;]+)/);
+    const authToken = authTokenMatch ? authTokenMatch[1] : null;
+
+    if (!authToken) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${authToken}`,
+      'Cookie': cookies
+    };
+
     const response = await fetch(`${process.env.CHAIN_SERVICE_URL}/api/chain/create-contract`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Cookie': req.headers.cookie || ''
-      },
+      headers,
       body: JSON.stringify(req.body)
     });
 
-    res.status(response.status).json(await response.json());
+    const responseData = await response.json();
+    res.status(response.status).json(responseData);
   } catch (error) {
+    console.error('Create contract API error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 }

@@ -76,52 +76,45 @@ export default function CreateContract() {
 
       const web3Service = new Web3Service(config);
       await web3Service.initializeProvider(web3authProvider);
-
-      const signer = await web3Service.getSigner();
-      const userAddress = await signer.getAddress();
+      const userAddress = await web3Service.getUserAddress();
 
       // Check USDC balance
       setLoadingMessage('Checking USDC balance...');
       const balance = await web3Service.getUSDCBalance(userAddress);
-      if (parseFloat(balance) < parseFloat(form.amount)) {
+      const amountUsdc = parseFloat(form.amount);
+      if (parseFloat(balance) < amountUsdc) {
         throw new Error(`Insufficient USDC balance. You have ${balance} USDC`);
       }
 
-      // Check and request allowance if needed
-      setLoadingMessage('Checking USDC allowance...');
-      const allowance = await web3Service.getUSDCAllowance(userAddress);
-      if (parseFloat(allowance) < parseFloat(form.amount)) {
-        setLoadingMessage('Requesting USDC approval...');
-        await web3Service.approveUSDC(form.amount);
-      }
-
-      // Create contract transaction
+      // Create contract via Chain Service
       setLoadingMessage('Creating secure escrow...');
       const expiryTimestamp = Math.floor(Date.now() / 1000) + (form.hours * 3600) + (form.minutes * 60);
-      const signedTx = await web3Service.createContractTransaction(
-        form.sellerAddress,
-        form.amount,
-        expiryTimestamp,
-        form.description
-      );
+      
+      // Convert amount to wei (USDC has 6 decimals)
+      const amountWei = Math.floor(amountUsdc * 1000000);
 
-      // Send to backend
       const response = await fetch('/api/chain/create-contract', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          sellerAddress: form.sellerAddress,
-          amount: form.amount,
+          buyer: userAddress,
+          seller: form.sellerAddress,
+          amount: amountWei,
           expiryTimestamp,
-          description: form.description,
-          signedTransaction: signedTx
+          description: form.description
         })
       });
 
       if (!response.ok) {
-        throw new Error('Failed to create contract');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to create contract');
+      }
+
+      const result = await response.json();
+      if (!result.success) {
+        throw new Error(result.error || 'Contract creation failed');
       }
 
       // Redirect to dashboard

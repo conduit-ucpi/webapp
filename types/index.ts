@@ -3,7 +3,6 @@ export interface Config {
   chainId: number;
   rpcUrl: string;
   usdcContractAddress: string;
-  contractFactoryAddress: string;
   moonPayApiKey: string;
 }
 

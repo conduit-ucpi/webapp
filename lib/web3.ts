@@ -10,12 +10,6 @@ export const ERC20_ABI = [
   'function decimals() view returns (uint8)'
 ];
 
-// Basic contract factory ABI
-export const FACTORY_ABI = [
-  'function createEscrowContract(address seller, uint256 amount, uint256 expiryTimestamp, string description) payable returns (address)',
-  'function raiseDispute(address contractAddress) external',
-  'function claimFunds(address contractAddress) external'
-];
 
 export class Web3Service {
   private provider: ethers.BrowserProvider | null = null;
@@ -58,7 +52,7 @@ export class Web3Service {
     return ethers.formatUnits(balance, decimals);
   }
 
-  async getUSDCAllowance(userAddress: string): Promise<string> {
+  async getUSDCAllowance(userAddress: string, spenderAddress: string): Promise<string> {
     if (!this.provider) {
       throw new Error('Provider not initialized');
     }
@@ -69,13 +63,13 @@ export class Web3Service {
       this.provider
     );
 
-    const allowance = await usdcContract.allowance(userAddress, this.config.contractFactoryAddress);
+    const allowance = await usdcContract.allowance(userAddress, spenderAddress);
     const decimals = await usdcContract.decimals();
     
     return ethers.formatUnits(allowance, decimals);
   }
 
-  async approveUSDC(amount: string): Promise<string> {
+  async approveUSDC(amount: string, spenderAddress: string): Promise<string> {
     const signer = await this.getSigner();
     const usdcContract = new ethers.Contract(
       this.config.usdcContractAddress,
@@ -86,56 +80,12 @@ export class Web3Service {
     const decimals = await usdcContract.decimals();
     const amountWei = ethers.parseUnits(amount, decimals);
 
-    const tx = await usdcContract.approve(this.config.contractFactoryAddress, amountWei);
+    const tx = await usdcContract.approve(spenderAddress, amountWei);
     return tx.hash;
   }
 
-  async createContractTransaction(
-    sellerAddress: string,
-    amount: string,
-    expiryTimestamp: number,
-    description: string
-  ): Promise<string> {
+  async getUserAddress(): Promise<string> {
     const signer = await this.getSigner();
-    const factoryContract = new ethers.Contract(
-      this.config.contractFactoryAddress,
-      FACTORY_ABI,
-      signer
-    );
-
-    const amountWei = ethers.parseUnits(amount, 6); // USDC has 6 decimals
-    
-    const tx = await factoryContract.createEscrowContract.populateTransaction(
-      sellerAddress,
-      amountWei,
-      expiryTimestamp,
-      description
-    );
-
-    return await signer.signTransaction(tx);
-  }
-
-  async raiseDisputeTransaction(contractAddress: string): Promise<string> {
-    const signer = await this.getSigner();
-    const factoryContract = new ethers.Contract(
-      this.config.contractFactoryAddress,
-      FACTORY_ABI,
-      signer
-    );
-
-    const tx = await factoryContract.raiseDispute.populateTransaction(contractAddress);
-    return await signer.signTransaction(tx);
-  }
-
-  async claimFundsTransaction(contractAddress: string): Promise<string> {
-    const signer = await this.getSigner();
-    const factoryContract = new ethers.Contract(
-      this.config.contractFactoryAddress,
-      FACTORY_ABI,
-      signer
-    );
-
-    const tx = await factoryContract.claimFunds.populateTransaction(contractAddress);
-    return await signer.signTransaction(tx);
+    return await signer.getAddress();
   }
 }

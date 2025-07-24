@@ -11,15 +11,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       chainId: parseInt(process.env.CHAIN_ID || '43113'),
       rpcUrl: process.env.RPC_URL,
       usdcContractAddress: process.env.USDC_CONTRACT_ADDRESS,
-      contractFactoryAddress: process.env.CONTRACT_FACTORY_ADDRESS,
       moonPayApiKey: process.env.MOONPAY_API_KEY
     };
-
-    // Add validation to catch missing required values
-    if (!config.contractFactoryAddress || config.contractFactoryAddress === 'your_contract_factory_address_here') {
-      console.error('CONTRACT_FACTORY_ADDRESS is missing or contains placeholder value:', config.contractFactoryAddress);
-      return res.status(500).json({ error: 'Contract factory address not configured' });
-    }
 
     if (!config.usdcContractAddress) {
       console.error('USDC_CONTRACT_ADDRESS is missing');

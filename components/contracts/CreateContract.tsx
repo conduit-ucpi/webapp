@@ -100,7 +100,7 @@ export default function CreateContract() {
       // Convert amount to wei (USDC has 6 decimals)
       const amountWei = Math.floor(amountUsdc * 1000000);
 
-      const response = await fetch('/api/chain/create-contract', {
+      const response = await fetch(`${router.basePath}/api/chain/create-contract`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

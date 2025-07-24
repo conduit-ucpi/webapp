@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useRouter } from 'next/router';
 import { Contract } from '@/types';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { Web3Service } from '@/lib/web3';
@@ -14,6 +15,7 @@ interface ContractActionsProps {
 
 export default function ContractActions({ contract, isBuyer, isSeller, onAction }: ContractActionsProps) {
   const { config } = useConfig();
+  const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
 
@@ -24,7 +26,7 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction 
     setLoadingMessage('Raising dispute...');
     
     try {
-      const response = await fetch('/api/chain/raise-dispute', {
+      const response = await fetch(`${router.basePath}/api/chain/raise-dispute`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -61,7 +63,7 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction 
     setLoadingMessage('Claiming funds...');
     
     try {
-      const response = await fetch('/api/chain/claim-funds', {
+      const response = await fetch(`${router.basePath}/api/chain/claim-funds`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

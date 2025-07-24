@@ -8,6 +8,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const { walletAddress } = req.query;
 
   try {
+    console.log('Environment check:');
+    console.log('CHAIN_SERVICE_URL:', process.env.CHAIN_SERVICE_URL);
+    console.log('USER_SERVICE_URL:', process.env.USER_SERVICE_URL);
+    
     const chainServiceUrl = `${process.env.CHAIN_SERVICE_URL}/api/chain/contracts/${walletAddress}`;
     console.log('Fetching contracts from:', chainServiceUrl);
     console.log('With cookies:', req.headers.cookie || 'None');

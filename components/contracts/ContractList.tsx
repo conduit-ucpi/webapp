@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/router';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { Contract } from '@/types';
 import ContractCard from './ContractCard';
@@ -6,6 +7,7 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner';
 
 export default function ContractList() {
   const { user } = useAuth();
+  const router = useRouter();
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -14,7 +16,7 @@ export default function ContractList() {
     if (!user?.walletAddress) return;
 
     try {
-      const response = await fetch(`/api/chain/contracts/${user.walletAddress}`);
+      const response = await fetch(`${router.basePath}/api/chain/contracts/${user.walletAddress}`);
       if (!response.ok) {
         throw new Error('Failed to fetch contracts');
       }

@@ -117,5 +117,6 @@ jobs:
               -e COOKIE_DOMAIN=${{ vars.COOKIE_DOMAIN }} \
               -e BUILD_VERSION=${{ env.BUILD_VERSION }} \
               -e CONTRACT_FACTORY_ADDRESS=${{ vars.CONTRACT_FACTORY_ADDRESS }} \
+              -e USDC_CONTRACT_ADDRESS=${{ vas.USDC_CONTRACT_ADDRESS }} \
               ghcr.io/${{ env.REPO_LOWER }}:${{ env.SHA_TAG }}
             '

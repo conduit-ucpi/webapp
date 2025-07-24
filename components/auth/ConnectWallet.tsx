@@ -19,6 +19,12 @@ export default function ConnectWallet() {
   const initWeb3Auth = async () => {
     if (!config || web3authInstance) return web3authInstance;
 
+    // Disable MetaMask auto-detection by hiding window.ethereum temporarily
+    const originalEthereum = (window as any).ethereum;
+    if (originalEthereum) {
+      (window as any).ethereum = undefined;
+    }
+
     const chainConfig = {
       chainNamespace: CHAIN_NAMESPACES.EIP155,
       chainId: `0x${config.chainId.toString(16)}`,
@@ -44,9 +50,23 @@ export default function ConnectWallet() {
         logoLight: 'https://web3auth.io/images/w3a-L-Favicon-1.svg',
         logoDark: 'https://web3auth.io/images/w3a-L-Favicon-1.svg',
       },
+      enableLogging: false,
     });
 
-    await web3authInstance.initModal();
+    try {
+      await web3authInstance.initModal();
+    } catch (error) {
+      console.error('Web3Auth initialization error:', error);
+      // If MetaMask error, just log it and continue
+      if (!(error as Error).message?.includes('MetaMask')) {
+        throw error;
+      }
+    }
+    
+    // Restore original ethereum object after initialization
+    if (originalEthereum) {
+      (window as any).ethereum = originalEthereum;
+    }
     
     // Store provider globally for other components
     (window as any).web3auth = web3authInstance;
@@ -60,6 +80,10 @@ export default function ConnectWallet() {
         .then(() => setIsInitialized(true))
         .catch((error) => {
           console.error('Web3Auth initialization failed:', error);
+          // Don't show MetaMask errors to user
+          if (!(error as Error).message?.includes('MetaMask')) {
+            console.error('Non-MetaMask initialization error:', error);
+          }
           setIsInitialized(true); // Still allow the button to be shown
         });
     }
@@ -135,7 +159,8 @@ export default function ConnectWallet() {
       console.error('Connection failed:', error);
       // More specific error messages
       if (error.message?.includes('MetaMask')) {
-        alert('Please disable MetaMask or other wallet extensions and try again. Web3Auth will provide its own wallet.');
+        console.warn('MetaMask interference detected, but continuing with Web3Auth');
+        // Don't show error to user for MetaMask conflicts - just log
       } else if (error.message?.includes('User closed the modal')) {
         // User cancelled - don't show error
       } else {

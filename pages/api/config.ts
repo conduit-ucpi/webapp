@@ -6,6 +6,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
+    // Debug logging
+    console.log('Environment variables check:');
+    console.log('WEB3AUTH_CLIENT_ID:', process.env.WEB3AUTH_CLIENT_ID ? 'Present' : 'Missing');
+    console.log('CHAIN_ID:', process.env.CHAIN_ID);
+    console.log('RPC_URL:', process.env.RPC_URL ? 'Present' : 'Missing');
+    console.log('USDC_CONTRACT_ADDRESS:', process.env.USDC_CONTRACT_ADDRESS);
+    console.log('MOONPAY_API_KEY:', process.env.MOONPAY_API_KEY ? 'Present' : 'Missing');
+
     const config = {
       web3AuthClientId: process.env.WEB3AUTH_CLIENT_ID,
       chainId: parseInt(process.env.CHAIN_ID || '43113'),
@@ -15,10 +23,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     };
 
     if (!config.usdcContractAddress) {
-      console.error('USDC_CONTRACT_ADDRESS is missing');
+      console.error('USDC_CONTRACT_ADDRESS is missing or null');
       return res.status(500).json({ error: 'USDC contract address not configured' });
     }
 
+    console.log('Config being sent:', config);
     res.status(200).json(config);
   } catch (error) {
     console.error('Config loading error:', error);

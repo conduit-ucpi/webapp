@@ -24,29 +24,24 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction 
     setLoadingMessage('Raising dispute...');
     
     try {
-      const web3authProvider = (window as any).web3authProvider;
-      if (!web3authProvider) {
-        throw new Error('Wallet not connected');
-      }
-
-      const web3Service = new Web3Service(config);
-      await web3Service.initializeProvider(web3authProvider);
-
-      const signedTx = await web3Service.raiseDisputeTransaction(contract.contractAddress);
-
       const response = await fetch('/api/chain/raise-dispute', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          contractAddress: contract.contractAddress,
-          signedTransaction: signedTx
+          contractAddress: contract.contractAddress
         })
       });
 
       if (!response.ok) {
-        throw new Error('Failed to raise dispute');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to raise dispute');
+      }
+
+      const result = await response.json();
+      if (!result.success) {
+        throw new Error(result.error || 'Dispute failed');
       }
 
       onAction(); // Refresh contracts
@@ -66,29 +61,24 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction 
     setLoadingMessage('Claiming funds...');
     
     try {
-      const web3authProvider = (window as any).web3authProvider;
-      if (!web3authProvider) {
-        throw new Error('Wallet not connected');
-      }
-
-      const web3Service = new Web3Service(config);
-      await web3Service.initializeProvider(web3authProvider);
-
-      const signedTx = await web3Service.claimFundsTransaction(contract.contractAddress);
-
       const response = await fetch('/api/chain/claim-funds', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          contractAddress: contract.contractAddress,
-          signedTransaction: signedTx
+          contractAddress: contract.contractAddress
         })
       });
 
       if (!response.ok) {
-        throw new Error('Failed to claim funds');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to claim funds');
+      }
+
+      const result = await response.json();
+      if (!result.success) {
+        throw new Error(result.error || 'Claim failed');
       }
 
       onAction(); // Refresh contracts

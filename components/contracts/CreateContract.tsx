@@ -74,6 +74,13 @@ export default function CreateContract() {
         throw new Error('Wallet not connected');
       }
 
+      // Validate config before proceeding
+      if (!config.usdcContractAddress) {
+        throw new Error('USDC contract address not configured. Please check server configuration.');
+      }
+
+      console.log('Config received:', config);
+
       const web3Service = new Web3Service(config);
       await web3Service.initializeProvider(web3authProvider);
       const userAddress = await web3Service.getUserAddress();

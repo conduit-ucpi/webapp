@@ -116,5 +116,6 @@ jobs:
               -e GIT_SHA=$(git rev-parse --short HEAD) \
               -e COOKIE_DOMAIN=${{ vars.COOKIE_DOMAIN }} \
               -e BUILD_VERSION=${{ env.BUILD_VERSION }} \
+              -e CONTRACT_FACTORY_ADDRESS=${{ vars.CONTRACT_FACTORY_ADDRESS }} \
               ghcr.io/${{ env.REPO_LOWER }}:${{ env.SHA_TAG }}
             '

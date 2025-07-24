@@ -20,7 +20,7 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction 
   const [loadingMessage, setLoadingMessage] = useState('');
 
   const handleRaiseDispute = async () => {
-    if (!config || !isBuyer || contract.status !== 'active') return;
+    if (!config || !isBuyer || contract.status !== 'ACTIVE') return;
 
     setIsLoading(true);
     setLoadingMessage('Raising dispute...');
@@ -57,7 +57,7 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction 
   };
 
   const handleClaimFunds = async () => {
-    if (!config || !isSeller || contract.status !== 'expired') return;
+    if (!config || !isSeller || contract.status !== 'EXPIRED') return;
 
     setIsLoading(true);
     setLoadingMessage('Claiming funds...');
@@ -93,7 +93,7 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction 
     }
   };
 
-  if (contract.status === 'active' && isBuyer) {
+  if (contract.status === 'ACTIVE' && isBuyer) {
     return (
       <Button
         variant="outline"
@@ -114,7 +114,7 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction 
     );
   }
 
-  if (contract.status === 'expired' && isSeller) {
+  if (contract.status === 'EXPIRED' && isSeller) {
     return (
       <Button
         size="sm"
@@ -134,7 +134,7 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction 
     );
   }
 
-  if (contract.status === 'disputed') {
+  if (contract.status === 'DISPUTED') {
     return (
       <div className="text-center py-2">
         <span className="text-sm text-gray-600">Pending Resolution</span>
@@ -142,11 +142,11 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction 
     );
   }
 
-  if (contract.status === 'resolved' || contract.status === 'completed') {
+  if (contract.status === 'RESOLVED' || contract.status === 'CLAIMED') {
     return (
       <div className="text-center py-2">
         <span className="text-sm text-green-600 font-medium">
-          {contract.status === 'resolved' ? 'Resolved' : 'Completed'}
+          {contract.status === 'RESOLVED' ? 'Resolved' : 'Claimed'}
         </span>
       </div>
     );

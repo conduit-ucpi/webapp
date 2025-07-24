@@ -37,7 +37,7 @@ export default function ContractList() {
     
     // Auto-refresh every 30 seconds
     const interval = setInterval(() => {
-      if (contracts.some(c => c.status === 'active' && Date.now() / 1000 > c.expiryTimestamp - 300)) {
+      if (contracts.some(c => c.status === 'ACTIVE' && Date.now() / 1000 > c.expiryTimestamp - 300)) {
         fetchContracts();
       }
     }, 30000);

@@ -16,15 +16,17 @@ export default function ContractCard({ contract, onAction }: ContractCardProps) 
   
   const getStatusColor = (status: Contract['status']) => {
     switch (status) {
-      case 'active':
+      case 'CREATED':
+        return 'bg-gray-100 text-gray-800';
+      case 'ACTIVE':
         return 'bg-green-100 text-green-800';
-      case 'expired':
+      case 'EXPIRED':
         return 'bg-yellow-100 text-yellow-800';
-      case 'disputed':
+      case 'DISPUTED':
         return 'bg-red-100 text-red-800';
-      case 'resolved':
+      case 'RESOLVED':
         return 'bg-blue-100 text-blue-800';
-      case 'completed':
+      case 'CLAIMED':
         return 'bg-gray-100 text-gray-800';
       default:
         return 'bg-gray-100 text-gray-800';

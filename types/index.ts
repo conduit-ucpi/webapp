@@ -19,16 +19,21 @@ export interface Contract {
   amount: string;
   expiryTimestamp: number;
   description: string;
-  status: 'active' | 'expired' | 'disputed' | 'resolved' | 'completed';
+  status: 'CREATED' | 'ACTIVE' | 'EXPIRED' | 'DISPUTED' | 'RESOLVED' | 'CLAIMED';
   createdAt: number;
+  funded?: boolean;
+  fundedAt?: string;
+  disputedAt?: string;
+  resolvedAt?: string;
+  claimedAt?: string;
 }
 
 export interface CreateContractRequest {
-  sellerAddress: string;
+  buyer: string;
+  seller: string;
   amount: string;
   expiryTimestamp: number;
   description: string;
-  signedTransaction: string;
 }
 
 export interface AuthContextType {

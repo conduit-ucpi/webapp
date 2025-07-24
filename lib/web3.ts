@@ -10,6 +10,25 @@ export const ERC20_ABI = [
   'function decimals() view returns (uint8)'
 ];
 
+// Escrow Contract ABI
+export const ESCROW_CONTRACT_ABI = [
+  'function getContractInfo() view returns (address _buyer, address _seller, uint256 _amount, uint256 _expiryTimestamp, bytes32 _descriptionHash, uint8 _currentState, uint256 _currentTimestamp)',
+  'function isExpired() view returns (bool)',
+  'function canClaim() view returns (bool)',
+  'function canDispute() view returns (bool)',
+  'function isFunded() view returns (bool)',
+  'function canDeposit() view returns (bool)',
+  'function isDisputed() view returns (bool)',
+  'function isClaimed() view returns (bool)',
+  'function depositFunds()',
+  'function raiseDispute()',
+  'function claimFunds()',
+  'event FundsDeposited(address buyer, uint256 amount, uint256 timestamp)',
+  'event DisputeRaised(uint256 timestamp)',
+  'event DisputeResolved(address recipient, uint256 timestamp)',
+  'event FundsClaimed(address recipient, uint256 amount, uint256 timestamp)'
+];
+
 
 export class Web3Service {
   private provider: ethers.BrowserProvider | null = null;
@@ -87,5 +106,67 @@ export class Web3Service {
   async getUserAddress(): Promise<string> {
     const signer = await this.getSigner();
     return await signer.getAddress();
+  }
+
+  // Hash description for smart contract compatibility
+  hashDescription(description: string): string {
+    return ethers.keccak256(ethers.toUtf8Bytes(description));
+  }
+
+  // Get contract info from deployed escrow contract
+  async getContractInfo(contractAddress: string) {
+    if (!this.provider) {
+      throw new Error('Provider not initialized');
+    }
+
+    const contract = new ethers.Contract(
+      contractAddress,
+      ESCROW_CONTRACT_ABI,
+      this.provider
+    );
+
+    const info = await contract.getContractInfo();
+    return {
+      buyer: info._buyer,
+      seller: info._seller,
+      amount: ethers.formatUnits(info._amount, 6), // USDC has 6 decimals
+      expiryTimestamp: Number(info._expiryTimestamp),
+      descriptionHash: info._descriptionHash,
+      currentState: Number(info._currentState),
+      currentTimestamp: Number(info._currentTimestamp)
+    };
+  }
+
+  // Check various contract states
+  async getContractState(contractAddress: string) {
+    if (!this.provider) {
+      throw new Error('Provider not initialized');
+    }
+
+    const contract = new ethers.Contract(
+      contractAddress,
+      ESCROW_CONTRACT_ABI,
+      this.provider
+    );
+
+    const [isExpired, canClaim, canDispute, isFunded, canDeposit, isDisputed, isClaimed] = await Promise.all([
+      contract.isExpired(),
+      contract.canClaim(),
+      contract.canDispute(),
+      contract.isFunded(),
+      contract.canDeposit(),
+      contract.isDisputed(),
+      contract.isClaimed()
+    ]);
+
+    return {
+      isExpired,
+      canClaim,
+      canDispute,
+      isFunded,
+      canDeposit,
+      isDisputed,
+      isClaimed
+    };
   }
 }

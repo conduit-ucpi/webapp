@@ -218,7 +218,7 @@ export class Web3Service {
     const minGasPriceBigInt = BigInt(minGasPrice);
     const gasPrice = networkGasPrice > minGasPriceBigInt 
       ? networkGasPrice.toString()  // Use network price if above minimum
-      : (networkGasPrice > 0n ? minGasPrice : fallbackGasPrice);  // Use minimum or fallback
+      : (networkGasPrice > BigInt(0) ? minGasPrice : fallbackGasPrice);  // Use minimum or fallback
     
     console.log('Gas price calculation:', {
       networkGasPrice: `${networkGasPrice.toString()} wei`,
@@ -290,7 +290,7 @@ export class Web3Service {
     const minGasPriceBigInt = BigInt(minGasPrice);
     const gasPrice = networkGasPrice > minGasPriceBigInt 
       ? networkGasPrice.toString()  // Use network price if above minimum
-      : (networkGasPrice > 0n ? minGasPrice : fallbackGasPrice);  // Use minimum or fallback
+      : (networkGasPrice > BigInt(0) ? minGasPrice : fallbackGasPrice);  // Use minimum or fallback
     
     console.log('Gas price calculation:', {
       networkGasPrice: `${networkGasPrice.toString()} wei`,

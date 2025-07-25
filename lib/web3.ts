@@ -186,6 +186,9 @@ export class Web3Service {
     const tx = await usdcContract.approve.populateTransaction(spenderAddress, amountWei);
     
     // Get current gas price from network
+    if (!this.provider) {
+      throw new Error('Provider not initialized');
+    }
     const feeData = await this.provider.getFeeData();
     
     console.log('=== USDC APPROVAL TRANSACTION DEBUG ===');
@@ -232,6 +235,9 @@ export class Web3Service {
     const tx = await contract.depositFunds.populateTransaction();
     
     // Get current gas price from network
+    if (!this.provider) {
+      throw new Error('Provider not initialized');
+    }
     const feeData = await this.provider.getFeeData();
     
     console.log('=== DEPOSIT TRANSACTION DEBUG ===');

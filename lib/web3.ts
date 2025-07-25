@@ -185,8 +185,37 @@ export class Web3Service {
     // Create transaction but don't send it
     const tx = await usdcContract.approve.populateTransaction(spenderAddress, amountWei);
     
+    // Get current gas price from network
+    const feeData = await this.provider.getFeeData();
+    
+    console.log('=== USDC APPROVAL TRANSACTION DEBUG ===');
+    console.log('Original USDC approval transaction:', tx);
+    console.log('Network fee data:', {
+      gasPrice: feeData.gasPrice?.toString(),
+      maxFeePerGas: feeData.maxFeePerGas?.toString(),
+      maxPriorityFeePerGas: feeData.maxPriorityFeePerGas?.toString()
+    });
+    console.log('Gas limit:', tx.gasLimit?.toString());
+    
+    // Set reasonable fallback gas price based on chain
+    const fallbackGasPrice = this.config.chainId === 43114 
+      ? '1000000000'  // 1 nAVAX for mainnet
+      : '100';        // 0.0000001 nAVAX for testnet (Fuji)
+    
+    // Use network gas price with reasonable gas limit
+    const txWithGas = {
+      ...tx,
+      gasLimit: '80000', // 80k gas limit for USDC approval
+      gasPrice: feeData.gasPrice?.toString() || fallbackGasPrice,
+      maxFeePerGas: undefined,
+      maxPriorityFeePerGas: undefined
+    };
+    
+    console.log('Modified USDC approval transaction:', txWithGas);
+    console.log('=== USDC APPROVAL TRANSACTION DEBUG END ===');
+    
     // Sign the transaction and return hex
-    const signedTx = await signer.signTransaction(tx);
+    const signedTx = await signer.signTransaction(txWithGas);
     return signedTx;
   }
 
@@ -202,8 +231,37 @@ export class Web3Service {
     // Create transaction but don't send it
     const tx = await contract.depositFunds.populateTransaction();
     
+    // Get current gas price from network
+    const feeData = await this.provider.getFeeData();
+    
+    console.log('=== DEPOSIT TRANSACTION DEBUG ===');
+    console.log('Original transaction from populateTransaction:', tx);
+    console.log('Network fee data:', {
+      gasPrice: feeData.gasPrice?.toString(),
+      maxFeePerGas: feeData.maxFeePerGas?.toString(),
+      maxPriorityFeePerGas: feeData.maxPriorityFeePerGas?.toString()
+    });
+    console.log('Gas limit:', tx.gasLimit?.toString());
+    
+    // Set reasonable fallback gas price based on chain
+    const fallbackGasPrice = this.config.chainId === 43114 
+      ? '1000000000'  // 1 nAVAX for mainnet
+      : '100';        // 0.0000001 nAVAX for testnet (Fuji)
+    
+    // Use network gas price with reasonable gas limit
+    const txWithGas = {
+      ...tx,
+      gasLimit: '100000', // 100k gas limit for depositFunds
+      gasPrice: feeData.gasPrice?.toString() || fallbackGasPrice,
+      maxFeePerGas: undefined, // Remove EIP-1559 fields
+      maxPriorityFeePerGas: undefined
+    };
+    
+    console.log('Modified deposit transaction:', txWithGas);
+    console.log('=== DEPOSIT TRANSACTION DEBUG END ===');
+    
     // Sign the transaction and return hex
-    const signedTx = await signer.signTransaction(tx);
+    const signedTx = await signer.signTransaction(txWithGas);
     return signedTx;
   }
 }

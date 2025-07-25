@@ -129,6 +129,30 @@ export default function CreateContract() {
         throw new Error('Contract address not returned from chain service');
       }
 
+      // First approve USDC spending for the new contract
+      setLoadingMessage('Approving USDC spending for escrow...');
+      const approvalTx = await web3Service.signUSDCApproval(form.amount, contractAddress);
+
+      // Send approval transaction to chain service
+      const approvalResponse = await fetch(`${router.basePath}/api/chain/approve-usdc`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userWalletAddress: userAddress,
+          signedTransaction: approvalTx
+        })
+      });
+
+      if (!approvalResponse.ok) {
+        const errorData = await approvalResponse.json().catch(() => ({}));
+        throw new Error(errorData.error || 'USDC approval failed');
+      }
+
+      const approvalResult = await approvalResponse.json();
+      if (!approvalResult.success) {
+        throw new Error(approvalResult.error || 'USDC approval failed');
+      }
+
       // Now fund the contract
       setLoadingMessage('Depositing funds to escrow...');
       const depositTx = await web3Service.signDepositTransaction(contractAddress);

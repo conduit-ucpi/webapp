@@ -30,8 +30,12 @@ export function formatWalletAddress(address: string): string {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }
 
-export function formatUSDC(amount: string): string {
-  return parseFloat(amount).toFixed(2);
+export function formatUSDC(amount: string | number): string {
+  // USDC amounts come from chain in microUSDC (6 decimals)
+  // Convert from microUSDC to USDC by dividing by 1,000,000
+  const microUSDC = typeof amount === 'string' ? parseFloat(amount) : amount;
+  const usdc = microUSDC / 1000000;
+  return usdc.toFixed(2);
 }
 
 export function formatTimeRemaining(expiryTimestamp: number): string {

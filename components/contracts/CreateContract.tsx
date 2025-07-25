@@ -139,6 +139,7 @@ export default function CreateContract() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contractAddress,
+          userWalletAddress: userAddress,
           signedTransaction: depositTx
         })
       });

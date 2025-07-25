@@ -169,4 +169,41 @@ export class Web3Service {
       isClaimed
     };
   }
+
+  // Sign USDC approval transaction and return hex for chain service
+  async signUSDCApproval(amount: string, spenderAddress: string): Promise<string> {
+    const signer = await this.getSigner();
+    const usdcContract = new ethers.Contract(
+      this.config.usdcContractAddress,
+      ERC20_ABI,
+      signer
+    );
+
+    const decimals = await usdcContract.decimals();
+    const amountWei = ethers.parseUnits(amount, decimals);
+
+    // Create transaction but don't send it
+    const tx = await usdcContract.approve.populateTransaction(spenderAddress, amountWei);
+    
+    // Sign the transaction and return hex
+    const signedTx = await signer.signTransaction(tx);
+    return signedTx;
+  }
+
+  // Sign deposit funds transaction and return hex for chain service
+  async signDepositTransaction(contractAddress: string): Promise<string> {
+    const signer = await this.getSigner();
+    const contract = new ethers.Contract(
+      contractAddress,
+      ESCROW_CONTRACT_ABI,
+      signer
+    );
+
+    // Create transaction but don't send it
+    const tx = await contract.depositFunds.populateTransaction();
+    
+    // Sign the transaction and return hex
+    const signedTx = await signer.signTransaction(tx);
+    return signedTx;
+  }
 }

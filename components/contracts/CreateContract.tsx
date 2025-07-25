@@ -124,6 +124,35 @@ export default function CreateContract() {
         throw new Error(result.error || 'Contract creation failed');
       }
 
+      const contractAddress = result.contractAddress;
+      if (!contractAddress) {
+        throw new Error('Contract address not returned from chain service');
+      }
+
+      // Now fund the contract
+      setLoadingMessage('Depositing funds to escrow...');
+      const depositTx = await web3Service.signDepositTransaction(contractAddress);
+
+      // Send deposit transaction to chain service
+      const depositResponse = await fetch(`${router.basePath}/api/chain/deposit-funds`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contractAddress,
+          signedTransaction: depositTx
+        })
+      });
+
+      if (!depositResponse.ok) {
+        const errorData = await depositResponse.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Fund deposit failed');
+      }
+
+      const depositResult = await depositResponse.json();
+      if (!depositResult.success) {
+        throw new Error(depositResult.error || 'Fund deposit failed');
+      }
+
       // Redirect to dashboard
       router.push('/dashboard');
     } catch (error: any) {

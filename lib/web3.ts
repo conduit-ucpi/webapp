@@ -198,18 +198,41 @@ export class Web3Service {
       maxFeePerGas: feeData.maxFeePerGas?.toString(),
       maxPriorityFeePerGas: feeData.maxPriorityFeePerGas?.toString()
     });
-    console.log('Gas limit:', tx.gasLimit?.toString());
+    console.log('Gas estimates:', {
+      networkGasEstimate: tx.gasLimit ? `${tx.gasLimit.toString()} gas` : 'Not estimated',
+      ourGasLimit: '120000 gas',
+      note: tx.gasLimit ? `Network estimated ${tx.gasLimit.toString()}, we're setting 120000` : 'Network did not provide gas estimate'
+    });
     
-    // Set reasonable fallback gas price based on chain
+    // Set minimum gas price thresholds
+    const minGasPrice = this.config.chainId === 43114 
+      ? '1000000000'  // 1 nAVAX minimum for mainnet
+      : '20';         // 0.00000002 nAVAX minimum for testnet (10x current 0.000000002)
+    
     const fallbackGasPrice = this.config.chainId === 43114 
-      ? '1000000000'  // 1 nAVAX for mainnet
-      : '100';        // 0.0000001 nAVAX for testnet (Fuji)
+      ? '1000000000'  // 1 nAVAX fallback for mainnet
+      : '67000000';   // 0.000000067 nAVAX fallback for testnet
+    
+    // Use network gas price but enforce minimum
+    const networkGasPrice = feeData.gasPrice ? BigInt(feeData.gasPrice.toString()) : BigInt(0);
+    const minGasPriceBigInt = BigInt(minGasPrice);
+    const gasPrice = networkGasPrice > minGasPriceBigInt 
+      ? networkGasPrice.toString()  // Use network price if above minimum
+      : (networkGasPrice > 0n ? minGasPrice : fallbackGasPrice);  // Use minimum or fallback
+    
+    console.log('Gas price calculation:', {
+      networkGasPrice: `${networkGasPrice.toString()} wei`,
+      minGasPrice: `${minGasPrice} wei`,
+      finalGasPrice: `${gasPrice} wei`,
+      networkGasPriceInNAVAX: `${(Number(networkGasPrice) / 1e9).toFixed(12)} nAVAX`,
+      finalGasPriceInNAVAX: `${(Number(gasPrice) / 1e9).toFixed(12)} nAVAX`
+    });
     
     // Use network gas price with reasonable gas limit
     const txWithGas = {
       ...tx,
-      gasLimit: '80000', // 80k gas limit for USDC approval
-      gasPrice: feeData.gasPrice?.toString() || fallbackGasPrice,
+      gasLimit: '120000', // Increased to 120k gas limit for USDC approval
+      gasPrice: gasPrice,
       maxFeePerGas: undefined,
       maxPriorityFeePerGas: undefined
     };
@@ -247,18 +270,41 @@ export class Web3Service {
       maxFeePerGas: feeData.maxFeePerGas?.toString(),
       maxPriorityFeePerGas: feeData.maxPriorityFeePerGas?.toString()
     });
-    console.log('Gas limit:', tx.gasLimit?.toString());
+    console.log('Gas estimates:', {
+      networkGasEstimate: tx.gasLimit ? `${tx.gasLimit.toString()} gas` : 'Not estimated',
+      ourGasLimit: '150000 gas',
+      note: tx.gasLimit ? `Network estimated ${tx.gasLimit.toString()}, we're setting 150000` : 'Network did not provide gas estimate'
+    });
     
-    // Set reasonable fallback gas price based on chain
+    // Set minimum gas price thresholds
+    const minGasPrice = this.config.chainId === 43114 
+      ? '1000000000'  // 1 nAVAX minimum for mainnet
+      : '20';         // 0.00000002 nAVAX minimum for testnet (10x current 0.000000002)
+    
     const fallbackGasPrice = this.config.chainId === 43114 
-      ? '1000000000'  // 1 nAVAX for mainnet
-      : '100';        // 0.0000001 nAVAX for testnet (Fuji)
+      ? '1000000000'  // 1 nAVAX fallback for mainnet
+      : '67000000';   // 0.000000067 nAVAX fallback for testnet
+    
+    // Use network gas price but enforce minimum
+    const networkGasPrice = feeData.gasPrice ? BigInt(feeData.gasPrice.toString()) : BigInt(0);
+    const minGasPriceBigInt = BigInt(minGasPrice);
+    const gasPrice = networkGasPrice > minGasPriceBigInt 
+      ? networkGasPrice.toString()  // Use network price if above minimum
+      : (networkGasPrice > 0n ? minGasPrice : fallbackGasPrice);  // Use minimum or fallback
+    
+    console.log('Gas price calculation:', {
+      networkGasPrice: `${networkGasPrice.toString()} wei`,
+      minGasPrice: `${minGasPrice} wei`,
+      finalGasPrice: `${gasPrice} wei`,
+      networkGasPriceInNAVAX: `${(Number(networkGasPrice) / 1e9).toFixed(12)} nAVAX`,
+      finalGasPriceInNAVAX: `${(Number(gasPrice) / 1e9).toFixed(12)} nAVAX`
+    });
     
     // Use network gas price with reasonable gas limit
     const txWithGas = {
       ...tx,
-      gasLimit: '100000', // 100k gas limit for depositFunds
-      gasPrice: feeData.gasPrice?.toString() || fallbackGasPrice,
+      gasLimit: '150000', // Increased to 150k gas limit for depositFunds (was failing at 100k)
+      gasPrice: gasPrice,
       maxFeePerGas: undefined, // Remove EIP-1559 fields
       maxPriorityFeePerGas: undefined
     };

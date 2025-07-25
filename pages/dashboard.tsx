@@ -4,6 +4,7 @@ import ContractList from '@/components/contracts/ContractList';
 import ConnectWallet from '@/components/auth/ConnectWallet';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import ExpandableHash from '@/components/ui/ExpandableHash';
 
 export default function Dashboard() {
   const { user, isLoading } = useAuth();
@@ -50,7 +51,9 @@ export default function Dashboard() {
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-lg font-semibold text-gray-900">Connected Wallet</h2>
-              <p className="text-sm text-gray-600 font-mono mt-1">{user.walletAddress}</p>
+              <div className="text-sm text-gray-600 mt-1">
+                <ExpandableHash hash={user.walletAddress} />
+              </div>
             </div>
             <div className="text-right">
               <p className="text-sm text-gray-600">Email</p>

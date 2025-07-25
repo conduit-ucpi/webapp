@@ -1,7 +1,8 @@
 import { Contract } from '@/types';
 import { useAuth } from '@/components/auth/AuthProvider';
-import { formatWalletAddress, formatUSDC, formatTimeRemaining } from '@/utils/validation';
+import { formatUSDC, formatTimeRemaining } from '@/utils/validation';
 import ContractActions from './ContractActions';
+import ExpandableHash from '@/components/ui/ExpandableHash';
 
 interface ContractCardProps {
   contract: Contract;
@@ -38,7 +39,7 @@ export default function ContractCard({ contract, onAction }: ContractCardProps) 
       <div className="flex justify-between items-start mb-4">
         <div>
           <h3 className="text-lg font-semibold text-gray-900">
-            {formatWalletAddress(contract.contractAddress)}
+            <ExpandableHash hash={contract.contractAddress} />
           </h3>
           <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(contract.status)}`}>
             {contract.status.toUpperCase()}
@@ -55,17 +56,17 @@ export default function ContractCard({ contract, onAction }: ContractCardProps) 
       <div className="space-y-2 mb-4">
         <div className="flex justify-between text-sm">
           <span className="text-gray-600">Buyer:</span>
-          <span className={`font-mono ${isBuyer ? 'font-semibold text-primary-600' : ''}`}>
-            {formatWalletAddress(contract.buyerAddress)}
-            {isBuyer && ' (You)'}
-          </span>
+          <div className={`${isBuyer ? 'font-semibold text-primary-600' : ''}`}>
+            <ExpandableHash hash={contract.buyerAddress} showCopyButton={false} />
+            {isBuyer && <span className="ml-1">(You)</span>}
+          </div>
         </div>
         <div className="flex justify-between text-sm">
           <span className="text-gray-600">Seller:</span>
-          <span className={`font-mono ${isSeller ? 'font-semibold text-primary-600' : ''}`}>
-            {formatWalletAddress(contract.sellerAddress)}
-            {isSeller && ' (You)'}
-          </span>
+          <div className={`${isSeller ? 'font-semibold text-primary-600' : ''}`}>
+            <ExpandableHash hash={contract.sellerAddress} showCopyButton={false} />
+            {isSeller && <span className="ml-1">(You)</span>}
+          </div>
         </div>
         <div className="flex justify-between text-sm">
           <span className="text-gray-600">Expires:</span>

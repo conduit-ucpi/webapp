@@ -22,7 +22,15 @@ export default function ConnectWallet() {
   const [isInitialized, setIsInitialized] = useState(false);
 
   const initWeb3Auth = async () => {
-    if (!config || web3authInstance) return web3authInstance;
+    if (!config) return null;
+    
+    // Always create a new instance if we're initializing after logout
+    if (web3authInstance) {
+      console.log('Web3Auth instance already exists, returning existing instance');
+      return web3authInstance;
+    }
+
+    console.log('Initializing new Web3Auth instance...');
 
     // Disable MetaMask auto-detection by hiding window.ethereum temporarily
     const originalEthereum = (window as any).ethereum;
@@ -60,6 +68,7 @@ export default function ConnectWallet() {
 
     try {
       await web3authInstance.initModal();
+      console.log('Web3Auth modal initialized successfully');
     } catch (error) {
       console.error('Web3Auth initialization error:', error);
       // If MetaMask error, just log it and continue
@@ -76,6 +85,7 @@ export default function ConnectWallet() {
     // Store provider globally for other components
     (window as any).web3auth = web3authInstance;
     
+    console.log('Web3Auth instance stored globally');
     return web3authInstance;
   };
 
@@ -101,12 +111,18 @@ export default function ConnectWallet() {
     try {
       // Always reinitialize Web3Auth to ensure modal appears
       // This is important after logout to reset the session
+      console.log('Starting wallet connection...');
       web3authInstance = null;
+      (window as any).web3auth = null;
+      setIsInitialized(false);
+      
       const freshInstance = await initWeb3Auth();
 
       if (!freshInstance) {
         throw new Error('Web3Auth initialization failed');
       }
+
+      console.log('Checking if already connected:', freshInstance.connected);
 
       // Check if already connected
       if (freshInstance.connected) {
@@ -137,10 +153,12 @@ export default function ConnectWallet() {
       }
 
       // Connect if not already connected
+      console.log('Attempting to connect Web3Auth...');
       const web3authProvider = await freshInstance.connect();
       if (!web3authProvider) {
         throw new Error('Failed to connect wallet');
       }
+      console.log('Web3Auth connected successfully');
 
       // Store provider globally for Web3Service
       (window as any).web3authProvider = web3authProvider;

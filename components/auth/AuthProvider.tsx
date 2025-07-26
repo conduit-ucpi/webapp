@@ -52,8 +52,56 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Clear Web3Auth session if available
       const web3authInstance = (window as any).web3auth;
       if (web3authInstance && web3authInstance.connected) {
-        await web3authInstance.logout();
+        try {
+          await web3authInstance.logout();
+        } catch (logoutError) {
+          console.warn('Web3Auth logout failed, continuing with cleanup:', logoutError);
+        }
       }
+      
+      // Clear all Web3Auth related localStorage/sessionStorage
+      // Web3Auth stores session data in various localStorage keys
+      const keysToRemove = [
+        'Web3Auth-cachedAdapter',
+        'openlogin_store',
+        'local_storage_key',
+        'session_id',
+        'sessionId', 
+        'walletconnect',
+        'Web3Auth-connectedAdapters'
+      ];
+      
+      keysToRemove.forEach(key => {
+        try {
+          localStorage.removeItem(key);
+          sessionStorage.removeItem(key);
+        } catch (e) {
+          console.warn(`Failed to remove ${key}:`, e);
+        }
+      });
+      
+      // Clear all items that start with 'Web3Auth' or 'openlogin'
+      const localStorageKeys = Object.keys(localStorage);
+      localStorageKeys.forEach(key => {
+        if (key.startsWith('Web3Auth') || key.startsWith('openlogin') || key.startsWith('walletconnect')) {
+          try {
+            localStorage.removeItem(key);
+          } catch (e) {
+            console.warn(`Failed to remove localStorage key ${key}:`, e);
+          }
+        }
+      });
+      
+      const sessionStorageKeys = Object.keys(sessionStorage);
+      sessionStorageKeys.forEach(key => {
+        if (key.startsWith('Web3Auth') || key.startsWith('openlogin') || key.startsWith('walletconnect')) {
+          try {
+            sessionStorage.removeItem(key);
+          } catch (e) {
+            console.warn(`Failed to remove sessionStorage key ${key}:`, e);
+          }
+        }
+      });
       
       // Clear global Web3Auth references
       (window as any).web3auth = null;
@@ -67,13 +115,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       // Clear local auth state
       setUser(null);
+      
+      console.log('Logout completed successfully');
     } catch (error) {
       console.error('Logout error:', error);
-      // Even if logout fails, clear local state
+      // Even if logout fails, clear local state and storage
       setUser(null);
       (window as any).web3auth = null;
       (window as any).web3authProvider = null;
       resetWeb3AuthInstance();
+      
+      // Force clear storage even on error
+      try {
+        localStorage.clear();
+        sessionStorage.clear();
+      } catch (e) {
+        console.warn('Failed to clear storage on error:', e);
+      }
     }
   };
 

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/router';
 import { useConfig } from '@/components/auth/ConfigProvider';
+import { useAuth } from '@/components/auth/AuthProvider';
 import { Web3Service } from '@/lib/web3';
 import { isValidEmail, isValidAmount, isValidExpiryTime, isValidDescription } from '@/utils/validation';
 import Input from '@/components/ui/Input';
@@ -25,6 +26,7 @@ interface FormErrors {
 export default function CreateContract() {
   const router = useRouter();
   const { config } = useConfig();
+  const { user } = useAuth();
   const [form, setForm] = useState<CreateContractForm>({
     buyerEmail: '',
     amount: '',
@@ -91,7 +93,10 @@ export default function CreateContract() {
       
       const pendingContractRequest = {
         buyerEmail: form.buyerEmail,
+        sellerEmail: user?.email || '', // Get from authenticated user
+        sellerAddress: userAddress,
         amount: parseFloat(form.amount),
+        currency: 'USDC',
         description: form.description,
         expiryTimestamp
       };

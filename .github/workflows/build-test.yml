@@ -41,7 +41,8 @@ jobs:
           USDC_CONTRACT_ADDRESS: ${{ vars.USDC_CONTRACT_ADDRESS }}
           CONTRACT_FACTORY_ADDRESS: ${{ vars.CONTRACT_FACTORY_ADDRESS }}
           USER_SERVICE_URL: ${{ vars.USER_SERVICE_URL }}
-          CHAIN_SERVICE_URL: ${{ vars.CHAIN_SERVICE_URL }} `
+          CHAIN_SERVICE_URL: ${{ vars.CHAIN_SERVICE_URL }}
+          CONTRACT_SERVICE_URL: ${{ vars.CONTRACT_SERVICE_URL }}
           MOONPAY_API_KEY: ${{ secrets.MOONPAY_API_KEY }}
           BUILD_VERSION: ${{ env.BUILD_VERSION }}
           GIT_TAG: ${{ env.GIT_TAG }}
@@ -109,6 +110,7 @@ jobs:
               -e RPC_URL=${{ vars.RPC_URL }} \
               -e CHAIN_SERVICE_URL=${{ vars.CHAIN_SERVICE_URL }} \
               -e USER_SERVICE_URL=${{ vars.USER_SERVICE_URL }} \
+              -e CONTRACT_SERVICE_URL=${{ vars.CONTRACT_SERVICE_URL }} \
               -e WEB3AUTH_CLIENT_ID=${{ secrets.WEB3AUTH_CLIENT_ID }} \
               -e WEB3AUTH_NETWORK=${{ vars.WEB3AUTH_NETWORK }} \
               -e MOONPAY_API_KEY=${{ secrets.MOONPAY_API_KEY }} \

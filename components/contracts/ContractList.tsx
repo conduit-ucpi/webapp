@@ -1,8 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/components/auth/AuthProvider';
-import { Contract } from '@/types';
+import { Contract, PendingContract } from '@/types';
 import ContractCard from './ContractCard';
+import PendingContractCard from './PendingContractCard';
+import ContractAcceptance from './ContractAcceptance';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 
 type StatusFilter = 'ALL' | 'CREATED' | 'ACTIVE' | 'EXPIRED' | 'DISPUTED' | 'RESOLVED' | 'CLAIMED';
@@ -12,22 +14,33 @@ export default function ContractList() {
   const { user } = useAuth();
   const router = useRouter();
   const [contracts, setContracts] = useState<Contract[]>([]);
+  const [pendingContracts, setPendingContracts] = useState<PendingContract[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
   const [sortOrder, setSortOrder] = useState<SortOrder>('expiry-asc');
+  const [activeTab, setActiveTab] = useState<'active' | 'pending' | 'accept'>('active');
 
   const fetchContracts = async () => {
     if (!user?.walletAddress) return;
 
     try {
-      const response = await fetch(`${router.basePath}/api/chain/contracts/${user.walletAddress}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch contracts');
+      // Fetch active contracts from chain service
+      const chainResponse = await fetch(`${router.basePath}/api/chain/contracts/${user.walletAddress}`);
+      if (!chainResponse.ok) {
+        throw new Error('Failed to fetch active contracts');
       }
-      
-      const data = await response.json();
-      setContracts(data.contracts || []);
+      const chainData = await chainResponse.json();
+      setContracts(chainData.contracts || []);
+
+      // Fetch pending contracts from contract service
+      const pendingResponse = await fetch(`${router.basePath}/api/contracts`);
+      if (!pendingResponse.ok) {
+        throw new Error('Failed to fetch pending contracts');
+      }
+      const pendingData = await pendingResponse.json();
+      setPendingContracts(pendingData || []);
+
       setError('');
     } catch (error: any) {
       console.error('Failed to fetch contracts:', error);

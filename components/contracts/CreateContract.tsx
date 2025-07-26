@@ -2,13 +2,13 @@ import { useState } from 'react';
 import { useRouter } from 'next/router';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { Web3Service } from '@/lib/web3';
-import { isValidWalletAddress, isValidAmount, isValidExpiryTime, isValidDescription } from '@/utils/validation';
+import { isValidEmail, isValidAmount, isValidExpiryTime, isValidDescription } from '@/utils/validation';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 
 interface CreateContractForm {
-  sellerAddress: string;
+  buyerEmail: string;
   amount: string;
   hours: number;
   minutes: number;
@@ -16,7 +16,7 @@ interface CreateContractForm {
 }
 
 interface FormErrors {
-  sellerAddress?: string;
+  buyerEmail?: string;
   amount?: string;
   expiry?: string;
   description?: string;
@@ -26,7 +26,7 @@ export default function CreateContract() {
   const router = useRouter();
   const { config } = useConfig();
   const [form, setForm] = useState<CreateContractForm>({
-    sellerAddress: '',
+    buyerEmail: '',
     amount: '',
     hours: 24,
     minutes: 0,
@@ -39,8 +39,8 @@ export default function CreateContract() {
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
 
-    if (!isValidWalletAddress(form.sellerAddress)) {
-      newErrors.sellerAddress = 'Invalid wallet address';
+    if (!isValidEmail(form.buyerEmail)) {
+      newErrors.buyerEmail = 'Invalid email address';
     }
 
     if (!isValidAmount(form.amount)) {
@@ -85,33 +85,21 @@ export default function CreateContract() {
       await web3Service.initializeProvider(web3authProvider);
       const userAddress = await web3Service.getUserAddress();
 
-      // Check USDC balance
-      setLoadingMessage('Checking USDC balance...');
-      const balance = await web3Service.getUSDCBalance(userAddress);
-      const amountUsdc = parseFloat(form.amount);
-      if (parseFloat(balance) < amountUsdc) {
-        throw new Error(`Insufficient USDC balance. You have ${balance} USDC`);
-      }
-
-      // Create contract via Chain Service
-      setLoadingMessage('Creating secure escrow...');
+      // Create pending contract via Contract Service (no USDC balance check needed)
+      setLoadingMessage('Creating pending contract...');
       const expiryTimestamp = Math.floor(Date.now() / 1000) + (form.hours * 3600) + (form.minutes * 60);
       
-      // Convert amount to wei (USDC has 6 decimals)
-      const amountWei = Math.floor(amountUsdc * 1000000);
+      const pendingContractRequest = {
+        buyerEmail: form.buyerEmail,
+        amount: parseFloat(form.amount),
+        description: form.description,
+        expiryTimestamp
+      };
 
-      const response = await fetch(`${router.basePath}/api/chain/create-contract`, {
+      const response = await fetch(`${router.basePath}/api/contracts`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          buyer: userAddress,
-          seller: form.sellerAddress,
-          amount: amountWei,
-          expiryTimestamp,
-          description: form.description
-        })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(pendingContractRequest)
       });
 
       if (!response.ok) {
@@ -120,63 +108,7 @@ export default function CreateContract() {
       }
 
       const result = await response.json();
-      if (!result.success) {
-        throw new Error(result.error || 'Contract creation failed');
-      }
-
-      const contractAddress = result.contractAddress;
-      if (!contractAddress) {
-        throw new Error('Contract address not returned from chain service');
-      }
-
-      // First approve USDC spending for the new contract
-      setLoadingMessage('Approving USDC spending for escrow...');
-      const approvalTx = await web3Service.signUSDCApproval(form.amount, contractAddress);
-
-      // Send approval transaction to chain service
-      const approvalResponse = await fetch(`${router.basePath}/api/chain/approve-usdc`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userWalletAddress: userAddress,
-          signedTransaction: approvalTx
-        })
-      });
-
-      if (!approvalResponse.ok) {
-        const errorData = await approvalResponse.json().catch(() => ({}));
-        throw new Error(errorData.error || 'USDC approval failed');
-      }
-
-      const approvalResult = await approvalResponse.json();
-      if (!approvalResult.success) {
-        throw new Error(approvalResult.error || 'USDC approval failed');
-      }
-
-      // Now fund the contract
-      setLoadingMessage('Depositing funds to escrow...');
-      const depositTx = await web3Service.signDepositTransaction(contractAddress);
-
-      // Send deposit transaction to chain service
-      const depositResponse = await fetch(`${router.basePath}/api/chain/deposit-funds`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contractAddress,
-          userWalletAddress: userAddress,
-          signedTransaction: depositTx
-        })
-      });
-
-      if (!depositResponse.ok) {
-        const errorData = await depositResponse.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Fund deposit failed');
-      }
-
-      const depositResult = await depositResponse.json();
-      if (!depositResult.success) {
-        throw new Error(depositResult.error || 'Fund deposit failed');
-      }
+      console.log('Pending contract created:', result);
 
       // Redirect to dashboard
       router.push('/dashboard');
@@ -195,11 +127,12 @@ export default function CreateContract() {
       
       <form onSubmit={handleSubmit} className="space-y-4">
         <Input
-          label="Seller Wallet Address"
-          value={form.sellerAddress}
-          onChange={(e) => setForm(prev => ({ ...prev, sellerAddress: e.target.value }))}
-          placeholder="0x..."
-          error={errors.sellerAddress}
+          label="Buyer Email Address"
+          type="email"
+          value={form.buyerEmail}
+          onChange={(e) => setForm(prev => ({ ...prev, buyerEmail: e.target.value }))}
+          placeholder="buyer@example.com"
+          error={errors.buyerEmail}
           disabled={isLoading}
         />
 

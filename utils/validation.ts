@@ -26,6 +26,11 @@ export function isValidDescription(description: string): boolean {
   return description.trim().length > 0 && description.length <= 160;
 }
 
+export function isValidEmail(email: string): boolean {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email.trim());
+}
+
 export function formatWalletAddress(address: string): string {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }

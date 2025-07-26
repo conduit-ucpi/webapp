@@ -16,7 +16,7 @@ export interface Contract {
   contractAddress: string;
   buyerAddress: string;
   sellerAddress: string;
-  amount: string;
+  amount: number;
   expiryTimestamp: number;
   description: string;
   status: 'CREATED' | 'ACTIVE' | 'EXPIRED' | 'DISPUTED' | 'RESOLVED' | 'CLAIMED';
@@ -28,12 +28,34 @@ export interface Contract {
   claimedAt?: string;
 }
 
+export interface PendingContract {
+  id: string;
+  sellerEmail: string;
+  buyerEmail?: string;
+  amount: number;
+  currency: string;
+  sellerAddress: string;
+  expiryTimestamp: number;
+  chainId?: string;
+  chainAddress?: string;
+  description: string;
+  createdAt: string;
+  createdBy: string;
+}
+
 export interface CreateContractRequest {
   buyer: string;
   seller: string;
   amount: string;
   expiryTimestamp: number;
   description: string;
+}
+
+export interface CreatePendingContractRequest {
+  buyerEmail: string;
+  amount: number;
+  description: string;
+  expiryTimestamp: number;
 }
 
 export interface AuthContextType {

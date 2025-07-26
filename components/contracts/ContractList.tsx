@@ -19,7 +19,7 @@ export default function ContractList() {
   const [error, setError] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
   const [sortOrder, setSortOrder] = useState<SortOrder>('expiry-asc');
-  const [activeTab, setActiveTab] = useState<'active' | 'pending' | 'accept'>('active');
+  const [activeTab, setActiveTab] = useState<'active' | 'pending' | 'accept'>('pending');
 
   const fetchContracts = async () => {
     if (!user?.walletAddress) return;
@@ -115,7 +115,7 @@ export default function ContractList() {
     );
   }
 
-  if (contracts.length === 0) {
+  if (contracts.length === 0 && pendingContracts.length === 0) {
     return (
       <div className="text-center py-20">
         <div className="text-gray-600 mb-4">No contracts found</div>
@@ -126,8 +126,37 @@ export default function ContractList() {
 
   return (
     <div>
+      {/* Tab Navigation */}
+      <div className="mb-6">
+        <div className="border-b border-gray-200">
+          <nav className="-mb-px flex space-x-8">
+            <button
+              onClick={() => setActiveTab('active')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'active'
+                  ? 'border-primary-500 text-primary-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Active Contracts ({contracts.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('pending')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'pending'
+                  ? 'border-primary-500 text-primary-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Pending Contracts ({pendingContracts.length})
+            </button>
+          </nav>
+        </div>
+      </div>
+
       {/* Filter and Sort Controls */}
-      <div className="mb-6 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+      {activeTab === 'active' && (
+        <div className="mb-6 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div className="flex flex-col sm:flex-row gap-4">
           {/* Status Filter */}
           <div>
@@ -174,23 +203,51 @@ export default function ContractList() {
           Showing {filteredAndSortedContracts.length} of {contracts.length} contracts
         </div>
       </div>
+      )}
 
-      {/* Contract Grid */}
-      {filteredAndSortedContracts.length === 0 ? (
-        <div className="text-center py-20">
-          <div className="text-gray-600 mb-4">No contracts match your filters</div>
-          <p className="text-gray-500">Try adjusting your filter settings.</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredAndSortedContracts.map((contract) => (
-            <ContractCard
-              key={contract.contractAddress}
-              contract={contract}
-              onAction={handleContractAction}
-            />
-          ))}
-        </div>
+      {/* Active Contracts Content */}
+      {activeTab === 'active' && (
+        <>
+          {filteredAndSortedContracts.length === 0 ? (
+            <div className="text-center py-20">
+              <div className="text-gray-600 mb-4">No active contracts match your filters</div>
+              <p className="text-gray-500">Try adjusting your filter settings.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredAndSortedContracts.map((contract) => (
+                <ContractCard
+                  key={contract.contractAddress}
+                  contract={contract}
+                  onAction={handleContractAction}
+                />
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Pending Contracts Content */}
+      {activeTab === 'pending' && (
+        <>
+          {pendingContracts.length === 0 ? (
+            <div className="text-center py-20">
+              <div className="text-gray-600 mb-4">No pending contracts</div>
+              <p className="text-gray-500">Pending contracts will appear here once created.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {pendingContracts.map((contract) => (
+                <PendingContractCard
+                  key={contract.id}
+                  contract={contract}
+                  currentUserEmail={user?.email || ''}
+                  onAccept={handleContractAction}
+                />
+              ))}
+            </div>
+          )}
+        </>
       )}
     </div>
   );

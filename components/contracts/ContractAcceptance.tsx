@@ -46,10 +46,15 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
 
       // Create on-chain contract (same as old flow)
       setLoadingMessage('Creating secure escrow...');
+      
+      // Convert amount to smallest unit (USDC has 6 decimals)
+      // For example: 0.01 USDC = 0.01 * 10^6 = 10000 units
+      const amountInSmallestUnit = Math.floor(contract.amount * Math.pow(10, 6)).toString();
+      
       const contractRequest: CreateContractRequest = {
         buyer: userAddress,
         seller: contract.sellerAddress,
-        amount: contract.amount.toString(),
+        amount: amountInSmallestUnit,
         expiryTimestamp: contract.expiryTimestamp,
         description: contract.description
       };

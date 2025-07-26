@@ -24,39 +24,13 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
     }
 
     setIsLoading(true);
-    setLoadingMessage('Connecting wallet...');
+    setLoadingMessage('Initializing...');
 
     try {
-      const { Web3Auth } = await import('@web3auth/modal');
-      const { CHAIN_NAMESPACES } = await import('@web3auth/base');
-      const { EthereumPrivateKeyProvider } = await import('@web3auth/ethereum-provider');
-
-      const chainConfig = {
-        chainNamespace: CHAIN_NAMESPACES.EIP155,
-        chainId: `0x${config.chainId.toString(16)}`,
-        rpcTarget: config.rpcUrl,
-        displayName: 'Avalanche Testnet',
-        blockExplorer: 'https://testnet.snowtrace.io',
-        ticker: 'AVAX',
-        tickerName: 'Avalanche',
-      };
-
-      const privateKeyProvider = new EthereumPrivateKeyProvider({
-        config: { chainConfig },
-      });
-
-      const web3auth = new Web3Auth({
-        clientId: config.web3AuthClientId,
-        web3AuthNetwork: 'sapphire_devnet',
-        chainConfig,
-        privateKeyProvider,
-      });
-
-      await web3auth.initModal();
-      const web3authProvider = await web3auth.connect();
-
+      // Use existing Web3Auth provider from global state
+      const web3authProvider = (window as any).web3authProvider;
       if (!web3authProvider) {
-        throw new Error('Failed to connect wallet');
+        throw new Error('Wallet not connected. Please connect your wallet first.');
       }
 
       const web3Service = new Web3Service(config);

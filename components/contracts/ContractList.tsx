@@ -20,6 +20,7 @@ export default function ContractList() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
   const [sortOrder, setSortOrder] = useState<SortOrder>('expiry-asc');
   const [activeTab, setActiveTab] = useState<'active' | 'pending' | 'accept'>('pending');
+  const [contractToAccept, setContractToAccept] = useState<PendingContract | null>(null);
 
   const fetchContracts = async () => {
     if (!user?.walletAddress) return;
@@ -65,6 +66,20 @@ export default function ContractList() {
 
   const handleContractAction = () => {
     fetchContracts(); // Refresh after any action
+  };
+
+  const handleAcceptContract = (contractId: string) => {
+    const contract = pendingContracts.find(c => c.id === contractId);
+    if (contract) {
+      setContractToAccept(contract);
+      setActiveTab('accept');
+    }
+  };
+
+  const handleAcceptComplete = () => {
+    setContractToAccept(null);
+    setActiveTab('pending');
+    fetchContracts(); // Refresh contract lists
   };
 
   // Filter and sort contracts
@@ -242,12 +257,20 @@ export default function ContractList() {
                   key={contract.id}
                   contract={contract}
                   currentUserEmail={user?.email || ''}
-                  onAccept={handleContractAction}
+                  onAccept={handleAcceptContract}
                 />
               ))}
             </div>
           )}
         </>
+      )}
+
+      {/* Contract Acceptance Content */}
+      {activeTab === 'accept' && contractToAccept && (
+        <ContractAcceptance
+          contract={contractToAccept}
+          onAcceptComplete={handleAcceptComplete}
+        />
       )}
     </div>
   );

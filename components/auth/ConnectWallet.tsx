@@ -10,6 +10,11 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner';
 // Global Web3Auth instance
 let web3authInstance: Web3Auth | null = null;
 
+// Function to reset Web3Auth instance (called on logout)
+export const resetWeb3AuthInstance = () => {
+  web3authInstance = null;
+};
+
 export default function ConnectWallet() {
   const { config } = useConfig();
   const { login } = useAuth();
@@ -94,18 +99,18 @@ export default function ConnectWallet() {
 
     setIsConnecting(true);
     try {
-      // Reinitialize if needed
-      if (!web3authInstance) {
-        await initWeb3Auth();
-      }
+      // Always reinitialize Web3Auth to ensure modal appears
+      // This is important after logout to reset the session
+      web3authInstance = null;
+      const freshInstance = await initWeb3Auth();
 
-      if (!web3authInstance) {
+      if (!freshInstance) {
         throw new Error('Web3Auth initialization failed');
       }
 
       // Check if already connected
-      if (web3authInstance.connected) {
-        const web3authProvider = web3authInstance.provider;
+      if (freshInstance.connected) {
+        const web3authProvider = freshInstance.provider;
         if (!web3authProvider) {
           throw new Error('No provider found');
         }
@@ -113,7 +118,7 @@ export default function ConnectWallet() {
         // Store provider globally for Web3Service
         (window as any).web3authProvider = web3authProvider;
 
-        const user = await web3authInstance.getUserInfo();
+        const user = await freshInstance.getUserInfo();
         const accounts = await web3authProvider.request({ method: 'eth_accounts' }) as string[];
         
         if (!accounts || accounts.length === 0) {
@@ -132,7 +137,7 @@ export default function ConnectWallet() {
       }
 
       // Connect if not already connected
-      const web3authProvider = await web3authInstance.connect();
+      const web3authProvider = await freshInstance.connect();
       if (!web3authProvider) {
         throw new Error('Failed to connect wallet');
       }
@@ -140,7 +145,7 @@ export default function ConnectWallet() {
       // Store provider globally for Web3Service
       (window as any).web3authProvider = web3authProvider;
 
-      const user = await web3authInstance.getUserInfo();
+      const user = await freshInstance.getUserInfo();
       const accounts = await web3authProvider.request({ method: 'eth_accounts' }) as string[];
       
       if (!accounts || accounts.length === 0) {

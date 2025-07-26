@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { User, AuthContextType } from '@/types';
+import { resetWeb3AuthInstance } from './ConnectWallet';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -48,10 +49,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
+      // Clear Web3Auth session if available
+      const web3authInstance = (window as any).web3auth;
+      if (web3authInstance && web3authInstance.connected) {
+        await web3authInstance.logout();
+      }
+      
+      // Clear global Web3Auth references
+      (window as any).web3auth = null;
+      (window as any).web3authProvider = null;
+      
+      // Reset the Web3Auth instance so modal appears on next connect
+      resetWeb3AuthInstance();
+      
+      // Call backend logout to clear server session
       await fetch(`${router.basePath}/api/auth/logout`, { method: 'POST' });
+      
+      // Clear local auth state
       setUser(null);
     } catch (error) {
       console.error('Logout error:', error);
+      // Even if logout fails, clear local state
+      setUser(null);
+      (window as any).web3auth = null;
+      (window as any).web3authProvider = null;
+      resetWeb3AuthInstance();
     }
   };
 

@@ -15,6 +15,7 @@ export default function ContractList() {
   const router = useRouter();
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [pendingContracts, setPendingContracts] = useState<PendingContract[]>([]);
+  const [deployedContracts, setDeployedContracts] = useState<PendingContract[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
@@ -32,7 +33,7 @@ export default function ContractList() {
         throw new Error('Failed to fetch active contracts');
       }
       const chainData = await chainResponse.json();
-      setContracts(chainData.contracts || []);
+      const chainContracts = chainData.contracts || [];
 
       // Fetch pending contracts from contract service
       const pendingResponse = await fetch(`${router.basePath}/api/contracts`);
@@ -41,6 +42,35 @@ export default function ContractList() {
       }
       const pendingData = await pendingResponse.json();
       setPendingContracts(pendingData || []);
+
+      // Fetch deployed contracts with email data from contract service
+      const deployedResponse = await fetch(`${router.basePath}/api/contracts/deployed`);
+      if (!deployedResponse.ok) {
+        console.warn('Failed to fetch deployed contracts for email data');
+        setContracts(chainContracts);
+      } else {
+        const deployedData = await deployedResponse.json();
+        setDeployedContracts(deployedData || []);
+
+        // Merge chain contracts with email data from deployed contracts
+        const mergedContracts = chainContracts.map((chainContract: Contract) => {
+          const deployedContract = deployedData.find((deployed: PendingContract) => 
+            deployed.chainAddress === chainContract.contractAddress
+          );
+          
+          if (deployedContract) {
+            return {
+              ...chainContract,
+              buyerEmail: deployedContract.buyerEmail,
+              sellerEmail: deployedContract.sellerEmail
+            };
+          }
+          
+          return chainContract;
+        });
+
+        setContracts(mergedContracts);
+      }
 
       setError('');
     } catch (error: any) {

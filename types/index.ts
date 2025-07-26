@@ -27,6 +27,9 @@ export interface Contract {
   disputedAt?: string;
   resolvedAt?: string;
   claimedAt?: string;
+  // Optional email fields from contract service
+  buyerEmail?: string;
+  sellerEmail?: string;
 }
 
 export interface PendingContract {

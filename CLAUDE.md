@@ -49,6 +49,7 @@ Copy `.env.example` to `.env.local` and configure:
 - `MOONPAY_API_KEY`: MoonPay API key for USDC purchases
 - `USER_SERVICE_URL`: Backend user service endpoint (default: http://localhost:8977)
 - `CHAIN_SERVICE_URL`: Backend chain service endpoint (default: http://localhost:8978)
+- `MIN_GAS_WEI`: Minimum gas price in wei for testnet transactions (default: 5)
 
 ## Architecture Overview
 

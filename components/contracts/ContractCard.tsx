@@ -57,14 +57,22 @@ export default function ContractCard({ contract, onAction }: ContractCardProps) 
         <div className="flex justify-between text-sm">
           <span className="text-gray-600">Buyer:</span>
           <div className={`${isBuyer ? 'font-semibold text-primary-600' : ''}`}>
-            <ExpandableHash hash={contract.buyerAddress} showCopyButton={false} />
+            {contract.buyerEmail ? (
+              <span>{contract.buyerEmail}</span>
+            ) : (
+              <ExpandableHash hash={contract.buyerAddress} showCopyButton={false} />
+            )}
             {isBuyer && <span className="ml-1">(You)</span>}
           </div>
         </div>
         <div className="flex justify-between text-sm">
           <span className="text-gray-600">Seller:</span>
           <div className={`${isSeller ? 'font-semibold text-primary-600' : ''}`}>
-            <ExpandableHash hash={contract.sellerAddress} showCopyButton={false} />
+            {contract.sellerEmail ? (
+              <span>{contract.sellerEmail}</span>
+            ) : (
+              <ExpandableHash hash={contract.sellerAddress} showCopyButton={false} />
+            )}
             {isSeller && <span className="ml-1">(You)</span>}
           </div>
         </div>

@@ -4,6 +4,7 @@ export interface Config {
   rpcUrl: string;
   usdcContractAddress: string;
   moonPayApiKey: string;
+  minGasWei: string;
 }
 
 export interface User {

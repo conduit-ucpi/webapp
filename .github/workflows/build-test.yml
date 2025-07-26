@@ -44,6 +44,7 @@ jobs:
           CHAIN_SERVICE_URL: ${{ vars.CHAIN_SERVICE_URL }}
           CONTRACT_SERVICE_URL: ${{ vars.CONTRACT_SERVICE_URL }}
           MOONPAY_API_KEY: ${{ secrets.MOONPAY_API_KEY }}
+          MIN_GAS_WEI: ${{ vars.MIN_GAS_WEI }}
           BUILD_VERSION: ${{ env.BUILD_VERSION }}
           GIT_TAG: ${{ env.GIT_TAG }}
           GIT_SHA: ${{ env.GIT_SHA }}
@@ -120,5 +121,6 @@ jobs:
               -e BUILD_VERSION=${{ env.BUILD_VERSION }} \
               -e CONTRACT_FACTORY_ADDRESS=${{ vars.CONTRACT_FACTORY_ADDRESS }} \
               -e USDC_CONTRACT_ADDRESS=${{ vars.USDC_CONTRACT_ADDRESS }} \
+              -e MIN_GAS_WEI=${{ vars.MIN_GAS_WEI }} \
               ghcr.io/${{ env.REPO_LOWER }}:${{ env.SHA_TAG }}
             '

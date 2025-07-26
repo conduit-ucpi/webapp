@@ -207,7 +207,7 @@ export class Web3Service {
     // Set minimum gas price thresholds
     const minGasPrice = this.config.chainId === 43114 
       ? '1000000000'  // 1 nAVAX minimum for mainnet
-      : '20';         // 0.00000002 nAVAX minimum for testnet (10x current 0.000000002)
+      : this.config.minGasWei; // Configurable minimum for testnet
     
     const fallbackGasPrice = this.config.chainId === 43114 
       ? '1000000000'  // 1 nAVAX fallback for mainnet
@@ -279,7 +279,7 @@ export class Web3Service {
     // Set minimum gas price thresholds
     const minGasPrice = this.config.chainId === 43114 
       ? '1000000000'  // 1 nAVAX minimum for mainnet
-      : '20';         // 0.00000002 nAVAX minimum for testnet (10x current 0.000000002)
+      : this.config.minGasWei; // Configurable minimum for testnet
     
     const fallbackGasPrice = this.config.chainId === 43114 
       ? '1000000000'  // 1 nAVAX fallback for mainnet

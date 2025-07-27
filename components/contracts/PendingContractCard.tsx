@@ -37,7 +37,7 @@ export default function PendingContractCard({
                 ? 'bg-red-100 text-red-800'
                 : 'bg-yellow-100 text-yellow-800'
           }`}>
-            {contract.chainAddress ? 'Waiting to pay' : isExpired ? 'Expired' : 'Awaiting payer'}
+            {contract.chainAddress ? 'Holding funds' : isExpired ? 'Expired' : 'Awaiting payer'}
           </span>
         </div>
       </div>

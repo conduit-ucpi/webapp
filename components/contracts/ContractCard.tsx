@@ -20,7 +20,7 @@ export default function ContractCard({ contract, onAction }: ContractCardProps) 
       case 'CREATED':
         return 'Awaiting money';
       case 'ACTIVE':
-        return 'Waiting to pay';
+        return 'Holding funds';
       default:
         return status;
     }

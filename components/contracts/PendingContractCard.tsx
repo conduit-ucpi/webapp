@@ -1,5 +1,5 @@
 import { PendingContract } from '@/types';
-import { formatTimeRemaining } from '@/utils/validation';
+import { formatExpiryDate } from '@/utils/validation';
 import Button from '@/components/ui/Button';
 import ExpandableHash from '@/components/ui/ExpandableHash';
 
@@ -37,25 +37,25 @@ export default function PendingContractCard({
                 ? 'bg-red-100 text-red-800'
                 : 'bg-yellow-100 text-yellow-800'
           }`}>
-            {contract.chainAddress ? 'Active' : isExpired ? 'Expired' : 'Pending'}
+            {contract.chainAddress ? 'Waiting to pay' : isExpired ? 'Expired' : 'Awaiting payer'}
           </span>
         </div>
       </div>
 
       <div className="space-y-2 text-sm text-gray-600">
         <div className="flex justify-between">
-          <span>Seller:</span>
+          <span>Receiver:</span>
           <span>{contract.sellerEmail}</span>
         </div>
         {contract.buyerEmail && (
           <div className="flex justify-between">
-            <span>Buyer:</span>
+            <span>Payer:</span>
             <span>{contract.buyerEmail}</span>
           </div>
         )}
         <div className="flex justify-between">
-          <span>Expires:</span>
-          <span>{formatTimeRemaining(contract.expiryTimestamp)}</span>
+          <span>Payout at:</span>
+          <span>{formatExpiryDate(contract.expiryTimestamp)}</span>
         </div>
         {contract.chainAddress && (
           <div className="flex justify-between">

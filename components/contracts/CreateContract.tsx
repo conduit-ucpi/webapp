@@ -132,11 +132,11 @@ export default function CreateContract() {
       
       <form onSubmit={handleSubmit} className="space-y-4">
         <Input
-          label="Buyer Email Address"
+          label="Payer Email Address"
           type="email"
           value={form.buyerEmail}
           onChange={(e) => setForm(prev => ({ ...prev, buyerEmail: e.target.value }))}
-          placeholder="buyer@example.com"
+          placeholder="payer@example.com"
           error={errors.buyerEmail}
           disabled={isLoading}
         />
@@ -155,7 +155,7 @@ export default function CreateContract() {
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Expiry Time
+            Payout Time
           </label>
           <div className="flex space-x-2">
             <Input

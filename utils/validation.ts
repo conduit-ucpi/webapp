@@ -64,3 +64,31 @@ export function formatTimeRemaining(expiryTimestamp: number): string {
     return `${minutes}m`;
   }
 }
+
+export function formatExpiryDate(expiryTimestamp: number): string {
+  const date = new Date(expiryTimestamp * 1000);
+  
+  // Get the user's timezone
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  
+  // Format the date in DD-MMM-YYYY HH:mm format
+  const options: Intl.DateTimeFormatOptions = {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    timeZone: timeZone
+  };
+  
+  const formattedDate = date.toLocaleDateString('en-GB', options);
+  
+  // Get timezone abbreviation
+  const timeZoneAbbr = date.toLocaleTimeString('en-US', {
+    timeZoneName: 'short',
+    timeZone: timeZone
+  }).split(' ').pop();
+  
+  return `${formattedDate} ${timeZoneAbbr}`;
+}

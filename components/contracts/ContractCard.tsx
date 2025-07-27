@@ -1,6 +1,6 @@
 import { Contract } from '@/types';
 import { useAuth } from '@/components/auth/AuthProvider';
-import { formatUSDC, formatTimeRemaining } from '@/utils/validation';
+import { formatUSDC, formatExpiryDate } from '@/utils/validation';
 import ContractActions from './ContractActions';
 import ExpandableHash from '@/components/ui/ExpandableHash';
 
@@ -14,6 +14,17 @@ export default function ContractCard({ contract, onAction }: ContractCardProps) 
   
   const isBuyer = user?.walletAddress?.toLowerCase() === contract.buyerAddress?.toLowerCase();
   const isSeller = user?.walletAddress?.toLowerCase() === contract.sellerAddress?.toLowerCase();
+  
+  const getStatusDisplay = (status: Contract['status']) => {
+    switch (status) {
+      case 'CREATED':
+        return 'Awaiting money';
+      case 'ACTIVE':
+        return 'Waiting to pay';
+      default:
+        return status;
+    }
+  };
   
   const getStatusColor = (status: Contract['status']) => {
     switch (status) {
@@ -42,7 +53,7 @@ export default function ContractCard({ contract, onAction }: ContractCardProps) 
             <ExpandableHash hash={contract.contractAddress} />
           </h3>
           <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(contract.status)}`}>
-            {contract.status.toUpperCase()}
+            {getStatusDisplay(contract.status).toUpperCase()}
           </span>
         </div>
         <div className="text-right">
@@ -55,7 +66,7 @@ export default function ContractCard({ contract, onAction }: ContractCardProps) 
 
       <div className="space-y-2 mb-4">
         <div className="flex justify-between text-sm">
-          <span className="text-gray-600">Buyer:</span>
+          <span className="text-gray-600">Payer:</span>
           <div className={`${isBuyer ? 'font-semibold text-primary-600' : ''}`}>
             {contract.buyerEmail ? (
               <span>{contract.buyerEmail}</span>
@@ -66,7 +77,7 @@ export default function ContractCard({ contract, onAction }: ContractCardProps) 
           </div>
         </div>
         <div className="flex justify-between text-sm">
-          <span className="text-gray-600">Seller:</span>
+          <span className="text-gray-600">Receiver:</span>
           <div className={`${isSeller ? 'font-semibold text-primary-600' : ''}`}>
             {contract.sellerEmail ? (
               <span>{contract.sellerEmail}</span>
@@ -77,9 +88,9 @@ export default function ContractCard({ contract, onAction }: ContractCardProps) 
           </div>
         </div>
         <div className="flex justify-between text-sm">
-          <span className="text-gray-600">Expires:</span>
+          <span className="text-gray-600">Payout at:</span>
           <span className="font-semibold">
-            {formatTimeRemaining(contract.expiryTimestamp)}
+            {formatExpiryDate(contract.expiryTimestamp)}
           </span>
         </div>
       </div>

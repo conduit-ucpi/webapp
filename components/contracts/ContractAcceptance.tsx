@@ -113,7 +113,8 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
         body: JSON.stringify({
           contractAddress,
           userWalletAddress: userAddress,
-          signedTransaction: depositTx
+          signedTransaction: depositTx,
+          contractId: contract.id
         })
       });
 
@@ -127,23 +128,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
         throw new Error(depositResult.error || 'Fund deposit failed');
       }
 
-      // Update contract service with chain details
-      setLoadingMessage('Updating contract status...');
-      const updateRequest = {
-        chainAddress: contractAddress,
-        chainId: config.chainId.toString(),
-        buyerAddress: userAddress
-      };
-
-      const updateResponse = await fetch(`${router.basePath}/api/contracts/${contract.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updateRequest)
-      });
-
-      if (!updateResponse.ok) {
-        console.warn('Failed to update contract service, but on-chain contract created successfully');
-      }
+      // Contract service update is now handled by chain service
 
       // Redirect to dashboard
       onAcceptComplete();

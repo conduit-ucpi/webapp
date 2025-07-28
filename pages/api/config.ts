@@ -8,6 +8,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     // Debug logging
     console.log('Environment variables check:');
+    console.log('NEXT_PUBLIC_BASE_PATH:', process.env.NEXT_PUBLIC_BASE_PATH);
     console.log('WEB3AUTH_CLIENT_ID:', process.env.WEB3AUTH_CLIENT_ID ? 'Present' : 'Missing');
     console.log('CHAIN_ID:', process.env.CHAIN_ID);
     console.log('RPC_URL:', process.env.RPC_URL ? 'Present' : 'Missing');

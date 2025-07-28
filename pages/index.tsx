@@ -53,7 +53,7 @@ export default function Home() {
                 </div>
                 <div className="text-sm text-gray-600 max-w-md mx-auto">
                   <p className="mb-2">
-                    <strong>First time here?</strong> Connect with Google, Facebook, or any social login.
+                    Connect with Google, Facebook, or any social login.
                   </p>
                   <p>
                     No crypto experience needed - we'll create a secure wallet for you automatically.

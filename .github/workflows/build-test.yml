@@ -67,6 +67,9 @@ jobs:
           echo "=== Checking copied files ==="
           ls -la .next/standalone/.next/static/ || echo "No copied static files"
           find .next/standalone -name "*.css" || echo "No CSS files in standalone"
+          echo "=== Checking public files ==="
+          ls -la .next/standalone/public/ || echo "No public directory in standalone"
+          ls -la .next/standalone/public/payment_gateway.png || echo "payment_gateway.png not found"
 
       # Docker steps
       - name: Login to GitHub Container Registry

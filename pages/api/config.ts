@@ -23,7 +23,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       rpcUrl: process.env.RPC_URL,
       usdcContractAddress: process.env.USDC_CONTRACT_ADDRESS,
       moonPayApiKey: process.env.MOONPAY_API_KEY,
-      minGasWei: process.env.MIN_GAS_WEI || '5'
+      minGasWei: process.env.MIN_GAS_WEI || '5',
+      basePath: process.env.NEXT_PUBLIC_BASE_PATH || '/webapp'
     };
 
     if (!config.usdcContractAddress) {

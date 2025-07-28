@@ -6,6 +6,7 @@ export interface Config {
   usdcContractAddress: string;
   moonPayApiKey: string;
   minGasWei: string;
+  basePath: string;
 }
 
 export interface User {

@@ -62,8 +62,13 @@ export default function Dashboard() {
           </div>
           
           <div className="mt-6 pt-6 border-t border-gray-200">
-            <h3 className="text-sm font-medium text-gray-900 mb-3">USDC Management</h3>
-            <div className="flex space-x-3">
+            <h3 className="text-sm font-medium text-gray-900 mb-3">Wallet Management</h3>
+            <div className="flex flex-wrap gap-3">
+              <Link href="/wallet">
+                <Button variant="outline" size="sm" className="text-primary-600 border-primary-300 hover:bg-primary-50">
+                  Manage Wallet
+                </Button>
+              </Link>
               <Link href="/buy-usdc?mode=buy">
                 <Button variant="outline" size="sm" className="text-green-600 border-green-300 hover:bg-green-50">
                   Buy USDC

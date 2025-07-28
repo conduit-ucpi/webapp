@@ -32,6 +32,9 @@ export default function Header() {
                 <Link href="/dashboard" className="text-gray-600 hover:text-gray-900">
                   Dashboard
                 </Link>
+                <Link href="/wallet" className="text-gray-600 hover:text-gray-900">
+                  Wallet
+                </Link>
               </>
             )}
           </nav>

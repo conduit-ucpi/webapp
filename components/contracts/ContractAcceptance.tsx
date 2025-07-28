@@ -130,8 +130,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
 
       // Contract service update is now handled by chain service
 
-      // Redirect to dashboard
-      onAcceptComplete();
+      // Redirect to dashboard - no need to call onAcceptComplete since we're navigating away
       router.push('/dashboard');
     } catch (error: any) {
       console.error('Contract acceptance failed:', error);

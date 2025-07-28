@@ -3,7 +3,7 @@ import { useRouter } from 'next/router';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { Web3Service } from '@/lib/web3';
-import { isValidEmail, isValidAmount, isValidExpiryTime, isValidDescription } from '@/utils/validation';
+import { isValidEmail, isValidAmount, isValidDescription } from '@/utils/validation';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
@@ -11,8 +11,7 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner';
 interface CreateContractForm {
   buyerEmail: string;
   amount: string;
-  hours: number;
-  minutes: number;
+  payoutDateTime: string;
   description: string;
 }
 
@@ -27,16 +26,46 @@ export default function CreateContract() {
   const router = useRouter();
   const { config } = useConfig();
   const { user } = useAuth();
+  // Initialize with tomorrow's date at current time
+  const getDefaultDateTime = () => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    // Format as YYYY-MM-DDTHH:MM for datetime-local input
+    return tomorrow.toISOString().slice(0, 16);
+  };
+
   const [form, setForm] = useState<CreateContractForm>({
     buyerEmail: '',
     amount: '',
-    hours: 24,
-    minutes: 0,
+    payoutDateTime: getDefaultDateTime(),
     description: ''
   });
   const [errors, setErrors] = useState<FormErrors>({});
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
+
+  // Calculate relative time from now
+  const getRelativeTime = (dateTime: string): string => {
+    const selected = new Date(dateTime);
+    const now = new Date();
+    const diffMs = selected.getTime() - now.getTime();
+    
+    if (diffMs <= 0) return 'in the past';
+    
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+    
+    if (diffMins < 60) return `in ${diffMins} minute${diffMins !== 1 ? 's' : ''}`;
+    if (diffHours < 24) return `in ${diffHours} hour${diffHours !== 1 ? 's' : ''}`;
+    if (diffDays < 7) return `in ${diffDays} day${diffDays !== 1 ? 's' : ''}`;
+    
+    const diffWeeks = Math.floor(diffDays / 7);
+    if (diffWeeks < 4) return `in ${diffWeeks} week${diffWeeks !== 1 ? 's' : ''}`;
+    
+    const diffMonths = Math.floor(diffDays / 30);
+    return `in ${diffMonths} month${diffMonths !== 1 ? 's' : ''}`;
+  };
 
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
@@ -49,8 +78,18 @@ export default function CreateContract() {
       newErrors.amount = 'Invalid amount';
     }
 
-    if (!isValidExpiryTime(form.hours, form.minutes)) {
-      newErrors.expiry = 'Expiry must be between 1 minute and 1 year';
+    // Validate payout date/time
+    const payoutDate = new Date(form.payoutDateTime);
+    const now = new Date();
+    const oneYearFromNow = new Date();
+    oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
+    
+    if (isNaN(payoutDate.getTime())) {
+      newErrors.expiry = 'Please select a valid date and time';
+    } else if (payoutDate <= now) {
+      newErrors.expiry = 'Payout time must be in the future';
+    } else if (payoutDate > oneYearFromNow) {
+      newErrors.expiry = 'Payout time must be within 1 year';
     }
 
     if (!isValidDescription(form.description)) {
@@ -89,7 +128,8 @@ export default function CreateContract() {
 
       // Create pending contract via Contract Service (no USDC balance check needed)
       setLoadingMessage('Creating pending contract...');
-      const expiryTimestamp = Math.floor(Date.now() / 1000) + (form.hours * 3600) + (form.minutes * 60);
+      const payoutDate = new Date(form.payoutDateTime);
+      const expiryTimestamp = Math.floor(payoutDate.getTime() / 1000);
       
       const pendingContractRequest = {
         buyerEmail: form.buyerEmail,
@@ -155,28 +195,28 @@ export default function CreateContract() {
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Payout Time
+            Payout Date & Time
           </label>
-          <div className="flex space-x-2">
-            <Input
-              type="number"
-              min="0"
-              value={form.hours}
-              onChange={(e) => setForm(prev => ({ ...prev, hours: parseInt(e.target.value) || 0 }))}
-              placeholder="Hours"
-              disabled={isLoading}
-            />
-            <Input
-              type="number"
-              min="0"
-              max="59"
-              value={form.minutes}
-              onChange={(e) => setForm(prev => ({ ...prev, minutes: parseInt(e.target.value) || 0 }))}
-              placeholder="Minutes"
-              disabled={isLoading}
-            />
-          </div>
+          <input
+            type="datetime-local"
+            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            value={form.payoutDateTime}
+            onChange={(e) => setForm(prev => ({ ...prev, payoutDateTime: e.target.value }))}
+            min={new Date().toISOString().slice(0, 16)}
+            max={new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16)}
+            disabled={isLoading}
+          />
           {errors.expiry && <p className="text-sm text-red-600 mt-1">{errors.expiry}</p>}
+          <div className="flex justify-between items-center mt-1">
+            <p className="text-xs text-gray-500">
+              Select when the funds should be released to you
+            </p>
+            {form.payoutDateTime && !errors.expiry && (
+              <p className="text-xs font-medium text-primary-600">
+                {getRelativeTime(form.payoutDateTime)}
+              </p>
+            )}
+          </div>
         </div>
 
         <div>

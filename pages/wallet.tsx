@@ -19,7 +19,7 @@ interface ChainInfo {
   chainIdHex: string;
   name: string;
   blockNumber: number;
-  gasPrice: string;
+  gasPrice: string | null;
 }
 
 interface SendFormData {
@@ -60,7 +60,7 @@ export default function Wallet() {
       
       // Get current gas price
       const feeData = await ethersProvider.getFeeData();
-      const gasPrice = feeData.gasPrice ? ethers.formatUnits(feeData.gasPrice, 'gwei') : '0';
+      const gasPrice = feeData.gasPrice ? ethers.formatUnits(feeData.gasPrice, 'gwei') : null;
       
       // Determine chain name based on chainId
       let name = 'Unknown Network';
@@ -249,7 +249,7 @@ export default function Wallet() {
                     <span className="font-medium text-gray-700">{chainInfo.name}</span>
                   </span>
                   <span className="text-gray-500">Block #{chainInfo.blockNumber.toLocaleString()}</span>
-                  <span className="text-gray-500">Gas: {parseFloat(chainInfo.gasPrice).toFixed(2)} Gwei</span>
+                  <span className="text-gray-500">Gas: {chainInfo.gasPrice ? `${parseFloat(chainInfo.gasPrice).toFixed(2)} Gwei` : 'Unavailable'}</span>
                 </div>
               )}
             </div>

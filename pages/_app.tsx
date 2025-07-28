@@ -3,6 +3,7 @@ import { ConfigProvider } from '@/components/auth/ConfigProvider';
 import { AuthProvider } from '@/components/auth/AuthProvider';
 import Layout from '@/components/layout/Layout';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import MobileDebug from '@/components/MobileDebug';
 import '@/styles/globals.css';
 
 export default function App({ Component, pageProps }: AppProps) {
@@ -15,6 +16,7 @@ export default function App({ Component, pageProps }: AppProps) {
           </Layout>
         </AuthProvider>
       </ConfigProvider>
+      <MobileDebug />
     </ErrorBoundary>
   );
 }

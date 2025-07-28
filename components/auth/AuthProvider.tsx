@@ -32,6 +32,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (error) {
       console.error('Failed to check auth status:', error);
+      // Don't throw error on mobile - just log it
     } finally {
       setIsLoading(false);
     }

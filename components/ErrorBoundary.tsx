@@ -21,6 +21,12 @@ class ErrorBoundary extends Component<Props, State> {
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('Uncaught error:', error, errorInfo);
+    // Log additional mobile debugging info
+    if (typeof window !== 'undefined') {
+      console.error('User Agent:', navigator.userAgent);
+      console.error('Screen:', window.screen.width, 'x', window.screen.height);
+      console.error('Error stack:', error.stack);
+    }
   }
 
   public render() {
@@ -38,11 +44,17 @@ class ErrorBoundary extends Component<Props, State> {
             >
               Refresh Page
             </button>
-            {process.env.NODE_ENV === 'development' && this.state.error && (
+            {this.state.error && (
               <details className="mt-6 text-left">
                 <summary className="text-sm text-gray-500 cursor-pointer">Error details</summary>
-                <pre className="mt-2 text-xs text-gray-400 overflow-auto">
+                <pre className="mt-2 text-xs text-gray-400 overflow-auto p-2 bg-gray-900 rounded">
                   {this.state.error.toString()}
+                  {this.state.error.stack && (
+                    <>
+                      {'\n\nStack trace:\n'}
+                      {this.state.error.stack}
+                    </>
+                  )}
                 </pre>
               </details>
             )}

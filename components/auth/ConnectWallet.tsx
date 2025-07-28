@@ -109,11 +109,17 @@ export default function ConnectWallet() {
   }, [config, isInitialized]);
 
   useEffect(() => {
-    const visited = localStorage.getItem('conduit-has-visited');
-    setHasVisitedBefore(!!visited);
-    
-    if (!visited) {
-      localStorage.setItem('conduit-has-visited', 'true');
+    try {
+      const visited = localStorage.getItem('conduit-has-visited');
+      setHasVisitedBefore(!!visited);
+      
+      if (!visited) {
+        localStorage.setItem('conduit-has-visited', 'true');
+      }
+    } catch (error) {
+      console.warn('localStorage not available:', error);
+      // Fallback to false if localStorage is not available
+      setHasVisitedBefore(false);
     }
   }, []);
 

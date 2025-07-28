@@ -9,10 +9,14 @@ export default function Home() {
   const { user, provider, isLoading } = useAuth();
   const router = useRouter();
   
+  // Show minimal loading on mobile to prevent crashes
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
-        <LoadingSpinner size="lg" />
+      <div className="flex justify-center items-center min-h-screen bg-gray-900">
+        <div className="text-center">
+          <LoadingSpinner size="lg" />
+          <p className="text-white mt-4">Loading...</p>
+        </div>
       </div>
     );
   }

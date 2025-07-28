@@ -14,6 +14,14 @@ interface WalletBalances {
   usdc: string;
 }
 
+interface ChainInfo {
+  chainId: number;
+  chainIdHex: string;
+  name: string;
+  blockNumber: number;
+  gasPrice: string;
+}
+
 interface SendFormData {
   recipient: string;
   amount: string;
@@ -33,6 +41,65 @@ export default function Wallet() {
   const [isSending, setIsSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const [sendSuccess, setSendSuccess] = useState<string | null>(null);
+  const [chainInfo, setChainInfo] = useState<ChainInfo | null>(null);
+  const [isLoadingChainInfo, setIsLoadingChainInfo] = useState(false);
+
+  const loadChainInfo = async () => {
+    if (!provider) return;
+
+    setIsLoadingChainInfo(true);
+    try {
+      const ethersProvider = new ethers.BrowserProvider(provider);
+      
+      // Get chain ID using eth_chainId RPC method
+      const chainIdHex = await provider.request({ method: 'eth_chainId' });
+      const chainId = parseInt(chainIdHex, 16);
+      
+      // Get current block number
+      const blockNumber = await ethersProvider.getBlockNumber();
+      
+      // Get current gas price
+      const feeData = await ethersProvider.getFeeData();
+      const gasPrice = feeData.gasPrice ? ethers.formatUnits(feeData.gasPrice, 'gwei') : '0';
+      
+      // Determine chain name based on chainId
+      let name = 'Unknown Network';
+      switch (chainId) {
+        case 43114:
+          name = 'Avalanche C-Chain';
+          break;
+        case 43113:
+          name = 'Avalanche Fuji Testnet';
+          break;
+        case 1:
+          name = 'Ethereum Mainnet';
+          break;
+        case 5:
+          name = 'Goerli Testnet';
+          break;
+        case 137:
+          name = 'Polygon';
+          break;
+        case 80001:
+          name = 'Mumbai Testnet';
+          break;
+        default:
+          name = `Chain ID: ${chainId}`;
+      }
+      
+      setChainInfo({
+        chainId,
+        chainIdHex,
+        name,
+        blockNumber,
+        gasPrice
+      });
+    } catch (error) {
+      console.error('Error loading chain info:', error);
+    } finally {
+      setIsLoadingChainInfo(false);
+    }
+  };
 
   const loadBalances = async () => {
     if (!user || !config || !provider) return;
@@ -63,6 +130,7 @@ export default function Wallet() {
 
   useEffect(() => {
     loadBalances();
+    loadChainInfo();
   }, [user, config, provider]);
 
   const handleSendSubmit = async (e: React.FormEvent) => {
@@ -174,15 +242,27 @@ export default function Wallet() {
               <div className="text-sm text-gray-600 mt-1">
                 <ExpandableHash hash={user.walletAddress} />
               </div>
+              {chainInfo && (
+                <div className="mt-2 flex items-center space-x-4 text-sm">
+                  <span className="flex items-center">
+                    <span className="w-2 h-2 bg-green-400 rounded-full mr-2 animate-pulse"></span>
+                    <span className="font-medium text-gray-700">{chainInfo.name}</span>
+                  </span>
+                  <span className="text-gray-500">Block #{chainInfo.blockNumber.toLocaleString()}</span>
+                  <span className="text-gray-500">Gas: {parseFloat(chainInfo.gasPrice).toFixed(2)} Gwei</span>
+                </div>
+              )}
             </div>
-            <Button
-              onClick={loadBalances}
-              disabled={isLoadingBalances}
-              variant="outline"
-              size="sm"
-            >
-              {isLoadingBalances ? 'Refreshing...' : 'Refresh Balances'}
-            </Button>
+            <div className="flex flex-col space-y-2">
+              <Button
+                onClick={() => { loadBalances(); loadChainInfo(); }}
+                disabled={isLoadingBalances || isLoadingChainInfo}
+                variant="outline"
+                size="sm"
+              >
+                {(isLoadingBalances || isLoadingChainInfo) ? 'Refreshing...' : 'Refresh'}
+              </Button>
+            </div>
           </div>
 
           {/* Balances */}

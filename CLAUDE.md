@@ -124,3 +124,18 @@ No test framework configured yet. When adding tests:
 - happens via github actions
 - controlled by yml files in .github/workflows
 - yml files pull all the environment variables from github and put them in the build and the docker containers that are deployed - so when we add environment variables, we need to make sure they are added to the yml config for github actions
+
+### Docker Build Process
+- Uses Next.js standalone build for minimal container size
+- GitHub Actions builds the app then copies static assets to `.next/standalone/`
+- **IMPORTANT**: Static files (`public/` folder) are copied by GitHub workflow to `.next/standalone/public/`
+- Dockerfile copies the entire `.next/standalone/` directory (which includes public files)
+- When adding new images/static files to `public/`, they must be:
+  1. Committed to git
+  2. Pushed to build-test branch to trigger new deployment
+  3. GitHub workflow will copy them to standalone build and include in Docker container
+
+### Static File Handling
+- Images in `public/` folder are accessible at `/filename.png` in production
+- GitHub workflow includes debugging to verify static files are copied correctly
+- If images don't load after deployment, check GitHub Actions logs for copy errors

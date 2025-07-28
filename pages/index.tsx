@@ -68,7 +68,7 @@ export default function Home() {
           <div className="hidden lg:flex items-center justify-center">
             <div className="relative w-full max-w-lg">
               <img 
-                src="/payment_gateway.png" 
+                src="/webapp/payment_gateway.png" 
                 alt="Payment Infrastructure Diagram" 
                 className="w-full h-auto opacity-90"
               />

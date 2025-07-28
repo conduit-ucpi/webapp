@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Web3Auth } from '@web3auth/modal';
-import { CHAIN_NAMESPACES } from '@web3auth/base';
+import { CHAIN_NAMESPACES, OPENLOGIN_NETWORK_TYPE } from '@web3auth/base';
 import { EthereumPrivateKeyProvider } from '@web3auth/ethereum-provider';
 import { useConfig } from './ConfigProvider';
 import { useAuth } from './AuthProvider';
@@ -54,7 +54,7 @@ export default function ConnectWallet() {
 
     web3authInstance = new Web3Auth({
       clientId: config.web3AuthClientId,
-      web3AuthNetwork: 'sapphire_devnet', // Using sapphire_devnet for better compatibility
+      web3AuthNetwork: config.web3AuthNetwork as OPENLOGIN_NETWORK_TYPE, // Configurable via WEB3AUTH_NETWORK env var
       chainConfig,
       privateKeyProvider,
       uiConfig: {

@@ -17,6 +17,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const config = {
       web3AuthClientId: process.env.WEB3AUTH_CLIENT_ID,
+      web3AuthNetwork: process.env.WEB3AUTH_NETWORK || 'sapphire_devnet',
       chainId: parseInt(process.env.CHAIN_ID || '43113'),
       rpcUrl: process.env.RPC_URL,
       usdcContractAddress: process.env.USDC_CONTRACT_ADDRESS,

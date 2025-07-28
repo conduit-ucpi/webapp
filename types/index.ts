@@ -1,5 +1,6 @@
 export interface Config {
   web3AuthClientId: string;
+  web3AuthNetwork: string;
   chainId: number;
   rpcUrl: string;
   usdcContractAddress: string;

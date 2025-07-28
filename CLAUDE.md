@@ -118,3 +118,9 @@ No test framework configured yet. When adding tests:
 - Mock Web3Auth and blockchain interactions
 - Test API routes with mock fetch responses
 - Consider Playwright for E2E testing critical user flows
+
+## Deployment
+
+- happens via github actions
+- controlled by yml files in .github/workflows
+- yml files pull all the environment variables from github and put them in the build and the docker containers that are deployed - so when we add environment variables, we need to make sure they are added to the yml config for github actions

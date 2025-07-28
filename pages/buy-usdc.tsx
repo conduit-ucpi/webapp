@@ -10,6 +10,10 @@ export default function BuyUSDC() {
   const router = useRouter();
   const { user, isLoading } = useAuth();
   const [showWidget, setShowWidget] = useState(false);
+  
+  // Get mode from query params (buy or sell)
+  const mode = (router.query.mode as 'buy' | 'sell') || 'buy';
+  const isBuyMode = mode === 'buy';
 
   if (isLoading) {
     return (
@@ -24,7 +28,7 @@ export default function BuyUSDC() {
       <div className="max-w-md mx-auto text-center py-20">
         <h1 className="text-2xl font-bold text-gray-900 mb-4">Connect Your Wallet</h1>
         <p className="text-gray-600 mb-6">
-          You need to connect your wallet to purchase USDC.
+          You need to connect your wallet to {isBuyMode ? 'purchase' : 'sell'} USDC.
         </p>
         <ConnectWallet />
       </div>
@@ -40,9 +44,14 @@ export default function BuyUSDC() {
     <div className="py-10">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-10">
-          <h1 className="text-3xl font-bold text-gray-900">Buy USDC</h1>
+          <h1 className="text-3xl font-bold text-gray-900">
+            {isBuyMode ? 'Buy USDC' : 'Sell USDC'}
+          </h1>
           <p className="mt-2 text-gray-600">
-            Purchase USDC directly to your wallet using MoonPay
+            {isBuyMode 
+              ? 'Purchase USDC directly to your wallet using MoonPay'
+              : 'Sell USDC from your wallet and receive funds using MoonPay'
+            }
           </p>
         </div>
 
@@ -52,19 +61,29 @@ export default function BuyUSDC() {
               <div className="text-center mb-6">
                 <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <svg className="w-8 h-8 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                    {isBuyMode ? (
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                    ) : (
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                    )}
                   </svg>
                 </div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">Purchase USDC</h2>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                  {isBuyMode ? 'Purchase USDC' : 'Sell USDC'}
+                </h2>
                 <p className="text-gray-600">
-                  Buy USDC with your credit card or bank account. 
-                  Funds will be sent directly to your connected wallet.
+                  {isBuyMode 
+                    ? 'Buy USDC with your credit card or bank account. Funds will be sent directly to your connected wallet.'
+                    : 'Sell USDC from your wallet and receive funds in your bank account or card.'
+                  }
                 </p>
               </div>
 
               <div className="bg-gray-50 rounded-lg p-4 mb-6">
                 <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm text-gray-600">Destination Wallet:</span>
+                  <span className="text-sm text-gray-600">
+                    {isBuyMode ? 'Destination Wallet:' : 'Source Wallet:'}
+                  </span>
                   <span className="text-sm font-mono text-gray-900">{user.walletAddress}</span>
                 </div>
                 <div className="flex justify-between items-center mb-2">
@@ -83,7 +102,7 @@ export default function BuyUSDC() {
                   className="w-full bg-primary-500 hover:bg-primary-600"
                   size="lg"
                 >
-                  Continue with MoonPay
+                  {isBuyMode ? 'Continue with MoonPay' : 'Continue to Sell USDC'}
                 </Button>
                 
                 <div className="text-center">
@@ -111,7 +130,7 @@ export default function BuyUSDC() {
             </div>
           </div>
         ) : (
-          <MoonPayWidget onClose={handleCloseMoonPay} />
+          <MoonPayWidget onClose={handleCloseMoonPay} mode={mode} />
         )}
       </div>
     </div>

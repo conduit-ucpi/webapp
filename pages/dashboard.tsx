@@ -60,6 +60,22 @@ export default function Dashboard() {
               <p className="text-sm text-gray-900">{user.email}</p>
             </div>
           </div>
+          
+          <div className="mt-6 pt-6 border-t border-gray-200">
+            <h3 className="text-sm font-medium text-gray-900 mb-3">USDC Management</h3>
+            <div className="flex space-x-3">
+              <Link href="/buy-usdc?mode=buy">
+                <Button variant="outline" size="sm" className="text-green-600 border-green-300 hover:bg-green-50">
+                  Buy USDC
+                </Button>
+              </Link>
+              <Link href="/buy-usdc?mode=sell">
+                <Button variant="outline" size="sm" className="text-red-600 border-red-300 hover:bg-red-50">
+                  Sell USDC
+                </Button>
+              </Link>
+            </div>
+          </div>
         </div>
         
         <div>

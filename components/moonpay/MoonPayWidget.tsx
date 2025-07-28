@@ -4,9 +4,10 @@ import { useAuth } from '@/components/auth/AuthProvider';
 
 interface MoonPayWidgetProps {
   onClose?: () => void;
+  mode?: 'buy' | 'sell';
 }
 
-export default function MoonPayWidget({ onClose }: MoonPayWidgetProps) {
+export default function MoonPayWidget({ onClose, mode = 'buy' }: MoonPayWidgetProps) {
   const { config } = useConfig();
   const { user } = useAuth();
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -23,7 +24,12 @@ export default function MoonPayWidget({ onClose }: MoonPayWidgetProps) {
       redirectURL: window.location.origin + '/dashboard',
     });
 
-    const moonPayUrl = `https://buy-sandbox.moonpay.com?${params.toString()}`;
+    // Use different MoonPay URLs for buy vs sell
+    const baseUrl = mode === 'buy' 
+      ? 'https://buy-sandbox.moonpay.com' 
+      : 'https://sell-sandbox.moonpay.com';
+    
+    const moonPayUrl = `${baseUrl}?${params.toString()}`;
     
     if (iframeRef.current) {
       iframeRef.current.src = moonPayUrl;
@@ -31,7 +37,8 @@ export default function MoonPayWidget({ onClose }: MoonPayWidgetProps) {
 
     // Listen for messages from MoonPay
     const handleMessage = (event: MessageEvent) => {
-      if (event.origin !== 'https://buy-sandbox.moonpay.com') return;
+      const allowedOrigins = ['https://buy-sandbox.moonpay.com', 'https://sell-sandbox.moonpay.com'];
+      if (!allowedOrigins.includes(event.origin)) return;
       
       if (event.data.type === 'close') {
         onClose?.();
@@ -43,7 +50,7 @@ export default function MoonPayWidget({ onClose }: MoonPayWidgetProps) {
     return () => {
       window.removeEventListener('message', handleMessage);
     };
-  }, [config, user, onClose]);
+  }, [config, user, onClose, mode]);
 
   if (!config || !user) {
     return (

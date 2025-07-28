@@ -94,6 +94,21 @@ export default function ContractList() {
     return () => clearInterval(interval);
   }, [user?.walletAddress]);
 
+  // Refresh contracts when navigating to this page
+  useEffect(() => {
+    const handleRouteChange = () => {
+      if (router.pathname === '/dashboard') {
+        fetchContracts();
+      }
+    };
+
+    router.events.on('routeChangeComplete', handleRouteChange);
+    
+    return () => {
+      router.events.off('routeChangeComplete', handleRouteChange);
+    };
+  }, [router]);
+
   const handleContractAction = () => {
     fetchContracts(); // Refresh after any action
   };

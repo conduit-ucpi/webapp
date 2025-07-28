@@ -11,6 +11,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
+  // Try to restore provider immediately if it exists
+  useEffect(() => {
+    const globalProvider = (window as any).web3authProvider;
+    if (globalProvider && !provider) {
+      setProvider(globalProvider);
+    }
+  }, []);
+
 
   const login = async (idToken: string, walletAddress: string, web3Provider: any) => {
     try {
@@ -134,26 +142,53 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     
     const safeCheckAuthStatus = async () => {
       try {
-        // Check if provider exists globally
-        const globalProvider = (window as any).web3authProvider;
-        if (globalProvider && isMounted) {
-          setProvider(globalProvider);
-        }
-
+        // Check auth status first
         const response = await fetch(`${router.basePath}/api/auth/identity`);
         if (response.ok && isMounted) {
           const userData = await response.json();
           setUser(userData);
+          
+          // Try to restore provider immediately
+          const globalProvider = (window as any).web3authProvider;
+          if (globalProvider && isMounted) {
+            setProvider(globalProvider);
+          } else {
+            // If no provider yet but we have a valid session, try to wait a bit
+            // This handles the case where Web3Auth is still initializing
+            let attempts = 0;
+            const maxAttempts = 10; // Wait up to 1 second
+            
+            const checkProvider = () => {
+              if (!isMounted) return;
+              
+              const provider = (window as any).web3authProvider;
+              if (provider) {
+                setProvider(provider);
+              } else if (attempts < maxAttempts) {
+                attempts++;
+                setTimeout(checkProvider, 100);
+              }
+              // If no provider after waiting, continue without it
+              // User can click "Welcome Back" to restore it
+            };
+            
+            checkProvider();
+          }
         } else if (isMounted) {
-          // If no valid session but we have a provider, clear it
+          // If no valid session, clear everything
+          const globalProvider = (window as any).web3authProvider;
           if (globalProvider) {
             (window as any).web3authProvider = null;
-            setProvider(null);
           }
+          setUser(null);
+          setProvider(null);
         }
       } catch (error) {
         console.error('Failed to check auth status:', error);
-        // Don't throw error on mobile - just log it
+        if (isMounted) {
+          setUser(null);
+          setProvider(null);
+        }
       } finally {
         if (isMounted) {
           setIsLoading(false);

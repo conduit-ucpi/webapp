@@ -3,8 +3,8 @@ const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
   output: 'standalone',
-  basePath: '/webapp',
-  assetPrefix: '/webapp',
+  basePath: process.env.NEXT_PUBLIC_BASE_PATH || '/webapp',
+  assetPrefix: process.env.NEXT_PUBLIC_BASE_PATH || '/webapp',
 }
 
 module.exports = nextConfig

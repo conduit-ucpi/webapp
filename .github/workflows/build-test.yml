@@ -50,6 +50,7 @@ jobs:
           BUILD_VERSION: ${{ env.BUILD_VERSION }}
           GIT_TAG: ${{ env.GIT_TAG }}
           GIT_SHA: ${{ env.GIT_SHA }}
+          NEXT_PUBLIC_BASE_PATH: ${{ vars.NEXT_PUBLIC_BASE_PATH }}
         run: |
           yarn install
           yarn build

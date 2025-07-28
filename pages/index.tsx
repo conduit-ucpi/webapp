@@ -22,12 +22,14 @@ export default function Home() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
         <div className="text-center">
           <h1 className="text-4xl font-bold text-gray-900 sm:text-5xl md:text-6xl">
-            Secure Time-Delayed
-            <span className="text-primary-600 block">Escrow Contracts</span>
+            Stop Paying Strangers 
+            <span className="text-primary-600 block">Before You Get Your Stuff</span>
           </h1>
-          <p className="mt-6 text-xl text-gray-600 max-w-3xl mx-auto">
-            Create trustless escrow agreements on Avalanche with built-in dispute resolution. 
-            Protect your transactions with smart contracts that hold funds until conditions are met.
+          <p className="mt-4 text-lg text-gray-700 font-medium">
+            And stop delivering without guaranteed payment
+          </p>
+          <p className="mt-6 text-xl text-gray-600 max-w-4xl mx-auto">
+            <span className="font-semibold">Escrow</span> - house buyers use it for secure transactions; it's now instant and so easy <span className="italic">you</span> can use it to make <span className="italic">any</span> sale just as safe
           </p>
           
           <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center">
@@ -64,38 +66,103 @@ export default function Home() {
 
         <div className="mt-20 grid grid-cols-1 md:grid-cols-3 gap-8">
           <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center mb-4">
-              <svg className="w-6 h-6 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-              </svg>
+            <div className="w-12 h-12 bg-primary-500 text-white rounded-full flex items-center justify-center mb-4 text-xl font-bold">
+              1
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Secure & Trustless</h3>
-            <p className="text-gray-600">Smart contracts automatically handle escrow without intermediaries. Your funds are protected by code, not promises.</p>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Seller creates payment request</h3>
+            <p className="text-gray-600">with delivery timeframe</p>
           </div>
 
           <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center mb-4">
-              <svg className="w-6 h-6 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
+            <div className="w-12 h-12 bg-primary-500 text-white rounded-full flex items-center justify-center mb-4 text-xl font-bold">
+              2
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Time-Delayed Release</h3>
-            <p className="text-gray-600">Set custom expiry times for automatic fund release. Gives buyers time to inspect and dispute if necessary.</p>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Buyer puts funds in secure trust</h3>
+            <p className="text-gray-600">Money goes into secure trust, not directly to seller</p>
           </div>
 
           <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center mb-4">
-              <svg className="w-6 h-6 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
+            <div className="w-12 h-12 bg-primary-500 text-white rounded-full flex items-center justify-center mb-4 text-xl font-bold">
+              3
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Dispute Resolution</h3>
-            <p className="text-gray-600">Built-in dispute mechanism allows buyers to raise concerns before contract expiry for fair resolution.</p>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Automatic payout to seller</h3>
+            <p className="text-gray-600">at pre-agreed time. Seller receives payment on the agreed date. Disputes handled by admin team.</p>
           </div>
         </div>
 
         {!isAuthenticated && (
           <>
+            {/* What You Get Section */}
+            <div className="mt-20">
+              <div className="text-center mb-12">
+                <h2 className="text-3xl font-bold text-gray-900 mb-4">What you get</h2>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+                <div className="flex items-start space-x-4">
+                  <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+                    <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <p className="text-gray-700">All the protection of traditional escrow</p>
+                </div>
+                
+                <div className="flex items-start space-x-4">
+                  <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+                    <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <p className="text-gray-700">Set up in 60 seconds, not 60 days</p>
+                </div>
+                
+                <div className="flex items-start space-x-4">
+                  <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+                    <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <p className="text-gray-700">No legal fees, contracts, or bank meetings</p>
+                </div>
+                
+                <div className="flex items-start space-x-4">
+                  <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+                    <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <p className="text-gray-700">Payment releases automatically on the agreed date</p>
+                </div>
+                
+                <div className="flex items-start space-x-4 md:col-span-2">
+                  <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+                    <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <p className="text-gray-700">If there's a problem, buyer hits "dispute" - funds stay in trust until our admin team reaches a fair resolution</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Cost Section */}
+            <div className="mt-20 bg-white rounded-2xl shadow-lg p-8 max-w-2xl mx-auto">
+              <div className="text-center">
+                <h2 className="text-3xl font-bold text-gray-900 mb-6">Cost</h2>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-lg text-gray-700">Flat fee on payments</span>
+                    <span className="text-2xl font-bold text-primary-600">$1</span>
+                  </div>
+                  <div className="border-t pt-4">
+                    <p className="text-green-600 font-semibold">Free testing with $0.001 payments</p>
+                    <p className="text-sm text-gray-600 mt-1">Try it risk-free first</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* Use Cases Section */}
             <div className="mt-20">
               <div className="text-center mb-12">
@@ -184,10 +251,9 @@ export default function Home() {
 
             {/* Final CTA */}
             <div className="mt-20 text-center bg-white rounded-2xl shadow-lg p-12">
-              <h2 className="text-3xl font-bold text-gray-900 mb-4">Ready to Get Started?</h2>
-              <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
-                Join thousands of users who trust Conduit UCPI for secure transactions. 
-                Sign up in seconds with your social account.
+              <h2 className="text-3xl font-bold text-gray-900 mb-4">You've been using the "hope for the best" system.</h2>
+              <p className="text-2xl text-primary-600 font-semibold mb-8">
+                Time to upgrade.
               </p>
               <ConnectWallet />
               <div className="mt-6 flex items-center justify-center space-x-6 text-sm text-gray-500">
@@ -195,19 +261,19 @@ export default function Home() {
                   <svg className="w-4 h-4 mr-2 text-green-500" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                   </svg>
-                  No setup fees
+                  60 second setup
                 </div>
                 <div className="flex items-center">
                   <svg className="w-4 h-4 mr-2 text-green-500" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                   </svg>
-                  Instant wallet creation
+                  Free testing
                 </div>
                 <div className="flex items-center">
                   <svg className="w-4 h-4 mr-2 text-green-500" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                   </svg>
-                  Bank-grade security
+                  $1 flat fee
                 </div>
               </div>
             </div>

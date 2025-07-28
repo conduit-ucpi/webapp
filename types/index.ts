@@ -64,8 +64,9 @@ export interface CreatePendingContractRequest {
 
 export interface AuthContextType {
   user: User | null;
+  provider: any | null;
   isLoading: boolean;
-  login: (idToken: string, walletAddress: string) => Promise<void>;
+  login: (idToken: string, walletAddress: string, provider: any) => Promise<void>;
   logout: () => Promise<void>;
 }
 

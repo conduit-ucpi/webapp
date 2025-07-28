@@ -8,7 +8,7 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner';
 
 export default function BuyUSDC() {
   const router = useRouter();
-  const { user, isLoading } = useAuth();
+  const { user, provider, isLoading } = useAuth();
   const [showWidget, setShowWidget] = useState(false);
   
   // Get mode from query params (buy or sell)
@@ -23,7 +23,7 @@ export default function BuyUSDC() {
     );
   }
 
-  if (!user) {
+  if (!user || !provider) {
     return (
       <div className="max-w-md mx-auto text-center py-20">
         <h1 className="text-2xl font-bold text-gray-900 mb-4">Connect Your Wallet</h1>

@@ -148,7 +148,7 @@ export default function ConnectWallet() {
           throw new Error('No ID token received');
         }
 
-        await login(idToken, walletAddress);
+        await login(idToken, walletAddress, web3authProvider);
         return;
       }
 
@@ -177,7 +177,7 @@ export default function ConnectWallet() {
         throw new Error('No ID token received');
       }
 
-      await login(idToken, walletAddress);
+      await login(idToken, walletAddress, web3authProvider);
     } catch (error: any) {
       console.error('Connection failed:', error);
       // More specific error messages

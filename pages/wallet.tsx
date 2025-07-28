@@ -21,7 +21,7 @@ interface SendFormData {
 }
 
 export default function Wallet() {
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, provider, isLoading: authLoading } = useAuth();
   const { config } = useConfig();
   const [balances, setBalances] = useState<WalletBalances>({ avax: '0', usdc: '0' });
   const [isLoadingBalances, setIsLoadingBalances] = useState(false);
@@ -35,23 +35,16 @@ export default function Wallet() {
   const [sendSuccess, setSendSuccess] = useState<string | null>(null);
 
   const loadBalances = async () => {
-    if (!user || !config) return;
-
-    // Get Web3Auth provider from global window object
-    const web3authProvider = (window as any).web3authProvider;
-    if (!web3authProvider) {
-      console.warn('Web3Auth provider not available');
-      return;
-    }
+    if (!user || !config || !provider) return;
 
     setIsLoadingBalances(true);
     try {
       const web3Service = new Web3Service(config);
-      await web3Service.initializeProvider(web3authProvider);
+      await web3Service.initializeProvider(provider);
 
       // Get AVAX balance
-      const provider = new ethers.BrowserProvider(web3authProvider);
-      const avaxBalance = await provider.getBalance(user.walletAddress);
+      const ethersProvider = new ethers.BrowserProvider(provider);
+      const avaxBalance = await ethersProvider.getBalance(user.walletAddress);
       const avaxFormatted = ethers.formatEther(avaxBalance);
 
       // Get USDC balance
@@ -70,15 +63,11 @@ export default function Wallet() {
 
   useEffect(() => {
     loadBalances();
-  }, [user, config]);
+  }, [user, config, provider]);
 
   const handleSendSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !config) return;
-
-    // Get Web3Auth provider from global window object
-    const web3authProvider = (window as any).web3authProvider;
-    if (!web3authProvider) {
+    if (!user || !config || !provider) {
       setSendError('Web3Auth provider not available. Please reconnect your wallet.');
       return;
     }
@@ -89,7 +78,7 @@ export default function Wallet() {
 
     try {
       const web3Service = new Web3Service(config);
-      await web3Service.initializeProvider(web3authProvider);
+      await web3Service.initializeProvider(provider);
       const signer = await web3Service.getSigner();
 
       if (sendForm.currency === 'AVAX') {
@@ -155,7 +144,7 @@ export default function Wallet() {
     );
   }
 
-  if (!user) {
+  if (!user || !provider) {
     return (
       <div className="max-w-md mx-auto text-center py-20">
         <h1 className="text-2xl font-bold text-gray-900 mb-4">Connect Your Wallet</h1>

@@ -4,7 +4,7 @@ import ConnectWallet from '@/components/auth/ConnectWallet';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 
 export default function CreatePage() {
-  const { user, isLoading } = useAuth();
+  const { user, provider, isLoading } = useAuth();
 
   if (isLoading) {
     return (
@@ -14,7 +14,7 @@ export default function CreatePage() {
     );
   }
 
-  if (!user) {
+  if (!user || !provider) {
     return (
       <div className="max-w-md mx-auto text-center py-20">
         <h1 className="text-2xl font-bold text-gray-900 mb-4">Connect Your Wallet</h1>

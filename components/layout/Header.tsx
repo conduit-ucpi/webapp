@@ -4,7 +4,9 @@ import ConnectWallet from '@/components/auth/ConnectWallet';
 import Button from '@/components/ui/Button';
 
 export default function Header() {
-  const { user, logout, isLoading } = useAuth();
+  const { user, provider, logout, isLoading } = useAuth();
+  
+  const isAuthenticated = user && provider;
 
   const handleLogout = async () => {
     await logout();
@@ -24,7 +26,7 @@ export default function Header() {
             <Link href="/" className="text-gray-600 hover:text-gray-900">
               Home
             </Link>
-            {user && (
+            {isAuthenticated && (
               <>
                 <Link href="/create" className="text-gray-600 hover:text-gray-900">
                   Create Contract
@@ -42,7 +44,7 @@ export default function Header() {
           <div className="flex items-center space-x-4">
             {isLoading ? (
               <div className="w-32 h-10 bg-gray-200 animate-pulse rounded-md" />
-            ) : user ? (
+            ) : isAuthenticated ? (
               <div className="flex items-center space-x-4">
                 <span className="text-sm text-gray-600">
                   {user.walletAddress.slice(0, 6)}...{user.walletAddress.slice(-4)}

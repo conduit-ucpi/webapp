@@ -7,15 +7,28 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [provider, setProvider] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
   const checkAuthStatus = async () => {
     try {
+      // Check if provider exists globally
+      const globalProvider = (window as any).web3authProvider;
+      if (globalProvider) {
+        setProvider(globalProvider);
+      }
+
       const response = await fetch(`${router.basePath}/api/auth/identity`);
       if (response.ok) {
         const userData = await response.json();
         setUser(userData);
+      } else {
+        // If no valid session but we have a provider, clear it
+        if (globalProvider) {
+          (window as any).web3authProvider = null;
+          setProvider(null);
+        }
       }
     } catch (error) {
       console.error('Failed to check auth status:', error);
@@ -24,7 +37,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const login = async (idToken: string, walletAddress: string) => {
+  const login = async (idToken: string, walletAddress: string, web3Provider: any) => {
     try {
       const response = await fetch(`${router.basePath}/api/auth/login`, {
         method: 'POST',
@@ -38,6 +51,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (response.ok) {
         const userData = await response.json();
         setUser(userData);
+        
+        // Store provider globally and in state
+        (window as any).web3authProvider = web3Provider;
+        setProvider(web3Provider);
       } else {
         throw new Error('Login failed');
       }
@@ -115,12 +132,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       // Clear local auth state
       setUser(null);
+      setProvider(null);
       
       console.log('Logout completed successfully');
     } catch (error) {
       console.error('Logout error:', error);
       // Even if logout fails, clear local state and storage
       setUser(null);
+      setProvider(null);
       (window as any).web3auth = null;
       (window as any).web3authProvider = null;
       resetWeb3AuthInstance();
@@ -140,7 +159,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, logout }}>
+    <AuthContext.Provider value={{ user, provider, isLoading, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

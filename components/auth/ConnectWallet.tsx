@@ -61,13 +61,6 @@ export default function ConnectWallet() {
       web3AuthNetwork: config.web3AuthNetwork as OPENLOGIN_NETWORK_TYPE, // Configurable via WEB3AUTH_NETWORK env var
       chainConfig,
       privateKeyProvider,
-      uiConfig: {
-        mode: 'light',
-        loginMethodsOrder: ['google', 'facebook', 'twitter', 'github', 'discord'],
-        logoLight: 'https://web3auth.io/images/w3a-L-Favicon-1.svg',
-        logoDark: 'https://web3auth.io/images/w3a-L-Favicon-1.svg',
-        defaultLanguage: 'en',
-      },
       enableLogging: false,
     });
 

@@ -43,6 +43,8 @@ jobs:
           USER_SERVICE_URL: ${{ vars.USER_SERVICE_URL }}
           CHAIN_SERVICE_URL: ${{ vars.CHAIN_SERVICE_URL }}
           CONTRACT_SERVICE_URL: ${{ vars.CONTRACT_SERVICE_URL }}
+          WEB3AUTH_CLIENT_ID: ${{ secrets.WEB3AUTH_CLIENT_ID }}
+          WEB3AUTH_NETWORK: ${{ vars.WEB3AUTH_NETWORK }}
           MOONPAY_API_KEY: ${{ secrets.MOONPAY_API_KEY }}
           MIN_GAS_WEI: ${{ vars.MIN_GAS_WEI }}
           BUILD_VERSION: ${{ env.BUILD_VERSION }}

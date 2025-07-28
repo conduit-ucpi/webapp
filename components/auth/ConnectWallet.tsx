@@ -20,6 +20,7 @@ export default function ConnectWallet() {
   const { login } = useAuth();
   const [isConnecting, setIsConnecting] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [hasVisitedBefore, setHasVisitedBefore] = useState(false);
 
   const initWeb3Auth = async () => {
     if (!config) return null;
@@ -103,6 +104,15 @@ export default function ConnectWallet() {
         });
     }
   }, [config, isInitialized]);
+
+  useEffect(() => {
+    const visited = localStorage.getItem('conduit-has-visited');
+    setHasVisitedBefore(!!visited);
+    
+    if (!visited) {
+      localStorage.setItem('conduit-has-visited', 'true');
+    }
+  }, []);
 
   const connectWallet = async () => {
     if (!config) return;
@@ -207,7 +217,7 @@ export default function ConnectWallet() {
       {isConnecting ? (
         <>
           <LoadingSpinner className="w-4 h-4 mr-2" />
-          Connecting Wallet...
+          Connecting...
         </>
       ) : !isInitialized ? (
         <>
@@ -215,7 +225,7 @@ export default function ConnectWallet() {
           Initializing...
         </>
       ) : (
-        'Connect Wallet'
+        hasVisitedBefore ? 'Welcome Back' : 'Get Started'
       )}
     </Button>
   );

@@ -66,17 +66,27 @@ export default function ConnectWallet() {
         loginMethodsOrder: ['google', 'facebook', 'twitter', 'github', 'discord'],
         logoLight: 'https://web3auth.io/images/w3a-L-Favicon-1.svg',
         logoDark: 'https://web3auth.io/images/w3a-L-Favicon-1.svg',
+        defaultLanguage: 'en',
       },
       enableLogging: false,
     });
 
     try {
+      // Add a small delay on mobile to prevent DOM conflicts
+      if (isMobile) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      
       await web3authInstance.initModal();
       console.log('Web3Auth modal initialized successfully');
     } catch (error) {
       console.error('Web3Auth initialization error:', error);
-      // If MetaMask error, just log it and continue
-      if (!(error as Error).message?.includes('MetaMask')) {
+      // If MetaMask error or DOM error, just log it and continue
+      if ((error as Error).message?.includes('MetaMask') || 
+          (error as Error).message?.includes('removeChild') ||
+          (error as Error).message?.includes('Node')) {
+        console.warn('Known initialization issue, continuing:', error);
+      } else {
         throw error;
       }
     }
@@ -94,18 +104,30 @@ export default function ConnectWallet() {
   };
 
   useEffect(() => {
+    let isMounted = true;
+    
     if (config && !isInitialized) {
       initWeb3Auth()
-        .then(() => setIsInitialized(true))
+        .then(() => {
+          if (isMounted) {
+            setIsInitialized(true);
+          }
+        })
         .catch((error) => {
           console.error('Web3Auth initialization failed:', error);
           // Don't show MetaMask errors to user
           if (!(error as Error).message?.includes('MetaMask')) {
             console.error('Non-MetaMask initialization error:', error);
           }
-          setIsInitialized(true); // Still allow the button to be shown
+          if (isMounted) {
+            setIsInitialized(true); // Still allow the button to be shown
+          }
         });
     }
+    
+    return () => {
+      isMounted = false;
+    };
   }, [config, isInitialized]);
 
   useEffect(() => {

@@ -11,32 +11,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
-  const checkAuthStatus = async () => {
-    try {
-      // Check if provider exists globally
-      const globalProvider = (window as any).web3authProvider;
-      if (globalProvider) {
-        setProvider(globalProvider);
-      }
-
-      const response = await fetch(`${router.basePath}/api/auth/identity`);
-      if (response.ok) {
-        const userData = await response.json();
-        setUser(userData);
-      } else {
-        // If no valid session but we have a provider, clear it
-        if (globalProvider) {
-          (window as any).web3authProvider = null;
-          setProvider(null);
-        }
-      }
-    } catch (error) {
-      console.error('Failed to check auth status:', error);
-      // Don't throw error on mobile - just log it
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const login = async (idToken: string, walletAddress: string, web3Provider: any) => {
     try {
@@ -156,7 +130,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    checkAuthStatus();
+    let isMounted = true;
+    
+    const safeCheckAuthStatus = async () => {
+      try {
+        // Check if provider exists globally
+        const globalProvider = (window as any).web3authProvider;
+        if (globalProvider && isMounted) {
+          setProvider(globalProvider);
+        }
+
+        const response = await fetch(`${router.basePath}/api/auth/identity`);
+        if (response.ok && isMounted) {
+          const userData = await response.json();
+          setUser(userData);
+        } else if (isMounted) {
+          // If no valid session but we have a provider, clear it
+          if (globalProvider) {
+            (window as any).web3authProvider = null;
+            setProvider(null);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to check auth status:', error);
+        // Don't throw error on mobile - just log it
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+    
+    safeCheckAuthStatus();
+    
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   return (

@@ -212,7 +212,7 @@ export default function ConnectWallet() {
     <Button 
       onClick={connectWallet} 
       disabled={isConnecting || !isInitialized}
-      className="bg-primary-500 hover:bg-primary-600 text-white px-6 py-3 rounded-lg font-semibold disabled:opacity-50"
+      className="bg-green-500 hover:bg-green-600 text-gray-900 px-6 py-3 rounded-lg font-semibold disabled:opacity-50"
     >
       {isConnecting ? (
         <>

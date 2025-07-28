@@ -55,9 +55,6 @@ export default function Home() {
                     <p className="mb-2">
                       Connect with Google, Facebook, or any social login.
                     </p>
-                    <p>
-                      No crypto experience needed - we'll create a secure wallet for you automatically.
-                    </p>
                   </div>
                 </div>
               )}

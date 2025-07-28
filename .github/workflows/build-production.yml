@@ -8,7 +8,7 @@ on:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    environment: test
+    environment: production
     permissions:
       contents: read
       packages: write

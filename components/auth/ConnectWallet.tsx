@@ -33,9 +33,12 @@ export default function ConnectWallet() {
 
     console.log('Initializing new Web3Auth instance...');
 
+    // Check if we're on mobile
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    
     // Disable MetaMask auto-detection by hiding window.ethereum temporarily
     const originalEthereum = (window as any).ethereum;
-    if (originalEthereum) {
+    if (originalEthereum && !isMobile) {
       (window as any).ethereum = undefined;
     }
 
@@ -79,7 +82,7 @@ export default function ConnectWallet() {
     }
     
     // Restore original ethereum object after initialization
-    if (originalEthereum) {
+    if (originalEthereum && !isMobile) {
       (window as any).ethereum = originalEthereum;
     }
     

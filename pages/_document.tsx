@@ -4,11 +4,12 @@ export default function Document() {
   return (
     <Html lang="en">
       <Head>
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
         <script
           dangerouslySetInnerHTML={{
             __html: `
               // Prevent MetaMask auto-connection interference
-              if (window.ethereum && window.ethereum.isMetaMask) {
+              if (typeof window !== 'undefined' && window.ethereum && window.ethereum.isMetaMask) {
                 console.log('MetaMask detected - disabling auto-connection to prevent conflicts with Web3Auth');
                 const originalEthereum = window.ethereum;
                 window.ethereum = {

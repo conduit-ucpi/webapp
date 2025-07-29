@@ -359,4 +359,71 @@ export class Web3Service {
     
     return signedTx;
   }
+
+  // Sign dispute transaction and return hex for chain service
+  async signDisputeTransaction(contractAddress: string): Promise<string> {
+    const signer = await this.getSigner();
+    const contract = new ethers.Contract(
+      contractAddress,
+      ESCROW_CONTRACT_ABI,
+      signer
+    );
+
+    // Create transaction but don't send it
+    const tx = await contract.raiseDispute.populateTransaction();
+    
+    // Get current gas price from network
+    if (!this.provider) {
+      throw new Error('Provider not initialized');
+    }
+    const feeData = await this.provider.getFeeData();
+    
+    console.log('=== DISPUTE TRANSACTION DEBUG ===');
+    console.log('Original dispute transaction:', tx);
+    console.log('Network fee data:', {
+      gasPrice: feeData.gasPrice?.toString(),
+      maxFeePerGas: feeData.maxFeePerGas?.toString(),
+      maxPriorityFeePerGas: feeData.maxPriorityFeePerGas?.toString()
+    });
+    
+    // Set minimum gas price thresholds
+    const minGasPrice = this.config.chainId === 43114 
+      ? '1000000000'  // 1 nAVAX minimum for mainnet
+      : this.config.minGasWei; // Configurable minimum for testnet
+    
+    const fallbackGasPrice = this.config.chainId === 43114 
+      ? '1000000000'  // 1 nAVAX fallback for mainnet
+      : '67000000';   // 0.000000067 nAVAX fallback for testnet
+    
+    // Use network gas price but enforce minimum
+    const networkGasPrice = feeData.gasPrice ? BigInt(feeData.gasPrice.toString()) : BigInt(0);
+    const minGasPriceBigInt = BigInt(minGasPrice);
+    const gasPrice = networkGasPrice > minGasPriceBigInt 
+      ? networkGasPrice.toString()  // Use network price if above minimum
+      : (networkGasPrice > BigInt(0) ? minGasPrice : fallbackGasPrice);  // Use minimum or fallback
+    
+    console.log('Gas price calculation:', {
+      networkGasPrice: `${networkGasPrice.toString()} wei`,
+      minGasPrice: `${minGasPrice} wei`,
+      finalGasPrice: `${gasPrice} wei`,
+      networkGasPriceInNAVAX: `${(Number(networkGasPrice) / 1e9).toFixed(12)} nAVAX`,
+      finalGasPriceInNAVAX: `${(Number(gasPrice) / 1e9).toFixed(12)} nAVAX`
+    });
+    
+    // Use network gas price with reasonable gas limit
+    const txWithGas = {
+      ...tx,
+      gasLimit: '100000', // 100k gas limit for dispute transaction
+      gasPrice: gasPrice,
+      maxFeePerGas: undefined,
+      maxPriorityFeePerGas: undefined
+    };
+    
+    console.log('Modified dispute transaction:', txWithGas);
+    console.log('=== DISPUTE TRANSACTION DEBUG END ===');
+    
+    // Sign the transaction and return hex
+    const signedTx = await signer.signTransaction(txWithGas);
+    return signedTx;
+  }
 }

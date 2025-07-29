@@ -711,8 +711,9 @@ describe('AdminPage', () => {
   describe('Edge cases and error handling', () => {
     beforeEach(() => {
       mockUseAuth.mockReturnValue({
-        user: { userType: 'admin', walletAddress: '0x123' },
+        user: { userType: 'admin', walletAddress: '0x123', userId: 'admin-1', email: 'admin@test.com' },
         isLoading: false,
+        provider: null,
         login: jest.fn(),
         logout: jest.fn(),
       });

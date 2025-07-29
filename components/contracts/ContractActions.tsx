@@ -22,19 +22,37 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction 
   const [loadingMessage, setLoadingMessage] = useState('');
 
   const handleRaiseDispute = async () => {
-    if (!config || !isBuyer || contract.status !== 'ACTIVE') return;
+    if (!config || !isBuyer || contract.status !== 'ACTIVE' || !user) return;
 
     setIsLoading(true);
-    setLoadingMessage('Raising dispute...');
+    setLoadingMessage('Initializing...');
     
     try {
+      // Get Web3Auth provider
+      const web3authProvider = (window as any).web3authProvider;
+      if (!web3authProvider) {
+        throw new Error('Wallet not connected');
+      }
+
+      const web3Service = new Web3Service(config);
+      await web3Service.initializeProvider(web3authProvider);
+      const userAddress = await web3Service.getUserAddress();
+
+      // Sign dispute transaction
+      setLoadingMessage('Signing dispute transaction...');
+      const signedTx = await web3Service.signDisputeTransaction(contract.contractAddress);
+
+      // Submit signed transaction to chain service
+      setLoadingMessage('Raising dispute...');
       const response = await fetch(`${router.basePath}/api/chain/raise-dispute`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          contractAddress: contract.contractAddress
+          contractAddress: contract.contractAddress,
+          userWalletAddress: userAddress,
+          signedTransaction: signedTx
         })
       });
 

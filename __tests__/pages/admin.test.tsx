@@ -56,6 +56,23 @@ jest.mock('@/components/contracts/ContractCard', () => {
   };
 });
 
+// Mock PendingContractCard component
+jest.mock('@/components/contracts/PendingContractCard', () => {
+  return function MockPendingContractCard({ contract }: { contract: any }) {
+    return (
+      <div data-testid="pending-contract-card">
+        <div>ID: {contract.id}</div>
+        <div>Chain Address: {contract.chainAddress}</div>
+        <div>Amount: {contract.amount}</div>
+        <div>Currency: {contract.currency}</div>
+        <div>Description: {contract.description}</div>
+        <div>Buyer Email: {contract.buyerEmail}</div>
+        <div>Seller Email: {contract.sellerEmail}</div>
+      </div>
+    );
+  };
+});
+
 // Mock global fetch
 global.fetch = jest.fn();
 
@@ -341,5 +358,353 @@ describe('AdminPage', () => {
 
     expect(screen.queryByTestId('contract-card')).not.toBeInTheDocument();
     expect(input).toHaveValue('');
+  });
+
+  describe('Pending Contract Functionality', () => {
+    beforeEach(() => {
+      mockUseAuth.mockReturnValue({
+        user: {
+          userId: '1',
+          email: 'admin@example.com',
+          walletAddress: '0x123',
+          userType: 'admin',
+        },
+        isLoading: false,
+        provider: null,
+        login: jest.fn(),
+        logout: jest.fn(),
+      });
+    });
+
+    it('should fetch and display both deployed and pending contracts', async () => {
+      const deployedContractResponse = {
+        contractAddress: '0x9d6018989136ba15157e9a020c12adcc50f5ca4e',
+        buyer: '0x43cd4ede85fa5334050325985cfdd9b1ce58671a',
+        seller: '0x20e00e24101d8d7a330ba3a6aaa655d7766e7c1b',
+        amount: 20000,
+        expiryTimestamp: 1753749402,
+        description: 'Deployed contract',
+        status: 'ACTIVE',
+        createdAt: '2025-07-29T07:53:08.257664303Z',
+      };
+
+      const pendingContractResponse = {
+        id: '123',
+        chainAddress: '0x9d6018989136ba15157e9a020c12adcc50f5ca4e',
+        amount: 15000,
+        currency: 'USDC',
+        description: 'Pending contract',
+        buyerEmail: 'buyer@example.com',
+        sellerEmail: 'seller@example.com',
+        expiryTimestamp: 1753749402,
+      };
+
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => deployedContractResponse,
+        } as Response)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => pendingContractResponse,
+        } as Response);
+
+      render(<AdminPage />);
+
+      const input = screen.getByPlaceholderText('Enter contract address (0x...)');
+      const searchButton = screen.getByRole('button', { name: 'Search' });
+
+      fireEvent.change(input, { target: { value: '0x9d6018989136ba15157e9a020c12adcc50f5ca4e' } });
+      fireEvent.click(searchButton);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('contract-card')).toBeInTheDocument();
+        expect(screen.getByTestId('pending-contract-card')).toBeInTheDocument();
+      });
+
+      // Verify both API calls were made
+      expect(mockFetch).toHaveBeenCalledWith('/api/admin/contract?contractAddress=0x9d6018989136ba15157e9a020c12adcc50f5ca4e');
+      expect(mockFetch).toHaveBeenCalledWith('/api/admin/pending-contract?contractAddress=0x9d6018989136ba15157e9a020c12adcc50f5ca4e');
+
+      // Verify deployed contract section
+      expect(screen.getByText('Deployed Contract Details')).toBeInTheDocument();
+      expect(screen.getByText('Contract: 0x9d6018989136ba15157e9a020c12adcc50f5ca4e')).toBeInTheDocument();
+
+      // Verify pending contract section
+      expect(screen.getByText('Pending Contract Details')).toBeInTheDocument();
+      expect(screen.getByText('ID: 123')).toBeInTheDocument();
+      expect(screen.getByText('Amount: 15000')).toBeInTheDocument();
+      expect(screen.getByText('Currency: USDC')).toBeInTheDocument();
+      expect(screen.getByText('Buyer Email: buyer@example.com')).toBeInTheDocument();
+      expect(screen.getByText('Seller Email: seller@example.com')).toBeInTheDocument();
+    });
+
+    it('should show pending contract not found message when no pending contract exists', async () => {
+      const deployedContractResponse = {
+        contractAddress: '0x9d6018989136ba15157e9a020c12adcc50f5ca4e',
+        buyer: '0x43cd4ede85fa5334050325985cfdd9b1ce58671a',
+        seller: '0x20e00e24101d8d7a330ba3a6aaa655d7766e7c1b',
+        amount: 20000,
+        status: 'ACTIVE',
+      };
+
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => deployedContractResponse,
+        } as Response)
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 404,
+          json: async () => ({ error: 'Pending contract not found for this address' }),
+        } as Response);
+
+      render(<AdminPage />);
+
+      const input = screen.getByPlaceholderText('Enter contract address (0x...)');
+      const searchButton = screen.getByRole('button', { name: 'Search' });
+
+      fireEvent.change(input, { target: { value: '0x9d6018989136ba15157e9a020c12adcc50f5ca4e' } });
+      fireEvent.click(searchButton);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('contract-card')).toBeInTheDocument();
+        expect(screen.getByText('No pending contract found for this address')).toBeInTheDocument();
+      });
+
+      expect(screen.queryByTestId('pending-contract-card')).not.toBeInTheDocument();
+    });
+
+    it('should handle pending contract API error gracefully', async () => {
+      const deployedContractResponse = {
+        contractAddress: '0x9d6018989136ba15157e9a020c12adcc50f5ca4e',
+        buyer: '0x43cd4ede85fa5334050325985cfdd9b1ce58671a',
+        seller: '0x20e00e24101d8d7a330ba3a6aaa655d7766e7c1b',
+        amount: 20000,
+        status: 'ACTIVE',
+      };
+
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => deployedContractResponse,
+        } as Response)
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 500,
+          json: async () => ({ error: 'Internal server error' }),
+        } as Response);
+
+      render(<AdminPage />);
+
+      const input = screen.getByPlaceholderText('Enter contract address (0x...)');
+      const searchButton = screen.getByRole('button', { name: 'Search' });
+
+      fireEvent.change(input, { target: { value: '0x9d6018989136ba15157e9a020c12adcc50f5ca4e' } });
+      fireEvent.click(searchButton);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('contract-card')).toBeInTheDocument();
+        expect(screen.getByText('Internal server error')).toBeInTheDocument();
+      });
+    });
+
+    it('should handle network error for pending contract request', async () => {
+      const deployedContractResponse = {
+        contractAddress: '0x9d6018989136ba15157e9a020c12adcc50f5ca4e',
+        buyer: '0x43cd4ede85fa5334050325985cfdd9b1ce58671a',
+        seller: '0x20e00e24101d8d7a330ba3a6aaa655d7766e7c1b',
+        amount: 20000,
+        status: 'ACTIVE',
+      };
+
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => deployedContractResponse,
+        } as Response)
+        .mockRejectedValueOnce(new Error('Network error'));
+
+      render(<AdminPage />);
+
+      const input = screen.getByPlaceholderText('Enter contract address (0x...)');
+      const searchButton = screen.getByRole('button', { name: 'Search' });
+
+      fireEvent.change(input, { target: { value: '0x9d6018989136ba15157e9a020c12adcc50f5ca4e' } });
+      fireEvent.click(searchButton);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('contract-card')).toBeInTheDocument();
+        expect(screen.getByText('Network error')).toBeInTheDocument();
+      });
+    });
+
+    it('should show clear button when pending contract data exists', async () => {
+      const deployedContractResponse = {
+        contractAddress: '0x9d6018989136ba15157e9a020c12adcc50f5ca4e',
+        buyer: '0x43cd4ede85fa5334050325985cfdd9b1ce58671a',
+        seller: '0x20e00e24101d8d7a330ba3a6aaa655d7766e7c1b',
+        amount: 20000,
+        status: 'ACTIVE',
+      };
+
+      const pendingContractResponse = {
+        id: '123',
+        chainAddress: '0x9d6018989136ba15157e9a020c12adcc50f5ca4e',
+        amount: 15000,
+        currency: 'USDC',
+        description: 'Pending contract',
+        buyerEmail: 'buyer@example.com',
+        sellerEmail: 'seller@example.com',
+        expiryTimestamp: 1753749402,
+      };
+
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => deployedContractResponse,
+        } as Response)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => pendingContractResponse,
+        } as Response);
+
+      render(<AdminPage />);
+
+      const input = screen.getByPlaceholderText('Enter contract address (0x...)');
+      const searchButton = screen.getByRole('button', { name: 'Search' });
+
+      fireEvent.change(input, { target: { value: '0x9d6018989136ba15157e9a020c12adcc50f5ca4e' } });
+      fireEvent.click(searchButton);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('contract-card')).toBeInTheDocument();
+        expect(screen.getByTestId('pending-contract-card')).toBeInTheDocument();
+      });
+
+      expect(screen.getByRole('button', { name: 'Clear' })).toBeInTheDocument();
+    });
+
+    it('should clear both deployed and pending contract data when clear button is clicked', async () => {
+      const deployedContractResponse = {
+        contractAddress: '0x9d6018989136ba15157e9a020c12adcc50f5ca4e',
+        buyer: '0x43cd4ede85fa5334050325985cfdd9b1ce58671a',
+        seller: '0x20e00e24101d8d7a330ba3a6aaa655d7766e7c1b',
+        amount: 20000,
+        status: 'ACTIVE',
+      };
+
+      const pendingContractResponse = {
+        id: '123',
+        chainAddress: '0x9d6018989136ba15157e9a020c12adcc50f5ca4e',
+        amount: 15000,
+        currency: 'USDC',
+        description: 'Pending contract',
+        buyerEmail: 'buyer@example.com',
+        sellerEmail: 'seller@example.com',
+        expiryTimestamp: 1753749402,
+      };
+
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => deployedContractResponse,
+        } as Response)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => pendingContractResponse,
+        } as Response);
+
+      render(<AdminPage />);
+
+      const input = screen.getByPlaceholderText('Enter contract address (0x...)');
+      const searchButton = screen.getByRole('button', { name: 'Search' });
+
+      fireEvent.change(input, { target: { value: '0x9d6018989136ba15157e9a020c12adcc50f5ca4e' } });
+      fireEvent.click(searchButton);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('contract-card')).toBeInTheDocument();
+        expect(screen.getByTestId('pending-contract-card')).toBeInTheDocument();
+      });
+
+      const clearButton = screen.getByRole('button', { name: 'Clear' });
+      fireEvent.click(clearButton);
+
+      expect(screen.queryByTestId('contract-card')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('pending-contract-card')).not.toBeInTheDocument();
+      expect(input).toHaveValue('');
+      expect(screen.queryByRole('button', { name: 'Clear' })).not.toBeInTheDocument();
+    });
+
+    it('should show clear button when pending error exists even without contract data', async () => {
+      const deployedContractResponse = {
+        contractAddress: '0x9d6018989136ba15157e9a020c12adcc50f5ca4e',
+        buyer: '0x43cd4ede85fa5334050325985cfdd9b1ce58671a',
+        seller: '0x20e00e24101d8d7a330ba3a6aaa655d7766e7c1b',
+        amount: 20000,
+        status: 'ACTIVE',
+      };
+
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => deployedContractResponse,
+        } as Response)
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 404,
+          json: async () => ({ error: 'Pending contract not found for this address' }),
+        } as Response);
+
+      render(<AdminPage />);
+
+      const input = screen.getByPlaceholderText('Enter contract address (0x...)');
+      const searchButton = screen.getByRole('button', { name: 'Search' });
+
+      fireEvent.change(input, { target: { value: '0x9d6018989136ba15157e9a020c12adcc50f5ca4e' } });
+      fireEvent.click(searchButton);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('contract-card')).toBeInTheDocument();
+        expect(screen.getByText('No pending contract found for this address')).toBeInTheDocument();
+      });
+
+      expect(screen.getByRole('button', { name: 'Clear' })).toBeInTheDocument();
+    });
+
+    it('should continue displaying deployed contract when pending contract fetch fails', async () => {
+      const deployedContractResponse = {
+        contractAddress: '0x9d6018989136ba15157e9a020c12adcc50f5ca4e',
+        buyer: '0x43cd4ede85fa5334050325985cfdd9b1ce58671a',
+        seller: '0x20e00e24101d8d7a330ba3a6aaa655d7766e7c1b',
+        amount: 20000,
+        status: 'ACTIVE',
+      };
+
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => deployedContractResponse,
+        } as Response)
+        .mockRejectedValueOnce(new Error('Service unavailable'));
+
+      render(<AdminPage />);
+
+      const input = screen.getByPlaceholderText('Enter contract address (0x...)');
+      const searchButton = screen.getByRole('button', { name: 'Search' });
+
+      fireEvent.change(input, { target: { value: '0x9d6018989136ba15157e9a020c12adcc50f5ca4e' } });
+      fireEvent.click(searchButton);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('contract-card')).toBeInTheDocument();
+        expect(screen.getByText('Service unavailable')).toBeInTheDocument();
+      });
+
+      // Deployed contract should still be visible
+      expect(screen.getByText('Deployed Contract Details')).toBeInTheDocument();
+      expect(screen.queryByTestId('pending-contract-card')).not.toBeInTheDocument();
+    });
   });
 });

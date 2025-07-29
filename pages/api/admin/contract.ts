@@ -16,7 +16,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Check if user is authorized admin by calling identity endpoint
-    const identityResponse = await fetch(`${process.env.USER_SERVICE_URL}/api/auth/identity`, {
+    const identityResponse = await fetch(`${process.env.USER_SERVICE_URL}/api/user/identity`, {
       headers: {
         'Authorization': `Bearer ${authToken}`,
         'Cookie': cookies

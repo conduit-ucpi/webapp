@@ -47,7 +47,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const contractServiceData = await contractResponse.json();
     
     // Also fetch deployed contracts to get additional metadata
-    let deployedContracts = [];
+    let deployedContracts: any[] = [];
     try {
       const deployedResponse = await fetch(`${process.env.USER_SERVICE_URL}/api/contracts/deployed`, {
         headers: {

@@ -10,12 +10,24 @@ import PendingContractCard from '@/components/contracts/PendingContractCard';
 import AdminContractList from '@/components/admin/AdminContractList';
 import { Contract, PendingContract } from '@/types';
 
+// Extended type for admin contracts that includes chain data
+type AdminContract = PendingContract & {
+  status?: 'CREATED' | 'ACTIVE' | 'EXPIRED' | 'DISPUTED' | 'RESOLVED' | 'CLAIMED';
+  funded?: boolean;
+  fundedAt?: string;
+  disputedAt?: string;
+  resolvedAt?: string;
+  claimedAt?: string;
+  buyerAddress?: string;
+  contractAddress?: string;
+}
+
 export default function AdminPage() {
   const { user, isLoading } = useAuth();
   const router = useRouter();
-  const [selectedContract, setSelectedContract] = useState<PendingContract | null>(null);
+  const [selectedContract, setSelectedContract] = useState<AdminContract | null>(null);
 
-  const handleContractSelect = (contract: PendingContract) => {
+  const handleContractSelect = (contract: AdminContract) => {
     setSelectedContract(contract);
   };
 
@@ -106,7 +118,7 @@ export default function AdminPage() {
               <div className="bg-gray-50 p-4 rounded-lg">
                 <h3 className="text-md font-semibold text-gray-900 mb-3">On-Chain Contract</h3>
                 <ContractCard
-                  contract={selectedContract as Contract}
+                  contract={selectedContract as unknown as Contract}
                   onAction={() => {}}
                 />
               </div>

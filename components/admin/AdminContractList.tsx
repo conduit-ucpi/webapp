@@ -7,8 +7,19 @@ import Button from '@/components/ui/Button';
 import ExpandableHash from '@/components/ui/ExpandableHash';
 import { formatUSDC, formatExpiryDate } from '@/utils/validation';
 
+// Extended type for admin contracts that includes chain data
+type AdminContract = PendingContract & {
+  status?: 'CREATED' | 'ACTIVE' | 'EXPIRED' | 'DISPUTED' | 'RESOLVED' | 'CLAIMED';
+  funded?: boolean;
+  fundedAt?: string;
+  disputedAt?: string;
+  resolvedAt?: string;
+  claimedAt?: string;
+  buyerAddress?: string;
+}
+
 interface AdminContractListProps {
-  onContractSelect?: (contract: PendingContract) => void;
+  onContractSelect?: (contract: AdminContract) => void;
 }
 
 type SortField = 'createdAt' | 'expiryTimestamp' | 'amount' | 'status' | 'sellerEmail' | 'buyerEmail';
@@ -16,7 +27,7 @@ type SortDirection = 'asc' | 'desc';
 
 export default function AdminContractList({ onContractSelect }: AdminContractListProps) {
   const router = useRouter();
-  const [contracts, setContracts] = useState<PendingContract[]>([]);
+  const [contracts, setContracts] = useState<AdminContract[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   

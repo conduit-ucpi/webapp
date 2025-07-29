@@ -21,7 +21,7 @@ describe('/api/admin/contracts', () => {
       method: 'POST',
     });
 
-    await handler(req, res);
+    await handler(req as any, res);
 
     expect(res._getStatusCode()).toBe(405);
     expect(JSON.parse(res._getData())).toEqual({
@@ -34,7 +34,7 @@ describe('/api/admin/contracts', () => {
       method: 'GET',
     });
 
-    await handler(req, res);
+    await handler(req as any, res);
 
     expect(res._getStatusCode()).toBe(401);
     expect(JSON.parse(res._getData())).toEqual({
@@ -55,7 +55,7 @@ describe('/api/admin/contracts', () => {
       status: 401
     } as Response);
 
-    await handler(req, res);
+    await handler(req as any, res);
 
     expect(res._getStatusCode()).toBe(401);
     expect(JSON.parse(res._getData())).toEqual({
@@ -76,7 +76,7 @@ describe('/api/admin/contracts', () => {
       json: async () => ({ userType: 'user' })
     } as Response);
 
-    await handler(req, res);
+    await handler(req as any, res);
 
     expect(res._getStatusCode()).toBe(403);
     expect(JSON.parse(res._getData())).toEqual({
@@ -155,7 +155,7 @@ describe('/api/admin/contracts', () => {
       json: async () => chainData
     } as Response);
 
-    await handler(req, res);
+    await handler(req as any, res);
 
     expect(res._getStatusCode()).toBe(200);
     const result = JSON.parse(res._getData());
@@ -195,7 +195,7 @@ describe('/api/admin/contracts', () => {
       status: 500
     } as Response);
 
-    await handler(req, res);
+    await handler(req as any, res);
 
     expect(res._getStatusCode()).toBe(500);
     expect(JSON.parse(res._getData())).toEqual({
@@ -241,7 +241,7 @@ describe('/api/admin/contracts', () => {
       status: 500
     } as Response);
 
-    await handler(req, res);
+    await handler(req as any, res);
 
     expect(res._getStatusCode()).toBe(200);
     const result = JSON.parse(res._getData());
@@ -295,7 +295,7 @@ describe('/api/admin/contracts', () => {
     // Mock chain service failure
     mockFetch.mockRejectedValueOnce(new Error('Chain service error'));
 
-    await handler(req, res);
+    await handler(req as any, res);
 
     expect(res._getStatusCode()).toBe(200);
     const result = JSON.parse(res._getData());

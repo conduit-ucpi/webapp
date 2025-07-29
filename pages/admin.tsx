@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useRouter } from 'next/router';
 import { useAuth } from '@/components/auth/AuthProvider';
 import ConnectWallet from '@/components/auth/ConnectWallet';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
@@ -9,6 +10,7 @@ import { Contract } from '@/types';
 
 export default function AdminPage() {
   const { user, isLoading } = useAuth();
+  const router = useRouter();
   const [contractAddress, setContractAddress] = useState('');
   const [searchedContract, setSearchedContract] = useState<Contract | null>(null);
   const [isSearching, setIsSearching] = useState(false);
@@ -23,7 +25,7 @@ export default function AdminPage() {
     setSearchedContract(null);
 
     try {
-      const response = await fetch(`/api/admin/contract?contractAddress=${encodeURIComponent(contractAddress.trim())}`);
+      const response = await fetch(`${router.basePath}/api/admin/contract?contractAddress=${encodeURIComponent(contractAddress.trim())}`);
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));

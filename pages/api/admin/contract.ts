@@ -28,7 +28,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const userData = await identityResponse.json();
-    if (userData.email !== 'charliepank@gmail.com') {
+    if (userData.userType !== 'admin') {
       return res.status(403).json({ error: 'Admin access required' });
     }
 

@@ -69,7 +69,7 @@ export default function AdminPage() {
   }
 
   // Check if user is authorized admin
-  if (user.email !== 'charliepank@gmail.com') {
+  if (user.userType !== 'admin') {
     return (
       <div className="max-w-md mx-auto text-center py-20">
         <h1 className="text-2xl font-bold text-red-600 mb-4">Access Denied</h1>

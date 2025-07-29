@@ -13,6 +13,7 @@ export interface User {
   userId: string;
   email: string;
   walletAddress: string;
+  userType?: string;
 }
 
 export interface Contract {

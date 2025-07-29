@@ -7,77 +7,20 @@ import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import ContractCard from '@/components/contracts/ContractCard';
 import PendingContractCard from '@/components/contracts/PendingContractCard';
+import AdminContractList from '@/components/admin/AdminContractList';
 import { Contract, PendingContract } from '@/types';
 
 export default function AdminPage() {
   const { user, isLoading } = useAuth();
   const router = useRouter();
-  const [contractAddress, setContractAddress] = useState('');
-  const [searchedContract, setSearchedContract] = useState<Contract | null>(null);
-  const [searchedPendingContract, setSearchedPendingContract] = useState<PendingContract | null>(null);
-  const [isSearching, setIsSearching] = useState(false);
-  const [searchError, setSearchError] = useState<string | null>(null);
-  const [pendingSearchError, setPendingSearchError] = useState<string | null>(null);
+  const [selectedContract, setSelectedContract] = useState<PendingContract | null>(null);
 
-  const handleContractSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!contractAddress.trim()) return;
-
-    setIsSearching(true);
-    setSearchError(null);
-    setPendingSearchError(null);
-    setSearchedContract(null);
-    setSearchedPendingContract(null);
-
-    try {
-      // Fetch deployed contract
-      const response = await fetch(`${router.basePath}/api/admin/contract?contractAddress=${encodeURIComponent(contractAddress.trim())}`);
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Failed to fetch contract');
-      }
-
-      const contractData = await response.json();
-      // Map API response to match Contract interface
-      const mappedContract: Contract = {
-        ...contractData,
-        buyerAddress: contractData.buyer || contractData.buyerAddress,
-        sellerAddress: contractData.seller || contractData.sellerAddress,
-      };
-      setSearchedContract(mappedContract);
-
-      // Fetch pending contract version
-      try {
-        const pendingResponse = await fetch(`${router.basePath}/api/admin/pending-contract?contractAddress=${encodeURIComponent(contractAddress.trim())}`);
-        
-        if (pendingResponse.ok) {
-          const pendingContractData = await pendingResponse.json();
-          setSearchedPendingContract(pendingContractData);
-        } else if (pendingResponse.status === 404) {
-          setPendingSearchError('No pending contract found for this address');
-        } else {
-          const errorData = await pendingResponse.json().catch(() => ({}));
-          setPendingSearchError(errorData.error || 'Failed to fetch pending contract');
-        }
-      } catch (error: any) {
-        console.error('Pending contract search failed:', error);
-        setPendingSearchError(error.message || 'Failed to search for pending contract');
-      }
-    } catch (error: any) {
-      console.error('Contract search failed:', error);
-      setSearchError(error.message || 'Failed to search for contract');
-    } finally {
-      setIsSearching(false);
-    }
+  const handleContractSelect = (contract: PendingContract) => {
+    setSelectedContract(contract);
   };
 
-  const clearSearch = () => {
-    setContractAddress('');
-    setSearchedContract(null);
-    setSearchedPendingContract(null);
-    setSearchError(null);
-    setPendingSearchError(null);
+  const clearSelection = () => {
+    setSelectedContract(null);
   };
 
   if (isLoading) {
@@ -140,84 +83,45 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {/* Contract Search */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Contract Search</h2>
-          <form onSubmit={handleContractSearch} className="space-y-4">
-            <div className="flex gap-3">
-              <Input
-                type="text"
-                value={contractAddress}
-                onChange={(e) => setContractAddress(e.target.value)}
-                placeholder="Enter contract address (0x...)"
-                className="flex-1"
-                disabled={isSearching}
-              />
-              <Button 
-                type="submit" 
-                disabled={isSearching || !contractAddress.trim()}
-                className="px-6"
-              >
-                {isSearching ? (
-                  <>
-                    <LoadingSpinner className="w-4 h-4 mr-2" />
-                    Searching...
-                  </>
-                ) : (
-                  'Search'
-                )}
-              </Button>
-              {(searchedContract || searchedPendingContract || searchError || pendingSearchError) && (
-                <Button 
-                  type="button" 
-                  variant="outline"
-                  onClick={clearSearch}
-                  disabled={isSearching}
-                >
-                  Clear
-                </Button>
-              )}
-            </div>
-          </form>
-
-          {/* Search Results */}
-          {searchError && (
-            <div className="mt-4 bg-red-50 border border-red-200 rounded-md p-4">
-              <p className="text-sm text-red-600">{searchError}</p>
-            </div>
-          )}
-
-          {searchedContract && (
-            <div className="mt-6">
-              <h3 className="text-md font-semibold text-gray-900 mb-3">Deployed Contract Details</h3>
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <ContractCard
-                  contract={searchedContract}
-                  onAction={() => {}} // No action needed for admin view
-                />
-              </div>
-            </div>
-          )}
-
-          {searchedPendingContract && (
-            <div className="mt-6">
-              <h3 className="text-md font-semibold text-gray-900 mb-3">Pending Contract Details</h3>
-              <div className="bg-blue-50 p-4 rounded-lg">
-                <PendingContractCard
-                  contract={searchedPendingContract}
-                  currentUserEmail=""
-                  onAccept={undefined} // No action needed for admin view
-                />
-              </div>
-            </div>
-          )}
-
-          {pendingSearchError && (
-            <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded-md p-4">
-              <p className="text-sm text-yellow-600">{pendingSearchError}</p>
-            </div>
-          )}
+        {/* Contract List */}
+        <div className="mb-8">
+          <AdminContractList onContractSelect={handleContractSelect} />
         </div>
+
+        {/* Selected Contract Details */}
+        {selectedContract && (
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-semibold text-gray-900">Contract Details</h2>
+              <Button 
+                variant="outline"
+                onClick={clearSelection}
+                size="sm"
+              >
+                Close
+              </Button>
+            </div>
+            
+            {selectedContract.chainAddress ? (
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h3 className="text-md font-semibold text-gray-900 mb-3">On-Chain Contract</h3>
+                <ContractCard
+                  contract={selectedContract as Contract}
+                  onAction={() => {}}
+                />
+              </div>
+            ) : (
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <h3 className="text-md font-semibold text-gray-900 mb-3">Pending Contract</h3>
+                <PendingContractCard
+                  contract={selectedContract}
+                  currentUserEmail=""
+                  onAccept={undefined}
+                />
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Admin Actions */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

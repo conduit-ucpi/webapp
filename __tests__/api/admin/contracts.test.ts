@@ -9,6 +9,7 @@ describe('/api/admin/contracts', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     process.env.USER_SERVICE_URL = 'http://localhost:8977';
+    process.env.CONTRACT_SERVICE_URL = 'http://localhost:8979';
     process.env.CHAIN_SERVICE_URL = 'http://localhost:8978';
   });
 

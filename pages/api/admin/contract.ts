@@ -63,7 +63,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Try to get additional metadata from contract service
     let contractMetadata = null;
     try {
-      const metadataResponse = await fetch(`${process.env.USER_SERVICE_URL}/api/contracts/deployed`, {
+      const metadataResponse = await fetch(`${process.env.CONTRACT_SERVICE_URL}/api/contracts/deployed`, {
         headers: {
           'Authorization': `Bearer ${authToken}`,
           'Cookie': cookies

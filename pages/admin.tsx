@@ -159,8 +159,6 @@ export default function AdminPage() {
               <div className="bg-gray-50 p-4 rounded-lg">
                 <ContractCard
                   contract={searchedContract}
-                  isBuyer={true} // Display as buyer to show all actions
-                  isSeller={false}
                   onAction={() => {}} // No action needed for admin view
                 />
               </div>

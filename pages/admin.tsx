@@ -33,7 +33,13 @@ export default function AdminPage() {
       }
 
       const contractData = await response.json();
-      setSearchedContract(contractData);
+      // Map API response to match Contract interface
+      const mappedContract: Contract = {
+        ...contractData,
+        buyerAddress: contractData.buyer || contractData.buyerAddress,
+        sellerAddress: contractData.seller || contractData.sellerAddress,
+      };
+      setSearchedContract(mappedContract);
     } catch (error: any) {
       console.error('Contract search failed:', error);
       setSearchError(error.message || 'Failed to search for contract');

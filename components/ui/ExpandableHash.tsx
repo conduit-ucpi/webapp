@@ -15,6 +15,7 @@ export default function ExpandableHash({
   const [isCopied, setIsCopied] = useState(false);
 
   const formatHash = (address: string, expanded: boolean): string => {
+    if (!address) return '';
     if (expanded) return address;
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
   };

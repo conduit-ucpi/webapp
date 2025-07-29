@@ -316,4 +316,47 @@ export class Web3Service {
     const signedTx = await signer.signTransaction(txWithGas);
     return signedTx;
   }
+
+  // Sign claim funds transaction and return hex for chain service
+  async signClaimTransaction(contractAddress: string): Promise<string> {
+    const signer = await this.getSigner();
+    const contract = new ethers.Contract(
+      contractAddress,
+      ESCROW_CONTRACT_ABI,
+      signer
+    );
+
+    // Create transaction but don't send it
+    const tx = await contract.claimFunds.populateTransaction();
+    
+    // Get gas estimation and pricing
+    if (!this.provider) {
+      throw new Error('Provider not initialized');
+    }
+    const feeData = await this.provider.getFeeData();
+    const minGasWei = this.config.minGasWei || '5';
+    const minGasPriceBigInt = BigInt(minGasWei);
+    
+    const networkGasPrice = feeData.gasPrice ? BigInt(feeData.gasPrice.toString()) : BigInt(0);
+    
+    const gasPrice = networkGasPrice > minGasPriceBigInt 
+      ? networkGasPrice 
+      : minGasPriceBigInt;
+    
+    console.log('Claim Funds Gas Details:', {
+      finalGasPrice: `${gasPrice} wei`,
+      minGasWei,
+      finalGasPriceInNAVAX: `${(Number(gasPrice) / 1e9).toFixed(12)} nAVAX`
+    });
+    
+    // Set gas parameters
+    tx.gasPrice = gasPrice;
+    tx.gasLimit = await contract.claimFunds.estimateGas();
+    
+    // Sign the transaction
+    const signedTx = await signer.signTransaction(tx);
+    console.log('Signed claim transaction:', signedTx);
+    
+    return signedTx;
+  }
 }

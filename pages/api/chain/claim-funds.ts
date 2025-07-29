@@ -15,6 +15,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(401).json({ error: 'Authentication required' });
     }
 
+    // Expect signed transaction format like deposit-funds
+    const { contractAddress, userWalletAddress, signedTransaction } = req.body;
+    
+    if (!contractAddress || !userWalletAddress || !signedTransaction) {
+      return res.status(400).json({ error: 'Missing required fields: contractAddress, userWalletAddress, signedTransaction' });
+    }
+
     const response = await fetch(`${process.env.CHAIN_SERVICE_URL}/api/chain/claim-funds`, {
       method: 'POST',
       headers: {
@@ -22,7 +29,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         'Authorization': `Bearer ${authToken}`,
         'Cookie': cookies
       },
-      body: JSON.stringify(req.body)
+      body: JSON.stringify({
+        contractAddress,
+        userWalletAddress,
+        signedTransaction
+      })
     });
 
     const responseData = await response.json();

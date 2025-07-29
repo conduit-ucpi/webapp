@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/router';
 import { Contract } from '@/types';
 import { useConfig } from '@/components/auth/ConfigProvider';
+import { useAuth } from '@/components/auth/AuthProvider';
 import { Web3Service } from '@/lib/web3';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
@@ -15,6 +16,7 @@ interface ContractActionsProps {
 
 export default function ContractActions({ contract, isBuyer, isSeller, onAction }: ContractActionsProps) {
   const { config } = useConfig();
+  const { user } = useAuth();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
@@ -57,19 +59,37 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction 
   };
 
   const handleClaimFunds = async () => {
-    if (!config || !isSeller || contract.status !== 'EXPIRED') return;
+    if (!config || !isSeller || contract.status !== 'EXPIRED' || !user) return;
 
     setIsLoading(true);
-    setLoadingMessage('Claiming funds...');
+    setLoadingMessage('Initializing...');
     
     try {
+      // Get Web3Auth provider
+      const web3authProvider = (window as any).web3authProvider;
+      if (!web3authProvider) {
+        throw new Error('Wallet not connected');
+      }
+
+      const web3Service = new Web3Service(config);
+      await web3Service.initializeProvider(web3authProvider);
+      const userAddress = await web3Service.getUserAddress();
+
+      // Sign claim transaction
+      setLoadingMessage('Signing claim transaction...');
+      const signedTx = await web3Service.signClaimTransaction(contract.contractAddress);
+
+      // Submit signed transaction to chain service
+      setLoadingMessage('Claiming funds...');
       const response = await fetch(`${router.basePath}/api/chain/claim-funds`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          contractAddress: contract.contractAddress
+          contractAddress: contract.contractAddress,
+          userWalletAddress: userAddress,
+          signedTransaction: signedTx
         })
       });
 

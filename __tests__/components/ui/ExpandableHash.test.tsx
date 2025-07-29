@@ -123,4 +123,26 @@ describe('ExpandableHash', () => {
     
     expect(mockStopPropagation).toHaveBeenCalled();
   });
+
+  it('handles clipboard copy failure gracefully', async () => {
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+    const mockWriteText = jest.fn().mockRejectedValue(new Error('Clipboard failed'));
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: mockWriteText,
+      },
+    });
+
+    render(<ExpandableHash hash={mockHash} />);
+    const copyButton = screen.getByTitle('Copy to clipboard');
+    
+    await act(async () => {
+      fireEvent.click(copyButton);
+    });
+    
+    expect(mockWriteText).toHaveBeenCalledWith(mockHash);
+    expect(consoleSpy).toHaveBeenCalledWith('Failed to copy:', expect.any(Error));
+    
+    consoleSpy.mockRestore();
+  });
 });

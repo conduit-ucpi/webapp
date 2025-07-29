@@ -707,4 +707,136 @@ describe('AdminPage', () => {
       expect(screen.queryByTestId('pending-contract-card')).not.toBeInTheDocument();
     });
   });
+
+  describe('Edge cases and error handling', () => {
+    beforeEach(() => {
+      mockUseAuth.mockReturnValue({
+        user: { userType: 'admin', walletAddress: '0x123' },
+        isLoading: false,
+        login: jest.fn(),
+        logout: jest.fn(),
+      });
+    });
+
+    it('returns early when contract address is empty or whitespace only', async () => {
+      render(<AdminPage />);
+
+      const input = screen.getByPlaceholderText('Enter contract address (0x...)');
+      const form = input.closest('form');
+
+      // Test empty string
+      fireEvent.change(input, { target: { value: '' } });
+      fireEvent.submit(form!);
+
+      // Test whitespace only
+      fireEvent.change(input, { target: { value: '   ' } });
+      fireEvent.submit(form!);
+
+      // Should not make any fetch calls
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it('handles malformed error response JSON', async () => {
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+      
+      // Mock a response that fails JSON parsing
+      const mockResponse = {
+        ok: false,
+        json: jest.fn().mockRejectedValue(new Error('Invalid JSON'))
+      };
+      mockFetch.mockResolvedValueOnce(mockResponse as any);
+
+      render(<AdminPage />);
+
+      const input = screen.getByPlaceholderText('Enter contract address (0x...)');
+      const form = input.closest('form');
+
+      fireEvent.change(input, { target: { value: '0x123' } });
+      fireEvent.submit(form!);
+
+      await waitFor(() => {
+        expect(screen.getByText('Failed to fetch contract')).toBeInTheDocument();
+      });
+
+      consoleSpy.mockRestore();
+    });
+
+    it('handles pending contract fetch with malformed JSON response', async () => {
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+
+      // First call succeeds (deployed contract)
+      const deployedContractResponse = {
+        ok: true,
+        json: jest.fn().mockResolvedValue({
+          contractAddress: '0x123',
+          buyer: '0xbuyer',
+          seller: '0xseller',
+          amount: '100',
+          status: 'active'
+        })
+      };
+
+      // Second call has non-404 error status (pending contract)
+      const pendingContractResponse = {
+        ok: false,
+        status: 500,
+        json: jest.fn().mockResolvedValue({ error: 'Server error' })
+      };
+
+      mockFetch
+        .mockResolvedValueOnce(deployedContractResponse as any)
+        .mockResolvedValueOnce(pendingContractResponse as any);
+
+      render(<AdminPage />);
+
+      const input = screen.getByPlaceholderText('Enter contract address (0x...)');
+      const form = input.closest('form');
+
+      fireEvent.change(input, { target: { value: '0x123' } });
+      fireEvent.submit(form!);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('contract-card')).toBeInTheDocument();
+        expect(screen.getByText('Server error')).toBeInTheDocument();
+      });
+
+      consoleSpy.mockRestore();
+    });
+
+    it('handles network errors during pending contract fetch', async () => {
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+
+      // First call succeeds (deployed contract)
+      const deployedContractResponse = {
+        ok: true,
+        json: jest.fn().mockResolvedValue({
+          contractAddress: '0x123',
+          buyer: '0xbuyer',
+          seller: '0xseller',
+          amount: '100',
+          status: 'active'
+        })
+      };
+
+      mockFetch
+        .mockResolvedValueOnce(deployedContractResponse as any)
+        .mockRejectedValueOnce(new Error('Network error'));
+
+      render(<AdminPage />);
+
+      const input = screen.getByPlaceholderText('Enter contract address (0x...)');
+      const form = input.closest('form');
+
+      fireEvent.change(input, { target: { value: '0x123' } });
+      fireEvent.submit(form!);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('contract-card')).toBeInTheDocument();
+        expect(screen.getByText('Network error')).toBeInTheDocument();
+      });
+
+      expect(consoleSpy).toHaveBeenCalledWith('Pending contract search failed:', expect.any(Error));
+      consoleSpy.mockRestore();
+    });
+  });
 });

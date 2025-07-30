@@ -125,7 +125,7 @@ export default function DisputeResolutionModal({
           'Content-Type': 'application/json',
         },
         credentials: 'include',
-        body: JSON.stringify(newNote),
+        body: JSON.stringify({ note: newNote }),
       });
 
       if (!noteResponse.ok) {

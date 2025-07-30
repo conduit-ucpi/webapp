@@ -209,23 +209,26 @@ describe('DisputeResolutionModal', () => {
     const noteInput = screen.getByPlaceholderText('Enter your note about this dispute...');
     fireEvent.change(noteInput, { target: { value: 'Resolution note' } });
 
-    const percentageInputs = screen.getAllByPlaceholderText('0-100');
-    const buyerInput = percentageInputs[0];
-    const sellerInput = percentageInputs[1];
-    
-    fireEvent.change(buyerInput, { target: { value: '60' } });
-    fireEvent.change(sellerInput, { target: { value: '50' } });
-
+    // With auto-calculation, we can't create invalid percentages by typing in both fields
+    // Instead, test that the button is disabled when no percentages are entered
     const resolveButton = screen.getByText('Add Note and Resolve');
     
-    // Button should be disabled due to invalid percentages
+    // Button should be disabled when no percentages are set
     expect(resolveButton).toBeDisabled();
     
-    // Total should show in red and indicate 110%
+    // Now enter a valid percentage
+    const percentageInputs = screen.getAllByPlaceholderText('0-100');
+    const buyerInput = percentageInputs[0];
+    fireEvent.change(buyerInput, { target: { value: '60' } });
+
+    // Total should show in green and indicate 100%
     await waitFor(() => {
-      expect(screen.getByText('Total: 110.00%')).toBeInTheDocument();
-      expect(screen.getByText('Total: 110.00%')).toHaveClass('text-red-600');
+      expect(screen.getByText('Total: 100.00%')).toBeInTheDocument();
+      expect(screen.getByText('Total: 100.00%')).toHaveClass('text-green-600');
     });
+    
+    // Button should now be enabled
+    expect(resolveButton).not.toBeDisabled();
   });
 
   it('resolves dispute with note and correct percentages', async () => {
@@ -293,7 +296,7 @@ describe('DisputeResolutionModal', () => {
     });
   });
 
-  it('auto-calculates percentages', async () => {
+  it('auto-calculates percentages when typing in buyer field', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => mockContract
@@ -307,15 +310,111 @@ describe('DisputeResolutionModal', () => {
 
     const percentageInputs = screen.getAllByPlaceholderText('0-100');
     const buyerInput = percentageInputs[0];
+    const sellerInput = percentageInputs[1];
     
+    // Type in buyer field
     fireEvent.change(buyerInput, { target: { value: '75' } });
 
-    // Re-query for inputs after state update
+    // Seller field should immediately update to 25
+    expect(sellerInput).toHaveValue(25);
+    
+    // Test with decimal values
+    fireEvent.change(buyerInput, { target: { value: '33.33' } });
+    expect(sellerInput).toHaveValue(66.67);
+    
+    // Test edge cases
+    fireEvent.change(buyerInput, { target: { value: '0' } });
+    expect(sellerInput).toHaveValue(100);
+    
+    fireEvent.change(buyerInput, { target: { value: '100' } });
+    expect(sellerInput).toHaveValue(0);
+  });
+
+  it('auto-calculates percentages when typing in seller field', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => mockContract
+    } as Response);
+
+    render(<DisputeResolutionModal {...defaultProps} />);
+
     await waitFor(() => {
-      const updatedInputs = screen.getAllByPlaceholderText('0-100');
-      const updatedSellerInput = updatedInputs[1];
-      expect(updatedSellerInput).toHaveValue(25);
+      expect(screen.getByText('Test contract')).toBeInTheDocument();
     });
+
+    const percentageInputs = screen.getAllByPlaceholderText('0-100');
+    const buyerInput = percentageInputs[0];
+    const sellerInput = percentageInputs[1];
+    
+    // Type in seller field
+    fireEvent.change(sellerInput, { target: { value: '40' } });
+
+    // Buyer field should immediately update to 60
+    expect(buyerInput).toHaveValue(60);
+    
+    // Test with decimal values
+    fireEvent.change(sellerInput, { target: { value: '45.5' } });
+    expect(buyerInput).toHaveValue(54.5);
+  });
+
+  it('clears both fields when one is cleared', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => mockContract
+    } as Response);
+
+    render(<DisputeResolutionModal {...defaultProps} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Test contract')).toBeInTheDocument();
+    });
+
+    const percentageInputs = screen.getAllByPlaceholderText('0-100');
+    const buyerInput = percentageInputs[0];
+    const sellerInput = percentageInputs[1];
+    
+    // Set initial values
+    fireEvent.change(buyerInput, { target: { value: '60' } });
+    expect(sellerInput).toHaveValue(40);
+    
+    // Clear buyer field
+    fireEvent.change(buyerInput, { target: { value: '' } });
+    
+    // Both fields should be empty
+    expect(buyerInput).toHaveValue(null);
+    expect(sellerInput).toHaveValue(null);
+  });
+
+  it('handles invalid input gracefully', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => mockContract
+    } as Response);
+
+    render(<DisputeResolutionModal {...defaultProps} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Test contract')).toBeInTheDocument();
+    });
+
+    const percentageInputs = screen.getAllByPlaceholderText('0-100');
+    const buyerInput = percentageInputs[0];
+    const sellerInput = percentageInputs[1];
+    
+    // Type invalid values
+    fireEvent.change(buyerInput, { target: { value: 'abc' } });
+    // Seller field should not update for invalid input
+    expect(sellerInput).toHaveValue(null);
+    
+    // Type value over 100
+    fireEvent.change(buyerInput, { target: { value: '150' } });
+    // Seller field should not update for values over 100
+    expect(sellerInput).toHaveValue(null);
+    
+    // Type negative value
+    fireEvent.change(buyerInput, { target: { value: '-10' } });
+    // Seller field should not update for negative values
+    expect(sellerInput).toHaveValue(null);
   });
 
   it('handles fetch errors gracefully', async () => {

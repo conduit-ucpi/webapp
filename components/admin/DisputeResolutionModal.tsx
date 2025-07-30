@@ -54,25 +54,31 @@ export default function DisputeResolutionModal({
   }, [isOpen, contractId]);
 
   // Auto-calculate percentages when one changes
-  useEffect(() => {
-    if (buyerPercentage && sellerPercentage === '') {
-      const buyer = parseFloat(buyerPercentage);
-      if (!isNaN(buyer) && buyer >= 0 && buyer <= 100) {
-        const calculated = 100 - buyer;
-        setSellerPercentage(calculated % 1 === 0 ? calculated.toString() : calculated.toFixed(2));
-      }
+  const handleBuyerPercentageChange = (value: string) => {
+    setBuyerPercentage(value);
+    if (value === '') {
+      setSellerPercentage('');
+      return;
     }
-  }, [buyerPercentage]);
+    const buyer = parseFloat(value);
+    if (!isNaN(buyer) && buyer >= 0 && buyer <= 100) {
+      const calculated = 100 - buyer;
+      setSellerPercentage(calculated % 1 === 0 ? calculated.toString() : calculated.toFixed(2));
+    }
+  };
 
-  useEffect(() => {
-    if (sellerPercentage && buyerPercentage === '') {
-      const seller = parseFloat(sellerPercentage);
-      if (!isNaN(seller) && seller >= 0 && seller <= 100) {
-        const calculated = 100 - seller;
-        setBuyerPercentage(calculated % 1 === 0 ? calculated.toString() : calculated.toFixed(2));
-      }
+  const handleSellerPercentageChange = (value: string) => {
+    setSellerPercentage(value);
+    if (value === '') {
+      setBuyerPercentage('');
+      return;
     }
-  }, [sellerPercentage]);
+    const seller = parseFloat(value);
+    if (!isNaN(seller) && seller >= 0 && seller <= 100) {
+      const calculated = 100 - seller;
+      setBuyerPercentage(calculated % 1 === 0 ? calculated.toString() : calculated.toFixed(2));
+    }
+  };
 
   const fetchContractWithNotes = async () => {
     setIsLoading(true);
@@ -270,13 +276,7 @@ export default function DisputeResolutionModal({
                     max="100"
                     step="0.01"
                     value={buyerPercentage}
-                    onChange={(e) => {
-                      setBuyerPercentage(e.target.value);
-                      // Only clear seller if user is starting fresh (empty value)
-                      if (!e.target.value) {
-                        setSellerPercentage('');
-                      }
-                    }}
+                    onChange={(e) => handleBuyerPercentageChange(e.target.value)}
                     placeholder="0-100"
                   />
                 </div>
@@ -290,13 +290,7 @@ export default function DisputeResolutionModal({
                     max="100"
                     step="0.01"
                     value={sellerPercentage}
-                    onChange={(e) => {
-                      setSellerPercentage(e.target.value);
-                      // Only clear buyer if user is starting fresh (empty value)
-                      if (!e.target.value) {
-                        setBuyerPercentage('');
-                      }
-                    }}
+                    onChange={(e) => handleSellerPercentageChange(e.target.value)}
                     placeholder="0-100"
                   />
                 </div>

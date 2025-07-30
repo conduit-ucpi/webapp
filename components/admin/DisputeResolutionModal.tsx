@@ -8,7 +8,7 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner';
 interface AdminNote {
   id: string;
   note: string;
-  createdAt: string;
+  createdAt: number | string; // Unix timestamp in seconds or ISO string for backwards compatibility
   adminEmail: string;
 }
 
@@ -238,7 +238,9 @@ export default function DisputeResolutionModal({
                       <div className="flex justify-between items-start mb-2">
                         <span className="text-sm font-medium text-gray-900">{note.adminEmail}</span>
                         <span className="text-xs text-gray-500">
-                          {new Date(note.createdAt).toLocaleString()}
+                          {typeof note.createdAt === 'number' 
+                            ? new Date(note.createdAt * 1000).toLocaleString()
+                            : new Date(note.createdAt).toLocaleString()}
                         </span>
                       </div>
                       <p className="text-sm text-gray-700">{note.note}</p>

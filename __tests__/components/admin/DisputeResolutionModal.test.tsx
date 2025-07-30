@@ -64,7 +64,7 @@ const mockContract = {
     {
       id: 'note1',
       note: 'First admin note',
-      createdAt: '2025-01-01T00:00:00Z',
+      createdAt: 1735689600, // Unix timestamp: 2025-01-01T00:00:00Z
       adminEmail: 'admin@example.com'
     }
   ]
@@ -172,7 +172,7 @@ describe('DisputeResolutionModal', () => {
         adminNotes: [...mockContract.adminNotes, {
           id: 'note2',
           note: 'New test note',
-          createdAt: '2025-01-02T00:00:00Z',
+          createdAt: 1735776000, // Unix timestamp: 2025-01-02T00:00:00Z
           adminEmail: 'admin@example.com'
         }]
       })
@@ -486,5 +486,40 @@ describe('DisputeResolutionModal', () => {
 
     expect(mockFetch).not.toHaveBeenCalled();
     expect(screen.queryByTestId('modal')).not.toBeInTheDocument();
+  });
+
+  it('handles both Unix timestamps and ISO date strings', async () => {
+    const mixedDateContract = {
+      ...mockContract,
+      adminNotes: [
+        {
+          id: 'note1',
+          note: 'Unix timestamp note',
+          createdAt: 1735689600, // Unix timestamp
+          adminEmail: 'admin1@example.com'
+        },
+        {
+          id: 'note2',
+          note: 'ISO string note',
+          createdAt: '2025-01-02T00:00:00Z', // ISO string for backwards compatibility
+          adminEmail: 'admin2@example.com'
+        }
+      ]
+    };
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => mixedDateContract
+    } as Response);
+
+    render(<DisputeResolutionModal {...defaultProps} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Unix timestamp note')).toBeInTheDocument();
+      expect(screen.getByText('ISO string note')).toBeInTheDocument();
+      // Both dates should be displayed correctly
+      expect(screen.getByText('admin1@example.com')).toBeInTheDocument();
+      expect(screen.getByText('admin2@example.com')).toBeInTheDocument();
+    });
   });
 });

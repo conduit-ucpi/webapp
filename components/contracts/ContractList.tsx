@@ -28,76 +28,59 @@ export default function ContractList() {
     if (!user?.walletAddress) return;
 
     try {
-      // Step 1: Fetch pending contracts from contract service
-      const pendingResponse = await fetch(`${router.basePath}/api/contracts`);
-      if (!pendingResponse.ok) {
-        throw new Error('Failed to fetch pending contracts');
+      // Step 1: Fetch all user contracts from contract service (includes both pending and deployed)
+      const contractsResponse = await fetch(`${router.basePath}/api/contracts`);
+      if (!contractsResponse.ok) {
+        throw new Error('Failed to fetch contracts');
       }
-      const pendingData = await pendingResponse.json();
-      setPendingContracts(pendingData || []);
+      const contractsData = await contractsResponse.json();
 
-      // Step 2: Fetch deployed contracts with email data and notes from contract service
-      const deployedResponse = await fetch(`${router.basePath}/api/contracts/deployed`);
-      if (!deployedResponse.ok) {
-        console.warn('Failed to fetch deployed contracts');
-        setContracts([]);
-        setDeployedContracts([]);
-        setError('');
-        return;
+      // Separate pending contracts (no chainAddress) from deployed contracts (has chainAddress)
+      const pendingContracts: PendingContract[] = [];
+      const deployedContracts: PendingContract[] = [];
+
+      for (const contract of contractsData || []) {
+        if (contract.chainAddress) {
+          deployedContracts.push(contract);
+        } else {
+          pendingContracts.push(contract);
+        }
       }
 
-      const deployedData = await deployedResponse.json();
-      setDeployedContracts(deployedData || []);
+      setPendingContracts(pendingContracts);
+      setDeployedContracts(deployedContracts);
 
-      // Step 3: Extract contracts that have chainAddress and fetch their chain data
+      // Step 2: For deployed contracts, fetch their blockchain data and combine
       const contractsWithChainData: Contract[] = [];
       const contractsWithoutChainData: Contract[] = [];
 
-      for (const deployedContract of deployedData || []) {
-        if (deployedContract.chainAddress) {
-          try {
-            // Fetch individual contract from chain service
-            const chainResponse = await fetch(`${router.basePath}/api/chain/contract/${deployedContract.chainAddress}`);
+      for (const deployedContract of deployedContracts) {
+        try {
+          // Fetch individual contract from chain service
+          const chainResponse = await fetch(`${router.basePath}/api/chain/contract/${deployedContract.chainAddress}`);
+          
+          if (chainResponse.ok) {
+            const chainContract = await chainResponse.json();
             
-            if (chainResponse.ok) {
-              const chainContract = await chainResponse.json();
-              
-              // Step 4: Derive synthetic RESOLVED status
-              let finalStatus = chainContract.status;
-              if (chainContract.status === 'CLAIMED' && deployedContract.adminNotes && deployedContract.adminNotes.length > 0) {
-                finalStatus = 'RESOLVED';
-              }
-
-              // Combine chain data with deployed contract data
-              contractsWithChainData.push({
-                ...chainContract,
-                status: finalStatus,
-                buyerEmail: deployedContract.buyerEmail,
-                sellerEmail: deployedContract.sellerEmail,
-                adminNotes: deployedContract.adminNotes
-              });
-            } else {
-              console.warn(`Failed to fetch chain data for contract ${deployedContract.chainAddress}`);
-              // Create a contract from deployed data only
-              contractsWithoutChainData.push({
-                contractAddress: deployedContract.chainAddress,
-                buyerAddress: '',
-                sellerAddress: deployedContract.sellerAddress || '',
-                amount: deployedContract.amount || 0,
-                expiryTimestamp: deployedContract.expiryTimestamp || 0,
-                description: deployedContract.description || '',
-                status: 'CREATED', // Default status for contracts without chain data
-                createdAt: deployedContract.createdAt ? normalizeTimestamp(deployedContract.createdAt) / 1000 : 0,
-                buyerEmail: deployedContract.buyerEmail,
-                sellerEmail: deployedContract.sellerEmail,
-                adminNotes: deployedContract.adminNotes
-              });
+            // Derive synthetic RESOLVED status
+            let finalStatus = chainContract.status;
+            if (chainContract.status === 'CLAIMED' && deployedContract.adminNotes && deployedContract.adminNotes.length > 0) {
+              finalStatus = 'RESOLVED';
             }
-          } catch (error) {
-            console.warn(`Error fetching chain data for contract ${deployedContract.chainAddress}:`, error);
+
+            // Combine chain data with deployed contract data
+            contractsWithChainData.push({
+              ...chainContract,
+              status: finalStatus,
+              buyerEmail: deployedContract.buyerEmail,
+              sellerEmail: deployedContract.sellerEmail,
+              adminNotes: deployedContract.adminNotes
+            });
+          } else {
+            console.warn(`Failed to fetch chain data for contract ${deployedContract.chainAddress}`);
             // Create a contract from deployed data only
             contractsWithoutChainData.push({
-              contractAddress: deployedContract.chainAddress,
+              contractAddress: deployedContract.chainAddress || '',
               buyerAddress: '',
               sellerAddress: deployedContract.sellerAddress || '',
               amount: deployedContract.amount || 0,
@@ -107,13 +90,14 @@ export default function ContractList() {
               createdAt: deployedContract.createdAt ? normalizeTimestamp(deployedContract.createdAt) / 1000 : 0,
               buyerEmail: deployedContract.buyerEmail,
               sellerEmail: deployedContract.sellerEmail,
-              notes: deployedContract.notes
+              adminNotes: deployedContract.adminNotes
             });
           }
-        } else {
-          // Contract without chainAddress - display from deployed data only
+        } catch (error) {
+          console.warn(`Error fetching chain data for contract ${deployedContract.chainAddress}:`, error);
+          // Create a contract from deployed data only
           contractsWithoutChainData.push({
-            contractAddress: deployedContract.id || '',
+            contractAddress: deployedContract.chainAddress || '',
             buyerAddress: '',
             sellerAddress: deployedContract.sellerAddress || '',
             amount: deployedContract.amount || 0,
@@ -123,12 +107,12 @@ export default function ContractList() {
             createdAt: deployedContract.createdAt ? normalizeTimestamp(deployedContract.createdAt) / 1000 : 0,
             buyerEmail: deployedContract.buyerEmail,
             sellerEmail: deployedContract.sellerEmail,
-            notes: deployedContract.notes
+            adminNotes: deployedContract.adminNotes
           });
         }
       }
 
-      // Combine all contracts
+      // Combine all deployed contracts (with and without chain data)
       const allContracts = [...contractsWithChainData, ...contractsWithoutChainData];
       setContracts(allContracts);
 

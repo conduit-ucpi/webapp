@@ -21,6 +21,7 @@ type AdminContract = PendingContract & {
   claimedAt?: string;
   buyerAddress?: string;
   contractAddress?: string;
+  notes?: string;
 }
 
 export default function AdminPage() {
@@ -166,11 +167,28 @@ export default function AdminPage() {
 
             {/* Contract Card Display */}
             <div className="mb-6">
-              {selectedContract.chainAddress ? (
+              {selectedContract.chainAddress && selectedContract.status ? (
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <h3 className="text-md font-semibold text-gray-900 mb-3">On-Chain Contract</h3>
                   <ContractCard
-                    contract={selectedContract as unknown as Contract}
+                    contract={{
+                      contractAddress: selectedContract.chainAddress,
+                      buyerAddress: selectedContract.buyerAddress || '',
+                      sellerAddress: selectedContract.sellerAddress,
+                      amount: selectedContract.amount,
+                      expiryTimestamp: selectedContract.expiryTimestamp,
+                      description: selectedContract.description,
+                      status: selectedContract.status,
+                      createdAt: new Date(selectedContract.createdAt).getTime() / 1000,
+                      funded: selectedContract.funded,
+                      fundedAt: selectedContract.fundedAt,
+                      disputedAt: selectedContract.disputedAt,
+                      resolvedAt: selectedContract.resolvedAt,
+                      claimedAt: selectedContract.claimedAt,
+                      buyerEmail: selectedContract.buyerEmail,
+                      sellerEmail: selectedContract.sellerEmail,
+                      notes: selectedContract.notes
+                    }}
                     onAction={() => {}}
                   />
                 </div>

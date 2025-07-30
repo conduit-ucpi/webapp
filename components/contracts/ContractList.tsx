@@ -7,7 +7,7 @@ import PendingContractCard from './PendingContractCard';
 import ContractAcceptance from './ContractAcceptance';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 
-type StatusFilter = 'ALL' | 'CREATED' | 'ACTIVE' | 'EXPIRED' | 'DISPUTED' | 'RESOLVED' | 'CLAIMED';
+type StatusFilter = 'ALL' | 'PENDING' | 'CREATED' | 'ACTIVE' | 'EXPIRED' | 'DISPUTED' | 'RESOLVED' | 'CLAIMED';
 type SortOrder = 'expiry-asc' | 'expiry-desc' | 'created-asc' | 'created-desc';
 
 export default function ContractList() {
@@ -20,22 +20,14 @@ export default function ContractList() {
   const [error, setError] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
   const [sortOrder, setSortOrder] = useState<SortOrder>('expiry-asc');
-  const [activeTab, setActiveTab] = useState<'active' | 'pending' | 'accept'>('pending');
   const [contractToAccept, setContractToAccept] = useState<PendingContract | null>(null);
+  const [showAcceptance, setShowAcceptance] = useState(false);
 
   const fetchContracts = async () => {
     if (!user?.walletAddress) return;
 
     try {
-      // Fetch active contracts from chain service
-      const chainResponse = await fetch(`${router.basePath}/api/chain/contracts/${user.walletAddress}`);
-      if (!chainResponse.ok) {
-        throw new Error('Failed to fetch active contracts');
-      }
-      const chainData = await chainResponse.json();
-      const chainContracts = chainData.contracts || [];
-
-      // Fetch pending contracts from contract service
+      // Step 1: Fetch pending contracts from contract service
       const pendingResponse = await fetch(`${router.basePath}/api/contracts`);
       if (!pendingResponse.ok) {
         throw new Error('Failed to fetch pending contracts');
@@ -43,34 +35,101 @@ export default function ContractList() {
       const pendingData = await pendingResponse.json();
       setPendingContracts(pendingData || []);
 
-      // Fetch deployed contracts with email data from contract service
+      // Step 2: Fetch deployed contracts with email data and notes from contract service
       const deployedResponse = await fetch(`${router.basePath}/api/contracts/deployed`);
       if (!deployedResponse.ok) {
-        console.warn('Failed to fetch deployed contracts for email data');
-        setContracts(chainContracts);
-      } else {
-        const deployedData = await deployedResponse.json();
-        setDeployedContracts(deployedData || []);
-
-        // Merge chain contracts with email data from deployed contracts
-        const mergedContracts = chainContracts.map((chainContract: Contract) => {
-          const deployedContract = deployedData.find((deployed: PendingContract) => 
-            deployed.chainAddress === chainContract.contractAddress
-          );
-          
-          if (deployedContract) {
-            return {
-              ...chainContract,
-              buyerEmail: deployedContract.buyerEmail,
-              sellerEmail: deployedContract.sellerEmail
-            };
-          }
-          
-          return chainContract;
-        });
-
-        setContracts(mergedContracts);
+        console.warn('Failed to fetch deployed contracts');
+        setContracts([]);
+        setDeployedContracts([]);
+        setError('');
+        return;
       }
+
+      const deployedData = await deployedResponse.json();
+      setDeployedContracts(deployedData || []);
+
+      // Step 3: Extract contracts that have chainAddress and fetch their chain data
+      const contractsWithChainData: Contract[] = [];
+      const contractsWithoutChainData: Contract[] = [];
+
+      for (const deployedContract of deployedData || []) {
+        if (deployedContract.chainAddress) {
+          try {
+            // Fetch individual contract from chain service
+            const chainResponse = await fetch(`${router.basePath}/api/chain/contract/${deployedContract.chainAddress}`);
+            
+            if (chainResponse.ok) {
+              const chainContract = await chainResponse.json();
+              
+              // Step 4: Derive synthetic RESOLVED status
+              let finalStatus = chainContract.status;
+              if (chainContract.status === 'CLAIMED' && deployedContract.notes) {
+                finalStatus = 'RESOLVED';
+              }
+
+              // Combine chain data with deployed contract data
+              contractsWithChainData.push({
+                ...chainContract,
+                status: finalStatus,
+                buyerEmail: deployedContract.buyerEmail,
+                sellerEmail: deployedContract.sellerEmail,
+                notes: deployedContract.notes
+              });
+            } else {
+              console.warn(`Failed to fetch chain data for contract ${deployedContract.chainAddress}`);
+              // Create a contract from deployed data only
+              contractsWithoutChainData.push({
+                contractAddress: deployedContract.chainAddress,
+                buyerAddress: '',
+                sellerAddress: deployedContract.sellerAddress || '',
+                amount: deployedContract.amount || 0,
+                expiryTimestamp: deployedContract.expiryTimestamp || 0,
+                description: deployedContract.description || '',
+                status: 'CREATED', // Default status for contracts without chain data
+                createdAt: deployedContract.createdAt ? new Date(deployedContract.createdAt).getTime() / 1000 : 0,
+                buyerEmail: deployedContract.buyerEmail,
+                sellerEmail: deployedContract.sellerEmail,
+                notes: deployedContract.notes
+              });
+            }
+          } catch (error) {
+            console.warn(`Error fetching chain data for contract ${deployedContract.chainAddress}:`, error);
+            // Create a contract from deployed data only
+            contractsWithoutChainData.push({
+              contractAddress: deployedContract.chainAddress,
+              buyerAddress: '',
+              sellerAddress: deployedContract.sellerAddress || '',
+              amount: deployedContract.amount || 0,
+              expiryTimestamp: deployedContract.expiryTimestamp || 0,
+              description: deployedContract.description || '',
+              status: 'CREATED', // Default status for contracts without chain data
+              createdAt: deployedContract.createdAt ? new Date(deployedContract.createdAt).getTime() / 1000 : 0,
+              buyerEmail: deployedContract.buyerEmail,
+              sellerEmail: deployedContract.sellerEmail,
+              notes: deployedContract.notes
+            });
+          }
+        } else {
+          // Contract without chainAddress - display from deployed data only
+          contractsWithoutChainData.push({
+            contractAddress: deployedContract.id || '',
+            buyerAddress: '',
+            sellerAddress: deployedContract.sellerAddress || '',
+            amount: deployedContract.amount || 0,
+            expiryTimestamp: deployedContract.expiryTimestamp || 0,
+            description: deployedContract.description || '',
+            status: 'CREATED', // Default status for contracts without chain data
+            createdAt: deployedContract.createdAt ? new Date(deployedContract.createdAt).getTime() / 1000 : 0,
+            buyerEmail: deployedContract.buyerEmail,
+            sellerEmail: deployedContract.sellerEmail,
+            notes: deployedContract.notes
+          });
+        }
+      }
+
+      // Combine all contracts
+      const allContracts = [...contractsWithChainData, ...contractsWithoutChainData];
+      setContracts(allContracts);
 
       setError('');
     } catch (error: any) {
@@ -117,23 +176,41 @@ export default function ContractList() {
     const contract = pendingContracts.find(c => c.id === contractId);
     if (contract) {
       setContractToAccept(contract);
-      setActiveTab('accept');
+      setShowAcceptance(true);
     }
   };
 
   const handleAcceptComplete = () => {
     setContractToAccept(null);
-    setActiveTab('pending');
+    setShowAcceptance(false);
     fetchContracts(); // Refresh contract lists
   };
 
-  // Filter and sort contracts
+  // Create unified contract list with pending contracts as 'PENDING' status
+  const allContracts = useMemo(() => {
+    const pendingAsContracts: Contract[] = pendingContracts.map(pending => ({
+      contractAddress: pending.id,
+      buyerAddress: '',
+      sellerAddress: pending.sellerAddress,
+      amount: pending.amount,
+      expiryTimestamp: pending.expiryTimestamp,
+      description: pending.description,
+      status: 'PENDING' as const,
+      createdAt: new Date(pending.createdAt).getTime() / 1000,
+      buyerEmail: pending.buyerEmail,
+      sellerEmail: pending.sellerEmail
+    }));
+    
+    return [...contracts, ...pendingAsContracts];
+  }, [contracts, pendingContracts]);
+
+  // Filter and sort all contracts
   const filteredAndSortedContracts = useMemo(() => {
-    let filtered = contracts;
+    let filtered = allContracts;
     
     // Apply status filter
     if (statusFilter !== 'ALL') {
-      filtered = contracts.filter(contract => contract.status === statusFilter);
+      filtered = allContracts.filter(contract => contract.status === statusFilter);
     }
     
     // Apply sorting
@@ -151,7 +228,7 @@ export default function ContractList() {
           return 0;
       }
     });
-  }, [contracts, statusFilter, sortOrder]);
+  }, [allContracts, statusFilter, sortOrder]);
 
   if (isLoading) {
     return (
@@ -175,7 +252,7 @@ export default function ContractList() {
     );
   }
 
-  if (contracts.length === 0 && pendingContracts.length === 0) {
+  if (allContracts.length === 0) {
     return (
       <div className="text-center py-20">
         <div className="text-gray-600 mb-4">No contracts found</div>
@@ -186,37 +263,8 @@ export default function ContractList() {
 
   return (
     <div>
-      {/* Tab Navigation */}
-      <div className="mb-6">
-        <div className="border-b border-gray-200">
-          <nav className="-mb-px flex space-x-8">
-            <button
-              onClick={() => setActiveTab('active')}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'active'
-                  ? 'border-primary-500 text-primary-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              Active Contracts ({contracts.length})
-            </button>
-            <button
-              onClick={() => setActiveTab('pending')}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'pending'
-                  ? 'border-primary-500 text-primary-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              Pending Contracts ({pendingContracts.length})
-            </button>
-          </nav>
-        </div>
-      </div>
-
       {/* Filter and Sort Controls */}
-      {activeTab === 'active' && (
-        <div className="mb-6 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+      <div className="mb-6 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div className="flex flex-col sm:flex-row gap-4">
           {/* Status Filter */}
           <div>
@@ -230,6 +278,7 @@ export default function ContractList() {
               className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md"
             >
               <option value="ALL">All Statuses</option>
+              <option value="PENDING">Pending</option>
               <option value="CREATED">Created</option>
               <option value="ACTIVE">Active</option>
               <option value="EXPIRED">Expired</option>
@@ -260,62 +309,54 @@ export default function ContractList() {
 
         {/* Results Count */}
         <div className="text-sm text-gray-600">
-          Showing {filteredAndSortedContracts.length} of {contracts.length} contracts
+          Showing {filteredAndSortedContracts.length} of {allContracts.length} contracts
         </div>
       </div>
-      )}
 
-      {/* Active Contracts Content */}
-      {activeTab === 'active' && (
+      {/* Unified Contracts Content */}
+      {!showAcceptance ? (
         <>
           {filteredAndSortedContracts.length === 0 ? (
             <div className="text-center py-20">
-              <div className="text-gray-600 mb-4">No active contracts match your filters</div>
+              <div className="text-gray-600 mb-4">No contracts match your filters</div>
               <p className="text-gray-500">Try adjusting your filter settings.</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredAndSortedContracts.map((contract) => (
-                <ContractCard
-                  key={contract.contractAddress}
-                  contract={contract}
-                  onAction={handleContractAction}
-                />
-              ))}
+              {filteredAndSortedContracts.map((contract) => {
+                // If this is a pending contract (status === 'PENDING'), use PendingContractCard
+                if (contract.status === 'PENDING') {
+                  const pendingContract = pendingContracts.find(p => p.id === contract.contractAddress);
+                  if (pendingContract) {
+                    return (
+                      <PendingContractCard
+                        key={contract.contractAddress}
+                        contract={pendingContract}
+                        currentUserEmail={user?.email || ''}
+                        onAccept={handleAcceptContract}
+                      />
+                    );
+                  }
+                }
+                // Otherwise use regular ContractCard
+                return (
+                  <ContractCard
+                    key={contract.contractAddress}
+                    contract={contract}
+                    onAction={handleContractAction}
+                  />
+                );
+              })}
             </div>
           )}
         </>
-      )}
-
-      {/* Pending Contracts Content */}
-      {activeTab === 'pending' && (
-        <>
-          {pendingContracts.length === 0 ? (
-            <div className="text-center py-20">
-              <div className="text-gray-600 mb-4">No pending contracts</div>
-              <p className="text-gray-500">Pending contracts will appear here once created.</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {pendingContracts.map((contract) => (
-                <PendingContractCard
-                  key={contract.id}
-                  contract={contract}
-                  currentUserEmail={user?.email || ''}
-                  onAccept={handleAcceptContract}
-                />
-              ))}
-            </div>
-          )}
-        </>
-      )}
-
-      {/* Contract Acceptance Content */}
-      {activeTab === 'accept' && contractToAccept && (
-        <ContractAcceptance
-          contract={contractToAccept}
-          onAcceptComplete={handleAcceptComplete}
-        />
+      ) : (
+        contractToAccept && (
+          <ContractAcceptance
+            contract={contractToAccept}
+            onAcceptComplete={handleAcceptComplete}
+          />
+        )
       )}
     </div>
   );

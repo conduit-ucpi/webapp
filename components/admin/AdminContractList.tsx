@@ -16,6 +16,8 @@ type AdminContract = PendingContract & {
   resolvedAt?: string;
   claimedAt?: string;
   buyerAddress?: string;
+  contractAddress?: string;
+  notes?: string;
 }
 
 interface AdminContractListProps {
@@ -46,12 +48,58 @@ export default function AdminContractList({ onContractSelect }: AdminContractLis
 
   const fetchContracts = async () => {
     try {
-      const response = await fetch(`${router.basePath}/api/admin/contracts`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch contracts');
+      // Step 1: Fetch deployed contracts with email data and notes from contract service
+      const deployedResponse = await fetch(`${router.basePath}/api/admin/contracts`);
+      if (!deployedResponse.ok) {
+        throw new Error('Failed to fetch deployed contracts');
       }
-      const data = await response.json();
-      setContracts(data);
+      const deployedData = await deployedResponse.json();
+
+      // Step 2: Extract contracts that have chainAddress and fetch their chain data
+      const contractsWithChainData: AdminContract[] = [];
+      const contractsWithoutChainData: AdminContract[] = [];
+
+      for (const deployedContract of deployedData || []) {
+        if (deployedContract.chainAddress) {
+          try {
+            // Fetch individual contract from chain service
+            const chainResponse = await fetch(`${router.basePath}/api/chain/contract/${deployedContract.chainAddress}`);
+            
+            if (chainResponse.ok) {
+              const chainContract = await chainResponse.json();
+              
+              // Step 3: Derive synthetic RESOLVED status
+              let finalStatus = chainContract.status;
+              if (chainContract.status === 'CLAIMED' && deployedContract.notes) {
+                finalStatus = 'RESOLVED';
+              }
+
+              // Combine chain data with deployed contract data
+              contractsWithChainData.push({
+                ...deployedContract,
+                ...chainContract,
+                status: finalStatus,
+                buyerAddress: chainContract.buyer || chainContract.buyerAddress,
+                sellerAddress: chainContract.seller || chainContract.sellerAddress,
+                contractAddress: deployedContract.chainAddress
+              });
+            } else {
+              console.warn(`Failed to fetch chain data for contract ${deployedContract.chainAddress}`);
+              contractsWithoutChainData.push(deployedContract);
+            }
+          } catch (error) {
+            console.warn(`Error fetching chain data for contract ${deployedContract.chainAddress}:`, error);
+            contractsWithoutChainData.push(deployedContract);
+          }
+        } else {
+          // Contract without chainAddress
+          contractsWithoutChainData.push(deployedContract);
+        }
+      }
+
+      // Combine all contracts
+      const allContracts = [...contractsWithChainData, ...contractsWithoutChainData];
+      setContracts(allContracts);
       setError('');
     } catch (error: any) {
       console.error('Failed to fetch admin contracts:', error);

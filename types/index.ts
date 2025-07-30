@@ -23,7 +23,7 @@ export interface Contract {
   amount: number;
   expiryTimestamp: number;
   description: string;
-  status: 'CREATED' | 'ACTIVE' | 'EXPIRED' | 'DISPUTED' | 'RESOLVED' | 'CLAIMED';
+  status: 'PENDING' | 'CREATED' | 'ACTIVE' | 'EXPIRED' | 'DISPUTED' | 'RESOLVED' | 'CLAIMED';
   createdAt: number;
   funded?: boolean;
   fundedAt?: string;
@@ -33,6 +33,8 @@ export interface Contract {
   // Optional email fields from contract service
   buyerEmail?: string;
   sellerEmail?: string;
+  // Optional notes field from contract service (used for dispute resolution)
+  notes?: string;
 }
 
 export interface PendingContract {

@@ -5,7 +5,7 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 import ExpandableHash from '@/components/ui/ExpandableHash';
-import { formatUSDC, formatExpiryDate } from '@/utils/validation';
+import { formatUSDC, formatExpiryDate, normalizeTimestamp } from '@/utils/validation';
 
 // Extended type for admin contracts that includes chain data
 type AdminContract = PendingContract & {
@@ -70,7 +70,7 @@ export default function AdminContractList({ onContractSelect }: AdminContractLis
               
               // Step 3: Derive synthetic RESOLVED status
               let finalStatus = chainContract.status;
-              if (chainContract.status === 'CLAIMED' && deployedContract.notes) {
+              if (chainContract.status === 'CLAIMED' && deployedContract.adminNotes && deployedContract.adminNotes.length > 0) {
                 finalStatus = 'RESOLVED';
               }
 
@@ -351,7 +351,7 @@ export default function AdminContractList({ onContractSelect }: AdminContractLis
                   onClick={() => onContractSelect?.(contract)}
                 >
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {new Date(contract.createdAt).toLocaleDateString()}
+                    {new Date(normalizeTimestamp(contract.createdAt)).toLocaleDateString()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                     ${formatUSDC(contract.amount)} {contract.currency}

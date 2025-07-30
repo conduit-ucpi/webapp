@@ -8,6 +8,7 @@ import Input from '@/components/ui/Input';
 import ContractCard from '@/components/contracts/ContractCard';
 import PendingContractCard from '@/components/contracts/PendingContractCard';
 import AdminContractList from '@/components/admin/AdminContractList';
+import { normalizeTimestamp } from '@/utils/validation';
 import DisputeResolutionModal from '@/components/admin/DisputeResolutionModal';
 import { Contract, PendingContract } from '@/types';
 
@@ -179,7 +180,7 @@ export default function AdminPage() {
                       expiryTimestamp: selectedContract.expiryTimestamp,
                       description: selectedContract.description,
                       status: selectedContract.status,
-                      createdAt: new Date(selectedContract.createdAt).getTime() / 1000,
+                      createdAt: normalizeTimestamp(selectedContract.createdAt) / 1000,
                       funded: selectedContract.funded,
                       fundedAt: selectedContract.fundedAt,
                       disputedAt: selectedContract.disputedAt,

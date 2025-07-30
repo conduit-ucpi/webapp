@@ -43,9 +43,16 @@ export function formatUSDC(amount: string | number): string {
   return usdc.toFixed(2);
 }
 
+export function normalizeTimestamp(timestamp: number | string): number {
+  // Convert to number if it's a string
+  const ts = typeof timestamp === 'string' ? parseInt(timestamp, 10) : timestamp;
+  // If it's 10 digits or less, it's in seconds - convert to milliseconds
+  return ts.toString().length <= 10 ? ts * 1000 : ts;
+}
+
 export function formatTimeRemaining(expiryTimestamp: number): string {
   const now = Date.now();
-  const expiry = expiryTimestamp * 1000;
+  const expiry = normalizeTimestamp(expiryTimestamp);
   const diff = expiry - now;
 
   if (diff <= 0) {
@@ -66,7 +73,7 @@ export function formatTimeRemaining(expiryTimestamp: number): string {
 }
 
 export function formatExpiryDate(expiryTimestamp: number): string {
-  const date = new Date(expiryTimestamp * 1000);
+  const date = new Date(normalizeTimestamp(expiryTimestamp));
   
   // Get the user's timezone
   const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;

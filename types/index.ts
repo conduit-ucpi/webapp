@@ -35,6 +35,13 @@ export interface Contract {
   sellerEmail?: string;
   // Optional notes field from contract service (used for dispute resolution)
   notes?: string;
+  // Admin notes array from contract service
+  adminNotes?: Array<{
+    id: string;
+    content: string;
+    addedBy: string;
+    addedAt: number;
+  }>;
 }
 
 export interface PendingContract {
@@ -50,6 +57,13 @@ export interface PendingContract {
   description: string;
   createdAt: string;
   createdBy: string;
+  // Admin notes array from contract service
+  adminNotes?: Array<{
+    id: string;
+    content: string;
+    addedBy: string;
+    addedAt: number;
+  }>;
 }
 
 export interface CreateContractRequest {

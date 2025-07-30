@@ -6,6 +6,7 @@ import ContractCard from './ContractCard';
 import PendingContractCard from './PendingContractCard';
 import ContractAcceptance from './ContractAcceptance';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import { normalizeTimestamp } from '@/utils/validation';
 
 type StatusFilter = 'ALL' | 'PENDING' | 'CREATED' | 'ACTIVE' | 'EXPIRED' | 'DISPUTED' | 'RESOLVED' | 'CLAIMED';
 type SortOrder = 'expiry-asc' | 'expiry-desc' | 'created-asc' | 'created-desc';
@@ -63,7 +64,7 @@ export default function ContractList() {
               
               // Step 4: Derive synthetic RESOLVED status
               let finalStatus = chainContract.status;
-              if (chainContract.status === 'CLAIMED' && deployedContract.notes) {
+              if (chainContract.status === 'CLAIMED' && deployedContract.adminNotes && deployedContract.adminNotes.length > 0) {
                 finalStatus = 'RESOLVED';
               }
 
@@ -73,7 +74,7 @@ export default function ContractList() {
                 status: finalStatus,
                 buyerEmail: deployedContract.buyerEmail,
                 sellerEmail: deployedContract.sellerEmail,
-                notes: deployedContract.notes
+                adminNotes: deployedContract.adminNotes
               });
             } else {
               console.warn(`Failed to fetch chain data for contract ${deployedContract.chainAddress}`);
@@ -86,10 +87,10 @@ export default function ContractList() {
                 expiryTimestamp: deployedContract.expiryTimestamp || 0,
                 description: deployedContract.description || '',
                 status: 'CREATED', // Default status for contracts without chain data
-                createdAt: deployedContract.createdAt ? new Date(deployedContract.createdAt).getTime() / 1000 : 0,
+                createdAt: deployedContract.createdAt ? normalizeTimestamp(deployedContract.createdAt) / 1000 : 0,
                 buyerEmail: deployedContract.buyerEmail,
                 sellerEmail: deployedContract.sellerEmail,
-                notes: deployedContract.notes
+                adminNotes: deployedContract.adminNotes
               });
             }
           } catch (error) {
@@ -103,7 +104,7 @@ export default function ContractList() {
               expiryTimestamp: deployedContract.expiryTimestamp || 0,
               description: deployedContract.description || '',
               status: 'CREATED', // Default status for contracts without chain data
-              createdAt: deployedContract.createdAt ? new Date(deployedContract.createdAt).getTime() / 1000 : 0,
+              createdAt: deployedContract.createdAt ? normalizeTimestamp(deployedContract.createdAt) / 1000 : 0,
               buyerEmail: deployedContract.buyerEmail,
               sellerEmail: deployedContract.sellerEmail,
               notes: deployedContract.notes
@@ -119,7 +120,7 @@ export default function ContractList() {
             expiryTimestamp: deployedContract.expiryTimestamp || 0,
             description: deployedContract.description || '',
             status: 'CREATED', // Default status for contracts without chain data
-            createdAt: deployedContract.createdAt ? new Date(deployedContract.createdAt).getTime() / 1000 : 0,
+            createdAt: deployedContract.createdAt ? normalizeTimestamp(deployedContract.createdAt) / 1000 : 0,
             buyerEmail: deployedContract.buyerEmail,
             sellerEmail: deployedContract.sellerEmail,
             notes: deployedContract.notes
@@ -196,7 +197,7 @@ export default function ContractList() {
       expiryTimestamp: pending.expiryTimestamp,
       description: pending.description,
       status: 'PENDING' as const,
-      createdAt: new Date(pending.createdAt).getTime() / 1000,
+      createdAt: normalizeTimestamp(pending.createdAt) / 1000,
       buyerEmail: pending.buyerEmail,
       sellerEmail: pending.sellerEmail
     }));

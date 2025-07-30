@@ -35,7 +35,11 @@ jest.mock('@/components/ui/ExpandableHash', () => {
 
 jest.mock('@/utils/validation', () => ({
   formatUSDC: (amount: number) => amount.toFixed(2),
-  formatExpiryDate: (timestamp: number) => new Date(timestamp * 1000).toLocaleDateString()
+  formatExpiryDate: (timestamp: number) => new Date(timestamp.toString().length <= 10 ? timestamp * 1000 : timestamp).toLocaleDateString(),
+  normalizeTimestamp: (timestamp: number | string) => {
+    const ts = typeof timestamp === 'string' ? parseInt(timestamp, 10) : timestamp;
+    return ts.toString().length <= 10 ? ts * 1000 : ts;
+  }
 }));
 
 // Mock global fetch
@@ -835,16 +839,23 @@ describe('AdminContractList', () => {
     }, { timeout: 3000 });
   });
 
-  it('creates synthetic RESOLVED status when contract is CLAIMED with notes', async () => {
-    const contractWithNotes = {
+  it('creates synthetic RESOLVED status when contract is CLAIMED with adminNotes', async () => {
+    const contractWithAdminNotes = {
       ...mockContracts[0],
-      notes: 'Admin resolved this dispute in favor of buyer'
+      adminNotes: [
+        {
+          id: '1',
+          content: 'Admin resolved this dispute in favor of buyer',
+          addedBy: 'admin@example.com',
+          addedAt: 1753900000000
+        }
+      ]
     };
 
     // Mock deployed contracts response
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => [contractWithNotes]
+      json: async () => [contractWithAdminNotes]
     } as Response);
     
     // Mock chain service response with CLAIMED status
@@ -862,7 +873,7 @@ describe('AdminContractList', () => {
     render(<AdminContractList />);
 
     await waitFor(() => {
-      // Should show RESOLVED instead of CLAIMED because notes exist
+      // Should show RESOLVED instead of CLAIMED because adminNotes exist
       expect(screen.getByText('RESOLVED')).toBeInTheDocument();
       expect(screen.queryByText('CLAIMED')).not.toBeInTheDocument();
     });

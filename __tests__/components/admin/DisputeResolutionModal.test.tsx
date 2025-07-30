@@ -75,6 +75,7 @@ describe('DisputeResolutionModal', () => {
     isOpen: true,
     onClose: jest.fn(),
     contractId: '1',
+    chainAddress: '0x1234567890abcdef',
     onResolutionComplete: jest.fn()
   };
 
@@ -282,7 +283,8 @@ describe('DisputeResolutionModal', () => {
         body: JSON.stringify({
           buyerPercentage: 60,
           sellerPercentage: 40,
-          resolutionNote: 'Resolution note'
+          resolutionNote: 'Resolution note',
+          chainAddress: '0x1234567890abcdef'
         })
       });
 

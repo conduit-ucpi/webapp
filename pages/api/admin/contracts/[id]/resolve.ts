@@ -12,7 +12,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { buyerPercentage, sellerPercentage, resolutionNote } = req.body;
+  const { buyerPercentage, sellerPercentage, resolutionNote, chainAddress } = req.body;
 
   // Validate percentages
   if (typeof buyerPercentage !== 'number' || typeof sellerPercentage !== 'number') {
@@ -27,9 +27,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(400).json({ error: 'Percentages must be between 0 and 100' });
   }
 
+  // Validate chainAddress is provided
+  if (!chainAddress || typeof chainAddress !== 'string') {
+    return res.status(400).json({ error: 'Chain address is required' });
+  }
+
   try {
-    // Call the chain service to resolve the dispute
-    const response = await fetch(`${process.env.CHAIN_SERVICE_URL}/api/admin/contracts/${id}/resolve`, {
+    // Call the chain service to resolve the dispute using the provided chain address
+    const response = await fetch(`${process.env.CHAIN_SERVICE_URL}/api/admin/contracts/${chainAddress}/resolve`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -46,7 +51,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const errorText = await response.text();
       console.error('Chain service error:', response.status, errorText);
       return res.status(response.status).json({ 
-        error: response.status === 404 ? 'Contract not found' : 'Failed to resolve dispute' 
+        error: response.status === 404 ? 'Contract not found on chain' : 'Failed to resolve dispute' 
       });
     }
 

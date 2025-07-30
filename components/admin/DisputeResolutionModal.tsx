@@ -26,6 +26,7 @@ interface DisputeResolutionModalProps {
   isOpen: boolean;
   onClose: () => void;
   contractId: string;
+  chainAddress?: string;
   onResolutionComplete: () => void;
 }
 
@@ -33,6 +34,7 @@ export default function DisputeResolutionModal({
   isOpen,
   onClose,
   contractId,
+  chainAddress,
   onResolutionComplete
 }: DisputeResolutionModalProps) {
   const router = useRouter();
@@ -145,7 +147,8 @@ export default function DisputeResolutionModal({
           body: JSON.stringify({
             buyerPercentage: parseFloat(buyerPercentage),
             sellerPercentage: parseFloat(sellerPercentage),
-            resolutionNote: newNote
+            resolutionNote: newNote,
+            chainAddress
           }),
         });
 

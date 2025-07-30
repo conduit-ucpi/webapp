@@ -328,6 +328,7 @@ export default function AdminPage() {
           isOpen={isDisputeModalOpen}
           onClose={handleDisputeModalClose}
           contractId={selectedContract.id}
+          chainAddress={selectedContract.chainAddress}
           onResolutionComplete={handleResolutionComplete}
         />
       )}

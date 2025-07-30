@@ -19,7 +19,7 @@ interface ContractWithNotes {
   currency: string;
   sellerEmail: string;
   buyerEmail: string;
-  notes: AdminNote[];
+  adminNotes: AdminNote[];
 }
 
 interface DisputeResolutionModalProps {
@@ -220,9 +220,9 @@ export default function DisputeResolutionModal({
             {/* Existing Notes */}
             <div>
               <h3 className="font-semibold text-gray-900 mb-3">Admin Notes</h3>
-              {contract.notes.length > 0 ? (
+              {contract.adminNotes.length > 0 ? (
                 <div className="space-y-3 max-h-64 overflow-y-auto">
-                  {contract.notes.map((note) => (
+                  {contract.adminNotes.map((note) => (
                     <div key={note.id} className="bg-white border border-gray-200 p-3 rounded-lg">
                       <div className="flex justify-between items-start mb-2">
                         <span className="text-sm font-medium text-gray-900">{note.adminEmail}</span>

@@ -53,22 +53,24 @@ export default function DisputeResolutionModal({
 
   // Auto-calculate percentages when one changes
   useEffect(() => {
-    if (buyerPercentage && !sellerPercentage) {
+    if (buyerPercentage && sellerPercentage === '') {
       const buyer = parseFloat(buyerPercentage);
       if (!isNaN(buyer) && buyer >= 0 && buyer <= 100) {
-        setSellerPercentage((100 - buyer).toString());
+        const calculated = 100 - buyer;
+        setSellerPercentage(calculated % 1 === 0 ? calculated.toString() : calculated.toFixed(2));
       }
     }
-  }, [buyerPercentage, sellerPercentage]);
+  }, [buyerPercentage]);
 
   useEffect(() => {
-    if (sellerPercentage && !buyerPercentage) {
+    if (sellerPercentage && buyerPercentage === '') {
       const seller = parseFloat(sellerPercentage);
       if (!isNaN(seller) && seller >= 0 && seller <= 100) {
-        setBuyerPercentage((100 - seller).toString());
+        const calculated = 100 - seller;
+        setBuyerPercentage(calculated % 1 === 0 ? calculated.toString() : calculated.toFixed(2));
       }
     }
-  }, [sellerPercentage, buyerPercentage]);
+  }, [sellerPercentage]);
 
   const fetchContractWithNotes = async () => {
     setIsLoading(true);
@@ -267,7 +269,10 @@ export default function DisputeResolutionModal({
                     value={buyerPercentage}
                     onChange={(e) => {
                       setBuyerPercentage(e.target.value);
-                      setSellerPercentage('');
+                      // Only clear seller if user is starting fresh (empty value)
+                      if (!e.target.value) {
+                        setSellerPercentage('');
+                      }
                     }}
                     placeholder="0-100"
                   />
@@ -284,7 +289,10 @@ export default function DisputeResolutionModal({
                     value={sellerPercentage}
                     onChange={(e) => {
                       setSellerPercentage(e.target.value);
-                      setBuyerPercentage('');
+                      // Only clear buyer if user is starting fresh (empty value)
+                      if (!e.target.value) {
+                        setBuyerPercentage('');
+                      }
                     }}
                     placeholder="0-100"
                   />

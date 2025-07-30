@@ -215,17 +215,15 @@ describe('DisputeResolutionModal', () => {
     fireEvent.change(buyerInput, { target: { value: '60' } });
     fireEvent.change(sellerInput, { target: { value: '50' } });
 
-    // Mock the failed note addition that triggers validation
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ id: 'note2', note: 'Resolution note' })
-    } as Response);
-
     const resolveButton = screen.getByText('Add Note and Resolve');
-    fireEvent.click(resolveButton);
-
+    
+    // Button should be disabled due to invalid percentages
+    expect(resolveButton).toBeDisabled();
+    
+    // Total should show in red and indicate 110%
     await waitFor(() => {
-      expect(screen.getByText('Buyer and seller percentages must add up to 100%')).toBeInTheDocument();
+      expect(screen.getByText('Total: 110.00%')).toBeInTheDocument();
+      expect(screen.getByText('Total: 110.00%')).toHaveClass('text-red-600');
     });
   });
 
@@ -314,7 +312,7 @@ describe('DisputeResolutionModal', () => {
     await waitFor(() => {
       const updatedInputs = screen.getAllByPlaceholderText('0-100');
       const updatedSellerInput = updatedInputs[1];
-      expect(updatedSellerInput).toHaveValue('25');
+      expect(updatedSellerInput).toHaveValue(25);
     });
   });
 

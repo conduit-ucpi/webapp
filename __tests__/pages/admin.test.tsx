@@ -205,6 +205,21 @@ describe('AdminPage', () => {
       logout: jest.fn(),
     });
 
+    // Mock the raw data API endpoint
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        contractservice: {
+          source: 'contractservice',
+          data: { id: 'test-contract', amount: 100 }
+        },
+        chainservice: {
+          source: 'chainservice',
+          message: 'Contract not deployed to chain'
+        }
+      })
+    } as any);
+
     render(<AdminPage />);
 
     const selectButton = screen.getByText('Select Contract');
@@ -213,10 +228,11 @@ describe('AdminPage', () => {
     await waitFor(() => {
       expect(screen.getByText('Contract Details')).toBeInTheDocument();
       expect(screen.getByText('Close')).toBeInTheDocument();
+      expect(screen.getByText('Raw Service Data')).toBeInTheDocument();
     });
   });
 
-  it('can close contract details', () => {
+  it('can close contract details', async () => {
     mockUseAuth.mockReturnValue({
       user: {
         userId: '1',
@@ -230,13 +246,30 @@ describe('AdminPage', () => {
       logout: jest.fn(),
     });
 
+    // Mock the raw data API endpoint
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        contractservice: {
+          source: 'contractservice',
+          data: { id: 'test-contract', amount: 100 }
+        },
+        chainservice: {
+          source: 'chainservice',
+          message: 'Contract not deployed to chain'
+        }
+      })
+    } as any);
+
     render(<AdminPage />);
 
     // Select a contract first
     const selectButton = screen.getByText('Select Contract');
     fireEvent.click(selectButton);
 
-    expect(screen.getByText('Contract Details')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('Contract Details')).toBeInTheDocument();
+    });
     
     // Close the details
     const closeButton = screen.getByText('Close');
@@ -263,7 +296,22 @@ describe('Contract Selection and Details', () => {
     });
   });
 
-  it('displays selected contract details', () => {
+  it('displays selected contract details', async () => {
+    // Mock the raw data API endpoint
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        contractservice: {
+          source: 'contractservice',
+          data: { id: 'test-contract', amount: 100 }
+        },
+        chainservice: {
+          source: 'chainservice',
+          message: 'Contract not deployed to chain'
+        }
+      })
+    } as any);
+
     render(<AdminPage />);
 
     // Initially no contract details shown
@@ -274,11 +322,28 @@ describe('Contract Selection and Details', () => {
     fireEvent.click(selectButton);
 
     // Contract details should appear
-    expect(screen.getByText('Contract Details')).toBeInTheDocument();
-    expect(screen.getByText('Close')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('Contract Details')).toBeInTheDocument();
+      expect(screen.getByText('Close')).toBeInTheDocument();
+    });
   });
 
-  it('shows pending contract card for contracts without chain address', () => {
+  it('shows pending contract card for contracts without chain address', async () => {
+    // Mock the raw data API endpoint
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        contractservice: {
+          source: 'contractservice',
+          data: { id: 'test-contract', amount: 100 }
+        },
+        chainservice: {
+          source: 'chainservice',
+          message: 'Contract not deployed to chain'
+        }
+      })
+    } as any);
+
     render(<AdminPage />);
 
     // Mock the AdminContractList to select a contract without chainAddress
@@ -286,7 +351,9 @@ describe('Contract Selection and Details', () => {
     const selectButton = within(mockAdminList).getByText('Select Contract');
     fireEvent.click(selectButton);
 
-    expect(screen.getByText('Pending Contract')).toBeInTheDocument();
-    expect(screen.getByTestId('pending-contract-card')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('Pending Contract')).toBeInTheDocument();
+      expect(screen.getByTestId('pending-contract-card')).toBeInTheDocument();
+    });
   });
 });

@@ -28,13 +28,37 @@ export default function AdminPage() {
   const router = useRouter();
   const [selectedContract, setSelectedContract] = useState<AdminContract | null>(null);
   const [isDisputeModalOpen, setIsDisputeModalOpen] = useState(false);
+  const [rawContractData, setRawContractData] = useState<{
+    contractservice: any;
+    chainservice: any;
+  } | null>(null);
+  const [isLoadingRawData, setIsLoadingRawData] = useState(false);
+
+  const fetchRawContractData = async (contractId: string) => {
+    setIsLoadingRawData(true);
+    try {
+      const response = await fetch(`${router.basePath}/api/admin/contracts/raw?contractId=${contractId}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch raw contract data');
+      }
+      const data = await response.json();
+      setRawContractData(data);
+    } catch (error) {
+      console.error('Failed to fetch raw contract data:', error);
+      setRawContractData(null);
+    } finally {
+      setIsLoadingRawData(false);
+    }
+  };
 
   const handleContractSelect = (contract: AdminContract) => {
     setSelectedContract(contract);
+    fetchRawContractData(contract.id);
   };
 
   const clearSelection = () => {
     setSelectedContract(null);
+    setRawContractData(null);
   };
 
   const handleAddressDispute = () => {
@@ -118,7 +142,7 @@ export default function AdminPage() {
         {/* Selected Contract Details */}
         {selectedContract && (
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
-            <div className="flex justify-between items-center mb-4">
+            <div className="flex justify-between items-center mb-6">
               <h2 className="text-lg font-semibold text-gray-900">Contract Details</h2>
               <div className="flex space-x-2">
                 {selectedContract.status === 'DISPUTED' && (
@@ -139,25 +163,89 @@ export default function AdminPage() {
                 </Button>
               </div>
             </div>
-            
-            {selectedContract.chainAddress ? (
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <h3 className="text-md font-semibold text-gray-900 mb-3">On-Chain Contract</h3>
-                <ContractCard
-                  contract={selectedContract as unknown as Contract}
-                  onAction={() => {}}
-                />
-              </div>
-            ) : (
-              <div className="bg-blue-50 p-4 rounded-lg">
-                <h3 className="text-md font-semibold text-gray-900 mb-3">Pending Contract</h3>
-                <PendingContractCard
-                  contract={selectedContract}
-                  currentUserEmail=""
-                  onAccept={undefined}
-                />
-              </div>
-            )}
+
+            {/* Contract Card Display */}
+            <div className="mb-6">
+              {selectedContract.chainAddress ? (
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h3 className="text-md font-semibold text-gray-900 mb-3">On-Chain Contract</h3>
+                  <ContractCard
+                    contract={selectedContract as unknown as Contract}
+                    onAction={() => {}}
+                  />
+                </div>
+              ) : (
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <h3 className="text-md font-semibold text-gray-900 mb-3">Pending Contract</h3>
+                  <PendingContractCard
+                    contract={selectedContract}
+                    currentUserEmail=""
+                    onAccept={undefined}
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Raw Data Tickets */}
+            <div className="border-t border-gray-200 pt-6">
+              <h3 className="text-md font-semibold text-gray-900 mb-4">Raw Service Data</h3>
+              
+              {isLoadingRawData ? (
+                <div className="flex justify-center items-center py-8">
+                  <LoadingSpinner size="md" />
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Contract Service Data */}
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="text-sm font-semibold text-blue-900">Local Storage</h4>
+                      <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded">ContractService</span>
+                    </div>
+                    
+                    {rawContractData?.contractservice?.error ? (
+                      <div className="text-red-600 text-sm">
+                        Error: {rawContractData.contractservice.error}
+                      </div>
+                    ) : rawContractData?.contractservice?.data ? (
+                      <div className="bg-white rounded border p-3 max-h-96 overflow-y-auto">
+                        <pre className="text-xs text-gray-800 whitespace-pre-wrap break-words">
+                          {JSON.stringify(rawContractData.contractservice.data, null, 2)}
+                        </pre>
+                      </div>
+                    ) : (
+                      <div className="text-gray-500 text-sm">No data available</div>
+                    )}
+                  </div>
+
+                  {/* Chain Service Data */}
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="text-sm font-semibold text-green-900">Blockchain</h4>
+                      <span className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded">ChainService</span>
+                    </div>
+                    
+                    {rawContractData?.chainservice?.error ? (
+                      <div className="text-red-600 text-sm">
+                        Error: {rawContractData.chainservice.error}
+                      </div>
+                    ) : rawContractData?.chainservice?.message ? (
+                      <div className="text-gray-500 text-sm">
+                        {rawContractData.chainservice.message}
+                      </div>
+                    ) : rawContractData?.chainservice?.data ? (
+                      <div className="bg-white rounded border p-3 max-h-96 overflow-y-auto">
+                        <pre className="text-xs text-gray-800 whitespace-pre-wrap break-words">
+                          {JSON.stringify(rawContractData.chainservice.data, null, 2)}
+                        </pre>
+                      </div>
+                    ) : (
+                      <div className="text-gray-500 text-sm">No data available</div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
 

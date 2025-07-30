@@ -7,7 +7,7 @@ A Next.js web application for creating and managing time-delayed escrow contract
 - **Secure Authentication**: Web3Auth integration for wallet-based login
 - **Escrow Contracts**: Create time-delayed escrow agreements with built-in dispute resolution
 - **USDC Support**: Native USDC token support with automatic approval handling
-- **MoonPay Integration**: Direct USDC purchases within the app
+- **MoonPay Integration**: Direct USDC purchases within the app (coming soon)
 - **Real-time Updates**: Auto-refreshing dashboard for contract status changes
 - **Mobile Responsive**: Optimized for all device sizes
 

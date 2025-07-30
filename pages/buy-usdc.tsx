@@ -1,14 +1,17 @@
 import { useState } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/components/auth/AuthProvider';
+import { useConfig } from '@/components/auth/ConfigProvider';
 import MoonPayWidget from '@/components/moonpay/MoonPayWidget';
 import ConnectWallet from '@/components/auth/ConnectWallet';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import USDCGuide from '@/components/ui/USDCGuide';
 
 export default function BuyUSDC() {
   const router = useRouter();
   const { user, provider, isLoading } = useAuth();
+  const { config } = useConfig();
   const [showWidget, setShowWidget] = useState(false);
   
   // Get mode from query params (buy or sell)
@@ -73,10 +76,19 @@ export default function BuyUSDC() {
                 </h2>
                 <p className="text-gray-600">
                   {isBuyMode 
+                    ? 'Buy USDC with your credit card or bank account. This feature is coming soon!'
+                    : 'Sell USDC from your wallet and receive funds in your bank account. This feature is coming soon!'
+                  }
+                </p>
+                
+                {/* Original description - commented out for later restoration
+                <p className="text-gray-600">
+                  {isBuyMode 
                     ? 'Buy USDC with your credit card or bank account. Funds will be sent directly to your connected wallet.'
                     : 'Sell USDC from your wallet and receive funds in your bank account or card.'
                   }
                 </p>
+                */}
               </div>
 
               <div className="bg-gray-50 rounded-lg p-4 mb-6">
@@ -97,6 +109,17 @@ export default function BuyUSDC() {
               </div>
 
               <div className="space-y-4">
+                {/* Temporarily disabled - showing coming soon message */}
+                <Button 
+                  onClick={() => setShowWidget(true)}
+                  className="w-full bg-gray-400 hover:bg-gray-500 cursor-not-allowed"
+                  size="lg"
+                  disabled
+                >
+                  Coming Soon
+                </Button>
+                
+                {/* Original button - commented out for later restoration
                 <Button 
                   onClick={() => setShowWidget(true)}
                   className="w-full bg-primary-500 hover:bg-primary-600"
@@ -104,6 +127,7 @@ export default function BuyUSDC() {
                 >
                   {isBuyMode ? 'Continue with MoonPay' : 'Continue to Sell USDC'}
                 </Button>
+                */}
                 
                 <div className="text-center">
                   <button 
@@ -127,6 +151,11 @@ export default function BuyUSDC() {
                   Privacy Policy
                 </a>
               </p>
+            </div>
+
+            {/* How to Add USDC Guide - shown when coming soon message is displayed */}
+            <div className="mt-8">
+              <USDCGuide showMoonPayComingSoon={true} />
             </div>
           </div>
         ) : (

@@ -7,6 +7,7 @@ import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import ExpandableHash from '@/components/ui/ExpandableHash';
+import USDCGuide from '@/components/ui/USDCGuide';
 import { ethers } from 'ethers';
 
 interface WalletBalances {
@@ -308,42 +309,9 @@ export default function Wallet() {
         </div>
 
         {/* Funding Guide */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8">
-            <h3 className="text-lg font-semibold text-blue-900 mb-3">How to Add USDC to Your Wallet</h3>
-            <div className="space-y-3 text-sm text-blue-800">
-              <div className="flex items-start">
-                <span className="font-semibold mr-2">1.</span>
-                <div>
-                  <span className="font-semibold">Check your network:</span> You're currently on {chainInfo?.name || 'Unknown Network'}. 
-                  Make sure to deposit USDC on the same network.
-                </div>
-              </div>
-              <div className="flex items-start">
-                <span className="font-semibold mr-2">2.</span>
-                <div>
-                  <span className="font-semibold">Your wallet address:</span> 
-                  <code className="bg-blue-100 px-2 py-1 rounded text-xs ml-2 break-all">{user?.walletAddress}</code>
-                </div>
-              </div>
-              <div className="flex items-start">
-                <span className="font-semibold mr-2">3.</span>
-                <div>
-                  <span className="font-semibold">Fund your wallet using:</span>
-                  <ul className="mt-2 ml-4 space-y-1">
-                    <li>• <strong>MoonPay:</strong> Buy USDC directly with credit/debit card</li>
-                    <li>• <strong>MetaMask/Coinbase:</strong> Transfer USDC from another wallet</li>
-                    <li>• <strong>Exchange:</strong> Withdraw USDC from Binance, Coinbase, etc.</li>
-                  </ul>
-                </div>
-              </div>
-              <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
-                <p className="text-yellow-800 text-xs">
-                  <strong>Important:</strong> Ensure you're depositing USDC (not USDT or other stablecoins) on the {chainInfo?.name || 'correct'} network. 
-                  Wrong network deposits may result in lost funds.
-                </p>
-              </div>
-            </div>
-          </div>
+        <div className="mb-8">
+          <USDCGuide />
+        </div>
 
         {/* Send Funds */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">

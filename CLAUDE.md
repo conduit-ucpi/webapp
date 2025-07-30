@@ -78,14 +78,14 @@ components/
 ├── auth/           # Web3Auth integration and context providers
 ├── contracts/      # Contract creation, display, and management
 ├── layout/         # Header, footer, and layout components  
-├── moonpay/        # MoonPay widget integration
-└── ui/             # Reusable UI components (Button, Input, Modal, etc.)
+├── moonpay/        # MoonPay widget integration (currently in "coming soon" mode)
+└── ui/             # Reusable UI components (Button, Input, Modal, USDCGuide, etc.)
 
 pages/
 ├── index.tsx       # Landing page with hero and features
 ├── create.tsx      # Contract creation form  
 ├── dashboard.tsx   # User contract management dashboard
-├── buy-usdc.tsx    # MoonPay USDC purchase flow
+├── buy-usdc.tsx    # MoonPay USDC purchase flow (displays "coming soon" message)
 └── api/            # Next.js API routes (all proxy to backend)
 ```
 
@@ -101,15 +101,18 @@ pages/
 - `utils/validation.ts`: Input validation and formatting utilities
 - `types/index.ts`: TypeScript interfaces for the application
 - `components/auth/ConnectWallet.tsx`: Web3Auth integration component
+- `components/ui/USDCGuide.tsx`: Reusable guide for adding USDC to wallet (used in wallet and buy-usdc pages)
 
 ## Development Notes
 
 - Uses Pages Router (not App Router) as specified
 - All backend communication via http-only cookies for security
 - Web3 transactions are signed client-side, submitted server-side
-- MoonPay widget loads dynamically to avoid bundle size issues
+- MoonPay widget loads dynamically to avoid bundle size issues (currently disabled with "coming soon" message)
 - Auto-refresh dashboard every 30s for contracts near expiry
 - Responsive design with mobile-first Tailwind approach
+- Always favour code re-use
+- Always avoid hard-coding
 
 ## Testing
 
@@ -139,3 +142,5 @@ No test framework configured yet. When adding tests:
 - Images in `public/` folder are accessible at `/filename.png` in production
 - GitHub workflow includes debugging to verify static files are copied correctly
 - If images don't load after deployment, check GitHub Actions logs for copy errors
+
+

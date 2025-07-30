@@ -76,6 +76,7 @@ export default function AdminContractList({ onContractSelect }: AdminContractLis
         contract.description?.toLowerCase().includes(searchLower) ||
         contract.chainAddress?.toLowerCase().includes(searchLower) ||
         contract.sellerAddress?.toLowerCase().includes(searchLower) ||
+        contract.buyerAddress?.toLowerCase().includes(searchLower) ||
         contract.amount?.toString().includes(searchLower) ||
         contract.id?.toLowerCase().includes(searchLower)
       );
@@ -269,6 +270,12 @@ export default function AdminContractList({ onContractSelect }: AdminContractLis
               >
                 Payer {sortField === 'buyerEmail' && (sortDirection === 'asc' ? '↑' : '↓')}
               </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Receiver Address
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Payer Address
+              </th>
               <th 
                 className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                 onClick={() => handleSort('expiryTimestamp')}
@@ -306,6 +313,20 @@ export default function AdminContractList({ onContractSelect }: AdminContractLis
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {contract.buyerEmail || '-'}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {contract.sellerAddress ? (
+                      <ExpandableHash hash={contract.sellerAddress} />
+                    ) : (
+                      '-'
+                    )}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {contract.buyerAddress ? (
+                      <ExpandableHash hash={contract.buyerAddress} />
+                    ) : (
+                      '-'
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {formatExpiryDate(contract.expiryTimestamp)}

@@ -71,6 +71,20 @@ const mockContracts: PendingContract[] = [
   }
 ];
 
+// Mock contracts with enriched data (including buyer addresses)
+const mockEnrichedContracts = [
+  {
+    ...mockContracts[0],
+    buyerAddress: '0xbuyer1',
+    status: 'ACTIVE'
+  },
+  {
+    ...mockContracts[1],
+    buyerAddress: '0xbuyer2',
+    status: 'PENDING'
+  }
+];
+
 describe('AdminContractList', () => {
   beforeEach(() => {
     mockUseRouter.mockReturnValue({
@@ -122,7 +136,7 @@ describe('AdminContractList', () => {
   it('renders contract table with data', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => mockContracts
+      json: async () => mockEnrichedContracts
     } as Response);
 
     render(<AdminContractList />);
@@ -136,10 +150,53 @@ describe('AdminContractList', () => {
     });
   });
 
+  it('displays wallet addresses when available', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => mockEnrichedContracts
+    } as Response);
+
+    render(<AdminContractList />);
+
+    await waitFor(() => {
+      // Check for seller addresses (should be present for both contracts)
+      expect(screen.getAllByTestId('expandable-hash')).toHaveLength(5); // 2 seller + 2 buyer + 1 chain address
+      expect(screen.getByText('0xseller1')).toBeInTheDocument();
+      expect(screen.getByText('0xseller2')).toBeInTheDocument();
+      
+      // Check for buyer addresses (only for enriched contracts)
+      expect(screen.getByText('0xbuyer1')).toBeInTheDocument();
+      expect(screen.getByText('0xbuyer2')).toBeInTheDocument();
+    });
+  });
+
+  it('shows dash when addresses are not available', async () => {
+    const contractsWithoutAddresses = [
+      {
+        ...mockContracts[0],
+        sellerAddress: undefined,
+        buyerAddress: undefined
+      }
+    ];
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => contractsWithoutAddresses
+    } as Response);
+
+    render(<AdminContractList />);
+
+    await waitFor(() => {
+      // Should show dashes for missing addresses
+      const dashElements = screen.getAllByText('-');
+      expect(dashElements.length).toBeGreaterThan(0);
+    });
+  });
+
   it('filters contracts by search term', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => mockContracts
+      json: async () => mockEnrichedContracts
     } as Response);
 
     render(<AdminContractList />);
@@ -156,15 +213,31 @@ describe('AdminContractList', () => {
     expect(screen.queryByText('seller2@example.com')).not.toBeInTheDocument();
   });
 
-  it('filters contracts by status', async () => {
-    const contractsWithStatus = mockContracts.map((contract, index) => ({
-      ...contract,
-      status: index === 0 ? 'ACTIVE' : 'PENDING'
-    }));
-
+  it('filters contracts by wallet address search', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => contractsWithStatus
+      json: async () => mockEnrichedContracts
+    } as Response);
+
+    render(<AdminContractList />);
+
+    await waitFor(() => {
+      expect(screen.getByText('seller1@example.com')).toBeInTheDocument();
+      expect(screen.getByText('seller2@example.com')).toBeInTheDocument();
+    });
+
+    // Search by buyer address
+    const searchInput = screen.getByPlaceholderText('Search contracts...');
+    fireEvent.change(searchInput, { target: { value: '0xbuyer1' } });
+
+    expect(screen.getByText('seller1@example.com')).toBeInTheDocument();
+    expect(screen.queryByText('seller2@example.com')).not.toBeInTheDocument();
+  });
+
+  it('filters contracts by status', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => mockEnrichedContracts
     } as Response);
 
     render(<AdminContractList />);
@@ -186,7 +259,7 @@ describe('AdminContractList', () => {
   it('filters contracts by chain address presence', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => mockContracts
+      json: async () => mockEnrichedContracts
     } as Response);
 
     render(<AdminContractList />);
@@ -208,7 +281,7 @@ describe('AdminContractList', () => {
   it('sorts contracts by different fields', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => mockContracts
+      json: async () => mockEnrichedContracts
     } as Response);
 
     render(<AdminContractList />);
@@ -281,7 +354,7 @@ describe('AdminContractList', () => {
     
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => mockContracts
+      json: async () => mockEnrichedContracts
     } as Response);
 
     render(<AdminContractList onContractSelect={mockOnContractSelect} />);
@@ -293,13 +366,13 @@ describe('AdminContractList', () => {
     const firstRow = screen.getByText('seller1@example.com').closest('tr');
     fireEvent.click(firstRow!);
 
-    expect(mockOnContractSelect).toHaveBeenCalledWith(mockContracts[0]);
+    expect(mockOnContractSelect).toHaveBeenCalledWith(mockEnrichedContracts[0]);
   });
 
   it('shows empty state when no contracts match filters', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => mockContracts
+      json: async () => mockEnrichedContracts
     } as Response);
 
     render(<AdminContractList />);
@@ -318,7 +391,7 @@ describe('AdminContractList', () => {
   it('clears filters when clear button is clicked', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => mockContracts
+      json: async () => mockEnrichedContracts
     } as Response);
 
     render(<AdminContractList />);
@@ -327,12 +400,14 @@ describe('AdminContractList', () => {
       expect(screen.getByText('seller1@example.com')).toBeInTheDocument();
     });
 
-    // Apply filters
+    // Apply filters that will result in no matches to trigger the clear button
     const searchInput = screen.getByPlaceholderText('Search contracts...');
-    fireEvent.change(searchInput, { target: { value: 'seller1' } });
+    fireEvent.change(searchInput, { target: { value: 'nonexistent' } });
 
-    const statusFilter = screen.getByDisplayValue('All Status');
-    fireEvent.change(statusFilter, { target: { value: 'ACTIVE' } });
+    // Wait for the clear button to appear
+    await waitFor(() => {
+      expect(screen.getByText('Clear Filters')).toBeInTheDocument();
+    });
 
     // Clear filters
     const clearButton = screen.getByText('Clear Filters');
@@ -355,7 +430,7 @@ describe('AdminContractList', () => {
     // Mock successful retry
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => mockContracts
+      json: async () => mockEnrichedContracts
     } as Response);
 
     const tryAgainButton = screen.getByText('Try Again');

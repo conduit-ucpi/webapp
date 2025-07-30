@@ -8,6 +8,7 @@ import Input from '@/components/ui/Input';
 import ContractCard from '@/components/contracts/ContractCard';
 import PendingContractCard from '@/components/contracts/PendingContractCard';
 import AdminContractList from '@/components/admin/AdminContractList';
+import DisputeResolutionModal from '@/components/admin/DisputeResolutionModal';
 import { Contract, PendingContract } from '@/types';
 
 // Extended type for admin contracts that includes chain data
@@ -26,6 +27,7 @@ export default function AdminPage() {
   const { user, isLoading } = useAuth();
   const router = useRouter();
   const [selectedContract, setSelectedContract] = useState<AdminContract | null>(null);
+  const [isDisputeModalOpen, setIsDisputeModalOpen] = useState(false);
 
   const handleContractSelect = (contract: AdminContract) => {
     setSelectedContract(contract);
@@ -33,6 +35,19 @@ export default function AdminPage() {
 
   const clearSelection = () => {
     setSelectedContract(null);
+  };
+
+  const handleAddressDispute = () => {
+    setIsDisputeModalOpen(true);
+  };
+
+  const handleDisputeModalClose = () => {
+    setIsDisputeModalOpen(false);
+  };
+
+  const handleResolutionComplete = () => {
+    // Refresh the contract list after dispute resolution
+    window.location.reload();
   };
 
   if (isLoading) {
@@ -105,13 +120,24 @@ export default function AdminPage() {
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-semibold text-gray-900">Contract Details</h2>
-              <Button 
-                variant="outline"
-                onClick={clearSelection}
-                size="sm"
-              >
-                Close
-              </Button>
+              <div className="flex space-x-2">
+                {selectedContract.status === 'DISPUTED' && (
+                  <Button 
+                    onClick={handleAddressDispute}
+                    size="sm"
+                    className="bg-orange-600 hover:bg-orange-700 text-white"
+                  >
+                    Address Dispute
+                  </Button>
+                )}
+                <Button 
+                  variant="outline"
+                  onClick={clearSelection}
+                  size="sm"
+                >
+                  Close
+                </Button>
+              </div>
             </div>
             
             {selectedContract.chainAddress ? (
@@ -207,6 +233,16 @@ export default function AdminPage() {
           </p>
         </div>
       </div>
+
+      {/* Dispute Resolution Modal */}
+      {selectedContract && (
+        <DisputeResolutionModal
+          isOpen={isDisputeModalOpen}
+          onClose={handleDisputeModalClose}
+          contractId={selectedContract.id}
+          onResolutionComplete={handleResolutionComplete}
+        />
+      )}
     </div>
   );
 }

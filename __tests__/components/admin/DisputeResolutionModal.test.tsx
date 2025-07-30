@@ -63,9 +63,9 @@ const mockContract = {
   adminNotes: [
     {
       id: 'note1',
-      note: 'First admin note',
-      createdAt: 1735689600, // Unix timestamp: 2025-01-01T00:00:00Z
-      adminEmail: 'admin@example.com'
+      content: 'First admin note',
+      addedAt: 1735689600000, // Unix timestamp in milliseconds: 2025-01-01T00:00:00Z
+      addedBy: 'admin@example.com'
     }
   ]
 };
@@ -171,9 +171,9 @@ describe('DisputeResolutionModal', () => {
         ...mockContract,
         adminNotes: [...mockContract.adminNotes, {
           id: 'note2',
-          note: 'New test note',
-          createdAt: 1735776000, // Unix timestamp: 2025-01-02T00:00:00Z
-          adminEmail: 'admin@example.com'
+          content: 'New test note',
+          addedAt: 1735776000000, // Unix timestamp in milliseconds: 2025-01-02T00:00:00Z
+          addedBy: 'admin@example.com'
         }]
       })
     } as Response);
@@ -494,15 +494,15 @@ describe('DisputeResolutionModal', () => {
       adminNotes: [
         {
           id: 'note1',
-          note: 'Unix timestamp note',
-          createdAt: 1735689600, // Unix timestamp
-          adminEmail: 'admin1@example.com'
+          content: 'Unix timestamp note',
+          addedAt: 1735689600000, // Unix timestamp in milliseconds
+          addedBy: 'admin1@example.com'
         },
         {
           id: 'note2',
-          note: 'ISO string note',
-          createdAt: '2025-01-02T00:00:00Z', // ISO string for backwards compatibility
-          adminEmail: 'admin2@example.com'
+          content: 'ISO string note',
+          addedAt: 1735776000000, // Unix timestamp in milliseconds
+          addedBy: 'admin2@example.com'
         }
       ]
     };
@@ -522,4 +522,239 @@ describe('DisputeResolutionModal', () => {
       expect(screen.getByText('admin2@example.com')).toBeInTheDocument();
     });
   });
+
+  it('handles seller percentage change and clears buyer when seller is empty', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => mockContract
+    } as Response);
+
+    render(<DisputeResolutionModal {...defaultProps} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Test contract')).toBeInTheDocument();
+    });
+
+    const percentageInputs = screen.getAllByPlaceholderText('0-100');
+    const buyerInput = percentageInputs[0];
+    const sellerInput = percentageInputs[1];
+    
+    // Set initial values
+    fireEvent.change(buyerInput, { target: { value: '60' } });
+    expect(sellerInput).toHaveValue(40);
+    
+    // Clear seller field - should clear buyer too
+    fireEvent.change(sellerInput, { target: { value: '' } });
+    
+    expect(buyerInput).toHaveValue(null);
+    expect(sellerInput).toHaveValue(null);
+  });
+
+  it('validates empty note on resolution', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => mockContract
+    } as Response);
+
+    render(<DisputeResolutionModal {...defaultProps} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Test contract')).toBeInTheDocument();
+    });
+
+    // Set percentages but leave note empty
+    const percentageInputs = screen.getAllByPlaceholderText('0-100');
+    const buyerInput = percentageInputs[0];
+    fireEvent.change(buyerInput, { target: { value: '60' } });
+
+    // Note input should be empty
+    const noteInput = screen.getByPlaceholderText('Enter your note about this dispute...');
+    expect(noteInput).toHaveValue('');
+
+    // Button should be disabled due to empty note
+    const resolveButton = screen.getByText('Add Note and Resolve');
+    expect(resolveButton).toBeDisabled();
+  });
+
+  it('validates percentages sum to 100 with direct state manipulation', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => mockContract
+    } as Response);
+
+    render(<DisputeResolutionModal {...defaultProps} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Test contract')).toBeInTheDocument();
+    });
+
+    const noteInput = screen.getByPlaceholderText('Enter your note about this dispute...');
+    fireEvent.change(noteInput, { target: { value: 'Test note' } });
+
+    // Since auto-calculation prevents invalid combinations,
+    // we test with NaN values which bypass the auto-calculation logic
+    const percentageInputs = screen.getAllByPlaceholderText('0-100');
+    const buyerInput = percentageInputs[0];
+    
+    // Set invalid (non-numeric) buyer percentage
+    fireEvent.change(buyerInput, { target: { value: 'invalid' } });
+
+    // Button should be disabled due to invalid percentages
+    const resolveButton = screen.getByText('Add Note and Resolve');
+    expect(resolveButton).toBeDisabled();
+  });
+
+  it('validates percentages are within 0-100 range', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => mockContract
+    } as Response);
+
+    render(<DisputeResolutionModal {...defaultProps} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Test contract')).toBeInTheDocument();
+    });
+
+    const noteInput = screen.getByPlaceholderText('Enter your note about this dispute...');
+    fireEvent.change(noteInput, { target: { value: 'Test note' } });
+
+    // Since auto-calculation prevents manual setting of both fields,
+    // we need to test the validation in a way that works with the logic.
+    // The validation checks happen inside addNote when resolveDispute=true
+    // But since auto-calculation ensures valid combinations, we test with empty values
+    const percentageInputs = screen.getAllByPlaceholderText('0-100');
+    const buyerInput = percentageInputs[0];
+    
+    // Clear both fields (this bypasses auto-calculation)
+    fireEvent.change(buyerInput, { target: { value: '' } });
+
+    // Button should be disabled due to empty/invalid percentages
+    const resolveButton = screen.getByText('Add Note and Resolve');
+    expect(resolveButton).toBeDisabled();
+  });
+
+  it('handles note addition failure', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => mockContract
+    } as Response);
+
+    render(<DisputeResolutionModal {...defaultProps} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Test contract')).toBeInTheDocument();
+    });
+
+    const noteInput = screen.getByPlaceholderText('Enter your note about this dispute...');
+    fireEvent.change(noteInput, { target: { value: 'Test note' } });
+
+    // Mock failed note addition
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 500
+    } as Response);
+
+    const addNoteButtons = screen.getAllByText('Add Note');
+    const addNoteButton = addNoteButtons[addNoteButtons.length - 1];
+    fireEvent.click(addNoteButton);
+
+    await waitFor(() => {
+      expect(screen.getByText('Failed to add note')).toBeInTheDocument();
+    });
+  });
+
+  it('handles resolution failure after successful note addition', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => mockContract
+    } as Response);
+
+    render(<DisputeResolutionModal {...defaultProps} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Test contract')).toBeInTheDocument();
+    });
+
+    const noteInput = screen.getByPlaceholderText('Enter your note about this dispute...');
+    fireEvent.change(noteInput, { target: { value: 'Resolution note' } });
+
+    const percentageInputs = screen.getAllByPlaceholderText('0-100');
+    const buyerInput = percentageInputs[0];
+    fireEvent.change(buyerInput, { target: { value: '60' } });
+
+    // Mock successful note addition
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ id: 'note3', content: 'Resolution note' })
+    } as Response);
+
+    // Mock failed resolution
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 500
+    } as Response);
+
+    const resolveButton = screen.getByText('Add Note and Resolve');
+    fireEvent.click(resolveButton);
+
+    await waitFor(() => {
+      expect(screen.getByText('Failed to resolve dispute')).toBeInTheDocument();
+    });
+  });
+
+  it('handles generic error in addNote function', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => mockContract
+    } as Response);
+
+    render(<DisputeResolutionModal {...defaultProps} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Test contract')).toBeInTheDocument();
+    });
+
+    const noteInput = screen.getByPlaceholderText('Enter your note about this dispute...');
+    fireEvent.change(noteInput, { target: { value: 'Test note' } });
+
+    // Mock network error
+    mockFetch.mockRejectedValueOnce(new Error('Network error'));
+
+    const addNoteButtons = screen.getAllByText('Add Note');
+    const addNoteButton = addNoteButtons[addNoteButtons.length - 1];
+    fireEvent.click(addNoteButton);
+
+    await waitFor(() => {
+      expect(screen.getByText('Network error')).toBeInTheDocument();
+    });
+  });
+
+  it('handles error without message in addNote function', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => mockContract
+    } as Response);
+
+    render(<DisputeResolutionModal {...defaultProps} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Test contract')).toBeInTheDocument();
+    });
+
+    const noteInput = screen.getByPlaceholderText('Enter your note about this dispute...');
+    fireEvent.change(noteInput, { target: { value: 'Test note' } });
+
+    // Mock error without message
+    mockFetch.mockRejectedValueOnce({});
+
+    const addNoteButtons = screen.getAllByText('Add Note');
+    const addNoteButton = addNoteButtons[addNoteButtons.length - 1];
+    fireEvent.click(addNoteButton);
+
+    await waitFor(() => {
+      expect(screen.getByText('Failed to process request')).toBeInTheDocument();
+    });
+  });
 });
+

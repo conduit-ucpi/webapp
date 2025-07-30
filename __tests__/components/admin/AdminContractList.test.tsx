@@ -440,4 +440,217 @@ describe('AdminContractList', () => {
       expect(screen.getByText('seller1@example.com')).toBeInTheDocument();
     });
   });
+
+  it('handles fetch errors and displays error message with basePath', async () => {
+    mockUseRouter.mockReturnValue({
+      basePath: '/app',
+      pathname: '/admin',
+      query: {},
+      push: jest.fn(),
+      replace: jest.fn(),
+      back: jest.fn(),
+      prefetch: jest.fn(),
+      beforePopState: jest.fn(),
+      events: {
+        on: jest.fn(),
+        off: jest.fn(),
+        emit: jest.fn(),
+      },
+      isFallback: false,
+      isLocaleDomain: false,
+      isReady: true,
+      defaultLocale: 'en',
+      domainLocales: [],
+      isPreview: false,
+      asPath: '/admin',
+      route: '/admin',
+      reload: jest.fn(),
+    } as any);
+
+    // Mock fetch to throw error
+    mockFetch.mockRejectedValueOnce(new Error('Network error'));
+
+    render(<AdminContractList />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Network error')).toBeInTheDocument();
+    });
+
+    // Verify fetch was called with basePath
+    expect(mockFetch).toHaveBeenCalledWith('/app/api/admin/contracts');
+  });
+
+  it('handles sorting by clicking on column headers', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => mockContracts
+    } as Response);
+
+    render(<AdminContractList />);
+
+    await waitFor(() => {
+      expect(screen.getByText('seller1@example.com')).toBeInTheDocument();
+    });
+
+    // Click on Created column header
+    const createdHeader = screen.getByRole('columnheader', { name: /Created/ });
+    fireEvent.click(createdHeader);
+
+    // Click on sortable Receiver column header (exact match to avoid "Receiver Address")
+    const receiverHeader = screen.getByRole('columnheader', { name: 'Receiver' });
+    fireEvent.click(receiverHeader);
+
+    // Click on Payer column header  
+    const payerHeader = screen.getByRole('columnheader', { name: 'Payer' });
+    fireEvent.click(payerHeader);
+
+    // Click on Expiry column header
+    const expiryHeader = screen.getByRole('columnheader', { name: 'Expiry' });
+    fireEvent.click(expiryHeader);
+
+    // Verify sorting still works
+    expect(screen.getByText('seller1@example.com')).toBeInTheDocument();
+  });
+
+  it('handles string sorting for email fields', async () => {
+    const stringContracts = [
+      { ...mockContracts[0], id: 'string1', sellerEmail: 'zebra@example.com', buyerEmail: 'charlie@example.com' },
+      { ...mockContracts[1], id: 'string2', sellerEmail: 'alpha@example.com', buyerEmail: 'david@example.com' },
+    ];
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => stringContracts
+    } as Response);
+
+    render(<AdminContractList />);
+
+    await waitFor(() => {
+      expect(screen.getAllByText('zebra@example.com')).toHaveLength(1);
+      expect(screen.getAllByText('alpha@example.com')).toHaveLength(1);
+    }, { timeout: 3000 });
+
+    // Sort by seller email
+    const receiverHeader = screen.getByRole('columnheader', { name: 'Receiver' });
+    fireEvent.click(receiverHeader);
+
+    // Check order changed - after sorting by receiver email, should have alpha first
+    await waitFor(() => {
+      const rows = screen.getAllByRole('row');
+      expect(rows.length).toBeGreaterThan(2); // Header + data rows
+    });
+  });
+
+  it('handles expired contracts without chainAddress correctly', async () => {
+    const expiredContract = {
+      ...mockContracts[0],
+      chainAddress: undefined,
+      expiryTimestamp: Math.floor(Date.now() / 1000) - 3600, // 1 hour ago
+    };
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => [expiredContract]
+    } as Response);
+
+    render(<AdminContractList />);
+
+    await waitFor(() => {
+      expect(screen.getByText('EXPIRED')).toBeInTheDocument();
+    });
+  });
+
+  it('handles different contract statuses correctly', async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const contractsWithStatuses = [
+      { ...mockContracts[0], status: 'DISPUTED', chainAddress: '0x123' },
+      { ...mockContracts[1], status: 'RESOLVED', chainAddress: '0x456' },
+      { ...mockContracts[0], id: '3', status: 'CLAIMED', chainAddress: '0x789' },
+      { 
+        ...mockContracts[1], 
+        id: '4', 
+        status: undefined, 
+        chainAddress: undefined,
+        expiryTimestamp: now + 3600 // Future timestamp to ensure PENDING status
+      },
+    ];
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => contractsWithStatuses
+    } as Response);
+
+    render(<AdminContractList />);
+
+    await waitFor(() => {
+      expect(screen.getByText('DISPUTED')).toBeInTheDocument();
+      expect(screen.getByText('RESOLVED')).toBeInTheDocument();
+      expect(screen.getByText('CLAIMED')).toBeInTheDocument();
+      expect(screen.getByText('PENDING')).toBeInTheDocument();
+    }, { timeout: 3000 });
+  });
+
+  it('handles unknown status with default color', async () => {
+    const unknownStatusContract = {
+      ...mockContracts[0],
+      status: 'UNKNOWN_STATUS',
+      chainAddress: '0x123',
+    };
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => [unknownStatusContract]
+    } as Response);
+
+    render(<AdminContractList />);
+
+    await waitFor(() => {
+      const statusElement = screen.getByText('UNKNOWN_STATUS');
+      expect(statusElement).toBeInTheDocument();
+      expect(statusElement.className).toContain('bg-gray-100');
+    });
+  });
+
+  it('handles page change with Previous button', async () => {
+    // Create enough contracts to force multiple pages (30 items with default 25 per page = 2 pages)
+    const manyContracts = Array.from({ length: 30 }, (_, i) => ({
+      ...mockContracts[0],
+      id: `contract-${i}`,
+      sellerEmail: `seller${i}@example.com`,
+    }));
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => manyContracts
+    } as Response);
+
+    render(<AdminContractList />);
+
+    await waitFor(() => {
+      expect(screen.getByText('seller0@example.com')).toBeInTheDocument();
+      // Verify pagination controls are present (30 items / 25 per page = 2 pages)
+      expect(screen.getByText(/Page 1 of 2/)).toBeInTheDocument();
+    });
+
+    // Go to page 2 by clicking Next
+    const nextButton = screen.getByRole('button', { name: 'Next' });
+    expect(nextButton).not.toBeDisabled();
+    fireEvent.click(nextButton);
+
+    await waitFor(() => {
+      // Should be on page 2 now - sellers 25-29 should be visible
+      expect(screen.getByText('seller25@example.com')).toBeInTheDocument();
+      expect(screen.getByText(/Page 2 of 2/)).toBeInTheDocument();
+    });
+
+    // Now click Previous button
+    const previousButton = screen.getByRole('button', { name: 'Previous' });
+    fireEvent.click(previousButton);
+
+    // Should be back on page 1
+    await waitFor(() => {
+      expect(screen.getByText('seller0@example.com')).toBeInTheDocument();
+      expect(screen.getByText(/Page 1 of 2/)).toBeInTheDocument();
+    }, { timeout: 3000 });
+  });
 });

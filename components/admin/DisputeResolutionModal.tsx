@@ -7,9 +7,9 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner';
 
 interface AdminNote {
   id: string;
-  note: string;
-  createdAt: number | string; // Unix timestamp in seconds or ISO string for backwards compatibility
-  adminEmail: string;
+  content: string;
+  addedAt: number; // Unix timestamp in milliseconds
+  addedBy: string;
 }
 
 interface ContractWithNotes {
@@ -236,14 +236,12 @@ export default function DisputeResolutionModal({
                   {contract.adminNotes.map((note) => (
                     <div key={note.id} className="bg-white border border-gray-200 p-3 rounded-lg">
                       <div className="flex justify-between items-start mb-2">
-                        <span className="text-sm font-medium text-gray-900">{note.adminEmail}</span>
+                        <span className="text-sm font-medium text-gray-900">{note.addedBy}</span>
                         <span className="text-xs text-gray-500">
-                          {typeof note.createdAt === 'number' 
-                            ? new Date(note.createdAt * 1000).toLocaleString()
-                            : new Date(note.createdAt).toLocaleString()}
+                          {new Date(note.addedAt).toLocaleString()}
                         </span>
                       </div>
-                      <p className="text-sm text-gray-700">{note.note}</p>
+                      <p className="text-sm text-gray-700">{note.content}</p>
                     </div>
                   ))}
                 </div>

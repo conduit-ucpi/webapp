@@ -356,4 +356,39 @@ describe('Contract Selection and Details', () => {
       expect(screen.getByTestId('pending-contract-card')).toBeInTheDocument();
     });
   });
+
+  it('handles raw contract data fetch error', async () => {
+    // Mock fetch to fail for raw contract data
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 404
+    } as Response);
+
+    render(<AdminPage />);
+
+    // Select a contract to trigger the fetch
+    const selectButton = screen.getByText('Select Contract');
+    fireEvent.click(selectButton);
+
+    // Wait for the error to be handled
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalledWith('/api/admin/contracts/raw?contractId=test-contract');
+    });
+  });
+
+  it('handles network error during raw contract data fetch', async () => {
+    // Mock fetch to throw network error
+    mockFetch.mockRejectedValueOnce(new Error('Network error'));
+
+    render(<AdminPage />);
+
+    // Select a contract to trigger the fetch
+    const selectButton = screen.getByText('Select Contract');
+    fireEvent.click(selectButton);
+
+    // Wait for the error to be handled
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalledWith('/api/admin/contracts/raw?contractId=test-contract');
+    });
+  });
 });

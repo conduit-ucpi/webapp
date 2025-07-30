@@ -91,30 +91,31 @@ describe('USDCGuide', () => {
     render(<USDCGuide />);
     
     // Check that all exchange links are present
-    expect(screen.getByRole('link', { name: 'Binance' })).toHaveAttribute('href', 'https://www.binance.com');
-    expect(screen.getByRole('link', { name: 'Coinbase' })).toHaveAttribute('href', 'https://www.coinbase.com');
+    expect(screen.getByRole('link', { name: 'MoonPay' })).toHaveAttribute('href', 'https://www.moonpay.com');
+    expect(screen.getByRole('link', { name: 'Coinbase' })).toHaveAttribute('href', 'https://www.coinbase.com/price/usdc');
     expect(screen.getByRole('link', { name: 'Kraken' })).toHaveAttribute('href', 'https://www.kraken.com');
     expect(screen.getByRole('link', { name: 'Crypto.com' })).toHaveAttribute('href', 'https://crypto.com');
-    expect(screen.getByRole('link', { name: 'Easy Crypto' })).toHaveAttribute('href', 'https://easycrypto.com');
+    // Easy Crypto is commented out
+    expect(screen.queryByRole('link', { name: 'Easy Crypto' })).not.toBeInTheDocument();
   });
 
   it('shows links with correct security attributes', () => {
     render(<USDCGuide />);
     
-    const binanceLink = screen.getByRole('link', { name: 'Binance' });
-    expect(binanceLink).toHaveAttribute('target', '_blank');
-    expect(binanceLink).toHaveAttribute('rel', 'noopener noreferrer');
+    const moonpayLink = screen.getByRole('link', { name: 'MoonPay' });
+    expect(moonpayLink).toHaveAttribute('target', '_blank');
+    expect(moonpayLink).toHaveAttribute('rel', 'noopener noreferrer');
   });
 
   it('shows MoonPay without "coming soon" by default', () => {
     render(<USDCGuide />);
-    expect(screen.getByText(/MoonPay:/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'MoonPay' })).toBeInTheDocument();
     expect(screen.queryByText(/coming soon/)).not.toBeInTheDocument();
   });
 
   it('shows MoonPay with "coming soon" when prop is true', () => {
     render(<USDCGuide showMoonPayComingSoon={true} />);
-    expect(screen.getByText(/MoonPay:/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'MoonPay' })).toBeInTheDocument();
     expect(screen.getByText(/\(coming soon\)/)).toBeInTheDocument();
   });
 
@@ -160,7 +161,7 @@ describe('USDCGuide', () => {
   it('includes all funding methods', () => {
     render(<USDCGuide />);
     
-    expect(screen.getByText(/MoonPay:/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'MoonPay' })).toBeInTheDocument();
     expect(screen.getByText(/MetaMask\/Coinbase:/)).toBeInTheDocument();
     expect(screen.getByText(/Major Exchanges:/)).toBeInTheDocument();
     expect(screen.getByText(/Cash Conversion:/)).toBeInTheDocument();

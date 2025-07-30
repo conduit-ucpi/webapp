@@ -45,14 +45,13 @@ export default function USDCGuide({ showMoonPayComingSoon = false }: USDCGuidePr
           <div>
             <span className="font-semibold">Fund your wallet using:</span>
             <ul className="mt-2 ml-4 space-y-1">
-              <li>• <strong>MoonPay:</strong> Buy/Sell USDC directly with credit/debit card{showMoonPayComingSoon ? ' (coming soon)' : ''}</li>
+              <li>• <strong><a href="https://www.moonpay.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-500 underline">MoonPay</a>:</strong> Buy/Sell USDC directly with credit/debit card{showMoonPayComingSoon ? ' (coming soon)' : ''}</li>
               <li>• <strong>MetaMask/Coinbase:</strong> Transfer USDC to/from another wallet</li>
               <li>• <strong>Major Exchanges:</strong> 
-                <a href="https://www.binance.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-500 underline mx-1">Binance</a>,
-                <a href="https://www.coinbase.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-500 underline mx-1">Coinbase</a>,
+                <a href="https://www.coinbase.com/price/usdc" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-500 underline mx-1">Coinbase</a>,
                 <a href="https://www.kraken.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-500 underline mx-1">Kraken</a>,
-                <a href="https://crypto.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-500 underline mx-1">Crypto.com</a>,
-                <a href="https://easycrypto.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-500 underline mx-1">Easy Crypto</a>
+                <a href="https://crypto.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-500 underline mx-1">Crypto.com</a>
+                {/* <a href="https://easycrypto.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-500 underline mx-1">Easy Crypto</a> */}
               </li>
               <li>• <strong>Cash Conversion:</strong> Use exchanges above to convert USDC to fiat currency</li>
             </ul>

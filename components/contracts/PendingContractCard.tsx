@@ -47,7 +47,7 @@ export default function PendingContractCard({
             {contract.chainAddress ? (
               <ExpandableHash hash={contract.chainAddress} />
             ) : (
-              `Contract #${contract.id.slice(-6)}`
+              `Payment #${contract.id.slice(-6)}`
             )}
           </h3>
           <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor()}`}>
@@ -101,7 +101,7 @@ export default function PendingContractCard({
             onClick={() => onAccept(contract.id)}
             className="w-full bg-primary-500 hover:bg-primary-600"
           >
-            Accept Contract
+            Make Payment
           </Button>
         </div>
       )}

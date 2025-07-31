@@ -84,7 +84,7 @@ export default function Dashboard() {
         </div>
         
         <div>
-          <h2 className="text-xl font-semibold text-gray-900 mb-6">Your Contracts</h2>
+          <h2 className="text-xl font-semibold text-gray-900 mb-6">Your Payments</h2>
           <ContractList />
         </div>
       </div>

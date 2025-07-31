@@ -29,7 +29,7 @@ export default function Header() {
             {isAuthenticated && (
               <>
                 <Link href="/create" className="text-gray-300 hover:text-white">
-                  Create Contract
+                  New Payment
                 </Link>
                 <Link href="/dashboard" className="text-gray-300 hover:text-white">
                   Dashboard

@@ -128,7 +128,7 @@ jobs:
               -e CONTRACT_FACTORY_ADDRESS=${{ vars.CONTRACT_FACTORY_ADDRESS }} \
               -e USDC_CONTRACT_ADDRESS=${{ vars.USDC_CONTRACT_ADDRESS }} \
               -e MIN_GAS_WEI=${{ vars.MIN_GAS_WEI }} \
-            . -e NEXT_PUBLIC_BASE_PATH=${{ vars.NEXT_PUBLIC_BASE_PATH }} \
+              -e NEXT_PUBLIC_BASE_PATH=${{ vars.NEXT_PUBLIC_BASE_PATH }} \
               -e SNOWTRACE_BASE_URL=${{ vars.SNOWTRACE_BASE_URL }} \
               ghcr.io/${{ env.REPO_LOWER }}:${{ env.SHA_TAG }}
             '

@@ -15,6 +15,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log('USDC_CONTRACT_ADDRESS:', process.env.USDC_CONTRACT_ADDRESS);
     console.log('MOONPAY_API_KEY:', process.env.MOONPAY_API_KEY ? 'Present' : 'Missing');
     console.log('MIN_GAS_WEI:', process.env.MIN_GAS_WEI);
+    console.log('SNOWTRACE_BASE_URL:', process.env.SNOWTRACE_BASE_URL);
 
     const config = {
       web3AuthClientId: process.env.WEB3AUTH_CLIENT_ID,
@@ -24,7 +25,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       usdcContractAddress: process.env.USDC_CONTRACT_ADDRESS,
       moonPayApiKey: process.env.MOONPAY_API_KEY,
       minGasWei: process.env.MIN_GAS_WEI || '5',
-      basePath: process.env.NEXT_PUBLIC_BASE_PATH || '/webapp'
+      basePath: process.env.NEXT_PUBLIC_BASE_PATH || '/webapp',
+      snowtraceBaseUrl: process.env.SNOWTRACE_BASE_URL
     };
 
     if (!config.usdcContractAddress) {

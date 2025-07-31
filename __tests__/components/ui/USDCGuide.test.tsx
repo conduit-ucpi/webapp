@@ -31,6 +31,7 @@ describe('USDCGuide', () => {
     moonPayApiKey: 'test-api-key',
     minGasWei: '5',
     basePath: '',
+    snowtraceBaseUrl: 'https://snowtrace.io'
   };
 
   beforeEach(() => {

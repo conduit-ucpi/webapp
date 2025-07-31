@@ -7,6 +7,7 @@ export interface Config {
   moonPayApiKey: string;
   minGasWei: string;
   basePath: string;
+  snowtraceBaseUrl: string;
 }
 
 export interface User {

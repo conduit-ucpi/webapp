@@ -1,5 +1,6 @@
 import { Contract } from '@/types';
 import { useAuth } from '@/components/auth/AuthProvider';
+import { useConfig } from '@/components/auth/ConfigProvider';
 import { formatUSDC, formatExpiryDate } from '@/utils/validation';
 import ContractActions from './ContractActions';
 import ExpandableHash from '@/components/ui/ExpandableHash';
@@ -11,6 +12,7 @@ interface ContractCardProps {
 
 export default function ContractCard({ contract, onAction }: ContractCardProps) {
   const { user } = useAuth();
+  const { config } = useConfig();
   
   const isBuyer = user?.walletAddress?.toLowerCase() === contract.buyerAddress?.toLowerCase();
   const isSeller = user?.walletAddress?.toLowerCase() === contract.sellerAddress?.toLowerCase();
@@ -52,7 +54,19 @@ export default function ContractCard({ contract, onAction }: ContractCardProps) 
       <div className="flex justify-between items-start mb-4">
         <div>
           <h3 className="text-lg font-semibold text-gray-900">
-            <ExpandableHash hash={contract.contractAddress} />
+            {config?.snowtraceBaseUrl && contract.contractAddress ? (
+              <a 
+                href={`${config.snowtraceBaseUrl}/address/${contract.contractAddress}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary-600 hover:text-primary-800 transition-colors"
+                title="View contract on Snowtrace"
+              >
+                <ExpandableHash hash={contract.contractAddress} />
+              </a>
+            ) : (
+              <ExpandableHash hash={contract.contractAddress} />
+            )}
           </h3>
           <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(contract.status)}`}>
             {getStatusDisplay(contract.status).toUpperCase()}

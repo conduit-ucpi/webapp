@@ -53,7 +53,8 @@ describe('ContractAcceptance - microUSDC Amount Handling', () => {
     rpcUrl: 'https://api.avax-test.network/ext/bc/C/rpc',
     moonPayApiKey: 'test-moonpay-key',
     minGasWei: '5',
-    basePath: ''
+    basePath: '',
+    snowtraceBaseUrl: 'https://testnet.snowtrace.io'
   };
 
   const baseContract: PendingContract = {

@@ -176,10 +176,8 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
       setIsSuccess(true);
       setLoadingMessage('Success! Redirecting...');
       
-      // Small delay to show success message before redirect
-      setTimeout(() => {
-        router.push('/dashboard');
-      }, 500);
+      // Redirect immediately to dashboard
+      router.push('/dashboard');
     } catch (error: any) {
       console.error('Contract acceptance failed:', error);
       setHasError(true);

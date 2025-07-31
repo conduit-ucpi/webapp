@@ -18,7 +18,7 @@ export default function TermsOfService() {
           </section>
 
           <section className="mb-8">
-            <h2 className="text-2xl font-semibent text-gray-900 mb-4">2. Description of Service</h2>
+            <h2 className="text-2xl font-semibold text-gray-900 mb-4">2. Description of Service</h2>
             <p className="text-gray-700 mb-4">
               Conduit UCPI is a decentralized escrow platform that enables users to create time-delayed escrow 
               contracts on the Avalanche blockchain. The Service facilitates:

@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { PendingContract, CreateContractRequest } from '@/types';
 import { Web3Service } from '@/lib/web3';
+import { formatUSDC, formatExpiryDate } from '@/utils/validation';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 
@@ -47,13 +48,13 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
       const freshContract = await contractResponse.json();
       
       // Check if contract is already being processed
-      if (freshContract.processingStatus === 'IN-PROCESS') {
+      if (freshContract.state === 'IN-PROCESS') {
         throw new Error('This contract is already being processed. Please wait and refresh the page.');
       }
 
-      // Only proceed if processing status is OK
-      if (freshContract.processingStatus !== 'OK') {
-        throw new Error(`Contract cannot be accepted. Processing status: ${freshContract.processingStatus}`);
+      // Only proceed if state is OK
+      if (freshContract.state && freshContract.state !== 'OK') {
+        throw new Error(`Contract cannot be accepted. State: ${freshContract.state}`);
       }
 
       setLoadingMessage('Initializing...');
@@ -70,16 +71,16 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
       // Check USDC balance
       setLoadingMessage('Checking USDC balance...');
       const balance = await web3Service.getUSDCBalance(userAddress);
-      if (parseFloat(balance) < contract.amount) {
-        throw new Error(`Insufficient USDC balance. You have ${balance} USDC, need ${contract.amount} USDC`);
+      const requiredUSDC = contract.amount / 1000000; // Convert from microUSDC to USDC
+      if (parseFloat(balance) < requiredUSDC) {
+        throw new Error(`Insufficient USDC balance. You have ${balance} USDC, need ${requiredUSDC.toFixed(2)} USDC`);
       }
 
       // Create on-chain contract (same as old flow)
       setLoadingMessage('Creating secure escrow...');
       
-      // Convert amount to smallest unit (USDC has 6 decimals)
-      // For example: 0.01 USDC = 0.01 * 10^6 = 10000 units
-      const amountInSmallestUnit = Math.floor(contract.amount * Math.pow(10, 6)).toString();
+      // Amount is already in microUSDC format (smallest unit)
+      const amountInSmallestUnit = contract.amount.toString();
       
       const contractRequest: CreateContractRequest = {
         buyer: userAddress,
@@ -112,7 +113,8 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
 
       // USDC approval
       setLoadingMessage('Approving USDC spending for escrow...');
-      const approvalTx = await web3Service.signUSDCApproval(contract.amount.toString(), contractAddress);
+      const usdcAmount = (contract.amount / 1000000).toString(); // Convert to USDC format for approval
+      const approvalTx = await web3Service.signUSDCApproval(usdcAmount, contractAddress);
 
       const approvalResponse = await fetch(`${router.basePath}/api/chain/approve-usdc`, {
         method: 'POST',
@@ -191,7 +193,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
   }
 
   // Show processing state if contract is already being processed
-  if (contract.processingStatus === 'IN-PROCESS') {
+  if (contract.state === 'IN-PROCESS') {
     return (
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Contract Being Processed</h3>
@@ -199,7 +201,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
         <div className="space-y-3 mb-6">
           <div className="flex justify-between">
             <span className="text-gray-600">Amount:</span>
-            <span className="font-medium">{contract.amount} {contract.currency}</span>
+            <span className="font-medium">${formatUSDC(contract.amount)} {contract.currency}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-600">Seller:</span>
@@ -232,12 +234,12 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">Accept Contract</h3>
+      <h3 className="text-lg font-semibold text-gray-900 mb-4">Make time-lock payment</h3>
       
       <div className="space-y-3 mb-6">
         <div className="flex justify-between">
           <span className="text-gray-600">Amount:</span>
-          <span className="font-medium">{contract.amount} {contract.currency}</span>
+          <span className="font-medium">${formatUSDC(contract.amount)} {contract.currency}</span>
         </div>
         <div className="flex justify-between">
           <span className="text-gray-600">Seller:</span>
@@ -251,8 +253,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
 
       <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4 mb-6">
         <p className="text-sm text-yellow-800">
-          By accepting this contract, you agree to deposit {contract.amount} USDC into escrow. 
-          The funds will be held securely until the contract terms are met.
+          When you make this payment, the ${formatUSDC(contract.amount)} USDC will be held securely in escrow until {formatExpiryDate(contract.expiryTimestamp)}.
         </p>
       </div>
 
@@ -261,7 +262,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
         disabled={isLoading || isSuccess}
         className={`w-full bg-primary-500 hover:bg-primary-600 ${(isLoading || isSuccess) ? 'opacity-50 cursor-not-allowed' : ''}`}
       >
-        Accept Contract & Deposit {contract.amount} USDC
+        Make Payment of ${formatUSDC(contract.amount)} USDC
       </Button>
     </div>
   );

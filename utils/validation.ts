@@ -10,7 +10,7 @@ export function isValidWalletAddress(address: string): boolean {
 
 export function isValidAmount(amount: string): boolean {
   try {
-    const parsed = parseFloat(amount);
+    const parsed = parseFloat(amount.trim());
     return !isNaN(parsed) && parsed > 0;
   } catch {
     return false;

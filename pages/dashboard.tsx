@@ -42,7 +42,7 @@ export default function Dashboard() {
           
           <Link href="/create">
             <Button className="bg-primary-500 hover:bg-primary-600">
-              Create New Contract
+              New Payment
             </Button>
           </Link>
         </div>

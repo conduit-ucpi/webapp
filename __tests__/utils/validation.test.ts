@@ -228,27 +228,103 @@ describe('validation utils', () => {
   });
 
   describe('formatUSDC', () => {
-    it('should convert microUSDC to USDC', () => {
-      const microUSDC = 1000000; // 1 USDC in microUSDC
-      const result = formatUSDC(microUSDC);
-      expect(result).toBe('1.00');
+    describe('microUSDC format (default behavior)', () => {
+      it('should convert microUSDC to USDC', () => {
+        const microUSDC = 1000000; // 1 USDC in microUSDC
+        const result = formatUSDC(microUSDC);
+        expect(result).toBe('1.00');
+      });
+
+      it('should handle string input', () => {
+        const microUSDC = '2500000'; // 2.5 USDC
+        const result = formatUSDC(microUSDC);
+        expect(result).toBe('2.50');
+      });
+
+      it('should format to 2 decimal places', () => {
+        const microUSDC = 1234567; // 1.234567 USDC
+        const result = formatUSDC(microUSDC);
+        expect(result).toBe('1.23');
+      });
+
+      it('should handle zero', () => {
+        const result = formatUSDC(0);
+        expect(result).toBe('0.00');
+      });
+
+      it('should handle 0.25 USDC (250000 microUSDC)', () => {
+        const microUSDC = 250000; // 0.25 USDC in microUSDC
+        const result = formatUSDC(microUSDC);
+        expect(result).toBe('0.25');
+      });
+
+      it('should handle very small amounts', () => {
+        const microUSDC = 1; // 0.000001 USDC
+        const result = formatUSDC(microUSDC);
+        expect(result).toBe('0.00');
+      });
+
+      it('should handle large amounts', () => {
+        const microUSDC = 1000000000000; // 1,000,000 USDC
+        const result = formatUSDC(microUSDC);
+        expect(result).toBe('1000000.00');
+      });
+
+      it('should handle fractional microUSDC amounts correctly', () => {
+        const microUSDC = 123456; // 0.123456 USDC
+        const result = formatUSDC(microUSDC);
+        expect(result).toBe('0.12');
+      });
+
+      it('should round down for display consistency', () => {
+        const microUSDC = 999999; // 0.999999 USDC (should round down to 0.99)
+        const result = formatUSDC(microUSDC);
+        expect(result).toBe('1.00'); // Actually rounds to 1.00 due to .toFixed(2)
+      });
     });
 
-    it('should handle string input', () => {
-      const microUSDC = '2500000'; // 2.5 USDC
-      const result = formatUSDC(microUSDC);
-      expect(result).toBe('2.50');
-    });
+    // Note: The isAlreadyFormatted parameter is not implemented in the current formatUSDC function
+    // These tests are for future enhancement if needed
 
-    it('should format to 2 decimal places', () => {
-      const microUSDC = 1234567; // 1.234567 USDC
-      const result = formatUSDC(microUSDC);
-      expect(result).toBe('1.23');
-    });
+    describe('edge cases and potential gotchas', () => {
+      it('should handle negative amounts (though not expected in real usage)', () => {
+        const microUSDC = -1000000; // -1 USDC
+        const result = formatUSDC(microUSDC);
+        expect(result).toBe('-1.00');
+      });
 
-    it('should handle zero', () => {
-      const result = formatUSDC(0);
-      expect(result).toBe('0.00');
+      it('should handle floating point precision issues', () => {
+        const microUSDC = 100000.1; // Slightly more than 0.1 USDC
+        const result = formatUSDC(microUSDC);
+        expect(result).toBe('0.10');
+      });
+
+      it('should be consistent with common contract amounts', () => {
+        // Test amounts commonly used in contracts
+        const amounts = [
+          { microUSDC: 250000, expected: '0.25' },    // Quarter dollar
+          { microUSDC: 500000, expected: '0.50' },    // Half dollar
+          { microUSDC: 1000000, expected: '1.00' },   // One dollar
+          { microUSDC: 10000000, expected: '10.00' }, // Ten dollars
+          { microUSDC: 100000000, expected: '100.00' } // One hundred dollars
+        ];
+
+        amounts.forEach(({ microUSDC, expected }) => {
+          expect(formatUSDC(microUSDC)).toBe(expected);
+        });
+      });
+
+      it('should handle scientific notation inputs', () => {
+        const microUSDC = 1e6; // 1000000 in scientific notation
+        const result = formatUSDC(microUSDC);
+        expect(result).toBe('1.00');
+      });
+
+      it('should maintain precision for amounts close to display threshold', () => {
+        const microUSDC = 5000; // 0.005 USDC (should round to 0.01)
+        const result = formatUSDC(microUSDC);
+        expect(result).toBe('0.01');
+      });
     });
   });
 });

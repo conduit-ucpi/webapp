@@ -135,7 +135,7 @@ export default function CreateContract() {
         buyerEmail: form.buyerEmail,
         sellerEmail: user?.email || '', // Get from authenticated user
         sellerAddress: userAddress,
-        amount: parseFloat(form.amount),
+        amount: parseFloat(form.amount.trim()) * 1000000, // Convert to microUSDC format
         currency: 'USDC',
         description: form.description,
         expiryTimestamp
@@ -168,7 +168,7 @@ export default function CreateContract() {
 
   return (
     <div className="max-w-md mx-auto bg-white rounded-lg shadow-md p-6">
-      <h2 className="text-2xl font-bold text-gray-900 mb-6">Create Escrow Contract</h2>
+      <h2 className="text-2xl font-bold text-gray-900 mb-6">New time-locked payment</h2>
       
       <form onSubmit={handleSubmit} className="space-y-4">
         <Input
@@ -246,7 +246,7 @@ export default function CreateContract() {
               {loadingMessage}
             </>
           ) : (
-            'Create Contract'
+            'Request from Buyer'
           )}
         </Button>
       </form>

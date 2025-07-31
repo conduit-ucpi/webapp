@@ -71,7 +71,10 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
       // Check USDC balance
       setLoadingMessage('Checking USDC balance...');
       const balance = await web3Service.getUSDCBalance(userAddress);
-      const requiredUSDC = contract.amount / 1000000; // Convert from microUSDC to USDC
+      // Handle both USDC and microUSDC formats
+      const requiredUSDC = typeof contract.amount === 'string' && (contract.amount as string).includes('.') 
+        ? parseFloat(contract.amount as string) // Already in USDC format
+        : (contract.amount as number) / 1000000; // Convert from microUSDC to USDC
       if (parseFloat(balance) < requiredUSDC) {
         throw new Error(`Insufficient USDC balance. You have ${balance} USDC, need ${requiredUSDC.toFixed(2)} USDC`);
       }
@@ -79,8 +82,12 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
       // Create on-chain contract (same as old flow)
       setLoadingMessage('Creating secure escrow...');
       
-      // Amount is already in microUSDC format (smallest unit)
-      const amountInSmallestUnit = contract.amount.toString();
+      // Convert to microUSDC format if not already
+      // The contract.amount might be coming as USDC (0.24) instead of microUSDC (240000)
+      const amountInMicroUSDC = typeof contract.amount === 'string' && (contract.amount as string).includes('.') 
+        ? Math.round(parseFloat(contract.amount as string) * 1000000)
+        : contract.amount as number;
+      const amountInSmallestUnit = amountInMicroUSDC.toString();
       
       const contractRequest: CreateContractRequest = {
         buyer: userAddress,
@@ -113,7 +120,10 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
 
       // USDC approval
       setLoadingMessage('Approving USDC spending for escrow...');
-      const usdcAmount = (contract.amount / 1000000).toString(); // Convert to USDC format for approval
+      // Handle both USDC and microUSDC formats for approval
+      const usdcAmount = typeof contract.amount === 'string' && (contract.amount as string).includes('.') 
+        ? contract.amount as string // Already in USDC format
+        : ((contract.amount as number) / 1000000).toString(); // Convert from microUSDC to USDC
       const approvalTx = await web3Service.signUSDCApproval(usdcAmount, contractAddress);
 
       const approvalResponse = await fetch(`${router.basePath}/api/chain/approve-usdc`, {

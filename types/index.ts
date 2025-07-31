@@ -57,6 +57,7 @@ export interface PendingContract {
   description: string;
   createdAt: string;
   createdBy: string;
+  processingStatus: 'OK' | 'IN-PROCESS';
   // Admin notes array from contract service
   adminNotes?: Array<{
     id: string;

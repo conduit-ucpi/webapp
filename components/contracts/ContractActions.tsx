@@ -20,12 +20,14 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction 
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
+  const [hasError, setHasError] = useState(false);
 
   const handleRaiseDispute = async () => {
-    if (!config || !isBuyer || contract.status !== 'ACTIVE' || !user) return;
+    if (!config || !isBuyer || contract.status !== 'ACTIVE' || !user || isLoading) return;
 
     setIsLoading(true);
     setLoadingMessage('Initializing...');
+    setHasError(false);
     
     try {
       // Get Web3Auth provider
@@ -67,20 +69,24 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction 
       }
 
       onAction(); // Refresh contracts
+      // Keep button disabled after success to prevent double-clicks
+      // The page will refresh with the new contract state
     } catch (error: any) {
       console.error('Dispute failed:', error);
+      setHasError(true);
       alert(error.message || 'Failed to raise dispute');
-    } finally {
+      // Only re-enable button on error
       setIsLoading(false);
       setLoadingMessage('');
     }
   };
 
   const handleClaimFunds = async () => {
-    if (!config || !isSeller || contract.status !== 'EXPIRED' || !user) return;
+    if (!config || !isSeller || contract.status !== 'EXPIRED' || !user || isLoading) return;
 
     setIsLoading(true);
     setLoadingMessage('Initializing...');
+    setHasError(false);
     
     try {
       // Get Web3Auth provider
@@ -122,10 +128,13 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction 
       }
 
       onAction(); // Refresh contracts
+      // Keep button disabled after success to prevent double-clicks
+      // The page will refresh with the new contract state
     } catch (error: any) {
       console.error('Claim failed:', error);
+      setHasError(true);
       alert(error.message || 'Failed to claim funds');
-    } finally {
+      // Only re-enable button on error
       setIsLoading(false);
       setLoadingMessage('');
     }
@@ -138,7 +147,7 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction 
         size="sm"
         onClick={handleRaiseDispute}
         disabled={isLoading}
-        className="w-full border-red-300 text-red-700 hover:bg-red-50"
+        className={`w-full border-red-300 text-red-700 hover:bg-red-50 ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
       >
         {isLoading ? (
           <>
@@ -158,7 +167,7 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction 
         size="sm"
         onClick={handleClaimFunds}
         disabled={isLoading}
-        className="w-full bg-green-600 hover:bg-green-700"
+        className={`w-full bg-green-600 hover:bg-green-700 ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
       >
         {isLoading ? (
           <>

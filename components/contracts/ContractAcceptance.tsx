@@ -16,6 +16,8 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
   const { config } = useConfig();
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
+  const [hasError, setHasError] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
 
   const handleAccept = async () => {
     if (!config) {
@@ -23,10 +25,38 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
       return;
     }
 
+    // Prevent double-clicks
+    if (isLoading || isSuccess) return;
+
     setIsLoading(true);
-    setLoadingMessage('Initializing...');
+    setLoadingMessage('Checking contract status...');
+    setHasError(false);
 
     try {
+      // First, get fresh contract data to check status
+      const contractResponse = await fetch(`${router.basePath}/api/contracts/${contract.id}`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      if (!contractResponse.ok) {
+        const errorData = await contractResponse.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to fetch contract status');
+      }
+
+      const freshContract = await contractResponse.json();
+      
+      // Check if contract is already being processed
+      if (freshContract.processingStatus === 'IN-PROCESS') {
+        throw new Error('This contract is already being processed. Please wait and refresh the page.');
+      }
+
+      // Only proceed if processing status is OK
+      if (freshContract.processingStatus !== 'OK') {
+        throw new Error(`Contract cannot be accepted. Processing status: ${freshContract.processingStatus}`);
+      }
+
+      setLoadingMessage('Initializing...');
       // Use existing Web3Auth provider from global state
       const web3authProvider = (window as any).web3authProvider;
       if (!web3authProvider) {
@@ -129,23 +159,73 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
       }
 
       // Contract service update is now handled by chain service
-
-      // Redirect to dashboard - no need to call onAcceptComplete since we're navigating away
-      router.push('/dashboard');
+      
+      // Mark as success to prevent double-clicks during redirect
+      setIsSuccess(true);
+      setLoadingMessage('Success! Redirecting...');
+      
+      // Small delay to show success message before redirect
+      setTimeout(() => {
+        router.push('/dashboard');
+      }, 500);
     } catch (error: any) {
       console.error('Contract acceptance failed:', error);
+      setHasError(true);
       alert(error.message || 'Failed to accept contract');
-    } finally {
+      // Only re-enable on error
       setIsLoading(false);
       setLoadingMessage('');
     }
   };
 
-  if (isLoading) {
+  if (isLoading || isSuccess) {
     return (
       <div className="flex flex-col items-center justify-center py-8">
         <LoadingSpinner size="lg" />
         <p className="mt-4 text-gray-600">{loadingMessage}</p>
+        {isSuccess && (
+          <p className="mt-2 text-green-600 font-medium">Contract accepted successfully!</p>
+        )}
+      </div>
+    );
+  }
+
+  // Show processing state if contract is already being processed
+  if (contract.processingStatus === 'IN-PROCESS') {
+    return (
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Contract Being Processed</h3>
+        
+        <div className="space-y-3 mb-6">
+          <div className="flex justify-between">
+            <span className="text-gray-600">Amount:</span>
+            <span className="font-medium">{contract.amount} {contract.currency}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-gray-600">Seller:</span>
+            <span>{contract.sellerEmail}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-gray-600">Description:</span>
+            <span className="text-right max-w-xs">{contract.description}</span>
+          </div>
+        </div>
+
+        <div className="bg-blue-50 border border-blue-200 rounded-md p-4 mb-6">
+          <div className="flex items-center">
+            <LoadingSpinner className="w-4 h-4 mr-2" />
+            <p className="text-sm text-blue-800">
+              This contract is currently being processed. Please wait and refresh the page to see updates.
+            </p>
+          </div>
+        </div>
+
+        <Button 
+          disabled={true}
+          className="w-full bg-gray-400 cursor-not-allowed opacity-50"
+        >
+          Processing...
+        </Button>
       </div>
     );
   }
@@ -178,7 +258,8 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
 
       <Button 
         onClick={handleAccept}
-        className="w-full bg-primary-500 hover:bg-primary-600"
+        disabled={isLoading || isSuccess}
+        className={`w-full bg-primary-500 hover:bg-primary-600 ${(isLoading || isSuccess) ? 'opacity-50 cursor-not-allowed' : ''}`}
       >
         Accept Contract & Deposit {contract.amount} USDC
       </Button>

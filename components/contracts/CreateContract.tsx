@@ -183,7 +183,7 @@ export default function CreateContract() {
           <Input
             label="Amount (USDC)"
             type="number"
-            step="0.01"
+            step="0.001"
             min="0"
             value={form.amount}
             onChange={(e) => setForm(prev => ({ ...prev, amount: e.target.value }))}
@@ -191,7 +191,7 @@ export default function CreateContract() {
             error={errors.amount}
             disabled={isLoading}
           />
-          <p className="text-xs text-gray-500 mt-1">(includes $1 fee)</p>
+          <p className="text-xs text-gray-500 mt-1">(includes $1 fee, amount must be over $1, or exactly 0.001 for your testing)</p>
         </div>
 
         <div>

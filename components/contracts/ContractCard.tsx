@@ -8,9 +8,12 @@ import ExpandableHash from '@/components/ui/ExpandableHash';
 interface ContractCardProps {
   contract: Contract;
   onAction: () => void;
+  isClaimingInProgress?: boolean;
+  onClaimStart?: () => void;
+  onClaimComplete?: () => void;
 }
 
-export default function ContractCard({ contract, onAction }: ContractCardProps) {
+export default function ContractCard({ contract, onAction, isClaimingInProgress, onClaimStart, onClaimComplete }: ContractCardProps) {
   const { user } = useAuth();
   const { config } = useConfig();
   
@@ -121,7 +124,10 @@ export default function ContractCard({ contract, onAction }: ContractCardProps) 
         contract={contract} 
         isBuyer={isBuyer} 
         isSeller={isSeller} 
-        onAction={onAction} 
+        onAction={onAction}
+        isClaimingInProgress={isClaimingInProgress}
+        onClaimStart={onClaimStart}
+        onClaimComplete={onClaimComplete}
       />
     </div>
   );

@@ -12,9 +12,12 @@ interface ContractActionsProps {
   isBuyer: boolean;
   isSeller: boolean;
   onAction: () => void;
+  isClaimingInProgress?: boolean;
+  onClaimStart?: () => void;
+  onClaimComplete?: () => void;
 }
 
-export default function ContractActions({ contract, isBuyer, isSeller, onAction }: ContractActionsProps) {
+export default function ContractActions({ contract, isBuyer, isSeller, onAction, isClaimingInProgress, onClaimStart, onClaimComplete }: ContractActionsProps) {
   const { config } = useConfig();
   const { user } = useAuth();
   const router = useRouter();
@@ -84,11 +87,12 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction 
   };
 
   const handleClaimFunds = async () => {
-    if (!config || !isSeller || contract.status !== 'EXPIRED' || !user || isLoading) return;
+    if (!config || !isSeller || contract.status !== 'EXPIRED' || !user || isLoading || isClaimingInProgress) return;
 
     setIsLoading(true);
     setLoadingMessage('Initializing...');
     setHasError(false);
+    onClaimStart?.(); // Disable all claim buttons
     
     try {
       // Get Web3Auth provider
@@ -130,15 +134,16 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction 
       }
 
       onAction(); // Refresh contracts
-      // Keep button disabled after success to prevent double-clicks
-      // The page will refresh with the new contract state
+      onClaimComplete?.(); // Re-enable all claim buttons after success
+      // Keep local loading state to prevent double-clicks until page refreshes
     } catch (error: any) {
       console.error('Claim failed:', error);
       setHasError(true);
       alert(error.message || 'Failed to claim funds');
-      // Only re-enable button on error
+      // Re-enable buttons on error
       setIsLoading(false);
       setLoadingMessage('');
+      onClaimComplete?.(); // Re-enable all claim buttons after error
     }
   };
 
@@ -164,18 +169,21 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction 
   }
 
   if (contract.status === 'EXPIRED' && isSeller) {
+    const isDisabled = isLoading || isClaimingInProgress;
     return (
       <Button
         size="sm"
         onClick={handleClaimFunds}
-        disabled={isLoading}
-        className={`w-full bg-green-600 hover:bg-green-700 ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+        disabled={isDisabled}
+        className={`w-full bg-green-600 hover:bg-green-700 ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
       >
         {isLoading ? (
           <>
             <LoadingSpinner className="w-4 h-4 mr-2" />
             {loadingMessage}
           </>
+        ) : isClaimingInProgress ? (
+          'Another claim in progress...'
         ) : (
           'Claim Funds'
         )}

@@ -23,6 +23,7 @@ export default function ContractList() {
   const [sortOrder, setSortOrder] = useState<SortOrder>('expiry-asc');
   const [contractToAccept, setContractToAccept] = useState<PendingContract | null>(null);
   const [showAcceptance, setShowAcceptance] = useState(false);
+  const [isClaimingInProgress, setIsClaimingInProgress] = useState(false);
 
   const fetchContracts = async () => {
     if (!user?.walletAddress) {
@@ -156,6 +157,15 @@ export default function ContractList() {
 
   const handleContractAction = () => {
     fetchContracts(); // Refresh after any action
+  };
+
+  const handleClaimStart = () => {
+    setIsClaimingInProgress(true);
+  };
+
+  const handleClaimComplete = () => {
+    setIsClaimingInProgress(false);
+    fetchContracts(); // Refresh after claim action
   };
 
   const handleAcceptContract = (contractId: string) => {
@@ -330,6 +340,9 @@ export default function ContractList() {
                     key={contract.contractAddress}
                     contract={contract}
                     onAction={handleContractAction}
+                    isClaimingInProgress={isClaimingInProgress}
+                    onClaimStart={handleClaimStart}
+                    onClaimComplete={handleClaimComplete}
                   />
                 );
               })}

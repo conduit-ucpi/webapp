@@ -151,6 +151,13 @@ No test framework configured yet. When adding tests:
 - Must run `npm test` successfully after any code changes (once test framework is set up)
 - All new functionality and bug fixes require test coverage
 
+**Git Commit Requirements:**
+- **All git commit messages must be useful and descriptive**
+- Explain what was changed and why, not just what files were touched
+- Use present tense and imperative mood ("Add validation" not "Added validation")
+- Include context about the business impact when relevant
+- Avoid generic messages like "fix", "update", or "changes"
+
 ## Deployment
 
 - happens via github actions

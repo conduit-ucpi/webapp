@@ -249,7 +249,7 @@ export default function ConnectWallet() {
           Initializing...
         </>
       ) : (
-        hasVisitedBefore ? 'Welcome Back' : 'Get Started'
+        'Get Started'
       )}
     </Button>
   );

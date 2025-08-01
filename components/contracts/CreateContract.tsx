@@ -168,11 +168,9 @@ export default function CreateContract() {
 
   return (
     <div className="max-w-md mx-auto bg-white rounded-lg shadow-md p-6">
-      <h2 className="text-2xl font-bold text-gray-900 mb-6">New time-locked payment</h2>
-      
       <form onSubmit={handleSubmit} className="space-y-4">
         <Input
-          label="Payer Email Address"
+          label="Request payment from (email):"
           type="email"
           value={form.buyerEmail}
           onChange={(e) => setForm(prev => ({ ...prev, buyerEmail: e.target.value }))}
@@ -181,17 +179,20 @@ export default function CreateContract() {
           disabled={isLoading}
         />
 
-        <Input
-          label="Amount (USDC)"
-          type="number"
-          step="0.01"
-          min="0"
-          value={form.amount}
-          onChange={(e) => setForm(prev => ({ ...prev, amount: e.target.value }))}
-          placeholder="100.00"
-          error={errors.amount}
-          disabled={isLoading}
-        />
+        <div>
+          <Input
+            label="Amount (USDC)"
+            type="number"
+            step="0.01"
+            min="0"
+            value={form.amount}
+            onChange={(e) => setForm(prev => ({ ...prev, amount: e.target.value }))}
+            placeholder="100.00"
+            error={errors.amount}
+            disabled={isLoading}
+          />
+          <p className="text-xs text-gray-500 mt-1">(includes $1 fee)</p>
+        </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">

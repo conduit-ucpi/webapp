@@ -30,7 +30,7 @@ export default function CreatePage() {
     <div className="py-10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-10">
-          <h1 className="text-3xl font-bold text-gray-900">New time-locked payment</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Time-locked payment request</h1>
           <p className="mt-2 text-gray-600">
             Set up a secure time-delayed escrow with automatic dispute resolution
           </p>

@@ -178,8 +178,24 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
       setIsSuccess(true);
       setLoadingMessage('Success! Redirecting...');
       
-      // Redirect immediately to dashboard
-      router.push('/dashboard');
+      // Notify parent component
+      onAcceptComplete();
+      
+      // Redirect to dashboard with error handling
+      try {
+        await router.push('/dashboard');
+      } catch (error) {
+        console.error('Redirect failed:', error);
+        // Fallback: reload the page to trigger navigation
+        window.location.href = '/dashboard';
+      }
+      
+      // Fallback timeout in case redirect doesn't work
+      setTimeout(() => {
+        if (window.location.pathname !== '/dashboard') {
+          window.location.href = '/dashboard';
+        }
+      }, 3000);
     } catch (error: any) {
       console.error('Contract acceptance failed:', error);
       setHasError(true);

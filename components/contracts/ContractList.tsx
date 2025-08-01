@@ -25,36 +25,37 @@ export default function ContractList() {
   const [showAcceptance, setShowAcceptance] = useState(false);
 
   const fetchContracts = async () => {
-    if (!user?.walletAddress) return;
+    if (!user?.walletAddress) {
+      setIsLoading(false);
+      return;
+    }
 
     try {
-      // Step 1: Fetch all user contracts from contract service (includes both pending and deployed)
-      const contractsResponse = await fetch(`${router.basePath}/api/contracts`);
-      if (!contractsResponse.ok) {
-        throw new Error('Failed to fetch contracts');
+      // Step 1: Fetch pending contracts and deployed contracts in parallel
+      const [pendingResponse, deployedResponse] = await Promise.all([
+        fetch(`${router.basePath}/api/contracts`),
+        fetch(`${router.basePath}/api/contracts/deployed`)
+      ]);
+
+      if (!pendingResponse.ok) {
+        throw new Error('Failed to fetch pending contracts');
       }
-      const contractsData = await contractsResponse.json();
-
-      // Separate pending contracts (no chainAddress) from deployed contracts (has chainAddress)
-      const pendingContracts: PendingContract[] = [];
-      const deployedContracts: PendingContract[] = [];
-
-      for (const contract of contractsData || []) {
-        if (contract.chainAddress) {
-          deployedContracts.push(contract);
-        } else {
-          pendingContracts.push(contract);
-        }
+      if (!deployedResponse.ok) {
+        throw new Error('Failed to fetch deployed contracts');
       }
 
-      setPendingContracts(pendingContracts);
-      setDeployedContracts(deployedContracts);
+      const pendingData = await pendingResponse.json();
+      const deployedData = await deployedResponse.json();
+
+      // Set the state for pending and deployed contracts
+      setPendingContracts(pendingData || []);
+      setDeployedContracts(deployedData || []);
 
       // Step 2: For deployed contracts, fetch their blockchain data and combine
       const contractsWithChainData: Contract[] = [];
       const contractsWithoutChainData: Contract[] = [];
 
-      for (const deployedContract of deployedContracts) {
+      for (const deployedContract of (deployedData || [])) {
         try {
           // Fetch individual contract from chain service
           const chainResponse = await fetch(`${router.basePath}/api/chain/contract/${deployedContract.chainAddress}`);

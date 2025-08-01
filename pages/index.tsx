@@ -45,7 +45,7 @@ export default function Home() {
                 <div className="flex flex-col sm:flex-row gap-4">
                   <Link href="/create">
                     <Button size="lg" className="w-full sm:w-auto bg-green-500 hover:bg-green-600 text-gray-900 font-semibold">
-                      New Payment
+                      New Payment Request
                     </Button>
                   </Link>
                   <Link href="/dashboard">

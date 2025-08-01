@@ -156,7 +156,9 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
           contractAddress,
           userWalletAddress: userAddress,
           signedTransaction: depositTx,
-          contractId: contract.id
+          contractId: contract.id,
+          buyerEmail: contract.buyerEmail,
+          sellerEmail: contract.sellerEmail
         })
       });
 

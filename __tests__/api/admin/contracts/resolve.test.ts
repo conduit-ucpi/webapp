@@ -199,4 +199,99 @@ describe('/api/admin/contracts/[id]/resolve', () => {
       error: 'Contract ID is required'
     });
   });
+
+  it('includes email addresses when provided in request body', async () => {
+    // Mock chain service response
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        success: true,
+        transactionHash: '0xdef456'
+      })
+    } as Response);
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      query: { id: 'contract-789' },
+      headers: { cookie: 'AUTH-TOKEN=test-token' },
+      body: {
+        buyerPercentage: 70,
+        sellerPercentage: 30,
+        resolutionNote: 'Resolved with email notification',
+        chainAddress: '0xabcdef1234567890',
+        buyerEmail: 'buyer@example.com',
+        sellerEmail: 'seller@example.com'
+      }
+    });
+
+    await handler(req as any, res);
+
+    expect(res._getStatusCode()).toBe(200);
+
+    // Verify chain service was called with email addresses
+    expect(mockFetch).toHaveBeenCalledWith(
+      'http://localhost:8978/api/admin/contracts/0xabcdef1234567890/resolve',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cookie': 'AUTH-TOKEN=test-token',
+        },
+        body: JSON.stringify({
+          buyerPercentage: 70,
+          sellerPercentage: 30,
+          resolutionNote: 'Resolved with email notification',
+          buyerEmail: 'buyer@example.com',
+          sellerEmail: 'seller@example.com'
+        }),
+      }
+    );
+  });
+
+  it('handles missing email addresses gracefully', async () => {
+    // Mock chain service response
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        success: true,
+        transactionHash: '0xghi789'
+      })
+    } as Response);
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      query: { id: 'contract-101' },
+      headers: { cookie: 'AUTH-TOKEN=test-token' },
+      body: {
+        buyerPercentage: 50,
+        sellerPercentage: 50,
+        resolutionNote: 'Resolved without emails',
+        chainAddress: '0x9876543210fedcba'
+        // Email addresses are not provided
+      }
+    });
+
+    await handler(req as any, res);
+
+    expect(res._getStatusCode()).toBe(200);
+
+    // Verify chain service was called with undefined email addresses
+    expect(mockFetch).toHaveBeenCalledWith(
+      'http://localhost:8978/api/admin/contracts/0x9876543210fedcba/resolve',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cookie': 'AUTH-TOKEN=test-token',
+        },
+        body: JSON.stringify({
+          buyerPercentage: 50,
+          sellerPercentage: 50,
+          resolutionNote: 'Resolved without emails',
+          buyerEmail: undefined,
+          sellerEmail: undefined
+        }),
+      }
+    );
+  });
 });

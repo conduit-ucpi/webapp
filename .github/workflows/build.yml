@@ -1,14 +1,12 @@
 name: Build and Deploy Next.js app
-
 on:
   push:
-    branches:
-      - "build-production"
+    branches: [ "build-production", "build-test" ]
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    environment: production
+    environment: ${{ github.ref_name == 'build-production' && 'production' || 'test' }}
     permissions:
       contents: read
       packages: write

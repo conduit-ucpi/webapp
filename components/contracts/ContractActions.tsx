@@ -54,7 +54,9 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction 
         body: JSON.stringify({
           contractAddress: contract.contractAddress,
           userWalletAddress: userAddress,
-          signedTransaction: signedTx
+          signedTransaction: signedTx,
+          buyerEmail: contract.buyerEmail || user?.email,
+          sellerEmail: contract.sellerEmail
         })
       });
 

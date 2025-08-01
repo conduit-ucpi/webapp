@@ -155,7 +155,9 @@ export default function DisputeResolutionModal({
             buyerPercentage: parseFloat(buyerPercentage),
             sellerPercentage: parseFloat(sellerPercentage),
             resolutionNote: newNote,
-            chainAddress
+            chainAddress,
+            buyerEmail: contract?.buyerEmail,
+            sellerEmail: contract?.sellerEmail
           }),
         });
 

@@ -12,7 +12,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { buyerPercentage, sellerPercentage, resolutionNote, chainAddress } = req.body;
+  const { buyerPercentage, sellerPercentage, resolutionNote, chainAddress, buyerEmail, sellerEmail } = req.body;
 
   // Validate percentages
   if (typeof buyerPercentage !== 'number' || typeof sellerPercentage !== 'number') {
@@ -43,7 +43,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       body: JSON.stringify({
         buyerPercentage,
         sellerPercentage,
-        resolutionNote
+        resolutionNote,
+        buyerEmail,
+        sellerEmail
       }),
     });
 

@@ -287,12 +287,140 @@ describe('DisputeResolutionModal', () => {
           buyerPercentage: 60,
           sellerPercentage: 40,
           resolutionNote: 'Resolution note',
-          chainAddress: '0x1234567890abcdef'
+          chainAddress: '0x1234567890abcdef',
+          buyerEmail: 'buyer@example.com',
+          sellerEmail: 'seller@example.com'
         })
       });
 
       expect(defaultProps.onResolutionComplete).toHaveBeenCalled();
       expect(defaultProps.onClose).toHaveBeenCalled();
+    });
+  });
+
+  it('includes email addresses when resolving dispute', async () => {
+    const contractWithEmails = {
+      ...mockContract,
+      buyerEmail: 'test-buyer@example.com',
+      sellerEmail: 'test-seller@example.com'
+    };
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => contractWithEmails
+    } as Response);
+
+    render(<DisputeResolutionModal {...defaultProps} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Test contract')).toBeInTheDocument();
+    });
+
+    // Add resolution note
+    const noteInput = screen.getByPlaceholderText('Enter your note about this dispute...');
+    fireEvent.change(noteInput, { target: { value: 'Email test resolution' } });
+
+    // Set percentages
+    const percentageInputs = screen.getAllByPlaceholderText('0-100');
+    fireEvent.change(percentageInputs[0], { target: { value: '55' } });
+
+    // Mock successful note addition
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ success: true })
+    } as Response);
+
+    // Mock successful resolution
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ success: true })
+    } as Response);
+
+    const resolveButton = screen.getByText('Add Note and Resolve');
+    fireEvent.click(resolveButton);
+
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalledTimes(3);
+    });
+
+    // Verify resolution was called with email addresses
+    expect(mockFetch).toHaveBeenCalledWith('/api/admin/contracts/1/resolve', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+      body: JSON.stringify({
+        buyerPercentage: 55,
+        sellerPercentage: 45,
+        resolutionNote: 'Email test resolution',
+        chainAddress: '0x1234567890abcdef',
+        buyerEmail: 'test-buyer@example.com',
+        sellerEmail: 'test-seller@example.com'
+      })
+    });
+  });
+
+  it('handles missing email addresses gracefully when resolving', async () => {
+    const contractWithoutEmails = {
+      ...mockContract,
+      buyerEmail: undefined,
+      sellerEmail: undefined
+    };
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => contractWithoutEmails
+    } as Response);
+
+    render(<DisputeResolutionModal {...defaultProps} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Test contract')).toBeInTheDocument();
+    });
+
+    // Add resolution note
+    const noteInput = screen.getByPlaceholderText('Enter your note about this dispute...');
+    fireEvent.change(noteInput, { target: { value: 'No email resolution' } });
+
+    // Set percentages
+    const percentageInputs = screen.getAllByPlaceholderText('0-100');
+    fireEvent.change(percentageInputs[0], { target: { value: '50' } });
+
+    // Mock successful note addition
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ success: true })
+    } as Response);
+
+    // Mock successful resolution
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ success: true })
+    } as Response);
+
+    const resolveButton = screen.getByText('Add Note and Resolve');
+    fireEvent.click(resolveButton);
+
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalledTimes(3);
+    });
+
+    // Verify resolution was called with undefined email addresses
+    expect(mockFetch).toHaveBeenCalledWith('/api/admin/contracts/1/resolve', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+      body: JSON.stringify({
+        buyerPercentage: 50,
+        sellerPercentage: 50,
+        resolutionNote: 'No email resolution',
+        chainAddress: '0x1234567890abcdef',
+        buyerEmail: undefined,
+        sellerEmail: undefined
+      })
     });
   });
 

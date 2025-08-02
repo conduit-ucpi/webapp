@@ -55,7 +55,8 @@ describe('ContractActions - Email Fields for Dispute', () => {
     moonPayApiKey: 'test-moonpay-key',
     minGasWei: '5',
     basePath: '',
-    snowtraceBaseUrl: 'https://testnet.snowtrace.io'
+    snowtraceBaseUrl: 'https://testnet.snowtrace.io',
+    serviceLink: 'http://localhost:3000'
   };
 
   const mockOnAction = jest.fn();

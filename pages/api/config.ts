@@ -16,7 +16,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log('MOONPAY_API_KEY:', process.env.MOONPAY_API_KEY ? 'Present' : 'Missing');
     console.log('MIN_GAS_WEI:', process.env.MIN_GAS_WEI);
     console.log('SNOWTRACE_BASE_URL:', process.env.SNOWTRACE_BASE_URL);
+    console.log('SERVICE_LINK:', process.env.SERVICE_LINK);
 
+    const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '/webapp';
+    
     const config = {
       web3AuthClientId: process.env.WEB3AUTH_CLIENT_ID,
       web3AuthNetwork: process.env.WEB3AUTH_NETWORK || 'sapphire_devnet',
@@ -25,8 +28,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       usdcContractAddress: process.env.USDC_CONTRACT_ADDRESS,
       moonPayApiKey: process.env.MOONPAY_API_KEY,
       minGasWei: process.env.MIN_GAS_WEI || '5',
-      basePath: process.env.NEXT_PUBLIC_BASE_PATH || '/webapp',
-      snowtraceBaseUrl: process.env.SNOWTRACE_BASE_URL
+      basePath,
+      snowtraceBaseUrl: process.env.SNOWTRACE_BASE_URL,
+      serviceLink: `${process.env.SERVICE_LINK || 'http://localhost:3000'}${basePath}/dashboard`
     };
 
     if (!config.usdcContractAddress) {

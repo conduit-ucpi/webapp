@@ -91,6 +91,31 @@ const mockEnrichedContracts = [
   }
 ];
 
+// Helper to create combined mock data with blockchain status
+const createCombinedMockData = (contracts = mockContracts, withBlockchainData = true) => {
+  return contracts.map((contract, index) => {
+    if (withBlockchainData && contract.chainAddress) {
+      return {
+        ...contract,
+        blockchainQuerySuccess: true,
+        blockchainStatus: {
+          buyerAddress: `0xbuyer${index + 1}`,
+          sellerAddress: contract.sellerAddress,
+          status: 'ACTIVE',
+          amount: contract.amount,
+          expiryTimestamp: contract.expiryTimestamp,
+          funded: true
+        }
+      };
+    }
+    return {
+      ...contract,
+      blockchainQuerySuccess: false,
+      blockchainQueryError: contract.chainAddress ? 'Chain service error' : 'No chain address'
+    };
+  });
+};
+
 describe('AdminContractList', () => {
   beforeEach(() => {
     mockUseRouter.mockReturnValue({
@@ -140,22 +165,30 @@ describe('AdminContractList', () => {
   });
 
   it('renders contract table with data', async () => {
-    // Mock deployed contracts response
+    // Mock combined contracts response with blockchain data included
+    const combinedMockData = [
+      {
+        ...mockContracts[0],
+        blockchainQuerySuccess: true,
+        blockchainStatus: {
+          buyerAddress: '0xbuyer1',
+          sellerAddress: '0xseller1',
+          status: 'ACTIVE',
+          amount: 1000,
+          expiryTimestamp: 1753749402,
+          funded: true
+        }
+      },
+      {
+        ...mockContracts[1],
+        blockchainQuerySuccess: false,
+        blockchainQueryError: 'No chain address'
+      }
+    ];
+
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => mockContracts
-    } as Response);
-    
-    // Mock chain service response for contract with chainAddress
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ 
-        buyer: '0xbuyer1',
-        seller: '0xseller1',
-        status: 'ACTIVE',
-        amount: 1000,
-        expiryTimestamp: 1753749402
-      })
+      json: async () => combinedMockData
     } as Response);
 
     render(<AdminContractList />);
@@ -170,22 +203,29 @@ describe('AdminContractList', () => {
   });
 
   it('displays wallet addresses when available', async () => {
-    // Mock deployed contracts response
+    // Mock combined contracts response with blockchain data
+    const combinedMockData = [
+      {
+        ...mockContracts[0],
+        blockchainQuerySuccess: true,
+        blockchainStatus: {
+          buyerAddress: '0xbuyer1',
+          sellerAddress: '0xseller1',
+          status: 'ACTIVE',
+          amount: 1000,
+          expiryTimestamp: 1753749402,
+          funded: true
+        }
+      },
+      {
+        ...mockContracts[1],
+        blockchainQuerySuccess: false
+      }
+    ];
+
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => mockContracts
-    } as Response);
-    
-    // Mock chain service response for contract with chainAddress
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ 
-        buyer: '0xbuyer1',
-        seller: '0xseller1',
-        status: 'ACTIVE',
-        amount: 1000,
-        expiryTimestamp: 1753749402
-      })
+      json: async () => combinedMockData
     } as Response);
 
     render(<AdminContractList />);
@@ -229,22 +269,10 @@ describe('AdminContractList', () => {
   });
 
   it('filters contracts by search term', async () => {
-    // Mock deployed contracts response
+    // Mock combined contracts response
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => mockContracts
-    } as Response);
-    
-    // Mock chain service response for contract with chainAddress
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ 
-        buyer: '0xbuyer1',
-        seller: '0xseller1',
-        status: 'ACTIVE',
-        amount: 1000,
-        expiryTimestamp: 1753749402
-      })
+      json: async () => createCombinedMockData()
     } as Response);
 
     render(<AdminContractList />);
@@ -262,22 +290,10 @@ describe('AdminContractList', () => {
   });
 
   it('filters contracts by wallet address search', async () => {
-    // Mock deployed contracts response
+    // Mock combined contracts response
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => mockContracts
-    } as Response);
-    
-    // Mock chain service response for contract with chainAddress
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ 
-        buyer: '0xbuyer1',
-        seller: '0xseller1',
-        status: 'ACTIVE',
-        amount: 1000,
-        expiryTimestamp: 1753749402
-      })
+      json: async () => createCombinedMockData()
     } as Response);
 
     render(<AdminContractList />);
@@ -296,22 +312,10 @@ describe('AdminContractList', () => {
   });
 
   it('filters contracts by status', async () => {
-    // Mock deployed contracts response
+    // Mock combined contracts response
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => mockContracts
-    } as Response);
-    
-    // Mock chain service response for contract with chainAddress
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ 
-        buyer: '0xbuyer1',
-        seller: '0xseller1',
-        status: 'ACTIVE',
-        amount: 1000,
-        expiryTimestamp: 1753749402
-      })
+      json: async () => createCombinedMockData()
     } as Response);
 
     render(<AdminContractList />);
@@ -331,22 +335,10 @@ describe('AdminContractList', () => {
   });
 
   it('filters contracts by chain address presence', async () => {
-    // Mock deployed contracts response
+    // Mock combined contracts response
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => mockContracts
-    } as Response);
-    
-    // Mock chain service response for contract with chainAddress
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ 
-        buyer: '0xbuyer1',
-        seller: '0xseller1',
-        status: 'ACTIVE',
-        amount: 1000,
-        expiryTimestamp: 1753749402
-      })
+      json: async () => createCombinedMockData()
     } as Response);
 
     render(<AdminContractList />);
@@ -366,22 +358,10 @@ describe('AdminContractList', () => {
   });
 
   it('sorts contracts by different fields', async () => {
-    // Mock deployed contracts response
+    // Mock combined contracts response
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => mockContracts
-    } as Response);
-    
-    // Mock chain service response for contract with chainAddress
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ 
-        buyer: '0xbuyer1',
-        seller: '0xseller1',
-        status: 'ACTIVE',
-        amount: 1000,
-        expiryTimestamp: 1753749402
-      })
+      json: async () => createCombinedMockData()
     } as Response);
 
     render(<AdminContractList />);
@@ -410,7 +390,7 @@ describe('AdminContractList', () => {
 
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => manyContracts
+      json: async () => createCombinedMockData(manyContracts)
     } as Response);
 
     render(<AdminContractList />);
@@ -436,7 +416,7 @@ describe('AdminContractList', () => {
 
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => manyContracts
+      json: async () => createCombinedMockData(manyContracts)
     } as Response);
 
     render(<AdminContractList />);
@@ -454,22 +434,10 @@ describe('AdminContractList', () => {
   it('calls onContractSelect when row is clicked', async () => {
     const mockOnContractSelect = jest.fn();
     
-    // Mock deployed contracts response
+    // Mock combined contracts response
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => mockContracts
-    } as Response);
-    
-    // Mock chain service response for contract with chainAddress
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ 
-        buyer: '0xbuyer1',
-        seller: '0xseller1',
-        status: 'ACTIVE',
-        amount: 1000,
-        expiryTimestamp: 1753749402
-      })
+      json: async () => createCombinedMockData()
     } as Response);
 
     render(<AdminContractList onContractSelect={mockOnContractSelect} />);
@@ -491,22 +459,10 @@ describe('AdminContractList', () => {
   });
 
   it('shows empty state when no contracts match filters', async () => {
-    // Mock deployed contracts response
+    // Mock combined contracts response
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => mockContracts
-    } as Response);
-    
-    // Mock chain service response for contract with chainAddress
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ 
-        buyer: '0xbuyer1',
-        seller: '0xseller1',
-        status: 'ACTIVE',
-        amount: 1000,
-        expiryTimestamp: 1753749402
-      })
+      json: async () => createCombinedMockData()
     } as Response);
 
     render(<AdminContractList />);
@@ -523,22 +479,10 @@ describe('AdminContractList', () => {
   });
 
   it('clears filters when clear button is clicked', async () => {
-    // Mock deployed contracts response
+    // Mock combined contracts response
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => mockContracts
-    } as Response);
-    
-    // Mock chain service response for contract with chainAddress
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ 
-        buyer: '0xbuyer1',
-        seller: '0xseller1',
-        status: 'ACTIVE',
-        amount: 1000,
-        expiryTimestamp: 1753749402
-      })
+      json: async () => createCombinedMockData()
     } as Response);
 
     render(<AdminContractList />);
@@ -578,18 +522,6 @@ describe('AdminContractList', () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => mockContracts
-    } as Response);
-    
-    // Mock chain service response for contract with chainAddress
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ 
-        buyer: '0xbuyer1',
-        seller: '0xseller1',
-        status: 'ACTIVE',
-        amount: 1000,
-        expiryTimestamp: 1753749402
-      })
     } as Response);
 
     const tryAgainButton = screen.getByText('Try Again');
@@ -635,8 +567,8 @@ describe('AdminContractList', () => {
       expect(screen.getByText('Network error')).toBeInTheDocument();
     });
 
-    // Verify fetch was called with basePath for deployed contracts
-    expect(mockFetch).toHaveBeenCalledWith('/app/api/admin/contracts');
+    // Verify fetch was called with basePath for combined contracts
+    expect(mockFetch).toHaveBeenCalledWith('/app/api/admin/combined-contracts');
   });
 
   it('handles sorting by clicking on column headers', async () => {
@@ -711,7 +643,7 @@ describe('AdminContractList', () => {
 
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => [expiredContract]
+      json: async () => createCombinedMockData([expiredContract], false)
     } as Response);
 
     render(<AdminContractList />);
@@ -738,26 +670,29 @@ describe('AdminContractList', () => {
       { ...mockContracts[0], id: '3', chainAddress: '0x789' },
     ];
 
-    // Mock deployed contracts response
+    // Mock combined contracts response with different statuses
+    const combinedMockData = [
+      {
+        ...contractsWithChain[0],
+        blockchainQuerySuccess: true,
+        blockchainStatus: { status: 'DISPUTED' }
+      },
+      {
+        ...contractsWithChain[1],
+        blockchainQuerySuccess: true,
+        blockchainStatus: { status: 'RESOLVED' }
+      },
+      {
+        ...contractsWithChain[2],
+        blockchainQuerySuccess: true,
+        blockchainStatus: { status: 'CLAIMED' }
+      },
+      ...createCombinedMockData(contractsWithoutChain, false)
+    ];
+
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => [...contractsWithChain, ...contractsWithoutChain]
-    } as Response);
-    
-    // Mock chain service responses
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ status: 'DISPUTED' })
-    } as Response);
-    
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ status: 'RESOLVED' })
-    } as Response);
-    
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ status: 'CLAIMED' })
+      json: async () => combinedMockData
     } as Response);
 
     render(<AdminContractList />);
@@ -776,16 +711,14 @@ describe('AdminContractList', () => {
       chainAddress: '0x123',
     };
 
-    // Mock deployed contracts response
+    // Mock combined contracts response with unknown status
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => [unknownStatusContract]
-    } as Response);
-    
-    // Mock chain service response with unknown status
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ status: 'UNKNOWN_STATUS' })
+      json: async () => [{
+        ...unknownStatusContract,
+        blockchainQuerySuccess: true,
+        blockchainStatus: { status: 'UNKNOWN_STATUS' }
+      }]
     } as Response);
 
     render(<AdminContractList />);
@@ -808,7 +741,7 @@ describe('AdminContractList', () => {
 
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => manyContracts
+      json: async () => createCombinedMockData(manyContracts)
     } as Response);
 
     render(<AdminContractList />);
@@ -851,25 +784,22 @@ describe('AdminContractList', () => {
           addedBy: 'admin@example.com',
           addedAt: 1753900000000
         }
-      ]
+      ],
+      blockchainStatus: {
+        status: 'CLAIMED',
+        funded: true,
+        buyer: '0xbuyer1',
+        seller: '0xseller1',
+        amount: 1000,
+        expiryTimestamp: 1753749402
+      },
+      blockchainQuerySuccess: true
     };
 
-    // Mock deployed contracts response
+    // Mock combined contracts response
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => [contractWithAdminNotes]
-    } as Response);
-    
-    // Mock chain service response with CLAIMED status
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ 
-        buyer: '0xbuyer1',
-        seller: '0xseller1',
-        status: 'CLAIMED',
-        amount: 1000,
-        expiryTimestamp: 1753749402
-      })
     } as Response);
 
     render(<AdminContractList />);
@@ -882,14 +812,17 @@ describe('AdminContractList', () => {
   });
 
   it('handles chain service fetch failures gracefully', async () => {
-    // Mock deployed contracts response
+    // Mock combined contracts response with blockchain query failure
+    const contractsWithFailure = mockContracts.map(contract => ({
+      ...contract,
+      blockchainQuerySuccess: false,
+      blockchainQueryError: 'Chain service unavailable'
+    }));
+
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => mockContracts
+      json: async () => contractsWithFailure
     } as Response);
-    
-    // Mock chain service failure
-    mockFetch.mockRejectedValueOnce(new Error('Chain service unavailable'));
 
     render(<AdminContractList />);
 

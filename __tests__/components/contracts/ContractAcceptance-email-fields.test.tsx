@@ -54,7 +54,8 @@ describe('ContractAcceptance - Email Fields', () => {
     moonPayApiKey: 'test-moonpay-key',
     minGasWei: '5',
     basePath: '',
-    snowtraceBaseUrl: 'https://testnet.snowtrace.io'
+    snowtraceBaseUrl: 'https://testnet.snowtrace.io',
+    serviceLink: 'http://localhost:3000'
   };
 
   const mockOnAcceptComplete = jest.fn();
@@ -154,7 +155,7 @@ describe('ContractAcceptance - Email Fields', () => {
       currency: 'USDC',
       payoutDateTime: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/),
       contractDescription: expect.any(String),
-      contractLink: expect.stringContaining('/dashboard')
+      contractLink: 'http://localhost:3000'
     });
   });
 
@@ -234,7 +235,7 @@ describe('ContractAcceptance - Email Fields', () => {
       currency: 'USDC',
       payoutDateTime: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/),
       contractDescription: expect.any(String),
-      contractLink: expect.stringContaining('/dashboard')
+      contractLink: 'http://localhost:3000'
     });
     // buyerEmail should not be present when undefined
     expect(depositBody).not.toHaveProperty('buyerEmail');

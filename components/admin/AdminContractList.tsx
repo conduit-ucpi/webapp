@@ -60,6 +60,11 @@ export default function AdminContractList({ onContractSelect }: AdminContractLis
       }
       const combinedData = await combinedResponse.json();
 
+      // Ensure combinedData is an array
+      if (!Array.isArray(combinedData)) {
+        throw new Error('Invalid response format from server');
+      }
+
       // Process the combined data
       const processedContracts: AdminContract[] = combinedData.map((contract: any) => {
         // Base contract data
@@ -74,9 +79,14 @@ export default function AdminContractList({ onContractSelect }: AdminContractLis
 
         // If blockchain data is available, merge it
         if (contract.blockchainStatus) {
+          // Create synthetic RESOLVED status if contract is CLAIMED but has adminNotes
+          const displayStatus = contract.blockchainStatus.status === 'CLAIMED' && contract.adminNotes && contract.adminNotes.length > 0
+            ? 'RESOLVED'
+            : contract.blockchainStatus.status;
+            
           return {
             ...baseContract,
-            status: contract.blockchainStatus.status,
+            status: displayStatus,
             funded: contract.blockchainStatus.funded,
             fundedAt: contract.blockchainStatus.fundedAt,
             disputedAt: contract.blockchainStatus.disputedAt,

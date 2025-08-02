@@ -101,35 +101,23 @@ describe('ContractList', () => {
       };
 
       // Mock fetch responses
-      (global.fetch as jest.Mock)
-        .mockImplementationOnce(() =>
-          Promise.resolve({
-            ok: true,
-            json: () => Promise.resolve(mockAllContracts),
-          })
-        )
-        .mockImplementationOnce(() =>
-          Promise.resolve({
-            ok: true,
-            json: () => Promise.resolve(mockChainData),
-          })
-        );
+      (global.fetch as jest.Mock).mockImplementationOnce(() =>
+        Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(mockAllContracts),
+        })
+      );
 
       render(<ContractList />);
 
-      // Wait for initial loading to complete and chain data to be fetched
+      // Wait for initial loading to complete
       await waitFor(() => {
         expect(screen.queryByTestId('loading-spinner')).not.toBeInTheDocument();
       });
 
-      // Wait for the chain data fetch to complete
-      await waitFor(() => {
-        expect(global.fetch).toHaveBeenCalledTimes(2);
-      });
-
-      // Verify unified endpoint was called
-      expect(global.fetch).toHaveBeenCalledWith('/api/contracts/all');
-      expect(global.fetch).toHaveBeenCalledWith('/api/chain/contract/0xcontract1');
+      // Verify unified endpoint was called once
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+      expect(global.fetch).toHaveBeenCalledWith('/api/combined-contracts');
     });
 
     it('should handle errors when fetching pending contracts fails', async () => {
@@ -153,7 +141,7 @@ describe('ContractList', () => {
         expect(screen.getByText('Failed to fetch contracts')).toBeInTheDocument();
       });
 
-      expect(global.fetch).toHaveBeenCalledWith('/api/contracts/all');
+      expect(global.fetch).toHaveBeenCalledWith('/api/combined-contracts');
     });
 
 
@@ -186,39 +174,30 @@ describe('ContractList', () => {
           expiryTimestamp: 1700000000,
           createdAt: 1699000000,
           isPending: false,
+          blockchainQuerySuccess: true,
+          blockchainStatus: {
+            status: 'ACTIVE',
+            buyerAddress: '0xbuyer1',
+            sellerAddress: '0xseller2',
+            amount: 200,
+            expiryTimestamp: 1700000000,
+            funded: true
+          }
         },
       ];
 
-      const mockChainData = {
-        contractAddress: '0xcontract1',
-        status: 'ACTIVE',
-        buyerAddress: '0xbuyer1',
-        sellerAddress: '0xseller2',
-        amount: 200,
-        expiryTimestamp: 1700000000,
-        description: 'Deployed contract 1',
-        createdAt: 1699000000,
-      };
-
-      (global.fetch as jest.Mock)
-        .mockImplementationOnce(() =>
-          Promise.resolve({
-            ok: true,
-            json: () => Promise.resolve(mockAllContracts),
-          })
-        )
-        .mockImplementationOnce(() =>
-          Promise.resolve({
-            ok: true,
-            json: () => Promise.resolve(mockChainData),
-          })
-        );
+      (global.fetch as jest.Mock).mockImplementationOnce(() =>
+        Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(mockAllContracts),
+        })
+      );
 
       render(<ContractList />);
 
-      // Wait for all fetches to complete
+      // Wait for fetch to complete
       await waitFor(() => {
-        expect(global.fetch).toHaveBeenCalledTimes(2);
+        expect(global.fetch).toHaveBeenCalledTimes(1);
       });
 
       await waitFor(() => {
@@ -270,7 +249,7 @@ describe('ContractList', () => {
         expect(screen.getByText('Create your first escrow contract to get started.')).toBeInTheDocument();
       });
 
-      expect(global.fetch).toHaveBeenCalledWith('/api/contracts/all');
+      expect(global.fetch).toHaveBeenCalledWith('/api/combined-contracts');
       expect(global.fetch).toHaveBeenCalledTimes(1);
     });
 
@@ -294,7 +273,7 @@ describe('ContractList', () => {
 
       // Should only call the unified endpoint once
       expect(fetchTimes).toHaveLength(1);
-      expect(global.fetch).toHaveBeenCalledWith('/api/contracts/all');
+      expect(global.fetch).toHaveBeenCalledWith('/api/combined-contracts');
     });
   });
 });

@@ -8,6 +8,7 @@ export interface Config {
   minGasWei: string;
   basePath: string;
   snowtraceBaseUrl: string;
+  serviceLink: string;
 }
 
 export interface User {

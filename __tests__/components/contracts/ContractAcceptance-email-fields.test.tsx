@@ -149,7 +149,9 @@ describe('ContractAcceptance - Email Fields', () => {
       signedTransaction: 'mock-deposit-tx',
       contractId: 'test-contract-123',
       buyerEmail: 'buyer@test.com',
-      sellerEmail: 'seller@test.com'
+      sellerEmail: 'seller@test.com',
+      amount: '1000000 USDC',
+      payoutDateTime: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/)
     });
   });
 
@@ -224,7 +226,9 @@ describe('ContractAcceptance - Email Fields', () => {
       userWalletAddress: '0xBuyerAddress',
       signedTransaction: 'mock-deposit-tx',
       contractId: 'test-contract-456',
-      sellerEmail: 'seller@test.com'
+      sellerEmail: 'seller@test.com',
+      amount: '1000000 USDC',
+      payoutDateTime: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/)
     });
     // buyerEmail should not be present when undefined
     expect(depositBody).not.toHaveProperty('buyerEmail');

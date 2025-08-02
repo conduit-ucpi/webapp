@@ -83,6 +83,15 @@ export interface CreatePendingContractRequest {
   expiryTimestamp: number;
 }
 
+export interface RaiseDisputeRequest {
+  contractAddress: string;
+  userWalletAddress: string;
+  signedTransaction: string;
+  buyerEmail?: string;
+  sellerEmail?: string;
+  payoutDateTime: string;
+}
+
 export interface AuthContextType {
   user: User | null;
   provider: any | null;

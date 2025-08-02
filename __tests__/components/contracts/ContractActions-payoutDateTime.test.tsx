@@ -45,7 +45,7 @@ Object.defineProperty(window, 'web3authProvider', {
 // Mock window.alert
 global.alert = jest.fn();
 
-describe('ContractActions - Email Fields for Dispute', () => {
+describe('ContractActions - PayoutDateTime', () => {
   const mockConfig = {
     web3AuthClientId: 'test-client-id',
     web3AuthNetwork: 'testnet',
@@ -76,7 +76,7 @@ describe('ContractActions - Email Fields for Dispute', () => {
     });
   });
 
-  it('should include email addresses when raising a dispute', async () => {
+  it('should include payoutDateTime in ISO8601 format when raising a dispute', async () => {
     const mockUser = {
       userId: 'user-123',
       email: 'buyer@test.com',
@@ -91,12 +91,16 @@ describe('ContractActions - Email Fields for Dispute', () => {
       logout: jest.fn(),
     });
 
+    // Use a specific timestamp for predictable testing
+    const expiryTimestamp = 1692123456; // Unix timestamp
+    const expectedISOString = new Date(expiryTimestamp * 1000).toISOString();
+
     const contract: Contract = {
       contractAddress: '0xContractAddress123',
       buyerAddress: '0xBuyerAddress',
       sellerAddress: '0xSellerAddress',
       amount: 1000000,
-      expiryTimestamp: Math.floor(Date.now() / 1000) + 86400,
+      expiryTimestamp: expiryTimestamp,
       description: 'Test contract',
       status: 'ACTIVE',
       createdAt: Math.floor(Date.now() / 1000),
@@ -139,19 +143,31 @@ describe('ContractActions - Email Fields for Dispute', () => {
             signedTransaction: 'mock-dispute-tx',
             buyerEmail: 'buyer@test.com',
             sellerEmail: 'seller@test.com',
-            payoutDateTime: new Date(contract.expiryTimestamp * 1000).toISOString()
+            payoutDateTime: expectedISOString
           })
         })
       );
     });
 
-    expect(mockOnAction).toHaveBeenCalled();
+    // Verify the payoutDateTime is in the correct ISO8601 format
+    const callArgs = mockFetch.mock.calls[0];
+    const requestBody = JSON.parse(callArgs[1].body);
+    
+    // Should be a valid ISO8601 date string
+    expect(requestBody.payoutDateTime).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+    
+    // Should be exactly the expected ISO string
+    expect(requestBody.payoutDateTime).toBe(expectedISOString);
+    
+    // Should be a valid date when parsed back
+    const parsedDate = new Date(requestBody.payoutDateTime);
+    expect(parsedDate.getTime()).toBe(expiryTimestamp * 1000);
   });
 
-  it('should use user email as fallback when contract buyerEmail is missing', async () => {
+  it('should correctly convert Unix timestamp to ISO8601 for different dates', async () => {
     const mockUser = {
-      userId: 'user-456',
-      email: 'currentuser@test.com',
+      userId: 'user-123',
+      email: 'buyer@test.com',
       walletAddress: '0xBuyerAddress',
     };
 
@@ -163,17 +179,21 @@ describe('ContractActions - Email Fields for Dispute', () => {
       logout: jest.fn(),
     });
 
-    const contractWithoutBuyerEmail: Contract = {
+    // Test with a different timestamp - December 31, 2023 at midnight UTC
+    const expiryTimestamp = 1704067200; // December 31, 2023 00:00:00 UTC
+    const expectedISOString = '2024-01-01T00:00:00.000Z';
+
+    const contract: Contract = {
       contractAddress: '0xContractAddress456',
       buyerAddress: '0xBuyerAddress',
       sellerAddress: '0xSellerAddress',
-      amount: 1000000,
-      expiryTimestamp: Math.floor(Date.now() / 1000) + 86400,
-      description: 'Test contract without buyer email',
+      amount: 2000000,
+      expiryTimestamp: expiryTimestamp,
+      description: 'Test contract with specific date',
       status: 'ACTIVE',
       createdAt: Math.floor(Date.now() / 1000),
       funded: true,
-      // buyerEmail is missing
+      buyerEmail: 'buyer@test.com',
       sellerEmail: 'seller@test.com',
     };
 
@@ -187,7 +207,7 @@ describe('ContractActions - Email Fields for Dispute', () => {
 
     render(
       <ContractActions 
-        contract={contractWithoutBuyerEmail}
+        contract={contract}
         isBuyer={true}
         isSeller={false}
         onAction={mockOnAction}
@@ -198,92 +218,10 @@ describe('ContractActions - Email Fields for Dispute', () => {
     fireEvent.click(disputeButton);
 
     await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledWith(
-        '/api/chain/raise-dispute',
-        expect.objectContaining({
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            contractAddress: '0xContractAddress456',
-            userWalletAddress: '0xBuyerAddress',
-            signedTransaction: 'mock-dispute-tx',
-            buyerEmail: 'currentuser@test.com', // Falls back to user email
-            sellerEmail: 'seller@test.com',
-            payoutDateTime: new Date(contractWithoutBuyerEmail.expiryTimestamp * 1000).toISOString()
-          })
-        })
-      );
-    });
-  });
-
-  it('should handle missing email addresses gracefully', async () => {
-    const mockUser = {
-      userId: 'user-789',
-      walletAddress: '0xBuyerAddress',
-      // email is missing
-    } as any;
-
-    mockUseAuth.mockReturnValue({
-      user: mockUser,
-      provider: null,
-      isLoading: false,
-      login: jest.fn(),
-      logout: jest.fn(),
-    });
-
-    const contractWithoutEmails: Contract = {
-      contractAddress: '0xContractAddress789',
-      buyerAddress: '0xBuyerAddress',
-      sellerAddress: '0xSellerAddress',
-      amount: 1000000,
-      expiryTimestamp: Math.floor(Date.now() / 1000) + 86400,
-      description: 'Test contract without emails',
-      status: 'ACTIVE',
-      createdAt: Math.floor(Date.now() / 1000),
-      funded: true,
-      // Both emails are missing
-    };
-
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: jest.fn().mockResolvedValue({
-        success: true,
-        transactionHash: '0xTxHash789',
-      }),
-    });
-
-    render(
-      <ContractActions 
-        contract={contractWithoutEmails}
-        isBuyer={true}
-        isSeller={false}
-        onAction={mockOnAction}
-      />
-    );
-
-    const disputeButton = screen.getByText('Raise Dispute');
-    fireEvent.click(disputeButton);
-
-    await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledWith(
-        '/api/chain/raise-dispute',
-        expect.objectContaining({
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            contractAddress: '0xContractAddress789',
-            userWalletAddress: '0xBuyerAddress',
-            signedTransaction: 'mock-dispute-tx',
-            buyerEmail: undefined,
-            sellerEmail: undefined,
-            payoutDateTime: new Date(contractWithoutEmails.expiryTimestamp * 1000).toISOString()
-          })
-        })
-      );
+      const callArgs = mockFetch.mock.calls[0];
+      const requestBody = JSON.parse(callArgs[1].body);
+      
+      expect(requestBody.payoutDateTime).toBe(expectedISOString);
     });
   });
 });

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useRouter } from 'next/router';
-import { Contract } from '@/types';
+import { Contract, RaiseDisputeRequest } from '@/types';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { Web3Service } from '@/lib/web3';
@@ -49,18 +49,21 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
 
       // Submit signed transaction to chain service
       setLoadingMessage('Raising dispute...');
+      const disputeRequest: RaiseDisputeRequest = {
+        contractAddress: contract.contractAddress,
+        userWalletAddress: userAddress,
+        signedTransaction: signedTx,
+        buyerEmail: contract.buyerEmail || user?.email,
+        sellerEmail: contract.sellerEmail,
+        payoutDateTime: new Date(contract.expiryTimestamp * 1000).toISOString()
+      };
+
       const response = await fetch(`${router.basePath}/api/chain/raise-dispute`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          contractAddress: contract.contractAddress,
-          userWalletAddress: userAddress,
-          signedTransaction: signedTx,
-          buyerEmail: contract.buyerEmail || user?.email,
-          sellerEmail: contract.sellerEmail
-        })
+        body: JSON.stringify(disputeRequest)
       });
 
       if (!response.ok) {

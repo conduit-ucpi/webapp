@@ -55,7 +55,11 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
         signedTransaction: signedTx,
         buyerEmail: contract.buyerEmail || user?.email,
         sellerEmail: contract.sellerEmail,
-        payoutDateTime: new Date(contract.expiryTimestamp * 1000).toISOString()
+        payoutDateTime: new Date(contract.expiryTimestamp * 1000).toISOString(),
+        amount: (contract.amount / 1000000).toString(), // Convert microUSDC to USDC for display
+        currency: "USDC",
+        contractDescription: contract.description,
+        productName: contract.description // Use description as product name
       };
 
       const response = await fetch(`${router.basePath}/api/chain/raise-dispute`, {

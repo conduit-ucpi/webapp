@@ -90,6 +90,10 @@ export interface RaiseDisputeRequest {
   buyerEmail?: string;
   sellerEmail?: string;
   payoutDateTime: string;
+  amount?: string;
+  currency?: string;
+  contractDescription?: string;
+  productName?: string;
 }
 
 export interface AuthContextType {

@@ -27,7 +27,6 @@ const mockWeb3Service = {
   initializeProvider: jest.fn(),
   getUserAddress: jest.fn().mockResolvedValue('0xBuyerAddress'),
   signDisputeTransaction: jest.fn().mockResolvedValue('mock-dispute-tx'),
-  signClaimTransaction: jest.fn().mockResolvedValue('mock-claim-tx'),
 };
 
 jest.mock('../../../lib/web3', () => ({
@@ -45,7 +44,7 @@ Object.defineProperty(window, 'web3authProvider', {
 // Mock window.alert
 global.alert = jest.fn();
 
-describe('ContractActions - Email Fields for Dispute', () => {
+describe('ContractActions - Context Fields for Dispute', () => {
   const mockConfig = {
     web3AuthClientId: 'test-client-id',
     web3AuthNetwork: 'testnet',
@@ -56,6 +55,12 @@ describe('ContractActions - Email Fields for Dispute', () => {
     minGasWei: '5',
     basePath: '',
     snowtraceBaseUrl: 'https://testnet.snowtrace.io'
+  };
+
+  const mockUser = {
+    userId: 'user-123',
+    email: 'buyer@test.com',
+    walletAddress: '0xBuyerAddress',
   };
 
   const mockOnAction = jest.fn();
@@ -74,14 +79,6 @@ describe('ContractActions - Email Fields for Dispute', () => {
       config: mockConfig,
       isLoading: false,
     });
-  });
-
-  it('should include email addresses when raising a dispute', async () => {
-    const mockUser = {
-      userId: 'user-123',
-      email: 'buyer@test.com',
-      walletAddress: '0xBuyerAddress',
-    };
 
     mockUseAuth.mockReturnValue({
       user: mockUser,
@@ -90,14 +87,16 @@ describe('ContractActions - Email Fields for Dispute', () => {
       login: jest.fn(),
       logout: jest.fn(),
     });
+  });
 
+  it('should include contract context fields when raising a dispute', async () => {
     const contract: Contract = {
       contractAddress: '0xContractAddress123',
       buyerAddress: '0xBuyerAddress',
       sellerAddress: '0xSellerAddress',
-      amount: 1000000,
+      amount: 2500000, // 2.5 USDC in microUSDC
       expiryTimestamp: Math.floor(Date.now() / 1000) + 86400,
-      description: 'Test contract',
+      description: 'Digital Marketing Services Package',
       status: 'ACTIVE',
       createdAt: Math.floor(Date.now() / 1000),
       funded: true,
@@ -140,10 +139,10 @@ describe('ContractActions - Email Fields for Dispute', () => {
             buyerEmail: 'buyer@test.com',
             sellerEmail: 'seller@test.com',
             payoutDateTime: new Date(contract.expiryTimestamp * 1000).toISOString(),
-            amount: (contract.amount / 1000000).toString(),
-            currency: "USDC",
-            contractDescription: contract.description,
-            productName: contract.description
+            amount: '2.5', // Converted from microUSDC to USDC
+            currency: 'USDC',
+            contractDescription: 'Digital Marketing Services Package',
+            productName: 'Digital Marketing Services Package'
           })
         })
       );
@@ -152,32 +151,18 @@ describe('ContractActions - Email Fields for Dispute', () => {
     expect(mockOnAction).toHaveBeenCalled();
   });
 
-  it('should use user email as fallback when contract buyerEmail is missing', async () => {
-    const mockUser = {
-      userId: 'user-456',
-      email: 'currentuser@test.com',
-      walletAddress: '0xBuyerAddress',
-    };
-
-    mockUseAuth.mockReturnValue({
-      user: mockUser,
-      provider: null,
-      isLoading: false,
-      login: jest.fn(),
-      logout: jest.fn(),
-    });
-
-    const contractWithoutBuyerEmail: Contract = {
+  it('should handle microUSDC amount conversion correctly', async () => {
+    const contract: Contract = {
       contractAddress: '0xContractAddress456',
       buyerAddress: '0xBuyerAddress',
       sellerAddress: '0xSellerAddress',
-      amount: 1000000,
+      amount: 1000000, // 1.0 USDC in microUSDC
       expiryTimestamp: Math.floor(Date.now() / 1000) + 86400,
-      description: 'Test contract without buyer email',
+      description: 'Test Product',
       status: 'ACTIVE',
       createdAt: Math.floor(Date.now() / 1000),
       funded: true,
-      // buyerEmail is missing
+      buyerEmail: 'buyer@test.com',
       sellerEmail: 'seller@test.com',
     };
 
@@ -191,7 +176,7 @@ describe('ContractActions - Email Fields for Dispute', () => {
 
     render(
       <ContractActions 
-        contract={contractWithoutBuyerEmail}
+        contract={contract}
         isBuyer={true}
         isSeller={false}
         onAction={mockOnAction}
@@ -205,53 +190,25 @@ describe('ContractActions - Email Fields for Dispute', () => {
       expect(mockFetch).toHaveBeenCalledWith(
         '/api/chain/raise-dispute',
         expect.objectContaining({
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            contractAddress: '0xContractAddress456',
-            userWalletAddress: '0xBuyerAddress',
-            signedTransaction: 'mock-dispute-tx',
-            buyerEmail: 'currentuser@test.com', // Falls back to user email
-            sellerEmail: 'seller@test.com',
-            payoutDateTime: new Date(contractWithoutBuyerEmail.expiryTimestamp * 1000).toISOString(),
-            amount: (contractWithoutBuyerEmail.amount / 1000000).toString(),
-            currency: "USDC",
-            contractDescription: contractWithoutBuyerEmail.description,
-            productName: contractWithoutBuyerEmail.description
-          })
+          body: expect.stringContaining('"amount":"1"') // 1.0 USDC
         })
       );
     });
   });
 
-  it('should handle missing email addresses gracefully', async () => {
-    const mockUser = {
-      userId: 'user-789',
-      walletAddress: '0xBuyerAddress',
-      // email is missing
-    } as any;
-
-    mockUseAuth.mockReturnValue({
-      user: mockUser,
-      provider: null,
-      isLoading: false,
-      login: jest.fn(),
-      logout: jest.fn(),
-    });
-
-    const contractWithoutEmails: Contract = {
+  it('should handle fractional USDC amounts correctly', async () => {
+    const contract: Contract = {
       contractAddress: '0xContractAddress789',
       buyerAddress: '0xBuyerAddress',
       sellerAddress: '0xSellerAddress',
-      amount: 1000000,
+      amount: 1500000, // 1.5 USDC in microUSDC
       expiryTimestamp: Math.floor(Date.now() / 1000) + 86400,
-      description: 'Test contract without emails',
+      description: 'Consulting Service',
       status: 'ACTIVE',
       createdAt: Math.floor(Date.now() / 1000),
       funded: true,
-      // Both emails are missing
+      buyerEmail: 'buyer@test.com',
+      sellerEmail: 'seller@test.com',
     };
 
     mockFetch.mockResolvedValueOnce({
@@ -264,7 +221,7 @@ describe('ContractActions - Email Fields for Dispute', () => {
 
     render(
       <ContractActions 
-        contract={contractWithoutEmails}
+        contract={contract}
         isBuyer={true}
         isSeller={false}
         onAction={mockOnAction}
@@ -278,22 +235,69 @@ describe('ContractActions - Email Fields for Dispute', () => {
       expect(mockFetch).toHaveBeenCalledWith(
         '/api/chain/raise-dispute',
         expect.objectContaining({
+          body: expect.stringContaining('"amount":"1.5"') // 1.5 USDC
+        })
+      );
+    });
+  });
+
+  it('should use description for both contractDescription and productName', async () => {
+    const contract: Contract = {
+      contractAddress: '0xContractAddressABC',
+      buyerAddress: '0xBuyerAddress',
+      sellerAddress: '0xSellerAddress',
+      amount: 750000, // 0.75 USDC in microUSDC
+      expiryTimestamp: Math.floor(Date.now() / 1000) + 86400,
+      description: 'Custom Web Development',
+      status: 'ACTIVE',
+      createdAt: Math.floor(Date.now() / 1000),
+      funded: true,
+      buyerEmail: 'buyer@test.com',
+      sellerEmail: 'seller@test.com',
+    };
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: jest.fn().mockResolvedValue({
+        success: true,
+        transactionHash: '0xTxHashABC',
+      }),
+    });
+
+    render(
+      <ContractActions 
+        contract={contract}
+        isBuyer={true}
+        isSeller={false}
+        onAction={mockOnAction}
+      />
+    );
+
+    const disputeButton = screen.getByText('Raise Dispute');
+    fireEvent.click(disputeButton);
+
+    await waitFor(() => {
+      const expectedBody = JSON.stringify({
+        contractAddress: '0xContractAddressABC',
+        userWalletAddress: '0xBuyerAddress',
+        signedTransaction: 'mock-dispute-tx',
+        buyerEmail: 'buyer@test.com',
+        sellerEmail: 'seller@test.com',
+        payoutDateTime: new Date(contract.expiryTimestamp * 1000).toISOString(),
+        amount: '0.75',
+        currency: 'USDC',
+        contractDescription: 'Custom Web Development',
+        productName: 'Custom Web Development'
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        '/api/chain/raise-dispute',
+        expect.objectContaining({
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({
-            contractAddress: '0xContractAddress789',
-            userWalletAddress: '0xBuyerAddress',
-            signedTransaction: 'mock-dispute-tx',
-            buyerEmail: undefined,
-            sellerEmail: undefined,
-            payoutDateTime: new Date(contractWithoutEmails.expiryTimestamp * 1000).toISOString(),
-            amount: (contractWithoutEmails.amount / 1000000).toString(),
-            currency: "USDC",
-            contractDescription: contractWithoutEmails.description,
-            productName: contractWithoutEmails.description
-          })
+          body: expectedBody
         })
       );
     });

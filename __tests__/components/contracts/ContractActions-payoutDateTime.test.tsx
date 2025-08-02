@@ -143,7 +143,11 @@ describe('ContractActions - PayoutDateTime', () => {
             signedTransaction: 'mock-dispute-tx',
             buyerEmail: 'buyer@test.com',
             sellerEmail: 'seller@test.com',
-            payoutDateTime: expectedISOString
+            payoutDateTime: expectedISOString,
+            amount: (contract.amount / 1000000).toString(),
+            currency: "USDC",
+            contractDescription: contract.description,
+            productName: contract.description
           })
         })
       );

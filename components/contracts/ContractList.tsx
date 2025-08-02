@@ -40,9 +40,15 @@ export default function ContractList() {
 
       const allContractsData = await allContractsResponse.json();
       console.log('All contracts received:', allContractsData.length);
+      console.log('Sample contract data:', allContractsData[0]);
 
       // Separate pending contracts for the acceptance flow
       const pendingContracts = allContractsData.filter((contract: any) => contract.isPending);
+      const deployedContracts = allContractsData.filter((contract: any) => !contract.isPending);
+      
+      console.log('Pending contracts:', pendingContracts.length);
+      console.log('Deployed contracts:', deployedContracts.length);
+      
       setPendingContracts(pendingContracts);
 
       // For contracts with chainAddress, enrich with blockchain data

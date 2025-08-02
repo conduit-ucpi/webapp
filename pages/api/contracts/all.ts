@@ -24,46 +24,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       'Cookie': cookies
     };
 
-    // Fetch both pending and deployed contracts in parallel
-    const [pendingResponse, deployedResponse] = await Promise.all([
-      fetch(`${process.env.CONTRACT_SERVICE_URL}/api/contracts`, {
-        method: 'GET',
-        headers
-      }),
-      fetch(`${process.env.CONTRACT_SERVICE_URL}/api/contracts/deployed`, {
-        method: 'GET',
-        headers
-      })
-    ]);
+    // Fetch all contracts from the unified contracts endpoint
+    const contractsResponse = await fetch(`${process.env.CONTRACT_SERVICE_URL}/api/contracts`, {
+      method: 'GET',
+      headers
+    });
 
-    if (!pendingResponse.ok) {
-      console.error('Failed to fetch pending contracts:', pendingResponse.status);
-      return res.status(pendingResponse.status).json({ error: 'Failed to fetch pending contracts' });
+    if (!contractsResponse.ok) {
+      console.error('Failed to fetch contracts:', contractsResponse.status);
+      return res.status(contractsResponse.status).json({ error: 'Failed to fetch contracts' });
     }
 
-    if (!deployedResponse.ok) {
-      console.error('Failed to fetch deployed contracts:', deployedResponse.status);
-      return res.status(deployedResponse.status).json({ error: 'Failed to fetch deployed contracts' });
-    }
+    const contractsData = await contractsResponse.json();
+    console.log('All contracts from service:', contractsData?.length || 0);
 
-    const pendingData = await pendingResponse.json();
-    const deployedData = await deployedResponse.json();
-
-    console.log('Pending contracts:', pendingData?.length || 0);
-    console.log('Deployed contracts:', deployedData?.length || 0);
-
-    // Combine and deduplicate contracts
-    const allContracts = [
-      ...(Array.isArray(pendingData) ? pendingData.map((contract: any) => ({
-        ...contract,
-        status: 'PENDING',
-        isPending: true
-      })) : []),
-      ...(Array.isArray(deployedData) ? deployedData.map((contract: any) => ({
-        ...contract,
-        isPending: false
-      })) : [])
-    ];
+    // Set isPending based on whether contract has chainAddress
+    const allContracts = Array.isArray(contractsData) ? contractsData.map((contract: any) => ({
+      ...contract,
+      isPending: !contract.chainAddress // Pending if no chainAddress
+    })) : [];
 
     // Deduplicate based on contract ID
     const seen = new Set<string>();

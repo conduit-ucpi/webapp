@@ -16,7 +16,6 @@ export default function ContractList() {
   const router = useRouter();
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [pendingContracts, setPendingContracts] = useState<PendingContract[]>([]);
-  const [deployedContracts, setDeployedContracts] = useState<PendingContract[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
@@ -32,7 +31,7 @@ export default function ContractList() {
     }
 
     try {
-      // Step 1: Fetch all contracts from the unified endpoint
+      // Fetch all contracts from the unified endpoint
       const allContractsResponse = await fetch(`${router.basePath}/api/contracts/all`);
       
       if (!allContractsResponse.ok) {
@@ -42,55 +41,63 @@ export default function ContractList() {
       const allContractsData = await allContractsResponse.json();
       console.log('All contracts received:', allContractsData.length);
 
-      // Step 2: Separate pending and deployed contracts
+      // Separate pending contracts for the acceptance flow
       const pendingContracts = allContractsData.filter((contract: any) => contract.isPending);
-      const deployedContracts = allContractsData.filter((contract: any) => !contract.isPending);
-
       setPendingContracts(pendingContracts);
-      setDeployedContracts(deployedContracts);
 
-      // Step 3: For deployed contracts with chainAddress, enrich with blockchain data
+      // For contracts with chainAddress, enrich with blockchain data
       const enrichedContracts: Contract[] = [];
 
-      for (const deployedContract of deployedContracts) {
-        if (deployedContract.chainAddress) {
-        try {
-          // Fetch individual contract from chain service
-          const chainResponse = await fetch(`${router.basePath}/api/chain/contract/${deployedContract.chainAddress}`);
-          
-          if (chainResponse.ok) {
-            const chainContract = await chainResponse.json();
-            
-            // Derive synthetic RESOLVED status
-            let finalStatus = chainContract.status;
-            if (chainContract.status === 'CLAIMED' && deployedContract.adminNotes && deployedContract.adminNotes.length > 0) {
-              finalStatus = 'RESOLVED';
-            }
-
-            // Combine chain data with contract service data
-            enrichedContracts.push({
-              ...chainContract,
-              status: finalStatus,
-              buyerEmail: deployedContract.buyerEmail,
-              sellerEmail: deployedContract.sellerEmail,
-              adminNotes: deployedContract.adminNotes
-            });
-          } else {
-            console.warn(`Failed to fetch chain data for contract ${deployedContract.chainAddress}`);
-            // Fallback to contract service data only
-            enrichedContracts.push(createContractFromDeployedData(deployedContract));
-          }
-        } catch (error) {
-          console.warn(`Error fetching chain data for contract ${deployedContract.chainAddress}:`, error);
-          // Fallback to contract service data only
-          enrichedContracts.push(createContractFromDeployedData(deployedContract));
+      for (const contract of allContractsData) {
+        if (contract.isPending) {
+          // Skip pending contracts - they're handled separately
+          continue;
         }
+
+        if (contract.chainAddress) {
+          try {
+            console.log(`Fetching chain data for contract: ${contract.chainAddress}`);
+            // Fetch individual contract from chain service
+            const chainResponse = await fetch(`${router.basePath}/api/chain/contract/${contract.chainAddress}`);
+            
+            console.log(`Chain response status for ${contract.chainAddress}:`, chainResponse.status);
+            
+            if (chainResponse.ok) {
+              const chainContract = await chainResponse.json();
+              console.log(`Chain contract data for ${contract.chainAddress}:`, chainContract);
+              
+              // Derive synthetic RESOLVED status
+              let finalStatus = chainContract.status;
+              if (chainContract.status === 'CLAIMED' && contract.adminNotes && contract.adminNotes.length > 0) {
+                finalStatus = 'RESOLVED';
+              }
+
+              // Combine chain data with contract service data
+              enrichedContracts.push({
+                ...chainContract,
+                status: finalStatus,
+                buyerEmail: contract.buyerEmail,
+                sellerEmail: contract.sellerEmail,
+                adminNotes: contract.adminNotes
+              });
+            } else {
+              console.warn(`Failed to fetch chain data for contract ${contract.chainAddress}, status: ${chainResponse.status}`);
+              // Fallback to contract service data only
+              enrichedContracts.push(createContractFromDeployedData(contract));
+            }
+          } catch (error) {
+            console.warn(`Error fetching chain data for contract ${contract.chainAddress}:`, error);
+            // Fallback to contract service data only
+            enrichedContracts.push(createContractFromDeployedData(contract));
+          }
         } else {
+          console.log(`Contract ${contract.id} has no chainAddress, using contract service data only`);
           // No chainAddress, use contract service data only
-          enrichedContracts.push(createContractFromDeployedData(deployedContract));
+          enrichedContracts.push(createContractFromDeployedData(contract));
         }
       }
 
+      console.log(`Enriched ${enrichedContracts.length} contracts`);
       setContracts(enrichedContracts);
 
       setError('');

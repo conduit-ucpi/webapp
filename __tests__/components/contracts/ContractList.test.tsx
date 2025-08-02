@@ -66,8 +66,8 @@ describe('ContractList', () => {
   });
 
   describe('Dashboard endpoint calls', () => {
-    it('should call both /api/contracts and /api/contracts/deployed endpoints on mount', async () => {
-      const mockPendingContracts = [
+    it('should call unified /api/contracts/all endpoint on mount', async () => {
+      const mockAllContracts = [
         {
           id: 'pending-1',
           sellerAddress: '0xseller1',
@@ -75,10 +75,8 @@ describe('ContractList', () => {
           description: 'Pending contract 1',
           expiryTimestamp: 1700000000,
           createdAt: 1699000000,
+          isPending: true,
         },
-      ];
-
-      const mockDeployedContracts = [
         {
           id: 'deployed-1',
           chainAddress: '0xcontract1',
@@ -87,6 +85,7 @@ describe('ContractList', () => {
           description: 'Deployed contract 1',
           expiryTimestamp: 1700000000,
           createdAt: 1699000000,
+          isPending: false,
         },
       ];
 
@@ -106,13 +105,7 @@ describe('ContractList', () => {
         .mockImplementationOnce(() =>
           Promise.resolve({
             ok: true,
-            json: () => Promise.resolve(mockPendingContracts),
-          })
-        )
-        .mockImplementationOnce(() =>
-          Promise.resolve({
-            ok: true,
-            json: () => Promise.resolve(mockDeployedContracts),
+            json: () => Promise.resolve(mockAllContracts),
           })
         )
         .mockImplementationOnce(() =>
@@ -131,12 +124,11 @@ describe('ContractList', () => {
 
       // Wait for the chain data fetch to complete
       await waitFor(() => {
-        expect(global.fetch).toHaveBeenCalledTimes(3);
+        expect(global.fetch).toHaveBeenCalledTimes(2);
       });
 
-      // Verify both endpoints were called
-      expect(global.fetch).toHaveBeenCalledWith('/api/contracts');
-      expect(global.fetch).toHaveBeenCalledWith('/api/contracts/deployed');
+      // Verify unified endpoint was called
+      expect(global.fetch).toHaveBeenCalledWith('/api/contracts/all');
       expect(global.fetch).toHaveBeenCalledWith('/api/chain/contract/0xcontract1');
     });
 
@@ -158,40 +150,15 @@ describe('ContractList', () => {
       render(<ContractList />);
 
       await waitFor(() => {
-        expect(screen.getByText('Failed to fetch pending contracts')).toBeInTheDocument();
+        expect(screen.getByText('Failed to fetch contracts')).toBeInTheDocument();
       });
 
-      expect(global.fetch).toHaveBeenCalledWith('/api/contracts');
-      expect(global.fetch).toHaveBeenCalledWith('/api/contracts/deployed');
+      expect(global.fetch).toHaveBeenCalledWith('/api/contracts/all');
     });
 
-    it('should handle errors when fetching deployed contracts fails', async () => {
-      (global.fetch as jest.Mock)
-        .mockImplementationOnce(() =>
-          Promise.resolve({
-            ok: true,
-            json: () => Promise.resolve([]),
-          })
-        )
-        .mockImplementationOnce(() =>
-          Promise.resolve({
-            ok: false,
-            json: () => Promise.resolve({ error: 'Failed to fetch deployed contracts' }),
-          })
-        );
-
-      render(<ContractList />);
-
-      await waitFor(() => {
-        expect(screen.getByText('Failed to fetch deployed contracts')).toBeInTheDocument();
-      });
-
-      expect(global.fetch).toHaveBeenCalledWith('/api/contracts');
-      expect(global.fetch).toHaveBeenCalledWith('/api/contracts/deployed');
-    });
 
     it('should display both pending and deployed contracts after successful fetch', async () => {
-      const mockPendingContracts = [
+      const mockAllContracts = [
         {
           id: 'pending-1',
           sellerAddress: '0xseller1',
@@ -199,6 +166,7 @@ describe('ContractList', () => {
           description: 'Pending contract 1',
           expiryTimestamp: 1700000000,
           createdAt: 1699000000,
+          isPending: true,
         },
         {
           id: 'pending-2',
@@ -207,10 +175,8 @@ describe('ContractList', () => {
           description: 'Pending contract 2',
           expiryTimestamp: 1700000000,
           createdAt: 1699000000,
+          isPending: true,
         },
-      ];
-
-      const mockDeployedContracts = [
         {
           id: 'deployed-1',
           chainAddress: '0xcontract1',
@@ -219,6 +185,7 @@ describe('ContractList', () => {
           description: 'Deployed contract 1',
           expiryTimestamp: 1700000000,
           createdAt: 1699000000,
+          isPending: false,
         },
       ];
 
@@ -237,13 +204,7 @@ describe('ContractList', () => {
         .mockImplementationOnce(() =>
           Promise.resolve({
             ok: true,
-            json: () => Promise.resolve(mockPendingContracts),
-          })
-        )
-        .mockImplementationOnce(() =>
-          Promise.resolve({
-            ok: true,
-            json: () => Promise.resolve(mockDeployedContracts),
+            json: () => Promise.resolve(mockAllContracts),
           })
         )
         .mockImplementationOnce(() =>
@@ -257,7 +218,7 @@ describe('ContractList', () => {
 
       // Wait for all fetches to complete
       await waitFor(() => {
-        expect(global.fetch).toHaveBeenCalledTimes(3);
+        expect(global.fetch).toHaveBeenCalledTimes(2);
       });
 
       await waitFor(() => {
@@ -309,12 +270,11 @@ describe('ContractList', () => {
         expect(screen.getByText('Create your first escrow contract to get started.')).toBeInTheDocument();
       });
 
-      expect(global.fetch).toHaveBeenCalledWith('/api/contracts');
-      expect(global.fetch).toHaveBeenCalledWith('/api/contracts/deployed');
-      expect(global.fetch).toHaveBeenCalledTimes(2);
+      expect(global.fetch).toHaveBeenCalledWith('/api/contracts/all');
+      expect(global.fetch).toHaveBeenCalledTimes(1);
     });
 
-    it('should call both endpoints in parallel, not sequentially', async () => {
+    it('should call unified endpoint once', async () => {
       const fetchTimes: number[] = [];
       
       (global.fetch as jest.Mock)
@@ -332,10 +292,9 @@ describe('ContractList', () => {
         expect(screen.queryByTestId('loading-spinner')).not.toBeInTheDocument();
       });
 
-      // Both fetches should be called at nearly the same time (within 50ms)
-      expect(fetchTimes).toHaveLength(2);
-      const timeDiff = Math.abs(fetchTimes[1] - fetchTimes[0]);
-      expect(timeDiff).toBeLessThan(50);
+      // Should only call the unified endpoint once
+      expect(fetchTimes).toHaveLength(1);
+      expect(global.fetch).toHaveBeenCalledWith('/api/contracts/all');
     });
   });
 });

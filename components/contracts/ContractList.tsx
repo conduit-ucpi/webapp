@@ -40,14 +40,9 @@ export default function ContractList() {
 
       const allContractsData = await allContractsResponse.json();
       console.log('All contracts received:', allContractsData.length);
-      console.log('Sample contract data:', allContractsData[0]);
 
       // Separate pending contracts for the acceptance flow
       const pendingContracts = allContractsData.filter((contract: any) => contract.isPending);
-      const deployedContracts = allContractsData.filter((contract: any) => !contract.isPending);
-      
-      console.log('Pending contracts:', pendingContracts.length);
-      console.log('Deployed contracts:', deployedContracts.length);
       
       setPendingContracts(pendingContracts);
 
@@ -62,15 +57,11 @@ export default function ContractList() {
 
         if (contract.chainAddress) {
           try {
-            console.log(`Fetching chain data for contract: ${contract.chainAddress}`);
             // Fetch individual contract from chain service
             const chainResponse = await fetch(`${router.basePath}/api/chain/contract/${contract.chainAddress}`);
             
-            console.log(`Chain response status for ${contract.chainAddress}:`, chainResponse.status);
-            
             if (chainResponse.ok) {
               const chainContract = await chainResponse.json();
-              console.log(`Chain contract data for ${contract.chainAddress}:`, chainContract);
               
               // Derive synthetic RESOLVED status
               let finalStatus = chainContract.status;
@@ -97,13 +88,11 @@ export default function ContractList() {
             enrichedContracts.push(createContractFromDeployedData(contract));
           }
         } else {
-          console.log(`Contract ${contract.id} has no chainAddress, using contract service data only`);
           // No chainAddress, use contract service data only
           enrichedContracts.push(createContractFromDeployedData(contract));
         }
       }
 
-      console.log(`Enriched ${enrichedContracts.length} contracts`);
       setContracts(enrichedContracts);
 
       setError('');

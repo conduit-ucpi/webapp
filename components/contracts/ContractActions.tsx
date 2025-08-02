@@ -61,9 +61,6 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
         contractDescription: contract.description,
         productName: contract.description // Use description as product name
       };
-      
-      // Debug logging to help identify the issue
-      console.log('Dispute request payload:', JSON.stringify(disputeRequest, null, 2));
 
       const response = await fetch(`${router.basePath}/api/chain/raise-dispute`, {
         method: 'POST',

@@ -57,11 +57,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       ...(Array.isArray(pendingData) ? pendingData.map((contract: any) => ({
         ...contract,
         status: 'PENDING',
-        isPending: true
+        isPending: !contract.chainAddress // Only truly pending if no chainAddress
       })) : []),
       ...(Array.isArray(deployedData) ? deployedData.map((contract: any) => ({
         ...contract,
-        isPending: false
+        isPending: !contract.chainAddress // Only truly pending if no chainAddress
       })) : [])
     ];
 

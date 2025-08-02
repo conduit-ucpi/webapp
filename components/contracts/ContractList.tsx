@@ -32,31 +32,28 @@ export default function ContractList() {
     }
 
     try {
-      // Step 1: Fetch pending contracts and deployed contracts in parallel
-      const [pendingResponse, deployedResponse] = await Promise.all([
-        fetch(`${router.basePath}/api/contracts`),
-        fetch(`${router.basePath}/api/contracts/deployed`)
-      ]);
-
-      if (!pendingResponse.ok) {
-        throw new Error('Failed to fetch pending contracts');
-      }
-      if (!deployedResponse.ok) {
-        throw new Error('Failed to fetch deployed contracts');
+      // Step 1: Fetch all contracts from the unified endpoint
+      const allContractsResponse = await fetch(`${router.basePath}/api/contracts/all`);
+      
+      if (!allContractsResponse.ok) {
+        throw new Error('Failed to fetch contracts');
       }
 
-      const pendingData = await pendingResponse.json();
-      const deployedData = await deployedResponse.json();
+      const allContractsData = await allContractsResponse.json();
+      console.log('All contracts received:', allContractsData.length);
 
-      // Set the state for pending and deployed contracts
-      setPendingContracts(pendingData || []);
-      setDeployedContracts(deployedData || []);
+      // Step 2: Separate pending and deployed contracts
+      const pendingContracts = allContractsData.filter((contract: any) => contract.isPending);
+      const deployedContracts = allContractsData.filter((contract: any) => !contract.isPending);
 
-      // Step 2: For deployed contracts, fetch their blockchain data and combine
-      const contractsWithChainData: Contract[] = [];
-      const contractsWithoutChainData: Contract[] = [];
+      setPendingContracts(pendingContracts);
+      setDeployedContracts(deployedContracts);
 
-      for (const deployedContract of (deployedData || [])) {
+      // Step 3: For deployed contracts with chainAddress, enrich with blockchain data
+      const enrichedContracts: Contract[] = [];
+
+      for (const deployedContract of deployedContracts) {
+        if (deployedContract.chainAddress) {
         try {
           // Fetch individual contract from chain service
           const chainResponse = await fetch(`${router.basePath}/api/chain/contract/${deployedContract.chainAddress}`);
@@ -70,8 +67,8 @@ export default function ContractList() {
               finalStatus = 'RESOLVED';
             }
 
-            // Combine chain data with deployed contract data
-            contractsWithChainData.push({
+            // Combine chain data with contract service data
+            enrichedContracts.push({
               ...chainContract,
               status: finalStatus,
               buyerEmail: deployedContract.buyerEmail,
@@ -80,43 +77,21 @@ export default function ContractList() {
             });
           } else {
             console.warn(`Failed to fetch chain data for contract ${deployedContract.chainAddress}`);
-            // Create a contract from deployed data only
-            contractsWithoutChainData.push({
-              contractAddress: deployedContract.chainAddress || '',
-              buyerAddress: '',
-              sellerAddress: deployedContract.sellerAddress || '',
-              amount: deployedContract.amount || 0,
-              expiryTimestamp: deployedContract.expiryTimestamp || 0,
-              description: deployedContract.description || '',
-              status: 'CREATED', // Default status for contracts without chain data
-              createdAt: deployedContract.createdAt ? normalizeTimestamp(deployedContract.createdAt) / 1000 : 0,
-              buyerEmail: deployedContract.buyerEmail,
-              sellerEmail: deployedContract.sellerEmail,
-              adminNotes: deployedContract.adminNotes
-            });
+            // Fallback to contract service data only
+            enrichedContracts.push(createContractFromDeployedData(deployedContract));
           }
         } catch (error) {
           console.warn(`Error fetching chain data for contract ${deployedContract.chainAddress}:`, error);
-          // Create a contract from deployed data only
-          contractsWithoutChainData.push({
-            contractAddress: deployedContract.chainAddress || '',
-            buyerAddress: '',
-            sellerAddress: deployedContract.sellerAddress || '',
-            amount: deployedContract.amount || 0,
-            expiryTimestamp: deployedContract.expiryTimestamp || 0,
-            description: deployedContract.description || '',
-            status: 'CREATED', // Default status for contracts without chain data
-            createdAt: deployedContract.createdAt ? normalizeTimestamp(deployedContract.createdAt) / 1000 : 0,
-            buyerEmail: deployedContract.buyerEmail,
-            sellerEmail: deployedContract.sellerEmail,
-            adminNotes: deployedContract.adminNotes
-          });
+          // Fallback to contract service data only
+          enrichedContracts.push(createContractFromDeployedData(deployedContract));
+        }
+        } else {
+          // No chainAddress, use contract service data only
+          enrichedContracts.push(createContractFromDeployedData(deployedContract));
         }
       }
 
-      // Combine all deployed contracts (with and without chain data)
-      const allContracts = [...contractsWithChainData, ...contractsWithoutChainData];
-      setContracts(allContracts);
+      setContracts(enrichedContracts);
 
       setError('');
     } catch (error: any) {
@@ -125,6 +100,23 @@ export default function ContractList() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Helper function to create a Contract from deployed contract data
+  const createContractFromDeployedData = (deployedContract: any): Contract => {
+    return {
+      contractAddress: deployedContract.chainAddress || deployedContract.id || '',
+      buyerAddress: deployedContract.buyerAddress || '',
+      sellerAddress: deployedContract.sellerAddress || '',
+      amount: deployedContract.amount || 0,
+      expiryTimestamp: deployedContract.expiryTimestamp || 0,
+      description: deployedContract.description || '',
+      status: deployedContract.chainAddress ? 'CREATED' : 'PENDING',
+      createdAt: deployedContract.createdAt ? normalizeTimestamp(deployedContract.createdAt) / 1000 : 0,
+      buyerEmail: deployedContract.buyerEmail,
+      sellerEmail: deployedContract.sellerEmail,
+      adminNotes: deployedContract.adminNotes
+    };
   };
 
   useEffect(() => {

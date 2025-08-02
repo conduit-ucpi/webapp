@@ -159,8 +159,11 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
           contractId: contract.id,
           buyerEmail: contract.buyerEmail,
           sellerEmail: contract.sellerEmail,
-          amount: `${contract.amount} ${contract.currency}`,
-          payoutDateTime: new Date(contract.expiryTimestamp * 1000).toISOString()
+          contractDescription: contract.description,
+          amount: amountInMicroUSDC.toString(),
+          currency: "USDC",
+          payoutDateTime: new Date(contract.expiryTimestamp * 1000).toISOString(),
+          contractLink: `${window.location.origin}${router.basePath}/dashboard`
         })
       });
 

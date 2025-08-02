@@ -197,7 +197,19 @@ export default function ContractList() {
       sellerEmail: pending.sellerEmail
     }));
     
-    return [...contracts, ...pendingAsContracts];
+    // Combine all contracts and deduplicate based on contractAddress
+    const combined = [...contracts, ...pendingAsContracts];
+    const seen = new Set<string>();
+    const deduplicated = combined.filter(contract => {
+      const key = contract.contractAddress;
+      if (seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
+    });
+    
+    return deduplicated;
   }, [contracts, pendingContracts]);
 
   // Filter and sort all contracts

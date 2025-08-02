@@ -6,6 +6,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
+    // Log the incoming request body for debugging
+    console.log('Raise dispute request body:', JSON.stringify(req.body, null, 2));
+
     // Extract the AUTH-TOKEN from cookies
     const cookies = req.headers.cookie || '';
     const authTokenMatch = cookies.match(/AUTH-TOKEN=([^;]+)/);

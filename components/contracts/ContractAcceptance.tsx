@@ -189,13 +189,13 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
       } catch (error) {
         console.error('Redirect failed:', error);
         // Fallback: reload the page to trigger navigation
-        window.location.href = '/dashboard';
+        window.location.href = `${router.basePath}/dashboard`;
       }
       
       // Fallback timeout in case redirect doesn't work
       setTimeout(() => {
-        if (window.location.pathname !== '/dashboard') {
-          window.location.href = '/dashboard';
+        if (window.location.pathname !== `${router.basePath}/dashboard`) {
+          window.location.href = `${router.basePath}/dashboard`;
         }
       }, 3000);
     } catch (error: any) {

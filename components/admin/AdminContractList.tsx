@@ -7,7 +7,7 @@ import Button from '@/components/ui/Button';
 import ExpandableHash from '@/components/ui/ExpandableHash';
 import { formatUSDC, formatExpiryDate, normalizeTimestamp } from '@/utils/validation';
 
-// Extended type for admin contracts that includes chain data
+// Extended type for admin contracts that includes chain data and blockchain status
 type AdminContract = PendingContract & {
   status?: 'CREATED' | 'ACTIVE' | 'EXPIRED' | 'DISPUTED' | 'RESOLVED' | 'CLAIMED';
   funded?: boolean;
@@ -18,6 +18,11 @@ type AdminContract = PendingContract & {
   buyerAddress?: string;
   contractAddress?: string;
   notes?: string;
+  // Blockchain query status and error information
+  blockchainQuerySuccess?: boolean;
+  blockchainQueryError?: string;
+  hasDiscrepancy?: boolean;
+  discrepancyDetails?: string[];
 }
 
 interface AdminContractListProps {
@@ -48,58 +53,44 @@ export default function AdminContractList({ onContractSelect }: AdminContractLis
 
   const fetchContracts = async () => {
     try {
-      // Step 1: Fetch deployed contracts with email data and notes from contract service
-      const deployedResponse = await fetch(`${router.basePath}/api/admin/contracts`);
-      if (!deployedResponse.ok) {
-        throw new Error('Failed to fetch deployed contracts');
+      // Fetch contracts from the new combined admin endpoint
+      const combinedResponse = await fetch(`${router.basePath}/api/admin/combined-contracts`);
+      if (!combinedResponse.ok) {
+        throw new Error('Failed to fetch contracts');
       }
-      const deployedData = await deployedResponse.json();
+      const combinedData = await combinedResponse.json();
 
-      // Step 2: Extract contracts that have chainAddress and fetch their chain data
-      const contractsWithChainData: AdminContract[] = [];
-      const contractsWithoutChainData: AdminContract[] = [];
+      // Process the combined data
+      const processedContracts: AdminContract[] = combinedData.map((contract: any) => {
+        // Base contract data
+        const baseContract: AdminContract = {
+          ...contract,
+          contractAddress: contract.chainAddress,
+          blockchainQuerySuccess: contract.blockchainQuerySuccess,
+          blockchainQueryError: contract.blockchainQueryError,
+          hasDiscrepancy: contract.hasDiscrepancy,
+          discrepancyDetails: contract.discrepancyDetails
+        };
 
-      for (const deployedContract of deployedData || []) {
-        if (deployedContract.chainAddress) {
-          try {
-            // Fetch individual contract from chain service
-            const chainResponse = await fetch(`${router.basePath}/api/chain/contract/${deployedContract.chainAddress}`);
-            
-            if (chainResponse.ok) {
-              const chainContract = await chainResponse.json();
-              
-              // Step 3: Derive synthetic RESOLVED status
-              let finalStatus = chainContract.status;
-              if (chainContract.status === 'CLAIMED' && deployedContract.adminNotes && deployedContract.adminNotes.length > 0) {
-                finalStatus = 'RESOLVED';
-              }
-
-              // Combine chain data with deployed contract data
-              contractsWithChainData.push({
-                ...deployedContract,
-                ...chainContract,
-                status: finalStatus,
-                buyerAddress: chainContract.buyer || chainContract.buyerAddress,
-                sellerAddress: chainContract.seller || chainContract.sellerAddress,
-                contractAddress: deployedContract.chainAddress
-              });
-            } else {
-              console.warn(`Failed to fetch chain data for contract ${deployedContract.chainAddress}`);
-              contractsWithoutChainData.push(deployedContract);
-            }
-          } catch (error) {
-            console.warn(`Error fetching chain data for contract ${deployedContract.chainAddress}:`, error);
-            contractsWithoutChainData.push(deployedContract);
-          }
-        } else {
-          // Contract without chainAddress
-          contractsWithoutChainData.push(deployedContract);
+        // If blockchain data is available, merge it
+        if (contract.blockchainStatus) {
+          return {
+            ...baseContract,
+            status: contract.blockchainStatus.status,
+            funded: contract.blockchainStatus.funded,
+            fundedAt: contract.blockchainStatus.fundedAt,
+            disputedAt: contract.blockchainStatus.disputedAt,
+            resolvedAt: contract.blockchainStatus.resolvedAt,
+            claimedAt: contract.blockchainStatus.claimedAt,
+            buyerAddress: contract.blockchainStatus.buyerAddress,
+            sellerAddress: contract.blockchainStatus.sellerAddress || contract.sellerAddress,
+          };
         }
-      }
 
-      // Combine all contracts
-      const allContracts = [...contractsWithChainData, ...contractsWithoutChainData];
-      setContracts(allContracts);
+        return baseContract;
+      });
+
+      setContracts(processedContracts);
       setError('');
     } catch (error: any) {
       console.error('Failed to fetch admin contracts:', error);
@@ -334,6 +325,9 @@ export default function AdminContractList({ onContractSelect }: AdminContractLis
                 Status
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Blockchain Status
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Description
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -383,6 +377,35 @@ export default function AdminContractList({ onContractSelect }: AdminContractLis
                     <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(status)}`}>
                       {status}
                     </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex flex-col space-y-1">
+                      {contract.blockchainQueryError ? (
+                        <div className="flex items-center space-x-1">
+                          <span className="inline-flex px-2 py-1 text-xs font-medium rounded bg-red-100 text-red-800">
+                            Error
+                          </span>
+                          <span className="text-xs text-red-600" title={contract.blockchainQueryError}>
+                            Query Failed
+                          </span>
+                        </div>
+                      ) : contract.chainAddress ? (
+                        <div className="flex items-center space-x-1">
+                          <span className="inline-flex px-2 py-1 text-xs font-medium rounded bg-green-100 text-green-800">
+                            Synced
+                          </span>
+                          {contract.hasDiscrepancy && (
+                            <span className="inline-flex px-2 py-1 text-xs font-medium rounded bg-yellow-100 text-yellow-800" title={contract.discrepancyDetails?.join(', ')}>
+                              Discrepancy
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="inline-flex px-2 py-1 text-xs font-medium rounded bg-gray-100 text-gray-800">
+                          Pending
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">
                     {contract.description}

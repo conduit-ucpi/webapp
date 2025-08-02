@@ -31,62 +31,62 @@ export default function ContractList() {
     }
 
     try {
-      // Fetch all contracts from the unified endpoint
-      const allContractsResponse = await fetch(`${router.basePath}/api/contracts/all`);
+      // Fetch all contracts from the new combined endpoint
+      const combinedContractsResponse = await fetch(`${router.basePath}/api/combined-contracts`);
       
-      if (!allContractsResponse.ok) {
+      if (!combinedContractsResponse.ok) {
         throw new Error('Failed to fetch contracts');
       }
 
-      const allContractsData = await allContractsResponse.json();
-      console.log('All contracts received:', allContractsData.length);
+      const combinedContractsData = await combinedContractsResponse.json();
+      console.log('Combined contracts received:', combinedContractsData.length);
 
       // Separate pending contracts for the acceptance flow
-      const pendingContracts = allContractsData.filter((contract: any) => contract.isPending);
+      const pendingContracts = combinedContractsData.filter((contract: any) => contract.isPending);
       
       setPendingContracts(pendingContracts);
 
-      // For contracts with chainAddress, enrich with blockchain data
+      // Process contracts with blockchain data
       const enrichedContracts: Contract[] = [];
 
-      for (const contract of allContractsData) {
+      for (const contract of combinedContractsData) {
         if (contract.isPending) {
           // Skip pending contracts - they're handled separately
           continue;
         }
 
-        if (contract.chainAddress) {
-          try {
-            // Fetch individual contract from chain service
-            const chainResponse = await fetch(`${router.basePath}/api/chain/contract/${contract.chainAddress}`);
-            
-            if (chainResponse.ok) {
-              const chainContract = await chainResponse.json();
-              
-              // Derive synthetic RESOLVED status
-              let finalStatus = chainContract.status;
-              if (chainContract.status === 'CLAIMED' && contract.adminNotes && contract.adminNotes.length > 0) {
-                finalStatus = 'RESOLVED';
-              }
-
-              // Combine chain data with contract service data
-              enrichedContracts.push({
-                ...chainContract,
-                status: finalStatus,
-                buyerEmail: contract.buyerEmail,
-                sellerEmail: contract.sellerEmail,
-                adminNotes: contract.adminNotes
-              });
-            } else {
-              console.warn(`Failed to fetch chain data for contract ${contract.chainAddress}, status: ${chainResponse.status}`);
-              // Fallback to contract service data only
-              enrichedContracts.push(createContractFromDeployedData(contract));
-            }
-          } catch (error) {
-            console.warn(`Error fetching chain data for contract ${contract.chainAddress}:`, error);
-            // Fallback to contract service data only
-            enrichedContracts.push(createContractFromDeployedData(contract));
-          }
+        if (contract.blockchainQuerySuccess && contract.blockchainStatus) {
+          // Use blockchain data if available and query was successful
+          enrichedContracts.push({
+            contractAddress: contract.chainAddress || contract.id,
+            buyerAddress: contract.blockchainStatus.buyerAddress || contract.buyerAddress || '',
+            sellerAddress: contract.blockchainStatus.sellerAddress || contract.sellerAddress,
+            amount: contract.blockchainStatus.amount || contract.amount,
+            expiryTimestamp: contract.blockchainStatus.expiryTimestamp || contract.expiryTimestamp,
+            description: contract.description,
+            status: contract.blockchainStatus.status || 'CREATED',
+            createdAt: normalizeTimestamp(contract.createdAt) / 1000,
+            funded: contract.blockchainStatus.funded,
+            fundedAt: contract.blockchainStatus.fundedAt,
+            disputedAt: contract.blockchainStatus.disputedAt,
+            resolvedAt: contract.blockchainStatus.resolvedAt,
+            claimedAt: contract.blockchainStatus.claimedAt,
+            buyerEmail: contract.buyerEmail,
+            sellerEmail: contract.sellerEmail,
+            adminNotes: contract.adminNotes,
+            // Add error information for UI display
+            blockchainQueryError: contract.blockchainQueryError,
+            hasDiscrepancy: contract.hasDiscrepancy,
+            discrepancyDetails: contract.discrepancyDetails
+          });
+        } else if (contract.chainAddress && contract.blockchainQueryError) {
+          // Blockchain query failed, use fallback data but mark the error
+          const fallbackContract = createContractFromDeployedData(contract);
+          enrichedContracts.push({
+            ...fallbackContract,
+            blockchainQueryError: contract.blockchainQueryError,
+            hasDiscrepancy: false
+          });
         } else {
           // No chainAddress, use contract service data only
           enrichedContracts.push(createContractFromDeployedData(contract));

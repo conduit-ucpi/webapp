@@ -43,6 +43,10 @@ export interface Contract {
     addedBy: string;
     addedAt: number;
   }>;
+  // Blockchain query status and error information
+  blockchainQueryError?: string;
+  hasDiscrepancy?: boolean;
+  discrepancyDetails?: string[];
 }
 
 export interface PendingContract {

@@ -71,9 +71,21 @@ export default function ContractCard({ contract, onAction, isClaimingInProgress,
               <ExpandableHash hash={contract.contractAddress} />
             )}
           </h3>
-          <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(contract.status)}`}>
-            {getStatusDisplay(contract.status).toUpperCase()}
-          </span>
+          <div className="flex items-center space-x-2">
+            <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(contract.status)}`}>
+              {getStatusDisplay(contract.status).toUpperCase()}
+            </span>
+            {contract.blockchainQueryError && (
+              <span className="inline-flex px-2 py-1 text-xs font-medium rounded bg-red-100 text-red-800" title={contract.blockchainQueryError}>
+                Blockchain Error
+              </span>
+            )}
+            {contract.hasDiscrepancy && (
+              <span className="inline-flex px-2 py-1 text-xs font-medium rounded bg-yellow-100 text-yellow-800" title={contract.discrepancyDetails?.join(', ')}>
+                Data Mismatch
+              </span>
+            )}
+          </div>
         </div>
         <div className="text-right">
           <div className="text-2xl font-bold text-gray-900">

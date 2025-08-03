@@ -58,7 +58,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     };
 
     // Fetch all contracts from the unified contracts endpoint
-    const contractsResponse = await fetch(`${process.env.CONTRACT_SERVICE_URL}/api/contracts`, {
+    const contractsResponse = await fetch(`${process.env.CONTRACT_SERVICE_URL}/api/contracts/combined-contracts`, {
       method: 'GET',
       headers
     });

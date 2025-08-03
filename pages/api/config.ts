@@ -18,7 +18,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log('SNOWTRACE_BASE_URL:', process.env.SNOWTRACE_BASE_URL);
     console.log('SERVICE_LINK:', process.env.SERVICE_LINK);
 
-    const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '/webapp';
+    const basePath = process.env.NEXT_PUBLIC_BASE_PATH === 'null' ? '' : (process.env.NEXT_PUBLIC_BASE_PATH || '/webapp');
     
     const config = {
       web3AuthClientId: process.env.WEB3AUTH_CLIENT_ID,

@@ -141,7 +141,7 @@ export default function CreateContract() {
         expiryTimestamp
       };
 
-      const response = await fetch(`${router.basePath}/api/contracts`, {
+      const response = await fetch('/api/contracts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(pendingContractRequest)

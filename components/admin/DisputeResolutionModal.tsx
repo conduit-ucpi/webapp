@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/router';
 import Modal from '@/components/ui/Modal';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
@@ -39,7 +38,6 @@ export default function DisputeResolutionModal({
   chainAddress,
   onResolutionComplete
 }: DisputeResolutionModalProps) {
-  const router = useRouter();
   const [contract, setContract] = useState<ContractWithNotes | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -86,7 +84,7 @@ export default function DisputeResolutionModal({
     setIsLoading(true);
     setError('');
     try {
-      const response = await fetch(`${router.basePath}/api/admin/contracts/${contractId}/notes`, {
+      const response = await fetch(`/api/admin/contracts/${contractId}/notes`, {
         method: 'GET',
         credentials: 'include',
       });
@@ -131,7 +129,7 @@ export default function DisputeResolutionModal({
 
     try {
       // Add the note first
-      const noteResponse = await fetch(`${router.basePath}/api/admin/contracts/${contractId}/notes`, {
+      const noteResponse = await fetch(`/api/admin/contracts/${contractId}/notes`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -154,7 +152,7 @@ export default function DisputeResolutionModal({
         const buyerActualAmount = Math.floor(totalAmount * buyerPercent / 100).toString();
         const sellerActualAmount = Math.floor(totalAmount * sellerPercent / 100).toString();
         
-        const resolutionResponse = await fetch(`${router.basePath}/api/admin/contracts/${contractId}/resolve`, {
+        const resolutionResponse = await fetch(`/api/admin/contracts/${contractId}/resolve`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

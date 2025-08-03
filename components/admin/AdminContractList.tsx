@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useRouter } from 'next/router';
 import { PendingContract } from '@/types';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import Input from '@/components/ui/Input';
@@ -33,7 +32,6 @@ type SortField = 'createdAt' | 'expiryTimestamp' | 'amount' | 'status' | 'seller
 type SortDirection = 'asc' | 'desc';
 
 export default function AdminContractList({ onContractSelect }: AdminContractListProps) {
-  const router = useRouter();
   const [contracts, setContracts] = useState<AdminContract[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -54,7 +52,7 @@ export default function AdminContractList({ onContractSelect }: AdminContractLis
   const fetchContracts = async () => {
     try {
       // Fetch contracts from the new combined admin endpoint
-      const combinedResponse = await fetch(`${router.basePath}/api/admin/combined-contracts`);
+      const combinedResponse = await fetch('/api/admin/combined-contracts');
       if (!combinedResponse.ok) {
         throw new Error('Failed to fetch contracts');
       }

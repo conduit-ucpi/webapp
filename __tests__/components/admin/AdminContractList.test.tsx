@@ -532,7 +532,7 @@ describe('AdminContractList', () => {
     });
   });
 
-  it('handles fetch errors and displays error message with basePath', async () => {
+  it('handles fetch errors and displays error message', async () => {
     mockUseRouter.mockReturnValue({
       basePath: '/app',
       pathname: '/admin',
@@ -567,8 +567,8 @@ describe('AdminContractList', () => {
       expect(screen.getByText('Network error')).toBeInTheDocument();
     });
 
-    // Verify fetch was called with basePath for combined contracts
-    expect(mockFetch).toHaveBeenCalledWith('/app/api/admin/combined-contracts');
+    // Verify fetch was called with relative path for combined contracts
+    expect(mockFetch).toHaveBeenCalledWith('/api/admin/combined-contracts');
   });
 
   it('handles sorting by clicking on column headers', async () => {

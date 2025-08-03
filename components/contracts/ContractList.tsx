@@ -32,7 +32,7 @@ export default function ContractList() {
 
     try {
       // Fetch all contracts from the new combined endpoint
-      const combinedContractsResponse = await fetch(`${router.basePath}/api/combined-contracts`);
+      const combinedContractsResponse = await fetch('/api/combined-contracts');
       
       if (!combinedContractsResponse.ok) {
         throw new Error('Failed to fetch contracts');

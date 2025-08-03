@@ -1,7 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { useAuth } from '@/components/auth/AuthProvider';
-import { useRouter } from 'next/router';
 
 interface MoonPayWidgetProps {
   onClose?: () => void;
@@ -11,7 +10,6 @@ interface MoonPayWidgetProps {
 export default function MoonPayWidget({ onClose, mode = 'buy' }: MoonPayWidgetProps) {
   const { config } = useConfig();
   const { user } = useAuth();
-  const router = useRouter();
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {
@@ -39,7 +37,7 @@ export default function MoonPayWidget({ onClose, mode = 'buy' }: MoonPayWidgetPr
       currencyCode: 'usdc',
       walletAddress: user.walletAddress,
       colorCode: '#3b82f6',
-      redirectURL: window.location.origin + router.basePath + '/dashboard',
+      redirectURL: window.location.origin + '/dashboard',
     });
 
     // Use different MoonPay URLs for buy vs sell

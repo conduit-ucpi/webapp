@@ -39,7 +39,7 @@ export default function AdminPage() {
   const fetchRawContractData = async (contractId: string) => {
     setIsLoadingRawData(true);
     try {
-      const response = await fetch(`${router.basePath}/api/admin/contracts/raw?contractId=${contractId}`);
+      const response = await fetch(`/api/admin/contracts/raw?contractId=${contractId}`);
       if (!response.ok) {
         throw new Error('Failed to fetch raw contract data');
       }

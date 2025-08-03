@@ -35,7 +35,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
 
     try {
       // First, get fresh contract data to check status
-      const contractResponse = await fetch(`${router.basePath}/api/contracts/${contract.id}`, {
+      const contractResponse = await fetch(`/api/contracts/${contract.id}`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' }
       });
@@ -97,7 +97,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
         description: contract.description
       };
 
-      const response = await fetch(`${router.basePath}/api/chain/create-contract`, {
+      const response = await fetch('/api/chain/create-contract', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(contractRequest)
@@ -126,7 +126,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
         : ((contract.amount as number) / 1000000).toString(); // Convert from microUSDC to USDC
       const approvalTx = await web3Service.signUSDCApproval(usdcAmount, contractAddress);
 
-      const approvalResponse = await fetch(`${router.basePath}/api/chain/approve-usdc`, {
+      const approvalResponse = await fetch('/api/chain/approve-usdc', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -149,7 +149,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
       setLoadingMessage('Depositing funds to escrow...');
       const depositTx = await web3Service.signDepositTransaction(contractAddress);
 
-      const depositResponse = await fetch(`${router.basePath}/api/chain/deposit-funds`, {
+      const depositResponse = await fetch('/api/chain/deposit-funds', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -192,13 +192,13 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
       } catch (error) {
         console.error('Redirect failed:', error);
         // Fallback: reload the page to trigger navigation
-        window.location.href = `${router.basePath}/dashboard`;
+        window.location.href = '/dashboard';
       }
       
       // Fallback timeout in case redirect doesn't work
       setTimeout(() => {
-        if (window.location.pathname !== `${router.basePath}/dashboard`) {
-          window.location.href = `${router.basePath}/dashboard`;
+        if (window.location.pathname !== '/dashboard') {
+          window.location.href = '/dashboard';
         }
       }, 3000);
     } catch (error: any) {

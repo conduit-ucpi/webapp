@@ -1,5 +1,4 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-import { useRouter } from 'next/router';
 import { Config, ConfigContextType } from '@/types';
 
 const ConfigContext = createContext<ConfigContextType | undefined>(undefined);
@@ -7,12 +6,11 @@ const ConfigContext = createContext<ConfigContextType | undefined>(undefined);
 export function ConfigProvider({ children }: { children: React.ReactNode }) {
   const [config, setConfig] = useState<Config | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const router = useRouter();
 
   useEffect(() => {
     const fetchConfig = async () => {
       try {
-        const response = await fetch(`${router.basePath}/api/config`);
+        const response = await fetch('/api/config');
         if (response.ok) {
           const configData = await response.json();
           setConfig(configData);

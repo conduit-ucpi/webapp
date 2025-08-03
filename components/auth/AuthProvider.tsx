@@ -1,5 +1,4 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-import { useRouter } from 'next/router';
 import { User, AuthContextType } from '@/types';
 import { resetWeb3AuthInstance } from './ConnectWallet';
 
@@ -9,7 +8,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [provider, setProvider] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const router = useRouter();
 
   // Try to restore provider immediately if it exists
   useEffect(() => {
@@ -22,7 +20,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (idToken: string, walletAddress: string, web3Provider: any) => {
     try {
-      const response = await fetch(`${router.basePath}/api/auth/login`, {
+      const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -111,7 +109,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       resetWeb3AuthInstance();
       
       // Call backend logout to clear server session
-      await fetch(`${router.basePath}/api/auth/logout`, { method: 'POST' });
+      await fetch('/api/auth/logout', { method: 'POST' });
       
       // Clear local auth state
       setUser(null);
@@ -143,7 +141,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const safeCheckAuthStatus = async () => {
       try {
         // Check auth status first
-        const response = await fetch(`${router.basePath}/api/auth/identity`);
+        const response = await fetch('/api/auth/identity');
         if (response.ok && isMounted) {
           const userData = await response.json();
           setUser(userData);

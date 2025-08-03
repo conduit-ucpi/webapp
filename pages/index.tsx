@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import { useRouter } from 'next/router';
 import { useAuth } from '@/components/auth/AuthProvider';
 import ConnectWallet from '@/components/auth/ConnectWallet';
 import Button from '@/components/ui/Button';
@@ -7,7 +6,6 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner';
 
 export default function Home() {
   const { user, provider, isLoading } = useAuth();
-  const router = useRouter();
   
   // Show minimal loading on mobile to prevent crashes
   if (isLoading) {
@@ -71,7 +69,7 @@ export default function Home() {
           <div className="hidden lg:flex items-center justify-center">
             <div className="relative w-full max-w-lg">
               <img 
-                src={`${router.basePath}/payment_gateway.png`} 
+                src="/payment_gateway.png" 
                 alt="Payment Infrastructure Diagram" 
                 className="w-full h-auto opacity-90"
               />

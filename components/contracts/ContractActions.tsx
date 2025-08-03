@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useRouter } from 'next/router';
 import { Contract, RaiseDisputeRequest } from '@/types';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { useAuth } from '@/components/auth/AuthProvider';
@@ -20,7 +19,6 @@ interface ContractActionsProps {
 export default function ContractActions({ contract, isBuyer, isSeller, onAction, isClaimingInProgress, onClaimStart, onClaimComplete }: ContractActionsProps) {
   const { config } = useConfig();
   const { user } = useAuth();
-  const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
   const [hasError, setHasError] = useState(false);
@@ -62,7 +60,7 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
         productName: process.env.PRODUCT_NAME || contract.description
       };
 
-      const response = await fetch(`${router.basePath}/api/chain/raise-dispute`, {
+      const response = await fetch('/api/chain/raise-dispute', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -118,7 +116,7 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
 
       // Submit signed transaction to chain service
       setLoadingMessage('Claiming funds...');
-      const response = await fetch(`${router.basePath}/api/chain/claim-funds`, {
+      const response = await fetch('/api/chain/claim-funds', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

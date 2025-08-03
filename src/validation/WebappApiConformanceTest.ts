@@ -53,7 +53,7 @@ export class WebappApiConformanceTest {
 
       // Step 3: Analyze conformance
       console.log('\n🔎 Step 3: Analyzing API conformance...');
-      const conformanceResults = this.analyzeConformance(apiCalls, serviceDocs);
+      const conformanceResults = await this.analyzeConformance(apiCalls, serviceDocs);
       
       // Step 4: Generate report
       console.log('\n📋 Step 4: Generating conformance report...');
@@ -107,36 +107,39 @@ export class WebappApiConformanceTest {
         const lineNumber = i + 1;
         
         // Look for fetch calls to backend services
-        const fetchMatches = [
-          // Direct service calls
-          /fetch\(`\${process\.env\.([A-Z_]+)}\/(api\/[^`]+)`/g,
-          // Proxy calls through webapp API routes
-          /fetch\(`\${[^}]+}\/(api\/[^`]+)`/g,
-        ];
+        // Look for direct service calls
+        const directServiceMatch = /fetch\(`\${process\.env\.([A-Z_]+)}\/(api\/[^`]+)`/g.exec(line);
+        if (directServiceMatch) {
+          const serviceEnvVar = directServiceMatch[1];
+          const endpoint = directServiceMatch[2];
+          const serviceUrl = process.env[serviceEnvVar] || `unknown_${serviceEnvVar}`;
+          const method = this.extractHttpMethod(lines, i);
+          
+          apiCalls.push({
+            file: filePath.replace(this.webappRoot, ''),
+            line: lineNumber,
+            method,
+            endpoint,
+            serviceUrl,
+            fullCall: line.trim()
+          });
+        }
 
-        for (const regex of fetchMatches) {
-          let match;
-          while ((match = regex.exec(line)) !== null) {
-            const serviceEnvVar = match[1];
-            const endpoint = match[2] || match[1];
-            
-            let serviceUrl = '';
-            if (serviceEnvVar) {
-              serviceUrl = process.env[serviceEnvVar] || `unknown_${serviceEnvVar}`;
-            }
-            
-            // Extract HTTP method from context
-            const method = this.extractHttpMethod(lines, i);
-            
-            apiCalls.push({
-              file: filePath.replace(this.webappRoot, ''),
-              line: lineNumber,
-              method,
-              endpoint,
-              serviceUrl,
-              fullCall: line.trim()
-            });
-          }
+        // Look for webapp API proxy calls (these go through Next.js API routes)
+        const proxyMatch = /fetch\(`\${[^}]+}\/(api\/[^`]+)`/g.exec(line);
+        if (proxyMatch && !directServiceMatch) {
+          const endpoint = proxyMatch[1];
+          const method = this.extractHttpMethod(lines, i);
+          
+          // These are webapp API routes, mark as such
+          apiCalls.push({
+            file: filePath.replace(this.webappRoot, ''),
+            line: lineNumber,
+            method,
+            endpoint,
+            serviceUrl: 'webapp_api_route',
+            fullCall: line.trim()
+          });
         }
       }
     } catch (error) {
@@ -252,21 +255,38 @@ export class WebappApiConformanceTest {
     return endpoints;
   }
 
-  private analyzeConformance(apiCalls: ApiCall[], serviceDocs: ServiceApiDocs[]): {
+  private async analyzeConformance(apiCalls: ApiCall[], serviceDocs: ServiceApiDocs[]): Promise<{
     conformingCalls: ApiCall[],
     nonConformingCalls: Array<ApiCall & {reason: string}>,
     unknownServiceCalls: ApiCall[]
-  } {
+  }> {
     const conformingCalls: ApiCall[] = [];
     const nonConformingCalls: Array<ApiCall & {reason: string}> = [];
     const unknownServiceCalls: ApiCall[] = [];
 
     for (const call of apiCalls) {
       // Find the service this call is targeting
-      const targetService = serviceDocs.find(service => 
+      let targetService = serviceDocs.find(service => 
         call.serviceUrl.includes(service.baseUrl) || 
         call.serviceUrl.includes(service.serviceName.toLowerCase().replace(' ', ''))
       );
+
+      // For webapp API routes, determine which backend service they proxy to
+      if (!targetService && call.serviceUrl === 'webapp_api_route') {
+        targetService = this.determineBackendServiceForWebappRoute(call.endpoint, serviceDocs);
+        
+        // If still no target service, validate as webapp-only route
+        if (!targetService) {
+          const proxyValidation = await this.validateWebappProxyRoute(call, serviceDocs);
+          if (proxyValidation.isConforming) {
+            conformingCalls.push(call);
+            continue;
+          } else {
+            nonConformingCalls.push({ ...call, reason: proxyValidation.reason });
+            continue;
+          }
+        }
+      }
 
       if (!targetService) {
         unknownServiceCalls.push(call);
@@ -275,27 +295,313 @@ export class WebappApiConformanceTest {
 
       // Check if the endpoint exists in the service's API docs
       const matchingEndpoint = targetService.availableEndpoints.find(endpoint => 
-        endpoint.path === call.endpoint && endpoint.method === call.method
+        this.pathsMatch(call.endpoint, endpoint.path) && endpoint.method === call.method
       );
 
       if (matchingEndpoint) {
         conformingCalls.push(call);
       } else {
-        // Check for similar endpoints
-        const similarEndpoint = targetService.availableEndpoints.find(endpoint => 
-          endpoint.path.includes(call.endpoint.split('/').pop() || '') || 
-          call.endpoint.includes(endpoint.path.split('/').pop() || '')
-        );
+        // For webapp API routes, check if they proxy to conforming backend calls
+        if (call.serviceUrl === 'webapp_api_route') {
+          const proxyValidation = await this.validateWebappProxyRoute(call, serviceDocs);
+          if (proxyValidation.isConforming) {
+            conformingCalls.push(call);
+          } else {
+            nonConformingCalls.push({ ...call, reason: proxyValidation.reason });
+          }
+        } else {
+          // Check for similar endpoints
+          const similarEndpoint = targetService.availableEndpoints.find(endpoint => 
+            this.pathsMatch(call.endpoint, endpoint.path) ||
+            endpoint.path.includes(call.endpoint.split('/').pop() || '') || 
+            call.endpoint.includes(endpoint.path.split('/').pop() || '')
+          );
 
-        const reason = similarEndpoint 
-          ? `Endpoint not found. Similar: ${similarEndpoint.method} ${similarEndpoint.path}`
-          : `Endpoint not found in ${targetService.serviceName} API docs`;
+          const reason = similarEndpoint 
+            ? `Endpoint not found. Similar: ${similarEndpoint.method} ${similarEndpoint.path}`
+            : `Endpoint not found in ${targetService.serviceName} API docs`;
 
-        nonConformingCalls.push({ ...call, reason });
+          nonConformingCalls.push({ ...call, reason });
+        }
       }
     }
 
     return { conformingCalls, nonConformingCalls, unknownServiceCalls };
+  }
+
+  /**
+   * Validate that a webapp API route proxies to conforming backend endpoints
+   */
+  private async validateWebappProxyRoute(call: ApiCall, serviceDocs: ServiceApiDocs[]): Promise<{isConforming: boolean, reason: string}> {
+    try {
+      // Construct the expected webapp API route file path
+      const routeFile = this.getWebappApiRouteFilePath(call.endpoint);
+      
+      if (!routeFile) {
+        return { isConforming: false, reason: 'Webapp API route file not found' };
+      }
+
+      // Read and analyze the route file to find backend calls
+      const backendCalls = this.extractBackendCallsFromRouteFile(routeFile);
+      
+      if (backendCalls.length === 0) {
+        // If no backend calls, it's a webapp-only endpoint (like /api/config)
+        return { isConforming: true, reason: 'Webapp-only endpoint (no backend calls)' };
+      }
+
+      // Validate each backend call
+      const validationResults = backendCalls.map(backendCall => {
+        const targetService = serviceDocs.find(service => 
+          backendCall.serviceUrl.includes(service.baseUrl) || 
+          backendCall.serviceUrl.includes(service.serviceName.toLowerCase().replace(' ', ''))
+        );
+
+        if (!targetService) {
+          return { isValid: false, reason: `Unknown service: ${backendCall.serviceUrl}` };
+        }
+
+        const matchingEndpoint = targetService.availableEndpoints.find(endpoint => 
+          this.pathsMatch(backendCall.endpoint, endpoint.path) && endpoint.method === backendCall.method
+        );
+
+        return { 
+          isValid: !!matchingEndpoint, 
+          reason: matchingEndpoint ? 'Valid' : `Backend call ${backendCall.method} ${backendCall.endpoint} not found in ${targetService.serviceName}`
+        };
+      });
+
+      const allValid = validationResults.every(result => result.isValid);
+      const invalidReasons = validationResults.filter(r => !r.isValid).map(r => r.reason);
+
+      return {
+        isConforming: allValid,
+        reason: allValid 
+          ? `Proxies to ${backendCalls.length} conforming backend endpoint(s)`
+          : `Invalid backend calls: ${invalidReasons.join(', ')}`
+      };
+
+    } catch (error) {
+      return { isConforming: false, reason: `Error analyzing proxy route: ${error}` };
+    }
+  }
+
+  /**
+   * Get the file path for a webapp API route
+   */
+  private getWebappApiRouteFilePath(endpoint: string): string | null {
+    // Convert API endpoint to file path
+    // /api/auth/login -> pages/api/auth/login.ts
+    // /api/contracts/{id} -> pages/api/contracts/[id]/index.ts or pages/api/contracts/[id].ts
+    
+    const pathSegments = endpoint.split('/').filter(seg => seg); // Remove empty segments
+    if (pathSegments[0] !== 'api') return null;
+
+    let filePath = join(this.webappRoot, 'pages', 'api');
+    
+    // Handle path segments, converting {param} or ${param} to [param]
+    for (let i = 1; i < pathSegments.length; i++) {
+      const segment = pathSegments[i];
+      if ((segment.includes('{') && segment.includes('}')) || 
+          (segment.includes('${') && segment.includes('}'))) {
+        // Convert {id} or ${id} to [id] - try common parameter names
+        const commonParamNames = ['id', 'contractId', 'userId', 'address', 'contractAddress'];
+        let foundMatch = false;
+        
+        for (const paramName of commonParamNames) {
+          const testPath = join(filePath, `[${paramName}]`);
+          const restOfPath = pathSegments.slice(i + 1);
+          const fullTestPath = restOfPath.length > 0 
+            ? join(testPath, ...restOfPath) + '.ts'
+            : testPath + '.ts';
+          
+          const indexTestPath = restOfPath.length > 0 
+            ? join(testPath, ...restOfPath, 'index.ts')
+            : join(testPath, 'index.ts');
+          
+          try {
+            if (statSync(fullTestPath).isFile() || statSync(indexTestPath).isFile()) {
+              filePath = join(filePath, `[${paramName}]`);
+              foundMatch = true;
+              break;
+            }
+          } catch {
+            // File doesn't exist, continue
+          }
+        }
+        
+        if (!foundMatch) {
+          // Default fallback
+          filePath = join(filePath, '[id]');
+        }
+      } else {
+        filePath = join(filePath, segment);
+      }
+    }
+
+    // Try different file extensions and patterns
+    const possibleFiles = [
+      `${filePath}.ts`,
+      `${filePath}.js`,
+      join(filePath, 'index.ts'),
+      join(filePath, 'index.js')
+    ];
+
+    for (const file of possibleFiles) {
+      try {
+        if (statSync(file).isFile()) {
+          return file;
+        }
+      } catch {
+        // File doesn't exist, continue
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Extract backend API calls from a webapp API route file
+   */
+  private extractBackendCallsFromRouteFile(filePath: string): Array<{method: string, endpoint: string, serviceUrl: string}> {
+    try {
+      const content = readFileSync(filePath, 'utf-8');
+      const lines = content.split('\n');
+      const backendCalls: Array<{method: string, endpoint: string, serviceUrl: string}> = [];
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        
+        // Look for fetch calls to backend services
+        const fetchMatch = /fetch\(`\${process\.env\.([A-Z_]+)}\/(api\/[^`]+)`/.exec(line);
+        if (fetchMatch) {
+          const serviceEnvVar = fetchMatch[1];
+          const endpoint = fetchMatch[2];
+          const serviceUrl = process.env[serviceEnvVar] || `unknown_${serviceEnvVar}`;
+          
+          // Extract HTTP method
+          const method = this.extractHttpMethodFromRouteFile(lines, i);
+          
+          backendCalls.push({ method, endpoint, serviceUrl });
+        }
+      }
+
+      return backendCalls;
+    } catch (error) {
+      console.warn(`Could not analyze route file ${filePath}: ${error}`);
+      return [];
+    }
+  }
+
+  /**
+   * Extract HTTP method from webapp API route file context
+   */
+  private extractHttpMethodFromRouteFile(lines: string[], currentIndex: number): string {
+    // Look for method in the fetch call or nearby lines
+    const searchRange = 5;
+    const start = Math.max(0, currentIndex - searchRange);
+    const end = Math.min(lines.length - 1, currentIndex + searchRange);
+    
+    for (let i = start; i <= end; i++) {
+      const line = lines[i].toLowerCase();
+      
+      // Check for explicit method in fetch options
+      if (line.includes('method:')) {
+        if (line.includes("'post'") || line.includes('"post"')) return 'POST';
+        if (line.includes("'put'") || line.includes('"put"')) return 'PUT';
+        if (line.includes("'delete'") || line.includes('"delete"')) return 'DELETE';
+        if (line.includes("'patch'") || line.includes('"patch"')) return 'PATCH';
+        if (line.includes("'get'") || line.includes('"get"')) return 'GET';
+      }
+      
+      // Check for method in fetch call itself
+      if (line.includes('fetch(') && (i === currentIndex)) {
+        // Look at the next few lines for method
+        for (let j = i + 1; j < Math.min(i + 3, lines.length); j++) {
+          const nextLine = lines[j].toLowerCase();
+          if (nextLine.includes('method:')) {
+            if (nextLine.includes('post')) return 'POST';
+            if (nextLine.includes('put')) return 'PUT';
+            if (nextLine.includes('delete')) return 'DELETE';
+            if (nextLine.includes('patch')) return 'PATCH';
+          }
+        }
+      }
+    }
+    
+    // Default to GET if no explicit method found
+    return 'GET';
+  }
+
+  /**
+   * Determine which backend service a webapp API route proxies to
+   */
+  private determineBackendServiceForWebappRoute(endpoint: string, serviceDocs: ServiceApiDocs[]): ServiceApiDocs | undefined {
+    // Based on endpoint patterns, determine which service it's proxying to
+    if (endpoint.startsWith('api/auth/') || endpoint.startsWith('api/user/')) {
+      return serviceDocs.find(s => s.serviceName === 'User Service');
+    }
+    if (endpoint.startsWith('api/chain/')) {
+      return serviceDocs.find(s => s.serviceName === 'Chain Service');
+    }
+    if (endpoint.startsWith('api/contracts/') || endpoint.startsWith('api/admin/contracts/')) {
+      return serviceDocs.find(s => s.serviceName === 'Contract Service');
+    }
+    // Special combined endpoints that might hit multiple services
+    if (endpoint.includes('combined-contracts')) {
+      return serviceDocs.find(s => s.serviceName === 'Contract Service');
+    }
+    return undefined;
+  }
+
+  /**
+   * Check if a webapp path (with ${variables}) matches an OpenAPI path (with {parameters})
+   */
+  private pathsMatch(webappPath: string, openApiPath: string): boolean {
+    // Normalize paths - ensure both start with /
+    const normalizeWebappPath = webappPath.startsWith('/') ? webappPath : '/' + webappPath;
+    const normalizeOpenApiPath = openApiPath.startsWith('/') ? openApiPath : '/' + openApiPath;
+    
+    // Direct match
+    if (normalizeWebappPath === normalizeOpenApiPath) {
+      return true;
+    }
+
+    // Convert both paths to comparable formats
+    // Replace ${variable} with {variable} for comparison
+    const normalizedWebappPath = normalizeWebappPath.replace(/\$\{[^}]+\}/g, (match) => {
+      // Extract variable name from ${varName}
+      const varName = match.slice(2, -1);
+      return `{${varName}}`;
+    });
+
+    // Also handle cases where webapp uses specific names vs generic OpenAPI names
+    const webappSegments = normalizedWebappPath.split('/');
+    const openApiSegments = normalizeOpenApiPath.split('/');
+
+    if (webappSegments.length !== openApiSegments.length) {
+      return false;
+    }
+
+    for (let i = 0; i < webappSegments.length; i++) {
+      const webappSeg = webappSegments[i];
+      const openApiSeg = openApiSegments[i];
+
+      // Exact match
+      if (webappSeg === openApiSeg) {
+        continue;
+      }
+
+      // Both are path parameters (one might be {id}, other might be {contractId})
+      if (webappSeg.startsWith('{') && webappSeg.endsWith('}') && 
+          openApiSeg.startsWith('{') && openApiSeg.endsWith('}')) {
+        continue;
+      }
+
+      // No match
+      return false;
+    }
+
+    return true;
   }
 
   private generateConformanceReport(
@@ -314,6 +620,7 @@ export class WebappApiConformanceTest {
     console.log(`📈 SUMMARY:`);
     console.log(`   Total API calls found: ${totalCalls}`);
     console.log(`   ✅ Conforming calls: ${conformingCount} (${Math.round(conformingCount/totalCalls*100)}%)`);
+    console.log(`     - Includes direct backend calls and valid proxy routes`);
     console.log(`   ❌ Non-conforming calls: ${nonConformingCount} (${Math.round(nonConformingCount/totalCalls*100)}%)`);
     console.log(`   ❓ Unknown service calls: ${unknownCount} (${Math.round(unknownCount/totalCalls*100)}%)`);
 

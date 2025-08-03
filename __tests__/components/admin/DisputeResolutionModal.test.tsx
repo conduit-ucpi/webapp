@@ -60,6 +60,7 @@ const mockContract = {
   currency: 'USDC',
   sellerEmail: 'seller@example.com',
   buyerEmail: 'buyer@example.com',
+  expiryTimestamp: 1735689600, // Unix timestamp: 2025-01-01T00:00:00Z
   adminNotes: [
     {
       id: 'note1',
@@ -289,7 +290,13 @@ describe('DisputeResolutionModal', () => {
           resolutionNote: 'Resolution note',
           chainAddress: '0x1234567890abcdef',
           buyerEmail: 'buyer@example.com',
-          sellerEmail: 'seller@example.com'
+          sellerEmail: 'seller@example.com',
+          amount: '1000',
+          currency: 'USDC',
+          contractDescription: 'Test contract',
+          payoutDateTime: '1735689600',
+          buyerActualAmount: '600',
+          sellerActualAmount: '400'
         })
       });
 
@@ -356,7 +363,13 @@ describe('DisputeResolutionModal', () => {
         resolutionNote: 'Email test resolution',
         chainAddress: '0x1234567890abcdef',
         buyerEmail: 'test-buyer@example.com',
-        sellerEmail: 'test-seller@example.com'
+        sellerEmail: 'test-seller@example.com',
+        amount: '1000',
+        currency: 'USDC',
+        contractDescription: 'Test contract',
+        payoutDateTime: '1735689600',
+        buyerActualAmount: '550',
+        sellerActualAmount: '450'
       })
     });
   });
@@ -419,7 +432,13 @@ describe('DisputeResolutionModal', () => {
         resolutionNote: 'No email resolution',
         chainAddress: '0x1234567890abcdef',
         buyerEmail: undefined,
-        sellerEmail: undefined
+        sellerEmail: undefined,
+        amount: '1000',
+        currency: 'USDC',
+        contractDescription: 'Test contract',
+        payoutDateTime: '1735689600',
+        buyerActualAmount: '500',
+        sellerActualAmount: '500'
       })
     });
   });

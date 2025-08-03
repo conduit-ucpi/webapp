@@ -20,6 +20,7 @@ interface ContractWithNotes {
   currency: string;
   sellerEmail: string;
   buyerEmail: string;
+  expiryTimestamp?: number;
   adminNotes: AdminNote[];
 }
 
@@ -145,6 +146,14 @@ export default function DisputeResolutionModal({
 
       // If resolving dispute, call the resolution endpoint
       if (resolveDispute) {
+        const buyerPercent = parseFloat(buyerPercentage);
+        const sellerPercent = parseFloat(sellerPercentage);
+        
+        // Calculate actual amounts based on percentages
+        const totalAmount = contract?.amount || 0;
+        const buyerActualAmount = Math.floor(totalAmount * buyerPercent / 100).toString();
+        const sellerActualAmount = Math.floor(totalAmount * sellerPercent / 100).toString();
+        
         const resolutionResponse = await fetch(`${router.basePath}/api/admin/contracts/${contractId}/resolve`, {
           method: 'POST',
           headers: {
@@ -152,12 +161,18 @@ export default function DisputeResolutionModal({
           },
           credentials: 'include',
           body: JSON.stringify({
-            buyerPercentage: parseFloat(buyerPercentage),
-            sellerPercentage: parseFloat(sellerPercentage),
+            buyerPercentage: buyerPercent,
+            sellerPercentage: sellerPercent,
             resolutionNote: newNote,
             chainAddress,
             buyerEmail: contract?.buyerEmail,
-            sellerEmail: contract?.sellerEmail
+            sellerEmail: contract?.sellerEmail,
+            amount: totalAmount.toString(),
+            currency: contract?.currency || 'USDC',
+            contractDescription: contract?.description,
+            payoutDateTime: contract?.expiryTimestamp?.toString(),
+            buyerActualAmount,
+            sellerActualAmount
           }),
         });
 

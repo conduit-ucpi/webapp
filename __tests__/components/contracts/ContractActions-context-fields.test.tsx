@@ -288,7 +288,7 @@ describe('ContractActions - Context Fields for Dispute', () => {
         amount: '0.75',
         currency: 'USDC',
         contractDescription: 'Custom Web Development',
-        productName: 'Custom Web Development'
+        productName: process.env.PRODUCT_NAME || 'Custom Web Development'
       });
 
       expect(mockFetch).toHaveBeenCalledWith(

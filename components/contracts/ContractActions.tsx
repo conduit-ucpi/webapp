@@ -59,7 +59,7 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
         amount: (contract.amount / 1000000).toString(), // Convert microUSDC to USDC for display
         currency: "USDC",
         contractDescription: contract.description,
-        productName: contract.description // Use description as product name
+        productName: process.env.PRODUCT_NAME || contract.description
       };
 
       const response = await fetch(`${router.basePath}/api/chain/raise-dispute`, {

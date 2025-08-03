@@ -148,7 +148,7 @@ describe('ContractActions - PayoutDateTime', () => {
             amount: (contract.amount / 1000000).toString(),
             currency: "USDC",
             contractDescription: contract.description,
-            productName: contract.description
+            productName: process.env.PRODUCT_NAME || contract.description
           })
         })
       );

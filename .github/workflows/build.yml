@@ -49,6 +49,7 @@ jobs:
           GIT_TAG: ${{ env.GIT_TAG }}
           GIT_SHA: ${{ env.GIT_SHA }}
           NEXT_PUBLIC_BASE_PATH: ${{ vars.NEXT_PUBLIC_BASE_PATH }}
+          PRODUCT_NAME: ${{ vars.PRODUCT_NAME }}
         run: |
           yarn install
           yarn build
@@ -128,5 +129,6 @@ jobs:
               -e MIN_GAS_WEI=${{ vars.MIN_GAS_WEI }} \
               -e NEXT_PUBLIC_BASE_PATH=${{ vars.NEXT_PUBLIC_BASE_PATH }} \
               -e SNOWTRACE_BASE_URL=${{ vars.SNOWTRACE_BASE_URL }} \
+              -e PRODUCT_NAME=${{ vars.PRODUCT_NAME }} \
               ghcr.io/${{ env.REPO_LOWER }}:${{ env.SHA_TAG }}
             '

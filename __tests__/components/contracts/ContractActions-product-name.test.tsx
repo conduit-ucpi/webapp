@@ -27,7 +27,6 @@ const mockWeb3Service = {
   initializeProvider: jest.fn(),
   getUserAddress: jest.fn().mockResolvedValue('0xBuyerAddress'),
   signDisputeTransaction: jest.fn().mockResolvedValue('mock-dispute-tx'),
-  signClaimTransaction: jest.fn().mockResolvedValue('mock-claim-tx'),
 };
 
 jest.mock('../../../lib/web3', () => ({
@@ -45,7 +44,7 @@ Object.defineProperty(window, 'web3authProvider', {
 // Mock window.alert
 global.alert = jest.fn();
 
-describe('ContractActions - Email Fields for Dispute', () => {
+describe('ContractActions - PRODUCT_NAME Environment Variable', () => {
   const mockConfig = {
     web3AuthClientId: 'test-client-id',
     web3AuthNetwork: 'testnet',
@@ -57,6 +56,12 @@ describe('ContractActions - Email Fields for Dispute', () => {
     basePath: '',
     snowtraceBaseUrl: 'https://testnet.snowtrace.io',
     serviceLink: 'http://localhost:3000'
+  };
+
+  const mockUser = {
+    userId: 'user-123',
+    email: 'buyer@test.com',
+    walletAddress: '0xBuyerAddress',
   };
 
   const mockOnAction = jest.fn();
@@ -75,14 +80,6 @@ describe('ContractActions - Email Fields for Dispute', () => {
       config: mockConfig,
       isLoading: false,
     });
-  });
-
-  it('should include email addresses when raising a dispute', async () => {
-    const mockUser = {
-      userId: 'user-123',
-      email: 'buyer@test.com',
-      walletAddress: '0xBuyerAddress',
-    };
 
     mockUseAuth.mockReturnValue({
       user: mockUser,
@@ -92,27 +89,37 @@ describe('ContractActions - Email Fields for Dispute', () => {
       logout: jest.fn(),
     });
 
-    const contract: Contract = {
-      contractAddress: '0xContractAddress123',
-      buyerAddress: '0xBuyerAddress',
-      sellerAddress: '0xSellerAddress',
-      amount: 1000000,
-      expiryTimestamp: Math.floor(Date.now() / 1000) + 86400,
-      description: 'Test contract',
-      status: 'ACTIVE',
-      createdAt: Math.floor(Date.now() / 1000),
-      funded: true,
-      buyerEmail: 'buyer@test.com',
-      sellerEmail: 'seller@test.com',
-    };
-
-    mockFetch.mockResolvedValueOnce({
+    mockFetch.mockResolvedValue({
       ok: true,
       json: jest.fn().mockResolvedValue({
         success: true,
         transactionHash: '0xTxHash123',
       }),
     });
+  });
+
+  afterEach(() => {
+    // Clean up environment variable
+    delete process.env.PRODUCT_NAME;
+  });
+
+  it('should use PRODUCT_NAME environment variable when set', async () => {
+    // Set the environment variable
+    process.env.PRODUCT_NAME = 'Test Product Name';
+
+    const contract: Contract = {
+      contractAddress: '0xContractAddress123',
+      buyerAddress: '0xBuyerAddress',
+      sellerAddress: '0xSellerAddress',
+      amount: 1000000,
+      expiryTimestamp: Math.floor(Date.now() / 1000) + 86400,
+      description: 'Contract Description',
+      status: 'ACTIVE',
+      createdAt: Math.floor(Date.now() / 1000),
+      funded: true,
+      buyerEmail: 'buyer@test.com',
+      sellerEmail: 'seller@test.com',
+    };
 
     render(
       <ContractActions 
@@ -144,55 +151,34 @@ describe('ContractActions - Email Fields for Dispute', () => {
             amount: (contract.amount / 1000000).toString(),
             currency: "USDC",
             contractDescription: contract.description,
-            productName: process.env.PRODUCT_NAME || contract.description
+            productName: 'Test Product Name' // Should use PRODUCT_NAME env var
           })
         })
       );
     });
-
-    expect(mockOnAction).toHaveBeenCalled();
   });
 
-  it('should use user email as fallback when contract buyerEmail is missing', async () => {
-    const mockUser = {
-      userId: 'user-456',
-      email: 'currentuser@test.com',
-      walletAddress: '0xBuyerAddress',
-    };
+  it('should fallback to contract.description when PRODUCT_NAME is not set', async () => {
+    // Ensure PRODUCT_NAME is not set
+    delete process.env.PRODUCT_NAME;
 
-    mockUseAuth.mockReturnValue({
-      user: mockUser,
-      provider: null,
-      isLoading: false,
-      login: jest.fn(),
-      logout: jest.fn(),
-    });
-
-    const contractWithoutBuyerEmail: Contract = {
+    const contract: Contract = {
       contractAddress: '0xContractAddress456',
       buyerAddress: '0xBuyerAddress',
       sellerAddress: '0xSellerAddress',
       amount: 1000000,
       expiryTimestamp: Math.floor(Date.now() / 1000) + 86400,
-      description: 'Test contract without buyer email',
+      description: 'Fallback Description',
       status: 'ACTIVE',
       createdAt: Math.floor(Date.now() / 1000),
       funded: true,
-      // buyerEmail is missing
+      buyerEmail: 'buyer@test.com',
       sellerEmail: 'seller@test.com',
     };
 
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: jest.fn().mockResolvedValue({
-        success: true,
-        transactionHash: '0xTxHash456',
-      }),
-    });
-
     render(
       <ContractActions 
-        contract={contractWithoutBuyerEmail}
+        contract={contract}
         isBuyer={true}
         isSeller={false}
         onAction={mockOnAction}
@@ -214,58 +200,40 @@ describe('ContractActions - Email Fields for Dispute', () => {
             contractAddress: '0xContractAddress456',
             userWalletAddress: '0xBuyerAddress',
             signedTransaction: 'mock-dispute-tx',
-            buyerEmail: 'currentuser@test.com', // Falls back to user email
+            buyerEmail: 'buyer@test.com',
             sellerEmail: 'seller@test.com',
-            payoutDateTime: new Date(contractWithoutBuyerEmail.expiryTimestamp * 1000).toISOString(),
-            amount: (contractWithoutBuyerEmail.amount / 1000000).toString(),
+            payoutDateTime: new Date(contract.expiryTimestamp * 1000).toISOString(),
+            amount: (contract.amount / 1000000).toString(),
             currency: "USDC",
-            contractDescription: contractWithoutBuyerEmail.description,
-            productName: contractWithoutBuyerEmail.description
+            contractDescription: contract.description,
+            productName: 'Fallback Description' // Should fallback to contract.description
           })
         })
       );
     });
   });
 
-  it('should handle missing email addresses gracefully', async () => {
-    const mockUser = {
-      userId: 'user-789',
-      walletAddress: '0xBuyerAddress',
-      // email is missing
-    } as any;
+  it('should fallback to contract.description when PRODUCT_NAME is empty string', async () => {
+    // Set PRODUCT_NAME to empty string
+    process.env.PRODUCT_NAME = '';
 
-    mockUseAuth.mockReturnValue({
-      user: mockUser,
-      provider: null,
-      isLoading: false,
-      login: jest.fn(),
-      logout: jest.fn(),
-    });
-
-    const contractWithoutEmails: Contract = {
+    const contract: Contract = {
       contractAddress: '0xContractAddress789',
       buyerAddress: '0xBuyerAddress',
       sellerAddress: '0xSellerAddress',
       amount: 1000000,
       expiryTimestamp: Math.floor(Date.now() / 1000) + 86400,
-      description: 'Test contract without emails',
+      description: 'Empty String Fallback',
       status: 'ACTIVE',
       createdAt: Math.floor(Date.now() / 1000),
       funded: true,
-      // Both emails are missing
+      buyerEmail: 'buyer@test.com',
+      sellerEmail: 'seller@test.com',
     };
-
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: jest.fn().mockResolvedValue({
-        success: true,
-        transactionHash: '0xTxHash789',
-      }),
-    });
 
     render(
       <ContractActions 
-        contract={contractWithoutEmails}
+        contract={contract}
         isBuyer={true}
         isSeller={false}
         onAction={mockOnAction}
@@ -287,13 +255,13 @@ describe('ContractActions - Email Fields for Dispute', () => {
             contractAddress: '0xContractAddress789',
             userWalletAddress: '0xBuyerAddress',
             signedTransaction: 'mock-dispute-tx',
-            buyerEmail: undefined,
-            sellerEmail: undefined,
-            payoutDateTime: new Date(contractWithoutEmails.expiryTimestamp * 1000).toISOString(),
-            amount: (contractWithoutEmails.amount / 1000000).toString(),
+            buyerEmail: 'buyer@test.com',
+            sellerEmail: 'seller@test.com',
+            payoutDateTime: new Date(contract.expiryTimestamp * 1000).toISOString(),
+            amount: (contract.amount / 1000000).toString(),
             currency: "USDC",
-            contractDescription: contractWithoutEmails.description,
-            productName: contractWithoutEmails.description
+            contractDescription: contract.description,
+            productName: 'Empty String Fallback' // Should fallback to contract.description when env var is empty
           })
         })
       );

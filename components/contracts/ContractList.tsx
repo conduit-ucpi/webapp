@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { Contract, PendingContract } from '@/types';
@@ -6,10 +6,8 @@ import ContractCard from './ContractCard';
 import PendingContractCard from './PendingContractCard';
 import ContractAcceptance from './ContractAcceptance';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
-import { normalizeTimestamp } from '@/utils/validation';
 
 type StatusFilter = 'ALL' | 'PENDING' | 'CREATED' | 'ACTIVE' | 'EXPIRED' | 'DISPUTED' | 'RESOLVED' | 'CLAIMED';
-type SortOrder = 'expiry-asc' | 'expiry-desc' | 'created-asc' | 'created-desc';
 
 export default function ContractList() {
   const { user } = useAuth();
@@ -19,91 +17,27 @@ export default function ContractList() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
-  const [sortOrder, setSortOrder] = useState<SortOrder>('expiry-asc');
   const [contractToAccept, setContractToAccept] = useState<PendingContract | null>(null);
   const [showAcceptance, setShowAcceptance] = useState(false);
   const [isClaimingInProgress, setIsClaimingInProgress] = useState(false);
 
   const fetchContracts = async () => {
-    console.log('fetchContracts called, user:', user);
-    console.log('User wallet address:', user?.walletAddress);
-    
-    // Remove user wallet address requirement - fetch all contracts
-    // This allows viewing all 36 contracts without user-based filtering
-
     try {
-      // Fetch all contracts from the new combined endpoint
-      const combinedContractsResponse = await fetch('/api/combined-contracts');
+      // Fetch contracts from the combined endpoint
+      const response = await fetch('/api/combined-contracts');
       
-      if (!combinedContractsResponse.ok) {
+      if (!response.ok) {
         throw new Error('Failed to fetch contracts');
       }
 
-      const combinedContractsData = await combinedContractsResponse.json();
-      console.log('Combined contracts received:', combinedContractsData.length);
-      console.log('First few contracts data:', combinedContractsData.slice(0, 3));
-
-      // Separate pending contracts for the acceptance flow
-      const pendingContracts = combinedContractsData.filter((contract: any) => contract.isPending);
-      console.log('Pending contracts filtered:', pendingContracts.length);
+      const contractsData = await response.json();
       
-      setPendingContracts(pendingContracts);
-
-      // Process contracts with blockchain data
-      const enrichedContracts: Contract[] = [];
-
-      console.log('Processing contracts for enrichment...');
-      for (const contract of combinedContractsData) {
-        if (contract.isPending) {
-          // Skip pending contracts - they're handled separately
-          console.log('Skipping pending contract:', contract.id);
-          continue;
-        }
-
-        if (contract.blockchainQuerySuccess && contract.blockchainStatus) {
-          // Use blockchain data if available and query was successful
-          console.log('Adding contract with blockchain data:', contract.id);
-          enrichedContracts.push({
-            contractAddress: contract.chainAddress || contract.id,
-            buyerAddress: contract.blockchainStatus.buyerAddress || contract.buyerAddress || '',
-            sellerAddress: contract.blockchainStatus.sellerAddress || contract.sellerAddress,
-            amount: contract.blockchainStatus.amount || contract.amount,
-            expiryTimestamp: contract.blockchainStatus.expiryTimestamp || contract.expiryTimestamp,
-            description: contract.description,
-            status: contract.blockchainStatus.status || 'CREATED',
-            createdAt: normalizeTimestamp(contract.createdAt) / 1000,
-            funded: contract.blockchainStatus.funded,
-            fundedAt: contract.blockchainStatus.fundedAt,
-            disputedAt: contract.blockchainStatus.disputedAt,
-            resolvedAt: contract.blockchainStatus.resolvedAt,
-            claimedAt: contract.blockchainStatus.claimedAt,
-            buyerEmail: contract.buyerEmail,
-            sellerEmail: contract.sellerEmail,
-            adminNotes: contract.adminNotes,
-            // Add error information for UI display
-            blockchainQueryError: contract.blockchainQueryError,
-            hasDiscrepancy: contract.hasDiscrepancy,
-            discrepancyDetails: contract.discrepancyDetails
-          });
-        } else if (contract.chainAddress && contract.blockchainQueryError) {
-          // Blockchain query failed, use fallback data but mark the error
-          console.log('Adding contract with blockchain error:', contract.id);
-          const fallbackContract = createContractFromDeployedData(contract);
-          enrichedContracts.push({
-            ...fallbackContract,
-            blockchainQueryError: contract.blockchainQueryError,
-            hasDiscrepancy: false
-          });
-        } else {
-          // No chainAddress, use contract service data only
-          console.log('Adding contract with fallback data:', contract.id);
-          enrichedContracts.push(createContractFromDeployedData(contract));
-        }
-      }
-
-      console.log('Final enriched contracts count:', enrichedContracts.length);
-      setContracts(enrichedContracts);
-
+      // Separate pending and regular contracts based on API response
+      const pending = contractsData.filter((contract: any) => contract.isPending);
+      const regular = contractsData.filter((contract: any) => !contract.isPending);
+      
+      setPendingContracts(pending);
+      setContracts(regular);
       setError('');
     } catch (error: any) {
       console.error('Failed to fetch contracts:', error);
@@ -113,50 +47,10 @@ export default function ContractList() {
     }
   };
 
-  // Helper function to create a Contract from deployed contract data
-  const createContractFromDeployedData = (deployedContract: any): Contract => {
-    return {
-      contractAddress: deployedContract.chainAddress || deployedContract.id || '',
-      buyerAddress: deployedContract.buyerAddress || '',
-      sellerAddress: deployedContract.sellerAddress || '',
-      amount: deployedContract.amount || 0,
-      expiryTimestamp: deployedContract.expiryTimestamp || 0,
-      description: deployedContract.description || '',
-      status: deployedContract.chainAddress ? 'CREATED' : 'PENDING',
-      createdAt: deployedContract.createdAt ? normalizeTimestamp(deployedContract.createdAt) / 1000 : 0,
-      buyerEmail: deployedContract.buyerEmail,
-      sellerEmail: deployedContract.sellerEmail,
-      adminNotes: deployedContract.adminNotes
-    };
-  };
 
   useEffect(() => {
     fetchContracts();
-    
-    // Auto-refresh every 30 seconds
-    const interval = setInterval(() => {
-      if (contracts.some(c => c.status === 'ACTIVE' && Date.now() / 1000 > c.expiryTimestamp - 300)) {
-        fetchContracts();
-      }
-    }, 30000);
-
-    return () => clearInterval(interval);
-  }, []); // Removed user?.walletAddress dependency to fetch all contracts
-
-  // Refresh contracts when navigating to this page
-  useEffect(() => {
-    const handleRouteChange = () => {
-      if (router.pathname === '/dashboard') {
-        fetchContracts();
-      }
-    };
-
-    router.events.on('routeChangeComplete', handleRouteChange);
-    
-    return () => {
-      router.events.off('routeChangeComplete', handleRouteChange);
-    };
-  }, [router]);
+  }, []);
 
   const handleContractAction = () => {
     fetchContracts(); // Refresh after any action
@@ -185,69 +79,16 @@ export default function ContractList() {
     fetchContracts(); // Refresh contract lists
   };
 
-  // Create unified contract list with pending contracts as 'PENDING' status
-  const allContracts = useMemo(() => {
-    const pendingAsContracts: Contract[] = pendingContracts.map(pending => ({
-      contractAddress: pending.id,
-      buyerAddress: '', // PendingContract doesn't have buyerAddress yet
-      sellerAddress: pending.sellerAddress,
-      amount: pending.amount,
-      expiryTimestamp: pending.expiryTimestamp,
-      description: pending.description,
-      status: 'PENDING' as const,
-      createdAt: normalizeTimestamp(pending.createdAt) / 1000,
-      buyerEmail: pending.buyerEmail,
-      sellerEmail: pending.sellerEmail
-    }));
-    
-    // Combine all contracts and deduplicate based on contractAddress
-    const combined = [...contracts, ...pendingAsContracts];
-    const seen = new Set<string>();
-    const deduplicated = combined.filter(contract => {
-      const key = contract.contractAddress;
-      if (seen.has(key)) {
-        return false;
-      }
-      seen.add(key);
-      return true;
-    });
-    
-    console.log('Final allContracts (after dedup):', deduplicated.length);
-    return deduplicated;
-  }, [contracts, pendingContracts]);
+  // Simple filtering for UI display only
+  const filteredContracts = contracts.filter(contract => {
+    if (statusFilter === 'ALL') return true;
+    return contract.status === statusFilter;
+  });
 
-  // Filter and sort all contracts
-  const filteredAndSortedContracts = useMemo(() => {
-    let filtered = allContracts;
-    console.log('Before filtering:', filtered.length);
-    
-    // REMOVED: User-based filtering to show all 36 contracts
-    // Now all contracts are visible regardless of current user
-    
-    console.log('Before status filtering:', filtered.length, 'Status filter:', statusFilter);
-    
-    // Apply status filter
-    if (statusFilter !== 'ALL') {
-      filtered = filtered.filter(contract => contract.status === statusFilter);
-      console.log('After status filtering:', filtered.length);
-    }
-    
-    // Apply sorting
-    return filtered.sort((a, b) => {
-      switch (sortOrder) {
-        case 'expiry-asc':
-          return a.expiryTimestamp - b.expiryTimestamp;
-        case 'expiry-desc':
-          return b.expiryTimestamp - a.expiryTimestamp;
-        case 'created-asc':
-          return a.createdAt - b.createdAt;
-        case 'created-desc':
-          return b.createdAt - a.createdAt;
-        default:
-          return 0;
-      }
-    });
-  }, [allContracts, statusFilter, sortOrder]);
+  const filteredPendingContracts = pendingContracts.filter(() => {
+    if (statusFilter === 'ALL') return true;
+    return statusFilter === 'PENDING';
+  });
 
   if (isLoading) {
     return (
@@ -271,7 +112,7 @@ export default function ContractList() {
     );
   }
 
-  if (allContracts.length === 0) {
+  if (contracts.length === 0 && pendingContracts.length === 0) {
     return (
       <div className="text-center py-20">
         <div className="text-gray-600 mb-4">No contracts found</div>
@@ -282,93 +123,66 @@ export default function ContractList() {
 
   return (
     <div>
-      {/* Filter and Sort Controls */}
-      <div className="mb-6 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-        <div className="flex flex-col sm:flex-row gap-4">
-          {/* Status Filter */}
-          <div>
-            <label htmlFor="status-filter" className="block text-sm font-medium text-gray-700 mb-1">
-              Filter by Status
-            </label>
-            <select
-              id="status-filter"
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-              className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md"
-            >
-              <option value="ALL">All Statuses</option>
-              <option value="PENDING">Pending</option>
-              <option value="CREATED">Created</option>
-              <option value="ACTIVE">Active</option>
-              <option value="EXPIRED">Expired</option>
-              <option value="DISPUTED">Disputed</option>
-              <option value="RESOLVED">Resolved</option>
-              <option value="CLAIMED">Claimed</option>
-            </select>
-          </div>
-
-          {/* Sort Order */}
-          <div>
-            <label htmlFor="sort-order" className="block text-sm font-medium text-gray-700 mb-1">
-              Sort by
-            </label>
-            <select
-              id="sort-order"
-              value={sortOrder}
-              onChange={(e) => setSortOrder(e.target.value as SortOrder)}
-              className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md"
-            >
-              <option value="expiry-asc">Expiry Date (Earliest First)</option>
-              <option value="expiry-desc">Expiry Date (Latest First)</option>
-              <option value="created-asc">Created Date (Oldest First)</option>
-              <option value="created-desc">Created Date (Newest First)</option>
-            </select>
-          </div>
+      {/* Status Filter */}
+      <div className="mb-6 flex justify-between items-center">
+        <div>
+          <label htmlFor="status-filter" className="block text-sm font-medium text-gray-700 mb-1">
+            Filter by Status
+          </label>
+          <select
+            id="status-filter"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+            className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md"
+          >
+            <option value="ALL">All Statuses</option>
+            <option value="PENDING">Pending</option>
+            <option value="CREATED">Created</option>
+            <option value="ACTIVE">Active</option>
+            <option value="EXPIRED">Expired</option>
+            <option value="DISPUTED">Disputed</option>
+            <option value="RESOLVED">Resolved</option>
+            <option value="CLAIMED">Claimed</option>
+          </select>
         </div>
 
         {/* Results Count */}
         <div className="text-sm text-gray-600">
-          Showing {filteredAndSortedContracts.length} of {allContracts.length} contracts
+          Showing {filteredContracts.length + filteredPendingContracts.length} contracts
         </div>
       </div>
 
-      {/* Unified Contracts Content */}
+      {/* Contracts Content */}
       {!showAcceptance ? (
         <>
-          {filteredAndSortedContracts.length === 0 ? (
+          {filteredContracts.length === 0 && filteredPendingContracts.length === 0 ? (
             <div className="text-center py-20">
               <div className="text-gray-600 mb-4">No contracts match your filters</div>
               <p className="text-gray-500">Try adjusting your filter settings.</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredAndSortedContracts.map((contract) => {
-                // If this is a pending contract (status === 'PENDING'), use PendingContractCard
-                if (contract.status === 'PENDING') {
-                  const pendingContract = pendingContracts.find(p => p.id === contract.contractAddress);
-                  if (pendingContract) {
-                    return (
-                      <PendingContractCard
-                        key={contract.contractAddress}
-                        contract={pendingContract}
-                        currentUserEmail={user?.email || ''}
-                        onAccept={handleAcceptContract}
-                      />
-                    );
-                  }
-                }
-                // Otherwise use regular ContractCard
-                return (
-                  <ContractCard
-                    key={contract.contractAddress}
-                    contract={contract}
-                    onAction={handleContractAction}
-                    isClaimingInProgress={isClaimingInProgress}
-                    onClaimStart={handleClaimStart}
-                    onClaimComplete={handleClaimComplete}
-                  />
-                );
-              })}
+              {/* Render pending contracts */}
+              {filteredPendingContracts.map((contract) => (
+                <PendingContractCard
+                  key={contract.id}
+                  contract={contract}
+                  currentUserEmail={user?.email || ''}
+                  onAccept={handleAcceptContract}
+                />
+              ))}
+              
+              {/* Render regular contracts */}
+              {filteredContracts.map((contract) => (
+                <ContractCard
+                  key={contract.contractAddress}
+                  contract={contract}
+                  onAction={handleContractAction}
+                  isClaimingInProgress={isClaimingInProgress}
+                  onClaimStart={handleClaimStart}
+                  onClaimComplete={handleClaimComplete}
+                />
+              ))}
             </div>
           )}
         </>

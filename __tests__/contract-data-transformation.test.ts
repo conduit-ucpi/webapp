@@ -107,7 +107,7 @@ function transformContractData(contractsData: any[]): { pending: PendingContract
         id: contract.id,
         sellerEmail: contract.sellerEmail || '',
         buyerEmail: contract.buyerEmail || '',
-        amount: contract.amount || 0,
+        amount: (contract.amount || 0) / 1000000, // Convert from micro USDC to USDC for display
         currency: contract.currency || 'USDC',
         sellerAddress: contract.sellerAddress || '',
         expiryTimestamp: contract.expiryTimestamp || 0,
@@ -126,7 +126,7 @@ function transformContractData(contractsData: any[]): { pending: PendingContract
         contractAddress: contract.chainAddress || '',
         buyerAddress: item.blockchainBuyerAddress || contract.buyerAddress || '',
         sellerAddress: item.blockchainSellerAddress || contract.sellerAddress || '',
-        amount: parseFloat(item.blockchainAmount || contract.amount || '0') / 1000000, // Convert from micro USDC
+        amount: parseFloat(item.blockchainAmount || contract.amount || '0') / 1000000, // Convert from micro USDC to USDC for display
         expiryTimestamp: item.blockchainExpiryTimestamp || contract.expiryTimestamp || 0,
         description: contract.description || '',
         status: item.blockchainStatus || 'PENDING',
@@ -170,7 +170,7 @@ describe('Contract Data Transformation', () => {
     // Test pending contract transformation
     const pendingContract = pending[0];
     expect(pendingContract.id).toBe('688a667964918c7be0657f56');
-    expect(pendingContract.amount).toBe(2);
+    expect(pendingContract.amount).toBe(0.000002); // 2 microUSDC / 1000000 = 0.000002 USDC
     expect(pendingContract.state).toBe('OK');
     expect(pendingContract.sellerEmail).toBe('charliepank@gmail.com');
     expect(pendingContract.buyerEmail).toBe('charlie@pank.org.uk');

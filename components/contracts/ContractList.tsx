@@ -55,7 +55,7 @@ export default function ContractList() {
             id: contract.id,
             sellerEmail: contract.sellerEmail || '',
             buyerEmail: contract.buyerEmail || '',
-            amount: contract.amount || 0,
+            amount: (contract.amount || 0) / 1000000, // Convert from micro USDC to USDC for display
             currency: contract.currency || 'USDC',
             sellerAddress: contract.sellerAddress || '',
             expiryTimestamp: contract.expiryTimestamp || 0,
@@ -74,7 +74,7 @@ export default function ContractList() {
             contractAddress: contract.chainAddress || '',
             buyerAddress: item.blockchainBuyerAddress || contract.buyerAddress || '',
             sellerAddress: item.blockchainSellerAddress || contract.sellerAddress || '',
-            amount: parseFloat(item.blockchainAmount || contract.amount || '0') / 1000000, // Convert from micro USDC
+            amount: parseFloat(item.blockchainAmount || contract.amount || '0') / 1000000, // Convert from micro USDC to USDC for display
             expiryTimestamp: item.blockchainExpiryTimestamp || contract.expiryTimestamp || 0,
             description: contract.description || '',
             status: item.blockchainStatus || 'PENDING',

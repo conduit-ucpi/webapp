@@ -6,18 +6,22 @@ jest.mock('next/router', () => ({
 }));
 jest.mock('../../../components/auth/ConfigProvider');
 jest.mock('../../../components/auth/AuthProvider');
+jest.mock('../../../components/auth/Web3AuthInstanceProvider');
 jest.mock('../../../lib/web3');
 
 import { useRouter } from 'next/router';
 import ContractActions from '../../../components/contracts/ContractActions';
 import { useConfig } from '../../../components/auth/ConfigProvider';
 import { useAuth } from '../../../components/auth/AuthProvider';
+import { useWeb3AuthInstance } from '../../../components/auth/Web3AuthInstanceProvider';
 import { Contract } from '../../../types';
 
 const mockUseRouter = useRouter as jest.MockedFunction<typeof useRouter>;
 const mockUseConfig = useConfig as jest.MockedFunction<typeof useConfig>;
 const mockUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
+const mockUseWeb3AuthInstance = useWeb3AuthInstance as jest.MockedFunction<typeof useWeb3AuthInstance>;
 
+const currency = "microUSDC";
 // Mock fetch globally
 const mockFetch = jest.fn();
 global.fetch = mockFetch;
@@ -68,7 +72,7 @@ describe('ContractActions - Context Fields for Dispute', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    
+
     mockUseRouter.mockReturnValue({
       basePath: '',
       pathname: '/dashboard',
@@ -83,10 +87,16 @@ describe('ContractActions - Context Fields for Dispute', () => {
 
     mockUseAuth.mockReturnValue({
       user: mockUser,
-      provider: null,
       isLoading: false,
       login: jest.fn(),
       logout: jest.fn(),
+    });
+
+    mockUseWeb3AuthInstance.mockReturnValue({
+      web3authProvider: null,
+      isLoading: false,
+      web3authInstance: null,
+      onLogout: jest.fn(),
     });
   });
 
@@ -114,7 +124,7 @@ describe('ContractActions - Context Fields for Dispute', () => {
     });
 
     render(
-      <ContractActions 
+      <ContractActions
         contract={contract}
         isBuyer={true}
         isSeller={false}
@@ -141,9 +151,9 @@ describe('ContractActions - Context Fields for Dispute', () => {
             sellerEmail: 'seller@test.com',
             payoutDateTime: new Date(contract.expiryTimestamp * 1000).toISOString(),
             amount: '2.5', // Converted from microUSDC to USDC
-            currency: 'USDC',
+            currency: currency,
             contractDescription: 'Digital Marketing Services Package',
-            productName: 'Digital Marketing Services Package'
+            productName: process.env.PRODUCT_NAME || 'Digital Marketing Services Package'
           })
         })
       );
@@ -176,7 +186,7 @@ describe('ContractActions - Context Fields for Dispute', () => {
     });
 
     render(
-      <ContractActions 
+      <ContractActions
         contract={contract}
         isBuyer={true}
         isSeller={false}
@@ -221,7 +231,7 @@ describe('ContractActions - Context Fields for Dispute', () => {
     });
 
     render(
-      <ContractActions 
+      <ContractActions
         contract={contract}
         isBuyer={true}
         isSeller={false}
@@ -266,7 +276,7 @@ describe('ContractActions - Context Fields for Dispute', () => {
     });
 
     render(
-      <ContractActions 
+      <ContractActions
         contract={contract}
         isBuyer={true}
         isSeller={false}
@@ -286,7 +296,7 @@ describe('ContractActions - Context Fields for Dispute', () => {
         sellerEmail: 'seller@test.com',
         payoutDateTime: new Date(contract.expiryTimestamp * 1000).toISOString(),
         amount: '0.75',
-        currency: 'USDC',
+        currency: currency,
         contractDescription: 'Custom Web Development',
         productName: process.env.PRODUCT_NAME || 'Custom Web Development'
       });

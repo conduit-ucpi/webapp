@@ -6,6 +6,7 @@ import { useConfig } from './ConfigProvider';
 import { useAuth } from './AuthProvider';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import { useWeb3AuthInstance } from './Web3AuthInstanceProvider';
 
 // Global Web3Auth instance
 let web3authInstance: Web3Auth | null = null;
@@ -18,116 +19,31 @@ export const resetWeb3AuthInstance = () => {
 export default function ConnectWallet() {
   const { config } = useConfig();
   const { login } = useAuth();
+  const { web3authInstance, isLoading } = useWeb3AuthInstance();
   const [isConnecting, setIsConnecting] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
   const [hasVisitedBefore, setHasVisitedBefore] = useState(false);
 
-  const initWeb3Auth = async () => {
-    if (!config) return null;
-    
-    // Always create a new instance if we're initializing after logout
-    if (web3authInstance) {
-      console.log('Web3Auth instance already exists, returning existing instance');
-      return web3authInstance;
-    }
 
-    console.log('Initializing new Web3Auth instance...');
-
-    // Check if we're on mobile
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    
-    // Disable MetaMask auto-detection by hiding window.ethereum temporarily
-    const originalEthereum = (window as any).ethereum;
-    if (originalEthereum && !isMobile) {
-      (window as any).ethereum = undefined;
-    }
-
-    const chainConfig = {
-      chainNamespace: CHAIN_NAMESPACES.EIP155,
-      chainId: `0x${config.chainId.toString(16)}`,
-      rpcTarget: config.rpcUrl,
-      displayName: 'Avalanche Testnet',
-      blockExplorer: 'https://testnet.snowtrace.io',
-      ticker: 'AVAX',
-      tickerName: 'Avalanche',
-    };
-
-    const privateKeyProvider = new EthereumPrivateKeyProvider({
-      config: { chainConfig },
-    });
-
-    web3authInstance = new Web3Auth({
-      clientId: config.web3AuthClientId,
-      web3AuthNetwork: config.web3AuthNetwork as OPENLOGIN_NETWORK_TYPE, // Configurable via WEB3AUTH_NETWORK env var
-      chainConfig,
-      privateKeyProvider,
-      enableLogging: false,
-    });
-
-    try {
-      // Add a small delay on mobile to prevent DOM conflicts
-      if (isMobile) {
-        await new Promise(resolve => setTimeout(resolve, 100));
-      }
-      
-      await web3authInstance.initModal();
-      console.log('Web3Auth modal initialized successfully');
-    } catch (error) {
-      console.error('Web3Auth initialization error:', error);
-      // If MetaMask error or DOM error, just log it and continue
-      if ((error as Error).message?.includes('MetaMask') || 
-          (error as Error).message?.includes('removeChild') ||
-          (error as Error).message?.includes('Node')) {
-        console.warn('Known initialization issue, continuing:', error);
-      } else {
-        throw error;
-      }
-    }
-    
-    // Restore original ethereum object after initialization
-    if (originalEthereum && !isMobile) {
-      (window as any).ethereum = originalEthereum;
-    }
-    
-    // Store provider globally for other components
-    (window as any).web3auth = web3authInstance;
-    
-    console.log('Web3Auth instance stored globally');
-    return web3authInstance;
-  };
 
   useEffect(() => {
     let isMounted = true;
-    
-    if (config && !isInitialized) {
-      initWeb3Auth()
-        .then(() => {
-          if (isMounted) {
-            setIsInitialized(true);
-          }
-        })
-        .catch((error) => {
-          console.error('Web3Auth initialization failed:', error);
-          // Don't show MetaMask errors to user
-          if (!(error as Error).message?.includes('MetaMask')) {
-            console.error('Non-MetaMask initialization error:', error);
-          }
-          if (isMounted) {
-            setIsInitialized(true); // Still allow the button to be shown
-          }
-        });
+
+    if (!isLoading) {
+      setIsInitialized(true);
+      return;
     }
-    
+
     return () => {
       isMounted = false;
     };
-  }, [config, isInitialized]);
+  }, [isLoading]);
 
   useEffect(() => {
     try {
       const visited = localStorage.getItem('conduit-has-visited');
       setHasVisitedBefore(!!visited);
-      
+
       if (!visited) {
         localStorage.setItem('conduit-has-visited', 'true');
       }
@@ -139,18 +55,22 @@ export default function ConnectWallet() {
   }, []);
 
   const connectWallet = async () => {
-    if (!config) return;
+    console.log('Connecting wallet...');
+    if (isLoading) {
+      console.log('Web3Auth instance is loading, skipping connection');
+      return;
+    }
+
 
     setIsConnecting(true);
     try {
       // Always reinitialize Web3Auth to ensure modal appears
       // This is important after logout to reset the session
       console.log('Starting wallet connection...');
-      web3authInstance = null;
       (window as any).web3auth = null;
       setIsInitialized(false);
-      
-      const freshInstance = await initWeb3Auth();
+
+      const freshInstance = web3authInstance;
 
       if (!freshInstance) {
         throw new Error('Web3Auth initialization failed');
@@ -161,6 +81,7 @@ export default function ConnectWallet() {
       // Check if already connected
       if (freshInstance.connected) {
         const web3authProvider = freshInstance.provider;
+        console.log('Web3Auth provider:', web3authProvider);
         if (!web3authProvider) {
           throw new Error('No provider found');
         }
@@ -170,7 +91,7 @@ export default function ConnectWallet() {
 
         const user = await freshInstance.getUserInfo();
         const accounts = await web3authProvider.request({ method: 'eth_accounts' }) as string[];
-        
+
         if (!accounts || accounts.length === 0) {
           throw new Error('No accounts found');
         }
@@ -182,7 +103,9 @@ export default function ConnectWallet() {
           throw new Error('No ID token received');
         }
 
+        console.log('Logging in with ID token:', idToken);
         await login(idToken, walletAddress, web3authProvider);
+        console.log('Login successful');
         return;
       }
 
@@ -199,7 +122,7 @@ export default function ConnectWallet() {
 
       const user = await freshInstance.getUserInfo();
       const accounts = await web3authProvider.request({ method: 'eth_accounts' }) as string[];
-      
+
       if (!accounts || accounts.length === 0) {
         throw new Error('No accounts found');
       }
@@ -233,8 +156,8 @@ export default function ConnectWallet() {
   }
 
   return (
-    <Button 
-      onClick={connectWallet} 
+    <Button
+      onClick={connectWallet}
       disabled={isConnecting || !isInitialized}
       className="bg-green-500 hover:bg-green-600 text-gray-900 px-6 py-3 rounded-lg font-semibold disabled:opacity-50"
     >

@@ -9,6 +9,7 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import ExpandableHash from '@/components/ui/ExpandableHash';
 import USDCGuide from '@/components/ui/USDCGuide';
 import { ethers } from 'ethers';
+import { useWeb3AuthInstance } from '@/components/auth/Web3AuthInstanceProvider';
 
 interface WalletBalances {
   avax: string;
@@ -30,7 +31,8 @@ interface SendFormData {
 }
 
 export default function Wallet() {
-  const { user, provider, isLoading: authLoading } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
+  const { web3authProvider, isLoading: isWeb3AuthInstanceLoading } = useWeb3AuthInstance();
   const { config } = useConfig();
   const [balances, setBalances] = useState<WalletBalances>({ avax: '0', usdc: '0' });
   const [isLoadingBalances, setIsLoadingBalances] = useState(false);
@@ -46,23 +48,23 @@ export default function Wallet() {
   const [isLoadingChainInfo, setIsLoadingChainInfo] = useState(false);
 
   const loadChainInfo = async () => {
-    if (!provider) return;
+    if (!web3authProvider) return;
 
     setIsLoadingChainInfo(true);
     try {
-      const ethersProvider = new ethers.BrowserProvider(provider);
-      
+      const ethersProvider = new ethers.BrowserProvider(web3authProvider);
+
       // Get chain ID using eth_chainId RPC method
-      const chainIdHex = await provider.request({ method: 'eth_chainId' });
+      const chainIdHex = await web3authProvider.request({ method: 'eth_chainId' });
       const chainId = parseInt(chainIdHex, 16);
-      
+
       // Get current block number
       const blockNumber = await ethersProvider.getBlockNumber();
-      
+
       // Get current gas price
       const feeData = await ethersProvider.getFeeData();
       const gasPrice = feeData.gasPrice ? ethers.formatUnits(feeData.gasPrice, 'gwei') : null;
-      
+
       // Determine chain name based on chainId
       let name = 'Unknown Network';
       switch (chainId) {
@@ -87,7 +89,7 @@ export default function Wallet() {
         default:
           name = `Chain ID: ${chainId}`;
       }
-      
+
       setChainInfo({
         chainId,
         chainIdHex,
@@ -103,15 +105,15 @@ export default function Wallet() {
   };
 
   const loadBalances = async () => {
-    if (!user || !config || !provider) return;
+    if (!user || !config || !web3authProvider) return;
 
     setIsLoadingBalances(true);
     try {
       const web3Service = new Web3Service(config);
-      await web3Service.initializeProvider(provider);
+      await web3Service.initializeProvider(web3authProvider);
 
       // Get AVAX balance
-      const ethersProvider = new ethers.BrowserProvider(provider);
+      const ethersProvider = new ethers.BrowserProvider(web3authProvider);
       const avaxBalance = await ethersProvider.getBalance(user.walletAddress);
       const avaxFormatted = ethers.formatEther(avaxBalance);
 
@@ -132,11 +134,11 @@ export default function Wallet() {
   useEffect(() => {
     loadBalances();
     loadChainInfo();
-  }, [user, config, provider]);
+  }, [user, config, web3authProvider]);
 
   const handleSendSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !config || !provider) {
+    if (!user || !config || !web3authProvider) {
       setSendError('Web3Auth provider not available. Please reconnect your wallet.');
       return;
     }
@@ -147,7 +149,7 @@ export default function Wallet() {
 
     try {
       const web3Service = new Web3Service(config);
-      await web3Service.initializeProvider(provider);
+      await web3Service.initializeProvider(web3authProvider);
       const signer = await web3Service.getSigner();
 
       if (sendForm.currency === 'AVAX') {
@@ -213,7 +215,7 @@ export default function Wallet() {
     );
   }
 
-  if (!user || !provider) {
+  if (!user || !web3authProvider) {
     return (
       <div className="max-w-md mx-auto text-center py-20">
         <h1 className="text-2xl font-bold text-gray-900 mb-4">Connect Your Wallet</h1>
@@ -316,7 +318,7 @@ export default function Wallet() {
         {/* Send Funds */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-6">Send Funds</h2>
-          
+
           <form onSubmit={handleSendSubmit} className="space-y-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">

@@ -6,18 +6,22 @@ jest.mock('next/router', () => ({
 }));
 jest.mock('../../../components/auth/ConfigProvider');
 jest.mock('../../../components/auth/AuthProvider');
+jest.mock('../../../components/auth/Web3AuthInstanceProvider');
 jest.mock('../../../lib/web3');
 
 import { useRouter } from 'next/router';
 import CreateContract from '../../../components/contracts/CreateContract';
 import { useConfig } from '../../../components/auth/ConfigProvider';
 import { useAuth } from '../../../components/auth/AuthProvider';
+import { useWeb3AuthInstance } from '../../../components/auth/Web3AuthInstanceProvider';
 
 const mockPush = jest.fn();
 const mockUseRouter = useRouter as jest.MockedFunction<typeof useRouter>;
 const mockUseConfig = useConfig as jest.MockedFunction<typeof useConfig>;
 const mockUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
+const mockUseWeb3AuthInstance = useWeb3AuthInstance as jest.MockedFunction<typeof useWeb3AuthInstance>;
 
+const currency = "microUSDC";
 // Mock fetch globally
 const mockFetch = jest.fn();
 global.fetch = mockFetch;
@@ -55,7 +59,7 @@ describe('CreateContract - microUSDC Amount Handling', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    
+
     mockUseRouter.mockReturnValue({
       push: mockPush,
       basePath: '',
@@ -75,10 +79,16 @@ describe('CreateContract - microUSDC Amount Handling', () => {
 
     mockUseAuth.mockReturnValue({
       user: mockUser,
-      provider: {},
       isLoading: false,
       login: jest.fn(),
       logout: jest.fn(),
+    });
+
+    mockUseWeb3AuthInstance.mockReturnValue({
+      web3authProvider: null,
+      isLoading: false,
+      web3authInstance: null,
+      onLogout: jest.fn(),
     });
 
     // Reset and setup Web3Service mock before each test
@@ -86,7 +96,7 @@ describe('CreateContract - microUSDC Amount Handling', () => {
       initializeProvider: jest.fn().mockResolvedValue(undefined),
       getUserAddress: jest.fn().mockResolvedValue('0xSellerAddress'),
     };
-    
+
     const { Web3Service } = require('../../../lib/web3');
     Web3Service.mockImplementation(() => mockWeb3Service);
   });
@@ -105,7 +115,7 @@ describe('CreateContract - microUSDC Amount Handling', () => {
       fireEvent.change(screen.getByPlaceholderText('payer@example.com'), {
         target: { value: 'buyer@test.com' },
       });
-      
+
       fireEvent.change(screen.getByPlaceholderText('100.00'), {
         target: { value: amount },
       });
@@ -118,7 +128,7 @@ describe('CreateContract - microUSDC Amount Handling', () => {
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
       const dateTimeValue = tomorrow.toISOString().slice(0, 16);
-      
+
       fireEvent.change(screen.getByDisplayValue(new RegExp(dateTimeValue.slice(0, 10))), {
         target: { value: dateTimeValue },
       });
@@ -141,49 +151,49 @@ describe('CreateContract - microUSDC Amount Handling', () => {
 
     it('should convert 0.25 USDC to 250000 microUSDC', async () => {
       const requestOptions = await setupFormAndSubmit('0.25');
-      
+
       const requestBody = JSON.parse(requestOptions.body);
       expect(requestBody.amount).toBe(250000); // 0.25 * 1,000,000
     });
 
     it('should convert 1.00 USDC to 1000000 microUSDC', async () => {
       const requestOptions = await setupFormAndSubmit('1.00');
-      
+
       const requestBody = JSON.parse(requestOptions.body);
       expect(requestBody.amount).toBe(1000000); // 1.00 * 1,000,000
     });
 
     it('should convert 10.50 USDC to 10500000 microUSDC', async () => {
       const requestOptions = await setupFormAndSubmit('10.50');
-      
+
       const requestBody = JSON.parse(requestOptions.body);
       expect(requestBody.amount).toBe(10500000); // 10.50 * 1,000,000
     });
 
     it('should handle decimal amounts correctly', async () => {
       const requestOptions = await setupFormAndSubmit('0.123456');
-      
+
       const requestBody = JSON.parse(requestOptions.body);
       expect(requestBody.amount).toBe(123456); // 0.123456 * 1,000,000
     });
 
     it('should handle whole numbers without decimals', async () => {
       const requestOptions = await setupFormAndSubmit('5');
-      
+
       const requestBody = JSON.parse(requestOptions.body);
       expect(requestBody.amount).toBe(5000000); // 5 * 1,000,000
     });
 
     it('should handle very small amounts', async () => {
       const requestOptions = await setupFormAndSubmit('0.000001');
-      
+
       const requestBody = JSON.parse(requestOptions.body);
       expect(requestBody.amount).toBe(1); // 0.000001 * 1,000,000
     });
 
     it('should handle large amounts', async () => {
       const requestOptions = await setupFormAndSubmit('1000.99');
-      
+
       const requestBody = JSON.parse(requestOptions.body);
       expect(requestBody.amount).toBe(1000990000); // 1000.99 * 1,000,000
     });
@@ -191,7 +201,7 @@ describe('CreateContract - microUSDC Amount Handling', () => {
     describe('Edge cases and potential issues', () => {
       it('should handle floating point precision correctly', async () => {
         const requestOptions = await setupFormAndSubmit('0.1');
-        
+
         const requestBody = JSON.parse(requestOptions.body);
         expect(requestBody.amount).toBe(100000); // 0.1 * 1,000,000
       });
@@ -199,21 +209,21 @@ describe('CreateContract - microUSDC Amount Handling', () => {
       it('should handle string amounts that require parsing', async () => {
         // Note: HTML number inputs normalize values, so this tests a clean decimal
         const requestOptions = await setupFormAndSubmit('2.5');
-        
+
         const requestBody = JSON.parse(requestOptions.body);
         expect(requestBody.amount).toBe(2500000); // 2.5 * 1,000,000
       });
 
       it('should handle amounts entered as integers', async () => {
         const requestOptions = await setupFormAndSubmit('100');
-        
+
         const requestBody = JSON.parse(requestOptions.body);
         expect(requestBody.amount).toBe(100000000); // 100 * 1,000,000
       });
 
       it('should ensure amount is always an integer (no fractional microUSDC)', async () => {
         const requestOptions = await setupFormAndSubmit('0.1234567'); // More than 6 decimal places
-        
+
         const requestBody = JSON.parse(requestOptions.body);
         expect(requestBody.amount).toBe(123456.7); // This might cause issues!
         expect(Number.isInteger(requestBody.amount)).toBe(false);
@@ -222,7 +232,7 @@ describe('CreateContract - microUSDC Amount Handling', () => {
       it('should handle scientific notation input', async () => {
         // This tests if parseFloat handles scientific notation correctly
         const requestOptions = await setupFormAndSubmit('1e-6'); // 0.000001
-        
+
         const requestBody = JSON.parse(requestOptions.body);
         expect(requestBody.amount).toBe(1); // 0.000001 * 1,000,000
       });
@@ -231,17 +241,17 @@ describe('CreateContract - microUSDC Amount Handling', () => {
     describe('API request structure validation', () => {
       it('should send the correct request structure with microUSDC amount', async () => {
         const requestOptions = await setupFormAndSubmit('0.25');
-        
+
         expect(requestOptions.method).toBe('POST');
         expect(requestOptions.headers['Content-Type']).toBe('application/json');
-        
+
         const requestBody = JSON.parse(requestOptions.body);
         expect(requestBody).toEqual({
           buyerEmail: 'buyer@test.com',
           sellerEmail: 'seller@test.com',
           sellerAddress: '0xSellerAddress',
           amount: 250000, // microUSDC format
-          currency: 'USDC',
+          currency: currency,
           description: 'Test contract description',
           expiryTimestamp: expect.any(Number),
         });
@@ -249,15 +259,15 @@ describe('CreateContract - microUSDC Amount Handling', () => {
 
       it('should maintain other request properties when converting amounts', async () => {
         const requestOptions = await setupFormAndSubmit('1.5');
-        
+
         const requestBody = JSON.parse(requestOptions.body);
-        
+
         // Verify all expected properties are present and correct
         expect(requestBody.buyerEmail).toBe('buyer@test.com');
         expect(requestBody.sellerEmail).toBe('seller@test.com');
         expect(requestBody.sellerAddress).toBe('0xSellerAddress');
         expect(requestBody.amount).toBe(1500000); // 1.5 * 1,000,000
-        expect(requestBody.currency).toBe('USDC');
+        expect(requestBody.currency).toBe(currency);
         expect(requestBody.description).toBe('Test contract description');
         expect(typeof requestBody.expiryTimestamp).toBe('number');
         expect(requestBody.expiryTimestamp).toBeGreaterThan(Date.now() / 1000);
@@ -278,7 +288,7 @@ describe('CreateContract - microUSDC Amount Handling', () => {
       fireEvent.change(screen.getByPlaceholderText('payer@example.com'), {
         target: { value: 'buyer@test.com' },
       });
-      
+
       fireEvent.change(screen.getByPlaceholderText('100.00'), {
         target: { value: '0.25' },
       });

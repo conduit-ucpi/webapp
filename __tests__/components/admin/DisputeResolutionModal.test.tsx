@@ -2,6 +2,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { useRouter } from 'next/router';
 import DisputeResolutionModal from '@/components/admin/DisputeResolutionModal';
 
+const currency = "microUSDC";
 // Mock next/router
 jest.mock('next/router', () => ({
   useRouter: jest.fn(),
@@ -23,9 +24,9 @@ jest.mock('@/components/ui/Modal', () => {
 jest.mock('@/components/ui/Button', () => {
   return function MockButton({ children, disabled, onClick, className, variant }: any) {
     return (
-      <button 
-        disabled={disabled} 
-        onClick={onClick} 
+      <button
+        disabled={disabled}
+        onClick={onClick}
         className={className}
         data-variant={variant}
       >
@@ -213,10 +214,10 @@ describe('DisputeResolutionModal', () => {
     // With auto-calculation, we can't create invalid percentages by typing in both fields
     // Instead, test that the button is disabled when no percentages are entered
     const resolveButton = screen.getByText('Add Note and Resolve');
-    
+
     // Button should be disabled when no percentages are set
     expect(resolveButton).toBeDisabled();
-    
+
     // Now enter a valid percentage
     const percentageInputs = screen.getAllByPlaceholderText('0-100');
     const buyerInput = percentageInputs[0];
@@ -227,7 +228,7 @@ describe('DisputeResolutionModal', () => {
       expect(screen.getByText('Total: 100.00%')).toBeInTheDocument();
       expect(screen.getByText('Total: 100.00%')).toHaveClass('text-green-600');
     });
-    
+
     // Button should now be enabled
     expect(resolveButton).not.toBeDisabled();
   });
@@ -292,7 +293,7 @@ describe('DisputeResolutionModal', () => {
           buyerEmail: 'buyer@example.com',
           sellerEmail: 'seller@example.com',
           amount: '1000',
-          currency: 'USDC',
+          currency: currency,
           contractDescription: 'Test contract',
           payoutDateTime: '1735689600',
           buyerActualAmount: '600',
@@ -365,7 +366,7 @@ describe('DisputeResolutionModal', () => {
         buyerEmail: 'test-buyer@example.com',
         sellerEmail: 'test-seller@example.com',
         amount: '1000',
-        currency: 'USDC',
+        currency: currency,
         contractDescription: 'Test contract',
         payoutDateTime: '1735689600',
         buyerActualAmount: '550',
@@ -434,7 +435,7 @@ describe('DisputeResolutionModal', () => {
         buyerEmail: undefined,
         sellerEmail: undefined,
         amount: '1000',
-        currency: 'USDC',
+        currency: currency,
         contractDescription: 'Test contract',
         payoutDateTime: '1735689600',
         buyerActualAmount: '500',
@@ -458,21 +459,21 @@ describe('DisputeResolutionModal', () => {
     const percentageInputs = screen.getAllByPlaceholderText('0-100');
     const buyerInput = percentageInputs[0];
     const sellerInput = percentageInputs[1];
-    
+
     // Type in buyer field
     fireEvent.change(buyerInput, { target: { value: '75' } });
 
     // Seller field should immediately update to 25
     expect(sellerInput).toHaveValue(25);
-    
+
     // Test with decimal values
     fireEvent.change(buyerInput, { target: { value: '33.33' } });
     expect(sellerInput).toHaveValue(66.67);
-    
+
     // Test edge cases
     fireEvent.change(buyerInput, { target: { value: '0' } });
     expect(sellerInput).toHaveValue(100);
-    
+
     fireEvent.change(buyerInput, { target: { value: '100' } });
     expect(sellerInput).toHaveValue(0);
   });
@@ -492,13 +493,13 @@ describe('DisputeResolutionModal', () => {
     const percentageInputs = screen.getAllByPlaceholderText('0-100');
     const buyerInput = percentageInputs[0];
     const sellerInput = percentageInputs[1];
-    
+
     // Type in seller field
     fireEvent.change(sellerInput, { target: { value: '40' } });
 
     // Buyer field should immediately update to 60
     expect(buyerInput).toHaveValue(60);
-    
+
     // Test with decimal values
     fireEvent.change(sellerInput, { target: { value: '45.5' } });
     expect(buyerInput).toHaveValue(54.5);
@@ -519,14 +520,14 @@ describe('DisputeResolutionModal', () => {
     const percentageInputs = screen.getAllByPlaceholderText('0-100');
     const buyerInput = percentageInputs[0];
     const sellerInput = percentageInputs[1];
-    
+
     // Set initial values
     fireEvent.change(buyerInput, { target: { value: '60' } });
     expect(sellerInput).toHaveValue(40);
-    
+
     // Clear buyer field
     fireEvent.change(buyerInput, { target: { value: '' } });
-    
+
     // Both fields should be empty
     expect(buyerInput).toHaveValue(null);
     expect(sellerInput).toHaveValue(null);
@@ -547,17 +548,17 @@ describe('DisputeResolutionModal', () => {
     const percentageInputs = screen.getAllByPlaceholderText('0-100');
     const buyerInput = percentageInputs[0];
     const sellerInput = percentageInputs[1];
-    
+
     // Type invalid values
     fireEvent.change(buyerInput, { target: { value: 'abc' } });
     // Seller field should not update for invalid input
     expect(sellerInput).toHaveValue(null);
-    
+
     // Type value over 100
     fireEvent.change(buyerInput, { target: { value: '150' } });
     // Seller field should not update for values over 100
     expect(sellerInput).toHaveValue(null);
-    
+
     // Type negative value
     fireEvent.change(buyerInput, { target: { value: '-10' } });
     // Seller field should not update for negative values
@@ -685,14 +686,14 @@ describe('DisputeResolutionModal', () => {
     const percentageInputs = screen.getAllByPlaceholderText('0-100');
     const buyerInput = percentageInputs[0];
     const sellerInput = percentageInputs[1];
-    
+
     // Set initial values
     fireEvent.change(buyerInput, { target: { value: '60' } });
     expect(sellerInput).toHaveValue(40);
-    
+
     // Clear seller field - should clear buyer too
     fireEvent.change(sellerInput, { target: { value: '' } });
-    
+
     expect(buyerInput).toHaveValue(null);
     expect(sellerInput).toHaveValue(null);
   });
@@ -742,7 +743,7 @@ describe('DisputeResolutionModal', () => {
     // we test with NaN values which bypass the auto-calculation logic
     const percentageInputs = screen.getAllByPlaceholderText('0-100');
     const buyerInput = percentageInputs[0];
-    
+
     // Set invalid (non-numeric) buyer percentage
     fireEvent.change(buyerInput, { target: { value: 'invalid' } });
 
@@ -772,7 +773,7 @@ describe('DisputeResolutionModal', () => {
     // But since auto-calculation ensures valid combinations, we test with empty values
     const percentageInputs = screen.getAllByPlaceholderText('0-100');
     const buyerInput = percentageInputs[0];
-    
+
     // Clear both fields (this bypasses auto-calculation)
     fireEvent.change(buyerInput, { target: { value: '' } });
 

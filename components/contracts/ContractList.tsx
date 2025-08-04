@@ -25,10 +25,11 @@ export default function ContractList() {
   const [isClaimingInProgress, setIsClaimingInProgress] = useState(false);
 
   const fetchContracts = async () => {
-    if (!user?.walletAddress) {
-      setIsLoading(false);
-      return;
-    }
+    console.log('fetchContracts called, user:', user);
+    console.log('User wallet address:', user?.walletAddress);
+    
+    // Remove user wallet address requirement - fetch all contracts
+    // This allows viewing all 36 contracts without user-based filtering
 
     try {
       // Fetch all contracts from the new combined endpoint
@@ -40,23 +41,28 @@ export default function ContractList() {
 
       const combinedContractsData = await combinedContractsResponse.json();
       console.log('Combined contracts received:', combinedContractsData.length);
+      console.log('First few contracts data:', combinedContractsData.slice(0, 3));
 
       // Separate pending contracts for the acceptance flow
       const pendingContracts = combinedContractsData.filter((contract: any) => contract.isPending);
+      console.log('Pending contracts filtered:', pendingContracts.length);
       
       setPendingContracts(pendingContracts);
 
       // Process contracts with blockchain data
       const enrichedContracts: Contract[] = [];
 
+      console.log('Processing contracts for enrichment...');
       for (const contract of combinedContractsData) {
         if (contract.isPending) {
           // Skip pending contracts - they're handled separately
+          console.log('Skipping pending contract:', contract.id);
           continue;
         }
 
         if (contract.blockchainQuerySuccess && contract.blockchainStatus) {
           // Use blockchain data if available and query was successful
+          console.log('Adding contract with blockchain data:', contract.id);
           enrichedContracts.push({
             contractAddress: contract.chainAddress || contract.id,
             buyerAddress: contract.blockchainStatus.buyerAddress || contract.buyerAddress || '',
@@ -81,6 +87,7 @@ export default function ContractList() {
           });
         } else if (contract.chainAddress && contract.blockchainQueryError) {
           // Blockchain query failed, use fallback data but mark the error
+          console.log('Adding contract with blockchain error:', contract.id);
           const fallbackContract = createContractFromDeployedData(contract);
           enrichedContracts.push({
             ...fallbackContract,
@@ -89,10 +96,12 @@ export default function ContractList() {
           });
         } else {
           // No chainAddress, use contract service data only
+          console.log('Adding contract with fallback data:', contract.id);
           enrichedContracts.push(createContractFromDeployedData(contract));
         }
       }
 
+      console.log('Final enriched contracts count:', enrichedContracts.length);
       setContracts(enrichedContracts);
 
       setError('');
@@ -132,7 +141,7 @@ export default function ContractList() {
     }, 30000);
 
     return () => clearInterval(interval);
-  }, [user?.walletAddress]);
+  }, []); // Removed user?.walletAddress dependency to fetch all contracts
 
   // Refresh contracts when navigating to this page
   useEffect(() => {
@@ -180,7 +189,7 @@ export default function ContractList() {
   const allContracts = useMemo(() => {
     const pendingAsContracts: Contract[] = pendingContracts.map(pending => ({
       contractAddress: pending.id,
-      buyerAddress: '',
+      buyerAddress: '', // PendingContract doesn't have buyerAddress yet
       sellerAddress: pending.sellerAddress,
       amount: pending.amount,
       expiryTimestamp: pending.expiryTimestamp,
@@ -203,16 +212,24 @@ export default function ContractList() {
       return true;
     });
     
+    console.log('Final allContracts (after dedup):', deduplicated.length);
     return deduplicated;
   }, [contracts, pendingContracts]);
 
   // Filter and sort all contracts
   const filteredAndSortedContracts = useMemo(() => {
     let filtered = allContracts;
+    console.log('Before filtering:', filtered.length);
+    
+    // REMOVED: User-based filtering to show all 36 contracts
+    // Now all contracts are visible regardless of current user
+    
+    console.log('Before status filtering:', filtered.length, 'Status filter:', statusFilter);
     
     // Apply status filter
     if (statusFilter !== 'ALL') {
-      filtered = allContracts.filter(contract => contract.status === statusFilter);
+      filtered = filtered.filter(contract => contract.status === statusFilter);
+      console.log('After status filtering:', filtered.length);
     }
     
     // Apply sorting
@@ -258,7 +275,7 @@ export default function ContractList() {
     return (
       <div className="text-center py-20">
         <div className="text-gray-600 mb-4">No contracts found</div>
-        <p className="text-gray-500">Create your first escrow contract to get started.</p>
+        <p className="text-gray-500">No contracts are currently available in the system.</p>
       </div>
     );
   }

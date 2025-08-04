@@ -179,4 +179,22 @@ No test framework configured yet. When adding tests:
 - GitHub workflow includes debugging to verify static files are copied correctly
 - If images don't load after deployment, check GitHub Actions logs for copy errors
 
+## Inter-Service Communication Standards
+
+### DateTime Format
+- **ALL datetime communication between services MUST use Unix timestamp format (seconds since epoch)**
+- **Examples**: `expiryTimestamp: 1735689600`, `createdAt: 1705318200`
+- **No exceptions**: ISO strings, formatted dates, or milliseconds
+
+### Currency Format  
+- **ALL currency amounts between services MUST be in microUSDC**
+- **microUSDC = USDC × 1,000,000** (6 decimal places)
+- **Examples**: $1.50 USDC = 1500000 microUSDC
+- **Storage**: Use appropriate numeric types (Long for large amounts, Double for calculations)
+
+### API Design Philosophy
+- **NEVER make fields nullable for backward compatibility**
+- **Fail early, not accept bad data** - let things break rather than silently accept incomplete requests
+- **Required fields must be required** - use proper validation annotations
+
 

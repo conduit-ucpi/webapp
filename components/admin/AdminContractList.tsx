@@ -78,20 +78,20 @@ export default function AdminContractList({ onContractSelect }: AdminContractLis
         // If blockchain data is available, merge it
         if (contract.blockchainStatus) {
           // Create synthetic RESOLVED status if contract is CLAIMED but has adminNotes
-          const displayStatus = contract.blockchainStatus.status === 'CLAIMED' && contract.adminNotes && contract.adminNotes.length > 0
+          const displayStatus = contract.blockchainStatus?.status === 'CLAIMED' && contract.adminNotes && contract.adminNotes.length > 0
             ? 'RESOLVED'
-            : contract.blockchainStatus.status;
+            : contract.blockchainStatus?.status || 'PENDING';
             
           return {
             ...baseContract,
             status: displayStatus,
-            funded: contract.blockchainStatus.funded,
-            fundedAt: contract.blockchainStatus.fundedAt,
-            disputedAt: contract.blockchainStatus.disputedAt,
-            resolvedAt: contract.blockchainStatus.resolvedAt,
-            claimedAt: contract.blockchainStatus.claimedAt,
-            buyerAddress: contract.blockchainStatus.buyerAddress,
-            sellerAddress: contract.blockchainStatus.sellerAddress || contract.sellerAddress,
+            funded: contract.blockchainStatus?.funded,
+            fundedAt: contract.blockchainStatus?.fundedAt,
+            disputedAt: contract.blockchainStatus?.disputedAt,
+            resolvedAt: contract.blockchainStatus?.resolvedAt,
+            claimedAt: contract.blockchainStatus?.claimedAt,
+            buyerAddress: contract.blockchainStatus?.buyerAddress,
+            sellerAddress: contract.blockchainStatus?.sellerAddress || contract.sellerAddress,
           };
         }
 

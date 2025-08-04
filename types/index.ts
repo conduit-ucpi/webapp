@@ -79,6 +79,7 @@ export interface CreateContractRequest {
   amount: string;
   expiryTimestamp: number;
   description: string;
+  serviceLink?: string;
 }
 
 export interface CreatePendingContractRequest {
@@ -86,6 +87,7 @@ export interface CreatePendingContractRequest {
   amount: number;
   description: string;
   expiryTimestamp: number;
+  serviceLink?: string;
 }
 
 export interface RaiseDisputeRequest {

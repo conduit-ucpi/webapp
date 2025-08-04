@@ -138,7 +138,8 @@ export default function CreateContract() {
         amount: parseFloat(form.amount.trim()) * 1000000, // Convert to microUSDC format
         currency: 'microUSDC',
         description: form.description,
-        expiryTimestamp
+        expiryTimestamp,
+        serviceLink: config.serviceLink
       };
 
       const response = await fetch('/api/contracts', {

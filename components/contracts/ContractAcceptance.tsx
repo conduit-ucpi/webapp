@@ -94,7 +94,8 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
         seller: contract.sellerAddress,
         amount: amountInSmallestUnit,
         expiryTimestamp: contract.expiryTimestamp,
-        description: contract.description
+        description: contract.description,
+        serviceLink: config.serviceLink
       };
 
       const response = await fetch('/api/chain/create-contract', {

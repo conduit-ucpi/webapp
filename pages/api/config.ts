@@ -30,7 +30,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       minGasWei: process.env.MIN_GAS_WEI || '5',
       basePath,
       snowtraceBaseUrl: process.env.SNOWTRACE_BASE_URL,
-      serviceLink: `${process.env.SERVICE_LINK || 'http://localhost:3000'}${basePath}/dashboard`
+      serviceLink: process.env.SERVICE_LINK || 'http://localhost:3000'
     };
 
     if (!config.usdcContractAddress) {

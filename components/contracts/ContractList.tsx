@@ -32,9 +32,66 @@ export default function ContractList() {
 
       const contractsData = await response.json();
       
-      // Separate pending and regular contracts based on API response
-      const pending = contractsData.filter((contract: any) => contract.isPending);
-      const regular = contractsData.filter((contract: any) => !contract.isPending);
+      if (!Array.isArray(contractsData)) {
+        throw new Error('Invalid response format - expected array');
+      }
+      
+      // Transform and separate contracts
+      const pending: PendingContract[] = [];
+      const regular: Contract[] = [];
+      
+      contractsData.forEach((item: any) => {
+        if (!item.contract) {
+          console.warn('Item missing contract data:', item);
+          return;
+        }
+        
+        const contract = item.contract;
+        
+        // Check if this is a pending contract (no blockchain data)
+        if (!contract.chainAddress || !item.blockchainQuerySuccessful) {
+          // This is a pending contract
+          const pendingContract: PendingContract = {
+            id: contract.id,
+            sellerEmail: contract.sellerEmail || '',
+            buyerEmail: contract.buyerEmail || '',
+            amount: contract.amount || 0,
+            currency: contract.currency || 'USDC',
+            sellerAddress: contract.sellerAddress || '',
+            expiryTimestamp: contract.expiryTimestamp || 0,
+            chainId: contract.chainId,
+            chainAddress: contract.chainAddress,
+            description: contract.description || '',
+            createdAt: contract.createdAt?.toString() || '',
+            createdBy: contract.createdBy || '',
+            state: contract.state || 'OK',
+            adminNotes: contract.adminNotes || []
+          };
+          pending.push(pendingContract);
+        } else {
+          // This is a regular contract with blockchain data
+          const regularContract: Contract = {
+            contractAddress: contract.chainAddress || '',
+            buyerAddress: item.blockchainBuyerAddress || contract.buyerAddress || '',
+            sellerAddress: item.blockchainSellerAddress || contract.sellerAddress || '',
+            amount: parseFloat(item.blockchainAmount || contract.amount || '0') / 1000000, // Convert from micro USDC
+            expiryTimestamp: item.blockchainExpiryTimestamp || contract.expiryTimestamp || 0,
+            description: contract.description || '',
+            status: item.blockchainStatus || 'PENDING',
+            createdAt: contract.createdAt || 0,
+            funded: item.blockchainFunded || false,
+            buyerEmail: contract.buyerEmail,
+            sellerEmail: contract.sellerEmail,
+            adminNotes: contract.adminNotes || [],
+            blockchainQueryError: item.blockchainError,
+            hasDiscrepancy: Object.values(item.discrepancies || {}).some(Boolean),
+            discrepancyDetails: Object.entries(item.discrepancies || {})
+              .filter(([, value]) => value)
+              .map(([key]) => key)
+          };
+          regular.push(regularContract);
+        }
+      });
       
       setPendingContracts(pending);
       setContracts(regular);
@@ -49,8 +106,12 @@ export default function ContractList() {
 
 
   useEffect(() => {
-    fetchContracts();
-  }, []);
+    if (user) {
+      fetchContracts();
+    } else {
+      setIsLoading(false);
+    }
+  }, [user]);
 
   const handleContractAction = () => {
     fetchContracts(); // Refresh after any action

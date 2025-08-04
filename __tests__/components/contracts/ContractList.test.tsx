@@ -69,23 +69,43 @@ describe('ContractList', () => {
     it('should call unified /api/contracts/all endpoint on mount', async () => {
       const mockAllContracts = [
         {
-          id: 'pending-1',
-          sellerAddress: '0xseller1',
-          amount: 100,
-          description: 'Pending contract 1',
-          expiryTimestamp: 1700000000,
-          createdAt: 1699000000,
-          isPending: true,
+          contract: {
+            id: 'pending-1',
+            sellerAddress: '0xseller1',
+            amount: 100,
+            description: 'Pending contract 1',
+            expiryTimestamp: 1700000000,
+            createdAt: 1699000000,
+            chainAddress: null,
+            sellerEmail: 'seller@test.com',
+            buyerEmail: 'buyer@test.com',
+            currency: 'USDC',
+            state: 'OK'
+          },
+          blockchainQuerySuccessful: false
         },
         {
-          id: 'deployed-1',
-          chainAddress: '0xcontract1',
-          sellerAddress: '0xseller2',
-          amount: 200,
-          description: 'Deployed contract 1',
-          expiryTimestamp: 1700000000,
-          createdAt: 1699000000,
-          isPending: false,
+          contract: {
+            id: 'deployed-1',
+            chainAddress: '0xcontract1',
+            sellerAddress: '0xseller2',
+            amount: 200,
+            description: 'Deployed contract 1',
+            expiryTimestamp: 1700000000,
+            createdAt: 1699000000,
+            sellerEmail: 'seller2@test.com',
+            buyerEmail: 'buyer2@test.com',
+            currency: 'USDC',
+            state: 'OK'
+          },
+          blockchainStatus: 'ACTIVE',
+          blockchainFunded: true,
+          blockchainQuerySuccessful: true,
+          blockchainAmount: '200000000',
+          blockchainBuyerAddress: '0xbuyer1',
+          blockchainSellerAddress: '0xseller2',
+          blockchainExpiryTimestamp: 1700000000,
+          discrepancies: {}
         },
       ];
 
@@ -148,41 +168,59 @@ describe('ContractList', () => {
     it('should display both pending and deployed contracts after successful fetch', async () => {
       const mockAllContracts = [
         {
-          id: 'pending-1',
-          sellerAddress: '0xseller1',
-          amount: 100,
-          description: 'Pending contract 1',
-          expiryTimestamp: 1700000000,
-          createdAt: 1699000000,
-          isPending: true,
+          contract: {
+            id: 'pending-1',
+            sellerAddress: '0xseller1',
+            amount: 100,
+            description: 'Pending contract 1',
+            expiryTimestamp: 1700000000,
+            createdAt: 1699000000,
+            chainAddress: null,
+            sellerEmail: 'seller1@test.com',
+            buyerEmail: 'buyer1@test.com',
+            currency: 'USDC',
+            state: 'OK'
+          },
+          blockchainQuerySuccessful: false
         },
         {
-          id: 'pending-2',
-          sellerAddress: '0xseller3',
-          amount: 150,
-          description: 'Pending contract 2',
-          expiryTimestamp: 1700000000,
-          createdAt: 1699000000,
-          isPending: true,
+          contract: {
+            id: 'pending-2',
+            sellerAddress: '0xseller3',
+            amount: 150,
+            description: 'Pending contract 2',
+            expiryTimestamp: 1700000000,
+            createdAt: 1699000000,
+            chainAddress: null,
+            sellerEmail: 'seller3@test.com',
+            buyerEmail: 'buyer3@test.com',
+            currency: 'USDC',
+            state: 'OK'
+          },
+          blockchainQuerySuccessful: false
         },
         {
-          id: 'deployed-1',
-          chainAddress: '0xcontract1',
-          sellerAddress: '0xseller2',
-          amount: 200,
-          description: 'Deployed contract 1',
-          expiryTimestamp: 1700000000,
-          createdAt: 1699000000,
-          isPending: false,
-          blockchainQuerySuccess: true,
-          blockchainStatus: {
-            status: 'ACTIVE',
-            buyerAddress: '0xbuyer1',
+          contract: {
+            id: 'deployed-1',
+            chainAddress: '0xcontract1',
             sellerAddress: '0xseller2',
             amount: 200,
+            description: 'Deployed contract 1',
             expiryTimestamp: 1700000000,
-            funded: true
-          }
+            createdAt: 1699000000,
+            sellerEmail: 'seller2@test.com',
+            buyerEmail: 'buyer2@test.com',
+            currency: 'USDC',
+            state: 'OK'
+          },
+          blockchainStatus: 'ACTIVE',
+          blockchainFunded: true,
+          blockchainQuerySuccessful: true,
+          blockchainAmount: '200000000',
+          blockchainBuyerAddress: '0xbuyer1',
+          blockchainSellerAddress: '0xseller2',
+          blockchainExpiryTimestamp: 1700000000,
+          discrepancies: {}
         },
       ];
 
@@ -211,7 +249,7 @@ describe('ContractList', () => {
       });
 
       // Verify the correct content is displayed
-      expect(screen.getByText('Showing 3 of 3 contracts')).toBeInTheDocument();
+      expect(screen.getByText('Showing 3 contracts')).toBeInTheDocument();
     });
 
     it('should not make API calls when user is not authenticated', async () => {
@@ -246,7 +284,7 @@ describe('ContractList', () => {
 
       await waitFor(() => {
         expect(screen.getByText('No contracts found')).toBeInTheDocument();
-        expect(screen.getByText('Create your first escrow contract to get started.')).toBeInTheDocument();
+        expect(screen.getByText('No contracts are currently available in the system.')).toBeInTheDocument();
       });
 
       expect(global.fetch).toHaveBeenCalledWith('/api/combined-contracts');

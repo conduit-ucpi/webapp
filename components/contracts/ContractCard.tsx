@@ -21,6 +21,8 @@ export default function ContractCard({ contract, onAction, isClaimingInProgress,
   const isSeller = user?.walletAddress?.toLowerCase() === contract.sellerAddress?.toLowerCase();
   
   const getStatusDisplay = (status: Contract['status']) => {
+    if (!status) return 'Unknown';
+    
     switch (status) {
       case 'CREATED':
         return 'Awaiting money';
@@ -73,7 +75,7 @@ export default function ContractCard({ contract, onAction, isClaimingInProgress,
           </h3>
           <div className="flex items-center space-x-2">
             <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(contract.status)}`}>
-              {getStatusDisplay(contract.status).toUpperCase()}
+              {getStatusDisplay(contract.status)?.toUpperCase() || 'UNKNOWN'}
             </span>
             {contract.blockchainQueryError && (
               <span className="inline-flex px-2 py-1 text-xs font-medium rounded bg-red-100 text-red-800" title={contract.blockchainQueryError}>

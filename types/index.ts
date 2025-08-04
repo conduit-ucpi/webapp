@@ -99,6 +99,23 @@ export interface RaiseDisputeRequest {
   currency?: string;
   contractDescription?: string;
   productName?: string;
+  serviceLink?: string;
+}
+
+export interface ResolveDisputeRequest {
+  buyerPercentage: number;
+  sellerPercentage: number;
+  resolutionNote: string;
+  chainAddress?: string;
+  buyerEmail?: string;
+  sellerEmail?: string;
+  amount?: string;
+  currency?: string;
+  contractDescription?: string;
+  payoutDateTime?: string;
+  buyerActualAmount?: string;
+  sellerActualAmount?: string;
+  serviceLink?: string;
 }
 
 export interface AuthContextType {

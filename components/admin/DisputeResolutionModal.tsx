@@ -4,6 +4,7 @@ import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { normalizeTimestamp } from '@/utils/validation';
+import { useConfig } from '@/components/auth/ConfigProvider';
 
 interface AdminNote {
   id: string;
@@ -38,6 +39,7 @@ export default function DisputeResolutionModal({
   chainAddress,
   onResolutionComplete
 }: DisputeResolutionModalProps) {
+  const { config } = useConfig();
   const [contract, setContract] = useState<ContractWithNotes | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -170,7 +172,8 @@ export default function DisputeResolutionModal({
             contractDescription: contract?.description,
             payoutDateTime: contract?.expiryTimestamp?.toString(),
             buyerActualAmount,
-            sellerActualAmount
+            sellerActualAmount,
+            serviceLink: config?.serviceLink
           }),
         });
 

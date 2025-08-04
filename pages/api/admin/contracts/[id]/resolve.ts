@@ -24,7 +24,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     contractDescription,
     payoutDateTime,
     buyerActualAmount,
-    sellerActualAmount
+    sellerActualAmount,
+    serviceLink
   } = req.body;
 
   // Validate percentages
@@ -64,7 +65,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         contractDescription,
         payoutDateTime,
         buyerActualAmount,
-        sellerActualAmount
+        sellerActualAmount,
+        serviceLink
       }),
     });
 

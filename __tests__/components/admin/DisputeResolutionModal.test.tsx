@@ -1,10 +1,16 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { useRouter } from 'next/router';
+import { useConfig } from '@/components/auth/ConfigProvider';
 import DisputeResolutionModal from '@/components/admin/DisputeResolutionModal';
 
 // Mock next/router
 jest.mock('next/router', () => ({
   useRouter: jest.fn(),
+}));
+
+// Mock ConfigProvider
+jest.mock('@/components/auth/ConfigProvider', () => ({
+  useConfig: jest.fn(),
 }));
 
 // Mock UI components
@@ -51,13 +57,14 @@ jest.mock('@/components/ui/LoadingSpinner', () => {
 global.fetch = jest.fn();
 
 const mockUseRouter = useRouter as jest.MockedFunction<typeof useRouter>;
+const mockUseConfig = useConfig as jest.MockedFunction<typeof useConfig>;
 const mockFetch = global.fetch as jest.MockedFunction<typeof fetch>;
 
 const mockContract = {
   id: '1',
   description: 'Test contract',
   amount: 1000,
-  currency: 'USDC',
+  currency: 'microUSDC',
   sellerEmail: 'seller@example.com',
   buyerEmail: 'buyer@example.com',
   expiryTimestamp: 1735689600, // Unix timestamp: 2025-01-01T00:00:00Z
@@ -106,6 +113,22 @@ describe('DisputeResolutionModal', () => {
       reload: jest.fn(),
     } as any);
 
+    mockUseConfig.mockReturnValue({
+      config: {
+        web3AuthClientId: 'test-client-id',
+        web3AuthNetwork: 'testnet',
+        chainId: 43113,
+        rpcUrl: 'https://api.avax-test.network/ext/bc/C/rpc',
+        usdcContractAddress: '0x5425890298aed601595a70AB815c96711a31Bc65',
+        moonPayApiKey: 'test-key',
+        minGasWei: '20000000000',
+        basePath: '',
+        snowtraceBaseUrl: 'https://testnet.snowtrace.io',
+        serviceLink: 'http://localhost:3000'
+      },
+      isLoading: false
+    });
+
     jest.clearAllMocks();
   });
 
@@ -126,7 +149,7 @@ describe('DisputeResolutionModal', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Test contract')).toBeInTheDocument();
-      expect(screen.getByText('$1000 USDC')).toBeInTheDocument();
+      expect(screen.getByText('$1000 microUSDC')).toBeInTheDocument();
     });
   });
 
@@ -292,11 +315,12 @@ describe('DisputeResolutionModal', () => {
           buyerEmail: 'buyer@example.com',
           sellerEmail: 'seller@example.com',
           amount: '1000',
-          currency: 'USDC',
+          currency: 'microUSDC',
           contractDescription: 'Test contract',
           payoutDateTime: '1735689600',
           buyerActualAmount: '600',
-          sellerActualAmount: '400'
+          sellerActualAmount: '400',
+          serviceLink: 'http://localhost:3000'
         })
       });
 
@@ -365,11 +389,12 @@ describe('DisputeResolutionModal', () => {
         buyerEmail: 'test-buyer@example.com',
         sellerEmail: 'test-seller@example.com',
         amount: '1000',
-        currency: 'USDC',
+        currency: 'microUSDC',
         contractDescription: 'Test contract',
         payoutDateTime: '1735689600',
         buyerActualAmount: '550',
-        sellerActualAmount: '450'
+        sellerActualAmount: '450',
+        serviceLink: 'http://localhost:3000'
       })
     });
   });
@@ -434,11 +459,12 @@ describe('DisputeResolutionModal', () => {
         buyerEmail: undefined,
         sellerEmail: undefined,
         amount: '1000',
-        currency: 'USDC',
+        currency: 'microUSDC',
         contractDescription: 'Test contract',
         payoutDateTime: '1735689600',
         buyerActualAmount: '500',
-        sellerActualAmount: '500'
+        sellerActualAmount: '500',
+        serviceLink: 'http://localhost:3000'
       })
     });
   });

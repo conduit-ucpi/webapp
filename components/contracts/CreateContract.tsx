@@ -136,7 +136,7 @@ export default function CreateContract() {
         sellerEmail: user?.email || '', // Get from authenticated user
         sellerAddress: userAddress,
         amount: parseFloat(form.amount.trim()) * 1000000, // Convert to microUSDC format
-        currency: 'USDC',
+        currency: 'microUSDC',
         description: form.description,
         expiryTimestamp
       };

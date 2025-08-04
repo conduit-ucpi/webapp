@@ -55,7 +55,7 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
         sellerEmail: contract.sellerEmail,
         payoutDateTime: new Date(contract.expiryTimestamp * 1000).toISOString(),
         amount: (contract.amount / 1000000).toString(), // Convert microUSDC to USDC for display
-        currency: "USDC",
+        currency: "microUSDC",
         contractDescription: contract.description,
         productName: process.env.PRODUCT_NAME || contract.description
       };

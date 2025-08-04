@@ -107,7 +107,7 @@ function transformContractData(contractsData: any[]): { pending: PendingContract
         id: contract.id,
         sellerEmail: contract.sellerEmail || '',
         buyerEmail: contract.buyerEmail || '',
-        amount: (contract.amount || 0) / 1000000, // Convert from micro USDC to USDC for display
+        amount: contract.amount || 0, // Keep in microUSDC, formatUSDC will convert for display
         currency: contract.currency || 'USDC',
         sellerAddress: contract.sellerAddress || '',
         expiryTimestamp: contract.expiryTimestamp || 0,
@@ -126,7 +126,7 @@ function transformContractData(contractsData: any[]): { pending: PendingContract
         contractAddress: contract.chainAddress || '',
         buyerAddress: item.blockchainBuyerAddress || contract.buyerAddress || '',
         sellerAddress: item.blockchainSellerAddress || contract.sellerAddress || '',
-        amount: parseFloat(item.blockchainAmount || contract.amount || '0') / 1000000, // Convert from micro USDC to USDC for display
+        amount: parseFloat(item.blockchainAmount || contract.amount || '0'), // Keep in microUSDC, formatUSDC will convert for display
         expiryTimestamp: item.blockchainExpiryTimestamp || contract.expiryTimestamp || 0,
         description: contract.description || '',
         status: item.blockchainStatus || 'PENDING',
@@ -160,7 +160,7 @@ describe('Contract Data Transformation', () => {
     const regularContract = regular[0];
     expect(regularContract.status).toBe('CLAIMED');
     expect(regularContract.contractAddress).toBe('0xec3e9f0e4830b7a969e3b92dc5803b2974379b9c');
-    expect(regularContract.amount).toBe(0.02); // 20000 / 1000000
+    expect(regularContract.amount).toBe(20000); // Amount stored as microUSDC
     expect(regularContract.buyerEmail).toBe('charliepank@gmail.com');
     expect(regularContract.sellerEmail).toBe('charlie@pank.org.uk');
     expect(regularContract.funded).toBe(true);
@@ -170,7 +170,7 @@ describe('Contract Data Transformation', () => {
     // Test pending contract transformation
     const pendingContract = pending[0];
     expect(pendingContract.id).toBe('688a667964918c7be0657f56');
-    expect(pendingContract.amount).toBe(0.000002); // 2 microUSDC / 1000000 = 0.000002 USDC
+    expect(pendingContract.amount).toBe(2); // Amount stored as microUSDC, formatUSDC handles conversion
     expect(pendingContract.state).toBe('OK');
     expect(pendingContract.sellerEmail).toBe('charliepank@gmail.com');
     expect(pendingContract.buyerEmail).toBe('charlie@pank.org.uk');

@@ -166,7 +166,7 @@ export default function DisputeResolutionModal({
             buyerEmail: contract?.buyerEmail,
             sellerEmail: contract?.sellerEmail,
             amount: totalAmount.toString(),
-            currency: contract?.currency || 'USDC',
+            currency: 'microUSDC',
             contractDescription: contract?.description,
             payoutDateTime: contract?.expiryTimestamp?.toString(),
             buyerActualAmount,

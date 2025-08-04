@@ -161,7 +161,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
           sellerEmail: contract.sellerEmail,
           contractDescription: contract.description,
           amount: amountInMicroUSDC.toString(),
-          currency: "USDC",
+          currency: "microUSDC",
           payoutDateTime: new Date(contract.expiryTimestamp * 1000).toISOString(),
           contractLink: config.serviceLink
         })

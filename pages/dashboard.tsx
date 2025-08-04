@@ -20,8 +20,6 @@ export default function Dashboard() {
   }
 
   if (!user || !web3authProvider) {
-    console.log('User:', user);
-    console.log('Provider:', web3authProvider);
     return (
       <div className="max-w-md mx-auto text-center py-20">
         <h1 className="text-2xl font-bold text-gray-900 mb-4">Connect Your Wallet</h1>

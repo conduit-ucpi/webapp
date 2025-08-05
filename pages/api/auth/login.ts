@@ -29,9 +29,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const cookies = response.headers.getSetCookie();
     cookies.forEach(cookie => {
-      res.setHeader('Set-Cookie', cookie);
-      // Dev version, will make better later
-      //res.setHeader('Set-Cookie', cookie.replace('Domain=.conduit-ucpi.com;', 'Domain=localhost;'));
+
+      const fixedCookie = process.env.SERVICE_LINK?.includes('localhost') ? cookie.replace('Domain=.conduit-ucpi.com;', 'Domain=localhost;') : cookie;
+      console.log('Setting cookie:', fixedCookie);
+      res.setHeader('Set-Cookie', fixedCookie);
     });
 
 

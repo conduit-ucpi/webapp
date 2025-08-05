@@ -103,9 +103,9 @@ export default function ConnectWallet() {
           throw new Error('No ID token received');
         }
 
-        console.log('Logging in with ID token:', idToken);
+        //console.log('Logging in with ID token:', idToken);
         await login(idToken, walletAddress, web3authProvider);
-        console.log('Login successful');
+        //console.log('Login successful');
         return;
       }
 

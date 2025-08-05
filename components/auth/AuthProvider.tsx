@@ -109,14 +109,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Clear local auth state
       setUser(null);
-      onLogout();
 
       console.log('Logout completed successfully');
     } catch (error) {
       console.error('Logout error:', error);
       // Even if logout fails, clear local state and storage
       setUser(null);
-      onLogout();
       (window as any).web3auth = null;
       (window as any).web3authProvider = null;
       resetWeb3AuthInstance();
@@ -148,7 +146,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             (window as any).web3authProvider = null;
           }
           setUser(null);
-          onLogout();
         }
       } catch (error) {
         console.error('Failed to check auth status:', error);

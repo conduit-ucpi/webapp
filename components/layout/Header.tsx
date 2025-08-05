@@ -2,11 +2,13 @@ import Link from 'next/link';
 import { useAuth } from '@/components/auth/AuthProvider';
 import ConnectWallet from '@/components/auth/ConnectWallet';
 import Button from '@/components/ui/Button';
+import { useWeb3AuthInstance } from '../auth/Web3AuthInstanceProvider';
 
 export default function Header() {
-  const { user, provider, logout, isLoading } = useAuth();
-  
-  const isAuthenticated = user && provider;
+  const { user, logout, isLoading } = useAuth();
+  const { web3authProvider, isLoading: isWeb3AuthInstanceLoading } = useWeb3AuthInstance();
+
+  const isAuthenticated = user && web3authProvider;
 
   const handleLogout = async () => {
     await logout();
@@ -42,7 +44,7 @@ export default function Header() {
           </nav>
 
           <div className="flex items-center space-x-4">
-            {isLoading ? (
+            {isLoading || isWeb3AuthInstanceLoading ? (
               <div className="w-32 h-10 bg-gray-700 animate-pulse rounded-md" />
             ) : isAuthenticated ? (
               <div className="flex items-center space-x-4">

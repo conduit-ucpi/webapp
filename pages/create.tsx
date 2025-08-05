@@ -2,11 +2,13 @@ import { useAuth } from '@/components/auth/AuthProvider';
 import CreateContract from '@/components/contracts/CreateContract';
 import ConnectWallet from '@/components/auth/ConnectWallet';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import { useWeb3AuthInstance } from '@/components/auth/Web3AuthInstanceProvider';
 
 export default function CreatePage() {
-  const { user, provider, isLoading } = useAuth();
+  const { user, isLoading } = useAuth();
+  const { web3authProvider, isLoading: isWeb3AuthInstanceLoading } = useWeb3AuthInstance();
 
-  if (isLoading) {
+  if (isLoading || isWeb3AuthInstanceLoading) {
     return (
       <div className="flex justify-center items-center min-h-96">
         <LoadingSpinner size="lg" />
@@ -14,7 +16,7 @@ export default function CreatePage() {
     );
   }
 
-  if (!user || !provider) {
+  if (!user || !web3authProvider) {
     return (
       <div className="max-w-md mx-auto text-center py-20">
         <h1 className="text-2xl font-bold text-gray-900 mb-4">Connect Your Wallet</h1>
@@ -35,7 +37,7 @@ export default function CreatePage() {
             Set up a secure time-delayed escrow with automatic dispute resolution
           </p>
         </div>
-        
+
         <div className="flex justify-center">
           <CreateContract />
         </div>

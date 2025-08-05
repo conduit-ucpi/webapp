@@ -2,6 +2,7 @@ import { render, screen, fireEvent, waitFor, within } from '@testing-library/rea
 import { useRouter } from 'next/router';
 import AdminPage from '@/pages/admin';
 import { useAuth } from '@/components/auth/AuthProvider';
+import { useWeb3AuthInstance } from '@/components/auth/Web3AuthInstanceProvider';
 import { Contract } from '@/types';
 
 // Mock next/router
@@ -32,6 +33,11 @@ jest.mock('@/components/auth/ConfigProvider', () => ({
     isLoading: false
   })),
   ConfigProvider: ({ children }: { children: React.ReactNode }) => children,
+}));
+
+// Mock Web3AuthInstanceProvider
+jest.mock('@/components/auth/Web3AuthInstanceProvider', () => ({
+  useWeb3AuthInstance: jest.fn(),
 }));
 
 // Mock LoadingSpinner
@@ -112,6 +118,7 @@ global.fetch = jest.fn();
 
 const mockUseRouter = useRouter as jest.MockedFunction<typeof useRouter>;
 const mockUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
+const mockUseWeb3AuthInstance = useWeb3AuthInstance as jest.MockedFunction<typeof useWeb3AuthInstance>;
 const mockFetch = global.fetch as jest.MockedFunction<typeof fetch>;
 
 describe('AdminPage', () => {
@@ -148,9 +155,15 @@ describe('AdminPage', () => {
     mockUseAuth.mockReturnValue({
       user: null,
       isLoading: true,
-      provider: null,
       login: jest.fn(),
       logout: jest.fn(),
+    });
+
+    mockUseWeb3AuthInstance.mockReturnValue({
+      web3authProvider: null,
+      isLoading: false,
+      web3authInstance: null,
+      onLogout: jest.fn(),
     });
 
     render(<AdminPage />);
@@ -161,9 +174,15 @@ describe('AdminPage', () => {
     mockUseAuth.mockReturnValue({
       user: null,
       isLoading: false,
-      provider: null,
       login: jest.fn(),
       logout: jest.fn(),
+    });
+
+    mockUseWeb3AuthInstance.mockReturnValue({
+      web3authProvider: null,
+      isLoading: false,
+      web3authInstance: null,
+      onLogout: jest.fn(),
     });
 
     render(<AdminPage />);
@@ -180,9 +199,15 @@ describe('AdminPage', () => {
         userType: 'user',
       },
       isLoading: false,
-      provider: null,
       login: jest.fn(),
       logout: jest.fn(),
+    });
+
+    mockUseWeb3AuthInstance.mockReturnValue({
+      web3authProvider: null,
+      isLoading: false,
+      web3authInstance: null,
+      onLogout: jest.fn(),
     });
 
     render(<AdminPage />);
@@ -200,9 +225,15 @@ describe('AdminPage', () => {
         userType: 'admin',
       },
       isLoading: false,
-      provider: null,
       login: jest.fn(),
       logout: jest.fn(),
+    });
+
+    mockUseWeb3AuthInstance.mockReturnValue({
+      web3authProvider: null,
+      isLoading: false,
+      web3authInstance: null,
+      onLogout: jest.fn(),
     });
 
     render(<AdminPage />);
@@ -220,9 +251,15 @@ describe('AdminPage', () => {
         userType: 'admin',
       },
       isLoading: false,
-      provider: null,
       login: jest.fn(),
       logout: jest.fn(),
+    });
+
+    mockUseWeb3AuthInstance.mockReturnValue({
+      web3authProvider: null,
+      isLoading: false,
+      web3authInstance: null,
+      onLogout: jest.fn(),
     });
 
     // Mock the raw data API endpoint
@@ -261,9 +298,15 @@ describe('AdminPage', () => {
         userType: 'admin',
       },
       isLoading: false,
-      provider: null,
       login: jest.fn(),
       logout: jest.fn(),
+    });
+
+    mockUseWeb3AuthInstance.mockReturnValue({
+      web3authProvider: null,
+      isLoading: false,
+      web3authInstance: null,
+      onLogout: jest.fn(),
     });
 
     // Mock the raw data API endpoint
@@ -290,7 +333,7 @@ describe('AdminPage', () => {
     await waitFor(() => {
       expect(screen.getByText('Contract Details')).toBeInTheDocument();
     });
-    
+
     // Close the details
     const closeButton = screen.getByText('Close');
     fireEvent.click(closeButton);
@@ -310,9 +353,15 @@ describe('Contract Selection and Details', () => {
         userType: 'admin',
       },
       isLoading: false,
-      provider: null,
       login: jest.fn(),
       logout: jest.fn(),
+    });
+
+    mockUseWeb3AuthInstance.mockReturnValue({
+      web3authProvider: null,
+      isLoading: false,
+      web3authInstance: null,
+      onLogout: jest.fn(),
     });
   });
 
@@ -381,15 +430,15 @@ describe('Contract Selection and Details', () => {
     // This test verifies that when a contract has both chainAddress and status,
     // it renders an on-chain contract card. We'll simulate this by checking
     // that the contract details section can handle both types.
-    
+
     // Mock the raw data API endpoint
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => ({
         contractservice: {
           source: 'contractservice',
-          data: { 
-            id: 'test-contract', 
+          data: {
+            id: 'test-contract',
             amount: 100,
             chainAddress: '0x123abc',
             sellerAddress: '0xseller',
@@ -416,7 +465,7 @@ describe('Contract Selection and Details', () => {
     // which doesn't have chainAddress, so we'll see the Pending Contract card
     const mockAdminList = screen.getByTestId('admin-contract-list');
     const selectButton = within(mockAdminList).getByText('Select Contract');
-    
+
     fireEvent.click(selectButton);
 
     await waitFor(() => {

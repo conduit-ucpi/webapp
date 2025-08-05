@@ -6,18 +6,20 @@ jest.mock('next/router', () => ({
 }));
 jest.mock('../../../components/auth/ConfigProvider');
 jest.mock('../../../components/auth/AuthProvider');
+jest.mock('../../../components/auth/Web3AuthInstanceProvider');
 jest.mock('../../../lib/web3');
 
 import { useRouter } from 'next/router';
 import ContractActions from '../../../components/contracts/ContractActions';
 import { useConfig } from '../../../components/auth/ConfigProvider';
 import { useAuth } from '../../../components/auth/AuthProvider';
+import { useWeb3AuthInstance } from '../../../components/auth/Web3AuthInstanceProvider';
 import { Contract } from '../../../types';
 
 const mockUseRouter = useRouter as jest.MockedFunction<typeof useRouter>;
 const mockUseConfig = useConfig as jest.MockedFunction<typeof useConfig>;
 const mockUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
-
+const mockUseWeb3AuthInstance = useWeb3AuthInstance as jest.MockedFunction<typeof useWeb3AuthInstance>;
 // Mock fetch globally
 const mockFetch = jest.fn();
 global.fetch = mockFetch;
@@ -68,7 +70,7 @@ describe('ContractActions - PRODUCT_NAME Environment Variable', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    
+
     mockUseRouter.mockReturnValue({
       basePath: '',
       pathname: '/dashboard',
@@ -83,10 +85,16 @@ describe('ContractActions - PRODUCT_NAME Environment Variable', () => {
 
     mockUseAuth.mockReturnValue({
       user: mockUser,
-      provider: null,
       isLoading: false,
       login: jest.fn(),
       logout: jest.fn(),
+    });
+
+    mockUseWeb3AuthInstance.mockReturnValue({
+      web3authProvider: null,
+      isLoading: false,
+      web3authInstance: null,
+      onLogout: jest.fn(),
     });
 
     mockFetch.mockResolvedValue({
@@ -122,7 +130,7 @@ describe('ContractActions - PRODUCT_NAME Environment Variable', () => {
     };
 
     render(
-      <ContractActions 
+      <ContractActions
         contract={contract}
         isBuyer={true}
         isSeller={false}
@@ -178,7 +186,7 @@ describe('ContractActions - PRODUCT_NAME Environment Variable', () => {
     };
 
     render(
-      <ContractActions 
+      <ContractActions
         contract={contract}
         isBuyer={true}
         isSeller={false}
@@ -234,7 +242,7 @@ describe('ContractActions - PRODUCT_NAME Environment Variable', () => {
     };
 
     render(
-      <ContractActions 
+      <ContractActions
         contract={contract}
         isBuyer={true}
         isSeller={false}

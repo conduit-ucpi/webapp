@@ -1,21 +1,18 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { User, AuthContextType } from '@/types';
 import { resetWeb3AuthInstance } from './ConnectWallet';
+import { useWeb3AuthInstance } from './Web3AuthInstanceProvider';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [provider, setProvider] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-
-  // Try to restore provider immediately if it exists
-  useEffect(() => {
-    const globalProvider = (window as any).web3authProvider;
-    if (globalProvider && !provider) {
-      setProvider(globalProvider);
-    }
-  }, []);
+  const {
+    web3authInstance,
+    web3authProvider,
+    isLoading: isWeb3AuthInstanceLoading,
+    onLogout } = useWeb3AuthInstance();
 
 
   const login = async (idToken: string, walletAddress: string, web3Provider: any) => {
@@ -32,10 +29,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (response.ok) {
         const userData = await response.json();
         setUser(userData);
-        
+
         // Store provider globally and in state
         (window as any).web3authProvider = web3Provider;
-        setProvider(web3Provider);
       } else {
         throw new Error('Login failed');
       }
@@ -56,7 +52,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.warn('Web3Auth logout failed, continuing with cleanup:', logoutError);
         }
       }
-      
+
       // Clear all Web3Auth related localStorage/sessionStorage
       // Web3Auth stores session data in various localStorage keys
       const keysToRemove = [
@@ -64,11 +60,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         'openlogin_store',
         'local_storage_key',
         'session_id',
-        'sessionId', 
+        'sessionId',
         'walletconnect',
         'Web3Auth-connectedAdapters'
       ];
-      
+
       keysToRemove.forEach(key => {
         try {
           localStorage.removeItem(key);
@@ -77,7 +73,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.warn(`Failed to remove ${key}:`, e);
         }
       });
-      
+
       // Clear all items that start with 'Web3Auth' or 'openlogin'
       const localStorageKeys = Object.keys(localStorage);
       localStorageKeys.forEach(key => {
@@ -89,7 +85,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         }
       });
-      
+
       const sessionStorageKeys = Object.keys(sessionStorage);
       sessionStorageKeys.forEach(key => {
         if (key.startsWith('Web3Auth') || key.startsWith('openlogin') || key.startsWith('walletconnect')) {
@@ -100,31 +96,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         }
       });
-      
+
       // Clear global Web3Auth references
       (window as any).web3auth = null;
       (window as any).web3authProvider = null;
-      
+
       // Reset the Web3Auth instance so modal appears on next connect
       resetWeb3AuthInstance();
-      
+
       // Call backend logout to clear server session
       await fetch('/api/auth/logout', { method: 'POST' });
+
+      await web3authInstance?.logout();
       
       // Clear local auth state
       setUser(null);
-      setProvider(null);
-      
+
       console.log('Logout completed successfully');
     } catch (error) {
       console.error('Logout error:', error);
       // Even if logout fails, clear local state and storage
       setUser(null);
-      setProvider(null);
       (window as any).web3auth = null;
       (window as any).web3authProvider = null;
       resetWeb3AuthInstance();
-      
+
       // Force clear storage even on error
       try {
         localStorage.clear();
@@ -137,7 +133,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let isMounted = true;
-    
+
     const safeCheckAuthStatus = async () => {
       try {
         // Check auth status first
@@ -145,33 +141,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (response.ok && isMounted) {
           const userData = await response.json();
           setUser(userData);
-          
-          // Try to restore provider immediately
-          const globalProvider = (window as any).web3authProvider;
-          if (globalProvider && isMounted) {
-            setProvider(globalProvider);
-          } else {
-            // If no provider yet but we have a valid session, try to wait a bit
-            // This handles the case where Web3Auth is still initializing
-            let attempts = 0;
-            const maxAttempts = 10; // Wait up to 1 second
-            
-            const checkProvider = () => {
-              if (!isMounted) return;
-              
-              const provider = (window as any).web3authProvider;
-              if (provider) {
-                setProvider(provider);
-              } else if (attempts < maxAttempts) {
-                attempts++;
-                setTimeout(checkProvider, 100);
-              }
-              // If no provider after waiting, continue without it
-              // User can click "Welcome Back" to restore it
-            };
-            
-            checkProvider();
-          }
         } else if (isMounted) {
           // If no valid session, clear everything
           const globalProvider = (window as any).web3authProvider;
@@ -179,13 +148,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             (window as any).web3authProvider = null;
           }
           setUser(null);
-          setProvider(null);
         }
       } catch (error) {
         console.error('Failed to check auth status:', error);
         if (isMounted) {
           setUser(null);
-          setProvider(null);
+          onLogout();
         }
       } finally {
         if (isMounted) {
@@ -193,16 +161,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
     };
-    
+
     safeCheckAuthStatus();
-    
+
     return () => {
       isMounted = false;
     };
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, provider, isLoading, login, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

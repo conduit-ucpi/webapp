@@ -1,4 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
+import * as cookieFn from 'cookie';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -16,7 +17,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       method: 'POST',
       headers: {
         'Authorization': req.headers.authorization || '',
-        'X-Clear-Cookies': Array.isArray(req.headers['x-clear-cookies']) 
+        'X-Clear-Cookies': Array.isArray(req.headers['x-clear-cookies'])
           ? req.headers['x-clear-cookies'][0] || ''
           : req.headers['x-clear-cookies'] || '',
         'Content-Type': 'application/json'
@@ -26,11 +27,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     console.log('UserService response:', response.status, response.statusText);
     const data = await response.json();
-    
-    const cookies = response.headers.get('set-cookie');
-    if (cookies) {
-      res.setHeader('Set-Cookie', cookies);
-    }
+
+    const cookies = response.headers.getSetCookie();
+    cookies.forEach(cookie => {
+      const parsedCookie = cookieFn.parse(cookie);
+      const cookieDomain = process.env.COOKIE_DOMAIN;
+      const fixedCookie = cookie.replace(`Domain=${parsedCookie.Domain};`, `Domain=${cookieDomain};`);
+      res.setHeader('Set-Cookie', fixedCookie);
+    });
+
 
     res.status(response.status).json(data);
   } catch (error) {

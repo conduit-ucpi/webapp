@@ -6,18 +6,20 @@ jest.mock('next/router', () => ({
 }));
 jest.mock('../../../components/auth/ConfigProvider');
 jest.mock('../../../components/auth/AuthProvider');
+jest.mock('../../../components/auth/Web3AuthInstanceProvider');
 jest.mock('../../../lib/web3');
 
 import { useRouter } from 'next/router';
 import CreateContract from '../../../components/contracts/CreateContract';
 import { useConfig } from '../../../components/auth/ConfigProvider';
 import { useAuth } from '../../../components/auth/AuthProvider';
+import { useWeb3AuthInstance } from '../../../components/auth/Web3AuthInstanceProvider';
 
 const mockPush = jest.fn();
 const mockUseRouter = useRouter as jest.MockedFunction<typeof useRouter>;
 const mockUseConfig = useConfig as jest.MockedFunction<typeof useConfig>;
 const mockUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
-
+const mockUseWeb3AuthInstance = useWeb3AuthInstance as jest.MockedFunction<typeof useWeb3AuthInstance>;
 // Mock Web3Auth provider
 Object.defineProperty(window, 'web3authProvider', {
   value: {
@@ -51,7 +53,7 @@ describe('CreateContract Decimal Precision', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    
+
     mockUseRouter.mockReturnValue({
       push: mockPush,
       basePath: '',
@@ -71,10 +73,16 @@ describe('CreateContract Decimal Precision', () => {
 
     mockUseAuth.mockReturnValue({
       user: mockUser,
-      provider: {},
       isLoading: false,
       login: jest.fn(),
       logout: jest.fn(),
+    });
+
+    mockUseWeb3AuthInstance.mockReturnValue({
+      web3authProvider: null,
+      isLoading: false,
+      web3authInstance: null,
+      onLogout: jest.fn(),
     });
 
     // Mock Web3Service
@@ -82,7 +90,7 @@ describe('CreateContract Decimal Precision', () => {
       initializeProvider: jest.fn().mockResolvedValue(undefined),
       getUserAddress: jest.fn().mockResolvedValue('0x123'),
     };
-    
+
     const { Web3Service } = require('../../../lib/web3');
     Web3Service.mockImplementation(() => mockWeb3Service);
   });
@@ -91,12 +99,12 @@ describe('CreateContract Decimal Precision', () => {
     render(<CreateContract />);
 
     const amountInput = screen.getByPlaceholderText('100.00');
-    
+
     // Test that 0.001 is accepted by the input
     fireEvent.change(amountInput, { target: { value: '0.001' } });
-    
+
     expect(amountInput).toHaveValue(0.001);
-    
+
     // Verify the input step attribute allows 3 decimal places
     expect(amountInput).toHaveAttribute('step', '0.001');
     expect(amountInput).toHaveAttribute('type', 'number');
@@ -107,9 +115,9 @@ describe('CreateContract Decimal Precision', () => {
     render(<CreateContract />);
 
     const amountInput = screen.getByPlaceholderText('100.00');
-    
+
     const testValues = ['0.001', '1.123', '100.999', '0.500'];
-    
+
     for (const value of testValues) {
       fireEvent.change(amountInput, { target: { value } });
       expect(amountInput).toHaveValue(parseFloat(value));
@@ -120,10 +128,10 @@ describe('CreateContract Decimal Precision', () => {
     render(<CreateContract />);
 
     const amountInput = screen.getByPlaceholderText('100.00');
-    
+
     fireEvent.change(amountInput, { target: { value: '100.50' } });
     expect(amountInput).toHaveValue(100.5);
-    
+
     fireEvent.change(amountInput, { target: { value: '0.01' } });
     expect(amountInput).toHaveValue(0.01);
   });
@@ -132,7 +140,7 @@ describe('CreateContract Decimal Precision', () => {
     render(<CreateContract />);
 
     const amountInput = screen.getByPlaceholderText('100.00');
-    
+
     fireEvent.change(amountInput, { target: { value: '100' } });
     expect(amountInput).toHaveValue(100);
   });
@@ -141,7 +149,7 @@ describe('CreateContract Decimal Precision', () => {
     render(<CreateContract />);
 
     const amountInput = screen.getByPlaceholderText('100.00');
-    
+
     // The min="0" attribute should prevent negative values
     expect(amountInput).toHaveAttribute('min', '0');
   });
@@ -172,10 +180,10 @@ describe('CreateContract Decimal Precision', () => {
     fireEvent.change(payoutInput, { target: { value: tomorrowString } });
 
     const submitButton = screen.getByRole('button', { name: /Request from Buyer/i });
-    
+
     // The form should not show validation errors for 0.001
     expect(screen.queryByText(/Invalid amount/i)).not.toBeInTheDocument();
-    
+
     // Form should be submittable (button enabled)
     expect(submitButton).not.toBeDisabled();
   });

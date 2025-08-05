@@ -3,12 +3,14 @@ import { useAuth } from '@/components/auth/AuthProvider';
 import ConnectWallet from '@/components/auth/ConnectWallet';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import { useWeb3AuthInstance } from '@/components/auth/Web3AuthInstanceProvider';
 
 export default function Home() {
-  const { user, provider, isLoading } = useAuth();
-  
+  const { user, isLoading } = useAuth();
+  const { web3authProvider, isLoading: isWeb3AuthInstanceLoading } = useWeb3AuthInstance();
+
   // Show minimal loading on mobile to prevent crashes
-  if (isLoading) {
+  if (isLoading || isWeb3AuthInstanceLoading) {
     return (
       <div className="flex justify-center items-center min-h-screen bg-gray-900">
         <div className="text-center">
@@ -18,8 +20,8 @@ export default function Home() {
       </div>
     );
   }
-  
-  const isAuthenticated = user && provider;
+
+  const isAuthenticated = user && web3authProvider;
 
   return (
     <div className="bg-gray-900 min-h-screen" key="home-page">
@@ -28,7 +30,7 @@ export default function Home() {
         <div className="grid lg:grid-cols-2 gap-12 items-center min-h-[80vh]">
           <div className="space-y-8">
             <h1 className="text-5xl font-bold text-white lg:text-6xl xl:text-7xl leading-tight">
-              Stop Paying Strangers 
+              Stop Paying Strangers
               <span className="text-green-400 block">Before You Get Your Stuff</span>
             </h1>
             <p className="text-xl text-gray-300 font-medium">
@@ -37,7 +39,7 @@ export default function Home() {
             <p className="text-lg text-gray-400 max-w-lg">
               <span className="font-semibold text-white">Escrow</span> - house buyers use it for secure transactions; it's now instant and so easy <span className="italic text-green-400">you</span> can use it to make <span className="italic text-green-400">any</span> sale just as safe
             </p>
-            
+
             <div className="pt-6">
               {isAuthenticated ? (
                 <div className="flex flex-col sm:flex-row gap-4">
@@ -64,13 +66,13 @@ export default function Home() {
               )}
             </div>
           </div>
-          
+
           {/* Hero Graphic - Payment Infrastructure Diagram */}
           <div className="hidden lg:flex items-center justify-center">
             <div className="relative w-full max-w-lg">
-              <img 
-                src="/payment_gateway.png" 
-                alt="Payment Infrastructure Diagram" 
+              <img
+                src="/payment_gateway.png"
+                alt="Payment Infrastructure Diagram"
                 className="w-full h-auto opacity-90"
               />
             </div>
@@ -110,7 +112,7 @@ export default function Home() {
               <div className="text-center mb-16">
                 <h2 className="text-4xl font-bold text-white mb-4">What you get</h2>
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
                 <div className="flex items-start space-x-4">
                   <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
@@ -120,7 +122,7 @@ export default function Home() {
                   </div>
                   <p className="text-gray-300 text-lg leading-relaxed">All the protection of traditional escrow</p>
                 </div>
-                
+
                 <div className="flex items-start space-x-4">
                   <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
                     <svg className="w-5 h-5 text-gray-900" fill="currentColor" viewBox="0 0 20 20">
@@ -129,7 +131,7 @@ export default function Home() {
                   </div>
                   <p className="text-gray-300 text-lg leading-relaxed">Set up in 60 seconds, not 60 days</p>
                 </div>
-                
+
                 <div className="flex items-start space-x-4">
                   <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
                     <svg className="w-5 h-5 text-gray-900" fill="currentColor" viewBox="0 0 20 20">
@@ -138,7 +140,7 @@ export default function Home() {
                   </div>
                   <p className="text-gray-300 text-lg leading-relaxed">No legal fees, contracts, or bank meetings</p>
                 </div>
-                
+
                 <div className="flex items-start space-x-4">
                   <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
                     <svg className="w-5 h-5 text-gray-900" fill="currentColor" viewBox="0 0 20 20">
@@ -147,7 +149,7 @@ export default function Home() {
                   </div>
                   <p className="text-gray-300 text-lg leading-relaxed">Payment releases automatically on the agreed date</p>
                 </div>
-                
+
                 <div className="flex items-start space-x-4 md:col-span-2">
                   <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
                     <svg className="w-5 h-5 text-gray-900" fill="currentColor" viewBox="0 0 20 20">
@@ -164,7 +166,7 @@ export default function Home() {
               <div className="text-center mb-16">
                 <h2 className="text-4xl font-bold text-white mb-4">Cost</h2>
               </div>
-              
+
               <div className="bg-gray-800 border border-gray-700 rounded-lg p-8 max-w-2xl mx-auto hover:border-green-400/50 transition-colors">
                 <div className="text-center space-y-6">
                   <div className="flex justify-between items-center">

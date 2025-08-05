@@ -5,11 +5,13 @@ import ConnectWallet from '@/components/auth/ConnectWallet';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import ExpandableHash from '@/components/ui/ExpandableHash';
+import { useWeb3AuthInstance } from '@/components/auth/Web3AuthInstanceProvider';
 
 export default function Dashboard() {
-  const { user, provider, isLoading } = useAuth();
+  const { user, isLoading } = useAuth();
+  const { web3authProvider, isLoading: isWeb3AuthInstanceLoading } = useWeb3AuthInstance();
 
-  if (isLoading) {
+  if (isLoading || isWeb3AuthInstanceLoading) {
     return (
       <div className="flex justify-center items-center min-h-96">
         <LoadingSpinner size="lg" />
@@ -17,7 +19,7 @@ export default function Dashboard() {
     );
   }
 
-  if (!user || !provider) {
+  if (!user || !web3authProvider) {
     return (
       <div className="max-w-md mx-auto text-center py-20">
         <h1 className="text-2xl font-bold text-gray-900 mb-4">Connect Your Wallet</h1>
@@ -39,7 +41,7 @@ export default function Dashboard() {
               Manage your escrow contracts and view transaction history
             </p>
           </div>
-          
+
           <Link href="/create">
             <Button className="bg-primary-500 hover:bg-primary-600">
               New Payment Request
@@ -60,7 +62,7 @@ export default function Dashboard() {
               <p className="text-sm text-gray-900">{user.email}</p>
             </div>
           </div>
-          
+
           <div className="mt-6 pt-6 border-t border-gray-200">
             <h3 className="text-sm font-medium text-gray-900 mb-3">Wallet Management</h3>
             <div className="flex flex-wrap gap-3">
@@ -82,7 +84,7 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
-        
+
         <div>
           <h2 className="text-xl font-semibold text-gray-900 mb-6">Your payment agreements</h2>
           <ContractList />

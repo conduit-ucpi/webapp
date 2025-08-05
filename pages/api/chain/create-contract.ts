@@ -11,9 +11,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const authTokenMatch = cookies.match(/AUTH-TOKEN=([^;]+)/);
     const authToken = authTokenMatch ? authTokenMatch[1] : null;
 
-    console.log('Create contract request:');
-    console.log('Cookies received:', cookies);
-    console.log('Auth token extracted:', authToken ? 'Present' : 'Missing');
 
     if (!authToken) {
       return res.status(401).json({ error: 'Authentication required' });
@@ -25,7 +22,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       'Cookie': cookies
     };
 
-    console.log('Calling Chain Service with headers:', { ...headers, Authorization: 'Bearer [REDACTED]' });
 
     const response = await fetch(`${process.env.CHAIN_SERVICE_URL}/api/chain/create-contract`, {
       method: 'POST',

@@ -36,18 +36,24 @@ interface ContractListViewProps {
 type SortField = 'status' | 'amount' | 'description' | 'expiryTimestamp' | 'createdAt';
 type SortDirection = 'asc' | 'desc';
 
-// Utility function to normalize timestamps to seconds
-const normalizeTimestamp = (timestamp: number | string): number => {
-  if (typeof timestamp === 'string') {
-    // If it's a string, parse as Date and convert to seconds
-    return new Date(timestamp).getTime() / 1000;
+// Standard function to format timestamps in local timezone
+const formatTimestamp = (timestamp: number | string) => {
+  const unixTimestamp = typeof timestamp === 'string' ? parseInt(timestamp, 10) : timestamp;
+  const date = new Date(unixTimestamp * 1000);
+  
+  if (isNaN(date.getTime())) {
+    return { date: 'Invalid date', time: '' };
   }
   
-  const numTimestamp = Number(timestamp);
-  // Detect if timestamp is in seconds (≤10 digits) or milliseconds (>10 digits)
-  return numTimestamp.toString().length <= 10 
-    ? numTimestamp        // Already in seconds
-    : numTimestamp / 1000; // Convert milliseconds to seconds
+  return {
+    date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+    time: date.toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit', 
+      hour12: true,
+      timeZoneName: 'short'
+    })
+  };
 };
 
 export default function ContractListView({
@@ -81,8 +87,8 @@ export default function ContractListView({
         buyerEmail: contract.buyerEmail,
         sellerEmail: contract.sellerEmail,
         description: contract.description,
-        expiryTimestamp: normalizeTimestamp(contract.expiryTimestamp),
-        createdAt: normalizeTimestamp(contract.createdAt),
+        expiryTimestamp: contract.expiryTimestamp,
+        createdAt: contract.createdAt,
         contractAddress: contract.contractAddress,
         funded: contract.funded,
         hasDiscrepancy: contract.hasDiscrepancy,
@@ -101,8 +107,8 @@ export default function ContractListView({
         buyerEmail: contract.buyerEmail,
         sellerEmail: contract.sellerEmail,
         description: contract.description,
-        expiryTimestamp: normalizeTimestamp(contract.expiryTimestamp),
-        createdAt: normalizeTimestamp(contract.createdAt),
+        expiryTimestamp: contract.expiryTimestamp,
+        createdAt: contract.createdAt,
         originalContract: contract
       });
     });
@@ -144,8 +150,9 @@ export default function ContractListView({
         aValue = Number(aValue);
         bValue = Number(bValue);
       } else if (sortField === 'expiryTimestamp' || sortField === 'createdAt') {
-        aValue = Number(aValue);
-        bValue = Number(bValue);
+        // Convert timestamps to numbers for proper sorting
+        aValue = typeof aValue === 'string' ? parseInt(aValue, 10) : Number(aValue);
+        bValue = typeof bValue === 'string' ? parseInt(bValue, 10) : Number(bValue);
       } else if (typeof aValue === 'string' && typeof bValue === 'string') {
         aValue = aValue.toLowerCase();
         bValue = bValue.toLowerCase();
@@ -173,32 +180,6 @@ export default function ContractListView({
     return sortDirection === 'asc' ? '↑' : '↓';
   };
 
-  const formatDate = (timestamp: number | string) => {
-    // Normalize to seconds, then convert to milliseconds for Date constructor
-    const timestampSeconds = normalizeTimestamp(timestamp);
-    const timestampMs = timestampSeconds * 1000;
-    
-    const date = new Date(timestampMs);
-    
-    // Validate the date is reasonable (not before 2020 or after 2030)
-    if (date.getFullYear() < 2020 || date.getFullYear() > 2030) {
-      return { date: 'Invalid date', time: '' };
-    }
-    
-    const dateStr = date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    });
-    
-    const timeStr = date.toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
-    });
-    
-    return { date: dateStr, time: timeStr };
-  };
 
   const getStatusBadgeClass = (status: string) => {
     const baseClass = "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium";
@@ -222,10 +203,11 @@ export default function ContractListView({
 
   const canAcceptContract = (contract: UnifiedContract) => {
     const now = Math.floor(Date.now() / 1000); // Current time in seconds
+    const expiryTimestamp = typeof contract.expiryTimestamp === 'string' ? parseInt(contract.expiryTimestamp, 10) : contract.expiryTimestamp;
     return contract.type === 'pending' && 
            contract.buyerEmail === currentUserEmail && 
            (contract.status === 'PENDING' || contract.status === 'WAITING_FOR_FUNDS') &&
-           contract.expiryTimestamp > now;
+           expiryTimestamp > now;
   };
 
   return (
@@ -375,14 +357,14 @@ export default function ContractListView({
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     <div className="flex flex-col">
-                      <span>{formatDate(contract.expiryTimestamp).date}</span>
-                      <span className="text-xs text-gray-400">{formatDate(contract.expiryTimestamp).time}</span>
+                      <span>{formatTimestamp(contract.expiryTimestamp).date}</span>
+                      <span className="text-xs text-gray-400">{formatTimestamp(contract.expiryTimestamp).time}</span>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     <div className="flex flex-col">
-                      <span>{formatDate(contract.createdAt).date}</span>
-                      <span className="text-xs text-gray-400">{formatDate(contract.createdAt).time}</span>
+                      <span>{formatTimestamp(contract.createdAt).date}</span>
+                      <span className="text-xs text-gray-400">{formatTimestamp(contract.createdAt).time}</span>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">

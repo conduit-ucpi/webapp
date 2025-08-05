@@ -120,7 +120,6 @@ export default function CreateContract() {
         throw new Error('USDC contract address not configured. Please check server configuration.');
       }
 
-      console.log('Config received:', config);
 
       const web3Service = new Web3Service(config);
       await web3Service.initializeProvider(web3authProvider);
@@ -154,7 +153,6 @@ export default function CreateContract() {
       }
 
       const result = await response.json();
-      console.log('Pending contract created:', result);
 
       // Redirect to dashboard
       router.push('/dashboard');

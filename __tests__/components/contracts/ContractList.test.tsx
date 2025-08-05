@@ -250,13 +250,13 @@ describe('ContractList', () => {
       });
 
       await waitFor(() => {
-        // Should show 2 pending contract cards
-        const pendingCards = screen.getAllByTestId('pending-contract-card');
-        expect(pendingCards).toHaveLength(2);
-
-        // Should show 1 deployed contract card
+        // All contracts should be displayed using unified ContractCard component
         const contractCards = screen.getAllByTestId('contract-card');
-        expect(contractCards).toHaveLength(1);
+        expect(contractCards).toHaveLength(3);
+        
+        // Note: After unification, all contracts use the same ContractCard component
+        // The component internally determines whether to show pending or regular behavior
+        // based on the contract data structure
       });
 
       // Verify the correct content is displayed

@@ -1,4 +1,4 @@
-import { Contract } from '@/types';
+import { Contract, PendingContract } from '@/types';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { formatUSDC, formatExpiryDate } from '@/utils/validation';
@@ -6,84 +6,126 @@ import ContractActions from './ContractActions';
 import ExpandableHash from '@/components/ui/ExpandableHash';
 
 interface ContractCardProps {
-  contract: Contract;
+  contract: Contract | PendingContract;
   onAction: () => void;
+  onAccept?: (contractId: string) => void;
   isClaimingInProgress?: boolean;
   onClaimStart?: () => void;
   onClaimComplete?: () => void;
 }
 
-export default function ContractCard({ contract, onAction, isClaimingInProgress, onClaimStart, onClaimComplete }: ContractCardProps) {
+export default function ContractCard({ contract, onAction, onAccept, isClaimingInProgress, onClaimStart, onClaimComplete }: ContractCardProps) {
   const { user } = useAuth();
   const { config } = useConfig();
   
-  const isBuyer = user?.walletAddress?.toLowerCase() === contract.buyerAddress?.toLowerCase();
-  const isSeller = user?.walletAddress?.toLowerCase() === contract.sellerAddress?.toLowerCase();
+  // Detect if this is a pending contract (has id field but no contractAddress field)
+  const isPending = 'id' in contract && !('contractAddress' in contract);
   
-  const getStatusDisplay = (status: Contract['status']) => {
-    if (!status) return 'Unknown';
+  // Handle buyer/seller identification for both contract types
+  const isBuyer = isPending 
+    ? (contract as PendingContract).buyerEmail === user?.email
+    : user?.walletAddress?.toLowerCase() === (contract as Contract).buyerAddress?.toLowerCase();
     
-    switch (status) {
-      case 'CREATED':
-        return 'Awaiting money';
-      case 'ACTIVE':
+  const isSeller = isPending
+    ? (contract as PendingContract).sellerEmail === user?.email  
+    : user?.walletAddress?.toLowerCase() === (contract as Contract).sellerAddress?.toLowerCase();
+  
+  // Get status for display - handle both contract types
+  const getDisplayStatus = () => {
+    if (isPending) {
+      const pendingContract = contract as PendingContract;
+      if (pendingContract.chainAddress) {
         return 'Holding funds';
-      default:
-        return status;
+      }
+      const isExpired = Date.now() / 1000 > pendingContract.expiryTimestamp;
+      return isExpired ? 'EXPIRED' : 'PENDING';
+    } else {
+      const regularContract = contract as Contract;
+      switch (regularContract.status) {
+        case 'CREATED':
+          return 'Awaiting money';
+        case 'ACTIVE':
+          return 'Holding funds';
+        default:
+          return regularContract.status || 'Unknown';
+      }
     }
   };
   
-  const getStatusColor = (status: Contract['status']) => {
-    switch (status) {
-      case 'PENDING':
-        return 'bg-gray-100 text-gray-800';
-      case 'CREATED':
-        return 'bg-gray-100 text-gray-800';
-      case 'ACTIVE':
-        return 'bg-green-100 text-green-800';
-      case 'EXPIRED':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'DISPUTED':
-        return 'bg-red-100 text-red-800';
-      case 'RESOLVED':
-        return 'bg-purple-100 text-purple-800';
-      case 'CLAIMED':
-        return 'bg-gray-100 text-gray-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
+  const getStatusColor = () => {
+    if (isPending) {
+      const pendingContract = contract as PendingContract;
+      if (pendingContract.chainAddress) {
+        return 'bg-green-100 text-green-800'; // Same as ACTIVE
+      }
+      const isExpired = Date.now() / 1000 > pendingContract.expiryTimestamp;
+      return isExpired ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800';
+    } else {
+      const status = (contract as Contract).status;
+      switch (status) {
+        case 'PENDING':
+          return 'bg-gray-100 text-gray-800';
+        case 'CREATED':
+          return 'bg-gray-100 text-gray-800';
+        case 'ACTIVE':
+          return 'bg-green-100 text-green-800';
+        case 'EXPIRED':
+          return 'bg-yellow-100 text-yellow-800';
+        case 'DISPUTED':
+          return 'bg-red-100 text-red-800';
+        case 'RESOLVED':
+          return 'bg-purple-100 text-purple-800';
+        case 'CLAIMED':
+          return 'bg-gray-100 text-gray-800';
+        default:
+          return 'bg-gray-100 text-gray-800';
+      }
     }
   };
 
+  // Get contract address for display
+  const contractAddress = isPending 
+    ? (contract as PendingContract).chainAddress 
+    : (contract as Contract).contractAddress;
+    
+  // Get contract identifier
+  const contractId = isPending ? (contract as PendingContract).id : (contractAddress || 'unknown');
+
   return (
-    <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
+    <div 
+      className="bg-white rounded-lg shadow-md border border-gray-200 p-6"
+      data-testid="contract-card"
+    >
       <div className="flex justify-between items-start mb-4">
         <div>
           <h3 className="text-lg font-semibold text-gray-900">
-            {config?.snowtraceBaseUrl && contract.contractAddress ? (
+            {config?.snowtraceBaseUrl && contractAddress ? (
               <a 
-                href={`${config.snowtraceBaseUrl}/address/${contract.contractAddress}`}
+                href={`${config.snowtraceBaseUrl}/address/${contractAddress}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-primary-600 hover:text-primary-800 transition-colors"
                 title="View contract on Snowtrace"
               >
-                <ExpandableHash hash={contract.contractAddress} />
+                <ExpandableHash hash={contractAddress} />
               </a>
+            ) : contractAddress ? (
+              <ExpandableHash hash={contractAddress} />
             ) : (
-              <ExpandableHash hash={contract.contractAddress} />
+              `Payment #${contractId.slice(-6)}`
             )}
           </h3>
           <div className="flex items-center space-x-2">
-            <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(contract.status)}`}>
-              {getStatusDisplay(contract.status)?.toUpperCase() || 'UNKNOWN'}
+            <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor()}`}>
+              {getDisplayStatus()?.toUpperCase() || 'UNKNOWN'}
             </span>
-            {contract.blockchainQueryError && (
-              <span className="inline-flex px-2 py-1 text-xs font-medium rounded bg-red-100 text-red-800" title={contract.blockchainQueryError}>
+            {!isPending && (contract as Contract).blockchainQueryError && (
+              <span className="inline-flex px-2 py-1 text-xs font-medium rounded bg-red-100 text-red-800" title={(contract as Contract).blockchainQueryError}>
                 Blockchain Error
               </span>
             )}
-            {contract.hasDiscrepancy && (
-              <span className="inline-flex px-2 py-1 text-xs font-medium rounded bg-yellow-100 text-yellow-800" title={contract.discrepancyDetails?.join(', ')}>
+            {!isPending && (contract as Contract).hasDiscrepancy && (
+              <span className="inline-flex px-2 py-1 text-xs font-medium rounded bg-yellow-100 text-yellow-800" title={(contract as Contract).discrepancyDetails?.join(', ')}>
                 Data Mismatch
               </span>
             )}
@@ -101,10 +143,12 @@ export default function ContractCard({ contract, onAction, isClaimingInProgress,
         <div className="flex justify-between text-sm">
           <span className="text-gray-600">Payer:</span>
           <div className={`${isBuyer ? 'font-semibold text-primary-600' : ''}`}>
-            {contract.buyerEmail ? (
-              <span>{contract.buyerEmail}</span>
+            {isPending ? (
+              <span>{(contract as PendingContract).buyerEmail || '-'}</span>
+            ) : (contract as Contract).buyerEmail ? (
+              <span>{(contract as Contract).buyerEmail}</span>
             ) : (
-              <ExpandableHash hash={contract.buyerAddress} showCopyButton={false} />
+              <ExpandableHash hash={(contract as Contract).buyerAddress} showCopyButton={false} />
             )}
             {isBuyer && <span className="ml-1">(You)</span>}
           </div>
@@ -112,10 +156,12 @@ export default function ContractCard({ contract, onAction, isClaimingInProgress,
         <div className="flex justify-between text-sm">
           <span className="text-gray-600">Receiver:</span>
           <div className={`${isSeller ? 'font-semibold text-primary-600' : ''}`}>
-            {contract.sellerEmail ? (
-              <span>{contract.sellerEmail}</span>
+            {isPending ? (
+              <span>{(contract as PendingContract).sellerEmail}</span>
+            ) : (contract as Contract).sellerEmail ? (
+              <span>{(contract as Contract).sellerEmail}</span>
             ) : (
-              <ExpandableHash hash={contract.sellerAddress} showCopyButton={false} />
+              <ExpandableHash hash={(contract as Contract).sellerAddress} showCopyButton={false} />
             )}
             {isSeller && <span className="ml-1">(You)</span>}
           </div>
@@ -139,6 +185,7 @@ export default function ContractCard({ contract, onAction, isClaimingInProgress,
         isBuyer={isBuyer} 
         isSeller={isSeller} 
         onAction={onAction}
+        onAccept={onAccept}
         isClaimingInProgress={isClaimingInProgress}
         onClaimStart={onClaimStart}
         onClaimComplete={onClaimComplete}

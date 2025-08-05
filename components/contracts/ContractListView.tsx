@@ -23,8 +23,7 @@ interface UnifiedContract {
 }
 
 interface ContractListViewProps {
-  contracts: Contract[];
-  pendingContracts: PendingContract[];
+  allContracts: (Contract | PendingContract)[];
   currentUserEmail: string;
   onAccept: (contractId: string) => void;
   onAction: () => void;
@@ -57,8 +56,7 @@ const formatTimestamp = (timestamp: number | string) => {
 };
 
 export default function ContractListView({
-  contracts,
-  pendingContracts,
+  allContracts,
   currentUserEmail,
   onAccept,
   onAction,
@@ -75,46 +73,54 @@ export default function ContractListView({
   const unifiedContracts: UnifiedContract[] = useMemo(() => {
     const unified: UnifiedContract[] = [];
 
-    // Add regular contracts
-    contracts.forEach(contract => {
-      unified.push({
-        id: contract.contractAddress,
-        type: 'regular',
-        status: contract.status,
-        amount: contract.amount,
-        buyerAddress: contract.buyerAddress,
-        sellerAddress: contract.sellerAddress,
-        buyerEmail: contract.buyerEmail,
-        sellerEmail: contract.sellerEmail,
-        description: contract.description,
-        expiryTimestamp: contract.expiryTimestamp,
-        createdAt: contract.createdAt,
-        contractAddress: contract.contractAddress,
-        funded: contract.funded,
-        hasDiscrepancy: contract.hasDiscrepancy,
-        originalContract: contract
-      });
-    });
-
-    // Add pending contracts
-    pendingContracts.forEach(contract => {
-      unified.push({
-        id: contract.id,
-        type: 'pending',
-        status: 'PENDING',
-        amount: contract.amount,
-        sellerAddress: contract.sellerAddress,
-        buyerEmail: contract.buyerEmail,
-        sellerEmail: contract.sellerEmail,
-        description: contract.description,
-        expiryTimestamp: contract.expiryTimestamp,
-        createdAt: contract.createdAt,
-        originalContract: contract
-      });
+    allContracts.forEach(contract => {
+      // Detect if this is a pending contract (has id field but no contractAddress field)
+      const isPending = 'id' in contract && !('contractAddress' in contract);
+      
+      if (isPending) {
+        const pendingContract = contract as PendingContract;
+        const isExpired = Date.now() / 1000 > pendingContract.expiryTimestamp;
+        unified.push({
+          id: pendingContract.id,
+          type: 'pending',
+          status: isExpired ? 'EXPIRED' : 'PENDING',
+          amount: pendingContract.amount,
+          buyerAddress: undefined,
+          sellerAddress: pendingContract.sellerAddress,
+          buyerEmail: pendingContract.buyerEmail,
+          sellerEmail: pendingContract.sellerEmail,
+          description: pendingContract.description,
+          expiryTimestamp: pendingContract.expiryTimestamp,
+          createdAt: pendingContract.createdAt,
+          contractAddress: pendingContract.chainAddress,
+          funded: false,
+          hasDiscrepancy: false,
+          originalContract: pendingContract
+        });
+      } else {
+        const regularContract = contract as Contract;
+        unified.push({
+          id: regularContract.contractAddress,
+          type: 'regular',
+          status: regularContract.status,
+          amount: regularContract.amount,
+          buyerAddress: regularContract.buyerAddress,
+          sellerAddress: regularContract.sellerAddress,
+          buyerEmail: regularContract.buyerEmail,
+          sellerEmail: regularContract.sellerEmail,
+          description: regularContract.description,
+          expiryTimestamp: regularContract.expiryTimestamp,
+          createdAt: regularContract.createdAt,
+          contractAddress: regularContract.contractAddress,
+          funded: regularContract.funded,
+          hasDiscrepancy: regularContract.hasDiscrepancy,
+          originalContract: regularContract
+        });
+      }
     });
 
     return unified;
-  }, [contracts, pendingContracts]);
+  }, [allContracts]);
 
   // Filter and sort contracts
   const filteredAndSortedContracts = useMemo(() => {

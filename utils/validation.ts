@@ -99,3 +99,102 @@ export function formatExpiryDate(expiryTimestamp: number): string {
   
   return `${formattedDate} ${timeZoneAbbr}`;
 }
+
+export type ContractCTAType = 
+  | 'RAISE_DISPUTE' 
+  | 'CLAIM_FUNDS' 
+  | 'PENDING_RESOLUTION' 
+  | 'RESOLVED' 
+  | 'CLAIMED'
+  | 'AWAITING_FUNDING'
+  | 'ACCEPT_CONTRACT'
+  | 'PENDING_ACCEPTANCE'
+  | 'NONE';
+
+export interface ContractCTAInfo {
+  type: ContractCTAType;
+  label?: string;
+  variant?: 'action' | 'status' | 'none';
+}
+
+export function getContractCTA(
+  contractStatus: string | undefined,
+  isBuyer: boolean,
+  isSeller: boolean,
+  isPending?: boolean,
+  isExpired?: boolean,
+  contractState?: string
+): ContractCTAInfo {
+  // Handle pending contracts (not yet on chain)
+  if (isPending) {
+    // Buyer can accept if contract is not expired and state is OK
+    if (isBuyer && !isExpired && contractState === 'OK') {
+      return {
+        type: 'ACCEPT_CONTRACT',
+        label: 'Make Payment',
+        variant: 'action'
+      };
+    }
+    // Otherwise show pending status
+    return {
+      type: 'PENDING_ACCEPTANCE',
+      label: 'Pending Acceptance',
+      variant: 'status'
+    };
+  }
+
+  if (!contractStatus) {
+    return { type: 'NONE', variant: 'none' };
+  }
+
+  // Handle CREATED status (on chain but not yet funded)
+  if (contractStatus === 'CREATED') {
+    return {
+      type: 'AWAITING_FUNDING',
+      label: 'Awaiting Funding',
+      variant: 'status'
+    };
+  }
+
+  if (contractStatus === 'ACTIVE' && isBuyer) {
+    return { 
+      type: 'RAISE_DISPUTE', 
+      label: 'Raise Dispute',
+      variant: 'action'
+    };
+  }
+
+  if (contractStatus === 'EXPIRED' && isSeller) {
+    return { 
+      type: 'CLAIM_FUNDS', 
+      label: 'Claim Funds',
+      variant: 'action'
+    };
+  }
+
+  if (contractStatus === 'DISPUTED') {
+    return { 
+      type: 'PENDING_RESOLUTION', 
+      label: 'Pending Resolution',
+      variant: 'status'
+    };
+  }
+
+  if (contractStatus === 'RESOLVED') {
+    return { 
+      type: 'RESOLVED', 
+      label: 'Resolved',
+      variant: 'status'
+    };
+  }
+
+  if (contractStatus === 'CLAIMED') {
+    return { 
+      type: 'CLAIMED', 
+      label: 'Claimed',
+      variant: 'status'
+    };
+  }
+
+  return { type: 'NONE', variant: 'none' };
+}

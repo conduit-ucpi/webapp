@@ -3,7 +3,6 @@ import { useRouter } from 'next/router';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { Contract, PendingContract } from '@/types';
 import ContractCard from './ContractCard';
-import PendingContractCard from './PendingContractCard';
 import ContractAcceptance from './ContractAcceptance';
 import ContractListView from './ContractListView';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
@@ -13,8 +12,7 @@ type StatusFilter = 'ALL' | 'PENDING' | 'CREATED' | 'ACTIVE' | 'EXPIRED' | 'DISP
 export default function ContractList() {
   const { user } = useAuth();
   const router = useRouter();
-  const [contracts, setContracts] = useState<Contract[]>([]);
-  const [pendingContracts, setPendingContracts] = useState<PendingContract[]>([]);
+  const [allContracts, setAllContracts] = useState<(Contract | PendingContract)[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
@@ -37,9 +35,8 @@ export default function ContractList() {
         throw new Error('Invalid response format - expected array');
       }
       
-      // Transform and separate contracts
-      const pending: PendingContract[] = [];
-      const regular: Contract[] = [];
+      // Transform contracts into unified array
+      const unified: (Contract | PendingContract)[] = [];
       
       contractsData.forEach((item: any) => {
         if (!item.contract) {
@@ -68,7 +65,7 @@ export default function ContractList() {
             state: contract.state || 'OK',
             adminNotes: contract.adminNotes || []
           };
-          pending.push(pendingContract);
+          unified.push(pendingContract);
         } else {
           // This is a regular contract with blockchain data
           const regularContract: Contract = {
@@ -90,12 +87,11 @@ export default function ContractList() {
               .filter(([, value]) => value)
               .map(([key]) => key)
           };
-          regular.push(regularContract);
+          unified.push(regularContract);
         }
       });
       
-      setPendingContracts(pending);
-      setContracts(regular);
+      setAllContracts(unified);
       setError('');
     } catch (error: any) {
       console.error('Failed to fetch contracts:', error);
@@ -128,7 +124,9 @@ export default function ContractList() {
   };
 
   const handleAcceptContract = (contractId: string) => {
-    const contract = pendingContracts.find(c => c.id === contractId);
+    const contract = allContracts.find(c => 
+      'id' in c && !('contractAddress' in c) && c.id === contractId
+    ) as PendingContract | undefined;
     if (contract) {
       setContractToAccept(contract);
       setShowAcceptance(true);
@@ -141,15 +139,23 @@ export default function ContractList() {
     fetchContracts(); // Refresh contract lists
   };
 
-  // Simple filtering for UI display only
-  const filteredContracts = contracts.filter(contract => {
+  // Filter contracts based on status
+  const filteredContracts = allContracts.filter(contract => {
     if (statusFilter === 'ALL') return true;
-    return contract.status === statusFilter;
-  });
-
-  const filteredPendingContracts = pendingContracts.filter(() => {
-    if (statusFilter === 'ALL') return true;
-    return statusFilter === 'PENDING';
+    
+    // Handle pending contracts
+    if ('id' in contract && !('contractAddress' in contract)) {
+      const pendingContract = contract as PendingContract;
+      if (statusFilter === 'PENDING') return true;
+      // Check if expired
+      const isExpired = Date.now() / 1000 > pendingContract.expiryTimestamp;
+      if (statusFilter === 'EXPIRED' && isExpired) return true;
+      return false;
+    }
+    
+    // Handle regular contracts
+    const regularContract = contract as Contract;
+    return regularContract.status === statusFilter;
   });
 
   if (isLoading) {
@@ -174,7 +180,7 @@ export default function ContractList() {
     );
   }
 
-  if (contracts.length === 0 && pendingContracts.length === 0) {
+  if (allContracts.length === 0) {
     return (
       <div className="text-center py-20">
         <div className="text-gray-600 mb-4">No contracts found</div>
@@ -184,14 +190,14 @@ export default function ContractList() {
   }
 
   // Calculate total contracts for view mode decision
-  const totalContracts = filteredContracts.length + filteredPendingContracts.length;
+  const totalContracts = filteredContracts.length;
   const showListView = totalContracts > 4;
 
   return (
     <div>
       {!showAcceptance ? (
         <>
-          {filteredContracts.length === 0 && filteredPendingContracts.length === 0 ? (
+          {filteredContracts.length === 0 ? (
             <div className="text-center py-20">
               <div className="text-gray-600 mb-4">No contracts match your filters</div>
               <p className="text-gray-500">Try adjusting your filter settings.</p>
@@ -199,8 +205,7 @@ export default function ContractList() {
           ) : showListView ? (
             /* List View for >4 contracts */
             <ContractListView
-              contracts={filteredContracts}
-              pendingContracts={filteredPendingContracts}
+              allContracts={filteredContracts}
               currentUserEmail={user?.email || ''}
               onAccept={handleAcceptContract}
               onAction={handleContractAction}
@@ -241,27 +246,23 @@ export default function ContractList() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {/* Render pending contracts */}
-                {filteredPendingContracts.map((contract) => (
-                  <PendingContractCard
-                    key={contract.id}
-                    contract={contract}
-                    currentUserEmail={user?.email || ''}
-                    onAccept={handleAcceptContract}
-                  />
-                ))}
-                
-                {/* Render regular contracts */}
-                {filteredContracts.map((contract) => (
-                  <ContractCard
-                    key={contract.contractAddress}
-                    contract={contract}
-                    onAction={handleContractAction}
-                    isClaimingInProgress={isClaimingInProgress}
-                    onClaimStart={handleClaimStart}
-                    onClaimComplete={handleClaimComplete}
-                  />
-                ))}
+                {/* Render all contracts using unified ContractCard */}
+                {filteredContracts.map((contract) => {
+                  const isPending = 'id' in contract && !('contractAddress' in contract);
+                  const key = isPending ? (contract as PendingContract).id : (contract as Contract).contractAddress;
+                  
+                  return (
+                    <ContractCard
+                      key={key}
+                      contract={contract}
+                      onAction={handleContractAction}
+                      onAccept={handleAcceptContract}
+                      isClaimingInProgress={isClaimingInProgress}
+                      onClaimStart={handleClaimStart}
+                      onClaimComplete={handleClaimComplete}
+                    />
+                  );
+                })}
               </div>
             </>
           )}

@@ -1,4 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
+import * as cookieFn from 'cookie';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -29,9 +30,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const cookies = response.headers.getSetCookie();
     cookies.forEach(cookie => {
-
-      const fixedCookie = process.env.SERVICE_LINK?.includes('localhost') ? cookie.replace('Domain=.conduit-ucpi.com;', 'Domain=localhost;') : cookie;
-      console.log('Setting cookie:', fixedCookie);
+      const parsedCookie = cookieFn.parse(cookie);
+      const cookieDomain = process.env.COOKIE_DOMAIN;
+      const fixedCookie = cookie.replace(`Domain=${parsedCookie.Domain};`, `Domain=${cookieDomain};`);
       res.setHeader('Set-Cookie', fixedCookie);
     });
 

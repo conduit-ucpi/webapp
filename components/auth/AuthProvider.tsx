@@ -107,6 +107,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Call backend logout to clear server session
       await fetch('/api/auth/logout', { method: 'POST' });
 
+      await web3authInstance?.logout();
+      
       // Clear local auth state
       setUser(null);
 

@@ -241,9 +241,10 @@ describe('CreateContract - microUSDC Amount Handling', () => {
           sellerEmail: 'seller@test.com',
           sellerAddress: '0xSellerAddress',
           amount: 250000, // microUSDC format
-          currency: 'USDC',
+          currency: 'microUSDC',
           description: 'Test contract description',
           expiryTimestamp: expect.any(Number),
+          serviceLink: 'http://localhost:3000'
         });
       });
 
@@ -257,7 +258,7 @@ describe('CreateContract - microUSDC Amount Handling', () => {
         expect(requestBody.sellerEmail).toBe('seller@test.com');
         expect(requestBody.sellerAddress).toBe('0xSellerAddress');
         expect(requestBody.amount).toBe(1500000); // 1.5 * 1,000,000
-        expect(requestBody.currency).toBe('USDC');
+        expect(requestBody.currency).toBe('microUSDC');
         expect(requestBody.description).toBe('Test contract description');
         expect(typeof requestBody.expiryTimestamp).toBe('number');
         expect(requestBody.expiryTimestamp).toBeGreaterThan(Date.now() / 1000);

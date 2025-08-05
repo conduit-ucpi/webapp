@@ -141,9 +141,10 @@ describe('ContractActions - Context Fields for Dispute', () => {
             sellerEmail: 'seller@test.com',
             payoutDateTime: new Date(contract.expiryTimestamp * 1000).toISOString(),
             amount: '2.5', // Converted from microUSDC to USDC
-            currency: 'USDC',
+            currency: 'microUSDC',
             contractDescription: 'Digital Marketing Services Package',
-            productName: 'Digital Marketing Services Package'
+            productName: 'Digital Marketing Services Package',
+            serviceLink: 'http://localhost:3000'
           })
         })
       );
@@ -286,9 +287,10 @@ describe('ContractActions - Context Fields for Dispute', () => {
         sellerEmail: 'seller@test.com',
         payoutDateTime: new Date(contract.expiryTimestamp * 1000).toISOString(),
         amount: '0.75',
-        currency: 'USDC',
+        currency: 'microUSDC',
         contractDescription: 'Custom Web Development',
-        productName: process.env.PRODUCT_NAME || 'Custom Web Development'
+        productName: process.env.PRODUCT_NAME || 'Custom Web Development',
+        serviceLink: 'http://localhost:3000'
       });
 
       expect(mockFetch).toHaveBeenCalledWith(

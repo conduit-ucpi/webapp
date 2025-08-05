@@ -36,6 +36,20 @@ interface ContractListViewProps {
 type SortField = 'status' | 'amount' | 'description' | 'expiryTimestamp' | 'createdAt';
 type SortDirection = 'asc' | 'desc';
 
+// Utility function to normalize timestamps to seconds
+const normalizeTimestamp = (timestamp: number | string): number => {
+  if (typeof timestamp === 'string') {
+    // If it's a string, parse as Date and convert to seconds
+    return new Date(timestamp).getTime() / 1000;
+  }
+  
+  const numTimestamp = Number(timestamp);
+  // Detect if timestamp is in seconds (≤10 digits) or milliseconds (>10 digits)
+  return numTimestamp.toString().length <= 10 
+    ? numTimestamp        // Already in seconds
+    : numTimestamp / 1000; // Convert milliseconds to seconds
+};
+
 export default function ContractListView({
   contracts,
   pendingContracts,
@@ -67,8 +81,8 @@ export default function ContractListView({
         buyerEmail: contract.buyerEmail,
         sellerEmail: contract.sellerEmail,
         description: contract.description,
-        expiryTimestamp: contract.expiryTimestamp,
-        createdAt: contract.createdAt,
+        expiryTimestamp: normalizeTimestamp(contract.expiryTimestamp),
+        createdAt: normalizeTimestamp(contract.createdAt),
         contractAddress: contract.contractAddress,
         funded: contract.funded,
         hasDiscrepancy: contract.hasDiscrepancy,
@@ -87,8 +101,8 @@ export default function ContractListView({
         buyerEmail: contract.buyerEmail,
         sellerEmail: contract.sellerEmail,
         description: contract.description,
-        expiryTimestamp: contract.expiryTimestamp,
-        createdAt: typeof contract.createdAt === 'string' ? new Date(contract.createdAt).getTime() / 1000 : contract.createdAt,
+        expiryTimestamp: normalizeTimestamp(contract.expiryTimestamp),
+        createdAt: normalizeTimestamp(contract.createdAt),
         originalContract: contract
       });
     });
@@ -160,7 +174,17 @@ export default function ContractListView({
   };
 
   const formatDate = (timestamp: number | string) => {
-    const date = new Date(Number(timestamp) * 1000);
+    // Normalize to seconds, then convert to milliseconds for Date constructor
+    const timestampSeconds = normalizeTimestamp(timestamp);
+    const timestampMs = timestampSeconds * 1000;
+    
+    const date = new Date(timestampMs);
+    
+    // Validate the date is reasonable (not before 2020 or after 2030)
+    if (date.getFullYear() < 2020 || date.getFullYear() > 2030) {
+      return 'Invalid date';
+    }
+    
     return date.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',

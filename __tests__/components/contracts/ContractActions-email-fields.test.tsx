@@ -142,9 +142,10 @@ describe('ContractActions - Email Fields for Dispute', () => {
             sellerEmail: 'seller@test.com',
             payoutDateTime: new Date(contract.expiryTimestamp * 1000).toISOString(),
             amount: (contract.amount / 1000000).toString(),
-            currency: "USDC",
+            currency: "microUSDC",
             contractDescription: contract.description,
-            productName: process.env.PRODUCT_NAME || contract.description
+            productName: process.env.PRODUCT_NAME || contract.description,
+            serviceLink: "http://localhost:3000"
           })
         })
       );
@@ -218,9 +219,10 @@ describe('ContractActions - Email Fields for Dispute', () => {
             sellerEmail: 'seller@test.com',
             payoutDateTime: new Date(contractWithoutBuyerEmail.expiryTimestamp * 1000).toISOString(),
             amount: (contractWithoutBuyerEmail.amount / 1000000).toString(),
-            currency: "USDC",
+            currency: "microUSDC",
             contractDescription: contractWithoutBuyerEmail.description,
-            productName: contractWithoutBuyerEmail.description
+            productName: contractWithoutBuyerEmail.description,
+            serviceLink: "http://localhost:3000"
           })
         })
       );
@@ -291,9 +293,10 @@ describe('ContractActions - Email Fields for Dispute', () => {
             sellerEmail: undefined,
             payoutDateTime: new Date(contractWithoutEmails.expiryTimestamp * 1000).toISOString(),
             amount: (contractWithoutEmails.amount / 1000000).toString(),
-            currency: "USDC",
+            currency: "microUSDC",
             contractDescription: contractWithoutEmails.description,
-            productName: contractWithoutEmails.description
+            productName: contractWithoutEmails.description,
+            serviceLink: "http://localhost:3000"
           })
         })
       );

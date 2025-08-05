@@ -149,9 +149,10 @@ describe('ContractActions - PRODUCT_NAME Environment Variable', () => {
             sellerEmail: 'seller@test.com',
             payoutDateTime: new Date(contract.expiryTimestamp * 1000).toISOString(),
             amount: (contract.amount / 1000000).toString(),
-            currency: "USDC",
+            currency: "microUSDC",
             contractDescription: contract.description,
-            productName: 'Test Product Name' // Should use PRODUCT_NAME env var
+            productName: 'Test Product Name', // Should use PRODUCT_NAME env var
+            serviceLink: "http://localhost:3000"
           })
         })
       );
@@ -204,9 +205,10 @@ describe('ContractActions - PRODUCT_NAME Environment Variable', () => {
             sellerEmail: 'seller@test.com',
             payoutDateTime: new Date(contract.expiryTimestamp * 1000).toISOString(),
             amount: (contract.amount / 1000000).toString(),
-            currency: "USDC",
+            currency: "microUSDC",
             contractDescription: contract.description,
-            productName: 'Fallback Description' // Should fallback to contract.description
+            productName: 'Fallback Description', // Should fallback to contract.description
+            serviceLink: "http://localhost:3000"
           })
         })
       );
@@ -259,9 +261,10 @@ describe('ContractActions - PRODUCT_NAME Environment Variable', () => {
             sellerEmail: 'seller@test.com',
             payoutDateTime: new Date(contract.expiryTimestamp * 1000).toISOString(),
             amount: (contract.amount / 1000000).toString(),
-            currency: "USDC",
+            currency: "microUSDC",
             contractDescription: contract.description,
-            productName: 'Empty String Fallback' // Should fallback to contract.description when env var is empty
+            productName: 'Empty String Fallback', // Should fallback to contract.description when env var is empty
+            serviceLink: "http://localhost:3000"
           })
         })
       );

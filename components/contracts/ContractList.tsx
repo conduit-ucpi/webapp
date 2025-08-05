@@ -5,6 +5,7 @@ import { Contract, PendingContract } from '@/types';
 import ContractCard from './ContractCard';
 import PendingContractCard from './PendingContractCard';
 import ContractAcceptance from './ContractAcceptance';
+import ContractListView from './ContractListView';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 
 type StatusFilter = 'ALL' | 'PENDING' | 'CREATED' | 'ACTIVE' | 'EXPIRED' | 'DISPUTED' | 'RESOLVED' | 'CLAIMED';
@@ -182,38 +183,12 @@ export default function ContractList() {
     );
   }
 
+  // Calculate total contracts for view mode decision
+  const totalContracts = filteredContracts.length + filteredPendingContracts.length;
+  const showListView = totalContracts > 4;
+
   return (
     <div>
-      {/* Status Filter */}
-      <div className="mb-6 flex justify-between items-center">
-        <div>
-          <label htmlFor="status-filter" className="block text-sm font-medium text-gray-700 mb-1">
-            Filter by Status
-          </label>
-          <select
-            id="status-filter"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-            className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md"
-          >
-            <option value="ALL">All Statuses</option>
-            <option value="PENDING">Pending</option>
-            <option value="CREATED">Created</option>
-            <option value="ACTIVE">Active</option>
-            <option value="EXPIRED">Expired</option>
-            <option value="DISPUTED">Disputed</option>
-            <option value="RESOLVED">Resolved</option>
-            <option value="CLAIMED">Claimed</option>
-          </select>
-        </div>
-
-        {/* Results Count */}
-        <div className="text-sm text-gray-600">
-          Showing {filteredContracts.length + filteredPendingContracts.length} contracts
-        </div>
-      </div>
-
-      {/* Contracts Content */}
       {!showAcceptance ? (
         <>
           {filteredContracts.length === 0 && filteredPendingContracts.length === 0 ? (
@@ -221,30 +196,74 @@ export default function ContractList() {
               <div className="text-gray-600 mb-4">No contracts match your filters</div>
               <p className="text-gray-500">Try adjusting your filter settings.</p>
             </div>
+          ) : showListView ? (
+            /* List View for >4 contracts */
+            <ContractListView
+              contracts={filteredContracts}
+              pendingContracts={filteredPendingContracts}
+              currentUserEmail={user?.email || ''}
+              onAccept={handleAcceptContract}
+              onAction={handleContractAction}
+              isClaimingInProgress={isClaimingInProgress}
+              onClaimStart={handleClaimStart}
+              onClaimComplete={handleClaimComplete}
+            />
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {/* Render pending contracts */}
-              {filteredPendingContracts.map((contract) => (
-                <PendingContractCard
-                  key={contract.id}
-                  contract={contract}
-                  currentUserEmail={user?.email || ''}
-                  onAccept={handleAcceptContract}
-                />
-              ))}
-              
-              {/* Render regular contracts */}
-              {filteredContracts.map((contract) => (
-                <ContractCard
-                  key={contract.contractAddress}
-                  contract={contract}
-                  onAction={handleContractAction}
-                  isClaimingInProgress={isClaimingInProgress}
-                  onClaimStart={handleClaimStart}
-                  onClaimComplete={handleClaimComplete}
-                />
-              ))}
-            </div>
+            /* Card View for ≤4 contracts */
+            <>
+              {/* Status Filter for Card View */}
+              <div className="mb-6 flex justify-between items-center">
+                <div>
+                  <label htmlFor="status-filter" className="block text-sm font-medium text-gray-700 mb-1">
+                    Filter by Status
+                  </label>
+                  <select
+                    id="status-filter"
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+                    className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md"
+                  >
+                    <option value="ALL">All Statuses</option>
+                    <option value="PENDING">Pending</option>
+                    <option value="CREATED">Created</option>
+                    <option value="ACTIVE">Active</option>
+                    <option value="EXPIRED">Expired</option>
+                    <option value="DISPUTED">Disputed</option>
+                    <option value="RESOLVED">Resolved</option>
+                    <option value="CLAIMED">Claimed</option>
+                  </select>
+                </div>
+
+                {/* Results Count */}
+                <div className="text-sm text-gray-600">
+                  Showing {totalContracts} contracts
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {/* Render pending contracts */}
+                {filteredPendingContracts.map((contract) => (
+                  <PendingContractCard
+                    key={contract.id}
+                    contract={contract}
+                    currentUserEmail={user?.email || ''}
+                    onAccept={handleAcceptContract}
+                  />
+                ))}
+                
+                {/* Render regular contracts */}
+                {filteredContracts.map((contract) => (
+                  <ContractCard
+                    key={contract.contractAddress}
+                    contract={contract}
+                    onAction={handleContractAction}
+                    isClaimingInProgress={isClaimingInProgress}
+                    onClaimStart={handleClaimStart}
+                    onClaimComplete={handleClaimComplete}
+                  />
+                ))}
+              </div>
+            </>
           )}
         </>
       ) : (

@@ -1,0 +1,392 @@
+import { useState, useMemo } from 'react';
+import { Contract, PendingContract } from '@/types';
+import { formatUSDC } from '@/utils/validation';
+import Button from '@/components/ui/Button';
+import ExpandableHash from '@/components/ui/ExpandableHash';
+
+interface UnifiedContract {
+  id: string;
+  type: 'regular' | 'pending';
+  status: string;
+  amount: number;
+  buyerAddress?: string;
+  sellerAddress?: string;
+  buyerEmail?: string;
+  sellerEmail?: string;
+  description: string;
+  expiryTimestamp: number;
+  createdAt: number | string;
+  contractAddress?: string;
+  funded?: boolean;
+  hasDiscrepancy?: boolean;
+  originalContract: Contract | PendingContract;
+}
+
+interface ContractListViewProps {
+  contracts: Contract[];
+  pendingContracts: PendingContract[];
+  currentUserEmail: string;
+  onAccept: (contractId: string) => void;
+  onAction: () => void;
+  isClaimingInProgress: boolean;
+  onClaimStart: () => void;
+  onClaimComplete: () => void;
+}
+
+type SortField = 'status' | 'amount' | 'description' | 'expiryTimestamp' | 'createdAt';
+type SortDirection = 'asc' | 'desc';
+
+export default function ContractListView({
+  contracts,
+  pendingContracts,
+  currentUserEmail,
+  onAccept,
+  onAction,
+  isClaimingInProgress,
+  onClaimStart,
+  onClaimComplete
+}: ContractListViewProps) {
+  const [sortField, setSortField] = useState<SortField>('createdAt');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  const [statusFilter, setStatusFilter] = useState<string>('ALL');
+  const [searchTerm, setSearchTerm] = useState('');
+
+  // Unify contract data for table display
+  const unifiedContracts: UnifiedContract[] = useMemo(() => {
+    const unified: UnifiedContract[] = [];
+
+    // Add regular contracts
+    contracts.forEach(contract => {
+      unified.push({
+        id: contract.contractAddress,
+        type: 'regular',
+        status: contract.status,
+        amount: contract.amount,
+        buyerAddress: contract.buyerAddress,
+        sellerAddress: contract.sellerAddress,
+        buyerEmail: contract.buyerEmail,
+        sellerEmail: contract.sellerEmail,
+        description: contract.description,
+        expiryTimestamp: contract.expiryTimestamp,
+        createdAt: contract.createdAt,
+        contractAddress: contract.contractAddress,
+        funded: contract.funded,
+        hasDiscrepancy: contract.hasDiscrepancy,
+        originalContract: contract
+      });
+    });
+
+    // Add pending contracts
+    pendingContracts.forEach(contract => {
+      unified.push({
+        id: contract.id,
+        type: 'pending',
+        status: 'PENDING',
+        amount: contract.amount,
+        sellerAddress: contract.sellerAddress,
+        buyerEmail: contract.buyerEmail,
+        sellerEmail: contract.sellerEmail,
+        description: contract.description,
+        expiryTimestamp: contract.expiryTimestamp,
+        createdAt: typeof contract.createdAt === 'string' ? new Date(contract.createdAt).getTime() / 1000 : contract.createdAt,
+        originalContract: contract
+      });
+    });
+
+    return unified;
+  }, [contracts, pendingContracts]);
+
+  // Filter and sort contracts
+  const filteredAndSortedContracts = useMemo(() => {
+    let filtered = unifiedContracts.filter(contract => {
+      // Status filter
+      if (statusFilter !== 'ALL' && contract.status !== statusFilter) {
+        return false;
+      }
+
+      // Search filter
+      if (searchTerm) {
+        const searchLower = searchTerm.toLowerCase();
+        return (
+          contract.description.toLowerCase().includes(searchLower) ||
+          contract.buyerEmail?.toLowerCase().includes(searchLower) ||
+          contract.sellerEmail?.toLowerCase().includes(searchLower) ||
+          contract.contractAddress?.toLowerCase().includes(searchLower) ||
+          contract.buyerAddress?.toLowerCase().includes(searchLower) ||
+          contract.sellerAddress?.toLowerCase().includes(searchLower)
+        );
+      }
+
+      return true;
+    });
+
+    // Sort contracts
+    filtered.sort((a, b) => {
+      let aValue: any = a[sortField];
+      let bValue: any = b[sortField];
+
+      // Handle different data types
+      if (sortField === 'amount') {
+        aValue = Number(aValue);
+        bValue = Number(bValue);
+      } else if (sortField === 'expiryTimestamp' || sortField === 'createdAt') {
+        aValue = Number(aValue);
+        bValue = Number(bValue);
+      } else if (typeof aValue === 'string' && typeof bValue === 'string') {
+        aValue = aValue.toLowerCase();
+        bValue = bValue.toLowerCase();
+      }
+
+      if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    return filtered;
+  }, [unifiedContracts, sortField, sortDirection, statusFilter, searchTerm]);
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const getSortIcon = (field: SortField) => {
+    if (sortField !== field) return '↕️';
+    return sortDirection === 'asc' ? '↑' : '↓';
+  };
+
+  const formatDate = (timestamp: number | string) => {
+    const date = new Date(Number(timestamp) * 1000);
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
+
+  const getStatusBadgeClass = (status: string) => {
+    const baseClass = "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium";
+    switch (status) {
+      case 'PENDING':
+        return `${baseClass} bg-yellow-100 text-yellow-800`;
+      case 'ACTIVE':
+        return `${baseClass} bg-green-100 text-green-800`;
+      case 'EXPIRED':
+        return `${baseClass} bg-red-100 text-red-800`;
+      case 'DISPUTED':
+        return `${baseClass} bg-orange-100 text-orange-800`;
+      case 'RESOLVED':
+        return `${baseClass} bg-blue-100 text-blue-800`;
+      case 'CLAIMED':
+        return `${baseClass} bg-gray-100 text-gray-800`;
+      default:
+        return `${baseClass} bg-gray-100 text-gray-800`;
+    }
+  };
+
+  const canAcceptContract = (contract: UnifiedContract) => {
+    return contract.type === 'pending' && 
+           contract.buyerEmail === currentUserEmail && 
+           contract.status === 'PENDING';
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Filters and Search */}
+      <div className="flex flex-col sm:flex-row gap-4 bg-gray-50 p-4 rounded-lg">
+        <div className="flex-1">
+          <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-1">
+            Search
+          </label>
+          <input
+            type="text"
+            id="search"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search by description, email, or address..."
+            className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+          />
+        </div>
+        
+        <div className="flex-shrink-0">
+          <label htmlFor="status-filter" className="block text-sm font-medium text-gray-700 mb-1">
+            Status
+          </label>
+          <select
+            id="status-filter"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+          >
+            <option value="ALL">All Statuses</option>
+            <option value="PENDING">Pending</option>
+            <option value="CREATED">Created</option>
+            <option value="ACTIVE">Active</option>
+            <option value="EXPIRED">Expired</option>
+            <option value="DISPUTED">Disputed</option>
+            <option value="RESOLVED">Resolved</option>
+            <option value="CLAIMED">Claimed</option>
+          </select>
+        </div>
+
+        <div className="flex-shrink-0 flex items-end">
+          <div className="text-sm text-gray-600">
+            {filteredAndSortedContracts.length} of {unifiedContracts.length} contracts
+          </div>
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="bg-white overflow-hidden shadow rounded-lg">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('status')}
+                >
+                  Status {getSortIcon('status')}
+                </th>
+                <th
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('amount')}
+                >
+                  Amount {getSortIcon('amount')}
+                </th>
+                <th
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('description')}
+                >
+                  Description {getSortIcon('description')}
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Participants
+                </th>
+                <th
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('expiryTimestamp')}
+                >
+                  Expires {getSortIcon('expiryTimestamp')}
+                </th>
+                <th
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('createdAt')}
+                >
+                  Created {getSortIcon('createdAt')}
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {filteredAndSortedContracts.map((contract) => (
+                <tr key={contract.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <span className={getStatusBadgeClass(contract.status)}>
+                        {contract.status}
+                      </span>
+                      {contract.hasDiscrepancy && (
+                        <span className="ml-2 text-orange-500 text-xs" title="Has discrepancy">
+                          ⚠️
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    {formatUSDC(contract.amount)}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-900">
+                    <div className="max-w-xs truncate" title={contract.description}>
+                      {contract.description}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-500">
+                    <div className="space-y-1">
+                      <div className="flex items-center">
+                        <span className="text-xs text-gray-400 mr-1">B:</span>
+                        {contract.buyerEmail && (
+                          <span className="truncate max-w-24" title={contract.buyerEmail}>
+                            {contract.buyerEmail}
+                          </span>
+                        )}
+                        {contract.buyerAddress && (
+                          <ExpandableHash 
+                            hash={contract.buyerAddress} 
+                            className="ml-1"
+                          />
+                        )}
+                      </div>
+                      <div className="flex items-center">
+                        <span className="text-xs text-gray-400 mr-1">S:</span>
+                        {contract.sellerEmail && (
+                          <span className="truncate max-w-24" title={contract.sellerEmail}>
+                            {contract.sellerEmail}
+                          </span>
+                        )}
+                        {contract.sellerAddress && (
+                          <ExpandableHash 
+                            hash={contract.sellerAddress} 
+                            className="ml-1"
+                          />
+                        )}
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {formatDate(contract.expiryTimestamp)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {formatDate(contract.createdAt)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    {canAcceptContract(contract) && (
+                      <Button
+                        onClick={() => onAccept(contract.id)}
+                        size="sm"
+                        className="bg-green-600 hover:bg-green-700 text-white"
+                      >
+                        Accept
+                      </Button>
+                    )}
+                    {contract.contractAddress && (
+                      <div className="mt-1">
+                        <ExpandableHash 
+                          hash={contract.contractAddress}
+                          className="text-xs"
+                        />
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {filteredAndSortedContracts.length === 0 && (
+          <div className="text-center py-12">
+            <div className="text-gray-500">No contracts match your filters</div>
+            <Button
+              onClick={() => {
+                setStatusFilter('ALL');
+                setSearchTerm('');
+              }}
+              variant="outline"
+              size="sm"
+              className="mt-2"
+            >
+              Clear Filters
+            </Button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

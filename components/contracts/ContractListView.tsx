@@ -182,14 +182,22 @@ export default function ContractListView({
     
     // Validate the date is reasonable (not before 2020 or after 2030)
     if (date.getFullYear() < 2020 || date.getFullYear() > 2030) {
-      return 'Invalid date';
+      return { date: 'Invalid date', time: '' };
     }
     
-    return date.toLocaleDateString('en-US', {
+    const dateStr = date.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
       year: 'numeric'
     });
+    
+    const timeStr = date.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+    
+    return { date: dateStr, time: timeStr };
   };
 
   const getStatusBadgeClass = (status: string) => {
@@ -213,9 +221,11 @@ export default function ContractListView({
   };
 
   const canAcceptContract = (contract: UnifiedContract) => {
+    const now = Math.floor(Date.now() / 1000); // Current time in seconds
     return contract.type === 'pending' && 
            contract.buyerEmail === currentUserEmail && 
-           contract.status === 'PENDING';
+           (contract.status === 'PENDING' || contract.status === 'WAITING_FOR_FUNDS') &&
+           contract.expiryTimestamp > now;
   };
 
   return (
@@ -364,10 +374,16 @@ export default function ContractListView({
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {formatDate(contract.expiryTimestamp)}
+                    <div className="flex flex-col">
+                      <span>{formatDate(contract.expiryTimestamp).date}</span>
+                      <span className="text-xs text-gray-400">{formatDate(contract.expiryTimestamp).time}</span>
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {formatDate(contract.createdAt)}
+                    <div className="flex flex-col">
+                      <span>{formatDate(contract.createdAt).date}</span>
+                      <span className="text-xs text-gray-400">{formatDate(contract.createdAt).time}</span>
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     {canAcceptContract(contract) && (

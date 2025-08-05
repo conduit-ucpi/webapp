@@ -17,7 +17,10 @@ export default function PendingContractCard({
   const isExpired = Date.now() / 1000 > contract.expiryTimestamp;
   const isBuyer = contract.buyerEmail === currentUserEmail;
   const isSeller = contract.sellerEmail === currentUserEmail;
-  const canAccept = isBuyer && !contract.chainAddress && !isExpired;
+  const canAccept = isBuyer && 
+                   !contract.chainAddress && 
+                   !isExpired && 
+                   (contract.state === 'OK' || contract.state === 'PENDING' || contract.state === 'WAITING_FOR_FUNDS');
 
   const getStatusDisplay = () => {
     if (contract.chainAddress) {

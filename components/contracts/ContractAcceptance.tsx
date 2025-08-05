@@ -162,7 +162,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
           sellerEmail: contract.sellerEmail,
           contractDescription: contract.description,
           amount: amountInMicroUSDC.toString(),
-          currency: "microUSDC",
+          currency: "USDC",
           payoutDateTime: new Date(contract.expiryTimestamp * 1000).toISOString(),
           contractLink: config.serviceLink
         })
@@ -233,7 +233,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
         <div className="space-y-3 mb-6">
           <div className="flex justify-between">
             <span className="text-gray-600">Amount:</span>
-            <span className="font-medium">${formatUSDC(contract.amount)} {contract.currency}</span>
+            <span className="font-medium">${formatUSDC(contract.amount)} USDC</span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-600">Seller:</span>
@@ -271,7 +271,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
       <div className="space-y-3 mb-6">
         <div className="flex justify-between">
           <span className="text-gray-600">Amount:</span>
-          <span className="font-medium">${formatUSDC(contract.amount)} {contract.currency}</span>
+          <span className="font-medium">${formatUSDC(contract.amount)} USDC</span>
         </div>
         <div className="flex justify-between">
           <span className="text-gray-600">Seller:</span>

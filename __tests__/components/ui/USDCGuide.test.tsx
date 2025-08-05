@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import USDCGuide from '@/components/ui/USDCGuide';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { useConfig } from '@/components/auth/ConfigProvider';
-
+import { useWeb3AuthInstance } from '@/components/auth/Web3AuthInstanceProvider';
 // Mock the providers
 jest.mock('@/components/auth/AuthProvider', () => ({
   useAuth: jest.fn(),
@@ -12,9 +12,13 @@ jest.mock('@/components/auth/ConfigProvider', () => ({
   useConfig: jest.fn(),
 }));
 
+jest.mock('@/components/auth/Web3AuthInstanceProvider', () => ({
+  useWeb3AuthInstance: jest.fn(),
+}));
+
 const mockUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
 const mockUseConfig = useConfig as jest.MockedFunction<typeof useConfig>;
-
+const mockUseWeb3AuthInstance = useWeb3AuthInstance as jest.MockedFunction<typeof useWeb3AuthInstance>;
 describe('USDCGuide', () => {
   const mockUser = {
     userId: 'test-user',
@@ -38,7 +42,6 @@ describe('USDCGuide', () => {
   beforeEach(() => {
     mockUseAuth.mockReturnValue({
       user: mockUser,
-      provider: null,
       isLoading: false,
       login: jest.fn(),
       logout: jest.fn(),
@@ -47,6 +50,13 @@ describe('USDCGuide', () => {
     mockUseConfig.mockReturnValue({
       config: mockConfig,
       isLoading: false,
+    });
+
+    mockUseWeb3AuthInstance.mockReturnValue({
+      web3authProvider: null,
+      isLoading: false,
+      web3authInstance: null,
+      onLogout: jest.fn(),
     });
   });
 
@@ -91,7 +101,7 @@ describe('USDCGuide', () => {
 
   it('shows all exchange links', () => {
     render(<USDCGuide />);
-    
+
     // Check that all exchange links are present
     expect(screen.getByRole('link', { name: 'MoonPay' })).toHaveAttribute('href', 'https://www.moonpay.com');
     expect(screen.getByRole('link', { name: 'Coinbase' })).toHaveAttribute('href', 'https://www.coinbase.com/price/usdc');
@@ -103,7 +113,7 @@ describe('USDCGuide', () => {
 
   it('shows links with correct security attributes', () => {
     render(<USDCGuide />);
-    
+
     const moonpayLink = screen.getByRole('link', { name: 'MoonPay' });
     expect(moonpayLink).toHaveAttribute('target', '_blank');
     expect(moonpayLink).toHaveAttribute('rel', 'noopener noreferrer');
@@ -140,10 +150,16 @@ describe('USDCGuide', () => {
   it('returns null when user is not available', () => {
     mockUseAuth.mockReturnValue({
       user: null,
-      provider: null,
       isLoading: false,
       login: jest.fn(),
       logout: jest.fn(),
+    });
+
+    mockUseWeb3AuthInstance.mockReturnValue({
+      web3authProvider: null,
+      isLoading: false,
+      web3authInstance: null,
+      onLogout: jest.fn(),
     });
 
     const { container } = render(<USDCGuide />);
@@ -162,7 +178,7 @@ describe('USDCGuide', () => {
 
   it('includes all funding methods', () => {
     render(<USDCGuide />);
-    
+
     expect(screen.getByRole('link', { name: 'MoonPay' })).toBeInTheDocument();
     expect(screen.getByText(/MetaMask\/Coinbase:/)).toBeInTheDocument();
     expect(screen.getByText(/Major Exchanges:/)).toBeInTheDocument();
@@ -171,14 +187,14 @@ describe('USDCGuide', () => {
 
   it('has proper styling classes', () => {
     render(<USDCGuide />);
-    
+
     const container = screen.getByText('How to Add USDC to Your Wallet/How to get cash from your Wallet').closest('div');
     expect(container).toHaveClass('bg-blue-50', 'border', 'border-blue-200', 'rounded-lg', 'p-6');
   });
 
   it('displays numbered steps correctly', () => {
     render(<USDCGuide />);
-    
+
     expect(screen.getByText('1.')).toBeInTheDocument();
     expect(screen.getByText('2.')).toBeInTheDocument();
     expect(screen.getByText('3.')).toBeInTheDocument();

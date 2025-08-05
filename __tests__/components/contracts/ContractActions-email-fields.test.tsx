@@ -6,17 +6,20 @@ jest.mock('next/router', () => ({
 }));
 jest.mock('../../../components/auth/ConfigProvider');
 jest.mock('../../../components/auth/AuthProvider');
+jest.mock('../../../components/auth/Web3AuthInstanceProvider');
 jest.mock('../../../lib/web3');
 
 import { useRouter } from 'next/router';
 import ContractActions from '../../../components/contracts/ContractActions';
 import { useConfig } from '../../../components/auth/ConfigProvider';
 import { useAuth } from '../../../components/auth/AuthProvider';
+import { useWeb3AuthInstance } from '../../../components/auth/Web3AuthInstanceProvider';
 import { Contract } from '../../../types';
 
 const mockUseRouter = useRouter as jest.MockedFunction<typeof useRouter>;
 const mockUseConfig = useConfig as jest.MockedFunction<typeof useConfig>;
 const mockUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
+const mockUseWeb3AuthInstance = useWeb3AuthInstance as jest.MockedFunction<typeof useWeb3AuthInstance>;
 
 // Mock fetch globally
 const mockFetch = jest.fn();
@@ -46,6 +49,14 @@ Object.defineProperty(window, 'web3authProvider', {
 global.alert = jest.fn();
 
 describe('ContractActions - Email Fields for Dispute', () => {
+  beforeAll(() => {
+    process.env.PRODUCT_NAME = 'Conduit UCPI';
+  });
+
+  afterAll(() => {
+    delete process.env.PRODUCT_NAME;
+  });
+
   const mockConfig = {
     web3AuthClientId: 'test-client-id',
     web3AuthNetwork: 'testnet',
@@ -63,7 +74,7 @@ describe('ContractActions - Email Fields for Dispute', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    
+
     mockUseRouter.mockReturnValue({
       basePath: '',
       pathname: '/dashboard',
@@ -86,10 +97,16 @@ describe('ContractActions - Email Fields for Dispute', () => {
 
     mockUseAuth.mockReturnValue({
       user: mockUser,
-      provider: null,
       isLoading: false,
       login: jest.fn(),
       logout: jest.fn(),
+    });
+
+    mockUseWeb3AuthInstance.mockReturnValue({
+      web3authProvider: null,
+      isLoading: false,
+      web3authInstance: null,
+      onLogout: jest.fn(),
     });
 
     const contract: Contract = {
@@ -115,7 +132,7 @@ describe('ContractActions - Email Fields for Dispute', () => {
     });
 
     render(
-      <ContractActions 
+      <ContractActions
         contract={contract}
         isBuyer={true}
         isSeller={false}
@@ -144,7 +161,7 @@ describe('ContractActions - Email Fields for Dispute', () => {
             amount: (contract.amount / 1000000).toString(),
             currency: "microUSDC",
             contractDescription: contract.description,
-            productName: process.env.PRODUCT_NAME || contract.description,
+            productName: 'Conduit UCPI',
             serviceLink: "http://localhost:3000"
           })
         })
@@ -163,10 +180,16 @@ describe('ContractActions - Email Fields for Dispute', () => {
 
     mockUseAuth.mockReturnValue({
       user: mockUser,
-      provider: null,
       isLoading: false,
       login: jest.fn(),
       logout: jest.fn(),
+    });
+
+    mockUseWeb3AuthInstance.mockReturnValue({
+      web3authProvider: null,
+      isLoading: false,
+      web3authInstance: null,
+      onLogout: jest.fn(),
     });
 
     const contractWithoutBuyerEmail: Contract = {
@@ -192,7 +215,7 @@ describe('ContractActions - Email Fields for Dispute', () => {
     });
 
     render(
-      <ContractActions 
+      <ContractActions
         contract={contractWithoutBuyerEmail}
         isBuyer={true}
         isSeller={false}
@@ -221,7 +244,7 @@ describe('ContractActions - Email Fields for Dispute', () => {
             amount: (contractWithoutBuyerEmail.amount / 1000000).toString(),
             currency: "microUSDC",
             contractDescription: contractWithoutBuyerEmail.description,
-            productName: contractWithoutBuyerEmail.description,
+            productName: 'Conduit UCPI',
             serviceLink: "http://localhost:3000"
           })
         })
@@ -238,10 +261,16 @@ describe('ContractActions - Email Fields for Dispute', () => {
 
     mockUseAuth.mockReturnValue({
       user: mockUser,
-      provider: null,
       isLoading: false,
       login: jest.fn(),
       logout: jest.fn(),
+    });
+
+    mockUseWeb3AuthInstance.mockReturnValue({
+      web3authProvider: null,
+      isLoading: false,
+      web3authInstance: null,
+      onLogout: jest.fn(),
     });
 
     const contractWithoutEmails: Contract = {
@@ -266,7 +295,7 @@ describe('ContractActions - Email Fields for Dispute', () => {
     });
 
     render(
-      <ContractActions 
+      <ContractActions
         contract={contractWithoutEmails}
         isBuyer={true}
         isSeller={false}
@@ -295,7 +324,7 @@ describe('ContractActions - Email Fields for Dispute', () => {
             amount: (contractWithoutEmails.amount / 1000000).toString(),
             currency: "microUSDC",
             contractDescription: contractWithoutEmails.description,
-            productName: contractWithoutEmails.description,
+            productName: 'Conduit UCPI',
             serviceLink: "http://localhost:3000"
           })
         })

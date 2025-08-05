@@ -1,3 +1,5 @@
+import { Web3Auth } from "@web3auth/modal";
+
 export interface Config {
   web3AuthClientId: string;
   web3AuthNetwork: string;
@@ -122,10 +124,16 @@ export interface ResolveDisputeRequest {
 
 export interface AuthContextType {
   user: User | null;
-  provider: any | null;
   isLoading: boolean;
   login: (idToken: string, walletAddress: string, provider: any) => Promise<void>;
   logout: () => Promise<void>;
+}
+
+export interface Web3AuthInstanceContextType {
+  web3authInstance: Web3Auth | null;
+  web3authProvider: any | null;
+  isLoading: boolean;
+  onLogout: () => Promise<void>;
 }
 
 export interface ConfigContextType {

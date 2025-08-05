@@ -7,18 +7,20 @@ import ConnectWallet from '@/components/auth/ConnectWallet';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import USDCGuide from '@/components/ui/USDCGuide';
+import { useWeb3AuthInstance } from '@/components/auth/Web3AuthInstanceProvider';
 
 export default function BuyUSDC() {
   const router = useRouter();
-  const { user, provider, isLoading } = useAuth();
+  const { user, isLoading } = useAuth();
+  const { web3authProvider, isLoading: isWeb3AuthInstanceLoading } = useWeb3AuthInstance();
   const { config } = useConfig();
   const [showWidget, setShowWidget] = useState(false);
-  
+
   // Get mode from query params (buy or sell)
   const mode = (router.query.mode as 'buy' | 'sell') || 'buy';
   const isBuyMode = mode === 'buy';
 
-  if (isLoading) {
+  if (isLoading || isWeb3AuthInstanceLoading) {
     return (
       <div className="flex justify-center items-center min-h-96">
         <LoadingSpinner size="lg" />
@@ -26,7 +28,7 @@ export default function BuyUSDC() {
     );
   }
 
-  if (!user || !provider) {
+  if (!user || !web3authProvider) {
     return (
       <div className="max-w-md mx-auto text-center py-20">
         <h1 className="text-2xl font-bold text-gray-900 mb-4">Connect Your Wallet</h1>
@@ -51,7 +53,7 @@ export default function BuyUSDC() {
             {isBuyMode ? 'Buy USDC' : 'Sell USDC'}
           </h1>
           <p className="mt-2 text-gray-600">
-            {isBuyMode 
+            {isBuyMode
               ? 'Purchase USDC directly to your wallet using MoonPay'
               : 'Sell USDC from your wallet and receive funds using MoonPay'
             }
@@ -75,12 +77,12 @@ export default function BuyUSDC() {
                   {isBuyMode ? 'Purchase USDC' : 'Sell USDC'}
                 </h2>
                 <p className="text-gray-600">
-                  {isBuyMode 
+                  {isBuyMode
                     ? 'Buy USDC with your credit card or bank account. This feature is coming soon!'
                     : 'Sell USDC from your wallet and receive funds in your bank account. This feature is coming soon!'
                   }
                 </p>
-                
+
                 {/* Original description - commented out for later restoration
                 <p className="text-gray-600">
                   {isBuyMode 
@@ -110,7 +112,7 @@ export default function BuyUSDC() {
 
               <div className="space-y-4">
                 {/* Temporarily disabled - showing coming soon message */}
-                <Button 
+                <Button
                   onClick={() => setShowWidget(true)}
                   className="w-full bg-gray-400 hover:bg-gray-500 cursor-not-allowed"
                   size="lg"
@@ -118,7 +120,7 @@ export default function BuyUSDC() {
                 >
                   Coming Soon
                 </Button>
-                
+
                 {/* Original button - commented out for later restoration
                 <Button 
                   onClick={() => setShowWidget(true)}
@@ -128,9 +130,9 @@ export default function BuyUSDC() {
                   {isBuyMode ? 'Continue with MoonPay' : 'Continue to Sell USDC'}
                 </Button>
                 */}
-                
+
                 <div className="text-center">
-                  <button 
+                  <button
                     onClick={() => router.back()}
                     className="text-gray-500 hover:text-gray-700"
                   >
@@ -142,7 +144,7 @@ export default function BuyUSDC() {
 
             <div className="mt-8 text-center text-sm text-gray-500">
               <p>
-                Powered by MoonPay. By continuing, you agree to MoonPay's 
+                Powered by MoonPay. By continuing, you agree to MoonPay's
                 <a href="https://moonpay.com/terms_of_use" target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:text-primary-500 mx-1">
                   Terms of Use
                 </a>

@@ -2,6 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { useRouter } from 'next/router';
 import ContractList from '@/components/contracts/ContractList';
 import { useAuth } from '@/components/auth/AuthProvider';
+import { useWeb3AuthInstance } from '@/components/auth/Web3AuthInstanceProvider';
 
 // Mock dependencies
 jest.mock('next/router', () => ({
@@ -10,6 +11,10 @@ jest.mock('next/router', () => ({
 
 jest.mock('@/components/auth/AuthProvider', () => ({
   useAuth: jest.fn(),
+}));
+
+jest.mock('@/components/auth/Web3AuthInstanceProvider', () => ({
+  useWeb3AuthInstance: jest.fn(),
 }));
 
 // Mock child components
@@ -59,6 +64,12 @@ describe('ContractList', () => {
     jest.clearAllMocks();
     (useRouter as jest.Mock).mockReturnValue(mockRouter);
     (useAuth as jest.Mock).mockReturnValue({ user: mockUser });
+    (useWeb3AuthInstance as jest.Mock).mockReturnValue({
+      web3authProvider: null,
+      isLoading: false,
+      web3authInstance: null,
+      onLogout: jest.fn(),
+    });
   });
 
   afterEach(() => {
@@ -242,7 +253,7 @@ describe('ContractList', () => {
         // Should show 2 pending contract cards
         const pendingCards = screen.getAllByTestId('pending-contract-card');
         expect(pendingCards).toHaveLength(2);
-        
+
         // Should show 1 deployed contract card
         const contractCards = screen.getAllByTestId('contract-card');
         expect(contractCards).toHaveLength(1);
@@ -293,7 +304,7 @@ describe('ContractList', () => {
 
     it('should call unified endpoint once', async () => {
       const fetchTimes: number[] = [];
-      
+
       (global.fetch as jest.Mock)
         .mockImplementation(() => {
           fetchTimes.push(Date.now());

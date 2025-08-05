@@ -16,7 +16,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       method: 'POST',
       headers: {
         'Authorization': req.headers.authorization || '',
-        'X-Clear-Cookies': Array.isArray(req.headers['x-clear-cookies']) 
+        'X-Clear-Cookies': Array.isArray(req.headers['x-clear-cookies'])
           ? req.headers['x-clear-cookies'][0] || ''
           : req.headers['x-clear-cookies'] || '',
         'Content-Type': 'application/json'
@@ -26,11 +26,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     console.log('UserService response:', response.status, response.statusText);
     const data = await response.json();
-    
-    const cookies = response.headers.get('set-cookie');
-    if (cookies) {
-      res.setHeader('Set-Cookie', cookies);
-    }
+
+    const cookies = response.headers.getSetCookie();
+    cookies.forEach(cookie => {
+
+      const fixedCookie = process.env.SERVICE_LINK?.includes('localhost') ? cookie.replace('Domain=.conduit-ucpi.com;', 'Domain=localhost;') : cookie;
+      console.log('Setting cookie:', fixedCookie);
+      res.setHeader('Set-Cookie', fixedCookie);
+    });
+
 
     res.status(response.status).json(data);
   } catch (error) {

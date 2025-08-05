@@ -224,8 +224,8 @@ describe('CreateContract - microUSDC Amount Handling', () => {
         const requestOptions = await setupFormAndSubmit('0.1234567'); // More than 6 decimal places
 
         const requestBody = JSON.parse(requestOptions.body);
-        expect(requestBody.amount).toBe(123456.7); // This might cause issues!
-        expect(Number.isInteger(requestBody.amount)).toBe(false);
+        expect(requestBody.amount).toBe(123457); // Properly rounded to integer microUSDC
+        expect(Number.isInteger(requestBody.amount)).toBe(true);
       });
 
       it('should handle scientific notation input', async () => {

@@ -3,7 +3,7 @@ import { useRouter } from 'next/router';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { PendingContract, CreateContractRequest } from '@/types';
 import { Web3Service } from '@/lib/web3';
-import { formatUSDC, formatExpiryDate } from '@/utils/validation';
+import { formatCurrency, toMicroUSDC, fromMicroUSDC, formatExpiryDate, toUSDCForWeb3 } from '@/utils/validation';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 
@@ -71,22 +71,18 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
       // Check USDC balance
       setLoadingMessage('Checking USDC balance...');
       const balance = await web3Service.getUSDCBalance(userAddress);
-      // Handle both USDC and microUSDC formats
-      const requiredUSDC = typeof contract.amount === 'string' && (contract.amount as string).includes('.')
-        ? parseFloat(contract.amount as string) // Already in USDC format
-        : (contract.amount as number) / 1000000; // Convert from microUSDC to USDC
+      // Use currency utility to handle any amount/currency format
+      const requiredUSDC = formatCurrency(contract.amount, contract.currency).numericAmount;
       if (parseFloat(balance) < requiredUSDC) {
-        throw new Error(`Insufficient USDC balance. You have ${balance} USDC, need ${requiredUSDC.toFixed(2)} USDC`);
+        const displayAmount = formatCurrency(contract.amount, contract.currency);
+        throw new Error(`Insufficient USDC balance. You have ${balance} USDC, need ${displayAmount.amount} USDC`);
       }
 
       // Create on-chain contract (same as old flow)
       setLoadingMessage('Creating secure escrow...');
 
-      // Convert to microUSDC format if not already
-      // The contract.amount might be coming as USDC (0.24) instead of microUSDC (240000)
-      const amountInMicroUSDC = typeof contract.amount === 'string' && (contract.amount as string).includes('.')
-        ? Math.round(parseFloat(contract.amount as string) * 1000000)
-        : contract.amount as number;
+      // Convert to microUSDC format for blockchain operations
+      const amountInMicroUSDC = toMicroUSDC(formatCurrency(contract.amount, contract.currency).numericAmount);
       const amountInSmallestUnit = amountInMicroUSDC.toString();
 
       const contractRequest: CreateContractRequest = {
@@ -121,10 +117,8 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
 
       // USDC approval
       setLoadingMessage('Approving USDC spending for escrow...');
-      // Handle both USDC and microUSDC formats for approval
-      const usdcAmount = typeof contract.amount === 'string' && (contract.amount as string).includes('.')
-        ? contract.amount as string // Already in USDC format
-        : ((contract.amount as number) / 1000000).toString(); // Convert from microUSDC to USDC
+      // Convert to USDC format for approval (preserve precision for Web3)
+      const usdcAmount = toUSDCForWeb3(contract.amount, contract.currency);
       const approvalTx = await web3Service.signUSDCApproval(usdcAmount, contractAddress);
 
       const approvalResponse = await fetch('/api/chain/approve-usdc', {
@@ -233,7 +227,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
         <div className="space-y-3 mb-6">
           <div className="flex justify-between">
             <span className="text-gray-600">Amount:</span>
-            <span className="font-medium">${formatUSDC(contract.amount)} USDC</span>
+            <span className="font-medium">${formatCurrency(contract.amount, contract.currency).amount} USDC</span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-600">Seller:</span>
@@ -271,7 +265,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
       <div className="space-y-3 mb-6">
         <div className="flex justify-between">
           <span className="text-gray-600">Amount:</span>
-          <span className="font-medium">${formatUSDC(contract.amount)} USDC</span>
+          <span className="font-medium">${formatCurrency(contract.amount, contract.currency).amount} USDC</span>
         </div>
         <div className="flex justify-between">
           <span className="text-gray-600">Seller:</span>
@@ -285,7 +279,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
 
       <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4 mb-6">
         <p className="text-sm text-yellow-800">
-          When you make this payment, the ${formatUSDC(contract.amount)} USDC will be held securely in escrow until {formatExpiryDate(contract.expiryTimestamp)}.
+          When you make this payment, the ${formatCurrency(contract.amount, contract.currency).amount} USDC will be held securely in escrow until {formatExpiryDate(contract.expiryTimestamp)}.
         </p>
       </div>
 
@@ -294,7 +288,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
         disabled={isLoading || isSuccess}
         className={`w-full bg-primary-500 hover:bg-primary-600 ${(isLoading || isSuccess) ? 'opacity-50 cursor-not-allowed' : ''}`}
       >
-        Make Payment of ${formatUSDC(contract.amount)} USDC
+        Make Payment of ${formatCurrency(contract.amount, contract.currency).amount} USDC
       </Button>
     </div>
   );

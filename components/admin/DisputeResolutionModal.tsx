@@ -3,7 +3,7 @@ import Modal from '@/components/ui/Modal';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
-import { normalizeTimestamp } from '@/utils/validation';
+import { formatDateTime } from '@/utils/validation';
 import { useConfig } from '@/components/auth/ConfigProvider';
 
 interface AdminNote {
@@ -257,7 +257,7 @@ export default function DisputeResolutionModal({
                       <div className="flex justify-between items-start mb-2">
                         <span className="text-sm font-medium text-gray-900">{note.addedBy}</span>
                         <span className="text-xs text-gray-500">
-                          {new Date(normalizeTimestamp(note.addedAt)).toLocaleString()}
+                          {formatDateTime(note.addedAt)}
                         </span>
                       </div>
                       <p className="text-sm text-gray-700">{note.content}</p>

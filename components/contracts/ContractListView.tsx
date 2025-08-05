@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Contract, PendingContract } from '@/types';
-import { formatUSDC } from '@/utils/validation';
+import { displayCurrency, formatTimestamp } from '@/utils/validation';
 import Button from '@/components/ui/Button';
 import ExpandableHash from '@/components/ui/ExpandableHash';
 
@@ -35,25 +35,7 @@ interface ContractListViewProps {
 type SortField = 'status' | 'amount' | 'description' | 'expiryTimestamp' | 'createdAt';
 type SortDirection = 'asc' | 'desc';
 
-// Standard function to format timestamps in local timezone
-const formatTimestamp = (timestamp: number | string) => {
-  const unixTimestamp = typeof timestamp === 'string' ? parseInt(timestamp, 10) : timestamp;
-  const date = new Date(unixTimestamp * 1000);
-  
-  if (isNaN(date.getTime())) {
-    return { date: 'Invalid date', time: '' };
-  }
-  
-  return {
-    date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-    time: date.toLocaleTimeString('en-US', { 
-      hour: '2-digit', 
-      minute: '2-digit', 
-      hour12: true,
-      timeZoneName: 'short'
-    })
-  };
-};
+// Note: formatTimestamp is now imported from @/utils/validation for consistency
 
 export default function ContractListView({
   allContracts,
@@ -322,7 +304,7 @@ export default function ContractListView({
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {formatUSDC(contract.amount)}
+                    {displayCurrency(contract.amount, 'currency' in contract ? (contract as any).currency : 'microUSDC')}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-900">
                     <div className="max-w-xs truncate" title={contract.description}>

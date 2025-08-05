@@ -35,22 +35,268 @@ export function formatWalletAddress(address: string): string {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }
 
-export function formatUSDC(amount: string | number): string {
-  // USDC amounts come from chain in microUSDC (6 decimals)
-  // Convert from microUSDC to USDC by dividing by 1,000,000
-  const microUSDC = typeof amount === 'string' ? parseFloat(amount) : amount;
-  const usdc = microUSDC / 1000000;
-  return usdc.toFixed(2);
+// ===================================
+// CURRENCY UTILITIES
+// ===================================
+// Centralized currency handling functions to ensure consistency across the app
+// All functions intelligently handle both USDC and microUSDC formats
+
+/**
+ * Currency conversion and formatting utility that accepts any amount/currency combination
+ * and always returns user-displayable USDC format
+ * @param amount - Amount in either USDC or microUSDC (number or string)
+ * @param currency - Currency tag: 'USDC', 'microUSDC', or any other string
+ * @returns Object with formatted amount and normalized currency for display
+ */
+export function formatCurrency(amount: string | number, currency: string = 'microUSDC'): { 
+  amount: string; 
+  currency: 'USDC';
+  numericAmount: number;
+} {
+  const numericAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
+  
+  if (isNaN(numericAmount)) {
+    return { amount: '0.00', currency: 'USDC', numericAmount: 0 };
+  }
+
+  // Smart conversion logic:
+  // If the currency says "USDC" but the amount looks like microUSDC (> 1000), 
+  // treat it as microUSDC for backwards compatibility
+  let usdcAmount: number;
+  if (currency === 'microUSDC' || (currency === 'USDC' && numericAmount >= 1000)) {
+    // Convert from microUSDC to USDC by dividing by 1,000,000
+    usdcAmount = numericAmount / 1000000;
+  } else {
+    // Assume it's already in USDC format
+    usdcAmount = numericAmount;
+  }
+
+  return {
+    amount: usdcAmount.toFixed(2),
+    currency: 'USDC',
+    numericAmount: usdcAmount
+  };
 }
 
+/**
+ * Legacy formatUSDC function - maintained for backwards compatibility
+ * @deprecated Use formatCurrency instead for explicit currency handling
+ * @param amount - Amount in microUSDC format
+ * @returns Formatted USDC string (e.g., "1.50")
+ */
+export function formatUSDC(amount: string | number): string {
+  return formatCurrency(amount, 'microUSDC').amount;
+}
+
+/**
+ * Convert USDC amount to microUSDC for backend communication
+ * @param amount - Amount in USDC (number or string)
+ * @returns Amount in microUSDC format
+ */
+export function toMicroUSDC(amount: string | number): number {
+  const usdcAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
+  if (isNaN(usdcAmount)) {
+    return 0;
+  }
+  return Math.round(usdcAmount * 1000000);
+}
+
+/**
+ * Convert microUSDC amount to USDC for display
+ * @param amount - Amount in microUSDC (number or string) 
+ * @returns Amount in USDC format
+ */
+export function fromMicroUSDC(amount: string | number): number {
+  const microUSDCAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
+  if (isNaN(microUSDCAmount)) {
+    return 0;
+  }
+  return microUSDCAmount / 1000000;
+}
+
+/**
+ * Convert amount to USDC for Web3 operations (preserves precision, no formatting)
+ * @param amount - Amount in any format
+ * @param currency - Currency tag from backend
+ * @returns USDC amount as string with original precision
+ */
+export function toUSDCForWeb3(amount: string | number, currency: string = 'microUSDC'): string {
+  const numericAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
+  
+  if (isNaN(numericAmount)) {
+    return '0';
+  }
+
+  // Smart conversion logic (same as formatCurrency)
+  let usdcAmount: number;
+  if (currency === 'microUSDC' || (currency === 'USDC' && numericAmount >= 1000)) {
+    // Convert from microUSDC to USDC by dividing by 1,000,000
+    usdcAmount = numericAmount / 1000000;
+  } else {
+    // Assume it's already in USDC format
+    usdcAmount = numericAmount;
+  }
+
+  // Return as string but preserve precision (no fixed decimal places)
+  return usdcAmount.toString();
+}
+
+/**
+ * Smart currency display formatter - handles any input and returns display-ready values
+ * This is the recommended function to use throughout the app
+ * @param amount - Amount in any format
+ * @param currency - Currency tag from backend
+ * @returns Display-ready formatted string with currency symbol
+ */
+export function displayCurrency(amount: string | number, currency: string = 'microUSDC'): string {
+  const formatted = formatCurrency(amount, currency);
+  return `$${formatted.amount}`;
+}
+
+// ===================================
+// DATETIME UTILITIES
+// ===================================
+// Centralized datetime handling functions to ensure consistency across the app
+// All functions intelligently handle both Unix seconds and milliseconds timestamps
+
+/**
+ * Normalizes timestamp to milliseconds, handling both seconds and milliseconds input
+ * @param timestamp - Unix timestamp in seconds or milliseconds (number or string)
+ * @returns Unix timestamp in milliseconds
+ */
 export function normalizeTimestamp(timestamp: number | string): number {
   // Convert to number if it's a string
   const ts = typeof timestamp === 'string' ? parseInt(timestamp, 10) : timestamp;
+  if (isNaN(ts)) {
+    throw new Error('Invalid timestamp provided');
+  }
   // If it's 10 digits or less, it's in seconds - convert to milliseconds
   return ts.toString().length <= 10 ? ts * 1000 : ts;
 }
 
-export function formatTimeRemaining(expiryTimestamp: number): string {
+/**
+ * Formats timestamp as user-readable date and time with timezone
+ * @param timestamp - Unix timestamp in seconds or milliseconds
+ * @param options - Optional formatting options
+ * @returns Formatted date string (e.g., "01-Jan-2024 14:30 GMT")
+ */
+export function formatDateTime(timestamp: number | string, options?: {
+  includeTime?: boolean;
+  includeTimezone?: boolean;
+  dateStyle?: 'short' | 'medium' | 'long';
+  timeStyle?: 'short' | 'medium';
+}): string {
+  const {
+    includeTime = true,
+    includeTimezone = true,
+    dateStyle = 'medium',
+    timeStyle = 'short'
+  } = options || {};
+
+  const date = new Date(normalizeTimestamp(timestamp));
+  
+  if (isNaN(date.getTime())) {
+    return 'Invalid date';
+  }
+  
+  // Get the user's timezone
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  
+  // Build format options
+  const formatOptions: Intl.DateTimeFormatOptions = {
+    timeZone: timeZone
+  };
+
+  // Date formatting
+  if (dateStyle === 'short') {
+    formatOptions.day = '2-digit';
+    formatOptions.month = '2-digit';
+    formatOptions.year = 'numeric';
+  } else if (dateStyle === 'medium') {
+    formatOptions.day = '2-digit';
+    formatOptions.month = 'short';
+    formatOptions.year = 'numeric';
+  } else { // long
+    formatOptions.day = 'numeric';
+    formatOptions.month = 'long';
+    formatOptions.year = 'numeric';
+  }
+
+  // Time formatting
+  if (includeTime) {
+    if (timeStyle === 'short') {
+      formatOptions.hour = '2-digit';
+      formatOptions.minute = '2-digit';
+      formatOptions.hour12 = false;
+    } else { // medium
+      formatOptions.hour = '2-digit';
+      formatOptions.minute = '2-digit';
+      formatOptions.second = '2-digit';
+      formatOptions.hour12 = false;
+    }
+  }
+  
+  let formattedDate = date.toLocaleDateString('en-GB', formatOptions);
+  
+  // Add timezone abbreviation if requested
+  if (includeTime && includeTimezone) {
+    const timeZoneAbbr = date.toLocaleTimeString('en-US', {
+      timeZoneName: 'short',
+      timeZone: timeZone
+    }).split(' ').pop();
+    
+    formattedDate += ` ${timeZoneAbbr}`;
+  }
+  
+  return formattedDate;
+}
+
+/**
+ * Formats timestamp as date only (no time)
+ * @param timestamp - Unix timestamp in seconds or milliseconds  
+ * @param style - Date formatting style
+ * @returns Formatted date string (e.g., "01-Jan-2024")
+ */
+export function formatDate(timestamp: number | string, style: 'short' | 'medium' | 'long' = 'medium'): string {
+  return formatDateTime(timestamp, { 
+    includeTime: false, 
+    includeTimezone: false,
+    dateStyle: style 
+  });
+}
+
+/**
+ * Formats timestamp for table/list display with date and time on separate lines
+ * @param timestamp - Unix timestamp in seconds or milliseconds
+ * @returns Object with formatted date and time strings
+ */
+export function formatTimestamp(timestamp: number | string): { date: string; time: string } {
+  const date = new Date(normalizeTimestamp(timestamp));
+  
+  if (isNaN(date.getTime())) {
+    return { date: 'Invalid date', time: '' };
+  }
+  
+  return {
+    date: date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric', 
+      year: 'numeric' 
+    }),
+    time: date.toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: false
+    })
+  };
+}
+
+/**
+ * Formats remaining time until expiry
+ * @param expiryTimestamp - Unix timestamp in seconds or milliseconds
+ * @returns Human-readable time remaining (e.g., "2d 5h 30m" or "Expired")
+ */
+export function formatTimeRemaining(expiryTimestamp: number | string): string {
   const now = Date.now();
   const expiry = normalizeTimestamp(expiryTimestamp);
   const diff = expiry - now;
@@ -72,32 +318,28 @@ export function formatTimeRemaining(expiryTimestamp: number): string {
   }
 }
 
-export function formatExpiryDate(expiryTimestamp: number): string {
-  const date = new Date(normalizeTimestamp(expiryTimestamp));
-  
-  // Get the user's timezone
-  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  
-  // Format the date in DD-MMM-YYYY HH:mm format
-  const options: Intl.DateTimeFormatOptions = {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-    timeZone: timeZone
-  };
-  
-  const formattedDate = date.toLocaleDateString('en-GB', options);
-  
-  // Get timezone abbreviation
-  const timeZoneAbbr = date.toLocaleTimeString('en-US', {
-    timeZoneName: 'short',
-    timeZone: timeZone
-  }).split(' ').pop();
-  
-  return `${formattedDate} ${timeZoneAbbr}`;
+/**
+ * Formats expiry date with full date, time and timezone (legacy compatibility)
+ * @param expiryTimestamp - Unix timestamp in seconds or milliseconds
+ * @returns Formatted expiry date string
+ */
+export function formatExpiryDate(expiryTimestamp: number | string): string {
+  return formatDateTime(expiryTimestamp, { 
+    includeTime: true, 
+    includeTimezone: true,
+    dateStyle: 'medium',
+    timeStyle: 'short'
+  });
+}
+
+/**
+ * Check if a timestamp represents an expired date
+ * @param timestamp - Unix timestamp in seconds or milliseconds
+ * @returns true if the timestamp is in the past
+ */
+export function isExpired(timestamp: number | string): boolean {
+  const normalized = normalizeTimestamp(timestamp);
+  return Date.now() > normalized;
 }
 
 export type ContractCTAType = 

@@ -3,7 +3,7 @@ import { useRouter } from 'next/router';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { Web3Service } from '@/lib/web3';
-import { isValidEmail, isValidAmount, isValidDescription } from '@/utils/validation';
+import { isValidEmail, isValidAmount, isValidDescription, toMicroUSDC } from '@/utils/validation';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
@@ -134,7 +134,7 @@ export default function CreateContract() {
         buyerEmail: form.buyerEmail,
         sellerEmail: user?.email || '', // Get from authenticated user
         sellerAddress: userAddress,
-        amount: parseFloat(form.amount.trim()) * 1000000, // Convert to microUSDC format
+        amount: toMicroUSDC(form.amount.trim()), // Convert to microUSDC format
         currency: 'microUSDC',
         description: form.description,
         expiryTimestamp,

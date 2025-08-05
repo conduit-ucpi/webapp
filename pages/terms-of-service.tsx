@@ -1,3 +1,5 @@
+import { formatDate } from '@/utils/validation';
+
 export default function TermsOfService() {
   return (
     <div className="py-10">
@@ -6,7 +8,7 @@ export default function TermsOfService() {
           <h1 className="text-3xl font-bold text-gray-900 mb-8">Terms of Service</h1>
           
           <p className="text-gray-600 mb-6">
-            <strong>Last Updated:</strong> {new Date().toLocaleDateString()}
+            <strong>Last Updated:</strong> {formatDate(Date.now())}
           </p>
 
           <section className="mb-8">

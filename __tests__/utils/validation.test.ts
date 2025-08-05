@@ -8,7 +8,12 @@ import {
   isValidDescription,
   isValidEmail,
   formatWalletAddress,
-  formatUSDC
+  formatUSDC,
+  formatCurrency,
+  displayCurrency,
+  toMicroUSDC,
+  fromMicroUSDC,
+  toUSDCForWeb3
 } from '../../utils/validation';
 
 describe('validation utils', () => {
@@ -325,6 +330,154 @@ describe('validation utils', () => {
         const result = formatUSDC(microUSDC);
         expect(result).toBe('0.01');
       });
+    });
+  });
+
+  describe('formatCurrency', () => {
+    it('should handle microUSDC amounts correctly', () => {
+      const result = formatCurrency(1500000, 'microUSDC');
+      expect(result.amount).toBe('1.50');
+      expect(result.currency).toBe('USDC');
+      expect(result.numericAmount).toBe(1.5);
+    });
+
+    it('should handle USDC amounts correctly', () => {
+      const result = formatCurrency(1.50, 'USDC');
+      expect(result.amount).toBe('1.50');
+      expect(result.currency).toBe('USDC');
+      expect(result.numericAmount).toBe(1.5);
+    });
+
+    it('should default to microUSDC when currency not specified', () => {
+      const result = formatCurrency(250000);
+      expect(result.amount).toBe('0.25');
+      expect(result.currency).toBe('USDC');
+    });
+
+    it('should handle string amounts', () => {
+      const result = formatCurrency('1000000', 'microUSDC');
+      expect(result.amount).toBe('1.00');
+      expect(result.currency).toBe('USDC');
+    });
+
+    it('should handle invalid amounts gracefully', () => {
+      const result = formatCurrency('invalid', 'microUSDC');
+      expect(result.amount).toBe('0.00');
+      expect(result.currency).toBe('USDC');
+      expect(result.numericAmount).toBe(0);
+    });
+
+    it('should handle unknown currency tags as USDC', () => {
+      const result = formatCurrency(1.50, 'UNKNOWN');
+      expect(result.amount).toBe('1.50');
+      expect(result.currency).toBe('USDC');
+    });
+
+    it('should smart-detect microUSDC amounts with USDC currency tag (legacy compatibility)', () => {
+      // Large amounts with "USDC" tag are likely microUSDC
+      const result = formatCurrency(250000, 'USDC');
+      expect(result.amount).toBe('0.25');
+      expect(result.currency).toBe('USDC');
+      expect(result.numericAmount).toBe(0.25);
+    });
+
+    it('should handle small amounts with USDC currency tag as actual USDC', () => {
+      // Small amounts with "USDC" tag are likely actual USDC
+      const result = formatCurrency(1.50, 'USDC');
+      expect(result.amount).toBe('1.50');
+      expect(result.currency).toBe('USDC');
+      expect(result.numericAmount).toBe(1.5);
+    });
+  });
+
+  describe('displayCurrency', () => {
+    it('should format microUSDC with dollar sign', () => {
+      const result = displayCurrency(1500000, 'microUSDC');
+      expect(result).toBe('$1.50');
+    });
+
+    it('should format USDC with dollar sign', () => {
+      const result = displayCurrency(1.50, 'USDC');
+      expect(result).toBe('$1.50');
+    });
+
+    it('should default to microUSDC', () => {
+      const result = displayCurrency(250000);
+      expect(result).toBe('$0.25');
+    });
+  });
+
+  describe('toMicroUSDC', () => {
+    it('should convert USDC to microUSDC', () => {
+      expect(toMicroUSDC(1.50)).toBe(1500000);
+      expect(toMicroUSDC(0.25)).toBe(250000);
+      expect(toMicroUSDC(1)).toBe(1000000);
+    });
+
+    it('should handle string input', () => {
+      expect(toMicroUSDC('1.50')).toBe(1500000);
+      expect(toMicroUSDC('0.25')).toBe(250000);
+    });
+
+    it('should handle invalid input', () => {
+      expect(toMicroUSDC('invalid')).toBe(0);
+      expect(toMicroUSDC(NaN)).toBe(0);
+    });
+
+    it('should round to avoid floating point precision issues', () => {
+      expect(toMicroUSDC(0.1 + 0.2)).toBe(300000); // 0.3 USDC
+    });
+  });
+
+  describe('fromMicroUSDC', () => {
+    it('should convert microUSDC to USDC', () => {
+      expect(fromMicroUSDC(1500000)).toBe(1.5);
+      expect(fromMicroUSDC(250000)).toBe(0.25);
+      expect(fromMicroUSDC(1000000)).toBe(1);
+    });
+
+    it('should handle string input', () => {
+      expect(fromMicroUSDC('1500000')).toBe(1.5);
+      expect(fromMicroUSDC('250000')).toBe(0.25);
+    });
+
+    it('should handle invalid input', () => {
+      expect(fromMicroUSDC('invalid')).toBe(0);
+      expect(fromMicroUSDC(NaN)).toBe(0);
+    });
+
+    it('should handle very small amounts', () => {
+      expect(fromMicroUSDC(1)).toBe(0.000001);
+    });
+  });
+
+  describe('toUSDCForWeb3', () => {
+    it('should convert microUSDC to USDC string preserving precision', () => {
+      expect(toUSDCForWeb3(123456, 'microUSDC')).toBe('0.123456');
+      expect(toUSDCForWeb3(5000000, 'microUSDC')).toBe('5');
+      expect(toUSDCForWeb3(12345678, 'microUSDC')).toBe('12.345678');
+    });
+
+    it('should handle USDC amounts correctly', () => {
+      expect(toUSDCForWeb3(1.50, 'USDC')).toBe('1.5');
+      expect(toUSDCForWeb3(5, 'USDC')).toBe('5');
+    });
+
+    it('should smart-detect microUSDC with USDC currency tag', () => {
+      expect(toUSDCForWeb3(250000, 'USDC')).toBe('0.25');
+      expect(toUSDCForWeb3(5000000, 'USDC')).toBe('5');
+    });
+
+    it('should handle invalid input', () => {
+      expect(toUSDCForWeb3('invalid', 'microUSDC')).toBe('0');
+      expect(toUSDCForWeb3(NaN)).toBe('0');
+    });
+
+    it('should preserve precision for Web3 operations', () => {
+      // This is specifically for the failing test case
+      expect(toUSDCForWeb3(123456, 'microUSDC')).toBe('0.123456');
+      expect(toUSDCForWeb3(5000000, 'microUSDC')).toBe('5');
+      expect(toUSDCForWeb3(12345678, 'microUSDC')).toBe('12.345678');
     });
   });
 });

@@ -4,7 +4,7 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 import ExpandableHash from '@/components/ui/ExpandableHash';
-import { formatUSDC, formatExpiryDate, normalizeTimestamp } from '@/utils/validation';
+import { displayCurrency, formatExpiryDate, formatDate, normalizeTimestamp } from '@/utils/validation';
 
 // Extended type for admin contracts that includes chain data and blockchain status
 type AdminContract = PendingContract & {
@@ -149,8 +149,8 @@ export default function AdminContractList({ onContractSelect }: AdminContractLis
 
       // Handle special cases
       if (sortField === 'createdAt') {
-        aValue = new Date(aValue).getTime();
-        bValue = new Date(bValue).getTime();
+        aValue = normalizeTimestamp(aValue);
+        bValue = normalizeTimestamp(bValue);
       }
 
       if (sortField === 'amount') {
@@ -353,10 +353,10 @@ export default function AdminContractList({ onContractSelect }: AdminContractLis
                   onClick={() => onContractSelect?.(contract)}
                 >
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {new Date(normalizeTimestamp(contract.createdAt)).toLocaleDateString()}
+                    {formatDate(contract.createdAt)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    ${formatUSDC(contract.amount)} {contract.currency}
+                    {displayCurrency(contract.amount, contract.currency)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {contract.sellerEmail}

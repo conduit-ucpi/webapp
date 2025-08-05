@@ -1,7 +1,7 @@
 import { Contract, PendingContract } from '@/types';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { useConfig } from '@/components/auth/ConfigProvider';
-import { formatUSDC, formatExpiryDate } from '@/utils/validation';
+import { displayCurrency, formatExpiryDate } from '@/utils/validation';
 import ContractActions from './ContractActions';
 import ExpandableHash from '@/components/ui/ExpandableHash';
 
@@ -133,7 +133,7 @@ export default function ContractCard({ contract, onAction, onAccept, isClaimingI
         </div>
         <div className="text-right">
           <div className="text-2xl font-bold text-gray-900">
-            ${formatUSDC(contract.amount)}
+            {displayCurrency(contract.amount, 'currency' in contract ? contract.currency : 'microUSDC')}
           </div>
           <div className="text-sm text-gray-600">USDC</div>
         </div>

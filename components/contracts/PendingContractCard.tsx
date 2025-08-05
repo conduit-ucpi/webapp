@@ -1,5 +1,5 @@
 import { PendingContract } from '@/types';
-import { formatUSDC, formatExpiryDate } from '@/utils/validation';
+import { displayCurrency, formatExpiryDate } from '@/utils/validation';
 import Button from '@/components/ui/Button';
 import ExpandableHash from '@/components/ui/ExpandableHash';
 
@@ -59,7 +59,7 @@ export default function PendingContractCard({
         </div>
         <div className="text-right">
           <div className="text-2xl font-bold text-gray-900">
-            ${formatUSDC(contract.amount)}
+            {displayCurrency(contract.amount, contract.currency)}
           </div>
           <div className="text-sm text-gray-600">USDC</div>
         </div>

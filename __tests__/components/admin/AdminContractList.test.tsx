@@ -39,6 +39,22 @@ jest.mock('@/utils/validation', () => ({
   normalizeTimestamp: (timestamp: number | string) => {
     const ts = typeof timestamp === 'string' ? parseInt(timestamp, 10) : timestamp;
     return ts.toString().length <= 10 ? ts * 1000 : ts;
+  },
+  formatDate: (timestamp: number | string) => {
+    const ts = typeof timestamp === 'string' ? parseInt(timestamp, 10) : timestamp;
+    const msTimestamp = ts.toString().length <= 10 ? ts * 1000 : ts;
+    return new Date(msTimestamp).toLocaleDateString();
+  },
+  displayCurrency: (amount: number | string, currency: string) => {
+    const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
+    // Smart detection for microUSDC
+    let usdc;
+    if (currency === 'microUSDC' || (currency === 'USDC' && numAmount >= 1000)) {
+      usdc = numAmount / 1000000;
+    } else {
+      usdc = numAmount;
+    }
+    return `$${usdc.toFixed(2)} USDC`;
   }
 }));
 
@@ -53,7 +69,7 @@ const mockContracts: PendingContract[] = [
     id: '1',
     sellerEmail: 'seller1@example.com',
     buyerEmail: 'buyer1@example.com',
-    amount: 1000,
+    amount: 1000000000,
     currency: 'USDC',
     sellerAddress: '0xseller1',
     expiryTimestamp: 1753749402,
@@ -66,7 +82,7 @@ const mockContracts: PendingContract[] = [
   {
     id: '2',
     sellerEmail: 'seller2@example.com',
-    amount: 2000,
+    amount: 2000000000,
     currency: 'USDC',
     sellerAddress: '0xseller2',
     expiryTimestamp: 1753749402,
@@ -174,7 +190,7 @@ describe('AdminContractList', () => {
           buyerAddress: '0xbuyer1',
           sellerAddress: '0xseller1',
           status: 'ACTIVE',
-          amount: 1000,
+          amount: 1000000000,
           expiryTimestamp: 1753749402,
           funded: true
         }
@@ -212,7 +228,7 @@ describe('AdminContractList', () => {
           buyerAddress: '0xbuyer1',
           sellerAddress: '0xseller1',
           status: 'ACTIVE',
-          amount: 1000,
+          amount: 1000000000,
           expiryTimestamp: 1753749402,
           funded: true
         }
@@ -384,7 +400,7 @@ describe('AdminContractList', () => {
       ...mockContracts[0],
       id: `contract-${i}`,
       sellerEmail: `seller${i}@example.com`,
-      amount: 1000 + i,
+      amount: 1000000000 + i * 1000000,
       chainAddress: undefined
     }));
 

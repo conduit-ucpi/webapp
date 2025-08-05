@@ -20,7 +20,7 @@ export default function PendingContractCard({
   const canAccept = isBuyer && 
                    !contract.chainAddress && 
                    !isExpired && 
-                   (contract.state === 'OK' || contract.state === 'PENDING' || contract.state === 'WAITING_FOR_FUNDS');
+                   contract.state === 'OK';
 
   const getStatusDisplay = () => {
     if (contract.chainAddress) {

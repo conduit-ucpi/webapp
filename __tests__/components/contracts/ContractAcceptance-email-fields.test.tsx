@@ -83,7 +83,7 @@ describe('ContractAcceptance - Email Fields', () => {
       sellerEmail: 'seller@test.com',
       buyerEmail: 'buyer@test.com',
       amount: 1000000, // 1 USDC
-      currency: 'microUSDC',
+      currency: 'USDC',
       sellerAddress: '0xSellerAddress',
       expiryTimestamp: Math.floor(Date.now() / 1000) + 86400,
       description: 'Test contract with emails',
@@ -152,7 +152,7 @@ describe('ContractAcceptance - Email Fields', () => {
       buyerEmail: 'buyer@test.com',
       sellerEmail: 'seller@test.com',
       amount: '1000000',
-      currency: 'microUSDC',
+      currency: 'USDC',
       payoutDateTime: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/),
       contractDescription: expect.any(String),
       contractLink: 'http://localhost:3000'
@@ -165,7 +165,7 @@ describe('ContractAcceptance - Email Fields', () => {
       sellerEmail: 'seller@test.com',
       // buyerEmail is optional and missing
       amount: 1000000,
-      currency: 'microUSDC',
+      currency: 'USDC',
       sellerAddress: '0xSellerAddress',
       expiryTimestamp: Math.floor(Date.now() / 1000) + 86400,
       description: 'Test contract without buyer email',
@@ -232,7 +232,7 @@ describe('ContractAcceptance - Email Fields', () => {
       contractId: 'test-contract-456',
       sellerEmail: 'seller@test.com',
       amount: '1000000',
-      currency: 'microUSDC',
+      currency: 'USDC',
       payoutDateTime: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/),
       contractDescription: expect.any(String),
       contractLink: 'http://localhost:3000'

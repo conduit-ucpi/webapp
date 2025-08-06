@@ -1,8 +1,12 @@
 import { useState, useMemo } from 'react';
-import { Contract, PendingContract } from '@/types';
-import { displayCurrency, formatTimestamp } from '@/utils/validation';
+import { Contract, PendingContract, RaiseDisputeRequest } from '@/types';
+import { displayCurrency, formatTimestamp, getContractCTA, toUSDCForWeb3 } from '@/utils/validation';
 import Button from '@/components/ui/Button';
+import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import ExpandableHash from '@/components/ui/ExpandableHash';
+import { useAuth } from '@/components/auth/AuthProvider';
+import { useConfig } from '@/components/auth/ConfigProvider';
+import { Web3Service } from '@/lib/web3';
 
 interface UnifiedContract {
   id: string;
@@ -46,10 +50,14 @@ export default function ContractListView({
   onClaimStart,
   onClaimComplete
 }: ContractListViewProps) {
+  const { user } = useAuth();
+  const { config } = useConfig();
   const [sortField, setSortField] = useState<SortField>('createdAt');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [searchTerm, setSearchTerm] = useState('');
+  const [loadingStates, setLoadingStates] = useState<Record<string, boolean>>({});
+  const [loadingMessages, setLoadingMessages] = useState<Record<string, string>>({});
 
   // Unify contract data for table display
   const unifiedContracts: UnifiedContract[] = useMemo(() => {
@@ -189,13 +197,206 @@ export default function ContractListView({
     }
   };
 
-  const canAcceptContract = (contract: UnifiedContract) => {
-    const now = Math.floor(Date.now() / 1000); // Current time in seconds
-    const expiryTimestamp = typeof contract.expiryTimestamp === 'string' ? parseInt(contract.expiryTimestamp, 10) : contract.expiryTimestamp;
-    return contract.type === 'pending' && 
-           contract.buyerEmail === currentUserEmail && 
-           (contract.status === 'PENDING' || contract.status === 'WAITING_FOR_FUNDS') &&
-           expiryTimestamp > now;
+  const handleRaiseDispute = async (contractAddress: string, originalContract: Contract) => {
+    if (!config || !user || loadingStates[contractAddress]) return;
+
+    setLoadingStates(prev => ({ ...prev, [contractAddress]: true }));
+    setLoadingMessages(prev => ({ ...prev, [contractAddress]: 'Initializing...' }));
+    
+    try {
+      const web3authProvider = (window as any).web3authProvider;
+      if (!web3authProvider) {
+        throw new Error('Wallet not connected');
+      }
+
+      const web3Service = new Web3Service(config);
+      await web3Service.initializeProvider(web3authProvider);
+      const userAddress = await web3Service.getUserAddress();
+
+      setLoadingMessages(prev => ({ ...prev, [contractAddress]: 'Signing dispute transaction...' }));
+      const signedTx = await web3Service.signDisputeTransaction(contractAddress);
+
+      setLoadingMessages(prev => ({ ...prev, [contractAddress]: 'Raising dispute...' }));
+      const disputeRequest: RaiseDisputeRequest = {
+        contractAddress,
+        userWalletAddress: userAddress,
+        signedTransaction: signedTx,
+        buyerEmail: originalContract.buyerEmail || user.email,
+        sellerEmail: originalContract.sellerEmail,
+        payoutDateTime: new Date(originalContract.expiryTimestamp * 1000).toISOString(),
+        amount: toUSDCForWeb3(originalContract.amount, 'microUSDC'),
+        currency: "microUSDC",
+        contractDescription: originalContract.description,
+        productName: process.env.PRODUCT_NAME || originalContract.description,
+        serviceLink: config.serviceLink
+      };
+
+      const response = await fetch('/api/chain/raise-dispute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(disputeRequest)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to raise dispute');
+      }
+
+      const result = await response.json();
+      if (!result.success) {
+        throw new Error(result.error || 'Dispute failed');
+      }
+
+      onAction();
+    } catch (error: any) {
+      console.error('Dispute failed:', error);
+      alert(error.message || 'Failed to raise dispute');
+      setLoadingStates(prev => ({ ...prev, [contractAddress]: false }));
+      setLoadingMessages(prev => ({ ...prev, [contractAddress]: '' }));
+    }
+  };
+
+  const handleClaimFunds = async (contractAddress: string) => {
+    if (!config || !user || loadingStates[contractAddress] || isClaimingInProgress) return;
+
+    setLoadingStates(prev => ({ ...prev, [contractAddress]: true }));
+    setLoadingMessages(prev => ({ ...prev, [contractAddress]: 'Initializing...' }));
+    onClaimStart?.();
+    
+    try {
+      const web3authProvider = (window as any).web3authProvider;
+      if (!web3authProvider) {
+        throw new Error('Wallet not connected');
+      }
+
+      const web3Service = new Web3Service(config);
+      await web3Service.initializeProvider(web3authProvider);
+      const userAddress = await web3Service.getUserAddress();
+
+      setLoadingMessages(prev => ({ ...prev, [contractAddress]: 'Signing claim transaction...' }));
+      const signedTx = await web3Service.signClaimTransaction(contractAddress);
+
+      setLoadingMessages(prev => ({ ...prev, [contractAddress]: 'Claiming funds...' }));
+      const response = await fetch('/api/chain/claim-funds', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contractAddress,
+          userWalletAddress: userAddress,
+          signedTransaction: signedTx
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to claim funds');
+      }
+
+      const result = await response.json();
+      if (!result.success) {
+        throw new Error(result.error || 'Claim failed');
+      }
+
+      onAction();
+      onClaimComplete?.();
+    } catch (error: any) {
+      console.error('Claim failed:', error);
+      alert(error.message || 'Failed to claim funds');
+      setLoadingStates(prev => ({ ...prev, [contractAddress]: false }));
+      setLoadingMessages(prev => ({ ...prev, [contractAddress]: '' }));
+      onClaimComplete?.();
+    }
+  };
+
+  const renderContractAction = (contract: UnifiedContract) => {
+    const isPending = contract.type === 'pending';
+    const isBuyer = isPending 
+      ? contract.buyerEmail === user?.email
+      : user?.walletAddress?.toLowerCase() === contract.buyerAddress?.toLowerCase();
+    const isSeller = isPending
+      ? contract.sellerEmail === user?.email  
+      : user?.walletAddress?.toLowerCase() === contract.sellerAddress?.toLowerCase();
+
+    const contractStatus = isPending ? undefined : contract.status;
+    const isExpired = isPending ? Date.now() / 1000 > contract.expiryTimestamp : false;
+    const contractState = isPending ? (contract.originalContract as PendingContract).state : undefined;
+    
+    const ctaInfo = getContractCTA(contractStatus, isBuyer, isSeller, isPending, isExpired, contractState);
+    const isLoading = loadingStates[contract.id];
+    const loadingMessage = loadingMessages[contract.id];
+
+    switch (ctaInfo.type) {
+      case 'RAISE_DISPUTE':
+        return (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleRaiseDispute(contract.contractAddress!, contract.originalContract as Contract)}
+            disabled={isLoading}
+            className={`border-red-300 text-red-700 hover:bg-red-50 ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+          >
+            {isLoading ? (
+              <>
+                <LoadingSpinner className="w-4 h-4 mr-1" />
+                <span className="text-xs">{loadingMessage}</span>
+              </>
+            ) : (
+              ctaInfo.label
+            )}
+          </Button>
+        );
+
+      case 'CLAIM_FUNDS':
+        const isDisabled = isLoading || isClaimingInProgress;
+        return (
+          <Button
+            size="sm"
+            onClick={() => handleClaimFunds(contract.contractAddress!)}
+            disabled={isDisabled}
+            className={`bg-green-600 hover:bg-green-700 ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+          >
+            {isLoading ? (
+              <>
+                <LoadingSpinner className="w-4 h-4 mr-1" />
+                <span className="text-xs">{loadingMessage}</span>
+              </>
+            ) : isClaimingInProgress ? (
+              <span className="text-xs">Claim in progress...</span>
+            ) : (
+              ctaInfo.label
+            )}
+          </Button>
+        );
+
+      case 'ACCEPT_CONTRACT':
+        if (!onAccept || !isPending) return null;
+        return (
+          <Button
+            size="sm"
+            onClick={() => onAccept(contract.id)}
+            className="bg-primary-500 hover:bg-primary-600"
+          >
+            {ctaInfo.label}
+          </Button>
+        );
+
+      case 'AWAITING_FUNDING':
+      case 'PENDING_ACCEPTANCE':
+      case 'PENDING_RESOLUTION':
+        return (
+          <span className="text-xs text-gray-600">{ctaInfo.label}</span>
+        );
+
+      case 'RESOLVED':
+      case 'CLAIMED':
+        return (
+          <span className="text-xs text-green-600 font-medium">{ctaInfo.label}</span>
+        );
+
+      case 'NONE':
+      default:
+        return null;
+    }
   };
 
   return (
@@ -356,23 +557,15 @@ export default function ContractListView({
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    {canAcceptContract(contract) && (
-                      <Button
-                        onClick={() => onAccept(contract.id)}
-                        size="sm"
-                        className="bg-green-600 hover:bg-green-700 text-white"
-                      >
-                        Accept
-                      </Button>
-                    )}
-                    {contract.contractAddress && (
-                      <div className="mt-1">
+                    <div className="flex flex-col space-y-1">
+                      {renderContractAction(contract)}
+                      {contract.contractAddress && (
                         <ExpandableHash 
                           hash={contract.contractAddress}
                           className="text-xs"
                         />
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

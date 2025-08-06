@@ -1,12 +1,9 @@
 import { useState, useMemo } from 'react';
-import { Contract, PendingContract, RaiseDisputeRequest } from '@/types';
-import { displayCurrency, formatTimestamp, getContractCTA, toUSDCForWeb3 } from '@/utils/validation';
-import Button from '@/components/ui/Button';
-import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import { Contract, PendingContract } from '@/types';
+import { displayCurrency, formatTimestamp } from '@/utils/validation';
 import ExpandableHash from '@/components/ui/ExpandableHash';
-import { useAuth } from '@/components/auth/AuthProvider';
-import { useConfig } from '@/components/auth/ConfigProvider';
-import { Web3Service } from '@/lib/web3';
+import ContractActions from './ContractActions';
+import Button from '@/components/ui/Button';
 
 interface UnifiedContract {
   id: string;
@@ -505,7 +502,7 @@ export default function ContractListView({
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {displayCurrency(contract.amount, 'currency' in contract ? (contract as any).currency : 'microUSDC')}
+                    {displayCurrency(contract.amount, 'currency' in contract.originalContract ? contract.originalContract.currency : 'microUSDC')}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-900">
                     <div className="max-w-xs truncate" title={contract.description}>

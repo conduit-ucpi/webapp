@@ -1,7 +1,7 @@
 import { Contract, PendingContract } from '@/types';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { useConfig } from '@/components/auth/ConfigProvider';
-import { displayCurrency, formatExpiryDate } from '@/utils/validation';
+import { displayCurrency, formatTimestamp } from '@/utils/validation';
 import ContractActions from './ContractActions';
 import ExpandableHash from '@/components/ui/ExpandableHash';
 
@@ -169,7 +169,7 @@ export default function ContractCard({ contract, onAction, onAccept, isClaimingI
         <div className="flex justify-between text-sm">
           <span className="text-gray-600">Payout at:</span>
           <span className="font-semibold">
-            {formatExpiryDate(contract.expiryTimestamp)}
+            {formatTimestamp(contract.expiryTimestamp).date} {formatTimestamp(contract.expiryTimestamp).time}
           </span>
         </div>
       </div>

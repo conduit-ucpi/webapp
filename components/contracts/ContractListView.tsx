@@ -352,20 +352,41 @@ export default function ContractListView({
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex flex-col space-y-1">
-                      <ContractActions
-                        contract={contract.originalContract}
-                        isBuyer={contract.type === 'pending' 
+                      {(() => {
+                        const isBuyer = contract.type === 'pending' 
                           ? contract.buyerEmail === user?.email
-                          : user?.walletAddress?.toLowerCase() === contract.buyerAddress?.toLowerCase()}
-                        isSeller={contract.type === 'pending'
+                          : user?.walletAddress?.toLowerCase() === contract.buyerAddress?.toLowerCase();
+                        const isSeller = contract.type === 'pending'
                           ? contract.sellerEmail === user?.email  
-                          : user?.walletAddress?.toLowerCase() === contract.sellerAddress?.toLowerCase()}
-                        onAction={onAction}
-                        onAccept={onAccept}
-                        isClaimingInProgress={isClaimingInProgress}
-                        onClaimStart={onClaimStart}
-                        onClaimComplete={onClaimComplete}
-                      />
+                          : user?.walletAddress?.toLowerCase() === contract.sellerAddress?.toLowerCase();
+                        
+                        console.log('ContractListView Debug:', {
+                          contractId: contract.id,
+                          contractType: contract.type,
+                          contractStatus: contract.status,
+                          userEmail: user?.email,
+                          userWallet: user?.walletAddress?.toLowerCase(),
+                          contractBuyerEmail: contract.buyerEmail,
+                          contractSellerEmail: contract.sellerEmail,
+                          contractBuyerAddress: contract.buyerAddress?.toLowerCase(),
+                          contractSellerAddress: contract.sellerAddress?.toLowerCase(),
+                          isBuyer,
+                          isSeller
+                        });
+                        
+                        return (
+                          <ContractActions
+                            contract={contract.originalContract}
+                            isBuyer={isBuyer}
+                            isSeller={isSeller}
+                            onAction={onAction}
+                            onAccept={onAccept}
+                            isClaimingInProgress={isClaimingInProgress}
+                            onClaimStart={onClaimStart}
+                            onClaimComplete={onClaimComplete}
+                          />
+                        );
+                      })()}
                       {contract.contractAddress && (
                         <ExpandableHash 
                           hash={contract.contractAddress}

@@ -83,8 +83,8 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
       }
 
       onAction(); // Refresh contracts
-      // Keep button disabled after success to prevent double-clicks
-      // The page will refresh with the new contract state
+      setIsLoading(false);
+      setLoadingMessage('');
     } catch (error: any) {
       console.error('Dispute failed:', error);
       setHasError(true);

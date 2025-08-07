@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useConfig } from '@/components/auth/ConfigProvider';
 
 interface ExpandableHashProps {
   hash: string;
@@ -11,6 +12,7 @@ export default function ExpandableHash({
   className = '', 
   showCopyButton = true 
 }: ExpandableHashProps) {
+  const { config } = useConfig();
   const [isExpanded, setIsExpanded] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
 
@@ -31,20 +33,43 @@ export default function ExpandableHash({
     }
   };
 
-  const toggleExpanded = () => {
+  const toggleExpanded = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     setIsExpanded(!isExpanded);
+  };
+
+  const handleHashClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (config?.snowtraceBaseUrl) {
+      window.open(`${config.snowtraceBaseUrl}/address/${hash}`, '_blank', 'noopener,noreferrer');
+    }
   };
 
   return (
     <div className={`inline-flex items-center gap-1 ${className}`}>
-      <button
-        type="button"
-        onClick={toggleExpanded}
-        className="font-mono text-left hover:text-primary-600 transition-colors cursor-pointer"
-        title={isExpanded ? "Click to collapse" : "Click to expand full address"}
-      >
-        {formatHash(hash, isExpanded)}
-      </button>
+      <div className="inline-flex items-center">
+        <a
+          href={config?.snowtraceBaseUrl ? `${config.snowtraceBaseUrl}/address/${hash}` : '#'}
+          onClick={handleHashClick}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-mono text-left hover:text-primary-600 transition-colors cursor-pointer underline decoration-transparent hover:decoration-current"
+          title={`View on Snowtrace: ${hash}`}
+        >
+          {formatHash(hash, isExpanded)}
+        </a>
+        <button
+          type="button"
+          onClick={toggleExpanded}
+          className="ml-1 p-0.5 hover:bg-gray-100 rounded transition-colors"
+          title={isExpanded ? "Click to collapse" : "Click to expand full address"}
+        >
+          <svg className="h-3 w-3 text-gray-400 hover:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={isExpanded ? "M5 15l7-7 7 7" : "M19 9l-7 7-7-7"} />
+          </svg>
+        </button>
+      </div>
       {showCopyButton && (
         <button
           type="button"

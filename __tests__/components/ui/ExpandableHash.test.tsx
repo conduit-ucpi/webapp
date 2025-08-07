@@ -1,55 +1,71 @@
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import ExpandableHash from '@/components/ui/ExpandableHash';
 
+// Mock ConfigProvider
+jest.mock('@/components/auth/ConfigProvider', () => ({
+  useConfig: jest.fn(),
+}));
+
+const mockUseConfig = require('@/components/auth/ConfigProvider').useConfig;
+
 describe('ExpandableHash', () => {
   const mockHash = '0x1234567890abcdef1234567890abcdef12345678';
+  
+  beforeEach(() => {
+    mockUseConfig.mockReturnValue({
+      config: {
+        snowtraceBaseUrl: 'https://testnet.snowtrace.io',
+      },
+    });
+  });
 
   it('renders shortened hash by default', () => {
     render(<ExpandableHash hash={mockHash} />);
-    expect(screen.getByTitle('Click to expand full address')).toHaveTextContent('0x1234...5678');
+    expect(screen.getByTitle(`View on Snowtrace: ${mockHash}`)).toHaveTextContent('0x1234...5678');
   });
 
-  it('expands hash when clicked', () => {
+  it('expands hash when expand button is clicked', () => {
     render(<ExpandableHash hash={mockHash} />);
-    const button = screen.getByTitle('Click to expand full address');
+    const expandButton = screen.getByTitle('Click to expand full address');
     
-    fireEvent.click(button);
+    fireEvent.click(expandButton);
     
-    expect(screen.getByTitle('Click to collapse')).toHaveTextContent(mockHash);
+    expect(screen.getByTitle(`View on Snowtrace: ${mockHash}`)).toHaveTextContent(mockHash);
   });
 
   it('toggles between expanded and collapsed state', () => {
     render(<ExpandableHash hash={mockHash} />);
-    const button = screen.getByTitle('Click to expand full address');
+    const expandButton = screen.getByTitle('Click to expand full address');
     
     // Initial state - collapsed
-    expect(button).toHaveTextContent('0x1234...5678');
+    expect(screen.getByTitle(`View on Snowtrace: ${mockHash}`)).toHaveTextContent('0x1234...5678');
     
     // Click to expand
-    fireEvent.click(button);
-    expect(screen.getByTitle('Click to collapse')).toHaveTextContent(mockHash);
+    fireEvent.click(expandButton);
+    expect(screen.getByTitle(`View on Snowtrace: ${mockHash}`)).toHaveTextContent(mockHash);
     
     // Click to collapse
-    fireEvent.click(screen.getByTitle('Click to collapse'));
-    expect(screen.getByTitle('Click to expand full address')).toHaveTextContent('0x1234...5678');
+    const collapseButton = screen.getByTitle('Click to collapse');
+    fireEvent.click(collapseButton);
+    expect(screen.getByTitle(`View on Snowtrace: ${mockHash}`)).toHaveTextContent('0x1234...5678');
   });
 
   it('handles undefined hash gracefully', () => {
     render(<ExpandableHash hash={undefined as any} />);
-    const button = screen.getAllByRole('button')[0];
-    expect(button).toHaveTextContent('');
+    const link = screen.getByRole('link');
+    expect(link).toHaveTextContent('');
   });
 
   it('handles null hash gracefully', () => {
     render(<ExpandableHash hash={null as any} />);
-    const button = screen.getAllByRole('button')[0];
-    expect(button).toHaveTextContent('');
+    const link = screen.getByRole('link');
+    expect(link).toHaveTextContent('');
   });
 
   it('handles empty string hash', () => {
     render(<ExpandableHash hash="" />);
-    const button = screen.getAllByRole('button')[0];
-    expect(button).toHaveTextContent('');
+    const link = screen.getByRole('link');
+    expect(link).toHaveTextContent('');
   });
 
   it('copies hash to clipboard when copy button is clicked', async () => {
@@ -94,11 +110,12 @@ describe('ExpandableHash', () => {
     render(<ExpandableHash hash={mockHash} showCopyButton={false} />);
     const buttons = screen.getAllByRole('button');
     expect(buttons).toHaveLength(1); // Only expand/collapse button
+    expect(screen.queryByTitle('Copy to clipboard')).not.toBeInTheDocument();
   });
 
   it('applies custom className', () => {
     render(<ExpandableHash hash={mockHash} className="custom-class" />);
-    const container = screen.getAllByRole('button')[0].parentElement;
+    const container = screen.getByRole('link').parentElement?.parentElement;
     expect(container).toHaveClass('custom-class');
   });
 
@@ -144,5 +161,23 @@ describe('ExpandableHash', () => {
     expect(consoleSpy).toHaveBeenCalledWith('Failed to copy:', expect.any(Error));
     
     consoleSpy.mockRestore();
+  });
+
+  it('creates correct Snowtrace link', () => {
+    render(<ExpandableHash hash={mockHash} />);
+    const link = screen.getByRole('link');
+    expect(link).toHaveAttribute('href', `https://testnet.snowtrace.io/address/${mockHash}`);
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+  });
+
+  it('handles missing snowtraceBaseUrl config', () => {
+    mockUseConfig.mockReturnValue({
+      config: {},
+    });
+    
+    render(<ExpandableHash hash={mockHash} />);
+    const link = screen.getByRole('link');
+    expect(link).toHaveAttribute('href', '#');
   });
 });

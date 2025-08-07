@@ -63,7 +63,7 @@ export interface PendingContract {
   chainId?: string;
   chainAddress?: string;
   description: string;
-  createdAt: string;
+  createdAt: number;
   createdBy: string;
   state: 'OK' | 'IN-PROCESS';
   // Admin notes array from contract service

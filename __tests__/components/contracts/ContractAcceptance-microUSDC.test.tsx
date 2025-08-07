@@ -67,7 +67,7 @@ describe('ContractAcceptance - microUSDC Amount Handling', () => {
     sellerAddress: '0xSellerAddress',
     expiryTimestamp: Math.floor(Date.now() / 1000) + 86400, // 24 hours from now
     description: 'Test contract description',
-    createdAt: new Date().toISOString(),
+    createdAt: Math.floor(Date.now() / 1000),
     createdBy: 'test-user',
     state: 'OK',
   };

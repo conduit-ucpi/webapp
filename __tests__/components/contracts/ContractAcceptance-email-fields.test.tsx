@@ -88,7 +88,7 @@ describe('ContractAcceptance - Email Fields', () => {
       sellerAddress: '0xSellerAddress',
       expiryTimestamp: Math.floor(Date.now() / 1000) + 86400,
       description: 'Test contract with emails',
-      createdAt: new Date().toISOString(),
+      createdAt: Math.floor(Date.now() / 1000),
       createdBy: 'test-user',
       state: 'OK',
     };
@@ -170,7 +170,7 @@ describe('ContractAcceptance - Email Fields', () => {
       sellerAddress: '0xSellerAddress',
       expiryTimestamp: Math.floor(Date.now() / 1000) + 86400,
       description: 'Test contract without buyer email',
-      createdAt: new Date().toISOString(),
+      createdAt: Math.floor(Date.now() / 1000),
       createdBy: 'test-user',
       state: 'OK',
     };

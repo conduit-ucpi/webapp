@@ -93,7 +93,7 @@ describe('ContractAcceptance - Amount Format Fix', () => {
         sellerAddress: '0xSellerAddress',
         expiryTimestamp: Math.floor(Date.now() / 1000) + 86400,
         description: 'Test contract with USDC format amount',
-        createdAt: new Date().toISOString(),
+        createdAt: Math.floor(Date.now() / 1000),
         createdBy: 'test-user',
         state: 'OK',
       };
@@ -158,7 +158,7 @@ describe('ContractAcceptance - Amount Format Fix', () => {
         sellerAddress: '0xSellerAddress',
         expiryTimestamp: Math.floor(Date.now() / 1000) + 86400,
         description: 'Test contract with microUSDC format amount',
-        createdAt: new Date().toISOString(),
+        createdAt: Math.floor(Date.now() / 1000),
         createdBy: 'test-user',
         state: 'OK',
       };
@@ -222,7 +222,7 @@ describe('ContractAcceptance - Amount Format Fix', () => {
         sellerAddress: '0xSellerAddress',
         expiryTimestamp: Math.floor(Date.now() / 1000) + 86400,
         description: 'Test contract',
-        createdAt: new Date().toISOString(),
+        createdAt: Math.floor(Date.now() / 1000),
         createdBy: 'test-user',
         state: 'OK',
       };
@@ -262,7 +262,7 @@ describe('ContractAcceptance - Amount Format Fix', () => {
         sellerAddress: '0xSellerAddress',
         expiryTimestamp: Math.floor(Date.now() / 1000) + 86400,
         description: 'Test contract',
-        createdAt: new Date().toISOString(),
+        createdAt: Math.floor(Date.now() / 1000),
         createdBy: 'test-user',
         state: 'OK',
       };

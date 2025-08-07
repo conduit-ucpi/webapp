@@ -446,7 +446,7 @@ describe('Contract Selection and Details', () => {
             sellerEmail: 'seller@example.com',
             description: 'Test contract',
             expiryTimestamp: 1753749402,
-            createdAt: '2025-01-01T00:00:00Z'
+            createdAt: 1735689600 // 2025-01-01T00:00:00Z
           }
         },
         chainservice: {

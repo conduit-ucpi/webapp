@@ -77,7 +77,7 @@ describe('ContractAcceptance - Redirect Behavior', () => {
     sellerAddress: '0xSellerAddress',
     expiryTimestamp: Math.floor(Date.now() / 1000) + 86400,
     description: 'Test contract for redirect behavior',
-    createdAt: new Date().toISOString(),
+    createdAt: Math.floor(Date.now() / 1000),
     createdBy: 'test-user',
     state: 'OK',
   };

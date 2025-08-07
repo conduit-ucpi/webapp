@@ -141,9 +141,12 @@ export default function ContractListView({
         aValue = Number(aValue);
         bValue = Number(bValue);
       } else if (sortField === 'expiryTimestamp' || sortField === 'createdAt') {
-        // Convert timestamps to numbers for proper sorting
-        aValue = typeof aValue === 'string' ? parseInt(aValue, 10) : Number(aValue);
-        bValue = typeof bValue === 'string' ? parseInt(bValue, 10) : Number(bValue);
+        // Normalize timestamps to ensure consistent comparison (all to seconds)
+        // If it's 10 digits or less, it's already in seconds; if more, convert from millis
+        aValue = Number(aValue);
+        bValue = Number(bValue);
+        aValue = aValue.toString().length <= 10 ? aValue : Math.floor(aValue / 1000);
+        bValue = bValue.toString().length <= 10 ? bValue : Math.floor(bValue / 1000);
       } else if (typeof aValue === 'string' && typeof bValue === 'string') {
         aValue = aValue.toLowerCase();
         bValue = bValue.toLowerCase();

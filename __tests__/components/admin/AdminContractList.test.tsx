@@ -75,7 +75,7 @@ const mockContracts: PendingContract[] = [
     expiryTimestamp: 1753749402,
     chainAddress: '0x123',
     description: 'Test contract 1',
-    createdAt: '2025-01-01T00:00:00Z',
+    createdAt: 1735689600, // 2025-01-01T00:00:00Z
     createdBy: 'user1',
     state: 'OK'
   },
@@ -87,7 +87,7 @@ const mockContracts: PendingContract[] = [
     sellerAddress: '0xseller2',
     expiryTimestamp: 1753749402,
     description: 'Test contract 2',
-    createdAt: '2025-01-02T00:00:00Z',
+    createdAt: 1735776000, // 2025-01-02T00:00:00Z
     createdBy: 'user2',
     state: 'OK'
   }

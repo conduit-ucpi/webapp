@@ -113,6 +113,46 @@ export class Web3Service {
     return ethers.keccak256(ethers.toUtf8Bytes(description));
   }
 
+  // Helper method to prepare transaction with gas estimation and pricing
+  private async prepareTransactionWithGas(tx: any, gasEstimate: bigint): Promise<any> {
+    if (!this.provider) {
+      throw new Error('Provider not initialized');
+    }
+    
+    const feeData = await this.provider.getFeeData();
+    
+    // Set minimum gas price thresholds
+    const minGasPrice = this.config.chainId === 43114 
+      ? '1000000000'  // 1 nAVAX minimum for mainnet
+      : this.config.minGasWei; // Configurable minimum for testnet
+    
+    const fallbackGasPrice = this.config.chainId === 43114 
+      ? '1000000000'  // 1 nAVAX fallback for mainnet
+      : '67000000';   // 0.000000067 nAVAX fallback for testnet
+    
+    // Use network gas price but enforce minimum
+    const networkGasPrice = feeData.gasPrice ? BigInt(feeData.gasPrice.toString()) : BigInt(0);
+    const minGasPriceBigInt = BigInt(minGasPrice);
+    const gasPrice = networkGasPrice > minGasPriceBigInt 
+      ? networkGasPrice.toString()  // Use network price if above minimum
+      : (networkGasPrice > BigInt(0) ? minGasPrice : fallbackGasPrice);  // Use minimum or fallback
+    
+    console.log('Gas calculation:', {
+      gasEstimate: `${gasEstimate.toString()} gas`,
+      networkGasPrice: `${networkGasPrice.toString()} wei`,
+      finalGasPrice: `${gasPrice} wei`,
+      finalGasPriceInNAVAX: `${(Number(gasPrice) / 1e9).toFixed(12)} nAVAX`
+    });
+    
+    return {
+      ...tx,
+      gasLimit: gasEstimate,
+      gasPrice: gasPrice,
+      maxFeePerGas: undefined,
+      maxPriorityFeePerGas: undefined
+    };
+  }
+
   // Get contract info from deployed escrow contract
   async getContractInfo(contractAddress: string) {
     if (!this.provider) {
@@ -182,60 +222,15 @@ export class Web3Service {
     const decimals = await usdcContract.decimals();
     const amountWei = ethers.parseUnits(amount, decimals);
 
-    // Create transaction but don't send it
+    // Create transaction and estimate gas
     const tx = await usdcContract.approve.populateTransaction(spenderAddress, amountWei);
-    
-    // Get current gas price from network
-    if (!this.provider) {
-      throw new Error('Provider not initialized');
-    }
-    const feeData = await this.provider.getFeeData();
+    const gasEstimate = await usdcContract.approve.estimateGas(spenderAddress, amountWei);
     
     console.log('=== USDC APPROVAL TRANSACTION DEBUG ===');
     console.log('Original USDC approval transaction:', tx);
-    console.log('Network fee data:', {
-      gasPrice: feeData.gasPrice?.toString(),
-      maxFeePerGas: feeData.maxFeePerGas?.toString(),
-      maxPriorityFeePerGas: feeData.maxPriorityFeePerGas?.toString()
-    });
-    console.log('Gas estimates:', {
-      networkGasEstimate: tx.gasLimit ? `${tx.gasLimit.toString()} gas` : 'Not estimated',
-      ourGasLimit: '120000 gas',
-      note: tx.gasLimit ? `Network estimated ${tx.gasLimit.toString()}, we're setting 120000` : 'Network did not provide gas estimate'
-    });
     
-    // Set minimum gas price thresholds
-    const minGasPrice = this.config.chainId === 43114 
-      ? '1000000000'  // 1 nAVAX minimum for mainnet
-      : this.config.minGasWei; // Configurable minimum for testnet
-    
-    const fallbackGasPrice = this.config.chainId === 43114 
-      ? '1000000000'  // 1 nAVAX fallback for mainnet
-      : '67000000';   // 0.000000067 nAVAX fallback for testnet
-    
-    // Use network gas price but enforce minimum
-    const networkGasPrice = feeData.gasPrice ? BigInt(feeData.gasPrice.toString()) : BigInt(0);
-    const minGasPriceBigInt = BigInt(minGasPrice);
-    const gasPrice = networkGasPrice > minGasPriceBigInt 
-      ? networkGasPrice.toString()  // Use network price if above minimum
-      : (networkGasPrice > BigInt(0) ? minGasPrice : fallbackGasPrice);  // Use minimum or fallback
-    
-    console.log('Gas price calculation:', {
-      networkGasPrice: `${networkGasPrice.toString()} wei`,
-      minGasPrice: `${minGasPrice} wei`,
-      finalGasPrice: `${gasPrice} wei`,
-      networkGasPriceInNAVAX: `${(Number(networkGasPrice) / 1e9).toFixed(12)} nAVAX`,
-      finalGasPriceInNAVAX: `${(Number(gasPrice) / 1e9).toFixed(12)} nAVAX`
-    });
-    
-    // Use network gas price with reasonable gas limit
-    const txWithGas = {
-      ...tx,
-      gasLimit: '120000', // Increased to 120k gas limit for USDC approval
-      gasPrice: gasPrice,
-      maxFeePerGas: undefined,
-      maxPriorityFeePerGas: undefined
-    };
+    // Prepare transaction with gas estimation and pricing
+    const txWithGas = await this.prepareTransactionWithGas(tx, gasEstimate);
     
     console.log('Modified USDC approval transaction:', txWithGas);
     console.log('=== USDC APPROVAL TRANSACTION DEBUG END ===');
@@ -254,60 +249,15 @@ export class Web3Service {
       signer
     );
 
-    // Create transaction but don't send it
+    // Create transaction and estimate gas
     const tx = await contract.depositFunds.populateTransaction();
-    
-    // Get current gas price from network
-    if (!this.provider) {
-      throw new Error('Provider not initialized');
-    }
-    const feeData = await this.provider.getFeeData();
+    const gasEstimate = await contract.depositFunds.estimateGas();
     
     console.log('=== DEPOSIT TRANSACTION DEBUG ===');
     console.log('Original transaction from populateTransaction:', tx);
-    console.log('Network fee data:', {
-      gasPrice: feeData.gasPrice?.toString(),
-      maxFeePerGas: feeData.maxFeePerGas?.toString(),
-      maxPriorityFeePerGas: feeData.maxPriorityFeePerGas?.toString()
-    });
-    console.log('Gas estimates:', {
-      networkGasEstimate: tx.gasLimit ? `${tx.gasLimit.toString()} gas` : 'Not estimated',
-      ourGasLimit: '150000 gas',
-      note: tx.gasLimit ? `Network estimated ${tx.gasLimit.toString()}, we're setting 150000` : 'Network did not provide gas estimate'
-    });
     
-    // Set minimum gas price thresholds
-    const minGasPrice = this.config.chainId === 43114 
-      ? '1000000000'  // 1 nAVAX minimum for mainnet
-      : this.config.minGasWei; // Configurable minimum for testnet
-    
-    const fallbackGasPrice = this.config.chainId === 43114 
-      ? '1000000000'  // 1 nAVAX fallback for mainnet
-      : '67000000';   // 0.000000067 nAVAX fallback for testnet
-    
-    // Use network gas price but enforce minimum
-    const networkGasPrice = feeData.gasPrice ? BigInt(feeData.gasPrice.toString()) : BigInt(0);
-    const minGasPriceBigInt = BigInt(minGasPrice);
-    const gasPrice = networkGasPrice > minGasPriceBigInt 
-      ? networkGasPrice.toString()  // Use network price if above minimum
-      : (networkGasPrice > BigInt(0) ? minGasPrice : fallbackGasPrice);  // Use minimum or fallback
-    
-    console.log('Gas price calculation:', {
-      networkGasPrice: `${networkGasPrice.toString()} wei`,
-      minGasPrice: `${minGasPrice} wei`,
-      finalGasPrice: `${gasPrice} wei`,
-      networkGasPriceInNAVAX: `${(Number(networkGasPrice) / 1e9).toFixed(12)} nAVAX`,
-      finalGasPriceInNAVAX: `${(Number(gasPrice) / 1e9).toFixed(12)} nAVAX`
-    });
-    
-    // Use network gas price with reasonable gas limit
-    const txWithGas = {
-      ...tx,
-      gasLimit: '150000', // Increased to 150k gas limit for depositFunds (was failing at 100k)
-      gasPrice: gasPrice,
-      maxFeePerGas: undefined, // Remove EIP-1559 fields
-      maxPriorityFeePerGas: undefined
-    };
+    // Prepare transaction with gas estimation and pricing
+    const txWithGas = await this.prepareTransactionWithGas(tx, gasEstimate);
     
     console.log('Modified deposit transaction:', txWithGas);
     console.log('=== DEPOSIT TRANSACTION DEBUG END ===');
@@ -326,37 +276,21 @@ export class Web3Service {
       signer
     );
 
-    // Create transaction but don't send it
+    // Create transaction and estimate gas
     const tx = await contract.claimFunds.populateTransaction();
+    const gasEstimate = await contract.claimFunds.estimateGas();
     
-    // Get gas estimation and pricing
-    if (!this.provider) {
-      throw new Error('Provider not initialized');
-    }
-    const feeData = await this.provider.getFeeData();
-    const minGasWei = this.config.minGasWei || '5';
-    const minGasPriceBigInt = BigInt(minGasWei);
+    console.log('=== CLAIM FUNDS TRANSACTION DEBUG ===');
+    console.log('Original claim transaction:', tx);
     
-    const networkGasPrice = feeData.gasPrice ? BigInt(feeData.gasPrice.toString()) : BigInt(0);
+    // Prepare transaction with gas estimation and pricing
+    const txWithGas = await this.prepareTransactionWithGas(tx, gasEstimate);
     
-    const gasPrice = networkGasPrice > minGasPriceBigInt 
-      ? networkGasPrice 
-      : minGasPriceBigInt;
+    console.log('Modified claim transaction:', txWithGas);
+    console.log('=== CLAIM FUNDS TRANSACTION DEBUG END ===');
     
-    console.log('Claim Funds Gas Details:', {
-      finalGasPrice: `${gasPrice} wei`,
-      minGasWei,
-      finalGasPriceInNAVAX: `${(Number(gasPrice) / 1e9).toFixed(12)} nAVAX`
-    });
-    
-    // Set gas parameters
-    tx.gasPrice = gasPrice;
-    tx.gasLimit = await contract.claimFunds.estimateGas();
-    
-    // Sign the transaction
-    const signedTx = await signer.signTransaction(tx);
-    console.log('Signed claim transaction:', signedTx);
-    
+    // Sign the transaction and return hex
+    const signedTx = await signer.signTransaction(txWithGas);
     return signedTx;
   }
 
@@ -369,55 +303,15 @@ export class Web3Service {
       signer
     );
 
-    // Create transaction but don't send it
+    // Create transaction and estimate gas
     const tx = await contract.raiseDispute.populateTransaction();
-    
-    // Get current gas price from network
-    if (!this.provider) {
-      throw new Error('Provider not initialized');
-    }
-    const feeData = await this.provider.getFeeData();
+    const gasEstimate = await contract.raiseDispute.estimateGas();
     
     console.log('=== DISPUTE TRANSACTION DEBUG ===');
     console.log('Original dispute transaction:', tx);
-    console.log('Network fee data:', {
-      gasPrice: feeData.gasPrice?.toString(),
-      maxFeePerGas: feeData.maxFeePerGas?.toString(),
-      maxPriorityFeePerGas: feeData.maxPriorityFeePerGas?.toString()
-    });
     
-    // Set minimum gas price thresholds
-    const minGasPrice = this.config.chainId === 43114 
-      ? '1000000000'  // 1 nAVAX minimum for mainnet
-      : this.config.minGasWei; // Configurable minimum for testnet
-    
-    const fallbackGasPrice = this.config.chainId === 43114 
-      ? '1000000000'  // 1 nAVAX fallback for mainnet
-      : '67000000';   // 0.000000067 nAVAX fallback for testnet
-    
-    // Use network gas price but enforce minimum
-    const networkGasPrice = feeData.gasPrice ? BigInt(feeData.gasPrice.toString()) : BigInt(0);
-    const minGasPriceBigInt = BigInt(minGasPrice);
-    const gasPrice = networkGasPrice > minGasPriceBigInt 
-      ? networkGasPrice.toString()  // Use network price if above minimum
-      : (networkGasPrice > BigInt(0) ? minGasPrice : fallbackGasPrice);  // Use minimum or fallback
-    
-    console.log('Gas price calculation:', {
-      networkGasPrice: `${networkGasPrice.toString()} wei`,
-      minGasPrice: `${minGasPrice} wei`,
-      finalGasPrice: `${gasPrice} wei`,
-      networkGasPriceInNAVAX: `${(Number(networkGasPrice) / 1e9).toFixed(12)} nAVAX`,
-      finalGasPriceInNAVAX: `${(Number(gasPrice) / 1e9).toFixed(12)} nAVAX`
-    });
-    
-    // Use network gas price with reasonable gas limit
-    const txWithGas = {
-      ...tx,
-      gasLimit: '100000', // 100k gas limit for dispute transaction
-      gasPrice: gasPrice,
-      maxFeePerGas: undefined,
-      maxPriorityFeePerGas: undefined
-    };
+    // Prepare transaction with gas estimation and pricing
+    const txWithGas = await this.prepareTransactionWithGas(tx, gasEstimate);
     
     console.log('Modified dispute transaction:', txWithGas);
     console.log('=== DISPUTE TRANSACTION DEBUG END ===');

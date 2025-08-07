@@ -7,7 +7,7 @@ import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import ContractCard from '@/components/contracts/ContractCard';
 import PendingContractCard from '@/components/contracts/PendingContractCard';
-import AdminContractList from '@/components/admin/AdminContractList';
+import AdminDatabaseList from '@/components/admin/AdminDatabaseList';
 import { normalizeTimestamp } from '@/utils/validation';
 import DisputeResolutionModal from '@/components/admin/DisputeResolutionModal';
 import { Contract, PendingContract } from '@/types';
@@ -138,7 +138,7 @@ export default function AdminPage() {
 
         {/* Contract List */}
         <div className="mb-8">
-          <AdminContractList onContractSelect={handleContractSelect} />
+          <AdminDatabaseList onContractSelect={handleContractSelect} />
         </div>
 
         {/* Selected Contract Details */}

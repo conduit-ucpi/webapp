@@ -99,15 +99,18 @@ jest.mock('@/components/contracts/PendingContractCard', () => {
   };
 });
 
-// Mock AdminContractList component
-jest.mock('@/components/admin/AdminContractList', () => {
-  return function MockAdminContractList({ onContractSelect }: { onContractSelect?: (contract: any) => void }) {
+// Mock AdminDatabaseList component
+jest.mock('@/components/admin/AdminDatabaseList', () => {
+  return function MockAdminDatabaseList({ onContractSelect }: { onContractSelect?: (contract: any) => void }) {
     return (
-      <div data-testid="admin-contract-list">
-        <div>All Contracts</div>
-        <button onClick={() => onContractSelect?.({ id: 'test-contract', amount: 100 })}>
-          Select Contract
-        </button>
+      <div data-testid="admin-database-list">
+        <div>Database Contracts</div>
+        <div 
+          onClick={() => onContractSelect?.({ id: 'test-contract', amount: 100 })}
+          style={{ cursor: 'pointer' }}
+        >
+          Test Contract Row
+        </div>
       </div>
     );
   };
@@ -239,7 +242,7 @@ describe('AdminPage', () => {
     render(<AdminPage />);
     expect(screen.getByText('Admin Dashboard')).toBeInTheDocument();
     expect(screen.getByText('Administrative tools and system management')).toBeInTheDocument();
-    expect(screen.getByTestId('admin-contract-list')).toBeInTheDocument();
+    expect(screen.getByTestId('admin-database-list')).toBeInTheDocument();
   });
 
   it('shows contract details when contract is selected from list', async () => {
@@ -279,8 +282,8 @@ describe('AdminPage', () => {
 
     render(<AdminPage />);
 
-    const selectButton = screen.getByText('Select Contract');
-    fireEvent.click(selectButton);
+    const contractRow = screen.getByText('Test Contract Row');
+    fireEvent.click(contractRow);
 
     await waitFor(() => {
       expect(screen.getByText('Contract Details')).toBeInTheDocument();
@@ -327,8 +330,8 @@ describe('AdminPage', () => {
     render(<AdminPage />);
 
     // Select a contract first
-    const selectButton = screen.getByText('Select Contract');
-    fireEvent.click(selectButton);
+    const contractRow = screen.getByText('Test Contract Row');
+    fireEvent.click(contractRow);
 
     await waitFor(() => {
       expect(screen.getByText('Contract Details')).toBeInTheDocument();
@@ -387,8 +390,8 @@ describe('Contract Selection and Details', () => {
     expect(screen.queryByText('Contract Details')).not.toBeInTheDocument();
 
     // Select a contract
-    const selectButton = screen.getByText('Select Contract');
-    fireEvent.click(selectButton);
+    const contractRow = screen.getByText('Test Contract Row');
+    fireEvent.click(contractRow);
 
     // Contract details should appear
     await waitFor(() => {
@@ -415,10 +418,10 @@ describe('Contract Selection and Details', () => {
 
     render(<AdminPage />);
 
-    // Mock the AdminContractList to select a contract without chainAddress
-    const mockAdminList = screen.getByTestId('admin-contract-list');
-    const selectButton = within(mockAdminList).getByText('Select Contract');
-    fireEvent.click(selectButton);
+    // Mock the AdminDatabaseList to select a contract without chainAddress
+    const mockAdminList = screen.getByTestId('admin-database-list');
+    const contractRow = within(mockAdminList).getByText('Test Contract Row');
+    fireEvent.click(contractRow);
 
     await waitFor(() => {
       expect(screen.getByText('Pending Contract')).toBeInTheDocument();
@@ -463,10 +466,10 @@ describe('Contract Selection and Details', () => {
 
     // The AdminContractList mock will call onContractSelect with default data
     // which doesn't have chainAddress, so we'll see the Pending Contract card
-    const mockAdminList = screen.getByTestId('admin-contract-list');
-    const selectButton = within(mockAdminList).getByText('Select Contract');
+    const mockAdminList = screen.getByTestId('admin-database-list');
+    const contractRow = within(mockAdminList).getByText('Test Contract Row');
 
-    fireEvent.click(selectButton);
+    fireEvent.click(contractRow);
 
     await waitFor(() => {
       // Since our mock contract doesn't have chainAddress/status, it shows as pending
@@ -485,8 +488,8 @@ describe('Contract Selection and Details', () => {
     render(<AdminPage />);
 
     // Select a contract to trigger the fetch
-    const selectButton = screen.getByText('Select Contract');
-    fireEvent.click(selectButton);
+    const contractRow = screen.getByText('Test Contract Row');
+    fireEvent.click(contractRow);
 
     // Wait for the error to be handled
     await waitFor(() => {
@@ -501,8 +504,8 @@ describe('Contract Selection and Details', () => {
     render(<AdminPage />);
 
     // Select a contract to trigger the fetch
-    const selectButton = screen.getByText('Select Contract');
-    fireEvent.click(selectButton);
+    const contractRow = screen.getByText('Test Contract Row');
+    fireEvent.click(contractRow);
 
     // Wait for the error to be handled
     await waitFor(() => {

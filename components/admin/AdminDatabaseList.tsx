@@ -251,9 +251,14 @@ export default function AdminDatabaseList({ onContractSelect }: AdminDatabaseLis
       <div className="p-6 border-b border-gray-200">
         <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-gray-900">Database Contracts</h2>
+            <div className="flex items-center gap-2 mb-1">
+              <h2 className="text-lg font-semibold text-gray-900">Local Database Contracts</h2>
+              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                LOCAL DB
+              </span>
+            </div>
             <p className="text-sm text-gray-600">
-              Showing {paginatedContracts.length} of {sortedContracts.length} contracts
+              Showing {paginatedContracts.length} of {sortedContracts.length} contracts from local storage
               {dateRangeFilter !== 'ALL' && ` (${dateRangeFilter.toLowerCase()} range)`}
             </p>
           </div>

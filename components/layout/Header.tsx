@@ -20,7 +20,7 @@ export default function Header() {
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center">
             <Link href="/" className="flex flex-col">
-              <span className="text-xl font-bold text-white">
+              <span className="text-xl font-bold italic text-white">
                 Instant Escrow
               </span>
               <span className="text-xs text-green-400 -mt-1">

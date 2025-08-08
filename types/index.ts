@@ -11,6 +11,12 @@ export interface Config {
   basePath: string;
   snowtraceBaseUrl: string;
   serviceLink: string;
+  // Gas limit configuration based on Foundry calculations
+  depositFundsFoundryGas?: number;
+  claimFundsFoundryGas?: number;
+  raiseDisputeFoundryGas?: number;
+  usdcGrantFoundryGas?: number;
+  gasMultiplier?: number;
 }
 
 export interface User {

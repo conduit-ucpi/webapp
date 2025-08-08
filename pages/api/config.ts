@@ -17,6 +17,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log('MIN_GAS_WEI:', process.env.MIN_GAS_WEI);
     console.log('SNOWTRACE_BASE_URL:', process.env.SNOWTRACE_BASE_URL);
     console.log('SERVICE_LINK:', process.env.SERVICE_LINK);
+    console.log('DEPOSIT_FUNDS_FOUNDRY_GAS:', process.env.DEPOSIT_FUNDS_FOUNDRY_GAS);
+    console.log('CLAIM_FUNDS_FOUNDRY_GAS:', process.env.CLAIM_FUNDS_FOUNDRY_GAS);
+    console.log('RAISE_DISPUTE_FOUNDRY_GAS:', process.env.RAISE_DISPUTE_FOUNDRY_GAS);
+    console.log('USDC_GRANT_FOUNDRY_GAS:', process.env.USDC_GRANT_FOUNDRY_GAS);
+    console.log('GAS_MULTIPLIER:', process.env.GAS_MULTIPLIER);
 
     const basePath = process.env.NEXT_PUBLIC_BASE_PATH === 'null' ? '' : (process.env.NEXT_PUBLIC_BASE_PATH || '/webapp');
     
@@ -30,7 +35,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       minGasWei: process.env.MIN_GAS_WEI || '5',
       basePath,
       snowtraceBaseUrl: process.env.SNOWTRACE_BASE_URL,
-      serviceLink: process.env.SERVICE_LINK || 'http://localhost:3000'
+      serviceLink: process.env.SERVICE_LINK || 'http://localhost:3000',
+      // Gas limit configuration based on Foundry calculations
+      depositFundsFoundryGas: process.env.DEPOSIT_FUNDS_FOUNDRY_GAS ? parseInt(process.env.DEPOSIT_FUNDS_FOUNDRY_GAS) : undefined,
+      claimFundsFoundryGas: process.env.CLAIM_FUNDS_FOUNDRY_GAS ? parseInt(process.env.CLAIM_FUNDS_FOUNDRY_GAS) : undefined,
+      raiseDisputeFoundryGas: process.env.RAISE_DISPUTE_FOUNDRY_GAS ? parseInt(process.env.RAISE_DISPUTE_FOUNDRY_GAS) : undefined,
+      usdcGrantFoundryGas: process.env.USDC_GRANT_FOUNDRY_GAS ? parseInt(process.env.USDC_GRANT_FOUNDRY_GAS) : undefined,
+      gasMultiplier: process.env.GAS_MULTIPLIER ? parseFloat(process.env.GAS_MULTIPLIER) : undefined
     };
 
     if (!config.usdcContractAddress) {

@@ -38,6 +38,25 @@ export class Web3Service {
     this.config = config;
   }
 
+  // Extract method name from transaction data
+  private extractMethodName(data: string): string | null {
+    if (!data || data.length < 10) return null;
+    
+    // Extract the first 4 bytes (8 hex characters) after 0x - this is the function selector
+    const selector = data.slice(0, 10);
+    
+    // Map known selectors to method names
+    const selectorMap: { [key: string]: string } = {
+      '0xa9059cbb': 'transfer',           // ERC20 transfer
+      '0x095ea7b3': 'approve',            // ERC20 approve  
+      '0x3ccfd60b': 'depositFunds',       // Escrow depositFunds
+      '0xdf8de3e7': 'claimFunds',         // Escrow claimFunds
+      '0x1c6a0c4c': 'raiseDispute'        // Escrow raiseDispute
+    };
+    
+    return selectorMap[selector] || null;
+  }
+
   async initializeProvider(web3authProvider: any) {
     try {
       this.provider = new ethers.BrowserProvider(web3authProvider);
@@ -137,8 +156,50 @@ export class Web3Service {
       ? networkGasPrice.toString()  // Use network price if above minimum
       : (networkGasPrice > BigInt(0) ? minGasPrice : fallbackGasPrice);  // Use minimum or fallback
     
+    // Apply gas limit capping based on Foundry calculations
+    let finalGasLimit = gasEstimate;
+    const methodName = this.extractMethodName(tx.data || '');
+    
+    if (methodName && this.config.gasMultiplier) {
+      let foundryGasLimit: number | undefined;
+      
+      switch (methodName) {
+        case 'depositFunds':
+          foundryGasLimit = this.config.depositFundsFoundryGas;
+          break;
+        case 'claimFunds':
+          foundryGasLimit = this.config.claimFundsFoundryGas;
+          break;
+        case 'raiseDispute':
+          foundryGasLimit = this.config.raiseDisputeFoundryGas;
+          break;
+        case 'approve':
+          foundryGasLimit = this.config.usdcGrantFoundryGas;
+          break;
+      }
+      
+      if (foundryGasLimit) {
+        const cappedGasLimit = BigInt(Math.floor(foundryGasLimit * this.config.gasMultiplier));
+        const ethersEstimate = gasEstimate;
+        
+        // Use the smaller of ethers.js estimate vs Foundry limit + buffer
+        finalGasLimit = ethersEstimate < cappedGasLimit ? ethersEstimate : cappedGasLimit;
+        
+        console.log('Gas limit capping applied:', {
+          method: methodName,
+          foundryGasLimit,
+          gasMultiplier: this.config.gasMultiplier,
+          cappedGasLimit: cappedGasLimit.toString(),
+          ethersEstimate: ethersEstimate.toString(),
+          finalGasLimit: finalGasLimit.toString(),
+          savings: ethersEstimate > finalGasLimit ? `${((Number(ethersEstimate - finalGasLimit) / Number(ethersEstimate)) * 100).toFixed(1)}%` : '0%'
+        });
+      }
+    }
+    
     console.log('Gas calculation:', {
       gasEstimate: `${gasEstimate.toString()} gas`,
+      finalGasLimit: `${finalGasLimit.toString()} gas`,
       networkGasPrice: `${networkGasPrice.toString()} wei`,
       finalGasPrice: `${gasPrice} wei`,
       finalGasPriceInNAVAX: `${(Number(gasPrice) / 1e9).toFixed(12)} nAVAX`
@@ -146,7 +207,7 @@ export class Web3Service {
     
     return {
       ...tx,
-      gasLimit: gasEstimate,
+      gasLimit: finalGasLimit,
       gasPrice: gasPrice,
       maxFeePerGas: undefined,
       maxPriorityFeePerGas: undefined

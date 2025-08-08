@@ -5,6 +5,7 @@ import ExpandableHash from '@/components/ui/ExpandableHash';
 import ContractActions from './ContractActions';
 import Button from '@/components/ui/Button';
 import { useAuth } from '@/components/auth/AuthProvider';
+import MultiColumnFilter from '@/components/ui/MultiColumnFilter';
 
 interface UnifiedContract {
   id: string;
@@ -22,6 +23,9 @@ interface UnifiedContract {
   funded?: boolean;
   hasDiscrepancy?: boolean;
   originalContract: Contract | PendingContract;
+  // Additional fields for filtering
+  userRole: 'buyer' | 'seller' | 'neither';
+  fundingStatus: 'funded' | 'unfunded' | 'pending';
 }
 
 interface ContractListViewProps {
@@ -32,12 +36,16 @@ interface ContractListViewProps {
   isClaimingInProgress: boolean;
   onClaimStart: () => void;
   onClaimComplete: () => void;
+  selectedStatuses: string[];
+  onStatusChange: (statuses: string[]) => void;
 }
 
 type SortField = 'status' | 'amount' | 'description' | 'expiryTimestamp' | 'createdAt';
 type SortDirection = 'asc' | 'desc';
 
 // Note: formatTimestamp is now imported from @/utils/validation for consistency
+
+const ALL_STATUSES = ['PENDING', 'CREATED', 'ACTIVE', 'EXPIRED', 'DISPUTED', 'RESOLVED', 'CLAIMED'];
 
 export default function ContractListView({
   allContracts,
@@ -46,13 +54,18 @@ export default function ContractListView({
   onAction,
   isClaimingInProgress,
   onClaimStart,
-  onClaimComplete
+  onClaimComplete,
+  selectedStatuses,
+  onStatusChange
 }: ContractListViewProps) {
   const { user } = useAuth();
   const [sortField, setSortField] = useState<SortField>('createdAt');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
-  const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // Additional filter states
+  const [selectedRoles, setSelectedRoles] = useState<string[]>(['buyer', 'seller']);
+  const [selectedFundingStatuses, setSelectedFundingStatuses] = useState<string[]>(['funded', 'unfunded', 'pending']);
 
   // Unify contract data for table display
   const unifiedContracts: UnifiedContract[] = useMemo(() => {
@@ -65,6 +78,12 @@ export default function ContractListView({
       if (isPending) {
         const pendingContract = contract as PendingContract;
         const isExpired = Date.now() / 1000 > pendingContract.expiryTimestamp;
+        
+        // Determine user role for pending contracts
+        let userRole: 'buyer' | 'seller' | 'neither' = 'neither';
+        if (pendingContract.buyerEmail === user?.email) userRole = 'buyer';
+        else if (pendingContract.sellerEmail === user?.email) userRole = 'seller';
+        
         unified.push({
           id: pendingContract.id,
           type: 'pending',
@@ -80,10 +99,18 @@ export default function ContractListView({
           contractAddress: pendingContract.chainAddress,
           funded: false,
           hasDiscrepancy: false,
-          originalContract: pendingContract
+          originalContract: pendingContract,
+          userRole,
+          fundingStatus: 'pending'
         });
       } else {
         const regularContract = contract as Contract;
+        
+        // Determine user role for regular contracts
+        let userRole: 'buyer' | 'seller' | 'neither' = 'neither';
+        if (user?.walletAddress?.toLowerCase() === regularContract.buyerAddress?.toLowerCase()) userRole = 'buyer';
+        else if (user?.walletAddress?.toLowerCase() === regularContract.sellerAddress?.toLowerCase()) userRole = 'seller';
+        
         unified.push({
           id: regularContract.contractAddress,
           type: 'regular',
@@ -99,19 +126,64 @@ export default function ContractListView({
           contractAddress: regularContract.contractAddress,
           funded: regularContract.funded,
           hasDiscrepancy: regularContract.hasDiscrepancy,
-          originalContract: regularContract
+          originalContract: regularContract,
+          userRole,
+          fundingStatus: regularContract.funded ? 'funded' : 'unfunded'
         });
       }
     });
 
     return unified;
-  }, [allContracts]);
+  }, [allContracts, user?.email, user?.walletAddress]);
+
+  // Get all available filter options with counts
+  const filterOptions = useMemo(() => {
+    const statusCounts: Record<string, number> = {};
+    const roleCounts: Record<string, number> = {};
+    const fundingCounts: Record<string, number> = {};
+    
+    unifiedContracts.forEach(contract => {
+      statusCounts[contract.status] = (statusCounts[contract.status] || 0) + 1;
+      roleCounts[contract.userRole] = (roleCounts[contract.userRole] || 0) + 1;
+      fundingCounts[contract.fundingStatus] = (fundingCounts[contract.fundingStatus] || 0) + 1;
+    });
+    
+    return {
+      statuses: ALL_STATUSES.map(status => ({
+        value: status,
+        label: status.charAt(0) + status.slice(1).toLowerCase(),
+        count: statusCounts[status] || 0
+      })).filter(option => option.count > 0),
+      
+      roles: [
+        { value: 'buyer', label: 'I am Buyer', count: roleCounts.buyer || 0 },
+        { value: 'seller', label: 'I am Seller', count: roleCounts.seller || 0 },
+        { value: 'neither', label: 'Other Contracts', count: roleCounts.neither || 0 }
+      ].filter(option => option.count > 0),
+      
+      funding: [
+        { value: 'funded', label: 'Funded', count: fundingCounts.funded || 0 },
+        { value: 'unfunded', label: 'Not Funded', count: fundingCounts.unfunded || 0 },
+        { value: 'pending', label: 'Pending Acceptance', count: fundingCounts.pending || 0 }
+      ].filter(option => option.count > 0)
+    };
+  }, [unifiedContracts]);
 
   // Filter and sort contracts
   const filteredAndSortedContracts = useMemo(() => {
     let filtered = unifiedContracts.filter(contract => {
       // Status filter
-      if (statusFilter !== 'ALL' && contract.status !== statusFilter) {
+      if (selectedStatuses.length > 0 && !selectedStatuses.includes(contract.status)) {
+        return false;
+      }
+
+      // Role filter
+      if (selectedRoles.length > 0 && !selectedRoles.includes(contract.userRole)) {
+        return false;
+      }
+
+      // Funding status filter
+      if (selectedFundingStatuses.length > 0 && !selectedFundingStatuses.includes(contract.fundingStatus)) {
         return false;
       }
 
@@ -158,7 +230,7 @@ export default function ContractListView({
     });
 
     return filtered;
-  }, [unifiedContracts, sortField, sortDirection, statusFilter, searchTerm]);
+  }, [unifiedContracts, sortField, sortDirection, selectedStatuses, selectedRoles, selectedFundingStatuses, searchTerm]);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -198,48 +270,56 @@ export default function ContractListView({
 
   return (
     <div className="space-y-4">
-      {/* Filters and Search */}
-      <div className="flex flex-col sm:flex-row gap-4 bg-gray-50 p-4 rounded-lg">
-        <div className="flex-1">
-          <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-1">
-            Search
-          </label>
-          <input
-            type="text"
-            id="search"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search by description, email, or address..."
-            className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-          />
-        </div>
-        
-        <div className="flex-shrink-0">
-          <label htmlFor="status-filter" className="block text-sm font-medium text-gray-700 mb-1">
-            Status
-          </label>
-          <select
-            id="status-filter"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-          >
-            <option value="ALL">All Statuses</option>
-            <option value="PENDING">Pending</option>
-            <option value="CREATED">Created</option>
-            <option value="ACTIVE">Active</option>
-            <option value="EXPIRED">Expired</option>
-            <option value="DISPUTED">Disputed</option>
-            <option value="RESOLVED">Resolved</option>
-            <option value="CLAIMED">Claimed</option>
-          </select>
-        </div>
+      {/* Search */}
+      <div className="bg-gray-50 p-4 rounded-lg">
+        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-end">
+          <div className="flex-1">
+            <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-1">
+              Search
+            </label>
+            <input
+              type="text"
+              id="search"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search by description, email, or address..."
+              className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+            />
+          </div>
 
-        <div className="flex-shrink-0 flex items-end">
-          <div className="text-sm text-gray-600">
+          <div className="flex-shrink-0 text-sm text-gray-600 whitespace-nowrap">
             {filteredAndSortedContracts.length} of {unifiedContracts.length} contracts
           </div>
         </div>
+      </div>
+
+      {/* Multi-Column Filters */}
+      <div className="bg-white border border-gray-200 rounded-lg p-4">
+        <MultiColumnFilter
+          columns={[
+            {
+              key: 'status',
+              label: 'Status',
+              options: filterOptions.statuses,
+              selectedValues: selectedStatuses,
+              onChange: onStatusChange
+            },
+            {
+              key: 'role',
+              label: 'My Role',
+              options: filterOptions.roles,
+              selectedValues: selectedRoles,
+              onChange: setSelectedRoles
+            },
+            {
+              key: 'funding',
+              label: 'Funding Status',
+              options: filterOptions.funding,
+              selectedValues: selectedFundingStatuses,
+              onChange: setSelectedFundingStatuses
+            }
+          ]}
+        />
       </div>
 
       {/* Table */}
@@ -409,14 +489,16 @@ export default function ContractListView({
             <div className="text-gray-500">No contracts match your filters</div>
             <Button
               onClick={() => {
-                setStatusFilter('ALL');
+                onStatusChange(ALL_STATUSES);
+                setSelectedRoles(['buyer', 'seller', 'neither']);
+                setSelectedFundingStatuses(['funded', 'unfunded', 'pending']);
                 setSearchTerm('');
               }}
               variant="outline"
               size="sm"
               className="mt-2"
             >
-              Clear Filters
+              Clear All Filters
             </Button>
           </div>
         )}

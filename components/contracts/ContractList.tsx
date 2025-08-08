@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { Contract, PendingContract } from '@/types';
@@ -6,9 +6,8 @@ import ContractCard from './ContractCard';
 import ContractAcceptance from './ContractAcceptance';
 import ContractListView from './ContractListView';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
-import MultiSelectFilter from '@/components/ui/MultiSelectFilter';
 
-const ALL_STATUSES = ['PENDING', 'CREATED', 'ACTIVE', 'EXPIRED', 'DISPUTED', 'RESOLVED', 'CLAIMED'];
+type StatusFilter = 'ALL' | 'PENDING' | 'CREATED' | 'ACTIVE' | 'EXPIRED' | 'DISPUTED' | 'RESOLVED' | 'CLAIMED';
 
 export default function ContractList() {
   const { user } = useAuth();
@@ -16,7 +15,7 @@ export default function ContractList() {
   const [allContracts, setAllContracts] = useState<(Contract | PendingContract)[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
-  const [selectedStatuses, setSelectedStatuses] = useState<string[]>(ALL_STATUSES);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
   const [contractToAccept, setContractToAccept] = useState<PendingContract | null>(null);
   const [showAcceptance, setShowAcceptance] = useState(false);
   const [isClaimingInProgress, setIsClaimingInProgress] = useState(false);
@@ -140,52 +139,23 @@ export default function ContractList() {
     fetchContracts(); // Refresh contract lists
   };
 
-  // Get available statuses with counts for filter options
-  const availableStatuses = useMemo(() => {
-    const statusCounts: Record<string, number> = {};
-    
-    allContracts.forEach(contract => {
-      let status: string;
-      
-      // Handle pending contracts
-      if ('id' in contract && !('contractAddress' in contract)) {
-        const pendingContract = contract as PendingContract;
-        const isExpired = Date.now() / 1000 > pendingContract.expiryTimestamp;
-        status = isExpired ? 'EXPIRED' : 'PENDING';
-      } else {
-        // Handle regular contracts
-        const regularContract = contract as Contract;
-        status = regularContract.status;
-      }
-      
-      statusCounts[status] = (statusCounts[status] || 0) + 1;
-    });
-    
-    return ALL_STATUSES.map(status => ({
-      value: status,
-      label: status.charAt(0) + status.slice(1).toLowerCase(),
-      count: statusCounts[status] || 0
-    })).filter(option => option.count > 0);
-  }, [allContracts]);
-
-  // Filter contracts based on selected statuses
+  // Filter contracts based on status
   const filteredContracts = allContracts.filter(contract => {
-    if (selectedStatuses.length === 0) return false;
-    
-    let contractStatus: string;
+    if (statusFilter === 'ALL') return true;
     
     // Handle pending contracts
     if ('id' in contract && !('contractAddress' in contract)) {
       const pendingContract = contract as PendingContract;
+      if (statusFilter === 'PENDING') return true;
+      // Check if expired
       const isExpired = Date.now() / 1000 > pendingContract.expiryTimestamp;
-      contractStatus = isExpired ? 'EXPIRED' : 'PENDING';
-    } else {
-      // Handle regular contracts
-      const regularContract = contract as Contract;
-      contractStatus = regularContract.status;
+      if (statusFilter === 'EXPIRED' && isExpired) return true;
+      return false;
     }
     
-    return selectedStatuses.includes(contractStatus);
+    // Handle regular contracts
+    const regularContract = contract as Contract;
+    return regularContract.status === statusFilter;
   });
 
   if (isLoading) {
@@ -235,33 +205,42 @@ export default function ContractList() {
           ) : showListView ? (
             /* List View for >4 contracts */
             <ContractListView
-              allContracts={allContracts}
+              allContracts={filteredContracts}
               currentUserEmail={user?.email || ''}
               onAccept={handleAcceptContract}
               onAction={handleContractAction}
               isClaimingInProgress={isClaimingInProgress}
               onClaimStart={handleClaimStart}
               onClaimComplete={handleClaimComplete}
-              selectedStatuses={selectedStatuses}
-              onStatusChange={setSelectedStatuses}
             />
           ) : (
             /* Card View for ≤4 contracts */
             <>
               {/* Status Filter for Card View */}
-              <div className="mb-6 flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4">
-                <div className="w-full sm:w-64">
-                  <MultiSelectFilter
-                    options={availableStatuses}
-                    selectedValues={selectedStatuses}
-                    onChange={setSelectedStatuses}
-                    label="Filter by Status"
-                    placeholder="Select statuses to show..."
-                  />
+              <div className="mb-6 flex justify-between items-center">
+                <div>
+                  <label htmlFor="status-filter" className="block text-sm font-medium text-gray-700 mb-1">
+                    Filter by Status
+                  </label>
+                  <select
+                    id="status-filter"
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+                    className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md"
+                  >
+                    <option value="ALL">All Statuses</option>
+                    <option value="PENDING">Pending</option>
+                    <option value="CREATED">Created</option>
+                    <option value="ACTIVE">Active</option>
+                    <option value="EXPIRED">Expired</option>
+                    <option value="DISPUTED">Disputed</option>
+                    <option value="RESOLVED">Resolved</option>
+                    <option value="CLAIMED">Claimed</option>
+                  </select>
                 </div>
 
                 {/* Results Count */}
-                <div className="text-sm text-gray-600 whitespace-nowrap">
+                <div className="text-sm text-gray-600">
                   Showing {totalContracts} contracts
                 </div>
               </div>

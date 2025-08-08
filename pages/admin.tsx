@@ -29,12 +29,31 @@ export default function AdminPage() {
   const { user, isLoading } = useAuth();
   const router = useRouter();
   const [selectedContract, setSelectedContract] = useState<AdminContract | null>(null);
+  const [detailedContract, setDetailedContract] = useState<any>(null);
+  const [isLoadingDetails, setIsLoadingDetails] = useState(false);
   const [isDisputeModalOpen, setIsDisputeModalOpen] = useState(false);
   const [rawContractData, setRawContractData] = useState<{
     contractservice: any;
     chainservice: any;
   } | null>(null);
   const [isLoadingRawData, setIsLoadingRawData] = useState(false);
+
+  const fetchDetailedContract = async (contractId: string) => {
+    setIsLoadingDetails(true);
+    try {
+      const response = await fetch(`/api/contracts/${contractId}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch contract details');
+      }
+      const data = await response.json();
+      setDetailedContract(data);
+    } catch (error) {
+      console.error('Failed to fetch contract details:', error);
+      setDetailedContract(null);
+    } finally {
+      setIsLoadingDetails(false);
+    }
+  };
 
   const fetchRawContractData = async (contractId: string) => {
     setIsLoadingRawData(true);
@@ -55,11 +74,13 @@ export default function AdminPage() {
 
   const handleContractSelect = (contract: AdminContract) => {
     setSelectedContract(contract);
+    fetchDetailedContract(contract.id);
     fetchRawContractData(contract.id);
   };
 
   const clearSelection = () => {
     setSelectedContract(null);
+    setDetailedContract(null);
     setRawContractData(null);
   };
 
@@ -145,15 +166,27 @@ export default function AdminPage() {
         {selectedContract && (
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-lg font-semibold text-gray-900">Contract Details</h2>
+              <div className="flex items-center space-x-3">
+                <h2 className="text-lg font-semibold text-gray-900">Contract Details</h2>
+                {((selectedContract.status === 'DISPUTED' || detailedContract?.status === 'DISPUTED') ||
+                  (detailedContract?.disputedAt && !detailedContract?.resolvedAt)) && (
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                    <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    Disputed
+                  </span>
+                )}
+              </div>
               <div className="flex space-x-2">
-                {selectedContract.status === 'DISPUTED' && (
+                {((selectedContract.status === 'DISPUTED' || detailedContract?.status === 'DISPUTED') ||
+                  (detailedContract?.disputedAt && !detailedContract?.resolvedAt)) && (
                   <Button 
                     onClick={handleAddressDispute}
                     size="sm"
                     className="bg-orange-600 hover:bg-orange-700 text-white"
                   >
-                    Address Dispute
+                    Handle Dispute
                   </Button>
                 )}
                 <Button 
@@ -168,39 +201,66 @@ export default function AdminPage() {
 
             {/* Contract Card Display */}
             <div className="mb-6">
-              {selectedContract.chainAddress && selectedContract.status ? (
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <h3 className="text-md font-semibold text-gray-900 mb-3">On-Chain Contract</h3>
-                  <ContractCard
-                    contract={{
-                      contractAddress: selectedContract.chainAddress,
-                      buyerAddress: selectedContract.buyerAddress || '',
-                      sellerAddress: selectedContract.sellerAddress,
-                      amount: selectedContract.amount,
-                      expiryTimestamp: selectedContract.expiryTimestamp,
-                      description: selectedContract.description,
-                      status: selectedContract.status,
-                      createdAt: normalizeTimestamp(selectedContract.createdAt) / 1000,
-                      funded: selectedContract.funded,
-                      fundedAt: selectedContract.fundedAt,
-                      disputedAt: selectedContract.disputedAt,
-                      resolvedAt: selectedContract.resolvedAt,
-                      claimedAt: selectedContract.claimedAt,
-                      buyerEmail: selectedContract.buyerEmail,
-                      sellerEmail: selectedContract.sellerEmail,
-                      notes: selectedContract.notes
-                    }}
-                    onAction={() => {}}
-                  />
+              {isLoadingDetails ? (
+                <div className="flex justify-center items-center py-8">
+                  <LoadingSpinner size="md" />
+                  <span className="ml-2 text-gray-600">Loading contract details...</span>
+                </div>
+              ) : detailedContract ? (
+                <div className="space-y-4">
+                  {/* Contract Card based on detailed data */}
+                  {detailedContract.chainAddress ? (
+                    <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-6 rounded-xl border border-green-200">
+                      <h3 className="text-md font-semibold text-gray-900 mb-4">Contract Card (from detailed data)</h3>
+                      <ContractCard
+                        contract={{
+                          contractAddress: detailedContract.chainAddress,
+                          buyerAddress: detailedContract.buyerAddress || '',
+                          sellerAddress: detailedContract.sellerAddress,
+                          amount: detailedContract.amount,
+                          expiryTimestamp: detailedContract.expiryTimestamp,
+                          description: detailedContract.description,
+                          status: detailedContract.status || 'PENDING',
+                          createdAt: normalizeTimestamp(detailedContract.createdAt) / 1000,
+                          funded: detailedContract.funded,
+                          fundedAt: detailedContract.fundedAt,
+                          disputedAt: detailedContract.disputedAt,
+                          resolvedAt: detailedContract.resolvedAt,
+                          claimedAt: detailedContract.claimedAt,
+                          buyerEmail: detailedContract.buyerEmail,
+                          sellerEmail: detailedContract.sellerEmail,
+                          notes: detailedContract.notes
+                        }}
+                        onAction={() => {}}
+                      />
+                    </div>
+                  ) : (
+                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-xl border border-blue-200">
+                      <h3 className="text-md font-semibold text-gray-900 mb-4">Pending Contract (from detailed data)</h3>
+                      <PendingContractCard
+                        contract={detailedContract}
+                        currentUserEmail=""
+                        onAccept={undefined}
+                      />
+                    </div>
+                  )}
+
+                  {/* Full Contract Details for Debugging */}
+                  <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-6 rounded-xl border border-purple-200">
+                    <h3 className="text-md font-semibold text-gray-900 mb-4">Complete Contract Data (for debugging)</h3>
+                    <div className="bg-white rounded-lg border border-purple-300 p-4 max-h-96 overflow-y-auto">
+                      <pre className="text-xs text-gray-800 whitespace-pre-wrap break-words font-mono">
+                        {JSON.stringify(detailedContract, null, 2)}
+                      </pre>
+                    </div>
+                  </div>
                 </div>
               ) : (
-                <div className="bg-blue-50 p-4 rounded-lg">
-                  <h3 className="text-md font-semibold text-gray-900 mb-3">Pending Contract</h3>
-                  <PendingContractCard
-                    contract={selectedContract}
-                    currentUserEmail=""
-                    onAccept={undefined}
-                  />
+                <div className="bg-gray-50 p-6 rounded-xl border border-gray-200">
+                  <h3 className="text-md font-semibold text-gray-900 mb-2">No Contract Details Available</h3>
+                  <p className="text-gray-600 text-sm">
+                    Failed to load detailed contract information from the contract service.
+                  </p>
                 </div>
               )}
             </div>
@@ -347,7 +407,7 @@ export default function AdminPage() {
           isOpen={isDisputeModalOpen}
           onClose={handleDisputeModalClose}
           contractId={selectedContract.id}
-          chainAddress={selectedContract.chainAddress}
+          chainAddress={detailedContract?.chainAddress || selectedContract.chainAddress}
           onResolutionComplete={handleResolutionComplete}
         />
       )}

@@ -104,33 +104,36 @@ jobs:
           ssh-keyscan -H ${{ vars.VM_IP }} >> ~/.ssh/known_hosts
           
           ssh -i ~/.ssh/deploy_key -l gituser ${{ vars.VM_IP }} -vv '
-             # Login to GitHub Container Registry
-            docker login ghcr.io -u ${{ github.actor }} -p "${{ secrets.GITHUB_TOKEN }}"
+            set -e
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             docker pull ghcr.io/${{ env.REPO_LOWER }}:${{ env.SHA_TAG }}
             docker stop ${{ vars.SERVICE_NAME }} || true
             docker rm ${{ vars.SERVICE_NAME }} || true
-            docker run -d \
-              --name ${{ vars.SERVICE_NAME }} \
-              --network ${{ vars.DOCKER_NETWORK }} \
-              --restart unless-stopped \
-              -e CHAIN_ID=${{ vars.CHAIN_ID }} \
-              -e RPC_URL=${{ vars.RPC_URL }} \
-              -e CHAIN_SERVICE_URL=${{ vars.CHAIN_SERVICE_URL }} \
-              -e USER_SERVICE_URL=${{ vars.USER_SERVICE_URL }} \
-              -e CONTRACT_SERVICE_URL=${{ vars.CONTRACT_SERVICE_URL }} \
-              -e WEB3AUTH_CLIENT_ID=${{ secrets.WEB3AUTH_CLIENT_ID }} \
-              -e WEB3AUTH_NETWORK=${{ vars.WEB3AUTH_NETWORK }} \
-              -e MOONPAY_API_KEY=${{ secrets.MOONPAY_API_KEY }} \
-              -e GIT_TAG=$(git describe --tags --abbrev=0) \
-              -e GIT_SHA=$(git rev-parse --short HEAD) \
-              -e COOKIE_DOMAIN=${{ vars.COOKIE_DOMAIN }} \
-              -e BUILD_VERSION=${{ env.BUILD_VERSION }} \
-              -e CONTRACT_FACTORY_ADDRESS=${{ vars.CONTRACT_FACTORY_ADDRESS }} \
-              -e USDC_CONTRACT_ADDRESS=${{ vars.USDC_CONTRACT_ADDRESS }} \
-              -e MIN_GAS_WEI=${{ vars.MIN_GAS_WEI }} \
-              -e NEXT_PUBLIC_BASE_PATH=${{ vars.NEXT_PUBLIC_BASE_PATH }} \
-              -e SNOWTRACE_BASE_URL=${{ vars.SNOWTRACE_BASE_URL }} \
-              -e PRODUCT_NAME=${{ vars.PRODUCT_NAME }} \
-              -e SERVICE_LINK=${{ vars.SERVICE_LINK }} \
-              ghcr.io/${{ env.REPO_LOWER }}:${{ env.SHA_TAG }}
+            
+            # Build docker run command with conditional environment variables
+            DOCKER_CMD="docker run -d --name ${{ vars.SERVICE_NAME }} --network ${{ vars.DOCKER_NETWORK }} --restart unless-stopped"
+            
+            # Required variables (always pass these)
+            DOCKER_CMD="$DOCKER_CMD -e CHAIN_ID=${{ vars.CHAIN_ID }}"
+            DOCKER_CMD="$DOCKER_CMD -e RPC_URL=${{ vars.RPC_URL }}"
+            DOCKER_CMD="$DOCKER_CMD -e CHAIN_SERVICE_URL=${{ vars.CHAIN_SERVICE_URL }}"
+            DOCKER_CMD="$DOCKER_CMD -e USER_SERVICE_URL=${{ vars.USER_SERVICE_URL }}"
+            DOCKER_CMD="$DOCKER_CMD -e CONTRACT_SERVICE_URL=${{ vars.CONTRACT_SERVICE_URL }}"
+            DOCKER_CMD="$DOCKER_CMD -e WEB3AUTH_CLIENT_ID=${{ secrets.WEB3AUTH_CLIENT_ID }}"
+            DOCKER_CMD="$DOCKER_CMD -e CONTRACT_FACTORY_ADDRESS=${{ vars.CONTRACT_FACTORY_ADDRESS }}"
+            DOCKER_CMD="$DOCKER_CMD -e USDC_CONTRACT_ADDRESS=${{ vars.USDC_CONTRACT_ADDRESS }}"
+            
+            # Optional variables (only pass if defined)
+            [ -n "${{ vars.WEB3AUTH_NETWORK }}" ] && DOCKER_CMD="$DOCKER_CMD -e WEB3AUTH_NETWORK=${{ vars.WEB3AUTH_NETWORK }}"
+            [ -n "${{ secrets.MOONPAY_API_KEY }}" ] && DOCKER_CMD="$DOCKER_CMD -e MOONPAY_API_KEY=${{ secrets.MOONPAY_API_KEY }}"
+            [ -n "${{ vars.COOKIE_DOMAIN }}" ] && DOCKER_CMD="$DOCKER_CMD -e COOKIE_DOMAIN=${{ vars.COOKIE_DOMAIN }}"
+            [ -n "${{ vars.MIN_GAS_WEI }}" ] && DOCKER_CMD="$DOCKER_CMD -e MIN_GAS_WEI=${{ vars.MIN_GAS_WEI }}"
+            [ -n "${{ vars.NEXT_PUBLIC_BASE_PATH }}" ] && DOCKER_CMD="$DOCKER_CMD -e NEXT_PUBLIC_BASE_PATH=${{ vars.NEXT_PUBLIC_BASE_PATH }}"
+            [ -n "${{ vars.SNOWTRACE_BASE_URL }}" ] && DOCKER_CMD="$DOCKER_CMD -e SNOWTRACE_BASE_URL=${{ vars.SNOWTRACE_BASE_URL }}"
+            [ -n "${{ vars.PRODUCT_NAME }}" ] && DOCKER_CMD="$DOCKER_CMD -e PRODUCT_NAME=${{ vars.PRODUCT_NAME }}"
+            [ -n "${{ vars.SERVICE_LINK }}" ] && DOCKER_CMD="$DOCKER_CMD -e SERVICE_LINK=${{ vars.SERVICE_LINK }}"
+            
+            # Add the image name and execute
+            DOCKER_CMD="$DOCKER_CMD ghcr.io/${{ env.REPO_LOWER }}:${{ env.SHA_TAG }}"
+            eval $DOCKER_CMD
             '

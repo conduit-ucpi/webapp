@@ -66,7 +66,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         payoutDateTime,
         buyerActualAmount,
         sellerActualAmount,
-        serviceLink
+        serviceLink,
+        productName: process.env.PRODUCT_NAME
       }),
     });
 

@@ -56,7 +56,6 @@ export default function TermsOfService() {
             <ul className="list-disc pl-6 text-gray-700 space-y-2">
               <li>Transactions on the blockchain are irreversible</li>
               <li>Smart contracts may contain bugs or vulnerabilities</li>
-              <li>Cryptocurrency values are highly volatile</li>
               <li>Network congestion may delay transactions</li>
               <li>Loss of private keys results in permanent loss of funds</li>
               <li>Regulatory changes may affect the availability of the Service</li>
@@ -122,7 +121,7 @@ export default function TermsOfService() {
           <section className="mb-8">
             <h2 className="text-2xl font-semibold text-gray-900 mb-4">10. Governing Law</h2>
             <p className="text-gray-700 mb-4">
-              These terms shall be governed by and construed in accordance with the laws of [Jurisdiction], 
+              These terms shall be governed by and construed in accordance with the laws of New Zealand, 
               without regard to its conflict of law provisions.
             </p>
           </section>

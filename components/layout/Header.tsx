@@ -46,6 +46,12 @@ export default function Header() {
                 </Link>
               </>
             )}
+            <Link href="/faq" className="text-gray-300 hover:text-white">
+              FAQ
+            </Link>
+            <Link href="/arbitration-policy" className="text-gray-300 hover:text-white">
+              Arbitration
+            </Link>
           </nav>
 
           <div className="flex items-center space-x-4">

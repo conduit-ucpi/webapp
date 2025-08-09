@@ -7,6 +7,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const {
     web3authInstance,
@@ -15,7 +16,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     onLogout } = useWeb3AuthInstance();
 
 
-  const login = async (idToken: string, walletAddress: string, web3Provider: any) => {
+  const login = async (idToken: string, userWalletAddress: string, web3Provider: any) => {
     try {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
@@ -23,12 +24,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${idToken}`
         },
-        body: JSON.stringify({ address: walletAddress })
+        body: JSON.stringify({ address: userWalletAddress })
       });
 
       if (response.ok) {
         const userData = await response.json();
         setUser(userData);
+        setWalletAddress(userWalletAddress);
 
         // Store provider globally and in state
         (window as any).web3authProvider = web3Provider;

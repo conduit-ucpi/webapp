@@ -100,11 +100,41 @@ export function Web3AuthInstanceProvider({ children }: { children: React.ReactNo
     initWeb3Auth();
   }, [config]);
 
+  // Periodically check if Web3Auth instance has connected
+  useEffect(() => {
+    const checkConnection = () => {
+      const globalInstance = (window as any).web3auth;
+      const globalProvider = (window as any).web3authProvider;
+      
+      if (globalInstance && globalProvider && globalInstance.connected) {
+        // If we have a global instance that's connected but our state doesn't reflect it
+        if (!provider || provider !== globalProvider) {
+          console.log('Web3AuthInstanceProvider: Detected external connection, updating state');
+          setWeb3authInstance(globalInstance);
+          setProvider(globalProvider);
+        }
+      }
+    };
+
+    // Check immediately
+    checkConnection();
+    
+    // Then check every 500ms for changes
+    const interval = setInterval(checkConnection, 500);
+    
+    return () => clearInterval(interval);
+  }, [provider]);
+
 
   const updateProvider = (newProvider: any) => {
+    console.log('Web3AuthInstanceProvider: updateProvider called with:', !!newProvider);
     setProvider(newProvider);
-    if (web3authInstance && newProvider) {
-      setWeb3authInstance(web3authInstance); // Trigger re-render
+    
+    // Also update the instance state if it now has a connected provider
+    if (web3authInstance) {
+      console.log('Web3AuthInstanceProvider: Instance provider updated:', !!web3authInstance.provider);
+      // Force a state update by setting the instance again with a new reference
+      setWeb3authInstance(web3authInstance);
     }
   };
 

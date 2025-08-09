@@ -121,8 +121,8 @@ jobs:
               -e WEB3AUTH_CLIENT_ID=${{ secrets.WEB3AUTH_CLIENT_ID }} \
               -e WEB3AUTH_NETWORK=${{ vars.WEB3AUTH_NETWORK }} \
               -e MOONPAY_API_KEY=${{ secrets.MOONPAY_API_KEY }} \
-              -e GIT_TAG=$(git describe --tags --abbrev=0) \
-              -e GIT_SHA=$(git rev-parse --short HEAD) \
+              -e GIT_TAG=${{ env.GIT_TAG }} \
+              -e GIT_SHA=${{ env.GIT_SHA }} \
               -e COOKIE_DOMAIN=${{ vars.COOKIE_DOMAIN }} \
               -e BUILD_VERSION=${{ env.BUILD_VERSION }} \
               -e CONTRACT_FACTORY_ADDRESS=${{ vars.CONTRACT_FACTORY_ADDRESS }} \

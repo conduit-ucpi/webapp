@@ -113,24 +113,24 @@ jobs:
               --name ${{ vars.SERVICE_NAME }} \
               --network ${{ vars.DOCKER_NETWORK }} \
               --restart unless-stopped \
-              -e CHAIN_ID=${{ vars.CHAIN_ID }} \
-              -e RPC_URL=${{ vars.RPC_URL }} \
-              -e CHAIN_SERVICE_URL=${{ vars.CHAIN_SERVICE_URL }} \
-              -e USER_SERVICE_URL=${{ vars.USER_SERVICE_URL }} \
-              -e CONTRACT_SERVICE_URL=${{ vars.CONTRACT_SERVICE_URL }} \
-              -e WEB3AUTH_CLIENT_ID=${{ secrets.WEB3AUTH_CLIENT_ID }} \
-              -e WEB3AUTH_NETWORK=${{ vars.WEB3AUTH_NETWORK }} \
-              -e MOONPAY_API_KEY=${{ secrets.MOONPAY_API_KEY }} \
-              -e GIT_TAG=${{ env.GIT_TAG }} \
-              -e GIT_SHA=${{ env.GIT_SHA }} \
-              -e COOKIE_DOMAIN=${{ vars.COOKIE_DOMAIN }} \
-              -e BUILD_VERSION=${{ env.BUILD_VERSION }} \
-              -e CONTRACT_FACTORY_ADDRESS=${{ vars.CONTRACT_FACTORY_ADDRESS }} \
-              -e USDC_CONTRACT_ADDRESS=${{ vars.USDC_CONTRACT_ADDRESS }} \
-              -e MIN_GAS_WEI=${{ vars.MIN_GAS_WEI }} \
-              -e NEXT_PUBLIC_BASE_PATH=${{ vars.NEXT_PUBLIC_BASE_PATH }} \
-              -e SNOWTRACE_BASE_URL=${{ vars.SNOWTRACE_BASE_URL }} \
-              -e PRODUCT_NAME=${{ vars.PRODUCT_NAME }} \
-              -e SERVICE_LINK=${{ vars.SERVICE_LINK }} \
+              -e CHAIN_ID="${{ vars.CHAIN_ID }}" \
+              -e RPC_URL="${{ vars.RPC_URL }}" \
+              -e CHAIN_SERVICE_URL="${{ vars.CHAIN_SERVICE_URL }}" \
+              -e USER_SERVICE_URL="${{ vars.USER_SERVICE_URL }}" \
+              -e CONTRACT_SERVICE_URL="${{ vars.CONTRACT_SERVICE_URL }}" \
+              -e WEB3AUTH_CLIENT_ID="${{ secrets.WEB3AUTH_CLIENT_ID }}" \
+              -e WEB3AUTH_NETWORK="${{ vars.WEB3AUTH_NETWORK }}" \
+              -e MOONPAY_API_KEY="${{ secrets.MOONPAY_API_KEY }}" \
+              -e GIT_TAG="${{ env.GIT_TAG }}" \
+              -e GIT_SHA="${{ env.GIT_SHA }}" \
+              -e COOKIE_DOMAIN="${{ vars.COOKIE_DOMAIN }}" \
+              -e BUILD_VERSION="${{ env.BUILD_VERSION }}" \
+              -e CONTRACT_FACTORY_ADDRESS="${{ vars.CONTRACT_FACTORY_ADDRESS }}" \
+              -e USDC_CONTRACT_ADDRESS="${{ vars.USDC_CONTRACT_ADDRESS }}" \
+              -e MIN_GAS_WEI="${{ vars.MIN_GAS_WEI }}" \
+              -e NEXT_PUBLIC_BASE_PATH="${{ vars.NEXT_PUBLIC_BASE_PATH }}" \
+              -e SNOWTRACE_BASE_URL="${{ vars.SNOWTRACE_BASE_URL }}" \
+              -e PRODUCT_NAME="${{ vars.PRODUCT_NAME }}" \
+              -e SERVICE_LINK="${{ vars.SERVICE_LINK }}" \
               ghcr.io/${{ env.REPO_LOWER }}:${{ env.SHA_TAG }}
             '

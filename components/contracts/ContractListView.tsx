@@ -254,7 +254,7 @@ export default function ContractListView({
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                   onClick={() => handleSort('status')}
                 >
-                  Status {getSortIcon('status')}
+                  Status / Action {getSortIcon('status')}
                 </th>
                 <th
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
@@ -283,80 +283,23 @@ export default function ContractListView({
                 >
                   Created {getSortIcon('createdAt')}
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredAndSortedContracts.map((contract) => (
                 <tr key={contract.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <span className={getStatusBadgeClass(contract.status)}>
-                        {contract.status}
-                      </span>
-                      {contract.hasDiscrepancy && (
-                        <span className="ml-2 text-orange-500 text-xs" title="Has discrepancy">
-                          ⚠️
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center">
+                        <span className={getStatusBadgeClass(contract.status)}>
+                          {contract.status}
                         </span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {displayCurrency(contract.amount, 'currency' in contract.originalContract ? contract.originalContract.currency : 'microUSDC')}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-900">
-                    <div className="max-w-xs truncate" title={contract.description}>
-                      {contract.description}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-500">
-                    <div className="space-y-1">
-                      <div className="flex items-center">
-                        <span className="text-xs text-gray-400 mr-1">B:</span>
-                        {contract.buyerEmail && (
-                          <span className="truncate max-w-24" title={contract.buyerEmail}>
-                            {contract.buyerEmail}
+                        {contract.hasDiscrepancy && (
+                          <span className="ml-2 text-orange-500 text-xs" title="Has discrepancy">
+                            ⚠️
                           </span>
                         )}
-                        {contract.buyerAddress && (
-                          <ExpandableHash 
-                            hash={contract.buyerAddress} 
-                            className="ml-1"
-                          />
-                        )}
                       </div>
-                      <div className="flex items-center">
-                        <span className="text-xs text-gray-400 mr-1">S:</span>
-                        {contract.sellerEmail && (
-                          <span className="truncate max-w-24" title={contract.sellerEmail}>
-                            {contract.sellerEmail}
-                          </span>
-                        )}
-                        {contract.sellerAddress && (
-                          <ExpandableHash 
-                            hash={contract.sellerAddress} 
-                            className="ml-1"
-                          />
-                        )}
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <div className="flex flex-col">
-                      <span>{formatTimestamp(contract.expiryTimestamp).date}</span>
-                      <span className="text-xs text-gray-400">{formatTimestamp(contract.expiryTimestamp).time}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <div className="flex flex-col">
-                      <span>{formatTimestamp(contract.createdAt).date}</span>
-                      <span className="text-xs text-gray-400">{formatTimestamp(contract.createdAt).time}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div className="flex flex-col space-y-1">
                       {(() => {
                         const isBuyer = contract.type === 'pending' 
                           ? contract.buyerEmail === user?.email
@@ -364,20 +307,6 @@ export default function ContractListView({
                         const isSeller = contract.type === 'pending'
                           ? contract.sellerEmail === user?.email  
                           : walletAddress?.toLowerCase() === contract.sellerAddress?.toLowerCase();
-                        
-                        console.log('ContractListView Debug:', {
-                          contractId: contract.id,
-                          contractType: contract.type,
-                          contractStatus: contract.status,
-                          userEmail: user?.email,
-                          userWallet: walletAddress?.toLowerCase(),
-                          contractBuyerEmail: contract.buyerEmail,
-                          contractSellerEmail: contract.sellerEmail,
-                          contractBuyerAddress: contract.buyerAddress?.toLowerCase(),
-                          contractSellerAddress: contract.sellerAddress?.toLowerCase(),
-                          isBuyer,
-                          isSeller
-                        });
                         
                         return (
                           <ContractActions
@@ -398,6 +327,58 @@ export default function ContractListView({
                           className="text-xs"
                         />
                       )}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    {displayCurrency(contract.amount, 'currency' in contract.originalContract ? contract.originalContract.currency : 'microUSDC')}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-900">
+                    <div className="max-w-[200px] break-words" title={contract.description}>
+                      {contract.description}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-500">
+                    <div className="space-y-1">
+                      <div className="flex items-center">
+                        <span className="text-xs text-gray-400 mr-1">B:</span>
+                        {contract.buyerEmail && (
+                          <span className="truncate max-w-24" title={contract.buyerEmail}>
+                            {contract.buyerEmail}
+                          </span>
+                        )}
+                        {!contract.buyerEmail && contract.buyerAddress && (
+                          <ExpandableHash 
+                            hash={contract.buyerAddress} 
+                            className="ml-1"
+                          />
+                        )}
+                      </div>
+                      <div className="flex items-center">
+                        <span className="text-xs text-gray-400 mr-1">S:</span>
+                        {contract.sellerEmail && (
+                          <span className="truncate max-w-24" title={contract.sellerEmail}>
+                            {contract.sellerEmail}
+                          </span>
+                        )}
+                        {!contract.sellerEmail && contract.sellerAddress && (
+                          <ExpandableHash 
+                            hash={contract.sellerAddress} 
+                            className="ml-1"
+                          />
+                        )}
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <div className="flex flex-col">
+                      <span>{formatTimestamp(contract.expiryTimestamp).date}</span>
+                      <span className="text-xs text-gray-400">{formatTimestamp(contract.expiryTimestamp).time}</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <div className="flex flex-col">
+                      <span>{formatTimestamp(contract.createdAt).date}</span>
+                      <span className="text-xs text-gray-400">{formatTimestamp(contract.createdAt).time}</span>
                     </div>
                   </td>
                 </tr>

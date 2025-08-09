@@ -17,9 +17,9 @@ export function Web3AuthInstanceProvider({ children }: { children: React.ReactNo
   const initWeb3Auth = async () => {
     if (!config) return null;
 
-    // Always create a new instance if we're initializing after logout
-    if (web3authInstance && web3authInstance.provider && provider) {
-      console.log('Web3Auth instance already exists, returning existing instance');
+    // Only reuse existing instance if it has a connected provider
+    if (web3authInstance && web3authInstance.connected && web3authInstance.provider && provider) {
+      console.log('Web3Auth instance already exists and connected, returning existing instance');
       setIsLoading(false);
       return web3authInstance;
     }

@@ -111,6 +111,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       // Clear local auth state
       setUser(null);
+      
+      // Clear the provider state in Web3AuthInstanceProvider
+      onLogout();
 
       console.log('Logout completed successfully');
     } catch (error) {
@@ -120,6 +123,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       (window as any).web3auth = null;
       (window as any).web3authProvider = null;
       resetWeb3AuthInstance();
+      onLogout();
 
       // Force clear storage even on error
       try {

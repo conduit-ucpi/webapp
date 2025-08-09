@@ -102,6 +102,9 @@ export default function ConnectWallet() {
         //console.log('Logging in with ID token:', idToken);
         await login(idToken, walletAddress, web3authProvider);
         //console.log('Login successful');
+        
+        // Force a page reload after successful login to ensure all components update properly
+        window.location.reload();
         return;
       }
 
@@ -131,6 +134,9 @@ export default function ConnectWallet() {
       }
 
       await login(idToken, walletAddress, web3authProvider);
+      
+      // Force a page reload after successful login to ensure all components update properly
+      window.location.reload();
     } catch (error: any) {
       console.error('Connection failed:', error);
       // More specific error messages

@@ -1,6 +1,7 @@
 import { Contract, PendingContract } from '@/types';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { useConfig } from '@/components/auth/ConfigProvider';
+import { useWalletAddress } from '@/hooks/useWalletAddress';
 import { displayCurrency, formatTimestamp } from '@/utils/validation';
 import ContractActions from './ContractActions';
 import ExpandableHash from '@/components/ui/ExpandableHash';
@@ -17,6 +18,7 @@ interface ContractCardProps {
 export default function ContractCard({ contract, onAction, onAccept, isClaimingInProgress, onClaimStart, onClaimComplete }: ContractCardProps) {
   const { user } = useAuth();
   const { config } = useConfig();
+  const { walletAddress } = useWalletAddress();
   
   // Detect if this is a pending contract (has id field but no contractAddress field)
   const isPending = 'id' in contract && !('contractAddress' in contract);
@@ -24,11 +26,11 @@ export default function ContractCard({ contract, onAction, onAccept, isClaimingI
   // Handle buyer/seller identification for both contract types
   const isBuyer = isPending 
     ? (contract as PendingContract).buyerEmail === user?.email
-    : user?.walletAddress?.toLowerCase() === (contract as Contract).buyerAddress?.toLowerCase();
+    : walletAddress?.toLowerCase() === (contract as Contract).buyerAddress?.toLowerCase();
     
   const isSeller = isPending
     ? (contract as PendingContract).sellerEmail === user?.email  
-    : user?.walletAddress?.toLowerCase() === (contract as Contract).sellerAddress?.toLowerCase();
+    : walletAddress?.toLowerCase() === (contract as Contract).sellerAddress?.toLowerCase();
   
   // Get status for display - handle both contract types
   const getDisplayStatus = () => {

@@ -1,5 +1,6 @@
 import { useAuth } from '@/components/auth/AuthProvider';
 import { useConfig } from '@/components/auth/ConfigProvider';
+import { useWalletAddress } from '@/hooks/useWalletAddress';
 
 interface USDCGuideProps {
   showMoonPayComingSoon?: boolean;
@@ -8,6 +9,7 @@ interface USDCGuideProps {
 export default function USDCGuide({ showMoonPayComingSoon = false }: USDCGuideProps) {
   const { user } = useAuth();
   const { config } = useConfig();
+  const { walletAddress } = useWalletAddress();
 
   if (!user || !config) return null;
 
@@ -37,7 +39,7 @@ export default function USDCGuide({ showMoonPayComingSoon = false }: USDCGuidePr
           <span className="font-semibold mr-2">2.</span>
           <div>
             <span className="font-semibold">Your wallet address:</span> 
-            <code className="bg-blue-100 px-2 py-1 rounded text-xs ml-2 break-all">{user.walletAddress}</code>
+            <code className="bg-blue-100 px-2 py-1 rounded text-xs ml-2 break-all">{walletAddress}</code>
           </div>
         </div>
         <div className="flex items-start">

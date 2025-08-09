@@ -3,6 +3,7 @@ import USDCGuide from '@/components/ui/USDCGuide';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { useWeb3AuthInstance } from '@/components/auth/Web3AuthInstanceProvider';
+import { useWalletAddress } from '@/hooks/useWalletAddress';
 // Mock the providers
 jest.mock('@/components/auth/AuthProvider', () => ({
   useAuth: jest.fn(),
@@ -16,9 +17,14 @@ jest.mock('@/components/auth/Web3AuthInstanceProvider', () => ({
   useWeb3AuthInstance: jest.fn(),
 }));
 
+jest.mock('@/hooks/useWalletAddress', () => ({
+  useWalletAddress: jest.fn(),
+}));
+
 const mockUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
 const mockUseConfig = useConfig as jest.MockedFunction<typeof useConfig>;
 const mockUseWeb3AuthInstance = useWeb3AuthInstance as jest.MockedFunction<typeof useWeb3AuthInstance>;
+const mockUseWalletAddress = useWalletAddress as jest.MockedFunction<typeof useWalletAddress>;
 describe('USDCGuide', () => {
   const mockUser = {
     userId: 'test-user',
@@ -57,6 +63,11 @@ describe('USDCGuide', () => {
       isLoading: false,
       web3authInstance: null,
       onLogout: jest.fn(),
+    });
+
+    mockUseWalletAddress.mockReturnValue({
+      walletAddress: mockUser.walletAddress,
+      isLoading: false,
     });
   });
 
@@ -160,6 +171,11 @@ describe('USDCGuide', () => {
       isLoading: false,
       web3authInstance: null,
       onLogout: jest.fn(),
+    });
+
+    mockUseWalletAddress.mockReturnValue({
+      walletAddress: null,
+      isLoading: false,
     });
 
     const { container } = render(<USDCGuide />);

@@ -8,11 +8,13 @@ import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import USDCGuide from '@/components/ui/USDCGuide';
 import { useWeb3AuthInstance } from '@/components/auth/Web3AuthInstanceProvider';
+import { useWalletAddress } from '@/hooks/useWalletAddress';
 
 export default function BuyUSDC() {
   const router = useRouter();
   const { user, isLoading } = useAuth();
   const { web3authProvider, isLoading: isWeb3AuthInstanceLoading } = useWeb3AuthInstance();
+  const { walletAddress, isLoading: isWalletAddressLoading } = useWalletAddress();
   const { config } = useConfig();
   const [showWidget, setShowWidget] = useState(false);
 
@@ -20,7 +22,7 @@ export default function BuyUSDC() {
   const mode = (router.query.mode as 'buy' | 'sell') || 'buy';
   const isBuyMode = mode === 'buy';
 
-  if (isLoading || isWeb3AuthInstanceLoading) {
+  if (isLoading || isWeb3AuthInstanceLoading || isWalletAddressLoading) {
     return (
       <div className="flex justify-center items-center min-h-96">
         <LoadingSpinner size="lg" />
@@ -28,7 +30,7 @@ export default function BuyUSDC() {
     );
   }
 
-  if (!user || !web3authProvider) {
+  if (!user || !web3authProvider || !walletAddress) {
     return (
       <div className="max-w-md mx-auto text-center py-20">
         <h1 className="text-2xl font-bold text-gray-900 mb-4">Connect Your Wallet</h1>
@@ -98,7 +100,7 @@ export default function BuyUSDC() {
                   <span className="text-sm text-gray-600">
                     {isBuyMode ? 'Destination Wallet:' : 'Source Wallet:'}
                   </span>
-                  <span className="text-sm font-mono text-gray-900">{user.walletAddress}</span>
+                  <span className="text-sm font-mono text-gray-900">{walletAddress}</span>
                 </div>
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-sm text-gray-600">Network:</span>

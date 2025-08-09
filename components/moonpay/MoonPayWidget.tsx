@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { useAuth } from '@/components/auth/AuthProvider';
+import { useWalletAddress } from '@/hooks/useWalletAddress';
 
 interface MoonPayWidgetProps {
   onClose?: () => void;
@@ -10,16 +11,17 @@ interface MoonPayWidgetProps {
 export default function MoonPayWidget({ onClose, mode = 'buy' }: MoonPayWidgetProps) {
   const { config } = useConfig();
   const { user } = useAuth();
+  const { walletAddress } = useWalletAddress();
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {
-    if (!config || !user) return;
+    if (!config || !user || !walletAddress) return;
 
     // Debug MoonPay configuration
     console.log('MoonPay configuration:', {
       apiKey: config.moonPayApiKey ? 'Present' : 'Missing',
       apiKeyValue: config.moonPayApiKey,
-      walletAddress: user.walletAddress
+      walletAddress: walletAddress
     });
 
     // Check if MoonPay API key is valid
@@ -35,7 +37,7 @@ export default function MoonPayWidget({ onClose, mode = 'buy' }: MoonPayWidgetPr
     const params = new URLSearchParams({
       apiKey: config.moonPayApiKey,
       currencyCode: 'usdc',
-      walletAddress: user.walletAddress,
+      walletAddress: walletAddress,
       colorCode: '#3b82f6',
       redirectURL: window.location.origin + '/dashboard',
     });
@@ -66,9 +68,9 @@ export default function MoonPayWidget({ onClose, mode = 'buy' }: MoonPayWidgetPr
     return () => {
       window.removeEventListener('message', handleMessage);
     };
-  }, [config, user, onClose, mode]);
+  }, [config, user, walletAddress, onClose, mode]);
 
-  if (!config || !user) {
+  if (!config || !user || !walletAddress) {
     return (
       <div className="flex items-center justify-center p-8">
         <div className="text-center">

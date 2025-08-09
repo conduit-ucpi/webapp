@@ -4,6 +4,7 @@ import BuyUSDC from '@/pages/buy-usdc';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { useWeb3AuthInstance } from '@/components/auth/Web3AuthInstanceProvider';
 import { useConfig } from '@/components/auth/ConfigProvider';
+import { useWalletAddress } from '@/hooks/useWalletAddress';
 
 // Mock next/router
 jest.mock('next/router', () => ({
@@ -23,6 +24,11 @@ jest.mock('@/components/auth/ConfigProvider', () => ({
 // Mock Web3AuthInstanceProvider
 jest.mock('@/components/auth/Web3AuthInstanceProvider', () => ({
   useWeb3AuthInstance: jest.fn(),
+}));
+
+// Mock useWalletAddress hook
+jest.mock('@/hooks/useWalletAddress', () => ({
+  useWalletAddress: jest.fn(),
 }));
 
 // Mock LoadingSpinner
@@ -61,6 +67,7 @@ const mockUseRouter = useRouter as jest.MockedFunction<typeof useRouter>;
 const mockUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
 const mockUseConfig = useConfig as jest.MockedFunction<typeof useConfig>;
 const mockUseWeb3AuthInstance = useWeb3AuthInstance as jest.MockedFunction<typeof useWeb3AuthInstance>;
+const mockUseWalletAddress = useWalletAddress as jest.MockedFunction<typeof useWalletAddress>;
 describe('BuyUSDC Page', () => {
   const mockPush = jest.fn();
   const mockBack = jest.fn();
@@ -109,6 +116,11 @@ describe('BuyUSDC Page', () => {
       isLoading: false,
       web3authInstance: null,
       onLogout: jest.fn(),
+    });
+
+    mockUseWalletAddress.mockReturnValue({
+      walletAddress: mockUser.walletAddress,
+      isLoading: false,
     });
   });
 

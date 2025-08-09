@@ -10,6 +10,7 @@ import ExpandableHash from '@/components/ui/ExpandableHash';
 import USDCGuide from '@/components/ui/USDCGuide';
 import { ethers } from 'ethers';
 import { useWeb3AuthInstance } from '@/components/auth/Web3AuthInstanceProvider';
+import { useWalletAddress } from '@/hooks/useWalletAddress';
 
 interface WalletBalances {
   avax: string;
@@ -34,6 +35,7 @@ export default function Wallet() {
   const { user, isLoading: authLoading } = useAuth();
   const { web3authProvider, isLoading: isWeb3AuthInstanceLoading } = useWeb3AuthInstance();
   const { config } = useConfig();
+  const { walletAddress, isLoading: isWalletAddressLoading } = useWalletAddress();
   const [balances, setBalances] = useState<WalletBalances>({ avax: '0', usdc: '0' });
   const [isLoadingBalances, setIsLoadingBalances] = useState(false);
   const [sendForm, setSendForm] = useState<SendFormData>({
@@ -210,7 +212,7 @@ export default function Wallet() {
     );
   };
 
-  if (authLoading) {
+  if (authLoading || isWeb3AuthInstanceLoading || isWalletAddressLoading) {
     return (
       <div className="flex justify-center items-center min-h-96">
         <LoadingSpinner size="lg" />
@@ -218,7 +220,7 @@ export default function Wallet() {
     );
   }
 
-  if (!user || !web3authProvider) {
+  if (!user || !web3authProvider || !walletAddress) {
     return (
       <div className="max-w-md mx-auto text-center py-20">
         <h1 className="text-2xl font-bold text-gray-900 mb-4">Connect Your Wallet</h1>
@@ -246,7 +248,7 @@ export default function Wallet() {
             <div>
               <h2 className="text-lg font-semibold text-gray-900">Connected Wallet</h2>
               <div className="text-sm text-gray-600 mt-1">
-                <ExpandableHash hash={user.walletAddress} />
+                <ExpandableHash hash={walletAddress} />
               </div>
               {chainInfo && (
                 <div className="mt-2 flex items-center space-x-4 text-sm">

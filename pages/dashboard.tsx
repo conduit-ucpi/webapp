@@ -6,12 +6,14 @@ import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import ExpandableHash from '@/components/ui/ExpandableHash';
 import { useWeb3AuthInstance } from '@/components/auth/Web3AuthInstanceProvider';
+import { useWalletAddress } from '@/hooks/useWalletAddress';
 
 export default function Dashboard() {
   const { user, isLoading } = useAuth();
   const { web3authProvider, isLoading: isWeb3AuthInstanceLoading } = useWeb3AuthInstance();
+  const { walletAddress, isLoading: isWalletAddressLoading } = useWalletAddress();
 
-  if (isLoading || isWeb3AuthInstanceLoading) {
+  if (isLoading || isWeb3AuthInstanceLoading || isWalletAddressLoading) {
     return (
       <div className="flex justify-center items-center min-h-96">
         <LoadingSpinner size="lg" />
@@ -54,7 +56,7 @@ export default function Dashboard() {
             <div>
               <h2 className="text-lg font-semibold text-gray-900">Connected Wallet</h2>
               <div className="text-sm text-gray-600 mt-1">
-                <ExpandableHash hash={user.walletAddress} />
+                <ExpandableHash hash={walletAddress || ''} />
               </div>
             </div>
             <div className="text-right">

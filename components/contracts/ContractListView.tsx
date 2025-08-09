@@ -5,6 +5,7 @@ import ExpandableHash from '@/components/ui/ExpandableHash';
 import ContractActions from './ContractActions';
 import Button from '@/components/ui/Button';
 import { useAuth } from '@/components/auth/AuthProvider';
+import { useWalletAddress } from '@/hooks/useWalletAddress';
 
 interface UnifiedContract {
   id: string;
@@ -49,6 +50,7 @@ export default function ContractListView({
   onClaimComplete
 }: ContractListViewProps) {
   const { user } = useAuth();
+  const { walletAddress } = useWalletAddress();
   const [sortField, setSortField] = useState<SortField>('createdAt');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
@@ -358,17 +360,17 @@ export default function ContractListView({
                       {(() => {
                         const isBuyer = contract.type === 'pending' 
                           ? contract.buyerEmail === user?.email
-                          : user?.walletAddress?.toLowerCase() === contract.buyerAddress?.toLowerCase();
+                          : walletAddress?.toLowerCase() === contract.buyerAddress?.toLowerCase();
                         const isSeller = contract.type === 'pending'
                           ? contract.sellerEmail === user?.email  
-                          : user?.walletAddress?.toLowerCase() === contract.sellerAddress?.toLowerCase();
+                          : walletAddress?.toLowerCase() === contract.sellerAddress?.toLowerCase();
                         
                         console.log('ContractListView Debug:', {
                           contractId: contract.id,
                           contractType: contract.type,
                           contractStatus: contract.status,
                           userEmail: user?.email,
-                          userWallet: user?.walletAddress?.toLowerCase(),
+                          userWallet: walletAddress?.toLowerCase(),
                           contractBuyerEmail: contract.buyerEmail,
                           contractSellerEmail: contract.sellerEmail,
                           contractBuyerAddress: contract.buyerAddress?.toLowerCase(),

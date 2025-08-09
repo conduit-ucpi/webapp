@@ -112,13 +112,16 @@ export default function Wallet() {
       const web3Service = new Web3Service(config);
       await web3Service.initializeProvider(web3authProvider);
 
+      // Get the real wallet address from Web3Auth
+      const userAddress = await web3Service.getUserAddress();
+      
       // Get AVAX balance
       const ethersProvider = new ethers.BrowserProvider(web3authProvider);
-      const avaxBalance = await ethersProvider.getBalance(user.walletAddress);
+      const avaxBalance = await ethersProvider.getBalance(userAddress);
       const avaxFormatted = ethers.formatEther(avaxBalance);
 
       // Get USDC balance
-      const usdcBalance = await web3Service.getUSDCBalance(user.walletAddress);
+      const usdcBalance = await web3Service.getUSDCBalance(userAddress);
 
       setBalances({
         avax: parseFloat(avaxFormatted).toFixed(6),

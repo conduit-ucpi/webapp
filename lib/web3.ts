@@ -59,7 +59,7 @@ export class Web3Service {
     if (!this.web3authProvider) {
       throw new Error('Web3Auth provider not initialized');
     }
-    // Get the actual wallet address using Web3Auth's request method
+    // Get the real wallet address using Web3Auth's request method - this MUST match signing address
     const accounts = await this.web3authProvider.request({
       method: "eth_accounts"
     });
@@ -227,112 +227,184 @@ export class Web3Service {
 
   // Sign USDC approval transaction and return hex for chain service
   async signUSDCApproval(amount: string, spenderAddress: string): Promise<string> {
-    const signer = await this.getSigner();
+    if (!this.web3authProvider || !this.provider) {
+      throw new Error('Providers not initialized');
+    }
+
+    const realWalletAddress = await this.getUserAddress();
     const usdcContract = new ethers.Contract(
       this.config.usdcContractAddress,
       ERC20_ABI,
-      signer
+      this.provider
     );
 
     const decimals = await usdcContract.decimals();
     const amountWei = ethers.parseUnits(amount, decimals);
 
-    // Create transaction and estimate gas
-    const tx = await usdcContract.approve.populateTransaction(spenderAddress, amountWei);
+    // Create transaction data
+    const txData = usdcContract.interface.encodeFunctionData('approve', [spenderAddress, amountWei]);
     const gasEstimate = await usdcContract.approve.estimateGas(spenderAddress, amountWei);
+    const gasPrice = await this.provider.getFeeData();
+    const nonce = await this.provider.getTransactionCount(realWalletAddress);
+    
+    // Create transaction object for Web3Auth signing
+    const txObject = {
+      from: realWalletAddress,
+      to: this.config.usdcContractAddress,
+      data: txData,
+      value: '0x0',
+      gasLimit: `0x${gasEstimate.toString(16)}`,
+      gasPrice: `0x${(gasPrice.gasPrice || BigInt('20000000000')).toString(16)}`,
+      nonce: `0x${nonce.toString(16)}`
+    };
     
     console.log('=== USDC APPROVAL TRANSACTION DEBUG ===');
-    console.log('Original USDC approval transaction:', tx);
+    console.log('Transaction object for Web3Auth signing:', txObject);
     
-    // Prepare transaction with gas estimation and pricing
-    const txWithGas = await this.prepareTransactionWithGas(tx, gasEstimate);
+    // Sign using Web3Auth provider directly
+    const signedTx = await this.web3authProvider.request({
+      method: "eth_signTransaction",
+      params: [txObject]
+    });
     
-    console.log('Modified USDC approval transaction:', txWithGas);
+    console.log('Signed transaction:', signedTx);
     console.log('=== USDC APPROVAL TRANSACTION DEBUG END ===');
     
-    // Sign the transaction and return hex
-    const signedTx = await signer.signTransaction(txWithGas);
     return signedTx;
   }
 
   // Sign deposit funds transaction and return hex for chain service
   async signDepositTransaction(contractAddress: string): Promise<string> {
-    const signer = await this.getSigner();
+    if (!this.web3authProvider || !this.provider) {
+      throw new Error('Providers not initialized');
+    }
+
+    const realWalletAddress = await this.getUserAddress();
     const contract = new ethers.Contract(
       contractAddress,
       ESCROW_CONTRACT_ABI,
-      signer
+      this.provider
     );
 
-    // Create transaction and estimate gas
-    const tx = await contract.depositFunds.populateTransaction();
+    // Create transaction data
+    const txData = contract.interface.encodeFunctionData('depositFunds', []);
     const gasEstimate = await contract.depositFunds.estimateGas();
+    const gasPrice = await this.provider.getFeeData();
+    const nonce = await this.provider.getTransactionCount(realWalletAddress);
+    
+    // Create transaction object for Web3Auth signing
+    const txObject = {
+      from: realWalletAddress,
+      to: contractAddress,
+      data: txData,
+      value: '0x0',
+      gasLimit: `0x${gasEstimate.toString(16)}`,
+      gasPrice: `0x${(gasPrice.gasPrice || BigInt('20000000000')).toString(16)}`,
+      nonce: `0x${nonce.toString(16)}`
+    };
     
     console.log('=== DEPOSIT TRANSACTION DEBUG ===');
-    console.log('Original transaction from populateTransaction:', tx);
+    console.log('Transaction object for Web3Auth signing:', txObject);
     
-    // Prepare transaction with gas estimation and pricing
-    const txWithGas = await this.prepareTransactionWithGas(tx, gasEstimate);
+    // Sign using Web3Auth provider directly
+    const signedTx = await this.web3authProvider.request({
+      method: "eth_signTransaction",
+      params: [txObject]
+    });
     
-    console.log('Modified deposit transaction:', txWithGas);
+    console.log('Signed transaction:', signedTx);
     console.log('=== DEPOSIT TRANSACTION DEBUG END ===');
     
-    // Sign the transaction and return hex
-    const signedTx = await signer.signTransaction(txWithGas);
     return signedTx;
   }
 
   // Sign claim funds transaction and return hex for chain service
   async signClaimTransaction(contractAddress: string): Promise<string> {
-    const signer = await this.getSigner();
+    if (!this.web3authProvider || !this.provider) {
+      throw new Error('Providers not initialized');
+    }
+
+    const realWalletAddress = await this.getUserAddress();
     const contract = new ethers.Contract(
       contractAddress,
       ESCROW_CONTRACT_ABI,
-      signer
+      this.provider
     );
 
-    // Create transaction and estimate gas
-    const tx = await contract.claimFunds.populateTransaction();
+    // Create transaction data
+    const txData = contract.interface.encodeFunctionData('claimFunds', []);
     const gasEstimate = await contract.claimFunds.estimateGas();
+    const gasPrice = await this.provider.getFeeData();
+    const nonce = await this.provider.getTransactionCount(realWalletAddress);
+    
+    // Create transaction object for Web3Auth signing
+    const txObject = {
+      from: realWalletAddress,
+      to: contractAddress,
+      data: txData,
+      value: '0x0',
+      gasLimit: `0x${gasEstimate.toString(16)}`,
+      gasPrice: `0x${(gasPrice.gasPrice || BigInt('20000000000')).toString(16)}`,
+      nonce: `0x${nonce.toString(16)}`
+    };
     
     console.log('=== CLAIM FUNDS TRANSACTION DEBUG ===');
-    console.log('Original claim transaction:', tx);
+    console.log('Transaction object for Web3Auth signing:', txObject);
     
-    // Prepare transaction with gas estimation and pricing
-    const txWithGas = await this.prepareTransactionWithGas(tx, gasEstimate);
+    // Sign using Web3Auth provider directly
+    const signedTx = await this.web3authProvider.request({
+      method: "eth_signTransaction",
+      params: [txObject]
+    });
     
-    console.log('Modified claim transaction:', txWithGas);
+    console.log('Signed transaction:', signedTx);
     console.log('=== CLAIM FUNDS TRANSACTION DEBUG END ===');
     
-    // Sign the transaction and return hex
-    const signedTx = await signer.signTransaction(txWithGas);
     return signedTx;
   }
 
   // Sign dispute transaction and return hex for chain service
   async signDisputeTransaction(contractAddress: string): Promise<string> {
-    const signer = await this.getSigner();
+    if (!this.web3authProvider || !this.provider) {
+      throw new Error('Providers not initialized');
+    }
+
+    const realWalletAddress = await this.getUserAddress();
     const contract = new ethers.Contract(
       contractAddress,
       ESCROW_CONTRACT_ABI,
-      signer
+      this.provider
     );
 
-    // Create transaction and estimate gas
-    const tx = await contract.raiseDispute.populateTransaction();
+    // Create transaction data
+    const txData = contract.interface.encodeFunctionData('raiseDispute', []);
     const gasEstimate = await contract.raiseDispute.estimateGas();
+    const gasPrice = await this.provider.getFeeData();
+    const nonce = await this.provider.getTransactionCount(realWalletAddress);
+    
+    // Create transaction object for Web3Auth signing
+    const txObject = {
+      from: realWalletAddress,
+      to: contractAddress,
+      data: txData,
+      value: '0x0',
+      gasLimit: `0x${gasEstimate.toString(16)}`,
+      gasPrice: `0x${(gasPrice.gasPrice || BigInt('20000000000')).toString(16)}`,
+      nonce: `0x${nonce.toString(16)}`
+    };
     
     console.log('=== DISPUTE TRANSACTION DEBUG ===');
-    console.log('Original dispute transaction:', tx);
+    console.log('Transaction object for Web3Auth signing:', txObject);
     
-    // Prepare transaction with gas estimation and pricing
-    const txWithGas = await this.prepareTransactionWithGas(tx, gasEstimate);
+    // Sign using Web3Auth provider directly
+    const signedTx = await this.web3authProvider.request({
+      method: "eth_signTransaction",
+      params: [txObject]
+    });
     
-    console.log('Modified dispute transaction:', txWithGas);
+    console.log('Signed transaction:', signedTx);
     console.log('=== DISPUTE TRANSACTION DEBUG END ===');
     
-    // Sign the transaction and return hex
-    const signedTx = await signer.signTransaction(txWithGas);
     return signedTx;
   }
 }

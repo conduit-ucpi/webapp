@@ -124,11 +124,8 @@ export default function CreateContract() {
       const web3Service = new Web3Service(config);
       await web3Service.initializeProvider(web3authProvider);
       
-      // Use the actual user wallet address from auth context, not the Web3Auth proxy address
-      const userAddress = user?.walletAddress;
-      if (!userAddress) {
-        throw new Error('User wallet address not found. Please ensure you are logged in.');
-      }
+      // Get the actual user wallet address from Web3Auth
+      const userAddress = await web3Service.getUserAddress();
 
       // Create pending contract via Contract Service (no USDC balance check needed)
       setLoadingMessage('Creating pending contract...');

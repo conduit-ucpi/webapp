@@ -69,14 +69,16 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
       const web3Service = new Web3Service(config);
       await web3Service.initializeProvider(web3authProvider);
       
-      // Get the actual user wallet address from auth context, not the Web3Auth proxy address
-      const userAddress = user?.walletAddress;
-      if (!userAddress) {
-        throw new Error('User wallet address not found. Please ensure you are logged in.');
-      }
+      // Get the actual user wallet address from Web3Auth
+      const userAddress = await web3Service.getUserAddress();
       
       console.log('User from auth context:', user);
       console.log('Using actual user wallet address:', userAddress);
+      
+      // Verify that the current user's email matches the contract's buyer email (if specified)
+      if (contract.buyerEmail && user?.email !== contract.buyerEmail) {
+        throw new Error(`This contract is for ${contract.buyerEmail}, but you are logged in as ${user?.email}. Please log in with the correct account.`);
+      }
 
       // Check USDC balance using the actual user wallet address
       setLoadingMessage('Checking USDC balance...');

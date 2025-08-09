@@ -59,6 +59,9 @@ export class Web3Service {
       throw new Error('Provider not initialized');
     }
 
+    console.log('getUSDCBalance - checking for address:', userAddress);
+    console.log('getUSDCBalance - USDC contract:', this.config.usdcContractAddress);
+
     const usdcContract = new ethers.Contract(
       this.config.usdcContractAddress,
       ERC20_ABI,
@@ -68,7 +71,12 @@ export class Web3Service {
     const balance = await usdcContract.balanceOf(userAddress);
     const decimals = await usdcContract.decimals();
     
-    return ethers.formatUnits(balance, decimals);
+    console.log('getUSDCBalance - raw balance:', balance.toString());
+    console.log('getUSDCBalance - decimals:', decimals);
+    const formattedBalance = ethers.formatUnits(balance, decimals);
+    console.log('getUSDCBalance - formatted balance:', formattedBalance);
+    
+    return formattedBalance;
   }
 
   async getUSDCAllowance(userAddress: string, spenderAddress: string): Promise<string> {

@@ -70,11 +70,20 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
 
       // Check USDC balance
       setLoadingMessage('Checking USDC balance...');
+      console.log('Checking balance for address:', userAddress);
+      console.log('USDC Contract Address:', config.usdcContractAddress);
       const balance = await web3Service.getUSDCBalance(userAddress);
+      console.log('Raw balance from contract:', balance);
+      
       // Use currency utility to handle any amount/currency format
       const requiredUSDC = formatCurrency(contract.amount, contract.currency).numericAmount;
+      console.log('Required USDC amount:', requiredUSDC);
+      console.log('Contract amount:', contract.amount);
+      console.log('Contract currency:', contract.currency);
+      
       if (parseFloat(balance) < requiredUSDC) {
         const displayAmount = formatCurrency(contract.amount, contract.currency);
+        console.error('Insufficient balance - have:', balance, 'need:', requiredUSDC);
         throw new Error(`Insufficient USDC balance. You have ${balance} USDC, need ${displayAmount.amount} USDC`);
       }
 

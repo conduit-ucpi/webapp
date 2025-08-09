@@ -134,6 +134,7 @@ export interface Web3AuthInstanceContextType {
   web3authProvider: any | null;
   isLoading: boolean;
   onLogout: () => Promise<void>;
+  updateProvider?: (provider: any) => void;
 }
 
 export interface ConfigContextType {

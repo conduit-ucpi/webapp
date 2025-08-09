@@ -101,6 +101,13 @@ export function Web3AuthInstanceProvider({ children }: { children: React.ReactNo
   }, [config]);
 
 
+  const updateProvider = (newProvider: any) => {
+    setProvider(newProvider);
+    if (web3authInstance && newProvider) {
+      setWeb3authInstance(web3authInstance); // Trigger re-render
+    }
+  };
+
   const onLogout = async () => {
     setWeb3authInstance(null);
     setProvider(null);
@@ -115,7 +122,7 @@ export function Web3AuthInstanceProvider({ children }: { children: React.ReactNo
   }
 
   return (
-    <Web3AuthInstanceContext.Provider value={{ isLoading, web3authInstance, web3authProvider: provider, onLogout }}>
+    <Web3AuthInstanceContext.Provider value={{ isLoading, web3authInstance, web3authProvider: provider, onLogout, updateProvider }}>
       {children}
     </Web3AuthInstanceContext.Provider>
   );

@@ -12,7 +12,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     web3authInstance,
     web3authProvider,
     isLoading: isWeb3AuthInstanceLoading,
-    onLogout } = useWeb3AuthInstance();
+    onLogout,
+    updateProvider } = useWeb3AuthInstance();
 
 
   const login = async (idToken: string, userWalletAddress: string, web3Provider: any) => {
@@ -30,8 +31,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const userData = await response.json();
         setUser(userData);
 
-        // Store provider globally and in state
+        // Store provider globally and update context state
         (window as any).web3authProvider = web3Provider;
+        updateProvider?.(web3Provider);
       } else {
         throw new Error('Login failed');
       }

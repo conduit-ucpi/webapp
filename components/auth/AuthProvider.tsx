@@ -7,7 +7,6 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const {
     web3authInstance,
@@ -30,7 +29,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (response.ok) {
         const userData = await response.json();
         setUser(userData);
-        setWalletAddress(userWalletAddress);
 
         // Store provider globally and in state
         (window as any).web3authProvider = web3Provider;
@@ -115,7 +113,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(null);
       
       // Clear the provider state in Web3AuthInstanceProvider
-      onLogout();
+      await onLogout();
 
       console.log('Logout completed successfully');
     } catch (error) {
@@ -125,7 +123,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       (window as any).web3auth = null;
       (window as any).web3authProvider = null;
       resetWeb3AuthInstance();
-      onLogout();
+      await onLogout();
 
       // Force clear storage even on error
       try {

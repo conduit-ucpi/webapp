@@ -29,9 +29,8 @@ export default function ConnectWallet() {
   useEffect(() => {
     let isMounted = true;
 
-    if (!isLoading) {
+    if (!isLoading && isMounted) {
       setIsInitialized(true);
-      return;
     }
 
     return () => {
@@ -64,12 +63,9 @@ export default function ConnectWallet() {
 
     setIsConnecting(true);
     try {
-      // Always reinitialize Web3Auth to ensure modal appears
-      // This is important after logout to reset the session
+      // Use the current Web3Auth instance
       console.log('Starting wallet connection...');
-      (window as any).web3auth = null;
-      setIsInitialized(false);
-
+      
       const freshInstance = web3authInstance;
 
       if (!freshInstance) {

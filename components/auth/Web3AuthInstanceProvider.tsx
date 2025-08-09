@@ -104,6 +104,14 @@ export function Web3AuthInstanceProvider({ children }: { children: React.ReactNo
   const onLogout = async () => {
     setWeb3authInstance(null);
     setProvider(null);
+    setIsLoading(true); // Reset loading state to allow reinitialization
+    
+    // Clear global references
+    (window as any).web3auth = null;
+    (window as any).web3authProvider = null;
+    
+    // Reinitialize Web3Auth for next connection
+    await initWeb3Auth();
   }
 
   return (

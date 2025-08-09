@@ -29,9 +29,9 @@ export const ESCROW_CONTRACT_ABI = [
   'event FundsClaimed(address recipient, uint256 amount, uint256 timestamp)'
 ];
 
-
 export class Web3Service {
   private provider: ethers.BrowserProvider | null = null;
+  private web3authProvider: any = null;
   private config: Config;
 
   constructor(config: Config) {
@@ -40,6 +40,7 @@ export class Web3Service {
 
   async initializeProvider(web3authProvider: any) {
     try {
+      this.web3authProvider = web3authProvider;
       this.provider = new ethers.BrowserProvider(web3authProvider);
     } catch (error) {
       console.error('Failed to initialize ethers provider:', error);
@@ -52,6 +53,17 @@ export class Web3Service {
       throw new Error('Provider not initialized');
     }
     return await this.provider.getSigner();
+  }
+
+  async getUserAddress(): Promise<string> {
+    if (!this.web3authProvider) {
+      throw new Error('Web3Auth provider not initialized');
+    }
+    // Get the actual wallet address using Web3Auth's request method
+    const accounts = await this.web3authProvider.request({
+      method: "eth_accounts"
+    });
+    return accounts[0];
   }
 
   async getUSDCBalance(userAddress: string): Promise<string> {
@@ -111,11 +123,6 @@ export class Web3Service {
     return tx.hash;
   }
 
-  async getUserAddress(): Promise<string> {
-    const signer = await this.getSigner();
-    return await signer.getAddress();
-  }
-
   // Hash description for smart contract compatibility
   hashDescription(description: string): string {
     return ethers.keccak256(ethers.toUtf8Bytes(description));
@@ -141,21 +148,21 @@ export class Web3Service {
     // Use network gas price but enforce minimum
     const networkGasPrice = feeData.gasPrice ? BigInt(feeData.gasPrice.toString()) : BigInt(0);
     const minGasPriceBigInt = BigInt(minGasPrice);
-    const gasPrice = networkGasPrice > minGasPriceBigInt 
+    const finalGasPrice = networkGasPrice > minGasPriceBigInt 
       ? networkGasPrice.toString()  // Use network price if above minimum
       : (networkGasPrice > BigInt(0) ? minGasPrice : fallbackGasPrice);  // Use minimum or fallback
     
     console.log('Gas calculation:', {
       gasEstimate: `${gasEstimate.toString()} gas`,
       networkGasPrice: `${networkGasPrice.toString()} wei`,
-      finalGasPrice: `${gasPrice} wei`,
-      finalGasPriceInNAVAX: `${(Number(gasPrice) / 1e9).toFixed(12)} nAVAX`
+      finalGasPrice: `${finalGasPrice} wei`,
+      finalGasPriceInNAVAX: `${(Number(finalGasPrice) / 1e9).toFixed(12)} nAVAX`
     });
     
     return {
       ...tx,
       gasLimit: gasEstimate,
-      gasPrice: gasPrice,
+      gasPrice: finalGasPrice,
       maxFeePerGas: undefined,
       maxPriorityFeePerGas: undefined
     };

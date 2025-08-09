@@ -5,16 +5,19 @@ jest.mock('next/router', () => ({
   useRouter: jest.fn(),
 }));
 jest.mock('../../../components/auth/ConfigProvider');
+jest.mock('../../../components/auth/AuthProvider');
 jest.mock('../../../lib/web3');
 
 import { useRouter } from 'next/router';
 import ContractAcceptance from '../../../components/contracts/ContractAcceptance';
 import { useConfig } from '../../../components/auth/ConfigProvider';
+import { useAuth } from '../../../components/auth/AuthProvider';
 import { PendingContract } from '../../../types';
 
 const mockPush = jest.fn();
 const mockUseRouter = useRouter as jest.MockedFunction<typeof useRouter>;
 const mockUseConfig = useConfig as jest.MockedFunction<typeof useConfig>;
+const mockUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
 
 // Mock fetch globally
 const mockFetch = jest.fn();
@@ -87,6 +90,13 @@ describe('ContractAcceptance - microUSDC Amount Handling', () => {
 
     mockUseConfig.mockReturnValue({
       config: mockConfig,
+      isLoading: false,
+    });
+
+    mockUseAuth.mockReturnValue({
+      user: { userId: 'test-user-id', walletAddress: '0xBuyerAddress', email: 'buyer@test.com' },
+      login: jest.fn(),
+      logout: jest.fn(),
       isLoading: false,
     });
 

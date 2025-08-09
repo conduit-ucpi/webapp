@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/router';
 import { useConfig } from '@/components/auth/ConfigProvider';
+import { useAuth } from '@/components/auth/AuthProvider';
 import { PendingContract, CreateContractRequest } from '@/types';
 import { Web3Service } from '@/lib/web3';
 import { formatCurrency, toMicroUSDC, fromMicroUSDC, formatExpiryDate, toUSDCForWeb3 } from '@/utils/validation';
@@ -15,6 +16,7 @@ interface ContractAcceptanceProps {
 export default function ContractAcceptance({ contract, onAcceptComplete }: ContractAcceptanceProps) {
   const router = useRouter();
   const { config } = useConfig();
+  const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
   const [hasError, setHasError] = useState(false);
@@ -66,9 +68,17 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
 
       const web3Service = new Web3Service(config);
       await web3Service.initializeProvider(web3authProvider);
-      const userAddress = await web3Service.getUserAddress();
+      
+      // Get the actual user wallet address from auth context, not the Web3Auth proxy address
+      const userAddress = user?.walletAddress;
+      if (!userAddress) {
+        throw new Error('User wallet address not found. Please ensure you are logged in.');
+      }
+      
+      console.log('User from auth context:', user);
+      console.log('Using actual user wallet address:', userAddress);
 
-      // Check USDC balance
+      // Check USDC balance using the actual user wallet address
       setLoadingMessage('Checking USDC balance...');
       console.log('Checking balance for address:', userAddress);
       console.log('USDC Contract Address:', config.usdcContractAddress);

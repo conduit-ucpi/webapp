@@ -28,6 +28,13 @@ global.fetch = mockFetch;
 const mockWeb3Service = {
   initializeProvider: jest.fn(),
   getUserAddress: jest.fn().mockResolvedValue('0xBuyerAddress'),
+  signContractTransaction: jest.fn().mockImplementation((params) => {
+    if (params.functionName === 'raiseDispute') return Promise.resolve('mock-dispute-tx');
+    if (params.functionName === 'claimFunds') return Promise.resolve('mock-claim-tx');
+    if (params.functionName === 'approve') return Promise.resolve('mock-approval-tx');
+    if (params.functionName === 'depositFunds') return Promise.resolve('mock-deposit-tx');
+    return Promise.resolve('mock-signed-tx');
+  }),
   signDisputeTransaction: jest.fn().mockResolvedValue('mock-dispute-tx'),
 };
 

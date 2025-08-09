@@ -3,8 +3,9 @@ import { useRouter } from 'next/router';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { PendingContract, CreateContractRequest } from '@/types';
-import { Web3Service } from '@/lib/web3';
+import { Web3Service, ERC20_ABI, ESCROW_CONTRACT_ABI } from '@/lib/web3';
 import { formatCurrency, toMicroUSDC, fromMicroUSDC, formatExpiryDate, toUSDCForWeb3 } from '@/utils/validation';
+import { ethers } from 'ethers';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 
@@ -140,7 +141,16 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
       setLoadingMessage('Approving USDC spending for escrow...');
       // Convert to USDC format for approval (preserve precision for Web3)
       const usdcAmount = toUSDCForWeb3(contract.amount, contract.currency);
-      const approvalTx = await web3Service.signUSDCApproval(usdcAmount, contractAddress);
+      const decimals = 6; // USDC has 6 decimals
+      const amountWei = ethers.parseUnits(usdcAmount, decimals);
+      
+      const approvalTx = await web3Service.signContractTransaction({
+        contractAddress: config.usdcContractAddress,
+        abi: ERC20_ABI,
+        functionName: 'approve',
+        functionArgs: [contractAddress, amountWei],
+        debugLabel: 'USDC APPROVAL'
+      });
 
       const approvalResponse = await fetch('/api/chain/approve-usdc', {
         method: 'POST',
@@ -163,7 +173,13 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
 
       // Fund the contract
       setLoadingMessage('Depositing funds to escrow...');
-      const depositTx = await web3Service.signDepositTransaction(contractAddress);
+      const depositTx = await web3Service.signContractTransaction({
+        contractAddress,
+        abi: ESCROW_CONTRACT_ABI,
+        functionName: 'depositFunds',
+        functionArgs: [],
+        debugLabel: 'DEPOSIT'
+      });
 
       const depositResponse = await fetch('/api/chain/deposit-funds', {
         method: 'POST',

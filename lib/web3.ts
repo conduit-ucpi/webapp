@@ -48,11 +48,72 @@ export class Web3Service {
     }
   }
 
-  async getSigner() {
-    if (!this.provider) {
-      throw new Error('Provider not initialized');
+  /**
+   * Single centralized method for signing transactions
+   * All transaction signing in the app MUST go through this method
+   */
+  async signTransaction(txParams: {
+    to: string;
+    data: string;
+    value?: string;
+    gasLimit?: bigint;
+    gasPrice?: bigint;
+    nonce?: number;
+  }): Promise<string> {
+    if (!this.web3authProvider || !this.provider) {
+      throw new Error('Providers not initialized. Please connect your wallet.');
     }
-    return await this.provider.getSigner();
+
+    // Get the actual wallet address from Web3Auth
+    const fromAddress = await this.getUserAddress();
+    
+    // Get nonce if not provided
+    const nonce = txParams.nonce ?? await this.provider.getTransactionCount(fromAddress);
+    
+    // Get gas price if not provided
+    let gasPrice = txParams.gasPrice;
+    if (!gasPrice) {
+      const feeData = await this.provider.getFeeData();
+      gasPrice = feeData.gasPrice || BigInt('20000000000');
+    }
+    
+    // Use provided gasLimit or throw error (caller should estimate)
+    if (!txParams.gasLimit) {
+      throw new Error('Gas limit must be provided');
+    }
+
+    // Create transaction object for Web3Auth signing
+    const txObject = {
+      from: fromAddress,
+      to: txParams.to,
+      data: txParams.data,
+      value: txParams.value || '0x0',
+      gasLimit: `0x${txParams.gasLimit.toString(16)}`,
+      gasPrice: `0x${gasPrice.toString(16)}`,
+      nonce: `0x${nonce.toString(16)}`
+    };
+    
+    console.log('Signing transaction:', {
+      from: fromAddress,
+      to: txParams.to,
+      value: txParams.value || '0x0',
+      gasLimit: txParams.gasLimit.toString(),
+      gasPrice: gasPrice.toString(),
+      nonce: nonce
+    });
+    
+    // Sign using Web3Auth provider directly
+    const signedTx = await this.web3authProvider.request({
+      method: "eth_signTransaction",
+      params: [txObject]
+    });
+    
+    return signedTx;
+  }
+
+  // Deprecated - will be removed
+  async getSigner() {
+    throw new Error('getSigner is deprecated. Use signTransaction method instead.');
   }
 
   async getUserAddress(): Promise<string> {
@@ -108,19 +169,9 @@ export class Web3Service {
     return ethers.formatUnits(allowance, decimals);
   }
 
+  // Deprecated - use signUSDCApproval instead
   async approveUSDC(amount: string, spenderAddress: string): Promise<string> {
-    const signer = await this.getSigner();
-    const usdcContract = new ethers.Contract(
-      this.config.usdcContractAddress,
-      ERC20_ABI,
-      signer
-    );
-
-    const decimals = await usdcContract.decimals();
-    const amountWei = ethers.parseUnits(amount, decimals);
-
-    const tx = await usdcContract.approve(spenderAddress, amountWei);
-    return tx.hash;
+    throw new Error('approveUSDC is deprecated. Use signUSDCApproval method instead.');
   }
 
   // Hash description for smart contract compatibility
@@ -225,186 +276,107 @@ export class Web3Service {
     };
   }
 
-  // Sign USDC approval transaction and return hex for chain service
-  async signUSDCApproval(amount: string, spenderAddress: string): Promise<string> {
-    if (!this.web3authProvider || !this.provider) {
-      throw new Error('Providers not initialized');
+  /**
+   * Generic method for signing any contract transaction
+   * This is the ONLY method that should be used for contract interactions
+   */
+  async signContractTransaction(params: {
+    contractAddress: string;
+    abi: any[];
+    functionName: string;
+    functionArgs: any[];
+    debugLabel?: string;
+  }): Promise<string> {
+    if (!this.provider) {
+      throw new Error('Provider not initialized');
     }
 
-    const realWalletAddress = await this.getUserAddress();
-    const usdcContract = new ethers.Contract(
-      this.config.usdcContractAddress,
-      ERC20_ABI,
-      this.provider
-    );
+    const userAddress = await this.getUserAddress();
+    const contract = new ethers.Contract(params.contractAddress, params.abi, this.provider);
 
-    const decimals = await usdcContract.decimals();
+    // Create transaction data
+    const txData = contract.interface.encodeFunctionData(params.functionName, params.functionArgs);
+    
+    // Estimate gas with a proper from address
+    const gasEstimate = await this.provider.estimateGas({
+      from: userAddress,
+      to: params.contractAddress,
+      data: txData
+    });
+    
+    if (params.debugLabel) {
+      console.log(`=== ${params.debugLabel} TRANSACTION DEBUG ===`);
+      console.log('Contract:', params.contractAddress);
+      console.log('Function:', params.functionName);
+      console.log('Args:', params.functionArgs);
+      console.log('Gas estimate:', gasEstimate.toString());
+    }
+    
+    // Use centralized signing method
+    const signedTx = await this.signTransaction({
+      to: params.contractAddress,
+      data: txData,
+      gasLimit: gasEstimate
+    });
+    
+    if (params.debugLabel) {
+      console.log('Signed transaction:', signedTx);
+      console.log(`=== ${params.debugLabel} TRANSACTION DEBUG END ===`);
+    }
+    
+    return signedTx;
+  }
+
+
+  // Send AVAX to an address
+  async sendAVAX(to: string, amount: string): Promise<{ hash: string }> {
+    if (!this.provider) {
+      throw new Error('Provider not initialized');
+    }
+
+    const userAddress = await this.getUserAddress();
+    const value = ethers.parseEther(amount);
+    
+    // Estimate gas for AVAX transfer
+    const gasEstimate = await this.provider.estimateGas({
+      from: userAddress,
+      to: to,
+      value: value
+    });
+
+    // Sign transaction
+    const signedTx = await this.signTransaction({
+      to: to,
+      data: '0x',
+      value: `0x${value.toString(16)}`,
+      gasLimit: gasEstimate
+    });
+
+    // Send transaction
+    const txResponse = await this.provider.broadcastTransaction(signedTx);
+    return { hash: txResponse.hash };
+  }
+
+  // Send USDC to an address
+  async sendUSDC(to: string, amount: string): Promise<{ hash: string }> {
+    if (!this.provider) {
+      throw new Error('Provider not initialized');
+    }
+
+    const decimals = 6; // USDC has 6 decimals
     const amountWei = ethers.parseUnits(amount, decimals);
 
-    // Create transaction data
-    const txData = usdcContract.interface.encodeFunctionData('approve', [spenderAddress, amountWei]);
-    const gasEstimate = await usdcContract.approve.estimateGas(spenderAddress, amountWei);
-    const gasPrice = await this.provider.getFeeData();
-    const nonce = await this.provider.getTransactionCount(realWalletAddress);
-    
-    // Create transaction object for Web3Auth signing
-    const txObject = {
-      from: realWalletAddress,
-      to: this.config.usdcContractAddress,
-      data: txData,
-      value: '0x0',
-      gasLimit: `0x${gasEstimate.toString(16)}`,
-      gasPrice: `0x${(gasPrice.gasPrice || BigInt('20000000000')).toString(16)}`,
-      nonce: `0x${nonce.toString(16)}`
-    };
-    
-    console.log('=== USDC APPROVAL TRANSACTION DEBUG ===');
-    console.log('Transaction object for Web3Auth signing:', txObject);
-    
-    // Sign using Web3Auth provider directly
-    const signedTx = await this.web3authProvider.request({
-      method: "eth_signTransaction",
-      params: [txObject]
+    // Sign transaction using generic method
+    const signedTx = await this.signContractTransaction({
+      contractAddress: this.config.usdcContractAddress,
+      abi: ERC20_ABI,
+      functionName: 'transfer',
+      functionArgs: [to, amountWei],
+      debugLabel: 'USDC TRANSFER'
     });
-    
-    console.log('Signed transaction:', signedTx);
-    console.log('=== USDC APPROVAL TRANSACTION DEBUG END ===');
-    
-    return signedTx;
-  }
 
-  // Sign deposit funds transaction and return hex for chain service
-  async signDepositTransaction(contractAddress: string): Promise<string> {
-    if (!this.web3authProvider || !this.provider) {
-      throw new Error('Providers not initialized');
-    }
-
-    const realWalletAddress = await this.getUserAddress();
-    const contract = new ethers.Contract(
-      contractAddress,
-      ESCROW_CONTRACT_ABI,
-      this.provider
-    );
-
-    // Create transaction data
-    const txData = contract.interface.encodeFunctionData('depositFunds', []);
-    const gasEstimate = await contract.depositFunds.estimateGas();
-    const gasPrice = await this.provider.getFeeData();
-    const nonce = await this.provider.getTransactionCount(realWalletAddress);
-    
-    // Create transaction object for Web3Auth signing
-    const txObject = {
-      from: realWalletAddress,
-      to: contractAddress,
-      data: txData,
-      value: '0x0',
-      gasLimit: `0x${gasEstimate.toString(16)}`,
-      gasPrice: `0x${(gasPrice.gasPrice || BigInt('20000000000')).toString(16)}`,
-      nonce: `0x${nonce.toString(16)}`
-    };
-    
-    console.log('=== DEPOSIT TRANSACTION DEBUG ===');
-    console.log('Transaction object for Web3Auth signing:', txObject);
-    
-    // Sign using Web3Auth provider directly
-    const signedTx = await this.web3authProvider.request({
-      method: "eth_signTransaction",
-      params: [txObject]
-    });
-    
-    console.log('Signed transaction:', signedTx);
-    console.log('=== DEPOSIT TRANSACTION DEBUG END ===');
-    
-    return signedTx;
-  }
-
-  // Sign claim funds transaction and return hex for chain service
-  async signClaimTransaction(contractAddress: string): Promise<string> {
-    if (!this.web3authProvider || !this.provider) {
-      throw new Error('Providers not initialized');
-    }
-
-    const realWalletAddress = await this.getUserAddress();
-    const contract = new ethers.Contract(
-      contractAddress,
-      ESCROW_CONTRACT_ABI,
-      this.provider
-    );
-
-    // Create transaction data
-    const txData = contract.interface.encodeFunctionData('claimFunds', []);
-    const gasEstimate = await contract.claimFunds.estimateGas();
-    const gasPrice = await this.provider.getFeeData();
-    const nonce = await this.provider.getTransactionCount(realWalletAddress);
-    
-    // Create transaction object for Web3Auth signing
-    const txObject = {
-      from: realWalletAddress,
-      to: contractAddress,
-      data: txData,
-      value: '0x0',
-      gasLimit: `0x${gasEstimate.toString(16)}`,
-      gasPrice: `0x${(gasPrice.gasPrice || BigInt('20000000000')).toString(16)}`,
-      nonce: `0x${nonce.toString(16)}`
-    };
-    
-    console.log('=== CLAIM FUNDS TRANSACTION DEBUG ===');
-    console.log('Transaction object for Web3Auth signing:', txObject);
-    
-    // Sign using Web3Auth provider directly
-    const signedTx = await this.web3authProvider.request({
-      method: "eth_signTransaction",
-      params: [txObject]
-    });
-    
-    console.log('Signed transaction:', signedTx);
-    console.log('=== CLAIM FUNDS TRANSACTION DEBUG END ===');
-    
-    return signedTx;
-  }
-
-  // Sign dispute transaction and return hex for chain service
-  async signDisputeTransaction(contractAddress: string): Promise<string> {
-    if (!this.web3authProvider || !this.provider) {
-      throw new Error('Providers not initialized');
-    }
-
-    const realWalletAddress = await this.getUserAddress();
-    const contract = new ethers.Contract(
-      contractAddress,
-      ESCROW_CONTRACT_ABI,
-      this.provider
-    );
-
-    // Create transaction data
-    const txData = contract.interface.encodeFunctionData('raiseDispute', []);
-    const gasEstimate = await contract.raiseDispute.estimateGas();
-    const gasPrice = await this.provider.getFeeData();
-    const nonce = await this.provider.getTransactionCount(realWalletAddress);
-    
-    // Create transaction object for Web3Auth signing
-    const txObject = {
-      from: realWalletAddress,
-      to: contractAddress,
-      data: txData,
-      value: '0x0',
-      gasLimit: `0x${gasEstimate.toString(16)}`,
-      gasPrice: `0x${(gasPrice.gasPrice || BigInt('20000000000')).toString(16)}`,
-      nonce: `0x${nonce.toString(16)}`
-    };
-    
-    console.log('=== DISPUTE TRANSACTION DEBUG ===');
-    console.log('Transaction object for Web3Auth signing:', txObject);
-    
-    // Sign using Web3Auth provider directly
-    const signedTx = await this.web3authProvider.request({
-      method: "eth_signTransaction",
-      params: [txObject]
-    });
-    
-    console.log('Signed transaction:', signedTx);
-    console.log('=== DISPUTE TRANSACTION DEBUG END ===');
-    
-    return signedTx;
+    // Send transaction
+    const txResponse = await this.provider.broadcastTransaction(signedTx);
+    return { hash: txResponse.hash };
   }
 }

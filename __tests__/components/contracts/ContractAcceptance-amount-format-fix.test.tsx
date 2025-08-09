@@ -28,6 +28,13 @@ const mockWeb3Service = {
   initializeProvider: jest.fn(),
   getUserAddress: jest.fn().mockResolvedValue('0xBuyerAddress'),
   getUSDCBalance: jest.fn(),
+  signContractTransaction: jest.fn().mockImplementation((params) => {
+    if (params.functionName === 'raiseDispute') return Promise.resolve('mock-dispute-tx');
+    if (params.functionName === 'claimFunds') return Promise.resolve('mock-claim-tx');
+    if (params.functionName === 'approve') return Promise.resolve('mock-approval-tx');
+    if (params.functionName === 'depositFunds') return Promise.resolve('mock-deposit-tx');
+    return Promise.resolve('mock-signed-tx');
+  }),
   signUSDCApproval: jest.fn().mockResolvedValue('mock-approval-tx'),
   signDepositTransaction: jest.fn().mockResolvedValue('mock-deposit-tx'),
 };
@@ -304,9 +311,11 @@ describe('ContractAcceptance - Amount Format Fix', () => {
       fireEvent.click(screen.getByText(/Make Payment of.*USDC/));
 
       await waitFor(() => {
-        expect(mockWeb3Service.signUSDCApproval).toHaveBeenCalledWith(
-          '1.25', // Should use the USDC string directly for approval
-          '0xContractAddress'
+        expect(mockWeb3Service.signContractTransaction).toHaveBeenCalledWith(
+          expect.objectContaining({
+            functionName: 'approve',
+            functionArgs: expect.arrayContaining(['0xContractAddress', expect.anything()])
+          })
         );
       });
     });

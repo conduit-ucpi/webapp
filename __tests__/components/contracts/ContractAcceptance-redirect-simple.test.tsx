@@ -27,6 +27,14 @@ const mockWeb3Service = {
   initializeProvider: jest.fn().mockResolvedValue(undefined),
   getUserAddress: jest.fn().mockResolvedValue('0xBuyerAddress'),
   getUSDCBalance: jest.fn().mockResolvedValue('1.00'),
+  signContractTransaction: jest.fn().mockImplementation((params) => {
+    if (params.functionName === 'raiseDispute') return Promise.resolve('mock-dispute-tx');
+    if (params.functionName === 'claimFunds') return Promise.resolve('mock-claim-tx');
+    if (params.functionName === 'approve') return Promise.resolve('mock-approval-tx');
+    if (params.functionName === 'depositFunds') return Promise.resolve('mock-deposit-tx');
+    return Promise.resolve('mock-signed-tx');
+  }),
+  // Legacy mocks for backward compatibility - can be removed later
   signUSDCApproval: jest.fn().mockResolvedValue('mock-approval-tx'),
   signDepositTransaction: jest.fn().mockResolvedValue('mock-deposit-tx'),
 };

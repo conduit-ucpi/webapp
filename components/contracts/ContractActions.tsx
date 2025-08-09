@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Contract, PendingContract, RaiseDisputeRequest } from '@/types';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { useAuth } from '@/components/auth/AuthProvider';
-import { Web3Service } from '@/lib/web3';
+import { Web3Service, ESCROW_CONTRACT_ABI } from '@/lib/web3';
 import { getContractCTA, toUSDCForWeb3 } from '@/utils/validation';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
@@ -47,7 +47,13 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
 
       // Sign dispute transaction
       setLoadingMessage('Signing dispute transaction...');
-      const signedTx = await web3Service.signDisputeTransaction((contract as Contract).contractAddress);
+      const signedTx = await web3Service.signContractTransaction({
+        contractAddress: (contract as Contract).contractAddress,
+        abi: ESCROW_CONTRACT_ABI,
+        functionName: 'raiseDispute',
+        functionArgs: [],
+        debugLabel: 'DISPUTE'
+      });
 
       // Submit signed transaction to chain service
       setLoadingMessage('Raising dispute...');
@@ -120,7 +126,13 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
 
       // Sign claim transaction
       setLoadingMessage('Signing claim transaction...');
-      const signedTx = await web3Service.signClaimTransaction((contract as Contract).contractAddress);
+      const signedTx = await web3Service.signContractTransaction({
+        contractAddress: (contract as Contract).contractAddress,
+        abi: ESCROW_CONTRACT_ABI,
+        functionName: 'claimFunds',
+        functionArgs: [],
+        debugLabel: 'CLAIM FUNDS'
+      });
 
       // Submit signed transaction to chain service
       setLoadingMessage('Claiming funds...');

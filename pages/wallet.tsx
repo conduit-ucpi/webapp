@@ -155,26 +155,14 @@ export default function Wallet() {
     try {
       const web3Service = new Web3Service(config);
       await web3Service.initializeProvider(web3authProvider);
-      const signer = await web3Service.getSigner();
 
       if (sendForm.currency === 'AVAX') {
         // Send AVAX
-        const tx = await signer.sendTransaction({
-          to: sendForm.recipient,
-          value: ethers.parseEther(sendForm.amount),
-          gasLimit: '21000'
-        });
+        const tx = await web3Service.sendAVAX(sendForm.recipient, sendForm.amount);
         setSendSuccess(`AVAX sent successfully! Transaction: ${tx.hash}`);
       } else {
         // Send USDC
-        const usdcContract = new ethers.Contract(
-          config.usdcContractAddress,
-          ['function transfer(address to, uint256 amount) returns (bool)', 'function decimals() view returns (uint8)'],
-          signer
-        );
-        const decimals = await usdcContract.decimals();
-        const amount = ethers.parseUnits(sendForm.amount, decimals);
-        const tx = await usdcContract.transfer(sendForm.recipient, amount);
+        const tx = await web3Service.sendUSDC(sendForm.recipient, sendForm.amount);
         setSendSuccess(`USDC sent successfully! Transaction: ${tx.hash}`);
       }
 

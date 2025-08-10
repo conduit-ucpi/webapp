@@ -13,6 +13,9 @@ export default function Footer() {
             <Link href="/privacy-policy" className="text-gray-500 hover:text-gray-700 underline">
               Privacy Policy
             </Link>
+            <a href="mailto:info@conduit-ucpi.com" className="text-gray-500 hover:text-gray-700 underline">
+              Contact Us
+            </a>
           </div>
         </div>
       </div>

@@ -380,7 +380,7 @@ export function getContractCTA(
     // Otherwise show pending status
     return {
       type: 'PENDING_ACCEPTANCE',
-      label: 'Pending Acceptance',
+      label: 'Sent Request Email',
       variant: 'status'
     };
   }

@@ -129,6 +129,10 @@ const faqSections: FAQSection[] = [
         answer: "Every contract uses the same verified code available on the blockchain. We have verified our code using established security services."
       },
       {
+        question: "How can I verify for myself that you can't steal my money?",
+        answer: "Want to verify our code yourself? Copy the verified contract from the blockchain explorer link (available from any contract in our app) and paste it into tools like MythX, ask ChatGPT \"can the admin steal funds from this contract?\", or have any Solidity developer review it. The code is extensively commented to make admin limitations clear.\nWe've used https://solidityscan.com/quickscan to audit our contracts - you can too. It'll ask you to select a blockchain (we are on Avalanche mainnet) and then paste in a contract address (you can get one by making a test transaction of $0.001 on our system for free). It'll give you a full audit report. If you don't want to do that, you can use our current contract address: 0xAa1Be17F1F8A0F96a1308f596740552c4145627d - score is now 94%: 'Great'"
+      },
+      {
         question: "Is there any reputation tracking or feedback system?",
         answer: "No. This system exists to eliminate the need for trust in transactions because both parties are protected - no more \"pay and hope.\""
       }

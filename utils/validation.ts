@@ -56,7 +56,7 @@ export function formatCurrency(amount: string | number, currency: string = 'micr
   const numericAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
   
   if (isNaN(numericAmount)) {
-    return { amount: '0.00', currency: 'USDC', numericAmount: 0 };
+    return { amount: '0.0000', currency: 'USDC', numericAmount: 0 };
   }
 
   // Smart conversion logic:
@@ -72,7 +72,7 @@ export function formatCurrency(amount: string | number, currency: string = 'micr
   }
 
   return {
-    amount: usdcAmount.toFixed(2),
+    amount: usdcAmount.toFixed(4),
     currency: 'USDC',
     numericAmount: usdcAmount
   };
@@ -82,7 +82,7 @@ export function formatCurrency(amount: string | number, currency: string = 'micr
  * Legacy formatUSDC function - maintained for backwards compatibility
  * @deprecated Use formatCurrency instead for explicit currency handling
  * @param amount - Amount in microUSDC format
- * @returns Formatted USDC string (e.g., "1.50")
+ * @returns Formatted USDC string (e.g., "1.5000")
  */
 export function formatUSDC(amount: string | number): string {
   return formatCurrency(amount, 'microUSDC').amount;

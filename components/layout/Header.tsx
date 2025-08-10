@@ -3,12 +3,9 @@ import { useAuth } from '@/components/auth/AuthProvider';
 import ConnectWallet from '@/components/auth/ConnectWallet';
 import Button from '@/components/ui/Button';
 import { useWeb3AuthInstance } from '../auth/Web3AuthInstanceProvider';
-import { useWalletAddress } from '@/hooks/useWalletAddress';
-
 export default function Header() {
   const { user, logout, isLoading } = useAuth();
   const { web3authProvider, isLoading: isWeb3AuthInstanceLoading } = useWeb3AuthInstance();
-  const { walletAddress, isLoading: isWalletAddressLoading } = useWalletAddress();
 
   const isAuthenticated = user && web3authProvider;
 
@@ -57,12 +54,12 @@ export default function Header() {
           </nav>
 
           <div className="flex items-center space-x-4">
-            {isLoading || isWeb3AuthInstanceLoading || isWalletAddressLoading ? (
+            {isLoading || isWeb3AuthInstanceLoading ? (
               <div className="w-32 h-10 bg-gray-700 animate-pulse rounded-md" />
-            ) : isAuthenticated && walletAddress ? (
+            ) : isAuthenticated ? (
               <div className="flex items-center space-x-4">
                 <span className="text-sm text-gray-300">
-                  {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
+                  {user.email}
                 </span>
                 <Button variant="outline" size="sm" onClick={handleLogout}>
                   Logout

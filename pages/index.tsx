@@ -181,6 +181,36 @@ export default function Home() {
               </div>
             </div>
 
+            {/* Contact Section */}
+            <div className="mt-32">
+              <div className="text-center mb-16">
+                <h2 className="text-4xl font-bold text-white mb-4">Questions?</h2>
+              </div>
+
+              <div className="bg-gray-800 border border-gray-700 rounded-lg p-8 max-w-2xl mx-auto hover:border-green-400/50 transition-colors">
+                <div className="text-center space-y-4">
+                  <p className="text-lg text-gray-300">Need help or have questions?</p>
+                  <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+                    <a 
+                      href="mailto:info@conduit-ucpi.com"
+                      className="inline-flex items-center px-6 py-3 bg-green-500 hover:bg-green-600 text-gray-900 font-semibold rounded-lg transition-colors"
+                    >
+                      <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
+                        <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
+                      </svg>
+                      Contact Us
+                    </a>
+                    <Link href="/faq">
+                      <Button variant="outline" className="border-green-400 text-green-400 hover:bg-green-400 hover:text-gray-900">
+                        View FAQ
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* Final CTA */}
             <div className="mt-32">
               <div className="text-center bg-gray-800 border border-gray-700 rounded-lg p-12 hover:border-green-400/50 transition-colors">

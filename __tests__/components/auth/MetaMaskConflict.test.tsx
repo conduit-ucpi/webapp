@@ -3,7 +3,7 @@
  * This test should FAIL with the current code to demonstrate the problem
  */
 import { render, waitFor, screen } from '@testing-library/react';
-import { Web3AuthInstanceProvider } from '@/components/auth/Web3AuthInstanceProvider';
+import { Web3AuthContextProvider } from '@/components/auth/Web3AuthContextProvider';
 
 // Mock the config provider
 const mockUseConfig = jest.fn();
@@ -81,9 +81,9 @@ describe('MetaMask Conflict Issue (TDD)', () => {
 
     // This should NOT throw errors or cause infinite loading
     const TestComponent = () => (
-      <Web3AuthInstanceProvider>
+      <Web3AuthContextProvider>
         <div data-testid="app-content">Test App</div>
-      </Web3AuthInstanceProvider>
+      </Web3AuthContextProvider>
     );
 
     // The render should complete without errors
@@ -130,9 +130,9 @@ describe('MetaMask Conflict Issue (TDD)', () => {
     };
 
     const TestComponent = () => (
-      <Web3AuthInstanceProvider>
+      <Web3AuthContextProvider>
         <div data-testid="app-content">Test App</div>
-      </Web3AuthInstanceProvider>
+      </Web3AuthContextProvider>
     );
 
     // This should not throw runtime errors
@@ -178,9 +178,9 @@ describe('MetaMask Conflict Issue (TDD)', () => {
     };
 
     const TestComponent = () => (
-      <Web3AuthInstanceProvider>
+      <Web3AuthContextProvider>
         <div data-testid="app-content">Test App</div>
-      </Web3AuthInstanceProvider>
+      </Web3AuthContextProvider>
     );
 
     render(<TestComponent />);

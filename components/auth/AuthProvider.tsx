@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { User, AuthContextType } from '@/types';
 import { resetWeb3AuthInstance } from './ConnectWallet';
-import { useWeb3AuthInstance } from './Web3AuthInstanceProvider';
+import { useWeb3AuthInstance } from './Web3AuthContextProvider';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -114,7 +114,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Clear local auth state
       setUser(null);
       
-      // Clear the provider state in Web3AuthInstanceProvider
+      // Clear the provider state in Web3AuthContextProvider
       await onLogout();
 
       console.log('Logout completed successfully');

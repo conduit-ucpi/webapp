@@ -2,7 +2,7 @@ import { render, screen, fireEvent, waitFor, within } from '@testing-library/rea
 import { useRouter } from 'next/router';
 import AdminPage from '@/pages/admin';
 import { useAuth } from '@/components/auth/AuthProvider';
-import { useWeb3AuthInstance } from '@/components/auth/Web3AuthInstanceProvider';
+import { useWeb3AuthInstance } from '@/components/auth/Web3AuthContextProvider';
 import { Contract } from '@/types';
 
 // Mock next/router
@@ -35,8 +35,8 @@ jest.mock('@/components/auth/ConfigProvider', () => ({
   ConfigProvider: ({ children }: { children: React.ReactNode }) => children,
 }));
 
-// Mock Web3AuthInstanceProvider
-jest.mock('@/components/auth/Web3AuthInstanceProvider', () => ({
+// Mock Web3AuthContextProvider
+jest.mock('@/components/auth/Web3AuthContextProvider', () => ({
   useWeb3AuthInstance: jest.fn(),
 }));
 

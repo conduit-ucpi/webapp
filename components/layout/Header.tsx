@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { useAuth } from '@/components/auth/AuthProvider';
 import ConnectWallet from '@/components/auth/ConnectWallet';
 import Button from '@/components/ui/Button';
-import { useWeb3AuthInstance } from '../auth/Web3AuthInstanceProvider';
+import { useWeb3AuthInstance } from '../auth/Web3AuthContextProvider';
 export default function Header() {
   const { user, logout, isLoading } = useAuth();
   const { web3authProvider, isLoading: isWeb3AuthInstanceLoading } = useWeb3AuthInstance();

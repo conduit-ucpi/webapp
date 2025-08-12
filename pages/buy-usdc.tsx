@@ -4,14 +4,96 @@ import ConnectWallet from '@/components/auth/ConnectWallet';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import USDCGuide from '@/components/ui/USDCGuide';
-import { useWeb3AuthInstance } from '@/components/auth/Web3AuthInstanceProvider';
+import { useWeb3AuthInstance } from '@/components/auth/Web3AuthContextProvider';
 import { useWalletAddress } from '@/hooks/useWalletAddress';
+import { useState } from 'react';
 
 export default function BuyUSDC() {
   const router = useRouter();
   const { user, isLoading } = useAuth();
-  const { web3authProvider, isLoading: isWeb3AuthInstanceLoading } = useWeb3AuthInstance();
+  const { web3authInstance, web3authProvider, isLoading: isWeb3AuthInstanceLoading } = useWeb3AuthInstance();
   const { walletAddress, isLoading: isWalletAddressLoading } = useWalletAddress();
+  const [widgetStatus, setWidgetStatus] = useState<string>('');
+
+  const tryShowWalletServices = async () => {
+    try {
+      setWidgetStatus('Attempting to show wallet services...');
+      console.log('Trying to show wallet services');
+      console.log('Web3Auth instance:', web3authInstance);
+      
+      if (!web3authInstance) {
+        setWidgetStatus('Error: Web3Auth instance not found');
+        return;
+      }
+
+      // Check if the plugin exists
+      const plugins = (web3authInstance as any).plugins;
+      console.log('Available plugins:', plugins);
+      
+      // Try to get the wallet services plugin
+      const walletServicesPlugin = plugins?.['wallet-services'];
+      console.log('Wallet services plugin:', walletServicesPlugin);
+      
+      if (walletServicesPlugin) {
+        // Check if user is connected first
+        if (!web3authInstance.connected) {
+          setWidgetStatus('Error: Please connect your wallet first');
+          return;
+        }
+
+        console.log('Plugin status:', walletServicesPlugin.status);
+        
+        // If plugin is not connected yet, wait for it to connect
+        if (walletServicesPlugin.status !== 'connected') {
+          setWidgetStatus('Waiting for wallet services plugin to connect...');
+          
+          // Listen for the connected event
+          const onPluginConnected = () => {
+            console.log('Plugin connected, showing wallet UI');
+            walletServicesPlugin.showWalletUi().then(() => {
+              setWidgetStatus('Wallet services UI shown successfully!');
+            }).catch((err: any) => {
+              console.error('Error showing UI after connect:', err);
+              setWidgetStatus(`Error after connect: ${err.message}`);
+            });
+            // Remove the event listener
+            walletServicesPlugin.off('connected', onPluginConnected);
+          };
+          
+          walletServicesPlugin.on('connected', onPluginConnected);
+          
+          // The plugin should auto-connect when Web3Auth is connected
+          // Let's check if it's initializing
+          setTimeout(() => {
+            if (walletServicesPlugin.status !== 'connected') {
+              console.log('Plugin still not connected, checking Web3Auth connection...');
+              console.log('Web3Auth connected:', web3authInstance.connected);
+              console.log('Web3Auth provider:', web3authInstance.provider);
+              
+              // The plugin should connect automatically when Web3Auth connects
+              // If not, there might be a configuration issue
+              setWidgetStatus('Plugin not auto-connecting. This may be a configuration issue. Check Web3Auth dashboard settings.');
+              
+              // Try showing the UI anyway in case the status is wrong
+              walletServicesPlugin.showWalletUi().catch((err: any) => {
+                console.error('Error showing UI directly:', err);
+              });
+            }
+          }, 2000);
+          
+        } else {
+          // Plugin is already connected, show the UI
+          await walletServicesPlugin.showWalletUi();
+          setWidgetStatus('Wallet services UI shown successfully!');
+        }
+      } else {
+        setWidgetStatus('Wallet services plugin not found in plugins');
+      }
+    } catch (error: any) {
+      console.error('Error showing wallet services:', error);
+      setWidgetStatus(`Error: ${error.message}`);
+    }
+  };
 
   if (isLoading || isWeb3AuthInstanceLoading || isWalletAddressLoading) {
     return (
@@ -115,6 +197,26 @@ export default function BuyUSDC() {
             </div>
 
             <div className="space-y-4">
+              <Button
+                onClick={tryShowWalletServices}
+                className="w-full bg-blue-500 hover:bg-blue-600"
+                size="lg"
+              >
+                🚀 Launch Wallet Services Widget
+              </Button>
+
+              {widgetStatus && (
+                <div className={`p-3 rounded-lg text-sm ${
+                  widgetStatus.includes('Error') 
+                    ? 'bg-red-50 text-red-800 border border-red-200' 
+                    : widgetStatus.includes('success')
+                    ? 'bg-green-50 text-green-800 border border-green-200'
+                    : 'bg-yellow-50 text-yellow-800 border border-yellow-200'
+                }`}>
+                  {widgetStatus}
+                </div>
+              )}
+
               <Button
                 onClick={() => router.push('/dashboard')}
                 className="w-full bg-primary-500 hover:bg-primary-600"

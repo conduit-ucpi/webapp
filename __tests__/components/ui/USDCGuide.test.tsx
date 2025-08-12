@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import USDCGuide from '@/components/ui/USDCGuide';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { useConfig } from '@/components/auth/ConfigProvider';
-import { useWeb3AuthInstance } from '@/components/auth/Web3AuthInstanceProvider';
+import { useWeb3AuthInstance } from '@/components/auth/Web3AuthContextProvider';
 import { useWalletAddress } from '@/hooks/useWalletAddress';
 // Mock the providers
 jest.mock('@/components/auth/AuthProvider', () => ({
@@ -13,7 +13,7 @@ jest.mock('@/components/auth/ConfigProvider', () => ({
   useConfig: jest.fn(),
 }));
 
-jest.mock('@/components/auth/Web3AuthInstanceProvider', () => ({
+jest.mock('@/components/auth/Web3AuthContextProvider', () => ({
   useWeb3AuthInstance: jest.fn(),
 }));
 

@@ -1,11 +1,13 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { User, Web3AuthInstanceContextType } from '@/types';
-import { useWeb3Auth } from '@web3auth/modal/react';
+import { useWeb3Auth, useWeb3AuthConnect, useWeb3AuthDisconnect } from '@web3auth/modal/react';
 
 const Web3AuthInstanceContext = createContext<Web3AuthInstanceContextType | undefined>(undefined);
 
 export function Web3AuthContextProvider({ children }: { children: React.ReactNode }) {
-  const { provider, isConnected, web3Auth } = useWeb3Auth();
+  const { provider, web3Auth } = useWeb3Auth();
+  const { isConnected } = useWeb3AuthConnect();
+  const { disconnect } = useWeb3AuthDisconnect();
   const [isLoading, setIsLoading] = useState(false);
 
   // Store global references for compatibility with existing code
@@ -33,8 +35,14 @@ export function Web3AuthContextProvider({ children }: { children: React.ReactNod
   };
 
   const onLogout = async () => {
-    console.log('Web3AuthContextProvider: onLogout called (provider pattern manages this automatically)');
-    // The provider pattern handles logout automatically
+    console.log('Web3AuthContextProvider: onLogout called');
+    try {
+      if (isConnected && disconnect) {
+        await disconnect();
+      }
+    } catch (error) {
+      console.error('Error during Web3Auth logout:', error);
+    }
   };
 
   return (

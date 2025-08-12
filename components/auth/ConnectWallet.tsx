@@ -1,42 +1,47 @@
 import { useState, useEffect } from 'react';
-import { Web3Auth } from '@web3auth/modal';
-import { CHAIN_NAMESPACES } from '@web3auth/base';
-import { EthereumPrivateKeyProvider } from '@web3auth/ethereum-provider';
+import { useWeb3Auth, useWeb3AuthConnect, useWeb3AuthUser, useIdentityToken } from '@web3auth/modal/react';
 import { useConfig } from './ConfigProvider';
 import { useAuth } from './AuthProvider';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
-import { useWeb3AuthInstance } from './Web3AuthContextProvider';
 
-// Global Web3Auth instance
-let web3authInstance: Web3Auth | null = null;
-
-// Function to reset Web3Auth instance (called on logout)
+// Function to reset Web3Auth instance (called on logout) - now handled by provider
 export const resetWeb3AuthInstance = () => {
-  web3authInstance = null;
+  console.log('resetWeb3AuthInstance called - handled by React provider');
 };
 
 export default function ConnectWallet() {
   const { config } = useConfig();
   const { login } = useAuth();
-  const { web3authInstance, isLoading } = useWeb3AuthInstance();
+  const { provider } = useWeb3Auth();
+  const { connect, isConnected } = useWeb3AuthConnect();
+  const { userInfo } = useWeb3AuthUser();
+  const { token: idToken } = useIdentityToken();
   const [isConnecting, setIsConnecting] = useState(false);
-  const [isInitialized, setIsInitialized] = useState(false);
   const [hasVisitedBefore, setHasVisitedBefore] = useState(false);
 
 
 
+  // Check if already connected and auto-login
   useEffect(() => {
-    let isMounted = true;
-
-    if (!isLoading && isMounted) {
-      setIsInitialized(true);
-    }
-
-    return () => {
-      isMounted = false;
+    const handleAutoLogin = async () => {
+      if (isConnected && provider && idToken) {
+        console.log('Already connected, attempting auto-login...');
+        try {
+          const accounts = await provider.request({ method: 'eth_accounts' }) as string[];
+          
+          if (accounts && accounts.length > 0) {
+            const walletAddress = accounts[0];
+            await login(idToken, walletAddress, provider);
+          }
+        } catch (error) {
+          console.error('Auto-login failed:', error);
+        }
+      }
     };
-  }, [isLoading]);
+
+    handleAutoLogin();
+  }, [isConnected, provider, idToken]);
 
   useEffect(() => {
     try {
@@ -55,71 +60,24 @@ export default function ConnectWallet() {
 
   const connectWallet = async () => {
     console.log('Connecting wallet...');
-    if (isLoading) {
-      console.log('Web3Auth instance is loading, skipping connection');
-      return;
-    }
-
-
     setIsConnecting(true);
+    
     try {
-      // Use the current Web3Auth instance
-      console.log('Starting wallet connection...');
+      console.log('Starting wallet connection with React provider pattern...');
       
-      const freshInstance = web3authInstance;
-
-      if (!freshInstance) {
-        throw new Error('Web3Auth initialization failed');
-      }
-
-      console.log('Checking if already connected:', freshInstance.connected);
-
-      // Check if already connected
-      if (freshInstance.connected) {
-        const web3authProvider = freshInstance.provider;
-        console.log('Web3Auth provider:', web3authProvider);
-        if (!web3authProvider) {
-          throw new Error('No provider found');
-        }
-
-        // Store provider globally for Web3Service
-        (window as any).web3authProvider = web3authProvider;
-
-        const user = await freshInstance.getUserInfo();
-        const accounts = await web3authProvider.request({ method: 'eth_accounts' }) as string[];
-
-        if (!accounts || accounts.length === 0) {
-          throw new Error('No accounts found');
-        }
-
-        const walletAddress = accounts[0] as string;
-        const idToken = user.idToken;
-
-        if (!idToken) {
-          throw new Error('No ID token received');
-        }
-
-        //console.log('Logging in with ID token:', idToken);
-        await login(idToken, walletAddress, web3authProvider);
-        //console.log('Login successful');
-        
-        // Force a page reload after successful login to ensure all components update properly
-        window.location.reload();
-        return;
-      }
-
-      // Connect if not already connected
-      console.log('Attempting to connect Web3Auth...');
-      const web3authProvider = await freshInstance.connect();
+      // Use the React provider's connect method
+      const web3authProvider = await connect();
+      
       if (!web3authProvider) {
         throw new Error('Failed to connect wallet');
       }
-      console.log('Web3Auth connected successfully');
+      
+      console.log('Web3Auth connected successfully via React provider');
 
       // Store provider globally for Web3Service
       (window as any).web3authProvider = web3authProvider;
 
-      const user = await freshInstance.getUserInfo();
+      // Get user info and accounts
       const accounts = await web3authProvider.request({ method: 'eth_accounts' }) as string[];
 
       if (!accounts || accounts.length === 0) {
@@ -127,13 +85,17 @@ export default function ConnectWallet() {
       }
 
       const walletAddress = accounts[0] as string;
-      const idToken = user.idToken;
-
+      
+      // Wait a moment for idToken to be populated after connection
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
       if (!idToken) {
-        throw new Error('No ID token received');
+        throw new Error('No ID token received from Web3Auth');
       }
 
+      console.log('Attempting login with userservice...');
       await login(idToken, walletAddress, web3authProvider);
+      console.log('Login successful');
       
       // Force a page reload after successful login to ensure all components update properly
       window.location.reload();
@@ -160,7 +122,7 @@ export default function ConnectWallet() {
   return (
     <Button
       onClick={connectWallet}
-      disabled={isConnecting || !isInitialized}
+      disabled={isConnecting || isConnected}
       className="bg-green-500 hover:bg-green-600 text-gray-900 px-6 py-3 rounded-lg font-semibold disabled:opacity-50"
     >
       {isConnecting ? (
@@ -168,11 +130,8 @@ export default function ConnectWallet() {
           <LoadingSpinner className="w-4 h-4 mr-2" />
           Connecting...
         </>
-      ) : !isInitialized ? (
-        <>
-          <LoadingSpinner className="w-4 h-4 mr-2" />
-          Initializing...
-        </>
+      ) : isConnected ? (
+        'Connected'
       ) : (
         'Get Started'
       )}

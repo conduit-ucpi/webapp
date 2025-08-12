@@ -14,6 +14,7 @@ export default function LoadingSpinner({ className, size = 'md' }: LoadingSpinne
 
   return (
     <div
+      data-testid="loading-spinner"
       className={cn(
         'animate-spin rounded-full border-2 border-gray-300 border-t-primary-500',
         sizes[size],

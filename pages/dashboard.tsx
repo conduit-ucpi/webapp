@@ -73,14 +73,9 @@ export default function Dashboard() {
                   Manage Wallet
                 </Button>
               </Link>
-              <Link href="/buy-usdc?mode=buy">
+              <Link href="/buy-usdc">
                 <Button variant="outline" size="sm" className="text-green-600 border-green-300 hover:bg-green-50">
-                  Buy USDC
-                </Button>
-              </Link>
-              <Link href="/buy-usdc?mode=sell">
-                <Button variant="outline" size="sm" className="text-red-600 border-red-300 hover:bg-red-50">
-                  Sell USDC
+                  Buy/Sell USDC
                 </Button>
               </Link>
             </div>

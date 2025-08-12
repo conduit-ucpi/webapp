@@ -20,9 +20,10 @@
   "dependencies": {
     "@headlessui/react": "^1.7.17",
     "@moonpay/moonpay-js": "^0.7.3",
-    "@web3auth/base": "^8.0.0",
-    "@web3auth/ethereum-provider": "^8.0.0",
-    "@web3auth/modal": "^8.0.0",
+    "@web3auth/base": "^9.7.0",
+    "@web3auth/ethereum-provider": "^9.7.0",
+    "@web3auth/modal": "^9.7.0",
+    "@web3auth/wallet-services-plugin": "^9.7.0",
     "clsx": "^2.0.0",
     "cookie": "^1.0.2",
     "ethers": "^6.8.0",

@@ -1,126 +1,68 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { useRouter } from 'next/router';
 import BuyUSDC from '@/pages/buy-usdc';
-import { useAuth } from '@/components/auth/AuthProvider';
-import { useWeb3AuthInstance } from '@/components/auth/Web3AuthInstanceProvider';
-import { useConfig } from '@/components/auth/ConfigProvider';
-import { useWalletAddress } from '@/hooks/useWalletAddress';
 
-// Mock next/router
+// Mock Next.js router
 jest.mock('next/router', () => ({
   useRouter: jest.fn(),
 }));
 
-// Mock AuthProvider
-jest.mock('@/components/auth/AuthProvider', () => ({
-  useAuth: jest.fn(),
-}));
-
-// Mock ConfigProvider
-jest.mock('@/components/auth/ConfigProvider', () => ({
-  useConfig: jest.fn(),
-}));
-
-// Mock Web3AuthInstanceProvider
-jest.mock('@/components/auth/Web3AuthInstanceProvider', () => ({
-  useWeb3AuthInstance: jest.fn(),
-}));
-
-// Mock useWalletAddress hook
+// Mock the wallet address hook
 jest.mock('@/hooks/useWalletAddress', () => ({
-  useWalletAddress: jest.fn(),
+  useWalletAddress: () => ({
+    walletAddress: '0x1234567890abcdef1234567890abcdef12345678',
+    isLoading: false,
+  }),
 }));
 
-// Mock LoadingSpinner
-jest.mock('@/components/ui/LoadingSpinner', () => {
-  return function MockLoadingSpinner({ size }: { size?: string }) {
-    return <div data-testid="loading-spinner">Loading...</div>;
-  };
-});
+// Mock the auth provider
+const mockUseAuth = jest.fn();
+jest.mock('@/components/auth/AuthProvider', () => ({
+  useAuth: () => mockUseAuth(),
+}));
 
-// Mock ConnectWallet
-jest.mock('@/components/auth/ConnectWallet', () => {
-  return function MockConnectWallet() {
-    return <div data-testid="connect-wallet">Connect Wallet</div>;
-  };
-});
+// Mock the config provider
+jest.mock('@/components/auth/ConfigProvider', () => ({
+  useConfig: () => ({
+    config: {
+      web3AuthClientId: 'test-client-id',
+      web3AuthNetwork: 'sapphire_devnet',
+      chainId: 43113,
+      rpcUrl: 'https://api.avax-test.network/ext/bc/C/rpc',
+      usdcContractAddress: '0x5425890298aed601595a70ab815c96711a31bc65',
+      moonPayApiKey: 'test-api-key',
+    },
+    isLoading: false,
+  }),
+}));
 
-// Mock MoonPayWidget (should not be rendered in coming soon mode)
-jest.mock('@/components/moonpay/MoonPayWidget', () => {
-  return function MockMoonPayWidget({ onClose, mode }: { onClose?: () => void; mode?: string }) {
-    return <div data-testid="moonpay-widget">MoonPay Widget - Mode: {mode}</div>;
-  };
-});
+// Mock the Web3Auth instance provider
+jest.mock('@/components/auth/Web3AuthInstanceProvider', () => ({
+  useWeb3AuthInstance: () => ({
+    web3authProvider: { request: jest.fn() },
+    isLoading: false,
+    web3authInstance: null,
+  }),
+}));
 
-// Mock USDCGuide
-jest.mock('@/components/ui/USDCGuide', () => {
-  return function MockUSDCGuide({ showMoonPayComingSoon }: { showMoonPayComingSoon?: boolean }) {
-    return (
-      <div data-testid="usdc-guide">
-        USDC Guide {showMoonPayComingSoon && '(Coming Soon)'}
-      </div>
-    );
-  };
-});
+const mockRouterPush = jest.fn();
+const mockRouterBack = jest.fn();
 
-const mockUseRouter = useRouter as jest.MockedFunction<typeof useRouter>;
-const mockUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
-const mockUseConfig = useConfig as jest.MockedFunction<typeof useConfig>;
-const mockUseWeb3AuthInstance = useWeb3AuthInstance as jest.MockedFunction<typeof useWeb3AuthInstance>;
-const mockUseWalletAddress = useWalletAddress as jest.MockedFunction<typeof useWalletAddress>;
 describe('BuyUSDC Page', () => {
-  const mockPush = jest.fn();
-  const mockBack = jest.fn();
-
-  const mockUser = {
-    userId: 'test-user',
-    walletAddress: '0x1234567890abcdef1234567890abcdef12345678',
-    email: 'test@example.com',
-  };
-
-  const mockConfig = {
-    web3AuthClientId: 'test-client-id',
-    web3AuthNetwork: 'testnet',
-    chainId: 43114,
-    rpcUrl: 'https://api.avax.network/ext/bc/C/rpc',
-    usdcContractAddress: '0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E',
-    moonPayApiKey: 'test-api-key',
-    minGasWei: '5',
-    basePath: '',
-    snowtraceBaseUrl: 'https://snowtrace.io',
-    serviceLink: 'http://localhost:3000'
-  };
-
   beforeEach(() => {
-    mockUseRouter.mockReturnValue({
-      push: mockPush,
-      back: mockBack,
-      query: { mode: 'buy' },
+    (useRouter as jest.Mock).mockReturnValue({
+      query: {},
       basePath: '',
-    } as any);
+      push: mockRouterPush,
+      back: mockRouterBack,
+    });
 
+    // Default auth state - authenticated user
     mockUseAuth.mockReturnValue({
-      user: mockUser,
+      user: { id: '1', wallet: '0x123', email: 'test@example.com' },
       isLoading: false,
       login: jest.fn(),
       logout: jest.fn(),
-    });
-
-    mockUseConfig.mockReturnValue({
-      config: mockConfig,
-      isLoading: false,
-    });
-
-    mockUseWeb3AuthInstance.mockReturnValue({
-      web3authProvider: { dummy: 'dummy' },
-      isLoading: false,
-      web3authInstance: null,
-      onLogout: jest.fn(),
-    });
-
-    mockUseWalletAddress.mockReturnValue({
-      walletAddress: mockUser.walletAddress,
-      isLoading: false,
     });
   });
 
@@ -128,219 +70,124 @@ describe('BuyUSDC Page', () => {
     jest.clearAllMocks();
   });
 
-  describe('Buy Mode', () => {
-    it('renders buy mode title and description', () => {
+  describe('When user is authenticated', () => {
+    it('renders the main heading and description', () => {
       render(<BuyUSDC />);
 
-      expect(screen.getByRole('heading', { level: 1, name: 'Buy USDC' })).toBeInTheDocument();
-      expect(screen.getByText(/Buy USDC with your credit card.*This feature is coming soon!/)).toBeInTheDocument();
+      expect(screen.getByRole('heading', { level: 1, name: 'Buy or Sell USDC' })).toBeInTheDocument();
+      expect(screen.getByText('Use the Web3Auth wallet widget to buy, sell, swap, or manage your crypto')).toBeInTheDocument();
     });
 
-    it('shows coming soon button that is disabled', () => {
+    it('renders wallet services information', () => {
       render(<BuyUSDC />);
 
-      const button = screen.getByRole('button', { name: 'Coming Soon' });
-      expect(button).toBeDisabled();
-      expect(button).toHaveClass('cursor-not-allowed');
+      expect(screen.getByRole('heading', { level: 2, name: 'Access Wallet Services' })).toBeInTheDocument();
+      expect(screen.getByText(/Web3Auth Wallet Services provides integrated fiat on-ramp functionality/)).toBeInTheDocument();
     });
 
-    it('displays user wallet address', () => {
+    it('displays wallet information', () => {
       render(<BuyUSDC />);
 
-      expect(screen.getByText(mockUser.walletAddress)).toBeInTheDocument();
+      expect(screen.getByText('Connected Wallet:')).toBeInTheDocument();
+      expect(screen.getByText('0x1234567890abcdef1234567890abcdef12345678')).toBeInTheDocument();
+      expect(screen.getByText('Network:')).toBeInTheDocument();
+      expect(screen.getByText('Avalanche C-Chain')).toBeInTheDocument();
+      expect(screen.getByText('Supported Currency:')).toBeInTheDocument();
+      expect(screen.getByText('USDC')).toBeInTheDocument();
     });
 
-    it('shows USDC guide with coming soon flag', () => {
+    it('shows requirements for wallet services', () => {
       render(<BuyUSDC />);
 
-      expect(screen.getByTestId('usdc-guide')).toHaveTextContent('USDC Guide (Coming Soon)');
+      expect(screen.getByText('Requirements for Web3Auth Wallet Services:')).toBeInTheDocument();
+      expect(screen.getByText('1. Upgrade to Web3Auth SDK v9 or higher')).toBeInTheDocument();
+      expect(screen.getByText('2. Subscribe to Web3Auth Scale Plan (minimum for production)')).toBeInTheDocument();
+      expect(screen.getByText('3. Configure wallet services in Web3Auth dashboard')).toBeInTheDocument();
     });
 
-    it('does not render MoonPay widget', () => {
+    it('shows available features', () => {
       render(<BuyUSDC />);
 
-      expect(screen.queryByTestId('moonpay-widget')).not.toBeInTheDocument();
+      expect(screen.getByText('Once enabled, you\'ll have access to:')).toBeInTheDocument();
+      expect(screen.getByText('• Fiat on-ramp aggregator (MoonPay, Ramp, and more)')).toBeInTheDocument();
+      expect(screen.getByText('• Token swaps and exchanges')).toBeInTheDocument();
+      expect(screen.getByText('• Portfolio management')).toBeInTheDocument();
+      expect(screen.getByText('• WalletConnect integration')).toBeInTheDocument();
+    });
+
+    it('displays upgrade notice', () => {
+      render(<BuyUSDC />);
+
+      expect(screen.getByText('Note:')).toBeInTheDocument();
+      expect(screen.getByText(/Full wallet services with integrated widget require Web3Auth v9\+ and a Scale Plan/)).toBeInTheDocument();
+    });
+
+    it('shows navigation buttons', () => {
+      render(<BuyUSDC />);
+
+      const dashboardButton = screen.getByRole('button', { name: 'Go to Dashboard' });
+      expect(dashboardButton).toBeInTheDocument();
+      expect(dashboardButton).not.toBeDisabled();
+
+      const backButton = screen.getByRole('button', { name: 'Go Back' });
+      expect(backButton).toBeInTheDocument();
+    });
+
+    it('navigates to dashboard when dashboard button is clicked', () => {
+      render(<BuyUSDC />);
+
+      const dashboardButton = screen.getByRole('button', { name: 'Go to Dashboard' });
+      dashboardButton.click();
+
+      expect(mockRouterPush).toHaveBeenCalledWith('/dashboard');
+    });
+
+    it('navigates back when back button is clicked', () => {
+      render(<BuyUSDC />);
+
+      const backButton = screen.getByRole('button', { name: 'Go Back' });
+      backButton.click();
+
+      expect(mockRouterBack).toHaveBeenCalled();
+    });
+
+    it('displays Web3Auth attribution', () => {
+      render(<BuyUSDC />);
+
+      expect(screen.getByText(/Powered by Web3Auth Wallet Services/)).toBeInTheDocument();
     });
   });
 
-  describe('Sell Mode', () => {
-    beforeEach(() => {
-      mockUseRouter.mockReturnValue({
-        push: mockPush,
-        back: mockBack,
-        query: { mode: 'sell' },
-        basePath: '',
-      } as any);
-    });
+  describe('When user is not authenticated', () => {
+    it('shows connect wallet message', () => {
+      // Override the auth mock for this test
+      mockUseAuth.mockReturnValueOnce({
+        user: null,
+        isLoading: false,
+        login: jest.fn(),
+        logout: jest.fn(),
+      });
 
-    it('renders sell mode title and description', () => {
       render(<BuyUSDC />);
 
-      expect(screen.getByRole('heading', { level: 1, name: 'Sell USDC' })).toBeInTheDocument();
-      expect(screen.getByText(/Sell USDC from your wallet.*This feature is coming soon!/)).toBeInTheDocument();
-    });
-
-    it('shows correct wallet label for sell mode', () => {
-      render(<BuyUSDC />);
-
-      expect(screen.getByText('Source Wallet:')).toBeInTheDocument();
+      expect(screen.getByRole('heading', { level: 1, name: 'Connect Your Wallet' })).toBeInTheDocument();
+      expect(screen.getByText('You need to connect your wallet to buy or sell USDC.')).toBeInTheDocument();
     });
   });
 
-  describe('Authentication States', () => {
+  describe('Loading states', () => {
     it('shows loading spinner when auth is loading', () => {
-      mockUseAuth.mockReturnValue({
+      // Override the auth mock for this test
+      mockUseAuth.mockReturnValueOnce({
         user: null,
         isLoading: true,
         login: jest.fn(),
         logout: jest.fn(),
       });
 
-      mockUseWeb3AuthInstance.mockReturnValue({
-        web3authProvider: null,
-        isLoading: false,
-        web3authInstance: null,
-        onLogout: jest.fn(),
-      });
-
       render(<BuyUSDC />);
 
       expect(screen.getByTestId('loading-spinner')).toBeInTheDocument();
-    });
-
-    it('shows connect wallet when user is not authenticated', () => {
-      mockUseAuth.mockReturnValue({
-        user: null,
-        isLoading: false,
-        login: jest.fn(),
-        logout: jest.fn(),
-      });
-
-      mockUseWeb3AuthInstance.mockReturnValue({
-        web3authProvider: null,
-        isLoading: false,
-        web3authInstance: null,
-        onLogout: jest.fn(),
-      });
-
-      render(<BuyUSDC />);
-
-      expect(screen.getByText('Connect Your Wallet')).toBeInTheDocument();
-      expect(screen.getByTestId('connect-wallet')).toBeInTheDocument();
-    });
-
-    it('adapts connect wallet message for buy mode', () => {
-      mockUseAuth.mockReturnValue({
-        user: null,
-        isLoading: false,
-        login: jest.fn(),
-        logout: jest.fn(),
-      });
-
-      mockUseWeb3AuthInstance.mockReturnValue({
-        web3authProvider: null,
-        isLoading: false,
-        web3authInstance: null,
-        onLogout: jest.fn(),
-      });
-
-      render(<BuyUSDC />);
-
-      expect(screen.getByText(/You need to connect your wallet to purchase USDC/)).toBeInTheDocument();
-    });
-
-    it('adapts connect wallet message for sell mode', () => {
-      mockUseAuth.mockReturnValue({
-        user: null,
-        isLoading: false,
-        login: jest.fn(),
-        logout: jest.fn(),
-      });
-
-      mockUseWeb3AuthInstance.mockReturnValue({
-        web3authProvider: null,
-        isLoading: false,
-        web3authInstance: null,
-        onLogout: jest.fn(),
-      });
-
-      mockUseRouter.mockReturnValue({
-        push: mockPush,
-        back: mockBack,
-        query: { mode: 'sell' },
-        basePath: '',
-      } as any);
-
-      render(<BuyUSDC />);
-
-      expect(screen.getByText(/You need to connect your wallet to sell USDC/)).toBeInTheDocument();
-    });
-  });
-
-  describe('Navigation', () => {
-    it('has a go back button that calls router.back()', () => {
-      render(<BuyUSDC />);
-
-      const goBackButton = screen.getByText('Go Back');
-      fireEvent.click(goBackButton);
-
-      expect(mockBack).toHaveBeenCalledTimes(1);
-    });
-  });
-
-  describe('Network Information', () => {
-    it('displays correct network information', () => {
-      render(<BuyUSDC />);
-
-      expect(screen.getByText('Network:')).toBeInTheDocument();
-      expect(screen.getByText('Avalanche C-Chain')).toBeInTheDocument();
-      expect(screen.getByText('Currency:')).toBeInTheDocument();
-      expect(screen.getByText('USDC')).toBeInTheDocument();
-    });
-  });
-
-  describe('MoonPay Links', () => {
-    it('displays MoonPay terms and privacy policy links', () => {
-      render(<BuyUSDC />);
-
-      const termsLink = screen.getByRole('link', { name: 'Terms of Use' });
-      const privacyLink = screen.getByRole('link', { name: 'Privacy Policy' });
-
-      expect(termsLink).toHaveAttribute('href', 'https://moonpay.com/terms_of_use');
-      expect(termsLink).toHaveAttribute('target', '_blank');
-      expect(termsLink).toHaveAttribute('rel', 'noopener noreferrer');
-
-      expect(privacyLink).toHaveAttribute('href', 'https://moonpay.com/privacy_policy');
-      expect(privacyLink).toHaveAttribute('target', '_blank');
-      expect(privacyLink).toHaveAttribute('rel', 'noopener noreferrer');
-    });
-  });
-
-  describe('Button Interaction', () => {
-    it('coming soon button does not trigger widget display', () => {
-      render(<BuyUSDC />);
-
-      const button = screen.getByRole('button', { name: 'Coming Soon' });
-      fireEvent.click(button);
-
-      // MoonPay widget should still not be displayed
-      expect(screen.queryByTestId('moonpay-widget')).not.toBeInTheDocument();
-    });
-  });
-
-  describe('Default Mode', () => {
-    it('defaults to buy mode when no mode is specified', () => {
-      mockUseRouter.mockReturnValue({
-        push: mockPush,
-        back: mockBack,
-        query: {},
-        basePath: '',
-      } as any);
-
-      render(<BuyUSDC />);
-
-      expect(screen.getByRole('heading', { level: 1, name: 'Buy USDC' })).toBeInTheDocument();
-      expect(screen.getByText('Destination Wallet:')).toBeInTheDocument();
     });
   });
 });

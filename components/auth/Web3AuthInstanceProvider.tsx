@@ -4,6 +4,7 @@ import { useConfig } from './ConfigProvider';
 import { Web3Auth } from '@web3auth/modal';
 import { EthereumPrivateKeyProvider } from '@web3auth/ethereum-provider';
 import { CHAIN_NAMESPACES } from '@web3auth/base';
+import { WalletServicesPlugin } from '@web3auth/wallet-services-plugin';
 
 
 const Web3AuthInstanceContext = createContext<Web3AuthInstanceContextType | undefined>(undefined);
@@ -57,6 +58,21 @@ export function Web3AuthInstanceProvider({ children }: { children: React.ReactNo
       enableLogging: false,
     });
 
+    try {
+      // Initialize Wallet Services Plugin for onramp aggregator and wallet features
+      const walletServicesPlugin = new WalletServicesPlugin({
+        walletInitOptions: {
+          whiteLabel: {
+            showWidgetButton: config.walletServicesShowWidget !== 'false',
+          },
+        },
+      });
+
+      // Add the plugin to Web3Auth instance
+      await instance.addPlugin(walletServicesPlugin);
+    } catch (pluginError) {
+      console.warn('Failed to initialize wallet services plugin:', pluginError);
+    }
 
     try {
       // Add a small delay on mobile to prevent DOM conflicts

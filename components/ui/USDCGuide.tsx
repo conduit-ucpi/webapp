@@ -2,11 +2,7 @@ import { useAuth } from '@/components/auth/AuthProvider';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { useWalletAddress } from '@/hooks/useWalletAddress';
 
-interface USDCGuideProps {
-  showMoonPayComingSoon?: boolean;
-}
-
-export default function USDCGuide({ showMoonPayComingSoon = false }: USDCGuideProps) {
+export default function USDCGuide() {
   const { user } = useAuth();
   const { config } = useConfig();
   const { walletAddress } = useWalletAddress();
@@ -47,7 +43,7 @@ export default function USDCGuide({ showMoonPayComingSoon = false }: USDCGuidePr
           <div>
             <span className="font-semibold">Fund your wallet using:</span>
             <ul className="mt-2 ml-4 space-y-1">
-              <li>• <strong><a href="https://www.moonpay.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-500 underline">MoonPay</a>:</strong> Buy/Sell USDC directly with credit/debit card{showMoonPayComingSoon ? ' (coming soon)' : ''}</li>
+              <li>• <strong>Web3Auth Wallet Widget:</strong> Click the wallet button (bottom-right) to buy/sell USDC with credit/debit card</li>
               <li>• <strong>MetaMask/Coinbase:</strong> Transfer USDC to/from another wallet</li>
               <li>• <strong>Major Exchanges:</strong> 
                 <a href="https://www.coinbase.com/price/usdc" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-500 underline mx-1">Coinbase</a>,
@@ -55,7 +51,7 @@ export default function USDCGuide({ showMoonPayComingSoon = false }: USDCGuidePr
                 <a href="https://crypto.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-500 underline mx-1">Crypto.com</a>,
                 <a href="https://easycrypto.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-500 underline mx-1">EasyCrypto</a>
               </li>
-              <li>• <strong>Cash Conversion:</strong> Use exchanges above to convert USDC to fiat currency</li>
+              <li>• <strong>Cash Conversion:</strong> Use the wallet widget or exchanges above to convert USDC to fiat currency</li>
             </ul>
           </div>
         </div>

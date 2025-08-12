@@ -114,7 +114,7 @@ describe('USDCGuide', () => {
     render(<USDCGuide />);
 
     // Check that all exchange links are present
-    expect(screen.getByRole('link', { name: 'MoonPay' })).toHaveAttribute('href', 'https://www.moonpay.com');
+    expect(screen.getByText(/Web3Auth Wallet Widget:/)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Coinbase' })).toHaveAttribute('href', 'https://www.coinbase.com/price/usdc');
     expect(screen.getByRole('link', { name: 'Kraken' })).toHaveAttribute('href', 'https://www.kraken.com');
     expect(screen.getByRole('link', { name: 'Crypto.com' })).toHaveAttribute('href', 'https://crypto.com');
@@ -125,22 +125,16 @@ describe('USDCGuide', () => {
   it('shows links with correct security attributes', () => {
     render(<USDCGuide />);
 
-    const moonpayLink = screen.getByRole('link', { name: 'MoonPay' });
-    expect(moonpayLink).toHaveAttribute('target', '_blank');
-    expect(moonpayLink).toHaveAttribute('rel', 'noopener noreferrer');
+    // Web3Auth wallet widget doesn't use external links, it's integrated in the page
+    expect(screen.getByText(/Click the wallet button.*to buy\/sell USDC/)).toBeInTheDocument();
   });
 
-  it('shows MoonPay without "coming soon" by default', () => {
+  it('shows Web3Auth wallet widget as funding option', () => {
     render(<USDCGuide />);
-    expect(screen.getByRole('link', { name: 'MoonPay' })).toBeInTheDocument();
-    expect(screen.queryByText(/coming soon/)).not.toBeInTheDocument();
+    expect(screen.getByText(/Web3Auth Wallet Widget:/)).toBeInTheDocument();
+    expect(screen.getByText(/Click the wallet button.*to buy\/sell USDC/)).toBeInTheDocument();
   });
 
-  it('shows MoonPay with "coming soon" when prop is true', () => {
-    render(<USDCGuide showMoonPayComingSoon={true} />);
-    expect(screen.getByRole('link', { name: 'MoonPay' })).toBeInTheDocument();
-    expect(screen.getByText(/\(coming soon\)/)).toBeInTheDocument();
-  });
 
   it('displays important warning about network deposits', () => {
     render(<USDCGuide />);
@@ -195,7 +189,7 @@ describe('USDCGuide', () => {
   it('includes all funding methods', () => {
     render(<USDCGuide />);
 
-    expect(screen.getByRole('link', { name: 'MoonPay' })).toBeInTheDocument();
+    expect(screen.getByText(/Web3Auth Wallet Widget:/)).toBeInTheDocument();
     expect(screen.getByText(/MetaMask\/Coinbase:/)).toBeInTheDocument();
     expect(screen.getByText(/Major Exchanges:/)).toBeInTheDocument();
     expect(screen.getByText(/Cash Conversion:/)).toBeInTheDocument();

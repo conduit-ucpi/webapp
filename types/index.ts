@@ -11,6 +11,11 @@ export interface Config {
   basePath: string;
   snowtraceBaseUrl: string;
   serviceLink: string;
+  // Optional wallet services configuration
+  walletServicesShowWidget?: string;
+  walletServicesButtonPosition?: string;
+  walletServicesEnableKeyExport?: string;
+  walletServicesHideTopup?: string;
 }
 
 export interface User {

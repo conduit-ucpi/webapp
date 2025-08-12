@@ -89,6 +89,9 @@ export function Web3AuthInstanceProvider({ children }: { children: React.ReactNo
       // Add the plugin to Web3Auth instance
       await instance.addPlugin(walletServicesPlugin);
       console.log('WalletServicesPlugin added to Web3Auth instance successfully');
+      
+      // Store plugin reference globally for debugging
+      (window as any).walletServicesPlugin = walletServicesPlugin;
     } catch (pluginError) {
       console.error('Failed to initialize wallet services plugin:', pluginError);
     }
@@ -152,6 +155,13 @@ export function Web3AuthInstanceProvider({ children }: { children: React.ReactNo
           console.log('Web3AuthInstanceProvider: Detected external connection, updating state');
           setWeb3authInstance(globalInstance);
           setProvider(globalProvider);
+          
+          // Check if wallet services plugin needs to connect
+          const walletServicesPlugin = globalInstance.plugins?.['wallet-services'];
+          if (walletServicesPlugin && walletServicesPlugin.status !== 'connected') {
+            console.log('Wallet services plugin detected but not connected, waiting for auto-connect...');
+            // The plugin should auto-connect when the provider is set
+          }
         }
       }
     };

@@ -62,16 +62,24 @@ export default function BuyUSDC() {
           
           walletServicesPlugin.on('connected', onPluginConnected);
           
-          // Also try to manually connect the plugin if it's not connecting
+          // The plugin should auto-connect when Web3Auth is connected
+          // Let's check if it's initializing
           setTimeout(() => {
             if (walletServicesPlugin.status !== 'connected') {
-              console.log('Manually connecting plugin...');
-              walletServicesPlugin.connect().catch((err: any) => {
-                console.error('Error manually connecting plugin:', err);
-                setWidgetStatus(`Error connecting plugin: ${err.message}`);
+              console.log('Plugin still not connected, checking Web3Auth connection...');
+              console.log('Web3Auth connected:', web3authInstance.connected);
+              console.log('Web3Auth provider:', web3authInstance.provider);
+              
+              // The plugin should connect automatically when Web3Auth connects
+              // If not, there might be a configuration issue
+              setWidgetStatus('Plugin not auto-connecting. This may be a configuration issue. Check Web3Auth dashboard settings.');
+              
+              // Try showing the UI anyway in case the status is wrong
+              walletServicesPlugin.showWalletUi().catch((err: any) => {
+                console.error('Error showing UI directly:', err);
               });
             }
-          }, 1000);
+          }, 2000);
           
         } else {
           // Plugin is already connected, show the UI

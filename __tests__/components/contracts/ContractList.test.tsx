@@ -2,7 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { useRouter } from 'next/router';
 import ContractList from '@/components/contracts/ContractList';
 import { useAuth } from '@/components/auth/AuthProvider';
-import { useWeb3AuthInstance } from '@/components/auth/Web3AuthInstanceProvider';
+import { useWeb3AuthInstance } from '@/components/auth/Web3AuthContextProvider';
 
 // Mock dependencies
 jest.mock('next/router', () => ({
@@ -13,7 +13,7 @@ jest.mock('@/components/auth/AuthProvider', () => ({
   useAuth: jest.fn(),
 }));
 
-jest.mock('@/components/auth/Web3AuthInstanceProvider', () => ({
+jest.mock('@/components/auth/Web3AuthContextProvider', () => ({
   useWeb3AuthInstance: jest.fn(),
 }));
 

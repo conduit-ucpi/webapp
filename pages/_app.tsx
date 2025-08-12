@@ -4,19 +4,22 @@ import { AuthProvider } from '@/components/auth/AuthProvider';
 import Layout from '@/components/layout/Layout';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import '@/styles/globals.css';
-import { Web3AuthInstanceProvider } from '@/components/auth/Web3AuthInstanceProvider';
+import { Web3AuthProviderWrapper } from '@/components/auth/Web3AuthProviderWrapper';
+import { Web3AuthContextProvider } from '@/components/auth/Web3AuthContextProvider';
 
 export default function App({ Component, pageProps }: AppProps) {
   return (
     <ErrorBoundary>
       <ConfigProvider>
-        <Web3AuthInstanceProvider>
-          <AuthProvider>
-            <Layout>
-              <Component {...pageProps} />
-            </Layout>
-          </AuthProvider>
-        </Web3AuthInstanceProvider>
+        <Web3AuthProviderWrapper>
+          <Web3AuthContextProvider>
+            <AuthProvider>
+              <Layout>
+                <Component {...pageProps} />
+              </Layout>
+            </AuthProvider>
+          </Web3AuthContextProvider>
+        </Web3AuthProviderWrapper>
       </ConfigProvider>
     </ErrorBoundary>
   );

@@ -2,7 +2,7 @@ import { useAuth } from '@/components/auth/AuthProvider';
 import CreateContract from '@/components/contracts/CreateContract';
 import ConnectWallet from '@/components/auth/ConnectWallet';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
-import { useWeb3AuthInstance } from '@/components/auth/Web3AuthInstanceProvider';
+import { useWeb3AuthInstance } from '@/components/auth/Web3AuthContextProvider';
 
 export default function CreatePage() {
   const { user, isLoading } = useAuth();

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useConfig } from '@/components/auth/ConfigProvider';
-import { useWeb3AuthInstance } from '@/components/auth/Web3AuthInstanceProvider';
+import { useWeb3AuthInstance } from '@/components/auth/Web3AuthContextProvider';
 import { Web3Service } from '@/lib/web3';
 
 export function useWalletAddress() {

@@ -6,7 +6,7 @@ import { useConfig } from './ConfigProvider';
 import { useAuth } from './AuthProvider';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
-import { useWeb3AuthInstance } from './Web3AuthInstanceProvider';
+import { useWeb3AuthInstance } from './Web3AuthContextProvider';
 
 // Global Web3Auth instance
 let web3authInstance: Web3Auth | null = null;

@@ -6,14 +6,14 @@ jest.mock('next/router', () => ({
 }));
 jest.mock('../../../components/auth/ConfigProvider');
 jest.mock('../../../components/auth/AuthProvider');
-jest.mock('../../../components/auth/Web3AuthInstanceProvider');
+jest.mock('../../../components/auth/Web3AuthContextProvider');
 jest.mock('../../../lib/web3');
 
 import { useRouter } from 'next/router';
 import ContractActions from '../../../components/contracts/ContractActions';
 import { useConfig } from '../../../components/auth/ConfigProvider';
 import { useAuth } from '../../../components/auth/AuthProvider';
-import { useWeb3AuthInstance } from '../../../components/auth/Web3AuthInstanceProvider';
+import { useWeb3AuthInstance } from '../../../components/auth/Web3AuthContextProvider';
 import { Contract } from '../../../types';
 
 const mockUseRouter = useRouter as jest.MockedFunction<typeof useRouter>;

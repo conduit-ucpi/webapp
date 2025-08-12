@@ -43,12 +43,14 @@ export function Web3AuthInstanceProvider({ children }: { children: React.ReactNo
       console.log('MetaMask temporarily disabled during Web3Auth initialization');
     }
 
+    // Dynamic display name based on chainId
+    const isMainnet = config.chainId === 43114;
     const chainConfig = {
       chainNamespace: CHAIN_NAMESPACES.EIP155,
       chainId: `0x${config.chainId.toString(16)}`,
       rpcTarget: config.rpcUrl,
-      displayName: 'Avalanche Testnet',
-      blockExplorer: 'https://testnet.snowtrace.io',
+      displayName: isMainnet ? 'Avalanche Mainnet' : 'Avalanche Testnet',
+      blockExplorer: config.snowtraceBaseUrl,
       ticker: 'AVAX',
       tickerName: 'Avalanche',
     };

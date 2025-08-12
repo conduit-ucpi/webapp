@@ -30,10 +30,17 @@ export function Web3AuthInstanceProvider({ children }: { children: React.ReactNo
     // Check if we're on mobile
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
-    // Disable MetaMask auto-detection by hiding window.ethereum temporarily
-    const originalEthereum = (window as any).ethereum;
+    // Properly isolate MetaMask during Web3Auth initialization
+    const originalEthereum = (window as any).ethereum || (window as any).__originalEthereum;
+    
     if (originalEthereum && !isMobile) {
+      // Store original MetaMask provider for later restoration
+      (window as any).__originalEthereum = originalEthereum;
+      
+      // Temporarily disable MetaMask during Web3Auth init to prevent conflicts
       (window as any).ethereum = undefined;
+      
+      console.log('MetaMask temporarily disabled during Web3Auth initialization');
     }
 
     const chainConfig = {
@@ -94,9 +101,14 @@ export function Web3AuthInstanceProvider({ children }: { children: React.ReactNo
       }
     }
 
-    // Restore original ethereum object after initialization
+    // Restore original MetaMask provider after Web3Auth initialization
     if (originalEthereum && !isMobile) {
       (window as any).ethereum = originalEthereum;
+      console.log('MetaMask provider restored after Web3Auth initialization');
+    } else if ((window as any).__originalEthereum && !isMobile) {
+      // Fallback: restore from global storage
+      (window as any).ethereum = (window as any).__originalEthereum;
+      console.log('MetaMask provider restored from global storage');
     }
 
     // Store provider globally for other components

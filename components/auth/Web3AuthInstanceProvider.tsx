@@ -69,19 +69,28 @@ export function Web3AuthInstanceProvider({ children }: { children: React.ReactNo
 
     try {
       // Initialize Wallet Services Plugin for onramp aggregator and wallet features
+      console.log('Initializing WalletServicesPlugin with config:', {
+        showWidgetButton: config.walletServicesShowWidget !== 'false',
+        walletServicesShowWidget: config.walletServicesShowWidget
+      });
+      
       const walletServicesPlugin = new WalletServicesPlugin({
         wsEmbedOpts: {},
         walletInitOptions: {
           whiteLabel: {
-            showWidgetButton: config.walletServicesShowWidget !== 'false',
+            showWidgetButton: true,
+            buttonPosition: "bottom-right", // Explicitly set position
           },
         },
       });
 
+      console.log('WalletServicesPlugin created:', walletServicesPlugin);
+      
       // Add the plugin to Web3Auth instance
       await instance.addPlugin(walletServicesPlugin);
+      console.log('WalletServicesPlugin added to Web3Auth instance successfully');
     } catch (pluginError) {
-      console.warn('Failed to initialize wallet services plugin:', pluginError);
+      console.error('Failed to initialize wallet services plugin:', pluginError);
     }
 
     try {

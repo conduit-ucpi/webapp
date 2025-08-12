@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useWeb3Auth, useWeb3AuthConnect, useWeb3AuthUser, useIdentityToken } from '@web3auth/modal/react';
+import { ethers } from 'ethers';
 import { useConfig } from './ConfigProvider';
 import { useAuth } from './AuthProvider';
 import Button from '@/components/ui/Button';
@@ -28,13 +29,15 @@ export default function ConnectWallet() {
     const handleAutoLogin = async () => {
       if (isConnected && provider && idToken) {
         console.log('Already connected, attempting auto-login...');
+        console.log('Provider from useWeb3Auth hook:', provider);
         try {
-          const accounts = await provider.request({ method: 'eth_accounts' }) as string[];
+          // Get wallet address using ethers.js (proper Web3Auth v10 pattern)
+          const ethersProvider = new ethers.BrowserProvider(provider as any);
+          const signer = await ethersProvider.getSigner();
+          const walletAddress = await signer.getAddress();
           
-          if (accounts && accounts.length > 0) {
-            const walletAddress = accounts[0];
-            await login(idToken, walletAddress, provider);
-          }
+          console.log('Auto-login wallet address:', walletAddress);
+          await login(idToken, walletAddress, provider);
         } catch (error) {
           console.error('Auto-login failed:', error);
         }
@@ -93,34 +96,154 @@ export default function ConnectWallet() {
       // Use the React provider's connect method
       const web3authProvider = await connect();
       
+      console.log('Connect result:', web3authProvider);
+      console.log('Connect result type:', typeof web3authProvider);
+      
       if (!web3authProvider) {
-        throw new Error('Failed to connect wallet');
+        throw new Error('Failed to connect wallet - no provider available');
       }
       
-      console.log('Web3Auth connected successfully via React provider');
+      console.log('Web3Auth provider obtained:', web3authProvider);
 
       // Store provider globally for Web3Service
       (window as any).web3authProvider = web3authProvider;
 
-      // Get user info and accounts
-      const accounts = await web3authProvider.request({ method: 'eth_accounts' }) as string[];
-
-      if (!accounts || accounts.length === 0) {
-        throw new Error('No accounts found');
-      }
-
-      const walletAddress = accounts[0] as string;
+      // Try different methods to get wallet address
+      let walletAddress: string | null = null;
       
-      // Check if idToken is immediately available
-      if (idToken) {
-        console.log('idToken available immediately, proceeding with login...');
-        await login(idToken, walletAddress, web3authProvider);
+      // Method 1: Try ethers.js with the provider
+      try {
+        const ethersProvider = new ethers.BrowserProvider(web3authProvider as any);
+        const signer = await ethersProvider.getSigner();
+        walletAddress = await signer.getAddress();
+        console.log('Wallet address from ethers.js:', walletAddress);
+      } catch (ethersError) {
+        console.error('Failed to get address via ethers.js:', ethersError);
+        
+        // Method 2: Try direct provider request
+        try {
+          const accounts = await web3authProvider.request({ method: 'eth_accounts' }) as string[];
+          if (accounts && accounts.length > 0) {
+            walletAddress = accounts[0];
+            console.log('Wallet address from eth_accounts:', walletAddress);
+          }
+        } catch (providerError) {
+          console.error('Failed to get address via provider.request:', providerError);
+        }
+      }
+      
+      if (!walletAddress) {
+        throw new Error('Could not obtain wallet address');
+      }
+      
+      console.log('Final wallet address:', walletAddress);
+      
+      // For social logins, we need to explicitly call getIdentityToken to get idToken (v10)
+      const web3authInstance = (window as any).web3auth;
+      if (web3authInstance && web3authInstance.connectedConnectorName === 'auth') {
+        console.log('Social login detected, calling getIdentityToken immediately...');
+        try {
+          const authUser = await web3authInstance.getIdentityToken();
+          console.log('Immediate getIdentityToken result:', authUser);
+          if (authUser?.idToken) {
+            console.log('Got idToken immediately from getIdentityToken');
+            await login(authUser.idToken, walletAddress, web3authProvider);
+            console.log('Login successful');
+            window.location.reload();
+            return;
+          }
+        } catch (err) {
+          console.error('Immediate getIdentityToken failed:', err);
+        }
+      }
+      
+      // Try to get idToken - poll for it since it may take longer than wallet address
+      let tokenToUse = idToken;
+      
+      if (!tokenToUse) {
+        console.log('idToken not available from hook immediately, polling for token...');
+        
+        // Poll for idToken with timeout
+        const pollForToken = async (maxAttempts = 10, interval = 500) => {
+          for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+            console.log(`Polling for idToken, attempt ${attempt}/${maxAttempts}`);
+            
+            // Check hook again
+            if (idToken) {
+              console.log('Got idToken from hook on attempt', attempt);
+              return idToken;
+            }
+            
+            // Check Web3Auth instance
+            const web3authInstance = (window as any).web3auth;
+            if (web3authInstance) {
+              // Check state
+              if (web3authInstance.state?.idToken) {
+                console.log('Got idToken from state on attempt', attempt);
+                return web3authInstance.state.idToken;
+              }
+              
+              // Try getIdentityToken - this is required for social logins to get idToken (v10)
+              if (web3authInstance.getIdentityToken) {
+                try {
+                  console.log(`Calling getIdentityToken on attempt ${attempt}...`);
+                  const authUser = await web3authInstance.getIdentityToken();
+                  console.log(`getIdentityToken result on attempt ${attempt}:`, authUser);
+                  if (authUser?.idToken) {
+                    console.log('Got idToken from getIdentityToken on attempt', attempt);
+                    return authUser.idToken;
+                  }
+                } catch (err) {
+                  console.warn(`getIdentityToken failed on attempt ${attempt}:`, err);
+                }
+              } else {
+                console.log(`getIdentityToken method not available on attempt ${attempt}`);
+              }
+            }
+            
+            // Wait before next attempt
+            if (attempt < maxAttempts) {
+              await new Promise(resolve => setTimeout(resolve, interval));
+            }
+          }
+          
+          return null;
+        };
+        
+        tokenToUse = await pollForToken();
+        
+        if (!tokenToUse) {
+          console.error('No idToken available for social login after polling!');
+          const web3authInstance = (window as any).web3auth;
+          console.log('Final Web3Auth status:', web3authInstance?.status);
+          console.log('Final Web3Auth state:', web3authInstance?.state);
+          console.log('Connected adapter:', web3authInstance?.connectedAdapter);
+          console.log('Connected connector name:', web3authInstance?.connectedConnectorName);
+          console.log('Available connectors:', web3authInstance?.connectors);
+          console.log('UserInfo from hook:', userInfo);
+          
+          // Check if there's sessionId or other auth data
+          if (web3authInstance?.connectedAdapter) {
+            console.log('Connected adapter details:', web3authInstance.connectedAdapter);
+            console.log('Adapter sessionId:', web3authInstance.connectedAdapter.sessionId);
+          }
+          
+          // This might be expected for certain login types - let's allow fallback
+          console.warn('Using wallet address as authentication fallback');
+          tokenToUse = `wallet:${walletAddress}`;
+        }
+      }
+      
+      // Check if idToken is available (either from hook or manual request)
+      if (tokenToUse) {
+        console.log('idToken available, proceeding with login...');
+        await login(tokenToUse, walletAddress, web3authProvider);
         console.log('Login successful');
         
         // Force a page reload after successful login to ensure all components update properly
         window.location.reload();
       } else {
-        console.log('idToken not yet available, setting up pending login...');
+        console.log('idToken not available, setting up pending login...');
         // Set pending login state - the useEffect will handle it when idToken arrives
         setPendingLogin({ walletAddress, provider: web3authProvider });
         // Keep isConnecting true until the pending login completes

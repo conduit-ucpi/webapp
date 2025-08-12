@@ -86,10 +86,18 @@ export function Web3AuthInstanceProvider({ children }: { children: React.ReactNo
             logoDark: transparentPixel,
             logoLight: transparentPixel,
           },
-          // Try passing blockExplorerUrl directly (may be ignored by TypeScript but needed at runtime)
+        },
+        // Add chainConfig at the top level
+        chainConfig: {
+          chainNamespace: CHAIN_NAMESPACES.EIP155,
+          chainId: `0x${config.chainId.toString(16)}`,
+          rpcTarget: config.rpcUrl,
+          displayName: isMainnet ? 'Avalanche Mainnet' : 'Avalanche Testnet',
           blockExplorerUrl: config.snowtraceBaseUrl || 'https://testnet.snowtrace.io',
-        } as any, // Type override due to incomplete Web3Auth types
-      });
+          ticker: 'AVAX',
+          tickerName: 'Avalanche',
+        },
+      } as any); // Type override due to incomplete Web3Auth types
 
       console.log('WalletServicesPlugin created:', walletServicesPlugin);
       

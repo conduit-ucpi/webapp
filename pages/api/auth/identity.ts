@@ -6,14 +6,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const response = await fetch(`${process.env.USER_SERVICE_URL}/api/user/identity`, {
+    const userServiceUrl = process.env.USER_SERVICE_URL;
+    console.log('USER_SERVICE_URL:', userServiceUrl);
+    
+    const response = await fetch(`${userServiceUrl}/api/user/identity`, {
       headers: {
         'Cookie': req.headers.cookie || ''
       }
     });
 
-    res.status(response.status).json(await response.json());
+    console.log('Identity response status:', response.status);
+    const responseData = await response.json();
+    console.log('Identity response data:', responseData);
+    
+    res.status(response.status).json(responseData);
   } catch (error) {
-    res.status(500).json({ error: 'Internal server error' });
+    console.error('Identity API error:', error);
+    res.status(500).json({ error: 'Internal server error', details: error.message });
   }
 }

@@ -3,7 +3,7 @@ import { User, Web3AuthInstanceContextType } from '@/types';
 import { useConfig } from './ConfigProvider';
 import { Web3Auth } from '@web3auth/modal';
 import { EthereumPrivateKeyProvider } from '@web3auth/ethereum-provider';
-import { CHAIN_NAMESPACES, OPENLOGIN_NETWORK_TYPE } from '@web3auth/base';
+import { CHAIN_NAMESPACES } from '@web3auth/base';
 
 
 const Web3AuthInstanceContext = createContext<Web3AuthInstanceContextType | undefined>(undefined);
@@ -51,7 +51,7 @@ export function Web3AuthInstanceProvider({ children }: { children: React.ReactNo
 
     const instance = new Web3Auth({
       clientId: config.web3AuthClientId,
-      web3AuthNetwork: config.web3AuthNetwork as OPENLOGIN_NETWORK_TYPE, // Configurable via WEB3AUTH_NETWORK env var
+      web3AuthNetwork: config.web3AuthNetwork as any, // Configurable via WEB3AUTH_NETWORK env var
       chainConfig,
       privateKeyProvider,
       enableLogging: false,

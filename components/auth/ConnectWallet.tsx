@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Web3Auth } from '@web3auth/modal';
-import { CHAIN_NAMESPACES, OPENLOGIN_NETWORK_TYPE } from '@web3auth/base';
+import { CHAIN_NAMESPACES } from '@web3auth/base';
 import { EthereumPrivateKeyProvider } from '@web3auth/ethereum-provider';
 import { useConfig } from './ConfigProvider';
 import { useAuth } from './AuthProvider';

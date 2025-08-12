@@ -78,7 +78,6 @@ export function Web3AuthInstanceProvider({ children }: { children: React.ReactNo
       const transparentPixel = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
       
       const walletServicesPlugin = new WalletServicesPlugin({
-        wsEmbedOpts: {},
         walletInitOptions: {
           whiteLabel: {
             showWidgetButton: true,
@@ -87,17 +86,9 @@ export function Web3AuthInstanceProvider({ children }: { children: React.ReactNo
             logoLight: transparentPixel,
           },
         },
-        // Add chainConfig at the top level
-        chainConfig: {
-          chainNamespace: CHAIN_NAMESPACES.EIP155,
-          chainId: `0x${config.chainId.toString(16)}`,
-          rpcTarget: config.rpcUrl,
-          displayName: isMainnet ? 'Avalanche Mainnet' : 'Avalanche Testnet',
-          blockExplorerUrl: config.snowtraceBaseUrl || 'https://testnet.snowtrace.io',
-          ticker: 'AVAX',
-          tickerName: 'Avalanche',
-        },
       } as any); // Type override due to incomplete Web3Auth types
+      
+      // The plugin should inherit the chainConfig from the Web3Auth instance automatically
 
       console.log('WalletServicesPlugin created:', walletServicesPlugin);
       

@@ -67,10 +67,15 @@ export function Web3AuthInstanceProvider({ children }: { children: React.ReactNo
 
     try {
       // Initialize Wallet Services Plugin for onramp aggregator and wallet features
+      // Using a simple 1x1 transparent PNG as placeholder - replace with actual logo
+      const transparentPixel = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+      
       const walletServicesPlugin = new WalletServicesPlugin({
         walletInitOptions: {
           whiteLabel: {
             showWidgetButton: config.walletServicesShowWidget !== 'false',
+            logoDark: transparentPixel,
+            logoLight: transparentPixel,
           },
         },
       });

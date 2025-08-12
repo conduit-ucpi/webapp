@@ -4,7 +4,7 @@ import { useConfig } from './ConfigProvider';
 import { Web3Auth } from '@web3auth/modal';
 import { EthereumPrivateKeyProvider } from '@web3auth/ethereum-provider';
 import { CHAIN_NAMESPACES } from '@web3auth/base';
-import { WalletServicesPlugin } from '@web3auth/wallet-services-plugin';
+// import { WalletServicesPlugin } from '@web3auth/wallet-services-plugin'; // Disabled temporarily
 
 
 const Web3AuthInstanceContext = createContext<Web3AuthInstanceContextType | undefined>(undefined);
@@ -67,6 +67,9 @@ export function Web3AuthInstanceProvider({ children }: { children: React.ReactNo
       enableLogging: false,
     });
 
+    // Skip WalletServicesPlugin for now - causing initialization errors
+    // TODO: Fix WalletServicesPlugin configuration when Web3Auth documentation is clearer
+    /*
     try {
       // Initialize Wallet Services Plugin for onramp aggregator and wallet features
       // Using a simple 1x1 transparent PNG as placeholder - replace with actual logo
@@ -87,6 +90,7 @@ export function Web3AuthInstanceProvider({ children }: { children: React.ReactNo
     } catch (pluginError) {
       console.warn('Failed to initialize wallet services plugin:', pluginError);
     }
+    */
 
     try {
       // Add a small delay on mobile to prevent DOM conflicts

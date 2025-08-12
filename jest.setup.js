@@ -24,12 +24,46 @@ jest.mock('@web3auth/modal', () => ({
     connect: jest.fn(),
     logout: jest.fn(),
     addPlugin: jest.fn()
-  }))
+  })),
+  WALLET_CONNECTORS: {
+    AUTH: 'auth'
+  },
+  WEB3AUTH_NETWORK: {
+    SAPPHIRE_MAINNET: 'sapphire_mainnet'
+  }
+}))
+
+// Mock Web3Auth React hooks
+jest.mock('@web3auth/modal/react', () => ({
+  Web3AuthProvider: ({ children }) => children,
+  useWeb3Auth: () => ({
+    provider: null,
+    web3Auth: null,
+    status: 'ready'
+  }),
+  useWeb3AuthConnect: () => ({
+    connect: jest.fn(),
+    isConnected: false,
+    connectorName: null
+  }),
+  useWeb3AuthUser: () => ({
+    userInfo: null
+  }),
+  useWeb3AuthDisconnect: () => ({
+    disconnect: jest.fn()
+  }),
+  useIdentityToken: () => ({
+    token: null
+  })
 }))
 
 jest.mock('@web3auth/base', () => ({
   CHAIN_NAMESPACES: {
     EIP155: 'eip155'
+  },
+  CONNECTOR_STATUS: {
+    READY: 'ready',
+    CONNECTED: 'connected'
   }
 }))
 

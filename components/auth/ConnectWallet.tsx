@@ -19,6 +19,7 @@ export default function ConnectWallet() {
   const { token: idToken } = useIdentityToken();
   const [isConnecting, setIsConnecting] = useState(false);
   const [hasVisitedBefore, setHasVisitedBefore] = useState(false);
+  const [pendingLogin, setPendingLogin] = useState<{walletAddress: string, provider: any} | null>(null);
 
 
 
@@ -42,6 +43,30 @@ export default function ConnectWallet() {
 
     handleAutoLogin();
   }, [isConnected, provider, idToken]);
+
+  // Handle pending login when idToken becomes available
+  useEffect(() => {
+    const handlePendingLogin = async () => {
+      if (pendingLogin && idToken) {
+        console.log('idToken now available, completing login...');
+        try {
+          await login(idToken, pendingLogin.walletAddress, pendingLogin.provider);
+          console.log('Login successful');
+          setPendingLogin(null);
+          setIsConnecting(false);
+          
+          // Force a page reload after successful login to ensure all components update properly
+          window.location.reload();
+        } catch (error) {
+          console.error('Pending login failed:', error);
+          setPendingLogin(null);
+          setIsConnecting(false);
+        }
+      }
+    };
+
+    handlePendingLogin();
+  }, [idToken, pendingLogin]);
 
   useEffect(() => {
     try {
@@ -86,19 +111,20 @@ export default function ConnectWallet() {
 
       const walletAddress = accounts[0] as string;
       
-      // Wait a moment for idToken to be populated after connection
-      await new Promise(resolve => setTimeout(resolve, 200));
-      
-      if (!idToken) {
-        throw new Error('No ID token received from Web3Auth');
+      // Check if idToken is immediately available
+      if (idToken) {
+        console.log('idToken available immediately, proceeding with login...');
+        await login(idToken, walletAddress, web3authProvider);
+        console.log('Login successful');
+        
+        // Force a page reload after successful login to ensure all components update properly
+        window.location.reload();
+      } else {
+        console.log('idToken not yet available, setting up pending login...');
+        // Set pending login state - the useEffect will handle it when idToken arrives
+        setPendingLogin({ walletAddress, provider: web3authProvider });
+        // Keep isConnecting true until the pending login completes
       }
-
-      console.log('Attempting login with userservice...');
-      await login(idToken, walletAddress, web3authProvider);
-      console.log('Login successful');
-      
-      // Force a page reload after successful login to ensure all components update properly
-      window.location.reload();
     } catch (error: any) {
       console.error('Connection failed:', error);
       // More specific error messages
@@ -111,7 +137,10 @@ export default function ConnectWallet() {
         alert(`Failed to connect wallet: ${error.message || 'Unknown error'}`);
       }
     } finally {
-      setIsConnecting(false);
+      // Only set isConnecting to false if we're not waiting for a pending login
+      if (!pendingLogin) {
+        setIsConnecting(false);
+      }
     }
   };
 
@@ -128,7 +157,7 @@ export default function ConnectWallet() {
       {isConnecting ? (
         <>
           <LoadingSpinner className="w-4 h-4 mr-2" />
-          Connecting...
+          {pendingLogin ? 'Completing login...' : 'Connecting...'}
         </>
       ) : isConnected ? (
         'Connected'

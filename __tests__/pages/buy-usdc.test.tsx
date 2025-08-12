@@ -89,31 +89,32 @@ describe('BuyUSDC Page', () => {
     it('displays wallet information', () => {
       render(<BuyUSDC />);
 
-      expect(screen.getByText(/Your wallet address:/)).toBeInTheDocument();
-      expect(screen.getByText('0x1234567890abcdef1234567890abcdef12345678')).toBeInTheDocument();
-      expect(screen.getAllByText(/Avalanche Fuji Testnet/).length).toBeGreaterThan(0);
+      expect(screen.getByText('Connected Wallet:')).toBeInTheDocument();
+      expect(screen.getAllByText('0x1234567890abcdef1234567890abcdef12345678').length).toBeGreaterThan(0);
+      expect(screen.getByText('Network:')).toBeInTheDocument();
+      expect(screen.getByText('Avalanche C-Chain')).toBeInTheDocument();
     });
 
-    it('shows funding methods', () => {
+    it('shows Web3Auth wallet services', () => {
       render(<BuyUSDC />);
 
-      expect(screen.getByText('Fund your wallet using:')).toBeInTheDocument();
-      expect(screen.getByText(/Web3Auth Wallet Widget:/)).toBeInTheDocument();
-      expect(screen.getByText(/MetaMask\/Coinbase:/)).toBeInTheDocument();
-      expect(screen.getByText(/Major Exchanges:/)).toBeInTheDocument();
+      expect(screen.getByText('Web3Auth Wallet Services')).toBeInTheDocument();
+      expect(screen.getByText(/Use the integrated wallet widget to buy, sell, swap, and manage your crypto/)).toBeInTheDocument();
+      expect(screen.getByText(/Look for the wallet widget button/)).toBeInTheDocument();
     });
 
-    it('shows coming soon notice', () => {
+    it('shows active status notice', () => {
       render(<BuyUSDC />);
 
-      expect(screen.getByText('Coming Soon:')).toBeInTheDocument();
-      expect(screen.getByText(/Web3Auth Wallet Services widget for integrated buying\/selling/)).toBeInTheDocument();
+      expect(screen.getByText('Active:')).toBeInTheDocument();
+      expect(screen.getByText(/Web3Auth Wallet Services are now integrated and available through the wallet widget/)).toBeInTheDocument();
     });
 
     it('displays informational footer', () => {
       render(<BuyUSDC />);
 
-      expect(screen.getByText(/For now, please use the manual methods above to add USDC to your wallet or convert to fiat/)).toBeInTheDocument();
+      expect(screen.getByText(/Powered by Web3Auth Wallet Services/)).toBeInTheDocument();
+      expect(screen.getByText(/fiat on-ramp providers and DeFi services/)).toBeInTheDocument();
     });
 
     it('shows navigation buttons', () => {
@@ -145,10 +146,11 @@ describe('BuyUSDC Page', () => {
       expect(mockRouterBack).toHaveBeenCalled();
     });
 
-    it('displays informational message about Web3Auth widget', () => {
+    it('shows expandable manual instructions', () => {
       render(<BuyUSDC />);
 
-      expect(screen.getByText(/The integrated Web3Auth widget will be available soon/)).toBeInTheDocument();
+      expect(screen.getByText(/Alternative: Manual Instructions/)).toBeInTheDocument();
+      expect(screen.getByText(/click to expand/)).toBeInTheDocument();
     });
   });
 

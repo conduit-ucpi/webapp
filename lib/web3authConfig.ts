@@ -13,6 +13,18 @@ export const createWeb3AuthConfig = (config: {
     web3AuthOptions: {
       clientId: config.web3AuthClientId,
       web3AuthNetwork: config.web3AuthNetwork as any, // Will be WEB3AUTH_NETWORK.SAPPHIRE_MAINNET or similar
+      uiConfig: {
+        appName: "Conduit UCPI",
+        theme: {
+          primary: "#0364ff",
+        },
+        mode: "auto",
+        logoLight: "https://web3auth.io/images/web3authlog.png",
+        logoDark: "https://web3auth.io/images/web3authlogodark.png",
+        defaultLanguage: "en",
+        loginGridCol: 3,
+        primaryButton: "externalLogin",
+      },
       modalConfig: {
         connectors: {
           [WALLET_CONNECTORS.AUTH]: {

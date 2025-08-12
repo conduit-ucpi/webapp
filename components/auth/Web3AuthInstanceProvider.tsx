@@ -43,6 +43,9 @@ export function Web3AuthInstanceProvider({ children }: { children: React.ReactNo
       console.log('MetaMask temporarily disabled during Web3Auth initialization');
     }
 
+    // Using a simple 1x1 transparent PNG as placeholder for logos
+    const transparentPixel = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+    
     // Dynamic display name based on chainId
     const isMainnet = config.chainId === 43114;
     const chainConfig = {
@@ -53,6 +56,7 @@ export function Web3AuthInstanceProvider({ children }: { children: React.ReactNo
       blockExplorerUrl: config.snowtraceBaseUrl,
       ticker: 'AVAX',
       tickerName: 'Avalanche',
+      logo: transparentPixel,
     };
 
     const privateKeyProvider = new EthereumPrivateKeyProvider({
@@ -74,8 +78,6 @@ export function Web3AuthInstanceProvider({ children }: { children: React.ReactNo
         walletServicesShowWidget: config.walletServicesShowWidget
       });
       
-      // Using a simple 1x1 transparent PNG as placeholder for logos
-      const transparentPixel = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
       
       const walletServicesPlugin = new WalletServicesPlugin({
         walletInitOptions: {

@@ -41,22 +41,42 @@ export default function BuyUSDC() {
           return;
         }
 
-        // List all available methods on the plugin
-        const pluginMethods = Object.getOwnPropertyNames(Object.getPrototypeOf(walletServicesPlugin));
-        console.log('Available plugin methods:', pluginMethods);
+        console.log('Plugin status:', walletServicesPlugin.status);
         
-        // Try different methods to show the wallet services
-        if (typeof walletServicesPlugin.showWalletUi === 'function') {
+        // If plugin is not connected yet, wait for it to connect
+        if (walletServicesPlugin.status !== 'connected') {
+          setWidgetStatus('Waiting for wallet services plugin to connect...');
+          
+          // Listen for the connected event
+          const onPluginConnected = () => {
+            console.log('Plugin connected, showing wallet UI');
+            walletServicesPlugin.showWalletUi().then(() => {
+              setWidgetStatus('Wallet services UI shown successfully!');
+            }).catch((err: any) => {
+              console.error('Error showing UI after connect:', err);
+              setWidgetStatus(`Error after connect: ${err.message}`);
+            });
+            // Remove the event listener
+            walletServicesPlugin.off('connected', onPluginConnected);
+          };
+          
+          walletServicesPlugin.on('connected', onPluginConnected);
+          
+          // Also try to manually connect the plugin if it's not connecting
+          setTimeout(() => {
+            if (walletServicesPlugin.status !== 'connected') {
+              console.log('Manually connecting plugin...');
+              walletServicesPlugin.connect().catch((err: any) => {
+                console.error('Error manually connecting plugin:', err);
+                setWidgetStatus(`Error connecting plugin: ${err.message}`);
+              });
+            }
+          }, 1000);
+          
+        } else {
+          // Plugin is already connected, show the UI
           await walletServicesPlugin.showWalletUi();
           setWidgetStatus('Wallet services UI shown successfully!');
-        } else if (typeof walletServicesPlugin.showCheckout === 'function') {
-          await walletServicesPlugin.showCheckout();
-          setWidgetStatus('Wallet checkout shown successfully!');
-        } else if (typeof walletServicesPlugin.showWalletConnectScanner === 'function') {
-          await walletServicesPlugin.showWalletConnectScanner();
-          setWidgetStatus('Wallet connect scanner shown!');
-        } else {
-          setWidgetStatus(`Plugin found but no show method available. Methods: ${pluginMethods.join(', ')}`);
         }
       } else {
         setWidgetStatus('Wallet services plugin not found in plugins');

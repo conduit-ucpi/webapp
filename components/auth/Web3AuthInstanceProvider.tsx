@@ -74,12 +74,17 @@ export function Web3AuthInstanceProvider({ children }: { children: React.ReactNo
         walletServicesShowWidget: config.walletServicesShowWidget
       });
       
+      // Using a simple 1x1 transparent PNG as placeholder for logos
+      const transparentPixel = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+      
       const walletServicesPlugin = new WalletServicesPlugin({
         wsEmbedOpts: {},
         walletInitOptions: {
           whiteLabel: {
             showWidgetButton: true,
             buttonPosition: "bottom-right", // Explicitly set position
+            logoDark: transparentPixel,
+            logoLight: transparentPixel,
           },
         },
       });

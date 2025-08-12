@@ -50,7 +50,7 @@ export function Web3AuthInstanceProvider({ children }: { children: React.ReactNo
       chainId: `0x${config.chainId.toString(16)}`,
       rpcTarget: config.rpcUrl,
       displayName: isMainnet ? 'Avalanche Mainnet' : 'Avalanche Testnet',
-      blockExplorer: config.snowtraceBaseUrl,
+      blockExplorerUrl: config.snowtraceBaseUrl,
       ticker: 'AVAX',
       tickerName: 'Avalanche',
     };

@@ -3,6 +3,7 @@ import { useAuth } from '@/components/auth/AuthProvider';
 import ConnectWallet from '@/components/auth/ConnectWallet';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import USDCGuide from '@/components/ui/USDCGuide';
 import { useWeb3AuthInstance } from '@/components/auth/Web3AuthInstanceProvider';
 import { useWalletAddress } from '@/hooks/useWalletAddress';
 
@@ -38,58 +39,15 @@ export default function BuyUSDC() {
         <div className="text-center mb-10">
           <h1 className="text-3xl font-bold text-gray-900">Buy or Sell USDC</h1>
           <p className="mt-2 text-gray-600">
-            Use the Web3Auth wallet widget to buy, sell, swap, or manage your crypto
+            Manual instructions for adding USDC to your wallet or converting to fiat
           </p>
         </div>
 
         <div className="max-w-2xl mx-auto">
-          <div className="bg-white rounded-lg shadow-md p-8">
-            <div className="text-center mb-6">
-              <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg className="w-8 h-8 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-              </div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                Access Wallet Services
-              </h2>
-              <p className="text-gray-600 mb-4">
-                Web3Auth Wallet Services provides integrated fiat on-ramp functionality. 
-                To enable these features:
-              </p>
-            </div>
+          {/* Show the USDCGuide component with manual instructions */}
+          <USDCGuide />
 
-            <div className="bg-gray-50 rounded-lg p-6 mb-6">
-              <h3 className="font-semibold text-gray-900 mb-3">Requirements for Web3Auth Wallet Services:</h3>
-              <ul className="space-y-2 text-left text-sm">
-                <li className="flex items-start">
-                  <span className="text-gray-600">1. Upgrade to Web3Auth SDK v9 or higher</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="text-gray-600">2. Subscribe to Web3Auth Scale Plan (minimum for production)</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="text-gray-600">3. Configure wallet services in Web3Auth dashboard</span>
-                </li>
-              </ul>
-              
-              <h3 className="font-semibold text-gray-900 mt-4 mb-3">Once enabled, you'll have access to:</h3>
-              <ul className="space-y-2 text-left text-sm">
-                <li className="flex items-start">
-                  <span className="text-gray-600">• Fiat on-ramp aggregator (MoonPay, Ramp, and more)</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="text-gray-600">• Token swaps and exchanges</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="text-gray-600">• Portfolio management</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="text-gray-600">• WalletConnect integration</span>
-                </li>
-              </ul>
-            </div>
-
+          <div className="mt-8 bg-white rounded-lg shadow-md p-6">
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
               <div className="flex">
                 <div className="flex-shrink-0">
@@ -99,25 +57,10 @@ export default function BuyUSDC() {
                 </div>
                 <div className="ml-3">
                   <p className="text-sm text-yellow-800">
-                    <span className="font-semibold">Note:</span> Full wallet services with integrated widget require Web3Auth v9+ and a Scale Plan. 
-                    Please upgrade your Web3Auth package and plan to enable the wallet widget with fiat on-ramp functionality.
+                    <span className="font-semibold">Coming Soon:</span> Web3Auth Wallet Services widget for integrated buying/selling.
+                    Currently requires Web3Auth v9+ and a Scale Plan subscription.
                   </p>
                 </div>
-              </div>
-            </div>
-
-            <div className="bg-gray-50 rounded-lg p-4 mb-6">
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-sm text-gray-600">Connected Wallet:</span>
-                <span className="text-sm font-mono text-gray-900">{walletAddress}</span>
-              </div>
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-sm text-gray-600">Network:</span>
-                <span className="text-sm text-gray-900">Avalanche C-Chain</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Supported Currency:</span>
-                <span className="text-sm text-gray-900">USDC</span>
               </div>
             </div>
 
@@ -143,8 +86,8 @@ export default function BuyUSDC() {
 
           <div className="mt-8 text-center text-sm text-gray-500">
             <p>
-              Powered by Web3Auth Wallet Services. The widget provides access to multiple 
-              fiat on-ramp providers for your convenience.
+              For now, please use the manual methods above to add USDC to your wallet or convert to fiat.
+              The integrated Web3Auth widget will be available soon.
             </p>
           </div>
         </div>

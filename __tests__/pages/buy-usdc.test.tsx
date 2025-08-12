@@ -75,51 +75,45 @@ describe('BuyUSDC Page', () => {
       render(<BuyUSDC />);
 
       expect(screen.getByRole('heading', { level: 1, name: 'Buy or Sell USDC' })).toBeInTheDocument();
-      expect(screen.getByText('Use the Web3Auth wallet widget to buy, sell, swap, or manage your crypto')).toBeInTheDocument();
+      expect(screen.getByText('Manual instructions for adding USDC to your wallet or converting to fiat')).toBeInTheDocument();
     });
 
-    it('renders wallet services information', () => {
+    it('renders USDC guide information', () => {
       render(<BuyUSDC />);
 
-      expect(screen.getByRole('heading', { level: 2, name: 'Access Wallet Services' })).toBeInTheDocument();
-      expect(screen.getByText(/Web3Auth Wallet Services provides integrated fiat on-ramp functionality/)).toBeInTheDocument();
+      expect(screen.getByText('How to Add USDC to Your Wallet/How to get cash from your Wallet')).toBeInTheDocument();
+      expect(screen.getByText(/Check your network:/)).toBeInTheDocument();
+      expect(screen.getByText(/Your wallet address:/)).toBeInTheDocument();
     });
 
     it('displays wallet information', () => {
       render(<BuyUSDC />);
 
-      expect(screen.getByText('Connected Wallet:')).toBeInTheDocument();
+      expect(screen.getByText(/Your wallet address:/)).toBeInTheDocument();
       expect(screen.getByText('0x1234567890abcdef1234567890abcdef12345678')).toBeInTheDocument();
-      expect(screen.getByText('Network:')).toBeInTheDocument();
-      expect(screen.getByText('Avalanche C-Chain')).toBeInTheDocument();
-      expect(screen.getByText('Supported Currency:')).toBeInTheDocument();
-      expect(screen.getByText('USDC')).toBeInTheDocument();
+      expect(screen.getAllByText(/Avalanche Fuji Testnet/).length).toBeGreaterThan(0);
     });
 
-    it('shows requirements for wallet services', () => {
+    it('shows funding methods', () => {
       render(<BuyUSDC />);
 
-      expect(screen.getByText('Requirements for Web3Auth Wallet Services:')).toBeInTheDocument();
-      expect(screen.getByText('1. Upgrade to Web3Auth SDK v9 or higher')).toBeInTheDocument();
-      expect(screen.getByText('2. Subscribe to Web3Auth Scale Plan (minimum for production)')).toBeInTheDocument();
-      expect(screen.getByText('3. Configure wallet services in Web3Auth dashboard')).toBeInTheDocument();
+      expect(screen.getByText('Fund your wallet using:')).toBeInTheDocument();
+      expect(screen.getByText(/Web3Auth Wallet Widget:/)).toBeInTheDocument();
+      expect(screen.getByText(/MetaMask\/Coinbase:/)).toBeInTheDocument();
+      expect(screen.getByText(/Major Exchanges:/)).toBeInTheDocument();
     });
 
-    it('shows available features', () => {
+    it('shows coming soon notice', () => {
       render(<BuyUSDC />);
 
-      expect(screen.getByText('Once enabled, you\'ll have access to:')).toBeInTheDocument();
-      expect(screen.getByText('• Fiat on-ramp aggregator (MoonPay, Ramp, and more)')).toBeInTheDocument();
-      expect(screen.getByText('• Token swaps and exchanges')).toBeInTheDocument();
-      expect(screen.getByText('• Portfolio management')).toBeInTheDocument();
-      expect(screen.getByText('• WalletConnect integration')).toBeInTheDocument();
+      expect(screen.getByText('Coming Soon:')).toBeInTheDocument();
+      expect(screen.getByText(/Web3Auth Wallet Services widget for integrated buying\/selling/)).toBeInTheDocument();
     });
 
-    it('displays upgrade notice', () => {
+    it('displays informational footer', () => {
       render(<BuyUSDC />);
 
-      expect(screen.getByText('Note:')).toBeInTheDocument();
-      expect(screen.getByText(/Full wallet services with integrated widget require Web3Auth v9\+ and a Scale Plan/)).toBeInTheDocument();
+      expect(screen.getByText(/For now, please use the manual methods above to add USDC to your wallet or convert to fiat/)).toBeInTheDocument();
     });
 
     it('shows navigation buttons', () => {
@@ -151,10 +145,10 @@ describe('BuyUSDC Page', () => {
       expect(mockRouterBack).toHaveBeenCalled();
     });
 
-    it('displays Web3Auth attribution', () => {
+    it('displays informational message about Web3Auth widget', () => {
       render(<BuyUSDC />);
 
-      expect(screen.getByText(/Powered by Web3Auth Wallet Services/)).toBeInTheDocument();
+      expect(screen.getByText(/The integrated Web3Auth widget will be available soon/)).toBeInTheDocument();
     });
   });
 

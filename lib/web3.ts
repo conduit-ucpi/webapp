@@ -102,38 +102,61 @@ export class Web3Service {
       nonce: nonce
     });
     
-    // Try ethers signer first to avoid Web3Auth modal, with address verification
+    // Build raw transaction to sign
+    const tx = ethers.Transaction.from({
+      to: txParams.to,
+      data: txParams.data,
+      value: txParams.value || '0x0',
+      gasLimit: `0x${txParams.gasLimit.toString(16)}`,
+      gasPrice: `0x${gasPrice.toString(16)}`,
+      nonce: nonce,
+      chainId: this.config.chainId,
+      type: 0  // Legacy transaction type to avoid EIP-1559 complications
+    });
+    
+    // Get the raw unsigned transaction
+    const unsignedTx = tx.unsignedSerialized;
+    
     try {
-      // Get ethers signer and verify address matches
-      const signer = await this.provider.getSigner();
-      const signerAddress = await signer.getAddress();
-      
-      if (signerAddress.toLowerCase() !== fromAddress.toLowerCase()) {
-        throw new Error(`Signer address mismatch: expected ${fromAddress}, got ${signerAddress}`);
-      }
-      
-      // Create transaction object for ethers
-      const txForSigning = {
-        to: txParams.to,
-        data: txParams.data,
-        value: txParams.value || '0x0',
-        gasLimit: txParams.gasLimit,
-        gasPrice: gasPrice,
-        nonce: nonce
-      };
-      
-      // Sign transaction using ethers signer (no modal)
-      const signedTx = await signer.signTransaction(txForSigning);
-      return signedTx;
-    } catch (error) {
-      console.warn('Ethers signer failed, trying Web3Auth direct signing:', error);
-      
-      // Fallback to Web3Auth provider direct signing
-      const signedTx = await this.web3authProvider.request({
-        method: "eth_signTransaction",
-        params: [txObject]
+      // Try using eth_sign with the transaction hash (avoids modal)
+      const txHash = ethers.keccak256(unsignedTx);
+      const signature = await this.web3authProvider.request({
+        method: "eth_sign",
+        params: [fromAddress, txHash]
       });
-      return signedTx;
+      
+      // Add signature to transaction
+      const sig = ethers.Signature.from(signature);
+      const signedTx = tx.clone();
+      signedTx.signature = sig;
+      
+      return signedTx.serialized;
+    } catch (error) {
+      console.warn('eth_sign failed, trying personal_sign:', error);
+      
+      try {
+        // Try personal_sign as another alternative
+        const signature = await this.web3authProvider.request({
+          method: "personal_sign",
+          params: [unsignedTx, fromAddress]
+        });
+        
+        // Add signature to transaction
+        const sig = ethers.Signature.from(signature);
+        const signedTx = tx.clone();
+        signedTx.signature = sig;
+        
+        return signedTx.serialized;
+      } catch (error2) {
+        console.warn('personal_sign failed, falling back to eth_signTransaction:', error2);
+        
+        // Last resort: use eth_signTransaction (may show modal)
+        const signedTx = await this.web3authProvider.request({
+          method: "eth_signTransaction",
+          params: [txObject]
+        });
+        return signedTx;
+      }
     }
   }
 

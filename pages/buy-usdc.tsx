@@ -6,11 +6,13 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import USDCGuide from '@/components/ui/USDCGuide';
 import { useWeb3AuthInstance } from '@/components/auth/Web3AuthContextProvider';
 import { useWalletAddress } from '@/hooks/useWalletAddress';
+import { useConfig } from '@/components/auth/ConfigProvider';
 import { useState } from 'react';
 
 export default function BuyUSDC() {
   const router = useRouter();
   const { user, isLoading } = useAuth();
+  const { config } = useConfig();
   const { web3authInstance, web3authProvider, isLoading: isWeb3AuthInstanceLoading } = useWeb3AuthInstance();
   const { walletAddress, isLoading: isWalletAddressLoading } = useWalletAddress();
   const [widgetStatus, setWidgetStatus] = useState<string>('');
@@ -50,7 +52,17 @@ export default function BuyUSDC() {
           // Listen for the connected event
           const onPluginConnected = () => {
             console.log('Plugin connected, showing wallet UI');
-            walletServicesPlugin.showWalletUi().then(() => {
+            // Pass parameters to open directly to buy/sell with USDC pre-selected
+            const walletUiParams = {
+              path: 'topup', // or 'buy' depending on what path the widget supports
+              params: {
+                currency: 'USDC',
+                chainId: config?.chainId || 43113,
+                // You can also add amount if needed:
+                // amount: 100, // Amount in USDC
+              }
+            };
+            walletServicesPlugin.showWalletUi(walletUiParams).then(() => {
               setWidgetStatus('Wallet services UI shown successfully!');
             }).catch((err: any) => {
               console.error('Error showing UI after connect:', err);
@@ -75,15 +87,31 @@ export default function BuyUSDC() {
               setWidgetStatus('Plugin not auto-connecting. This may be a configuration issue. Check Web3Auth dashboard settings.');
               
               // Try showing the UI anyway in case the status is wrong
-              walletServicesPlugin.showWalletUi().catch((err: any) => {
+              const walletUiParams = {
+                path: 'topup',
+                params: {
+                  currency: 'USDC',
+                  chainId: config?.chainId || 43113,
+                }
+              };
+              walletServicesPlugin.showWalletUi(walletUiParams).catch((err: any) => {
                 console.error('Error showing UI directly:', err);
               });
             }
           }, 2000);
           
         } else {
-          // Plugin is already connected, show the UI
-          await walletServicesPlugin.showWalletUi();
+          // Plugin is already connected, show the UI with parameters
+          const walletUiParams = {
+            path: 'topup', // or 'buy' depending on what path the widget supports
+            params: {
+              currency: 'USDC',
+              chainId: config?.chainId || 43113,
+              // You can also add amount if needed:
+              // amount: 100, // Amount in USDC
+            }
+          };
+          await walletServicesPlugin.showWalletUi(walletUiParams);
           setWidgetStatus('Wallet services UI shown successfully!');
         }
       } else {

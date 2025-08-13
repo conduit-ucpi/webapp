@@ -58,6 +58,8 @@ export default function BuyUSDC() {
               params: {
                 currency: 'USDC',
                 chainId: config?.chainId || 43113,
+                // Include USDC token contract address to help the widget recognize it
+                tokenAddress: config?.usdcContractAddress,
                 // You can also add amount if needed:
                 // amount: 100, // Amount in USDC
               }
@@ -92,6 +94,7 @@ export default function BuyUSDC() {
                 params: {
                   currency: 'USDC',
                   chainId: config?.chainId || 43113,
+                  tokenAddress: config?.usdcContractAddress,
                 }
               };
               walletServicesPlugin.showWalletUi(walletUiParams).catch((err: any) => {
@@ -107,6 +110,7 @@ export default function BuyUSDC() {
             params: {
               currency: 'USDC',
               chainId: config?.chainId || 43113,
+              tokenAddress: config?.usdcContractAddress,
               // You can also add amount if needed:
               // amount: 100, // Amount in USDC
             }

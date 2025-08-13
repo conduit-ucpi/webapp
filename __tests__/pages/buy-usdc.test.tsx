@@ -92,7 +92,7 @@ describe('BuyUSDC Page', () => {
       expect(screen.getByText('Connected Wallet:')).toBeInTheDocument();
       expect(screen.getAllByText('0x1234567890abcdef1234567890abcdef12345678').length).toBeGreaterThan(0);
       expect(screen.getByText('Network:')).toBeInTheDocument();
-      expect(screen.getByText('Avalanche C-Chain')).toBeInTheDocument();
+      expect(screen.getByText('Avalanche Fuji Testnet')).toBeInTheDocument();
     });
 
     it('shows Web3Auth wallet services', () => {

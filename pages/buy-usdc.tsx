@@ -191,7 +191,11 @@ export default function BuyUSDC() {
               </div>
               <div className="flex justify-between items-center mb-2">
                 <span className="text-sm text-gray-600">Network:</span>
-                <span className="text-sm text-gray-900">Avalanche C-Chain</span>
+                <span className="text-sm text-gray-900">
+                  {config?.chainId === 43113 ? 'Avalanche Fuji Testnet' : 
+                   config?.chainId === 43114 ? 'Avalanche C-Chain' : 
+                   `Chain ID: ${config?.chainId}`}
+                </span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-600">Supported Currency:</span>

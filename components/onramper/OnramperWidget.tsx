@@ -101,6 +101,9 @@ const OnramperWidget: React.FC<OnramperWidgetProps> = ({
     );
   }
 
+  // Log the widget URL for debugging
+  console.log('Onramper Widget URL:', widgetUrl);
+
   return (
     <div className="onramper-widget-container">
       <iframe
@@ -115,6 +118,17 @@ const OnramperWidget: React.FC<OnramperWidgetProps> = ({
         allow="accelerometer; autoplay; camera; gyroscope; payment; microphone"
         allowFullScreen
       />
+      {process.env.NODE_ENV === 'development' && (
+        <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <p className="text-sm text-yellow-800">
+            <strong>Debug Info:</strong> If the widget appears blank with 403 errors, the domain needs to be whitelisted in Onramper dashboard.
+          </p>
+          <p className="text-xs text-yellow-700 mt-2">
+            API Key: {config?.onramperApiKey ? `${config.onramperApiKey.substring(0, 10)}...` : 'Not configured'}<br/>
+            Widget URL: <a href={widgetUrl} target="_blank" rel="noopener noreferrer" className="underline">Open directly</a>
+          </p>
+        </div>
+      )}
     </div>
   );
 };

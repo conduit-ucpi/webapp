@@ -4,6 +4,7 @@ import ConnectWallet from '@/components/auth/ConnectWallet';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import USDCGuide from '@/components/ui/USDCGuide';
+import OnramperWidget from '@/components/onramper/OnramperWidget';
 import { useWeb3AuthInstance } from '@/components/auth/Web3AuthContextProvider';
 import { useWalletAddress } from '@/hooks/useWalletAddress';
 import { useConfig } from '@/components/auth/ConfigProvider';
@@ -16,6 +17,8 @@ export default function BuyUSDC() {
   const { web3authInstance, web3authProvider, isLoading: isWeb3AuthInstanceLoading } = useWeb3AuthInstance();
   const { walletAddress, isLoading: isWalletAddressLoading } = useWalletAddress();
   const [widgetStatus, setWidgetStatus] = useState<string>('');
+  const [activeTab, setActiveTab] = useState<'buy' | 'sell'>('buy');
+  const [showOnramper, setShowOnramper] = useState(true);
 
   const tryShowWalletServices = async () => {
     try {
@@ -153,13 +156,96 @@ export default function BuyUSDC() {
         <div className="text-center mb-10">
           <h1 className="text-3xl font-bold text-gray-900">Buy or Sell USDC</h1>
           <p className="mt-2 text-gray-600">
-            Manual instructions for adding USDC to your wallet or converting to fiat
+            Purchase USDC directly with credit card or bank transfer
           </p>
         </div>
 
         <div className="max-w-2xl mx-auto">
-          {/* Web3Auth Wallet Services Integration */}
-          <div className="bg-white rounded-lg shadow-md p-8 mb-8">
+          {/* Onramper Integration */}
+          <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+            <div className="flex justify-center mb-6">
+              <div className="inline-flex rounded-lg border border-gray-200 p-1">
+                <button
+                  onClick={() => setActiveTab('buy')}
+                  className={`px-4 py-2 rounded-md font-medium transition-colors ${
+                    activeTab === 'buy'
+                      ? 'bg-blue-500 text-white'
+                      : 'text-gray-700 hover:text-gray-900'
+                  }`}
+                >
+                  Buy USDC
+                </button>
+                <button
+                  onClick={() => setActiveTab('sell')}
+                  className={`px-4 py-2 rounded-md font-medium transition-colors ${
+                    activeTab === 'sell'
+                      ? 'bg-blue-500 text-white'
+                      : 'text-gray-700 hover:text-gray-900'
+                  }`}
+                >
+                  Sell USDC
+                </button>
+              </div>
+            </div>
+
+            {showOnramper ? (
+              <OnramperWidget 
+                mode={activeTab}
+                defaultCrypto="usdc_avalanche"
+                isTestMode={config?.chainId === 43113}
+              />
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-gray-600 mb-4">Widget hidden. Click below to show again.</p>
+                <Button
+                  onClick={() => setShowOnramper(true)}
+                  className="bg-blue-500 hover:bg-blue-600"
+                >
+                  Show Onramper Widget
+                </Button>
+              </div>
+            )}
+
+            <div className="mt-6 flex justify-between items-center">
+              <button
+                onClick={() => setShowOnramper(!showOnramper)}
+                className="text-sm text-gray-500 hover:text-gray-700"
+              >
+                {showOnramper ? 'Hide widget' : 'Show widget'}
+              </button>
+              <a
+                href={`https://buy.onramper.com?apiKey=${config?.onramperApiKey || 'pk_test_01K2BYWTYW8EDRXN2SHATHCVYP'}&mode=${activeTab}&defaultCrypto=usdc_avalanche`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-blue-500 hover:text-blue-700"
+              >
+                Open in new tab →
+              </a>
+            </div>
+          </div>
+
+          {config?.chainId === 43113 && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-8">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm text-yellow-800">
+                    <span className="font-semibold">Test Mode:</span> Using Avalanche Fuji testnet. For real USDC purchases, switch to mainnet.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+          {/* Alternative: Web3Auth Wallet Services Integration */}
+          <details className="bg-white rounded-lg shadow-md p-6 mb-8">
+            <summary className="cursor-pointer font-semibold text-gray-900 mb-4">
+              Alternative: Web3Auth Wallet Services (click to expand)
+            </summary>
+            <div className="mt-4">
             <div className="text-center mb-6">
               <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <svg className="w-8 h-8 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -206,7 +292,8 @@ export default function BuyUSDC() {
                 <span className="text-sm text-gray-900">USDC</span>
               </div>
             </div>
-          </div>
+            </div>
+          </details>
 
           {/* Fallback: Show the USDCGuide component with manual instructions */}
           <details className="bg-white rounded-lg shadow-md p-6 mb-8">

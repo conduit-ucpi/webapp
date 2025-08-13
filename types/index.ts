@@ -7,6 +7,7 @@ export interface Config {
   rpcUrl: string;
   usdcContractAddress: string;
   moonPayApiKey: string;
+  onramperApiKey?: string;
   minGasWei: string;
   basePath: string;
   snowtraceBaseUrl: string;

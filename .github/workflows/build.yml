@@ -134,5 +134,6 @@ jobs:
               -e SNOWTRACE_BASE_URL="${{ vars.SNOWTRACE_BASE_URL }}" \
               -e PRODUCT_NAME="${{ vars.PRODUCT_NAME }}" \
               -e SERVICE_LINK="${{ vars.SERVICE_LINK }}" \
+              -e ONRAMPER_API_KEY="${{ secrets.ONRAMPER_API_KEY }} \
               ghcr.io/${{ env.REPO_LOWER }}:${{ env.SHA_TAG }}
             '

@@ -14,6 +14,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log('RPC_URL:', process.env.RPC_URL ? 'Present' : 'Missing');
     console.log('USDC_CONTRACT_ADDRESS:', process.env.USDC_CONTRACT_ADDRESS);
     console.log('MOONPAY_API_KEY:', process.env.MOONPAY_API_KEY ? 'Present' : 'Missing');
+    console.log('ONRAMPER_API_KEY:', process.env.ONRAMPER_API_KEY ? 'Present' : 'Missing');
     console.log('MIN_GAS_WEI:', process.env.MIN_GAS_WEI);
     console.log('SNOWTRACE_BASE_URL:', process.env.SNOWTRACE_BASE_URL);
     console.log('SERVICE_LINK:', process.env.SERVICE_LINK);
@@ -27,6 +28,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       rpcUrl: process.env.RPC_URL,
       usdcContractAddress: process.env.USDC_CONTRACT_ADDRESS,
       moonPayApiKey: process.env.MOONPAY_API_KEY,
+      onramperApiKey: process.env.ONRAMPER_API_KEY,
       minGasWei: process.env.MIN_GAS_WEI || '5',
       basePath,
       snowtraceBaseUrl: process.env.SNOWTRACE_BASE_URL,

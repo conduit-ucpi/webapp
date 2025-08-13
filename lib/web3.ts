@@ -102,23 +102,40 @@ export class Web3Service {
       nonce: nonce
     });
     
-    // Get signer from ethers provider to avoid Web3Auth modal
-    const signer = await this.provider.getSigner();
-    
-    // Create transaction object for ethers
-    const txForSigning = {
-      to: txParams.to,
-      data: txParams.data,
-      value: txParams.value || '0x0',
-      gasLimit: txParams.gasLimit,
-      gasPrice: gasPrice,
-      nonce: nonce
-    };
-    
-    // Sign transaction using ethers signer (no modal)
-    const signedTx = await signer.signTransaction(txForSigning);
-    
-    return signedTx;
+    // Use Web3Auth provider directly to ensure address consistency
+    // but with proper transaction serialization to avoid modal issues
+    try {
+      // First try the direct Web3Auth signing method
+      const signedTx = await this.web3authProvider.request({
+        method: "eth_signTransaction",
+        params: [txObject]
+      });
+      return signedTx;
+    } catch (error) {
+      console.warn('Web3Auth signTransaction failed, trying ethers signer:', error);
+      
+      // Fallback to ethers signer but verify address matches
+      const signer = await this.provider.getSigner();
+      const signerAddress = await signer.getAddress();
+      
+      if (signerAddress.toLowerCase() !== fromAddress.toLowerCase()) {
+        throw new Error(`Signer address mismatch: expected ${fromAddress}, got ${signerAddress}`);
+      }
+      
+      // Create transaction object for ethers
+      const txForSigning = {
+        to: txParams.to,
+        data: txParams.data,
+        value: txParams.value || '0x0',
+        gasLimit: txParams.gasLimit,
+        gasPrice: gasPrice,
+        nonce: nonce
+      };
+      
+      // Sign transaction using ethers signer
+      const signedTx = await signer.signTransaction(txForSigning);
+      return signedTx;
+    }
   }
 
   async getSigner() {

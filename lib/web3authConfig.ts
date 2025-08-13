@@ -33,6 +33,14 @@ export const createWeb3AuthConfig = (config: {
     logo: 'https://images.toruswallet.io/avax.svg',
   };
 
+  console.log('🔧 Web3Auth chainConfig created:', {
+    inputChainId: config.chainId,
+    hexChainId: chainConfig.chainId,
+    displayName: chainConfig.displayName,
+    rpcTarget: chainConfig.rpcTarget,
+    web3AuthNetwork: config.web3AuthNetwork
+  });
+
   return {
     web3AuthOptions: {
       clientId: config.web3AuthClientId,

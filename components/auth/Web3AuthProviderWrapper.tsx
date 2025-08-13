@@ -14,7 +14,13 @@ export function Web3AuthProviderWrapper({ children }: Props) {
 
   useEffect(() => {
     if (config) {
+      console.log('🔧 Web3AuthProviderWrapper: Creating config with:', {
+        chainId: config.chainId,
+        rpcUrl: config.rpcUrl,
+        web3AuthNetwork: config.web3AuthNetwork
+      });
       const authConfig = createWeb3AuthConfig(config);
+      console.log('🔧 Web3AuthProviderWrapper: Config created, setting state');
       setWeb3AuthConfig(authConfig);
     }
   }, [config]);

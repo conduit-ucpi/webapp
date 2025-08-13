@@ -102,18 +102,30 @@ export class Web3Service {
       nonce: nonce
     });
     
-    // Sign using Web3Auth provider directly
-    const signedTx = await this.web3authProvider.request({
-      method: "eth_signTransaction",
-      params: [txObject]
-    });
+    // Get signer from ethers provider to avoid Web3Auth modal
+    const signer = await this.provider.getSigner();
+    
+    // Create transaction object for ethers
+    const txForSigning = {
+      to: txParams.to,
+      data: txParams.data,
+      value: txParams.value || '0x0',
+      gasLimit: txParams.gasLimit,
+      gasPrice: gasPrice,
+      nonce: nonce
+    };
+    
+    // Sign transaction using ethers signer (no modal)
+    const signedTx = await signer.signTransaction(txForSigning);
     
     return signedTx;
   }
 
-  // Deprecated - will be removed
   async getSigner() {
-    throw new Error('getSigner is deprecated. Use signTransaction method instead.');
+    if (!this.provider) {
+      throw new Error('Provider not initialized');
+    }
+    return await this.provider.getSigner();
   }
 
   async getUserAddress(): Promise<string> {

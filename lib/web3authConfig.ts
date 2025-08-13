@@ -1,5 +1,6 @@
 import { WALLET_CONNECTORS, WEB3AUTH_NETWORK } from "@web3auth/modal";
 import { Web3AuthContextConfig } from "@web3auth/modal/react";
+import { CHAIN_NAMESPACES, CustomChainConfig } from "@web3auth/base";
 
 // This matches the pattern from the Web3Auth examples
 export const createWeb3AuthConfig = (config: {
@@ -9,10 +10,34 @@ export const createWeb3AuthConfig = (config: {
   snowtraceBaseUrl: string;
   web3AuthNetwork: string;
 }): Web3AuthContextConfig => {
+  // Determine network name based on chainId
+  const getNetworkDisplayName = () => {
+    switch (config.chainId) {
+      case 43114:
+        return 'Avalanche C-Chain';
+      case 43113:
+        return 'Avalanche Fuji Testnet';
+      default:
+        return `Avalanche Chain ${config.chainId}`;
+    }
+  };
+
+  const chainConfig: CustomChainConfig = {
+    chainNamespace: CHAIN_NAMESPACES.EIP155,
+    chainId: `0x${config.chainId.toString(16)}`, // Convert to hex
+    rpcTarget: config.rpcUrl,
+    displayName: getNetworkDisplayName(),
+    blockExplorerUrl: config.snowtraceBaseUrl,
+    ticker: 'AVAX',
+    tickerName: 'Avalanche',
+    logo: 'https://images.toruswallet.io/avax.svg',
+  };
+
   return {
     web3AuthOptions: {
       clientId: config.web3AuthClientId,
       web3AuthNetwork: config.web3AuthNetwork as any, // Will be WEB3AUTH_NETWORK.SAPPHIRE_MAINNET or similar
+      chainConfig,
       uiConfig: {
         appName: "Conduit UCPI",
         theme: {
@@ -48,5 +73,5 @@ export const createWeb3AuthConfig = (config: {
         },
       },
     },
-  };
+  } as Web3AuthContextConfig;
 };

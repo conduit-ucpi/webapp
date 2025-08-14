@@ -49,9 +49,12 @@ export default function DisputeManagementModal({ isOpen, onClose, contract, onRe
       }
 
       const result = await response.json();
-      if (!result.success) {
+      // Check if response has success field (old format) or is a contract object (new format)
+      if (result.success === false) {
         throw new Error(result.error || 'Failed to submit dispute entry');
       }
+      // If result has an id field, it's likely the updated contract object (success)
+      // If result.success is undefined or true, also consider it success
 
       // Reset form and close modal
       setReason('');

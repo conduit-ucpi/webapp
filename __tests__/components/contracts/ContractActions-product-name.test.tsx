@@ -180,7 +180,7 @@ describe('ContractActions - PRODUCT_NAME Environment Variable', () => {
             productName: 'Test Product Name', // Should use PRODUCT_NAME env var
             serviceLink: "http://localhost:3000",
             reason: "Test dispute reason",
-            suggestedSplit: 50
+            refundPercent: 50
           })
         })
       );
@@ -249,7 +249,7 @@ describe('ContractActions - PRODUCT_NAME Environment Variable', () => {
             productName: 'Fallback Description', // Should fallback to contract.description
             serviceLink: "http://localhost:3000",
             reason: "Test dispute reason",
-            suggestedSplit: 50
+            refundPercent: 50
           })
         })
       );
@@ -318,7 +318,7 @@ describe('ContractActions - PRODUCT_NAME Environment Variable', () => {
             productName: 'Empty String Fallback', // Should fallback to contract.description when env var is empty
             serviceLink: "http://localhost:3000",
             reason: "Test dispute reason",
-            suggestedSplit: 50
+            refundPercent: 50
           })
         })
       );

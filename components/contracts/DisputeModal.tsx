@@ -6,13 +6,13 @@ import Input from '@/components/ui/Input';
 interface DisputeModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (reason: string, suggestedSplit: number) => void;
+  onSubmit: (reason: string, refundPercent: number) => void;
   isSubmitting?: boolean;
 }
 
 export default function DisputeModal({ isOpen, onClose, onSubmit, isSubmitting = false }: DisputeModalProps) {
   const [reason, setReason] = useState('');
-  const [suggestedSplit, setSuggestedSplit] = useState(50);
+  const [refundPercent, setRefundPercent] = useState(50);
   const [errors, setErrors] = useState<{ reason?: string; split?: string }>({});
 
   const handleSubmit = () => {
@@ -26,7 +26,7 @@ export default function DisputeModal({ isOpen, onClose, onSubmit, isSubmitting =
     }
 
     // Validate split percentage
-    if (suggestedSplit < 0 || suggestedSplit > 100) {
+    if (refundPercent < 0 || refundPercent > 100) {
       newErrors.split = 'Split percentage must be between 0 and 100';
     }
 
@@ -35,13 +35,13 @@ export default function DisputeModal({ isOpen, onClose, onSubmit, isSubmitting =
       return;
     }
 
-    onSubmit(reason.trim(), suggestedSplit);
+    onSubmit(reason.trim(), refundPercent);
   };
 
   const handleClose = () => {
     if (!isSubmitting) {
       setReason('');
-      setSuggestedSplit(50);
+      setRefundPercent(50);
       setErrors({});
       onClose();
     }
@@ -121,11 +121,11 @@ export default function DisputeModal({ isOpen, onClose, onSubmit, isSubmitting =
                         type="number"
                         min="0"
                         max="100"
-                        value={suggestedSplit}
+                        value={refundPercent}
                         onChange={(e) => {
                           const value = parseFloat(e.target.value);
                           if (!isNaN(value)) {
-                            setSuggestedSplit(value);
+                            setRefundPercent(value);
                             if (errors.split) {
                               setErrors(prev => ({ ...prev, split: undefined }));
                             }
@@ -137,7 +137,7 @@ export default function DisputeModal({ isOpen, onClose, onSubmit, isSubmitting =
                       <span className="text-sm text-gray-600">%</span>
                     </div>
                     <div className="mt-1 text-xs text-gray-500">
-                      Buyer gets {suggestedSplit}%, Seller gets {100 - suggestedSplit}%
+                      Buyer gets {refundPercent}%, Seller gets {100 - refundPercent}%
                     </div>
                     {errors.split && (
                       <div className="mt-1 text-xs text-red-600">{errors.split}</div>

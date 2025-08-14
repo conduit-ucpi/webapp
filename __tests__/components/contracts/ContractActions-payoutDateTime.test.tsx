@@ -177,7 +177,7 @@ describe('ContractActions - PayoutDateTime', () => {
             productName: process.env.PRODUCT_NAME || contract.description,
             serviceLink: "http://localhost:3000",
             reason: "Test dispute reason",
-            suggestedSplit: 50
+            refundPercent: 50
           })
         })
       );

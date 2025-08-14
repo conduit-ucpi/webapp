@@ -181,7 +181,7 @@ describe('ContractActions - Context Fields for Dispute', () => {
             productName: 'Conduit UCPI',
             serviceLink: 'http://localhost:3000',
             reason: 'Test dispute reason',
-            suggestedSplit: 50
+            refundPercent: 50
           })
         })
       );
@@ -360,7 +360,7 @@ describe('ContractActions - Context Fields for Dispute', () => {
         productName: process.env.PRODUCT_NAME || 'Custom Web Development',
         serviceLink: 'http://localhost:3000',
         reason: 'Test dispute reason',
-        suggestedSplit: 50
+        refundPercent: 50
       });
 
       expect(mockFetch).toHaveBeenCalledWith(

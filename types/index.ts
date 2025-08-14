@@ -120,7 +120,7 @@ export interface RaiseDisputeRequest {
   productName?: string;
   serviceLink?: string;
   reason?: string;
-  suggestedSplit?: number;
+  refundPercent?: number;
 }
 
 export interface ResolveDisputeRequest {

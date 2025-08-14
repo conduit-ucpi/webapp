@@ -34,7 +34,7 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
     setShowDisputeModal(true);
   };
 
-  const handleRaiseDispute = async (reason: string, suggestedSplit: number) => {
+  const handleRaiseDispute = async (reason: string, refundPercent: number) => {
     if (!config || !isBuyer || isPending || (contract as Contract).status !== 'ACTIVE' || !user || isLoading) return;
 
     setIsLoading(true);
@@ -81,7 +81,7 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
         productName: process.env.PRODUCT_NAME || regularContract.description,
         serviceLink: config.serviceLink,
         reason: reason,
-        suggestedSplit: suggestedSplit
+        refundPercent: refundPercent
       };
 
       const response = await fetch('/api/chain/raise-dispute', {

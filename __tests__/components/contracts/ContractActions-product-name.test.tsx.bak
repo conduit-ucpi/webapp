@@ -149,6 +149,15 @@ describe('ContractActions - PRODUCT_NAME Environment Variable', () => {
     const disputeButton = screen.getByText('Raise Dispute');
     fireEvent.click(disputeButton);
 
+
+    // Wait for modal to open and fill in the form
+    const reasonTextarea = await screen.findByLabelText('Dispute Reason');
+    fireEvent.change(reasonTextarea, { target: { value: 'Test dispute reason' } });
+
+    // Find the submit button inside the modal (there are two "Raise Dispute" buttons now)
+    const submitButtons = screen.getAllByText('Raise Dispute');
+    const modalSubmitButton = submitButtons[1]; // The second one is in the modal
+    fireEvent.click(modalSubmitButton);
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledWith(
         '/api/chain/raise-dispute',
@@ -169,7 +178,9 @@ describe('ContractActions - PRODUCT_NAME Environment Variable', () => {
             currency: "microUSDC",
             contractDescription: contract.description,
             productName: 'Test Product Name', // Should use PRODUCT_NAME env var
-            serviceLink: "http://localhost:3000"
+            serviceLink: "http://localhost:3000",
+            reason: "Test dispute reason",
+            suggestedSplit: 50
           })
         })
       );
@@ -207,6 +218,15 @@ describe('ContractActions - PRODUCT_NAME Environment Variable', () => {
     const disputeButton = screen.getByText('Raise Dispute');
     fireEvent.click(disputeButton);
 
+
+    // Wait for modal to open and fill in the form
+    const reasonTextarea = await screen.findByLabelText('Dispute Reason');
+    fireEvent.change(reasonTextarea, { target: { value: 'Test dispute reason' } });
+
+    // Find the submit button inside the modal (there are two "Raise Dispute" buttons now)
+    const submitButtons = screen.getAllByText('Raise Dispute');
+    const modalSubmitButton = submitButtons[1]; // The second one is in the modal
+    fireEvent.click(modalSubmitButton);
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledWith(
         '/api/chain/raise-dispute',
@@ -227,7 +247,9 @@ describe('ContractActions - PRODUCT_NAME Environment Variable', () => {
             currency: "microUSDC",
             contractDescription: contract.description,
             productName: 'Fallback Description', // Should fallback to contract.description
-            serviceLink: "http://localhost:3000"
+            serviceLink: "http://localhost:3000",
+            reason: "Test dispute reason",
+            suggestedSplit: 50
           })
         })
       );
@@ -265,6 +287,15 @@ describe('ContractActions - PRODUCT_NAME Environment Variable', () => {
     const disputeButton = screen.getByText('Raise Dispute');
     fireEvent.click(disputeButton);
 
+
+    // Wait for modal to open and fill in the form
+    const reasonTextarea = await screen.findByLabelText('Dispute Reason');
+    fireEvent.change(reasonTextarea, { target: { value: 'Test dispute reason' } });
+
+    // Find the submit button inside the modal (there are two "Raise Dispute" buttons now)
+    const submitButtons = screen.getAllByText('Raise Dispute');
+    const modalSubmitButton = submitButtons[1]; // The second one is in the modal
+    fireEvent.click(modalSubmitButton);
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledWith(
         '/api/chain/raise-dispute',
@@ -285,7 +316,9 @@ describe('ContractActions - PRODUCT_NAME Environment Variable', () => {
             currency: "microUSDC",
             contractDescription: contract.description,
             productName: 'Empty String Fallback', // Should fallback to contract.description when env var is empty
-            serviceLink: "http://localhost:3000"
+            serviceLink: "http://localhost:3000",
+            reason: "Test dispute reason",
+            suggestedSplit: 50
           })
         })
       );

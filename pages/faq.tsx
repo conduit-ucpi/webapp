@@ -16,15 +16,15 @@ const faqSections: FAQSection[] = [
     items: [
       {
         question: "What happens if the seller never delivers my item - do I actually get my money back?",
-        answer: "Yes. If the seller doesn't deliver, you raise a dispute before the payout date. This immediately freezes the funds. Both parties are notified by email, and the seller can either provide evidence of delivery or accept the dispute. The admin team will then allocate the funds appropriately, and both parties are automatically informed of the decision."
+        answer: "Yes. If the seller doesn't deliver, you raise a dispute before the payout date by entering a comment explaining the issue and suggesting a refund amount. This immediately freezes the funds. The seller is notified by email and can respond with their own comments and refund suggestion through the dashboard. When both parties agree on the same refund amount, the dispute automatically resolves and pays out accordingly. If you can't agree, the funds remain frozen until you reach an agreement."
       },
       {
         question: "How do I know the admin team won't just steal my money?",
-        answer: "The smart contract code is verified and published on the blockchain. You can see that only the seller or admin can claim funds, and the admin can only allocate disputed funds to either the buyer or seller - never to themselves. The code prevents theft."
+        answer: "The smart contract code is verified and published on the blockchain. You can see that only the seller or admin can claim funds, and the admin can only allocate disputed funds to either the buyer or seller - never to themselves. The code prevents theft. Additionally, our auto-arbitration system means disputes can resolve automatically when both parties agree, without admin intervention."
       },
       {
         question: "Who exactly makes dispute decisions and what are their qualifications?",
-        answer: "Dispute policies and procedures are outlined in our Terms of Service at https://app.conduit-ucpi.com/terms-of-service. In ambiguous cases, funds can be split between buyer and seller."
+        answer: "Disputes use our auto-arbitration system. When you raise a dispute, you suggest a refund amount and explain your position. The other party can respond with their suggestion. You can both see the history of comments and suggestions in your dashboard. When you both enter the same refund amount, the dispute automatically resolves and distributes the funds accordingly. Full details at https://app.instantescrow.nz/arbitration-policy."
       }
     ]
   },
@@ -37,7 +37,7 @@ const faqSections: FAQSection[] = [
       },
       {
         question: "Can I cancel if I made a mistake or change my mind?",
-        answer: "Once you've funded a contract, you must raise a dispute to get your money back. This is fair to the seller who may have already shipped goods based on your payment."
+        answer: "Once you've funded a contract, you can raise a dispute with a refund request. Enter your reason and suggest 100% refund if you made a mistake. The seller will be notified and can agree to your refund amount, allowing automatic resolution. This protects sellers who may have already shipped goods while giving buyers a path to resolution."
       },
       {
         question: "What if I want to cancel before the buyer has put money in?",
@@ -80,7 +80,7 @@ const faqSections: FAQSection[] = [
     items: [
       {
         question: "How long do I have to wait for dispute resolution?",
-        answer: "Once in dispute, funds are frozen so you're protected. Dispute process timelines are detailed in our Terms of Service. How you handle the relationship with your counterparty is up to you."
+        answer: "Once in dispute, funds are frozen so you're protected. Through the 'Manage Dispute' feature in your dashboard, you and the seller can exchange comments and refund proposals. The dispute automatically resolves as soon as you both agree on the same refund amount. There's no fixed timeline - resolution happens instantly when you reach agreement."
       },
       {
         question: "What stops people from creating fake contracts to scam others?",
@@ -96,11 +96,11 @@ const faqSections: FAQSection[] = [
       },
       {
         question: "What if I need to dispute but it's outside business hours?",
-        answer: "Once in dispute, funds are frozen so you're safe. Dispute timelines are in our Terms of Service."
+        answer: "Once in dispute, funds are frozen so you're safe. You can manage the dispute through your dashboard at any time - view the history of comments and refund suggestions, and add your own. The system works 24/7, and disputes auto-resolve the moment both parties agree on a refund amount."
       },
       {
         question: "What if the seller goes silent after I pay but before expiry?",
-        answer: "You can dispute at any time before expiry. It's up to you to decide what level of communication is reasonable."
+        answer: "You can dispute at any time before expiry by clicking 'Raise Dispute' in your dashboard. Enter a comment explaining the lack of communication and suggest a full refund. The seller will be notified and can respond through their dashboard. If they agree to your refund amount, the dispute resolves automatically."
       }
     ]
   },
@@ -122,7 +122,7 @@ const faqSections: FAQSection[] = [
     items: [
       {
         question: "What information do you store about me?",
-        answer: "Our privacy policy is at https://app.conduit-ucpi.com/privacy-policy. On the public blockchain: amount, buyer wallet ID, seller wallet ID, expiry date, and description. We store email addresses on secured servers as they're necessary to provide the service, but this data is not part of any public interface."
+        answer: "Our privacy policy is at https://app.instantescrow.nz/privacy-policy. On the public blockchain: amount, buyer wallet ID, seller wallet ID, expiry date, and description. We store email addresses on secured servers as they're necessary to provide the service, but this data is not part of any public interface."
       },
       {
         question: "What if there's a bug in the smart contract code?",
@@ -159,7 +159,7 @@ const faqSections: FAQSection[] = [
       },
       {
         question: "What if I accidentally send money to the wrong contract or enter the wrong amount?",
-        answer: "You're not stuck with mistakes - you can raise a dispute to resolve errors."
+        answer: "You're not stuck with mistakes - raise a dispute immediately with a comment explaining the error and request 100% refund. When the other party sees your explanation and agrees to the refund amount, the dispute will automatically resolve and return your funds."
       },
       {
         question: "How long should I wait before disputing if I need time to inspect complex items?",
@@ -172,7 +172,7 @@ const faqSections: FAQSection[] = [
     items: [
       {
         question: "This sounds complicated with crypto and wallets - can you walk me through what I actually need to do?",
-        answer: "1. Get USDC using the instructions on our wallet management screen. 2. Ask your seller to go to https://app.conduit-ucpi.com, authenticate, and click 'request payment' (they enter your email, amount, payout date, description). 3. You get an email, log in to see the pending payment, check details and accept. That's it!"
+        answer: "1. Get USDC using the instructions on our wallet management screen. 2. Ask your seller to go to https://app.instantescrow.nz, authenticate, and click 'request payment' (they enter your email, amount, payout date, description). 3. You get an email, log in to see the pending payment, check details and accept. That's it!"
       },
       {
         question: "What is USDC and why can't I just pay with regular money?",

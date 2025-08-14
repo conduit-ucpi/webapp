@@ -6,362 +6,263 @@ export default function ArbitrationPolicy() {
       <div className="min-h-screen bg-gray-50 py-12">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-4xl mx-auto">
-            <h1 className="text-4xl font-bold text-gray-900 mb-2">Conduit-UCPI Dispute Resolution Guide</h1>
-            <p className="text-lg text-gray-600 mb-8 italic">For Users and Administrative Staff</p>
+            <h1 className="text-4xl font-bold text-gray-900 mb-2">Instant Escrow Auto-Arbitration System</h1>
+            <p className="text-lg text-gray-600 mb-8 italic">How Disputes Work - For Buyers and Sellers</p>
             
             <div className="prose prose-lg max-w-none">
               <section className="bg-white rounded-lg shadow-sm p-6 mb-6">
                 <h2 className="text-2xl font-semibold text-gray-800 mb-4">Overview</h2>
                 <p className="text-gray-600 mb-2">
-                  Disputes exist to protect both parties when transactions go wrong. <strong>Once funds are in dispute, they're frozen until resolution - no one can access them.</strong> The admin team facilitates communication and executes agreements reached between disputing parties, but does not make allocation decisions.
+                  Our auto-arbitration system empowers buyers and sellers to resolve disputes directly. <strong>Once funds are in dispute, they're frozen until both parties agree on a refund amount.</strong> The system automatically executes the agreed resolution without requiring admin intervention.
                 </p>
               </section>
 
               <section className="bg-white rounded-lg shadow-sm p-6 mb-6">
-                <h2 className="text-2xl font-semibold text-gray-800 mb-4">When to Dispute</h2>
+                <h2 className="text-2xl font-semibold text-gray-800 mb-4">How the Auto-Arbitration System Works</h2>
+                
+                <div className="space-y-4">
+                  <div className="p-4 bg-blue-50 rounded-lg">
+                    <p className="text-gray-700">
+                      <strong>Key Innovation:</strong> When both parties enter the same refund amount, the dispute automatically resolves and distributes funds accordingly. No waiting for admin decisions.
+                    </p>
+                  </div>
+
+                  <div>
+                    <h3 className="text-xl font-semibold text-gray-700 mb-2">Step-by-Step Process</h3>
+                    <ol className="list-decimal list-inside text-gray-600 space-y-2">
+                      <li><strong>Buyer raises dispute</strong> - Enters a comment explaining the issue and suggests a refund amount</li>
+                      <li><strong>Seller gets notified</strong> - Receives email alert about the dispute</li>
+                      <li><strong>Both parties negotiate</strong> - Through the dashboard, each can:
+                        <ul className="list-disc list-inside ml-6 mt-1">
+                          <li>View all comments and refund suggestions history</li>
+                          <li>Add new comments to explain their position</li>
+                          <li>Submit refund amount proposals</li>
+                        </ul>
+                      </li>
+                      <li><strong>Automatic resolution</strong> - When both enter the same amount, funds distribute instantly</li>
+                    </ol>
+                  </div>
+
+                  <div>
+                    <h3 className="text-xl font-semibold text-gray-700 mb-2">Understanding Refund Amounts</h3>
+                    <ul className="list-disc list-inside text-gray-600 space-y-1">
+                      <li><strong>Refund amount</strong> = How much goes back to the buyer</li>
+                      <li><strong>Remaining amount</strong> = Automatically goes to the seller</li>
+                      <li><strong>Example:</strong> On a $100 contract, agreeing on $30 refund means buyer gets $30, seller gets $70</li>
+                    </ul>
+                  </div>
+                </div>
+              </section>
+
+              <section className="bg-white rounded-lg shadow-sm p-6 mb-6">
+                <h2 className="text-2xl font-semibold text-gray-800 mb-4">When to Raise a Dispute</h2>
                 
                 <div className="mb-4">
-                  <h3 className="text-xl font-semibold text-gray-700 mb-2">For Buyers</h3>
+                  <h3 className="text-xl font-semibold text-gray-700 mb-2">Common Reasons for Buyers</h3>
                   <ul className="list-disc list-inside text-gray-600 space-y-1">
-                    <li><strong>Item never arrived</strong></li>
-                    <li><strong>Item significantly different</strong> from description</li>
-                    <li><strong>Seller unresponsive</strong> after payment but before expiry</li>
-                    <li><strong>You made an error</strong> (wrong amount, wrong contract)</li>
+                    <li><strong>Non-delivery</strong> - Item never arrived (suggest 100% refund)</li>
+                    <li><strong>Wrong item</strong> - Received something different (negotiate partial or full refund)</li>
+                    <li><strong>Quality issues</strong> - Item not as described (negotiate appropriate compensation)</li>
+                    <li><strong>Seller unresponsive</strong> - No communication after payment (start with 100% refund request)</li>
+                    <li><strong>Accidental payment</strong> - Made an error (request 100% refund with explanation)</li>
                   </ul>
                 </div>
 
                 <div className="mb-4">
-                  <h3 className="text-xl font-semibold text-gray-700 mb-2">For Sellers</h3>
+                  <h3 className="text-xl font-semibold text-gray-700 mb-2">How Sellers Should Respond</h3>
                   <ul className="list-disc list-inside text-gray-600 space-y-1">
-                    <li><strong>Buyer claims non-delivery</strong> but you have proof of delivery</li>
-                    <li><strong>Buyer wants refund</strong> for delivered, correctly described item</li>
-                    <li><strong>False quality claims</strong> on items delivered as described</li>
+                    <li><strong>Legitimate issues</strong> - Agree to appropriate refund amount quickly</li>
+                    <li><strong>Delivery completed</strong> - Provide tracking info in comments, suggest 0% refund</li>
+                    <li><strong>Partial fault</strong> - Propose partial refund that's fair to both parties</li>
+                    <li><strong>Buyer error</strong> - Explain in comments but consider goodwill partial refund</li>
                   </ul>
                 </div>
 
-                <div className="p-4 bg-blue-50 rounded-lg">
+                <div className="p-4 bg-green-50 rounded-lg">
                   <p className="text-gray-700">
-                    <strong>Key Point:</strong> Disputes freeze funds immediately. Don't wait if you have a legitimate concern.
+                    <strong>Pro Tip:</strong> Starting with reasonable proposals speeds resolution. Extreme positions may prolong negotiations.
                   </p>
                 </div>
               </section>
 
               <section className="bg-white rounded-lg shadow-sm p-6 mb-6">
-                <h2 className="text-2xl font-semibold text-gray-800 mb-4">What Happens When You Dispute</h2>
-                <ol className="list-decimal list-inside text-gray-600 space-y-2">
-                  <li><strong>Immediate freeze</strong> - Funds cannot be accessed by anyone</li>
-                  <li><strong>Both parties notified</strong> via email with dispute reference number</li>
-                  <li><strong>Parties communicate directly</strong> to resolve the issue</li>
-                  <li><strong>Agreement reached</strong> between buyer and seller</li>
-                  <li><strong>Both parties notify admin</strong> of agreed allocation</li>
-                  <li><strong>Funds released</strong> according to the agreement</li>
-                </ol>
-              </section>
-
-              <section className="bg-white rounded-lg shadow-sm p-6 mb-6">
-                <h2 className="text-2xl font-semibold text-gray-800 mb-4">The Dispute Resolution Process</h2>
+                <h2 className="text-2xl font-semibold text-gray-800 mb-4">Managing Your Dispute</h2>
                 
                 <div className="space-y-4">
                   <div>
-                    <h3 className="text-xl font-semibold text-gray-700 mb-2">Step 1: Funds Are Frozen</h3>
+                    <h3 className="text-xl font-semibold text-gray-700 mb-2">Through Your Dashboard</h3>
+                    <p className="text-gray-600 mb-2">Click "Manage Dispute" on any disputed contract to:</p>
+                    <ul className="list-disc list-inside text-gray-600 space-y-1">
+                      <li><strong>View history</strong> - See all previous comments and refund suggestions from both parties</li>
+                      <li><strong>Add comments</strong> - Explain your position, provide evidence, respond to the other party</li>
+                      <li><strong>Propose refund amount</strong> - Enter what you think is fair (can be updated anytime)</li>
+                      <li><strong>Track progress</strong> - See how close you are to agreement</li>
+                    </ul>
+                  </div>
+
+                  <div>
+                    <h3 className="text-xl font-semibold text-gray-700 mb-2">Negotiation Tips</h3>
+                    <ul className="list-disc list-inside text-gray-600 space-y-1">
+                      <li><strong>Be specific</strong> - Clearly explain why you're suggesting your refund amount</li>
+                      <li><strong>Provide evidence</strong> - Reference tracking numbers, photos, or communications</li>
+                      <li><strong>Stay professional</strong> - Constructive dialogue leads to faster resolution</li>
+                      <li><strong>Consider compromise</strong> - Meeting in the middle often works for both parties</li>
+                      <li><strong>Update proposals</strong> - You can change your refund suggestion anytime before agreement</li>
+                    </ul>
+                  </div>
+                </div>
+              </section>
+
+              <section className="bg-white rounded-lg shadow-sm p-6 mb-6">
+                <h2 className="text-2xl font-semibold text-gray-800 mb-4">Common Dispute Scenarios and Resolutions</h2>
+                
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-xl font-semibold text-gray-700 mb-2">Item Never Delivered</h3>
+                    <ul className="list-disc list-inside text-gray-600 space-y-1">
+                      <li><strong>Buyer action:</strong> Raise dispute with 100% refund request, explain non-delivery</li>
+                      <li><strong>Seller with proof:</strong> Share tracking in comments, propose 0% refund</li>
+                      <li><strong>Seller without proof:</strong> Accept 100% refund to resolve quickly</li>
+                      <li><strong>Typical outcome:</strong> 100% refund if no delivery proof exists</li>
+                    </ul>
+                  </div>
+
+                  <div>
+                    <h3 className="text-xl font-semibold text-gray-700 mb-2">Wrong or Damaged Item</h3>
+                    <ul className="list-disc list-inside text-gray-600 space-y-1">
+                      <li><strong>Buyer action:</strong> Explain issue, suggest refund based on item's value/condition</li>
+                      <li><strong>Seller options:</strong> Offer full refund with return, or partial refund to keep item</li>
+                      <li><strong>Negotiation:</strong> Discuss return shipping costs and item value</li>
+                      <li><strong>Typical outcome:</strong> 50-100% refund depending on severity</li>
+                    </ul>
+                  </div>
+
+                  <div>
+                    <h3 className="text-xl font-semibold text-gray-700 mb-2">Quality Disputes</h3>
+                    <ul className="list-disc list-inside text-gray-600 space-y-1">
+                      <li><strong>Buyer action:</strong> Detail quality issues, propose partial refund</li>
+                      <li><strong>Seller response:</strong> Evaluate claim, counter with fair adjustment</li>
+                      <li><strong>Resolution path:</strong> Often settle on 10-30% refund for minor issues</li>
+                      <li><strong>Alternative:</strong> Full refund upon return if quality is unacceptable</li>
+                    </ul>
+                  </div>
+
+                  <div>
+                    <h3 className="text-xl font-semibold text-gray-700 mb-2">Accidental Purchase</h3>
+                    <ul className="list-disc list-inside text-gray-600 space-y-1">
+                      <li><strong>Buyer action:</strong> Immediately dispute with 100% refund, explain the error</li>
+                      <li><strong>Seller consideration:</strong> If not shipped, agreeing to full refund is reasonable</li>
+                      <li><strong>If already shipped:</strong> Negotiate return process or partial refund</li>
+                      <li><strong>Typical outcome:</strong> 100% if caught early, negotiated if shipped</li>
+                    </ul>
+                  </div>
+                </div>
+              </section>
+
+              <section className="bg-white rounded-lg shadow-sm p-6 mb-6">
+                <h2 className="text-2xl font-semibold text-gray-800 mb-4">What If We Can't Agree?</h2>
+                
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-xl font-semibold text-gray-700 mb-2">Funds Remain Frozen</h3>
                     <p className="text-gray-600">
-                      Once disputed, funds remain frozen until both parties agree on allocation. <strong>There is no time limit</strong> - funds can remain frozen indefinitely until an agreement is reached.
+                      If you can't reach agreement, funds stay frozen indefinitely. Neither party can access them until you both enter the same refund amount. This motivates finding a reasonable compromise.
                     </p>
                   </div>
 
                   <div>
-                    <h3 className="text-xl font-semibold text-gray-700 mb-2">Step 2: Direct Resolution Between Parties</h3>
-                    <ul className="list-disc list-inside text-gray-600 space-y-1">
-                      <li>Buyer and seller communicate directly to resolve the dispute</li>
-                      <li>They can negotiate any solution they both find acceptable</li>
-                      <li>Common resolutions include: full refund, partial refund, return process, or full payment to seller</li>
-                    </ul>
-                  </div>
-
-                  <div>
-                    <h3 className="text-xl font-semibold text-gray-700 mb-2">Step 3: Professional Arbitration (If Needed)</h3>
+                    <h3 className="text-xl font-semibold text-gray-700 mb-2">External Arbitration Option</h3>
                     <p className="text-gray-600 mb-2">
-                      If parties cannot reach agreement, we recommend using a professional arbitration service. This is <strong>entirely separate from our platform</strong> - parties arrange and pay for arbitration themselves.
-                    </p>
-                    <div className="p-4 bg-amber-50 rounded-lg">
-                      <p className="text-gray-700 text-sm">
-                        <strong>Important Context:</strong> Professional arbitration is only needed in extreme cases where parties genuinely cannot agree. This is the same situation you'd face with any payment method - credit cards, PayPal, bank transfers - except with those methods, you'd be trying to recover money the seller may have already spent. With our system, the disputed funds remain safely frozen until resolution.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h3 className="text-xl font-semibold text-gray-700 mb-2">Step 4: Notifying Admin of Resolution</h3>
-                    <p className="text-gray-600 mb-2">
-                      Once parties reach agreement (either directly or through arbitration), both parties should email the admin team stating the agreed allocation:
+                      For high-value disputes where agreement seems impossible, you can jointly choose to use a professional arbitration service. This is entirely separate from our platform:
                     </p>
                     <ul className="list-disc list-inside text-gray-600 space-y-1">
-                      <li><strong>Email:</strong> disputes@conduit-ucpi.com</li>
-                      <li><strong>Include:</strong> Contract reference number and agreed fund allocation</li>
-                      <li><strong>From:</strong> Both parties (can be separate emails or joint email)</li>
-                    </ul>
-                  </div>
-
-                  <div>
-                    <h3 className="text-xl font-semibold text-gray-700 mb-2">Step 5: Unresponsive Party Protocol</h3>
-                    <p className="text-gray-600 mb-2">If only one party emails the admin team:</p>
-                    <ol className="list-decimal list-inside text-gray-600 space-y-1">
-                      <li>Admin contacts the other party</li>
-                      <li>One week response window provided</li>
-                      <li>If no response after one week, funds allocated per the responsive party's instruction</li>
-                      <li>Both parties notified of intended action before execution</li>
-                    </ol>
-                    <div className="p-4 bg-green-50 rounded-lg mt-2">
-                      <p className="text-gray-700 text-sm">
-                        <strong>Note:</strong> In scam situations, sellers typically become unresponsive after taking payment. When buyers dispute non-delivery and the seller doesn't respond to admin contact, the buyer will receive their funds back under this protocol.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </section>
-
-              <section className="bg-white rounded-lg shadow-sm p-6 mb-6">
-                <h2 className="text-2xl font-semibold text-gray-800 mb-4">What Admin Does and Doesn't Do</h2>
-                
-                <div className="grid md:grid-cols-2 gap-6">
-                  <div>
-                    <h3 className="text-xl font-semibold text-gray-700 mb-2">Admin Will:</h3>
-                    <ul className="list-disc list-inside text-gray-600 space-y-1">
-                      <li>Freeze funds immediately when dispute is raised</li>
-                      <li>Facilitate initial communication between parties</li>
-                      <li>Execute fund allocation based on agreements reached by parties</li>
-                      <li>Apply one-week rule for unresponsive parties</li>
-                      <li>Provide dispute reference numbers for tracking</li>
-                    </ul>
-                  </div>
-
-                  <div>
-                    <h3 className="text-xl font-semibold text-gray-700 mb-2">Admin Will NOT:</h3>
-                    <ul className="list-disc list-inside text-gray-600 space-y-1">
-                      <li>Decide who is right or wrong</li>
-                      <li>Investigate delivery claims</li>
-                      <li>Determine if items match descriptions</li>
-                      <li>Provide legal advice or arbitration services</li>
-                      <li>Force parties to accept specific resolutions</li>
-                      <li>Make judgment calls on ambiguous situations</li>
-                    </ul>
-                  </div>
-                </div>
-              </section>
-
-              <section className="bg-white rounded-lg shadow-sm p-6 mb-6">
-                <h2 className="text-2xl font-semibold text-gray-800 mb-4">Common Dispute Scenarios</h2>
-                
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="text-xl font-semibold text-gray-700 mb-2">Non-Delivery Claims</h3>
-                    <ul className="list-disc list-inside text-gray-600 space-y-1">
-                      <li><strong>Parties should exchange:</strong> Tracking information, delivery addresses, shipping receipts</li>
-                      <li><strong>Common resolution:</strong> If no delivery proof, buyer gets refund</li>
-                      <li><strong>Alternative:</strong> Seller provides replacement or extended delivery time</li>
-                    </ul>
-                  </div>
-
-                  <div>
-                    <h3 className="text-xl font-semibold text-gray-700 mb-2">Wrong Item Delivered</h3>
-                    <ul className="list-disc list-inside text-gray-600 space-y-1">
-                      <li><strong>Parties should exchange:</strong> Photos, original descriptions, communication logs</li>
-                      <li><strong>Common resolution:</strong> Return process where buyer ships back item, then receives refund</li>
-                      <li><strong>Alternative:</strong> Partial refund if item has some value to buyer</li>
-                    </ul>
-                  </div>
-
-                  <div>
-                    <h3 className="text-xl font-semibold text-gray-700 mb-2">Item "Not as Described"</h3>
-                    <ul className="list-disc list-inside text-gray-600 space-y-1">
-                      <li><strong>Parties should discuss:</strong> Objective differences vs subjective preferences</li>
-                      <li><strong>Common resolution:</strong> Return process or partial refund based on degree of difference</li>
-                      <li><strong>Escalation:</strong> Professional arbitration for high-value or complex technical disputes</li>
-                    </ul>
-                  </div>
-
-                  <div>
-                    <h3 className="text-xl font-semibold text-gray-700 mb-2">Communication Breakdown</h3>
-                    <ul className="list-disc list-inside text-gray-600 space-y-1">
-                      <li><strong>Admin facilitates:</strong> Initial contact between parties</li>
-                      <li><strong>Parties negotiate:</strong> Reasonable communication expectations and resolution</li>
-                      <li><strong>Common resolution:</strong> Good faith effort to complete transaction or full refund</li>
-                    </ul>
-                  </div>
-                </div>
-              </section>
-
-              <section className="bg-white rounded-lg shadow-sm p-6 mb-6">
-                <h2 className="text-2xl font-semibold text-gray-800 mb-4">Evidence and Documentation</h2>
-                <p className="text-gray-600 mb-4">
-                  While admin doesn't evaluate evidence, parties typically find these helpful in reaching agreements:
-                </p>
-                
-                <div className="grid md:grid-cols-2 gap-6">
-                  <div>
-                    <h3 className="text-xl font-semibold text-gray-700 mb-2">Strong Supporting Information</h3>
-                    <ul className="list-disc list-inside text-gray-600 space-y-1">
-                      <li><strong>Tracking numbers</strong> with delivery confirmation</li>
-                      <li><strong>Photos of packaging/shipping process</strong></li>
-                      <li><strong>Screenshots of original item descriptions</strong></li>
-                      <li><strong>Communication logs</strong> showing responsiveness</li>
-                      <li><strong>Return shipping receipts</strong></li>
-                    </ul>
-                  </div>
-
-                  <div>
-                    <h3 className="text-xl font-semibold text-gray-700 mb-2">Less Helpful Information</h3>
-                    <ul className="list-disc list-inside text-gray-600 space-y-1">
-                      <li>Subjective quality complaints without clear standards</li>
-                      <li>Claims about verbal agreements not documented</li>
-                      <li>Arguments about "reasonable" expectations without prior agreement</li>
-                    </ul>
-                  </div>
-                </div>
-              </section>
-
-              <section className="bg-white rounded-lg shadow-sm p-6 mb-6">
-                <h2 className="text-2xl font-semibold text-gray-800 mb-4">Professional Arbitration</h2>
-                <p className="text-gray-600 mb-4">
-                  For complex or high-value disputes where parties cannot agree:
-                </p>
-                
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="text-xl font-semibold text-gray-700 mb-2">When to Consider Arbitration</h3>
-                    <ul className="list-disc list-inside text-gray-600 space-y-1">
-                      <li>High-value transactions (typically $500+)</li>
-                      <li>Complex technical products requiring specialist knowledge</li>
-                      <li>Parties genuinely cannot reach agreement after good faith negotiation</li>
+                      <li>Both parties agree to use external arbitration</li>
+                      <li>Select and pay for arbitration service together</li>
+                      <li>Arbitrator reviews evidence and makes decision</li>
+                      <li>Both parties then enter the arbitrator's decided refund amount</li>
+                      <li>System automatically executes the resolution</li>
                     </ul>
                     
-                    <div className="p-4 bg-blue-50 rounded-lg mt-2">
+                    <div className="p-4 bg-amber-50 rounded-lg mt-2">
                       <p className="text-gray-700 text-sm">
-                        <strong>Reality Check:</strong> Most disputes resolve through direct communication. Professional arbitration is rare and typically only necessary for the same types of complex commercial disputes that would require legal intervention with any payment method. The key difference is that with traditional payments, you'd be pursuing arbitration while trying to recover money from someone who may have already spent it - our system keeps those funds secure during the process.
+                        <strong>Note:</strong> External arbitration is rarely needed. Most disputes resolve through direct negotiation as both parties have incentive to reach agreement and unlock the funds.
                       </p>
                     </div>
                   </div>
 
                   <div>
-                    <h3 className="text-xl font-semibold text-gray-700 mb-2">Arbitration Process</h3>
-                    <ol className="list-decimal list-inside text-gray-600 space-y-1">
-                      <li>Parties select and contact arbitration service</li>
-                      <li>Parties arrange and pay for arbitration</li>
-                      <li>Arbitrator makes binding decision</li>
-                      <li>Both parties email admin with arbitration outcome</li>
-                      <li>Admin executes allocation per arbitration decision</li>
-                    </ol>
-                  </div>
-
-                  <div>
-                    <h3 className="text-xl font-semibold text-gray-700 mb-2">Arbitration Costs</h3>
-                    <ul className="list-disc list-inside text-gray-600 space-y-1">
-                      <li>Parties arrange and pay for arbitration services directly</li>
-                      <li>Arbitration costs are not covered by Conduit-UCPI</li>
-                      <li>Costs typically split between parties unless arbitrator decides otherwise</li>
-                    </ul>
-                  </div>
-                </div>
-              </section>
-
-              <section className="bg-white rounded-lg shadow-sm p-6 mb-6">
-                <h2 className="text-2xl font-semibold text-gray-800 mb-4">Timeline Expectations</h2>
-                
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="text-xl font-semibold text-gray-700 mb-2">Immediate Actions</h3>
-                    <ul className="list-disc list-inside text-gray-600 space-y-1">
-                      <li><strong>Dispute filing:</strong> Funds frozen instantly</li>
-                      <li><strong>Initial notification:</strong> Both parties notified within minutes</li>
-                      <li><strong>Admin response:</strong> Unresponsive party contacted within 24 hours</li>
-                    </ul>
-                  </div>
-
-                  <div>
-                    <h3 className="text-xl font-semibold text-gray-700 mb-2">Resolution Timelines</h3>
-                    <ul className="list-disc list-inside text-gray-600 space-y-1">
-                      <li><strong>Direct negotiation:</strong> No time limit - depends entirely on parties</li>
-                      <li><strong>Admin execution:</strong> Funds released within 24 hours of receiving agreement</li>
-                      <li><strong>Unresponsive party rule:</strong> One week maximum wait time</li>
-                    </ul>
-                  </div>
-
-                  <div>
-                    <h3 className="text-xl font-semibold text-gray-700 mb-2">No Fixed Deadlines</h3>
+                    <h3 className="text-xl font-semibold text-gray-700 mb-2">Admin Support</h3>
                     <p className="text-gray-600">
-                      <strong>Important:</strong> There are no deadlines for reaching agreement. Funds can remain frozen indefinitely until parties resolve their dispute or use arbitration.
+                      While admins don't make allocation decisions in the auto-arbitration system, they can:
                     </p>
-                  </div>
-                </div>
-              </section>
-
-              <section className="bg-white rounded-lg shadow-sm p-6 mb-6">
-                <h2 className="text-2xl font-semibold text-gray-800 mb-4">Special Situations</h2>
-                
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="text-xl font-semibold text-gray-700 mb-2">International Transactions</h3>
                     <ul className="list-disc list-inside text-gray-600 space-y-1">
-                      <li>Extended shipping times should be considered in original agreement</li>
-                      <li>Different legal systems may require professional arbitration</li>
-                      <li>Currency conversion issues are between parties to resolve</li>
-                    </ul>
-                  </div>
-
-                  <div>
-                    <h3 className="text-xl font-semibold text-gray-700 mb-2">High-Value Items</h3>
-                    <ul className="list-disc list-inside text-gray-600 space-y-1">
-                      <li>Professional arbitration strongly recommended for disputes over $500</li>
-                      <li>Document everything meticulously from the start</li>
-                      <li>Consider escrow insurance for very high-value transactions</li>
-                    </ul>
-                  </div>
-
-                  <div>
-                    <h3 className="text-xl font-semibold text-gray-700 mb-2">Security Concerns</h3>
-                    <ul className="list-disc list-inside text-gray-600 space-y-1">
-                      <li>Account compromise or fraud concerns get expedited admin attention</li>
-                      <li>Security-related disputes processed within 24 hours</li>
-                      <li>Report suspected fraud immediately to disputes@conduit-ucpi.com</li>
+                      <li>Help facilitate communication if one party is unresponsive</li>
+                      <li>Provide guidance on using the dispute management features</li>
+                      <li>Assist with technical issues accessing the platform</li>
+                      <li>Execute resolutions in special circumstances (both parties email agreeing to specific allocation)</li>
                     </ul>
                   </div>
                 </div>
               </section>
 
               <section className="bg-white rounded-lg shadow-sm p-6 mb-6">
-                <h2 className="text-2xl font-semibold text-gray-800 mb-4">Best Practices for Dispute Prevention</h2>
+                <h2 className="text-2xl font-semibold text-gray-800 mb-4">Best Practices for Quick Resolution</h2>
                 
-                <div className="space-y-4">
+                <div className="grid md:grid-cols-2 gap-6">
                   <div>
-                    <h3 className="text-xl font-semibold text-gray-700 mb-2">For All Users</h3>
+                    <h3 className="text-xl font-semibold text-gray-700 mb-2">For Buyers</h3>
                     <ul className="list-disc list-inside text-gray-600 space-y-1">
-                      <li><strong>Detailed descriptions</strong> prevent misunderstandings</li>
-                      <li><strong>Clear delivery timeframes</strong> set proper expectations</li>
-                      <li><strong>Good communication</strong> resolves most issues before disputes</li>
-                      <li><strong>Reasonable expiry dates</strong> allow adequate delivery time</li>
-                      <li><strong>Document agreements</strong> about quality standards, delivery methods, etc.</li>
+                      <li>Raise disputes promptly when issues arise</li>
+                      <li>Clearly explain the problem in your initial comment</li>
+                      <li>Start with a reasonable refund request</li>
+                      <li>Provide evidence (order details, photos, etc.)</li>
+                      <li>Be willing to compromise for partial issues</li>
+                      <li>Respond promptly to seller's proposals</li>
                     </ul>
                   </div>
 
                   <div>
                     <h3 className="text-xl font-semibold text-gray-700 mb-2">For Sellers</h3>
                     <ul className="list-disc list-inside text-gray-600 space-y-1">
-                      <li><strong>Use tracking</strong> for all shipments</li>
-                      <li><strong>Photo your packaging process</strong></li>
-                      <li><strong>Respond to buyer communications promptly</strong></li>
-                      <li><strong>Be accurate</strong> in item descriptions</li>
-                      <li><strong>Set realistic delivery timeframes</strong></li>
+                      <li>Respond to disputes within 24 hours</li>
+                      <li>Provide delivery proof when available</li>
+                      <li>Acknowledge legitimate issues honestly</li>
+                      <li>Make fair counter-offers quickly</li>
+                      <li>Consider customer satisfaction and reputation</li>
+                      <li>Document your shipping and handling process</li>
+                    </ul>
+                  </div>
+                </div>
+
+                <div className="p-4 bg-green-50 rounded-lg mt-4">
+                  <p className="text-gray-700">
+                    <strong>Remember:</strong> The faster you reach agreement, the sooner funds are released. Both parties benefit from quick, fair resolution.
+                  </p>
+                </div>
+              </section>
+
+              <section className="bg-white rounded-lg shadow-sm p-6 mb-6">
+                <h2 className="text-2xl font-semibold text-gray-800 mb-4">Preventing Disputes</h2>
+                
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-xl font-semibold text-gray-700 mb-2">Clear Communication</h3>
+                    <ul className="list-disc list-inside text-gray-600 space-y-1">
+                      <li><strong>Sellers:</strong> Provide detailed, accurate descriptions</li>
+                      <li><strong>Buyers:</strong> Ask questions before funding contracts</li>
+                      <li><strong>Both:</strong> Confirm delivery addresses and timelines</li>
+                      <li><strong>Both:</strong> Document agreements about quality standards</li>
                     </ul>
                   </div>
 
                   <div>
-                    <h3 className="text-xl font-semibold text-gray-700 mb-2">For Buyers</h3>
+                    <h3 className="text-xl font-semibold text-gray-700 mb-2">Proper Documentation</h3>
                     <ul className="list-disc list-inside text-gray-600 space-y-1">
-                      <li><strong>Ask questions</strong> before funding contracts</li>
-                      <li><strong>Verify seller contact information</strong></li>
-                      <li><strong>Understand what you're agreeing to</strong></li>
-                      <li><strong>Don't fund if descriptions are unclear</strong></li>
-                      <li><strong>Save screenshots</strong> of original listings</li>
+                      <li>Save product descriptions and photos</li>
+                      <li>Keep shipping receipts and tracking numbers</li>
+                      <li>Screenshot important communications</li>
+                      <li>Photo items before shipping (sellers)</li>
+                      <li>Photo items upon receipt (buyers)</li>
                     </ul>
                   </div>
                 </div>
@@ -371,11 +272,11 @@ export default function ArbitrationPolicy() {
                 <h2 className="text-2xl font-semibold text-gray-800 mb-4">Contact Information</h2>
                 <div className="space-y-2 text-gray-600">
                   <p>
-                    <strong>Dispute Notifications:</strong> disputes@conduit-ucpi.com<br/>
-                    <strong>Include:</strong> Contract reference number, brief summary, contact information for both parties
+                    <strong>Technical Support:</strong> info@instantescrow.nz<br/>
+                    <strong>Platform Issues:</strong> Include contract reference number and description of the problem
                   </p>
                   <p>
-                    <strong>Security/Fraud Emergencies:</strong> Same email with "URGENT SECURITY" in subject line
+                    <strong>Note:</strong> Support staff cannot make dispute allocation decisions - resolutions must come from mutual agreement through the auto-arbitration system.
                   </p>
                 </div>
               </section>

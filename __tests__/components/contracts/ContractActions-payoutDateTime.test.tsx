@@ -171,7 +171,7 @@ describe('ContractActions - PayoutDateTime', () => {
             buyerEmail: 'buyer@test.com',
             sellerEmail: 'seller@test.com',
             payoutDateTime: expectedISOString,
-            amount: (contract.amount / 1000000).toString(),
+            amount: contract.amount.toString(),
             currency: "microUSDC",
             contractDescription: contract.description,
             productName: process.env.PRODUCT_NAME || contract.description,

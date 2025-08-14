@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Contract, SubmitDisputeEntryRequest } from '@/types';
 import { useAuth } from '@/components/auth/AuthProvider';
-import { formatTimestamp } from '@/utils/validation';
+import { formatTimestamp, displayCurrency, formatCurrency } from '@/utils/validation';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 
@@ -98,7 +98,7 @@ export default function DisputeManagementModal({ isOpen, onClose, contract, onRe
               {contract.productName && (
                 <div><span className="font-medium">Product:</span> {contract.productName}</div>
               )}
-              <div><span className="font-medium">Amount:</span> ${(contract.amount / 1000000).toFixed(2)} USDC</div>
+              <div><span className="font-medium">Amount:</span> {displayCurrency(contract.amount, 'microUSDC')} USDC</div>
               <div><span className="font-medium">Buyer:</span> {contract.buyerEmail || contract.buyerAddress}</div>
               <div><span className="font-medium">Seller:</span> {contract.sellerEmail || contract.sellerAddress}</div>
             </div>
@@ -204,8 +204,8 @@ export default function DisputeManagementModal({ isOpen, onClose, contract, onRe
                   </div>
                 </div>
                 <div className="text-xs text-gray-500 mt-1">
-                  Buyer gets: ${((contract.amount * refundPercent) / 100 / 1000000).toFixed(2)} USDC, 
-                  Seller gets: ${((contract.amount * (100 - refundPercent)) / 100 / 1000000).toFixed(2)} USDC
+                  Buyer gets: {displayCurrency((contract.amount * refundPercent) / 100, 'microUSDC')} USDC, 
+                  Seller gets: {displayCurrency((contract.amount * (100 - refundPercent)) / 100, 'microUSDC')} USDC
                 </div>
               </div>
 

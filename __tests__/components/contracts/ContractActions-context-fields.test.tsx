@@ -175,7 +175,7 @@ describe('ContractActions - Context Fields for Dispute', () => {
             buyerEmail: 'buyer@test.com',
             sellerEmail: 'seller@test.com',
             payoutDateTime: new Date(contract.expiryTimestamp * 1000).toISOString(),
-            amount: '2.5', // Converted from microUSDC to USDC
+            amount: '2500000', // In microUSDC format as expected by backend
             currency: 'microUSDC',
             contractDescription: 'Digital Marketing Services Package',
             productName: 'Conduit UCPI',
@@ -239,7 +239,7 @@ describe('ContractActions - Context Fields for Dispute', () => {
       expect(mockFetch).toHaveBeenCalledWith(
         '/api/chain/raise-dispute',
         expect.objectContaining({
-          body: expect.stringContaining('"amount":"1"') // 1.0 USDC
+          body: expect.stringContaining('"amount":"1000000"') // 1.0 USDC in microUSDC
         })
       );
     });
@@ -294,7 +294,7 @@ describe('ContractActions - Context Fields for Dispute', () => {
       expect(mockFetch).toHaveBeenCalledWith(
         '/api/chain/raise-dispute',
         expect.objectContaining({
-          body: expect.stringContaining('"amount":"1.5"') // 1.5 USDC
+          body: expect.stringContaining('"amount":"1500000"') // 1.5 USDC in microUSDC
         })
       );
     });
@@ -354,7 +354,7 @@ describe('ContractActions - Context Fields for Dispute', () => {
         buyerEmail: 'buyer@test.com',
         sellerEmail: 'seller@test.com',
         payoutDateTime: new Date(contract.expiryTimestamp * 1000).toISOString(),
-        amount: '0.75',
+        amount: '750000',
         currency: 'microUSDC',
         contractDescription: 'Custom Web Development',
         productName: process.env.PRODUCT_NAME || 'Custom Web Development',

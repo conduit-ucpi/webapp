@@ -3,7 +3,7 @@ import { Contract, PendingContract, RaiseDisputeRequest } from '@/types';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { Web3Service, ESCROW_CONTRACT_ABI } from '@/lib/web3';
-import { getContractCTA, toUSDCForWeb3 } from '@/utils/validation';
+import { getContractCTA, toMicroUSDC, formatCurrency } from '@/utils/validation';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import DisputeModal from './DisputeModal';
@@ -75,7 +75,7 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
         buyerEmail: regularContract.buyerEmail || user?.email,
         sellerEmail: regularContract.sellerEmail,
         payoutDateTime: new Date(regularContract.expiryTimestamp * 1000).toISOString(),
-        amount: toUSDCForWeb3(regularContract.amount, 'microUSDC'),
+        amount: toMicroUSDC(formatCurrency(regularContract.amount, 'microUSDC').numericAmount).toString(),
         currency: "microUSDC",
         contractDescription: regularContract.description,
         productName: process.env.PRODUCT_NAME || regularContract.description,

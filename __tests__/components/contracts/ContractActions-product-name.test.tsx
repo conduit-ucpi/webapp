@@ -174,7 +174,7 @@ describe('ContractActions - PRODUCT_NAME Environment Variable', () => {
             buyerEmail: 'buyer@test.com',
             sellerEmail: 'seller@test.com',
             payoutDateTime: new Date(contract.expiryTimestamp * 1000).toISOString(),
-            amount: (contract.amount / 1000000).toString(),
+            amount: contract.amount.toString(),
             currency: "microUSDC",
             contractDescription: contract.description,
             productName: 'Test Product Name', // Should use PRODUCT_NAME env var
@@ -243,7 +243,7 @@ describe('ContractActions - PRODUCT_NAME Environment Variable', () => {
             buyerEmail: 'buyer@test.com',
             sellerEmail: 'seller@test.com',
             payoutDateTime: new Date(contract.expiryTimestamp * 1000).toISOString(),
-            amount: (contract.amount / 1000000).toString(),
+            amount: contract.amount.toString(),
             currency: "microUSDC",
             contractDescription: contract.description,
             productName: 'Fallback Description', // Should fallback to contract.description
@@ -312,7 +312,7 @@ describe('ContractActions - PRODUCT_NAME Environment Variable', () => {
             buyerEmail: 'buyer@test.com',
             sellerEmail: 'seller@test.com',
             payoutDateTime: new Date(contract.expiryTimestamp * 1000).toISOString(),
-            amount: (contract.amount / 1000000).toString(),
+            amount: contract.amount.toString(),
             currency: "microUSDC",
             contractDescription: contract.description,
             productName: 'Empty String Fallback', // Should fallback to contract.description when env var is empty

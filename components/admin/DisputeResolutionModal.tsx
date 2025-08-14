@@ -3,7 +3,7 @@ import Modal from '@/components/ui/Modal';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
-import { formatDateTime } from '@/utils/validation';
+import { formatDateTime, displayCurrency } from '@/utils/validation';
 import { useConfig } from '@/components/auth/ConfigProvider';
 
 interface AdminNote {
@@ -230,7 +230,7 @@ export default function DisputeResolutionModal({
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <span className="text-gray-600">Amount:</span>
-                  <span className="ml-2 font-medium">${contract.amount} {contract.currency}</span>
+                  <span className="ml-2 font-medium">{displayCurrency(contract.amount, contract.currency)}</span>
                 </div>
                 <div>
                   <span className="text-gray-600">Receiver:</span>

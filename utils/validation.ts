@@ -346,6 +346,7 @@ export type ContractCTAType =
   | 'RAISE_DISPUTE' 
   | 'CLAIM_FUNDS' 
   | 'PENDING_RESOLUTION' 
+  | 'MANAGE_DISPUTE'
   | 'RESOLVED' 
   | 'CLAIMED'
   | 'AWAITING_FUNDING'
@@ -416,9 +417,9 @@ export function getContractCTA(
 
   if (contractStatus === 'DISPUTED') {
     return { 
-      type: 'PENDING_RESOLUTION', 
-      label: 'Pending Resolution',
-      variant: 'status'
+      type: 'MANAGE_DISPUTE', 
+      label: 'Manage Dispute',
+      variant: 'action'
     };
   }
 

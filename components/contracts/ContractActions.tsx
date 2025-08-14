@@ -7,6 +7,7 @@ import { getContractCTA, toUSDCForWeb3 } from '@/utils/validation';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import DisputeModal from './DisputeModal';
+import DisputeManagementModal from './DisputeManagementModal';
 
 interface ContractActionsProps {
   contract: Contract | PendingContract;
@@ -26,6 +27,7 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
   const [loadingMessage, setLoadingMessage] = useState('');
   const [hasError, setHasError] = useState(false);
   const [showDisputeModal, setShowDisputeModal] = useState(false);
+  const [showDisputeManagementModal, setShowDisputeManagementModal] = useState(false);
 
   const handleOpenDisputeModal = () => {
     if (!config || !isBuyer || isPending || (contract as Contract).status !== 'ACTIVE' || !user || isLoading) return;
@@ -267,11 +269,27 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
         </div>
       );
 
-    case 'PENDING_RESOLUTION':
+    case 'MANAGE_DISPUTE':
       return (
-        <div className="text-center py-2">
-          <span className="text-sm text-gray-600">{ctaInfo.label}</span>
-        </div>
+        <>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowDisputeManagementModal(true)}
+            disabled={isLoading}
+            className={`w-full border-orange-300 text-orange-700 hover:bg-orange-50 ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+          >
+            {ctaInfo.label}
+          </Button>
+          {!isPending && (
+            <DisputeManagementModal
+              isOpen={showDisputeManagementModal}
+              onClose={() => setShowDisputeManagementModal(false)}
+              contract={contract as Contract}
+              onRefresh={onAction}
+            />
+          )}
+        </>
       );
 
     case 'RESOLVED':

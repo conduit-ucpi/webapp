@@ -47,11 +47,19 @@ export interface Contract {
   notes?: string;
   // Admin notes array from contract service
   adminNotes?: Array<{
-    id: string;
-    content: string;
-    addedBy: string;
-    addedAt: number;
+    note: string;
+    createdBy: string;
+    timestamp: number;
   }>;
+  // Disputes array for audit trail
+  disputes?: Array<{
+    reason: string;
+    refundPercent: number;
+    userEmail: string;
+    timestamp: number;
+  }>;
+  // Product name from contract service
+  productName?: string;
   // Blockchain query status and error information
   blockchainQueryError?: string;
   hasDiscrepancy?: boolean;
@@ -129,6 +137,13 @@ export interface ResolveDisputeRequest {
   buyerActualAmount?: string;
   sellerActualAmount?: string;
   serviceLink?: string;
+}
+
+export interface SubmitDisputeEntryRequest {
+  timestamp: number;
+  userEmail: string;
+  reason: string;
+  refundPercent: number;
 }
 
 export interface AuthContextType {

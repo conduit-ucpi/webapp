@@ -1,4 +1,5 @@
 name: Build and Deploy Next.js app
+run-name: Deploy ${{ github.ref_name }} - ${{ github.event.head_commit.message }}
 on:
   push:
     tags:

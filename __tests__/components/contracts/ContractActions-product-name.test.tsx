@@ -123,6 +123,7 @@ describe('ContractActions - PRODUCT_NAME Environment Variable', () => {
     process.env.PRODUCT_NAME = 'Test Product Name';
 
     const contract: Contract = {
+      id: 'contract-db-id-123',
       contractAddress: '0xContractAddress123',
       buyerAddress: '0xBuyerAddress',
       sellerAddress: '0xSellerAddress',
@@ -157,6 +158,7 @@ describe('ContractActions - PRODUCT_NAME Environment Variable', () => {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
+            databaseId: 'contract-db-id-123',
             contractAddress: '0xContractAddress123',
             userWalletAddress: '0xBuyerAddress',
             signedTransaction: 'mock-dispute-tx',
@@ -179,6 +181,7 @@ describe('ContractActions - PRODUCT_NAME Environment Variable', () => {
     delete process.env.PRODUCT_NAME;
 
     const contract: Contract = {
+      id: 'contract-db-id-456',
       contractAddress: '0xContractAddress456',
       buyerAddress: '0xBuyerAddress',
       sellerAddress: '0xSellerAddress',
@@ -213,6 +216,7 @@ describe('ContractActions - PRODUCT_NAME Environment Variable', () => {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
+            databaseId: 'contract-db-id-456',
             contractAddress: '0xContractAddress456',
             userWalletAddress: '0xBuyerAddress',
             signedTransaction: 'mock-dispute-tx',
@@ -235,6 +239,7 @@ describe('ContractActions - PRODUCT_NAME Environment Variable', () => {
     process.env.PRODUCT_NAME = '';
 
     const contract: Contract = {
+      id: 'contract-db-id-789',
       contractAddress: '0xContractAddress789',
       buyerAddress: '0xBuyerAddress',
       sellerAddress: '0xSellerAddress',
@@ -269,6 +274,7 @@ describe('ContractActions - PRODUCT_NAME Environment Variable', () => {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
+            databaseId: 'contract-db-id-789',
             contractAddress: '0xContractAddress789',
             userWalletAddress: '0xBuyerAddress',
             signedTransaction: 'mock-dispute-tx',

@@ -112,6 +112,7 @@ describe('ContractActions - PayoutDateTime', () => {
     const expectedISOString = new Date(expiryTimestamp * 1000).toISOString();
 
     const contract: Contract = {
+      id: 'contract-db-id-123',
       contractAddress: '0xContractAddress123',
       buyerAddress: '0xBuyerAddress',
       sellerAddress: '0xSellerAddress',
@@ -154,6 +155,7 @@ describe('ContractActions - PayoutDateTime', () => {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
+            databaseId: 'contract-db-id-123',
             contractAddress: '0xContractAddress123',
             userWalletAddress: '0xBuyerAddress',
             signedTransaction: 'mock-dispute-tx',
@@ -211,6 +213,7 @@ describe('ContractActions - PayoutDateTime', () => {
     const expectedISOString = '2024-01-01T00:00:00.000Z';
 
     const contract: Contract = {
+      id: 'contract-db-id-456',
       contractAddress: '0xContractAddress456',
       buyerAddress: '0xBuyerAddress',
       sellerAddress: '0xSellerAddress',

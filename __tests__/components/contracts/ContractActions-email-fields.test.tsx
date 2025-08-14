@@ -117,6 +117,7 @@ describe('ContractActions - Email Fields for Dispute', () => {
     });
 
     const contract: Contract = {
+      id: 'contract-db-id-123',
       contractAddress: '0xContractAddress123',
       buyerAddress: '0xBuyerAddress',
       sellerAddress: '0xSellerAddress',
@@ -159,6 +160,7 @@ describe('ContractActions - Email Fields for Dispute', () => {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
+            databaseId: 'contract-db-id-123',
             contractAddress: '0xContractAddress123',
             userWalletAddress: '0xBuyerAddress',
             signedTransaction: 'mock-dispute-tx',
@@ -281,6 +283,7 @@ describe('ContractActions - Email Fields for Dispute', () => {
     });
 
     const contractWithoutEmails: Contract = {
+      id: 'contract-db-id-789',
       contractAddress: '0xContractAddress789',
       buyerAddress: '0xBuyerAddress',
       sellerAddress: '0xSellerAddress',
@@ -322,6 +325,7 @@ describe('ContractActions - Email Fields for Dispute', () => {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
+            databaseId: 'contract-db-id-789',
             contractAddress: '0xContractAddress789',
             userWalletAddress: '0xBuyerAddress',
             signedTransaction: 'mock-dispute-tx',

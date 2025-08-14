@@ -69,6 +69,7 @@ export default function ContractList() {
         } else {
           // This is a regular contract with blockchain data
           const regularContract: Contract = {
+            id: contract.id, // Include database ID
             contractAddress: contract.chainAddress || '',
             buyerAddress: item.blockchainBuyerAddress || contract.buyerAddress || '',
             sellerAddress: item.blockchainSellerAddress || contract.sellerAddress || '',

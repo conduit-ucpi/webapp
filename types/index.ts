@@ -26,6 +26,7 @@ export interface User {
 }
 
 export interface Contract {
+  id?: string; // Database ID from contract service
   contractAddress: string;
   buyerAddress: string;
   sellerAddress: string;
@@ -98,6 +99,7 @@ export interface CreatePendingContractRequest {
 }
 
 export interface RaiseDisputeRequest {
+  databaseId?: string; // Database ID from contract service
   contractAddress: string;
   userWalletAddress: string;
   signedTransaction: string;

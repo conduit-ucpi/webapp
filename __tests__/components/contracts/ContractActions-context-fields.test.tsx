@@ -116,6 +116,7 @@ describe('ContractActions - Context Fields for Dispute', () => {
 
   it('should include contract context fields when raising a dispute', async () => {
     const contract: Contract = {
+      id: 'contract-db-id-123',
       contractAddress: '0xContractAddress123',
       buyerAddress: '0xBuyerAddress',
       sellerAddress: '0xSellerAddress',
@@ -158,6 +159,7 @@ describe('ContractActions - Context Fields for Dispute', () => {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
+            databaseId: 'contract-db-id-123',
             contractAddress: '0xContractAddress123',
             userWalletAddress: '0xBuyerAddress',
             signedTransaction: 'mock-dispute-tx',
@@ -179,6 +181,7 @@ describe('ContractActions - Context Fields for Dispute', () => {
 
   it('should handle microUSDC amount conversion correctly', async () => {
     const contract: Contract = {
+      id: 'contract-db-id-456',
       contractAddress: '0xContractAddress456',
       buyerAddress: '0xBuyerAddress',
       sellerAddress: '0xSellerAddress',
@@ -224,6 +227,7 @@ describe('ContractActions - Context Fields for Dispute', () => {
 
   it('should handle fractional USDC amounts correctly', async () => {
     const contract: Contract = {
+      id: 'contract-db-id-789',
       contractAddress: '0xContractAddress789',
       buyerAddress: '0xBuyerAddress',
       sellerAddress: '0xSellerAddress',
@@ -269,6 +273,7 @@ describe('ContractActions - Context Fields for Dispute', () => {
 
   it('should use description for both contractDescription and productName', async () => {
     const contract: Contract = {
+      id: 'contract-db-id-abc',
       contractAddress: '0xContractAddressABC',
       buyerAddress: '0xBuyerAddress',
       sellerAddress: '0xSellerAddress',
@@ -304,6 +309,7 @@ describe('ContractActions - Context Fields for Dispute', () => {
 
     await waitFor(() => {
       const expectedBody = JSON.stringify({
+        databaseId: 'contract-db-id-abc',
         contractAddress: '0xContractAddressABC',
         userWalletAddress: '0xBuyerAddress',
         signedTransaction: 'mock-dispute-tx',

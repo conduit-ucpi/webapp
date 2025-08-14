@@ -1,14 +1,14 @@
 name: Build and Deploy Next.js app
 on:
   push:
-    branches: [ "build-test" ]
     tags:
       - 'v*'
+      - 'test*'
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    environment: ${{ startsWith(github.ref, 'refs/tags/') && 'production' || 'test' }}
+    environment: ${{ startsWith(github.ref, 'refs/tags/v') && 'production' || 'test' }}
     permissions:
       contents: read
       packages: write

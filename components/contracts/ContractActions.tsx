@@ -66,6 +66,7 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
       setLoadingMessage('Raising dispute...');
       const regularContract = contract as Contract;
       const disputeRequest: RaiseDisputeRequest = {
+        databaseId: regularContract.id,
         contractAddress: regularContract.contractAddress,
         userWalletAddress: userAddress,
         signedTransaction: signedTx,

@@ -6,6 +6,7 @@ import { Web3Service, ESCROW_CONTRACT_ABI } from '@/lib/web3';
 import { getContractCTA, toUSDCForWeb3 } from '@/utils/validation';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import DisputeModal from './DisputeModal';
 
 interface ContractActionsProps {
   contract: Contract | PendingContract;
@@ -24,8 +25,14 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
   const [hasError, setHasError] = useState(false);
+  const [showDisputeModal, setShowDisputeModal] = useState(false);
 
-  const handleRaiseDispute = async () => {
+  const handleOpenDisputeModal = () => {
+    if (!config || !isBuyer || isPending || (contract as Contract).status !== 'ACTIVE' || !user || isLoading) return;
+    setShowDisputeModal(true);
+  };
+
+  const handleRaiseDispute = async (reason: string, suggestedSplit: number) => {
     if (!config || !isBuyer || isPending || (contract as Contract).status !== 'ACTIVE' || !user || isLoading) return;
 
     setIsLoading(true);
@@ -69,7 +76,9 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
         currency: "microUSDC",
         contractDescription: regularContract.description,
         productName: process.env.PRODUCT_NAME || regularContract.description,
-        serviceLink: config.serviceLink
+        serviceLink: config.serviceLink,
+        reason: reason,
+        suggestedSplit: suggestedSplit
       };
 
       const response = await fetch('/api/chain/raise-dispute', {
@@ -93,6 +102,7 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
       onAction(); // Refresh contracts
       setIsLoading(false);
       setLoadingMessage('');
+      setShowDisputeModal(false);
     } catch (error: any) {
       console.error('Dispute failed:', error);
       setHasError(true);
@@ -100,6 +110,7 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
       // Only re-enable button on error
       setIsLoading(false);
       setLoadingMessage('');
+      setShowDisputeModal(false);
     }
   };
 
@@ -185,22 +196,30 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
   switch (ctaInfo.type) {
     case 'RAISE_DISPUTE':
       return (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleRaiseDispute}
-          disabled={isLoading}
-          className={`w-full border-red-300 text-red-700 hover:bg-red-50 ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
-        >
-          {isLoading ? (
-            <>
-              <LoadingSpinner className="w-4 h-4 mr-2" />
-              {loadingMessage}
-            </>
-          ) : (
-            ctaInfo.label
-          )}
-        </Button>
+        <>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleOpenDisputeModal}
+            disabled={isLoading}
+            className={`w-full border-red-300 text-red-700 hover:bg-red-50 ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+          >
+            {isLoading ? (
+              <>
+                <LoadingSpinner className="w-4 h-4 mr-2" />
+                {loadingMessage}
+              </>
+            ) : (
+              ctaInfo.label
+            )}
+          </Button>
+          <DisputeModal
+            isOpen={showDisputeModal}
+            onClose={() => setShowDisputeModal(false)}
+            onSubmit={handleRaiseDispute}
+            isSubmitting={isLoading}
+          />
+        </>
       );
 
     case 'CLAIM_FUNDS':

@@ -109,6 +109,8 @@ export interface RaiseDisputeRequest {
   contractDescription?: string;
   productName?: string;
   serviceLink?: string;
+  reason?: string;
+  suggestedSplit?: number;
 }
 
 export interface ResolveDisputeRequest {

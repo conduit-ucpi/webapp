@@ -7,7 +7,7 @@ import USDCGuide from '@/components/ui/USDCGuide';
 import { useWeb3AuthInstance } from '@/components/auth/Web3AuthContextProvider';
 import { useWalletAddress } from '@/hooks/useWalletAddress';
 import { useConfig } from '@/components/auth/ConfigProvider';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export default function BuyUSDC() {
   const router = useRouter();
@@ -19,12 +19,12 @@ export default function BuyUSDC() {
 
   const tryShowWalletServices = async () => {
     try {
-      setWidgetStatus('Attempting to show wallet services...');
+      setWidgetStatus('Opening wallet services...');
       console.log('Trying to show wallet services');
       console.log('Web3Auth instance:', web3authInstance);
       
       if (!web3authInstance) {
-        setWidgetStatus('Error: Web3Auth instance not found');
+        setWidgetStatus('Web3Auth instance not found');
         return;
       }
 
@@ -39,7 +39,7 @@ export default function BuyUSDC() {
       if (walletServicesPlugin) {
         // Check if user is connected first
         if (!web3authInstance.connected) {
-          setWidgetStatus('Error: Please connect your wallet first');
+          setWidgetStatus('Please connect your wallet first');
           return;
         }
 
@@ -47,7 +47,7 @@ export default function BuyUSDC() {
         
         // If plugin is not connected yet, wait for it to connect
         if (walletServicesPlugin.status !== 'connected') {
-          setWidgetStatus('Waiting for wallet services plugin to connect...');
+          setWidgetStatus('Waiting for wallet services to connect...');
           
           // Listen for the connected event
           const onPluginConnected = () => {
@@ -63,10 +63,10 @@ export default function BuyUSDC() {
               }
             };
             walletServicesPlugin.showWalletUi(walletUiParams).then(() => {
-              setWidgetStatus('Wallet services UI shown successfully!');
+              setWidgetStatus('Wallet services opened!');
             }).catch((err: any) => {
               console.error('Error showing UI after connect:', err);
-              setWidgetStatus(`Error after connect: ${err.message}`);
+              setWidgetStatus(`Could not open wallet services: ${err.message}`);
             });
             // Remove the event listener
             walletServicesPlugin.off('connected', onPluginConnected);
@@ -84,7 +84,7 @@ export default function BuyUSDC() {
               
               // The plugin should connect automatically when Web3Auth connects
               // If not, there might be a configuration issue
-              setWidgetStatus('Plugin not auto-connecting. This may be a configuration issue. Check Web3Auth dashboard settings.');
+              setWidgetStatus('Wallet services may not be configured. Check the widget in the bottom-right corner.');
               
               // Try showing the UI anyway in case the status is wrong
               const walletUiParams = {
@@ -112,16 +112,28 @@ export default function BuyUSDC() {
             }
           };
           await walletServicesPlugin.showWalletUi(walletUiParams);
-          setWidgetStatus('Wallet services UI shown successfully!');
+          setWidgetStatus('Wallet services opened!');
         }
       } else {
-        setWidgetStatus('Wallet services plugin not found in plugins');
+        setWidgetStatus('Wallet services not available');
       }
     } catch (error: any) {
       console.error('Error showing wallet services:', error);
-      setWidgetStatus(`Error: ${error.message}`);
+      setWidgetStatus(`Could not open wallet services: ${error.message}`);
     }
   };
+
+  // Automatically open wallet services when page loads and user is authenticated
+  useEffect(() => {
+    if (user && web3authProvider && walletAddress && web3authInstance) {
+      // Small delay to ensure everything is fully loaded
+      const timer = setTimeout(() => {
+        tryShowWalletServices();
+      }, 500);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [user, web3authProvider, walletAddress, web3authInstance]);
 
   if (isLoading || isWeb3AuthInstanceLoading || isWalletAddressLoading) {
     return (
@@ -229,23 +241,20 @@ export default function BuyUSDC() {
             </div>
 
             <div className="space-y-4">
-              <Button
-                onClick={tryShowWalletServices}
-                className="w-full bg-blue-500 hover:bg-blue-600"
-                size="lg"
-              >
-                🚀 Launch Wallet Services Widget
-              </Button>
-
               {widgetStatus && (
                 <div className={`p-3 rounded-lg text-sm ${
-                  widgetStatus.includes('Error') 
-                    ? 'bg-red-50 text-red-800 border border-red-200' 
-                    : widgetStatus.includes('success')
+                  widgetStatus.includes('not') || widgetStatus.includes('Could not')
+                    ? 'bg-amber-50 text-amber-800 border border-amber-200' 
+                    : widgetStatus.includes('opened')
                     ? 'bg-green-50 text-green-800 border border-green-200'
-                    : 'bg-yellow-50 text-yellow-800 border border-yellow-200'
+                    : 'bg-blue-50 text-blue-800 border border-blue-200'
                 }`}>
-                  {widgetStatus}
+                  <div className="flex items-center">
+                    {(widgetStatus.includes('Opening') || widgetStatus.includes('Waiting')) && (
+                      <LoadingSpinner className="w-4 h-4 mr-2" />
+                    )}
+                    {widgetStatus}
+                  </div>
                 </div>
               )}
 

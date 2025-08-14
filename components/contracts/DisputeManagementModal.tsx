@@ -120,7 +120,7 @@ export default function DisputeManagementModal({ isOpen, onClose, contract, onRe
                         </span>
                       </div>
                       <span className="text-sm font-medium text-primary-600">
-                        {dispute.refundPercent}% refund to buyer
+                        {dispute.refundPercent !== null ? `${dispute.refundPercent}% refund to buyer` : 'No refund percentage specified'}
                       </span>
                     </div>
                     <p className="text-sm text-gray-700">{dispute.reason}</p>

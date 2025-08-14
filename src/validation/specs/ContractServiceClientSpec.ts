@@ -144,6 +144,33 @@ export class ContractServiceClientSpec {
         },
         requiresAuthentication: true,
         tags: ['contracts']
+      },
+      
+      // Submit dispute entry
+      {
+        path: '/api/contracts/{contractId}/dispute',
+        method: 'PATCH',
+        description: 'Submit a new dispute entry to the audit trail',
+        requestBodySchema: {
+          type: 'object',
+          properties: {
+            timestamp: { type: 'number' },
+            userEmail: { type: 'string' },
+            reason: { type: 'string', maxLength: 160 },
+            refundPercent: { type: 'number', minimum: 0, maximum: 100 }
+          },
+          required: ['timestamp', 'userEmail', 'reason', 'refundPercent']
+        },
+        responseSchema: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            message: { type: 'string' }
+          },
+          required: ['success']
+        },
+        requiresAuthentication: true,
+        tags: ['contracts', 'disputes']
       }
     ];
   }

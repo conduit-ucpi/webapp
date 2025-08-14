@@ -81,7 +81,9 @@ export default function ContractList() {
             funded: item.blockchainFunded || false,
             buyerEmail: contract.buyerEmail,
             sellerEmail: contract.sellerEmail,
+            productName: contract.productName,
             adminNotes: contract.adminNotes || [],
+            disputes: contract.disputes || [],
             blockchainQueryError: item.blockchainError,
             hasDiscrepancy: Object.values(item.discrepancies || {}).some(Boolean),
             discrepancyDetails: Object.entries(item.discrepancies || {})

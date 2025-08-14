@@ -74,3 +74,10 @@ jest.mock('@web3auth/ethereum-provider', () => ({
 jest.mock('@web3auth/wallet-services-plugin', () => ({
   WalletServicesPlugin: jest.fn()
 }))
+
+// Mock ResizeObserver for jsdom environment
+global.ResizeObserver = jest.fn().mockImplementation(() => ({
+  observe: jest.fn(),
+  unobserve: jest.fn(),
+  disconnect: jest.fn(),
+}))

@@ -150,6 +150,15 @@ describe('ContractActions - Context Fields for Dispute', () => {
     const disputeButton = screen.getByText('Raise Dispute');
     fireEvent.click(disputeButton);
 
+
+    // Wait for modal to open and fill in the form
+    const reasonTextarea = await screen.findByLabelText('Dispute Reason');
+    fireEvent.change(reasonTextarea, { target: { value: 'Test dispute reason' } });
+
+    // Find the submit button inside the modal (there are two "Raise Dispute" buttons now)
+    const submitButtons = screen.getAllByText('Raise Dispute');
+    const modalSubmitButton = submitButtons[1]; // The second one is in the modal
+    fireEvent.click(modalSubmitButton);
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledWith(
         '/api/chain/raise-dispute',
@@ -170,7 +179,9 @@ describe('ContractActions - Context Fields for Dispute', () => {
             currency: 'microUSDC',
             contractDescription: 'Digital Marketing Services Package',
             productName: 'Conduit UCPI',
-            serviceLink: 'http://localhost:3000'
+            serviceLink: 'http://localhost:3000',
+            reason: 'Test dispute reason',
+            suggestedSplit: 50
           })
         })
       );
@@ -215,6 +226,15 @@ describe('ContractActions - Context Fields for Dispute', () => {
     const disputeButton = screen.getByText('Raise Dispute');
     fireEvent.click(disputeButton);
 
+
+    // Wait for modal to open and fill in the form
+    const reasonTextarea = await screen.findByLabelText('Dispute Reason');
+    fireEvent.change(reasonTextarea, { target: { value: 'Test dispute reason' } });
+
+    // Find the submit button inside the modal (there are two "Raise Dispute" buttons now)
+    const submitButtons = screen.getAllByText('Raise Dispute');
+    const modalSubmitButton = submitButtons[1]; // The second one is in the modal
+    fireEvent.click(modalSubmitButton);
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledWith(
         '/api/chain/raise-dispute',
@@ -261,6 +281,15 @@ describe('ContractActions - Context Fields for Dispute', () => {
     const disputeButton = screen.getByText('Raise Dispute');
     fireEvent.click(disputeButton);
 
+
+    // Wait for modal to open and fill in the form
+    const reasonTextarea = await screen.findByLabelText('Dispute Reason');
+    fireEvent.change(reasonTextarea, { target: { value: 'Test dispute reason' } });
+
+    // Find the submit button inside the modal (there are two "Raise Dispute" buttons now)
+    const submitButtons = screen.getAllByText('Raise Dispute');
+    const modalSubmitButton = submitButtons[1]; // The second one is in the modal
+    fireEvent.click(modalSubmitButton);
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledWith(
         '/api/chain/raise-dispute',
@@ -307,6 +336,15 @@ describe('ContractActions - Context Fields for Dispute', () => {
     const disputeButton = screen.getByText('Raise Dispute');
     fireEvent.click(disputeButton);
 
+
+    // Wait for modal to open and fill in the form
+    const reasonTextarea = await screen.findByLabelText('Dispute Reason');
+    fireEvent.change(reasonTextarea, { target: { value: 'Test dispute reason' } });
+
+    // Find the submit button inside the modal (there are two "Raise Dispute" buttons now)
+    const submitButtons = screen.getAllByText('Raise Dispute');
+    const modalSubmitButton = submitButtons[1]; // The second one is in the modal
+    fireEvent.click(modalSubmitButton);
     await waitFor(() => {
       const expectedBody = JSON.stringify({
         databaseId: 'contract-db-id-abc',
@@ -320,7 +358,9 @@ describe('ContractActions - Context Fields for Dispute', () => {
         currency: 'microUSDC',
         contractDescription: 'Custom Web Development',
         productName: process.env.PRODUCT_NAME || 'Custom Web Development',
-        serviceLink: 'http://localhost:3000'
+        serviceLink: 'http://localhost:3000',
+        reason: 'Test dispute reason',
+        suggestedSplit: 50
       });
 
       expect(mockFetch).toHaveBeenCalledWith(

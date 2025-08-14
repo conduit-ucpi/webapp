@@ -54,7 +54,7 @@ export interface Contract {
   // Disputes array for audit trail
   disputes?: Array<{
     reason: string;
-    refundPercent: number;
+    refundPercent: number | null;
     userEmail: string;
     timestamp: number;
   }>;

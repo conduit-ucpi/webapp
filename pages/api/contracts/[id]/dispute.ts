@@ -53,7 +53,7 @@ async function handleSubmitDisputeEntry(req: NextApiRequest, res: NextApiRespons
     console.log('Calling Contract Service:', `${process.env.CONTRACT_SERVICE_URL}/api/contracts/${id}/dispute`);
 
     const response = await fetch(`${process.env.CONTRACT_SERVICE_URL}/api/contracts/${id}/dispute`, {
-      method: 'POST',
+      method: 'PATCH',
       headers,
       body: JSON.stringify(disputeEntry)
     });

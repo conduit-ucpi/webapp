@@ -180,9 +180,7 @@ describe('ContractActions - Email Fields for Dispute', () => {
             currency: "microUSDC",
             contractDescription: contract.description,
             productName: 'Conduit UCPI',
-            serviceLink: "http://localhost:3000",
-            reason: "Test dispute reason",
-            suggestedSplit: 50
+            serviceLink: "http://localhost:3000"
           })
         })
       );
@@ -274,9 +272,7 @@ describe('ContractActions - Email Fields for Dispute', () => {
             currency: "microUSDC",
             contractDescription: contractWithoutBuyerEmail.description,
             productName: 'Conduit UCPI',
-            serviceLink: "http://localhost:3000",
-            reason: "Test dispute reason",
-            suggestedSplit: 50
+            serviceLink: "http://localhost:3000"
           })
         })
       );
@@ -367,9 +363,7 @@ describe('ContractActions - Email Fields for Dispute', () => {
             currency: "microUSDC",
             contractDescription: contractWithoutEmails.description,
             productName: 'Conduit UCPI',
-            serviceLink: "http://localhost:3000",
-            reason: "Test dispute reason",
-            suggestedSplit: 50
+            serviceLink: "http://localhost:3000"
           })
         })
       );

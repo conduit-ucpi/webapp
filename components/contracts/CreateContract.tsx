@@ -11,7 +11,7 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner';
 interface CreateContractForm {
   buyerEmail: string;
   amount: string;
-  payoutDateTime: string;
+  payoutTimestamp: number; // Unix timestamp in seconds
   description: string;
 }
 
@@ -27,34 +27,56 @@ export default function CreateContract() {
   const { config } = useConfig();
   const { user } = useAuth();
   // Initialize with tomorrow's date at current time
-  const getDefaultDateTime = () => {
+  const getDefaultTimestamp = (): number => {
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
-    // Format as YYYY-MM-DDTHH:MM for datetime-local input
-    return tomorrow.toISOString().slice(0, 16);
+    // Return Unix timestamp in seconds
+    return Math.floor(tomorrow.getTime() / 1000);
+  };
+
+  const getUserTimezone = () => {
+    // Get the timezone abbreviation (e.g., "EST", "PST", "GMT")
+    const date = new Date();
+    const timeString = date.toLocaleTimeString('en-US', { 
+      timeZoneName: 'short' 
+    });
+    // Extract just the timezone part (last word)
+    const parts = timeString.split(' ');
+    return parts[parts.length - 1];
+  };
+
+  // Convert Unix timestamp to datetime-local input format
+  const timestampToDatetimeLocal = (timestamp: number): string => {
+    const date = new Date(timestamp * 1000);
+    return date.toISOString().slice(0, 16);
+  };
+
+  // Convert datetime-local input to Unix timestamp
+  const datetimeLocalToTimestamp = (datetimeLocal: string): number => {
+    const date = new Date(datetimeLocal);
+    return Math.floor(date.getTime() / 1000);
   };
 
   const [form, setForm] = useState<CreateContractForm>({
     buyerEmail: '',
     amount: '',
-    payoutDateTime: getDefaultDateTime(),
+    payoutTimestamp: getDefaultTimestamp(),
     description: ''
   });
   const [errors, setErrors] = useState<FormErrors>({});
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
 
-  // Calculate relative time from now
-  const getRelativeTime = (dateTime: string): string => {
-    const selected = new Date(dateTime);
-    const now = new Date();
-    const diffMs = selected.getTime() - now.getTime();
+  // Calculate relative time from now using Unix timestamp
+  const getRelativeTime = (timestamp: number): string => {
+    const now = Math.floor(Date.now() / 1000);
+    const diffSeconds = timestamp - now;
     
-    if (diffMs <= 0) return 'in the past';
+    if (diffSeconds <= 0) return 'in the past';
     
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
+    const diffMins = Math.floor(diffSeconds / 60);
+    const diffHours = Math.floor(diffSeconds / 3600);
+    const diffDays = Math.floor(diffSeconds / 86400);
     
     if (diffMins < 60) return `in ${diffMins} minute${diffMins !== 1 ? 's' : ''}`;
     if (diffHours < 24) return `in ${diffHours} hour${diffHours !== 1 ? 's' : ''}`;
@@ -78,17 +100,15 @@ export default function CreateContract() {
       newErrors.amount = 'Invalid amount';
     }
 
-    // Validate payout date/time
-    const payoutDate = new Date(form.payoutDateTime);
-    const now = new Date();
-    const oneYearFromNow = new Date();
-    oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
+    // Validate payout timestamp
+    const now = Math.floor(Date.now() / 1000);
+    const oneYearFromNow = now + (365 * 24 * 60 * 60); // 1 year in seconds
     
-    if (isNaN(payoutDate.getTime())) {
+    if (!form.payoutTimestamp || form.payoutTimestamp <= 0) {
       newErrors.expiry = 'Please select a valid date and time';
-    } else if (payoutDate <= now) {
+    } else if (form.payoutTimestamp <= now) {
       newErrors.expiry = 'Payout time must be in the future';
-    } else if (payoutDate > oneYearFromNow) {
+    } else if (form.payoutTimestamp > oneYearFromNow) {
       newErrors.expiry = 'Payout time must be within 1 year';
     }
 
@@ -129,8 +149,6 @@ export default function CreateContract() {
 
       // Create pending contract via Contract Service (no USDC balance check needed)
       setLoadingMessage('Creating pending contract...');
-      const payoutDate = new Date(form.payoutDateTime);
-      const expiryTimestamp = Math.floor(payoutDate.getTime() / 1000);
       
       const pendingContractRequest = {
         buyerEmail: form.buyerEmail,
@@ -139,7 +157,7 @@ export default function CreateContract() {
         amount: toMicroUSDC(form.amount.trim()), // Convert to microUSDC format
         currency: 'microUSDC',
         description: form.description,
-        expiryTimestamp,
+        expiryTimestamp: form.payoutTimestamp, // Already a Unix timestamp in seconds
         serviceLink: config.serviceLink
       };
 
@@ -198,12 +216,18 @@ export default function CreateContract() {
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Payout Date & Time
+            <span className="ml-2 text-xs font-normal text-gray-500">
+              (Your timezone: {getUserTimezone()})
+            </span>
           </label>
           <input
             type="datetime-local"
             className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-            value={form.payoutDateTime}
-            onChange={(e) => setForm(prev => ({ ...prev, payoutDateTime: e.target.value }))}
+            value={timestampToDatetimeLocal(form.payoutTimestamp)}
+            onChange={(e) => setForm(prev => ({ 
+              ...prev, 
+              payoutTimestamp: datetimeLocalToTimestamp(e.target.value) 
+            }))}
             min={new Date().toISOString().slice(0, 16)}
             max={new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16)}
             disabled={isLoading}
@@ -211,11 +235,11 @@ export default function CreateContract() {
           {errors.expiry && <p className="text-sm text-red-600 mt-1">{errors.expiry}</p>}
           <div className="flex justify-between items-center mt-1">
             <p className="text-xs text-gray-500">
-              Select when the funds should be released to you
+              Funds will be released at this time in {getUserTimezone()}
             </p>
-            {form.payoutDateTime && !errors.expiry && (
+            {form.payoutTimestamp && !errors.expiry && (
               <p className="text-xs font-medium text-primary-600">
-                {getRelativeTime(form.payoutDateTime)}
+                {getRelativeTime(form.payoutTimestamp)}
               </p>
             )}
           </div>

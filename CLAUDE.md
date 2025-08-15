@@ -185,6 +185,7 @@ No test framework configured yet. When adding tests:
 - **ALL datetime communication between services MUST use Unix timestamp format (seconds since epoch)**
 - **Examples**: `expiryTimestamp: 1735689600`, `createdAt: 1705318200`
 - **No exceptions**: ISO strings, formatted dates, or milliseconds
+- **ALL datetimes displayed to users must be in ISO strings with timezone included**
 
 ### Currency Format  
 - **ALL currency amounts between services MUST be in microUSDC**

@@ -266,27 +266,69 @@ export function formatDate(timestamp: number | string, style: 'short' | 'medium'
 }
 
 /**
- * Formats timestamp for table/list display with date and time on separate lines
+ * MAIN DATETIME DISPLAY FUNCTION
+ * Formats any Unix timestamp (seconds or milliseconds) to ISO string with timezone
+ * This is THE function to use for displaying dates/times to users
  * @param timestamp - Unix timestamp in seconds or milliseconds
- * @returns Object with formatted date and time strings
+ * @returns ISO 8601 formatted string with timezone (e.g., "2024-01-15T14:30:00-05:00")
+ */
+export function formatDateTimeWithTZ(timestamp: number | string): string {
+  try {
+    const date = new Date(normalizeTimestamp(timestamp));
+    
+    if (isNaN(date.getTime())) {
+      return 'Invalid date';
+    }
+    
+    // Get timezone offset in minutes and convert to ±HH:MM format
+    const offset = -date.getTimezoneOffset();
+    const sign = offset >= 0 ? '+' : '-';
+    const hours = Math.floor(Math.abs(offset) / 60).toString().padStart(2, '0');
+    const minutes = (Math.abs(offset) % 60).toString().padStart(2, '0');
+    const tzOffset = `${sign}${hours}:${minutes}`;
+    
+    // Format as ISO string with local timezone
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+    const hour = date.getHours().toString().padStart(2, '0');
+    const minute = date.getMinutes().toString().padStart(2, '0');
+    const second = date.getSeconds().toString().padStart(2, '0');
+    
+    return `${year}-${month}-${day}T${hour}:${minute}:${second}${tzOffset}`;
+  } catch (error) {
+    return 'Invalid date';
+  }
+}
+
+/**
+ * Formats timestamp for table/list display with date and time on separate lines
+ * Uses the main formatDateTimeWithTZ function and splits the result
+ * @param timestamp - Unix timestamp in seconds or milliseconds
+ * @returns Object with formatted date and time strings with timezone
  */
 export function formatTimestamp(timestamp: number | string): { date: string; time: string } {
-  const date = new Date(normalizeTimestamp(timestamp));
+  const isoString = formatDateTimeWithTZ(timestamp);
   
-  if (isNaN(date.getTime())) {
+  if (isoString === 'Invalid date') {
     return { date: 'Invalid date', time: '' };
   }
+  
+  const date = new Date(normalizeTimestamp(timestamp));
   
   return {
     date: date.toLocaleDateString('en-US', { 
       month: 'short', 
       day: 'numeric', 
-      year: 'numeric' 
+      year: 'numeric',
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
     }),
     time: date.toLocaleTimeString('en-US', { 
       hour: '2-digit', 
       minute: '2-digit',
-      hour12: false
+      hour12: false,
+      timeZoneName: 'short',
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
     })
   };
 }

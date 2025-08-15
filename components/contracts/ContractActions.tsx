@@ -3,7 +3,7 @@ import { Contract, PendingContract, RaiseDisputeRequest } from '@/types';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { Web3Service, ESCROW_CONTRACT_ABI } from '@/lib/web3';
-import { getContractCTA, toMicroUSDC, formatCurrency } from '@/utils/validation';
+import { getContractCTA, toMicroUSDC, formatCurrency, formatDateTimeWithTZ } from '@/utils/validation';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import DisputeModal from './DisputeModal';

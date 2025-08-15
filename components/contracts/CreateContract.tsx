@@ -45,10 +45,16 @@ export default function CreateContract() {
     return parts[parts.length - 1];
   };
 
-  // Convert Unix timestamp to datetime-local input format
+  // Convert Unix timestamp to datetime-local input format (LOCAL time, not UTC!)
   const timestampToDatetimeLocal = (timestamp: number): string => {
     const date = new Date(timestamp * 1000);
-    return date.toISOString().slice(0, 16);
+    // Build local time string, NOT UTC
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
   };
 
   // Convert datetime-local input to Unix timestamp

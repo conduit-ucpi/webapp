@@ -57,6 +57,30 @@ export default function CreateContract() {
     return Math.floor(date.getTime() / 1000);
   };
 
+  // Get current local time in datetime-local format
+  const getCurrentLocalDatetime = (): string => {
+    const now = new Date();
+    // Get local time components
+    const year = now.getFullYear();
+    const month = (now.getMonth() + 1).toString().padStart(2, '0');
+    const day = now.getDate().toString().padStart(2, '0');
+    const hours = now.getHours().toString().padStart(2, '0');
+    const minutes = now.getMinutes().toString().padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+
+  // Get max date (1 year from now) in datetime-local format
+  const getMaxLocalDatetime = (): string => {
+    const oneYearFromNow = new Date();
+    oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
+    const year = oneYearFromNow.getFullYear();
+    const month = (oneYearFromNow.getMonth() + 1).toString().padStart(2, '0');
+    const day = oneYearFromNow.getDate().toString().padStart(2, '0');
+    const hours = oneYearFromNow.getHours().toString().padStart(2, '0');
+    const minutes = oneYearFromNow.getMinutes().toString().padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+
   const [form, setForm] = useState<CreateContractForm>({
     buyerEmail: '',
     amount: '',
@@ -228,8 +252,8 @@ export default function CreateContract() {
               ...prev, 
               payoutTimestamp: datetimeLocalToTimestamp(e.target.value) 
             }))}
-            min={new Date().toISOString().slice(0, 16)}
-            max={new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16)}
+            min={getCurrentLocalDatetime()}
+            max={getMaxLocalDatetime()}
             disabled={isLoading}
           />
           {errors.expiry && <p className="text-sm text-red-600 mt-1">{errors.expiry}</p>}

@@ -15,6 +15,7 @@ import { useConfig } from '../../../components/auth/ConfigProvider';
 import { useAuth } from '../../../components/auth/AuthProvider';
 import { useWeb3AuthInstance } from '../../../components/auth/Web3AuthContextProvider';
 import { Contract } from '../../../types';
+import { formatDateTimeWithTZ } from '../../../utils/validation';
 
 const mockUseRouter = useRouter as jest.MockedFunction<typeof useRouter>;
 const mockUseConfig = useConfig as jest.MockedFunction<typeof useConfig>;
@@ -174,7 +175,7 @@ describe('ContractActions - Context Fields for Dispute', () => {
             signedTransaction: 'mock-dispute-tx',
             buyerEmail: 'buyer@test.com',
             sellerEmail: 'seller@test.com',
-            payoutDateTime: new Date(contract.expiryTimestamp * 1000).toISOString(),
+            payoutDateTime: formatDateTimeWithTZ(contract.expiryTimestamp),
             amount: '2500000', // In microUSDC format as expected by backend
             currency: 'microUSDC',
             contractDescription: 'Digital Marketing Services Package',
@@ -353,7 +354,7 @@ describe('ContractActions - Context Fields for Dispute', () => {
         signedTransaction: 'mock-dispute-tx',
         buyerEmail: 'buyer@test.com',
         sellerEmail: 'seller@test.com',
-        payoutDateTime: new Date(contract.expiryTimestamp * 1000).toISOString(),
+        payoutDateTime: formatDateTimeWithTZ(contract.expiryTimestamp),
         amount: '750000',
         currency: 'microUSDC',
         contractDescription: 'Custom Web Development',

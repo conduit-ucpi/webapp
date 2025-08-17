@@ -15,6 +15,7 @@ import { useConfig } from '../../../components/auth/ConfigProvider';
 import { useAuth } from '../../../components/auth/AuthProvider';
 import { useWeb3AuthInstance } from '../../../components/auth/Web3AuthContextProvider';
 import { Contract } from '../../../types';
+import { formatDateTimeWithTZ } from '../../../utils/validation';
 
 const mockUseRouter = useRouter as jest.MockedFunction<typeof useRouter>;
 const mockUseConfig = useConfig as jest.MockedFunction<typeof useConfig>;
@@ -175,7 +176,7 @@ describe('ContractActions - Email Fields for Dispute', () => {
             signedTransaction: 'mock-dispute-tx',
             buyerEmail: 'buyer@test.com',
             sellerEmail: 'seller@test.com',
-            payoutDateTime: new Date(contract.expiryTimestamp * 1000).toISOString(),
+            payoutDateTime: formatDateTimeWithTZ(contract.expiryTimestamp),
             amount: contract.amount.toString(),
             currency: "microUSDC",
             contractDescription: contract.description,
@@ -269,7 +270,7 @@ describe('ContractActions - Email Fields for Dispute', () => {
             signedTransaction: 'mock-dispute-tx',
             buyerEmail: 'currentuser@test.com', // Falls back to user email
             sellerEmail: 'seller@test.com',
-            payoutDateTime: new Date(contractWithoutBuyerEmail.expiryTimestamp * 1000).toISOString(),
+            payoutDateTime: formatDateTimeWithTZ(contractWithoutBuyerEmail.expiryTimestamp),
             amount: contractWithoutBuyerEmail.amount.toString(),
             currency: "microUSDC",
             contractDescription: contractWithoutBuyerEmail.description,
@@ -362,7 +363,7 @@ describe('ContractActions - Email Fields for Dispute', () => {
             signedTransaction: 'mock-dispute-tx',
             buyerEmail: undefined,
             sellerEmail: undefined,
-            payoutDateTime: new Date(contractWithoutEmails.expiryTimestamp * 1000).toISOString(),
+            payoutDateTime: formatDateTimeWithTZ(contractWithoutEmails.expiryTimestamp),
             amount: contractWithoutEmails.amount.toString(),
             currency: "microUSDC",
             contractDescription: contractWithoutEmails.description,

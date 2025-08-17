@@ -4,7 +4,7 @@ import { useConfig } from '@/components/auth/ConfigProvider';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { PendingContract, CreateContractRequest } from '@/types';
 import { Web3Service, ERC20_ABI, ESCROW_CONTRACT_ABI } from '@/lib/web3';
-import { formatCurrency, toMicroUSDC, fromMicroUSDC, formatExpiryDate, toUSDCForWeb3 } from '@/utils/validation';
+import { formatCurrency, toMicroUSDC, fromMicroUSDC, formatDateTimeWithTZ, toUSDCForWeb3 } from '@/utils/validation';
 import { ethers } from 'ethers';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
@@ -194,7 +194,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
           contractDescription: contract.description,
           amount: amountInMicroUSDC.toString(),
           currency: "USDC",
-          payoutDateTime: new Date(contract.expiryTimestamp * 1000).toISOString(),
+          payoutDateTime: formatDateTimeWithTZ(contract.expiryTimestamp),
           contractLink: config.serviceLink
         })
       });
@@ -316,7 +316,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
 
       <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4 mb-6">
         <p className="text-sm text-yellow-800">
-          When you make this payment, the ${formatCurrency(contract.amount, contract.currency).amount} USDC will be held securely in escrow until {formatExpiryDate(contract.expiryTimestamp)}.
+          When you make this payment, the ${formatCurrency(contract.amount, contract.currency).amount} USDC will be held securely in escrow until {formatDateTimeWithTZ(contract.expiryTimestamp)}.
         </p>
       </div>
 

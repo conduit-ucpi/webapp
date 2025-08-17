@@ -4,7 +4,7 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 import ExpandableHash from '@/components/ui/ExpandableHash';
-import { displayCurrency, formatExpiryDate, formatDate, normalizeTimestamp } from '@/utils/validation';
+import { displayCurrency, formatDateTimeWithTZ, normalizeTimestamp } from '@/utils/validation';
 
 // Extended type for admin contracts that includes chain data and blockchain status
 type AdminContract = PendingContract & {
@@ -353,7 +353,7 @@ export default function AdminContractList({ onContractSelect }: AdminContractLis
                   onClick={() => onContractSelect?.(contract)}
                 >
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {formatDate(contract.createdAt)}
+                    {formatDateTimeWithTZ(contract.createdAt)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                     {displayCurrency(contract.amount, contract.currency)}
@@ -379,7 +379,7 @@ export default function AdminContractList({ onContractSelect }: AdminContractLis
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {formatExpiryDate(contract.expiryTimestamp)}
+                    {formatDateTimeWithTZ(contract.expiryTimestamp)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(status)}`}>

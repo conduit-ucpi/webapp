@@ -15,6 +15,7 @@ import { useConfig } from '../../../components/auth/ConfigProvider';
 import { useAuth } from '../../../components/auth/AuthProvider';
 import { useWeb3AuthInstance } from '../../../components/auth/Web3AuthContextProvider';
 import { Contract } from '../../../types';
+import { formatDateTimeWithTZ } from '../../../utils/validation';
 
 const mockUseRouter = useRouter as jest.MockedFunction<typeof useRouter>;
 const mockUseConfig = useConfig as jest.MockedFunction<typeof useConfig>;
@@ -109,7 +110,7 @@ describe('ContractActions - PayoutDateTime', () => {
 
     // Use a specific timestamp for predictable testing
     const expiryTimestamp = 1692123456; // Unix timestamp
-    const expectedISOString = new Date(expiryTimestamp * 1000).toISOString();
+    const expectedDateTimeString = formatDateTimeWithTZ(expiryTimestamp);
 
     const contract: Contract = {
       id: 'contract-db-id-123',
@@ -170,7 +171,7 @@ describe('ContractActions - PayoutDateTime', () => {
             signedTransaction: 'mock-dispute-tx',
             buyerEmail: 'buyer@test.com',
             sellerEmail: 'seller@test.com',
-            payoutDateTime: expectedISOString,
+            payoutDateTime: expectedDateTimeString,
             amount: contract.amount.toString(),
             currency: "microUSDC",
             contractDescription: contract.description,
@@ -187,11 +188,11 @@ describe('ContractActions - PayoutDateTime', () => {
     const callArgs = mockFetch.mock.calls[0];
     const requestBody = JSON.parse(callArgs[1].body);
 
-    // Should be a valid ISO8601 date string
-    expect(requestBody.payoutDateTime).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+    // Should be a valid datetime string with timezone
+    expect(requestBody.payoutDateTime).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$/);
 
-    // Should be exactly the expected ISO string
-    expect(requestBody.payoutDateTime).toBe(expectedISOString);
+    // Should be exactly the expected datetime string with timezone
+    expect(requestBody.payoutDateTime).toBe(expectedDateTimeString);
 
     // Should be a valid date when parsed back
     const parsedDate = new Date(requestBody.payoutDateTime);
@@ -221,7 +222,7 @@ describe('ContractActions - PayoutDateTime', () => {
 
     // Test with a different timestamp - December 31, 2023 at midnight UTC
     const expiryTimestamp = 1704067200; // December 31, 2023 00:00:00 UTC
-    const expectedISOString = '2024-01-01T00:00:00.000Z';
+    const expectedDateTimeString = formatDateTimeWithTZ(expiryTimestamp);
 
     const contract: Contract = {
       id: 'contract-db-id-456',
@@ -271,7 +272,7 @@ describe('ContractActions - PayoutDateTime', () => {
       const callArgs = mockFetch.mock.calls[0];
       const requestBody = JSON.parse(callArgs[1].body);
 
-      expect(requestBody.payoutDateTime).toBe(expectedISOString);
+      expect(requestBody.payoutDateTime).toBe(expectedDateTimeString);
     });
   });
 });

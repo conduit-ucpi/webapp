@@ -55,6 +55,19 @@ jest.mock('@/utils/validation', () => ({
       usdc = numAmount;
     }
     return `$${usdc.toFixed(2)} USDC`;
+  },
+  formatDateTimeWithTZ: (timestamp: number | string) => {
+    const ts = typeof timestamp === 'string' ? parseInt(timestamp, 10) : timestamp;
+    const msTimestamp = ts.toString().length <= 10 ? ts * 1000 : ts;
+    const date = new Date(msTimestamp);
+    // Return timezone-aware format similar to the real function
+    const offset = -date.getTimezoneOffset();
+    const sign = offset >= 0 ? '+' : '-';
+    const absOffset = Math.abs(offset);
+    const hours = Math.floor(absOffset / 60).toString().padStart(2, '0');
+    const minutes = (absOffset % 60).toString().padStart(2, '0');
+    const isoString = date.toISOString().slice(0, 19);
+    return `${isoString}${sign}${hours}:${minutes}`;
   }
 }));
 

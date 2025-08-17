@@ -5,6 +5,7 @@ import { useWalletAddress } from '@/hooks/useWalletAddress';
 import { displayCurrency, formatTimestamp } from '@/utils/validation';
 import ContractActions from './ContractActions';
 import ExpandableHash from '@/components/ui/ExpandableHash';
+import StatusBadge from '@/components/ui/StatusBadge';
 
 interface ContractCardProps {
   contract: Contract | PendingContract;
@@ -32,58 +33,6 @@ export default function ContractCard({ contract, onAction, onAccept, isClaimingI
     ? (contract as PendingContract).sellerEmail === user?.email  
     : walletAddress?.toLowerCase() === (contract as Contract).sellerAddress?.toLowerCase();
   
-  // Get status for display - handle both contract types
-  const getDisplayStatus = () => {
-    if (isPending) {
-      const pendingContract = contract as PendingContract;
-      if (pendingContract.chainAddress) {
-        return 'Holding funds';
-      }
-      const isExpired = Date.now() / 1000 > pendingContract.expiryTimestamp;
-      return isExpired ? 'EXPIRED' : 'PENDING';
-    } else {
-      const regularContract = contract as Contract;
-      switch (regularContract.status) {
-        case 'CREATED':
-          return 'Awaiting money';
-        case 'ACTIVE':
-          return 'Holding funds';
-        default:
-          return regularContract.status || 'Unknown';
-      }
-    }
-  };
-  
-  const getStatusColor = () => {
-    if (isPending) {
-      const pendingContract = contract as PendingContract;
-      if (pendingContract.chainAddress) {
-        return 'bg-green-100 text-green-800'; // Same as ACTIVE
-      }
-      const isExpired = Date.now() / 1000 > pendingContract.expiryTimestamp;
-      return isExpired ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800';
-    } else {
-      const status = (contract as Contract).status;
-      switch (status) {
-        case 'PENDING':
-          return 'bg-gray-100 text-gray-800';
-        case 'CREATED':
-          return 'bg-gray-100 text-gray-800';
-        case 'ACTIVE':
-          return 'bg-green-100 text-green-800';
-        case 'EXPIRED':
-          return 'bg-yellow-100 text-yellow-800';
-        case 'DISPUTED':
-          return 'bg-red-100 text-red-800';
-        case 'RESOLVED':
-          return 'bg-purple-100 text-purple-800';
-        case 'CLAIMED':
-          return 'bg-gray-100 text-gray-800';
-        default:
-          return 'bg-gray-100 text-gray-800';
-      }
-    }
-  };
 
   // Get contract address for display
   const contractAddress = isPending 
@@ -118,16 +67,23 @@ export default function ContractCard({ contract, onAction, onAccept, isClaimingI
             )}
           </h3>
           <div className="flex items-center space-x-2">
-            <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor()}`}>
-              {getDisplayStatus()?.toUpperCase() || 'UNKNOWN'}
-            </span>
+            <StatusBadge 
+              status={isPending 
+                ? ((contract as PendingContract).chainAddress ? 'ACTIVE' : 'PENDING')
+                : (contract as Contract).status || 'UNKNOWN'
+              }
+              isBuyer={isBuyer}
+              isSeller={isSeller}
+              showDescription={false}
+              size="sm"
+            />
             {!isPending && (contract as Contract).blockchainQueryError && (
-              <span className="inline-flex px-2 py-1 text-xs font-medium rounded bg-red-100 text-red-800" title={(contract as Contract).blockchainQueryError}>
+              <span className="inline-flex px-2 py-1 text-xs font-medium rounded bg-error-50 text-error-600 border border-error-200" title={(contract as Contract).blockchainQueryError}>
                 Blockchain Error
               </span>
             )}
             {!isPending && (contract as Contract).hasDiscrepancy && (
-              <span className="inline-flex px-2 py-1 text-xs font-medium rounded bg-yellow-100 text-yellow-800" title={(contract as Contract).discrepancyDetails?.join(', ')}>
+              <span className="inline-flex px-2 py-1 text-xs font-medium rounded bg-warning-50 text-warning-600 border border-warning-200" title={(contract as Contract).discrepancyDetails?.join(', ')}>
                 Data Mismatch
               </span>
             )}

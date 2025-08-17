@@ -36,6 +36,97 @@ export function formatWalletAddress(address: string): string {
 }
 
 // ===================================
+// STATUS UTILITIES
+// ===================================
+
+export interface StatusDisplay {
+  label: string;
+  description: string;
+  color: string;
+  icon: string;
+}
+
+/**
+ * Convert technical status codes to human-friendly display information
+ */
+export function getStatusDisplay(status: string, isBuyer: boolean = false, isSeller: boolean = false): StatusDisplay {
+  switch (status.toUpperCase()) {
+    case 'PENDING':
+      return {
+        label: 'Awaiting Payment',
+        description: 'Waiting for buyer to fund the escrow',
+        color: 'bg-warning-50 text-warning-600 border-warning-200',
+        icon: 'clock'
+      };
+    
+    case 'CREATED':
+      return {
+        label: 'Awaiting Payment',
+        description: 'Contract created, waiting for buyer to deposit funds',
+        color: 'bg-warning-50 text-warning-600 border-warning-200',
+        icon: 'clock'
+      };
+    
+    case 'ACTIVE':
+      return {
+        label: 'Holding Funds',
+        description: 'Funds secured in escrow, awaiting delivery',
+        color: 'bg-success-50 text-success-600 border-success-200',
+        icon: 'shield-check'
+      };
+    
+    case 'EXPIRED':
+      if (isSeller) {
+        return {
+          label: 'Ready to Claim',
+          description: 'Time has expired, you can now claim the payment',
+          color: 'bg-primary-50 text-primary-600 border-primary-200',
+          icon: 'arrow-down-tray'
+        };
+      }
+      return {
+        label: 'Expired',
+        description: 'Delivery period has ended',
+        color: 'bg-warning-50 text-warning-600 border-warning-200',
+        icon: 'exclamation-triangle'
+      };
+    
+    case 'DISPUTED':
+      return {
+        label: 'Under Review',
+        description: 'Dispute raised, awaiting resolution',
+        color: 'bg-error-50 text-error-600 border-error-200',
+        icon: 'exclamation-circle'
+      };
+    
+    case 'RESOLVED':
+      return {
+        label: 'Dispute Resolved',
+        description: 'Admin has resolved the dispute',
+        color: 'bg-secondary-50 text-secondary-600 border-secondary-200',
+        icon: 'check-circle'
+      };
+    
+    case 'CLAIMED':
+    case 'COMPLETED':
+      return {
+        label: 'Completed',
+        description: 'Payment has been released',
+        color: 'bg-success-50 text-success-600 border-success-200',
+        icon: 'check-circle'
+      };
+    
+    default:
+      return {
+        label: status,
+        description: 'Status information unavailable',
+        color: 'bg-secondary-50 text-secondary-600 border-secondary-200',
+        icon: 'question-mark-circle'
+      };
+  }
+}
+
+// ===================================
 // CURRENCY UTILITIES
 // ===================================
 // Centralized currency handling functions to ensure consistency across the app

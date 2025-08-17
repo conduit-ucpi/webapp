@@ -171,7 +171,7 @@ describe('ContractAcceptance - Email Fields', () => {
       sellerEmail: 'seller@test.com',
       amount: '1000000',
       currency: currency,
-      payoutDateTime: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/),
+      payoutDateTime: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$/),
       contractDescription: expect.any(String),
       contractLink: 'http://localhost:3000'
     });
@@ -251,7 +251,7 @@ describe('ContractAcceptance - Email Fields', () => {
       sellerEmail: 'seller@test.com',
       amount: '1000000',
       currency: currency,
-      payoutDateTime: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/),
+      payoutDateTime: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$/),
       contractDescription: expect.any(String),
       contractLink: 'http://localhost:3000'
     });

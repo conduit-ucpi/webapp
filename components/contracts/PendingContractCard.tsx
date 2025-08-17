@@ -1,5 +1,5 @@
 import { PendingContract } from '@/types';
-import { displayCurrency, formatExpiryDate } from '@/utils/validation';
+import { displayCurrency, formatDateTimeWithTZ } from '@/utils/validation';
 import Button from '@/components/ui/Button';
 import ExpandableHash from '@/components/ui/ExpandableHash';
 
@@ -87,7 +87,7 @@ export default function PendingContractCard({
         <div className="flex justify-between text-sm">
           <span className="text-gray-600">Payout at:</span>
           <span className="font-semibold">
-            {formatExpiryDate(contract.expiryTimestamp)}
+            {formatDateTimeWithTZ(contract.expiryTimestamp)}
           </span>
         </div>
       </div>

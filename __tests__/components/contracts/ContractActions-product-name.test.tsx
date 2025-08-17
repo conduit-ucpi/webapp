@@ -15,6 +15,7 @@ import { useConfig } from '../../../components/auth/ConfigProvider';
 import { useAuth } from '../../../components/auth/AuthProvider';
 import { useWeb3AuthInstance } from '../../../components/auth/Web3AuthContextProvider';
 import { Contract } from '../../../types';
+import { formatDateTimeWithTZ } from '../../../utils/validation';
 
 const mockUseRouter = useRouter as jest.MockedFunction<typeof useRouter>;
 const mockUseConfig = useConfig as jest.MockedFunction<typeof useConfig>;
@@ -173,7 +174,7 @@ describe('ContractActions - PRODUCT_NAME Environment Variable', () => {
             signedTransaction: 'mock-dispute-tx',
             buyerEmail: 'buyer@test.com',
             sellerEmail: 'seller@test.com',
-            payoutDateTime: new Date(contract.expiryTimestamp * 1000).toISOString(),
+            payoutDateTime: formatDateTimeWithTZ(contract.expiryTimestamp),
             amount: contract.amount.toString(),
             currency: "microUSDC",
             contractDescription: contract.description,
@@ -242,7 +243,7 @@ describe('ContractActions - PRODUCT_NAME Environment Variable', () => {
             signedTransaction: 'mock-dispute-tx',
             buyerEmail: 'buyer@test.com',
             sellerEmail: 'seller@test.com',
-            payoutDateTime: new Date(contract.expiryTimestamp * 1000).toISOString(),
+            payoutDateTime: formatDateTimeWithTZ(contract.expiryTimestamp),
             amount: contract.amount.toString(),
             currency: "microUSDC",
             contractDescription: contract.description,
@@ -311,7 +312,7 @@ describe('ContractActions - PRODUCT_NAME Environment Variable', () => {
             signedTransaction: 'mock-dispute-tx',
             buyerEmail: 'buyer@test.com',
             sellerEmail: 'seller@test.com',
-            payoutDateTime: new Date(contract.expiryTimestamp * 1000).toISOString(),
+            payoutDateTime: formatDateTimeWithTZ(contract.expiryTimestamp),
             amount: contract.amount.toString(),
             currency: "microUSDC",
             contractDescription: contract.description,

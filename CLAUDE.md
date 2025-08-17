@@ -183,15 +183,20 @@ No test framework configured yet. When adding tests:
 
 ### DateTime Format
 - **ALL datetime communication between services MUST use Unix timestamp format (seconds since epoch)**
+- **ALL datetime internal representations MUST be use Unix timestamp**
 - **Examples**: `expiryTimestamp: 1735689600`, `createdAt: 1705318200`
 - **No exceptions**: ISO strings, formatted dates, or milliseconds
-- **ALL datetimes displayed to users must be in ISO strings with timezone included**
+- **ALL datetimes displayed to users MUST use the `formatDateTimeWithTZ()` function**
+- **FORBIDDEN**: Never use `.toISOString()`, `.toLocaleDateString()`, `.toLocaleString()`, `formatDate()`, `formatDateTime()`, or any other datetime formatting methods for user displays
+- **The `formatDateTimeWithTZ()` function outputs ISO strings with timezone (e.g., "2024-01-15T14:30:00-05:00")**
 
 ### Currency Format  
 - **ALL currency amounts between services MUST be in microUSDC**
+- **ALL internal representations of currency MUST be in microUSDC**
 - **microUSDC = USDC × 1,000,000** (6 decimal places)
 - **Examples**: $1.50 USDC = 1500000 microUSDC
 - **Storage**: Use appropriate numeric types (Long for large amounts, Double for calculations)
+- **ALL currency display must be with 4 decimal places and MUST display units**
 
 ### API Design Philosophy
 - **NEVER make fields nullable for backward compatibility**

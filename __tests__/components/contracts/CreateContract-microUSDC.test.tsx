@@ -128,16 +128,17 @@ describe('CreateContract - microUSDC Amount Handling', () => {
       tomorrow.setDate(tomorrow.getDate() + 1);
       const dateTimeValue = tomorrow.toISOString().slice(0, 16);
 
-      fireEvent.change(screen.getByDisplayValue(new RegExp(dateTimeValue.slice(0, 10))), {
+      const dateInput = screen.getByDisplayValue(/2025-08-19T/);
+      fireEvent.change(dateInput, {
         target: { value: dateTimeValue },
       });
 
       // Submit the form
-      const form = screen.getByRole('button', { name: /request from buyer/i }).closest('form');
+      const form = screen.getByRole('button', { name: /request payment from buyer/i }).closest('form');
       if (form) {
         fireEvent.submit(form);
       } else {
-        fireEvent.click(screen.getByRole('button', { name: /request from buyer/i }));
+        fireEvent.click(screen.getByRole('button', { name: /request payment from buyer/i }));
       }
 
       // Wait for the API call
@@ -300,15 +301,16 @@ describe('CreateContract - microUSDC Amount Handling', () => {
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
       const dateTimeValue = tomorrow.toISOString().slice(0, 16);
-      fireEvent.change(screen.getByDisplayValue(new RegExp(dateTimeValue.slice(0, 10))), {
+      const dateInput = screen.getByDisplayValue(/2025-08-19T/);
+      fireEvent.change(dateInput, {
         target: { value: dateTimeValue },
       });
 
-      const form = screen.getByRole('button', { name: /request from buyer/i }).closest('form');
+      const form = screen.getByRole('button', { name: /request payment from buyer/i }).closest('form');
       if (form) {
         fireEvent.submit(form);
       } else {
-        fireEvent.click(screen.getByRole('button', { name: /request from buyer/i }));
+        fireEvent.click(screen.getByRole('button', { name: /request payment from buyer/i }));
       }
 
       // The component should handle the error without crashing

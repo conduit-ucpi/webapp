@@ -143,7 +143,7 @@ export default function ContractCard({ contract, onAction, onAccept, isClaimingI
 
       <div className="space-y-2 mb-4">
         <div className="flex justify-between text-sm">
-          <span className="text-gray-600">Payer:</span>
+          <span className="text-gray-600">Buyer:</span>
           <div className={`${isBuyer ? 'font-semibold text-primary-600' : ''}`}>
             {isPending ? (
               <span>{(contract as PendingContract).buyerEmail || '-'}</span>
@@ -156,7 +156,7 @@ export default function ContractCard({ contract, onAction, onAccept, isClaimingI
           </div>
         </div>
         <div className="flex justify-between text-sm">
-          <span className="text-gray-600">Receiver:</span>
+          <span className="text-gray-600">Seller:</span>
           <div className={`${isSeller ? 'font-semibold text-primary-600' : ''}`}>
             {isPending ? (
               <span>{(contract as PendingContract).sellerEmail}</span>

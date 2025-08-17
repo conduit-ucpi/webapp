@@ -219,11 +219,11 @@ export default function CreateContract() {
     <div className="max-w-md mx-auto bg-white rounded-lg shadow-md p-6">
       <form onSubmit={handleSubmit} className="space-y-4">
         <Input
-          label="Request payment from (email):"
+          label="Request payment from buyer (email):"
           type="email"
           value={form.buyerEmail}
           onChange={(e) => setForm(prev => ({ ...prev, buyerEmail: e.target.value }))}
-          placeholder="payer@example.com"
+          placeholder="buyer@example.com"
           error={errors.buyerEmail}
           disabled={isLoading}
         />
@@ -302,7 +302,7 @@ export default function CreateContract() {
               {loadingMessage}
             </>
           ) : (
-            'Request from Buyer'
+            'Request Payment from Buyer'
           )}
         </Button>
       </form>

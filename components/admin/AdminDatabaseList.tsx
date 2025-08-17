@@ -321,16 +321,16 @@ export default function AdminDatabaseList({ onContractSelect }: AdminDatabaseLis
                 className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                 onClick={() => handleSort('sellerEmail')}
               >
-                Receiver {sortField === 'sellerEmail' && (sortDirection === 'asc' ? '↑' : '↓')}
+                Seller {sortField === 'sellerEmail' && (sortDirection === 'asc' ? '↑' : '↓')}
               </th>
               <th 
                 className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                 onClick={() => handleSort('buyerEmail')}
               >
-                Payer {sortField === 'buyerEmail' && (sortDirection === 'asc' ? '↑' : '↓')}
+                Buyer {sortField === 'buyerEmail' && (sortDirection === 'asc' ? '↑' : '↓')}
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Receiver Address
+                Seller Address
               </th>
               <th 
                 className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"

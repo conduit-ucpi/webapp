@@ -233,11 +233,11 @@ export default function DisputeResolutionModal({
                   <span className="ml-2 font-medium">{displayCurrency(contract.amount, contract.currency)}</span>
                 </div>
                 <div>
-                  <span className="text-gray-600">Receiver:</span>
+                  <span className="text-gray-600">Seller:</span>
                   <span className="ml-2">{contract.sellerEmail}</span>
                 </div>
                 <div>
-                  <span className="text-gray-600">Payer:</span>
+                  <span className="text-gray-600">Buyer:</span>
                   <span className="ml-2">{contract.buyerEmail}</span>
                 </div>
                 <div className="col-span-2">

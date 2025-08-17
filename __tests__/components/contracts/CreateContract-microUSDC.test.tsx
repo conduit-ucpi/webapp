@@ -111,7 +111,7 @@ describe('CreateContract - microUSDC Amount Handling', () => {
       render(<CreateContract />);
 
       // Fill out the form
-      fireEvent.change(screen.getByPlaceholderText('payer@example.com'), {
+      fireEvent.change(screen.getByPlaceholderText('buyer@example.com'), {
         target: { value: 'buyer@test.com' },
       });
 
@@ -285,7 +285,7 @@ describe('CreateContract - microUSDC Amount Handling', () => {
       render(<CreateContract />);
 
       // Fill out form and submit
-      fireEvent.change(screen.getByPlaceholderText('payer@example.com'), {
+      fireEvent.change(screen.getByPlaceholderText('buyer@example.com'), {
         target: { value: 'buyer@test.com' },
       });
 

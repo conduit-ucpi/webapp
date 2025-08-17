@@ -164,7 +164,7 @@ describe('CreateContract Decimal Precision', () => {
     render(<CreateContract />);
 
     // Fill in the form with valid data including 3 decimal places
-    const buyerEmailInput = screen.getByPlaceholderText('payer@example.com');
+    const buyerEmailInput = screen.getByPlaceholderText('buyer@example.com');
     const amountInput = screen.getByPlaceholderText('100.00');
     const descriptionInput = screen.getByPlaceholderText(/brief description/i);
 
@@ -179,7 +179,7 @@ describe('CreateContract Decimal Precision', () => {
     const tomorrowString = tomorrow.toISOString().slice(0, 16);
     fireEvent.change(payoutInput, { target: { value: tomorrowString } });
 
-    const submitButton = screen.getByRole('button', { name: /Request from Buyer/i });
+    const submitButton = screen.getByRole('button', { name: /Request Payment from Buyer/i });
 
     // The form should not show validation errors for 0.001
     expect(screen.queryByText(/Invalid amount/i)).not.toBeInTheDocument();

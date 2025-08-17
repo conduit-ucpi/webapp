@@ -605,13 +605,13 @@ describe('AdminContractList', () => {
     const createdHeader = screen.getByRole('columnheader', { name: /Created/ });
     fireEvent.click(createdHeader);
 
-    // Click on sortable Receiver column header (exact match to avoid "Receiver Address")
-    const receiverHeader = screen.getByRole('columnheader', { name: 'Receiver' });
-    fireEvent.click(receiverHeader);
+    // Click on sortable Seller column header (exact match to avoid "Seller Address")
+    const sellerHeader = screen.getByRole('columnheader', { name: 'Seller' });
+    fireEvent.click(sellerHeader);
 
-    // Click on Payer column header  
-    const payerHeader = screen.getByRole('columnheader', { name: 'Payer' });
-    fireEvent.click(payerHeader);
+    // Click on Buyer column header  
+    const buyerHeader = screen.getByRole('columnheader', { name: 'Buyer' });
+    fireEvent.click(buyerHeader);
 
     // Click on Expiry column header
     const expiryHeader = screen.getByRole('columnheader', { name: 'Expiry' });
@@ -640,8 +640,8 @@ describe('AdminContractList', () => {
     }, { timeout: 3000 });
 
     // Sort by seller email
-    const receiverHeader = screen.getByRole('columnheader', { name: 'Receiver' });
-    fireEvent.click(receiverHeader);
+    const sellerHeader = screen.getByRole('columnheader', { name: 'Seller' });
+    fireEvent.click(sellerHeader);
 
     // Check order changed - after sorting by receiver email, should have alpha first
     await waitFor(() => {

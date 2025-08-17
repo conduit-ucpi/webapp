@@ -408,7 +408,28 @@ export class Web3Service {
     return { hash: txResponse.hash };
   }
 
-  // Send USDC to an address
+  // Sign USDC transfer transaction (without broadcasting)
+  async signUSDCTransfer(to: string, amount: string): Promise<string> {
+    if (!this.provider) {
+      throw new Error('Provider not initialized');
+    }
+
+    const decimals = 6; // USDC has 6 decimals
+    const amountWei = ethers.parseUnits(amount, decimals);
+
+    // Sign transaction using generic method
+    const signedTx = await this.signContractTransaction({
+      contractAddress: this.config.usdcContractAddress,
+      abi: ERC20_ABI,
+      functionName: 'transfer',
+      functionArgs: [to, amountWei],
+      debugLabel: 'USDC TRANSFER'
+    });
+
+    return signedTx;
+  }
+
+  // Send USDC to an address (direct RPC - deprecated, use signUSDCTransfer with chain-service instead)
   async sendUSDC(to: string, amount: string): Promise<{ hash: string }> {
     if (!this.provider) {
       throw new Error('Provider not initialized');

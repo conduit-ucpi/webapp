@@ -11,6 +11,7 @@ import USDCGuide from '@/components/ui/USDCGuide';
 import { ethers } from 'ethers';
 import { useWeb3AuthInstance } from '@/components/auth/Web3AuthContextProvider';
 import { useWalletAddress } from '@/hooks/useWalletAddress';
+import { TransferUSDCRequest } from '@/types';
 
 interface WalletBalances {
   avax: string;
@@ -161,9 +162,41 @@ export default function Wallet() {
         const tx = await web3Service.sendAVAX(sendForm.recipient, sendForm.amount);
         setSendSuccess(`AVAX sent successfully! Transaction: ${tx.hash}`);
       } else {
-        // Send USDC
-        const tx = await web3Service.sendUSDC(sendForm.recipient, sendForm.amount);
-        setSendSuccess(`USDC sent successfully! Transaction: ${tx.hash}`);
+        // Send USDC via chain-service
+        // Sign the USDC transfer transaction using the existing sendUSDC method
+        // which already handles the signing internally
+        const signedTx = await web3Service.signUSDCTransfer(sendForm.recipient, sendForm.amount);
+
+        // Get the user's wallet address
+        const userAddress = await web3Service.getUserAddress();
+
+        // Submit signed transaction to chain service
+        const transferRequest: TransferUSDCRequest = {
+          recipientAddress: sendForm.recipient,
+          amount: sendForm.amount,
+          userWalletAddress: userAddress,
+          signedTransaction: signedTx
+        };
+
+        const response = await fetch('/api/chain/transfer-usdc', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(transferRequest)
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || 'Failed to transfer USDC');
+        }
+
+        const result = await response.json();
+        if (!result.success) {
+          throw new Error(result.error || 'Transfer failed');
+        }
+
+        setSendSuccess(`USDC sent successfully! Transaction: ${result.transactionHash}`);
       }
 
       // Reset form and reload balances

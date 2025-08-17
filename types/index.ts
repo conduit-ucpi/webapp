@@ -146,6 +146,13 @@ export interface SubmitDisputeEntryRequest {
   refundPercent: number;
 }
 
+export interface TransferUSDCRequest {
+  recipientAddress: string;
+  amount: string; // in USDC (not microUSDC)
+  userWalletAddress: string;
+  signedTransaction: string;
+}
+
 export interface AuthContextType {
   user: User | null;
   isLoading: boolean;

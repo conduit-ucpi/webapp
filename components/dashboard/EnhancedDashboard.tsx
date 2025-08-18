@@ -521,7 +521,7 @@ export default function EnhancedDashboard() {
         <div className="relative">
           <input
             type="text"
-            placeholder="Search contracts..."
+            placeholder="Search payment agreements..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-10 pr-4 py-2 border border-secondary-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"

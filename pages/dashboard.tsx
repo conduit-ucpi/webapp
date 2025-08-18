@@ -66,32 +66,44 @@ export default function Dashboard() {
           </Link>
         </div>
 
-        <div className="bg-white dark:bg-secondary-800 rounded-lg shadow-sm border border-secondary-200 dark:border-secondary-700 p-6 mb-8" data-tour="wallet-section">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-semibold text-secondary-900 dark:text-white">Connected Wallet</h2>
-              <div className="text-sm text-secondary-600 dark:text-secondary-300 mt-1">
-                <ExpandableHash hash={walletAddress || ''} />
+        <div className="bg-white dark:bg-secondary-800 rounded-lg shadow-sm border border-secondary-200 dark:border-secondary-700 p-4 mb-8" data-tour="wallet-section">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-primary-50 dark:bg-primary-900/20 rounded-lg">
+                <svg className="h-5 w-5 text-primary-600 dark:text-primary-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                </svg>
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <ExpandableHash hash={walletAddress || ''} className="text-sm" />
+                  <span className="text-xs text-secondary-500 dark:text-secondary-400">•</span>
+                  <span className="text-xs text-secondary-600 dark:text-secondary-400">{user.email}</span>
+                </div>
               </div>
             </div>
-            <div className="text-right">
-              <p className="text-sm text-secondary-600 dark:text-secondary-400">Email</p>
-              <p className="text-sm text-secondary-900 dark:text-white">{user.email}</p>
-            </div>
-          </div>
-
-          <div className="mt-6 pt-6 border-t border-secondary-200 dark:border-secondary-600">
-            <h3 className="text-sm font-medium text-secondary-900 dark:text-white mb-3">Wallet Management</h3>
-            <div className="flex flex-wrap gap-3">
-              <Link href="/wallet">
-                <Button variant="outline" size="sm" className="text-primary-600 border-primary-300 hover:bg-primary-50">
-                  Manage Wallet
-                </Button>
+            
+            <div className="flex items-center gap-2">
+              <Link href="/wallet" className="group">
+                <button 
+                  className="p-1.5 text-secondary-700 dark:text-secondary-300 bg-secondary-50 dark:bg-secondary-700/50 hover:bg-secondary-100 dark:hover:bg-secondary-700 rounded-md transition-colors"
+                  title="Manage Wallet"
+                  aria-label="Manage Wallet"
+                >
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16a1 1 0 011 1v10a1 1 0 01-1 1H4a1 1 0 01-1-1V9a1 1 0 011-1z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9l8-5 8 5" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 13h2M7 16h4" />
+                  </svg>
+                </button>
               </Link>
-              <Link href="/buy-usdc">
-                <Button variant="outline" size="sm" className="text-success-600 border-success-500 hover:bg-success-50">
-                  Buy/Sell USDC
-                </Button>
+              <Link href="/buy-usdc" className="group">
+                <button className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-success-700 dark:text-success-400 bg-success-50 dark:bg-success-900/20 hover:bg-success-100 dark:hover:bg-success-900/30 rounded-md transition-colors">
+                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span>Buy USDC</span>
+                </button>
               </Link>
             </div>
           </div>

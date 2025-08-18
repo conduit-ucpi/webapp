@@ -6,11 +6,21 @@ import Button from '@/components/ui/Button';
 import StatsCard from '@/components/ui/StatsCard';
 import { Tabs, TabPanel, Tab } from '@/components/ui/Tabs';
 import EnhancedContractCard from '@/components/contracts/EnhancedContractCard';
-import { NoContractsEmptyState, SearchEmptyState, ErrorEmptyState } from '@/components/ui/EmptyState';
+import { 
+  NoContractsEmptyState, 
+  SearchEmptyState, 
+  ErrorEmptyState, 
+  ActiveContractsEmptyState,
+  ActionNeededEmptyState,
+  CompletedContractsEmptyState,
+  DisputedContractsEmptyState
+} from '@/components/ui/EmptyState';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import ContractAcceptance from '@/components/contracts/ContractAcceptance';
 import ContractDetailsModal from '@/components/contracts/ContractDetailsModal';
-import { displayCurrency } from '@/utils/validation';
+import DisputeModal from '@/components/contracts/DisputeModal';
+import DisputeManagementModal from '@/components/contracts/DisputeManagementModal';
+import { displayCurrency, getContractCTA } from '@/utils/validation';
 
 type StatusFilter = 'ALL' | 'ACTION_NEEDED' | 'ACTIVE' | 'COMPLETED' | 'DISPUTED';
 
@@ -25,10 +35,81 @@ export default function EnhancedDashboard() {
   const [showAcceptance, setShowAcceptance] = useState(false);
   const [selectedContract, setSelectedContract] = useState<Contract | PendingContract | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [isDemoMode, setIsDemoMode] = useState(false);
+  const [contractToDispute, setContractToDispute] = useState<Contract | null>(null);
+  const [showDispute, setShowDispute] = useState(false);
+  const [isSubmittingDispute, setIsSubmittingDispute] = useState(false);
+  const [contractToManage, setContractToManage] = useState<Contract | null>(null);
+  const [showManageDispute, setShowManageDispute] = useState(false);
+
+  // Sample demo data
+  const createDemoData = (): (Contract | PendingContract)[] => {
+    const now = Date.now() / 1000;
+    return [
+      {
+        id: 'demo-1',
+        contractAddress: '0x1234567890abcdef',
+        buyerAddress: '0xbuyer123',
+        sellerAddress: user?.walletAddress || '0xseller456',
+        amount: 500000000, // $500 in microUSDC
+        expiryTimestamp: now + 7 * 24 * 60 * 60, // 7 days from now
+        description: 'Website design project - 5 page responsive site',
+        status: 'ACTIVE',
+        createdAt: now - 24 * 60 * 60, // 1 day ago
+        funded: true,
+        buyerEmail: 'client@example.com',
+        sellerEmail: user?.email || 'seller@example.com',
+        productName: 'Website Design',
+        adminNotes: [],
+        disputes: []
+      } as Contract,
+      {
+        id: 'demo-2',
+        sellerEmail: user?.email || 'seller@example.com',
+        buyerEmail: 'customer@business.com',
+        amount: 1200000000, // $1200 in microUSDC
+        currency: 'USDC',
+        sellerAddress: user?.walletAddress || '0xseller456',
+        expiryTimestamp: now + 3 * 24 * 60 * 60, // 3 days from now
+        chainId: '43113',
+        chainAddress: undefined,
+        description: 'Logo design and brand identity package',
+        createdAt: now - 2 * 24 * 60 * 60, // 2 days ago
+        createdBy: user?.walletAddress || '0xseller456',
+        state: 'OK',
+        adminNotes: []
+      } as PendingContract,
+      {
+        id: 'demo-3',
+        contractAddress: '0xabcdef1234567890',
+        buyerAddress: '0xbuyer789',
+        sellerAddress: user?.walletAddress || '0xseller456',
+        amount: 250000000, // $250 in microUSDC
+        expiryTimestamp: now - 24 * 60 * 60, // Expired (1 day ago)
+        description: 'Social media content creation - 10 posts',
+        status: 'CLAIMED',
+        createdAt: now - 10 * 24 * 60 * 60, // 10 days ago
+        funded: true,
+        buyerEmail: 'marketing@startup.com',
+        sellerEmail: user?.email || 'seller@example.com',
+        productName: 'Social Media Content',
+        adminNotes: [],
+        disputes: []
+      } as Contract
+    ];
+  };
 
   // Fetch contracts using the same API call
   const fetchContracts = async () => {
     try {
+      // If in demo mode, use sample data
+      if (isDemoMode) {
+        setAllContracts(createDemoData());
+        setError('');
+        setIsLoading(false);
+        return;
+      }
+
       const response = await fetch('/api/combined-contracts');
       
       if (!response.ok) {
@@ -108,6 +189,63 @@ export default function EnhancedDashboard() {
     }
   };
 
+  const handleShowDemo = () => {
+    setIsDemoMode(true);
+    setIsLoading(true);
+    fetchContracts();
+  };
+
+  const handleExitDemo = () => {
+    setIsDemoMode(false);
+    setIsLoading(true);
+    fetchContracts();
+  };
+
+  const handleDisputeSubmit = async (reason: string, refundPercent: number) => {
+    console.log('handleDisputeSubmit called with:', { reason, refundPercent, contractToDispute });
+    
+    if (!contractToDispute) {
+      console.error('No contract to dispute');
+      return;
+    }
+    
+    setIsSubmittingDispute(true);
+    try {
+      console.log('Making API call to dispute contract:', contractToDispute.id);
+      const response = await fetch(`/api/contracts/${contractToDispute.id}/dispute`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          reason,
+          refundPercent,
+          timestamp: Math.floor(Date.now() / 1000), // Current timestamp in seconds
+          userEmail: user?.email
+        }),
+      });
+
+      console.log('API response status:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('API error response:', errorText);
+        throw new Error(`Failed to raise dispute: ${response.status} ${errorText}`);
+      }
+
+      // Close modal and refresh contracts
+      console.log('Dispute successful, closing modal');
+      setShowDispute(false);
+      setContractToDispute(null);
+      fetchContracts();
+    } catch (error: any) {
+      console.error('Failed to raise dispute:', error);
+      // TODO: Show error toast
+    } finally {
+      setIsSubmittingDispute(false);
+    }
+  };
+
   useEffect(() => {
     fetchContracts();
     // Refresh every 30 seconds for near-expiry contracts
@@ -134,20 +272,18 @@ export default function EnhancedDashboard() {
     const totalValue = allContracts.reduce((sum, c) => sum + (c.amount || 0), 0);
     
     const actionNeededCount = allContracts.filter(c => {
-      if (!('contractAddress' in c)) {
-        // Pending contract - buyer needs to accept
-        return user?.email === c.buyerEmail;
-      }
-      // Active contract - check if action needed
-      const contract = c as Contract;
-      const isBuyer = user?.walletAddress?.toLowerCase() === contract.buyerAddress?.toLowerCase();
-      const isSeller = user?.walletAddress?.toLowerCase() === contract.sellerAddress?.toLowerCase();
-      
-      if (contract.status === 'ACTIVE') {
-        if (isSeller && contract.expiryTimestamp <= now) return true; // Can claim
-        if (isBuyer && contract.expiryTimestamp > now) return true; // Can dispute
-      }
-      return false;
+      const isPending = !('contractAddress' in c);
+      const isBuyer = isPending 
+        ? user?.email === c.buyerEmail 
+        : user?.walletAddress?.toLowerCase() === (c as Contract).buyerAddress?.toLowerCase();
+      const isSeller = user?.walletAddress?.toLowerCase() === c.sellerAddress?.toLowerCase();
+      const isExpired = c.expiryTimestamp <= now;
+      const contractStatus = isPending ? undefined : (c as Contract).status;
+      const contractState = isPending ? (c as PendingContract).state : undefined;
+
+      // Use the source of truth function
+      const ctaInfo = getContractCTA(contractStatus, isBuyer, isSeller, isPending, isExpired, contractState);
+      return ctaInfo.variant === 'action';
     }).length;
 
     return {
@@ -168,18 +304,18 @@ export default function EnhancedDashboard() {
       case 'ACTION_NEEDED':
         const now = Date.now() / 1000;
         filtered = filtered.filter(c => {
-          if (!('contractAddress' in c)) {
-            return user?.email === c.buyerEmail;
-          }
-          const contract = c as Contract;
-          const isBuyer = user?.walletAddress?.toLowerCase() === contract.buyerAddress?.toLowerCase();
-          const isSeller = user?.walletAddress?.toLowerCase() === contract.sellerAddress?.toLowerCase();
-          
-          if (contract.status === 'ACTIVE') {
-            if (isSeller && contract.expiryTimestamp <= now) return true;
-            if (isBuyer && contract.expiryTimestamp > now) return true;
-          }
-          return false;
+          const isPending = !('contractAddress' in c);
+          const isBuyer = isPending 
+            ? user?.email === c.buyerEmail 
+            : user?.walletAddress?.toLowerCase() === (c as Contract).buyerAddress?.toLowerCase();
+          const isSeller = user?.walletAddress?.toLowerCase() === c.sellerAddress?.toLowerCase();
+          const isExpired = c.expiryTimestamp <= now;
+          const contractStatus = isPending ? undefined : (c as Contract).status;
+          const contractState = isPending ? (c as PendingContract).state : undefined;
+
+          // Use the source of truth function
+          const ctaInfo = getContractCTA(contractStatus, isBuyer, isSeller, isPending, isExpired, contractState);
+          return ctaInfo.variant === 'action';
         });
         break;
       case 'ACTIVE':
@@ -235,8 +371,16 @@ export default function EnhancedDashboard() {
     if (action === 'accept' && !('contractAddress' in contract)) {
       setContractToAccept(contract as PendingContract);
       setShowAcceptance(true);
+    } else if (action === 'dispute' && 'contractAddress' in contract) {
+      setContractToDispute(contract as Contract);
+      setShowDispute(true);
+    } else if (action === 'manage' && 'contractAddress' in contract) {
+      setContractToManage(contract as Contract);
+      setShowManageDispute(true);
+    } else if (action === 'claim' && 'contractAddress' in contract) {
+      // TODO: Handle claim action
+      console.log('Claim action not implemented yet');
     }
-    // Handle other actions as needed
   };
 
   const handleContractClick = (contract: Contract | PendingContract) => {
@@ -259,8 +403,35 @@ export default function EnhancedDashboard() {
 
   return (
     <>
+      {/* Demo Mode Banner */}
+      {isDemoMode && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <svg className="w-5 h-5 text-amber-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" 
+                />
+              </svg>
+              <div>
+                <h4 className="text-sm font-medium text-amber-800">Demo Mode Active</h4>
+                <p className="text-xs text-amber-700">You're viewing sample data to explore the interface.</p>
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExitDemo}
+              className="text-amber-700 border-amber-300 hover:bg-amber-100"
+            >
+              Exit Demo
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Stats Cards - Mobile responsive grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8" data-tour="stats-cards">
         <StatsCard
           title="Active"
           value={stats.active}
@@ -309,7 +480,7 @@ export default function EnhancedDashboard() {
       </div>
 
       {/* Search Bar - Mobile optimized */}
-      <div className="mb-6">
+      <div className="mb-6" data-tour="search-bar">
         <div className="relative">
           <input
             type="text"
@@ -332,12 +503,14 @@ export default function EnhancedDashboard() {
       </div>
 
       {/* Tabs */}
-      <Tabs
-        tabs={tabs}
-        activeTab={activeTab}
-        onTabChange={(tabId) => setActiveTab(tabId as StatusFilter)}
-        className="mb-6"
-      />
+      <div data-tour="filter-tabs">
+        <Tabs
+          tabs={tabs}
+          activeTab={activeTab}
+          onTabChange={(tabId) => setActiveTab(tabId as StatusFilter)}
+          className="mb-6"
+        />
+      </div>
 
       {/* Contract List or Empty State */}
       <TabPanel isActive={true}>
@@ -346,11 +519,24 @@ export default function EnhancedDashboard() {
         ) : filteredContracts.length === 0 ? (
           searchTerm ? (
             <SearchEmptyState searchTerm={searchTerm} />
-          ) : (
-            <NoContractsEmptyState 
-              userRole={activeTab === 'ALL' ? 'any' : 'seller'} 
-            />
-          )
+          ) : (() => {
+            // Show different empty states based on active tab
+            switch (activeTab) {
+              case 'ACTION_NEEDED':
+                return <ActionNeededEmptyState />;
+              case 'ACTIVE':
+                return <ActiveContractsEmptyState />;
+              case 'COMPLETED':
+                return <CompletedContractsEmptyState />;
+              case 'DISPUTED':
+                return <DisputedContractsEmptyState />;
+              default:
+                return <NoContractsEmptyState 
+                  userRole="any" 
+                  onShowDemo={allContracts.length === 0 && !isDemoMode ? handleShowDemo : undefined}
+                />;
+            }
+          })()
         ) : (
           <div className="space-y-4">
             {filteredContracts.map((contract) => (
@@ -402,6 +588,32 @@ export default function EnhancedDashboard() {
             setSelectedContract(null);
           }}
           contract={selectedContract}
+        />
+      )}
+
+      {/* Dispute Modal */}
+      {showDispute && contractToDispute && (
+        <DisputeModal
+          isOpen={showDispute}
+          onClose={() => {
+            setShowDispute(false);
+            setContractToDispute(null);
+          }}
+          onSubmit={handleDisputeSubmit}
+          isSubmitting={isSubmittingDispute}
+        />
+      )}
+
+      {/* Manage Dispute Modal */}
+      {showManageDispute && contractToManage && (
+        <DisputeManagementModal
+          isOpen={showManageDispute}
+          onClose={() => {
+            setShowManageDispute(false);
+            setContractToManage(null);
+          }}
+          contract={contractToManage}
+          onRefresh={fetchContracts}
         />
       )}
     </>

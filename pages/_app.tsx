@@ -7,23 +7,29 @@ import '@/styles/globals.css';
 import { Web3AuthProviderWrapper } from '@/components/auth/Web3AuthProviderWrapper';
 import { Web3AuthContextProvider } from '@/components/auth/Web3AuthContextProvider';
 import { ToastProvider } from '@/components/ui/Toast';
+import { ThemeProvider } from '@/components/theme/ThemeProvider';
+import { TourProvider } from '@/components/onboarding/TourProvider';
 
 export default function App({ Component, pageProps }: AppProps) {
   return (
     <ErrorBoundary>
-      <ConfigProvider>
-        <Web3AuthProviderWrapper>
-          <Web3AuthContextProvider>
-            <AuthProvider>
-              <ToastProvider>
-                <Layout>
-                  <Component {...pageProps} />
-                </Layout>
-              </ToastProvider>
-            </AuthProvider>
-          </Web3AuthContextProvider>
-        </Web3AuthProviderWrapper>
-      </ConfigProvider>
+      <ThemeProvider>
+        <ConfigProvider>
+          <Web3AuthProviderWrapper>
+            <Web3AuthContextProvider>
+              <AuthProvider>
+                <ToastProvider>
+                  <TourProvider>
+                    <Layout>
+                      <Component {...pageProps} />
+                    </Layout>
+                  </TourProvider>
+                </ToastProvider>
+              </AuthProvider>
+            </Web3AuthContextProvider>
+          </Web3AuthProviderWrapper>
+        </ConfigProvider>
+      </ThemeProvider>
     </ErrorBoundary>
   );
 }

@@ -7,6 +7,7 @@ import { SkeletonCard } from '@/components/ui/Skeleton';
 import ExpandableHash from '@/components/ui/ExpandableHash';
 import { useWeb3AuthInstance } from '@/components/auth/Web3AuthContextProvider';
 import { useWalletAddress } from '@/hooks/useWalletAddress';
+import DashboardTour from '@/components/onboarding/DashboardTour';
 
 export default function Dashboard() {
   const { user, isLoading } = useAuth();
@@ -50,37 +51,37 @@ export default function Dashboard() {
   return (
     <div className="py-10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex justify-between items-center mb-8" data-tour="dashboard-header">
           <div>
-            <h1 className="text-3xl font-bold text-secondary-900">Dashboard</h1>
-            <p className="mt-2 text-secondary-600">
+            <h1 className="text-3xl font-bold text-secondary-900 dark:text-white">Dashboard</h1>
+            <p className="mt-2 text-secondary-600 dark:text-secondary-300">
               Manage your escrow contracts and view transaction history
             </p>
           </div>
 
-          <Link href="/create">
+          <Link href="/create" data-tour="create-button">
             <Button className="bg-primary-500 hover:bg-primary-600">
               New Payment Request
             </Button>
           </Link>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm border border-secondary-200 p-6 mb-8">
+        <div className="bg-white dark:bg-secondary-800 rounded-lg shadow-sm border border-secondary-200 dark:border-secondary-700 p-6 mb-8" data-tour="wallet-section">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-semibold text-secondary-900">Connected Wallet</h2>
-              <div className="text-sm text-secondary-600 mt-1">
+              <h2 className="text-lg font-semibold text-secondary-900 dark:text-white">Connected Wallet</h2>
+              <div className="text-sm text-secondary-600 dark:text-secondary-300 mt-1">
                 <ExpandableHash hash={walletAddress || ''} />
               </div>
             </div>
             <div className="text-right">
-              <p className="text-sm text-secondary-600">Email</p>
-              <p className="text-sm text-secondary-900">{user.email}</p>
+              <p className="text-sm text-secondary-600 dark:text-secondary-400">Email</p>
+              <p className="text-sm text-secondary-900 dark:text-white">{user.email}</p>
             </div>
           </div>
 
-          <div className="mt-6 pt-6 border-t border-secondary-200">
-            <h3 className="text-sm font-medium text-secondary-900 mb-3">Wallet Management</h3>
+          <div className="mt-6 pt-6 border-t border-secondary-200 dark:border-secondary-600">
+            <h3 className="text-sm font-medium text-secondary-900 dark:text-white mb-3">Wallet Management</h3>
             <div className="flex flex-wrap gap-3">
               <Link href="/wallet">
                 <Button variant="outline" size="sm" className="text-primary-600 border-primary-300 hover:bg-primary-50">
@@ -97,9 +98,11 @@ export default function Dashboard() {
         </div>
 
         <div>
-          <h2 className="text-xl font-semibold text-secondary-900 mb-6">Your payment agreements</h2>
+          <h2 className="text-xl font-semibold text-secondary-900 dark:text-white mb-6">Your payment agreements</h2>
           <EnhancedDashboard />
         </div>
+        
+        <DashboardTour />
       </div>
     </div>
   );

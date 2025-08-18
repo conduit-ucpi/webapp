@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { Contract, PendingContract } from '@/types';
-import { formatWalletAddress, displayCurrency, formatDateTimeWithTZ, getStatusDisplay, getPrimaryAction } from '@/utils/validation';
+import { formatWalletAddress, displayCurrency, formatDateTimeWithTZ, getStatusDisplay, getContractCTA } from '@/utils/validation';
 import StatusBadge from '@/components/ui/StatusBadge';
 import Button from '@/components/ui/Button';
 import { useAuth } from '@/components/auth/AuthProvider';
@@ -54,8 +54,9 @@ export default function EnhancedContractCard({
   }, [contract]);
 
   const isPending = isPendingContract(contract);
-  const isBuyer = user?.walletAddress?.toLowerCase() === 
-    (isPending ? '' : contract.buyerAddress?.toLowerCase());
+  const isBuyer = isPending 
+    ? user?.email === contract.buyerEmail 
+    : user?.walletAddress?.toLowerCase() === contract.buyerAddress?.toLowerCase();
   const isSeller = user?.walletAddress?.toLowerCase() === 
     contract.sellerAddress?.toLowerCase();
   
@@ -64,7 +65,7 @@ export default function EnhancedContractCard({
     const status = isPending ? undefined : contract.status;
     const contractState = isPending ? (contract as PendingContract).state : undefined;
     
-    const actionInfo = getPrimaryAction(
+    const ctaInfo = getContractCTA(
       status,
       isBuyer,
       isSeller,
@@ -73,19 +74,29 @@ export default function EnhancedContractCard({
       contractState
     );
     
-    if (actionInfo.type === 'NONE') return null;
+    // Only show action buttons for actionable items
+    if (ctaInfo.variant !== 'action') return null;
     
-    // Map action types to action strings for onAction callback
+    // Map CTA types to action strings for onAction callback
     const actionMap = {
-      'ACCEPT_AND_FUND': 'accept',
+      'ACCEPT_CONTRACT': 'accept',
       'CLAIM_FUNDS': 'claim',
-      'RAISE_DISPUTE': 'dispute'
+      'RAISE_DISPUTE': 'dispute',
+      'MANAGE_DISPUTE': 'manage'
+    };
+    
+    // Map variant to button variant
+    const variantMap: Record<string, 'primary' | 'secondary' | 'outline' | 'ghost' | 'success' | 'error'> = {
+      'ACCEPT_CONTRACT': 'primary',
+      'CLAIM_FUNDS': 'success',
+      'RAISE_DISPUTE': 'error',
+      'MANAGE_DISPUTE': 'error'
     };
     
     return {
-      label: actionInfo.label!,
-      action: actionMap[actionInfo.type as keyof typeof actionMap],
-      variant: actionInfo.variant!
+      label: ctaInfo.label!,
+      action: actionMap[ctaInfo.type as keyof typeof actionMap],
+      variant: variantMap[ctaInfo.type] || 'outline'
     };
   }, [isPending, isBuyer, isSeller, contract, timeRemaining]);
 

@@ -58,6 +58,7 @@ export function Tabs({ tabs, activeTab, onTabChange, className = '' }: TabsProps
             <button
               key={tab.id}
               onClick={() => onTabChange(tab.id)}
+              data-tab={tab.id}
               className={`
                 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm
                 transition-colors duration-200
@@ -94,6 +95,7 @@ export function Tabs({ tabs, activeTab, onTabChange, className = '' }: TabsProps
             <button
               key={tab.id}
               onClick={() => onTabChange(tab.id)}
+              data-tab={tab.id}
               className={`
                 whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm
                 transition-colors duration-200 min-w-fit

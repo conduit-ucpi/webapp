@@ -18,9 +18,10 @@
     "test-api-conformance": "tsx src/validation/WebappApiConformanceTest.ts"
   },
   "dependencies": {
-    "@headlessui/react": "^1.7.17",
+    "@headlessui/react": "^1.7.19",
     "@heroicons/react": "^2.2.0",
     "@moonpay/moonpay-js": "^0.7.3",
+    "@tanstack/react-query": "^5.85.3",
     "@testing-library/dom": "^10.4.1",
     "@web3auth/base": "^9.7.0",
     "@web3auth/ethereum-provider": "^9.7.0",
@@ -29,10 +30,13 @@
     "clsx": "^2.0.0",
     "cookie": "^1.0.2",
     "ethers": "^6.8.0",
+    "framer-motion": "^12.23.12",
     "next": "14.0.3",
     "ox": "^0.8.8",
     "react": "18.2.0",
     "react-dom": "18.2.0",
+    "react-hook-form": "^7.62.0",
+    "react-hot-toast": "^2.6.0",
     "web3": "^4.16.0"
   },
   "devDependencies": {

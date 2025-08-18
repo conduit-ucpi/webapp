@@ -16,25 +16,32 @@ export default function DisputeModal({ isOpen, onClose, onSubmit, isSubmitting =
   const [errors, setErrors] = useState<{ reason?: string; split?: string }>({});
 
   const handleSubmit = () => {
+    console.log('DisputeModal handleSubmit called with:', { reason, refundPercent });
+    
     const newErrors: { reason?: string; split?: string } = {};
 
     // Validate reason
     if (!reason.trim()) {
       newErrors.reason = 'Please provide a reason for the dispute';
+      console.log('Validation error: empty reason');
     } else if (reason.length > 160) {
       newErrors.reason = 'Reason must be 160 characters or less';
+      console.log('Validation error: reason too long');
     }
 
     // Validate split percentage
     if (refundPercent < 0 || refundPercent > 100) {
       newErrors.split = 'Split percentage must be between 0 and 100';
+      console.log('Validation error: invalid split percentage');
     }
 
     if (Object.keys(newErrors).length > 0) {
+      console.log('Validation failed with errors:', newErrors);
       setErrors(newErrors);
       return;
     }
 
+    console.log('Validation passed, calling onSubmit');
     onSubmit(reason.trim(), refundPercent);
   };
 

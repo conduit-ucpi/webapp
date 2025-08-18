@@ -3,6 +3,7 @@ import Button from './Button';
 import Link from 'next/link';
 
 interface EmptyStateProps {
+  illustration?: ReactNode;
   icon?: ReactNode;
   title: string;
   description: string;
@@ -20,6 +21,7 @@ interface EmptyStateProps {
 }
 
 export default function EmptyState({
+  illustration,
   icon,
   title,
   description,
@@ -28,33 +30,37 @@ export default function EmptyState({
   className = ''
 }: EmptyStateProps) {
   return (
-    <div className={`text-center py-12 px-4 ${className}`}>
-      {icon && (
-        <div className="mx-auto h-12 w-12 text-secondary-400 mb-4">
+    <div className={`text-center py-16 px-4 ${className}`}>
+      {illustration ? (
+        <div className="mx-auto w-24 h-24 mb-6">
+          {illustration}
+        </div>
+      ) : icon && (
+        <div className="mx-auto h-16 w-16 text-primary-400 mb-6">
           {icon}
         </div>
       )}
       
-      <h3 className="text-lg font-medium text-secondary-900 mb-2">
+      <h3 className="text-xl font-semibold text-secondary-900 mb-3">
         {title}
       </h3>
       
-      <p className="text-sm text-secondary-600 mb-6 max-w-md mx-auto">
+      <p className="text-base text-secondary-600 mb-8 max-w-lg mx-auto leading-relaxed">
         {description}
       </p>
       
-      <div className="flex flex-col sm:flex-row gap-3 justify-center">
+      <div className="flex flex-col sm:flex-row gap-4 justify-center">
         {action && (
           action.href ? (
             <Link href={action.href}>
-              <Button className="w-full sm:w-auto min-h-[44px]">
+              <Button className="w-full sm:w-auto min-h-[48px] px-6">
                 {action.label}
               </Button>
             </Link>
           ) : (
             <Button 
               onClick={action.onClick}
-              className="w-full sm:w-auto min-h-[44px]"
+              className="w-full sm:w-auto min-h-[48px] px-6"
             >
               {action.label}
             </Button>
@@ -64,7 +70,7 @@ export default function EmptyState({
         {secondaryAction && (
           secondaryAction.href ? (
             <Link href={secondaryAction.href}>
-              <Button variant="outline" className="w-full sm:w-auto min-h-[44px]">
+              <Button variant="outline" className="w-full sm:w-auto min-h-[48px] px-6">
                 {secondaryAction.label}
               </Button>
             </Link>
@@ -72,7 +78,7 @@ export default function EmptyState({
             <Button 
               variant="outline"
               onClick={secondaryAction.onClick}
-              className="w-full sm:w-auto min-h-[44px]"
+              className="w-full sm:w-auto min-h-[48px] px-6"
             >
               {secondaryAction.label}
             </Button>
@@ -83,20 +89,74 @@ export default function EmptyState({
   );
 }
 
+// Illustration components for better visual appeal
+function ContractIllustration() {
+  return (
+    <svg className="w-full h-full" viewBox="0 0 96 96" fill="none">
+      <circle cx="48" cy="48" r="48" fill="#f0fdf4" />
+      <rect x="28" y="20" width="40" height="52" rx="4" fill="white" stroke="#d1d5db" strokeWidth="2" />
+      <rect x="32" y="28" width="24" height="3" rx="1.5" fill="#10b981" />
+      <rect x="32" y="36" width="32" height="2" rx="1" fill="#e5e7eb" />
+      <rect x="32" y="42" width="28" height="2" rx="1" fill="#e5e7eb" />
+      <rect x="32" y="48" width="24" height="2" rx="1" fill="#e5e7eb" />
+      <circle cx="56" cy="60" r="8" fill="#10b981" />
+      <path d="m52 60 2 2 4-4" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function SearchIllustration() {
+  return (
+    <svg className="w-full h-full" viewBox="0 0 96 96" fill="none">
+      <circle cx="48" cy="48" r="48" fill="#fef3c7" />
+      <circle cx="42" cy="42" r="14" fill="none" stroke="#f59e0b" strokeWidth="3" />
+      <path d="m52 52 8 8" stroke="#f59e0b" strokeWidth="3" strokeLinecap="round" />
+      <circle cx="42" cy="42" r="8" fill="#fbbf24" opacity="0.2" />
+    </svg>
+  );
+}
+
+function ErrorIllustration() {
+  return (
+    <svg className="w-full h-full" viewBox="0 0 96 96" fill="none">
+      <circle cx="48" cy="48" r="48" fill="#fef2f2" />
+      <circle cx="48" cy="48" r="20" fill="none" stroke="#ef4444" strokeWidth="3" />
+      <path d="M48 40v8m0 4h.01" stroke="#ef4444" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function FilterEmptyIllustration() {
+  return (
+    <svg className="w-full h-full" viewBox="0 0 96 96" fill="none">
+      <circle cx="48" cy="48" r="48" fill="#eff6ff" />
+      <path d="M24 32h48l-16 16v12l-8 4v-16L24 32z" fill="#3b82f6" opacity="0.7" />
+      <circle cx="64" cy="24" r="8" fill="#f3f4f6" stroke="#6b7280" strokeWidth="2" />
+      <path d="m62 24 2 2 4-4" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 // Pre-configured empty states for common scenarios
-export function NoContractsEmptyState({ userRole }: { userRole: 'buyer' | 'seller' | 'any' }) {
+export function NoContractsEmptyState({ 
+  userRole, 
+  onShowDemo 
+}: { 
+  userRole: 'buyer' | 'seller' | 'any';
+  onShowDemo?: () => void;
+}) {
   const messages = {
     buyer: {
-      title: "No payment requests yet",
-      description: "When someone sends you a payment request, it will appear here. You'll be notified by email when a new request arrives."
+      title: "Ready to receive payments",
+      description: "When someone sends you a payment request, it will appear here. You'll get an email notification and can accept or decline the request safely."
     },
     seller: {
-      title: "No payment requests created",
-      description: "Create your first payment request to start receiving secure payments. Your buyers will receive an email notification."
+      title: "Start getting paid securely",
+      description: "Create your first payment request to start receiving protected payments. Your buyers will get an email notification and can pay with confidence knowing funds are secured."
     },
     any: {
-      title: "No contracts yet",
-      description: "Start by creating a payment request or wait for someone to send you one. All your contracts will appear here."
+      title: "Your payment agreements await",
+      description: "This is where all your secure payment contracts will appear. Create a payment request or wait for someone to send you one - either way, your funds are protected."
     }
   };
 
@@ -104,13 +164,7 @@ export function NoContractsEmptyState({ userRole }: { userRole: 'buyer' | 'selle
 
   return (
     <EmptyState
-      icon={
-        <svg className="w-full h-full" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} 
-            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" 
-          />
-        </svg>
-      }
+      illustration={<ContractIllustration />}
       title={message.title}
       description={message.description}
       action={
@@ -119,10 +173,15 @@ export function NoContractsEmptyState({ userRole }: { userRole: 'buyer' | 'selle
           href: "/create"
         } : undefined
       }
-      secondaryAction={{
-        label: "Learn How It Works",
-        href: "/#how-it-works"
-      }}
+      secondaryAction={
+        onShowDemo ? {
+          label: "View Demo Data",
+          onClick: onShowDemo
+        } : {
+          label: "See How It Works",
+          href: "/#how-it-works"
+        }
+      }
     />
   );
 }
@@ -130,15 +189,19 @@ export function NoContractsEmptyState({ userRole }: { userRole: 'buyer' | 'selle
 export function SearchEmptyState({ searchTerm }: { searchTerm: string }) {
   return (
     <EmptyState
-      icon={
-        <svg className="w-full h-full" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-          />
-        </svg>
-      }
-      title="No results found"
-      description={`No contracts matching "${searchTerm}". Try adjusting your search or filters.`}
+      illustration={<SearchIllustration />}
+      title="No matches found"
+      description={`We couldn't find any contracts matching "${searchTerm}". Try adjusting your search terms or browse all contracts instead.`}
+      secondaryAction={{
+        label: "Clear Search",
+        onClick: () => {
+          const searchInput = document.querySelector('input[type="text"]') as HTMLInputElement;
+          if (searchInput) {
+            searchInput.value = '';
+            searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+          }
+        }
+      }}
     />
   );
 }
@@ -146,18 +209,90 @@ export function SearchEmptyState({ searchTerm }: { searchTerm: string }) {
 export function ErrorEmptyState({ onRetry }: { onRetry: () => void }) {
   return (
     <EmptyState
-      icon={
-        <svg className="w-full h-full" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-            d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-          />
-        </svg>
-      }
-      title="Unable to load contracts"
-      description="There was an error loading your contracts. Please check your connection and try again."
+      illustration={<ErrorIllustration />}
+      title="Connection trouble"
+      description="We're having trouble loading your contracts right now. This could be due to a temporary network issue or server maintenance."
       action={{
         label: "Try Again",
         onClick: onRetry
+      }}
+      secondaryAction={{
+        label: "Check Status",
+        href: "mailto:support@conduit.example.com?subject=Connection Issues"
+      }}
+    />
+  );
+}
+
+// New filtered view empty states
+export function ActiveContractsEmptyState() {
+  return (
+    <EmptyState
+      illustration={<FilterEmptyIllustration />}
+      title="No active contracts"
+      description="You don't have any active payment contracts right now. Active contracts are those where funds have been deposited and are awaiting completion or dispute."
+      action={{
+        label: "Create Payment Request",
+        href: "/create"
+      }}
+      secondaryAction={{
+        label: "View All Contracts",
+        onClick: () => {
+          const allTab = document.querySelector('[data-tab="ALL"]') as HTMLElement;
+          if (allTab) allTab.click();
+        }
+      }}
+    />
+  );
+}
+
+export function ActionNeededEmptyState() {
+  return (
+    <EmptyState
+      illustration={<FilterEmptyIllustration />}
+      title="All caught up!"
+      description="Great news! You don't have any contracts requiring immediate action. No expired contracts to claim, no active contracts to dispute."
+      secondaryAction={{
+        label: "View All Contracts",
+        onClick: () => {
+          const allTab = document.querySelector('[data-tab="ALL"]') as HTMLElement;
+          if (allTab) allTab.click();
+        }
+      }}
+    />
+  );
+}
+
+export function CompletedContractsEmptyState() {
+  return (
+    <EmptyState
+      illustration={<FilterEmptyIllustration />}
+      title="No completed contracts yet"
+      description="Once your payment contracts are successfully fulfilled (either claimed by sellers or resolved through disputes), they'll appear here."
+      action={{
+        label: "Create Payment Request",
+        href: "/create"
+      }}
+      secondaryAction={{
+        label: "View Active Contracts",
+        onClick: () => {
+          const activeTab = document.querySelector('[data-tab="ACTIVE"]') as HTMLElement;
+          if (activeTab) activeTab.click();
+        }
+      }}
+    />
+  );
+}
+
+export function DisputedContractsEmptyState() {
+  return (
+    <EmptyState
+      illustration={<FilterEmptyIllustration />}
+      title="No disputed contracts"
+      description="That's a good thing! None of your contracts are currently in dispute. This means all parties are satisfied with their transactions."
+      secondaryAction={{
+        label: "Learn About Disputes",
+        href: "/arbitration-policy"
       }}
     />
   );

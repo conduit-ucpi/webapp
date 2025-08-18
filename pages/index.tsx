@@ -4,6 +4,9 @@ import ConnectWallet from '@/components/auth/ConnectWallet';
 import Button from '@/components/ui/Button';
 import Skeleton from '@/components/ui/Skeleton';
 import { useWeb3AuthInstance } from '@/components/auth/Web3AuthContextProvider';
+import AnimatedHero from '@/components/landing/AnimatedHero';
+import InteractiveDemo from '@/components/landing/InteractiveDemo';
+import { motion } from 'framer-motion';
 
 export default function Home() {
   const { user, isLoading } = useAuth();
@@ -36,86 +39,80 @@ export default function Home() {
   const isAuthenticated = user && web3authProvider;
 
   return (
-    <div className="bg-white min-h-screen" key="home-page">
+    <div className="bg-white dark:bg-secondary-900 min-h-screen transition-colors" key="home-page">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
         {/* Hero Section */}
-        <div className="grid lg:grid-cols-2 gap-12 items-center min-h-[80vh]">
-          <div className="space-y-8">
-            <h1 className="text-5xl font-bold text-secondary-900 lg:text-6xl xl:text-7xl leading-tight">
-              Stop Paying Strangers
-              <span className="text-primary-600 block">Before You Get Your Stuff</span>
-            </h1>
-            <p className="text-xl text-secondary-700 font-medium">
-              And stop delivering without guaranteed payment
-            </p>
-            <p className="text-lg text-secondary-600 max-w-lg">
-              <span className="font-semibold text-secondary-900">Escrow</span> - house buyers use it for secure transactions; it's now instant and so easy <span className="italic text-primary-600">you</span> can use it to make <span className="italic text-primary-600">any</span> sale just as safe
-            </p>
+        <AnimatedHero />
 
-            <div className="pt-6">
-              {isAuthenticated ? (
-                <div className="flex flex-col sm:flex-row gap-4">
-                  <Link href="/create">
-                    <Button size="lg" className="w-full sm:w-auto bg-primary-500 hover:bg-primary-600 text-white font-semibold">
-                      New Payment Request
-                    </Button>
-                  </Link>
-                  <Link href="/dashboard">
-                    <Button variant="outline" size="lg" className="w-full sm:w-auto border-primary-500 text-primary-600 hover:bg-primary-500 hover:text-white">
-                      View Dashboard
-                    </Button>
-                  </Link>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <ConnectWallet />
-                  <div className="text-sm text-secondary-600 max-w-md">
-                    <p className="mb-2">
-                      Connect with Google, Facebook, or any social login.
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Hero Graphic - Payment Infrastructure Diagram */}
-          <div className="hidden lg:flex items-center justify-center">
-            <div className="relative w-full max-w-lg">
-              <img
-                src="/payment_gateway.png"
-                alt="Payment Infrastructure Diagram"
-                className="w-full h-auto opacity-90"
-              />
-            </div>
-          </div>
+        {/* Interactive Demo Section */}
+        <div className="mt-32" id="how-it-works">
+          <InteractiveDemo />
         </div>
 
-        <div className="mt-32 grid grid-cols-1 md:grid-cols-3 gap-8">
-          <div className="bg-white border border-secondary-200 rounded-lg p-8 hover:border-primary-300 hover:shadow-lg transition-all">
-            <div className="w-16 h-16 bg-primary-500 text-white rounded-full flex items-center justify-center mb-6 text-2xl font-bold">
+        <motion.div 
+          className="mt-32 grid grid-cols-1 md:grid-cols-3 gap-8"
+          initial={{ opacity: 0, y: 50 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6, staggerChildren: 0.2 }}
+        >
+          <motion.div 
+            className="bg-white border border-secondary-200 rounded-lg p-8 hover:border-primary-300 hover:shadow-lg transition-all"
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.1, duration: 0.6 }}
+            whileHover={{ y: -5, transition: { duration: 0.2 } }}
+          >
+            <motion.div 
+              className="w-16 h-16 bg-primary-500 text-white rounded-full flex items-center justify-center mb-6 text-2xl font-bold"
+              whileHover={{ scale: 1.1, rotate: 5 }}
+              transition={{ duration: 0.2 }}
+            >
               1
-            </div>
+            </motion.div>
             <h3 className="text-xl font-semibold text-secondary-900 mb-3">Seller creates payment request</h3>
             <p className="text-secondary-600 leading-relaxed">with delivery timeframe</p>
-          </div>
+          </motion.div>
 
-          <div className="bg-white border border-secondary-200 rounded-lg p-8 hover:border-primary-300 hover:shadow-lg transition-all">
-            <div className="w-16 h-16 bg-primary-500 text-white rounded-full flex items-center justify-center mb-6 text-2xl font-bold">
+          <motion.div 
+            className="bg-white border border-secondary-200 rounded-lg p-8 hover:border-primary-300 hover:shadow-lg transition-all"
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.3, duration: 0.6 }}
+            whileHover={{ y: -5, transition: { duration: 0.2 } }}
+          >
+            <motion.div 
+              className="w-16 h-16 bg-primary-500 text-white rounded-full flex items-center justify-center mb-6 text-2xl font-bold"
+              whileHover={{ scale: 1.1, rotate: 5 }}
+              transition={{ duration: 0.2 }}
+            >
               2
-            </div>
+            </motion.div>
             <h3 className="text-xl font-semibold text-secondary-900 mb-3">Buyer puts funds in secure trust</h3>
             <p className="text-secondary-600 leading-relaxed">Money goes into secure trust, not directly to seller</p>
-          </div>
+          </motion.div>
 
-          <div className="bg-white border border-secondary-200 rounded-lg p-8 hover:border-primary-300 hover:shadow-lg transition-all">
-            <div className="w-16 h-16 bg-primary-500 text-white rounded-full flex items-center justify-center mb-6 text-2xl font-bold">
+          <motion.div 
+            className="bg-white border border-secondary-200 rounded-lg p-8 hover:border-primary-300 hover:shadow-lg transition-all"
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.5, duration: 0.6 }}
+            whileHover={{ y: -5, transition: { duration: 0.2 } }}
+          >
+            <motion.div 
+              className="w-16 h-16 bg-primary-500 text-white rounded-full flex items-center justify-center mb-6 text-2xl font-bold"
+              whileHover={{ scale: 1.1, rotate: 5 }}
+              transition={{ duration: 0.2 }}
+            >
               3
-            </div>
+            </motion.div>
             <h3 className="text-xl font-semibold text-secondary-900 mb-3">Automatic payout to seller</h3>
             <p className="text-secondary-600 leading-relaxed">Seller receives payment at pre-agreed date & time. Disputed transactions held in trust until resolution.</p>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
 
         {!isAuthenticated && (
           <>

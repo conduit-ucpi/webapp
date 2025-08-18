@@ -1,5 +1,27 @@
 # CLAUDE.md
 
+# ⚠️ CRITICAL RULES - READ BEFORE EVERY ACTION ⚠️
+
+1. **NEVER DUPLICATE LOGIC** - If a function exists, USE IT, don't recreate it
+2. **SINGLE SOURCE OF TRUTH** - Always use existing validation/logic functions  
+3. **READ THE ENTIRE CODEBASE** before creating new functions
+4. **SEARCH FOR EXISTING SOLUTIONS** before writing new code
+
+## 🛑 STOP - CHECKLIST BEFORE CODING 🛑
+- [ ] Did I search for existing functions that do this?
+- [ ] Am I about to duplicate existing logic?
+- [ ] Can I use an existing single source of truth?
+- [ ] Have I read the validation.ts file completely?
+- [ ] Did I grep for similar function names?
+- [ ] Am I creating parallel code that will cause inconsistencies?
+
+## Before writing ANY new function:
+1. **ALWAYS** Grep for similar function names first
+2. **ALWAYS** Check if the logic already exists elsewhere  
+3. **ALWAYS** Use existing functions instead of duplicating
+4. **NEVER** create a second function that does the same thing
+5. **READ** utils/validation.ts completely before creating validation logic
+
 ## CRITICAL: Repository Boundaries
 
 This Claude agent is **STRICTLY LIMITED** to the webapp directory (`/Users/charliep/conduit-ucpi/webapp`). 

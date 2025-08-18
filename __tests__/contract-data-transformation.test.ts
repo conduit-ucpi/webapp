@@ -26,7 +26,10 @@ const sampleApiData = [
           "addedAt": 1753902077230
         }
       ],
-      "state": "OK"
+      "state": "OK",
+      "ctaType": "CLAIMED",
+      "ctaLabel": "Claimed",
+      "ctaVariant": "status"
     },
     "blockchainStatus": "CLAIMED",
     "blockchainFunded": true,
@@ -64,7 +67,10 @@ const sampleApiData = [
       "createdAt": 1753900665988,
       "createdBy": "6886b8f29d04b421cfd8c381",
       "adminNotes": [],
-      "state": "OK"
+      "state": "OK",
+      "ctaType": "ACCEPT_CONTRACT",
+      "ctaLabel": "Make Payment",
+      "ctaVariant": "action"
     },
     "blockchainStatus": null,
     "blockchainFunded": null,
@@ -117,7 +123,10 @@ function transformContractData(contractsData: any[]): { pending: PendingContract
         createdAt: contract.createdAt?.toString() || '',
         createdBy: contract.createdBy || '',
         state: contract.state || 'OK',
-        adminNotes: contract.adminNotes || []
+        adminNotes: contract.adminNotes || [],
+        ctaType: contract.ctaType,
+        ctaLabel: contract.ctaLabel,
+        ctaVariant: contract.ctaVariant
       };
       pending.push(pendingContract);
     } else {
@@ -139,7 +148,10 @@ function transformContractData(contractsData: any[]): { pending: PendingContract
         hasDiscrepancy: Object.values(item.discrepancies || {}).some(Boolean),
         discrepancyDetails: Object.entries(item.discrepancies || {})
           .filter(([, value]) => value)
-          .map(([key]) => key)
+          .map(([key]) => key),
+        ctaType: contract.ctaType,
+        ctaLabel: contract.ctaLabel,
+        ctaVariant: contract.ctaVariant
       };
       regular.push(regularContract);
     }
@@ -175,6 +187,15 @@ describe('Contract Data Transformation', () => {
     expect(pendingContract.sellerEmail).toBe('charliepank@gmail.com');
     expect(pendingContract.buyerEmail).toBe('charlie@pank.org.uk');
     expect(pendingContract.chainAddress).toBeNull();
+    
+    // Test CTA fields
+    expect(regularContract.ctaType).toBe('CLAIMED');
+    expect(regularContract.ctaLabel).toBe('Claimed');
+    expect(regularContract.ctaVariant).toBe('status');
+    
+    expect(pendingContract.ctaType).toBe('ACCEPT_CONTRACT');
+    expect(pendingContract.ctaLabel).toBe('Make Payment');
+    expect(pendingContract.ctaVariant).toBe('action');
   });
   
   test('should handle contracts with missing or null status', () => {
@@ -218,6 +239,38 @@ describe('Contract Data Transformation', () => {
     // Should handle malformed data without crashing
     expect(pending).toHaveLength(1); // The incomplete contract should be treated as pending
     expect(regular).toHaveLength(0);
+  });
+  
+  test('should handle contracts without CTA fields for backward compatibility', () => {
+    const dataWithoutCTA = [{
+      contract: {
+        id: "test-id-no-cta",
+        sellerEmail: "seller@test.com",
+        buyerEmail: "buyer@test.com",
+        amount: 1000000,
+        currency: "microUSDC",
+        sellerAddress: "0x123",
+        expiryTimestamp: 1234567890,
+        chainId: "43113",
+        chainAddress: "0xabc",
+        description: "test without CTA",
+        createdAt: 1234567890,
+        createdBy: "test-user",
+        state: "OK"
+        // No CTA fields - testing backward compatibility
+      },
+      blockchainStatus: "ACTIVE",
+      blockchainQuerySuccessful: true,
+      blockchainFunded: true,
+      blockchainAmount: "1000000"
+    }];
+    
+    const { regular } = transformContractData(dataWithoutCTA);
+    
+    expect(regular).toHaveLength(1);
+    expect(regular[0].ctaType).toBeUndefined();
+    expect(regular[0].ctaLabel).toBeUndefined();
+    expect(regular[0].ctaVariant).toBeUndefined();
   });
 });
 

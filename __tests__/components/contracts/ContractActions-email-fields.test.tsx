@@ -131,6 +131,10 @@ describe('ContractActions - Email Fields for Dispute', () => {
       funded: true,
       buyerEmail: 'buyer@test.com',
       sellerEmail: 'seller@test.com',
+      // Backend CTA fields for testing backward compatibility
+      ctaType: 'RAISE_DISPUTE',
+      ctaLabel: 'Raise Dispute',
+      ctaVariant: 'action',
     };
 
     mockFetch.mockResolvedValueOnce({
@@ -226,6 +230,10 @@ describe('ContractActions - Email Fields for Dispute', () => {
       funded: true,
       // buyerEmail is missing
       sellerEmail: 'seller@test.com',
+      // Backend CTA fields for testing backward compatibility
+      ctaType: 'RAISE_DISPUTE',
+      ctaLabel: 'Raise Dispute',
+      ctaVariant: 'action',
     };
 
     mockFetch.mockResolvedValueOnce({
@@ -318,6 +326,10 @@ describe('ContractActions - Email Fields for Dispute', () => {
       createdAt: Math.floor(Date.now() / 1000),
       funded: true,
       // Both emails are missing
+      // Backend CTA fields for testing backward compatibility
+      ctaType: 'RAISE_DISPUTE',
+      ctaLabel: 'Raise Dispute',
+      ctaVariant: 'action',
     };
 
     mockFetch.mockResolvedValueOnce({

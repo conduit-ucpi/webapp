@@ -194,7 +194,12 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
   const isExpired = isPending ? Date.now() / 1000 > contract.expiryTimestamp : false;
   const contractState = isPending ? (contract as PendingContract).state : undefined;
   
-  const ctaInfo = getContractCTA(contractStatus, isBuyer, isSeller, isPending, isExpired, contractState);
+  // Use backend CTA fields if available, fallback to client-side computation
+  const ctaInfo = contract.ctaType ? {
+    type: contract.ctaType as any,
+    label: contract.ctaLabel,
+    variant: contract.ctaVariant as 'action' | 'status' | 'none'
+  } : getContractCTA(contractStatus, isBuyer, isSeller, isPending, isExpired, contractState);
 
   switch (ctaInfo.type) {
     case 'RAISE_DISPUTE':

@@ -1,7 +1,6 @@
 import Link from 'next/link';
 import { Contract, PendingContract } from '@/types';
-import { formatWalletAddress, displayCurrency, formatDateTimeWithTZ, getStatusDisplay, getContractCTA } from '@/utils/validation';
-import StatusBadge from '@/components/ui/StatusBadge';
+import { formatWalletAddress, displayCurrency, formatDateTimeWithTZ, getContractCTA } from '@/utils/validation';
 import Button from '@/components/ui/Button';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { useMemo } from 'react';
@@ -65,7 +64,12 @@ export default function EnhancedContractCard({
     const status = isPending ? undefined : contract.status;
     const contractState = isPending ? (contract as PendingContract).state : undefined;
     
-    const ctaInfo = getContractCTA(
+    // Use backend CTA fields if available, fallback to client-side computation
+    const ctaInfo = contract.ctaType ? {
+      type: contract.ctaType as any,
+      label: contract.ctaLabel,
+      variant: contract.ctaVariant as 'action' | 'status' | 'none'
+    } : getContractCTA(
       status,
       isBuyer,
       isSeller,
@@ -100,11 +104,30 @@ export default function EnhancedContractCard({
     };
   }, [isPending, isBuyer, isSeller, contract, timeRemaining]);
 
-  const statusDisplay = getStatusDisplay(
-    isPending ? 'PENDING' : contract.status,
-    isBuyer,
-    isSeller
-  );
+  // Use single source of truth for status display
+  const statusDisplay = useMemo(() => {
+    const status = isPending ? undefined : contract.status;
+    const contractState = isPending ? (contract as PendingContract).state : undefined;
+    
+    // Use backend CTA fields if available, fallback to client-side computation
+    const ctaInfo = contract.ctaType ? {
+      type: contract.ctaType as any,
+      label: contract.ctaLabel,
+      variant: contract.ctaVariant as 'action' | 'status' | 'none'
+    } : getContractCTA(
+      status,
+      isBuyer,
+      isSeller,
+      isPending,
+      timeRemaining.isExpired,
+      contractState
+    );
+    
+    return {
+      label: ctaInfo.label || 'Unknown',
+      color: ctaInfo.variant === 'action' ? 'bg-primary-50 text-primary-600 border-primary-200' : 'bg-secondary-50 text-secondary-600 border-secondary-200'
+    };
+  }, [isPending, isBuyer, isSeller, contract, timeRemaining]);
   
   return (
     <div 
@@ -114,11 +137,14 @@ export default function EnhancedContractCard({
       {/* Header with status and amount */}
       <div className="flex flex-col sm:flex-row sm:items-start justify-between mb-4">
         <div className="flex items-start space-x-3 mb-3 sm:mb-0">
-          <StatusBadge 
-            status={isPending ? 'PENDING' : contract.status} 
-            isBuyer={isBuyer} 
-            isSeller={isSeller} 
-          />
+          <div className={`inline-flex items-center gap-1.5 rounded-full border font-medium px-3 py-1.5 text-sm ${statusDisplay.color}`}>
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" 
+              />
+            </svg>
+            {statusDisplay.label}
+          </div>
           <div>
             <h3 className="text-lg font-semibold text-secondary-900 line-clamp-1">
               {contract.description || 'Untitled Contract'}

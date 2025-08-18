@@ -64,6 +64,10 @@ export interface Contract {
   blockchainQueryError?: string;
   hasDiscrepancy?: boolean;
   discrepancyDetails?: string[];
+  // Backend-provided CTA fields for consistent UI behavior
+  ctaType?: string;
+  ctaLabel?: string;
+  ctaVariant?: string;
 }
 
 export interface PendingContract {
@@ -87,6 +91,10 @@ export interface PendingContract {
     addedBy: string;
     addedAt: number;
   }>;
+  // Backend-provided CTA fields for consistent UI behavior
+  ctaType?: string;
+  ctaLabel?: string;
+  ctaVariant?: string;
 }
 
 export interface CreateContractRequest {

@@ -20,6 +20,7 @@ import ContractAcceptance from '@/components/contracts/ContractAcceptance';
 import ContractDetailsModal from '@/components/contracts/ContractDetailsModal';
 import DisputeModal from '@/components/contracts/DisputeModal';
 import DisputeManagementModal from '@/components/contracts/DisputeManagementModal';
+import ProgressChecklist from '@/components/onboarding/ProgressChecklist';
 import { displayCurrency, getContractCTA } from '@/utils/validation';
 
 type StatusFilter = 'ALL' | 'ACTION_NEEDED' | 'ACTIVE' | 'COMPLETED' | 'DISPUTED';
@@ -281,8 +282,12 @@ export default function EnhancedDashboard() {
       const contractStatus = isPending ? undefined : (c as Contract).status;
       const contractState = isPending ? (c as PendingContract).state : undefined;
 
-      // Use the source of truth function
-      const ctaInfo = getContractCTA(contractStatus, isBuyer, isSeller, isPending, isExpired, contractState);
+      // Use backend CTA fields if available, fallback to client-side computation
+      const ctaInfo = c.ctaType ? {
+        type: c.ctaType as any,
+        label: c.ctaLabel,
+        variant: c.ctaVariant as 'action' | 'status' | 'none'
+      } : getContractCTA(contractStatus, isBuyer, isSeller, isPending, isExpired, contractState);
       return ctaInfo.variant === 'action';
     }).length;
 
@@ -313,8 +318,12 @@ export default function EnhancedDashboard() {
           const contractStatus = isPending ? undefined : (c as Contract).status;
           const contractState = isPending ? (c as PendingContract).state : undefined;
 
-          // Use the source of truth function
-          const ctaInfo = getContractCTA(contractStatus, isBuyer, isSeller, isPending, isExpired, contractState);
+          // Use backend CTA fields if available, fallback to client-side computation
+          const ctaInfo = c.ctaType ? {
+            type: c.ctaType as any,
+            label: c.ctaLabel,
+            variant: c.ctaVariant as 'action' | 'status' | 'none'
+          } : getContractCTA(contractStatus, isBuyer, isSeller, isPending, isExpired, contractState);
           return ctaInfo.variant === 'action';
         });
         break;
@@ -429,6 +438,9 @@ export default function EnhancedDashboard() {
           </div>
         </div>
       )}
+
+      {/* Progress Checklist for new users */}
+      <ProgressChecklist />
 
       {/* Stats Cards - Mobile responsive grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8" data-tour="stats-cards">

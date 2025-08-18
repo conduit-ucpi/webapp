@@ -4,7 +4,6 @@ import ConnectWallet from '@/components/auth/ConnectWallet';
 import Button from '@/components/ui/Button';
 import Skeleton from '@/components/ui/Skeleton';
 import { useWeb3AuthInstance } from '@/components/auth/Web3AuthContextProvider';
-import AnimatedHero from '@/components/landing/AnimatedHero';
 import InteractiveDemo from '@/components/landing/InteractiveDemo';
 import { motion } from 'framer-motion';
 
@@ -42,7 +41,56 @@ export default function Home() {
     <div className="bg-white dark:bg-secondary-900 min-h-screen transition-colors" key="home-page">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
         {/* Hero Section */}
-        <AnimatedHero />
+        <div className="grid lg:grid-cols-2 gap-12 items-center min-h-[80vh]">
+          <div className="space-y-8">
+            <h1 className="text-5xl lg:text-6xl font-bold text-secondary-900 dark:text-white leading-tight">
+              Get Paid Safely, <span className="text-primary-500">Automatically</span>
+            </h1>
+            <p className="text-xl text-secondary-600 dark:text-secondary-300 leading-relaxed">
+              Escrow protection made simple - no lawyers, no banks, just security.
+              Hold payments in trust until delivery is confirmed.
+            </p>
+            {isAuthenticated ? (
+              <div className="flex gap-4 pt-6">
+                <Link href="/dashboard">
+                  <Button size="lg" className="px-8 py-4 text-lg">
+                    Go to Dashboard
+                  </Button>
+                </Link>
+                <Link href="/create">
+                  <Button variant="outline" size="lg" className="px-8 py-4 text-lg">
+                    Create Payment Request
+                  </Button>
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-4 pt-6">
+                <ConnectWallet />
+                <div className="flex items-center space-x-6 text-sm text-secondary-600 dark:text-secondary-400">
+                  <div className="flex items-center">
+                    <svg className="w-4 h-4 mr-2 text-primary-500" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                    60 second setup
+                  </div>
+                  <div className="flex items-center">
+                    <svg className="w-4 h-4 mr-2 text-primary-500" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                    $1 flat fee
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+          <div className="hidden lg:block">
+            <img 
+              src="/payment_gateway.png" 
+              alt="Secure payment gateway illustration"
+              className="w-full h-auto max-w-lg mx-auto"
+            />
+          </div>
+        </div>
 
         {/* Interactive Demo Section */}
         <div className="mt-32" id="how-it-works">

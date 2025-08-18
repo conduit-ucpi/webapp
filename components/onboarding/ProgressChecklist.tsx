@@ -22,6 +22,7 @@ export default function ProgressChecklist({ onClose }: ProgressChecklistProps) {
   const { user } = useAuth();
   const router = useRouter();
   const [isVisible, setIsVisible] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(true);
   const [completedItems, setCompletedItems] = useState<string[]>([]);
   const [contractsExist, setContractsExist] = useState(false);
   const [showWalkthrough, setShowWalkthrough] = useState(false);
@@ -179,36 +180,52 @@ export default function ProgressChecklist({ onClose }: ProgressChecklistProps) {
             </div>
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-gray-900">Welcome to Conduit!</h3>
+            <h3 className="text-lg font-semibold text-gray-900">Welcome to Instant Escrow!</h3>
             <p className="text-sm text-gray-600">Complete these steps to get the most out of your escrow platform</p>
           </div>
         </div>
-        <button
-          onClick={handleDismiss}
-          className="text-gray-400 hover:text-gray-600 transition-colors"
-        >
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="text-gray-400 hover:text-gray-600 transition-colors"
+            aria-label={isExpanded ? 'Collapse' : 'Expand'}
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                d={isExpanded ? "M5 15l7-7 7 7" : "M19 9l-7 7-7-7"} 
+              />
+            </svg>
+          </button>
+          <button
+            onClick={handleDismiss}
+            className="text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
       </div>
 
-      {/* Progress bar */}
-      <div className="mb-6">
-        <div className="flex justify-between items-center mb-2">
-          <span className="text-sm font-medium text-gray-700">Progress</span>
-          <span className="text-sm text-gray-500">{completedCount} of {totalCount} completed</span>
-        </div>
-        <div className="w-full bg-gray-200 rounded-full h-2">
-          <div 
-            className="bg-primary-500 h-2 rounded-full transition-all duration-300 ease-out"
-            style={{ width: `${progressPercentage}%` }}
-          />
-        </div>
-      </div>
+      {/* Collapsible content */}
+      {isExpanded && (
+        <>
+          {/* Progress bar */}
+          <div className="mb-6">
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-sm font-medium text-gray-700">Progress</span>
+              <span className="text-sm text-gray-500">{completedCount} of {totalCount} completed</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div 
+                className="bg-primary-500 h-2 rounded-full transition-all duration-300 ease-out"
+                style={{ width: `${progressPercentage}%` }}
+              />
+            </div>
+          </div>
 
-      {/* Checklist items */}
-      <div className="space-y-4">
+          {/* Checklist items */}
+          <div className="space-y-4">
         {checklistItems.map((item) => {
           const isCompleted = completedItems.includes(item.id);
           
@@ -247,10 +264,10 @@ export default function ProgressChecklist({ onClose }: ProgressChecklistProps) {
             </div>
           );
         })}
-      </div>
+          </div>
 
-      {/* Completion message */}
-      {completedCount === totalCount && (
+          {/* Completion message */}
+          {completedCount === totalCount && (
         <div className="mt-6 p-4 bg-success-50 border border-success-200 rounded-lg">
           <div className="flex items-center">
             <svg className="w-5 h-5 text-success-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
@@ -271,7 +288,9 @@ export default function ProgressChecklist({ onClose }: ProgressChecklistProps) {
           >
             Dismiss Checklist
           </Button>
-        </div>
+          </div>
+          )}
+        </>
       )}
 
       {/* Transaction Walkthrough Modal */}

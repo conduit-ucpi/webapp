@@ -7,18 +7,20 @@ import ExpandableHash from '@/components/ui/ExpandableHash';
 import { formatWalletAddress, displayCurrency, formatDateTimeWithTZ } from '@/utils/validation';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { useConfig } from '@/components/auth/ConfigProvider';
+import ContractActions from './ContractActions';
 
 interface ContractDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
   contract: Contract | PendingContract;
+  onRefresh?: () => void;
 }
 
 function isPendingContract(contract: Contract | PendingContract): contract is PendingContract {
   return !('contractAddress' in contract) || !contract.contractAddress;
 }
 
-export default function ContractDetailsModal({ isOpen, onClose, contract }: ContractDetailsModalProps) {
+export default function ContractDetailsModal({ isOpen, onClose, contract, onRefresh }: ContractDetailsModalProps) {
   const { user } = useAuth();
   const { config } = useConfig();
 
@@ -34,7 +36,7 @@ export default function ContractDetailsModal({ isOpen, onClose, contract }: Cont
   // Use backend-provided status display
   const statusDisplay = {
     label: contract.ctaLabel || status || 'Unknown',
-    color: contract.ctaVariant === 'action' ? 'bg-primary-50 text-primary-600 border-primary-200' : 'bg-secondary-50 text-secondary-600 border-secondary-200'
+    color: contract.ctaVariant?.toLowerCase() === 'action' ? 'bg-primary-50 text-primary-600 border-primary-200' : 'bg-secondary-50 text-secondary-600 border-secondary-200'
   };
   
   // Calculate time remaining for active contracts
@@ -335,19 +337,22 @@ export default function ContractDetailsModal({ isOpen, onClose, contract }: Cont
           </div>
         )}
 
-        {/* Data Discrepancy Warning */}
-        {!isPending && contract.hasDiscrepancy && (
-          <div className="bg-warning-50 border border-warning-200 rounded-lg p-4">
-            <h4 className="font-semibold text-warning-900 mb-2">⚠️ Data Discrepancy Detected</h4>
-            <p className="text-warning-800 text-sm">
-              There may be inconsistencies between the database and blockchain data for this contract.
-              Please verify all information before taking any actions.
-            </p>
-          </div>
-        )}
+        {/* Backend will provide all warnings and status information */}
 
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-secondary-200">
+          {/* Contract-specific actions (Raise Dispute, Claim Funds, etc.) */}
+          <ContractActions
+            contract={contract}
+            isBuyer={isBuyer}
+            isSeller={isSeller}
+            onAction={() => {
+              // Refresh dashboard and close modal after action
+              onRefresh?.();
+              onClose();
+            }}
+          />
+          
           <Button
             onClick={onClose}
             variant="outline"

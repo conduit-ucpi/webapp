@@ -73,17 +73,12 @@ export default function ContractCard({ contract, onAction, onAccept, isClaimingI
                 : (contract as Contract).status || 'UNKNOWN'
               }
               label={contract.ctaLabel}
-              color={contract.ctaVariant === 'action' ? 'bg-primary-50 text-primary-600 border-primary-200' : undefined}
+              color={contract.ctaVariant?.toLowerCase() === 'action' ? 'bg-primary-50 text-primary-600 border-primary-200' : undefined}
               size="sm"
             />
             {!isPending && (contract as Contract).blockchainQueryError && (
               <span className="inline-flex px-2 py-1 text-xs font-medium rounded bg-error-50 text-error-600 border border-error-200" title={(contract as Contract).blockchainQueryError}>
                 Blockchain Error
-              </span>
-            )}
-            {!isPending && (contract as Contract).hasDiscrepancy && (
-              <span className="inline-flex px-2 py-1 text-xs font-medium rounded bg-warning-50 text-warning-600 border border-warning-200" title={(contract as Contract).discrepancyDetails?.join(', ')}>
-                Data Mismatch
               </span>
             )}
           </div>

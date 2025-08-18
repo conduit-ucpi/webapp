@@ -61,31 +61,37 @@ export default function EnhancedContractCard({
   
   // Use backend-provided CTA information only
   const primaryAction = useMemo(() => {
-    // Only use backend-provided CTA fields
-    if (!contract.ctaType || !contract.ctaLabel || contract.ctaVariant !== 'action') {
+    // Only use backend-provided CTA fields (case-insensitive check)
+    if (!contract.ctaType || !contract.ctaLabel || contract.ctaVariant?.toLowerCase() !== 'action') {
       return null;
     }
     
     // Map CTA types to action strings for onAction callback
     const actionMap = {
       'ACCEPT_CONTRACT': 'accept',
-      'MANAGE_DISPUTE': 'manage'
+      'MANAGE_DISPUTE': 'manage',
+      'RAISE_DISPUTE': 'dispute',
+      'CLAIM_FUNDS': 'claim'
     };
     
-    // Map variant to button variant
+    // Map CTA types to button variants
     const variantMap: Record<string, 'primary' | 'secondary' | 'outline' | 'ghost' | 'success' | 'error'> = {
       'ACCEPT_CONTRACT': 'primary',
-      'MANAGE_DISPUTE': 'error'
+      'MANAGE_DISPUTE': 'error',
+      'RAISE_DISPUTE': 'error',
+      'CLAIM_FUNDS': 'success'
     };
     
-    // Only return action info for CTAs that this component handles
+    // Check if this component directly handles the action
     const action = actionMap[contract.ctaType as keyof typeof actionMap];
-    if (!action) return null;
     
+    // If we don't have a specific handler, still show the button
+    // but use 'view-details' as the action to open the details modal
+    // where ContractActions component can handle it
     return {
       label: contract.ctaLabel,
-      action,
-      variant: variantMap[contract.ctaType] || 'outline'
+      action: action || 'view-details',
+      variant: variantMap[contract.ctaType] || 'primary'
     };
   }, [contract]);
 
@@ -239,22 +245,7 @@ export default function EnhancedContractCard({
         </Button>
       </div>
 
-      {/* Warning badges for special states */}
-      {!isPending && contract.hasDiscrepancy && (
-        <div className="mt-3 p-2 bg-warning-50 border border-warning-200 rounded-md">
-          <p className="text-xs text-warning-800">
-            ⚠️ Data discrepancy detected
-          </p>
-        </div>
-      )}
-      
-      {!isPending && contract.disputes && contract.disputes.length > 0 && (
-        <div className="mt-3 p-2 bg-error-50 border border-error-200 rounded-md">
-          <p className="text-xs text-error-800">
-            🔴 Dispute in progress
-          </p>
-        </div>
-      )}
+      {/* Backend will provide all status information via the status field and CTA labels */}
     </div>
   );
 }

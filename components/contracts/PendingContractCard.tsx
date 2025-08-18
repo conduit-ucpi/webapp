@@ -24,7 +24,7 @@ export default function PendingContractCard({
 
   // Use backend-provided status display
   const statusLabel = contract.ctaLabel || 'Unknown';
-  const statusColor = contract.ctaVariant === 'action' 
+  const statusColor = contract.ctaVariant?.toLowerCase() === 'action' 
     ? 'bg-blue-100 text-blue-800' 
     : 'bg-gray-100 text-gray-800';
 

@@ -38,6 +38,7 @@ export default function EnhancedDashboard() {
   const [isDemoMode, setIsDemoMode] = useState(false);
   const [contractToManage, setContractToManage] = useState<Contract | null>(null);
   const [showManageDispute, setShowManageDispute] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Sample demo data
   const createDemoData = (): (Contract | PendingContract)[] => {
@@ -205,6 +206,103 @@ export default function EnhancedDashboard() {
     fetchContracts();
   };
 
+  // Refresh function that doesn't trigger main loading state
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      // If in demo mode, use sample data
+      if (isDemoMode) {
+        setAllContracts(createDemoData());
+        setError('');
+        return;
+      }
+
+      const response = await fetch('/api/combined-contracts');
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch contracts');
+      }
+
+      const contractsData = await response.json();
+      
+      if (!Array.isArray(contractsData)) {
+        throw new Error('Invalid response format - expected array');
+      }
+      
+      // Transform contracts into unified array (same logic as fetchContracts)
+      const unified: (Contract | PendingContract)[] = [];
+      
+      contractsData.forEach((item: any) => {
+        if (!item.contract) {
+          return;
+        }
+        
+        const contract = item.contract;
+        
+        if (!contract.chainAddress || !item.blockchainQuerySuccessful) {
+          // Pending contract
+          const pendingContract: PendingContract = {
+            id: contract.id,
+            sellerEmail: contract.sellerEmail || '',
+            buyerEmail: contract.buyerEmail || '',
+            amount: contract.amount || 0,
+            currency: contract.currency || 'USDC',
+            sellerAddress: contract.sellerAddress || '',
+            expiryTimestamp: contract.expiryTimestamp || 0,
+            chainId: contract.chainId,
+            chainAddress: contract.chainAddress,
+            description: contract.description || '',
+            createdAt: contract.createdAt?.toString() || '',
+            createdBy: contract.createdBy || '',
+            state: contract.state || 'OK',
+            adminNotes: contract.adminNotes || [],
+            ctaType: item.ctaType,
+            ctaLabel: item.ctaLabel,
+            ctaVariant: item.ctaVariant
+          };
+          unified.push(pendingContract);
+        } else {
+          // Regular contract
+          const regularContract: Contract = {
+            id: contract.id,
+            contractAddress: contract.chainAddress || '',
+            buyerAddress: item.blockchainBuyerAddress || contract.buyerAddress || '',
+            sellerAddress: item.blockchainSellerAddress || contract.sellerAddress || '',
+            amount: parseFloat(item.blockchainAmount || contract.amount || '0'),
+            expiryTimestamp: item.blockchainExpiryTimestamp || contract.expiryTimestamp || 0,
+            description: contract.description || '',
+            status: item.status || 'UNKNOWN',
+            createdAt: contract.createdAt || 0,
+            funded: item.blockchainFunded || false,
+            buyerEmail: contract.buyerEmail,
+            sellerEmail: contract.sellerEmail,
+            productName: contract.productName,
+            adminNotes: contract.adminNotes || [],
+            disputes: contract.disputes || [],
+            blockchainQueryError: item.blockchainError,
+            blockchainStatus: item.blockchainStatus,
+            hasDiscrepancy: Object.values(item.discrepancies || {}).some(Boolean),
+            discrepancyDetails: Object.entries(item.discrepancies || {})
+              .filter(([, value]) => value)
+              .map(([key]) => key),
+            ctaType: item.ctaType,
+            ctaLabel: item.ctaLabel,
+            ctaVariant: item.ctaVariant
+          };
+          unified.push(regularContract);
+        }
+      });
+      
+      setAllContracts(unified);
+      setError('');
+    } catch (error: any) {
+      console.error('Failed to refresh contracts:', error);
+      setError(error.message || 'Failed to refresh contracts');
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
 
   useEffect(() => {
     fetchContracts();
@@ -230,8 +328,8 @@ export default function EnhancedDashboard() {
     const totalValue = allContracts.reduce((sum, c) => sum + (c.amount || 0), 0);
     
     const actionNeededCount = allContracts.filter(c => {
-      // Use backend-provided CTA variant only
-      return c.ctaVariant === 'action';
+      // Use backend-provided CTA variant only (case-insensitive)
+      return c.ctaVariant?.toLowerCase() === 'action';
     }).length;
 
     return {
@@ -251,8 +349,8 @@ export default function EnhancedDashboard() {
     switch (activeTab) {
       case 'ACTION_NEEDED':
         filtered = filtered.filter(c => {
-          // Use backend-provided CTA variant only
-          return c.ctaVariant === 'action';
+          // Use backend-provided CTA variant only (case-insensitive)
+          return c.ctaVariant?.toLowerCase() === 'action';
         });
         break;
       case 'ACTIVE':
@@ -311,6 +409,10 @@ export default function EnhancedDashboard() {
     } else if (action === 'manage' && 'contractAddress' in contract) {
       setContractToManage(contract as Contract);
       setShowManageDispute(true);
+    } else if (action === 'view-details' || action === 'dispute' || action === 'claim') {
+      // Open details modal for actions handled by ContractActions component
+      setSelectedContract(contract);
+      setShowDetailsModal(true);
     }
     // Note: 'dispute' and 'claim' actions are now handled by ContractActions component
   };
@@ -437,6 +539,32 @@ export default function EnhancedDashboard() {
         </div>
       </div>
 
+      {/* Section Header with Refresh Button */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6">
+        <h2 className="text-xl font-semibold text-secondary-900 dark:text-white mb-4 sm:mb-0">Your payment agreements</h2>
+        <Button
+          onClick={handleRefresh}
+          variant="outline"
+          size="sm"
+          disabled={isRefreshing}
+          className="w-full sm:w-auto"
+        >
+          {isRefreshing ? (
+            <>
+              <LoadingSpinner size="sm" className="w-4 h-4 mr-2" />
+              Refreshing...
+            </>
+          ) : (
+            <>
+              <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              Refresh
+            </>
+          )}
+        </Button>
+      </div>
+
       {/* Tabs */}
       <div data-tour="filter-tabs">
         <Tabs
@@ -524,6 +652,7 @@ export default function EnhancedDashboard() {
             setSelectedContract(null);
           }}
           contract={selectedContract}
+          onRefresh={fetchContracts}
         />
       )}
 

@@ -294,11 +294,6 @@ export default function ContractListView({
                         <span className={getStatusBadgeClass(contract.status)}>
                           {contract.status}
                         </span>
-                        {contract.hasDiscrepancy && (
-                          <span className="ml-2 text-orange-500 text-xs" title="Has discrepancy">
-                            ⚠️
-                          </span>
-                        )}
                       </div>
                       {(() => {
                         const isBuyer = contract.type === 'pending' 

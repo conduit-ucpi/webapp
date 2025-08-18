@@ -98,7 +98,6 @@ export default function Dashboard() {
         </div>
 
         <div>
-          <h2 className="text-xl font-semibold text-secondary-900 dark:text-white mb-6">Your payment agreements</h2>
           <EnhancedDashboard />
         </div>
         

@@ -130,6 +130,9 @@ describe('ContractActions - Context Fields for Dispute', () => {
       funded: true,
       buyerEmail: 'buyer@test.com',
       sellerEmail: 'seller@test.com',
+      ctaType: 'RAISE_DISPUTE',
+      ctaLabel: 'Raise Dispute',
+      ctaVariant: 'action'
     };
 
     mockFetch.mockResolvedValueOnce({
@@ -206,6 +209,9 @@ describe('ContractActions - Context Fields for Dispute', () => {
       funded: true,
       buyerEmail: 'buyer@test.com',
       sellerEmail: 'seller@test.com',
+      ctaType: 'RAISE_DISPUTE',
+      ctaLabel: 'Raise Dispute',
+      ctaVariant: 'action'
     };
 
     mockFetch.mockResolvedValueOnce({
@@ -261,6 +267,9 @@ describe('ContractActions - Context Fields for Dispute', () => {
       funded: true,
       buyerEmail: 'buyer@test.com',
       sellerEmail: 'seller@test.com',
+      ctaType: 'RAISE_DISPUTE',
+      ctaLabel: 'Raise Dispute',
+      ctaVariant: 'action'
     };
 
     mockFetch.mockResolvedValueOnce({
@@ -316,6 +325,9 @@ describe('ContractActions - Context Fields for Dispute', () => {
       funded: true,
       buyerEmail: 'buyer@test.com',
       sellerEmail: 'seller@test.com',
+      ctaType: 'RAISE_DISPUTE',
+      ctaLabel: 'Raise Dispute',
+      ctaVariant: 'action'
     };
 
     mockFetch.mockResolvedValueOnce({

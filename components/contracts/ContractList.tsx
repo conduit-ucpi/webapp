@@ -63,7 +63,10 @@ export default function ContractList() {
             createdAt: contract.createdAt?.toString() || '',
             createdBy: contract.createdBy || '',
             state: contract.state || 'OK',
-            adminNotes: contract.adminNotes || []
+            adminNotes: contract.adminNotes || [],
+            ctaType: item.ctaType,
+            ctaLabel: item.ctaLabel,
+            ctaVariant: item.ctaVariant
           };
           unified.push(pendingContract);
         } else {
@@ -76,7 +79,8 @@ export default function ContractList() {
             amount: parseFloat(item.blockchainAmount || contract.amount || '0'), // Keep in microUSDC, formatUSDC will convert for display
             expiryTimestamp: item.blockchainExpiryTimestamp || contract.expiryTimestamp || 0,
             description: contract.description || '',
-            status: item.blockchainStatus || 'PENDING',
+            status: item.status || 'UNKNOWN',
+            blockchainStatus: item.blockchainStatus,
             createdAt: contract.createdAt || 0,
             funded: item.blockchainFunded || false,
             buyerEmail: contract.buyerEmail,
@@ -88,7 +92,10 @@ export default function ContractList() {
             hasDiscrepancy: Object.values(item.discrepancies || {}).some(Boolean),
             discrepancyDetails: Object.entries(item.discrepancies || {})
               .filter(([, value]) => value)
-              .map(([key]) => key)
+              .map(([key]) => key),
+            ctaType: item.ctaType,
+            ctaLabel: item.ctaLabel,
+            ctaVariant: item.ctaVariant
           };
           unified.push(regularContract);
         }

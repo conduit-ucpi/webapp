@@ -135,13 +135,17 @@ const createCombinedMockData = (contracts = mockContracts, withBlockchainData = 
           amount: contract.amount,
           expiryTimestamp: contract.expiryTimestamp,
           funded: true
-        }
+        },
+        status: 'ACTIVE'
       };
     }
+    // For contracts without blockchain data, determine status based on expiry
+    const isExpired = Date.now() / 1000 > contract.expiryTimestamp;
     return {
       ...contract,
       blockchainQuerySuccess: false,
-      blockchainQueryError: contract.chainAddress ? 'Chain service error' : 'No chain address'
+      blockchainQueryError: contract.chainAddress ? 'Chain service error' : 'No chain address',
+      status: isExpired ? 'EXPIRED' : 'PENDING'
     };
   });
 };
@@ -705,17 +709,20 @@ describe('AdminContractList', () => {
       {
         ...contractsWithChain[0],
         blockchainQuerySuccess: true,
-        blockchainStatus: { status: 'DISPUTED' }
+        blockchainStatus: { status: 'DISPUTED' },
+        status: 'DISPUTED'
       },
       {
         ...contractsWithChain[1],
         blockchainQuerySuccess: true,
-        blockchainStatus: { status: 'RESOLVED' }
+        blockchainStatus: { status: 'RESOLVED' },
+        status: 'RESOLVED'
       },
       {
         ...contractsWithChain[2],
         blockchainQuerySuccess: true,
-        blockchainStatus: { status: 'CLAIMED' }
+        blockchainStatus: { status: 'CLAIMED' },
+        status: 'CLAIMED'
       },
       ...createCombinedMockData(contractsWithoutChain, false)
     ];

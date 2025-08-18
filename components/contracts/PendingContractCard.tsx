@@ -22,25 +22,11 @@ export default function PendingContractCard({
                    !isExpired && 
                    contract.state === 'OK';
 
-  const getStatusDisplay = () => {
-    if (contract.chainAddress) {
-      return 'Holding funds';
-    }
-    if (isExpired) {
-      return 'EXPIRED';
-    }
-    return 'PENDING';
-  };
-  
-  const getStatusColor = () => {
-    if (contract.chainAddress) {
-      return 'bg-green-100 text-green-800'; // Same as ACTIVE
-    }
-    if (isExpired) {
-      return 'bg-yellow-100 text-yellow-800'; // Same as EXPIRED
-    }
-    return 'bg-gray-100 text-gray-800'; // Same as PENDING/CREATED
-  };
+  // Use backend-provided status display
+  const statusLabel = contract.ctaLabel || 'Unknown';
+  const statusColor = contract.ctaVariant === 'action' 
+    ? 'bg-blue-100 text-blue-800' 
+    : 'bg-gray-100 text-gray-800';
 
   return (
     <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
@@ -53,8 +39,8 @@ export default function PendingContractCard({
               `Payment #${contract.id.slice(-6)}`
             )}
           </h3>
-          <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor()}`}>
-            {getStatusDisplay().toUpperCase()}
+          <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${statusColor}`}>
+            {statusLabel.toUpperCase()}
           </span>
         </div>
         <div className="text-right">

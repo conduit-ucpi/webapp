@@ -4,7 +4,7 @@ import Modal from '@/components/ui/Modal';
 import Button from '@/components/ui/Button';
 import StatusBadge from '@/components/ui/StatusBadge';
 import ExpandableHash from '@/components/ui/ExpandableHash';
-import { formatWalletAddress, displayCurrency, formatDateTimeWithTZ, getStatusDisplay } from '@/utils/validation';
+import { formatWalletAddress, displayCurrency, formatDateTimeWithTZ } from '@/utils/validation';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { useConfig } from '@/components/auth/ConfigProvider';
 
@@ -31,7 +31,11 @@ export default function ContractDetailsModal({ isOpen, onClose, contract }: Cont
   const status = isPending ? 'PENDING' : (contract as Contract).status;
   
   // Use centralized status display with role information
-  const statusDisplay = getStatusDisplay(status, isBuyer, isSeller);
+  // Use backend-provided status display
+  const statusDisplay = {
+    label: contract.ctaLabel || status || 'Unknown',
+    color: contract.ctaVariant === 'action' ? 'bg-primary-50 text-primary-600 border-primary-200' : 'bg-secondary-50 text-secondary-600 border-secondary-200'
+  };
   
   // Calculate time remaining for active contracts
   const timeRemaining = () => {
@@ -72,7 +76,11 @@ export default function ContractDetailsModal({ isOpen, onClose, contract }: Cont
         {/* Header Section */}
         <div className="flex flex-col sm:flex-row sm:items-start justify-between pb-4 border-b border-secondary-200">
           <div className="flex items-start space-x-3 mb-3 sm:mb-0">
-            <StatusBadge status={status} isBuyer={isBuyer} isSeller={isSeller} />
+            <StatusBadge 
+              status={status} 
+              label={contract.ctaLabel || statusDisplay.label}
+              color={statusDisplay.color}
+            />
             <div>
               <h3 className="text-xl font-semibold text-secondary-900">
                 {contract.description || 'Untitled Contract'}

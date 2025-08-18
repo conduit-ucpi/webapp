@@ -137,6 +137,9 @@ describe('ContractActions - PRODUCT_NAME Environment Variable', () => {
       funded: true,
       buyerEmail: 'buyer@test.com',
       sellerEmail: 'seller@test.com',
+      ctaType: 'RAISE_DISPUTE',
+      ctaLabel: 'Raise Dispute',
+      ctaVariant: 'action'
     };
 
     render(
@@ -206,6 +209,9 @@ describe('ContractActions - PRODUCT_NAME Environment Variable', () => {
       funded: true,
       buyerEmail: 'buyer@test.com',
       sellerEmail: 'seller@test.com',
+      ctaType: 'RAISE_DISPUTE',
+      ctaLabel: 'Raise Dispute',
+      ctaVariant: 'action'
     };
 
     render(
@@ -275,6 +281,9 @@ describe('ContractActions - PRODUCT_NAME Environment Variable', () => {
       funded: true,
       buyerEmail: 'buyer@test.com',
       sellerEmail: 'seller@test.com',
+      ctaType: 'RAISE_DISPUTE',
+      ctaLabel: 'Raise Dispute',
+      ctaVariant: 'action'
     };
 
     render(

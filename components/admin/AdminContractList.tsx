@@ -8,7 +8,7 @@ import { displayCurrency, formatDateTimeWithTZ, normalizeTimestamp } from '@/uti
 
 // Extended type for admin contracts that includes chain data and blockchain status
 type AdminContract = PendingContract & {
-  status?: 'CREATED' | 'ACTIVE' | 'EXPIRED' | 'DISPUTED' | 'RESOLVED' | 'CLAIMED';
+  status?: 'PENDING_ACCEPTANCE' | 'ACTIVE' | 'EXPIRED' | 'DISPUTED' | 'RESOLVED' | 'CLAIMED' | 'ERROR' | 'UNKNOWN' | 'AWAITING_FUNDING' | 'PENDING' | 'CREATED';
   funded?: boolean;
   fundedAt?: string;
   disputedAt?: string;
@@ -77,10 +77,11 @@ export default function AdminContractList({ onContractSelect }: AdminContractLis
 
         // If blockchain data is available, merge it
         if (contract.blockchainStatus) {
-          // Create synthetic RESOLVED status if contract is CLAIMED but has adminNotes
-          const displayStatus = contract.blockchainStatus?.status === 'CLAIMED' && contract.adminNotes && contract.adminNotes.length > 0
-            ? 'RESOLVED'
-            : contract.blockchainStatus?.status || 'PENDING';
+          // Use backend-provided status if available, otherwise fall back to computed status
+          const displayStatus = contract.status || 
+            (contract.blockchainStatus?.status === 'CLAIMED' && contract.adminNotes && contract.adminNotes.length > 0
+              ? 'RESOLVED'
+              : contract.blockchainStatus?.status || 'PENDING');
             
           return {
             ...baseContract,
@@ -187,15 +188,9 @@ export default function AdminContractList({ onContractSelect }: AdminContractLis
     setCurrentPage(page);
   };
 
+  // Use backend-provided status only
   const getStatusDisplay = (contract: any) => {
-    if (contract.status) {
-      return contract.status;
-    }
-    if (contract.chainAddress) {
-      return 'DEPLOYED';
-    }
-    const isExpired = Date.now() / 1000 > contract.expiryTimestamp;
-    return isExpired ? 'EXPIRED' : 'PENDING';
+    return contract.status || 'UNKNOWN';
   };
 
   const getStatusColor = (status: string) => {
@@ -345,7 +340,7 @@ export default function AdminContractList({ onContractSelect }: AdminContractLis
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {paginatedContracts.map((contract) => {
-              const status = getStatusDisplay(contract);
+              const status = contract.status || 'UNKNOWN';
               return (
                 <tr 
                   key={contract.id} 

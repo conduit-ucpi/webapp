@@ -15,7 +15,7 @@ import { useWalletAddress } from '@/hooks/useWalletAddress';
 
 // Extended type for admin contracts that includes chain data
 type AdminContract = PendingContract & {
-  status?: 'CREATED' | 'ACTIVE' | 'EXPIRED' | 'DISPUTED' | 'RESOLVED' | 'CLAIMED';
+  status?: 'PENDING_ACCEPTANCE' | 'ACTIVE' | 'EXPIRED' | 'DISPUTED' | 'RESOLVED' | 'CLAIMED' | 'ERROR' | 'UNKNOWN' | 'AWAITING_FUNDING' | 'PENDING' | 'CREATED';
   funded?: boolean;
   fundedAt?: string;
   disputedAt?: string;

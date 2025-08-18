@@ -18,10 +18,9 @@ import {
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import ContractAcceptance from '@/components/contracts/ContractAcceptance';
 import ContractDetailsModal from '@/components/contracts/ContractDetailsModal';
-import DisputeModal from '@/components/contracts/DisputeModal';
 import DisputeManagementModal from '@/components/contracts/DisputeManagementModal';
 import ProgressChecklist from '@/components/onboarding/ProgressChecklist';
-import { displayCurrency, getContractCTA } from '@/utils/validation';
+import { displayCurrency } from '@/utils/validation';
 
 type StatusFilter = 'ALL' | 'ACTION_NEEDED' | 'ACTIVE' | 'COMPLETED' | 'DISPUTED';
 
@@ -37,9 +36,6 @@ export default function EnhancedDashboard() {
   const [selectedContract, setSelectedContract] = useState<Contract | PendingContract | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [isDemoMode, setIsDemoMode] = useState(false);
-  const [contractToDispute, setContractToDispute] = useState<Contract | null>(null);
-  const [showDispute, setShowDispute] = useState(false);
-  const [isSubmittingDispute, setIsSubmittingDispute] = useState(false);
   const [contractToManage, setContractToManage] = useState<Contract | null>(null);
   const [showManageDispute, setShowManageDispute] = useState(false);
 
@@ -149,7 +145,10 @@ export default function EnhancedDashboard() {
             createdAt: contract.createdAt?.toString() || '',
             createdBy: contract.createdBy || '',
             state: contract.state || 'OK',
-            adminNotes: contract.adminNotes || []
+            adminNotes: contract.adminNotes || [],
+            ctaType: item.ctaType,
+            ctaLabel: item.ctaLabel,
+            ctaVariant: item.ctaVariant
           };
           unified.push(pendingContract);
         } else {
@@ -162,7 +161,7 @@ export default function EnhancedDashboard() {
             amount: parseFloat(item.blockchainAmount || contract.amount || '0'),
             expiryTimestamp: item.blockchainExpiryTimestamp || contract.expiryTimestamp || 0,
             description: contract.description || '',
-            status: item.blockchainStatus || 'PENDING',
+            status: item.status || 'UNKNOWN',
             createdAt: contract.createdAt || 0,
             funded: item.blockchainFunded || false,
             buyerEmail: contract.buyerEmail,
@@ -171,10 +170,14 @@ export default function EnhancedDashboard() {
             adminNotes: contract.adminNotes || [],
             disputes: contract.disputes || [],
             blockchainQueryError: item.blockchainError,
+            blockchainStatus: item.blockchainStatus,
             hasDiscrepancy: Object.values(item.discrepancies || {}).some(Boolean),
             discrepancyDetails: Object.entries(item.discrepancies || {})
               .filter(([, value]) => value)
-              .map(([key]) => key)
+              .map(([key]) => key),
+            ctaType: item.ctaType,
+            ctaLabel: item.ctaLabel,
+            ctaVariant: item.ctaVariant
           };
           unified.push(regularContract);
         }
@@ -202,56 +205,10 @@ export default function EnhancedDashboard() {
     fetchContracts();
   };
 
-  const handleDisputeSubmit = async (reason: string, refundPercent: number) => {
-    console.log('handleDisputeSubmit called with:', { reason, refundPercent, contractToDispute });
-    
-    if (!contractToDispute) {
-      console.error('No contract to dispute');
-      return;
-    }
-    
-    setIsSubmittingDispute(true);
-    try {
-      console.log('Making API call to dispute contract:', contractToDispute.id);
-      const response = await fetch(`/api/contracts/${contractToDispute.id}/dispute`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          reason,
-          refundPercent,
-          timestamp: Math.floor(Date.now() / 1000), // Current timestamp in seconds
-          userEmail: user?.email
-        }),
-      });
-
-      console.log('API response status:', response.status);
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('API error response:', errorText);
-        throw new Error(`Failed to raise dispute: ${response.status} ${errorText}`);
-      }
-
-      // Close modal and refresh contracts
-      console.log('Dispute successful, closing modal');
-      setShowDispute(false);
-      setContractToDispute(null);
-      fetchContracts();
-    } catch (error: any) {
-      console.error('Failed to raise dispute:', error);
-      // TODO: Show error toast
-    } finally {
-      setIsSubmittingDispute(false);
-    }
-  };
 
   useEffect(() => {
     fetchContracts();
-    // Refresh every 30 seconds for near-expiry contracts
-    const interval = setInterval(fetchContracts, 30000);
-    return () => clearInterval(interval);
+    // Removed automatic polling - fetchContracts is called manually when needed
   }, []);
 
   // Calculate stats from contracts
@@ -273,22 +230,8 @@ export default function EnhancedDashboard() {
     const totalValue = allContracts.reduce((sum, c) => sum + (c.amount || 0), 0);
     
     const actionNeededCount = allContracts.filter(c => {
-      const isPending = !('contractAddress' in c);
-      const isBuyer = isPending 
-        ? user?.email === c.buyerEmail 
-        : user?.walletAddress?.toLowerCase() === (c as Contract).buyerAddress?.toLowerCase();
-      const isSeller = user?.walletAddress?.toLowerCase() === c.sellerAddress?.toLowerCase();
-      const isExpired = c.expiryTimestamp <= now;
-      const contractStatus = isPending ? undefined : (c as Contract).status;
-      const contractState = isPending ? (c as PendingContract).state : undefined;
-
-      // Use backend CTA fields if available, fallback to client-side computation
-      const ctaInfo = c.ctaType ? {
-        type: c.ctaType as any,
-        label: c.ctaLabel,
-        variant: c.ctaVariant as 'action' | 'status' | 'none'
-      } : getContractCTA(contractStatus, isBuyer, isSeller, isPending, isExpired, contractState);
-      return ctaInfo.variant === 'action';
+      // Use backend-provided CTA variant only
+      return c.ctaVariant === 'action';
     }).length;
 
     return {
@@ -307,24 +250,9 @@ export default function EnhancedDashboard() {
     // Apply tab filter
     switch (activeTab) {
       case 'ACTION_NEEDED':
-        const now = Date.now() / 1000;
         filtered = filtered.filter(c => {
-          const isPending = !('contractAddress' in c);
-          const isBuyer = isPending 
-            ? user?.email === c.buyerEmail 
-            : user?.walletAddress?.toLowerCase() === (c as Contract).buyerAddress?.toLowerCase();
-          const isSeller = user?.walletAddress?.toLowerCase() === c.sellerAddress?.toLowerCase();
-          const isExpired = c.expiryTimestamp <= now;
-          const contractStatus = isPending ? undefined : (c as Contract).status;
-          const contractState = isPending ? (c as PendingContract).state : undefined;
-
-          // Use backend CTA fields if available, fallback to client-side computation
-          const ctaInfo = c.ctaType ? {
-            type: c.ctaType as any,
-            label: c.ctaLabel,
-            variant: c.ctaVariant as 'action' | 'status' | 'none'
-          } : getContractCTA(contractStatus, isBuyer, isSeller, isPending, isExpired, contractState);
-          return ctaInfo.variant === 'action';
+          // Use backend-provided CTA variant only
+          return c.ctaVariant === 'action';
         });
         break;
       case 'ACTIVE':
@@ -380,16 +308,11 @@ export default function EnhancedDashboard() {
     if (action === 'accept' && !('contractAddress' in contract)) {
       setContractToAccept(contract as PendingContract);
       setShowAcceptance(true);
-    } else if (action === 'dispute' && 'contractAddress' in contract) {
-      setContractToDispute(contract as Contract);
-      setShowDispute(true);
     } else if (action === 'manage' && 'contractAddress' in contract) {
       setContractToManage(contract as Contract);
       setShowManageDispute(true);
-    } else if (action === 'claim' && 'contractAddress' in contract) {
-      // TODO: Handle claim action
-      console.log('Claim action not implemented yet');
     }
+    // Note: 'dispute' and 'claim' actions are now handled by ContractActions component
   };
 
   const handleContractClick = (contract: Contract | PendingContract) => {
@@ -552,13 +475,14 @@ export default function EnhancedDashboard() {
         ) : (
           <div className="space-y-4">
             {filteredContracts.map((contract) => (
-              <EnhancedContractCard
-                key={contract.id || ('contractAddress' in contract ? contract.contractAddress : contract.chainAddress)}
-                contract={contract}
-                onAction={(action) => handleContractAction(contract, action)}
-                onClick={() => handleContractClick(contract)}
-                onViewDetails={() => handleViewDetails(contract)}
-              />
+              <div key={contract.id || ('contractAddress' in contract ? contract.contractAddress : contract.chainAddress)}>
+                <EnhancedContractCard
+                  contract={contract}
+                  onAction={(action) => handleContractAction(contract, action)}
+                  onClick={() => handleContractClick(contract)}
+                  onViewDetails={() => handleViewDetails(contract)}
+                />
+              </div>
             ))}
           </div>
         )}
@@ -603,18 +527,6 @@ export default function EnhancedDashboard() {
         />
       )}
 
-      {/* Dispute Modal */}
-      {showDispute && contractToDispute && (
-        <DisputeModal
-          isOpen={showDispute}
-          onClose={() => {
-            setShowDispute(false);
-            setContractToDispute(null);
-          }}
-          onSubmit={handleDisputeSubmit}
-          isSubmitting={isSubmittingDispute}
-        />
-      )}
 
       {/* Manage Dispute Modal */}
       {showManageDispute && contractToManage && (

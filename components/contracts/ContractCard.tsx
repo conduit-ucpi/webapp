@@ -72,9 +72,8 @@ export default function ContractCard({ contract, onAction, onAccept, isClaimingI
                 ? ((contract as PendingContract).chainAddress ? 'ACTIVE' : 'PENDING')
                 : (contract as Contract).status || 'UNKNOWN'
               }
-              isBuyer={isBuyer}
-              isSeller={isSeller}
-              showDescription={false}
+              label={contract.ctaLabel}
+              color={contract.ctaVariant === 'action' ? 'bg-primary-50 text-primary-600 border-primary-200' : undefined}
               size="sm"
             />
             {!isPending && (contract as Contract).blockchainQueryError && (

@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { Contract, PendingContract } from '@/types';
-import { formatWalletAddress, displayCurrency, formatDateTimeWithTZ, getContractCTA } from '@/utils/validation';
+import { formatWalletAddress, displayCurrency, formatDateTimeWithTZ } from '@/utils/validation';
 import Button from '@/components/ui/Button';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { useMemo } from 'react';
@@ -59,75 +59,43 @@ export default function EnhancedContractCard({
   const isSeller = user?.walletAddress?.toLowerCase() === 
     contract.sellerAddress?.toLowerCase();
   
-  // Determine primary action using centralized logic
+  // Use backend-provided CTA information only
   const primaryAction = useMemo(() => {
-    const status = isPending ? undefined : contract.status;
-    const contractState = isPending ? (contract as PendingContract).state : undefined;
-    
-    // Use backend CTA fields if available, fallback to client-side computation
-    const ctaInfo = contract.ctaType ? {
-      type: contract.ctaType as any,
-      label: contract.ctaLabel,
-      variant: contract.ctaVariant as 'action' | 'status' | 'none'
-    } : getContractCTA(
-      status,
-      isBuyer,
-      isSeller,
-      isPending,
-      timeRemaining.isExpired,
-      contractState
-    );
-    
-    // Only show action buttons for actionable items
-    if (ctaInfo.variant !== 'action') return null;
+    // Only use backend-provided CTA fields
+    if (!contract.ctaType || !contract.ctaLabel || contract.ctaVariant !== 'action') {
+      return null;
+    }
     
     // Map CTA types to action strings for onAction callback
     const actionMap = {
       'ACCEPT_CONTRACT': 'accept',
-      'CLAIM_FUNDS': 'claim',
-      'RAISE_DISPUTE': 'dispute',
       'MANAGE_DISPUTE': 'manage'
     };
     
     // Map variant to button variant
     const variantMap: Record<string, 'primary' | 'secondary' | 'outline' | 'ghost' | 'success' | 'error'> = {
       'ACCEPT_CONTRACT': 'primary',
-      'CLAIM_FUNDS': 'success',
-      'RAISE_DISPUTE': 'error',
       'MANAGE_DISPUTE': 'error'
     };
     
-    return {
-      label: ctaInfo.label!,
-      action: actionMap[ctaInfo.type as keyof typeof actionMap],
-      variant: variantMap[ctaInfo.type] || 'outline'
-    };
-  }, [isPending, isBuyer, isSeller, contract, timeRemaining]);
-
-  // Use single source of truth for status display
-  const statusDisplay = useMemo(() => {
-    const status = isPending ? undefined : contract.status;
-    const contractState = isPending ? (contract as PendingContract).state : undefined;
+    // Only return action info for CTAs that this component handles
+    const action = actionMap[contract.ctaType as keyof typeof actionMap];
+    if (!action) return null;
     
-    // Use backend CTA fields if available, fallback to client-side computation
-    const ctaInfo = contract.ctaType ? {
-      type: contract.ctaType as any,
+    return {
       label: contract.ctaLabel,
-      variant: contract.ctaVariant as 'action' | 'status' | 'none'
-    } : getContractCTA(
-      status,
-      isBuyer,
-      isSeller,
-      isPending,
-      timeRemaining.isExpired,
-      contractState
-    );
-    
-    return {
-      label: ctaInfo.label || 'Unknown',
-      color: ctaInfo.variant === 'action' ? 'bg-primary-50 text-primary-600 border-primary-200' : 'bg-secondary-50 text-secondary-600 border-secondary-200'
+      action,
+      variant: variantMap[contract.ctaType] || 'outline'
     };
-  }, [isPending, isBuyer, isSeller, contract, timeRemaining]);
+  }, [contract]);
+
+  // Use backend-provided status display only
+  const statusDisplay = useMemo(() => {
+    return {
+      label: contract.ctaLabel || contract.status || 'Unknown',
+      color: contract.ctaVariant === 'action' ? 'bg-primary-50 text-primary-600 border-primary-200' : 'bg-secondary-50 text-secondary-600 border-secondary-200'
+    };
+  }, [contract]);
   
   return (
     <div 

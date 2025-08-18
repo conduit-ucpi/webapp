@@ -33,7 +33,7 @@ export interface Contract {
   amount: number;
   expiryTimestamp: number;
   description: string;
-  status: 'PENDING' | 'CREATED' | 'ACTIVE' | 'EXPIRED' | 'DISPUTED' | 'RESOLVED' | 'CLAIMED';
+  status: 'PENDING_ACCEPTANCE' | 'ACTIVE' | 'EXPIRED' | 'DISPUTED' | 'RESOLVED' | 'CLAIMED' | 'ERROR' | 'UNKNOWN' | 'AWAITING_FUNDING' | 'PENDING' | 'CREATED';
   createdAt: number;
   funded?: boolean;
   fundedAt?: string;
@@ -64,6 +64,10 @@ export interface Contract {
   blockchainQueryError?: string;
   hasDiscrepancy?: boolean;
   discrepancyDetails?: string[];
+  // Backend-provided computed status (replaces client-side status computation)
+  backendStatus?: string;
+  // Raw blockchain status for reference
+  blockchainStatus?: string;
   // Backend-provided CTA fields for consistent UI behavior
   ctaType?: string;
   ctaLabel?: string;
@@ -84,6 +88,8 @@ export interface PendingContract {
   createdAt: number;
   createdBy: string;
   state: 'OK' | 'IN-PROCESS';
+  // Backend-provided status for pending contracts
+  status?: 'PENDING_ACCEPTANCE' | 'ACTIVE' | 'EXPIRED' | 'DISPUTED' | 'RESOLVED' | 'CLAIMED' | 'ERROR' | 'UNKNOWN' | 'AWAITING_FUNDING' | 'PENDING' | 'CREATED';
   // Admin notes array from contract service
   adminNotes?: Array<{
     id: string;

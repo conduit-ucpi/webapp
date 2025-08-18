@@ -3,7 +3,7 @@ import { Contract, PendingContract, RaiseDisputeRequest } from '@/types';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { Web3Service, ESCROW_CONTRACT_ABI } from '@/lib/web3';
-import { getContractCTA, toMicroUSDC, formatCurrency, formatDateTimeWithTZ } from '@/utils/validation';
+import { toMicroUSDC, formatCurrency, formatDateTimeWithTZ } from '@/utils/validation';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import DisputeModal from './DisputeModal';
@@ -29,6 +29,8 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
   const [showDisputeModal, setShowDisputeModal] = useState(false);
   const [showDisputeManagementModal, setShowDisputeManagementModal] = useState(false);
 
+  const isPending = !('contractAddress' in contract);
+  
   const handleOpenDisputeModal = () => {
     if (!config || !isBuyer || isPending || (contract as Contract).status !== 'ACTIVE' || !user || isLoading) return;
     setShowDisputeModal(true);
@@ -187,21 +189,12 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
   };
 
   // Detect if this is a pending contract (has id field but no contractAddress field)
-  const isPending = 'id' in contract && !('contractAddress' in contract);
-  
-  // Get contract status and additional info for the utility function
-  const contractStatus = isPending ? undefined : (contract as Contract).status;
-  const isExpired = isPending ? Date.now() / 1000 > contract.expiryTimestamp : false;
-  const contractState = isPending ? (contract as PendingContract).state : undefined;
-  
-  // Use backend CTA fields if available, fallback to client-side computation
-  const ctaInfo = contract.ctaType ? {
-    type: contract.ctaType as any,
-    label: contract.ctaLabel,
-    variant: contract.ctaVariant as 'action' | 'status' | 'none'
-  } : getContractCTA(contractStatus, isBuyer, isSeller, isPending, isExpired, contractState);
+  // Use backend-provided CTA fields only
+  if (!contract.ctaType) {
+    return null;
+  }
 
-  switch (ctaInfo.type) {
+  switch (contract.ctaType) {
     case 'RAISE_DISPUTE':
       return (
         <>
@@ -218,7 +211,7 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
                 {loadingMessage}
               </>
             ) : (
-              ctaInfo.label
+              contract.ctaLabel || 'Raise Dispute'
             )}
           </Button>
           <DisputeModal
@@ -247,7 +240,7 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
           ) : isClaimingInProgress ? (
             'Another claim in progress...'
           ) : (
-            ctaInfo.label
+            contract.ctaLabel || 'Claim Funds'
           )}
         </Button>
       );
@@ -262,7 +255,7 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
           onClick={() => onAccept((contract as PendingContract).id)}
           className="w-full bg-primary-500 hover:bg-primary-600"
         >
-          {ctaInfo.label}
+          {contract.ctaLabel || 'Accept Contract'}
         </Button>
       );
 
@@ -270,7 +263,7 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
     case 'PENDING_ACCEPTANCE':
       return (
         <div className="text-center py-2">
-          <span className="text-sm text-gray-600">{ctaInfo.label}</span>
+          <span className="text-sm text-gray-600">{contract.ctaLabel || 'Status'}</span>
         </div>
       );
 
@@ -284,7 +277,7 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
             disabled={isLoading}
             className={`w-full border-orange-300 text-orange-700 hover:bg-orange-50 ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
-            {ctaInfo.label}
+            {contract.ctaLabel || 'Manage Dispute'}
           </Button>
           {!isPending && (
             <DisputeManagementModal
@@ -302,7 +295,7 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
       return (
         <div className="text-center py-2">
           <span className="text-sm text-green-600 font-medium">
-            {ctaInfo.label}
+            {contract.ctaLabel || 'Completed'}
           </span>
         </div>
       );

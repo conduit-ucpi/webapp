@@ -31,6 +31,7 @@ const sampleApiData = [
       "ctaLabel": "Claimed",
       "ctaVariant": "status"
     },
+    "status": "CLAIMED",
     "blockchainStatus": "CLAIMED",
     "blockchainFunded": true,
     "blockchainBalance": "20000",
@@ -138,7 +139,8 @@ function transformContractData(contractsData: any[]): { pending: PendingContract
         amount: parseFloat(item.blockchainAmount || contract.amount || '0'), // Keep in microUSDC, formatUSDC will convert for display
         expiryTimestamp: item.blockchainExpiryTimestamp || contract.expiryTimestamp || 0,
         description: contract.description || '',
-        status: item.blockchainStatus || 'PENDING',
+        status: item.status || 'UNKNOWN',
+        blockchainStatus: item.blockchainStatus,
         createdAt: contract.createdAt || 0,
         funded: item.blockchainFunded || false,
         buyerEmail: contract.buyerEmail,
@@ -224,7 +226,7 @@ describe('Contract Data Transformation', () => {
     const { regular } = transformContractData(testData);
     
     expect(regular).toHaveLength(1);
-    expect(regular[0].status).toBe('PENDING'); // Should default to PENDING when blockchainStatus is null
+    expect(regular[0].status).toBe('UNKNOWN'); // Should default to UNKNOWN when status is null
   });
   
   test('should handle empty or malformed data gracefully', () => {

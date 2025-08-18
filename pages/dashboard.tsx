@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { useAuth } from '@/components/auth/AuthProvider';
-import ContractList from '@/components/contracts/ContractList';
+import EnhancedDashboard from '@/components/dashboard/EnhancedDashboard';
 import ConnectWallet from '@/components/auth/ConnectWallet';
 import Button from '@/components/ui/Button';
 import { SkeletonCard } from '@/components/ui/Skeleton';
@@ -98,7 +98,7 @@ export default function Dashboard() {
 
         <div>
           <h2 className="text-xl font-semibold text-secondary-900 mb-6">Your payment agreements</h2>
-          <ContractList />
+          <EnhancedDashboard />
         </div>
       </div>
     </div>

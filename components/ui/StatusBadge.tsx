@@ -10,7 +10,7 @@ import {
 } from '@heroicons/react/24/outline';
 
 interface StatusBadgeProps {
-  status: string;
+  status: string | undefined;
   isBuyer?: boolean;
   isSeller?: boolean;
   showDescription?: boolean;

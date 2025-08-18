@@ -2,7 +2,8 @@
  * Test to reproduce MetaMask + Web3Auth conflict issue
  * This test should FAIL with the current code to demonstrate the problem
  */
-import { render, waitFor, screen } from '@testing-library/react';
+import { render } from '@testing-library/react';
+import { waitFor, screen } from '@testing-library/dom';
 import { Web3AuthContextProvider } from '@/components/auth/Web3AuthContextProvider';
 
 // Mock the config provider

@@ -1,4 +1,5 @@
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, act } from '@testing-library/react';
+import { screen, fireEvent } from '@testing-library/dom';
 import ExpandableHash from '@/components/ui/ExpandableHash';
 
 // Mock ConfigProvider

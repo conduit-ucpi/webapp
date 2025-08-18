@@ -1,4 +1,5 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/dom';
 import { useRouter } from 'next/router';
 import ContractList from '@/components/contracts/ContractList';
 import { useAuth } from '@/components/auth/AuthProvider';

@@ -1,4 +1,5 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render } from '@testing-library/react';
+import { screen, fireEvent, waitFor } from '@testing-library/dom';
 import { useRouter } from 'next/router';
 import AdminContractList from '@/components/admin/AdminContractList';
 import { PendingContract } from '@/types';

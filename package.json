@@ -21,6 +21,7 @@
     "@headlessui/react": "^1.7.17",
     "@heroicons/react": "^2.2.0",
     "@moonpay/moonpay-js": "^0.7.3",
+    "@testing-library/dom": "^10.4.1",
     "@web3auth/base": "^9.7.0",
     "@web3auth/ethereum-provider": "^9.7.0",
     "@web3auth/modal": "^10.1.0",
@@ -29,6 +30,7 @@
     "cookie": "^1.0.2",
     "ethers": "^6.8.0",
     "next": "14.0.3",
+    "ox": "^0.8.8",
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "web3": "^4.16.0"

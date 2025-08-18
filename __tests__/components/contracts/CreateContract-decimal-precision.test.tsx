@@ -1,4 +1,5 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render } from '@testing-library/react';
+import { screen, fireEvent } from '@testing-library/dom';
 
 // Mock the dependencies BEFORE importing components
 jest.mock('next/router', () => ({

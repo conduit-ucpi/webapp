@@ -6,6 +6,7 @@ import ErrorBoundary from '@/components/ErrorBoundary';
 import '@/styles/globals.css';
 import { Web3AuthProviderWrapper } from '@/components/auth/Web3AuthProviderWrapper';
 import { Web3AuthContextProvider } from '@/components/auth/Web3AuthContextProvider';
+import { ToastProvider } from '@/components/ui/Toast';
 
 export default function App({ Component, pageProps }: AppProps) {
   return (
@@ -14,9 +15,11 @@ export default function App({ Component, pageProps }: AppProps) {
         <Web3AuthProviderWrapper>
           <Web3AuthContextProvider>
             <AuthProvider>
-              <Layout>
-                <Component {...pageProps} />
-              </Layout>
+              <ToastProvider>
+                <Layout>
+                  <Component {...pageProps} />
+                </Layout>
+              </ToastProvider>
             </AuthProvider>
           </Web3AuthContextProvider>
         </Web3AuthProviderWrapper>

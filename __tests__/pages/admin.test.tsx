@@ -1,4 +1,5 @@
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { render } from '@testing-library/react';
+import { screen, fireEvent, waitFor, within } from '@testing-library/dom';
 import { useRouter } from 'next/router';
 import AdminPage from '@/pages/admin';
 import { useAuth } from '@/components/auth/AuthProvider';

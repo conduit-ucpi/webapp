@@ -1,5 +1,5 @@
 import { useAuth } from '@/components/auth/AuthProvider';
-import CreateContract from '@/components/contracts/CreateContract';
+import CreateContractWizard from '@/components/contracts/CreateContractWizard';
 import ConnectWallet from '@/components/auth/ConnectWallet';
 import Skeleton from '@/components/ui/Skeleton';
 import { useWeb3AuthInstance } from '@/components/auth/Web3AuthContextProvider';
@@ -54,7 +54,7 @@ export default function CreatePage() {
         </div>
 
         <div className="flex justify-center">
-          <CreateContract />
+          <CreateContractWizard />
         </div>
       </div>
     </div>

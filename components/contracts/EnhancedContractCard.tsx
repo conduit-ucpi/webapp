@@ -91,11 +91,38 @@ export default function EnhancedContractCard({
 
   // Use backend-provided status display only
   const statusDisplay = useMemo(() => {
-    return {
-      label: contract.ctaLabel || contract.status || 'Unknown',
-      color: contract.ctaVariant === 'action' ? 'bg-primary-50 text-primary-600 border-primary-200' : 'bg-secondary-50 text-secondary-600 border-secondary-200'
+    // For regular contracts, use the status field from the backend
+    let status = 'status' in contract ? contract.status : 'PENDING';
+    
+    // For pending contracts without a status field, show PENDING
+    if (isPending && !status) {
+      status = 'PENDING';
+    }
+    
+    // Map status to appropriate colors
+    const getStatusColor = (status: string) => {
+      switch (status?.toUpperCase()) {
+        case 'ACTIVE':
+          return 'bg-success-50 text-success-600 border-success-200';
+        case 'DISPUTED':
+          return 'bg-error-50 text-error-600 border-error-200';
+        case 'EXPIRED':
+          return 'bg-warning-50 text-warning-600 border-warning-200';
+        case 'CLAIMED':
+        case 'RESOLVED':
+          return 'bg-secondary-50 text-secondary-600 border-secondary-200';
+        case 'PENDING':
+          return 'bg-primary-50 text-primary-600 border-primary-200';
+        default:
+          return 'bg-secondary-50 text-secondary-600 border-secondary-200';
+      }
     };
-  }, [contract]);
+    
+    return {
+      label: status || 'Unknown',
+      color: getStatusColor(status || 'UNKNOWN')
+    };
+  }, [contract, isPending]);
   
   return (
     <div 

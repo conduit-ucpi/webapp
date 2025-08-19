@@ -170,7 +170,7 @@ export interface TransferUSDCRequest {
 export interface AuthContextType {
   user: User | null;
   isLoading: boolean;
-  login: (idToken: string, walletAddress: string, provider: any) => Promise<void>;
+  login: (idToken: string, walletAddress: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 

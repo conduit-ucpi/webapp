@@ -9,6 +9,7 @@ import { Web3AuthContextProvider } from '@/components/auth/Web3AuthContextProvid
 import { ToastProvider } from '@/components/ui/Toast';
 import { ThemeProvider } from '@/components/theme/ThemeProvider';
 import { TourProvider } from '@/components/onboarding/TourProvider';
+import { WalletProvider } from '@/lib/wallet/WalletProvider';
 
 export default function App({ Component, pageProps }: AppProps) {
   return (
@@ -17,7 +18,8 @@ export default function App({ Component, pageProps }: AppProps) {
         <ConfigProvider>
           <Web3AuthProviderWrapper>
             <Web3AuthContextProvider>
-              <AuthProvider>
+              <WalletProvider>
+                <AuthProvider>
                 <ToastProvider>
                   <TourProvider>
                     <Layout>
@@ -25,7 +27,8 @@ export default function App({ Component, pageProps }: AppProps) {
                     </Layout>
                   </TourProvider>
                 </ToastProvider>
-              </AuthProvider>
+                </AuthProvider>
+              </WalletProvider>
             </Web3AuthContextProvider>
           </Web3AuthProviderWrapper>
         </ConfigProvider>

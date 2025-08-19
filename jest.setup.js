@@ -75,6 +75,27 @@ jest.mock('@web3auth/wallet-services-plugin', () => ({
   WalletServicesPlugin: jest.fn()
 }))
 
+// Mock WalletProvider
+jest.mock('./lib/wallet/WalletProvider', () => ({
+  WalletProvider: ({ children }) => children,
+  useWallet: () => ({
+    walletProvider: {
+      getAddress: jest.fn().mockResolvedValue('0x1234567890123456789012345678901234567890'),
+      signTransaction: jest.fn().mockResolvedValue('mock-signed-transaction'),
+      signMessage: jest.fn().mockResolvedValue('mock-signature'),
+      request: jest.fn().mockResolvedValue([]),
+      isConnected: jest.fn().mockReturnValue(true),
+      getProviderName: jest.fn().mockReturnValue('Mock Wallet'),
+      getEthersProvider: jest.fn().mockReturnValue({})
+    },
+    isConnected: true,
+    address: '0x1234567890123456789012345678901234567890',
+    connectWallet: jest.fn(),
+    disconnectWallet: jest.fn(),
+    isLoading: false
+  })
+}))
+
 // Mock ResizeObserver for jsdom environment
 global.ResizeObserver = jest.fn().mockImplementation(() => ({
   observe: jest.fn(),

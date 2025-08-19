@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/router';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { useAuth } from '@/components/auth/AuthProvider';
+import { useWallet } from '@/lib/wallet/WalletProvider';
 import { Web3Service } from '@/lib/web3';
 import { isValidEmail, isValidAmount, isValidDescription, toMicroUSDC } from '@/utils/validation';
 import Input from '@/components/ui/Input';
@@ -26,6 +27,7 @@ export default function CreateContract() {
   const router = useRouter();
   const { config } = useConfig();
   const { user } = useAuth();
+  const { walletProvider } = useWallet();
   // Initialize with tomorrow's date at current time
   const getDefaultTimestamp = (): number => {
     const tomorrow = new Date();
@@ -158,10 +160,10 @@ export default function CreateContract() {
     setIsLoading(true);
     
     try {
-      // Get Web3Auth provider
+      // Get wallet provider
       setLoadingMessage('Initializing Web3...');
-      const web3authProvider = (window as any).web3authProvider;
-      if (!web3authProvider) {
+      const { walletProvider } = useWallet();
+      if (!walletProvider) {
         throw new Error('Wallet not connected');
       }
 
@@ -170,9 +172,8 @@ export default function CreateContract() {
         throw new Error('USDC contract address not configured. Please check server configuration.');
       }
 
-
       const web3Service = new Web3Service(config);
-      await web3Service.initializeProvider(web3authProvider);
+      await web3Service.initializeProvider(walletProvider);
       
       // Get the actual user wallet address from Web3Auth
       const userAddress = await web3Service.getUserAddress();

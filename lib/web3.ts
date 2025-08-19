@@ -1,5 +1,6 @@
 import { ethers } from 'ethers';
 import { Config } from '@/types';
+import { WalletProvider } from './wallet/types';
 
 // ERC20 ABI for USDC interactions
 export const ERC20_ABI = [
@@ -31,17 +32,17 @@ export const ESCROW_CONTRACT_ABI = [
 
 export class Web3Service {
   private provider: ethers.BrowserProvider | null = null;
-  private web3authProvider: any = null;
+  private walletProvider: WalletProvider | null = null;
   private config: Config;
 
   constructor(config: Config) {
     this.config = config;
   }
 
-  async initializeProvider(web3authProvider: any) {
+  async initializeProvider(walletProvider: WalletProvider) {
     try {
-      this.web3authProvider = web3authProvider;
-      this.provider = new ethers.BrowserProvider(web3authProvider);
+      this.walletProvider = walletProvider;
+      this.provider = walletProvider.getEthersProvider();
     } catch (error) {
       console.error('Failed to initialize ethers provider:', error);
       throw new Error('Provider initialization failed: ' + (error as Error).message);
@@ -60,11 +61,11 @@ export class Web3Service {
     gasPrice?: bigint;
     nonce?: number;
   }): Promise<string> {
-    if (!this.web3authProvider || !this.provider) {
+    if (!this.walletProvider || !this.provider) {
       throw new Error('Providers not initialized. Please connect your wallet.');
     }
 
-    // Get the actual wallet address from Web3Auth
+    // Get the actual wallet address
     const fromAddress = await this.getUserAddress();
     
     // Get nonce if not provided
@@ -81,17 +82,6 @@ export class Web3Service {
     if (!txParams.gasLimit) {
       throw new Error('Gas limit must be provided');
     }
-
-    // Create transaction object for Web3Auth signing
-    const txObject = {
-      from: fromAddress,
-      to: txParams.to,
-      data: txParams.data,
-      value: txParams.value || '0x0',
-      gasLimit: `0x${txParams.gasLimit.toString(16)}`,
-      gasPrice: `0x${gasPrice.toString(16)}`,
-      nonce: `0x${nonce.toString(16)}`
-    };
     
     console.log('Signing transaction:', {
       from: fromAddress,
@@ -102,62 +92,17 @@ export class Web3Service {
       nonce: nonce
     });
     
-    // Build raw transaction to sign
-    const tx = ethers.Transaction.from({
+    // Use the wallet provider abstraction to sign
+    return await this.walletProvider.signTransaction({
+      from: fromAddress,
       to: txParams.to,
       data: txParams.data,
       value: txParams.value || '0x0',
       gasLimit: `0x${txParams.gasLimit.toString(16)}`,
       gasPrice: `0x${gasPrice.toString(16)}`,
       nonce: nonce,
-      chainId: this.config.chainId,
-      type: 0  // Legacy transaction type to avoid EIP-1559 complications
+      chainId: this.config.chainId
     });
-    
-    // Get the raw unsigned transaction
-    const unsignedTx = tx.unsignedSerialized;
-    
-    try {
-      // Try using eth_sign with the transaction hash (avoids modal)
-      const txHash = ethers.keccak256(unsignedTx);
-      const signature = await this.web3authProvider.request({
-        method: "eth_sign",
-        params: [fromAddress, txHash]
-      });
-      
-      // Add signature to transaction
-      const sig = ethers.Signature.from(signature);
-      const signedTx = tx.clone();
-      signedTx.signature = sig;
-      
-      return signedTx.serialized;
-    } catch (error) {
-      console.warn('eth_sign failed, trying personal_sign:', error);
-      
-      try {
-        // Try personal_sign as another alternative
-        const signature = await this.web3authProvider.request({
-          method: "personal_sign",
-          params: [unsignedTx, fromAddress]
-        });
-        
-        // Add signature to transaction
-        const sig = ethers.Signature.from(signature);
-        const signedTx = tx.clone();
-        signedTx.signature = sig;
-        
-        return signedTx.serialized;
-      } catch (error2) {
-        console.warn('personal_sign failed, falling back to eth_signTransaction:', error2);
-        
-        // Last resort: use eth_signTransaction (may show modal)
-        const signedTx = await this.web3authProvider.request({
-          method: "eth_signTransaction",
-          params: [txObject]
-        });
-        return signedTx;
-      }
-    }
   }
 
   async getSigner() {
@@ -168,14 +113,10 @@ export class Web3Service {
   }
 
   async getUserAddress(): Promise<string> {
-    if (!this.web3authProvider) {
-      throw new Error('Web3Auth provider not initialized');
+    if (!this.walletProvider) {
+      throw new Error('Wallet provider not initialized');
     }
-    // Get the real wallet address using Web3Auth's request method - this MUST match signing address
-    const accounts = await this.web3authProvider.request({
-      method: "eth_accounts"
-    });
-    return accounts[0];
+    return await this.walletProvider.getAddress();
   }
 
   async getUSDCBalance(userAddress: string): Promise<string> {

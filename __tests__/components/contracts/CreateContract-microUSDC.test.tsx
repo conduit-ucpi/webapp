@@ -129,7 +129,8 @@ describe('CreateContract - microUSDC Amount Handling', () => {
       tomorrow.setDate(tomorrow.getDate() + 1);
       const dateTimeValue = tomorrow.toISOString().slice(0, 16);
 
-      const dateInput = screen.getByDisplayValue(/2025-08-19T/);
+      const expectedDatePattern = new RegExp(dateTimeValue.substring(0, 10) + 'T');
+      const dateInput = screen.getByDisplayValue(expectedDatePattern);
       fireEvent.change(dateInput, {
         target: { value: dateTimeValue },
       });
@@ -302,7 +303,8 @@ describe('CreateContract - microUSDC Amount Handling', () => {
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
       const dateTimeValue = tomorrow.toISOString().slice(0, 16);
-      const dateInput = screen.getByDisplayValue(/2025-08-19T/);
+      const expectedDatePattern = new RegExp(dateTimeValue.substring(0, 10) + 'T');
+      const dateInput = screen.getByDisplayValue(expectedDatePattern);
       fireEvent.change(dateInput, {
         target: { value: dateTimeValue },
       });

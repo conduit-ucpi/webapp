@@ -3,6 +3,8 @@ import { useWeb3Auth, useWeb3AuthConnect, useWeb3AuthUser, useIdentityToken } fr
 import { ethers } from 'ethers';
 import { useConfig } from './ConfigProvider';
 import { useAuth } from './AuthProvider';
+import { useWallet } from '@/lib/wallet/WalletProvider';
+import { Web3AuthWalletProvider } from '@/lib/wallet/web3auth-provider';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 
@@ -20,7 +22,8 @@ export default function ConnectWallet() {
   const { token: idToken } = useIdentityToken();
   const [isConnecting, setIsConnecting] = useState(false);
   const [hasVisitedBefore, setHasVisitedBefore] = useState(false);
-  const [pendingLogin, setPendingLogin] = useState<{walletAddress: string, provider: any} | null>(null);
+  const [pendingLogin, setPendingLogin] = useState<{walletAddress: string} | null>(null);
+  const { connectWallet: connectToWallet } = useWallet();
 
 
 
@@ -37,7 +40,10 @@ export default function ConnectWallet() {
           const walletAddress = await signer.getAddress();
           
           console.log('Auto-login wallet address:', walletAddress);
-          await login(idToken, walletAddress, provider);
+          // Create wallet provider abstraction
+          const walletProvider = new Web3AuthWalletProvider(provider);
+          await connectToWallet(walletProvider);
+          await login(idToken, walletAddress);
         } catch (error) {
           console.error('Auto-login failed:', error);
         }
@@ -53,7 +59,7 @@ export default function ConnectWallet() {
       if (pendingLogin && idToken) {
         console.log('idToken now available, completing login...');
         try {
-          await login(idToken, pendingLogin.walletAddress, pendingLogin.provider);
+          await login(idToken, pendingLogin.walletAddress);
           console.log('Login successful');
           setPendingLogin(null);
           setIsConnecting(false);
@@ -83,7 +89,7 @@ export default function ConnectWallet() {
     }
   }, []);
 
-  const connectWallet = async () => {
+  const handleConnectWallet = async () => {
     console.log('Connecting wallet...');
     setIsConnecting(true);
     
@@ -102,8 +108,9 @@ export default function ConnectWallet() {
       
       console.log('Web3Auth provider obtained:', web3authProvider);
 
-      // Store provider globally for Web3Service
-      (window as any).web3authProvider = web3authProvider;
+      // Create wallet provider abstraction
+      const walletProvider = new Web3AuthWalletProvider(web3authProvider);
+      await connectToWallet(walletProvider);
 
       // Try different methods to get wallet address
       let walletAddress: string | null = null;
@@ -144,7 +151,7 @@ export default function ConnectWallet() {
           console.log('Immediate getIdentityToken result:', authUser);
           if (authUser?.idToken) {
             console.log('Got idToken immediately from getIdentityToken');
-            await login(authUser.idToken, walletAddress, web3authProvider);
+            await login(authUser.idToken, walletAddress);
             console.log('Login successful');
             setIsConnecting(false);
             return;
@@ -234,13 +241,13 @@ export default function ConnectWallet() {
       // Check if idToken is available (either from hook or manual request)
       if (tokenToUse) {
         console.log('idToken available, proceeding with login...');
-        await login(tokenToUse, walletAddress, web3authProvider);
+        await login(tokenToUse, walletAddress);
         console.log('Login successful');
         setIsConnecting(false);
       } else {
         console.log('idToken not available, setting up pending login...');
         // Set pending login state - the useEffect will handle it when idToken arrives
-        setPendingLogin({ walletAddress, provider: web3authProvider });
+        setPendingLogin({ walletAddress });
         // Keep isConnecting true until the pending login completes
       }
     } catch (error: any) {
@@ -268,7 +275,7 @@ export default function ConnectWallet() {
 
   return (
     <Button
-      onClick={connectWallet}
+      onClick={handleConnectWallet}
       disabled={isConnecting || isConnected}
       className="bg-green-500 hover:bg-green-600 text-gray-900 px-6 py-3 rounded-lg font-semibold disabled:opacity-50"
     >

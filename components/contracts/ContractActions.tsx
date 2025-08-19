@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Contract, PendingContract, RaiseDisputeRequest } from '@/types';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { useAuth } from '@/components/auth/AuthProvider';
+import { useWallet } from '@/lib/wallet/WalletProvider';
 import { Web3Service, ESCROW_CONTRACT_ABI } from '@/lib/web3';
 import { toMicroUSDC, formatCurrency, formatDateTimeWithTZ } from '@/utils/validation';
 import Button from '@/components/ui/Button';
@@ -23,6 +24,7 @@ interface ContractActionsProps {
 export default function ContractActions({ contract, isBuyer, isSeller, onAction, onAccept, isClaimingInProgress, onClaimStart, onClaimComplete }: ContractActionsProps) {
   const { config } = useConfig();
   const { user } = useAuth();
+  const { walletProvider } = useWallet();
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
   const [hasError, setHasError] = useState(false);
@@ -45,13 +47,12 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
     
     try {
       // Get Web3Auth provider
-      const web3authProvider = (window as any).web3authProvider;
-      if (!web3authProvider) {
+      if (!walletProvider) {
         throw new Error('Wallet not connected');
       }
 
       const web3Service = new Web3Service(config);
-      await web3Service.initializeProvider(web3authProvider);
+      await web3Service.initializeProvider(walletProvider);
       
       // Get the actual user wallet address from Web3Auth
       const userAddress = await web3Service.getUserAddress();
@@ -129,13 +130,12 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
     
     try {
       // Get Web3Auth provider
-      const web3authProvider = (window as any).web3authProvider;
-      if (!web3authProvider) {
+      if (!walletProvider) {
         throw new Error('Wallet not connected');
       }
 
       const web3Service = new Web3Service(config);
-      await web3Service.initializeProvider(web3authProvider);
+      await web3Service.initializeProvider(walletProvider);
       
       // Get the actual user wallet address from Web3Auth
       const userAddress = await web3Service.getUserAddress();

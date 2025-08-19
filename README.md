@@ -137,6 +137,8 @@ interface WalletProvider {
 - **Easy Testing**: Mock wallet providers for comprehensive testing
 - **Future-Proof**: Add new wallet types without changing existing code
 - **Consistent API**: Same interface regardless of underlying wallet technology
+- **Type Safety**: Full TypeScript support with proper interfaces
+- **Architecture Testing**: Automated tests ensure abstraction compliance
 
 ## Wallet Provider Integration Guide
 
@@ -256,7 +258,25 @@ class MockWalletProvider implements WalletProvider {
     return 'mock-signed-transaction';
   }
   
-  // ... other methods
+  async signMessage(message: string): Promise<string> {
+    return 'mock-signature';
+  }
+  
+  async request(args: { method: string; params?: any[] }): Promise<any> {
+    return { success: true };
+  }
+  
+  isConnected(): boolean {
+    return true;
+  }
+  
+  getProviderName(): string {
+    return 'Mock Wallet';
+  }
+  
+  getEthersProvider(): any {
+    return {}; // Mock ethers provider
+  }
 }
 
 // Use in tests
@@ -264,17 +284,64 @@ const mockProvider = new MockWalletProvider('0xtest');
 await connectWallet(mockProvider);
 ```
 
+### Architecture Testing
+
+The application includes automated tests to ensure the abstraction layer is properly maintained:
+
+```bash
+# Run architecture tests
+npm test -- __tests__/architecture/wallet-abstraction.test.ts
+```
+
+These tests verify:
+- No components make direct Web3Auth calls
+- All wallet-using components use the `useWallet()` hook
+- Web3Service only accepts the `WalletProvider` interface
+- All wallet providers implement the correct interface
+
 ## Development
 
 ```bash
+# Start development server
+npm run dev
+
 # Type checking
 npm run type-check
 
 # Linting
 npm run lint
 
+# Run all tests
+npm test
+
+# Run specific test file
+npm test -- __tests__/path/to/test.tsx
+
+# Run architecture tests
+npm test -- __tests__/architecture/
+
 # Production build
 npm run build
+```
+
+### File Structure
+
+```
+lib/wallet/
+├── types.ts              # WalletProvider interface and types
+├── WalletProvider.tsx     # React context and useWallet hook
+├── web3auth-provider.ts   # Web3Auth adapter implementation
+└── [provider]-provider.ts # Additional provider implementations
+
+components/
+├── auth/                  # Authentication components (Web3Auth direct access allowed)
+├── contracts/            # Contract interaction components (use useWallet hook)
+└── ui/                   # UI components
+
+__tests__/
+├── architecture/         # Architecture compliance tests
+├── components/          # Component tests
+└── lib/                 # Library tests
 ```
 
 ## Deployment

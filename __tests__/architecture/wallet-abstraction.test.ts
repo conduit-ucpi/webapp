@@ -1,0 +1,272 @@
+/**
+ * Architecture Test: Wallet Provider Abstraction
+ * 
+ * This test ensures that all components are properly using the wallet abstraction
+ * and not making direct calls to Web3Auth or other wallet providers.
+ */
+
+import fs from 'fs';
+import path from 'path';
+
+describe('Wallet Provider Abstraction', () => {
+  let componentFiles: string[] = [];
+  let pageFiles: string[] = [];
+  let hookFiles: string[] = [];
+
+  // Helper function to recursively find files
+  const findFiles = (dir: string, extensions: string[]): string[] => {
+    const files: string[] = [];
+    
+    const scanDir = (currentDir: string, relativePath = '') => {
+      const entries = fs.readdirSync(currentDir, { withFileTypes: true });
+      
+      for (const entry of entries) {
+        const fullPath = path.join(currentDir, entry.name);
+        const relativeFilePath = path.join(relativePath, entry.name);
+        
+        if (entry.isDirectory()) {
+          scanDir(fullPath, relativeFilePath);
+        } else if (entry.isFile()) {
+          const ext = path.extname(entry.name);
+          if (extensions.includes(ext)) {
+            files.push(relativeFilePath);
+          }
+        }
+      }
+    };
+    
+    if (fs.existsSync(dir)) {
+      scanDir(dir);
+    }
+    
+    return files;
+  };
+
+  beforeAll(() => {
+    const baseDir = path.join(__dirname, '../../');
+    
+    // Get all TypeScript/JSX files that might use wallet functionality
+    componentFiles = findFiles(path.join(baseDir, 'components'), ['.ts', '.tsx']);
+    pageFiles = findFiles(path.join(baseDir, 'pages'), ['.ts', '.tsx']);
+    hookFiles = findFiles(path.join(baseDir, 'hooks'), ['.ts', '.tsx']);
+  });
+
+  describe('No Direct Web3Auth Access', () => {
+    const prohibitedPatterns = [
+      {
+        pattern: /\(window as any\)\.web3auth(?!Provider)/,
+        description: 'Direct access to window.web3auth'
+      },
+      {
+        pattern: /\(window as any\)\.web3authProvider/,
+        description: 'Direct access to window.web3authProvider'
+      },
+      {
+        pattern: /window\.web3auth(?!Provider)/,
+        description: 'Direct access to window.web3auth without casting'
+      },
+      {
+        pattern: /window\.web3authProvider/,
+        description: 'Direct access to window.web3authProvider without casting'
+      }
+    ];
+
+    const allowedFiles = [
+      // These files are allowed to access Web3Auth directly as they implement the abstraction
+      'auth/ConnectWallet.tsx',
+      'auth/Web3AuthProviderWrapper.tsx',
+      'auth/Web3AuthContextProvider.tsx',
+      'auth/AuthProvider.tsx' // May need to clean up Web3Auth state
+    ];
+
+    const allFiles = [
+      ...componentFiles.map(f => ({ type: 'component', file: f })),
+      ...pageFiles.map(f => ({ type: 'page', file: f })),
+      ...hookFiles.map(f => ({ type: 'hook', file: f }))
+    ];
+
+    if (allFiles.length === 0) {
+      test('No files found - check file discovery', () => {
+        expect(componentFiles.length + pageFiles.length + hookFiles.length).toBeGreaterThan(0);
+      });
+      return;
+    }
+
+    test.each(allFiles)('$type file $file should not have direct Web3Auth access', ({ file }) => {
+      // Skip allowed files
+      if (allowedFiles.includes(file)) {
+        return;
+      }
+
+      const fullPath = path.join(__dirname, '../../components', file);
+      
+      // Skip if file doesn't exist
+      if (!fs.existsSync(fullPath)) {
+        return;
+      }
+
+      const content = fs.readFileSync(fullPath, 'utf-8');
+
+      // Check for prohibited patterns
+      for (const { pattern, description } of prohibitedPatterns) {
+        const matches = content.match(pattern);
+        if (matches) {
+          const lines = content.split('\n');
+          const matchingLines = lines
+            .map((line, index) => ({ line: line.trim(), number: index + 1 }))
+            .filter(({ line }) => pattern.test(line));
+
+          fail(
+            `${file} contains ${description}:\n` +
+            matchingLines.map(({ line, number }) => `  Line ${number}: ${line}`).join('\n') +
+            '\n\nComponents should use useWallet() hook and walletProvider instead.'
+          );
+        }
+      }
+    });
+  });
+
+  describe('Proper Abstraction Usage', () => {
+    const requiredPatterns = [
+      {
+        pattern: /useWallet\(\)/,
+        description: 'useWallet() hook usage'
+      },
+      {
+        pattern: /walletProvider/,
+        description: 'walletProvider variable usage'
+      }
+    ];
+
+    // Files that should be using the wallet abstraction (components that interact with Web3)
+    const walletUsingComponents = [
+      'contracts/CreateContract.tsx',
+      'contracts/ContractActions.tsx',
+      'contracts/ContractAcceptance.tsx',
+      'contracts/CreateContractWizard.tsx'
+    ];
+
+    test.each(walletUsingComponents)('%s should use wallet abstraction', (file) => {
+      const fullPath = path.join(__dirname, '../../components', file);
+      
+      if (!fs.existsSync(fullPath)) {
+        return;
+      }
+
+      const content = fs.readFileSync(fullPath, 'utf-8');
+
+      // Should import useWallet
+      expect(content).toMatch(/import.*useWallet.*from.*@\/lib\/wallet/);
+      
+      // Should call useWallet hook
+      expect(content).toMatch(/const.*walletProvider.*=.*useWallet\(\)/);
+      
+      // Should use walletProvider with Web3Service
+      expect(content).toMatch(/initializeProvider\(walletProvider\)/);
+    });
+  });
+
+  describe('Web3Service Usage', () => {
+    test('Web3Service should only accept WalletProvider interface', () => {
+      const web3ServicePath = path.join(__dirname, '../../lib/web3.ts');
+      const content = fs.readFileSync(web3ServicePath, 'utf-8');
+
+      // Should import WalletProvider interface
+      expect(content).toMatch(/import.*WalletProvider.*from.*\.\/wallet\/types/);
+      
+      // initializeProvider should accept WalletProvider
+      expect(content).toMatch(/initializeProvider\(.*walletProvider.*:.*WalletProvider\)/);
+      
+      // Should not have any references to web3authProvider parameter
+      expect(content).not.toMatch(/initializeProvider\(.*web3authProvider/);
+    });
+  });
+
+  describe('Import Patterns', () => {
+    const componentFilesToCheck = [
+      ...componentFiles.filter(f => f.includes('contracts/')), // Contract-related components
+      ...pageFiles.filter(f => !f.includes('api/')) // Pages but not API routes
+    ];
+
+    if (componentFilesToCheck.length === 0) {
+      test('No relevant files found for import pattern check', () => {
+        expect(componentFiles.length + pageFiles.length).toBeGreaterThan(0);
+      });
+      return;
+    }
+
+    test.each(componentFilesToCheck)('%s should not import Web3Auth directly', (file) => {
+      // Skip allowed files that need direct Web3Auth access
+      const allowedFiles = [
+        'auth/ConnectWallet.tsx',
+        'auth/Web3AuthProviderWrapper.tsx', 
+        'auth/Web3AuthContextProvider.tsx',
+        'auth/AuthProvider.tsx'
+      ];
+
+      if (allowedFiles.includes(file)) {
+        return;
+      }
+
+      const fullPath = path.join(__dirname, '../../components', file);
+      
+      if (!fs.existsSync(fullPath)) {
+        return;
+      }
+
+      const content = fs.readFileSync(fullPath, 'utf-8');
+
+      // Should not import Web3Auth SDK directly
+      expect(content).not.toMatch(/import.*from.*@web3auth/);
+      
+      // Should not import ethers for wallet operations (should go through abstraction)
+      if (content.includes('Web3Service')) {
+        // If using Web3Service, should import useWallet
+        expect(content).toMatch(/import.*useWallet.*from.*@\/lib\/wallet/);
+      }
+    });
+  });
+
+  describe('Architecture Consistency', () => {
+    test('All wallet providers should implement WalletProvider interface', () => {
+      const walletDir = path.join(__dirname, '../../lib/wallet');
+      
+      if (!fs.existsSync(walletDir)) {
+        return;
+      }
+
+      const providerFiles = fs.readdirSync(walletDir)
+        .filter(f => f.endsWith('-provider.ts') && f !== 'types.ts');
+
+      providerFiles.forEach(file => {
+        const content = fs.readFileSync(path.join(walletDir, file), 'utf-8');
+        
+        // Should implement WalletProvider interface
+        expect(content).toMatch(/implements WalletProvider/);
+        
+        // Should import the interface
+        expect(content).toMatch(/import.*WalletProvider.*from.*\.\/types/);
+      });
+    });
+
+    test('WalletProvider interface should be stable', () => {
+      const typesPath = path.join(__dirname, '../../lib/wallet/types.ts');
+      const content = fs.readFileSync(typesPath, 'utf-8');
+
+      // Should have core methods
+      const requiredMethods = [
+        'getAddress\\(\\): Promise<string>',
+        'signTransaction\\(params: TransactionRequest\\): Promise<string>',
+        'signMessage\\(message: string\\): Promise<string>',
+        'request\\(args: \\{ method: string; params\\?: any\\[\\] \\}\\): Promise<any>',
+        'isConnected\\(\\): boolean',
+        'getProviderName\\(\\): string',
+        'getEthersProvider\\(\\): any'
+      ];
+
+      requiredMethods.forEach(method => {
+        expect(content).toMatch(new RegExp(method));
+      });
+    });
+  });
+});

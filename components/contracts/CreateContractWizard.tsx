@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/router';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { useAuth } from '@/components/auth/AuthProvider';
+import { useWallet } from '@/lib/wallet/WalletProvider';
 import { useToast } from '@/components/ui/Toast';
 import { Web3Service } from '@/lib/web3';
 import { isValidEmail, isValidAmount, isValidDescription, toMicroUSDC, formatCurrency, formatDateTimeWithTZ } from '@/utils/validation';
@@ -45,6 +46,7 @@ export default function CreateContractWizard() {
   const router = useRouter();
   const { config } = useConfig();
   const { user } = useAuth();
+  const { walletProvider } = useWallet();
   const { showToast } = useToast();
   
   const [currentStep, setCurrentStep] = useState(0);
@@ -195,8 +197,7 @@ export default function CreateContractWizard() {
     setIsLoading(true);
     
     try {
-      const web3authProvider = (window as any).web3authProvider;
-      if (!web3authProvider) {
+      if (!walletProvider) {
         throw new Error('Wallet not connected');
       }
 
@@ -205,7 +206,7 @@ export default function CreateContractWizard() {
       }
 
       const web3Service = new Web3Service(config);
-      await web3Service.initializeProvider(web3authProvider);
+      await web3Service.initializeProvider(walletProvider);
       
       const userAddress = await web3Service.getUserAddress();
       

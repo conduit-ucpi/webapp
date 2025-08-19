@@ -140,7 +140,6 @@ export default function CreateContract() {
     try {
       // Get wallet provider
       setLoadingMessage('Initializing Web3...');
-      const { walletProvider } = useWallet();
       if (!walletProvider) {
         throw new Error('Wallet not connected');
       }

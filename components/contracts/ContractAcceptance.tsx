@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/router';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { useAuth } from '@/components/auth/AuthProvider';
+import { useWallet } from '@/lib/wallet/WalletProvider';
 import { PendingContract, CreateContractRequest } from '@/types';
 import { Web3Service, ERC20_ABI, ESCROW_CONTRACT_ABI } from '@/lib/web3';
 import { formatCurrency, toMicroUSDC, fromMicroUSDC, formatDateTimeWithTZ, toUSDCForWeb3 } from '@/utils/validation';
@@ -18,6 +19,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
   const router = useRouter();
   const { config } = useConfig();
   const { user } = useAuth();
+  const { walletProvider } = useWallet();
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
   const [hasError, setHasError] = useState(false);
@@ -61,14 +63,13 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
       }
 
       setLoadingMessage('Initializing...');
-      // Use existing Web3Auth provider from global state
-      const web3authProvider = (window as any).web3authProvider;
-      if (!web3authProvider) {
+      // Use wallet provider from abstraction
+      if (!walletProvider) {
         throw new Error('Wallet not connected. Please connect your wallet first.');
       }
 
       const web3Service = new Web3Service(config);
-      await web3Service.initializeProvider(web3authProvider);
+      await web3Service.initializeProvider(walletProvider);
       
       // Get the actual user wallet address from Web3Auth
       const userAddress = await web3Service.getUserAddress();

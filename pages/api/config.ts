@@ -17,6 +17,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log('MIN_GAS_WEI:', process.env.MIN_GAS_WEI);
     console.log('SNOWTRACE_BASE_URL:', process.env.SNOWTRACE_BASE_URL);
     console.log('SERVICE_LINK:', process.env.SERVICE_LINK);
+    console.log('CONTRACT_ADDRESS:', process.env.CONTRACT_ADDRESS);
 
     const basePath = process.env.NEXT_PUBLIC_BASE_PATH === 'null' ? '' : (process.env.NEXT_PUBLIC_BASE_PATH || '/webapp');
     
@@ -26,6 +27,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       chainId: parseInt(process.env.CHAIN_ID || '43113'),
       rpcUrl: process.env.RPC_URL,
       usdcContractAddress: process.env.USDC_CONTRACT_ADDRESS,
+      contractAddress: process.env.CONTRACT_ADDRESS,
       moonPayApiKey: process.env.MOONPAY_API_KEY,
       minGasWei: process.env.MIN_GAS_WEI || '5',
       basePath,

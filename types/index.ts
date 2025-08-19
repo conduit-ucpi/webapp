@@ -6,6 +6,7 @@ export interface Config {
   chainId: number;
   rpcUrl: string;
   usdcContractAddress: string;
+  contractAddress?: string;
   moonPayApiKey: string;
   minGasWei: string;
   basePath: string;

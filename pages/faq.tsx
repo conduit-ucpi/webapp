@@ -1,8 +1,9 @@
 import Layout from '@/components/layout/Layout'
+import { useConfig } from '@/components/auth/ConfigProvider'
 
 interface FAQItem {
   question: string
-  answer: string
+  answer: string | ((contractAddress: string) => string)
 }
 
 interface FAQSection {
@@ -130,7 +131,8 @@ const faqSections: FAQSection[] = [
       },
       {
         question: "How can I verify for myself that you can't steal my money?",
-        answer: "Want to verify our code yourself? Copy the verified contract from the blockchain explorer link (available from any contract in our app or <a href=\"https://snowtrace.io/address/0xAa1Be17F1F8A0F96a1308f596740552c4145627d/contract/43114/code\" target=\"_blank\" rel=\"noopener noreferrer\" className=\"text-blue-600 hover:text-blue-800 underline\">here</a>) and paste it into tools like MythX, ask ChatGPT \"can the admin steal funds from this contract?\", or have any Solidity developer review it. The code is extensively commented to make admin limitations clear.\nWe've used https://solidityscan.com/quickscan to audit our contracts - you can too. It'll ask you to select a blockchain (we are on Avalanche mainnet) and then paste in a contract address (you can get one by making a test transaction of $0.001 on our system for free). It'll give you a full audit report. If you don't want to do that, you can use our current contract address: <a href=\"https://snowtrace.io/address/0xAa1Be17F1F8A0F96a1308f596740552c4145627d/contract/43114/code\" target=\"_blank\" rel=\"noopener noreferrer\" className=\"text-blue-600 hover:text-blue-800 underline\">0xAa1Be17F1F8A0F96a1308f596740552c4145627d</a> - score is now 94%: 'Great'"
+        answer: (contractAddress: string) => `Want to verify our code yourself? Copy the verified contract from the blockchain explorer link (available from any contract in our app or <a href="https://snowtrace.io/address/${contractAddress}/contract/43114/code" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 underline">here</a>) and paste it into tools like MythX, ask ChatGPT "can the admin steal funds from this contract?", or have any Solidity developer review it. The code is extensively commented to make admin limitations clear.
+We've used https://solidityscan.com/quickscan to audit our contracts - you can too. It'll ask you to select a blockchain (we are on Avalanche mainnet) and then paste in a contract address (you can get one by making a test transaction of $0.001 on our system for free). It'll give you a full audit report. If you don't want to do that, you can use our current contract address: <a href="https://snowtrace.io/address/${contractAddress}/contract/43114/code" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 underline">${contractAddress}</a> - score is now 94%: 'Great'`
       },
       {
         question: "Is there any reputation tracking or feedback system?",
@@ -229,6 +231,9 @@ const faqSections: FAQSection[] = [
 ]
 
 export default function FAQ() {
+  const { config } = useConfig()
+  const contractAddress = config?.contractAddress || '0xAa1Be17F1F8A0F96a1308f596740552c4145627d' // fallback to current address
+  
   return (
     <Layout>
       <div className="min-h-screen bg-gray-50 py-12">
@@ -241,15 +246,18 @@ export default function FAQ() {
                 <div key={sectionIndex}>
                   <h2 className="text-2xl font-semibold text-gray-800 mb-4">{section.title}</h2>
                   <div className="space-y-4">
-                    {section.items.map((faq, index) => (
-                      <div key={index} className="bg-white rounded-lg shadow-sm p-6">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-3">
-                          {faq.question}
-                        </h3>
-                        <div className="text-gray-600 leading-relaxed whitespace-pre-line" 
-                             dangerouslySetInnerHTML={{ __html: faq.answer.replace(/\n/g, '<br />') }} />
-                      </div>
-                    ))}
+                    {section.items.map((faq, index) => {
+                      const answer = typeof faq.answer === 'function' ? faq.answer(contractAddress) : faq.answer
+                      return (
+                        <div key={index} className="bg-white rounded-lg shadow-sm p-6">
+                          <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                            {faq.question}
+                          </h3>
+                          <div className="text-gray-600 leading-relaxed whitespace-pre-line" 
+                               dangerouslySetInnerHTML={{ __html: answer.replace(/\n/g, '<br />') }} />
+                        </div>
+                      )
+                    })}
                   </div>
                 </div>
               ))}

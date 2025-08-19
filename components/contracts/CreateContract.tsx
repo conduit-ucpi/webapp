@@ -4,7 +4,7 @@ import { useConfig } from '@/components/auth/ConfigProvider';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { useWallet } from '@/lib/wallet/WalletProvider';
 import { Web3Service } from '@/lib/web3';
-import { isValidEmail, isValidAmount, isValidDescription, toMicroUSDC } from '@/utils/validation';
+import { isValidEmail, isValidAmount, isValidDescription, toMicroUSDC, formatDateTimeWithTZ } from '@/utils/validation';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
@@ -36,21 +36,10 @@ export default function CreateContract() {
     return Math.floor(tomorrow.getTime() / 1000);
   };
 
-  const getUserTimezone = () => {
-    // Get the timezone abbreviation (e.g., "EST", "PST", "GMT")
-    const date = new Date();
-    const timeString = date.toLocaleTimeString('en-US', { 
-      timeZoneName: 'short' 
-    });
-    // Extract just the timezone part (last word)
-    const parts = timeString.split(' ');
-    return parts[parts.length - 1];
-  };
-
-  // Convert Unix timestamp to datetime-local input format (LOCAL time, not UTC!)
+  // Convert Unix timestamp to datetime-local input format
   const timestampToDatetimeLocal = (timestamp: number): string => {
+    // datetime-local expects YYYY-MM-DDTHH:MM format in LOCAL time (no timezone)
     const date = new Date(timestamp * 1000);
-    // Build local time string, NOT UTC
     const year = date.getFullYear();
     const month = (date.getMonth() + 1).toString().padStart(2, '0');
     const day = date.getDate().toString().padStart(2, '0');
@@ -67,26 +56,15 @@ export default function CreateContract() {
 
   // Get current local time in datetime-local format
   const getCurrentLocalDatetime = (): string => {
-    const now = new Date();
-    // Get local time components
-    const year = now.getFullYear();
-    const month = (now.getMonth() + 1).toString().padStart(2, '0');
-    const day = now.getDate().toString().padStart(2, '0');
-    const hours = now.getHours().toString().padStart(2, '0');
-    const minutes = now.getMinutes().toString().padStart(2, '0');
-    return `${year}-${month}-${day}T${hours}:${minutes}`;
+    const now = Math.floor(Date.now() / 1000);
+    return timestampToDatetimeLocal(now);
   };
 
-  // Get max date (1 year from now) in datetime-local format
+  // Get max date (1 year from now) in datetime-local format  
   const getMaxLocalDatetime = (): string => {
     const oneYearFromNow = new Date();
     oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
-    const year = oneYearFromNow.getFullYear();
-    const month = (oneYearFromNow.getMonth() + 1).toString().padStart(2, '0');
-    const day = oneYearFromNow.getDate().toString().padStart(2, '0');
-    const hours = oneYearFromNow.getHours().toString().padStart(2, '0');
-    const minutes = oneYearFromNow.getMinutes().toString().padStart(2, '0');
-    return `${year}-${month}-${day}T${hours}:${minutes}`;
+    return timestampToDatetimeLocal(Math.floor(oneYearFromNow.getTime() / 1000));
   };
 
   const [form, setForm] = useState<CreateContractForm>({
@@ -248,7 +226,7 @@ export default function CreateContract() {
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Payout Date & Time
             <span className="ml-2 text-xs font-normal text-gray-500">
-              (Your timezone: {getUserTimezone()})
+              (Your local time)
             </span>
           </label>
           <input
@@ -266,7 +244,7 @@ export default function CreateContract() {
           {errors.expiry && <p className="text-sm text-red-600 mt-1">{errors.expiry}</p>}
           <div className="flex justify-between items-center mt-1">
             <p className="text-xs text-gray-500">
-              Funds will be released at this time in {getUserTimezone()}
+              Funds will be released at this time (your local timezone)
             </p>
             {form.payoutTimestamp && !errors.expiry && (
               <p className="text-xs font-medium text-primary-600">

@@ -124,10 +124,16 @@ describe('CreateContract - microUSDC Amount Handling', () => {
         target: { value: 'Test contract description' },
       });
 
-      // Set payout date to tomorrow
+      // Set payout date to tomorrow in LOCAL time (not UTC)
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
-      const dateTimeValue = tomorrow.toISOString().slice(0, 16);
+      // Format as local datetime-local format YYYY-MM-DDTHH:MM
+      const year = tomorrow.getFullYear();
+      const month = (tomorrow.getMonth() + 1).toString().padStart(2, '0');
+      const day = tomorrow.getDate().toString().padStart(2, '0');
+      const hours = tomorrow.getHours().toString().padStart(2, '0');
+      const minutes = tomorrow.getMinutes().toString().padStart(2, '0');
+      const dateTimeValue = `${year}-${month}-${day}T${hours}:${minutes}`;
 
       const expectedDatePattern = new RegExp(dateTimeValue.substring(0, 10) + 'T');
       const dateInput = screen.getByDisplayValue(expectedDatePattern);
@@ -302,7 +308,13 @@ describe('CreateContract - microUSDC Amount Handling', () => {
 
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
-      const dateTimeValue = tomorrow.toISOString().slice(0, 16);
+      // Format as local datetime-local format YYYY-MM-DDTHH:MM
+      const year = tomorrow.getFullYear();
+      const month = (tomorrow.getMonth() + 1).toString().padStart(2, '0');
+      const day = tomorrow.getDate().toString().padStart(2, '0');
+      const hours = tomorrow.getHours().toString().padStart(2, '0');
+      const minutes = tomorrow.getMinutes().toString().padStart(2, '0');
+      const dateTimeValue = `${year}-${month}-${day}T${hours}:${minutes}`;
       const expectedDatePattern = new RegExp(dateTimeValue.substring(0, 10) + 'T');
       const dateInput = screen.getByDisplayValue(expectedDatePattern);
       fireEvent.change(dateInput, {

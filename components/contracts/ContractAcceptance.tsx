@@ -18,7 +18,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
   const router = useRouter();
   const { config } = useConfig();
   const { user } = useAuth();
-  const { getUserAddress, getUSDCBalance, getUSDCAllowance, signContractTransaction, signUSDCTransfer, utils, isReady, error: sdkError } = useWeb3SDK();
+  const { getUserAddress, getUSDCBalance, signContractTransaction, utils, isReady, error: sdkError } = useWeb3SDK();
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
   const [hasError, setHasError] = useState(false);
@@ -138,8 +138,9 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
         throw new Error('Contract address not returned from chain service');
       }
 
-      // USDC approval
+      // USDC approval - sign transaction first, then send to API
       setLoadingMessage('Approving USDC spending for escrow...');
+      
       // Convert to USDC format for approval (preserve precision for Web3)
       const usdcAmount = utils?.toUSDCForWeb3 ? utils.toUSDCForWeb3(contract.amount, contract.currency || 'microUSDC') : contract.amount.toString();
       const decimals = 6; // USDC has 6 decimals
@@ -172,8 +173,9 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
         throw new Error(approvalResult.error || 'USDC approval failed');
       }
 
-      // Fund the contract
+      // Fund the contract - sign transaction first, then send to API
       setLoadingMessage('Depositing funds to escrow...');
+      
       const depositTx = await signContractTransaction({
         contractAddress,
         abi: ESCROW_CONTRACT_ABI,

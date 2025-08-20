@@ -41,10 +41,10 @@ export const SDKProvider: React.FC<SDKProviderProps> = ({ children }) => {
         chainId: config.chainId,
         rpcUrl: config.rpcUrl,
         usdcContractAddress: config.usdcContractAddress,
-        contractFactoryAddress: config.contractAddress,
-        userServiceUrl: '/api/user', // Use API routes
-        chainServiceUrl: '/api/chain', // Use API routes
-        contractServiceUrl: '/api/contracts', // Use API routes
+        contractFactoryAddress: config.contractFactoryAddress,
+        userServiceUrl: config.userServiceUrl,
+        chainServiceUrl: config.chainServiceUrl,
+        contractServiceUrl: config.contractServiceUrl,
         minGasWei: config.minGasWei,
         snowtraceBaseUrl: config.snowtraceBaseUrl,
         serviceLink: config.serviceLink

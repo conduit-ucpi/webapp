@@ -7,6 +7,7 @@ import { useToast } from '@/components/ui/Toast';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 import { Wizard, WizardStep, WizardNavigation, WizardStep as Step } from '@/components/ui/Wizard';
+import { isValidEmail, isValidDescription, isValidAmount } from '@/utils/validation';
 
 interface CreateContractForm {
   buyerEmail: string;
@@ -138,16 +139,23 @@ export default function CreateContractWizard() {
     
     switch (step) {
       case 0: // Basic Details
-        if (!utils?.isValidEmail || !utils.isValidEmail(form.buyerEmail)) {
+        // Use SDK utils if available, otherwise fall back to local validation
+        const emailValidator = utils?.isValidEmail || isValidEmail;
+        const descriptionValidator = utils?.isValidDescription || isValidDescription;
+        
+        if (!emailValidator(form.buyerEmail)) {
           newErrors.buyerEmail = 'Please enter a valid email address';
         }
-        if (!utils?.isValidDescription || !utils.isValidDescription(form.description)) {
+        if (!descriptionValidator(form.description)) {
           newErrors.description = 'Description must be 1-160 characters';
         }
         break;
         
       case 1: // Payment Terms
-        if (!utils?.isValidAmount || !utils.isValidAmount(form.amount)) {
+        // Use SDK utils if available, otherwise fall back to local validation
+        const amountValidator = utils?.isValidAmount || isValidAmount;
+        
+        if (!amountValidator(form.amount)) {
           newErrors.amount = 'Please enter a valid amount';
         }
         
@@ -196,7 +204,14 @@ export default function CreateContractWizard() {
     
     try {
       if (!isReady) {
-        throw new Error('SDK not ready. Please ensure wallet is connected.');
+        // Add better debugging information
+        console.error('SDK not ready. Debug info:', {
+          isReady,
+          sdkError,
+          utils: !!utils,
+          hasValidationFunctions: !!(utils?.isValidEmail && utils?.isValidDescription),
+        });
+        throw new Error('SDK not ready. Please ensure wallet is connected and try again.');
       }
 
       if (sdkError) {
@@ -428,6 +443,21 @@ export default function CreateContractWizard() {
                 </ol>
               </div>
 
+              {/* SDK/Wallet Status */}
+              {!isReady && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <div className="flex items-center">
+                    <div className="w-4 h-4 border-2 border-yellow-600 border-t-transparent rounded-full animate-spin mr-3"></div>
+                    <div>
+                      <h4 className="font-medium text-yellow-900">Preparing wallet connection...</h4>
+                      <p className="text-sm text-yellow-800 mt-1">
+                        {sdkError ? `Error: ${sdkError}` : 'Please wait while we set up your wallet connection.'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Edit buttons */}
               <div className="grid grid-cols-2 gap-4 pt-4 border-t border-secondary-200">
                 <Button
@@ -461,7 +491,7 @@ export default function CreateContractWizard() {
       case 1:
         return form.amount && form.payoutTimestamp;
       case 2:
-        return true;
+        return isReady && !sdkError; // Only allow final submission when SDK is ready
       default:
         return false;
     }
@@ -490,6 +520,11 @@ export default function CreateContractWizard() {
             onPrevious={currentStep > 0 ? handlePrevious : undefined}
             isNextDisabled={!canProceed()}
             isNextLoading={isLoading}
+            nextLabel={
+              currentStep === steps.length - 1 
+                ? (!isReady ? 'Preparing...' : 'Create Payment Request')
+                : 'Continue'
+            }
           />
         </div>
       </Wizard>

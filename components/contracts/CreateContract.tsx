@@ -6,6 +6,7 @@ import { useWeb3SDK } from '@/hooks/useWeb3SDK';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import { isValidEmail, isValidDescription, isValidAmount } from '@/utils/validation';
 
 interface CreateContractForm {
   buyerEmail: string;
@@ -100,11 +101,16 @@ export default function CreateContract() {
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
 
-    if (!utils?.isValidEmail || !utils.isValidEmail(form.buyerEmail)) {
+    // Use SDK utils if available, otherwise fall back to local validation
+    const emailValidator = utils?.isValidEmail || isValidEmail;
+    const amountValidator = utils?.isValidAmount || isValidAmount;
+    const descriptionValidator = utils?.isValidDescription || isValidDescription;
+
+    if (!emailValidator(form.buyerEmail)) {
       newErrors.buyerEmail = 'Invalid email address';
     }
 
-    if (!utils?.isValidAmount || !utils.isValidAmount(form.amount)) {
+    if (!amountValidator(form.amount)) {
       newErrors.amount = 'Invalid amount';
     }
 
@@ -120,7 +126,7 @@ export default function CreateContract() {
       newErrors.expiry = 'Payout time must be within 1 year';
     }
 
-    if (!utils?.isValidDescription || !utils.isValidDescription(form.description)) {
+    if (!descriptionValidator(form.description)) {
       newErrors.description = 'Description must be 1-160 characters';
     }
 

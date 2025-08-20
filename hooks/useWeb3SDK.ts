@@ -12,6 +12,7 @@ export const useWeb3SDK = () => {
   const { walletProvider, isConnected, address } = useWallet();
   const [isReady, setIsReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sdkWalletConnected, setSdkWalletConnected] = useState(false);
 
   // Create SDK wallet provider adapter
   const createSDKWalletProvider = useCallback((): SDKWalletProvider | null => {
@@ -24,7 +25,7 @@ export const useWeb3SDK = () => {
         if (!address) throw new Error('No wallet address available');
         return address;
       },
-      getEthersProvider: () => walletProvider,
+      getEthersProvider: () => walletProvider.getEthersProvider(),
       signTransaction: async (txRequest) => {
         return await walletProvider.signTransaction(txRequest);
       },
@@ -43,27 +44,43 @@ export const useWeb3SDK = () => {
     const initializeSDKWallet = async () => {
       if (!sdk || !isInitialized || sdkError) {
         setIsReady(false);
+        setSdkWalletConnected(false);
         return;
       }
 
-      try {
-        const sdkWalletProvider = createSDKWalletProvider();
-        if (sdkWalletProvider && isConnected) {
-          await sdk.connectWallet(sdkWalletProvider);
-          setIsReady(true);
-          setError(null);
-        } else {
+      // If SDK is ready but wallet isn't connected to SDK yet, connect it
+      if (isConnected && !sdkWalletConnected) {
+        try {
+          const sdkWalletProvider = createSDKWalletProvider();
+          if (sdkWalletProvider) {
+            console.log('Connecting wallet to SDK...');
+            await sdk.connectWallet(sdkWalletProvider);
+            setSdkWalletConnected(true);
+            setIsReady(true);
+            setError(null);
+            console.log('Wallet connected to SDK successfully');
+          } else {
+            setIsReady(false);
+          }
+        } catch (err) {
+          console.error('Failed to connect wallet to SDK:', err);
+          setError(err instanceof Error ? err.message : 'Failed to connect wallet');
           setIsReady(false);
+          setSdkWalletConnected(false);
         }
-      } catch (err) {
-        console.error('Failed to connect wallet to SDK:', err);
-        setError(err instanceof Error ? err.message : 'Failed to connect wallet');
+      } else if (isConnected && sdkWalletConnected) {
+        // Both wallet and SDK are connected - we're ready
+        setIsReady(true);
+        setError(null);
+      } else {
+        // Wallet not connected
         setIsReady(false);
+        setSdkWalletConnected(false);
       }
     };
 
     initializeSDKWallet();
-  }, [sdk, isInitialized, sdkError, createSDKWalletProvider, isConnected]);
+  }, [sdk, isInitialized, sdkError, createSDKWalletProvider, isConnected, sdkWalletConnected]);
 
   // Web3 operations using SDK
   const getUSDCBalance = useCallback(async (userAddress?: string): Promise<string> => {

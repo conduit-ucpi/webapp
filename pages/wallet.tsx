@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { useConfig } from '@/components/auth/ConfigProvider';
-import { Web3Service } from '@/lib/web3';
+import { useWeb3SDK } from '@/hooks/useWeb3SDK';
 import ConnectWallet from '@/components/auth/ConnectWallet';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
@@ -37,6 +37,7 @@ export default function Wallet() {
   const { web3authProvider, isLoading: isWeb3AuthInstanceLoading } = useWeb3AuthInstance();
   const { config } = useConfig();
   const { walletAddress, isLoading: isWalletAddressLoading } = useWalletAddress();
+  const { getUSDCBalance, signUSDCTransfer, getUserAddress, isReady, error: sdkError } = useWeb3SDK();
   const [balances, setBalances] = useState<WalletBalances>({ avax: '0', usdc: '0' });
   const [isLoadingBalances, setIsLoadingBalances] = useState(false);
   const [sendForm, setSendForm] = useState<SendFormData>({
@@ -108,23 +109,20 @@ export default function Wallet() {
   };
 
   const loadBalances = async () => {
-    if (!user || !config || !web3authProvider) return;
+    if (!user || !config || !web3authProvider || !isReady) return;
 
     setIsLoadingBalances(true);
     try {
-      const web3Service = new Web3Service(config);
-      await web3Service.initializeProvider(web3authProvider);
-
-      // Get the real wallet address from Web3Auth
-      const userAddress = await web3Service.getUserAddress();
+      // Get the real wallet address from SDK
+      const userAddress = await getUserAddress();
       
-      // Get AVAX balance
+      // Get AVAX balance (still need web3authProvider for this)
       const ethersProvider = new ethers.BrowserProvider(web3authProvider);
       const avaxBalance = await ethersProvider.getBalance(userAddress);
       const avaxFormatted = ethers.formatEther(avaxBalance);
 
-      // Get USDC balance
-      const usdcBalance = await web3Service.getUSDCBalance(userAddress);
+      // Get USDC balance using SDK
+      const usdcBalance = await getUSDCBalance();
 
       setBalances({
         avax: parseFloat(avaxFormatted).toFixed(6),
@@ -154,21 +152,29 @@ export default function Wallet() {
     setIsSending(true);
 
     try {
-      const web3Service = new Web3Service(config);
-      await web3Service.initializeProvider(web3authProvider);
+      if (!isReady) {
+        throw new Error('SDK not ready. Please ensure wallet is connected.');
+      }
+
+      if (sdkError) {
+        throw new Error(`SDK error: ${sdkError}`);
+      }
 
       if (sendForm.currency === 'AVAX') {
-        // Send AVAX
-        const tx = await web3Service.sendAVAX(sendForm.recipient, sendForm.amount);
+        // Send AVAX - this still requires direct web3 usage for now
+        const ethersProvider = new ethers.BrowserProvider(web3authProvider);
+        const signer = await ethersProvider.getSigner();
+        const tx = await signer.sendTransaction({
+          to: sendForm.recipient,
+          value: ethers.parseEther(sendForm.amount)
+        });
         setSendSuccess(`AVAX sent successfully! Transaction: ${tx.hash}`);
       } else {
-        // Send USDC via chain-service
-        // Sign the USDC transfer transaction using the existing sendUSDC method
-        // which already handles the signing internally
-        const signedTx = await web3Service.signUSDCTransfer(sendForm.recipient, sendForm.amount);
+        // Send USDC via chain-service using SDK
+        const signedTx = await signUSDCTransfer(sendForm.recipient, sendForm.amount);
 
-        // Get the user's wallet address
-        const userAddress = await web3Service.getUserAddress();
+        // Get the user's wallet address from SDK
+        const userAddress = await getUserAddress();
 
         // Submit signed transaction to chain service
         const transferRequest: TransferUSDCRequest = {

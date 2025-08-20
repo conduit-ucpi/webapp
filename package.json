@@ -18,6 +18,7 @@
     "test-api-conformance": "tsx src/validation/WebappApiConformanceTest.ts"
   },
   "dependencies": {
+    "@conduit-ucpi/sdk": "^0.0.8",
     "@headlessui/react": "^1.7.19",
     "@heroicons/react": "^2.2.0",
     "@moonpay/moonpay-js": "^0.7.3",

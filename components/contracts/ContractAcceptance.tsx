@@ -2,10 +2,9 @@ import { useState } from 'react';
 import { useRouter } from 'next/router';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { useAuth } from '@/components/auth/AuthProvider';
-import { useWallet } from '@/lib/wallet/WalletProvider';
+import { useWeb3SDK } from '@/hooks/useWeb3SDK';
 import { PendingContract, CreateContractRequest } from '@/types';
-import { Web3Service, ERC20_ABI, ESCROW_CONTRACT_ABI } from '@/lib/web3';
-import { formatCurrency, toMicroUSDC, fromMicroUSDC, formatDateTimeWithTZ, toUSDCForWeb3 } from '@/utils/validation';
+import { ERC20_ABI, ESCROW_CONTRACT_ABI } from '@conduit-ucpi/sdk';
 import { ethers } from 'ethers';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
@@ -19,7 +18,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
   const router = useRouter();
   const { config } = useConfig();
   const { user } = useAuth();
-  const { walletProvider } = useWallet();
+  const { getUserAddress, getUSDCBalance, getUSDCAllowance, signContractTransaction, signUSDCTransfer, utils, isReady, error: sdkError } = useWeb3SDK();
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
   const [hasError, setHasError] = useState(false);
@@ -63,16 +62,17 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
       }
 
       setLoadingMessage('Initializing...');
-      // Use wallet provider from abstraction
-      if (!walletProvider) {
-        throw new Error('Wallet not connected. Please connect your wallet first.');
+      // Check SDK readiness
+      if (!isReady) {
+        throw new Error('SDK not ready. Please ensure wallet is connected.');
       }
 
-      const web3Service = new Web3Service(config);
-      await web3Service.initializeProvider(walletProvider);
+      if (sdkError) {
+        throw new Error(`SDK error: ${sdkError}`);
+      }
       
-      // Get the actual user wallet address from Web3Auth
-      const userAddress = await web3Service.getUserAddress();
+      // Get the actual user wallet address from SDK
+      const userAddress = await getUserAddress();
       
       console.log('User from auth context:', user);
       console.log('Using actual user wallet address:', userAddress);
@@ -86,17 +86,17 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
       setLoadingMessage('Checking USDC balance...');
       console.log('Checking balance for address:', userAddress);
       console.log('USDC Contract Address:', config.usdcContractAddress);
-      const balance = await web3Service.getUSDCBalance(userAddress);
+      const balance = await getUSDCBalance();
       console.log('Raw balance from contract:', balance);
       
       // Use currency utility to handle any amount/currency format
-      const requiredUSDC = formatCurrency(contract.amount, contract.currency).numericAmount;
+      const requiredUSDC: number = utils?.formatCurrency ? utils.formatCurrency(contract.amount, contract.currency || 'microUSDC').numericAmount : (typeof contract.amount === 'number' ? contract.amount : parseFloat(String(contract.amount)));
       console.log('Required USDC amount:', requiredUSDC);
       console.log('Contract amount:', contract.amount);
       console.log('Contract currency:', contract.currency);
       
       if (parseFloat(balance) < requiredUSDC) {
-        const displayAmount = formatCurrency(contract.amount, contract.currency);
+        const displayAmount = utils?.formatCurrency ? utils.formatCurrency(contract.amount, contract.currency || 'microUSDC') : { amount: contract.amount.toString() };
         console.error('Insufficient balance - have:', balance, 'need:', requiredUSDC);
         throw new Error(`Insufficient USDC balance. You have ${balance} USDC, need ${displayAmount.amount} USDC`);
       }
@@ -105,7 +105,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
       setLoadingMessage('Creating secure escrow...');
 
       // Convert to microUSDC format for blockchain operations
-      const amountInMicroUSDC = toMicroUSDC(formatCurrency(contract.amount, contract.currency).numericAmount);
+      const amountInMicroUSDC = utils?.toMicroUSDC ? utils.toMicroUSDC(utils?.formatCurrency ? utils.formatCurrency(contract.amount, contract.currency || 'microUSDC').numericAmount : contract.amount) : (contract.amount * 1000000);
       const amountInSmallestUnit = amountInMicroUSDC.toString();
 
       const contractRequest: CreateContractRequest = {
@@ -141,11 +141,11 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
       // USDC approval
       setLoadingMessage('Approving USDC spending for escrow...');
       // Convert to USDC format for approval (preserve precision for Web3)
-      const usdcAmount = toUSDCForWeb3(contract.amount, contract.currency);
+      const usdcAmount = utils?.toUSDCForWeb3 ? utils.toUSDCForWeb3(contract.amount, contract.currency || 'microUSDC') : contract.amount.toString();
       const decimals = 6; // USDC has 6 decimals
       const amountWei = ethers.parseUnits(usdcAmount, decimals);
       
-      const approvalTx = await web3Service.signContractTransaction({
+      const approvalTx = await signContractTransaction({
         contractAddress: config.usdcContractAddress,
         abi: ERC20_ABI,
         functionName: 'approve',
@@ -174,7 +174,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
 
       // Fund the contract
       setLoadingMessage('Depositing funds to escrow...');
-      const depositTx = await web3Service.signContractTransaction({
+      const depositTx = await signContractTransaction({
         contractAddress,
         abi: ESCROW_CONTRACT_ABI,
         functionName: 'depositFunds',
@@ -195,7 +195,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
           contractDescription: contract.description,
           amount: amountInMicroUSDC.toString(),
           currency: "USDC",
-          payoutDateTime: formatDateTimeWithTZ(contract.expiryTimestamp),
+          payoutDateTime: utils?.formatDateTimeWithTZ ? utils.formatDateTimeWithTZ(contract.expiryTimestamp) : new Date(contract.expiryTimestamp * 1000).toISOString(),
           contractLink: config.serviceLink
         })
       });
@@ -265,7 +265,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
         <div className="space-y-3 mb-6">
           <div className="flex justify-between">
             <span className="text-gray-600">Amount:</span>
-            <span className="font-medium">${formatCurrency(contract.amount, contract.currency).amount} USDC</span>
+            <span className="font-medium">${utils?.formatCurrency ? utils.formatCurrency(contract.amount, contract.currency || 'microUSDC').amount : contract.amount} USDC</span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-600">Seller:</span>
@@ -303,7 +303,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
       <div className="space-y-3 mb-6">
         <div className="flex justify-between">
           <span className="text-gray-600">Amount:</span>
-          <span className="font-medium">${formatCurrency(contract.amount, contract.currency).amount} USDC</span>
+          <span className="font-medium">${utils?.formatCurrency ? utils.formatCurrency(contract.amount, contract.currency || 'microUSDC').amount : contract.amount} USDC</span>
         </div>
         <div className="flex justify-between">
           <span className="text-gray-600">Seller:</span>
@@ -317,7 +317,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
 
       <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4 mb-6">
         <p className="text-sm text-yellow-800">
-          When you make this payment, the ${formatCurrency(contract.amount, contract.currency).amount} USDC will be held securely in escrow until {formatDateTimeWithTZ(contract.expiryTimestamp)}.
+          When you make this payment, the ${utils?.formatCurrency ? utils.formatCurrency(contract.amount, contract.currency || 'microUSDC').amount : contract.amount} USDC will be held securely in escrow until {utils?.formatDateTimeWithTZ ? utils.formatDateTimeWithTZ(contract.expiryTimestamp) : new Date(contract.expiryTimestamp * 1000).toISOString()}.
         </p>
       </div>
 
@@ -326,7 +326,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
         disabled={isLoading || isSuccess}
         className={`w-full bg-primary-500 hover:bg-primary-600 ${(isLoading || isSuccess) ? 'opacity-50 cursor-not-allowed' : ''}`}
       >
-        Make Payment of ${formatCurrency(contract.amount, contract.currency).amount} USDC
+        Make Payment of ${utils?.formatCurrency ? utils.formatCurrency(contract.amount, contract.currency || 'microUSDC').amount : contract.amount} USDC
       </Button>
     </div>
   );

@@ -2,9 +2,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/router';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { useAuth } from '@/components/auth/AuthProvider';
-import { useWallet } from '@/lib/wallet/WalletProvider';
-import { Web3Service } from '@/lib/web3';
-import { isValidEmail, isValidAmount, isValidDescription, toMicroUSDC, formatDateTimeWithTZ } from '@/utils/validation';
+import { useWeb3SDK } from '@/hooks/useWeb3SDK';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
@@ -27,7 +25,7 @@ export default function CreateContract() {
   const router = useRouter();
   const { config } = useConfig();
   const { user } = useAuth();
-  const { walletProvider } = useWallet();
+  const { getUserAddress, utils, isReady, error: sdkError } = useWeb3SDK();
   // Initialize with tomorrow's date at current time
   const getDefaultTimestamp = (): number => {
     const tomorrow = new Date();
@@ -102,11 +100,11 @@ export default function CreateContract() {
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
 
-    if (!isValidEmail(form.buyerEmail)) {
+    if (!utils?.isValidEmail || !utils.isValidEmail(form.buyerEmail)) {
       newErrors.buyerEmail = 'Invalid email address';
     }
 
-    if (!isValidAmount(form.amount)) {
+    if (!utils?.isValidAmount || !utils.isValidAmount(form.amount)) {
       newErrors.amount = 'Invalid amount';
     }
 
@@ -122,7 +120,7 @@ export default function CreateContract() {
       newErrors.expiry = 'Payout time must be within 1 year';
     }
 
-    if (!isValidDescription(form.description)) {
+    if (!utils?.isValidDescription || !utils.isValidDescription(form.description)) {
       newErrors.description = 'Description must be 1-160 characters';
     }
 
@@ -138,22 +136,23 @@ export default function CreateContract() {
     setIsLoading(true);
     
     try {
-      // Get wallet provider
-      setLoadingMessage('Initializing Web3...');
-      if (!walletProvider) {
-        throw new Error('Wallet not connected');
+      // Check SDK readiness
+      setLoadingMessage('Initializing...');
+      if (!isReady) {
+        throw new Error('SDK not ready. Please ensure wallet is connected.');
+      }
+
+      if (sdkError) {
+        throw new Error(`SDK error: ${sdkError}`);
       }
 
       // Validate config before proceeding
       if (!config.usdcContractAddress) {
         throw new Error('USDC contract address not configured. Please check server configuration.');
       }
-
-      const web3Service = new Web3Service(config);
-      await web3Service.initializeProvider(walletProvider);
       
-      // Get the actual user wallet address from Web3Auth
-      const userAddress = await web3Service.getUserAddress();
+      // Get the actual user wallet address
+      const userAddress = await getUserAddress();
 
       // Create pending contract via Contract Service (no USDC balance check needed)
       setLoadingMessage('Creating pending contract...');
@@ -162,7 +161,7 @@ export default function CreateContract() {
         buyerEmail: form.buyerEmail,
         sellerEmail: user?.email || '', // Get from authenticated user
         sellerAddress: userAddress,
-        amount: toMicroUSDC(form.amount.trim()), // Convert to microUSDC format
+        amount: utils?.toMicroUSDC ? utils.toMicroUSDC(parseFloat(form.amount.trim())) : Math.round(parseFloat(form.amount.trim()) * 1000000), // Convert to microUSDC format
         currency: 'microUSDC',
         description: form.description,
         expiryTimestamp: form.payoutTimestamp, // Already a Unix timestamp in seconds

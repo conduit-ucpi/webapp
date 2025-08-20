@@ -7,7 +7,71 @@ jest.mock('next/router', () => ({
 }));
 jest.mock('../../../components/auth/ConfigProvider');
 jest.mock('../../../components/auth/AuthProvider');
-jest.mock('../../../lib/web3');
+
+// Override the SDK mock for this test
+jest.mock('../../../hooks/useWeb3SDK', () => ({
+  useWeb3SDK: () => ({
+    isReady: true,
+    error: null,
+    isConnected: true,
+    getUSDCBalance: jest.fn().mockResolvedValue('100.0'),
+    getUSDCAllowance: jest.fn().mockResolvedValue('1000.0'),
+    signUSDCTransfer: jest.fn().mockResolvedValue('mock-signed-transaction'),
+    getContractInfo: jest.fn().mockResolvedValue({}),
+    getContractState: jest.fn().mockResolvedValue({}),
+    signContractTransaction: jest.fn().mockImplementation((params) => {
+      if (params.functionName === 'approve') return Promise.resolve('mock-approval-tx');
+      if (params.functionName === 'depositFunds') return Promise.resolve('mock-deposit-tx');
+      return Promise.resolve('mock-signed-transaction');
+    }),
+    hashDescription: jest.fn().mockReturnValue('0x1234'),
+    getUserAddress: jest.fn().mockResolvedValue('0xBuyerAddress'), // Test-specific address
+    services: {
+      user: { login: jest.fn(), logout: jest.fn(), getIdentity: jest.fn() },
+      chain: { createContract: jest.fn(), raiseDispute: jest.fn(), claimFunds: jest.fn() },
+      contracts: { create: jest.fn(), getById: jest.fn(), getAll: jest.fn() }
+    },
+    utils: {
+      isValidEmail: jest.fn().mockReturnValue(true),
+      isValidAmount: jest.fn().mockReturnValue(true),
+      isValidDescription: jest.fn().mockReturnValue(true),
+      formatCurrency: jest.fn().mockImplementation((amount, currency) => {
+        const num = typeof amount === 'string' ? parseFloat(amount) : amount;
+        // Smart detection: if currency is 'USDC' but amount >= 1000, treat as microUSDC
+        if (currency === 'USDC' && num >= 1000) {
+          return {
+            amount: (num / 1000000).toFixed(2),
+            currency: 'USDC',
+            numericAmount: num / 1000000
+          };
+        }
+        // If currency is 'USDC' and amount < 1000, assume input is already in USDC
+        else if (currency === 'USDC') {
+          return {
+            amount: num.toFixed(2),
+            currency: 'USDC',
+            numericAmount: num
+          };
+        }
+        // Otherwise assume input is in microUSDC and convert
+        return {
+          amount: (num / 1000000).toFixed(2),
+          currency: 'USDC',
+          numericAmount: num / 1000000
+        };
+      }),
+      formatUSDC: jest.fn().mockReturnValue('1.0000'),
+      toMicroUSDC: jest.fn().mockImplementation((amount) => {
+        const num = typeof amount === 'string' ? parseFloat(amount) : amount;
+        const result = Math.round(num * 1000000);
+        return result.toString(); // Return as string to match expected test format
+      }),
+      formatDateTimeWithTZ: jest.fn().mockReturnValue('2024-01-01T00:00:00-05:00'),
+      toUSDCForWeb3: jest.fn().mockReturnValue('1.0')
+    },
+    sdk: null
+  })
+}));
 
 import { useRouter } from 'next/router';
 import ContractAcceptance from '../../../components/contracts/ContractAcceptance';
@@ -25,25 +89,7 @@ const currency = "USDC";
 const mockFetch = jest.fn();
 global.fetch = mockFetch;
 
-// Mock Web3Service
-const mockWeb3Service = {
-  initializeProvider: jest.fn(),
-  getUserAddress: jest.fn().mockResolvedValue('0xBuyerAddress'),
-  getUSDCBalance: jest.fn().mockResolvedValue('1.00'),
-  signContractTransaction: jest.fn().mockImplementation((params) => {
-    if (params.functionName === 'raiseDispute') return Promise.resolve('mock-dispute-tx');
-    if (params.functionName === 'claimFunds') return Promise.resolve('mock-claim-tx');
-    if (params.functionName === 'approve') return Promise.resolve('mock-approval-tx');
-    if (params.functionName === 'depositFunds') return Promise.resolve('mock-deposit-tx');
-    return Promise.resolve('mock-signed-tx');
-  }),
-  signUSDCApproval: jest.fn().mockResolvedValue('mock-approval-tx'),
-  signDepositTransaction: jest.fn().mockResolvedValue('mock-deposit-tx'),
-};
-
-jest.mock('../../../lib/web3', () => ({
-  Web3Service: jest.fn().mockImplementation(() => mockWeb3Service),
-}));
+// SDK is mocked at module level above
 
 // Mock Web3Auth provider
 Object.defineProperty(window, 'web3authProvider', {

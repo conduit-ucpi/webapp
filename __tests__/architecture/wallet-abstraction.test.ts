@@ -116,7 +116,7 @@ describe('Wallet Provider Abstraction', () => {
             .map((line, index) => ({ line: line.trim(), number: index + 1 }))
             .filter(({ line }) => pattern.test(line));
 
-          fail(
+          throw new Error(
             `${file} contains ${description}:\n` +
             matchingLines.map(({ line, number }) => `  Line ${number}: ${line}`).join('\n') +
             '\n\nComponents should use useWallet() hook and walletProvider instead.'
@@ -155,14 +155,21 @@ describe('Wallet Provider Abstraction', () => {
 
       const content = fs.readFileSync(fullPath, 'utf-8');
 
-      // Should import useWallet
-      expect(content).toMatch(/import.*useWallet.*from.*@\/lib\/wallet/);
+      // Should import useWeb3SDK (which uses useWallet internally) or useWallet directly
+      const hasSDKAbstraction = /import.*useWeb3SDK.*from.*@\/hooks\/useWeb3SDK/.test(content);
+      const hasWalletAbstraction = /import.*useWallet.*from.*@\/lib\/wallet/.test(content);
       
-      // Should call useWallet hook
-      expect(content).toMatch(/const.*walletProvider.*=.*useWallet\(\)/);
+      if (!hasSDKAbstraction && !hasWalletAbstraction) {
+        throw new Error(`${file} should use either useWeb3SDK hook (which wraps useWallet) or useWallet hook directly`);
+      }
       
-      // Should use walletProvider with Web3Service
-      expect(content).toMatch(/initializeProvider\(walletProvider\)/);
+      // Should use the abstraction (either pattern is acceptable)
+      const usesSDK = /useWeb3SDK\(\)/.test(content);
+      const usesWallet = /useWallet\(\)/.test(content);
+      
+      if (!usesSDK && !usesWallet) {
+        throw new Error(`${file} should call either useWeb3SDK() or useWallet() to access wallet functionality`);
+      }
     });
   });
 

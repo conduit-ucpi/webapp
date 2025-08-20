@@ -2,10 +2,8 @@ import { useState } from 'react';
 import { useRouter } from 'next/router';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { useAuth } from '@/components/auth/AuthProvider';
-import { useWallet } from '@/lib/wallet/WalletProvider';
+import { useWeb3SDK } from '@/hooks/useWeb3SDK';
 import { useToast } from '@/components/ui/Toast';
-import { Web3Service } from '@/lib/web3';
-import { isValidEmail, isValidAmount, isValidDescription, toMicroUSDC, formatCurrency, formatDateTimeWithTZ } from '@/utils/validation';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 import { Wizard, WizardStep, WizardNavigation, WizardStep as Step } from '@/components/ui/Wizard';
@@ -46,7 +44,7 @@ export default function CreateContractWizard() {
   const router = useRouter();
   const { config } = useConfig();
   const { user } = useAuth();
-  const { walletProvider } = useWallet();
+  const { getUserAddress, utils, isReady, error: sdkError } = useWeb3SDK();
   const { showToast } = useToast();
   
   const [currentStep, setCurrentStep] = useState(0);
@@ -140,16 +138,16 @@ export default function CreateContractWizard() {
     
     switch (step) {
       case 0: // Basic Details
-        if (!isValidEmail(form.buyerEmail)) {
+        if (!utils?.isValidEmail || !utils.isValidEmail(form.buyerEmail)) {
           newErrors.buyerEmail = 'Please enter a valid email address';
         }
-        if (!isValidDescription(form.description)) {
+        if (!utils?.isValidDescription || !utils.isValidDescription(form.description)) {
           newErrors.description = 'Description must be 1-160 characters';
         }
         break;
         
       case 1: // Payment Terms
-        if (!isValidAmount(form.amount)) {
+        if (!utils?.isValidAmount || !utils.isValidAmount(form.amount)) {
           newErrors.amount = 'Please enter a valid amount';
         }
         
@@ -197,24 +195,25 @@ export default function CreateContractWizard() {
     setIsLoading(true);
     
     try {
-      if (!walletProvider) {
-        throw new Error('Wallet not connected');
+      if (!isReady) {
+        throw new Error('SDK not ready. Please ensure wallet is connected.');
+      }
+
+      if (sdkError) {
+        throw new Error(`SDK error: ${sdkError}`);
       }
 
       if (!config.usdcContractAddress) {
         throw new Error('USDC contract address not configured');
       }
 
-      const web3Service = new Web3Service(config);
-      await web3Service.initializeProvider(walletProvider);
-      
-      const userAddress = await web3Service.getUserAddress();
+      const userAddress = await getUserAddress();
       
       const pendingContractRequest = {
         buyerEmail: form.buyerEmail,
         sellerEmail: user?.email || '',
         sellerAddress: userAddress,
-        amount: toMicroUSDC(form.amount.trim()),
+        amount: utils?.toMicroUSDC ? utils.toMicroUSDC(parseFloat(form.amount.trim())) : Math.round(parseFloat(form.amount.trim()) * 1000000),
         currency: 'microUSDC',
         description: form.description,
         expiryTimestamp: form.payoutTimestamp,
@@ -388,13 +387,13 @@ export default function CreateContractWizard() {
                   <div className="flex justify-between">
                     <span className="text-secondary-600">Amount:</span>
                     <span className="font-medium text-lg">
-                      {formatCurrency(toMicroUSDC(form.amount || '0'), 'microUSDC').amount} USDC
+                      {utils?.formatUSDC ? utils.formatUSDC(utils.toMicroUSDC ? utils.toMicroUSDC(parseFloat(form.amount || '0')) : Math.round(parseFloat(form.amount || '0') * 1000000)) : (form.amount || '0')} USDC
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-secondary-600">Release date:</span>
                     <span className="font-medium">
-                      {formatDateTimeWithTZ(form.payoutTimestamp)}
+                      {utils?.formatDateTimeWithTZ ? utils.formatDateTimeWithTZ(form.payoutTimestamp) : new Date(form.payoutTimestamp * 1000).toISOString()}
                     </span>
                   </div>
                   <div className="flex justify-between">
@@ -416,11 +415,11 @@ export default function CreateContractWizard() {
                   </li>
                   <li className="flex items-start">
                     <span className="font-medium mr-2">2.</span>
-                    <span>They pay {formatCurrency(toMicroUSDC(form.amount || '0'), 'microUSDC').amount} USDC to our secure escrow</span>
+                    <span>They pay {utils?.formatUSDC ? utils.formatUSDC(utils.toMicroUSDC ? utils.toMicroUSDC(parseFloat(form.amount || '0')) : Math.round(parseFloat(form.amount || '0') * 1000000)) : (form.amount || '0')} USDC to our secure escrow</span>
                   </li>
                   <li className="flex items-start">
                     <span className="font-medium mr-2">3.</span>
-                    <span>Funds are automatically released to you on {formatDateTimeWithTZ(form.payoutTimestamp)}</span>
+                    <span>Funds are automatically released to you on {utils?.formatDateTimeWithTZ ? utils.formatDateTimeWithTZ(form.payoutTimestamp) : new Date(form.payoutTimestamp * 1000).toISOString()}</span>
                   </li>
                   <li className="flex items-start">
                     <span className="font-medium mr-2">4.</span>

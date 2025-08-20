@@ -8,7 +8,42 @@ jest.mock('next/router', () => ({
 jest.mock('../../../components/auth/ConfigProvider');
 jest.mock('../../../components/auth/AuthProvider');
 jest.mock('../../../components/auth/Web3AuthContextProvider');
-jest.mock('../../../lib/web3');
+
+// Override the SDK mock for this test
+jest.mock('../../../hooks/useWeb3SDK', () => ({
+  useWeb3SDK: () => ({
+    isReady: true,
+    error: null,
+    isConnected: true,
+    getUSDCBalance: jest.fn().mockResolvedValue('100.0'),
+    getUSDCAllowance: jest.fn().mockResolvedValue('1000.0'),
+    signUSDCTransfer: jest.fn().mockResolvedValue('mock-signed-transaction'),
+    getContractInfo: jest.fn().mockResolvedValue({}),
+    getContractState: jest.fn().mockResolvedValue({}),
+    signContractTransaction: jest.fn().mockResolvedValue('mock-signed-transaction'),
+    hashDescription: jest.fn().mockReturnValue('0x1234'),
+    getUserAddress: jest.fn().mockResolvedValue('0xSellerAddress'), // Test-specific address
+    services: {
+      user: { login: jest.fn(), logout: jest.fn(), getIdentity: jest.fn() },
+      chain: { createContract: jest.fn(), raiseDispute: jest.fn(), claimFunds: jest.fn() },
+      contracts: { create: jest.fn(), getById: jest.fn(), getAll: jest.fn() }
+    },
+    utils: {
+      isValidEmail: jest.fn().mockReturnValue(true),
+      isValidAmount: jest.fn().mockReturnValue(true),
+      isValidDescription: jest.fn().mockReturnValue(true),
+      formatCurrency: jest.fn().mockReturnValue({ amount: '1.0000', currency: 'USDC', numericAmount: 1 }),
+      formatUSDC: jest.fn().mockReturnValue('1.0000'),
+      toMicroUSDC: jest.fn().mockImplementation((amount) => {
+        const num = typeof amount === 'string' ? parseFloat(amount) : amount;
+        return Math.round(num * 1000000);
+      }),
+      formatDateTimeWithTZ: jest.fn().mockReturnValue('2024-01-01T00:00:00-05:00'),
+      toUSDCForWeb3: jest.fn().mockReturnValue('1.0')
+    },
+    sdk: null
+  })
+}));
 
 import { useRouter } from 'next/router';
 import CreateContract from '../../../components/contracts/CreateContract';
@@ -91,14 +126,7 @@ describe('CreateContract - microUSDC Amount Handling', () => {
       onLogout: jest.fn(),
     });
 
-    // Reset and setup Web3Service mock before each test
-    const mockWeb3Service = {
-      initializeProvider: jest.fn().mockResolvedValue(undefined),
-      getUserAddress: jest.fn().mockResolvedValue('0xSellerAddress'),
-    };
-
-    const { Web3Service } = require('../../../lib/web3');
-    Web3Service.mockImplementation(() => mockWeb3Service);
+    // SDK is mocked at the module level and returns the correct address
   });
 
   describe('Amount conversion to microUSDC', () => {

@@ -102,7 +102,7 @@ describe('API Route Compliance', () => {
         .map(v => `${v.file}:${v.line} - ${v.content}`)
         .join('\n');
       
-      fail(`Frontend files should not call backend services directly. Found violations:\n${errorMessage}\n\nUse Next.js API routes instead (e.g., /api/auth/identity instead of USER_SERVICE_URL/api/user/identity)`);
+      throw new Error(`Frontend files should not call backend services directly. Found violations:\n${errorMessage}\n\nUse Next.js API routes instead (e.g., /api/auth/identity instead of USER_SERVICE_URL/api/user/identity)`);
     }
   });
 
@@ -140,7 +140,7 @@ describe('API Route Compliance', () => {
         .map(v => `${v.file}:${v.line} - ${v.content}`)
         .join('\n');
       
-      fail(`Frontend files should use relative API paths or router.basePath. Found violations:\n${errorMessage}`);
+      throw new Error(`Frontend files should use relative API paths or router.basePath. Found violations:\n${errorMessage}`);
     }
   });
 });

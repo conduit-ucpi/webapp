@@ -2,9 +2,8 @@ import { useState } from 'react';
 import { Contract, PendingContract, RaiseDisputeRequest } from '@/types';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { useAuth } from '@/components/auth/AuthProvider';
-import { useWallet } from '@/lib/wallet/WalletProvider';
-import { Web3Service, ESCROW_CONTRACT_ABI } from '@/lib/web3';
-import { toMicroUSDC, formatCurrency, formatDateTimeWithTZ } from '@/utils/validation';
+import { useWeb3SDK } from '@/hooks/useWeb3SDK';
+import { ESCROW_CONTRACT_ABI } from '@conduit-ucpi/sdk';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import DisputeModal from './DisputeModal';
@@ -24,7 +23,7 @@ interface ContractActionsProps {
 export default function ContractActions({ contract, isBuyer, isSeller, onAction, onAccept, isClaimingInProgress, onClaimStart, onClaimComplete }: ContractActionsProps) {
   const { config } = useConfig();
   const { user } = useAuth();
-  const { walletProvider } = useWallet();
+  const { signContractTransaction, getUserAddress, utils, isReady, error: sdkError } = useWeb3SDK();
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
   const [hasError, setHasError] = useState(false);
@@ -46,20 +45,21 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
     setHasError(false);
     
     try {
-      // Get Web3Auth provider
-      if (!walletProvider) {
-        throw new Error('Wallet not connected');
+      // Check SDK readiness
+      if (!isReady) {
+        throw new Error('SDK not ready. Please ensure wallet is connected.');
       }
 
-      const web3Service = new Web3Service(config);
-      await web3Service.initializeProvider(walletProvider);
+      if (sdkError) {
+        throw new Error(`SDK error: ${sdkError}`);
+      }
       
-      // Get the actual user wallet address from Web3Auth
-      const userAddress = await web3Service.getUserAddress();
+      // Get the actual user wallet address
+      const userAddress = await getUserAddress();
 
       // Sign dispute transaction
       setLoadingMessage('Signing dispute transaction...');
-      const signedTx = await web3Service.signContractTransaction({
+      const signedTx = await signContractTransaction({
         contractAddress: (contract as Contract).contractAddress,
         abi: ESCROW_CONTRACT_ABI,
         functionName: 'raiseDispute',
@@ -77,8 +77,8 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
         signedTransaction: signedTx,
         buyerEmail: regularContract.buyerEmail || user?.email,
         sellerEmail: regularContract.sellerEmail,
-        payoutDateTime: formatDateTimeWithTZ(regularContract.expiryTimestamp),
-        amount: toMicroUSDC(formatCurrency(regularContract.amount, 'microUSDC').numericAmount).toString(),
+        payoutDateTime: utils?.formatDateTimeWithTZ ? utils.formatDateTimeWithTZ(regularContract.expiryTimestamp) : new Date(regularContract.expiryTimestamp).toISOString(),
+        amount: utils?.toMicroUSDC ? utils.toMicroUSDC(regularContract.amount).toString() : (regularContract.amount * 1000000).toString(),
         currency: "microUSDC",
         contractDescription: regularContract.description,
         productName: process.env.PRODUCT_NAME || regularContract.description,
@@ -129,20 +129,21 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
     onClaimStart?.(); // Disable all claim buttons
     
     try {
-      // Get Web3Auth provider
-      if (!walletProvider) {
-        throw new Error('Wallet not connected');
+      // Check SDK readiness
+      if (!isReady) {
+        throw new Error('SDK not ready. Please ensure wallet is connected.');
       }
 
-      const web3Service = new Web3Service(config);
-      await web3Service.initializeProvider(walletProvider);
+      if (sdkError) {
+        throw new Error(`SDK error: ${sdkError}`);
+      }
       
-      // Get the actual user wallet address from Web3Auth
-      const userAddress = await web3Service.getUserAddress();
+      // Get the actual user wallet address
+      const userAddress = await getUserAddress();
 
       // Sign claim transaction
       setLoadingMessage('Signing claim transaction...');
-      const signedTx = await web3Service.signContractTransaction({
+      const signedTx = await signContractTransaction({
         contractAddress: (contract as Contract).contractAddress,
         abi: ESCROW_CONTRACT_ABI,
         functionName: 'claimFunds',

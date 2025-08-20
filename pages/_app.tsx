@@ -10,27 +10,30 @@ import { ToastProvider } from '@/components/ui/Toast';
 import { ThemeProvider } from '@/components/theme/ThemeProvider';
 import { TourProvider } from '@/components/onboarding/TourProvider';
 import { WalletProvider } from '@/lib/wallet/WalletProvider';
+import { SDKProvider } from '@/components/auth/SDKProvider';
 
 export default function App({ Component, pageProps }: AppProps) {
   return (
     <ErrorBoundary>
       <ThemeProvider>
         <ConfigProvider>
-          <Web3AuthProviderWrapper>
-            <Web3AuthContextProvider>
-              <WalletProvider>
-                <AuthProvider>
-                <ToastProvider>
-                  <TourProvider>
-                    <Layout>
-                      <Component {...pageProps} />
-                    </Layout>
-                  </TourProvider>
-                </ToastProvider>
-                </AuthProvider>
-              </WalletProvider>
-            </Web3AuthContextProvider>
-          </Web3AuthProviderWrapper>
+          <SDKProvider>
+            <Web3AuthProviderWrapper>
+              <Web3AuthContextProvider>
+                <WalletProvider>
+                  <AuthProvider>
+                  <ToastProvider>
+                    <TourProvider>
+                      <Layout>
+                        <Component {...pageProps} />
+                      </Layout>
+                    </TourProvider>
+                  </ToastProvider>
+                  </AuthProvider>
+                </WalletProvider>
+              </Web3AuthContextProvider>
+            </Web3AuthProviderWrapper>
+          </SDKProvider>
         </ConfigProvider>
       </ThemeProvider>
     </ErrorBoundary>

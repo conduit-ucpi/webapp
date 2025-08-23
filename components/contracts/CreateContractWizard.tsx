@@ -198,36 +198,23 @@ export default function CreateContractWizard() {
   };
 
   const handleSubmit = async () => {
-    if (!validateStep(2) || !config) return;
+    if (!validateStep(2) || !config || !user) return;
 
     setIsLoading(true);
     
     try {
-      if (!isReady) {
-        // Add better debugging information
-        console.error('SDK not ready. Debug info:', {
-          isReady,
-          sdkError,
-          utils: !!utils,
-          hasValidationFunctions: !!(utils?.isValidEmail && utils?.isValidDescription),
-        });
-        throw new Error('SDK not ready. Please ensure wallet is connected and try again.');
-      }
-
-      if (sdkError) {
-        throw new Error(`SDK error: ${sdkError}`);
-      }
-
       if (!config.usdcContractAddress) {
         throw new Error('USDC contract address not configured');
       }
 
-      const userAddress = await getUserAddress();
+      if (!user.walletAddress) {
+        throw new Error('User wallet address not available. Please try logging in again.');
+      }
       
       const pendingContractRequest = {
         buyerEmail: form.buyerEmail,
-        sellerEmail: user?.email || '',
-        sellerAddress: userAddress,
+        sellerEmail: user.email,
+        sellerAddress: user.walletAddress,
         amount: utils?.toMicroUSDC ? utils.toMicroUSDC(parseFloat(form.amount.trim())) : Math.round(parseFloat(form.amount.trim()) * 1000000),
         currency: 'microUSDC',
         description: form.description,
@@ -443,20 +430,6 @@ export default function CreateContractWizard() {
                 </ol>
               </div>
 
-              {/* SDK/Wallet Status */}
-              {!isReady && (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                  <div className="flex items-center">
-                    <div className="w-4 h-4 border-2 border-yellow-600 border-t-transparent rounded-full animate-spin mr-3"></div>
-                    <div>
-                      <h4 className="font-medium text-yellow-900">Preparing wallet connection...</h4>
-                      <p className="text-sm text-yellow-800 mt-1">
-                        {sdkError ? `Error: ${sdkError}` : 'Please wait while we set up your wallet connection.'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
 
               {/* Edit buttons */}
               <div className="grid grid-cols-2 gap-4 pt-4 border-t border-secondary-200">
@@ -491,7 +464,7 @@ export default function CreateContractWizard() {
       case 1:
         return form.amount && form.payoutTimestamp;
       case 2:
-        return isReady && !sdkError; // Only allow final submission when SDK is ready
+        return user && user.walletAddress; // Only allow final submission when user is authenticated
       default:
         return false;
     }
@@ -522,7 +495,7 @@ export default function CreateContractWizard() {
             isNextLoading={isLoading}
             nextLabel={
               currentStep === steps.length - 1 
-                ? (!isReady ? 'Preparing...' : 'Create Payment Request')
+                ? 'Create Payment Request'
                 : 'Continue'
             }
           />

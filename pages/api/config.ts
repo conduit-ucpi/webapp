@@ -15,7 +15,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log('USDC_CONTRACT_ADDRESS:', process.env.USDC_CONTRACT_ADDRESS);
     console.log('MOONPAY_API_KEY:', process.env.MOONPAY_API_KEY ? 'Present' : 'Missing');
     console.log('MIN_GAS_WEI:', process.env.MIN_GAS_WEI);
-    console.log('SNOWTRACE_BASE_URL:', process.env.SNOWTRACE_BASE_URL);
+    console.log('EXPLORER_BASE_URL:', process.env.EXPLORER_BASE_URL);
     console.log('SERVICE_LINK:', process.env.SERVICE_LINK);
     console.log('CONTRACT_ADDRESS:', process.env.CONTRACT_ADDRESS);
 
@@ -35,7 +35,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       moonPayApiKey: process.env.MOONPAY_API_KEY,
       minGasWei: process.env.MIN_GAS_WEI || '5',
       basePath,
-      snowtraceBaseUrl: process.env.SNOWTRACE_BASE_URL,
+      explorerBaseUrl: process.env.EXPLORER_BASE_URL,
       serviceLink: process.env.SERVICE_LINK || 'http://localhost:3000',
       // Optional wallet services configuration
       walletServicesShowWidget: process.env.WALLET_SERVICES_SHOW_WIDGET,

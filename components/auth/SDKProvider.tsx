@@ -46,7 +46,7 @@ export const SDKProvider: React.FC<SDKProviderProps> = ({ children }) => {
         chainServiceUrl: config.chainServiceUrl,
         contractServiceUrl: config.contractServiceUrl,
         minGasWei: config.minGasWei,
-        snowtraceBaseUrl: config.snowtraceBaseUrl,
+        explorerBaseUrl: config.explorerBaseUrl,
         serviceLink: config.serviceLink
       });
 

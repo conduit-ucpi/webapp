@@ -185,13 +185,13 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
                   <div>
                     <p className="text-sm font-medium text-secondary-700">Contract Address</p>
                     <ExpandableHash hash={(contract as Contract).contractAddress} />
-                    {config?.snowtraceBaseUrl && (contract as Contract).contractAddress && (
+                    {config?.explorerBaseUrl && (contract as Contract).contractAddress && (
                       <a
-                        href={`${config.snowtraceBaseUrl}/address/${(contract as Contract).contractAddress}`}
+                        href={`${config.explorerBaseUrl}/address/${(contract as Contract).contractAddress}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-sm text-primary-600 hover:text-primary-700 mt-1 inline-block"
-                        onClick={() => console.log('Snowtrace URL:', `${config.snowtraceBaseUrl}/address/${(contract as Contract).contractAddress}`)}
+                        onClick={() => console.log('Explorer URL:', `${config.explorerBaseUrl}/address/${(contract as Contract).contractAddress}`)}
                       >
                         View on Explorer ↗
                       </a>
@@ -361,9 +361,9 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
             Close
           </Button>
           
-          {!isPending && config?.snowtraceBaseUrl && (contract as Contract).contractAddress && (
+          {!isPending && config?.explorerBaseUrl && (contract as Contract).contractAddress && (
             <Button
-              onClick={() => window.open(`${config.snowtraceBaseUrl}/address/${(contract as Contract).contractAddress}`, '_blank')}
+              onClick={() => window.open(`${config.explorerBaseUrl}/address/${(contract as Contract).contractAddress}`, '_blank')}
               variant="outline"
               className="w-full sm:w-auto"
             >

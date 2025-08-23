@@ -64,7 +64,7 @@ export default function PrivacyPolicy() {
             <h2 className="text-2xl font-semibold text-gray-900 mb-4">5. Blockchain Data</h2>
             <p className="text-gray-700 mb-4">
               Please note that blockchain transactions are public and immutable. Once a transaction is recorded on the 
-              Avalanche blockchain, it cannot be modified or deleted. This includes your wallet address and transaction 
+              blockchain, it cannot be modified or deleted. This includes your wallet address and transaction 
               amounts, which will be permanently visible on the blockchain.
             </p>
           </section>

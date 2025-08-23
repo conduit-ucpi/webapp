@@ -50,13 +50,13 @@ export default function ContractCard({ contract, onAction, onAccept, isClaimingI
       <div className="flex justify-between items-start mb-4">
         <div>
           <h3 className="text-lg font-semibold text-gray-900">
-            {config?.snowtraceBaseUrl && contractAddress ? (
+            {config?.explorerBaseUrl && contractAddress ? (
               <a 
-                href={`${config.snowtraceBaseUrl}/address/${contractAddress}`}
+                href={`${config.explorerBaseUrl}/address/${contractAddress}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-primary-600 hover:text-primary-800 transition-colors"
-                title="View contract on Snowtrace"
+                title="View contract on Explorer"
               >
                 <ExpandableHash hash={contractAddress} />
               </a>

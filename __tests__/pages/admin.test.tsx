@@ -28,7 +28,7 @@ jest.mock('@/components/auth/ConfigProvider', () => ({
       moonPayApiKey: 'test-api-key',
       minGasWei: '5',
       basePath: '',
-      snowtraceBaseUrl: 'https://testnet.snowtrace.io',
+      explorerBaseUrl: 'https://testnet.snowtrace.io',
       serviceLink: 'http://localhost:3000'
     },
     isLoading: false

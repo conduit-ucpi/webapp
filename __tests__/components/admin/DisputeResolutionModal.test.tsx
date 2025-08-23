@@ -124,7 +124,7 @@ describe('DisputeResolutionModal', () => {
         moonPayApiKey: 'test-key',
         minGasWei: '20000000000',
         basePath: '',
-        snowtraceBaseUrl: 'https://testnet.snowtrace.io',
+        explorerBaseUrl: 'https://testnet.snowtrace.io',
         serviceLink: 'http://localhost:3000'
       },
       isLoading: false

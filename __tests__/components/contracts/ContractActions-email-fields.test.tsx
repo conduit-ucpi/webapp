@@ -104,7 +104,7 @@ describe('ContractActions - Email Fields for Dispute', () => {
     moonPayApiKey: 'test-moonpay-key',
     minGasWei: '5',
     basePath: '',
-    snowtraceBaseUrl: 'https://testnet.snowtrace.io',
+    explorerBaseUrl: 'https://testnet.snowtrace.io',
     serviceLink: 'http://localhost:3000'
   };
 

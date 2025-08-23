@@ -204,9 +204,25 @@ export default function BuyUSDC() {
               <div className="flex justify-between items-center mb-2">
                 <span className="text-sm text-gray-600">Network:</span>
                 <span className="text-sm text-gray-900">
-                  {config?.chainId === 43113 ? 'Avalanche Fuji Testnet' : 
-                   config?.chainId === 43114 ? 'Avalanche C-Chain' : 
-                   `Chain ID: ${config?.chainId}`}
+                  {(() => {
+                    const chainNames: Record<number, string> = {
+                      1: 'Ethereum Mainnet',
+                      11155111: 'Sepolia Testnet',
+                      43114: 'Avalanche C-Chain',
+                      43113: 'Avalanche Fuji Testnet',
+                      137: 'Polygon Mainnet',
+                      80001: 'Mumbai Testnet',
+                      8453: 'Base Mainnet',
+                      84532: 'Base Sepolia',
+                      42161: 'Arbitrum One',
+                      421614: 'Arbitrum Sepolia',
+                      10: 'Optimism Mainnet',
+                      11155420: 'Optimism Sepolia',
+                      56: 'BNB Smart Chain',
+                      97: 'BSC Testnet',
+                    };
+                    return chainNames[config?.chainId || 0] || `Chain ID: ${config?.chainId}`;
+                  })()}
                 </span>
               </div>
               <div className="flex justify-between items-center">

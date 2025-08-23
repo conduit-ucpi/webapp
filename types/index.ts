@@ -14,7 +14,7 @@ export interface Config {
   moonPayApiKey: string;
   minGasWei: string;
   basePath: string;
-  snowtraceBaseUrl: string;
+  explorerBaseUrl: string;
   serviceLink: string;
   // Optional wallet services configuration
   walletServicesShowWidget?: string;

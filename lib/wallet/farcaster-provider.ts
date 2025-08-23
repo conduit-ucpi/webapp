@@ -5,15 +5,26 @@ import { WalletProvider, TransactionRequest } from './types';
  * Example Farcaster implementation of WalletProvider
  * This shows how you can add support for different providers
  */
+interface FarcasterUser {
+  fid: number;
+  username?: string;
+  displayName?: string;
+  pfpUrl?: string;
+  verifications?: string[];
+  custody?: string;
+}
+
 export class FarcasterWalletProvider implements WalletProvider {
   private signerAddress: string;
   private signer: any; // This would be your Farcaster signer
   private rpcProvider: ethers.JsonRpcProvider;
+  private farcasterUser: FarcasterUser | null = null;
 
-  constructor(signerAddress: string, signer: any, rpcUrl: string) {
+  constructor(signerAddress: string, signer: any, rpcUrl: string, farcasterUser?: FarcasterUser) {
     this.signerAddress = signerAddress;
     this.signer = signer;
     this.rpcProvider = new ethers.JsonRpcProvider(rpcUrl);
+    this.farcasterUser = farcasterUser || null;
   }
 
   async getAddress(): Promise<string> {
@@ -62,5 +73,14 @@ export class FarcasterWalletProvider implements WalletProvider {
 
   getEthersProvider(): ethers.JsonRpcProvider {
     return this.rpcProvider;
+  }
+
+  // Farcaster-specific methods
+  getFarcasterUser(): FarcasterUser | null {
+    return this.farcasterUser;
+  }
+
+  setFarcasterUser(user: FarcasterUser): void {
+    this.farcasterUser = user;
   }
 }

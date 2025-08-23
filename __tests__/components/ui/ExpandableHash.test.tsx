@@ -15,14 +15,14 @@ describe('ExpandableHash', () => {
   beforeEach(() => {
     mockUseConfig.mockReturnValue({
       config: {
-        snowtraceBaseUrl: 'https://testnet.snowtrace.io',
+        explorerBaseUrl: 'https://testnet.snowtrace.io',
       },
     });
   });
 
   it('renders shortened hash by default', () => {
     render(<ExpandableHash hash={mockHash} />);
-    expect(screen.getByTitle(`View on Snowtrace: ${mockHash}`)).toHaveTextContent('0x1234...5678');
+    expect(screen.getByTitle(`View on Explorer: ${mockHash}`)).toHaveTextContent('0x1234...5678');
   });
 
   it('expands hash when expand button is clicked', () => {
@@ -31,7 +31,7 @@ describe('ExpandableHash', () => {
     
     fireEvent.click(expandButton);
     
-    expect(screen.getByTitle(`View on Snowtrace: ${mockHash}`)).toHaveTextContent(mockHash);
+    expect(screen.getByTitle(`View on Explorer: ${mockHash}`)).toHaveTextContent(mockHash);
   });
 
   it('toggles between expanded and collapsed state', () => {
@@ -39,16 +39,16 @@ describe('ExpandableHash', () => {
     const expandButton = screen.getByTitle('Click to expand full address');
     
     // Initial state - collapsed
-    expect(screen.getByTitle(`View on Snowtrace: ${mockHash}`)).toHaveTextContent('0x1234...5678');
+    expect(screen.getByTitle(`View on Explorer: ${mockHash}`)).toHaveTextContent('0x1234...5678');
     
     // Click to expand
     fireEvent.click(expandButton);
-    expect(screen.getByTitle(`View on Snowtrace: ${mockHash}`)).toHaveTextContent(mockHash);
+    expect(screen.getByTitle(`View on Explorer: ${mockHash}`)).toHaveTextContent(mockHash);
     
     // Click to collapse
     const collapseButton = screen.getByTitle('Click to collapse');
     fireEvent.click(collapseButton);
-    expect(screen.getByTitle(`View on Snowtrace: ${mockHash}`)).toHaveTextContent('0x1234...5678');
+    expect(screen.getByTitle(`View on Explorer: ${mockHash}`)).toHaveTextContent('0x1234...5678');
   });
 
   it('handles undefined hash gracefully', () => {
@@ -164,7 +164,7 @@ describe('ExpandableHash', () => {
     consoleSpy.mockRestore();
   });
 
-  it('creates correct Snowtrace link', () => {
+  it('creates correct explorer link', () => {
     render(<ExpandableHash hash={mockHash} />);
     const link = screen.getByRole('link');
     expect(link).toHaveAttribute('href', `https://testnet.snowtrace.io/address/${mockHash}`);
@@ -172,7 +172,7 @@ describe('ExpandableHash', () => {
     expect(link).toHaveAttribute('rel', 'noopener noreferrer');
   });
 
-  it('handles missing snowtraceBaseUrl config', () => {
+  it('handles missing explorerBaseUrl config', () => {
     mockUseConfig.mockReturnValue({
       config: {},
     });

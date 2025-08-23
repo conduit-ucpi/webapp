@@ -14,7 +14,7 @@ import { useWalletAddress } from '@/hooks/useWalletAddress';
 import { TransferUSDCRequest } from '@/types';
 
 interface WalletBalances {
-  avax: string;
+  native: string;
   usdc: string;
 }
 
@@ -29,7 +29,7 @@ interface ChainInfo {
 interface SendFormData {
   recipient: string;
   amount: string;
-  currency: 'AVAX' | 'USDC';
+  currency: 'NATIVE' | 'USDC';
 }
 
 export default function Wallet() {
@@ -38,7 +38,7 @@ export default function Wallet() {
   const { config } = useConfig();
   const { walletAddress, isLoading: isWalletAddressLoading } = useWalletAddress();
   const { getUSDCBalance, signUSDCTransfer, getUserAddress, isReady, error: sdkError } = useWeb3SDK();
-  const [balances, setBalances] = useState<WalletBalances>({ avax: '0', usdc: '0' });
+  const [balances, setBalances] = useState<WalletBalances>({ native: '0', usdc: '0' });
   const [isLoadingBalances, setIsLoadingBalances] = useState(false);
   const [sendForm, setSendForm] = useState<SendFormData>({
     recipient: '',
@@ -70,29 +70,37 @@ export default function Wallet() {
       const gasPrice = feeData.gasPrice ? ethers.formatUnits(feeData.gasPrice, 'gwei') : null;
 
       // Determine chain name based on chainId
-      let name = 'Unknown Network';
-      switch (chainId) {
-        case 43114:
-          name = 'Avalanche C-Chain';
-          break;
-        case 43113:
-          name = 'Avalanche Fuji Testnet';
-          break;
-        case 1:
-          name = 'Ethereum Mainnet';
-          break;
-        case 5:
-          name = 'Goerli Testnet';
-          break;
-        case 137:
-          name = 'Polygon';
-          break;
-        case 80001:
-          name = 'Mumbai Testnet';
-          break;
-        default:
-          name = `Chain ID: ${chainId}`;
-      }
+      const chainNames: Record<number, string> = {
+        // Ethereum
+        1: 'Ethereum Mainnet',
+        11155111: 'Sepolia Testnet',
+        
+        // Avalanche
+        43114: 'Avalanche C-Chain',
+        43113: 'Avalanche Fuji Testnet',
+        
+        // Polygon
+        137: 'Polygon Mainnet',
+        80001: 'Mumbai Testnet',
+        
+        // Base
+        8453: 'Base Mainnet',
+        84532: 'Base Sepolia',
+        
+        // Arbitrum
+        42161: 'Arbitrum One',
+        421614: 'Arbitrum Sepolia',
+        
+        // Optimism
+        10: 'Optimism Mainnet',
+        11155420: 'Optimism Sepolia',
+        
+        // BSC
+        56: 'BNB Smart Chain',
+        97: 'BSC Testnet',
+      };
+      
+      const name = chainNames[chainId] || `Chain ID: ${chainId}`;
 
       setChainInfo({
         chainId,
@@ -116,16 +124,16 @@ export default function Wallet() {
       // Get the real wallet address from SDK
       const userAddress = await getUserAddress();
       
-      // Get AVAX balance (still need web3authProvider for this)
+      // Get native token balance (still need web3authProvider for this)
       const ethersProvider = new ethers.BrowserProvider(web3authProvider);
-      const avaxBalance = await ethersProvider.getBalance(userAddress);
-      const avaxFormatted = ethers.formatEther(avaxBalance);
+      const nativeBalance = await ethersProvider.getBalance(userAddress);
+      const nativeFormatted = ethers.formatEther(nativeBalance);
 
       // Get USDC balance using SDK
       const usdcBalance = await getUSDCBalance();
 
       setBalances({
-        avax: parseFloat(avaxFormatted).toFixed(6),
+        native: parseFloat(nativeFormatted).toFixed(6),
         usdc: parseFloat(usdcBalance).toFixed(2)
       });
     } catch (error) {
@@ -160,15 +168,15 @@ export default function Wallet() {
         throw new Error(`SDK error: ${sdkError}`);
       }
 
-      if (sendForm.currency === 'AVAX') {
-        // Send AVAX - this still requires direct web3 usage for now
+      if (sendForm.currency === 'NATIVE') {
+        // Send native token - this still requires direct web3 usage for now
         const ethersProvider = new ethers.BrowserProvider(web3authProvider);
         const signer = await ethersProvider.getSigner();
         const tx = await signer.sendTransaction({
           to: sendForm.recipient,
           value: ethers.parseEther(sendForm.amount)
         });
-        setSendSuccess(`AVAX sent successfully! Transaction: ${tx.hash}`);
+        setSendSuccess(`Native token sent successfully! Transaction: ${tx.hash}`);
       } else {
         // Send USDC via chain-service using SDK
         const signedTx = await signUSDCTransfer(sendForm.recipient, sendForm.amount);
@@ -225,9 +233,9 @@ export default function Wallet() {
     }
   };
 
-  const isValidAmount = (amount: string, currency: 'AVAX' | 'USDC') => {
+  const isValidAmount = (amount: string, currency: 'NATIVE' | 'USDC') => {
     const num = parseFloat(amount);
-    const maxBalance = currency === 'AVAX' ? parseFloat(balances.avax) : parseFloat(balances.usdc);
+    const maxBalance = currency === 'NATIVE' ? parseFloat(balances.native) : parseFloat(balances.usdc);
     return !isNaN(num) && num > 0 && num <= maxBalance;
   };
 
@@ -305,18 +313,18 @@ export default function Wallet() {
             <div className="bg-gradient-to-r from-red-50 to-red-100 rounded-lg p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-red-800">AVAX Balance</p>
+                  <p className="text-sm font-medium text-red-800">Native Token Balance</p>
                   <div className="flex items-center">
                     {isLoadingBalances ? (
                       <div className="w-16 h-6 bg-red-200 animate-pulse rounded" />
                     ) : (
-                      <p className="text-2xl font-bold text-red-900">{balances.avax}</p>
+                      <p className="text-2xl font-bold text-red-900">{balances.native}</p>
                     )}
-                    <span className="ml-2 text-sm text-red-700">AVAX</span>
+                    <span className="ml-2 text-sm text-red-700">{chainInfo?.name ? chainInfo.name.split(' ')[0] : 'Native'}</span>
                   </div>
                 </div>
                 <div className="w-10 h-10 bg-red-200 rounded-full flex items-center justify-center">
-                  <span className="text-red-800 font-bold text-sm">A</span>
+                  <span className="text-red-800 font-bold text-sm">N</span>
                 </div>
               </div>
             </div>
@@ -361,12 +369,12 @@ export default function Wallet() {
                   <input
                     type="radio"
                     name="currency"
-                    value="AVAX"
-                    checked={sendForm.currency === 'AVAX'}
-                    onChange={(e) => setSendForm(prev => ({ ...prev, currency: e.target.value as 'AVAX' | 'USDC' }))}
+                    value="NATIVE"
+                    checked={sendForm.currency === 'NATIVE'}
+                    onChange={(e) => setSendForm(prev => ({ ...prev, currency: e.target.value as 'NATIVE' | 'USDC' }))}
                     className="mr-2"
                   />
-                  AVAX
+                  Native
                 </label>
                 <label className="flex items-center">
                   <input
@@ -374,7 +382,7 @@ export default function Wallet() {
                     name="currency"
                     value="USDC"
                     checked={sendForm.currency === 'USDC'}
-                    onChange={(e) => setSendForm(prev => ({ ...prev, currency: e.target.value as 'AVAX' | 'USDC' }))}
+                    onChange={(e) => setSendForm(prev => ({ ...prev, currency: e.target.value as 'NATIVE' | 'USDC' }))}
                     className="mr-2"
                   />
                   USDC
@@ -423,7 +431,7 @@ export default function Wallet() {
                 </p>
               )}
               <p className="text-sm text-gray-500 mt-1">
-                Available: {sendForm.currency === 'AVAX' ? balances.avax : balances.usdc} {sendForm.currency}
+                Available: {sendForm.currency === 'NATIVE' ? balances.native : balances.usdc} {sendForm.currency === 'NATIVE' ? 'Native' : 'USDC'}
               </p>
             </div>
 

@@ -41,8 +41,8 @@ export default function ExpandableHash({
 
   const handleHashClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (config?.snowtraceBaseUrl) {
-      window.open(`${config.snowtraceBaseUrl}/address/${hash}`, '_blank', 'noopener,noreferrer');
+    if (config?.explorerBaseUrl) {
+      window.open(`${config.explorerBaseUrl}/address/${hash}`, '_blank', 'noopener,noreferrer');
     }
   };
 
@@ -50,12 +50,12 @@ export default function ExpandableHash({
     <div className={`inline-flex items-center gap-1 ${className}`}>
       <div className="inline-flex items-center">
         <a
-          href={config?.snowtraceBaseUrl ? `${config.snowtraceBaseUrl}/address/${hash}` : '#'}
+          href={config?.explorerBaseUrl ? `${config.explorerBaseUrl}/address/${hash}` : '#'}
           onClick={handleHashClick}
           target="_blank"
           rel="noopener noreferrer"
           className="font-mono text-left hover:text-primary-600 transition-colors cursor-pointer underline decoration-transparent hover:decoration-current"
-          title={`View on Snowtrace: ${hash}`}
+          title={`View on Explorer: ${hash}`}
         >
           {formatHash(hash, isExpanded)}
         </a>

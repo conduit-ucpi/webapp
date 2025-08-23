@@ -133,7 +133,7 @@ jobs:
               -e USDC_CONTRACT_ADDRESS="${{ vars.USDC_CONTRACT_ADDRESS }}" \
               -e MIN_GAS_WEI="${{ vars.MIN_GAS_WEI }}" \
               -e NEXT_PUBLIC_BASE_PATH="${{ vars.NEXT_PUBLIC_BASE_PATH }}" \
-              -e SNOWTRACE_BASE_URL="${{ vars.SNOWTRACE_BASE_URL }}" \
+              -e EXPLORER_BASE_URL="${{ vars.EXPLORER_BASE_URL }}" \
               -e PRODUCT_NAME="${{ vars.PRODUCT_NAME }}" \
               -e SERVICE_LINK="${{ vars.SERVICE_LINK }}" \
               ghcr.io/${{ env.REPO_LOWER }}:${{ env.SHA_TAG }}

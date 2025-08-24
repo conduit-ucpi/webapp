@@ -56,6 +56,23 @@ jobs:
           SERVICE_LINK: ${{ vars.SERVICE_LINK }}
         run: |
           yarn install
+          
+          # Generate Farcaster manifest with correct domain
+          echo "=== Generating Farcaster manifest ==="
+          mkdir -p public/.well-known
+          cat > public/.well-known/farcaster.json << EOF
+          {
+            "name": "Conduit Escrow",
+            "version": "1.0.0",
+            "iconUrl": "https://farcaster.conduit-ucpi.com/icon.png",
+            "splashImageUrl": "https://farcaster.conduit-ucpi.com/preview.png",
+            "homeUrl": "https://farcaster.conduit-ucpi.com"
+          }
+          EOF
+          
+          echo "=== Generated manifest content ==="
+          cat public/.well-known/farcaster.json
+          
           yarn build
           mkdir -p .next/standalone
           # Debug: Check what files exist before copying

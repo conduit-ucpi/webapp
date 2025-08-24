@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@conduit-ucpi/sdk": "^0.1.0",
+    "@farcaster/miniapp-sdk": "^0.1.9",
     "@headlessui/react": "^1.7.19",
     "@heroicons/react": "^2.2.0",
     "@moonpay/moonpay-js": "^0.7.3",

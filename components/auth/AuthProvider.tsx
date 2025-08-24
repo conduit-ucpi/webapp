@@ -4,7 +4,7 @@ import { resetWeb3AuthInstance } from './ConnectWallet';
 import { useWeb3AuthInstance } from './Web3AuthContextProvider';
 import { useAuthContext } from '@/lib/auth/AuthContextProvider';
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);

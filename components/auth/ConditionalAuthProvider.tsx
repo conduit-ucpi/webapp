@@ -31,12 +31,13 @@ export const ConditionalAuthProvider: React.FC<ConditionalAuthProviderProps> = (
   }
 
   if (isInFarcaster) {
-    // Farcaster context - use FarcasterAuthProvider
+    // Farcaster context - use FarcasterAuthProvider but also provide regular AuthProvider context
     console.log('Running in Farcaster - using FarcasterAuthProvider');
     
     return (
       <WagmiProviderWrapper>
         <FarcasterAuthProvider>
+          {/* FarcasterAuthProvider now provides both contexts, so components can use regular useAuth */}
           {children}
         </FarcasterAuthProvider>
       </WagmiProviderWrapper>

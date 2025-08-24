@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from 'react';
 import { User, FarcasterAuthContextType, AuthContextType } from '@/types';
+import { AuthContext } from './AuthProvider';
 
 // Mock useAccount for tests
 let useAccount: any;
@@ -19,9 +20,6 @@ if (process.env.NODE_ENV === 'test') {
 }
 
 const FarcasterAuthContext = createContext<FarcasterAuthContextType | undefined>(undefined);
-
-// Also create the regular AuthContext that other components expect
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function FarcasterAuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);

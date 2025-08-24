@@ -21,7 +21,7 @@ export default function FarcasterReady() {
         console.log('Farcaster mini-app ready signal sent');
       } catch (error) {
         // Silently ignore - we're probably not in Farcaster context
-        console.log('Farcaster ready signal not sent (likely not in Farcaster):', error.message);
+        console.log('Farcaster ready signal not sent (likely not in Farcaster):', error instanceof Error ? error.message : String(error));
       }
     };
 

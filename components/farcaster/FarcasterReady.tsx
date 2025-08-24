@@ -1,38 +1,33 @@
 import { useEffect } from 'react';
-import { useFarcaster } from './FarcasterDetectionProvider';
 
 /**
  * Component that signals to Farcaster that the mini-app is ready
  * This dismisses the splash screen when running as a Farcaster mini-app
+ * 
+ * This runs immediately without waiting for detection logic to avoid splash screen issues
  */
 export default function FarcasterReady() {
-  const { isInFarcaster, farcasterSDK, isLoading } = useFarcaster();
-
   useEffect(() => {
     const initializeFarcaster = async () => {
-      // Only proceed if we've finished detection and we're in Farcaster
-      if (isLoading || !isInFarcaster) {
+      // Skip in test environment or SSR
+      if (typeof window === 'undefined' || process.env.NODE_ENV === 'test') {
         return;
       }
 
       try {
-        if (farcasterSDK) {
-          // Use the SDK from context if available
-          await farcasterSDK.actions.ready();
-          console.log('Farcaster mini-app ready signal sent (via context SDK)');
-        } else {
-          // Fallback: try to import SDK directly
-          const { default: sdk } = await import('@farcaster/miniapp-sdk');
-          await sdk.actions.ready();
-          console.log('Farcaster mini-app ready signal sent (via direct import)');
-        }
+        // Always try to send ready signal - if we're not in Farcaster, this will just be ignored
+        const { default: sdk } = await import('@farcaster/miniapp-sdk');
+        await sdk.actions.ready();
+        console.log('Farcaster mini-app ready signal sent');
       } catch (error) {
-        console.error('Error sending Farcaster ready signal:', error);
+        // Silently ignore - we're probably not in Farcaster context
+        console.log('Farcaster ready signal not sent (likely not in Farcaster):', error.message);
       }
     };
 
+    // Send ready signal immediately on mount
     initializeFarcaster();
-  }, [isInFarcaster, farcasterSDK, isLoading]);
+  }, []);
 
   // This component renders nothing - it's just for the side effect
   return null;

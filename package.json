@@ -39,6 +39,8 @@
     "react-dom": "18.2.0",
     "react-hook-form": "^7.62.0",
     "react-hot-toast": "^2.6.0",
+    "viem": "^2.0.0",
+    "wagmi": "^2.0.0",
     "web3": "^4.16.0"
   },
   "devDependencies": {

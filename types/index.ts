@@ -191,3 +191,10 @@ export interface ConfigContextType {
   config: Config | null;
   isLoading: boolean;
 }
+
+export interface FarcasterAuthContextType {
+  user: User | null;
+  isLoading: boolean;
+  login: (farcasterToken: string, walletAddress: string) => Promise<void>;
+  logout: () => Promise<void>;
+}

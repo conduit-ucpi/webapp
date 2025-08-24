@@ -46,6 +46,36 @@ jest.mock('@/components/auth/Web3AuthContextProvider', () => ({
   }),
 }));
 
+// Mock the auth context provider (new abstraction)
+jest.mock('@/lib/auth/AuthContextProvider', () => ({
+  useAuthContext: () => ({
+    authProvider: {
+      getProviderName: () => 'Web3Auth',
+      isConnected: () => false,
+      hasVisitedBefore: () => true,
+      markAsVisited: jest.fn(),
+    },
+    isConnected: false,
+    isConnecting: false,
+    userInfo: null,
+    connectAuth: jest.fn(),
+    disconnectAuth: jest.fn(),
+    hasVisitedBefore: true,
+  }),
+}));
+
+// Mock the wallet provider
+jest.mock('@/lib/wallet/WalletProvider', () => ({
+  useWallet: () => ({
+    walletProvider: null,
+    isConnected: false,
+    address: null,
+    connectWallet: jest.fn(),
+    disconnectWallet: jest.fn(),
+    isLoading: false,
+  }),
+}));
+
 const mockRouterPush = jest.fn();
 const mockRouterBack = jest.fn();
 

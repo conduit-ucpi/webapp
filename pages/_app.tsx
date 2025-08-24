@@ -6,6 +6,7 @@ import ErrorBoundary from '@/components/ErrorBoundary';
 import '@/styles/globals.css';
 import { Web3AuthProviderWrapper } from '@/components/auth/Web3AuthProviderWrapper';
 import { Web3AuthContextProvider } from '@/components/auth/Web3AuthContextProvider';
+import { AuthContextProvider } from '@/lib/auth/AuthContextProvider';
 import { ToastProvider } from '@/components/ui/Toast';
 import { ThemeProvider } from '@/components/theme/ThemeProvider';
 import { TourProvider } from '@/components/onboarding/TourProvider';
@@ -20,17 +21,19 @@ export default function App({ Component, pageProps }: AppProps) {
           <SDKProvider>
             <Web3AuthProviderWrapper>
               <Web3AuthContextProvider>
-                <WalletProvider>
-                  <AuthProvider>
-                  <ToastProvider>
-                    <TourProvider>
-                      <Layout>
-                        <Component {...pageProps} />
-                      </Layout>
-                    </TourProvider>
-                  </ToastProvider>
-                  </AuthProvider>
-                </WalletProvider>
+                <AuthContextProvider>
+                  <WalletProvider>
+                    <AuthProvider>
+                    <ToastProvider>
+                      <TourProvider>
+                        <Layout>
+                          <Component {...pageProps} />
+                        </Layout>
+                      </TourProvider>
+                    </ToastProvider>
+                    </AuthProvider>
+                  </WalletProvider>
+                </AuthContextProvider>
               </Web3AuthContextProvider>
             </Web3AuthProviderWrapper>
           </SDKProvider>

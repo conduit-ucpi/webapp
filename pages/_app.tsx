@@ -12,6 +12,7 @@ import { ThemeProvider } from '@/components/theme/ThemeProvider';
 import { TourProvider } from '@/components/onboarding/TourProvider';
 import { WalletProvider } from '@/lib/wallet/WalletProvider';
 import { SDKProvider } from '@/components/auth/SDKProvider';
+import FarcasterReady from '@/components/farcaster/FarcasterReady';
 
 export default function App({ Component, pageProps }: AppProps) {
   return (
@@ -26,6 +27,7 @@ export default function App({ Component, pageProps }: AppProps) {
                     <AuthProvider>
                     <ToastProvider>
                       <TourProvider>
+                        <FarcasterReady />
                         <Layout>
                           <Component {...pageProps} />
                         </Layout>

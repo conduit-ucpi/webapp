@@ -3,29 +3,26 @@ import { useEffect } from 'react';
 /**
  * Component that signals to Farcaster that the mini-app is ready
  * This dismisses the splash screen when running as a Farcaster mini-app
- * 
- * This runs immediately without waiting for detection logic to avoid splash screen issues
  */
 export default function FarcasterReady() {
   useEffect(() => {
     const initializeFarcaster = async () => {
-      // Skip in test environment or SSR
-      if (typeof window === 'undefined' || process.env.NODE_ENV === 'test') {
-        return;
-      }
-
+      // Check if we're running in a Farcaster context
       try {
-        // Always try to send ready signal - if we're not in Farcaster, this will just be ignored
+        // Dynamically import Farcaster SDK to avoid errors in regular web context
         const { default: sdk } = await import('@farcaster/miniapp-sdk');
+        
+        // Signal that the mini-app is ready (dismisses splash screen)
         await sdk.actions.ready();
+        
         console.log('Farcaster mini-app ready signal sent');
       } catch (error) {
-        // Silently ignore - we're probably not in Farcaster context
-        console.log('Farcaster ready signal not sent (likely not in Farcaster):', error instanceof Error ? error.message : String(error));
+        // Silently fail if not in Farcaster context or SDK not available
+        // This is expected behavior for regular web users
+        console.log('Not running in Farcaster context or SDK unavailable');
       }
     };
 
-    // Send ready signal immediately on mount
     initializeFarcaster();
   }, []);
 

@@ -20,6 +20,9 @@ if (process.env.NODE_ENV === 'test') {
 
 const FarcasterAuthContext = createContext<FarcasterAuthContextType | undefined>(undefined);
 
+// Also create the regular AuthContext that other components expect
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
 export function FarcasterAuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -220,9 +223,21 @@ export function FarcasterAuthProvider({ children }: { children: React.ReactNode 
     };
   }, [isConnected, address]);
 
+  // Create auth context value for regular components
+  const authContextValue: AuthContextType = {
+    user,
+    isLoading,
+    login: async (idToken: string, walletAddress: string) => {
+      return login(idToken, walletAddress);
+    },
+    logout
+  };
+
   return (
     <FarcasterAuthContext.Provider value={{ user, isLoading, login, logout }}>
-      {children}
+      <AuthContext.Provider value={authContextValue}>
+        {children}
+      </AuthContext.Provider>
     </FarcasterAuthContext.Provider>
   );
 }
@@ -235,22 +250,11 @@ export function useFarcasterAuth() {
   return context;
 }
 
-// Unified auth hook that provides the same interface as regular AuthProvider
-// This allows existing components to work with both auth systems
+// Regular useAuth hook that works with existing components
 export function useAuth(): AuthContextType {
-  const context = useContext(FarcasterAuthContext);
+  const context = useContext(AuthContext);
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
-  
-  // Adapt the Farcaster auth context to match the regular auth interface
-  return {
-    user: context.user,
-    isLoading: context.isLoading,
-    login: async (idToken: string, walletAddress: string) => {
-      // For Farcaster, the idToken is actually the farcaster token
-      return context.login(idToken, walletAddress);
-    },
-    logout: context.logout
-  };
+  return context;
 }

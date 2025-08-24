@@ -9,7 +9,8 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import ExpandableHash from '@/components/ui/ExpandableHash';
 import USDCGuide from '@/components/ui/USDCGuide';
 import { ethers } from 'ethers';
-import { useWeb3AuthInstance } from '@/components/auth/Web3AuthContextProvider';
+import { useAuthContext } from '@/lib/auth/AuthContextProvider';
+import { useWallet } from '@/lib/wallet';
 import { useWalletAddress } from '@/hooks/useWalletAddress';
 import { TransferUSDCRequest } from '@/types';
 
@@ -34,7 +35,8 @@ interface SendFormData {
 
 export default function Wallet() {
   const { user, isLoading: authLoading } = useAuth();
-  const { web3authProvider, isLoading: isWeb3AuthInstanceLoading } = useWeb3AuthInstance();
+  const { isConnected, isConnecting } = useAuthContext();
+  const { walletProvider } = useWallet();
   const { config } = useConfig();
   const { walletAddress, isLoading: isWalletAddressLoading } = useWalletAddress();
   const { getUSDCBalance, signUSDCTransfer, getUserAddress, isReady, error: sdkError } = useWeb3SDK();
@@ -52,14 +54,14 @@ export default function Wallet() {
   const [isLoadingChainInfo, setIsLoadingChainInfo] = useState(false);
 
   const loadChainInfo = async () => {
-    if (!web3authProvider) return;
+    if (!walletProvider) return;
 
     setIsLoadingChainInfo(true);
     try {
-      const ethersProvider = new ethers.BrowserProvider(web3authProvider);
+      const ethersProvider = new ethers.BrowserProvider(walletProvider.getEthersProvider());
 
       // Get chain ID using eth_chainId RPC method
-      const chainIdHex = await web3authProvider.request({ method: 'eth_chainId' });
+      const chainIdHex = await walletProvider.request({ method: 'eth_chainId' });
       const chainId = parseInt(chainIdHex, 16);
 
       // Get current block number
@@ -117,15 +119,15 @@ export default function Wallet() {
   };
 
   const loadBalances = async () => {
-    if (!user || !config || !web3authProvider || !isReady) return;
+    if (!user || !config || !walletProvider || !isReady) return;
 
     setIsLoadingBalances(true);
     try {
       // Get the real wallet address from SDK
       const userAddress = await getUserAddress();
       
-      // Get native token balance (still need web3authProvider for this)
-      const ethersProvider = new ethers.BrowserProvider(web3authProvider);
+      // Get native token balance using wallet provider
+      const ethersProvider = new ethers.BrowserProvider(walletProvider.getEthersProvider());
       const nativeBalance = await ethersProvider.getBalance(userAddress);
       const nativeFormatted = ethers.formatEther(nativeBalance);
 
@@ -146,12 +148,12 @@ export default function Wallet() {
   useEffect(() => {
     loadBalances();
     loadChainInfo();
-  }, [user, config, web3authProvider]);
+  }, [user, config, walletProvider]);
 
   const handleSendSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !config || !web3authProvider) {
-      setSendError('Web3Auth provider not available. Please reconnect your wallet.');
+    if (!user || !config || !walletProvider) {
+      setSendError('Wallet provider not available. Please reconnect your wallet.');
       return;
     }
 
@@ -169,8 +171,8 @@ export default function Wallet() {
       }
 
       if (sendForm.currency === 'NATIVE') {
-        // Send native token - this still requires direct web3 usage for now
-        const ethersProvider = new ethers.BrowserProvider(web3authProvider);
+        // Send native token using wallet provider
+        const ethersProvider = new ethers.BrowserProvider(walletProvider.getEthersProvider());
         const signer = await ethersProvider.getSigner();
         const tx = await signer.sendTransaction({
           to: sendForm.recipient,
@@ -247,7 +249,7 @@ export default function Wallet() {
     );
   };
 
-  if (authLoading || isWeb3AuthInstanceLoading || isWalletAddressLoading) {
+  if (authLoading || isConnecting || isWalletAddressLoading) {
     return (
       <div className="flex justify-center items-center min-h-96">
         <LoadingSpinner size="lg" />
@@ -255,7 +257,7 @@ export default function Wallet() {
     );
   }
 
-  if (!user || !web3authProvider || !walletAddress) {
+  if (!user || !walletProvider || !walletAddress) {
     return (
       <div className="max-w-md mx-auto text-center py-20">
         <h1 className="text-2xl font-bold text-gray-900 mb-4">Connect Your Wallet</h1>

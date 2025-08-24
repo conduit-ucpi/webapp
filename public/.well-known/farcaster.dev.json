@@ -1,0 +1,12 @@
+{
+  "name": "Conduit Escrow (Dev)",
+  "version": "1.0.0",
+  "iconUrl": "https://farcaster-dev.conduit-ucpi.com/icon.png",
+  "splashImageUrl": "https://farcaster-dev.conduit-ucpi.com/preview.png",
+  "homeUrl": "https://farcaster-dev.conduit-ucpi.com",
+  "accountAssociation": {
+    "header": "eyJmaWQiOjEyMjE5MTcsInR5cGUiOiJjdXN0b2R5Iiwia2V5IjoiMHg3OGFGNURBRWIyMjYzNDkwNGYwMUJBMDIxY0ZDMTlEMUUyRDYyMDZCIn0",
+    "payload": "eyJkb21haW4iOiJmYXJjYXN0ZXItZGV2LmNvbmR1aXQtdWNwaS5jb20ifQ",
+    "signature": "MHhhNzg3NDVkNjMwNjc2YzM2MGIzYjMzNWNiZmFkMjM5NjZmNzg1YTM5NTk0OTBkY2JhN2YwMTE3MmMzZGIxYzRlNGEzMGVhNDEzYzM4MGQwMjJiOTdhYzNkOTM2Y2FiMDkyMWYwZTI1NzVmODZkYWU2ZWFkODAzYzY4Mjc3YzIyMjFi"
+  }
+}

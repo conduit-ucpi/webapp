@@ -1,29 +1,23 @@
 import { useState, useEffect } from 'react';
-import { useWeb3SDK } from './useWeb3SDK';
 
 export function useWalletAddress() {
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const { getUserAddress, isReady, error } = useWeb3SDK();
 
   useEffect(() => {
     const getWalletAddress = async () => {
-      if (!isReady) {
-        setWalletAddress(null);
-        setIsLoading(false);
-        return;
-      }
-
-      if (error) {
-        console.error('SDK error:', error);
-        setWalletAddress(null);
-        setIsLoading(false);
-        return;
-      }
-
       try {
-        const address = await getUserAddress();
-        setWalletAddress(address);
+        const web3authProvider = (window as any).web3authProvider;
+        if (web3authProvider) {
+          const accounts = await web3authProvider.request({ method: 'eth_accounts' });
+          if (accounts && accounts.length > 0) {
+            setWalletAddress(accounts[0]);
+          } else {
+            setWalletAddress(null);
+          }
+        } else {
+          setWalletAddress(null);
+        }
       } catch (error) {
         console.error('Failed to get wallet address:', error);
         setWalletAddress(null);
@@ -33,7 +27,7 @@ export function useWalletAddress() {
     };
 
     getWalletAddress();
-  }, [getUserAddress, isReady, error]);
+  }, []);
 
   return { walletAddress, isLoading };
 }

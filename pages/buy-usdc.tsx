@@ -4,7 +4,7 @@ import ConnectWallet from '@/components/auth/ConnectWallet';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import USDCGuide from '@/components/ui/USDCGuide';
-import { useWeb3AuthInstance } from '@/components/auth/Web3AuthContextProvider';
+import { useAuthContext } from '@/lib/auth/AuthContextProvider';
 import { useWalletAddress } from '@/hooks/useWalletAddress';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { useState, useEffect } from 'react';
@@ -13,7 +13,7 @@ export default function BuyUSDC() {
   const router = useRouter();
   const { user, isLoading } = useAuth();
   const { config } = useConfig();
-  const { web3authInstance, web3authProvider, isLoading: isWeb3AuthInstanceLoading } = useWeb3AuthInstance();
+  const { isConnected, isConnecting, authProvider } = useAuthContext();
   const { walletAddress, isLoading: isWalletAddressLoading } = useWalletAddress();
   const [widgetStatus, setWidgetStatus] = useState<string>('');
 
@@ -21,102 +21,16 @@ export default function BuyUSDC() {
     try {
       setWidgetStatus('Opening wallet services...');
       console.log('Trying to show wallet services');
-      console.log('Web3Auth instance:', web3authInstance);
+      console.log('Auth provider:', authProvider?.getProviderName());
       
-      if (!web3authInstance) {
-        setWidgetStatus('Web3Auth instance not found');
+      if (!authProvider) {
+        setWidgetStatus('Auth provider not found');
         return;
       }
 
-      // Check if the plugin exists
-      const plugins = (web3authInstance as any).plugins;
-      console.log('Available plugins:', plugins);
-      
-      // Try to get the wallet services plugin
-      const walletServicesPlugin = plugins?.['wallet-services'];
-      console.log('Wallet services plugin:', walletServicesPlugin);
-      
-      if (walletServicesPlugin) {
-        // Check if user is connected first
-        if (!web3authInstance.connected) {
-          setWidgetStatus('Please connect your wallet first');
-          return;
-        }
-
-        console.log('Plugin status:', walletServicesPlugin.status);
-        
-        // If plugin is not connected yet, wait for it to connect
-        if (walletServicesPlugin.status !== 'connected') {
-          setWidgetStatus('Waiting for wallet services to connect...');
-          
-          // Listen for the connected event
-          const onPluginConnected = () => {
-            console.log('Plugin connected, showing wallet UI');
-            // Pass parameters to open directly to buy/sell with USDC pre-selected
-            const walletUiParams = {
-              path: 'topup', // or 'buy' depending on what path the widget supports
-              params: {
-                currency: 'USDC',
-                chainId: config?.chainId || 43113,
-                // You can also add amount if needed:
-                // amount: 100, // Amount in USDC
-              }
-            };
-            walletServicesPlugin.showWalletUi(walletUiParams).then(() => {
-              setWidgetStatus('Wallet services opened!');
-            }).catch((err: any) => {
-              console.error('Error showing UI after connect:', err);
-              setWidgetStatus(`Could not open wallet services: ${err.message}`);
-            });
-            // Remove the event listener
-            walletServicesPlugin.off('connected', onPluginConnected);
-          };
-          
-          walletServicesPlugin.on('connected', onPluginConnected);
-          
-          // The plugin should auto-connect when Web3Auth is connected
-          // Let's check if it's initializing
-          setTimeout(() => {
-            if (walletServicesPlugin.status !== 'connected') {
-              console.log('Plugin still not connected, checking Web3Auth connection...');
-              console.log('Web3Auth connected:', web3authInstance.connected);
-              console.log('Web3Auth provider:', web3authInstance.provider);
-              
-              // The plugin should connect automatically when Web3Auth connects
-              // If not, there might be a configuration issue
-              setWidgetStatus('Wallet services may not be configured. Check the widget in the bottom-right corner.');
-              
-              // Try showing the UI anyway in case the status is wrong
-              const walletUiParams = {
-                path: 'topup',
-                params: {
-                  currency: 'USDC',
-                  chainId: config?.chainId || 43113,
-                }
-              };
-              walletServicesPlugin.showWalletUi(walletUiParams).catch((err: any) => {
-                console.error('Error showing UI directly:', err);
-              });
-            }
-          }, 2000);
-          
-        } else {
-          // Plugin is already connected, show the UI with parameters
-          const walletUiParams = {
-            path: 'topup', // or 'buy' depending on what path the widget supports
-            params: {
-              currency: 'USDC',
-              chainId: config?.chainId || 43113,
-              // You can also add amount if needed:
-              // amount: 100, // Amount in USDC
-            }
-          };
-          await walletServicesPlugin.showWalletUi(walletUiParams);
-          setWidgetStatus('Wallet services opened!');
-        }
-      } else {
-        setWidgetStatus('Wallet services not available');
-      }
+      // This functionality is Web3Auth specific and not yet abstracted
+      // For now, show a message that this is coming soon
+      setWidgetStatus('Wallet services integration coming soon - this requires Web3Auth specific functionality that is not yet abstracted');
     } catch (error: any) {
       console.error('Error showing wallet services:', error);
       setWidgetStatus(`Could not open wallet services: ${error.message}`);
@@ -125,7 +39,7 @@ export default function BuyUSDC() {
 
   // Automatically open wallet services when page loads and user is authenticated
   useEffect(() => {
-    if (user && web3authProvider && walletAddress && web3authInstance) {
+    if (user && isConnected && walletAddress) {
       // Small delay to ensure everything is fully loaded
       const timer = setTimeout(() => {
         tryShowWalletServices();
@@ -133,9 +47,9 @@ export default function BuyUSDC() {
       
       return () => clearTimeout(timer);
     }
-  }, [user, web3authProvider, walletAddress, web3authInstance]);
+  }, [user, isConnected, walletAddress]);
 
-  if (isLoading || isWeb3AuthInstanceLoading || isWalletAddressLoading) {
+  if (isLoading || isConnecting || isWalletAddressLoading) {
     return (
       <div className="flex justify-center items-center min-h-96">
         <LoadingSpinner size="lg" />
@@ -143,7 +57,7 @@ export default function BuyUSDC() {
     );
   }
 
-  if (!user || !web3authProvider || !walletAddress) {
+  if (!user || !isConnected || !walletAddress) {
     return (
       <div className="max-w-md mx-auto text-center py-20">
         <h1 className="text-2xl font-bold text-gray-900 mb-4">Connect Your Wallet</h1>

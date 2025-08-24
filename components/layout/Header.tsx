@@ -2,7 +2,6 @@ import Link from 'next/link';
 import { useAuth } from '@/components/auth/AuthProvider';
 import ConnectWallet from '@/components/auth/ConnectWallet';
 import Button from '@/components/ui/Button';
-import { useWeb3AuthInstance } from '../auth/Web3AuthContextProvider';
 import ThemeToggle from '@/components/theme/ThemeToggle';
 import {
   HomeIcon,
@@ -14,9 +13,8 @@ import {
 } from '@heroicons/react/24/outline';
 export default function Header() {
   const { user, logout, isLoading } = useAuth();
-  const { web3authProvider, isLoading: isWeb3AuthInstanceLoading } = useWeb3AuthInstance();
 
-  const isAuthenticated = user && web3authProvider;
+  const isAuthenticated = !!user;
 
   const handleLogout = async () => {
     await logout();
@@ -70,7 +68,7 @@ export default function Header() {
 
           <div className="flex items-center space-x-4">
             <ThemeToggle />
-            {isLoading || isWeb3AuthInstanceLoading ? (
+            {isLoading ? (
               <div className="w-32 h-10 bg-secondary-100 dark:bg-secondary-700 animate-pulse rounded-md" />
             ) : isAuthenticated ? (
               <div className="flex items-center space-x-4">

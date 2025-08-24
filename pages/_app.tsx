@@ -16,13 +16,13 @@ export default function App({ Component, pageProps }: AppProps) {
   return (
     <ErrorBoundary>
       <ThemeProvider>
+        <FarcasterReady />
         <FarcasterDetectionProvider>
           <ConfigProvider>
             <SDKProvider>
               <ConditionalAuthProvider>
                 <ToastProvider>
                   <TourProvider>
-                    <FarcasterReady />
                     <Layout>
                       <Component {...pageProps} />
                     </Layout>

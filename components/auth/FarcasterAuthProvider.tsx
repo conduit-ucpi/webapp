@@ -1,7 +1,7 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState } from 'react';
-import { User, FarcasterAuthContextType } from '@/types';
+import { User, FarcasterAuthContextType, AuthContextType } from '@/types';
 
 // Mock useAccount for tests
 let useAccount: any;
@@ -233,4 +233,24 @@ export function useFarcasterAuth() {
     throw new Error('useFarcasterAuth must be used within a FarcasterAuthProvider');
   }
   return context;
+}
+
+// Unified auth hook that provides the same interface as regular AuthProvider
+// This allows existing components to work with both auth systems
+export function useAuth(): AuthContextType {
+  const context = useContext(FarcasterAuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  
+  // Adapt the Farcaster auth context to match the regular auth interface
+  return {
+    user: context.user,
+    isLoading: context.isLoading,
+    login: async (idToken: string, walletAddress: string) => {
+      // For Farcaster, the idToken is actually the farcaster token
+      return context.login(idToken, walletAddress);
+    },
+    logout: context.logout
+  };
 }

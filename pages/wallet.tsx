@@ -9,9 +9,6 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import ExpandableHash from '@/components/ui/ExpandableHash';
 import USDCGuide from '@/components/ui/USDCGuide';
 import { ethers } from 'ethers';
-import { useAuthContext } from '@/lib/auth/AuthContextProvider';
-import { useWallet } from '@/lib/wallet';
-import { useWalletAddress } from '@/hooks/useWalletAddress';
 import { TransferUSDCRequest } from '@/types';
 
 interface WalletBalances {
@@ -34,11 +31,8 @@ interface SendFormData {
 }
 
 export default function Wallet() {
-  const { user, isLoading: authLoading } = useAuth();
-  const { isConnected, isConnecting } = useAuthContext();
-  const { walletProvider } = useWallet();
+  const { user, isLoading: authLoading, walletAddress, getWalletProvider } = useAuth();
   const { config } = useConfig();
-  const { walletAddress, isLoading: isWalletAddressLoading } = useWalletAddress();
   const { getUSDCBalance, signUSDCTransfer, getUserAddress, isReady, error: sdkError } = useWeb3SDK();
   const [balances, setBalances] = useState<WalletBalances>({ native: '0', usdc: '0' });
   const [isLoadingBalances, setIsLoadingBalances] = useState(false);
@@ -54,11 +48,12 @@ export default function Wallet() {
   const [isLoadingChainInfo, setIsLoadingChainInfo] = useState(false);
 
   const loadChainInfo = async () => {
+    const walletProvider = getWalletProvider();
     if (!walletProvider) return;
 
     setIsLoadingChainInfo(true);
     try {
-      const ethersProvider = new ethers.BrowserProvider(walletProvider.getEthersProvider());
+      const ethersProvider = new ethers.BrowserProvider(walletProvider);
 
       // Get chain ID using eth_chainId RPC method
       const chainIdHex = await walletProvider.request({ method: 'eth_chainId' });
@@ -119,6 +114,7 @@ export default function Wallet() {
   };
 
   const loadBalances = async () => {
+    const walletProvider = getWalletProvider();
     if (!user || !config || !walletProvider || !isReady) return;
 
     setIsLoadingBalances(true);
@@ -127,7 +123,7 @@ export default function Wallet() {
       const userAddress = await getUserAddress();
       
       // Get native token balance using wallet provider
-      const ethersProvider = new ethers.BrowserProvider(walletProvider.getEthersProvider());
+      const ethersProvider = new ethers.BrowserProvider(walletProvider);
       const nativeBalance = await ethersProvider.getBalance(userAddress);
       const nativeFormatted = ethers.formatEther(nativeBalance);
 
@@ -148,10 +144,11 @@ export default function Wallet() {
   useEffect(() => {
     loadBalances();
     loadChainInfo();
-  }, [user, config, walletProvider]);
+  }, [user, config, walletAddress]);
 
   const handleSendSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const walletProvider = getWalletProvider();
     if (!user || !config || !walletProvider) {
       setSendError('Wallet provider not available. Please reconnect your wallet.');
       return;
@@ -172,7 +169,7 @@ export default function Wallet() {
 
       if (sendForm.currency === 'NATIVE') {
         // Send native token using wallet provider
-        const ethersProvider = new ethers.BrowserProvider(walletProvider.getEthersProvider());
+        const ethersProvider = new ethers.BrowserProvider(walletProvider);
         const signer = await ethersProvider.getSigner();
         const tx = await signer.sendTransaction({
           to: sendForm.recipient,
@@ -249,7 +246,7 @@ export default function Wallet() {
     );
   };
 
-  if (authLoading || isConnecting || isWalletAddressLoading) {
+  if (authLoading) {
     return (
       <div className="flex justify-center items-center min-h-96">
         <LoadingSpinner size="lg" />
@@ -257,7 +254,7 @@ export default function Wallet() {
     );
   }
 
-  if (!user || !walletProvider || !walletAddress) {
+  if (!user || !walletAddress) {
     return (
       <div className="max-w-md mx-auto text-center py-20">
         <h1 className="text-2xl font-bold text-gray-900 mb-4">Connect Your Wallet</h1>

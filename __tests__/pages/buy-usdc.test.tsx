@@ -8,13 +8,7 @@ jest.mock('next/router', () => ({
   useRouter: jest.fn(),
 }));
 
-// Mock the wallet address hook
-jest.mock('@/hooks/useWalletAddress', () => ({
-  useWalletAddress: () => ({
-    walletAddress: '0x1234567890abcdef1234567890abcdef12345678',
-    isLoading: false,
-  }),
-}));
+// useWalletAddress now uses useAuth internally, so we don't need to mock it separately
 
 // Mock the auth provider
 const mockUseAuth = jest.fn();
@@ -90,9 +84,13 @@ describe('BuyUSDC Page', () => {
 
     // Default auth state - authenticated user
     mockUseAuth.mockReturnValue({
-      user: { id: '1', wallet: '0x123', email: 'test@example.com' },
+      user: { userId: '1', walletAddress: '0x123', email: 'test@example.com' },
       isLoading: false,
-      login: jest.fn(),
+      connect: jest.fn(),
+      walletAddress: '0x123',
+      signTransaction: jest.fn(),
+      signMessage: jest.fn(),
+      getWalletProvider: jest.fn(),
       logout: jest.fn(),
     });
   });
@@ -121,7 +119,7 @@ describe('BuyUSDC Page', () => {
       render(<BuyUSDC />);
 
       expect(screen.getByText('Connected Wallet:')).toBeInTheDocument();
-      expect(screen.getAllByText('0x1234567890abcdef1234567890abcdef12345678').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('0x123').length).toBeGreaterThan(0);
       expect(screen.getByText('Network:')).toBeInTheDocument();
       expect(screen.getByText('Avalanche Fuji Testnet')).toBeInTheDocument();
     });
@@ -191,7 +189,11 @@ describe('BuyUSDC Page', () => {
       mockUseAuth.mockReturnValueOnce({
         user: null,
         isLoading: false,
-        login: jest.fn(),
+        connect: jest.fn(),
+      walletAddress: null,
+      signTransaction: jest.fn(),
+      signMessage: jest.fn(),
+      getWalletProvider: jest.fn(),
         logout: jest.fn(),
       });
 
@@ -208,7 +210,11 @@ describe('BuyUSDC Page', () => {
       mockUseAuth.mockReturnValueOnce({
         user: null,
         isLoading: true,
-        login: jest.fn(),
+        connect: jest.fn(),
+      walletAddress: null,
+      signTransaction: jest.fn(),
+      signMessage: jest.fn(),
+      getWalletProvider: jest.fn(),
         logout: jest.fn(),
       });
 

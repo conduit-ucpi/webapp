@@ -159,7 +159,11 @@ describe('AdminPage', () => {
     mockUseAuth.mockReturnValue({
       user: null,
       isLoading: true,
-      login: jest.fn(),
+      connect: jest.fn(),
+      walletAddress: null,
+      signTransaction: jest.fn(),
+      signMessage: jest.fn(),
+      getWalletProvider: jest.fn(),
       logout: jest.fn(),
     });
 
@@ -178,7 +182,11 @@ describe('AdminPage', () => {
     mockUseAuth.mockReturnValue({
       user: null,
       isLoading: false,
-      login: jest.fn(),
+      connect: jest.fn(),
+      walletAddress: null,
+      signTransaction: jest.fn(),
+      signMessage: jest.fn(),
+      getWalletProvider: jest.fn(),
       logout: jest.fn(),
     });
 
@@ -203,7 +211,11 @@ describe('AdminPage', () => {
         userType: 'user',
       },
       isLoading: false,
-      login: jest.fn(),
+      connect: jest.fn(),
+      walletAddress: null,
+      signTransaction: jest.fn(),
+      signMessage: jest.fn(),
+      getWalletProvider: jest.fn(),
       logout: jest.fn(),
     });
 
@@ -229,7 +241,11 @@ describe('AdminPage', () => {
         userType: 'admin',
       },
       isLoading: false,
-      login: jest.fn(),
+      connect: jest.fn(),
+      walletAddress: null,
+      signTransaction: jest.fn(),
+      signMessage: jest.fn(),
+      getWalletProvider: jest.fn(),
       logout: jest.fn(),
     });
 
@@ -255,7 +271,11 @@ describe('AdminPage', () => {
         userType: 'admin',
       },
       isLoading: false,
-      login: jest.fn(),
+      connect: jest.fn(),
+      walletAddress: null,
+      signTransaction: jest.fn(),
+      signMessage: jest.fn(),
+      getWalletProvider: jest.fn(),
       logout: jest.fn(),
     });
 
@@ -302,7 +322,11 @@ describe('AdminPage', () => {
         userType: 'admin',
       },
       isLoading: false,
-      login: jest.fn(),
+      connect: jest.fn(),
+      walletAddress: null,
+      signTransaction: jest.fn(),
+      signMessage: jest.fn(),
+      getWalletProvider: jest.fn(),
       logout: jest.fn(),
     });
 
@@ -357,7 +381,11 @@ describe('Contract Selection and Details', () => {
         userType: 'admin',
       },
       isLoading: false,
-      login: jest.fn(),
+      connect: jest.fn(),
+      walletAddress: null,
+      signTransaction: jest.fn(),
+      signMessage: jest.fn(),
+      getWalletProvider: jest.fn(),
       logout: jest.fn(),
     });
 

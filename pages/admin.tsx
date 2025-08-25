@@ -11,7 +11,6 @@ import AdminDatabaseList from '@/components/admin/AdminDatabaseList';
 import { normalizeTimestamp } from '@/utils/validation';
 import DisputeResolutionModal from '@/components/admin/DisputeResolutionModal';
 import { Contract, PendingContract } from '@/types';
-import { useWalletAddress } from '@/hooks/useWalletAddress';
 
 // Extended type for admin contracts that includes chain data
 type AdminContract = PendingContract & {
@@ -27,8 +26,7 @@ type AdminContract = PendingContract & {
 }
 
 export default function AdminPage() {
-  const { user, isLoading } = useAuth();
-  const { walletAddress } = useWalletAddress();
+  const { user, isLoading, walletAddress } = useAuth();
   const router = useRouter();
   const [selectedContract, setSelectedContract] = useState<AdminContract | null>(null);
   const [detailedContract, setDetailedContract] = useState<any>(null);

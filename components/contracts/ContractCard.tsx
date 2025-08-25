@@ -1,7 +1,6 @@
 import { Contract, PendingContract } from '@/types';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { useConfig } from '@/components/auth/ConfigProvider';
-import { useWalletAddress } from '@/hooks/useWalletAddress';
 import { displayCurrency, formatTimestamp } from '@/utils/validation';
 import ContractActions from './ContractActions';
 import ExpandableHash from '@/components/ui/ExpandableHash';
@@ -17,9 +16,8 @@ interface ContractCardProps {
 }
 
 export default function ContractCard({ contract, onAction, onAccept, isClaimingInProgress, onClaimStart, onClaimComplete }: ContractCardProps) {
-  const { user } = useAuth();
+  const { user, walletAddress } = useAuth();
   const { config } = useConfig();
-  const { walletAddress } = useWalletAddress();
   
   // Detect if this is a pending contract (has id field but no contractAddress field)
   const isPending = 'id' in contract && !('contractAddress' in contract);

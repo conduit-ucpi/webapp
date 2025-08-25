@@ -117,7 +117,11 @@ describe('ContractAcceptance - Redirect Behavior (Simplified)', () => {
 
     mockUseAuth.mockReturnValue({
       user: { userId: 'test-user-id', walletAddress: '0xBuyerAddress', email: 'buyer@test.com' },
-      login: jest.fn(),
+      connect: jest.fn(),
+      walletAddress: null,
+      signTransaction: jest.fn(),
+      signMessage: jest.fn(),
+      getWalletProvider: jest.fn(),
       logout: jest.fn(),
       isLoading: false,
     });

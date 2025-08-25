@@ -50,7 +50,11 @@ describe('USDCGuide', () => {
     mockUseAuth.mockReturnValue({
       user: mockUser,
       isLoading: false,
-      login: jest.fn(),
+      connect: jest.fn(),
+      walletAddress: '0x1234567890abcdef1234567890abcdef12345678',
+      signTransaction: jest.fn(),
+      signMessage: jest.fn(),
+      getWalletProvider: jest.fn(),
       logout: jest.fn(),
     });
 
@@ -157,7 +161,11 @@ describe('USDCGuide', () => {
     mockUseAuth.mockReturnValue({
       user: null,
       isLoading: false,
-      login: jest.fn(),
+      connect: jest.fn(),
+      walletAddress: null,
+      signTransaction: jest.fn(),
+      signMessage: jest.fn(),
+      getWalletProvider: jest.fn(),
       logout: jest.fn(),
     });
 

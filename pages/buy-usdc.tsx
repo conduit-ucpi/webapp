@@ -4,27 +4,23 @@ import ConnectWallet from '@/components/auth/ConnectWallet';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import USDCGuide from '@/components/ui/USDCGuide';
-import { useAuthContext } from '@/lib/auth/AuthContextProvider';
-import { useWalletAddress } from '@/hooks/useWalletAddress';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { useState, useEffect } from 'react';
 
 export default function BuyUSDC() {
   const router = useRouter();
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, walletAddress } = useAuth();
   const { config } = useConfig();
-  const { isConnected, isConnecting, authProvider } = useAuthContext();
-  const { walletAddress, isLoading: isWalletAddressLoading } = useWalletAddress();
   const [widgetStatus, setWidgetStatus] = useState<string>('');
 
   const tryShowWalletServices = async () => {
     try {
       setWidgetStatus('Opening wallet services...');
       console.log('Trying to show wallet services');
-      console.log('Auth provider:', authProvider?.getProviderName());
+      console.log('Wallet services functionality temporarily disabled');
       
-      if (!authProvider) {
-        setWidgetStatus('Auth provider not found');
+      if (!user || !walletAddress) {
+        setWidgetStatus('User not authenticated');
         return;
       }
 
@@ -39,7 +35,7 @@ export default function BuyUSDC() {
 
   // Automatically open wallet services when page loads and user is authenticated
   useEffect(() => {
-    if (user && isConnected && walletAddress) {
+    if (user && walletAddress) {
       // Small delay to ensure everything is fully loaded
       const timer = setTimeout(() => {
         tryShowWalletServices();
@@ -47,9 +43,9 @@ export default function BuyUSDC() {
       
       return () => clearTimeout(timer);
     }
-  }, [user, isConnected, walletAddress]);
+  }, [user, walletAddress]);
 
-  if (isLoading || isConnecting || isWalletAddressLoading) {
+  if (isLoading) {
     return (
       <div className="flex justify-center items-center min-h-96">
         <LoadingSpinner size="lg" />
@@ -57,7 +53,7 @@ export default function BuyUSDC() {
     );
   }
 
-  if (!user || !isConnected || !walletAddress) {
+  if (!user || !walletAddress) {
     return (
       <div className="max-w-md mx-auto text-center py-20">
         <h1 className="text-2xl font-bold text-gray-900 mb-4">Connect Your Wallet</h1>

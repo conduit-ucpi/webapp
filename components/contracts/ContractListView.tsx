@@ -5,7 +5,6 @@ import ExpandableHash from '@/components/ui/ExpandableHash';
 import ContractActions from './ContractActions';
 import Button from '@/components/ui/Button';
 import { useAuth } from '@/components/auth/AuthProvider';
-import { useWalletAddress } from '@/hooks/useWalletAddress';
 
 interface UnifiedContract {
   id: string;
@@ -49,8 +48,7 @@ export default function ContractListView({
   onClaimStart,
   onClaimComplete
 }: ContractListViewProps) {
-  const { user } = useAuth();
-  const { walletAddress } = useWalletAddress();
+  const { user, walletAddress } = useAuth();
   const [sortField, setSortField] = useState<SortField>('createdAt');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');

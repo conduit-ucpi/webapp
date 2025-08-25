@@ -27,7 +27,11 @@ jest.mock('../../../hooks/useWeb3SDK', () => ({
     hashDescription: jest.fn().mockReturnValue('0x1234'),
     getUserAddress: jest.fn().mockResolvedValue('0xBuyerAddress'), // Test-specific address
     services: {
-      user: { login: jest.fn(), logout: jest.fn(), getIdentity: jest.fn() },
+      user: { connect: jest.fn(), logout: jest.fn(), getIdentity: jest.fn() },
+      walletAddress: null,
+      signTransaction: jest.fn(),
+      signMessage: jest.fn(),
+      getWalletProvider: jest.fn(),
       chain: { createContract: jest.fn(), raiseDispute: jest.fn(), claimFunds: jest.fn() },
       contracts: { create: jest.fn(), getById: jest.fn(), getAll: jest.fn() }
     },
@@ -149,7 +153,11 @@ describe('ContractAcceptance - microUSDC Amount Handling', () => {
 
     mockUseAuth.mockReturnValue({
       user: { userId: 'test-user-id', walletAddress: '0xBuyerAddress', email: 'buyer@test.com' },
-      login: jest.fn(),
+      connect: jest.fn(),
+      walletAddress: null,
+      signTransaction: jest.fn(),
+      signMessage: jest.fn(),
+      getWalletProvider: jest.fn(),
       logout: jest.fn(),
       isLoading: false,
     });

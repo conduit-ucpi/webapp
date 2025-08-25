@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { useAuth } from '@/components/auth/AuthProvider';
 import ConnectWallet from '@/components/auth/ConnectWallet';
 import Button from '@/components/ui/Button';
-import { useAuthContext } from '@/lib/auth/AuthContextProvider';
 
 const AnimatedMoneyFlow = () => {
   return (
@@ -159,9 +158,8 @@ const AnimatedMoneyFlow = () => {
 
 export default function AnimatedHero() {
   const { user, isLoading } = useAuth();
-  const { isConnected, isConnecting } = useAuthContext();
 
-  const isAuthenticated = user && isConnected;
+  const isAuthenticated = !!user;
 
   const containerVariants = {
     hidden: { opacity: 0 },

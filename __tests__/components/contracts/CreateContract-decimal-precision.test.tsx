@@ -75,7 +75,11 @@ describe('CreateContract Decimal Precision', () => {
     mockUseAuth.mockReturnValue({
       user: mockUser,
       isLoading: false,
-      login: jest.fn(),
+      connect: jest.fn(),
+      walletAddress: null,
+      signTransaction: jest.fn(),
+      signMessage: jest.fn(),
+      getWalletProvider: jest.fn(),
       logout: jest.fn(),
     });
 

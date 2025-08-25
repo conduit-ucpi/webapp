@@ -1,11 +1,9 @@
 import { useAuth } from '@/components/auth/AuthProvider';
 import { useConfig } from '@/components/auth/ConfigProvider';
-import { useWalletAddress } from '@/hooks/useWalletAddress';
 
 export default function USDCGuide() {
-  const { user } = useAuth();
+  const { user, walletAddress } = useAuth();
   const { config } = useConfig();
-  const { walletAddress } = useWalletAddress();
 
   if (!user || !config) return null;
 

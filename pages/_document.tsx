@@ -10,10 +10,13 @@ export default function Document() {
         <meta name="google" content="notranslate" />
         
         {/* Farcaster mini-app configuration */}
-        <meta property="fc:miniapp" content='{"name": "Conduit Escrow", "version": "1.0.0", "iconUrl": "https://farcaster.conduit-ucpi.com/icon.png", "splashImageUrl": "https://farcaster.conduit-ucpi.com/preview.png", "homeUrl": "https://farcaster.conduit-ucpi.com"}' />
-        <meta property="og:image" content="https://farcaster.conduit-ucpi.com/preview.png" />
+        <meta property="fc:miniapp" content='{"version": "next", "imageUrl": "https://farcaster-dev.conduit-ucpi.com/preview.png", "button": {"title": "🚩 Start", "action": {"type": "launch_frame", "name": "Instant Escrow", "url": "https://farcaster-dev.conduit-ucpi.com"}}}' />
+        <meta property="og:image" content="https://farcaster-dev.conduit-ucpi.com/preview.png" />
         <meta property="og:title" content="Conduit Escrow" />
         <meta property="og:description" content="Time-delayed escrow contracts on Avalanche" />
+        
+        {/* Farcaster domain verification */}
+        <link rel="canonical" href="/.well-known/farcaster.json" />
         <script
           dangerouslySetInnerHTML={{
             __html: `

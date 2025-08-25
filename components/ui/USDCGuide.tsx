@@ -1,4 +1,4 @@
-import { useAuth } from '@/components/auth/AuthProvider';
+import { useAuth } from '@/components/auth';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { useWalletAddress } from '@/hooks/useWalletAddress';
 

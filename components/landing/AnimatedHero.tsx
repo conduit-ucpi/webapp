@@ -1,10 +1,9 @@
 'use client';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { useAuth } from '@/components/auth/AuthProvider';
+import { useAuth } from '@/components/auth';
 import ConnectWallet from '@/components/auth/ConnectWallet';
 import Button from '@/components/ui/Button';
-import { useWeb3AuthInstance } from '@/components/auth/Web3AuthContextProvider';
 
 const AnimatedMoneyFlow = () => {
   return (
@@ -159,9 +158,7 @@ const AnimatedMoneyFlow = () => {
 
 export default function AnimatedHero() {
   const { user, isLoading } = useAuth();
-  const { web3authProvider, isLoading: isWeb3AuthInstanceLoading } = useWeb3AuthInstance();
-
-  const isAuthenticated = user && web3authProvider;
+  const isAuthenticated = !!user;
 
   const containerVariants = {
     hidden: { opacity: 0 },

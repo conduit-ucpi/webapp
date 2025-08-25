@@ -4,7 +4,7 @@ import { displayCurrency, formatTimestamp } from '@/utils/validation';
 import ExpandableHash from '@/components/ui/ExpandableHash';
 import ContractActions from './ContractActions';
 import Button from '@/components/ui/Button';
-import { useAuth } from '@/components/auth/AuthProvider';
+import { useAuth } from '@/components/auth';
 import { useWalletAddress } from '@/hooks/useWalletAddress';
 
 interface UnifiedContract {

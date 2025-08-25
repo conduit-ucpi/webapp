@@ -1,7 +1,7 @@
 'use client';
 import { useEffect } from 'react';
 import { useTour } from './TourProvider';
-import { useAuth } from '@/components/auth/AuthProvider';
+import { useAuth } from '@/components/auth';
 
 const dashboardTourSteps = [
   {

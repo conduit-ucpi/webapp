@@ -3,7 +3,7 @@ import { screen, fireEvent, waitFor } from '@testing-library/dom';
 import { useRouter } from 'next/router';
 import ContractAcceptance from '../../../components/contracts/ContractAcceptance';
 import { useConfig } from '../../../components/auth/ConfigProvider';
-import { useAuth } from '../../../components/auth/AuthProvider';
+import { useAuth } from '../../../components/auth';
 import { PendingContract } from '../../../types';
 
 // Mock the dependencies
@@ -11,7 +11,7 @@ jest.mock('next/router', () => ({
   useRouter: jest.fn(),
 }));
 jest.mock('../../../components/auth/ConfigProvider');
-jest.mock('../../../components/auth/AuthProvider');
+jest.mock('../../../components/auth');
 jest.mock('../../../lib/web3');
 
 const mockPush = jest.fn();

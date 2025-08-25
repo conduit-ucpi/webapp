@@ -1,6 +1,6 @@
 import type { AppProps } from 'next/app';
 import { ConfigProvider } from '@/components/auth/ConfigProvider';
-import { AuthProvider } from '@/components/auth/AuthProvider';
+import { UnifiedAuthProvider } from '@/components/auth/UnifiedAuthProvider';
 import Layout from '@/components/layout/Layout';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import '@/styles/globals.css';
@@ -10,7 +10,6 @@ import { TourProvider } from '@/components/onboarding/TourProvider';
 import { SDKProvider } from '@/components/auth/SDKProvider';
 import FarcasterReady from '@/components/farcaster/FarcasterReady';
 import { FarcasterDetectionProvider } from '@/components/farcaster/FarcasterDetectionProvider';
-import { ConditionalAuthProvider } from '@/components/auth/ConditionalAuthProvider';
 
 export default function App({ Component, pageProps }: AppProps) {
   return (
@@ -20,7 +19,7 @@ export default function App({ Component, pageProps }: AppProps) {
         <FarcasterDetectionProvider>
           <ConfigProvider>
             <SDKProvider>
-              <ConditionalAuthProvider>
+              <UnifiedAuthProvider>
                 <ToastProvider>
                   <TourProvider>
                     <Layout>
@@ -28,7 +27,7 @@ export default function App({ Component, pageProps }: AppProps) {
                     </Layout>
                   </TourProvider>
                 </ToastProvider>
-              </ConditionalAuthProvider>
+              </UnifiedAuthProvider>
             </SDKProvider>
           </ConfigProvider>
         </FarcasterDetectionProvider>

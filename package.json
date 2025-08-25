@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --experimental-https",
+    "dev": "next dev",
     "prebuild": "npm run test-api-conformance || true",
     "build": "next build",
     "start": "next start",
@@ -61,6 +61,7 @@
     "node-mocks-http": "^1.17.2",
     "postcss": "^8.4.31",
     "tailwindcss": "^3.3.5",
+    "ts-jest": "^29.4.1",
     "tsx": "^4.0.0",
     "typescript": "5.2.2"
   }

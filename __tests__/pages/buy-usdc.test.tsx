@@ -18,7 +18,7 @@ jest.mock('@/hooks/useWalletAddress', () => ({
 
 // Mock the auth provider
 const mockUseAuth = jest.fn();
-jest.mock('@/components/auth/AuthProvider', () => ({
+jest.mock('@/components/auth', () => ({
   useAuth: () => mockUseAuth(),
 }));
 

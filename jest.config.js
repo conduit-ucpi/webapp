@@ -9,6 +9,16 @@ const customJestConfig = {
   testEnvironment: 'jsdom',
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
+    // Mock Wagmi and related ES modules
+    '^wagmi$': '<rootDir>/__mocks__/wagmi.js',
+    '^wagmi/chains$': '<rootDir>/__mocks__/wagmi-chains.js',
+    '^wagmi/(.*)$': '<rootDir>/__mocks__/wagmi.js',
+    '^@wagmi/core$': '<rootDir>/__mocks__/wagmi-core.js',
+    '^@wagmi/connectors$': '<rootDir>/__mocks__/wagmi-connectors.js',
+    '^@wagmi/chains$': '<rootDir>/__mocks__/wagmi-chains.js',
+    '^viem$': '<rootDir>/__mocks__/viem.js',
+    '^viem/(.*)$': '<rootDir>/__mocks__/viem.js',
+    '^@tanstack/react-query$': '<rootDir>/__mocks__/tanstack-react-query.js',
   },
   // Increase timeout for Web3Auth crypto operations
   testTimeout: 30000,

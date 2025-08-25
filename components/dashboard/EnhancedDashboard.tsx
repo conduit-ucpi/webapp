@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
-import { useAuth } from '@/components/auth/AuthProvider';
+import { useAuth } from '@/components/auth';
 import { Contract, PendingContract } from '@/types';
 import Button from '@/components/ui/Button';
 import StatsCard from '@/components/ui/StatsCard';

@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from 'react';
 import { User, FarcasterAuthContextType, AuthContextType } from '@/types';
-import { AuthContext } from './AuthProvider';
+import { AuthContext } from './GenericAuthProvider';
 
 // Mock useAccount for tests
 let useAccount: any;

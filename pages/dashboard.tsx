@@ -1,20 +1,18 @@
 import Link from 'next/link';
-import { useAuth } from '@/components/auth/AuthProvider';
+import { useAuth } from '@/components/auth';
 import EnhancedDashboard from '@/components/dashboard/EnhancedDashboard';
 import ConnectWallet from '@/components/auth/ConnectWallet';
 import Button from '@/components/ui/Button';
 import { SkeletonCard } from '@/components/ui/Skeleton';
 import ExpandableHash from '@/components/ui/ExpandableHash';
-import { useWeb3AuthInstance } from '@/components/auth/Web3AuthContextProvider';
 import { useWalletAddress } from '@/hooks/useWalletAddress';
 import DashboardTour from '@/components/onboarding/DashboardTour';
 
 export default function Dashboard() {
   const { user, isLoading } = useAuth();
-  const { web3authProvider, isLoading: isWeb3AuthInstanceLoading } = useWeb3AuthInstance();
   const { walletAddress, isLoading: isWalletAddressLoading } = useWalletAddress();
 
-  if (isLoading || isWeb3AuthInstanceLoading || isWalletAddressLoading) {
+  if (isLoading || isWalletAddressLoading) {
     return (
       <div className="py-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -36,7 +34,7 @@ export default function Dashboard() {
     );
   }
 
-  if (!user || !web3authProvider) {
+  if (!user) {
     return (
       <div className="max-w-md mx-auto text-center py-20">
         <h1 className="text-2xl font-bold text-secondary-900 mb-4">Connect Your Wallet</h1>

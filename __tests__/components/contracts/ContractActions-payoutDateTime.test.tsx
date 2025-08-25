@@ -6,7 +6,7 @@ jest.mock('next/router', () => ({
   useRouter: jest.fn(),
 }));
 jest.mock('../../../components/auth/ConfigProvider');
-jest.mock('../../../components/auth/AuthProvider');
+jest.mock('../../../components/auth');
 jest.mock('../../../components/auth/Web3AuthContextProvider');
 
 // Override the SDK mock for this test
@@ -61,7 +61,7 @@ jest.mock('../../../hooks/useWeb3SDK', () => ({
 import { useRouter } from 'next/router';
 import ContractActions from '../../../components/contracts/ContractActions';
 import { useConfig } from '../../../components/auth/ConfigProvider';
-import { useAuth } from '../../../components/auth/AuthProvider';
+import { useAuth } from '../../../components/auth';
 import { useWeb3AuthInstance } from '../../../components/auth/Web3AuthContextProvider';
 import { Contract } from '../../../types';
 

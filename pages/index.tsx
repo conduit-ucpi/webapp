@@ -1,18 +1,16 @@
 import Link from 'next/link';
-import { useAuth } from '@/components/auth/AuthProvider';
+import { useAuth } from '@/components/auth';
 import ConnectWallet from '@/components/auth/ConnectWallet';
 import Button from '@/components/ui/Button';
 import Skeleton from '@/components/ui/Skeleton';
-import { useWeb3AuthInstance } from '@/components/auth/Web3AuthContextProvider';
 import InteractiveDemo from '@/components/landing/InteractiveDemo';
 import { motion } from 'framer-motion';
 
 export default function Home() {
   const { user, isLoading } = useAuth();
-  const { web3authProvider, isLoading: isWeb3AuthInstanceLoading } = useWeb3AuthInstance();
 
   // Show minimal loading on mobile to prevent crashes
-  if (isLoading || isWeb3AuthInstanceLoading) {
+  if (isLoading) {
     return (
       <div className="bg-white min-h-screen">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
@@ -35,7 +33,7 @@ export default function Home() {
     );
   }
 
-  const isAuthenticated = user && web3authProvider;
+  const isAuthenticated = !!user;
 
   return (
     <div className="bg-white dark:bg-secondary-900 min-h-screen transition-colors" key="home-page">

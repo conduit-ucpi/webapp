@@ -5,7 +5,7 @@ import Button from '@/components/ui/Button';
 import StatusBadge from '@/components/ui/StatusBadge';
 import ExpandableHash from '@/components/ui/ExpandableHash';
 import { formatWalletAddress, displayCurrency, formatDateTimeWithTZ } from '@/utils/validation';
-import { useAuth } from '@/components/auth/AuthProvider';
+import { useAuth } from '@/components/auth';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import ContractActions from './ContractActions';
 

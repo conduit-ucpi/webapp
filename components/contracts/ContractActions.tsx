@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Contract, PendingContract, RaiseDisputeRequest } from '@/types';
 import { useConfig } from '@/components/auth/ConfigProvider';
-import { useAuth } from '@/components/auth/AuthProvider';
+import { useAuth } from '@/components/auth';
 import { useWeb3SDK } from '@/hooks/useWeb3SDK';
 import { ESCROW_CONTRACT_ABI } from '@conduit-ucpi/sdk';
 import Button from '@/components/ui/Button';

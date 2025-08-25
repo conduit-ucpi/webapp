@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { useAuth } from '@/components/auth/AuthProvider';
+import { useAuth } from '@/components/auth';
 import { Contract, PendingContract } from '@/types';
 import ContractCard from './ContractCard';
 import ContractAcceptance from './ContractAcceptance';

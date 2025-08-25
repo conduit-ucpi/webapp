@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/router';
 import { useConfig } from '@/components/auth/ConfigProvider';
-import { useAuth } from '@/components/auth/AuthProvider';
+import { useAuth } from '@/components/auth';
 import { useWeb3SDK } from '@/hooks/useWeb3SDK';
 import { useToast } from '@/components/ui/Toast';
 import Input from '@/components/ui/Input';

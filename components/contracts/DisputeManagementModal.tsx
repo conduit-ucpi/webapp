@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Contract, SubmitDisputeEntryRequest } from '@/types';
-import { useAuth } from '@/components/auth/AuthProvider';
+import { useAuth } from '@/components/auth';
 import { formatTimestamp, displayCurrency, formatCurrency } from '@/utils/validation';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '@/components/auth/AuthProvider';
+import { useAuth } from '@/components/auth';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { useWeb3SDK } from '@/hooks/useWeb3SDK';
 import ConnectWallet from '@/components/auth/ConnectWallet';
@@ -9,7 +9,7 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import ExpandableHash from '@/components/ui/ExpandableHash';
 import USDCGuide from '@/components/ui/USDCGuide';
 import { ethers } from 'ethers';
-import { useWeb3AuthInstance } from '@/components/auth/Web3AuthContextProvider';
+import { useFarcaster } from '@/components/farcaster/FarcasterDetectionProvider';
 import { useWalletAddress } from '@/hooks/useWalletAddress';
 import { TransferUSDCRequest } from '@/types';
 
@@ -34,7 +34,9 @@ interface SendFormData {
 
 export default function Wallet() {
   const { user, isLoading: authLoading } = useAuth();
-  const { web3authProvider, isLoading: isWeb3AuthInstanceLoading } = useWeb3AuthInstance();
+  const { isInFarcaster } = useFarcaster();
+  // For now, wallet page requires Web3Auth provider for native token operations
+  const web3authProvider = !isInFarcaster ? (window as any).web3authProvider : null;
   const { config } = useConfig();
   const { walletAddress, isLoading: isWalletAddressLoading } = useWalletAddress();
   const { getUSDCBalance, signUSDCTransfer, getUserAddress, isReady, error: sdkError } = useWeb3SDK();
@@ -247,7 +249,7 @@ export default function Wallet() {
     );
   };
 
-  if (authLoading || isWeb3AuthInstanceLoading || isWalletAddressLoading) {
+  if (authLoading || isWalletAddressLoading) {
     return (
       <div className="flex justify-center items-center min-h-96">
         <LoadingSpinner size="lg" />
@@ -255,7 +257,8 @@ export default function Wallet() {
     );
   }
 
-  if (!user || !web3authProvider || !walletAddress) {
+  // For now, wallet page is only available with Web3Auth
+  if (!user || !walletAddress || isInFarcaster) {
     return (
       <div className="max-w-md mx-auto text-center py-20">
         <h1 className="text-2xl font-bold text-gray-900 mb-4">Connect Your Wallet</h1>

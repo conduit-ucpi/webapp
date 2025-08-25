@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { useAuth } from '@/components/auth/AuthProvider';
+import { useAuth } from '@/components/auth';
 import { useRouter } from 'next/router';
 import Button from '@/components/ui/Button';
 import TransactionWalkthrough from './TransactionWalkthrough';

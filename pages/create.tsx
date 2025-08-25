@@ -1,14 +1,12 @@
-import { useAuth } from '@/components/auth/AuthProvider';
+import { useAuth } from '@/components/auth';
 import CreateContractWizard from '@/components/contracts/CreateContractWizard';
 import ConnectWallet from '@/components/auth/ConnectWallet';
 import Skeleton from '@/components/ui/Skeleton';
-import { useWeb3AuthInstance } from '@/components/auth/Web3AuthContextProvider';
 
 export default function CreatePage() {
   const { user, isLoading } = useAuth();
-  const { web3authProvider, isLoading: isWeb3AuthInstanceLoading } = useWeb3AuthInstance();
 
-  if (isLoading || isWeb3AuthInstanceLoading) {
+  if (isLoading) {
     return (
       <div className="py-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -31,7 +29,7 @@ export default function CreatePage() {
     );
   }
 
-  if (!user || !web3authProvider) {
+  if (!user) {
     return (
       <div className="max-w-md mx-auto text-center py-20">
         <h1 className="text-2xl font-bold text-secondary-900 mb-4">Connect Your Wallet</h1>

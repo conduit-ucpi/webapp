@@ -2,7 +2,7 @@ import { render } from '@testing-library/react';
 import { screen, fireEvent, waitFor, within } from '@testing-library/dom';
 import { useRouter } from 'next/router';
 import AdminPage from '@/pages/admin';
-import { useAuth } from '@/components/auth/AuthProvider';
+import { useAuth } from '@/components/auth';
 import { useWeb3AuthInstance } from '@/components/auth/Web3AuthContextProvider';
 import { Contract } from '@/types';
 
@@ -12,7 +12,7 @@ jest.mock('next/router', () => ({
 }));
 
 // Mock AuthProvider
-jest.mock('@/components/auth/AuthProvider', () => ({
+jest.mock('@/components/auth', () => ({
   useAuth: jest.fn(),
 }));
 

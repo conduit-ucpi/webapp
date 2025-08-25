@@ -6,14 +6,14 @@ jest.mock('next/router', () => ({
   useRouter: jest.fn(),
 }));
 jest.mock('../../../components/auth/ConfigProvider');
-jest.mock('../../../components/auth/AuthProvider');
+jest.mock('../../../components/auth');
 jest.mock('../../../components/auth/Web3AuthContextProvider');
 jest.mock('../../../lib/web3');
 
 import { useRouter } from 'next/router';
 import CreateContract from '../../../components/contracts/CreateContract';
 import { useConfig } from '../../../components/auth/ConfigProvider';
-import { useAuth } from '../../../components/auth/AuthProvider';
+import { useAuth } from '../../../components/auth';
 import { useWeb3AuthInstance } from '../../../components/auth/Web3AuthContextProvider';
 
 const mockPush = jest.fn();

@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { Contract, PendingContract } from '@/types';
 import { formatWalletAddress, displayCurrency, formatDateTimeWithTZ } from '@/utils/validation';
 import Button from '@/components/ui/Button';
-import { useAuth } from '@/components/auth/AuthProvider';
+import { useAuth } from '@/components/auth';
 import { useMemo } from 'react';
 
 interface EnhancedContractCardProps {

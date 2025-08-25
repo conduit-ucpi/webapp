@@ -1,12 +1,12 @@
 import { render } from '@testing-library/react';
 import { screen } from '@testing-library/dom';
 import USDCGuide from '@/components/ui/USDCGuide';
-import { useAuth } from '@/components/auth/AuthProvider';
+import { useAuth } from '@/components/auth';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { useWeb3AuthInstance } from '@/components/auth/Web3AuthContextProvider';
 import { useWalletAddress } from '@/hooks/useWalletAddress';
 // Mock the providers
-jest.mock('@/components/auth/AuthProvider', () => ({
+jest.mock('@/components/auth', () => ({
   useAuth: jest.fn(),
 }));
 

@@ -26,12 +26,20 @@ interface FarcasterDetectionProviderProps {
 
 export const FarcasterDetectionProvider: React.FC<FarcasterDetectionProviderProps> = ({ children }) => {
   const [isInFarcaster, setIsInFarcaster] = useState(false);
-  const [isLoading, setIsLoading] = useState(false); // Start false, only set true during detection
+  const [isLoading, setIsLoading] = useState(true); // Start true to ensure detection runs
   const [farcasterSDK, setFarcasterSDK] = useState<any>(null);
   const [hasMounted, setHasMounted] = useState(false); // Track if we've mounted on client
+  
+  // Track this component's renders and lifecycle
+  const detectionId = React.useRef(Math.random().toString(36).substr(2, 9));
+  const renderCount = React.useRef(0);
+  renderCount.current++;
+  
+  console.log(`🔍 FarcasterDetectionProvider [${detectionId.current}] RENDER #${renderCount.current}: isInFarcaster: ${isInFarcaster}, isLoading: ${isLoading}, hasMounted: ${hasMounted}`);
 
   // Track when we've mounted to avoid hydration issues
   useEffect(() => {
+    console.log('🔍 FarcasterDetectionProvider: Component mounted');
     setHasMounted(true);
   }, []);
 
@@ -46,8 +54,13 @@ export const FarcasterDetectionProvider: React.FC<FarcasterDetectionProviderProp
   }, []);
 
   useEffect(() => {
+    console.log('🔍 Detection effect triggered, hasMounted:', hasMounted);
+    
     // Only run detection after component has mounted to avoid hydration issues
-    if (!hasMounted) return;
+    if (!hasMounted) {
+      console.log('🔍 Waiting for component to mount...');
+      return;
+    }
     
     const detectFarcaster = () => {
       // Ensure we're on client side
@@ -81,11 +94,23 @@ export const FarcasterDetectionProvider: React.FC<FarcasterDetectionProviderProp
           isFarcasterUserAgent
         });
         
-        // Method 3: Skip SDK detection for now to avoid hanging
+        // Method 3: Try to detect Farcaster SDK
         let sdkAvailable = false;
         let sdk = null;
         
-        console.log('🔍 Method 3 - Skipping SDK detection to avoid hanging');
+        try {
+          // Check if Farcaster miniapp SDK is available
+          const farcasterSDK = (window as any).__farcaster__;
+          if (farcasterSDK) {
+            console.log('🔍 Method 3 - Farcaster SDK detected via window.__farcaster__');
+            sdkAvailable = true;
+            sdk = farcasterSDK;
+          } else {
+            console.log('🔍 Method 3 - No Farcaster SDK found on window.__farcaster__');
+          }
+        } catch (e) {
+          console.log('🔍 Method 3 - Error checking for SDK:', e);
+        }
         
         // Method 4: Check for specific URL patterns (if Farcaster passes special params)
         const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
@@ -112,7 +137,7 @@ export const FarcasterDetectionProvider: React.FC<FarcasterDetectionProviderProp
         });
 
         // Show detection results visually for debugging
-        if (typeof window !== 'undefined') {
+        if (typeof window !== 'undefined') { // Re-enabled for debugging
           setTimeout(() => {
             const detectionResults = `FARCASTER DETECTION RESULTS:
 

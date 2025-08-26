@@ -13,6 +13,89 @@ interface AuthProviderProps {
 
 export function AuthProvider({ children }: AuthProviderProps) {
   const { isInFarcaster, isLoading: envDetectionLoading } = useFarcaster();
+  const [shouldUseFarcaster, setShouldUseFarcaster] = useState<boolean | null>(null);
+  
+  // Track AuthProvider renders with mount/unmount detection
+  const authProviderId = React.useRef(Math.random().toString(36).substr(2, 9));
+  const renderCount = React.useRef(0);
+  renderCount.current++;
+  
+  console.log(`🔧 AuthProvider [${authProviderId.current}] RENDER #${renderCount.current}: envDetectionLoading: ${envDetectionLoading}, isInFarcaster: ${isInFarcaster}, shouldUseFarcaster: ${shouldUseFarcaster}`);
+  
+  React.useEffect(() => {
+    console.log(`🔧 AuthProvider [${authProviderId.current}]: MOUNTED`);
+    return () => {
+      console.log(`🔧 AuthProvider [${authProviderId.current}]: UNMOUNTED`);
+    };
+  }, []);
+  
+  // Stable decision making - only set once when detection is complete
+  useEffect(() => {
+    if (!envDetectionLoading && shouldUseFarcaster === null) {
+      console.log(`🔧 AuthProvider [${authProviderId.current}]: Making stable provider decision:`, { isInFarcaster });
+      setShouldUseFarcaster(isInFarcaster);
+    }
+  }, [envDetectionLoading, isInFarcaster, shouldUseFarcaster]);
+  
+  // Still loading detection
+  if (envDetectionLoading || shouldUseFarcaster === null) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Detecting environment...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  // Stable rendering - won't change once decided
+  if (shouldUseFarcaster) {
+    return <FarcasterAuthProviderWrapper>{children}</FarcasterAuthProviderWrapper>;
+  }
+
+  // Otherwise, use the regular auth flow
+  return <RegularAuthProvider>{children}</RegularAuthProvider>;
+}
+
+// Wrapper that loads and renders FarcasterAuthProvider
+function FarcasterAuthProviderWrapper({ children }: { children: React.ReactNode }) {
+  const [FarcasterComponent, setFarcasterComponent] = useState<any>(null);
+  
+  // Track wrapper renders
+  const wrapperId = React.useRef(Math.random().toString(36).substr(2, 9));
+  console.log(`🔧 FarcasterAuthProviderWrapper [${wrapperId.current}]: RENDERING`);
+  
+  useEffect(() => {
+    const loadFarcaster = async () => {
+      console.log('🔧 FarcasterWrapper: Loading FarcasterAuthProvider...');
+      try {
+        const { FarcasterAuthProvider } = await import('./farcasterAuth');
+        setFarcasterComponent(() => FarcasterAuthProvider);
+      } catch (error) {
+        console.error('🔧 FarcasterWrapper: Failed to load:', error);
+      }
+    };
+    loadFarcaster();
+  }, []);
+  
+  if (!FarcasterComponent) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading Farcaster authentication...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  // Pass the AuthContext to FarcasterAuthProvider so it uses the same context
+  return React.createElement(FarcasterComponent, { AuthContext }, children);
+}
+
+// Component for regular (non-Farcaster) authentication
+function RegularAuthProvider({ children }: AuthProviderProps) {
   const { config, isLoading: configLoading } = useConfig();
   const [provider, setProvider] = useState<IAuthProvider | null>(null);
   const [authState, setAuthState] = useState<AuthState>({
@@ -28,32 +111,23 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // Get backend auth instance
   const backendAuth = BackendAuth.getInstance();
 
-  // Load the appropriate provider based on environment
+  // Load Web3Auth provider
   useEffect(() => {
-    if (envDetectionLoading || configLoading || !config) return;
+    if (configLoading || !config) return;
 
     const loadProvider = async () => {
       try {
-        let authProvider: IAuthProvider;
+        console.log('🔧 RegularAuthProvider: Loading Web3Auth provider...');
+        const { getWeb3AuthProvider } = await import('./web3auth');
+        const authProvider = getWeb3AuthProvider(config);
 
-        console.log('🔧 AuthProvider: Loading provider...', { isInFarcaster, config: !!config });
-
-        if (isInFarcaster) {
-          const { getFarcasterAuthProvider } = await import('./farcasterAuth');
-          authProvider = getFarcasterAuthProvider(config);
-        } else {
-          const { getWeb3AuthProvider } = await import('./web3auth');
-          authProvider = getWeb3AuthProvider(config);
-        }
-
-        console.log('🔧 AuthProvider: Calling provider.initialize()...');
         await authProvider.initialize();
         setProvider(authProvider);
         
         // Check if we have an existing backend session
         const backendStatus = await backendAuth.checkAuthStatus();
+        
         if (backendStatus.success && backendStatus.user) {
-          // We have a valid backend session
           const providerState = authProvider.getState();
           providerState.user = {
             ...providerState.user,
@@ -64,8 +138,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
         } else {
           setAuthState(authProvider.getState());
         }
-
+        
       } catch (error) {
+        console.error('🔧 RegularAuthProvider: Error loading provider:', error);
         setAuthState(prev => ({
           ...prev,
           error: error instanceof Error ? error.message : 'Failed to load auth provider',
@@ -75,10 +150,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
     };
 
     loadProvider();
-  }, [isInFarcaster, envDetectionLoading, config, configLoading]);
+  }, [config, configLoading]);
 
-  // Show loading while we figure out which provider to use
-  if (envDetectionLoading || configLoading || !config || !provider) {
+  // Show loading while we load the provider
+  if (configLoading || !config || !provider) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -97,7 +172,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     // Methods - delegate to the loaded provider
     connect: async () => {
       try {
-        // First connect to the auth provider (Farcaster or Web3Auth)
+        // First connect to the auth provider (Web3Auth)
         const authResult = await provider.connect();
         const newState = provider.getState();
         

@@ -1,5 +1,8 @@
-import { useState, useEffect, createContext, useContext } from 'react';
+import React, { useState, useEffect, createContext, useContext } from 'react';
 import { useAccount, useConnect, useDisconnect, useEnsName, useSignMessage, useWalletClient } from 'wagmi';
+import { WagmiProvider, createConfig } from 'wagmi';
+import { base, baseSepolia } from 'wagmi/chains';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { 
   AuthUser, 
   AuthState, 
@@ -41,30 +44,19 @@ class FarcasterAuthProviderImpl implements IAuthProvider {
   private visitedKey = 'farcaster_auth_visited';
 
   async initialize(): Promise<void> {
-    if (this.state.isInitialized) return;
+    console.log('🔧 Farcaster Provider: Initialize called - setting up SDK reference');
     
-    try {
-      this.state.isLoading = true;
-      
-      // Import SDK
-      if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'test') {
-        const farcasterModule = await import('@farcaster/miniapp-sdk');
-        this.sdk = farcasterModule.sdk;
-        
-        // Just check for context, don't auto-connect yet (need wallet address)
-        const context = await this.sdk.context;
-        if (context?.user) {
-          console.log('Farcaster user detected:', context.user);
-        }
-      }
-      
+    // Get SDK from global storage set by React component
+    this.sdk = (window as any).__farcasterSDK;
+    
+    if (this.sdk) {
+      console.log('🔧 Farcaster Provider: SDK reference established');
       this.state.isInitialized = true;
-    } catch (error) {
-      this.state.error = error instanceof Error ? error.message : 'Initialization failed';
-      this.emit({ type: 'error', error: this.state.error });
-    } finally {
-      this.state.isLoading = false;
+    } else {
+      console.log('🔧 Farcaster Provider: SDK not yet available, will retry');
     }
+    
+    this.state.isLoading = false;
   }
   
   async connect(): Promise<AuthResult> {
@@ -89,6 +81,11 @@ class FarcasterAuthProviderImpl implements IAuthProvider {
       this.state.error = null;
       this.emit({ type: 'connecting' });
       
+      // Re-establish SDK reference in case it wasn't available during initialize
+      if (!this.sdk) {
+        this.sdk = (window as any).__farcasterSDK;
+      }
+      
       if (!this.sdk) {
         throw new Error('SDK not initialized');
       }
@@ -99,14 +96,11 @@ class FarcasterAuthProviderImpl implements IAuthProvider {
         throw new Error('No Farcaster user context');
       }
       
-      // Get auth token
-      const tokenResult = await this.sdk.quickAuth.getToken();
-      const token = typeof tokenResult === 'string' 
-        ? tokenResult 
-        : (tokenResult as any)?.token;
-        
+      // Get auth token from global storage (set by React component during QuickAuth step)
+      const token = (window as any).__farcasterToken;
+      
       if (!token || !token.includes('.') || token.split('.').length !== 3) {
-        throw new Error('Invalid JWT token from Farcaster');
+        throw new Error('Invalid JWT token from Farcaster - token should have been set during QuickAuth step');
       }
       
       // Wallet address is required for connection
@@ -130,6 +124,11 @@ class FarcasterAuthProviderImpl implements IAuthProvider {
       this.state.token = token;
       this.state.isConnected = true;
       
+      console.log('🔧 Farcaster Provider: Connection successful!', {
+        fid: user.fid,
+        walletAddress: user.walletAddress,
+        hasToken: !!token
+      });
       
       // Emit success event
       this.emit({ type: 'connected', user, token });
@@ -222,15 +221,84 @@ export function getFarcasterAuthProvider(config?: any): IAuthProvider {
   return farcasterAuthProvider;
 }
 
+// Wagmi configuration for Farcaster environment
+const createFarcasterWagmiConfig = (chainId: number) => {
+  const chain = chainId === 8453 ? base : baseSepolia; // 8453 = Base mainnet, 84532 = Base Sepolia testnet
+  
+  return createConfig({
+    chains: [chain],
+    connectors: [], // Farcaster will provide its own connectors
+    ssr: false,
+  });
+};
+
+// Singleton instances to prevent multiple providers
+let globalQueryClient: QueryClient | null = null;
+let globalWagmiConfig: any | null = null;
+
+// Query client for React Query (required by Wagmi) - singleton
+function getQueryClient() {
+  if (!globalQueryClient) {
+    globalQueryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          refetchOnWindowFocus: false,
+          retry: false,
+        },
+      },
+    });
+  }
+  return globalQueryClient;
+}
+
+// Wagmi config singleton
+function getWagmiConfig(chainId: number) {
+  if (!globalWagmiConfig) {
+    globalWagmiConfig = createFarcasterWagmiConfig(chainId);
+  }
+  return globalWagmiConfig;
+}
+
+// Singleton flags to prevent duplicate SDK initialization in React Strict Mode
+let isSDKInitialized = false;
+let isQuickAuthInitialized = false;
+let quickAuthPromise: Promise<any> | null = null;
+
+// Track inner component instances
+let innerComponentCount = 0;
+
+// Track if main provider has been rendered to prevent duplicates
+let mainProviderInstanceCount = 0;
+
 /**
  * React Context for Farcaster Auth
  */
 const FarcasterAuthContext = createContext<AuthContextType | null>(null);
 
 /**
- * Farcaster Auth Provider React Component
+ * Inner Farcaster Auth Provider React Component (with Wagmi hooks)
  */
-export function FarcasterAuthProvider({ children }: { children: React.ReactNode }) {
+function FarcasterAuthProviderInner({ children, AuthContext }: { 
+  children: React.ReactNode;
+  AuthContext?: React.Context<any>;
+}) {
+  // Track this instance
+  const innerInstanceId = React.useRef(Math.random().toString(36).substr(2, 9));
+  const renderCount = React.useRef(0);
+  renderCount.current++;
+  
+  React.useEffect(() => {
+    innerComponentCount++;
+    console.log(`🔧 FarcasterAuthProviderInner [${innerInstanceId.current}]: MOUNTED (total inner instances: ${innerComponentCount})`);
+    
+    return () => {
+      innerComponentCount--;
+      console.log(`🔧 FarcasterAuthProviderInner [${innerInstanceId.current}]: UNMOUNTED (remaining inner instances: ${innerComponentCount})`);
+    };
+  }, []);
+  
+  console.log(`🔧 FarcasterAuthProviderInner [${innerInstanceId.current}]: RENDER #${renderCount.current}`);
+  
   const [authState, setAuthState] = useState<AuthState>({
     user: null,
     token: null,
@@ -249,33 +317,222 @@ export function FarcasterAuthProvider({ children }: { children: React.ReactNode 
   const { signMessageAsync } = useSignMessage();
   const { data: walletClient } = useWalletClient();
   
-  // Initialize provider and auto-connect wallet if in Farcaster
+  // Step 1: Initialize Farcaster SDK (singleton to prevent React Strict Mode duplicates)
   useEffect(() => {
-    const init = async () => {
-      await provider.initialize();
-      setAuthState(provider.getState());
+    const initSDK = async () => {
+      if (isSDKInitialized || (window as any).__farcasterSDK) {
+        return;
+      }
       
-      // If we're in Farcaster and don't have a wallet connected, auto-connect
-      if (provider.isReady() && !walletConnected) {
+      console.log(`🔧 Farcaster [${innerInstanceId.current}]: Step 1 - SDK init`);
+      isSDKInitialized = true;
+      
+      try {
+        const farcasterModule = await import('@farcaster/miniapp-sdk');
+        (window as any).__farcasterSDK = farcasterModule.sdk;
+        console.log('🔧 Farcaster: Step 1 ✅');
+      } catch (error) {
+        console.error('🔧 Farcaster: SDK init failed:', error);
+        isSDKInitialized = false;
+      }
+    };
+    
+    initSDK();
+  }, []);
+
+  // Step 2: QuickAuth - Get JWT token from Farcaster (singleton to prevent duplicates)
+  useEffect(() => {
+    const quickAuth = async () => {
+      const sdk = (window as any).__farcasterSDK;
+      if (!sdk) {
+        return;
+      }
+      
+      if (isQuickAuthInitialized || (window as any).__farcasterToken) {
+        return;
+      }
+      
+      console.log(`🔧 Farcaster [${innerInstanceId.current}]: Step 2 - QuickAuth`);
+      isQuickAuthInitialized = true;
+      
+      try {
+        const context = await sdk.context;
+        if (context?.user) {
+          // Wait longer for full context to load and Farcaster environment to be ready
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          
+          // Get JWT token with longer timeout - use singleton promise to prevent multiple calls
+          if (!quickAuthPromise) {
+            quickAuthPromise = Promise.race([
+              sdk.quickAuth.getToken(),
+              new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('QuickAuth timeout after 15 seconds')), 15000)
+              )
+            ]);
+          }
+          
+          const authResponse = await quickAuthPromise;
+          
+          // Handle token response (can be string or object with token property)
+          let token: string;
+          if (typeof authResponse === 'string') {
+            token = authResponse;
+          } else if (authResponse && typeof authResponse === 'object' && 'token' in authResponse) {
+            token = String((authResponse as any).token);
+          } else {
+            console.warn('🔧 Farcaster: QuickAuth - Invalid token format received:', authResponse);
+            return;
+          }
+          
+          // Validate JWT format
+          if (!token || typeof token !== 'string' || !token.includes('.') || token.split('.').length !== 3) {
+            console.warn('🔧 Farcaster: Invalid JWT token format');
+            return;
+          }
+          
+          (window as any).__farcasterToken = token;
+          console.log('🔧 Farcaster: Step 2 ✅ - Token received');
+        } else {
+          console.log('🔧 Farcaster: Step 2 - No user context');
+        }
+      } catch (error) {
+        console.error('🔧 Farcaster: Step 2 failed:', error);
+        // Don't reset on timeout - might still succeed later
+        if (!error.message?.includes('timeout')) {
+          isQuickAuthInitialized = false;
+        }
+      }
+    };
+    
+    // Check immediately and then periodically until SDK is available
+    quickAuth();
+    const interval = setInterval(() => {
+      const sdk = (window as any).__farcasterSDK;
+      if (sdk) {
+        quickAuth();
+        clearInterval(interval);
+      }
+    }, 100);
+    
+    // Cleanup after 5 seconds if still not found
+    const cleanup = setTimeout(() => clearInterval(interval), 5000);
+    
+    return () => {
+      clearInterval(interval);
+      clearTimeout(cleanup);
+    };
+  }, []);
+
+  // Step 3: Wagmi wallet connection
+  useEffect(() => {
+    const connectWagmi = async () => {
+      if (!connectors.length) return;
+      
+      // If we don't have a wallet connected, auto-connect
+      if (!walletConnected && connectors.length > 0) {
         const farcasterConnector = connectors.find((c) => 
           c.name?.toLowerCase().includes('farcaster') || 
           c.id?.includes('miniapp')
         );
         
         if (farcasterConnector) {
-          console.log('Auto-connecting Farcaster wallet...');
+          console.log(`🔧 Farcaster [${innerInstanceId.current}]: Step 3 - Wallet`);
           try {
             await connectWallet({ connector: farcasterConnector });
+            console.log('🔧 Farcaster: Step 3 ✅');
           } catch (error) {
-            console.error('Failed to auto-connect wallet:', error);
+            console.error('🔧 Farcaster: Step 3 failed:', error);
           }
         }
       }
     };
     
-    init();
+    connectWagmi();
+  }, [connectors, walletConnected, connectWallet]);
+
+  // Step 4: Initialize provider AFTER wallet is connected
+  useEffect(() => {
+    if (!address || !walletConnected) {
+      return;
+    }
+
+    const initProvider = async () => {
+      console.log('🔧 Farcaster: Step 4 - Provider init');
+      
+      // Now initialize the provider with wallet address available
+      await provider.initialize();
+      setAuthState(provider.getState());
+      console.log('🔧 Farcaster: Step 4 ✅');
+    };
     
-    // Subscribe to events
+    initProvider();
+  }, [address, walletConnected]);
+
+  // Step 5: Final 'connect' step
+  useEffect(() => {
+    if (!provider.isReady() || !address || authState.isConnected || authState.isLoading) return;
+    
+    const finalConnect = async () => {
+      const farcasterToken = (window as any).__farcasterToken;
+      const farcasterSDK = (window as any).__farcasterSDK;
+      
+      console.log('🔧 Farcaster: Step 5 - Connect');
+      
+      if (farcasterToken && address && farcasterSDK) {
+        try {
+          // Set wallet address in provider first
+          (provider as any).setWalletAddress(address);
+          
+          // Now perform the actual connection
+          await provider.connect();
+          
+          // Update local auth state
+          setAuthState(provider.getState());
+          
+          console.log('🔧 Farcaster: Step 5 ✅ - Connected!');
+        } catch (error) {
+          console.error('🔧 Farcaster: Step 5 failed:', error);
+          setAuthState(prev => ({
+            ...prev,
+            error: error instanceof Error ? error.message : 'Connection failed',
+            isLoading: false
+          }));
+        }
+      } else {
+        console.warn('🔧 Farcaster: Missing prerequisites for final connect:', {
+          token: !!farcasterToken,
+          address: !!address,
+          sdk: !!farcasterSDK
+        });
+      }
+    };
+    
+    finalConnect();
+    
+    // Poll for token in case QuickAuth takes longer than expected
+    const pollInterval = setInterval(() => {
+      const token = (window as any).__farcasterToken;
+      if (token && !authState.isConnected) {
+        console.log('🔧 Farcaster: Token now available, retrying connect...');
+        finalConnect();
+        clearInterval(pollInterval);
+      }
+    }, 2000);
+    
+    // Stop polling after 30 seconds
+    const timeout = setTimeout(() => {
+      clearInterval(pollInterval);
+      console.log('🔧 Farcaster: Stopped polling for token after 30 seconds');
+    }, 30000);
+    
+    return () => {
+      clearInterval(pollInterval);
+      clearTimeout(timeout);
+    };
+  }, [provider, address, authState.isConnected, authState.isLoading]);
+
+  // Update auth state when wagmi wallet connects
+  useEffect(() => {
     const handleEvent = (event: AuthEvent) => {
       setAuthState(provider.getState());
     };
@@ -303,22 +560,7 @@ export function FarcasterAuthProvider({ children }: { children: React.ReactNode 
     }
   }, [ensName, authState.user]);
   
-  // Auto-connect when we have wallet address and SDK is ready
-  useEffect(() => {
-    const autoConnect = async () => {
-      // If we have a wallet address and provider is initialized but not connected
-      if (address && authState.isInitialized && !authState.isConnected && !authState.isLoading) {
-        try {
-          await provider.connect();
-          setAuthState(provider.getState());
-        } catch (error) {
-          console.error('Auto-connect failed:', error);
-        }
-      }
-    };
-    
-    autoConnect();
-  }, [address, authState.isInitialized, authState.isConnected, authState.isLoading]);
+  // Auto-connect logic is now handled by Step 5 - removing redundant effect
   
   // Update wallet address in provider when connected
   useEffect(() => {
@@ -333,8 +575,29 @@ export function FarcasterAuthProvider({ children }: { children: React.ReactNode 
     
     // Methods
     connect: async () => {
+      console.log('🔧 Farcaster: Manual connect() called');
+      
+      // If already connected, return early
+      if (authState.isConnected) {
+        console.log('🔧 Farcaster: Already connected, skipping');
+        return;
+      }
+      
+      // If the 5-step auto-connect sequence is complete, just call provider connect
+      const farcasterToken = (window as any).__farcasterToken;
+      const farcasterSDK = (window as any).__farcasterSDK;
+      
+      if (address && farcasterToken && farcasterSDK && provider.isReady()) {
+        console.log('🔧 Farcaster: All prerequisites ready, connecting directly');
+        (provider as any).setWalletAddress(address);
+        const result = await provider.connect();
+        setAuthState(provider.getState());
+        return;
+      }
+      
       // Need to ensure wallet is connected first
       if (!address) {
+        console.log('🔧 Farcaster: No wallet address, connecting wallet first');
         // Find and connect Farcaster wallet
         const farcasterConnector = connectors.find((c) => 
           c.name?.toLowerCase().includes('farcaster') || 
@@ -347,15 +610,12 @@ export function FarcasterAuthProvider({ children }: { children: React.ReactNode 
           await connectWallet({ connector: connectors[0] });
         }
         
-        // Wait for wallet connection
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // The effect hook will handle calling provider.connect once address is available
+        // Wait for wallet connection and let the 5-step sequence complete
+        console.log('🔧 Farcaster: Wallet connection initiated, 5-step sequence will complete authentication');
         return;
       }
       
-      const result = await provider.connect();
-      setAuthState(provider.getState());
+      console.log('🔧 Farcaster: Prerequisites not ready, waiting for 5-step sequence');
     },
     
     disconnect: async () => {
@@ -399,10 +659,55 @@ export function FarcasterAuthProvider({ children }: { children: React.ReactNode 
     },
   };
   
+  // Use the passed AuthContext if provided, otherwise use the default FarcasterAuthContext
+  const ContextProvider = AuthContext ? AuthContext.Provider : FarcasterAuthContext.Provider;
+  
   return (
-    <FarcasterAuthContext.Provider value={contextValue}>
+    <ContextProvider value={contextValue}>
       {children}
-    </FarcasterAuthContext.Provider>
+    </ContextProvider>
+  );
+}
+
+/**
+ * Farcaster Auth Provider React Component (with Wagmi setup)
+ */
+export function FarcasterAuthProvider({ children, AuthContext }: { 
+  children: React.ReactNode;
+  AuthContext?: React.Context<any>;
+}) {
+  // Get chain ID from config - default to Base Sepolia testnet for Farcaster
+  const chainId = 84532; // Base Sepolia - Farcaster typically uses Base network
+  
+  // Track instances for debugging
+  const instanceId = React.useRef(Math.random().toString(36).substr(2, 9));
+  const renderCount = React.useRef(0);
+  renderCount.current++;
+  
+  React.useEffect(() => {
+    mainProviderInstanceCount++;
+    console.log(`🔧 FarcasterAuthProvider [${instanceId.current}]: MOUNTED (total instances: ${mainProviderInstanceCount})`);
+    
+    return () => {
+      mainProviderInstanceCount--;
+      console.log(`🔧 FarcasterAuthProvider [${instanceId.current}]: UNMOUNTED (remaining instances: ${mainProviderInstanceCount})`);
+    };
+  }, []);
+  
+  console.log(`🔧 FarcasterAuthProvider [${instanceId.current}]: RENDER #${renderCount.current} (chainId: ${chainId})`);
+  
+  // Use singleton instances to prevent multiple providers but allow proper React re-rendering
+  const queryClient = getQueryClient();
+  const wagmiConfig = getWagmiConfig(chainId);
+  
+  return (
+    <QueryClientProvider client={queryClient}>
+      <WagmiProvider config={wagmiConfig}>
+        <FarcasterAuthProviderInner AuthContext={AuthContext}>
+          {children}
+        </FarcasterAuthProviderInner>
+      </WagmiProvider>
+    </QueryClientProvider>
   );
 }
 

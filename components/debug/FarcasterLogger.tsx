@@ -2,6 +2,13 @@ import React, { createContext, useContext, useEffect, useState, ReactNode, useCa
 import { useFarcaster } from '../farcaster/FarcasterDetectionProvider';
 import { setLoggerInstance } from '@/utils/farcasterLogger';
 
+declare global {
+  interface Window {
+    __farcasterLoggerSetup?: boolean;
+    __farcasterLoggerInitialized?: boolean;
+  }
+}
+
 interface LogEntry {
   id: number;
   timestamp: number;
@@ -54,10 +61,14 @@ export const FarcasterLoggerProvider: React.FC<FarcasterLoggerProviderProps> = (
       setLogs([initialLog]);
       setLogId(1);
       
-      // Test that console override is working
-      setTimeout(() => {
-        console.log('🧪 Test log from FarcasterLoggerProvider - this should appear in the logger');
-      }, 1000);
+      // Test that console override is working (only once)
+      if (!window.__farcasterLoggerInitialized) {
+        setTimeout(() => {
+          const originalLog = console.__originalLog || console.log;
+          originalLog('🧪 Logger initialized successfully');
+        }, 1000);
+        window.__farcasterLoggerInitialized = true;
+      }
     }
   }, [isInFarcaster]);
 
@@ -76,15 +87,17 @@ export const FarcasterLoggerProvider: React.FC<FarcasterLoggerProviderProps> = (
 
   const toggleLogger = useCallback(() => {
     try {
-      console.log('FarcasterLogger: toggleLogger called, current isVisible:', isVisible);
+      const originalLog = console.__originalLog || console.log;
+      originalLog('FarcasterLogger: toggleLogger called');
       setIsVisible(prev => {
-        console.log('FarcasterLogger: toggling from', prev, 'to', !prev);
-        return !prev;
+        const newValue = !prev;
+        originalLog('FarcasterLogger: toggling from', prev, 'to', newValue);
+        return newValue;
       });
     } catch (error) {
       console.error('FarcasterLogger: Error in toggleLogger:', error);
     }
-  }, [isVisible]);
+  }, []); // Remove isVisible dependency to prevent stale closures
 
   const clearLogs = useCallback(() => {
     try {
@@ -101,7 +114,11 @@ export const FarcasterLoggerProvider: React.FC<FarcasterLoggerProviderProps> = (
     const shouldOverrideConsole = isInFarcaster || (process.env.NODE_ENV === 'development');
     if (!shouldOverrideConsole) return;
     
-    console.log('🪵 Setting up console override. isInFarcaster:', isInFarcaster, 'isDev:', process.env.NODE_ENV === 'development');
+    const originalLog = console.__originalLog || console.log;
+    originalLog('🪵 Setting up console override. isInFarcaster:', isInFarcaster, 'isDev:', process.env.NODE_ENV === 'development');
+    
+    // Skip adding setup logs to avoid circular dependencies
+    window.__farcasterLoggerSetup = true;
 
     const originalConsole = {
       log: console.log,
@@ -109,6 +126,12 @@ export const FarcasterLoggerProvider: React.FC<FarcasterLoggerProviderProps> = (
       error: console.error,
       info: console.info,
     };
+
+    // Store reference for debug use
+    console.__originalLog = originalConsole.log;
+    console.__originalWarn = originalConsole.warn;
+    console.__originalError = originalConsole.error;
+    console.__originalInfo = originalConsole.info;
 
     const safeStringify = (arg: any): string => {
       if (arg === null) return 'null';
@@ -135,40 +158,62 @@ export const FarcasterLoggerProvider: React.FC<FarcasterLoggerProviderProps> = (
       }
     };
 
+    let isLogging = false; // Prevent infinite loops
+
     // Override console methods to capture logs
     console.log = (...args) => {
-      try {
-        originalConsole.log(...args);
-        addLog('log', args.map(safeStringify).join(' '));
-      } catch (error) {
-        originalConsole.error('FarcasterLogger error:', error);
+      originalConsole.log(...args);
+      if (!isLogging) {
+        try {
+          isLogging = true;
+          addLog('log', args.map(safeStringify).join(' '));
+        } catch (error) {
+          originalConsole.error('FarcasterLogger error:', error);
+        } finally {
+          isLogging = false;
+        }
       }
     };
 
     console.warn = (...args) => {
-      try {
-        originalConsole.warn(...args);
-        addLog('warn', args.map(safeStringify).join(' '));
-      } catch (error) {
-        originalConsole.error('FarcasterLogger error:', error);
+      originalConsole.warn(...args);
+      if (!isLogging) {
+        try {
+          isLogging = true;
+          addLog('warn', args.map(safeStringify).join(' '));
+        } catch (error) {
+          originalConsole.error('FarcasterLogger error:', error);
+        } finally {
+          isLogging = false;
+        }
       }
     };
 
     console.error = (...args) => {
-      try {
-        originalConsole.error(...args);
-        addLog('error', args.map(safeStringify).join(' '));
-      } catch (error) {
-        originalConsole.error('FarcasterLogger error:', error);
+      originalConsole.error(...args);
+      if (!isLogging) {
+        try {
+          isLogging = true;
+          addLog('error', args.map(safeStringify).join(' '));
+        } catch (error) {
+          originalConsole.error('FarcasterLogger error:', error);
+        } finally {
+          isLogging = false;
+        }
       }
     };
 
     console.info = (...args) => {
-      try {
-        originalConsole.info(...args);
-        addLog('info', args.map(safeStringify).join(' '));
-      } catch (error) {
-        originalConsole.error('FarcasterLogger error:', error);
+      originalConsole.info(...args);
+      if (!isLogging) {
+        try {
+          isLogging = true;
+          addLog('info', args.map(safeStringify).join(' '));
+        } catch (error) {
+          originalConsole.error('FarcasterLogger error:', error);
+        } finally {
+          isLogging = false;
+        }
       }
     };
 
@@ -193,41 +238,236 @@ export const FarcasterLoggerProvider: React.FC<FarcasterLoggerProviderProps> = (
   };
 
   // Show overlay in Farcaster OR development mode for testing
-  const shouldShowOverlay = isInFarcaster || (process.env.NODE_ENV === 'development');
+  const shouldShowOverlay = isInFarcaster || (process.env.NODE_ENV === 'development') || true; // Always show for debugging
+  
+  // Debug the visibility conditions (only once when isInFarcaster changes)
+  useEffect(() => {
+    const originalLog = console.__originalLog || console.log;
+    originalLog('FarcasterLogger visibility check:', {
+      isInFarcaster,
+      nodeEnv: process.env.NODE_ENV,
+      shouldShowOverlay
+    });
+  }, [isInFarcaster]);
+
+  // Debug render decision (in useEffect to avoid infinite loops)
+  useEffect(() => {
+    const originalLog = console.__originalLog || console.log;
+    originalLog('FarcasterLoggerProvider render decision:', {
+      shouldShowOverlay,
+      isInFarcaster,
+      nodeEnv: process.env.NODE_ENV,
+      willRenderOverlay: shouldShowOverlay
+    });
+  }, [shouldShowOverlay, isInFarcaster]);
 
   return (
     <FarcasterLoggerContext.Provider value={value}>
       {children}
       {shouldShowOverlay && <FarcasterLoggerOverlay />}
+      {/* FORCE RENDER TEST - ALWAYS SHOW */}
+      <div
+        style={{
+          position: 'fixed',
+          top: '50px',
+          left: '50px',
+          zIndex: 999999,
+          padding: '10px',
+          backgroundColor: 'orange',
+          color: 'black',
+          border: '2px solid black',
+          borderRadius: '5px',
+          fontWeight: 'bold'
+        }}
+      >
+        LOGGER TEST: {shouldShowOverlay ? 'SHOULD SHOW' : 'HIDDEN'}
+      </div>
     </FarcasterLoggerContext.Provider>
   );
 };
 
-const FarcasterLoggerOverlay: React.FC = () => {
-  const [localIsVisible, setLocalIsVisible] = useState(false);
-  const { logs, clearLogs } = useFarcasterLogger();
-  const { isInFarcaster } = useFarcaster();
-
-  // Stable references to prevent re-renders from breaking the button
-  const [isInitialized, setIsInitialized] = useState(false);
+// WORKING Simple button component with minimal state dependencies
+const SimpleLoggerButton: React.FC<{ logs: LogEntry[] }> = ({ logs }) => {
+  const [localVisible, setLocalVisible] = useState(false);
   
-  useEffect(() => {
-    setIsInitialized(true);
-  }, []);
+  return (
+    <>
+      <div
+        style={{
+          position: 'fixed',
+          bottom: '20px',
+          right: '20px',
+          zIndex: 99999,
+          width: '70px',
+          height: '70px',
+          backgroundColor: '#8b5cf6',
+          borderRadius: '50%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          color: 'white',
+          fontSize: '28px',
+          userSelect: 'none',
+          touchAction: 'manipulation',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.4), 0 0 0 3px white',
+          border: '3px solid white',
+          fontWeight: 'bold'
+        }}
+        onClick={() => {
+          setLocalVisible(!localVisible);
+        }}
+      >
+        🔍
+        {logs.length > 0 && (
+          <div
+            style={{
+              position: 'absolute',
+              top: '-8px',
+              right: '-8px',
+              backgroundColor: '#ef4444',
+              borderRadius: '50%',
+              width: '20px',
+              height: '20px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '12px',
+              fontWeight: 'bold',
+              color: 'white',
+              border: '2px solid white'
+            }}
+          >
+            {logs.length > 99 ? '99+' : logs.length}
+          </div>
+        )}
+      </div>
+      
+      {localVisible && (
+        <div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm">
+          <div className="absolute inset-4 bg-gray-900 rounded-lg border border-gray-700 flex flex-col overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 border-b border-gray-700 bg-gray-800">
+              <div className="flex items-center gap-2">
+                <svg className="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <h3 className="text-lg font-semibold text-white">Debug Logger</h3>
+                <span className="bg-purple-600 text-white px-2 py-1 rounded text-xs font-medium">
+                  {logs.length} logs
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    console.log('🧪 Manual test log');
+                    console.warn('🧪 Manual test warning');
+                    console.error('🧪 Manual test error');
+                    console.info('🧪 Manual test info');
+                  }}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm font-medium transition-colors duration-200"
+                  type="button"
+                >
+                  Test
+                </button>
+                <button
+                  onClick={() => setLocalVisible(false)}
+                  className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-1 rounded text-sm font-medium transition-colors duration-200"
+                  type="button"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
 
-  // Stable toggle function
-  const simpleToggle = useCallback(() => {
-    setLocalIsVisible(prev => {
-      const newValue = !prev;
-      console.log(`Toggle: ${prev} -> ${newValue}`);
-      return newValue;
-    });
-  }, []);
+            {/* Log Entries */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-2 font-mono text-sm">
+              {logs.length === 0 ? (
+                <div className="text-gray-500 text-center py-8">
+                  No logs yet. Debug information will appear here when the app runs.
+                </div>
+              ) : (
+                logs.map((log) => {
+                  const formatTime = (timestamp: number) => {
+                    const date = new Date(timestamp);
+                    const time = date.toLocaleTimeString('en-US', { 
+                      hour12: false,
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      second: '2-digit'
+                    });
+                    const ms = date.getMilliseconds().toString().padStart(3, '0');
+                    return `${time}.${ms}`;
+                  };
+
+                  const getLogColor = (level: LogEntry['level']) => {
+                    switch (level) {
+                      case 'error': return 'text-red-400';
+                      case 'warn': return 'text-yellow-400';
+                      case 'info': return 'text-blue-400';
+                      default: return 'text-gray-300';
+                    }
+                  };
+
+                  const getLogBg = (level: LogEntry['level']) => {
+                    switch (level) {
+                      case 'error': return 'bg-red-900/20 border-red-700/30';
+                      case 'warn': return 'bg-yellow-900/20 border-yellow-700/30';
+                      case 'info': return 'bg-blue-900/20 border-blue-700/30';
+                      default: return 'bg-gray-900/20 border-gray-700/30';
+                    }
+                  };
+
+                  return (
+                    <div
+                      key={log.id}
+                      className={`border rounded p-2 ${getLogBg(log.level)}`}
+                    >
+                      <div className="flex items-start gap-2 mb-1">
+                        <span className="text-gray-400 text-xs shrink-0 mt-0.5">
+                          {formatTime(log.timestamp)}
+                        </span>
+                        <span className={`text-xs font-bold uppercase shrink-0 mt-0.5 ${getLogColor(log.level)}`}>
+                          {log.level}
+                        </span>
+                      </div>
+                      <div className="text-gray-200 whitespace-pre-wrap break-words">
+                        {log.message}
+                      </div>
+                      {log.data && (
+                        <details className="mt-2">
+                          <summary className="text-gray-400 text-xs cursor-pointer hover:text-gray-300">
+                            Additional Data
+                          </summary>
+                          <pre className="mt-1 text-xs text-gray-300 bg-black/30 p-2 rounded overflow-x-auto">
+                            {JSON.stringify(log.data, null, 2)}
+                          </pre>
+                        </details>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+};
+
+const FarcasterLoggerOverlay: React.FC = () => {
+  const { logs, clearLogs, isVisible, toggleLogger } = useFarcasterLogger();
+  const { isInFarcaster } = useFarcaster();
 
   // Debug: Log when overlay renders
   useEffect(() => {
-    console.log('FarcasterLoggerOverlay rendered. isInFarcaster:', isInFarcaster, 'localIsVisible:', localIsVisible, 'logs count:', logs.length);
-  }, [isInFarcaster, localIsVisible, logs.length]);
+    const originalLog = console.__originalLog || console.log;
+    originalLog('FarcasterLoggerOverlay rendered. isInFarcaster:', isInFarcaster, 'isVisible:', isVisible, 'logs count:', logs.length);
+    if (isVisible) {
+      originalLog('OVERLAY SHOULD BE VISIBLE NOW!');
+    }
+  }, [isInFarcaster, isVisible, logs.length]);
 
   const formatTime = (timestamp: number) => {
     const date = new Date(timestamp);
@@ -259,55 +499,125 @@ const FarcasterLoggerOverlay: React.FC = () => {
     }
   };
 
+  // Add render logging (moved to useEffect to prevent loops)
+  useEffect(() => {
+    const originalLog = console.__originalLog || console.log;
+    originalLog('FarcasterLoggerOverlay RENDERING - logs:', logs.length);
+  }, [logs.length]);
+
   return (
     <>
-      {/* Super Simple Button */}
+      {/* SIMPLE TEST BUTTON */}
+      <button
+        style={{
+          position: 'fixed',
+          top: '100px',
+          right: '20px',
+          zIndex: 999999,
+          padding: '10px',
+          backgroundColor: 'red',
+          color: 'white',
+          border: 'none',
+          borderRadius: '5px',
+          cursor: 'pointer'
+        }}
+        onClick={() => {
+          alert('SIMPLE BUTTON WORKS!');
+          console.log('Simple button clicked');
+        }}
+      >
+        TEST
+      </button>
+
+      {/* SUPER SIMPLE BUTTON - NO STATE DEPENDENCIES */}
+      <SimpleLoggerButton logs={logs} />
+
+      {/* Debug Logger Button - ALWAYS VISIBLE */}
       <div
         style={{
           position: 'fixed',
-          bottom: '16px',
-          right: '16px',
-          zIndex: 9999,
-          width: '60px',
-          height: '60px',
-          backgroundColor: '#9333ea',
+          bottom: '20px',
+          right: '100px',
+          zIndex: 99999,
+          width: '70px',
+          height: '70px',
+          backgroundColor: logs.length > 0 ? '#10b981' : '#ff6b35',
           borderRadius: '50%',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           cursor: 'pointer',
           color: 'white',
-          fontSize: '24px',
+          fontSize: '28px',
           userSelect: 'none',
-          touchAction: 'manipulation'
+          touchAction: 'manipulation',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.4), 0 0 0 3px white',
+          border: '3px solid white',
+          fontWeight: 'bold',
+          pointerEvents: 'auto',
+          isolation: 'isolate'
         }}
-        onMouseDown={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          
-          const timestamp = new Date().toLocaleTimeString();
-          alert(`CLICK! ${timestamp}\nVisible: ${localIsVisible}\nLogs: ${logs?.length || 0}`);
-          
-          // Direct state update - no function calls
-          setLocalIsVisible(current => !current);
-        }}
-        onTouchStart={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          
-          const timestamp = new Date().toLocaleTimeString();
-          alert(`TOUCH! ${timestamp}\nVisible: ${localIsVisible}\nLogs: ${logs?.length || 0}`);
-          
-          // Direct state update - no function calls
-          setLocalIsVisible(current => !current);
+        onClick={() => {
+          console.log('Green button clicked - toggling logger');
+          toggleLogger();
         }}
       >
         📋
+        {logs.length > 0 && (
+          <div
+            style={{
+              position: 'absolute',
+              top: '-8px',
+              right: '-8px',
+              backgroundColor: '#ef4444',
+              borderRadius: '50%',
+              width: '20px',
+              height: '20px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '12px',
+              fontWeight: 'bold',
+              color: 'white',
+              border: '2px solid white'
+            }}
+          >
+            {logs.length > 99 ? '99+' : logs.length}
+          </div>
+        )}
       </div>
 
       {/* Logger Panel */}
-      {localIsVisible && (
-        <div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm">
+      {isVisible && (
+        <>
+          {/* TEST VISIBILITY */}
+          <div
+            style={{
+              position: 'fixed',
+              top: '200px',
+              left: '200px',
+              width: '200px',
+              height: '100px',
+              backgroundColor: 'yellow',
+              border: '5px solid red',
+              zIndex: 999999,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '16px',
+              fontWeight: 'bold'
+            }}
+          >
+            OVERLAY IS VISIBLE!
+          </div>
+          
+          <div 
+            className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
+            style={{ 
+              backgroundColor: 'rgba(255, 0, 0, 0.8)',
+              zIndex: 99998 
+            }}
+          >
           <div className="absolute inset-4 bg-gray-900 rounded-lg border border-gray-700 flex flex-col overflow-hidden">
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-gray-700 bg-gray-800">
@@ -323,6 +633,18 @@ const FarcasterLoggerOverlay: React.FC = () => {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => {
+                    console.log('🧪 Manual test log');
+                    console.warn('🧪 Manual test warning');
+                    console.error('🧪 Manual test error');
+                    console.info('🧪 Manual test info');
+                  }}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm font-medium transition-colors duration-200"
+                  type="button"
+                >
+                  Test
+                </button>
+                <button
+                  onClick={() => {
                     if (clearLogs) clearLogs();
                   }}
                   className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm font-medium transition-colors duration-200"
@@ -332,7 +654,7 @@ const FarcasterLoggerOverlay: React.FC = () => {
                 </button>
                 <button
                   onClick={() => {
-                    simpleToggle();
+                    toggleLogger();
                   }}
                   className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-1 rounded text-sm font-medium transition-colors duration-200"
                   type="button"
@@ -379,8 +701,9 @@ const FarcasterLoggerOverlay: React.FC = () => {
                 ))
               )}
             </div>
+            </div>
           </div>
-        </div>
+        </>
       )}
     </>
   );

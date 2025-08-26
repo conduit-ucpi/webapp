@@ -64,16 +64,22 @@ export function UnifiedAuthProvider({ children }: UnifiedAuthProviderProps) {
     // Farcaster implementation - all contained here
     console.log('🔐 Running in Farcaster - using Farcaster auth stack');
     
-    return (
-      <WagmiProviderWrapper>
-        <FarcasterWalletProvider>
-          <FarcasterAuthProvider>
-            {/* FarcasterAuthProvider already provides the unified AuthContextType */}
-            {children}
-          </FarcasterAuthProvider>
-        </FarcasterWalletProvider>
-      </WagmiProviderWrapper>
-    );
+    try {
+      console.log('🔐 About to render FarcasterAuthProvider...');
+      return (
+        <WagmiProviderWrapper>
+          <FarcasterWalletProvider>
+            <FarcasterAuthProvider>
+              {/* FarcasterAuthProvider already provides the unified AuthContextType */}
+              {children}
+            </FarcasterAuthProvider>
+          </FarcasterWalletProvider>
+        </WagmiProviderWrapper>
+      );
+    } catch (error) {
+      console.error('🔐 Error rendering FarcasterAuthProvider:', error);
+      return <div>Error loading Farcaster auth</div>;
+    }
   } else {
     // Web3Auth implementation - all contained here
     console.log('🔐 Running in regular web - using Web3Auth stack');

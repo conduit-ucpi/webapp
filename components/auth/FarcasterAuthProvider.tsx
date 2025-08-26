@@ -3,18 +3,17 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { User, FarcasterAuthContextType, AuthContextType } from '@/types';
 import { AuthContext } from './GenericAuthProvider';
-
-// Import wagmi properly as ESM
-import { useAccount } from 'wagmi';
+import { useAccount, useConnect } from 'wagmi';
 
 const FarcasterAuthContext = createContext<FarcasterAuthContextType | undefined>(undefined);
 
 export function FarcasterAuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  
-  // Call the hook (mocked in tests, fallback if wagmi not available)
   const { isConnected, address } = useAccount();
+  const { connect, connectors } = useConnect();
+
+  console.log('🚀 FarcasterAuthProvider mounted!');
 
   // Helper to safely call debug API (avoid fetch errors in tests)
   const debugLog = (event: string, data?: any) => {
@@ -93,24 +92,26 @@ export function FarcasterAuthProvider({ children }: { children: React.ReactNode 
   };
 
   useEffect(() => {
+    console.log('🔥 FarcasterAuthProvider useEffect started');
     let isMounted = true;
 
     const checkAuthStatus = async () => {
-      debugLog('FarcasterAuthProvider_checkAuthStatus_started', {
-        isConnected,
-        hasAddress: !!address,
-        walletAddress: address
-      });
+      console.log('🔥 checkAuthStatus started');
+      debugLog('FarcasterAuthProvider_checkAuthStatus_started');
 
       try {
         // Go straight to automatic Farcaster auth
+        console.log('🔥 About to call attemptFarcasterAuth');
         await attemptFarcasterAuth();
+        console.log('🔥 attemptFarcasterAuth completed');
       } catch (error) {
+        console.error('🔥 Error in checkAuthStatus:', error);
         debugLog('FarcasterAuthProvider_checkAuthStatus_error', {
           error: error instanceof Error ? error.message : String(error)
         });
       } finally {
         if (isMounted) {
+          console.log('🔥 Setting isLoading to false');
           setIsLoading(false);
           debugLog('FarcasterAuthProvider_checkAuthStatus_completed');
         }
@@ -119,24 +120,31 @@ export function FarcasterAuthProvider({ children }: { children: React.ReactNode 
 
     const attemptFarcasterAuth = async () => {
       try {
+        console.log('🔥 attemptFarcasterAuth: Starting');
         debugLog('attemptFarcasterAuth_started');
         
         // Import Farcaster SDK dynamically to avoid SSR issues
         // Skip in test environment
         if (typeof window === 'undefined' || process.env.NODE_ENV === 'test') {
+          console.log('🔥 attemptFarcasterAuth: Skipping - test env or no window');
           debugLog('attemptFarcasterAuth_skipped_test_env');
           return;
         }
         
+        console.log('🔥 attemptFarcasterAuth: Importing SDK');
         const { sdk } = await import('@farcaster/miniapp-sdk');
         
+        console.log('🔥 attemptFarcasterAuth: Getting context');
         // Get the context from Farcaster SDK - wait for it to be ready
         const context = await sdk.context;
         
+        console.log('🔥 attemptFarcasterAuth: Waiting 1 second');
         // Wait a bit more for full context to load
         await new Promise(resolve => setTimeout(resolve, 1000));
         
+        console.log('🔥 attemptFarcasterAuth: Checking context and user', { context: !!context, user: !!context?.user });
         if (!context || !context.user) {
+          console.log('🔥 attemptFarcasterAuth: No context or user - returning');
           debugLog('attemptFarcasterAuth_no_context', {
             context: !!context,
             user: !!context?.user
@@ -144,6 +152,10 @@ export function FarcasterAuthProvider({ children }: { children: React.ReactNode 
           return;
         }
 
+        console.log('🔥 attemptFarcasterAuth: Full user object:', context.user);
+        console.log('🔥 attemptFarcasterAuth: User properties:', Object.keys(context.user));
+        console.log('🔥 attemptFarcasterAuth: User JSON:', JSON.stringify(context.user, null, 2));
+        
         debugLog('attemptFarcasterAuth_context_found', { 
           context: context,
           user: context.user,
@@ -151,18 +163,56 @@ export function FarcasterAuthProvider({ children }: { children: React.ReactNode 
           userStringified: JSON.stringify(context.user)
         });
 
-        // Use wagmi wallet address instead of trying to get it from Farcaster context
+        // Auto-connect wallet if not connected
+        console.log('🔥 wagmi connection status:', { isConnected, address });
         if (!isConnected || !address) {
-          debugLog('attemptFarcasterAuth_no_wagmi_wallet', {
-            isConnected,
-            hasAddress: !!address,
-            userProperties: Object.keys(context.user)
-          });
+          console.log('🔥 attemptFarcasterAuth: Wallet not connected - attempting auto-connect');
+          
+          // Find Farcaster connector
+          const farcasterConnector = connectors.find((c: any) => 
+            c.name?.includes('Farcaster') || 
+            c.id?.includes('miniapp') ||
+            c.type?.includes('farcaster')
+          );
+          
+          if (!farcasterConnector) {
+            console.log('🔥 attemptFarcasterAuth: No Farcaster connector found, using first available');
+            if (connectors.length > 0) {
+              try {
+                console.log('🔥 attemptFarcasterAuth: Connecting with', connectors[0].name);
+                await connect({ connector: connectors[0] });
+                // Wait a moment for connection to establish
+                await new Promise(resolve => setTimeout(resolve, 1000));
+              } catch (error) {
+                console.log('🔥 attemptFarcasterAuth: Auto-connect failed:', error);
+                return;
+              }
+            } else {
+              console.log('🔥 attemptFarcasterAuth: No connectors available');
+              return;
+            }
+          } else {
+            try {
+              console.log('🔥 attemptFarcasterAuth: Auto-connecting with Farcaster connector');
+              await connect({ connector: farcasterConnector });
+              // Wait a moment for connection to establish
+              await new Promise(resolve => setTimeout(resolve, 1000));
+            } catch (error) {
+              console.log('🔥 attemptFarcasterAuth: Farcaster auto-connect failed:', error);
+              return;
+            }
+          }
+          
+          // Check connection again after auto-connect attempt
+          // Note: This might not work immediately due to React state updates
+          // The useEffect will re-run when isConnected/address changes
+          console.log('🔥 attemptFarcasterAuth: Auto-connect attempted, will retry on next render');
           return;
         }
 
         const walletAddress = address;
 
+        console.log('🔥 attemptFarcasterAuth: Getting token from quickAuth');
         // Get proper signed JWT from Farcaster Quick Auth
         const tokenResult = await sdk.quickAuth.getToken();
         
@@ -186,6 +236,7 @@ export function FarcasterAuthProvider({ children }: { children: React.ReactNode 
           throw new Error('Token does not appear to be a valid JWT format');
         }
         
+        console.log('🔥 attemptFarcasterAuth: About to call login with token and address');
         debugLog('attemptFarcasterAuth_calling_login', { 
           walletAddress,
           hasToken: !!token,
@@ -194,6 +245,7 @@ export function FarcasterAuthProvider({ children }: { children: React.ReactNode 
         
         await login(token, walletAddress);
         
+        console.log('🔥 attemptFarcasterAuth: Login successful!');
         debugLog('attemptFarcasterAuth_login_success');
       } catch (error) {
         debugLog('attemptFarcasterAuth_error', {
@@ -202,12 +254,14 @@ export function FarcasterAuthProvider({ children }: { children: React.ReactNode 
       }
     };
 
+    console.log('🔥 About to call checkAuthStatus');
     checkAuthStatus();
 
     return () => {
+      console.log('🔥 FarcasterAuthProvider useEffect cleanup');
       isMounted = false;
     };
-  }, [isConnected, address]);
+  }, [isConnected, address]); // React to wagmi wallet connection changes
 
   // Create auth context value for regular components
   const authContextValue: AuthContextType = {
@@ -218,15 +272,11 @@ export function FarcasterAuthProvider({ children }: { children: React.ReactNode 
     },
     logout,
     connect: async () => {
-      // In Farcaster context, connection is automatic via wagmi
+      // In Farcaster context, connection is automatic
       // Just check if we're connected and authenticated
       if (user) {
         console.log('Already connected and authenticated in Farcaster');
         return;
-      }
-      
-      if (!isConnected || !address) {
-        throw new Error('Wallet not connected in Farcaster context');
       }
       
       // Connection is automatic, but auth might still be in progress
@@ -234,7 +284,7 @@ export function FarcasterAuthProvider({ children }: { children: React.ReactNode 
         throw new Error('Authentication in progress, please wait');
       }
       
-      console.log('Farcaster wallet connected, authentication should happen automatically');
+      console.log('Farcaster authentication should happen automatically');
     }
   };
 

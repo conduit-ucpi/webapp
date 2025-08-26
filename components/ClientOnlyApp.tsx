@@ -9,7 +9,7 @@ import { TourProvider } from '@/components/onboarding/TourProvider';
 import { SDKProvider } from '@/components/auth/SDKProvider';
 import FarcasterReady from '@/components/farcaster/FarcasterReady';
 import { FarcasterDetectionProvider } from '@/components/farcaster/FarcasterDetectionProvider';
-import { FarcasterLoggerProvider } from '@/components/debug/FarcasterLogger';
+import { SimpleDebugLogger } from '@/components/debug/SimpleDebugLogger';
 
 interface ClientOnlyAppProps {
   Component: any;
@@ -39,7 +39,6 @@ export default function ClientOnlyApp({ Component, pageProps }: ClientOnlyAppPro
       <ThemeProvider>
         <FarcasterReady />
         <FarcasterDetectionProvider>
-          <FarcasterLoggerProvider>
             <ConfigProvider>
               <SDKProvider>
                 <UnifiedAuthProvider>
@@ -48,12 +47,12 @@ export default function ClientOnlyApp({ Component, pageProps }: ClientOnlyAppPro
                       <Layout>
                         <Component {...pageProps} />
                       </Layout>
+                      <SimpleDebugLogger />
                     </TourProvider>
                   </ToastProvider>
                 </UnifiedAuthProvider>
               </SDKProvider>
             </ConfigProvider>
-          </FarcasterLoggerProvider>
         </FarcasterDetectionProvider>
       </ThemeProvider>
     </ErrorBoundary>

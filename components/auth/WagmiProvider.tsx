@@ -2,8 +2,9 @@ import { ReactNode } from 'react';
 
 // Import wagmi components - these will be mocked in test environment
 import { WagmiProvider, createConfig, http } from 'wagmi';
-import { avalanche, avalancheFuji } from 'wagmi/chains';
+import { base, baseSepolia } from 'wagmi/chains';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { farcasterMiniApp as miniAppConnector } from '@farcaster/miniapp-wagmi-connector';
 
 interface WagmiProviderWrapperProps {
   children: ReactNode;
@@ -11,11 +12,14 @@ interface WagmiProviderWrapperProps {
 
 // Create wagmi config and QueryClient for Farcaster auth
 const config = createConfig({
-  chains: [avalanche, avalancheFuji],
+  chains: [base, baseSepolia],
   transports: {
-    [avalanche.id]: http(),
-    [avalancheFuji.id]: http(),
+    [base.id]: http(),
+    [baseSepolia.id]: http(),
   },
+  connectors: [
+    miniAppConnector()
+  ],
 });
 
 const queryClient = new QueryClient({

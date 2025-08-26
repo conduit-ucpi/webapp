@@ -12,6 +12,7 @@ import { FarcasterWalletProvider } from './FarcasterWalletProvider';
 import { FarcasterAuthProvider } from './FarcasterAuthProvider';
 
 import { GenericAuthProvider } from './GenericAuthProvider';
+import { Web3AuthConnectProvider } from './Web3AuthConnectProvider';
 
 interface UnifiedAuthProviderProps {
   children: React.ReactNode;
@@ -67,9 +68,8 @@ export function UnifiedAuthProvider({ children }: UnifiedAuthProviderProps) {
       <WagmiProviderWrapper>
         <FarcasterWalletProvider>
           <FarcasterAuthProvider>
-            <GenericAuthProvider>
-              {children}
-            </GenericAuthProvider>
+            {/* FarcasterAuthProvider already provides the unified AuthContextType */}
+            {children}
           </FarcasterAuthProvider>
         </FarcasterWalletProvider>
       </WagmiProviderWrapper>
@@ -83,9 +83,9 @@ export function UnifiedAuthProvider({ children }: UnifiedAuthProviderProps) {
         <Web3AuthContextProvider>
           <AuthContextProvider>
             <WalletProvider>
-              <GenericAuthProvider>
+              <Web3AuthConnectProvider>
                 {children}
-              </GenericAuthProvider>
+              </Web3AuthConnectProvider>
             </WalletProvider>
           </AuthContextProvider>
         </Web3AuthContextProvider>

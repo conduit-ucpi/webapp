@@ -8,7 +8,12 @@ import { User, AuthContextType } from '@/types';
  */
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function GenericAuthProvider({ children }: { children: React.ReactNode }) {
+interface GenericAuthProviderProps {
+  children: React.ReactNode;
+  connectMethod?: () => Promise<void>; // Optional connect implementation from specific auth provider
+}
+
+export function GenericAuthProvider({ children, connectMethod }: GenericAuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -53,6 +58,15 @@ export function GenericAuthProvider({ children }: { children: React.ReactNode })
     }
   }, []);
 
+  // Generic connect - uses implementation provided by specific auth provider
+  const connect = useCallback(async () => {
+    if (connectMethod) {
+      await connectMethod();
+    } else {
+      throw new Error('Connect method not provided to GenericAuthProvider');
+    }
+  }, [connectMethod]);
+
   // Check auth status on mount
   useEffect(() => {
     let isMounted = true;
@@ -90,7 +104,8 @@ export function GenericAuthProvider({ children }: { children: React.ReactNode })
       user,
       isLoading,
       login,
-      logout
+      logout,
+      connect
     }}>
       {children}
     </AuthContext.Provider>

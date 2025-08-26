@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useConfig } from './ConfigProvider';
 import { useAuth } from '.';
 import { useFarcaster } from '@/components/farcaster/FarcasterDetectionProvider';
-import { useAuthContext } from '@/lib/auth/AuthContextProvider';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 
@@ -13,11 +12,10 @@ export const resetWeb3AuthInstance = () => {
 
 export default function ConnectWallet() {
   const { config } = useConfig();
-  const { user, isLoading: authLoading, login } = useAuth();
+  const { user, isLoading: authLoading, login, connect } = useAuth();
   const { isInFarcaster } = useFarcaster();
 
-  // Always call useAuthContext - it should be available in all contexts now
-  const authContextData = useAuthContext();
+  // No need for Web3Auth-specific context anymore - using unified interface
 
   const [isConnecting, setIsConnecting] = useState(false);
 
@@ -42,27 +40,19 @@ export default function ConnectWallet() {
     }
   }
 
-  // Web3Auth context - handle connection manually
+  // Unified connection handler - works for both Web3Auth and Farcaster
   const handleConnectWallet = async () => {
-    if (!authContextData) {
-      console.error('No Web3Auth context available');
-      return;
-    }
-
     setIsConnecting(true);
     
     try {
-      // Use Web3Auth connection flow
-      const authResult = await authContextData.connectAuth();
+      // Use unified connect method - handles wallet connection and login automatically
+      await connect();
       
-      // Login to backend with the result
-      await login(authResult.idToken, authResult.walletAddress);
-      
-      console.log('Web3Auth connection successful');
+      console.log('Wallet connection successful');
     } catch (error: any) {
-      console.error('Web3Auth connection failed:', error);
+      console.error('Wallet connection failed:', error);
       
-      if (error.message?.includes('User closed the modal')) {
+      if (error.message?.includes('cancelled') || error.message?.includes('User closed')) {
         // User cancelled - don't show error
       } else {
         alert(`Failed to connect: ${error.message || 'Unknown error'}`);
@@ -76,8 +66,8 @@ export default function ConnectWallet() {
     return <LoadingSpinner />;
   }
 
-  // Web3Auth context logic
-  const connecting = isConnecting || authLoading || (authContextData?.isConnecting);
+  // Connection loading state
+  const connecting = isConnecting || authLoading;
   const isUserConnected = !!user;
 
   return (

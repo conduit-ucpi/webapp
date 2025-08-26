@@ -216,7 +216,26 @@ export function FarcasterAuthProvider({ children }: { children: React.ReactNode 
     login: async (idToken: string, walletAddress: string) => {
       return login(idToken, walletAddress);
     },
-    logout
+    logout,
+    connect: async () => {
+      // In Farcaster context, connection is automatic via wagmi
+      // Just check if we're connected and authenticated
+      if (user) {
+        console.log('Already connected and authenticated in Farcaster');
+        return;
+      }
+      
+      if (!isConnected || !address) {
+        throw new Error('Wallet not connected in Farcaster context');
+      }
+      
+      // Connection is automatic, but auth might still be in progress
+      if (isLoading) {
+        throw new Error('Authentication in progress, please wait');
+      }
+      
+      console.log('Farcaster wallet connected, authentication should happen automatically');
+    }
   };
 
   return (

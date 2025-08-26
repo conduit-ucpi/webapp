@@ -177,6 +177,7 @@ export interface AuthContextType {
   isLoading: boolean;
   login: (idToken: string, walletAddress: string) => Promise<void>;
   logout: () => Promise<void>;
+  connect: () => Promise<void>; // Unified connect method that handles wallet connection + login
 }
 
 export interface Web3AuthInstanceContextType {

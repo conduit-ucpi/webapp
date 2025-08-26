@@ -10,7 +10,9 @@ export default function Document() {
         <meta name="google" content="notranslate" />
         
         {/* Farcaster mini-app configuration */}
-        <meta property="fc:miniapp" content='{"version": "next", "imageUrl": "https://farcaster-dev.conduit-ucpi.com/preview.png", "button": {"title": "🚩 Start", "action": {"type": "launch_frame", "name": "Instant Escrow", "url": "https://farcaster-dev.conduit-ucpi.com"}}}' />
+        <meta name="fc:miniapp" content='{"version": "next", "imageUrl": "https://farcaster-dev.conduit-ucpi.com/preview.png", "button": {"title": "🚩 Start", "action": {"type": "launch_frame", "name": "Instant Escrow", "url": "https://farcaster-dev.conduit-ucpi.com"}}}' />
+        {/* For backward compatibility */}
+        <meta name="fc:frame" content='{"version": "next", "imageUrl": "https://farcaster-dev.conduit-ucpi.com/preview.png", "button": {"title": "🚩 Start", "action": {"type": "launch_frame", "name": "Instant Escrow", "url": "https://farcaster-dev.conduit-ucpi.com"}}}' />
         <meta property="og:image" content="https://farcaster-dev.conduit-ucpi.com/preview.png" />
         <meta property="og:title" content="Conduit Escrow" />
         <meta property="og:description" content="Time-delayed escrow contracts on Avalanche" />

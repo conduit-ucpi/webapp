@@ -1,5 +1,5 @@
 import { useSDK } from '@/components/auth/SDKProvider';
-import { useWallet } from '@/lib/wallet';
+import { useWallet } from '@/components/auth/UnifiedAuthProvider';
 import { useCallback, useEffect, useState } from 'react';
 import { WalletProvider as SDKWalletProvider } from '@conduit-ucpi/sdk';
 

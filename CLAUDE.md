@@ -6,6 +6,7 @@
 2. **SINGLE SOURCE OF TRUTH** - Always use existing validation/logic functions  
 3. **READ THE ENTIRE CODEBASE** before creating new functions
 4. **SEARCH FOR EXISTING SOLUTIONS** before writing new code
+5. **No provider or context specific code should leak beyond the boundary of the interfaces** - the main app code should just use the generic interfaces not worry about farcaster vs. web3auth
 
 ## 🛑 STOP - CHECKLIST BEFORE CODING 🛑
 - [ ] Did I search for existing functions that do this?

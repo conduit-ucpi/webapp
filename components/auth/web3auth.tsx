@@ -1,0 +1,544 @@
+import { useState, useEffect, createContext, useContext } from 'react';
+import { 
+  AuthUser, 
+  AuthState, 
+  AuthResult, 
+  IAuthProvider,
+  AuthContextType,
+  AuthEvent
+} from './authInterface';
+import { useConfig } from './ConfigProvider';
+
+/**
+ * Web3Auth Provider implementation
+ */
+class Web3AuthProviderImpl implements IAuthProvider {
+  private state: AuthState = {
+    user: null,
+    token: null,
+    isConnected: false,
+    isLoading: false,
+    isInitialized: false,
+    error: null,
+    providerName: 'web3auth'
+  };
+  
+  private web3auth: any = null;
+  private provider: any = null;
+  private listeners = new Map<AuthEvent['type'], Set<(event: AuthEvent) => void>>();
+  private visitedKey = 'web3auth_visited';
+  private config: any = null;
+  private cachedEthersProvider: any = null;
+
+  constructor(config?: any) {
+    this.config = config;
+  }
+
+  async initialize(): Promise<void> {
+    if (this.state.isInitialized) return;
+    
+    try {
+      this.state.isLoading = true;
+      console.log('🔧 Web3Auth: Starting initialization...');
+      
+      // Import Web3Auth dynamically
+      if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'test') {
+        if (!this.config) {
+          throw new Error('Config not provided to Web3Auth provider');
+        }
+
+        console.log('🔧 Web3Auth: Config received:', {
+          web3AuthClientId: this.config.web3AuthClientId ? 'Present' : 'Missing',
+          web3AuthNetwork: this.config.web3AuthNetwork,
+          chainId: this.config.chainId,
+          rpcUrl: this.config.rpcUrl ? 'Present' : 'Missing',
+        });
+
+        const { Web3Auth } = await import('@web3auth/modal');
+        const { CHAIN_NAMESPACES, WEB3AUTH_NETWORK } = await import('@web3auth/base');
+        
+        const web3AuthNetworkSetting = this.config.web3AuthNetwork === 'mainnet' 
+          ? WEB3AUTH_NETWORK.SAPPHIRE_MAINNET 
+          : WEB3AUTH_NETWORK.SAPPHIRE_DEVNET;
+        
+        const chainConfig = {
+          chainNamespace: CHAIN_NAMESPACES.EIP155,
+          chainId: `0x${this.config.chainId.toString(16)}`,
+          rpcTarget: this.config.rpcUrl,
+          displayName: this.getChainDisplayName(),
+          blockExplorerUrl: this.config.explorerBaseUrl,
+          ticker: this.getChainTicker(),
+          tickerName: this.getChainTickerName(),
+        };
+
+        console.log('🔧 Web3Auth: Creating Web3Auth instance with:', {
+          clientId: this.config.web3AuthClientId?.substring(0, 20) + '...',
+          web3AuthNetwork: web3AuthNetworkSetting,
+          chainConfig
+        });
+
+        this.web3auth = new Web3Auth({
+          clientId: this.config.web3AuthClientId,
+          web3AuthNetwork: web3AuthNetworkSetting,
+          chainConfig,
+          uiConfig: {
+            appName: "Conduit UCPI",
+            theme: {
+              primary: "#0364ff",
+            },
+            mode: "auto",
+            logoLight: "https://web3auth.io/images/web3authlog.png",
+            logoDark: "https://web3auth.io/images/web3authlogodark.png",
+            defaultLanguage: "en",
+            loginGridCol: 3,
+            primaryButton: "externalLogin",
+          },
+        });
+        
+        console.log('🔧 Web3Auth: Calling init()...');
+        try {
+          // Add timeout to prevent hanging
+          const initPromise = this.web3auth.init();
+          const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => reject(new Error('Web3Auth initialization timeout after 5 seconds')), 5000);
+          });
+          
+          await Promise.race([initPromise, timeoutPromise]);
+          console.log('🔧 Web3Auth: Modal initialized successfully');
+        } catch (initError) {
+          console.error('🔧 Web3Auth: Modal initialization failed:', initError);
+          console.error('🔧 Web3Auth: This might be due to invalid clientId, network issues, or unsupported chain');
+          
+          // Set a flag that Web3Auth failed but don't throw - allow app to continue
+          this.state.error = `Web3Auth init failed: ${initError.message}`;
+          console.warn('🔧 Web3Auth: Continuing without Web3Auth initialization');
+        }
+        
+        // Check if already connected
+        if (this.web3auth.connected) {
+          console.log('🔧 Web3Auth: Already connected, updating user data');
+          this.provider = this.web3auth.provider;
+          await this.updateUserFromProvider();
+        }
+      }
+      
+      this.state.isInitialized = true;
+      console.log('🔧 Web3Auth: Initialization completed');
+    } catch (error) {
+      this.state.error = error instanceof Error ? error.message : 'Initialization failed';
+      this.emit({ type: 'error', error: this.state.error });
+    } finally {
+      this.state.isLoading = false;
+    }
+  }
+  
+  private getChainDisplayName(): string {
+    const chainMappings: Record<number, string> = {
+      1: 'Ethereum Mainnet',
+      11155111: 'Sepolia Testnet',
+      43114: 'Avalanche C-Chain',
+      43113: 'Avalanche Fuji Testnet',
+      137: 'Polygon Mainnet',
+      80001: 'Mumbai Testnet',
+      8453: 'Base Mainnet',
+      84532: 'Base Sepolia',
+    };
+    return chainMappings[this.config.chainId] || `Network ${this.config.chainId}`;
+  }
+
+  private getChainTicker(): string {
+    const tickerMappings: Record<number, string> = {
+      1: 'ETH',
+      11155111: 'ETH',
+      43114: 'AVAX',
+      43113: 'AVAX',
+      137: 'MATIC',
+      80001: 'MATIC',
+      8453: 'ETH',
+      84532: 'ETH',
+    };
+    return tickerMappings[this.config.chainId] || 'ETH';
+  }
+
+  private getChainTickerName(): string {
+    const tickerNameMappings: Record<number, string> = {
+      1: 'Ethereum',
+      11155111: 'Sepolia ETH',
+      43114: 'Avalanche',
+      43113: 'Avalanche',
+      137: 'Polygon',
+      80001: 'Mumbai MATIC',
+      8453: 'Base ETH',
+      84532: 'Base Sepolia ETH',
+    };
+    return tickerNameMappings[this.config.chainId] || 'Native Token';
+  }
+
+  async connect(): Promise<AuthResult> {
+    try {
+      this.state.isLoading = true;
+      this.state.error = null;
+      this.emit({ type: 'connecting' });
+      
+      console.log('🔧 Web3Auth: Connect called, checking initialization...');
+      if (!this.state.isInitialized) {
+        throw new Error('Web3Auth not initialized - call initialize() first');
+      }
+      if (!this.web3auth) {
+        throw new Error('Web3Auth not initialized');
+      }
+      console.log('🔧 Web3Auth: Web3Auth instance ready, attempting connection...');
+      
+      // Connect if not already connected
+      if (!this.web3auth.connected) {
+        console.log('🔧 Web3Auth: Calling web3auth.connect()...');
+        this.provider = await this.web3auth.connect();
+        console.log('🔧 Web3Auth: Connect returned:', !!this.provider);
+      } else {
+        console.log('🔧 Web3Auth: Already connected, using existing provider');
+        this.provider = this.web3auth.provider;
+      }
+      
+      console.log('🔧 Web3Auth: Final provider check:', {
+        provider: !!this.provider,
+        web3authConnected: this.web3auth.connected,
+        web3authProvider: !!this.web3auth.provider
+      });
+      
+      if (!this.provider) {
+        throw new Error('No provider after connection');
+      }
+      
+      await this.updateUserFromProvider();
+      
+      if (!this.state.user || !this.state.token) {
+        throw new Error('Failed to get user data');
+      }
+      
+      this.state.isConnected = true;
+      this.emit({ type: 'connected', user: this.state.user, token: this.state.token });
+      
+      return { user: this.state.user, token: this.state.token };
+      
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Connection failed';
+      console.error('🔧 Web3Auth: Connection error:', errorMessage);
+      
+      // Check if this was a user cancellation
+      if (errorMessage.includes('User closed') || 
+          errorMessage.includes('cancelled') || 
+          errorMessage.includes('User cancelled') ||
+          errorMessage.includes('popup_closed')) {
+        console.log('🔧 Web3Auth: User cancelled login');
+        this.state.error = 'Login cancelled by user';
+      } else {
+        this.state.error = errorMessage;
+      }
+      
+      this.emit({ type: 'error', error: this.state.error });
+      throw error;
+    } finally {
+      this.state.isLoading = false;
+    }
+  }
+  
+  async disconnect(): Promise<void> {
+    try {
+      if (this.web3auth && this.web3auth.connected) {
+        await this.web3auth.logout();
+      }
+      
+      // Clear state
+      this.state.user = null;
+      this.state.token = null;
+      this.state.isConnected = false;
+      this.provider = null;
+      
+      this.emit({ type: 'disconnected' });
+    } catch (error) {
+      this.state.error = error instanceof Error ? error.message : 'Disconnect failed';
+      throw error;
+    }
+  }
+  
+  private async updateUserFromProvider(): Promise<void> {
+    if (!this.web3auth || !this.provider) return;
+    
+    try {
+      // Get user info
+      const userInfo = await this.web3auth.getUserInfo();
+      
+      // Get wallet address
+      const ethers = await import('ethers');
+      const ethersProvider = new ethers.BrowserProvider(this.provider);
+      const signer = await ethersProvider.getSigner();
+      const walletAddress = await signer.getAddress();
+      
+      // Get ID token if available
+      const idToken = userInfo?.idToken || '';
+      
+      // Create user object
+      const user: AuthUser = {
+        userId: userInfo?.verifierId || `web3auth_${Date.now()}`,
+        walletAddress,
+        email: userInfo?.email,
+        web3authUserId: userInfo?.verifierId,
+        displayName: userInfo?.name,
+        profileImageUrl: userInfo?.profileImage,
+        authProvider: 'web3auth'
+      };
+      
+      this.state.user = user;
+      this.state.token = idToken;
+      
+    } catch (error) {
+      console.error('Failed to update user from provider:', error);
+      throw error;
+    }
+  }
+  
+  getState(): AuthState {
+    return { ...this.state };
+  }
+  
+  isReady(): boolean {
+    return this.state.isInitialized && !this.state.isLoading;
+  }
+  
+  dispose(): void {
+    this.listeners.clear();
+    this.web3auth = null;
+    this.provider = null;
+  }
+  
+  // Event handling
+  on(event: AuthEvent['type'], handler: (event: AuthEvent) => void): void {
+    if (!this.listeners.has(event)) {
+      this.listeners.set(event, new Set());
+    }
+    this.listeners.get(event)?.add(handler);
+  }
+  
+  off(event: AuthEvent['type'], handler: (event: AuthEvent) => void): void {
+    this.listeners.get(event)?.delete(handler);
+  }
+  
+  private emit(event: AuthEvent): void {
+    const handlers = this.listeners.get(event.type);
+    if (handlers) {
+      handlers.forEach(handler => handler(event));
+    }
+  }
+  
+  // Helper methods for AuthContextType
+  getToken(): string | null {
+    return this.state.token;
+  }
+  
+  hasVisitedBefore(): boolean {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem(this.visitedKey) === 'true';
+    }
+    return false;
+  }
+  
+  markAsVisited(): void {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(this.visitedKey, 'true');
+    }
+  }
+  
+  async signMessage(message: string): Promise<string> {
+    if (!this.provider) {
+      throw new Error('Provider not available');
+    }
+    
+    try {
+      const ethers = await import('ethers');
+      const ethersProvider = new ethers.BrowserProvider(this.provider);
+      const signer = await ethersProvider.getSigner();
+      const signature = await signer.signMessage(message);
+      return signature;
+    } catch (error) {
+      throw new Error(`Failed to sign message: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  getEthersProvider(): any {
+    if (!this.provider) {
+      throw new Error('Provider not available');
+    }
+    
+    // Create and cache ethers provider synchronously
+    if (!this.cachedEthersProvider) {
+      // Import ethers synchronously (it should be available since we used it before)
+      const ethers = require('ethers');
+      this.cachedEthersProvider = new ethers.BrowserProvider(this.provider);
+    }
+    
+    return this.cachedEthersProvider;
+  }
+}
+
+// Create singleton instance
+let web3authProvider: Web3AuthProviderImpl | null = null;
+
+export function getWeb3AuthProvider(config?: any): IAuthProvider {
+  if (!web3authProvider) {
+    console.log('🔧 Web3Auth: Creating new provider instance');
+    web3authProvider = new Web3AuthProviderImpl(config);
+  } else {
+    console.log('🔧 Web3Auth: Reusing existing provider instance');
+    // Update config if it's changed
+    if (config && !web3authProvider['config']) {
+      (web3authProvider as any).config = config;
+    }
+  }
+  return web3authProvider;
+}
+
+/**
+ * React Context for Web3Auth
+ */
+const Web3AuthContext = createContext<AuthContextType | null>(null);
+
+/**
+ * Web3Auth Provider React Component
+ */
+export function Web3AuthProvider({ children }: { children: React.ReactNode }) {
+  const { config } = useConfig();
+  const [authState, setAuthState] = useState<AuthState>({
+    user: null,
+    token: null,
+    isConnected: false,
+    isLoading: true,
+    isInitialized: false,
+    error: null,
+    providerName: 'web3auth'
+  });
+  
+  const [provider, setProvider] = useState<IAuthProvider | null>(null);
+  
+  // Create provider when config is available
+  useEffect(() => {
+    if (config) {
+      const authProvider = getWeb3AuthProvider(config);
+      setProvider(authProvider);
+    }
+  }, [config]);
+  
+  // Initialize provider when it's created
+  useEffect(() => {
+    if (!provider) return;
+    
+    const init = async () => {
+      await provider.initialize();
+      setAuthState(provider.getState());
+    };
+    
+    init();
+    
+    // Subscribe to events
+    const handleEvent = (event: AuthEvent) => {
+      setAuthState(provider.getState());
+    };
+    
+    provider.on?.('connecting', handleEvent);
+    provider.on?.('connected', handleEvent);
+    provider.on?.('disconnected', handleEvent);
+    provider.on?.('error', handleEvent);
+    
+    return () => {
+      provider.off?.('connecting', handleEvent);
+      provider.off?.('connected', handleEvent);
+      provider.off?.('disconnected', handleEvent);
+      provider.off?.('error', handleEvent);
+    };
+  }, [provider]);
+  
+  const contextValue: AuthContextType = {
+    // State
+    ...authState,
+    
+    // Methods
+    connect: async () => {
+      if (!provider) throw new Error('Provider not initialized');
+      await provider.connect();
+      setAuthState(provider.getState());
+    },
+    
+    disconnect: async () => {
+      if (!provider) throw new Error('Provider not initialized');
+      await provider.disconnect();
+      setAuthState(provider.getState());
+    },
+    
+    getToken: () => provider?.getToken?.() || null,
+    hasVisitedBefore: () => provider?.hasVisitedBefore?.() || false,
+    markAsVisited: () => provider?.markAsVisited?.(),
+    
+    // Wallet operations
+    signMessage: async (message: string) => {
+      if (!provider) {
+        throw new Error('Provider not initialized');
+      }
+      return await provider.signMessage(message);
+    },
+  };
+  
+  return (
+    <Web3AuthContext.Provider value={contextValue}>
+      {children}
+    </Web3AuthContext.Provider>
+  );
+}
+
+/**
+ * Hook to use Web3Auth context
+ */
+export function useWeb3Auth(): AuthContextType {
+  const context = useContext(Web3AuthContext);
+  if (!context) {
+    throw new Error('useWeb3Auth must be used within Web3AuthProvider');
+  }
+  return context;
+}
+
+/**
+ * Component that displays Web3Auth authentication data
+ * Useful for debugging and testing
+ */
+export function Web3AuthDebug() {
+  const auth = useWeb3Auth();
+
+  if (auth.isLoading) {
+    return (
+      <div className="p-4 border rounded bg-gray-50">
+        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600 mx-auto"></div>
+        <p className="text-center mt-2">Loading Web3Auth...</p>
+      </div>
+    );
+  }
+
+  if (auth.error) {
+    return (
+      <div className="p-4 border border-red-300 rounded bg-red-50">
+        <p className="text-red-600">Error: {auth.error}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-4 border rounded bg-white space-y-2">
+      <h3 className="font-bold">Web3Auth Data:</h3>
+      <div className="text-sm space-y-1">
+        <p><strong>Wallet:</strong> {auth.user?.walletAddress || 'Not connected'}</p>
+        <p><strong>Email:</strong> {auth.user?.email || 'N/A'}</p>
+        <p><strong>Display Name:</strong> {auth.user?.displayName || 'N/A'}</p>
+        <p><strong>Profile Image:</strong> {auth.user?.profileImageUrl ? '✓' : '✗'}</p>
+        <p><strong>Auth Token:</strong> {auth.token ? '✓ Available' : '✗ No token'}</p>
+        <p><strong>Provider:</strong> {auth.providerName}</p>
+      </div>
+    </div>
+  );
+}

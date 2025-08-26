@@ -1,4 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
+import { requireAuth } from '@/utils/api-auth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -6,21 +7,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    // Extract the AUTH-TOKEN from cookies
-    const cookies = req.headers.cookie || '';
-    const authTokenMatch = cookies.match(/AUTH-TOKEN=([^;]+)/);
-    const authToken = authTokenMatch ? authTokenMatch[1] : null;
-
-    if (!authToken) {
-      return res.status(401).json({ error: 'Authentication required' });
-    }
+    const authToken = requireAuth(req);
 
     const response = await fetch(`${process.env.CHAIN_SERVICE_URL}/api/chain/raise-dispute`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${authToken}`,
-        'Cookie': cookies
+        'Cookie': req.headers.cookie || ''
       },
       body: JSON.stringify(req.body)
     });
@@ -29,6 +23,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.status(response.status).json(responseData);
   } catch (error) {
     console.error('Raise dispute API error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    if (error instanceof Error && error.message === 'Authentication required') {
+      res.status(401).json({ error: 'Authentication required' });
+    } else {
+      res.status(500).json({ error: 'Internal server error' });
+    }
   }
 }

@@ -13,13 +13,13 @@ import {
 } from '@heroicons/react/24/outline';
 export default function Header() {
   let user = null;
-  let logout = () => {};
+  let disconnect = () => {};
   let isLoading = false;
 
   try {
     const authContext = useAuth();
     user = authContext.user;
-    logout = authContext.logout;
+    disconnect = authContext.disconnect;
     isLoading = authContext.isLoading;
   } catch (error) {
     // Auth context not available during SSR or hydration
@@ -30,7 +30,7 @@ export default function Header() {
   const isAuthenticated = !!user;
 
   const handleLogout = async () => {
-    await logout();
+    await disconnect();
   };
 
   return (

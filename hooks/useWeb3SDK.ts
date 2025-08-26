@@ -1,5 +1,5 @@
 import { useSDK } from '@/components/auth/SDKProvider';
-import { useWallet } from '@/components/auth/UnifiedAuthProvider';
+import { useAuth } from '@/components/auth';
 import { useCallback, useEffect, useState } from 'react';
 import { WalletProvider as SDKWalletProvider } from '@conduit-ucpi/sdk';
 
@@ -9,35 +9,44 @@ import { WalletProvider as SDKWalletProvider } from '@conduit-ucpi/sdk';
  */
 export const useWeb3SDK = () => {
   const { sdk, isInitialized, error: sdkError } = useSDK();
-  const { walletProvider, isConnected, address } = useWallet();
+  const authContext = useAuth();
+  const { user, isConnected, signMessage, getEthersProvider } = authContext;
   const [isReady, setIsReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sdkWalletConnected, setSdkWalletConnected] = useState(false);
 
   // Create SDK wallet provider adapter
   const createSDKWalletProvider = useCallback((): SDKWalletProvider | null => {
-    if (!walletProvider || !isConnected) return null;
+    if (!user?.walletAddress || !isConnected) return null;
 
     // Create adapter that implements SDK WalletProvider interface
     return {
-      getProviderName: () => 'Web3Auth',
+      getProviderName: () => user.authProvider || 'Unknown',
       getAddress: async () => {
-        if (!address) throw new Error('No wallet address available');
-        return address;
+        if (!user.walletAddress) throw new Error('No wallet address available');
+        return user.walletAddress;
       },
-      getEthersProvider: () => walletProvider.getEthersProvider(),
+      getEthersProvider: () => {
+        // Use the real ethers provider from the auth system
+        return getEthersProvider();
+      },
       signTransaction: async (txRequest) => {
-        return await walletProvider.signTransaction(txRequest);
+        // Use the ethers provider to sign the transaction
+        const ethersProvider = getEthersProvider();
+        const signer = await ethersProvider.getSigner();
+        return await signer.signTransaction(txRequest);
       },
       signMessage: async (message: string) => {
-        return await walletProvider.signMessage(message);
+        return await signMessage(message);
       },
       request: async (args: { method: string; params?: any[] }) => {
-        return await walletProvider.request(args);
+        // TODO: Need to implement provider requests in new auth system
+        console.warn('Provider request called but not implemented in new auth system:', args);
+        throw new Error('Provider request not yet implemented in new auth system');
       },
-      isConnected: () => walletProvider.isConnected()
+      isConnected: () => isConnected
     };
-  }, [walletProvider, isConnected, address]);
+  }, [user, isConnected, signMessage]);
 
   // Initialize SDK with wallet when both are ready
   useEffect(() => {

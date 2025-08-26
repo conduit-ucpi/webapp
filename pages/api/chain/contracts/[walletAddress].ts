@@ -1,4 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
+import { requireAuth } from '@/utils/api-auth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
@@ -8,14 +9,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const { walletAddress } = req.query;
 
   try {
-    // Extract the AUTH-TOKEN from cookies
-    const cookies = req.headers.cookie || '';
-    const authTokenMatch = cookies.match(/AUTH-TOKEN=([^;]+)/);
-    const authToken = authTokenMatch ? authTokenMatch[1] : null;
-
-    if (!authToken) {
-      return res.status(401).json({ error: 'Authentication required' });
-    }
+    const authToken = requireAuth(req);
     
     const chainServiceUrl = `${process.env.CHAIN_SERVICE_URL}/api/chain/contracts/${walletAddress}`;
     console.log('Fetching contracts from:', chainServiceUrl);
@@ -23,7 +17,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const response = await fetch(chainServiceUrl, {
       headers: {
         'Authorization': `Bearer ${authToken}`,
-        'Cookie': cookies,
+        'Cookie': req.headers.cookie || '',
         'Accept': 'application/json',
         'Content-Type': 'application/json'
       }
@@ -66,9 +60,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
   } catch (error) {
     console.error('Contracts API error:', error);
-    res.status(500).json({ 
-      error: 'Internal server error', 
-      details: error instanceof Error ? error.message : 'Unknown error'
-    });
+    if (error instanceof Error && error.message === 'Authentication required') {
+      res.status(401).json({ error: 'Authentication required' });
+    } else {
+      res.status(500).json({ 
+        error: 'Internal server error', 
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
   }
 }

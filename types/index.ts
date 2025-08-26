@@ -178,6 +178,7 @@ export interface AuthContextType {
   login: (idToken: string, walletAddress: string) => Promise<void>;
   logout: () => Promise<void>;
   connect: () => Promise<void>; // Unified connect method that handles wallet connection + login
+  authenticatedFetch: (url: string, options?: RequestInit) => Promise<Response>;
 }
 
 export interface Web3AuthInstanceContextType {

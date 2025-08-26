@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { SubmitDisputeEntryRequest } from '@/types';
+import { requireAuth } from '@/utils/api-auth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { id } = req.query;
@@ -17,18 +18,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
 async function handleSubmitDisputeEntry(req: NextApiRequest, res: NextApiResponse, id: string) {
   try {
-    // Extract the AUTH-TOKEN from cookies
-    const cookies = req.headers.cookie || '';
-    const authTokenMatch = cookies.match(/AUTH-TOKEN=([^;]+)/);
-    const authToken = authTokenMatch ? authTokenMatch[1] : null;
+    const authToken = requireAuth(req);
 
     console.log('Submit dispute entry request for contract:', id);
     console.log('Auth token:', authToken ? 'Present' : 'Missing');
     console.log('Dispute entry data:', req.body);
-
-    if (!authToken) {
-      return res.status(401).json({ error: 'Authentication required' });
-    }
 
     // Validate request body
     const disputeEntry: SubmitDisputeEntryRequest = req.body;
@@ -47,7 +41,7 @@ async function handleSubmitDisputeEntry(req: NextApiRequest, res: NextApiRespons
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${authToken}`,
-      'Cookie': cookies
+      'Cookie': req.headers.cookie || ''
     };
 
     console.log('Calling Contract Service:', `${process.env.CONTRACT_SERVICE_URL}/api/contracts/${id}/dispute`);
@@ -64,6 +58,10 @@ async function handleSubmitDisputeEntry(req: NextApiRequest, res: NextApiRespons
     res.status(response.status).json(responseData);
   } catch (error) {
     console.error('Submit dispute entry API error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    if (error instanceof Error && error.message === 'Authentication required') {
+      res.status(401).json({ error: 'Authentication required' });
+    } else {
+      res.status(500).json({ error: 'Internal server error' });
+    }
   }
 }

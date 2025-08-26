@@ -1,6 +1,6 @@
 import React from 'react';
 import { ConfigProvider } from '@/components/auth/ConfigProvider';
-import { UnifiedAuthProvider } from '@/components/auth/UnifiedAuthProvider';
+import { AuthProvider } from '@/components/auth/AuthProvider';
 import Layout from '@/components/layout/Layout';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { ToastProvider } from '@/components/ui/Toast';
@@ -41,7 +41,7 @@ export default function ClientOnlyApp({ Component, pageProps }: ClientOnlyAppPro
         <FarcasterDetectionProvider>
             <ConfigProvider>
               <SDKProvider>
-                <UnifiedAuthProvider>
+                <AuthProvider>
                   <ToastProvider>
                     <TourProvider>
                       <Layout>
@@ -50,7 +50,7 @@ export default function ClientOnlyApp({ Component, pageProps }: ClientOnlyAppPro
                       <SimpleDebugLogger />
                     </TourProvider>
                   </ToastProvider>
-                </UnifiedAuthProvider>
+                </AuthProvider>
               </SDKProvider>
             </ConfigProvider>
         </FarcasterDetectionProvider>

@@ -1,4 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
+import { requireAuth } from '@/utils/api-auth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
@@ -12,19 +13,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const cookies = req.headers.cookie || '';
-    const authTokenMatch = cookies.match(/AUTH-TOKEN=([^;]+)/);
-    const authToken = authTokenMatch ? authTokenMatch[1] : null;
-
-    if (!authToken) {
-      return res.status(401).json({ error: 'Authentication required' });
-    }
+    const authToken = requireAuth(req);
 
     // Check if user is authorized admin
     const identityResponse = await fetch(`${process.env.USER_SERVICE_URL}/api/user/identity`, {
       headers: {
         'Authorization': `Bearer ${authToken}`,
-        'Cookie': cookies
+        'Cookie': req.headers.cookie || ''
       }
     });
 
@@ -43,7 +38,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       fetch(`${process.env.CONTRACT_SERVICE_URL}/api/contracts/${contractId}`, {
         headers: {
           'Authorization': `Bearer ${authToken}`,
-          'Cookie': cookies
+          'Cookie': req.headers.cookie || ''
         }
       }).then(async (res) => {
         if (!res.ok) throw new Error(`Contract service error: ${res.status}`);
@@ -56,7 +51,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const contractRes = await fetch(`${process.env.CONTRACT_SERVICE_URL}/api/contracts/${contractId}`, {
           headers: {
             'Authorization': `Bearer ${authToken}`,
-            'Cookie': cookies
+            'Cookie': req.headers.cookie || ''
           }
         });
         
@@ -73,7 +68,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const chainRes = await fetch(`${process.env.CHAIN_SERVICE_URL}/api/chain/contract/${contract.chainAddress}`, {
           headers: {
             'Authorization': `Bearer ${authToken}`,
-            'Cookie': cookies
+            'Cookie': req.headers.cookie || ''
           }
         });
 
@@ -97,6 +92,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.status(200).json(result);
   } catch (error) {
     console.error('Raw contracts fetch error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    if (error instanceof Error && error.message === 'Authentication required') {
+      res.status(401).json({ error: 'Authentication required' });
+    } else {
+      res.status(500).json({ error: 'Internal server error' });
+    }
   }
 }

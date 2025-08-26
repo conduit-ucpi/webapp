@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback } from 'react';
 import { useWeb3Auth, useWeb3AuthConnect, useWeb3AuthUser, useIdentityToken } from '@web3auth/modal/react';
 import { AuthProvider, AuthResult, AuthContextType } from './types';
 import { Web3AuthAuthProvider } from './web3auth-provider';
@@ -7,21 +7,27 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthContextProvider({ children }: { children: React.ReactNode }) {
   // Web3Auth hooks
-  const { provider } = useWeb3Auth();
+  const { provider, web3Auth } = useWeb3Auth();
   const { connect, isConnected } = useWeb3AuthConnect();
   const { userInfo } = useWeb3AuthUser();
   const { token: idToken } = useIdentityToken();
 
-  // Create Web3Auth provider instance
-  const web3authProvider = new Web3AuthAuthProvider({
+  console.log('AuthContextProvider - Web3Auth state:', {
+    hasWeb3Auth: !!web3Auth,
+    isInitialized: web3Auth?.status === 'ready',
+    status: web3Auth?.status,
+    isConnected,
+    hasProvider: !!provider
+  });
+
+  // Create Web3Auth provider instance - use useMemo to avoid recreating
+  const authProvider = React.useMemo(() => new Web3AuthAuthProvider({
     provider,
     connect,
     isConnected,
     userInfo,
     idToken
-  });
-
-  const [authProvider] = useState<AuthProvider>(web3authProvider);
+  }), [provider, connect, isConnected, userInfo, idToken]);
   const [isConnecting, setIsConnecting] = useState(false);
 
   const connectAuth = useCallback(async (): Promise<AuthResult> => {

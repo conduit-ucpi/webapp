@@ -7,10 +7,27 @@ import InteractiveDemo from '@/components/landing/InteractiveDemo';
 import { motion } from 'framer-motion';
 
 export default function Home() {
-  const { user, isLoading } = useAuth();
+  let user = null;
+  let isLoading = false;
+
+  try {
+    const authContext = useAuth();
+    user = authContext.user;
+    isLoading = authContext.isLoading;
+  } catch (error) {
+    // Auth context not available during SSR or hydration
+    console.log('Auth context not available in Home page:', error.message);
+  }
+
+  console.log('🏠 Landing page render:', { 
+    user: user ? 'user object exists' : 'no user',
+    isLoading,
+    userDetails: user ? { id: user.id, walletAddress: user.walletAddress } : null
+  });
 
   // Show minimal loading on mobile to prevent crashes
   if (isLoading) {
+    console.log('🏠 Landing page showing loading state');
     return (
       <div className="bg-white min-h-screen">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">

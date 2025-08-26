@@ -62,9 +62,23 @@ export class Web3AuthAuthProvider implements AuthProvider {
   }
 
   async connect(): Promise<AuthResult> {
-    console.log('Web3Auth connecting...');
+    console.log('Web3Auth connecting...', {
+      hooks: this.web3authHooks,
+      isConnected: this.web3authHooks.isConnected,
+      hasConnect: typeof this.web3authHooks.connect
+    });
     
-    const web3authProvider = await this.web3authHooks.connect();
+    // Web3Auth is ready when connect function exists and we're not already connected
+    // (provider will be null until after successful connection)
+    
+    let web3authProvider;
+    try {
+      web3authProvider = await this.web3authHooks.connect();
+      console.log('Web3Auth connect returned:', web3authProvider);
+    } catch (error) {
+      console.error('Web3Auth connect error:', error);
+      throw error;
+    }
     
     if (!web3authProvider) {
       throw new Error('Failed to connect wallet - no provider available');

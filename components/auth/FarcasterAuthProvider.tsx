@@ -4,20 +4,8 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { User, FarcasterAuthContextType, AuthContextType } from '@/types';
 import { AuthContext } from './GenericAuthProvider';
 
-// Mock useAccount for tests
-let useAccount: any;
-if (process.env.NODE_ENV === 'test') {
-  useAccount = () => ({ isConnected: false, address: undefined });
-} else {
-  // Try to import wagmi - if it fails, provide fallback
-  try {
-    const wagmi = require('wagmi');
-    useAccount = wagmi.useAccount;
-  } catch (error) {
-    // Fallback implementation for environments without wagmi
-    useAccount = () => ({ isConnected: false, address: undefined });
-  }
-}
+// Import wagmi properly as ESM
+import { useAccount } from 'wagmi';
 
 const FarcasterAuthContext = createContext<FarcasterAuthContextType | undefined>(undefined);
 

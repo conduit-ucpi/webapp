@@ -12,7 +12,19 @@ import {
   ScaleIcon,
 } from '@heroicons/react/24/outline';
 export default function Header() {
-  const { user, logout, isLoading } = useAuth();
+  let user = null;
+  let logout = () => {};
+  let isLoading = false;
+
+  try {
+    const authContext = useAuth();
+    user = authContext.user;
+    logout = authContext.logout;
+    isLoading = authContext.isLoading;
+  } catch (error) {
+    // Auth context not available during SSR or hydration
+    console.log('Auth context not available in Header:', error.message);
+  }
 
   // Authentication is determined by user presence alone, not provider
   const isAuthenticated = !!user;

@@ -20,7 +20,17 @@ interface ThemeToggleProps {
 }
 
 export default function ThemeToggle({ className = "", showLabel = false }: ThemeToggleProps) {
-  const { theme, toggleTheme } = useTheme();
+  let theme = 'light';
+  let toggleTheme = () => {};
+
+  try {
+    const themeContext = useTheme();
+    theme = themeContext.theme;
+    toggleTheme = themeContext.toggleTheme;
+  } catch (error) {
+    // Theme context not available during SSR or hydration
+    console.log('Theme context not available in ThemeToggle:', error.message);
+  }
 
   return (
     <motion.button

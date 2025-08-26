@@ -16,14 +16,8 @@ export default function ConnectWallet() {
   const { user, isLoading: authLoading, login } = useAuth();
   const { isInFarcaster } = useFarcaster();
 
-  // Web3Auth-specific context (only available in Web3Auth flow)
-  let authContextData: { connectAuth: () => Promise<any>; isConnecting: boolean } | null = null;
-  try {
-    // This will throw in Farcaster context - that's expected
-    authContextData = useAuthContext();
-  } catch (error) {
-    // Expected in Farcaster context
-  }
+  // Always call useAuthContext - it should be available in all contexts now
+  const authContextData = useAuthContext();
 
   const [isConnecting, setIsConnecting] = useState(false);
 

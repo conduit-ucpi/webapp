@@ -25,7 +25,7 @@ import { displayCurrency } from '@/utils/validation';
 type StatusFilter = 'ALL' | 'ACTION_NEEDED' | 'ACTIVE' | 'COMPLETED' | 'DISPUTED';
 
 export default function EnhancedDashboard() {
-  const { user } = useAuth();
+  const { user, authenticatedFetch } = useAuth();
   const [allContracts, setAllContracts] = useState<(Contract | PendingContract)[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -108,7 +108,9 @@ export default function EnhancedDashboard() {
         return;
       }
 
-      const response = await fetch('/api/combined-contracts');
+      const response = authenticatedFetch 
+        ? await authenticatedFetch('/api/combined-contracts')
+        : await fetch('/api/combined-contracts');
       
       if (!response.ok) {
         throw new Error('Failed to fetch contracts');
@@ -217,7 +219,9 @@ export default function EnhancedDashboard() {
         return;
       }
 
-      const response = await fetch('/api/combined-contracts');
+      const response = authenticatedFetch 
+        ? await authenticatedFetch('/api/combined-contracts')
+        : await fetch('/api/combined-contracts');
       
       if (!response.ok) {
         throw new Error('Failed to fetch contracts');

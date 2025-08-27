@@ -7,10 +7,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
+    console.log('Get combined contracts request');
+    console.log('Headers:', JSON.stringify(req.headers, null, 2));
+    console.log('Cookie header:', req.headers.cookie);
+    console.log('Authorization header:', req.headers.authorization);
+    
     const authToken = requireAuth(req);
 
-    console.log('Get combined contracts request');
     console.log('Auth token:', authToken ? 'Present' : 'Missing');
+    console.log('About to make request to CONTRACT_SERVICE_URL:', process.env.CONTRACT_SERVICE_URL);
 
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',

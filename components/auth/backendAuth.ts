@@ -188,6 +188,9 @@ export class BackendAuth {
    * @param options - Fetch options
    */
   async authenticatedFetch(url: string, options: RequestInit = {}): Promise<Response> {
+    console.log('🔧 BackendAuth: authenticatedFetch called for:', url);
+    console.log('🔧 BackendAuth: Current token:', this.authToken ? 'Present' : 'Missing');
+    
     const headers: any = {
       'Content-Type': 'application/json',
       ...options.headers
@@ -196,7 +199,12 @@ export class BackendAuth {
     // Always include auth token if available
     if (this.authToken) {
       headers['Authorization'] = `Bearer ${this.authToken}`;
+      console.log('🔧 BackendAuth: Adding Authorization header');
+    } else {
+      console.log('🔧 BackendAuth: No token available - request will fail');
     }
+    
+    console.log('🔧 BackendAuth: Final headers:', headers);
     
     return fetch(url, {
       ...options,

@@ -404,22 +404,32 @@ function FarcasterAuthProviderInner({ children, AuthContext }: {
       }
     };
     
-    // Check immediately and then periodically until SDK is available
+    // Check immediately and then periodically until SDK is available - but stop once successful
     quickAuth();
-    const interval = setInterval(() => {
+    
+    let interval: NodeJS.Timeout;
+    let cleanup: NodeJS.Timeout;
+    
+    const checkForSDK = () => {
       const sdk = (window as any).__farcasterSDK;
-      if (sdk) {
+      if (sdk && !isQuickAuthInitialized) {
         quickAuth();
         clearInterval(interval);
+        clearTimeout(cleanup);
       }
-    }, 100);
+    };
+    
+    interval = setInterval(checkForSDK, 100);
     
     // Cleanup after 5 seconds if still not found
-    const cleanup = setTimeout(() => clearInterval(interval), 5000);
+    cleanup = setTimeout(() => {
+      clearInterval(interval);
+      console.log('🔧 Farcaster: Stopped checking for SDK after 5 seconds');
+    }, 5000);
     
     return () => {
-      clearInterval(interval);
-      clearTimeout(cleanup);
+      if (interval) clearInterval(interval);
+      if (cleanup) clearTimeout(cleanup);
     };
   }, []);
 
@@ -509,25 +519,37 @@ function FarcasterAuthProviderInner({ children, AuthContext }: {
     
     finalConnect();
     
-    // Poll for token in case QuickAuth takes longer than expected
-    const pollInterval = setInterval(() => {
-      const token = (window as any).__farcasterToken;
-      if (token && !authState.isConnected) {
-        console.log('🔧 Farcaster: Token now available, retrying connect...');
-        finalConnect();
-        clearInterval(pollInterval);
-      }
-    }, 2000);
+    // Poll for token in case QuickAuth takes longer than expected - but stop once connected
+    let pollInterval: NodeJS.Timeout;
+    let timeout: NodeJS.Timeout;
     
-    // Stop polling after 30 seconds
-    const timeout = setTimeout(() => {
-      clearInterval(pollInterval);
-      console.log('🔧 Farcaster: Stopped polling for token after 30 seconds');
-    }, 30000);
+    const startPolling = () => {
+      pollInterval = setInterval(() => {
+        const token = (window as any).__farcasterToken;
+        if (token && !authState.isConnected) {
+          console.log('🔧 Farcaster: Token now available, retrying connect...');
+          finalConnect();
+          // Stop polling after successful attempt
+          clearInterval(pollInterval);
+          clearTimeout(timeout);
+        }
+      }, 2000);
+      
+      // Stop polling after 30 seconds
+      timeout = setTimeout(() => {
+        clearInterval(pollInterval);
+        console.log('🔧 Farcaster: Stopped polling for token after 30 seconds');
+      }, 30000);
+    };
+    
+    // Only start polling if we don't already have a token
+    if (!(window as any).__farcasterToken) {
+      startPolling();
+    }
     
     return () => {
-      clearInterval(pollInterval);
-      clearTimeout(timeout);
+      if (pollInterval) clearInterval(pollInterval);
+      if (timeout) clearTimeout(timeout);
     };
   }, [provider, address, authState.isConnected, authState.isLoading]);
 
@@ -569,11 +591,17 @@ function FarcasterAuthProviderInner({ children, AuthContext }: {
     }
   }, [address]);
   
-  const contextValue: AuthContextType = {
+  // If AuthContext is provided, we're inside the unified wrapper - just render children
+  if (AuthContext) {
+    return <>{children}</>;
+  }
+
+  // Only create our own context for standalone usage - memoize to prevent re-renders
+  const contextValue: AuthContextType = React.useMemo(() => ({
     // State
     ...authState,
     
-    // Methods
+    // Methods for standalone usage
     connect: async () => {
       console.log('🔧 Farcaster: Manual connect() called');
       
@@ -657,15 +685,12 @@ function FarcasterAuthProviderInner({ children, AuthContext }: {
         })
       };
     },
-  };
-  
-  // Use the passed AuthContext if provided, otherwise use the default FarcasterAuthContext
-  const ContextProvider = AuthContext ? AuthContext.Provider : FarcasterAuthContext.Provider;
+  }), [authState, address, signMessageAsync, walletClient, provider, connectors, connectWallet]);
   
   return (
-    <ContextProvider value={contextValue}>
+    <FarcasterAuthContext.Provider value={contextValue}>
       {children}
-    </ContextProvider>
+    </FarcasterAuthContext.Provider>
   );
 }
 

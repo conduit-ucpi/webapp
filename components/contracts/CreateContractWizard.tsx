@@ -44,7 +44,7 @@ const steps: Step[] = [
 export default function CreateContractWizard() {
   const router = useRouter();
   const { config } = useConfig();
-  const { user } = useAuth();
+  const { user, authenticatedFetch } = useAuth();
   const { getUserAddress, utils, isReady, error: sdkError } = useWeb3SDK();
   const { showToast } = useToast();
   
@@ -222,7 +222,7 @@ export default function CreateContractWizard() {
         serviceLink: config.serviceLink
       };
 
-      const response = await fetch('/api/contracts', {
+      const response = await authenticatedFetch('/api/contracts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(pendingContractRequest)

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/components/auth';
 import { Contract, PendingContract } from '@/types';
@@ -25,13 +25,29 @@ import { displayCurrency } from '@/utils/validation';
 type StatusFilter = 'ALL' | 'ACTION_NEEDED' | 'ACTIVE' | 'COMPLETED' | 'DISPUTED';
 
 export default function EnhancedDashboard() {
+  // Track renders
+  const renderCount = React.useRef(0);
+  renderCount.current++;
+  console.log(`🔧 EnhancedDashboard RENDER #${renderCount.current}`);
+  
   const { user, authenticatedFetch } = useAuth();
+  
+  // Track what's changing in auth
+  console.log(`🔧 Dashboard auth values:`, {
+    hasUser: !!user,
+    userEmail: user?.email,
+    hasAuthenticatedFetch: !!authenticatedFetch,
+    authFetchType: typeof authenticatedFetch
+  });
   const [allContracts, setAllContracts] = useState<(Contract | PendingContract)[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState<StatusFilter>('ALL');
   const [searchTerm, setSearchTerm] = useState('');
   const [contractToAccept, setContractToAccept] = useState<PendingContract | null>(null);
+  
+  // Prevent duplicate API calls
+  const hasFetched = React.useRef(false);
   const [showAcceptance, setShowAcceptance] = useState(false);
   const [selectedContract, setSelectedContract] = useState<Contract | PendingContract | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
@@ -108,9 +124,11 @@ export default function EnhancedDashboard() {
         return;
       }
 
-      const response = authenticatedFetch 
-        ? await authenticatedFetch('/api/combined-contracts')
-        : await fetch('/api/combined-contracts');
+      if (!authenticatedFetch) {
+        throw new Error('Authentication not available');
+      }
+      
+      const response = await authenticatedFetch('/api/combined-contracts');
       
       if (!response.ok) {
         throw new Error('Failed to fetch contracts');
@@ -219,9 +237,11 @@ export default function EnhancedDashboard() {
         return;
       }
 
-      const response = authenticatedFetch 
-        ? await authenticatedFetch('/api/combined-contracts')
-        : await fetch('/api/combined-contracts');
+      if (!authenticatedFetch) {
+        throw new Error('Authentication not available');
+      }
+      
+      const response = await authenticatedFetch('/api/combined-contracts');
       
       if (!response.ok) {
         throw new Error('Failed to fetch contracts');
@@ -309,9 +329,18 @@ export default function EnhancedDashboard() {
 
 
   useEffect(() => {
-    fetchContracts();
-    // Removed automatic polling - fetchContracts is called manually when needed
-  }, []);
+    console.log('🔧 Dashboard useEffect triggered');
+    console.log('🔧 Dashboard auth state:', { hasAuthenticatedFetch: !!authenticatedFetch, hasFetched: hasFetched.current });
+    
+    // Only fetch if we have authentication available AND haven't fetched yet
+    if (authenticatedFetch && !hasFetched.current) {
+      console.log('🔧 Calling fetchContracts because authenticatedFetch is available');
+      hasFetched.current = true;
+      fetchContracts();
+    } else {
+      console.log('🔧 Skipping fetchContracts - either no auth or already fetched');
+    }
+  }, [authenticatedFetch]); // Only depend on authenticatedFetch
 
   // Calculate stats from contracts
   const stats = useMemo(() => {

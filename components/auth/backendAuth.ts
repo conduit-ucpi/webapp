@@ -206,11 +206,15 @@ export class BackendAuth {
     
     console.log('🔧 BackendAuth: Final headers:', headers);
     
-    return fetch(url, {
+    const fetchOptions = {
       ...options,
       credentials: 'include', // Include cookies as fallback
       headers
-    });
+    };
+    
+    console.log('🔧 BackendAuth: About to call fetch with options:', JSON.stringify(fetchOptions, null, 2));
+    
+    return fetch(url, fetchOptions);
   }
   
   /**

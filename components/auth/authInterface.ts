@@ -44,6 +44,46 @@ export interface AuthState {
   providerName: string;
 }
 
+// Contract transaction parameters
+export interface ContractTransactionParams {
+  contractAddress: string;
+  abi: any[];
+  functionName: string;
+  functionArgs: any[];
+  debugLabel?: string;
+}
+
+// Contract funding parameters
+export interface ContractFundingParams {
+  contract: {
+    id: string;
+    amount: number;
+    currency?: string;
+    sellerAddress: string;
+    expiryTimestamp: number;
+    description: string;
+    buyerEmail?: string;
+    sellerEmail?: string;
+  };
+  userAddress: string;
+  config: {
+    usdcContractAddress: string;
+    serviceLink: string;
+  };
+  utils: {
+    toMicroUSDC?: (amount: number) => number;
+    toUSDCForWeb3?: (amount: number, currency?: string) => string;
+    formatDateTimeWithTZ?: (timestamp: number) => string;
+  };
+}
+
+// Contract funding result
+export interface ContractFundingResult {
+  contractAddress: string;
+  approvalTxHash: string;
+  depositTxHash: string;
+}
+
 export interface AuthMethods {
   // Core authentication
   connect: () => Promise<void>;
@@ -56,6 +96,14 @@ export interface AuthMethods {
   // Wallet operations
   signMessage: (message: string) => Promise<string>;
   getEthersProvider: () => any; // Returns ethers provider for SDK integration
+  getUSDCBalance: (userAddress?: string) => Promise<string>;
+  signContractTransaction: (params: ContractTransactionParams) => Promise<string>;
+  
+  // High-level contract operations
+  createContract?: (contract: ContractFundingParams['contract'], userAddress: string, config: ContractFundingParams['config'], utils: ContractFundingParams['utils']) => Promise<string>;
+  approveUSDC?: (contractAddress: string, amount: number, currency: string | undefined, userAddress: string, config: ContractFundingParams['config'], utils: ContractFundingParams['utils']) => Promise<string>;
+  depositFunds?: (params: ContractFundingParams & { contractAddress: string }) => Promise<string>;
+  fundContract?: (params: ContractFundingParams) => Promise<ContractFundingResult>;
   
   // Backend API helpers
   authenticatedFetch?: (url: string, options?: RequestInit) => Promise<Response>;
@@ -105,6 +153,8 @@ export interface IAuthProvider {
   // Wallet operations
   signMessage(message: string): Promise<string>;
   getEthersProvider(): any;
+  getUSDCBalance(userAddress?: string): Promise<string>;
+  signContractTransaction(params: any): Promise<string>;
   
   // State checks
   hasVisitedBefore(): boolean;

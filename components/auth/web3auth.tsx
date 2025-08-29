@@ -1,4 +1,4 @@
-import { useState, useEffect, createContext, useContext } from 'react';
+import { useState, useEffect, createContext, useContext, useMemo } from 'react';
 import { 
   AuthUser, 
   AuthState, 
@@ -8,6 +8,19 @@ import {
   AuthEvent
 } from './authInterface';
 import { useConfig } from './ConfigProvider';
+import { formatUnits } from 'ethers';
+import { createWeb3AuthContractMethods } from '@/utils/contractTransactionFactory';
+
+// Minimal ERC20 ABI for balance checking
+const ERC20_ABI = [
+  {
+    inputs: [{ name: 'owner', type: 'address' }],
+    name: 'balanceOf',
+    outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
+    type: 'function'
+  }
+] as const;
 
 /**
  * Web3Auth Provider implementation
@@ -378,6 +391,61 @@ class Web3AuthProviderImpl implements IAuthProvider {
     
     return this.cachedEthersProvider;
   }
+  
+  async signContractTransaction(params: {
+    contractAddress: string;
+    abi: any[];
+    functionName: string;
+    functionArgs: any[];
+    debugLabel?: string;
+  }): Promise<string> {
+    console.log(`🔧 Web3Auth: Signing ${params.debugLabel || 'contract'} transaction`);
+    
+    if (!this.provider) {
+      throw new Error('Provider not available');
+    }
+    
+    const ethersProvider = this.getEthersProvider();
+    const signer = await ethersProvider.getSigner();
+    
+    // Create contract instance
+    const { Contract } = require('ethers');
+    const contract = new Contract(params.contractAddress, params.abi, signer);
+    
+    // Build the transaction
+    const txRequest = await contract[params.functionName].populateTransaction(...params.functionArgs);
+    
+    // Sign the transaction
+    const signedTx = await signer.signTransaction(txRequest);
+    console.log(`🔧 Web3Auth: ${params.debugLabel || 'Contract'} transaction signed`);
+    
+    return signedTx;
+  }
+  
+  async getUSDCBalance(userAddress?: string): Promise<string> {
+    if (!this.provider) {
+      throw new Error('Provider not available');
+    }
+    
+    if (!this.config?.usdcContractAddress) {
+      console.warn('USDC contract address not configured');
+      return '0';
+    }
+    
+    const ethersProvider = this.getEthersProvider();
+    const signer = await ethersProvider.getSigner();
+    const address = userAddress || await signer.getAddress();
+    
+    // Create contract instance
+    const { Contract } = require('ethers');
+    const usdcContract = new Contract(this.config.usdcContractAddress, ERC20_ABI, ethersProvider);
+    
+    // Get balance
+    const balance = await usdcContract.balanceOf(address);
+    
+    // Convert from smallest unit (6 decimals for USDC) to string
+    return formatUnits(balance, 6);
+  }
 }
 
 // Create singleton instance
@@ -456,6 +524,28 @@ export function Web3AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [provider]);
   
+  // Create contract transaction methods for Web3Auth
+  const contractMethods = useMemo(() => {
+    if (!provider) return {};
+
+    return createWeb3AuthContractMethods(
+      async (params: any) => {
+        if (!provider) throw new Error('Provider not initialized');
+        return await provider.signContractTransaction(params);
+      },
+      async (url: string, options?: RequestInit) => {
+        // Web3Auth authenticated fetch - add any Web3Auth-specific headers
+        return fetch(url, {
+          ...options,
+          credentials: 'include',
+          headers: {
+            ...options?.headers,
+          }
+        });
+      }
+    );
+  }, [provider]);
+
   const contextValue: AuthContextType = {
     // State
     ...authState,
@@ -483,6 +573,36 @@ export function Web3AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error('Provider not initialized');
       }
       return await provider.signMessage(message);
+    },
+    
+    getEthersProvider: () => provider?.getEthersProvider?.() || null,
+    
+    getUSDCBalance: async (userAddress?: string) => {
+      if (!provider) {
+        throw new Error('Provider not initialized');
+      }
+      return await provider.getUSDCBalance(userAddress);
+    },
+    
+    signContractTransaction: async (params: any) => {
+      if (!provider) {
+        throw new Error('Provider not initialized');
+      }
+      return await provider.signContractTransaction(params);
+    },
+
+    // High-level contract transaction methods (Web3Auth-specific implementations)
+    ...contractMethods,
+
+    // Authenticated fetch
+    authenticatedFetch: async (url: string, options?: RequestInit) => {
+      return fetch(url, {
+        ...options,
+        credentials: 'include',
+        headers: {
+          ...options?.headers,
+        }
+      });
     },
   };
   

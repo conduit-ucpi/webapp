@@ -3,9 +3,7 @@ import { useRouter } from 'next/router';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { useAuth } from '@/components/auth';
 import { useWeb3SDK } from '@/hooks/useWeb3SDK';
-import { PendingContract, CreateContractRequest } from '@/types';
-import { ERC20_ABI, ESCROW_CONTRACT_ABI } from '@conduit-ucpi/sdk';
-import { ethers } from 'ethers';
+import { PendingContract } from '@/types';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 
@@ -17,8 +15,12 @@ interface ContractAcceptanceProps {
 export default function ContractAcceptance({ contract, onAcceptComplete }: ContractAcceptanceProps) {
   const router = useRouter();
   const { config } = useConfig();
-  const { user, authenticatedFetch, signMessage } = useAuth();
-  const { getUserAddress, getUSDCBalance, signContractTransaction, utils, isReady, error: sdkError } = useWeb3SDK();
+  const { 
+    user, 
+    authenticatedFetch, 
+    fundContract
+  } = useAuth();
+  const { utils } = useWeb3SDK(); // Only keep utils from SDK
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
   const [hasError, setHasError] = useState(false);
@@ -79,131 +81,61 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
         throw new Error(`This contract is for ${contract.buyerEmail}, but you are logged in as ${user?.email}. Please log in with the correct account.`);
       }
 
-      // Skip USDC balance check for now when SDK is not ready
-      setLoadingMessage('Preparing contract...');
-      console.log('Checking balance for address:', userAddress);
-      console.log('USDC Contract Address:', config.usdcContractAddress);
-      
-      // Use currency utility to handle any amount/currency format
-      const requiredUSDC: number = utils?.formatCurrency ? utils.formatCurrency(contract.amount, contract.currency || 'microUSDC').numericAmount : (typeof contract.amount === 'number' ? contract.amount : parseFloat(String(contract.amount)));
-      console.log('Required USDC amount:', requiredUSDC);
-      console.log('Contract amount:', contract.amount);
-      console.log('Contract currency:', contract.currency);
-      
-      // Note: USDC balance check skipped when SDK not available
-
-      // Create on-chain contract (same as old flow)
-      setLoadingMessage('Creating secure escrow...');
-
-      // Convert to microUSDC format for blockchain operations
-      const amountInMicroUSDC = utils?.toMicroUSDC ? utils.toMicroUSDC(utils?.formatCurrency ? utils.formatCurrency(contract.amount, contract.currency || 'microUSDC').numericAmount : contract.amount) : (contract.amount * 1000000);
-      const amountInSmallestUnit = amountInMicroUSDC.toString();
-
-      const contractRequest: CreateContractRequest = {
-        buyer: userAddress,
-        seller: contract.sellerAddress,
-        amount: amountInSmallestUnit,
-        expiryTimestamp: contract.expiryTimestamp,
-        description: contract.description,
-        serviceLink: config.serviceLink
-      };
-
-      const response = await authenticatedFetch('/api/chain/create-contract', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(contractRequest)
+      // Check if fundContract is available from the auth provider
+      console.log('🔧 ContractAcceptance: fundContract availability:', {
+        fundContract: !!fundContract,
+        fundContractType: typeof fundContract,
+        authUser: !!user,
+        authProvider: user?.authProvider
       });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Contract creation failed');
-      }
-
-      const result = await response.json();
-      if (!result.success) {
-        throw new Error(result.error || 'Contract creation failed');
-      }
-
-      const contractAddress = result.contractAddress;
-      if (!contractAddress) {
-        throw new Error('Contract address not returned from chain service');
-      }
-
-      // USDC approval - sign transaction first, then send to API
-      setLoadingMessage('Approving USDC spending for escrow...');
       
-      // Convert to USDC format for approval (preserve precision for Web3)
-      const usdcAmount = utils?.toUSDCForWeb3 ? utils.toUSDCForWeb3(contract.amount, contract.currency || 'microUSDC') : contract.amount.toString();
-      const decimals = 6; // USDC has 6 decimals
-      const amountWei = ethers.parseUnits(usdcAmount, decimals);
+      if (!fundContract) {
+        throw new Error('Contract funding not available for this authentication provider');
+      }
+
+      setLoadingMessage('Step 1 of 3: Creating secure escrow...');
+
+      // Fund the contract using the provider-specific implementation
+      console.log('🔧 ContractAcceptance: About to call fundContract with params');
       
-      const approvalTx = await signContractTransaction({
-        contractAddress: config.usdcContractAddress,
-        abi: ERC20_ABI,
-        functionName: 'approve',
-        functionArgs: [contractAddress, amountWei],
-        debugLabel: 'USDC APPROVAL'
-      });
+      try {
+        const result = await fundContract({
+          contract: {
+            id: contract.id,
+            amount: contract.amount,
+            currency: contract.currency,
+            sellerAddress: contract.sellerAddress,
+            expiryTimestamp: contract.expiryTimestamp,
+            description: contract.description,
+            buyerEmail: contract.buyerEmail,
+            sellerEmail: contract.sellerEmail
+          },
+          userAddress,
+          config: {
+            usdcContractAddress: config.usdcContractAddress,
+            serviceLink: config.serviceLink
+          },
+          utils: {
+            toMicroUSDC: utils?.toMicroUSDC,
+            toUSDCForWeb3: utils?.toUSDCForWeb3,
+            formatDateTimeWithTZ: utils?.formatDateTimeWithTZ
+          },
+          onProgress: (step: string) => {
+            console.log('🔧 ContractAcceptance: Progress update:', step);
+            setLoadingMessage(step);
+          }
+        });
 
-      const approvalResponse = await authenticatedFetch('/api/chain/approve-usdc', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userWalletAddress: userAddress,
-          signedTransaction: approvalTx
-        })
-      });
-
-      if (!approvalResponse.ok) {
-        const errorData = await approvalResponse.json().catch(() => ({}));
-        throw new Error(errorData.error || 'USDC approval failed');
+        console.log('🔧 ContractAcceptance: Contract funding completed successfully:', result);
+      } catch (fundingError) {
+        console.error('🔧 ContractAcceptance: Contract funding failed:', fundingError);
+        console.error('🔧 ContractAcceptance: Funding error details:', {
+          message: fundingError instanceof Error ? fundingError.message : 'Unknown error',
+          name: fundingError instanceof Error ? fundingError.name : 'Unknown',
+          stack: fundingError instanceof Error ? fundingError.stack : 'No stack'
+        });
+        throw fundingError;
       }
-
-      const approvalResult = await approvalResponse.json();
-      if (!approvalResult.success) {
-        throw new Error(approvalResult.error || 'USDC approval failed');
-      }
-
-      // Fund the contract - sign transaction first, then send to API
-      setLoadingMessage('Depositing funds to escrow...');
-      
-      const depositTx = await signContractTransaction({
-        contractAddress,
-        abi: ESCROW_CONTRACT_ABI,
-        functionName: 'depositFunds',
-        functionArgs: [],
-        debugLabel: 'DEPOSIT'
-      });
-
-      const depositResponse = await authenticatedFetch('/api/chain/deposit-funds', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contractAddress,
-          userWalletAddress: userAddress,
-          signedTransaction: depositTx,
-          contractId: contract.id,
-          buyerEmail: contract.buyerEmail,
-          sellerEmail: contract.sellerEmail,
-          contractDescription: contract.description,
-          amount: amountInMicroUSDC.toString(),
-          currency: "USDC",
-          payoutDateTime: utils?.formatDateTimeWithTZ ? utils.formatDateTimeWithTZ(contract.expiryTimestamp) : new Date(contract.expiryTimestamp * 1000).toISOString(),
-          contractLink: config.serviceLink
-        })
-      });
-
-      if (!depositResponse.ok) {
-        const errorData = await depositResponse.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Fund deposit failed');
-      }
-
-      const depositResult = await depositResponse.json();
-      if (!depositResult.success) {
-        throw new Error(depositResult.error || 'Fund deposit failed');
-      }
-
-      // Contract service update is now handled by chain service
 
       // Mark as success to prevent double-clicks during redirect
       setIsSuccess(true);

@@ -229,6 +229,58 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
       throw new Error('Ethers provider not available');
     },
+
+    getUSDCBalance: async (userAddress?: string) => {
+      // Cast to access getUSDCBalance method
+      const providerWithUSDC = provider as any;
+      if (providerWithUSDC.getUSDCBalance) {
+        return await providerWithUSDC.getUSDCBalance(userAddress);
+      }
+      throw new Error('getUSDCBalance not available');
+    },
+
+    signContractTransaction: async (params: any) => {
+      // Cast to access signContractTransaction method
+      const providerWithSign = provider as any;
+      if (providerWithSign.signContractTransaction) {
+        return await providerWithSign.signContractTransaction(params);
+      }
+      throw new Error('signContractTransaction not available');
+    },
+
+    // High-level contract transaction methods
+    createContract: async (...args: any[]) => {
+      const providerWithContract = provider as any;
+      if (providerWithContract.createContract) {
+        return await providerWithContract.createContract(...args);
+      }
+      throw new Error('createContract not available');
+    },
+
+    approveUSDC: async (...args: any[]) => {
+      const providerWithContract = provider as any;
+      if (providerWithContract.approveUSDC) {
+        return await providerWithContract.approveUSDC(...args);
+      }
+      throw new Error('approveUSDC not available');
+    },
+
+    depositFunds: async (...args: any[]) => {
+      const providerWithContract = provider as any;
+      if (providerWithContract.depositFunds) {
+        return await providerWithContract.depositFunds(...args);
+      }
+      throw new Error('depositFunds not available');
+    },
+
+    fundContract: async (...args: any[]) => {
+      console.log('🔧 AuthProvider: fundContract called, delegating to provider');
+      const providerWithContract = provider as any;
+      if (providerWithContract.fundContract) {
+        return await providerWithContract.fundContract(...args);
+      }
+      throw new Error('fundContract not available from provider');
+    },
     
     // Use BackendAuth for authenticated API calls
     authenticatedFetch: (url: string, options?: RequestInit) => {

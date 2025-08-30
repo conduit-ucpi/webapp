@@ -70,7 +70,7 @@ class Web3AuthProviderImpl implements IAuthProvider {
         const { Web3Auth } = await import('@web3auth/modal');
         const { CHAIN_NAMESPACES, WEB3AUTH_NETWORK } = await import('@web3auth/base');
         
-        const web3AuthNetworkSetting = this.config.web3AuthNetwork === 'mainnet' 
+        const web3AuthNetworkSetting = this.config.web3AuthNetwork === 'sapphire_mainnet' 
           ? WEB3AUTH_NETWORK.SAPPHIRE_MAINNET 
           : WEB3AUTH_NETWORK.SAPPHIRE_DEVNET;
         

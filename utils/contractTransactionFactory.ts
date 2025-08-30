@@ -158,7 +158,7 @@ export function createFarcasterContractMethods(
           amountWei: amountWei.toString(),
           amountWeiHex: '0x' + amountWei.toString(16),
           amountWeiType: typeof amountWei,
-          amountWeiIsBigInt: amountWei instanceof BigInt || typeof amountWei === 'bigint'
+          amountWeiIsBigInt: typeof amountWei === 'bigint'
         });
         
         const txRequest = {

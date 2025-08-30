@@ -579,9 +579,28 @@ export function createFarcasterContractMethods(
         // Check the actual allowance AND contract's expected amount before deposit
         console.log('🔧 Farcaster: Checking USDC allowance and contract amount before deposit...');
         
-        // Use RPC directly to check what the contract expects to transfer
+        // Use RPC directly to check contract state and expected amount
         try {
-          console.log('🔧 Farcaster: Checking contract AMOUNT field via RPC...');
+          console.log('🔧 Farcaster: Checking contract state via RPC...');
+          
+          // Check if contract is initialized by calling a simpler function first
+          const stateResponse = await fetch(params.config.rpcUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              jsonrpc: '2.0',
+              method: 'eth_call',
+              params: [{
+                to: contractAddress,
+                data: '0x5aa6e675' // _state() function selector
+              }, 'latest'],
+              id: 1
+            })
+          }).then(r => r.json());
+          
+          console.log('🔧 Farcaster: Contract _state response:', stateResponse);
+          
+          // Try to get the AMOUNT field
           const contractAmountResponse = await fetch(params.config.rpcUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -592,7 +611,7 @@ export function createFarcasterContractMethods(
                 to: contractAddress,
                 data: '0xa2fb1175' // AMOUNT() function selector
               }, 'latest'],
-              id: 1
+              id: 2
             })
           }).then(r => r.json());
           
@@ -620,9 +639,15 @@ export function createFarcasterContractMethods(
             }
           } else if (contractAmountResponse.error) {
             console.error('🔧 Farcaster: Contract AMOUNT call error:', contractAmountResponse.error);
+            console.log('🔧 Farcaster: This suggests the contract might not be fully initialized yet');
+            
+            // If AMOUNT() reverts, the contract might expect a different amount than 1000
+            // Let's check what the chain service actually sent when creating the contract
+            console.log('🔧 Farcaster: Chain service sent amount:', params.contract.amount, 'microUSDC');
+            console.log('🔧 Farcaster: This might explain why approval of 1000 is insufficient');
           }
         } catch (error) {
-          console.error('🔧 Farcaster: Could not check contract AMOUNT via RPC:', error);
+          console.error('🔧 Farcaster: Could not check contract state via RPC:', error);
         }
         
         // Original Farcaster check (will fail but keeping for consistency)

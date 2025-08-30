@@ -286,10 +286,14 @@ export function createFarcasterContractMethods(
         
         const currency = params.contract.currency || 'microUSDC';
         if (currency === 'microUSDC') {
-          // Direct use of microUSDC amount as wei units
+          // microUSDC is already the smallest unit, but the contract expects
+          // the actual blockchain representation which is the same value
+          // HOWEVER, if chain service converts microUSDC to blockchain units,
+          // we need to match that conversion for approval
+          // 1000 microUSDC = 1000 smallest USDC units on blockchain
           amountWei = BigInt(params.contract.amount);
         } else if (currency === 'USDC') {
-          // Convert USDC to microUSDC (multiply by 1,000,000)
+          // Convert USDC to smallest units (multiply by 1,000,000)
           amountWei = ethers.parseUnits(params.contract.amount.toString(), 6);
         } else {
           // Fallback: assume microUSDC
@@ -466,6 +470,33 @@ export function createFarcasterContractMethods(
 
         // Step 3: Deposit funds with eth_sendTransaction
         console.log('🔧 Farcaster: Step 3 - Depositing funds via eth_sendTransaction');
+        
+        // Check the actual allowance before attempting deposit
+        console.log('🔧 Farcaster: Checking USDC allowance before deposit...');
+        try {
+          const allowanceData = new ethers.Interface([
+            'function allowance(address owner, address spender) view returns (uint256)'
+          ]).encodeFunctionData('allowance', [params.userAddress, contractAddress]);
+          
+          const allowanceResult = await walletClient.transport.request({
+            method: 'eth_call',
+            params: [{
+              to: params.config.usdcContractAddress,
+              data: allowanceData
+            }, 'latest'],
+          });
+          
+          const allowanceWei = BigInt(allowanceResult);
+          console.log('🔧 Farcaster: Current USDC allowance:', {
+            allowanceHex: allowanceResult,
+            allowanceWei: allowanceWei.toString(),
+            allowanceUSDC: ethers.formatUnits(allowanceWei, 6) + ' USDC',
+            owner: params.userAddress,
+            spender: contractAddress
+          });
+        } catch (error) {
+          console.log('🔧 Farcaster: Could not check allowance:', error);
+        }
         
         // Create the deposit transaction request
         const depositTxRequest: {

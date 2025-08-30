@@ -112,14 +112,11 @@ class Web3AuthProviderImpl implements IAuthProvider {
           // Add timeout to prevent hanging
           const initPromise = this.web3auth.init();
           const timeoutPromise = new Promise((_, reject) => {
-            setTimeout(() => reject(new Error('Web3Auth initialization timeout after 5 seconds')), 5000);
+            setTimeout(() => reject(new Error('Web3Auth initialization timeout after 10 seconds')), 10000);
           });
           
           await Promise.race([initPromise, timeoutPromise]);
           console.log('🔧 Web3Auth: Modal initialized successfully');
-          
-          // Only mark as initialized if init succeeded
-          this.state.isInitialized = true;
           
           // Check if already connected
           if (this.web3auth.connected) {
@@ -131,19 +128,21 @@ class Web3AuthProviderImpl implements IAuthProvider {
           console.error('🔧 Web3Auth: Modal initialization failed:', initError);
           console.error('🔧 Web3Auth: This might be due to invalid clientId, network issues, or unsupported chain');
           
-          // Set error and DON'T mark as initialized
-          this.state.error = `Web3Auth init failed: ${(initError as any).message}`;
-          this.state.isInitialized = false;
+          // Store the error but continue - Web3Auth might still work
+          this.state.error = `Web3Auth initialization warning: ${(initError as any).message}`;
           
-          // Re-throw the error so the AuthProvider knows initialization failed
-          throw new Error(`Web3Auth initialization failed: ${(initError as any).message}`);
+          // Don't re-throw - let the app continue and try to use Web3Auth anyway
+          console.warn('🔧 Web3Auth: Continuing despite initialization error');
         }
+        
+        // Mark as initialized even if there was an error - we have a web3auth instance
+        this.state.isInitialized = true;
       } else {
         // Mark as initialized even if we're in test environment or server-side
         this.state.isInitialized = true;
       }
       
-      console.log('🔧 Web3Auth: Initialization completed');
+      console.log('🔧 Web3Auth: Initialization completed, isInitialized:', this.state.isInitialized);
     } catch (error) {
       this.state.error = error instanceof Error ? error.message : 'Initialization failed';
       this.emit({ type: 'error', error: this.state.error });
@@ -199,21 +198,21 @@ class Web3AuthProviderImpl implements IAuthProvider {
       this.state.isLoading = true;
       
       console.log('🔧 Web3Auth: Connect called, checking initialization...');
+      
+      // If not initialized, try to initialize now
       if (!this.state.isInitialized) {
-        // Provide more helpful error message based on existing error state
-        const previousError = this.state.error;
-        if (previousError && previousError.includes('Web3Auth init failed')) {
-          throw new Error('Web3Auth failed to initialize. Please check your internet connection and try refreshing the page.');
-        }
-        throw new Error('Web3Auth is still initializing. Please wait a moment and try again.');
+        console.log('🔧 Web3Auth: Not initialized yet, attempting initialization...');
+        await this.initialize();
       }
       
-      // Clear any previous errors only after we've checked initialization
-      this.state.error = null;
-      this.emit({ type: 'connecting' });
+      // Check if we have a web3auth instance
       if (!this.web3auth) {
         throw new Error('Web3Auth service is not available. Please refresh the page and try again.');
       }
+      
+      // Clear any previous errors and emit connecting event
+      this.state.error = null;
+      this.emit({ type: 'connecting' });
       console.log('🔧 Web3Auth: Web3Auth instance ready, attempting connection...');
       
       // Connect if not already connected

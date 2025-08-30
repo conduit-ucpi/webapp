@@ -286,11 +286,12 @@ export function createFarcasterContractMethods(
         
         const currency = params.contract.currency || 'microUSDC';
         if (currency === 'microUSDC') {
-          // microUSDC is already the smallest unit, but the contract expects
-          // the actual blockchain representation which is the same value
-          // HOWEVER, if chain service converts microUSDC to blockchain units,
-          // we need to match that conversion for approval
-          // 1000 microUSDC = 1000 smallest USDC units on blockchain
+          // Chain service expects microUSDC and passes it directly to contract
+          // Contract expects the amount in smallest USDC units (6 decimals)
+          // 1 microUSDC = 1 smallest USDC unit (both are 10^-6 of 1 USDC)
+          // So 1000 microUSDC = 1000 smallest units
+          // Contract will transferFrom(buyer, contract, 1000)
+          // So we need to approve exactly 1000
           amountWei = BigInt(params.contract.amount);
         } else if (currency === 'USDC') {
           // Convert USDC to smallest units (multiply by 1,000,000)
@@ -471,9 +472,10 @@ export function createFarcasterContractMethods(
         // Step 3: Deposit funds with eth_sendTransaction
         console.log('🔧 Farcaster: Step 3 - Depositing funds via eth_sendTransaction');
         
-        // Check the actual allowance before attempting deposit
-        console.log('🔧 Farcaster: Checking USDC allowance before deposit...');
+        // Check the actual allowance AND contract's expected amount before deposit
+        console.log('🔧 Farcaster: Checking USDC allowance and contract amount before deposit...');
         try {
+          // Check allowance
           const allowanceData = new ethers.Interface([
             'function allowance(address owner, address spender) view returns (uint256)'
           ]).encodeFunctionData('allowance', [params.userAddress, contractAddress]);
@@ -487,15 +489,35 @@ export function createFarcasterContractMethods(
           });
           
           const allowanceWei = BigInt(allowanceResult);
-          console.log('🔧 Farcaster: Current USDC allowance:', {
+          
+          // Check contract's AMOUNT variable
+          const amountData = new ethers.Interface([
+            'function AMOUNT() view returns (uint256)'
+          ]).encodeFunctionData('AMOUNT', []);
+          
+          const amountResult = await walletClient.transport.request({
+            method: 'eth_call',
+            params: [{
+              to: contractAddress,
+              data: amountData
+            }, 'latest'],
+          });
+          
+          const contractAmountWei = BigInt(amountResult);
+          
+          console.log('🔧 Farcaster: Pre-deposit check:', {
             allowanceHex: allowanceResult,
             allowanceWei: allowanceWei.toString(),
             allowanceUSDC: ethers.formatUnits(allowanceWei, 6) + ' USDC',
+            contractAmountHex: amountResult,
+            contractAmountWei: contractAmountWei.toString(),
+            contractAmountUSDC: ethers.formatUnits(contractAmountWei, 6) + ' USDC',
+            mismatch: allowanceWei !== contractAmountWei,
             owner: params.userAddress,
             spender: contractAddress
           });
         } catch (error) {
-          console.log('🔧 Farcaster: Could not check allowance:', error);
+          console.log('🔧 Farcaster: Could not check allowance/amount:', error);
         }
         
         // Create the deposit transaction request

@@ -56,10 +56,9 @@ export class ContractTransactionService {
     config: ContractTransactionConfig,
     utils: ContractFundingParams['utils']
   ): Promise<string> {
-    // Convert to microUSDC format for blockchain operations
-    const amountInMicroUSDC = utils?.toMicroUSDC 
-      ? utils.toMicroUSDC(contract.amount) 
-      : (contract.amount * 1000000);
+    // FIXED: If already in microUSDC, use directly. Don't double-convert.
+    // The contract.amount is already in microUSDC format from the backend
+    const amountInMicroUSDC = contract.amount;
     
     const contractRequest: CreateContractRequest = {
       buyer: userAddress,

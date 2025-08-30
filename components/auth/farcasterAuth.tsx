@@ -1452,7 +1452,12 @@ export function FarcasterAuthProvider({ children, AuthContext }: {
   children: React.ReactNode;
   AuthContext?: React.Context<any>;
 }) {
-  const { config } = useConfig();
+  const { config, isLoading } = useConfig();
+  
+  // Wait for config to load before proceeding
+  if (isLoading) {
+    return <div>Loading configuration...</div>;
+  }
   
   // Get chain ID from config - MUST be provided
   if (!config?.chainId) {

@@ -436,9 +436,9 @@ export function createFarcasterContractMethods(
         console.log('🔧 Farcaster: Step 2 ✅ - USDC approved via eth_sendTransaction, tx:', approvalTxHash);
         params.onProgress?.('Step 3 of 3: Depositing funds to escrow...');
 
-        // Add another small delay before deposit
-        console.log('🔧 Farcaster: Waiting 2s before deposit...');
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        // Add longer delay before deposit to allow approval to be processed
+        console.log('🔧 Farcaster: Waiting 5s before deposit to allow approval processing...');
+        await new Promise(resolve => setTimeout(resolve, 5000));
 
         // Step 3: Deposit funds with eth_sendTransaction
         console.log('🔧 Farcaster: Step 3 - Depositing funds via eth_sendTransaction');
@@ -556,6 +556,11 @@ export function createFarcasterContractMethods(
         
         try {
           // Make direct RPC calls for accurate estimates
+          console.log('🔧 Farcaster: Making RPC eth_estimateGas call for deposit:', {
+            rpcUrl: params.config.rpcUrl,
+            txRequest: depositTxRequest
+          });
+          
           const rpcGasEstimate = await fetch(params.config.rpcUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -566,6 +571,8 @@ export function createFarcasterContractMethods(
               id: 1
             })
           }).then(r => r.json());
+          
+          console.log('🔧 Farcaster: RPC eth_estimateGas response:', rpcGasEstimate);
           
           const rpcGasPrice = await fetch(params.config.rpcUrl, {
             method: 'POST',

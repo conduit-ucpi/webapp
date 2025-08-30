@@ -69,6 +69,7 @@ export interface ContractFundingParams {
   config: {
     usdcContractAddress: string;
     serviceLink: string;
+    rpcUrl: string;
   };
   utils: {
     toMicroUSDC?: (amount: number) => number;

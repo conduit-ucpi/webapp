@@ -116,7 +116,8 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
           userAddress,
           config: {
             usdcContractAddress: config.usdcContractAddress,
-            serviceLink: config.serviceLink
+            serviceLink: config.serviceLink,
+            rpcUrl: config.rpcUrl
           },
           utils: {
             toMicroUSDC: utils?.toMicroUSDC,

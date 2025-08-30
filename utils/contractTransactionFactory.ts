@@ -301,15 +301,38 @@ export function createFarcasterContractMethods(
         };
 
         try {
-          const gasEstimate = await walletClient.transport.request({
-            method: 'eth_estimateGas',
-            params: [approvalTxRequest],
-          });
+          // Try gas estimation, but handle Farcaster provider limitations
+          let gasEstimate, gasPrice;
           
-          const gasPrice = await walletClient.transport.request({
-            method: 'eth_gasPrice',
-            params: [],
-          });
+          try {
+            gasEstimate = await walletClient.transport.request({
+              method: 'eth_estimateGas',
+              params: [approvalTxRequest],
+            });
+          } catch (estimateError: any) {
+            if (estimateError.code === 4200) {
+              // Farcaster doesn't support eth_estimateGas, use typical USDC approval gas
+              gasEstimate = '0x11170'; // 70,000 gas (conservative estimate for USDC approval)
+              console.log('🔧 Farcaster: Using fallback gas estimate for USDC approval:', gasEstimate);
+            } else {
+              throw estimateError;
+            }
+          }
+          
+          try {
+            gasPrice = await walletClient.transport.request({
+              method: 'eth_gasPrice',
+              params: [],
+            });
+          } catch (priceError: any) {
+            if (priceError.code === 4200) {
+              // Farcaster doesn't support eth_gasPrice, use current Base network typical price
+              gasPrice = '0x1E8480'; // 0.002 Gwei (2,000,000 wei - conservative estimate for Base)
+              console.log('🔧 Farcaster: Using fallback gas price for Base network:', gasPrice);
+            } else {
+              throw priceError;
+            }
+          }
           
           const gasEstimateDecimal = parseInt(gasEstimate, 16);
           const gasPriceDecimal = parseInt(gasPrice, 16);
@@ -323,10 +346,14 @@ export function createFarcasterContractMethods(
             gasPriceGwei: ethers.formatUnits(gasPriceDecimal.toString(), 'gwei'),
             totalGasCostWei: totalGasCostWei.toString(),
             totalGasCostEth: totalGasCostEth,
-            totalGasCostUSD: `~$${(parseFloat(totalGasCostEth) * 2500).toFixed(4)}`
+            totalGasCostUSD: `~$${(parseFloat(totalGasCostEth) * 2500).toFixed(4)}`,
+            note: gasEstimate === '0x11170' || gasPrice === '0x5F5E100' ? 'Using fallback estimates due to Farcaster provider limitations' : 'Real-time estimates'
           });
+          
         } catch (gasError) {
           console.error('🔧 Farcaster: USDC approval gas estimation failed:', gasError);
+          // Provide manual estimates for user awareness
+          console.log('🔧 Farcaster: Manual gas estimate for USDC approval - ~70,000 gas units at ~0.002 Gwei = ~0.00000014 ETH (~$0.00035)');
         }
 
         let approvalTxHash: string;
@@ -370,16 +397,53 @@ export function createFarcasterContractMethods(
 
         // Estimate gas for the deposit transaction
         try {
-          const gasEstimate = await walletClient.transport.request({
-            method: 'eth_estimateGas',
-            params: [depositTxRequest],
-          });
+          let gasEstimate, gasPrice, userBalance;
           
-          // Get current gas price
-          const gasPrice = await walletClient.transport.request({
-            method: 'eth_gasPrice',
-            params: [],
-          });
+          // Try gas estimation with fallbacks for Farcaster provider
+          try {
+            gasEstimate = await walletClient.transport.request({
+              method: 'eth_estimateGas',
+              params: [depositTxRequest],
+            });
+          } catch (estimateError: any) {
+            if (estimateError.code === 4200) {
+              // Farcaster doesn't support eth_estimateGas, use typical deposit gas
+              gasEstimate = '0x15F90'; // 90,000 gas (conservative estimate for contract deposit)
+              console.log('🔧 Farcaster: Using fallback gas estimate for deposit:', gasEstimate);
+            } else {
+              throw estimateError;
+            }
+          }
+          
+          try {
+            gasPrice = await walletClient.transport.request({
+              method: 'eth_gasPrice',
+              params: [],
+            });
+          } catch (priceError: any) {
+            if (priceError.code === 4200) {
+              // Farcaster doesn't support eth_gasPrice, use current Base network typical price  
+              gasPrice = '0x1E8480'; // 0.002 Gwei (2,000,000 wei - conservative estimate for Base)
+              console.log('🔧 Farcaster: Using fallback gas price for deposit:', gasPrice);
+            } else {
+              throw priceError;
+            }
+          }
+          
+          try {
+            userBalance = await walletClient.transport.request({
+              method: 'eth_getBalance',
+              params: [params.userAddress, 'latest'],
+            });
+          } catch (balanceError: any) {
+            if (balanceError.code === 4200) {
+              // Farcaster doesn't support eth_getBalance, skip balance check
+              console.log('🔧 Farcaster: Cannot check user balance - provider limitation');
+              userBalance = null;
+            } else {
+              throw balanceError;
+            }
+          }
           
           const gasEstimateDecimal = parseInt(gasEstimate, 16);
           const gasPriceDecimal = parseInt(gasPrice, 16);
@@ -393,28 +457,33 @@ export function createFarcasterContractMethods(
             gasPriceGwei: ethers.formatUnits(gasPriceDecimal.toString(), 'gwei'),
             totalGasCostWei: totalGasCostWei.toString(),
             totalGasCostEth: totalGasCostEth,
-            totalGasCostUSD: `~$${(parseFloat(totalGasCostEth) * 2500).toFixed(4)}`
+            totalGasCostUSD: `~$${(parseFloat(totalGasCostEth) * 2500).toFixed(4)}`,
+            note: gasEstimate === '0x15F90' || gasPrice === '0x5F5E100' ? 'Using fallback estimates due to Farcaster provider limitations' : 'Real-time estimates'
           });
           
-          // Check user's balance
-          const userBalance = await walletClient.transport.request({
-            method: 'eth_getBalance',
-            params: [params.userAddress, 'latest'],
-          });
-          const userBalanceDecimal = parseInt(userBalance, 16);
-          const userBalanceEth = ethers.formatEther(userBalanceDecimal.toString());
-          
-          console.log('🔧 Farcaster: User balance check:', {
-            balanceWei: userBalance,
-            balanceEth: userBalanceEth,
-            balanceUSD: `~$${(parseFloat(userBalanceEth) * 2500).toFixed(4)}`,
-            hasEnoughGas: userBalanceDecimal > totalGasCostWei,
-            shortfallWei: userBalanceDecimal > totalGasCostWei ? 0 : (totalGasCostWei - userBalanceDecimal).toString(),
-            shortfallEth: userBalanceDecimal > totalGasCostWei ? 0 : ethers.formatEther((totalGasCostWei - userBalanceDecimal).toString())
-          });
+          // Check user's balance if available
+          if (userBalance !== null) {
+            const userBalanceDecimal = parseInt(userBalance, 16);
+            const userBalanceEth = ethers.formatEther(userBalanceDecimal.toString());
+            
+            console.log('🔧 Farcaster: User balance check:', {
+              balanceWei: userBalance,
+              balanceEth: userBalanceEth,
+              balanceUSD: `~$${(parseFloat(userBalanceEth) * 2500).toFixed(4)}`,
+              hasEnoughGas: userBalanceDecimal > totalGasCostWei,
+              shortfallWei: userBalanceDecimal > totalGasCostWei ? 0 : (totalGasCostWei - userBalanceDecimal).toString(),
+              shortfallEth: userBalanceDecimal > totalGasCostWei ? 0 : ethers.formatEther((totalGasCostWei - userBalanceDecimal).toString()),
+              recommendation: userBalanceDecimal <= totalGasCostWei ? `Need ${ethers.formatEther((totalGasCostWei - userBalanceDecimal).toString())} more ETH` : 'Sufficient balance'
+            });
+          } else {
+            console.log('🔧 Farcaster: Manual recommendation - You should have at least 0.001 ETH for Base network transactions. Current estimate needs:', totalGasCostEth, 'ETH');
+          }
           
         } catch (gasError) {
           console.error('🔧 Farcaster: Gas estimation failed:', gasError);
+          // Provide manual estimates for user awareness
+          console.log('🔧 Farcaster: Manual gas estimate for deposit - ~90,000 gas units at ~0.002 Gwei = ~0.00000018 ETH (~$0.00045)');
+          console.log('🔧 Farcaster: Recommendation - With current low Base gas prices, 0.0005 ETH should be more than sufficient');
         }
 
         console.log('🔧 Farcaster: Sending deposit via eth_sendTransaction:', depositTxRequest);

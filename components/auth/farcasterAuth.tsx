@@ -412,13 +412,22 @@ export function getFarcasterAuthProvider(config?: any): IAuthProvider {
 
 // Wagmi configuration for Farcaster environment
 const createFarcasterWagmiConfig = (chainId: number) => {
-  const chain = chainId === 8453 ? base : baseSepolia; // 8453 = Base mainnet, 84532 = Base Sepolia testnet
+  // Dynamic chain selection based on configured chain ID
+  const chainMap: Record<number, any> = {
+    8453: base,      // Base Mainnet
+    84532: baseSepolia, // Base Sepolia
+    // Add more chains as needed
+  };
+  
+  const chain = chainMap[chainId];
+  if (!chain) {
+    throw new Error(`Unsupported chain ID for Farcaster: ${chainId}. Supported chains: ${Object.keys(chainMap).join(', ')}`);
+  }
   
   return createConfig({
     chains: [chain],
     transports: {
-      8453: http(),
-      84532: http(),
+      [chainId]: http(),
     },
     connectors: [
       farcasterMiniApp() // Official Farcaster miniapp connector
@@ -1445,8 +1454,11 @@ export function FarcasterAuthProvider({ children, AuthContext }: {
 }) {
   const { config } = useConfig();
   
-  // Get chain ID from config - default to Base Sepolia testnet for Farcaster
-  const chainId = config?.chainId || 84532; // Use chainId from config
+  // Get chain ID from config - MUST be provided
+  if (!config?.chainId) {
+    throw new Error('CHAIN_ID must be configured - no default chain ID allowed');
+  }
+  const chainId = config.chainId;
   
   // Track instances for debugging
   const instanceId = React.useRef(Math.random().toString(36).substr(2, 9));

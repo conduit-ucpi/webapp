@@ -888,6 +888,33 @@ export function createFarcasterContractMethods(
           });
           
           console.log('🔧 Farcaster: Step 3 ✅ - Funds deposited, tx:', depositTxHash);
+          
+          // Step 4: Update contract service with blockchain details (Farcaster only)
+          // This links the MongoDB contract record with the deployed blockchain contract
+          try {
+            console.log('🔧 Farcaster: Using BackendAuth.authenticatedFetch for: /api/contracts/' + params.contract.id, 'hasToken: true');
+            
+            const updateResponse = await authenticatedFetch(`/api/contracts/${params.contract.id}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                chainAddress: contractAddress,
+                chainId: walletClient?.chain?.id || 8453, // Base mainnet
+                buyerAddress: params.userAddress,
+                state: 'OK' // Mark as successfully deployed
+              })
+            });
+            
+            if (!updateResponse.ok) {
+              console.error('🔧 Farcaster: Contract service update failed:', await updateResponse.text());
+              // Don't throw - contract is funded, just logging failed
+            } else {
+              console.log('🔧 Farcaster: Contract service updated successfully');
+            }
+          } catch (updateError) {
+            console.error('🔧 Farcaster: Failed to update contract service:', updateError);
+            // Don't throw - contract is funded, just logging failed
+          }
         } catch (depositError: any) {
           console.error('🔧 Farcaster: RAW DEPOSIT ERROR (before UI processing):', depositError);
           console.error('🔧 Farcaster: Detailed error analysis:', {

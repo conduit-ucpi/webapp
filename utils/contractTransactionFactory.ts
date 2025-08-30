@@ -136,14 +136,21 @@ export function createFarcasterContractMethods(
           throw new Error(`Farcaster wallet client not properly initialized: transport=${!!walletClient?.transport}, request=${!!walletClient?.transport?.request}`);
         }
 
-        // Convert to USDC format for approval (preserve precision for Web3)
-        const usdcAmount = utils?.toUSDCForWeb3 
-          ? utils.toUSDCForWeb3(amount, currency || 'microUSDC') 
-          : amount.toString();
-        
-        const decimals = 6; // USDC has 6 decimals
+        // For USDC approval, we need the raw microUSDC amount (not converted to USDC)
+        // 1000 microUSDC = 1000 raw units in the USDC contract (which has 6 decimals)
         const { ethers } = await import('ethers');
-        const amountWei = ethers.parseUnits(usdcAmount, decimals);
+        let amountWei: bigint;
+        
+        if (currency === 'microUSDC' || !currency) {
+          // Direct use of microUSDC amount as wei units
+          amountWei = BigInt(amount);
+        } else if (currency === 'USDC') {
+          // Convert USDC to microUSDC (multiply by 1,000,000)
+          amountWei = ethers.parseUnits(amount.toString(), 6);
+        } else {
+          // Fallback: assume microUSDC
+          amountWei = BigInt(amount);
+        }
         
         // Create the transaction request
         const txRequest = {
@@ -272,22 +279,29 @@ export function createFarcasterContractMethods(
           throw new Error(`Farcaster wallet client not available: transport=${!!walletClient?.transport}, request=${!!walletClient?.transport?.request}`);
         }
         
-        // Convert to USDC format for approval
-        const usdcAmount = params.utils?.toUSDCForWeb3 
-          ? params.utils.toUSDCForWeb3(params.contract.amount, params.contract.currency || 'microUSDC') 
-          : params.contract.amount.toString();
-        
-        const decimals = 6; // USDC has 6 decimals
+        // For USDC approval, we need the raw microUSDC amount (not converted to USDC)
+        // 1000 microUSDC = 1000 raw units in the USDC contract (which has 6 decimals)
         const { ethers } = await import('ethers');
-        const amountWei = ethers.parseUnits(usdcAmount, decimals);
+        let amountWei: bigint;
+        
+        const currency = params.contract.currency || 'microUSDC';
+        if (currency === 'microUSDC') {
+          // Direct use of microUSDC amount as wei units
+          amountWei = BigInt(params.contract.amount);
+        } else if (currency === 'USDC') {
+          // Convert USDC to microUSDC (multiply by 1,000,000)
+          amountWei = ethers.parseUnits(params.contract.amount.toString(), 6);
+        } else {
+          // Fallback: assume microUSDC
+          amountWei = BigInt(params.contract.amount);
+        }
         
         console.log('🔧 Farcaster: USDC Approval amounts:', {
           contractAmount: params.contract.amount,
-          contractCurrency: params.contract.currency || 'microUSDC',
-          usdcAmountForApproval: usdcAmount,
-          amountWeiHex: amountWei.toString(),
+          contractCurrency: currency,
+          amountWeiHex: '0x' + amountWei.toString(16),
           amountWeiDecimal: amountWei.toString(),
-          readableUSDC: ethers.formatUnits(amountWei, 6),
+          readableUSDC: ethers.formatUnits(amountWei, 6) + ' USDC',
           approvingTo: contractAddress
         });
         

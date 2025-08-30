@@ -117,24 +117,32 @@ class Web3AuthProviderImpl implements IAuthProvider {
           
           await Promise.race([initPromise, timeoutPromise]);
           console.log('🔧 Web3Auth: Modal initialized successfully');
+          
+          // Only mark as initialized if init succeeded
+          this.state.isInitialized = true;
+          
+          // Check if already connected
+          if (this.web3auth.connected) {
+            console.log('🔧 Web3Auth: Already connected, updating user data');
+            this.provider = this.web3auth.provider;
+            await this.updateUserFromProvider();
+          }
         } catch (initError) {
           console.error('🔧 Web3Auth: Modal initialization failed:', initError);
           console.error('🔧 Web3Auth: This might be due to invalid clientId, network issues, or unsupported chain');
           
-          // Set a flag that Web3Auth failed but don't throw - allow app to continue
+          // Set error and DON'T mark as initialized
           this.state.error = `Web3Auth init failed: ${(initError as any).message}`;
-          console.warn('🔧 Web3Auth: Continuing without Web3Auth initialization');
+          this.state.isInitialized = false;
+          
+          // Re-throw the error so the AuthProvider knows initialization failed
+          throw new Error(`Web3Auth initialization failed: ${(initError as any).message}`);
         }
-        
-        // Check if already connected
-        if (this.web3auth.connected) {
-          console.log('🔧 Web3Auth: Already connected, updating user data');
-          this.provider = this.web3auth.provider;
-          await this.updateUserFromProvider();
-        }
+      } else {
+        // Mark as initialized even if we're in test environment or server-side
+        this.state.isInitialized = true;
       }
       
-      this.state.isInitialized = true;
       console.log('🔧 Web3Auth: Initialization completed');
     } catch (error) {
       this.state.error = error instanceof Error ? error.message : 'Initialization failed';
@@ -189,15 +197,22 @@ class Web3AuthProviderImpl implements IAuthProvider {
   async connect(): Promise<AuthResult> {
     try {
       this.state.isLoading = true;
-      this.state.error = null;
-      this.emit({ type: 'connecting' });
       
       console.log('🔧 Web3Auth: Connect called, checking initialization...');
       if (!this.state.isInitialized) {
-        throw new Error('Web3Auth not initialized - call initialize() first');
+        // Provide more helpful error message based on existing error state
+        const previousError = this.state.error;
+        if (previousError && previousError.includes('Web3Auth init failed')) {
+          throw new Error('Web3Auth failed to initialize. Please check your internet connection and try refreshing the page.');
+        }
+        throw new Error('Web3Auth is still initializing. Please wait a moment and try again.');
       }
+      
+      // Clear any previous errors only after we've checked initialization
+      this.state.error = null;
+      this.emit({ type: 'connecting' });
       if (!this.web3auth) {
-        throw new Error('Web3Auth not initialized');
+        throw new Error('Web3Auth service is not available. Please refresh the page and try again.');
       }
       console.log('🔧 Web3Auth: Web3Auth instance ready, attempting connection...');
       

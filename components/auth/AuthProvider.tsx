@@ -51,7 +51,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
           console.log('🔧 AuthProvider: Loading Web3Auth provider...');
           const { getWeb3AuthProvider } = await import('./web3auth');
           const authProvider = getWeb3AuthProvider(config!);
-          await authProvider.initialize();
+          
+          try {
+            await authProvider.initialize();
+            console.log('🔧 AuthProvider: Web3Auth provider initialized successfully');
+          } catch (initError) {
+            console.error('🔧 AuthProvider: Failed to initialize Web3Auth:', initError);
+            // Even if initialization fails, set the provider so user can see error
+            // The provider will handle the error state internally
+          }
+          
           setProvider(authProvider);
           
           // Check if we have an existing backend session

@@ -34,16 +34,8 @@ export function createContractTransactionMethods(
     /**
      * Approve USDC spending for escrow contract
      */
-    approveUSDC: async (
-      contractAddress: string,
-      amount: number,
-      currency: string | undefined,
-      userAddress: string,
-      config: ContractFundingParams['config'],
-      utils: ContractFundingParams['utils']
-    ): Promise<string> => {
-      return await service.approveUSDC(contractAddress, amount, currency, userAddress, config, utils);
-    },
+    // This is handled by the Farcaster-specific implementation below
+    approveUSDC: null as any, // Removed - use Farcaster-specific version
 
     /**
      * Deposit funds to escrow contract
@@ -56,11 +48,12 @@ export function createContractTransactionMethods(
 
     /**
      * Complete contract funding: create, approve, and deposit
+     * This should be overridden by provider-specific implementations
      */
     fundContract: async (
       params: ContractFundingParams
     ): Promise<ContractFundingResult> => {
-      return await service.fundContract(params);
+      throw new Error('fundContract must be implemented by provider-specific version (Farcaster/Web3Auth)');
     }
   };
 }

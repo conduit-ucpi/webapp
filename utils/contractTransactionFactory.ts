@@ -841,12 +841,61 @@ export function createFarcasterContractMethods(
 
         console.log('🔧 Farcaster: Final deposit transaction request:', finalDepositTxRequest);
         
-        const depositTxHash = await walletClient.transport.request({
-          method: 'eth_sendTransaction',
-          params: [finalDepositTxRequest],
-        });
-        
-        console.log('🔧 Farcaster: Step 3 ✅ - Funds deposited, tx:', depositTxHash);
+        // Capture the real error before Farcaster's UI masks it
+        let depositTxHash;
+        try {
+          console.log('🔧 Farcaster: About to call eth_sendTransaction for deposit...');
+          
+          depositTxHash = await walletClient.transport.request({
+            method: 'eth_sendTransaction',
+            params: [finalDepositTxRequest],
+          });
+          
+          console.log('🔧 Farcaster: Step 3 ✅ - Funds deposited, tx:', depositTxHash);
+        } catch (depositError: any) {
+          console.error('🔧 Farcaster: RAW DEPOSIT ERROR (before UI processing):', depositError);
+          console.error('🔧 Farcaster: Detailed error analysis:', {
+            name: depositError?.name,
+            message: depositError?.message,
+            code: depositError?.code,
+            details: depositError?.details,
+            data: depositError?.data,
+            stack: depositError?.stack?.substring(0, 200), // First 200 chars
+            originalError: depositError?.cause || depositError?.reason,
+            errorKeys: Object.keys(depositError || {}),
+            errorString: depositError?.toString()
+          });
+          
+          // Try to extract revert reason from error data
+          if (depositError?.data && typeof depositError.data === 'string') {
+            try {
+              const errorData = depositError.data;
+              console.error('🔧 Farcaster: Raw error data (might contain revert):', errorData);
+              
+              // Try to decode if it looks like hex-encoded revert reason
+              if (errorData.startsWith('0x')) {
+                try {
+                  const decoded = ethers.toUtf8String(errorData);
+                  console.error('🔧 Farcaster: Decoded error data:', decoded);
+                } catch (decodeError) {
+                  console.log('🔧 Farcaster: Could not decode error data as UTF-8');
+                }
+              }
+            } catch (error) {
+              console.log('🔧 Farcaster: Could not process error data');
+            }
+          }
+          
+          // Look for nested error information
+          if (depositError?.cause) {
+            console.error('🔧 Farcaster: Error cause:', depositError.cause);
+          }
+          if (depositError?.reason) {
+            console.error('🔧 Farcaster: Error reason:', depositError.reason);
+          }
+          
+          throw depositError; // Re-throw so UI still shows the error
+        }
         
         // Notify backend about successful deposit for email notifications
         const amountInMicroUSDC = params.utils?.toMicroUSDC 

@@ -1152,10 +1152,7 @@ function FarcasterAuthProviderInner({ children, AuthContext }: {
     }
   }, [address]);
   
-  // If AuthContext is provided, we're inside the unified wrapper - just render children
-  if (AuthContext) {
-    return <>{children}</>;
-  }
+  // Note: Early return moved to after all hooks to comply with Rules of Hooks
 
   // Create contract transaction methods
   const contractMethods = React.useMemo(() => {
@@ -1426,6 +1423,11 @@ function FarcasterAuthProviderInner({ children, AuthContext }: {
       spreadWorking: contractMethods && Object.keys(contractMethods).length > 0
     });
   }, [contextValue, contractMethods]);
+  
+  // Early return after all hooks are called to comply with Rules of Hooks
+  if (AuthContext) {
+    return <>{children}</>;
+  }
   
   return (
     <FarcasterAuthContext.Provider value={contextValue}>

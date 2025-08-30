@@ -281,6 +281,16 @@ export function createFarcasterContractMethods(
         const { ethers } = await import('ethers');
         const amountWei = ethers.parseUnits(usdcAmount, decimals);
         
+        console.log('🔧 Farcaster: USDC Approval amounts:', {
+          contractAmount: params.contract.amount,
+          contractCurrency: params.contract.currency || 'microUSDC',
+          usdcAmountForApproval: usdcAmount,
+          amountWeiHex: amountWei.toString(),
+          amountWeiDecimal: amountWei.toString(),
+          readableUSDC: ethers.formatUnits(amountWei, 6),
+          approvingTo: contractAddress
+        });
+        
         console.log('🔧 Farcaster: WalletClient state before eth_sendTransaction:', {
           hasWalletClient: !!walletClient,
           hasTransport: !!walletClient?.transport,

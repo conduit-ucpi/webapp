@@ -342,13 +342,13 @@ export function createFarcasterContractMethods(
         
         const currency = params.contract.currency || 'microUSDC';
         if (currency === 'microUSDC') {
-          // Chain service expects microUSDC and passes it directly to contract
-          // Contract expects the amount in smallest USDC units (6 decimals)
-          // 1 microUSDC = 1 smallest USDC unit (both are 10^-6 of 1 USDC)
-          // So 1000 microUSDC = 1000 smallest units
-          // Contract will transferFrom(buyer, contract, 1000)
-          // So we need to approve exactly 1000
-          amountWei = BigInt(params.contract.amount);
+          // CRITICAL FIX: The contract creation uses toMicroUSDC conversion
+          // We must approve the SAME amount that was sent to create the contract
+          // NOT the raw user input amount
+          const amountInMicroUSDC = params.utils?.toMicroUSDC 
+            ? params.utils.toMicroUSDC(params.contract.amount) 
+            : (params.contract.amount * 1000000);
+          amountWei = BigInt(amountInMicroUSDC);
         } else if (currency === 'USDC') {
           // Convert USDC to smallest units (multiply by 1,000,000)
           amountWei = ethers.parseUnits(params.contract.amount.toString(), 6);
@@ -363,7 +363,8 @@ export function createFarcasterContractMethods(
           amountWeiHex: '0x' + amountWei.toString(16),
           amountWeiDecimal: amountWei.toString(),
           readableUSDC: ethers.formatUnits(amountWei, 6) + ' USDC',
-          approvingTo: contractAddress
+          approvingTo: contractAddress,
+          note: 'FIXED: Now using same microUSDC conversion as contract creation'
         });
         
         console.log('🔧 Farcaster: WalletClient state before eth_sendTransaction:', {

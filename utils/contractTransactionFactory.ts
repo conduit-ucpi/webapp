@@ -290,6 +290,45 @@ export function createFarcasterContractMethods(
           chainName: walletClient?.chain?.name
         });
         
+        // Estimate gas for USDC approval
+        const approvalTxRequest = {
+          from: params.userAddress,
+          to: params.config.usdcContractAddress,
+          data: new ethers.Interface([
+            'function approve(address spender, uint256 amount)'
+          ]).encodeFunctionData('approve', [contractAddress, amountWei]),
+          value: '0x0',
+        };
+
+        try {
+          const gasEstimate = await walletClient.transport.request({
+            method: 'eth_estimateGas',
+            params: [approvalTxRequest],
+          });
+          
+          const gasPrice = await walletClient.transport.request({
+            method: 'eth_gasPrice',
+            params: [],
+          });
+          
+          const gasEstimateDecimal = parseInt(gasEstimate, 16);
+          const gasPriceDecimal = parseInt(gasPrice, 16);
+          const totalGasCostWei = gasEstimateDecimal * gasPriceDecimal;
+          const totalGasCostEth = ethers.formatEther(totalGasCostWei.toString());
+          
+          console.log('🔧 Farcaster: USDC approval gas estimation:', {
+            gasEstimate: gasEstimate,
+            gasEstimateDecimal: gasEstimateDecimal.toLocaleString(),
+            gasPrice: gasPrice,
+            gasPriceGwei: ethers.formatUnits(gasPriceDecimal.toString(), 'gwei'),
+            totalGasCostWei: totalGasCostWei.toString(),
+            totalGasCostEth: totalGasCostEth,
+            totalGasCostUSD: `~$${(parseFloat(totalGasCostEth) * 2500).toFixed(4)}`
+          });
+        } catch (gasError) {
+          console.error('🔧 Farcaster: USDC approval gas estimation failed:', gasError);
+        }
+
         let approvalTxHash: string;
         try {
           // Use walletClient.sendTransaction method
@@ -328,6 +367,55 @@ export function createFarcasterContractMethods(
           ]).encodeFunctionData('depositFunds', []),
           value: '0x0',
         };
+
+        // Estimate gas for the deposit transaction
+        try {
+          const gasEstimate = await walletClient.transport.request({
+            method: 'eth_estimateGas',
+            params: [depositTxRequest],
+          });
+          
+          // Get current gas price
+          const gasPrice = await walletClient.transport.request({
+            method: 'eth_gasPrice',
+            params: [],
+          });
+          
+          const gasEstimateDecimal = parseInt(gasEstimate, 16);
+          const gasPriceDecimal = parseInt(gasPrice, 16);
+          const totalGasCostWei = gasEstimateDecimal * gasPriceDecimal;
+          const totalGasCostEth = ethers.formatEther(totalGasCostWei.toString());
+          
+          console.log('🔧 Farcaster: Deposit transaction gas estimation:', {
+            gasEstimate: gasEstimate,
+            gasEstimateDecimal: gasEstimateDecimal.toLocaleString(),
+            gasPrice: gasPrice,
+            gasPriceGwei: ethers.formatUnits(gasPriceDecimal.toString(), 'gwei'),
+            totalGasCostWei: totalGasCostWei.toString(),
+            totalGasCostEth: totalGasCostEth,
+            totalGasCostUSD: `~$${(parseFloat(totalGasCostEth) * 2500).toFixed(4)}`
+          });
+          
+          // Check user's balance
+          const userBalance = await walletClient.transport.request({
+            method: 'eth_getBalance',
+            params: [params.userAddress, 'latest'],
+          });
+          const userBalanceDecimal = parseInt(userBalance, 16);
+          const userBalanceEth = ethers.formatEther(userBalanceDecimal.toString());
+          
+          console.log('🔧 Farcaster: User balance check:', {
+            balanceWei: userBalance,
+            balanceEth: userBalanceEth,
+            balanceUSD: `~$${(parseFloat(userBalanceEth) * 2500).toFixed(4)}`,
+            hasEnoughGas: userBalanceDecimal > totalGasCostWei,
+            shortfallWei: userBalanceDecimal > totalGasCostWei ? 0 : (totalGasCostWei - userBalanceDecimal).toString(),
+            shortfallEth: userBalanceDecimal > totalGasCostWei ? 0 : ethers.formatEther((totalGasCostWei - userBalanceDecimal).toString())
+          });
+          
+        } catch (gasError) {
+          console.error('🔧 Farcaster: Gas estimation failed:', gasError);
+        }
 
         console.log('🔧 Farcaster: Sending deposit via eth_sendTransaction:', depositTxRequest);
         

@@ -556,6 +556,46 @@ export function createFarcasterContractMethods(
         
         // Check the actual allowance AND contract's expected amount before deposit
         console.log('🔧 Farcaster: Checking USDC allowance and contract amount before deposit...');
+        
+        // Use RPC to check since Farcaster doesn't support eth_call
+        try {
+          const contractAmountResponse = await fetch(params.config.rpcUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              jsonrpc: '2.0',
+              method: 'eth_call',
+              params: [{
+                to: contractAddress,
+                data: '0xa2fb1175' // AMOUNT() function selector
+              }, 'latest'],
+              id: 1
+            })
+          }).then(r => r.json());
+          
+          if (contractAmountResponse.result) {
+            const contractExpectedAmount = BigInt(contractAmountResponse.result);
+            console.log('🔧 Farcaster: Contract AMOUNT field:', {
+              amountHex: contractAmountResponse.result,
+              amountWei: contractExpectedAmount.toString(),
+              amountUSDC: ethers.formatUnits(contractExpectedAmount, 6) + ' USDC',
+              ourApproval: '1000',
+              needsMoreApproval: contractExpectedAmount > BigInt(1000)
+            });
+            
+            if (contractExpectedAmount > BigInt(1000)) {
+              console.error('🔧 Farcaster: CONTRACT EXPECTS MORE THAN WE APPROVED!', {
+                contractExpects: contractExpectedAmount.toString(),
+                weApproved: '1000',
+                difference: (contractExpectedAmount - BigInt(1000)).toString()
+              });
+            }
+          }
+        } catch (error) {
+          console.log('🔧 Farcaster: Could not check contract AMOUNT via RPC:', error);
+        }
+        
+        // Original Farcaster check (will fail but keeping for consistency)
         try {
           // Check allowance
           const allowanceData = new ethers.Interface([

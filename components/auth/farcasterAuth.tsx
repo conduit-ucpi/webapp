@@ -1454,18 +1454,7 @@ export function FarcasterAuthProvider({ children, AuthContext }: {
 }) {
   const { config, isLoading } = useConfig();
   
-  // Wait for config to load before proceeding
-  if (isLoading) {
-    return <div>Loading configuration...</div>;
-  }
-  
-  // Get chain ID from config - MUST be provided
-  if (!config?.chainId) {
-    throw new Error('CHAIN_ID must be configured - no default chain ID allowed');
-  }
-  const chainId = config.chainId;
-  
-  // Track instances for debugging
+  // Track instances for debugging (must be before any conditional returns)
   const instanceId = React.useRef(Math.random().toString(36).substr(2, 9));
   const renderCount = React.useRef(0);
   renderCount.current++;
@@ -1479,6 +1468,17 @@ export function FarcasterAuthProvider({ children, AuthContext }: {
       console.log(`🔧 FarcasterAuthProvider [${instanceId.current}]: UNMOUNTED (remaining instances: ${mainProviderInstanceCount})`);
     };
   }, []);
+  
+  // Wait for config to load before proceeding
+  if (isLoading) {
+    return <div>Loading configuration...</div>;
+  }
+  
+  // Get chain ID from config - MUST be provided
+  if (!config?.chainId) {
+    throw new Error('CHAIN_ID must be configured - no default chain ID allowed');
+  }
+  const chainId = config.chainId;
   
   console.log(`🔧 FarcasterAuthProvider [${instanceId.current}]: RENDER #${renderCount.current} (chainId: ${chainId})`);
   

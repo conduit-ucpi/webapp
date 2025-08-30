@@ -579,8 +579,9 @@ export function createFarcasterContractMethods(
         // Check the actual allowance AND contract's expected amount before deposit
         console.log('🔧 Farcaster: Checking USDC allowance and contract amount before deposit...');
         
-        // Use RPC to check since Farcaster doesn't support eth_call
+        // Use RPC directly to check what the contract expects to transfer
         try {
+          console.log('🔧 Farcaster: Checking contract AMOUNT field via RPC...');
           const contractAmountResponse = await fetch(params.config.rpcUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -595,6 +596,8 @@ export function createFarcasterContractMethods(
             })
           }).then(r => r.json());
           
+          console.log('🔧 Farcaster: Contract AMOUNT RPC response:', contractAmountResponse);
+          
           if (contractAmountResponse.result) {
             const contractExpectedAmount = BigInt(contractAmountResponse.result);
             console.log('🔧 Farcaster: Contract AMOUNT field:', {
@@ -602,19 +605,24 @@ export function createFarcasterContractMethods(
               amountWei: contractExpectedAmount.toString(),
               amountUSDC: ethers.formatUnits(contractExpectedAmount, 6) + ' USDC',
               ourApproval: '1000',
-              needsMoreApproval: contractExpectedAmount > BigInt(1000)
+              needsMoreApproval: contractExpectedAmount > BigInt(1000),
+              shortfall: contractExpectedAmount > BigInt(1000) ? (contractExpectedAmount - BigInt(1000)).toString() : '0'
             });
             
             if (contractExpectedAmount > BigInt(1000)) {
+              console.error('🔧 Farcaster: *** ROOT CAUSE FOUND ***');
               console.error('🔧 Farcaster: CONTRACT EXPECTS MORE THAN WE APPROVED!', {
                 contractExpects: contractExpectedAmount.toString(),
                 weApproved: '1000',
-                difference: (contractExpectedAmount - BigInt(1000)).toString()
+                shortfall: (contractExpectedAmount - BigInt(1000)).toString(),
+                needToApprove: contractExpectedAmount.toString()
               });
             }
+          } else if (contractAmountResponse.error) {
+            console.error('🔧 Farcaster: Contract AMOUNT call error:', contractAmountResponse.error);
           }
         } catch (error) {
-          console.log('🔧 Farcaster: Could not check contract AMOUNT via RPC:', error);
+          console.error('🔧 Farcaster: Could not check contract AMOUNT via RPC:', error);
         }
         
         // Original Farcaster check (will fail but keeping for consistency)

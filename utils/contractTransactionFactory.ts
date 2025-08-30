@@ -327,7 +327,7 @@ export function createFarcasterContractMethods(
           } catch (priceError: any) {
             if (priceError.code === 4200) {
               // Farcaster doesn't support eth_gasPrice, use current Base network typical price
-              gasPrice = '0x1E8480'; // 0.002 Gwei (2,000,000 wei - conservative estimate for Base)
+              gasPrice = '0x30D40'; // 0.0002 Gwei (200,000 wei - current Base network price)
               console.log('🔧 Farcaster: Using fallback gas price for Base network:', gasPrice);
             } else {
               throw priceError;
@@ -353,13 +353,63 @@ export function createFarcasterContractMethods(
         } catch (gasError) {
           console.error('🔧 Farcaster: USDC approval gas estimation failed:', gasError);
           // Provide manual estimates for user awareness
-          console.log('🔧 Farcaster: Manual gas estimate for USDC approval - ~70,000 gas units at ~0.002 Gwei = ~0.00000014 ETH (~$0.00035)');
+          console.log('🔧 Farcaster: Manual gas estimate for USDC approval - ~70,000 gas units at ~0.0002 Gwei = ~0.000000014 ETH (~$0.000035)');
+        }
+
+        // Get explicit gas parameters for USDC approval
+        let gasParams = {};
+        try {
+          const rpcGasEstimate = await fetch(params.config.rpcUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              jsonrpc: '2.0',
+              method: 'eth_estimateGas',
+              params: [approvalTxRequest],
+              id: 1
+            })
+          }).then(r => r.json());
+          
+          const rpcGasPrice = await fetch(params.config.rpcUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              jsonrpc: '2.0',
+              method: 'eth_gasPrice',
+              params: [],
+              id: 2
+            })
+          }).then(r => r.json());
+          
+          if (rpcGasEstimate.result && rpcGasPrice.result) {
+            const gasEstimate = parseInt(rpcGasEstimate.result, 16);
+            const gasWithBuffer = Math.floor(gasEstimate * 1.2);
+            
+            gasParams = {
+              gas: BigInt(gasWithBuffer),
+              gasPrice: BigInt(rpcGasPrice.result)
+            };
+            
+            const totalCost = gasWithBuffer * parseInt(rpcGasPrice.result, 16);
+            const totalCostEth = ethers.formatEther(totalCost.toString());
+            
+            console.log('🔧 Farcaster: Using explicit gas for USDC approval:', {
+              gasEstimate: rpcGasEstimate.result,
+              gasWithBuffer: gasWithBuffer.toLocaleString(),
+              gasPrice: rpcGasPrice.result,
+              gasPriceGwei: ethers.formatUnits(rpcGasPrice.result, 'gwei'),
+              totalCostEth: totalCostEth,
+              totalCostUSD: `~$${(parseFloat(totalCostEth) * 2500).toFixed(6)}`
+            });
+          }
+        } catch (rpcError) {
+          console.error('🔧 Farcaster: RPC gas estimation for approval failed:', rpcError);
         }
 
         let approvalTxHash: string;
         try {
-          // Use walletClient.sendTransaction method
-          console.log('🔧 Farcaster: Using walletClient.sendTransaction method');
+          // Use walletClient.sendTransaction method with explicit gas
+          console.log('🔧 Farcaster: Using walletClient.sendTransaction method with explicit gas params');
           approvalTxHash = await walletClient.sendTransaction({
             to: params.config.usdcContractAddress,
             data: new ethers.Interface([
@@ -367,7 +417,8 @@ export function createFarcasterContractMethods(
             ]).encodeFunctionData('approve', [contractAddress, amountWei]),
             value: BigInt(0),
             account: walletClient.account,
-            chain: walletClient.chain
+            chain: walletClient.chain,
+            ...gasParams // Add explicit gas parameters
           });
           console.log('🔧 Farcaster: sendTransaction response:', approvalTxHash);
         } catch (txError) {
@@ -423,7 +474,7 @@ export function createFarcasterContractMethods(
           } catch (priceError: any) {
             if (priceError.code === 4200) {
               // Farcaster doesn't support eth_gasPrice, use current Base network typical price  
-              gasPrice = '0x1E8480'; // 0.002 Gwei (2,000,000 wei - conservative estimate for Base)
+              gasPrice = '0x30D40'; // 0.0002 Gwei (200,000 wei - current Base network price)
               console.log('🔧 Farcaster: Using fallback gas price for deposit:', gasPrice);
             } else {
               throw priceError;
@@ -482,15 +533,68 @@ export function createFarcasterContractMethods(
         } catch (gasError) {
           console.error('🔧 Farcaster: Gas estimation failed:', gasError);
           // Provide manual estimates for user awareness
-          console.log('🔧 Farcaster: Manual gas estimate for deposit - ~90,000 gas units at ~0.002 Gwei = ~0.00000018 ETH (~$0.00045)');
-          console.log('🔧 Farcaster: Recommendation - With current low Base gas prices, 0.0005 ETH should be more than sufficient');
+          console.log('🔧 Farcaster: Manual gas estimate for deposit - ~90,000 gas units at ~0.0002 Gwei = ~0.000000018 ETH (~$0.000045)');
+          console.log('🔧 Farcaster: Recommendation - With current ultra-low Base gas prices, 0.0005 ETH should be more than 25,000× sufficient!');
         }
 
-        console.log('🔧 Farcaster: Sending deposit via eth_sendTransaction:', depositTxRequest);
+        // Add explicit gas parameters to override Farcaster wallet's estimates
+        let finalDepositTxRequest = { ...depositTxRequest };
+        
+        try {
+          // Make direct RPC calls for accurate estimates
+          const rpcGasEstimate = await fetch(params.config.rpcUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              jsonrpc: '2.0',
+              method: 'eth_estimateGas',
+              params: [depositTxRequest],
+              id: 1
+            })
+          }).then(r => r.json());
+          
+          const rpcGasPrice = await fetch(params.config.rpcUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              jsonrpc: '2.0',
+              method: 'eth_gasPrice',
+              params: [],
+              id: 2
+            })
+          }).then(r => r.json());
+          
+          if (rpcGasEstimate.result && rpcGasPrice.result) {
+            // Add 20% buffer to gas estimate for safety
+            const gasEstimate = parseInt(rpcGasEstimate.result, 16);
+            const gasWithBuffer = Math.floor(gasEstimate * 1.2);
+            
+            finalDepositTxRequest.gas = `0x${gasWithBuffer.toString(16)}`;
+            finalDepositTxRequest.gasPrice = rpcGasPrice.result;
+            
+            const totalCost = gasWithBuffer * parseInt(rpcGasPrice.result, 16);
+            const totalCostEth = ethers.formatEther(totalCost.toString());
+            
+            console.log('🔧 Farcaster: Using explicit gas parameters from RPC:', {
+              gasEstimate: rpcGasEstimate.result,
+              gasEstimateDecimal: gasEstimate.toLocaleString(),
+              gasWithBuffer: `0x${gasWithBuffer.toString(16)}`,
+              gasWithBufferDecimal: gasWithBuffer.toLocaleString(),
+              gasPrice: rpcGasPrice.result,
+              gasPriceGwei: ethers.formatUnits(rpcGasPrice.result, 'gwei'),
+              totalCostEth: totalCostEth,
+              totalCostUSD: `~$${(parseFloat(totalCostEth) * 2500).toFixed(6)}`
+            });
+          }
+        } catch (rpcError) {
+          console.error('🔧 Farcaster: RPC gas estimation failed, using wallet defaults:', rpcError);
+        }
+
+        console.log('🔧 Farcaster: Final deposit transaction request:', finalDepositTxRequest);
         
         const depositTxHash = await walletClient.transport.request({
           method: 'eth_sendTransaction',
-          params: [depositTxRequest],
+          params: [finalDepositTxRequest],
         });
         
         console.log('🔧 Farcaster: Step 3 ✅ - Funds deposited, tx:', depositTxHash);

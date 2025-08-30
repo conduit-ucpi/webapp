@@ -33,9 +33,18 @@ export function createContractTransactionMethods(
 
     /**
      * Approve USDC spending for escrow contract
+     * Generic implementation using signContractTransaction
      */
-    // This is handled by the Farcaster-specific implementation below
-    approveUSDC: null as any, // Removed - use Farcaster-specific version
+    approveUSDC: async (
+      contractAddress: string,
+      amount: number,
+      currency: string | undefined,
+      userAddress: string,
+      config: ContractFundingParams['config'],
+      utils: ContractFundingParams['utils']
+    ): Promise<string> => {
+      return await service.approveUSDC(contractAddress, amount, currency, userAddress, config, utils);
+    },
 
     /**
      * Deposit funds to escrow contract
@@ -70,6 +79,9 @@ export function createWeb3AuthContractMethods(
   
   return {
     ...baseMethods,
+    
+    // Web3Auth uses the base approveUSDC method (via signContractTransaction + chainservice)
+    // No override needed - the base method handles the conversion correctly
     
     // Web3Auth-specific overrides could go here
     fundContract: async (params: ContractFundingParams): Promise<ContractFundingResult> => {
@@ -135,10 +147,11 @@ export function createFarcasterContractMethods(
         let amountWei: bigint;
         
         if (currency === 'microUSDC' || !currency) {
-          // Direct use of microUSDC amount as wei units
+          // FIXED: microUSDC amount directly = wei units in USDC contract
+          // 1000 microUSDC = 1000 wei = 0.001 USDC (since USDC has 6 decimals)
           amountWei = BigInt(amount);
         } else if (currency === 'USDC') {
-          // Convert USDC to microUSDC (multiply by 1,000,000)
+          // Convert USDC to wei (multiply by 10^6 for 6 decimals)
           amountWei = ethers.parseUnits(amount.toString(), 6);
         } else {
           // Fallback: assume microUSDC
@@ -342,13 +355,9 @@ export function createFarcasterContractMethods(
         
         const currency = params.contract.currency || 'microUSDC';
         if (currency === 'microUSDC') {
-          // CRITICAL FIX: The contract creation uses toMicroUSDC conversion
-          // We must approve the SAME amount that was sent to create the contract
-          // NOT the raw user input amount
-          const amountInMicroUSDC = params.utils?.toMicroUSDC 
-            ? params.utils.toMicroUSDC(params.contract.amount) 
-            : (params.contract.amount * 1000000);
-          amountWei = BigInt(amountInMicroUSDC);
+          // FIXED: If currency is already microUSDC, the amount is already in microUSDC units
+          // Don't double-convert: 1000 microUSDC should approve 1000 wei, not 1000000000 wei
+          amountWei = BigInt(params.contract.amount);
         } else if (currency === 'USDC') {
           // Convert USDC to smallest units (multiply by 1,000,000)
           amountWei = ethers.parseUnits(params.contract.amount.toString(), 6);

@@ -274,6 +274,40 @@ export function createFarcasterContractMethods(
         const chainId = walletClient?.chain?.id;
         console.log('🔧 Farcaster: Chain ID:', chainId);
         
+        // Check if there's already an allowance before approving
+        try {
+          const { ethers } = await import('ethers');
+          const allowanceCheckData = new ethers.Interface([
+            'function allowance(address owner, address spender) view returns (uint256)'
+          ]).encodeFunctionData('allowance', [params.userAddress, contractAddress]);
+          
+          // Use RPC directly since Farcaster doesn't support eth_call
+          const allowanceResponse = await fetch(params.config.rpcUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              jsonrpc: '2.0',
+              method: 'eth_call',
+              params: [{
+                to: params.config.usdcContractAddress,
+                data: allowanceCheckData
+              }, 'latest'],
+              id: 1
+            })
+          }).then(r => r.json());
+          
+          if (allowanceResponse.result) {
+            const existingAllowance = BigInt(allowanceResponse.result);
+            console.log('🔧 Farcaster: Existing USDC allowance before approval:', {
+              allowanceHex: allowanceResponse.result,
+              allowanceWei: existingAllowance.toString(),
+              allowanceUSDC: ethers.formatUnits(existingAllowance, 6) + ' USDC'
+            });
+          }
+        } catch (error) {
+          console.log('🔧 Farcaster: Could not check existing allowance:', error);
+        }
+        
         // Check wallet client availability
         if (!walletClient || !walletClient.transport || !walletClient.transport.request) {
           throw new Error(`Farcaster wallet client not available: transport=${!!walletClient?.transport}, request=${!!walletClient?.transport?.request}`);
@@ -463,6 +497,54 @@ export function createFarcasterContractMethods(
         }
         
         console.log('🔧 Farcaster: Step 2 ✅ - USDC approved via eth_sendTransaction, tx:', approvalTxHash);
+        
+        // Verify the approval actually worked
+        console.log('🔧 Farcaster: Verifying approval was successful...');
+        await new Promise(resolve => setTimeout(resolve, 3000)); // Wait for tx to be mined
+        
+        try {
+          const { ethers } = await import('ethers');
+          const allowanceCheckData = new ethers.Interface([
+            'function allowance(address owner, address spender) view returns (uint256)'
+          ]).encodeFunctionData('allowance', [params.userAddress, contractAddress]);
+          
+          const allowanceResponse = await fetch(params.config.rpcUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              jsonrpc: '2.0',
+              method: 'eth_call',
+              params: [{
+                to: params.config.usdcContractAddress,
+                data: allowanceCheckData
+              }, 'latest'],
+              id: 1
+            })
+          }).then(r => r.json());
+          
+          if (allowanceResponse.result) {
+            const newAllowance = BigInt(allowanceResponse.result);
+            console.log('🔧 Farcaster: USDC allowance AFTER approval:', {
+              allowanceHex: allowanceResponse.result,
+              allowanceWei: newAllowance.toString(),
+              allowanceUSDC: ethers.formatUnits(newAllowance, 6) + ' USDC',
+              expectedWei: amountWei.toString(),
+              matches: newAllowance === amountWei
+            });
+            
+            if (newAllowance === BigInt(0)) {
+              console.error('🔧 Farcaster: WARNING - Approval transaction succeeded but allowance is still 0!');
+            } else if (newAllowance !== amountWei) {
+              console.error('🔧 Farcaster: WARNING - Approval amount mismatch!', {
+                approved: newAllowance.toString(),
+                expected: amountWei.toString()
+              });
+            }
+          }
+        } catch (error) {
+          console.log('🔧 Farcaster: Could not verify approval:', error);
+        }
+        
         params.onProgress?.('Step 3 of 3: Depositing funds to escrow...');
 
         // Add longer delay before deposit to allow approval to be processed

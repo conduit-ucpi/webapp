@@ -152,7 +152,15 @@ export function createFarcasterContractMethods(
           amountWei = BigInt(amount);
         }
         
-        // Create the transaction request
+        // Create the transaction request  
+        console.log('🔧 Farcaster: Building approval transaction with exact values:', {
+          spender: contractAddress,
+          amountWei: amountWei.toString(),
+          amountWeiHex: '0x' + amountWei.toString(16),
+          amountWeiType: typeof amountWei,
+          amountWeiIsBigInt: amountWei instanceof BigInt || typeof amountWei === 'bigint'
+        });
+        
         const txRequest = {
           from: userAddress,
           to: config.usdcContractAddress,
@@ -161,6 +169,27 @@ export function createFarcasterContractMethods(
           ]).encodeFunctionData('approve', [contractAddress, amountWei]),
           value: '0x0',
         };
+        
+        // Double-check the encoded transaction data
+        const approveInterface = new ethers.Interface(['function approve(address spender, uint256 amount)']);
+        try {
+          const decodedApproval = approveInterface.decodeFunctionData('approve', txRequest.data);
+          console.log('🔧 Farcaster: Decoded approval transaction:', {
+            spender: decodedApproval[0],
+            amountFromData: decodedApproval[1].toString(),
+            amountFromDataHex: '0x' + decodedApproval[1].toString(16),
+            matchesOurAmount: decodedApproval[1].toString() === amountWei.toString()
+          });
+        } catch (error) {
+          console.log('🔧 Farcaster: Could not decode approval data:', error);
+        }
+        
+        console.log('🔧 Farcaster: Approval transaction data:', {
+          to: txRequest.to,
+          data: txRequest.data,
+          dataLength: txRequest.data.length,
+          decodedData: 'approve(' + contractAddress + ', ' + amountWei.toString() + ')'
+        });
 
         console.log('🔧 Farcaster: Sending USDC approval via eth_sendTransaction:', txRequest);
 

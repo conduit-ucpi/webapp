@@ -291,7 +291,14 @@ export function createFarcasterContractMethods(
         });
         
         // Estimate gas for USDC approval
-        const approvalTxRequest = {
+        const approvalTxRequest: {
+          from: string;
+          to: string;
+          data: string;
+          value: string;
+          gas?: string;
+          gasPrice?: string;
+        } = {
           from: params.userAddress,
           to: params.config.usdcContractAddress,
           data: new ethers.Interface([
@@ -437,7 +444,14 @@ export function createFarcasterContractMethods(
         console.log('🔧 Farcaster: Step 3 - Depositing funds via eth_sendTransaction');
         
         // Create the deposit transaction request
-        const depositTxRequest = {
+        const depositTxRequest: {
+          from: string;
+          to: string;
+          data: string;
+          value: string;
+          gas?: string;
+          gasPrice?: string;
+        } = {
           from: params.userAddress,
           to: contractAddress,
           data: new ethers.Interface([

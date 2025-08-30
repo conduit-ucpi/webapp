@@ -41,6 +41,9 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
 
     try {
       // First, get fresh contract data to check status
+      if (!authenticatedFetch) {
+        throw new Error('Not authenticated');
+      }
       const contractResponse = await authenticatedFetch(`/api/contracts/${contract.id}`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' }
@@ -119,10 +122,6 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
             toMicroUSDC: utils?.toMicroUSDC,
             toUSDCForWeb3: utils?.toUSDCForWeb3,
             formatDateTimeWithTZ: utils?.formatDateTimeWithTZ
-          },
-          onProgress: (step: string) => {
-            console.log('🔧 ContractAcceptance: Progress update:', step);
-            setLoadingMessage(step);
           }
         });
 

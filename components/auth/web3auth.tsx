@@ -93,7 +93,6 @@ class Web3AuthProviderImpl implements IAuthProvider {
         this.web3auth = new Web3Auth({
           clientId: this.config.web3AuthClientId,
           web3AuthNetwork: web3AuthNetworkSetting,
-          chainConfig,
           uiConfig: {
             appName: "Conduit UCPI",
             theme: {
@@ -123,7 +122,7 @@ class Web3AuthProviderImpl implements IAuthProvider {
           console.error('🔧 Web3Auth: This might be due to invalid clientId, network issues, or unsupported chain');
           
           // Set a flag that Web3Auth failed but don't throw - allow app to continue
-          this.state.error = `Web3Auth init failed: ${initError.message}`;
+          this.state.error = `Web3Auth init failed: ${(initError as any).message}`;
           console.warn('🔧 Web3Auth: Continuing without Web3Auth initialization');
         }
         

@@ -23,7 +23,7 @@ export default function Header() {
     isLoading = authContext.isLoading;
   } catch (error) {
     // Auth context not available during SSR or hydration
-    console.log('Auth context not available in Header:', error.message);
+    console.log('Auth context not available in Header:', error instanceof Error ? error.message : String(error));
   }
 
   // Authentication is determined by user presence alone, not provider
@@ -86,7 +86,7 @@ export default function Header() {
             ) : isAuthenticated ? (
               <div className="flex items-center space-x-4">
                 <span className="text-sm text-secondary-600 dark:text-secondary-300">
-                  {user.email}
+                  {user?.email || 'User'}
                 </span>
                 <Button variant="outline" size="sm" onClick={handleLogout}>
                   Logout

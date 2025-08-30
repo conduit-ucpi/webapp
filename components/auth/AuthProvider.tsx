@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useFarcaster } from '@/components/farcaster/FarcasterDetectionProvider';
 import { useConfig } from './ConfigProvider';
-import { AuthContextType, AuthState, IAuthProvider } from './authInterface';
+import { AuthContextType, AuthState, IAuthProvider, AuthUser } from './authInterface';
 import { BackendAuth } from './backendAuth';
 
 // The unified context that the rest of the app uses
@@ -59,10 +59,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
           
           if (backendStatus.success && backendStatus.user) {
             const providerState = authProvider.getState();
-            providerState.user = {
-              ...providerState.user,
-              ...backendStatus.user
-            };
+            if (providerState.user) {
+              providerState.user = {
+                ...providerState.user,
+                ...backendStatus.user
+              } as AuthUser;
+            }
             providerState.isConnected = true;
             setAuthState(providerState);
           } else {
@@ -123,14 +125,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
           console.log('🔧 AuthProvider: Backend auth successful!');
           // Merge backend user data with provider user data
           const newState = { ...providerState };
-          newState.user = {
-            ...newState.user,
-            ...backendResult.user,
-            // Keep provider-specific fields
-            fid: newState.user?.fid,
-            username: newState.user?.username,
-            displayName: newState.user?.displayName || backendResult.user.email,
-          };
+          if (newState.user) {
+            newState.user = {
+              ...newState.user,
+              ...backendResult.user,
+              // Keep provider-specific fields
+              fid: newState.user.fid,
+              username: newState.user.username,
+              displayName: newState.user.displayName || backendResult.user.email,
+            } as AuthUser;
+          }
           setAuthState(newState);
         } else {
           console.error('🔧 AuthProvider: Backend auth failed:', backendResult.error);
@@ -149,7 +153,25 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, [provider, authState.isConnected, backendAuth]);
 
   // Create the unified context value - memoize to prevent re-renders (must be before early returns)
-  const contextValue: AuthContextType = React.useMemo(() => ({
+  const contextValue: AuthContextType = React.useMemo(() => {
+    if (!provider) {
+      // Return minimal context when provider not loaded
+      return {
+        ...authState,
+        connect: async () => { throw new Error('Auth provider not initialized'); },
+        disconnect: async () => { throw new Error('Auth provider not initialized'); },
+        getToken: () => null,
+        hasVisitedBefore: () => false,
+        markAsVisited: () => {},
+        signMessage: async () => { throw new Error('Auth provider not initialized'); },
+        signContractTransaction: async () => { throw new Error('Auth provider not initialized'); },
+        getEthersProvider: () => { throw new Error('Auth provider not initialized'); },
+        getUSDCBalance: async () => '0',
+        authenticatedFetch: undefined,
+      };
+    }
+    
+    return ({
     // State
     ...authState,
 
@@ -176,7 +198,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
               fid: newState.user?.fid,
               username: newState.user?.username,
               displayName: newState.user?.displayName || backendResult.user.email,
-            };
+              authProvider: newState.user?.authProvider || 'unknown',
+            } as AuthUser;
           } else {
             // Backend verification failed
             newState.error = backendResult.error || 'Backend authentication failed';
@@ -286,7 +309,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
     authenticatedFetch: (url: string, options?: RequestInit) => {
       return backendAuth.authenticatedFetch(url, options);
     },
-  }), [authState, provider, backendAuth]);
+    });
+  }, [authState, provider, backendAuth]);
 
   // Memoize callbacks to prevent FarcasterAuthProviderWrapper re-renders (must be before early returns)
   const handleProviderReady = React.useCallback((p: IAuthProvider) => {
@@ -458,10 +482,13 @@ function RegularAuthProvider({ children }: AuthProviderProps) {
         
         if (backendStatus.success && backendStatus.user) {
           const providerState = authProvider.getState();
-          providerState.user = {
-            ...providerState.user,
-            ...backendStatus.user
-          };
+          if (providerState.user) {
+            providerState.user = {
+              ...providerState.user,
+              ...backendStatus.user,
+              authProvider: providerState.user.authProvider || 'unknown'
+            } as AuthUser;
+          }
           providerState.isConnected = true;
           setAuthState(providerState);
         } else {
@@ -521,7 +548,8 @@ function RegularAuthProvider({ children }: AuthProviderProps) {
               fid: newState.user?.fid,
               username: newState.user?.username,
               displayName: newState.user?.displayName || backendResult.user.email,
-            };
+              authProvider: newState.user?.authProvider || 'unknown',
+            } as AuthUser;
           } else {
             // Backend verification failed
             newState.error = backendResult.error || 'Backend authentication failed';
@@ -573,6 +601,22 @@ function RegularAuthProvider({ children }: AuthProviderProps) {
         return providerWithEthers.getEthersProvider();
       }
       throw new Error('Ethers provider not available');
+    },
+    
+    getUSDCBalance: async (userAddress?: string) => {
+      const providerWithBalance = provider as any;
+      if (providerWithBalance.getUSDCBalance) {
+        return await providerWithBalance.getUSDCBalance(userAddress);
+      }
+      return '0';
+    },
+    
+    signContractTransaction: async (params: any) => {
+      const providerWithSign = provider as any;
+      if (providerWithSign.signContractTransaction) {
+        return await providerWithSign.signContractTransaction(params);
+      }
+      throw new Error('Contract transaction signing not available');
     },
     
     // Use BackendAuth for authenticated API calls

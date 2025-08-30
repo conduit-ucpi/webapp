@@ -3,7 +3,7 @@ import { screen } from '@testing-library/dom';
 import USDCGuide from '@/components/ui/USDCGuide';
 import { useAuth } from '@/components/auth';
 import { useConfig } from '@/components/auth/ConfigProvider';
-import { useWeb3AuthInstance } from '@/components/auth/Web3AuthContextProvider';
+// import { useWeb3AuthInstance } from '@/components/auth/Web3AuthContextProvider'; // Not needed
 import { useWalletAddress } from '@/hooks/useWalletAddress';
 // Mock the providers
 jest.mock('@/components/auth', () => ({
@@ -14,9 +14,9 @@ jest.mock('@/components/auth/ConfigProvider', () => ({
   useConfig: jest.fn(),
 }));
 
-jest.mock('@/components/auth/Web3AuthContextProvider', () => ({
-  useWeb3AuthInstance: jest.fn(),
-}));
+// jest.mock('@/components/auth/Web3AuthContextProvider', () => ({
+//   useWeb3AuthInstance: jest.fn(),
+// })); // Not needed
 
 jest.mock('@/hooks/useWalletAddress', () => ({
   useWalletAddress: jest.fn(),
@@ -24,13 +24,14 @@ jest.mock('@/hooks/useWalletAddress', () => ({
 
 const mockUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
 const mockUseConfig = useConfig as jest.MockedFunction<typeof useConfig>;
-const mockUseWeb3AuthInstance = useWeb3AuthInstance as jest.MockedFunction<typeof useWeb3AuthInstance>;
+// const mockUseWeb3AuthInstance = useWeb3AuthInstance as jest.MockedFunction<typeof useWeb3AuthInstance>; // Not needed
 const mockUseWalletAddress = useWalletAddress as jest.MockedFunction<typeof useWalletAddress>;
 describe('USDCGuide', () => {
   const mockUser = {
     userId: 'test-user',
     walletAddress: '0x1234567890abcdef1234567890abcdef12345678',
     email: 'test@example.com',
+    authProvider: 'web3auth' as const,
   };
 
   const mockConfig = {
@@ -50,8 +51,21 @@ describe('USDCGuide', () => {
     mockUseAuth.mockReturnValue({
       user: mockUser,
       isLoading: false,
-      login: jest.fn(),
-      logout: jest.fn(),
+      connect: jest.fn(),
+      disconnect: jest.fn(),
+      isConnected: true,
+      isInitialized: true,
+      error: null,
+      token: 'mock-token',
+      providerName: 'web3auth',
+      getToken: jest.fn(() => 'mock-token'),
+      hasVisitedBefore: jest.fn(() => false),
+      markAsVisited: jest.fn(),
+      signMessage: jest.fn(),
+      getEthersProvider: jest.fn(),
+      getUSDCBalance: jest.fn(() => Promise.resolve('100.0')),
+      signContractTransaction: jest.fn(),
+      authenticatedFetch: jest.fn(),
     });
 
     mockUseConfig.mockReturnValue({
@@ -59,12 +73,12 @@ describe('USDCGuide', () => {
       isLoading: false,
     });
 
-    mockUseWeb3AuthInstance.mockReturnValue({
-      web3authProvider: null,
-      isLoading: false,
-      web3authInstance: null,
-      onLogout: jest.fn(),
-    });
+    // mockUseWeb3AuthInstance.mockReturnValue({
+    //   web3authProvider: null,
+    //   isLoading: false,
+    //   web3authInstance: null,
+    //   onLogout: jest.fn(),
+    // });
 
     mockUseWalletAddress.mockReturnValue({
       walletAddress: mockUser.walletAddress,
@@ -157,16 +171,29 @@ describe('USDCGuide', () => {
     mockUseAuth.mockReturnValue({
       user: null,
       isLoading: false,
-      login: jest.fn(),
-      logout: jest.fn(),
+      connect: jest.fn(),
+      disconnect: jest.fn(),
+      isConnected: true,
+      isInitialized: true,
+      error: null,
+      token: 'mock-token',
+      providerName: 'web3auth',
+      getToken: jest.fn(() => 'mock-token'),
+      hasVisitedBefore: jest.fn(() => false),
+      markAsVisited: jest.fn(),
+      signMessage: jest.fn(),
+      getEthersProvider: jest.fn(),
+      getUSDCBalance: jest.fn(() => Promise.resolve('100.0')),
+      signContractTransaction: jest.fn(),
+      authenticatedFetch: jest.fn(),
     });
 
-    mockUseWeb3AuthInstance.mockReturnValue({
-      web3authProvider: null,
-      isLoading: false,
-      web3authInstance: null,
-      onLogout: jest.fn(),
-    });
+    // mockUseWeb3AuthInstance.mockReturnValue({
+    //   web3authProvider: null,
+    //   isLoading: false,
+    //   web3authInstance: null,
+    //   onLogout: jest.fn(),
+    // });
 
     mockUseWalletAddress.mockReturnValue({
       walletAddress: null,

@@ -117,10 +117,30 @@ describe('ContractAcceptance - Redirect Behavior', () => {
     });
 
     mockUseAuth.mockReturnValue({
-      user: { userId: 'test-user-id', walletAddress: '0xBuyerAddress', email: 'buyer@test.com' },
-      login: jest.fn(),
-      logout: jest.fn(),
+      user: { userId: 'test-user-id', walletAddress: '0xBuyerAddress', email: 'buyer@test.com', authProvider: 'web3auth' as const },
+      connect: jest.fn(),
+      disconnect: jest.fn(),
       isLoading: false,
+      isConnected: true,
+      isInitialized: true,
+      error: null,
+      token: 'mock-token',
+      providerName: 'web3auth',
+      getToken: jest.fn(() => 'mock-token'),
+      hasVisitedBefore: jest.fn(() => false),
+      markAsVisited: jest.fn(),
+      signMessage: jest.fn(),
+      getEthersProvider: jest.fn(),
+      getUSDCBalance: jest.fn(() => Promise.resolve('100.0')),
+      signContractTransaction: jest.fn(),
+      authenticatedFetch: jest.fn((url, options) => {
+        // Mock the authenticatedFetch to use the global mockFetch
+        return mockFetch(url, options);
+      }),
+      fundContract: jest.fn().mockResolvedValue({
+        transactionHash: 'mock-tx-hash',
+        contractAddress: '0xContractAddress',
+      }),
     });
 
     // Reset all Web3Service mocks

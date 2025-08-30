@@ -7,20 +7,20 @@ jest.mock('next/router', () => ({
 }));
 jest.mock('../../../components/auth/ConfigProvider');
 jest.mock('../../../components/auth');
-jest.mock('../../../components/auth/Web3AuthContextProvider');
+// jest.mock('../../../components/auth/Web3AuthContextProvider'); // Not needed
 jest.mock('../../../lib/web3');
 
 import { useRouter } from 'next/router';
 import CreateContract from '../../../components/contracts/CreateContract';
 import { useConfig } from '../../../components/auth/ConfigProvider';
 import { useAuth } from '../../../components/auth';
-import { useWeb3AuthInstance } from '../../../components/auth/Web3AuthContextProvider';
+// import { useWeb3AuthInstance } from '../../../components/auth/Web3AuthContextProvider'; // Not needed
 
 const mockPush = jest.fn();
 const mockUseRouter = useRouter as jest.MockedFunction<typeof useRouter>;
 const mockUseConfig = useConfig as jest.MockedFunction<typeof useConfig>;
 const mockUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
-const mockUseWeb3AuthInstance = useWeb3AuthInstance as jest.MockedFunction<typeof useWeb3AuthInstance>;
+// const mockUseWeb3AuthInstance = useWeb3AuthInstance as jest.MockedFunction<typeof useWeb3AuthInstance>; // Not needed
 // Mock Web3Auth provider
 Object.defineProperty(window, 'web3authProvider', {
   value: {
@@ -49,7 +49,8 @@ describe('CreateContract Decimal Precision', () => {
   const mockUser = {
     userId: 'test-user-id',
     email: 'seller@example.com',
-    walletAddress: '0x123'
+    walletAddress: '0x123',
+    authProvider: 'web3auth' as const
   };
 
   beforeEach(() => {
@@ -75,16 +76,29 @@ describe('CreateContract Decimal Precision', () => {
     mockUseAuth.mockReturnValue({
       user: mockUser,
       isLoading: false,
-      login: jest.fn(),
-      logout: jest.fn(),
+      connect: jest.fn(),
+      disconnect: jest.fn(),
+      isConnected: true,
+      isInitialized: true,
+      error: null,
+      token: 'mock-token',
+      providerName: 'web3auth',
+      getToken: jest.fn(() => 'mock-token'),
+      hasVisitedBefore: jest.fn(() => false),
+      markAsVisited: jest.fn(),
+      signMessage: jest.fn(),
+      getEthersProvider: jest.fn(),
+      getUSDCBalance: jest.fn(() => Promise.resolve('100.0')),
+      signContractTransaction: jest.fn(),
+      authenticatedFetch: jest.fn(),
     });
 
-    mockUseWeb3AuthInstance.mockReturnValue({
-      web3authProvider: null,
-      isLoading: false,
-      web3authInstance: null,
-      onLogout: jest.fn(),
-    });
+    // mockUseWeb3AuthInstance.mockReturnValue({
+    //   web3authProvider: null,
+    //   isLoading: false,
+    //   web3authInstance: null,
+    //   onLogout: jest.fn(),
+    // });
 
     // Mock Web3Service
     const mockWeb3Service = {

@@ -3,7 +3,7 @@ import { screen, waitFor } from '@testing-library/dom';
 import { useRouter } from 'next/router';
 import ContractList from '@/components/contracts/ContractList';
 import { useAuth } from '@/components/auth';
-import { useWeb3AuthInstance } from '@/components/auth/Web3AuthContextProvider';
+// import { useWeb3AuthInstance } from '@/components/auth/Web3AuthContextProvider'; // Not needed
 
 // Mock dependencies
 jest.mock('next/router', () => ({
@@ -14,9 +14,9 @@ jest.mock('@/components/auth', () => ({
   useAuth: jest.fn(),
 }));
 
-jest.mock('@/components/auth/Web3AuthContextProvider', () => ({
-  useWeb3AuthInstance: jest.fn(),
-}));
+// jest.mock('@/components/auth/Web3AuthContextProvider', () => ({
+//   useWeb3AuthInstance: jest.fn(),
+// })); // Not needed
 
 // Mock child components
 jest.mock('@/components/contracts/ContractCard', () => {
@@ -65,12 +65,7 @@ describe('ContractList', () => {
     jest.clearAllMocks();
     (useRouter as jest.Mock).mockReturnValue(mockRouter);
     (useAuth as jest.Mock).mockReturnValue({ user: mockUser });
-    (useWeb3AuthInstance as jest.Mock).mockReturnValue({
-      web3authProvider: null,
-      isLoading: false,
-      web3authInstance: null,
-      onLogout: jest.fn(),
-    });
+    // useWeb3AuthInstance mock removed - not needed
   });
 
   afterEach(() => {

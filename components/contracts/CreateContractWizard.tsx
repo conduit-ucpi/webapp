@@ -222,6 +222,9 @@ export default function CreateContractWizard() {
         serviceLink: config.serviceLink
       };
 
+      if (!authenticatedFetch) {
+        throw new Error('Not authenticated');
+      }
       const response = await authenticatedFetch('/api/contracts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

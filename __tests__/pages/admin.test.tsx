@@ -3,7 +3,7 @@ import { screen, fireEvent, waitFor, within } from '@testing-library/dom';
 import { useRouter } from 'next/router';
 import AdminPage from '@/pages/admin';
 import { useAuth } from '@/components/auth';
-import { useWeb3AuthInstance } from '@/components/auth/Web3AuthContextProvider';
+// import { useWeb3AuthInstance } from '@/components/auth/Web3AuthContextProvider'; // Not needed
 import { Contract } from '@/types';
 
 // Mock next/router
@@ -36,10 +36,10 @@ jest.mock('@/components/auth/ConfigProvider', () => ({
   ConfigProvider: ({ children }: { children: React.ReactNode }) => children,
 }));
 
-// Mock Web3AuthContextProvider
-jest.mock('@/components/auth/Web3AuthContextProvider', () => ({
-  useWeb3AuthInstance: jest.fn(),
-}));
+// Mock Web3AuthContextProvider - Not needed
+// jest.mock('@/components/auth/Web3AuthContextProvider', () => ({
+//   useWeb3AuthInstance: jest.fn(),
+// }));
 
 // Mock LoadingSpinner
 jest.mock('@/components/ui/LoadingSpinner', () => {
@@ -122,7 +122,7 @@ global.fetch = jest.fn();
 
 const mockUseRouter = useRouter as jest.MockedFunction<typeof useRouter>;
 const mockUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
-const mockUseWeb3AuthInstance = useWeb3AuthInstance as jest.MockedFunction<typeof useWeb3AuthInstance>;
+// const mockUseWeb3AuthInstance = useWeb3AuthInstance as jest.MockedFunction<typeof useWeb3AuthInstance>; // Not needed
 const mockFetch = global.fetch as jest.MockedFunction<typeof fetch>;
 
 describe('AdminPage', () => {
@@ -159,16 +159,29 @@ describe('AdminPage', () => {
     mockUseAuth.mockReturnValue({
       user: null,
       isLoading: true,
-      login: jest.fn(),
-      logout: jest.fn(),
+      connect: jest.fn(),
+      disconnect: jest.fn(),
+      isConnected: true,
+      isInitialized: true,
+      error: null,
+      token: 'mock-token',
+      providerName: 'web3auth',
+      getToken: jest.fn(() => 'mock-token'),
+      hasVisitedBefore: jest.fn(() => false),
+      markAsVisited: jest.fn(),
+      signMessage: jest.fn(),
+      getEthersProvider: jest.fn(),
+      getUSDCBalance: jest.fn(() => Promise.resolve('100.0')),
+      signContractTransaction: jest.fn(),
+      authenticatedFetch: jest.fn(),
     });
 
-    mockUseWeb3AuthInstance.mockReturnValue({
-      web3authProvider: null,
-      isLoading: false,
-      web3authInstance: null,
-      onLogout: jest.fn(),
-    });
+    // mockUseWeb3AuthInstance.mockReturnValue({
+    //   web3authProvider: null,
+    //   isLoading: false,
+    //   web3authInstance: null,
+    //   onLogout: jest.fn(),
+    // });
 
     render(<AdminPage />);
     expect(screen.getByTestId('loading-spinner')).toBeInTheDocument();
@@ -178,16 +191,29 @@ describe('AdminPage', () => {
     mockUseAuth.mockReturnValue({
       user: null,
       isLoading: false,
-      login: jest.fn(),
-      logout: jest.fn(),
+      connect: jest.fn(),
+      disconnect: jest.fn(),
+      isConnected: true,
+      isInitialized: true,
+      error: null,
+      token: 'mock-token',
+      providerName: 'web3auth',
+      getToken: jest.fn(() => 'mock-token'),
+      hasVisitedBefore: jest.fn(() => false),
+      markAsVisited: jest.fn(),
+      signMessage: jest.fn(),
+      getEthersProvider: jest.fn(),
+      getUSDCBalance: jest.fn(() => Promise.resolve('100.0')),
+      signContractTransaction: jest.fn(),
+      authenticatedFetch: jest.fn(),
     });
 
-    mockUseWeb3AuthInstance.mockReturnValue({
-      web3authProvider: null,
-      isLoading: false,
-      web3authInstance: null,
-      onLogout: jest.fn(),
-    });
+    // mockUseWeb3AuthInstance.mockReturnValue({
+    //   web3authProvider: null,
+    //   isLoading: false,
+    //   web3authInstance: null,
+    //   onLogout: jest.fn(),
+    // });
 
     render(<AdminPage />);
     expect(screen.getByText('Authentication Required')).toBeInTheDocument();
@@ -201,18 +227,32 @@ describe('AdminPage', () => {
         email: 'user@example.com',
         walletAddress: '0x123',
         userType: 'user',
+        authProvider: 'web3auth' as const,
       },
       isLoading: false,
-      login: jest.fn(),
-      logout: jest.fn(),
+      connect: jest.fn(),
+      disconnect: jest.fn(),
+      isConnected: true,
+      isInitialized: true,
+      error: null,
+      token: 'mock-token',
+      providerName: 'web3auth',
+      getToken: jest.fn(() => 'mock-token'),
+      hasVisitedBefore: jest.fn(() => false),
+      markAsVisited: jest.fn(),
+      signMessage: jest.fn(),
+      getEthersProvider: jest.fn(),
+      getUSDCBalance: jest.fn(() => Promise.resolve('100.0')),
+      signContractTransaction: jest.fn(),
+      authenticatedFetch: jest.fn(),
     });
 
-    mockUseWeb3AuthInstance.mockReturnValue({
-      web3authProvider: null,
-      isLoading: false,
-      web3authInstance: null,
-      onLogout: jest.fn(),
-    });
+    // mockUseWeb3AuthInstance.mockReturnValue({
+    //   web3authProvider: null,
+    //   isLoading: false,
+    //   web3authInstance: null,
+    //   onLogout: jest.fn(),
+    // });
 
     render(<AdminPage />);
     expect(screen.getByText('Access Denied')).toBeInTheDocument();
@@ -227,18 +267,32 @@ describe('AdminPage', () => {
         email: 'admin@example.com',
         walletAddress: '0x123',
         userType: 'admin',
+        authProvider: 'web3auth' as const,
       },
       isLoading: false,
-      login: jest.fn(),
-      logout: jest.fn(),
+      connect: jest.fn(),
+      disconnect: jest.fn(),
+      isConnected: true,
+      isInitialized: true,
+      error: null,
+      token: 'mock-token',
+      providerName: 'web3auth',
+      getToken: jest.fn(() => 'mock-token'),
+      hasVisitedBefore: jest.fn(() => false),
+      markAsVisited: jest.fn(),
+      signMessage: jest.fn(),
+      getEthersProvider: jest.fn(),
+      getUSDCBalance: jest.fn(() => Promise.resolve('100.0')),
+      signContractTransaction: jest.fn(),
+      authenticatedFetch: jest.fn(),
     });
 
-    mockUseWeb3AuthInstance.mockReturnValue({
-      web3authProvider: null,
-      isLoading: false,
-      web3authInstance: null,
-      onLogout: jest.fn(),
-    });
+    // mockUseWeb3AuthInstance.mockReturnValue({
+    //   web3authProvider: null,
+    //   isLoading: false,
+    //   web3authInstance: null,
+    //   onLogout: jest.fn(),
+    // });
 
     render(<AdminPage />);
     expect(screen.getByText('Admin Dashboard')).toBeInTheDocument();
@@ -253,18 +307,32 @@ describe('AdminPage', () => {
         email: 'admin@example.com',
         walletAddress: '0x123',
         userType: 'admin',
+        authProvider: 'web3auth' as const,
       },
       isLoading: false,
-      login: jest.fn(),
-      logout: jest.fn(),
+      connect: jest.fn(),
+      disconnect: jest.fn(),
+      isConnected: true,
+      isInitialized: true,
+      error: null,
+      token: 'mock-token',
+      providerName: 'web3auth',
+      getToken: jest.fn(() => 'mock-token'),
+      hasVisitedBefore: jest.fn(() => false),
+      markAsVisited: jest.fn(),
+      signMessage: jest.fn(),
+      getEthersProvider: jest.fn(),
+      getUSDCBalance: jest.fn(() => Promise.resolve('100.0')),
+      signContractTransaction: jest.fn(),
+      authenticatedFetch: jest.fn(),
     });
 
-    mockUseWeb3AuthInstance.mockReturnValue({
-      web3authProvider: null,
-      isLoading: false,
-      web3authInstance: null,
-      onLogout: jest.fn(),
-    });
+    // mockUseWeb3AuthInstance.mockReturnValue({
+    //   web3authProvider: null,
+    //   isLoading: false,
+    //   web3authInstance: null,
+    //   onLogout: jest.fn(),
+    // });
 
     // Mock the raw data API endpoint
     mockFetch.mockResolvedValueOnce({
@@ -300,18 +368,32 @@ describe('AdminPage', () => {
         email: 'admin@example.com',
         walletAddress: '0x123',
         userType: 'admin',
+        authProvider: 'web3auth' as const,
       },
       isLoading: false,
-      login: jest.fn(),
-      logout: jest.fn(),
+      connect: jest.fn(),
+      disconnect: jest.fn(),
+      isConnected: true,
+      isInitialized: true,
+      error: null,
+      token: 'mock-token',
+      providerName: 'web3auth',
+      getToken: jest.fn(() => 'mock-token'),
+      hasVisitedBefore: jest.fn(() => false),
+      markAsVisited: jest.fn(),
+      signMessage: jest.fn(),
+      getEthersProvider: jest.fn(),
+      getUSDCBalance: jest.fn(() => Promise.resolve('100.0')),
+      signContractTransaction: jest.fn(),
+      authenticatedFetch: jest.fn(),
     });
 
-    mockUseWeb3AuthInstance.mockReturnValue({
-      web3authProvider: null,
-      isLoading: false,
-      web3authInstance: null,
-      onLogout: jest.fn(),
-    });
+    // mockUseWeb3AuthInstance.mockReturnValue({
+    //   web3authProvider: null,
+    //   isLoading: false,
+    //   web3authInstance: null,
+    //   onLogout: jest.fn(),
+    // });
 
     // Mock the raw data API endpoint
     mockFetch.mockResolvedValueOnce({
@@ -355,18 +437,32 @@ describe('Contract Selection and Details', () => {
         email: 'admin@example.com',
         walletAddress: '0x123',
         userType: 'admin',
+        authProvider: 'web3auth' as const,
       },
       isLoading: false,
-      login: jest.fn(),
-      logout: jest.fn(),
+      connect: jest.fn(),
+      disconnect: jest.fn(),
+      isConnected: true,
+      isInitialized: true,
+      error: null,
+      token: 'mock-token',
+      providerName: 'web3auth',
+      getToken: jest.fn(() => 'mock-token'),
+      hasVisitedBefore: jest.fn(() => false),
+      markAsVisited: jest.fn(),
+      signMessage: jest.fn(),
+      getEthersProvider: jest.fn(),
+      getUSDCBalance: jest.fn(() => Promise.resolve('100.0')),
+      signContractTransaction: jest.fn(),
+      authenticatedFetch: jest.fn(),
     });
 
-    mockUseWeb3AuthInstance.mockReturnValue({
-      web3authProvider: null,
-      isLoading: false,
-      web3authInstance: null,
-      onLogout: jest.fn(),
-    });
+    // mockUseWeb3AuthInstance.mockReturnValue({
+    //   web3authProvider: null,
+    //   isLoading: false,
+    //   web3authInstance: null,
+    //   onLogout: jest.fn(),
+    // });
   });
 
   it('displays selected contract details', async () => {

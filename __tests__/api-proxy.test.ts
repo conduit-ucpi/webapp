@@ -37,7 +37,8 @@ describe('/api/auth/identity', () => {
       'http://userService:8977/api/user/identity',
       {
         headers: {
-          'Cookie': 'AUTH-TOKEN=test-token'
+          'Cookie': 'AUTH-TOKEN=test-token',
+          'Authorization': 'Bearer test-token'
         }
       }
     );
@@ -67,7 +68,8 @@ describe('/api/auth/identity', () => {
       expect.any(String),
       expect.objectContaining({
         headers: {
-          'Cookie': testCookie
+          'Cookie': testCookie,
+          'Authorization': 'Bearer abc123'
         }
       })
     );

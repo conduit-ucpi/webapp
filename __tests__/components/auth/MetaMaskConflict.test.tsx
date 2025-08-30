@@ -2,14 +2,27 @@
  * Test to reproduce MetaMask + Web3Auth conflict issue
  * This test should FAIL with the current code to demonstrate the problem
  */
+import React from 'react';
 import { render } from '@testing-library/react';
 import { waitFor, screen } from '@testing-library/dom';
-import { Web3AuthContextProvider } from '@/components/auth/Web3AuthContextProvider';
+import { AuthProvider } from '@/components/auth/AuthProvider';
 
 // Mock the config provider
 const mockUseConfig = jest.fn();
 jest.mock('@/components/auth/ConfigProvider', () => ({
   useConfig: () => mockUseConfig(),
+}));
+
+// Mock the Farcaster detection provider
+jest.mock('@/components/farcaster/FarcasterDetectionProvider', () => ({
+  FarcasterDetectionProvider: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="farcaster-provider">{children}</div>
+  ),
+  useFarcaster: () => ({
+    isInFarcaster: false,
+    isLoading: false,
+    farcasterSDK: null,
+  }),
 }));
 
 // Mock console to capture errors
@@ -82,9 +95,9 @@ describe('MetaMask Conflict Issue (TDD)', () => {
 
     // This should NOT throw errors or cause infinite loading
     const TestComponent = () => (
-      <Web3AuthContextProvider>
+      <AuthProvider>
         <div data-testid="app-content">Test App</div>
-      </Web3AuthContextProvider>
+      </AuthProvider>
     );
 
     // The render should complete without errors
@@ -131,9 +144,9 @@ describe('MetaMask Conflict Issue (TDD)', () => {
     };
 
     const TestComponent = () => (
-      <Web3AuthContextProvider>
+      <AuthProvider>
         <div data-testid="app-content">Test App</div>
-      </Web3AuthContextProvider>
+      </AuthProvider>
     );
 
     // This should not throw runtime errors
@@ -179,9 +192,9 @@ describe('MetaMask Conflict Issue (TDD)', () => {
     };
 
     const TestComponent = () => (
-      <Web3AuthContextProvider>
+      <AuthProvider>
         <div data-testid="app-content">Test App</div>
-      </Web3AuthContextProvider>
+      </AuthProvider>
     );
 
     render(<TestComponent />);

@@ -64,7 +64,7 @@ export const FarcasterLoggerProvider: React.FC<FarcasterLoggerProviderProps> = (
       // Test that console override is working (only once)
       if (!window.__farcasterLoggerInitialized) {
         setTimeout(() => {
-          const originalLog = console.__originalLog || console.log;
+          const originalLog = (console as any).__originalLog || console.log;
           originalLog('🧪 Logger initialized successfully');
         }, 1000);
         window.__farcasterLoggerInitialized = true;
@@ -87,7 +87,7 @@ export const FarcasterLoggerProvider: React.FC<FarcasterLoggerProviderProps> = (
 
   const toggleLogger = useCallback(() => {
     try {
-      const originalLog = console.__originalLog || console.log;
+      const originalLog = (console as any).__originalLog || console.log;
       originalLog('FarcasterLogger: toggleLogger called');
       setIsVisible(prev => {
         const newValue = !prev;
@@ -114,7 +114,7 @@ export const FarcasterLoggerProvider: React.FC<FarcasterLoggerProviderProps> = (
     const shouldOverrideConsole = isInFarcaster || (process.env.NODE_ENV === 'development');
     if (!shouldOverrideConsole) return;
     
-    const originalLog = console.__originalLog || console.log;
+    const originalLog = (console as any).__originalLog || console.log;
     originalLog('🪵 Setting up console override. isInFarcaster:', isInFarcaster, 'isDev:', process.env.NODE_ENV === 'development');
     
     // Skip adding setup logs to avoid circular dependencies
@@ -128,10 +128,10 @@ export const FarcasterLoggerProvider: React.FC<FarcasterLoggerProviderProps> = (
     };
 
     // Store reference for debug use
-    console.__originalLog = originalConsole.log;
-    console.__originalWarn = originalConsole.warn;
-    console.__originalError = originalConsole.error;
-    console.__originalInfo = originalConsole.info;
+    (console as any).__originalLog = originalConsole.log;
+    (console as any).__originalWarn = originalConsole.warn;
+    (console as any).__originalError = originalConsole.error;
+    (console as any).__originalInfo = originalConsole.info;
 
     const safeStringify = (arg: any): string => {
       if (arg === null) return 'null';
@@ -242,7 +242,7 @@ export const FarcasterLoggerProvider: React.FC<FarcasterLoggerProviderProps> = (
   
   // Debug the visibility conditions (only once when isInFarcaster changes)
   useEffect(() => {
-    const originalLog = console.__originalLog || console.log;
+    const originalLog = (console as any).__originalLog || console.log;
     originalLog('FarcasterLogger visibility check:', {
       isInFarcaster,
       nodeEnv: process.env.NODE_ENV,
@@ -252,7 +252,7 @@ export const FarcasterLoggerProvider: React.FC<FarcasterLoggerProviderProps> = (
 
   // Debug render decision (in useEffect to avoid infinite loops)
   useEffect(() => {
-    const originalLog = console.__originalLog || console.log;
+    const originalLog = (console as any).__originalLog || console.log;
     originalLog('FarcasterLoggerProvider render decision:', {
       shouldShowOverlay,
       isInFarcaster,
@@ -462,7 +462,7 @@ const FarcasterLoggerOverlay: React.FC = () => {
 
   // Debug: Log when overlay renders
   useEffect(() => {
-    const originalLog = console.__originalLog || console.log;
+    const originalLog = (console as any).__originalLog || console.log;
     originalLog('FarcasterLoggerOverlay rendered. isInFarcaster:', isInFarcaster, 'isVisible:', isVisible, 'logs count:', logs.length);
     if (isVisible) {
       originalLog('OVERLAY SHOULD BE VISIBLE NOW!');
@@ -501,7 +501,7 @@ const FarcasterLoggerOverlay: React.FC = () => {
 
   // Add render logging (moved to useEffect to prevent loops)
   useEffect(() => {
-    const originalLog = console.__originalLog || console.log;
+    const originalLog = (console as any).__originalLog || console.log;
     originalLog('FarcasterLoggerOverlay RENDERING - logs:', logs.length);
   }, [logs.length]);
 

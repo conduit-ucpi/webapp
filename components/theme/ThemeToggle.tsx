@@ -29,7 +29,7 @@ export default function ThemeToggle({ className = "", showLabel = false }: Theme
     toggleTheme = themeContext.toggleTheme;
   } catch (error) {
     // Theme context not available during SSR or hydration
-    console.log('Theme context not available in ThemeToggle:', error.message);
+    console.log('Theme context not available in ThemeToggle:', error instanceof Error ? error.message : String(error));
   }
 
   return (

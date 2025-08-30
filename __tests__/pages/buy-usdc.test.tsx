@@ -37,14 +37,14 @@ jest.mock('@/components/auth/ConfigProvider', () => ({
   }),
 }));
 
-// Mock the Web3Auth instance provider
-jest.mock('@/components/auth/Web3AuthContextProvider', () => ({
-  useWeb3AuthInstance: () => ({
-    web3authProvider: { request: jest.fn() },
-    isLoading: false,
-    web3authInstance: null,
-  }),
-}));
+// Mock the Web3Auth instance provider - Not needed
+// jest.mock('@/components/auth/Web3AuthContextProvider', () => ({
+//   useWeb3AuthInstance: () => ({
+//     web3authProvider: { request: jest.fn() },
+//     isLoading: false,
+//     web3authInstance: null,
+//   }),
+// }));
 
 // Mock the auth context provider (new abstraction)
 jest.mock('@/lib/auth/AuthContextProvider', () => ({

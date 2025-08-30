@@ -200,7 +200,7 @@ export class BackendAuth {
     
     const fetchOptions = {
       ...options,
-      credentials: 'include', // Include cookies as fallback
+      credentials: 'include' as RequestCredentials, // Include cookies as fallback
       headers
     };
     

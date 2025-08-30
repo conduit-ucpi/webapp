@@ -7,7 +7,7 @@ jest.mock('next/router', () => ({
 }));
 jest.mock('../../../components/auth/ConfigProvider');
 jest.mock('../../../components/auth');
-jest.mock('../../../components/auth/Web3AuthContextProvider');
+// jest.mock('../../../components/auth/Web3AuthContextProvider'); // Not needed
 
 // Override the SDK mock for this test
 jest.mock('../../../hooks/useWeb3SDK', () => ({
@@ -54,7 +54,7 @@ import { useRouter } from 'next/router';
 import ContractActions from '../../../components/contracts/ContractActions';
 import { useConfig } from '../../../components/auth/ConfigProvider';
 import { useAuth } from '../../../components/auth';
-import { useWeb3AuthInstance } from '../../../components/auth/Web3AuthContextProvider';
+// import { useWeb3AuthInstance } from '../../../components/auth/Web3AuthContextProvider'; // Not needed
 import { Contract } from '../../../types';
 
 // Import the function for generating expected test values
@@ -67,7 +67,7 @@ const formatDateTimeWithTZ = (timestamp: number): string => {
 const mockUseRouter = useRouter as jest.MockedFunction<typeof useRouter>;
 const mockUseConfig = useConfig as jest.MockedFunction<typeof useConfig>;
 const mockUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
-const mockUseWeb3AuthInstance = useWeb3AuthInstance as jest.MockedFunction<typeof useWeb3AuthInstance>;
+// const mockUseWeb3AuthInstance = useWeb3AuthInstance as jest.MockedFunction<typeof useWeb3AuthInstance>; // Not needed
 
 // Mock fetch globally
 const mockFetch = jest.fn();
@@ -131,21 +131,35 @@ describe('ContractActions - Email Fields for Dispute', () => {
       userId: 'user-123',
       email: 'buyer@test.com',
       walletAddress: '0xBuyerAddress',
+      authProvider: 'web3auth' as const,
     };
 
     mockUseAuth.mockReturnValue({
       user: mockUser,
       isLoading: false,
-      login: jest.fn(),
-      logout: jest.fn(),
+      connect: jest.fn(),
+      disconnect: jest.fn(),
+      isConnected: true,
+      isInitialized: true,
+      error: null,
+      token: 'mock-token',
+      providerName: 'web3auth',
+      getToken: jest.fn(() => 'mock-token'),
+      hasVisitedBefore: jest.fn(() => false),
+      markAsVisited: jest.fn(),
+      signMessage: jest.fn(),
+      getEthersProvider: jest.fn(),
+      getUSDCBalance: jest.fn(() => Promise.resolve('100.0')),
+      signContractTransaction: jest.fn(),
+      authenticatedFetch: jest.fn(),
     });
 
-    mockUseWeb3AuthInstance.mockReturnValue({
-      web3authProvider: null,
-      isLoading: false,
-      web3authInstance: null,
-      onLogout: jest.fn(),
-    });
+    // mockUseWeb3AuthInstance.mockReturnValue({
+    //   web3authProvider: null,
+    //   isLoading: false,
+    //   web3authInstance: null,
+    //   onLogout: jest.fn(),
+    // });
 
     const contract: Contract = {
       id: 'contract-db-id-123',
@@ -231,21 +245,35 @@ describe('ContractActions - Email Fields for Dispute', () => {
       userId: 'user-456',
       email: 'currentuser@test.com',
       walletAddress: '0xBuyerAddress',
+      authProvider: 'web3auth' as const,
     };
 
     mockUseAuth.mockReturnValue({
       user: mockUser,
       isLoading: false,
-      login: jest.fn(),
-      logout: jest.fn(),
+      connect: jest.fn(),
+      disconnect: jest.fn(),
+      isConnected: true,
+      isInitialized: true,
+      error: null,
+      token: 'mock-token',
+      providerName: 'web3auth',
+      getToken: jest.fn(() => 'mock-token'),
+      hasVisitedBefore: jest.fn(() => false),
+      markAsVisited: jest.fn(),
+      signMessage: jest.fn(),
+      getEthersProvider: jest.fn(),
+      getUSDCBalance: jest.fn(() => Promise.resolve('100.0')),
+      signContractTransaction: jest.fn(),
+      authenticatedFetch: jest.fn(),
     });
 
-    mockUseWeb3AuthInstance.mockReturnValue({
-      web3authProvider: null,
-      isLoading: false,
-      web3authInstance: null,
-      onLogout: jest.fn(),
-    });
+    // mockUseWeb3AuthInstance.mockReturnValue({
+    //   web3authProvider: null,
+    //   isLoading: false,
+    //   web3authInstance: null,
+    //   onLogout: jest.fn(),
+    // });
 
     const contractWithoutBuyerEmail: Contract = {
       contractAddress: '0xContractAddress456',
@@ -326,22 +354,36 @@ describe('ContractActions - Email Fields for Dispute', () => {
     const mockUser = {
       userId: 'user-789',
       walletAddress: '0xBuyerAddress',
+      authProvider: 'web3auth' as const,
       // email is missing
     } as any;
 
     mockUseAuth.mockReturnValue({
       user: mockUser,
       isLoading: false,
-      login: jest.fn(),
-      logout: jest.fn(),
+      connect: jest.fn(),
+      disconnect: jest.fn(),
+      isConnected: true,
+      isInitialized: true,
+      error: null,
+      token: 'mock-token',
+      providerName: 'web3auth',
+      getToken: jest.fn(() => 'mock-token'),
+      hasVisitedBefore: jest.fn(() => false),
+      markAsVisited: jest.fn(),
+      signMessage: jest.fn(),
+      getEthersProvider: jest.fn(),
+      getUSDCBalance: jest.fn(() => Promise.resolve('100.0')),
+      signContractTransaction: jest.fn(),
+      authenticatedFetch: jest.fn(),
     });
 
-    mockUseWeb3AuthInstance.mockReturnValue({
-      web3authProvider: null,
-      isLoading: false,
-      web3authInstance: null,
-      onLogout: jest.fn(),
-    });
+    // mockUseWeb3AuthInstance.mockReturnValue({
+    //   web3authProvider: null,
+    //   isLoading: false,
+    //   web3authInstance: null,
+    //   onLogout: jest.fn(),
+    // });
 
     const contractWithoutEmails: Contract = {
       id: 'contract-db-id-789',

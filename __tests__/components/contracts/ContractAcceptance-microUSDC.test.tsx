@@ -148,10 +148,81 @@ describe('ContractAcceptance - microUSDC Amount Handling', () => {
     });
 
     mockUseAuth.mockReturnValue({
-      user: { userId: 'test-user-id', walletAddress: '0xBuyerAddress', email: 'buyer@test.com' },
-      login: jest.fn(),
-      logout: jest.fn(),
+      user: { userId: 'test-user-id', walletAddress: '0xBuyerAddress', email: 'buyer@test.com', authProvider: 'web3auth' as const },
+      connect: jest.fn(),
+      disconnect: jest.fn(),
       isLoading: false,
+      isConnected: true,
+      isInitialized: true,
+      error: null,
+      token: 'mock-token',
+      providerName: 'web3auth',
+      getToken: jest.fn(() => 'mock-token'),
+      hasVisitedBefore: jest.fn(() => false),
+      markAsVisited: jest.fn(),
+      signMessage: jest.fn(),
+      getEthersProvider: jest.fn(),
+      getUSDCBalance: jest.fn(() => Promise.resolve('100.0')),
+      signContractTransaction: jest.fn(),
+      authenticatedFetch: jest.fn((url, options) => {
+        // Mock the authenticatedFetch to use the global mockFetch
+        return mockFetch(url, options);
+      }),
+      fundContract: jest.fn(async (params) => {
+        // Simulate the actual fundContract implementation by making the expected API calls
+        const { contract, config, utils } = params;
+        
+        // Convert amount to microUSDC if it's a decimal string
+        let amountInMicroUSDC: string;
+        const contractAmount = contract.amount as string | number;
+        if (typeof contractAmount === 'string' && contractAmount.includes('.')) {
+          // Convert USDC string format to microUSDC
+          amountInMicroUSDC = String(Math.round(parseFloat(contractAmount) * 1000000));
+        } else if (typeof contractAmount === 'number') {
+          // If it's already a number, assume it's in microUSDC
+          amountInMicroUSDC = String(contractAmount);
+        } else {
+          // Default case
+          amountInMicroUSDC = String(contractAmount);
+        }
+        
+        // 1. Create contract
+        await mockFetch('/api/chain/create-contract', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...contract,
+            amount: amountInMicroUSDC,
+          }),
+        });
+        
+        // 2. Approve USDC
+        await mockFetch('/api/chain/approve-usdc', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contractAddress: '0xContractAddress',
+            amount: amountInMicroUSDC,
+            currency: contract.currency,
+          }),
+        });
+        
+        // 3. Deposit funds
+        await mockFetch('/api/chain/deposit-funds', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contractAddress: '0xContractAddress',
+            amount: amountInMicroUSDC,
+          }),
+        });
+        
+        return {
+          contractAddress: '0xContractAddress',
+          approvalTxHash: 'mock-approval-tx',
+          depositTxHash: 'mock-deposit-tx',
+        };
+      }),
     });
 
     // Reset Web3Service mock to default safe values

@@ -12,7 +12,7 @@ export const resetWeb3AuthInstance = () => {
 
 export default function ConnectWallet() {
   const { config } = useConfig();
-  const { user, isLoading: authLoading, login, connect } = useAuth();
+  const { user, isLoading: authLoading, connect } = useAuth();
   const { isInFarcaster } = useFarcaster();
 
   // No need for Web3Auth-specific context anymore - using unified interface

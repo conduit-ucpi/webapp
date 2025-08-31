@@ -459,6 +459,37 @@ class Web3AuthProviderImpl implements IAuthProvider {
     // Convert from smallest unit (6 decimals for USDC) to string
     return formatUnits(balance, 6);
   }
+
+  /**
+   * Fund contract - complete flow: create, approve, deposit
+   */
+  async fundContract(params: any): Promise<any> {
+    console.log('🔧 Web3AuthProvider: fundContract called');
+    
+    if (!this.provider) {
+      throw new Error('Provider not available');
+    }
+
+    // Create the contract transaction methods
+    const { createWeb3AuthContractMethods } = await import('@/utils/contractTransactionFactory');
+    
+    const contractMethods = createWeb3AuthContractMethods(
+      async (txParams: any) => {
+        return await this.signContractTransaction(txParams);
+      },
+      async (url: string, options?: RequestInit) => {
+        return fetch(url, {
+          ...options,
+          credentials: 'include',
+          headers: {
+            ...options?.headers,
+          }
+        });
+      }
+    );
+
+    return await contractMethods.fundContract(params);
+  }
 }
 
 // Create singleton instance

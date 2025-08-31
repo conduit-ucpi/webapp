@@ -57,12 +57,21 @@ export function createContractTransactionMethods(
 
     /**
      * Complete contract funding: create, approve, and deposit
-     * This should be overridden by provider-specific implementations
+     * This base implementation uses the ContractTransactionService
      */
     fundContract: async (
       params: ContractFundingParams
     ): Promise<ContractFundingResult> => {
-      throw new Error('fundContract must be implemented by provider-specific version (Farcaster/Web3Auth)');
+      console.log('🔧 Base: Using ContractTransactionService for fundContract');
+      
+      // Use the real service implementation
+      const { ContractTransactionService } = await import('./contractTransactions');
+      const service = new ContractTransactionService(
+        { signContractTransaction },
+        { authenticatedFetch }
+      );
+      
+      return await service.fundContract(params);
     }
   };
 }
@@ -83,16 +92,17 @@ export function createWeb3AuthContractMethods(
     // Web3Auth uses the base approveUSDC method (via signContractTransaction + chainservice)
     // No override needed - the base method handles the conversion correctly
     
-    // Web3Auth-specific overrides could go here
+    // Web3Auth-specific fundContract: use the actual service implementation
     fundContract: async (params: ContractFundingParams): Promise<ContractFundingResult> => {
-      console.log('🔧 Web3Auth: Starting contract funding process');
+      console.log('🔧 Web3Auth: Starting contract funding process via ContractTransactionService');
       
-      // Could add Web3Auth-specific logic here:
-      // - Different error messages
-      // - Different progress tracking
-      // - Web3Auth-specific optimizations
+      // Use the real service implementation that calls the chain service
+      const service = new (await import('./contractTransactions')).ContractTransactionService(
+        { signContractTransaction },
+        { authenticatedFetch }
+      );
       
-      return await baseMethods.fundContract(params);
+      return await service.fundContract(params);
     }
   };
 }

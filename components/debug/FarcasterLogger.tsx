@@ -529,8 +529,8 @@ const FarcasterLoggerOverlay: React.FC = () => {
         TEST
       </button>
 
-      {/* SUPER SIMPLE BUTTON - NO STATE DEPENDENCIES */}
-      <SimpleLoggerButton logs={logs} />
+      {/* SUPER SIMPLE BUTTON - NO STATE DEPENDENCIES - Only show in Farcaster */}
+      {isInFarcaster && <SimpleLoggerButton logs={logs} />}
 
       {/* Debug Logger Button - ALWAYS VISIBLE */}
       <div

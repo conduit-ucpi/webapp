@@ -74,8 +74,37 @@ export class Web3Service {
     // Get gas price if not provided
     let gasPrice = txParams.gasPrice;
     if (!gasPrice) {
-      const feeData = await this.provider.getFeeData();
-      gasPrice = feeData.gasPrice || BigInt(this.config.minGasWei);
+      try {
+        // Get live gas price directly from RPC to bypass Web3Auth's stale cached prices
+        const response = await fetch(this.config.rpcUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            method: 'eth_gasPrice',
+            params: [],
+            id: 1
+          })
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          if (result.result) {
+            const liveGasPrice = BigInt(result.result);
+            console.log('Using live RPC gas price:', liveGasPrice.toString(), 'wei');
+            gasPrice = liveGasPrice;
+          }
+        }
+      } catch (error) {
+        console.warn('Failed to get live gas price from RPC, falling back to provider:', error);
+      }
+      
+      // Fallback to provider's gas price if RPC call fails
+      if (!gasPrice) {
+        const feeData = await this.provider.getFeeData();
+        gasPrice = feeData.gasPrice || BigInt(this.config.minGasWei);
+        console.log('Using provider gas price:', gasPrice.toString(), 'wei');
+      }
     }
     
     // Use provided gasLimit or throw error (caller should estimate)

@@ -16,13 +16,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ error: 'Missing required fields: contractAddress, userWalletAddress, signedTransaction' });
     }
 
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${authToken}`,
+      'Cookie': req.headers.cookie || ''
+    };
+
+    // Add X-API-Key header if available
+    if (process.env.X_API_KEY) {
+      headers['X-API-Key'] = process.env.X_API_KEY;
+    }
+
     const response = await fetch(`${process.env.CHAIN_SERVICE_URL}/api/chain/claim-funds`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${authToken}`,
-        'Cookie': req.headers.cookie || ''
-      },
+      headers,
       body: JSON.stringify({
         contractAddress,
         userWalletAddress,

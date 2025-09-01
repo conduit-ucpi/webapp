@@ -48,6 +48,7 @@ jobs:
           WEB3AUTH_CLIENT_ID: ${{ secrets.WEB3AUTH_CLIENT_ID }}
           WEB3AUTH_NETWORK: ${{ vars.WEB3AUTH_NETWORK }}
           MOONPAY_API_KEY: ${{ secrets.MOONPAY_API_KEY }}
+          X_API_KEY: ${{ secrets.X_API_KEY }}
           MIN_GAS_WEI: ${{ vars.MIN_GAS_WEI }}
           BUILD_VERSION: ${{ env.BUILD_VERSION }}
           GIT_TAG: ${{ env.GIT_TAG }}
@@ -143,6 +144,7 @@ jobs:
             -e WEB3AUTH_CLIENT_ID="${{ secrets.WEB3AUTH_CLIENT_ID }}" \\
             -e WEB3AUTH_NETWORK="${{ vars.WEB3AUTH_NETWORK }}" \\
             -e MOONPAY_API_KEY="${{ secrets.MOONPAY_API_KEY }}" \\
+            -e X_API_KEY="${{ secrets.X_API_KEY }}" \\
             -e GIT_TAG="${{ env.GIT_TAG }}" \\
             -e GIT_SHA="${{ env.GIT_SHA }}" \\
             -e COOKIE_DOMAIN="${{ vars.COOKIE_DOMAIN }}" \\

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useFarcaster } from '../farcaster/FarcasterDetectionProvider';
 
 interface LogEntry {
   id: string | number;
@@ -8,6 +9,7 @@ interface LogEntry {
 }
 
 export const SimpleDebugLogger: React.FC = () => {
+  const { isInFarcaster } = useFarcaster();
   const [logs, setLogs] = useState<LogEntry[]>([
     {
       id: 0,
@@ -148,6 +150,11 @@ export const SimpleDebugLogger: React.FC = () => {
       default: return '#6b7280';
     }
   };
+
+  // Only render in Farcaster
+  if (!isInFarcaster) {
+    return null;
+  }
 
   return (
     <>

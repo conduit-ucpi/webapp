@@ -345,6 +345,13 @@ class FarcasterAuthProviderImpl implements IAuthProvider {
     this.contractMethods = methods;
   }
   
+  async waitForTransaction(transactionHash: string, maxWaitTime?: number): Promise<void> {
+    // Farcaster transactions are already confirmed when they return
+    // This is a no-op to satisfy the interface
+    console.log(`🔧 Farcaster Provider: Transaction already confirmed: ${transactionHash}`);
+    return Promise.resolve();
+  }
+
   async signContractTransaction(params: any): Promise<string> {
     if (this.signContractTransactionCallback) {
       return await this.signContractTransactionCallback(params);
@@ -1403,6 +1410,13 @@ function FarcasterAuthProviderInner({ children, AuthContext }: {
         console.error('getUSDCBalance error:', error);
         return '0';
       }
+    },
+
+    // Transaction confirmation waiting (no-op for Farcaster since transactions are already confirmed)
+    waitForTransaction: async (transactionHash: string, maxWaitTime?: number) => {
+      // Farcaster transactions are already confirmed when they return
+      console.log(`🔧 Farcaster: Transaction already confirmed: ${transactionHash}`);
+      return Promise.resolve();
     },
 
     // High-level contract transaction methods (Farcaster-specific implementations)

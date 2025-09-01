@@ -99,6 +99,7 @@ export interface AuthMethods {
   getEthersProvider: () => any; // Returns ethers provider for SDK integration
   getUSDCBalance: (userAddress?: string) => Promise<string>;
   signContractTransaction: (params: ContractTransactionParams) => Promise<string>;
+  waitForTransaction?: (transactionHash: string, maxWaitTime?: number) => Promise<void>;
   
   // High-level contract operations
   createContract?: (contract: ContractFundingParams['contract'], userAddress: string, config: ContractFundingParams['config'], utils: ContractFundingParams['utils']) => Promise<string>;
@@ -156,6 +157,7 @@ export interface IAuthProvider {
   getEthersProvider(): any;
   getUSDCBalance(userAddress?: string): Promise<string>;
   signContractTransaction(params: any): Promise<string>;
+  waitForTransaction?(transactionHash: string, maxWaitTime?: number): Promise<void>;
   
   // State checks
   hasVisitedBefore(): boolean;

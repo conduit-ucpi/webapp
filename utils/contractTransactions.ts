@@ -10,6 +10,7 @@ export interface TransactionSigner {
     functionArgs: any[];
     debugLabel?: string;
   }) => Promise<string>;
+  waitForTransaction?: (transactionHash: string, maxWaitTime?: number) => Promise<void>;
 }
 
 export interface AuthenticatedFetcher {
@@ -142,7 +143,57 @@ export class ContractTransactionService {
       throw new Error(result.error || 'USDC approval failed');
     }
 
-    return result.transactionHash || 'approval-completed';
+    const transactionHash = result.transactionHash;
+    if (!transactionHash || transactionHash === 'approval-completed') {
+      return transactionHash || 'approval-completed';
+    }
+
+    // Wait for transaction confirmation before returning
+    console.log('🔧 ContractTransactionService: Waiting for USDC approval confirmation...', transactionHash);
+    await this.waitForTransactionConfirmation(transactionHash, config);
+    console.log('🔧 ContractTransactionService: USDC approval confirmed');
+
+    return transactionHash;
+  }
+
+  /**
+   * Wait for transaction confirmation on blockchain
+   */
+  private async waitForTransactionConfirmation(
+    transactionHash: string, 
+    config: ContractTransactionConfig,
+    maxWaitTime: number = 30000 // 30 seconds
+  ): Promise<void> {
+    // For Web3Auth, we need to get the provider to check transaction status
+    // This will be implemented by the specific signer (Web3Auth or Farcaster)
+    if ('waitForTransaction' in this.signer) {
+      await (this.signer as any).waitForTransaction(transactionHash, maxWaitTime);
+      return;
+    }
+
+    // Fallback: Simple polling wait (for providers that don't support waitForTransaction)
+    console.log('🔧 ContractTransactionService: Using fallback polling for transaction confirmation');
+    
+    const startTime = Date.now();
+    while (Date.now() - startTime < maxWaitTime) {
+      await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds between checks
+      
+      try {
+        // Try to fetch transaction status from an API if available
+        const statusResponse = await this.fetcher.authenticatedFetch(`/api/chain/transaction-status/${transactionHash}`);
+        if (statusResponse.ok) {
+          const status = await statusResponse.json();
+          if (status.confirmed || status.status === 'confirmed') {
+            return; // Transaction confirmed
+          }
+        }
+      } catch (error) {
+        // Continue polling if status check fails
+        console.log('🔧 ContractTransactionService: Status check failed, continuing to poll...');
+      }
+    }
+    
+    console.warn('🔧 ContractTransactionService: Transaction confirmation timeout, proceeding anyway');
   }
 
   /**

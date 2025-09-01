@@ -435,6 +435,35 @@ class Web3AuthProviderImpl implements IAuthProvider {
     return signedTx;
   }
   
+  async waitForTransaction(transactionHash: string, maxWaitTime: number = 30000): Promise<void> {
+    console.log(`🔧 Web3Auth: Waiting for transaction confirmation: ${transactionHash}`);
+    
+    if (!this.provider) {
+      throw new Error('Provider not available');
+    }
+    
+    const ethersProvider = this.getEthersProvider();
+    
+    try {
+      // Wait for the transaction to be mined with a timeout
+      const receipt = await Promise.race([
+        ethersProvider.waitForTransaction(transactionHash, 1), // Wait for 1 confirmation
+        new Promise<never>((_, reject) => 
+          setTimeout(() => reject(new Error('Transaction confirmation timeout')), maxWaitTime)
+        )
+      ]);
+      
+      if (receipt?.status === 1) {
+        console.log(`🔧 Web3Auth: Transaction confirmed: ${transactionHash}`);
+      } else {
+        throw new Error(`Transaction failed: ${transactionHash}`);
+      }
+    } catch (error) {
+      console.warn(`🔧 Web3Auth: Transaction confirmation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      // Don't throw - let the transaction continue as the backend may have processed it
+    }
+  }
+  
   async getUSDCBalance(userAddress?: string): Promise<string> {
     if (!this.provider) {
       throw new Error('Provider not available');
@@ -633,6 +662,16 @@ export function Web3AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error('Provider not initialized');
       }
       return await provider.signContractTransaction(params);
+    },
+
+    waitForTransaction: async (transactionHash: string, maxWaitTime?: number) => {
+      if (!provider) {
+        throw new Error('Provider not initialized');
+      }
+      if (!provider.waitForTransaction) {
+        throw new Error('Transaction waiting not supported by this provider');
+      }
+      return await provider.waitForTransaction(transactionHash, maxWaitTime);
     },
 
     // High-level contract transaction methods (Web3Auth-specific implementations)

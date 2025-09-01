@@ -75,7 +75,7 @@ export class Web3Service {
     let gasPrice = txParams.gasPrice;
     if (!gasPrice) {
       const feeData = await this.provider.getFeeData();
-      gasPrice = feeData.gasPrice || BigInt('20000000000');
+      gasPrice = feeData.gasPrice || BigInt(this.config.minGasWei);
     }
     
     // Use provided gasLimit or throw error (caller should estimate)

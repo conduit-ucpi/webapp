@@ -18,6 +18,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       'Cookie': req.headers.cookie || ''
     };
 
+    // Add X-API-Key header if available
+    if (process.env.X_API_KEY) {
+      headers['X-API-Key'] = process.env.X_API_KEY;
+    }
+
     console.log('Calling Contract Service:', `${process.env.CONTRACT_SERVICE_URL}/api/contracts/deployed`);
 
     const response = await fetch(`${process.env.CONTRACT_SERVICE_URL}/api/contracts/deployed`, {

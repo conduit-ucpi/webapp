@@ -27,11 +27,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Fetch all contracts from contract service
+    const contractHeaders: Record<string, string> = {
+      'Authorization': `Bearer ${authToken}`,
+      'Cookie': req.headers.cookie || ''
+    };
+
+    // Add X-API-Key header if available
+    if (process.env.X_API_KEY) {
+      contractHeaders['X-API-Key'] = process.env.X_API_KEY;
+    }
+
     const contractResponse = await fetch(`${process.env.CONTRACT_SERVICE_URL}/api/contracts`, {
-      headers: {
-        'Authorization': `Bearer ${authToken}`,
-        'Cookie': req.headers.cookie || ''
-      }
+      headers: contractHeaders
     });
 
     if (!contractResponse.ok) {
@@ -43,11 +50,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Also fetch deployed contracts to get additional metadata
     let deployedContracts: any[] = [];
     try {
+      const deployedHeaders: Record<string, string> = {
+        'Authorization': `Bearer ${authToken}`,
+        'Cookie': req.headers.cookie || ''
+      };
+
+      // Add X-API-Key header if available
+      if (process.env.X_API_KEY) {
+        deployedHeaders['X-API-Key'] = process.env.X_API_KEY;
+      }
+
       const deployedResponse = await fetch(`${process.env.CONTRACT_SERVICE_URL}/api/contracts/deployed`, {
-        headers: {
-          'Authorization': `Bearer ${authToken}`,
-          'Cookie': req.headers.cookie || ''
-        }
+        headers: deployedHeaders
       });
       
       if (deployedResponse.ok) {

@@ -32,6 +32,11 @@ async function handleGetContract(req: NextApiRequest, res: NextApiResponse, id: 
       'Cookie': req.headers.cookie || ''
     };
 
+    // Add X-API-Key header if available
+    if (process.env.X_API_KEY) {
+      headers['X-API-Key'] = process.env.X_API_KEY;
+    }
+
     console.log('Calling Contract Service:', `${process.env.CONTRACT_SERVICE_URL}/api/contracts/${id}`);
 
     const response = await fetch(`${process.env.CONTRACT_SERVICE_URL}/api/contracts/${id}`, {
@@ -66,6 +71,11 @@ async function handleUpdateContract(req: NextApiRequest, res: NextApiResponse, i
       'Authorization': `Bearer ${authToken}`,
       'Cookie': req.headers.cookie || ''
     };
+
+    // Add X-API-Key header if available
+    if (process.env.X_API_KEY) {
+      headers['X-API-Key'] = process.env.X_API_KEY;
+    }
 
     console.log('Calling Contract Service:', `${process.env.CONTRACT_SERVICE_URL}/api/contracts/${id}`);
 

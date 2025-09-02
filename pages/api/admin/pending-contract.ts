@@ -38,11 +38,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Fetch pending contracts from contract service
+    const contractHeaders: Record<string, string> = {
+      'Authorization': `Bearer ${authToken}`,
+      'Cookie': req.headers.cookie || ''
+    };
+
+    // Add X-API-Key header if available
+    if (process.env.X_API_KEY) {
+      contractHeaders['X-API-Key'] = process.env.X_API_KEY;
+    }
+
     const contractResponse = await fetch(`${process.env.CONTRACT_SERVICE_URL}/api/contracts`, {
-      headers: {
-        'Authorization': `Bearer ${authToken}`,
-        'Cookie': req.headers.cookie || ''
-      }
+      headers: contractHeaders
     });
 
     if (!contractResponse.ok) {

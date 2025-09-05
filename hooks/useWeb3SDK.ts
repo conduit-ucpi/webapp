@@ -48,6 +48,14 @@ export const useWeb3SDK = () => {
     };
   }, [user, isConnected, signMessage]);
 
+  // Reset SDK connection when wallet address changes
+  useEffect(() => {
+    if (sdkWalletConnected && user?.walletAddress) {
+      // Force reconnection when wallet address changes
+      setSdkWalletConnected(false);
+    }
+  }, [user?.walletAddress]);
+
   // Initialize SDK with wallet when both are ready
   useEffect(() => {
     const initializeSDKWallet = async () => {
@@ -89,7 +97,7 @@ export const useWeb3SDK = () => {
     };
 
     initializeSDKWallet();
-  }, [sdk, isInitialized, sdkError, createSDKWalletProvider, isConnected, sdkWalletConnected]);
+  }, [sdk, isInitialized, sdkError, createSDKWalletProvider, isConnected, sdkWalletConnected, user?.walletAddress]);
 
   // Web3 operations using SDK
   const getUSDCBalance = useCallback(async (userAddress?: string): Promise<string> => {

@@ -1,11 +1,16 @@
 import Link from 'next/link';
+import { useConfig } from '@/components/auth/ConfigProvider';
+import { getChainShortName } from '@/utils/chainNames';
 
 export default function Footer() {
+  const { config } = useConfig();
+  const chainName = config ? getChainShortName(config.chainId) : 'blockchain';
+  
   return (
     <footer className="bg-gray-50 border-t">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="text-center text-gray-600">
-          <p>&copy; 2024 Conduit UCPI. Secure escrow contracts on Avalanche.</p>
+          <p>&copy; 2024 Conduit UCPI. Secure escrow contracts on {chainName}.</p>
           <div className="mt-4 space-x-6">
             <Link href="/terms-of-service" className="text-gray-500 hover:text-gray-700 underline">
               Terms of Service

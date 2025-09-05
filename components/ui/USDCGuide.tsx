@@ -1,6 +1,7 @@
 import { useAuth } from '@/components/auth';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { useWalletAddress } from '@/hooks/useWalletAddress';
+import { getChainName } from '@/utils/chainNames';
 
 export default function USDCGuide() {
   const { user } = useAuth();
@@ -10,14 +11,7 @@ export default function USDCGuide() {
   if (!user || !config) return null;
 
   const getNetworkName = () => {
-    switch (config.chainId) {
-      case 43114:
-        return 'Avalanche C-Chain';
-      case 43113:
-        return 'Avalanche Fuji Testnet';
-      default:
-        return 'Avalanche Network';
-    }
+    return getChainName(config.chainId);
   };
 
   return (

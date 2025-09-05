@@ -110,14 +110,24 @@ describe('USDCGuide', () => {
     expect(screen.getByText(/You're currently on Avalanche Fuji Testnet/)).toBeInTheDocument();
   });
 
-  it('displays fallback network name for unknown chain', () => {
+  it('displays the correct network for Ethereum mainnet', () => {
     mockUseConfig.mockReturnValue({
       config: { ...mockConfig, chainId: 1 },
       isLoading: false,
     });
 
     render(<USDCGuide />);
-    expect(screen.getByText(/You're currently on Avalanche Network/)).toBeInTheDocument();
+    expect(screen.getByText(/You're currently on Ethereum Mainnet/)).toBeInTheDocument();
+  });
+
+  it('displays fallback network name for unknown chain', () => {
+    mockUseConfig.mockReturnValue({
+      config: { ...mockConfig, chainId: 999999 }, // Use an unknown chain ID
+      isLoading: false,
+    });
+
+    render(<USDCGuide />);
+    expect(screen.getByText(/You're currently on Chain 999999/)).toBeInTheDocument();
   });
 
   it('displays the user wallet address', () => {

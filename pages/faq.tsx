@@ -1,9 +1,10 @@
 import Layout from '@/components/layout/Layout'
 import { useConfig } from '@/components/auth/ConfigProvider'
+import { getChainName } from '@/utils/chainNames'
 
 interface FAQItem {
   question: string
-  answer: string | ((contractAddress: string) => string)
+  answer: string | ((contractAddress: string, chainName: string, explorerUrl: string) => string)
 }
 
 interface FAQSection {
@@ -11,7 +12,7 @@ interface FAQSection {
   items: FAQItem[]
 }
 
-const faqSections: FAQSection[] = [
+const getFaqSections = (chainName: string, explorerUrl: string): FAQSection[] => [
   {
     title: 'Basic Functionality',
     items: [
@@ -131,8 +132,8 @@ const faqSections: FAQSection[] = [
       },
       {
         question: "How can I verify for myself that you can't steal my money?",
-        answer: (contractAddress: string) => `Want to verify our code yourself? Copy the verified contract from the blockchain explorer link (available from any contract in our app or <a href="https://snowtrace.io/address/${contractAddress}/contract/43114/code" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 underline">here</a>) and paste it into tools like MythX, ask ChatGPT "can the admin steal funds from this contract?", or have any Solidity developer review it. The code is extensively commented to make admin limitations clear.
-We've used https://solidityscan.com/quickscan to audit our contracts - you can too. It'll ask you to select a blockchain (we are on Avalanche mainnet) and then paste in a contract address (you can get one by making a test transaction of $0.001 on our system for free). It'll give you a full audit report. If you don't want to do that, you can use our current contract address: <a href="https://snowtrace.io/address/${contractAddress}/contract/43114/code" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 underline">${contractAddress}</a> - score is now 94%: 'Great'`
+        answer: (contractAddress: string, chainName: string, explorerUrl: string) => `Want to verify our code yourself? Copy the verified contract from the blockchain explorer link (available from any contract in our app or <a href="${explorerUrl}/address/${contractAddress}#code" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 underline">here</a>) and paste it into tools like MythX, ask ChatGPT "can the admin steal funds from this contract?", or have any Solidity developer review it. The code is extensively commented to make admin limitations clear.
+We've used https://solidityscan.com/quickscan to audit our contracts - you can too. It'll ask you to select a blockchain (we are on ${chainName}) and then paste in a contract address (you can get one by making a test transaction of $0.001 on our system for free). It'll give you a full audit report. If you don't want to do that, you can use our current contract address: <a href="${explorerUrl}/address/${contractAddress}#code" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 underline">${contractAddress}</a> - score is now 94%: 'Great'`
       },
       {
         question: "Is there any reputation tracking or feedback system?",
@@ -233,6 +234,10 @@ We've used https://solidityscan.com/quickscan to audit our contracts - you can t
 export default function FAQ() {
   const { config } = useConfig()
   const contractAddress = config?.contractAddress || '0xAa1Be17F1F8A0F96a1308f596740552c4145627d' // fallback to current address
+  const chainName = config ? getChainName(config.chainId) : 'blockchain'
+  const explorerUrl = config?.explorerBaseUrl || 'https://base.blockscout.com'
+  
+  const faqSections = getFaqSections(chainName, explorerUrl)
   
   return (
     <Layout>
@@ -247,7 +252,7 @@ export default function FAQ() {
                   <h2 className="text-2xl font-semibold text-gray-800 mb-4">{section.title}</h2>
                   <div className="space-y-4">
                     {section.items.map((faq, index) => {
-                      const answer = typeof faq.answer === 'function' ? faq.answer(contractAddress) : faq.answer
+                      const answer = typeof faq.answer === 'function' ? faq.answer(contractAddress, chainName, explorerUrl) : faq.answer
                       return (
                         <div key={index} className="bg-white rounded-lg shadow-sm p-6">
                           <h3 className="text-lg font-semibold text-gray-900 mb-3">

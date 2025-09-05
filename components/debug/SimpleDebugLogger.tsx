@@ -176,8 +176,9 @@ export const SimpleDebugLogger: React.FC = () => {
           border: 'none',
           fontSize: '24px',
           cursor: 'pointer',
-          zIndex: 99999,
-          boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
+          zIndex: 2147483647, // Maximum z-index value
+          boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+          pointerEvents: 'auto'
         }}
       >
         🐛
@@ -195,11 +196,12 @@ export const SimpleDebugLogger: React.FC = () => {
             backgroundColor: 'white',
             border: '2px solid #8b5cf6',
             borderRadius: '8px',
-            zIndex: 99998,
+            zIndex: 2147483646, // Just below the button
             display: 'flex',
             flexDirection: 'column',
             fontFamily: 'monospace',
-            fontSize: '12px'
+            fontSize: '12px',
+            pointerEvents: 'auto'
           }}
         >
           {/* Header */}

@@ -152,6 +152,7 @@ describe('ContractActions - Email Fields for Dispute', () => {
       getUSDCBalance: jest.fn(() => Promise.resolve('100.0')),
       signContractTransaction: jest.fn(),
       authenticatedFetch: jest.fn(),
+      raiseDispute: jest.fn().mockResolvedValue('mock-tx-hash'),
     });
 
     // mockUseWeb3AuthInstance.mockReturnValue({
@@ -210,29 +211,25 @@ describe('ContractActions - Email Fields for Dispute', () => {
     const modalSubmitButton = submitButtons[1]; // The second one is in the modal
     fireEvent.click(modalSubmitButton);
     await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledWith(
-        '/api/chain/raise-dispute',
+      const mockRaiseDispute = mockUseAuth.mock.results[0].value.raiseDispute;
+      expect(mockRaiseDispute).toHaveBeenCalledWith(
         expect.objectContaining({
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            databaseId: 'contract-db-id-123',
-            contractAddress: '0xContractAddress123',
-            userWalletAddress: '0xBuyerAddress',
-            signedTransaction: 'mock-dispute-tx',
+          contractAddress: '0xContractAddress123',
+          userAddress: '0xBuyerAddress',
+          reason: 'Test dispute reason',
+          refundPercent: 50,
+          contract: expect.objectContaining({
+            id: 'contract-db-id-123',
             buyerEmail: 'buyer@test.com',
             sellerEmail: 'seller@test.com',
-            payoutDateTime: formatDateTimeWithTZ(contract.expiryTimestamp),
-            amount: contract.amount.toString(),
-            currency: "microUSDC",
-            contractDescription: contract.description,
-            productName: 'Conduit UCPI',
-            serviceLink: "http://localhost:3000",
-            reason: "Test dispute reason",
-            refundPercent: 50
-          })
+            expiryTimestamp: contract.expiryTimestamp,
+            amount: contract.amount,
+            description: contract.description
+          }),
+          config: expect.objectContaining({
+            serviceLink: "http://localhost:3000"
+          }),
+          utils: expect.any(Object)
         })
       );
     });
@@ -266,6 +263,7 @@ describe('ContractActions - Email Fields for Dispute', () => {
       getUSDCBalance: jest.fn(() => Promise.resolve('100.0')),
       signContractTransaction: jest.fn(),
       authenticatedFetch: jest.fn(),
+      raiseDispute: jest.fn().mockResolvedValue('mock-tx-hash'),
     });
 
     // mockUseWeb3AuthInstance.mockReturnValue({
@@ -276,6 +274,7 @@ describe('ContractActions - Email Fields for Dispute', () => {
     // });
 
     const contractWithoutBuyerEmail: Contract = {
+      id: 'contract-db-id-456',
       contractAddress: '0xContractAddress456',
       buyerAddress: '0xBuyerAddress',
       sellerAddress: '0xSellerAddress',
@@ -323,28 +322,25 @@ describe('ContractActions - Email Fields for Dispute', () => {
     const modalSubmitButton = submitButtons[1]; // The second one is in the modal
     fireEvent.click(modalSubmitButton);
     await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledWith(
-        '/api/chain/raise-dispute',
+      const mockRaiseDispute = mockUseAuth.mock.results[0].value.raiseDispute;
+      expect(mockRaiseDispute).toHaveBeenCalledWith(
         expect.objectContaining({
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            contractAddress: '0xContractAddress456',
-            userWalletAddress: '0xBuyerAddress',
-            signedTransaction: 'mock-dispute-tx',
-            buyerEmail: 'currentuser@test.com', // Falls back to user email
+          contractAddress: '0xContractAddress456',
+          userAddress: '0xBuyerAddress',
+          reason: 'Test dispute reason',
+          refundPercent: 50,
+          contract: expect.objectContaining({
+            id: 'contract-db-id-456',
+            buyerEmail: 'currentuser@test.com', // Falls back to user email  
             sellerEmail: 'seller@test.com',
-            payoutDateTime: formatDateTimeWithTZ(contractWithoutBuyerEmail.expiryTimestamp),
-            amount: contractWithoutBuyerEmail.amount.toString(),
-            currency: "microUSDC",
-            contractDescription: contractWithoutBuyerEmail.description,
-            productName: 'Conduit UCPI',
-            serviceLink: "http://localhost:3000",
-            reason: "Test dispute reason",
-            refundPercent: 50
-          })
+            expiryTimestamp: contractWithoutBuyerEmail.expiryTimestamp,
+            amount: contractWithoutBuyerEmail.amount,
+            description: contractWithoutBuyerEmail.description
+          }),
+          config: expect.objectContaining({
+            serviceLink: "http://localhost:3000"
+          }),
+          utils: expect.any(Object)
         })
       );
     });
@@ -376,6 +372,7 @@ describe('ContractActions - Email Fields for Dispute', () => {
       getUSDCBalance: jest.fn(() => Promise.resolve('100.0')),
       signContractTransaction: jest.fn(),
       authenticatedFetch: jest.fn(),
+      raiseDispute: jest.fn().mockResolvedValue('mock-tx-hash'),
     });
 
     // mockUseWeb3AuthInstance.mockReturnValue({
@@ -433,29 +430,25 @@ describe('ContractActions - Email Fields for Dispute', () => {
     const modalSubmitButton = submitButtons[1]; // The second one is in the modal
     fireEvent.click(modalSubmitButton);
     await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledWith(
-        '/api/chain/raise-dispute',
+      const mockRaiseDispute = mockUseAuth.mock.results[0].value.raiseDispute;
+      expect(mockRaiseDispute).toHaveBeenCalledWith(
         expect.objectContaining({
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            databaseId: 'contract-db-id-789',
-            contractAddress: '0xContractAddress789',
-            userWalletAddress: '0xBuyerAddress',
-            signedTransaction: 'mock-dispute-tx',
-            buyerEmail: undefined,
-            sellerEmail: undefined,
-            payoutDateTime: formatDateTimeWithTZ(contractWithoutEmails.expiryTimestamp),
-            amount: contractWithoutEmails.amount.toString(),
-            currency: "microUSDC",
-            contractDescription: contractWithoutEmails.description,
-            productName: 'Conduit UCPI',
-            serviceLink: "http://localhost:3000",
-            reason: "Test dispute reason",
-            refundPercent: 50
-          })
+          contractAddress: '0xContractAddress789',
+          userAddress: '0xBuyerAddress',
+          reason: 'Test dispute reason',
+          refundPercent: 50,
+          contract: expect.objectContaining({
+            id: 'contract-db-id-789',
+            buyerEmail: '', // Falls back to empty string when no buyer email and no user email
+            sellerEmail: contractWithoutEmails.sellerEmail,
+            expiryTimestamp: contractWithoutEmails.expiryTimestamp,
+            amount: contractWithoutEmails.amount,
+            description: contractWithoutEmails.description
+          }),
+          config: expect.objectContaining({
+            serviceLink: "http://localhost:3000"
+          }),
+          utils: expect.any(Object)
         })
       );
     });

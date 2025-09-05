@@ -297,7 +297,7 @@ const SimpleLoggerButton: React.FC<{ logs: LogEntry[] }> = ({ logs }) => {
           position: 'fixed',
           bottom: '20px',
           right: '20px',
-          zIndex: 99999,
+          zIndex: 100002,
           width: '70px',
           height: '70px',
           backgroundColor: '#8b5cf6',
@@ -307,6 +307,7 @@ const SimpleLoggerButton: React.FC<{ logs: LogEntry[] }> = ({ logs }) => {
           justifyContent: 'center',
           cursor: 'pointer',
           color: 'white',
+          pointerEvents: 'auto',
           fontSize: '28px',
           userSelect: 'none',
           touchAction: 'manipulation',
@@ -344,8 +345,8 @@ const SimpleLoggerButton: React.FC<{ logs: LogEntry[] }> = ({ logs }) => {
       </div>
       
       {localVisible && (
-        <div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm">
-          <div className="absolute inset-4 bg-gray-900 rounded-lg border border-gray-700 flex flex-col overflow-hidden">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" style={{ zIndex: 100000, pointerEvents: 'auto' }}>
+          <div className="absolute inset-4 bg-gray-900 rounded-lg border border-gray-700 flex flex-col overflow-hidden" style={{ zIndex: 100001 }}>
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-gray-700 bg-gray-800">
               <div className="flex items-center gap-2">
@@ -612,10 +613,11 @@ const FarcasterLoggerOverlay: React.FC = () => {
           </div>
           
           <div 
-            className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm"
             style={{ 
               backgroundColor: 'rgba(255, 0, 0, 0.8)',
-              zIndex: 99998 
+              zIndex: 100000,
+              pointerEvents: 'auto' 
             }}
           >
           <div className="absolute inset-4 bg-gray-900 rounded-lg border border-gray-700 flex flex-col overflow-hidden">

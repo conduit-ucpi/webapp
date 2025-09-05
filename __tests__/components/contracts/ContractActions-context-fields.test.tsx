@@ -151,6 +151,7 @@ describe('ContractActions - Context Fields for Dispute', () => {
       getUSDCBalance: jest.fn(() => Promise.resolve('100.0')),
       signContractTransaction: jest.fn(),
       authenticatedFetch: jest.fn(),
+      raiseDispute: jest.fn().mockResolvedValue('mock-tx-hash'),
     });
 
     // mockUseWeb3AuthInstance.mockReturnValue({
@@ -210,29 +211,25 @@ describe('ContractActions - Context Fields for Dispute', () => {
     const modalSubmitButton = submitButtons[1]; // The second one is in the modal
     fireEvent.click(modalSubmitButton);
     await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledWith(
-        '/api/chain/raise-dispute',
+      const mockRaiseDispute = mockUseAuth.mock.results[0].value.raiseDispute;
+      expect(mockRaiseDispute).toHaveBeenCalledWith(
         expect.objectContaining({
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            databaseId: 'contract-db-id-123',
-            contractAddress: '0xContractAddress123',
-            userWalletAddress: '0xBuyerAddress',
-            signedTransaction: 'mock-dispute-tx',
+          contractAddress: '0xContractAddress123',
+          userAddress: '0xBuyerAddress',
+          reason: 'Test dispute reason',
+          refundPercent: 50,
+          contract: expect.objectContaining({
+            id: 'contract-db-id-123',
             buyerEmail: 'buyer@test.com',
             sellerEmail: 'seller@test.com',
-            payoutDateTime: formatDateTimeWithTZ(contract.expiryTimestamp),
-            amount: '2500000', // In microUSDC format as expected by backend
-            currency: 'microUSDC',
-            contractDescription: 'Digital Marketing Services Package',
-            productName: 'Conduit UCPI',
-            serviceLink: 'http://localhost:3000',
-            reason: 'Test dispute reason',
-            refundPercent: 50
-          })
+            expiryTimestamp: contract.expiryTimestamp,
+            amount: contract.amount,
+            description: contract.description
+          }),
+          config: expect.objectContaining({
+            serviceLink: 'http://localhost:3000'
+          }),
+          utils: expect.any(Object)
         })
       );
     });
@@ -289,10 +286,12 @@ describe('ContractActions - Context Fields for Dispute', () => {
     const modalSubmitButton = submitButtons[1]; // The second one is in the modal
     fireEvent.click(modalSubmitButton);
     await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledWith(
-        '/api/chain/raise-dispute',
+      const mockRaiseDispute = mockUseAuth.mock.results[0].value.raiseDispute;
+      expect(mockRaiseDispute).toHaveBeenCalledWith(
         expect.objectContaining({
-          body: expect.stringContaining('"amount":"1000000"') // 1.0 USDC in microUSDC
+          contract: expect.objectContaining({
+            amount: 1000000 // 1.0 USDC in microUSDC
+          })
         })
       );
     });
@@ -347,10 +346,12 @@ describe('ContractActions - Context Fields for Dispute', () => {
     const modalSubmitButton = submitButtons[1]; // The second one is in the modal
     fireEvent.click(modalSubmitButton);
     await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledWith(
-        '/api/chain/raise-dispute',
+      const mockRaiseDispute = mockUseAuth.mock.results[0].value.raiseDispute;
+      expect(mockRaiseDispute).toHaveBeenCalledWith(
         expect.objectContaining({
-          body: expect.stringContaining('"amount":"1500000"') // 1.5 USDC in microUSDC
+          contract: expect.objectContaining({
+            amount: 1500000 // 1.5 USDC in microUSDC
+          })
         })
       );
     });
@@ -422,14 +423,12 @@ describe('ContractActions - Context Fields for Dispute', () => {
         refundPercent: 50
       });
 
-      expect(mockFetch).toHaveBeenCalledWith(
-        '/api/chain/raise-dispute',
+      const mockRaiseDispute = mockUseAuth.mock.results[0].value.raiseDispute;
+      expect(mockRaiseDispute).toHaveBeenCalledWith(
         expect.objectContaining({
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: expectedBody
+          contract: expect.objectContaining({
+            description: 'Custom Web Development'
+          })
         })
       );
     });

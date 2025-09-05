@@ -22,8 +22,8 @@ interface ContractActionsProps {
 
 export default function ContractActions({ contract, isBuyer, isSeller, onAction, onAccept, isClaimingInProgress, onClaimStart, onClaimComplete }: ContractActionsProps) {
   const { config } = useConfig();
-  const { user } = useAuth();
-  const { signContractTransaction, getUserAddress, utils, isReady, error: sdkError } = useWeb3SDK();
+  const { user, claimFunds, raiseDispute } = useAuth();
+  const { getUserAddress, utils, isReady, error: sdkError } = useWeb3SDK();
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
   const [hasError, setHasError] = useState(false);
@@ -41,76 +41,47 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
     if (!config || !isBuyer || isPending || (contract as Contract).status !== 'ACTIVE' || !user || isLoading) return;
 
     setIsLoading(true);
-    setLoadingMessage('Initializing...');
+    setLoadingMessage('Raising dispute...');
     setHasError(false);
     
     try {
-      // Check SDK readiness
-      if (!isReady) {
-        throw new Error('SDK not ready. Please ensure wallet is connected.');
-      }
-
-      if (sdkError) {
-        throw new Error(`SDK error: ${sdkError}`);
+      // Check if raiseDispute method is available from auth provider
+      if (!raiseDispute) {
+        throw new Error('Raise dispute not available for this authentication provider');
       }
       
       // Get the actual user wallet address
       const userAddress = await getUserAddress();
 
-      // Sign dispute transaction
-      setLoadingMessage('Signing dispute transaction...');
-      const signedTx = await signContractTransaction({
-        contractAddress: (contract as Contract).contractAddress,
-        abi: ESCROW_CONTRACT_ABI,
-        functionName: 'raiseDispute',
-        functionArgs: [],
-        debugLabel: 'DISPUTE'
-      });
-
-      // Submit signed transaction to chain service
-      setLoadingMessage('Raising dispute...');
+      // Use the abstracted raiseDispute method (works for both Web3Auth and Farcaster)
       const regularContract = contract as Contract;
-      const disputeRequest: RaiseDisputeRequest = {
-        databaseId: regularContract.id,
+      const txHash = await raiseDispute({
         contractAddress: regularContract.contractAddress,
-        userWalletAddress: userAddress,
-        signedTransaction: signedTx,
-        buyerEmail: regularContract.buyerEmail || user?.email,
-        sellerEmail: regularContract.sellerEmail,
-        payoutDateTime: utils?.formatDateTimeWithTZ ? utils.formatDateTimeWithTZ(regularContract.expiryTimestamp) : new Date(regularContract.expiryTimestamp).toISOString(),
-        amount: utils?.toMicroUSDC ? utils.toMicroUSDC(regularContract.amount).toString() : (regularContract.amount * 1000000).toString(),
-        currency: "microUSDC",
-        contractDescription: regularContract.description,
-        productName: process.env.PRODUCT_NAME || regularContract.description,
-        serviceLink: config.serviceLink,
-        reason: reason,
-        refundPercent: refundPercent
-      };
-
-      const response = await fetch('/api/chain/raise-dispute', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
+        userAddress,
+        reason,
+        refundPercent,
+        // Additional contract details for Web3Auth backend notifications
+        contract: {
+          id: regularContract.id || '',
+          buyerEmail: regularContract.buyerEmail || user?.email || '',
+          sellerEmail: regularContract.sellerEmail,
+          expiryTimestamp: regularContract.expiryTimestamp,
+          amount: regularContract.amount,
+          description: regularContract.description
         },
-        body: JSON.stringify(disputeRequest)
+        config: {
+          serviceLink: config.serviceLink
+        },
+        utils
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Failed to raise dispute');
-      }
-
-      const result = await response.json();
-      if (!result.success) {
-        throw new Error(result.error || 'Dispute failed');
-      }
-
+      console.log('✅ Raise dispute successful! Transaction hash:', txHash);
       onAction(); // Refresh contracts
       setIsLoading(false);
       setLoadingMessage('');
       setShowDisputeModal(false);
     } catch (error: any) {
-      console.error('Dispute failed:', error);
+      console.error('❌ Dispute failed:', error);
       setHasError(true);
       alert(error.message || 'Failed to raise dispute');
       // Only re-enable button on error
@@ -121,71 +92,57 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
   };
 
   const handleClaimFunds = async () => {
-    if (!config || !isSeller || isPending || (contract as Contract).status !== 'EXPIRED' || !user || isLoading || isClaimingInProgress) return;
+    console.log('🔵 handleClaimFunds called');
+    if (!config || !isSeller || isPending || (contract as Contract).status !== 'EXPIRED' || !user || isLoading || isClaimingInProgress) {
+      console.log('🔴 handleClaimFunds early return', { 
+        config: !!config, 
+        isSeller, 
+        isPending, 
+        status: (contract as Contract).status,
+        user: !!user,
+        isLoading,
+        isClaimingInProgress
+      });
+      return;
+    }
 
+    console.log('🟢 Starting claim funds process');
     setIsLoading(true);
-    setLoadingMessage('Initializing...');
+    setLoadingMessage('Claiming funds...');
     setHasError(false);
     onClaimStart?.(); // Disable all claim buttons
     
     try {
-      // Check SDK readiness
-      if (!isReady) {
-        throw new Error('SDK not ready. Please ensure wallet is connected.');
-      }
-
-      if (sdkError) {
-        throw new Error(`SDK error: ${sdkError}`);
+      // Check if claimFunds method is available from auth provider
+      if (!claimFunds) {
+        throw new Error('Claim funds not available for this authentication provider');
       }
       
       // Get the actual user wallet address
       const userAddress = await getUserAddress();
 
-      // Sign claim transaction
-      setLoadingMessage('Signing claim transaction...');
-      const signedTx = await signContractTransaction({
-        contractAddress: (contract as Contract).contractAddress,
-        abi: ESCROW_CONTRACT_ABI,
-        functionName: 'claimFunds',
-        functionArgs: [],
-        debugLabel: 'CLAIM FUNDS'
-      });
+      // Use the abstracted claimFunds method (works for both Web3Auth and Farcaster)
+      const txHash = await claimFunds(
+        (contract as Contract).contractAddress,
+        userAddress
+      );
 
-      // Submit signed transaction to chain service
-      setLoadingMessage('Claiming funds...');
-      const response = await fetch('/api/chain/claim-funds', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          contractAddress: (contract as Contract).contractAddress,
-          userWalletAddress: userAddress,
-          signedTransaction: signedTx
-        })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Failed to claim funds');
-      }
-
-      const result = await response.json();
-      if (!result.success) {
-        throw new Error(result.error || 'Claim failed');
-      }
-
+      console.log('✅ Claim funds successful! Transaction hash:', txHash);
       onAction(); // Refresh contracts
       onClaimComplete?.(); // Re-enable all claim buttons after success
       // Keep local loading state to prevent double-clicks until page refreshes
+      console.log('📊 State after success:', { isLoading: true, hasError: false });
     } catch (error: any) {
-      console.error('Claim failed:', error);
+      console.error('❌ Claim failed:', error);
       setHasError(true);
       alert(error.message || 'Failed to claim funds');
       // Re-enable buttons on error
       setIsLoading(false);
       setLoadingMessage('');
       onClaimComplete?.(); // Re-enable all claim buttons after error
+      console.log('📊 State after error:', { isLoading: false, hasError: true });
+    } finally {
+      console.log('🏁 handleClaimFunds completed');
     }
   };
 

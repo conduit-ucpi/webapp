@@ -313,6 +313,24 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
       throw new Error('fundContract not available from provider');
     },
+
+    claimFunds: async (...args: any[]) => {
+      console.log('🔧 AuthProvider: claimFunds called, delegating to provider');
+      const providerWithContract = provider as any;
+      if (providerWithContract.claimFunds) {
+        return await providerWithContract.claimFunds(...args);
+      }
+      throw new Error('claimFunds not available from provider');
+    },
+
+    raiseDispute: async (...args: any[]) => {
+      console.log('🔧 AuthProvider: raiseDispute called, delegating to provider');
+      const providerWithContract = provider as any;
+      if (providerWithContract.raiseDispute) {
+        return await providerWithContract.raiseDispute(...args);
+      }
+      throw new Error('raiseDispute not available from provider');
+    },
     
     // Use BackendAuth for authenticated API calls
     authenticatedFetch: (url: string, options?: RequestInit) => {

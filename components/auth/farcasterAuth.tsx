@@ -340,6 +340,8 @@ class FarcasterAuthProviderImpl implements IAuthProvider {
   setContractMethods(methods: any) {
     console.log('🔧 Farcaster Provider: Setting contract methods:', {
       hasFundContract: !!methods.fundContract,
+      hasClaimFunds: !!methods.claimFunds,
+      hasRaiseDispute: !!methods.raiseDispute,
       methodKeys: Object.keys(methods)
     });
     this.contractMethods = methods;
@@ -404,6 +406,56 @@ class FarcasterAuthProviderImpl implements IAuthProvider {
       }
     }
     throw new Error('fundContract not available');
+  }
+
+  async claimFunds(...args: any[]): Promise<any> {
+    console.log('🔧 Farcaster Provider: claimFunds called, checking availability:', {
+      hasMethod: !!this.contractMethods.claimFunds,
+      contractMethodsKeys: Object.keys(this.contractMethods)
+    });
+    
+    if (this.contractMethods.claimFunds) {
+      try {
+        console.log('🔧 Farcaster Provider: Calling contract methods claimFunds...');
+        const result = await this.contractMethods.claimFunds(...args);
+        console.log('🔧 Farcaster Provider: claimFunds completed successfully');
+        return result;
+      } catch (error) {
+        console.error('🔧 Farcaster Provider: claimFunds failed:', error);
+        console.error('🔧 Farcaster Provider: Error details:', {
+          message: error instanceof Error ? error.message : 'Unknown error',
+          name: error instanceof Error ? error.name : 'Unknown',
+          stack: error instanceof Error ? error.stack : 'No stack'
+        });
+        throw error;
+      }
+    }
+    throw new Error('claimFunds not available');
+  }
+
+  async raiseDispute(...args: any[]): Promise<any> {
+    console.log('🔧 Farcaster Provider: raiseDispute called, checking availability:', {
+      hasMethod: !!this.contractMethods.raiseDispute,
+      contractMethodsKeys: Object.keys(this.contractMethods)
+    });
+    
+    if (this.contractMethods.raiseDispute) {
+      try {
+        console.log('🔧 Farcaster Provider: Calling contract methods raiseDispute...');
+        const result = await this.contractMethods.raiseDispute(...args);
+        console.log('🔧 Farcaster Provider: raiseDispute completed successfully');
+        return result;
+      } catch (error) {
+        console.error('🔧 Farcaster Provider: raiseDispute failed:', error);
+        console.error('🔧 Farcaster Provider: Error details:', {
+          message: error instanceof Error ? error.message : 'Unknown error',
+          name: error instanceof Error ? error.name : 'Unknown',
+          stack: error instanceof Error ? error.stack : 'No stack'
+        });
+        throw error;
+      }
+    }
+    throw new Error('raiseDispute not available');
   }
 }
 
@@ -1199,6 +1251,8 @@ function FarcasterAuthProviderInner({ children, AuthContext }: {
     
     console.log('🔧 Farcaster: Contract methods created:', {
       hasFundContract: !!methods.fundContract,
+      hasClaimFunds: !!methods.claimFunds,
+      hasRaiseDispute: !!methods.raiseDispute,
       hasApproveUSDC: !!methods.approveUSDC,
       hasDepositFunds: !!methods.depositFunds,
       methodKeys: Object.keys(methods)
@@ -1438,6 +1492,8 @@ function FarcasterAuthProviderInner({ children, AuthContext }: {
   React.useEffect(() => {
     console.log('🔧 Farcaster: Context value debug:', {
       hasFundContract: !!contextValue.fundContract,
+      hasClaimFunds: !!contextValue.claimFunds,
+      hasRaiseDispute: !!contextValue.raiseDispute,
       hasContractMethods: !!contractMethods,
       contractMethodKeys: contractMethods ? Object.keys(contractMethods) : [],
       isConnected: contextValue.isConnected,

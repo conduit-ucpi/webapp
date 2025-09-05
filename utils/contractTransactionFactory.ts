@@ -72,6 +72,152 @@ export function createContractTransactionMethods(
       );
       
       return await service.fundContract(params);
+    },
+
+    /**
+     * Claim funds from expired escrow contract
+     * Base implementation using signContractTransaction + backend
+     */
+    claimFunds: async (
+      contractAddress: string,
+      userAddress: string
+    ): Promise<string> => {
+      console.log('🔧 Base: Claiming funds via signContractTransaction + backend');
+      
+      // Import the ESCROW_CONTRACT_ABI
+      const { ESCROW_CONTRACT_ABI } = await import('../lib/web3');
+      
+      // Sign the claimFunds transaction
+      const signedTx = await signContractTransaction({
+        contractAddress,
+        abi: ESCROW_CONTRACT_ABI,
+        functionName: 'claimFunds',
+        functionArgs: [],
+        debugLabel: 'CLAIM FUNDS'
+      });
+
+      // Submit signed transaction to chain service
+      const response = await authenticatedFetch('/api/chain/claim-funds', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          contractAddress,
+          userWalletAddress: userAddress,
+          signedTransaction: signedTx
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to claim funds');
+      }
+
+      const result = await response.json();
+      if (!result.success) {
+        throw new Error(result.error || 'Claim failed');
+      }
+
+      return result.transactionHash || signedTx;
+    },
+
+    /**
+     * Raise dispute for active escrow contract
+     * Base implementation using signContractTransaction + backend
+     */
+    raiseDispute: async (params: {
+      contractAddress: string;
+      userAddress: string;
+      reason: string;
+      refundPercent: number;
+      contract?: {
+        id: string;
+        buyerEmail?: string;
+        sellerEmail?: string;
+        expiryTimestamp: number;
+        amount: number;
+        description: string;
+      };
+      config?: {
+        serviceLink: string;
+      };
+      utils?: {
+        formatDateTimeWithTZ?: (timestamp: number) => string;
+        toMicroUSDC?: (amount: number) => number;
+      };
+    }): Promise<string> => {
+      console.log('🔧 Base: Raising dispute via signContractTransaction + backend');
+      
+      const { contractAddress, userAddress, reason, refundPercent, contract, config, utils } = params;
+      
+      // Import the ESCROW_CONTRACT_ABI
+      const { ESCROW_CONTRACT_ABI } = await import('../lib/web3');
+      
+      // Sign the raiseDispute transaction
+      const signedTx = await signContractTransaction({
+        contractAddress,
+        abi: ESCROW_CONTRACT_ABI,
+        functionName: 'raiseDispute',
+        functionArgs: [],
+        debugLabel: 'DISPUTE'
+      });
+
+      // Build the full dispute request with all details for email notifications
+      const disputeRequest: any = {
+        contractAddress,
+        userWalletAddress: userAddress,
+        signedTransaction: signedTx,
+        reason,
+        refundPercent
+      };
+
+      // Add additional details if provided (needed for Web3Auth backend)
+      if (contract) {
+        disputeRequest.databaseId = contract.id;
+        disputeRequest.buyerEmail = contract.buyerEmail;
+        disputeRequest.sellerEmail = contract.sellerEmail;
+        disputeRequest.contractDescription = contract.description;
+        disputeRequest.productName = process.env.PRODUCT_NAME || contract.description;
+        
+        if (utils?.formatDateTimeWithTZ) {
+          disputeRequest.payoutDateTime = utils.formatDateTimeWithTZ(contract.expiryTimestamp);
+        } else {
+          disputeRequest.payoutDateTime = new Date(contract.expiryTimestamp * 1000).toISOString();
+        }
+        
+        if (utils?.toMicroUSDC) {
+          disputeRequest.amount = utils.toMicroUSDC(contract.amount).toString();
+        } else {
+          disputeRequest.amount = (contract.amount * 1000000).toString();
+        }
+        disputeRequest.currency = "microUSDC";
+      }
+
+      if (config?.serviceLink) {
+        disputeRequest.serviceLink = config.serviceLink;
+      }
+
+      // Submit signed transaction to chain service
+      const response = await authenticatedFetch('/api/chain/raise-dispute', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(disputeRequest)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to raise dispute');
+      }
+
+      const result = await response.json();
+      if (!result.success) {
+        throw new Error(result.error || 'Dispute failed');
+      }
+
+      return result.transactionHash || signedTx;
     }
   };
 }
@@ -103,7 +249,13 @@ export function createWeb3AuthContractMethods(
       );
       
       return await service.fundContract(params);
-    }
+    },
+
+    // Web3Auth uses the base claimFunds method (sign + send to backend)
+    claimFunds: baseMethods.claimFunds,
+
+    // Web3Auth uses the base raiseDispute method (sign + send to backend)
+    raiseDispute: baseMethods.raiseDispute
   };
 }
 
@@ -289,6 +441,100 @@ export function createFarcasterContractMethods(
       } catch (error) {
         console.error('🔧 Farcaster: Deposit failed:', error);
         throw new Error(`Farcaster deposit failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    },
+
+    // Farcaster-specific claim funds using eth_sendTransaction  
+    claimFunds: async (
+      contractAddress: string,
+      userAddress: string
+    ): Promise<string> => {
+      console.log('🔧 Farcaster: Claiming funds using eth_sendTransaction');
+      
+      try {
+        // Get wallet client for eth_sendTransaction
+        if (!walletClient || !walletClient.transport || !walletClient.transport.request) {
+          throw new Error('Farcaster wallet client not properly initialized');
+        }
+
+        const { ethers } = await import('ethers');
+        
+        // Create the claimFunds transaction request
+        const txRequest = {
+          from: userAddress,
+          to: contractAddress,
+          data: new ethers.Interface([
+            'function claimFunds()'
+          ]).encodeFunctionData('claimFunds', []),
+          value: '0x0',
+        };
+
+        console.log('🔧 Farcaster: Sending claimFunds via eth_sendTransaction:', txRequest);
+
+        // Use Farcaster's eth_sendTransaction
+        const txHash = await walletClient.transport.request({
+          method: 'eth_sendTransaction',
+          params: [txRequest],
+        });
+
+        console.log('🔧 Farcaster: ClaimFunds transaction hash:', txHash);
+        return txHash;
+
+      } catch (error) {
+        console.error('🔧 Farcaster: ClaimFunds failed:', error);
+        throw new Error(`Farcaster claim funds failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    },
+
+    // Farcaster-specific raise dispute using eth_sendTransaction  
+    raiseDispute: async (params: {
+      contractAddress: string;
+      userAddress: string;
+      reason: string;
+      refundPercent: number;
+      contract?: any;
+      config?: any;
+      utils?: any;
+    }): Promise<string> => {
+      console.log('🔧 Farcaster: Raising dispute using eth_sendTransaction');
+      
+      const { contractAddress, userAddress, reason, refundPercent } = params;
+      
+      try {
+        // Get wallet client for eth_sendTransaction
+        if (!walletClient || !walletClient.transport || !walletClient.transport.request) {
+          throw new Error('Farcaster wallet client not properly initialized');
+        }
+
+        const { ethers } = await import('ethers');
+        
+        // Create the raiseDispute transaction request
+        const txRequest = {
+          from: userAddress,
+          to: contractAddress,
+          data: new ethers.Interface([
+            'function raiseDispute()'
+          ]).encodeFunctionData('raiseDispute', []),
+          value: '0x0',
+        };
+
+        console.log('🔧 Farcaster: Sending raiseDispute via eth_sendTransaction:', txRequest);
+
+        // Use Farcaster's eth_sendTransaction
+        const txHash = await walletClient.transport.request({
+          method: 'eth_sendTransaction',
+          params: [txRequest],
+        });
+
+        console.log('🔧 Farcaster: RaiseDispute transaction hash:', txHash);
+        
+        // For Farcaster, we only do the blockchain transaction
+        // Email notifications could be handled separately if needed
+        return txHash;
+
+      } catch (error) {
+        console.error('🔧 Farcaster: RaiseDispute failed:', error);
+        throw new Error(`Farcaster raise dispute failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     },
 

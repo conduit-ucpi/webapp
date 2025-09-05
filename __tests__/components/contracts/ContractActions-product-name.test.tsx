@@ -142,6 +142,7 @@ describe('ContractActions - PRODUCT_NAME Environment Variable', () => {
       getUSDCBalance: jest.fn(() => Promise.resolve('100.0')),
       signContractTransaction: jest.fn(),
       authenticatedFetch: jest.fn(),
+      raiseDispute: jest.fn().mockResolvedValue('mock-tx-hash'),
     });
 
     // mockUseWeb3AuthInstance.mockReturnValue({
@@ -209,28 +210,18 @@ describe('ContractActions - PRODUCT_NAME Environment Variable', () => {
     const modalSubmitButton = submitButtons[1]; // The second one is in the modal
     fireEvent.click(modalSubmitButton);
     await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledWith(
-        '/api/chain/raise-dispute',
+      const mockRaiseDispute = mockUseAuth.mock.results[0].value.raiseDispute;
+      expect(mockRaiseDispute).toHaveBeenCalledWith(
         expect.objectContaining({
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            databaseId: 'contract-db-id-123',
-            contractAddress: '0xContractAddress123',
-            userWalletAddress: '0xBuyerAddress',
-            signedTransaction: 'mock-dispute-tx',
+          contractAddress: '0xContractAddress123',
+          userAddress: '0xBuyerAddress',
+          reason: 'Test dispute reason',
+          refundPercent: 50,
+          contract: expect.objectContaining({
+            id: 'contract-db-id-123',
             buyerEmail: 'buyer@test.com',
             sellerEmail: 'seller@test.com',
-            payoutDateTime: formatDateTimeWithTZ(contract.expiryTimestamp),
-            amount: contract.amount.toString(),
-            currency: "microUSDC",
-            contractDescription: contract.description,
-            productName: 'Test Product Name', // Should use PRODUCT_NAME env var
-            serviceLink: "http://localhost:3000",
-            reason: "Test dispute reason",
-            refundPercent: 50
+            description: contract.description // The abstracted method will use PRODUCT_NAME env var when building the request
           })
         })
       );
@@ -281,28 +272,16 @@ describe('ContractActions - PRODUCT_NAME Environment Variable', () => {
     const modalSubmitButton = submitButtons[1]; // The second one is in the modal
     fireEvent.click(modalSubmitButton);
     await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledWith(
-        '/api/chain/raise-dispute',
+      const mockRaiseDispute = mockUseAuth.mock.results[0].value.raiseDispute;
+      expect(mockRaiseDispute).toHaveBeenCalledWith(
         expect.objectContaining({
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            databaseId: 'contract-db-id-456',
-            contractAddress: '0xContractAddress456',
-            userWalletAddress: '0xBuyerAddress',
-            signedTransaction: 'mock-dispute-tx',
-            buyerEmail: 'buyer@test.com',
-            sellerEmail: 'seller@test.com',
-            payoutDateTime: formatDateTimeWithTZ(contract.expiryTimestamp),
-            amount: contract.amount.toString(),
-            currency: "microUSDC",
-            contractDescription: contract.description,
-            productName: 'Fallback Description', // Should fallback to contract.description
-            serviceLink: "http://localhost:3000",
-            reason: "Test dispute reason",
-            refundPercent: 50
+          contractAddress: '0xContractAddress456',
+          userAddress: '0xBuyerAddress',
+          reason: 'Test dispute reason',
+          refundPercent: 50,
+          contract: expect.objectContaining({
+            id: 'contract-db-id-456',
+            description: contract.description // The abstracted method will fallback to description when PRODUCT_NAME is not set
           })
         })
       );
@@ -353,28 +332,16 @@ describe('ContractActions - PRODUCT_NAME Environment Variable', () => {
     const modalSubmitButton = submitButtons[1]; // The second one is in the modal
     fireEvent.click(modalSubmitButton);
     await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledWith(
-        '/api/chain/raise-dispute',
+      const mockRaiseDispute = mockUseAuth.mock.results[0].value.raiseDispute;
+      expect(mockRaiseDispute).toHaveBeenCalledWith(
         expect.objectContaining({
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            databaseId: 'contract-db-id-789',
-            contractAddress: '0xContractAddress789',
-            userWalletAddress: '0xBuyerAddress',
-            signedTransaction: 'mock-dispute-tx',
-            buyerEmail: 'buyer@test.com',
-            sellerEmail: 'seller@test.com',
-            payoutDateTime: formatDateTimeWithTZ(contract.expiryTimestamp),
-            amount: contract.amount.toString(),
-            currency: "microUSDC",
-            contractDescription: contract.description,
-            productName: 'Empty String Fallback', // Should fallback to contract.description when env var is empty
-            serviceLink: "http://localhost:3000",
-            reason: "Test dispute reason",
-            refundPercent: 50
+          contractAddress: '0xContractAddress789',
+          userAddress: '0xBuyerAddress',
+          reason: 'Test dispute reason',
+          refundPercent: 50,
+          contract: expect.objectContaining({
+            id: 'contract-db-id-789',
+            description: contract.description // The abstracted method will fallback to description when PRODUCT_NAME is empty
           })
         })
       );

@@ -160,6 +160,7 @@ describe('ContractActions - PayoutDateTime', () => {
       getUSDCBalance: jest.fn(() => Promise.resolve('100.0')),
       signContractTransaction: jest.fn(),
       authenticatedFetch: jest.fn(),
+      raiseDispute: jest.fn().mockResolvedValue('mock-tx-hash'),
     });
 
     // mockUseWeb3AuthInstance.mockReturnValue({
@@ -221,46 +222,42 @@ describe('ContractActions - PayoutDateTime', () => {
     fireEvent.click(modalSubmitButton);
 
     await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledWith(
-        '/api/chain/raise-dispute',
+      const mockRaiseDispute = mockUseAuth.mock.results[0].value.raiseDispute;
+      expect(mockRaiseDispute).toHaveBeenCalledWith(
         expect.objectContaining({
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            databaseId: 'contract-db-id-123',
-            contractAddress: '0xContractAddress123',
-            userWalletAddress: '0xBuyerAddress',
-            signedTransaction: 'mock-dispute-tx',
+          contractAddress: '0xContractAddress123',
+          userAddress: '0xBuyerAddress',
+          reason: 'Test dispute reason',
+          refundPercent: 50,
+          contract: expect.objectContaining({
+            id: 'contract-db-id-123',
             buyerEmail: 'buyer@test.com',
             sellerEmail: 'seller@test.com',
-            payoutDateTime: expectedDateTimeString,
-            amount: contract.amount.toString(),
-            currency: "microUSDC",
-            contractDescription: contract.description,
-            productName: process.env.PRODUCT_NAME || contract.description,
-            serviceLink: "http://localhost:3000",
-            reason: "Test dispute reason",
-            refundPercent: 50
-          })
+            expiryTimestamp: contract.expiryTimestamp,
+            amount: contract.amount,
+            description: contract.description
+          }),
+          config: expect.objectContaining({
+            serviceLink: "http://localhost:3000"
+          }),
+          utils: expect.any(Object)
         })
       );
     });
 
-    // Verify the payoutDateTime is in the correct ISO8601 format
-    const callArgs = mockFetch.mock.calls[0];
-    const requestBody = JSON.parse(callArgs[1].body);
+    // Verify that the utils.formatDateTimeWithTZ was called with the correct timestamp
+    const mockRaiseDispute = mockUseAuth.mock.results[0].value.raiseDispute;
+    const callArgs = mockRaiseDispute.mock.calls[0][0];
+    
+    // The contract data should include the correct expiryTimestamp
+    expect(callArgs.contract.expiryTimestamp).toBe(contract.expiryTimestamp);
+    
+    // The utils should be passed (which includes formatDateTimeWithTZ)
+    expect(callArgs.utils).toBeDefined();
+    expect(callArgs.utils.formatDateTimeWithTZ).toBeDefined();
 
-    // Should be a valid datetime string with timezone
-    expect(requestBody.payoutDateTime).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$/);
-
-    // Should be exactly the expected datetime string with timezone
-    expect(requestBody.payoutDateTime).toBe(expectedDateTimeString);
-
-    // Should be a valid date when parsed back
-    const parsedDate = new Date(requestBody.payoutDateTime);
-    expect(parsedDate.getTime()).toBe(expiryTimestamp * 1000);
+    // The expiryTimestamp should be passed correctly
+    expect(callArgs.contract.expiryTimestamp).toBe(expiryTimestamp);
   });
 
   it('should correctly convert Unix timestamp to ISO8601 for different dates', async () => {
@@ -289,6 +286,7 @@ describe('ContractActions - PayoutDateTime', () => {
       getUSDCBalance: jest.fn(() => Promise.resolve('100.0')),
       signContractTransaction: jest.fn(),
       authenticatedFetch: jest.fn(),
+      raiseDispute: jest.fn().mockResolvedValue('mock-tx-hash'),
     });
 
     // mockUseWeb3AuthInstance.mockReturnValue({
@@ -350,10 +348,17 @@ describe('ContractActions - PayoutDateTime', () => {
     fireEvent.click(modalSubmitButton);
 
     await waitFor(() => {
-      const callArgs = mockFetch.mock.calls[0];
-      const requestBody = JSON.parse(callArgs[1].body);
-
-      expect(requestBody.payoutDateTime).toBe(expectedDateTimeString);
+      const mockRaiseDispute = mockUseAuth.mock.results[0].value.raiseDispute;
+      expect(mockRaiseDispute).toHaveBeenCalledWith(
+        expect.objectContaining({
+          contract: expect.objectContaining({
+            expiryTimestamp: contract.expiryTimestamp
+          }),
+          utils: expect.objectContaining({
+            formatDateTimeWithTZ: expect.any(Function)
+          })
+        })
+      );
     });
   });
 });

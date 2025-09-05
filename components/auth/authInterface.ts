@@ -106,6 +106,29 @@ export interface AuthMethods {
   approveUSDC?: (contractAddress: string, amount: number, currency: string | undefined, userAddress: string, config: ContractFundingParams['config'], utils: ContractFundingParams['utils']) => Promise<string>;
   depositFunds?: (params: ContractFundingParams & { contractAddress: string }) => Promise<string>;
   fundContract?: (params: ContractFundingParams) => Promise<ContractFundingResult>;
+  claimFunds?: (contractAddress: string, userAddress: string) => Promise<string>;
+  raiseDispute?: (params: {
+    contractAddress: string;
+    userAddress: string;
+    reason: string;
+    refundPercent: number;
+    // Additional data needed for Web3Auth backend notifications
+    contract?: {
+      id: string;
+      buyerEmail?: string;
+      sellerEmail?: string;
+      expiryTimestamp: number;
+      amount: number;
+      description: string;
+    };
+    config?: {
+      serviceLink: string;
+    };
+    utils?: {
+      formatDateTimeWithTZ?: (timestamp: number) => string;
+      toMicroUSDC?: (amount: number) => number;
+    };
+  }) => Promise<string>;
   
   // Backend API helpers
   authenticatedFetch?: (url: string, options?: RequestInit) => Promise<Response>;

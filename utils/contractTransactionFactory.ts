@@ -478,6 +478,30 @@ export function createFarcasterContractMethods(
         });
 
         console.log('🔧 Farcaster: ClaimFunds transaction hash:', txHash);
+        
+        // For Farcaster, invalidate cache after successful transaction
+        try {
+          console.log('🔧 Farcaster: Invalidating cache for contract:', contractAddress);
+          const cacheResponse = await authenticatedFetch('/api/admin/cache/invalidate', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              contractAddress,
+              reason: 'Force refresh after Farcaster claimFunds transaction'
+            })
+          });
+          
+          if (!cacheResponse.ok) {
+            console.warn('🔧 Farcaster: Cache invalidation failed, but transaction succeeded');
+          } else {
+            console.log('🔧 Farcaster: Cache invalidated successfully');
+          }
+        } catch (cacheError) {
+          console.warn('🔧 Farcaster: Cache invalidation error (transaction still succeeded):', cacheError);
+        }
+        
         return txHash;
 
       } catch (error) {

@@ -50,6 +50,8 @@ jobs:
           MOONPAY_API_KEY: ${{ secrets.MOONPAY_API_KEY }}
           X_API_KEY: ${{ secrets.X_API_KEY }}
           MIN_GAS_WEI: ${{ vars.MIN_GAS_WEI }}
+          NEYNAR_API_KEY: ${{ secrets.NEYNAR_API_KEY }}
+          NEYNAR_API_URL: ${{ vars.NEYNAR_API_URL }}
           BUILD_VERSION: ${{ env.BUILD_VERSION }}
           GIT_TAG: ${{ env.GIT_TAG }}
           GIT_SHA: ${{ env.GIT_SHA }}
@@ -157,6 +159,8 @@ jobs:
             -e EXPLORER_BASE_URL="${{ vars.EXPLORER_BASE_URL }}" \\
             -e PRODUCT_NAME="${{ vars.PRODUCT_NAME }}" \\
             -e SERVICE_LINK="${{ vars.SERVICE_LINK }}" \\
+            -e NEYNAR_API_KEY="${{ secrets.NEYNAR_API_KEY }}" \\
+            -e NEYNAR_API_URL="${{ vars.NEYNAR_API_URL }}" \\
             ghcr.io/${{ env.REPO_LOWER }}:${{ env.SHA_TAG }}
           EOF
           

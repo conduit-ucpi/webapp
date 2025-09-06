@@ -16,6 +16,7 @@ export interface Config {
   basePath: string;
   explorerBaseUrl: string;
   serviceLink: string;
+  neynarApiKey?: string;
   // Optional wallet services configuration
   walletServicesShowWidget?: string;
   walletServicesButtonPosition?: string;

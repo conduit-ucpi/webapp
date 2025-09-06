@@ -6,11 +6,13 @@ import { useWeb3SDK } from '@/hooks/useWeb3SDK';
 import { useToast } from '@/components/ui/Toast';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
+import BuyerInput from '@/components/ui/BuyerInput';
 import { Wizard, WizardStep, WizardNavigation, WizardStep as Step } from '@/components/ui/Wizard';
-import { isValidEmail, isValidDescription, isValidAmount } from '@/utils/validation';
+import { isValidEmail, isValidDescription, isValidAmount, isValidBuyerIdentifier } from '@/utils/validation';
 
 interface CreateContractForm {
   buyerEmail: string;
+  buyerType: 'email' | 'farcaster';
   amount: string;
   payoutTimestamp: number;
   description: string;
@@ -60,6 +62,7 @@ export default function CreateContractWizard() {
 
   const [form, setForm] = useState<CreateContractForm>({
     buyerEmail: '',
+    buyerType: 'email',
     amount: '',
     payoutTimestamp: getDefaultTimestamp(),
     description: ''
@@ -140,12 +143,14 @@ export default function CreateContractWizard() {
     switch (step) {
       case 0: // Basic Details
         // Use SDK utils if available, otherwise fall back to local validation
-        const emailValidator = utils?.isValidEmail || isValidEmail;
         const descriptionValidator = utils?.isValidDescription || isValidDescription;
         
-        if (!emailValidator(form.buyerEmail)) {
-          newErrors.buyerEmail = 'Please enter a valid email address';
+        // Validate buyer identifier (email or Farcaster handle)
+        const buyerValidation = isValidBuyerIdentifier(form.buyerEmail);
+        if (!buyerValidation.isValid) {
+          newErrors.buyerEmail = buyerValidation.error || 'Invalid buyer identifier';
         }
+        
         if (!descriptionValidator(form.description)) {
           newErrors.description = 'Description must be 1-160 characters';
         }
@@ -212,7 +217,8 @@ export default function CreateContractWizard() {
       }
       
       const pendingContractRequest = {
-        buyerEmail: form.buyerEmail,
+        buyerEmail: form.buyerType === 'email' ? form.buyerEmail : '',
+        buyerFarcasterHandle: form.buyerType === 'farcaster' ? form.buyerEmail : '',
         sellerEmail: user.email,
         sellerAddress: user.walletAddress,
         amount: utils?.toMicroUSDC ? utils.toMicroUSDC(parseFloat(form.amount.trim())) : Math.round(parseFloat(form.amount.trim()) * 1000000),
@@ -269,13 +275,16 @@ export default function CreateContractWizard() {
             </p>
             
             <div className="space-y-6">
-              <Input
+              <BuyerInput
                 label="Buyer's email address"
-                type="email"
                 value={form.buyerEmail}
-                onChange={(e) => setForm(prev => ({ ...prev, buyerEmail: e.target.value }))}
-                placeholder="buyer@example.com"
+                onChange={(value, type) => setForm(prev => ({ 
+                  ...prev, 
+                  buyerEmail: value,
+                  buyerType: type
+                }))}
                 error={errors.buyerEmail}
+                placeholder="Search Farcaster user or enter email"
                 helpText="They'll receive an email with payment instructions"
               />
 

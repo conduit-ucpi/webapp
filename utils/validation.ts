@@ -31,6 +31,54 @@ export function isValidEmail(email: string): boolean {
   return emailRegex.test(email.trim());
 }
 
+export function isValidFarcasterHandle(handle: string): boolean {
+  // Supports two formats:
+  // 1. @username (alphanumeric, underscores, hyphens)
+  // 2. {fid}@farcaster.xyz (numeric FID format)
+  const handleRegex = /^@[a-zA-Z0-9_-]+$/;
+  const fidEmailRegex = /^\d+@farcaster\.xyz$/;
+  const trimmed = handle.trim();
+  return handleRegex.test(trimmed) || fidEmailRegex.test(trimmed);
+}
+
+export function isValidBuyerIdentifier(identifier: string): { 
+  isValid: boolean; 
+  type: 'email' | 'farcaster' | null; 
+  error?: string;
+} {
+  const trimmed = identifier.trim();
+  
+  if (!trimmed) {
+    return { isValid: false, type: null, error: 'Buyer identifier is required' };
+  }
+  
+  // Check if it's a valid email
+  if (isValidEmail(trimmed)) {
+    return { isValid: true, type: 'email' };
+  }
+  
+  // Check if it's a valid Farcaster handle
+  if (isValidFarcasterHandle(trimmed)) {
+    return { isValid: true, type: 'farcaster' };
+  }
+  
+  // If it starts with @, it's likely meant to be a Farcaster handle
+  if (trimmed.startsWith('@')) {
+    return { 
+      isValid: false, 
+      type: 'farcaster', 
+      error: 'Please select a valid Farcaster user from the search results' 
+    };
+  }
+  
+  // Otherwise, assume they're trying to enter an email
+  return { 
+    isValid: false, 
+    type: 'email', 
+    error: 'Please enter a valid email address' 
+  };
+}
+
 export function formatWalletAddress(address: string): string {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }

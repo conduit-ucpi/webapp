@@ -1,12 +1,27 @@
 {
-  "name": "Conduit Escrow",
-  "version": "1.0.0",
-  "iconUrl": "https://farcaster-dev.conduit-ucpi.com/icon.png",
-  "splashImageUrl": "https://farcaster-dev.conduit-ucpi.com/preview.png",
-  "homeUrl": "https://farcaster-dev.conduit-ucpi.com",
+  "frame": {
+    "name": "Instant Escrow",
+    "version": "1",
+    "iconUrl": "https://farcaster.conduit-ucpi.com/icon.png",
+    "homeUrl": "https://farcaster.conduit-ucpi.com",
+    "imageUrl": "https://farcaster.conduit-ucpi.com/preview.png",
+    "buttonTitle": "start",
+    "splashImageUrl": "https://farcaster.conduit-ucpi.com/preview.png",
+    "splashBackgroundColor": "#6200EA",
+    "webhookUrl": "https://farcaster.conduit-ucpi.com/api/webhook",
+    "subtitle": "Pay into secure contract, time release for after goods arrive. Automated dispute management in case of problems",
+    "description": "Pay into secure contract, time release for after goods arrive. Automated dispute management in case of problems",
+    "primaryCategory": "utility",
+    "tags": [
+      "escrow",
+      "p2p",
+      "buy",
+      "sell"
+    ]
+  },
   "accountAssociation": {
-    "header": "eyJmaWQiOjEyMjE5MTcsInR5cGUiOiJjdXN0b2R5Iiwia2V5IjoiMHg3OGFGNURBRWIyMjYzNDkwNGYwMUJBMDIxY0ZDMTlEMUUyRDYyMDZCIn0",
-    "payload": "eyJkb21haW4iOiJmYXJjYXN0ZXItZGV2LmNvbmR1aXQtdWNwaS5jb20ifQ",
-    "signature": "MHhhNzg3NDVkNjMwNjc2YzM2MGIzYjMzNWNiZmFkMjM5NjZmNzg1YTM5NTk0OTBkY2JhN2YwMTE3MmMzZGIxYzRlNGEzMGVhNDEzYzM4MGQwMjJiOTdhYzNkOTM2Y2FiMDkyMWYwZTI1NzVmODZkYWU2ZWFkODAzYzY4Mjc3YzIyMjFi"
+    "header": "eyJmaWQiOjEyMjE5MTcsInR5cGUiOiJhdXRoIiwia2V5IjoiMHg4M0Y3OTNmNzRiZWM1NGRjMTU0MzQ0MmFjODY5RjFhRWI4ODg2MzMwIn0",
+    "payload": "eyJkb21haW4iOiJmYXJjYXN0ZXIuY29uZHVpdC11Y3BpLmNvbSJ9",
+    "signature": "N1DUS1RniZvfkXDwKDM/jB0nrza78EjluXFQXIuwLGMbzBcXgQCUY8eYK3p6wzKSI7xPNLVRqJfO1lAsMqxkKhw="
   }
 }

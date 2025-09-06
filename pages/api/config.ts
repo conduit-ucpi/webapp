@@ -37,6 +37,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       basePath,
       explorerBaseUrl: process.env.EXPLORER_BASE_URL,
       serviceLink: process.env.SERVICE_LINK || 'http://localhost:3000',
+      neynarApiKey: process.env.NEYNAR_API_KEY,
       // Optional wallet services configuration
       walletServicesShowWidget: process.env.WALLET_SERVICES_SHOW_WIDGET,
       walletServicesButtonPosition: process.env.WALLET_SERVICES_BUTTON_POSITION,

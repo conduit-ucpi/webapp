@@ -6,12 +6,14 @@ import { useWeb3SDK } from '@/hooks/useWeb3SDK';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
-import { isValidEmail, isValidDescription, isValidAmount } from '@/utils/validation';
+import BuyerInput from '@/components/ui/BuyerInput';
+import { isValidEmail, isValidDescription, isValidAmount, isValidBuyerIdentifier } from '@/utils/validation';
 
 console.log('🔧 CreateContract: FILE LOADED - imports successful');
 
 interface CreateContractForm {
   buyerEmail: string;
+  buyerType: 'email' | 'farcaster';
   amount: string;
   payoutTimestamp: number; // Unix timestamp in seconds
   description: string;
@@ -81,6 +83,7 @@ export default function CreateContract() {
 
   const [form, setForm] = useState<CreateContractForm>({
     buyerEmail: '',
+    buyerType: 'email',
     amount: '',
     payoutTimestamp: getDefaultTimestamp(),
     description: ''
@@ -115,12 +118,13 @@ export default function CreateContract() {
     const newErrors: FormErrors = {};
 
     // Use SDK utils if available, otherwise fall back to local validation
-    const emailValidator = utils?.isValidEmail || isValidEmail;
     const amountValidator = utils?.isValidAmount || isValidAmount;
     const descriptionValidator = utils?.isValidDescription || isValidDescription;
 
-    if (!emailValidator(form.buyerEmail)) {
-      newErrors.buyerEmail = 'Invalid email address';
+    // Validate buyer identifier (email or Farcaster handle)
+    const buyerValidation = isValidBuyerIdentifier(form.buyerEmail);
+    if (!buyerValidation.isValid) {
+      newErrors.buyerEmail = buyerValidation.error || 'Invalid buyer identifier';
     }
 
     if (!amountValidator(form.amount)) {
@@ -189,7 +193,8 @@ export default function CreateContract() {
       
       
       const pendingContractRequest = {
-        buyerEmail: form.buyerEmail,
+        buyerEmail: form.buyerType === 'email' ? form.buyerEmail : '',
+        buyerFarcasterHandle: form.buyerType === 'farcaster' ? form.buyerEmail : '',
         sellerEmail: user?.email || '', // Get from authenticated user
         sellerAddress: userAddress,
         amount: utils?.toMicroUSDC ? utils.toMicroUSDC(parseFloat(form.amount.trim())) : Math.round(parseFloat(form.amount.trim()) * 1000000), // Convert to microUSDC format
@@ -234,14 +239,17 @@ export default function CreateContract() {
   return (
     <div className="max-w-md mx-auto bg-white rounded-lg shadow-md p-6">
       <form onSubmit={handleSubmit} className="space-y-4">
-        <Input
-          label="Request payment from buyer (email):"
-          type="email"
+        <BuyerInput
+          label="Request payment from buyer:"
           value={form.buyerEmail}
-          onChange={(e) => setForm(prev => ({ ...prev, buyerEmail: e.target.value }))}
-          placeholder="buyer@example.com"
+          onChange={(value, type) => setForm(prev => ({ 
+            ...prev, 
+            buyerEmail: value,
+            buyerType: type
+          }))}
           error={errors.buyerEmail}
-          disabled={isLoading}
+          placeholder="Search Farcaster user or enter email"
+          helpText="You can search for Farcaster users or enter an email address"
         />
 
         <div>

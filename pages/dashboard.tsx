@@ -64,6 +64,7 @@ export default function Dashboard() {
           </Link>
         </div>
 
+
         <div className="bg-white dark:bg-secondary-800 rounded-lg shadow-sm border border-secondary-200 dark:border-secondary-700 p-4 mb-8" data-tour="wallet-section">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="flex items-center gap-3">

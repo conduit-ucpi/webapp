@@ -13,6 +13,7 @@ import { isValidEmail, isValidDescription, isValidAmount, isValidBuyerIdentifier
 interface CreateContractForm {
   buyerEmail: string;
   buyerType: 'email' | 'farcaster';
+  buyerFid?: number;
   amount: string;
   payoutTimestamp: number;
   description: string;
@@ -63,6 +64,7 @@ export default function CreateContractWizard() {
   const [form, setForm] = useState<CreateContractForm>({
     buyerEmail: '',
     buyerType: 'email',
+    buyerFid: undefined,
     amount: '',
     payoutTimestamp: getDefaultTimestamp(),
     description: ''
@@ -217,7 +219,7 @@ export default function CreateContractWizard() {
       }
       
       const pendingContractRequest = {
-        buyerEmail: form.buyerType === 'email' ? form.buyerEmail : '',
+        buyerEmail: form.buyerType === 'email' ? form.buyerEmail : (form.buyerFid ? `${form.buyerFid}@farcaster.xyz` : ''),
         buyerFarcasterHandle: form.buyerType === 'farcaster' ? form.buyerEmail : '',
         sellerEmail: user.email,
         sellerAddress: user.walletAddress,
@@ -278,10 +280,11 @@ export default function CreateContractWizard() {
               <BuyerInput
                 label="Buyer's email address"
                 value={form.buyerEmail}
-                onChange={(value, type) => setForm(prev => ({ 
+                onChange={(value, type, fid) => setForm(prev => ({ 
                   ...prev, 
                   buyerEmail: value,
-                  buyerType: type
+                  buyerType: type,
+                  buyerFid: fid
                 }))}
                 error={errors.buyerEmail}
                 placeholder="Search Farcaster user or enter email"

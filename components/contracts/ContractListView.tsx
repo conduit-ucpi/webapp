@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Contract, PendingContract } from '@/types';
 import { displayCurrency, formatTimestamp } from '@/utils/validation';
 import ExpandableHash from '@/components/ui/ExpandableHash';
@@ -6,6 +6,7 @@ import ContractActions from './ContractActions';
 import Button from '@/components/ui/Button';
 import { useAuth } from '@/components/auth';
 import { useWalletAddress } from '@/hooks/useWalletAddress';
+import FarcasterNameDisplay, { prefetchFarcasterNames } from '@/components/ui/FarcasterNameDisplay';
 
 interface UnifiedContract {
   id: string;
@@ -55,6 +56,22 @@ export default function ContractListView({
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [searchTerm, setSearchTerm] = useState('');
+
+  // Prefetch Farcaster usernames when contracts change
+  useEffect(() => {
+    const identifiers: string[] = [];
+    allContracts.forEach(contract => {
+      if ('buyerEmail' in contract && contract.buyerEmail) {
+        identifiers.push(contract.buyerEmail);
+      }
+      if ('sellerEmail' in contract && contract.sellerEmail) {
+        identifiers.push(contract.sellerEmail);
+      }
+    });
+    if (identifiers.length > 0) {
+      prefetchFarcasterNames(identifiers);
+    }
+  }, [allContracts]);
 
   // Unify contract data for table display
   const unifiedContracts: UnifiedContract[] = useMemo(() => {
@@ -336,30 +353,38 @@ export default function ContractListView({
                     <div className="space-y-1">
                       <div className="flex items-center">
                         <span className="text-xs text-gray-400 mr-1">B:</span>
-                        {contract.buyerEmail && (
+                        {contract.buyerEmail ? (
                           <span className="truncate max-w-24" title={contract.buyerEmail}>
-                            {contract.buyerEmail}
+                            <FarcasterNameDisplay 
+                              identifier={contract.buyerEmail} 
+                              showYouLabel={false}
+                            />
                           </span>
-                        )}
-                        {!contract.buyerEmail && contract.buyerAddress && (
+                        ) : contract.buyerAddress ? (
                           <ExpandableHash 
                             hash={contract.buyerAddress} 
                             className="ml-1"
                           />
+                        ) : (
+                          <span className="text-gray-400">-</span>
                         )}
                       </div>
                       <div className="flex items-center">
                         <span className="text-xs text-gray-400 mr-1">S:</span>
-                        {contract.sellerEmail && (
+                        {contract.sellerEmail ? (
                           <span className="truncate max-w-24" title={contract.sellerEmail}>
-                            {contract.sellerEmail}
+                            <FarcasterNameDisplay 
+                              identifier={contract.sellerEmail} 
+                              showYouLabel={false}
+                            />
                           </span>
-                        )}
-                        {!contract.sellerEmail && contract.sellerAddress && (
+                        ) : contract.sellerAddress ? (
                           <ExpandableHash 
                             hash={contract.sellerAddress} 
                             className="ml-1"
                           />
+                        ) : (
+                          <span className="text-gray-400">-</span>
                         )}
                       </div>
                     </div>

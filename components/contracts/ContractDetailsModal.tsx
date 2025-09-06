@@ -8,6 +8,7 @@ import { formatWalletAddress, displayCurrency, formatDateTimeWithTZ } from '@/ut
 import { useAuth } from '@/components/auth';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import ContractActions from './ContractActions';
+import FarcasterNameDisplay from '@/components/ui/FarcasterNameDisplay';
 
 interface ContractDetailsModalProps {
   isOpen: boolean;
@@ -129,7 +130,14 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
             <div className="space-y-3">
               <div>
                 <p className="text-sm font-medium text-secondary-700">Seller {isSeller && '(You)'}</p>
-                <p className="text-secondary-900">{contract.sellerEmail || 'Unknown'}</p>
+                <p className="text-secondary-900">
+                  <FarcasterNameDisplay 
+                    identifier={contract.sellerEmail} 
+                    showYouLabel={false}
+                    fallbackToAddress={true}
+                    walletAddress="Unknown"
+                  />
+                </p>
                 <div className="mt-1">
                   <ExpandableHash hash={contract.sellerAddress} />
                 </div>
@@ -138,7 +146,14 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
               {!isPending && contract.buyerAddress && (
                 <div>
                   <p className="text-sm font-medium text-secondary-700">Buyer {isBuyer && '(You)'}</p>
-                  <p className="text-secondary-900">{contract.buyerEmail || 'Unknown'}</p>
+                  <p className="text-secondary-900">
+                    <FarcasterNameDisplay 
+                      identifier={contract.buyerEmail} 
+                      showYouLabel={false}
+                      fallbackToAddress={true}
+                      walletAddress="Unknown"
+                    />
+                  </p>
                   <div className="mt-1">
                     <ExpandableHash hash={contract.buyerAddress} />
                   </div>
@@ -148,7 +163,12 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
               {isPending && contract.buyerEmail && (
                 <div>
                   <p className="text-sm font-medium text-secondary-700">Buyer {isBuyer && '(You)'}</p>
-                  <p className="text-secondary-900">{contract.buyerEmail}</p>
+                  <p className="text-secondary-900">
+                    <FarcasterNameDisplay 
+                      identifier={contract.buyerEmail} 
+                      showYouLabel={false}
+                    />
+                  </p>
                   <p className="text-sm text-secondary-500">Pending acceptance</p>
                 </div>
               )}
@@ -166,7 +186,7 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
                   {formatDateTimeWithTZ(contract.createdAt)}
                 </p>
                 {isPending && (contract as PendingContract).createdBy && (
-                  <p className="text-sm text-secondary-500">by {(contract as PendingContract).createdBy}</p>
+                  <p className="text-sm text-secondary-500">by <FarcasterNameDisplay identifier={(contract as PendingContract).createdBy} showYouLabel={false} /></p>
                 )}
               </div>
               

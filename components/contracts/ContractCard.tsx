@@ -6,6 +6,7 @@ import { displayCurrency, formatTimestamp } from '@/utils/validation';
 import ContractActions from './ContractActions';
 import ExpandableHash from '@/components/ui/ExpandableHash';
 import StatusBadge from '@/components/ui/StatusBadge';
+import FarcasterNameDisplay from '@/components/ui/FarcasterNameDisplay';
 
 interface ContractCardProps {
   contract: Contract | PendingContract;
@@ -96,9 +97,15 @@ export default function ContractCard({ contract, onAction, onAccept, isClaimingI
           <span className="text-gray-600">Buyer:</span>
           <div className={`${isBuyer ? 'font-semibold text-primary-600' : ''}`}>
             {isPending ? (
-              <span>{(contract as PendingContract).buyerEmail || '-'}</span>
+              <FarcasterNameDisplay 
+                identifier={(contract as PendingContract).buyerEmail} 
+                showYouLabel={false}
+              />
             ) : (contract as Contract).buyerEmail ? (
-              <span>{(contract as Contract).buyerEmail}</span>
+              <FarcasterNameDisplay 
+                identifier={(contract as Contract).buyerEmail} 
+                showYouLabel={false}
+              />
             ) : (
               <ExpandableHash hash={(contract as Contract).buyerAddress} showCopyButton={false} />
             )}
@@ -109,9 +116,15 @@ export default function ContractCard({ contract, onAction, onAccept, isClaimingI
           <span className="text-gray-600">Seller:</span>
           <div className={`${isSeller ? 'font-semibold text-primary-600' : ''}`}>
             {isPending ? (
-              <span>{(contract as PendingContract).sellerEmail}</span>
+              <FarcasterNameDisplay 
+                identifier={(contract as PendingContract).sellerEmail} 
+                showYouLabel={false}
+              />
             ) : (contract as Contract).sellerEmail ? (
-              <span>{(contract as Contract).sellerEmail}</span>
+              <FarcasterNameDisplay 
+                identifier={(contract as Contract).sellerEmail} 
+                showYouLabel={false}
+              />
             ) : (
               <ExpandableHash hash={(contract as Contract).sellerAddress} showCopyButton={false} />
             )}

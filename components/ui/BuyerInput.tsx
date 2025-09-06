@@ -15,7 +15,7 @@ interface FarcasterUser {
 
 interface BuyerInputProps {
   value: string;
-  onChange: (value: string, type: 'email' | 'farcaster') => void;
+  onChange: (value: string, type: 'email' | 'farcaster', fid?: number) => void;
   error?: string;
   label?: string;
   placeholder?: string;
@@ -135,7 +135,7 @@ export default function BuyerInput({
     setSelectedUser(user);
     setBuyerType('farcaster');
     setShowDropdown(false);
-    onChange(farcasterHandle, 'farcaster');
+    onChange(farcasterHandle, 'farcaster', user.fid);
   };
 
   // Get display helper text

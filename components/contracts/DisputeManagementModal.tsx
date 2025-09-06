@@ -4,6 +4,7 @@ import { useAuth } from '@/components/auth';
 import { formatTimestamp, displayCurrency, formatCurrency } from '@/utils/validation';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import FarcasterNameDisplay from '@/components/ui/FarcasterNameDisplay';
 
 interface DisputeManagementModalProps {
   isOpen: boolean;
@@ -99,8 +100,8 @@ export default function DisputeManagementModal({ isOpen, onClose, contract, onRe
                 <div><span className="font-medium">Product:</span> {contract.productName}</div>
               )}
               <div><span className="font-medium">Amount:</span> {displayCurrency(contract.amount, 'microUSDC')} USDC</div>
-              <div><span className="font-medium">Buyer:</span> {contract.buyerEmail || contract.buyerAddress}</div>
-              <div><span className="font-medium">Seller:</span> {contract.sellerEmail || contract.sellerAddress}</div>
+              <div><span className="font-medium">Buyer:</span> <FarcasterNameDisplay identifier={contract.buyerEmail} fallbackToAddress={true} walletAddress={contract.buyerAddress} /></div>
+              <div><span className="font-medium">Seller:</span> <FarcasterNameDisplay identifier={contract.sellerEmail} fallbackToAddress={true} walletAddress={contract.sellerAddress} /></div>
             </div>
           </div>
 

@@ -12,15 +12,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const apiKey = process.env.NEYNAR_API_KEY;
+  const neynarApiUrl = process.env.NEYNAR_API_URL;
   
-  if (!apiKey) {
-    console.error('NEYNAR_API_KEY is not configured');
+  if (!apiKey || !neynarApiUrl) {
+    console.error('Neynar API configuration missing');
     return res.status(500).json({ error: 'User search service not configured' });
   }
 
   try {
-    const baseUrl = process.env.NEYNAR_API_URL || 'https://api.neynar.com/v2/farcaster';
-    const url = `${baseUrl}/user/search?q=${encodeURIComponent(q)}&limit=10`;
+    const url = `${neynarApiUrl}/user/search?q=${encodeURIComponent(q)}&limit=10`;
     
     const response = await fetch(url, {
       method: 'GET',

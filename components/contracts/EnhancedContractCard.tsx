@@ -4,6 +4,7 @@ import { formatWalletAddress, displayCurrency, formatDateTimeWithTZ } from '@/ut
 import Button from '@/components/ui/Button';
 import { useAuth } from '@/components/auth';
 import { useMemo } from 'react';
+import FarcasterNameDisplay from '@/components/ui/FarcasterNameDisplay';
 
 interface EnhancedContractCardProps {
   contract: Contract | PendingContract;
@@ -151,7 +152,11 @@ export default function EnhancedContractCard({
               {contract.description || 'Untitled Contract'}
             </h3>
             <p className="text-sm text-secondary-600 mt-1">
-              {isSeller ? `To: ${contract.buyerEmail || 'Unknown'}` : `From: ${contract.sellerEmail || 'Unknown'}`}
+              {isSeller ? (
+                <>To: <FarcasterNameDisplay identifier={contract.buyerEmail} fallbackToAddress={true} walletAddress="Unknown" /></>
+              ) : (
+                <>From: <FarcasterNameDisplay identifier={contract.sellerEmail} fallbackToAddress={true} walletAddress="Unknown" /></>
+              )}
             </p>
           </div>
         </div>

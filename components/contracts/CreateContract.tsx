@@ -9,7 +9,6 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import BuyerInput from '@/components/ui/BuyerInput';
 import { isValidEmail, isValidDescription, isValidAmount, isValidBuyerIdentifier } from '@/utils/validation';
 
-console.log('🔧 CreateContract: FILE LOADED - imports successful');
 
 interface CreateContractForm {
   buyerEmail: string;
@@ -27,21 +26,10 @@ interface FormErrors {
 }
 
 export default function CreateContract() {
-  console.log('🔧 CreateContract: Component mounted/rendered');
-  
   const router = useRouter();
   const { config } = useConfig();
   const { user, authenticatedFetch } = useAuth();
   const { getUserAddress, utils, isReady, error: sdkError } = useWeb3SDK();
-  
-  console.log('🔧 CreateContract: Hooks initialized', {
-    hasConfig: !!config,
-    hasUser: !!user,
-    hasAuthenticatedFetch: !!authenticatedFetch,
-    userWallet: user?.walletAddress,
-    isReady,
-    sdkError
-  });
   // Initialize with tomorrow's date at current time
   const getDefaultTimestamp = (): number => {
     const tomorrow = new Date();
@@ -153,20 +141,13 @@ export default function CreateContract() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('🔧 CreateContract: handleSubmit called');
-    console.log('🔧 CreateContract: config:', config);
-    console.log('🔧 CreateContract: form:', form);
     
     const formValid = validateForm();
-    console.log('🔧 CreateContract: form validation result:', formValid);
-    console.log('🔧 CreateContract: validation errors:', errors);
     
     if (!formValid || !config) {
-      console.log('🔧 CreateContract: Early return due to validation or config issues');
       return;
     }
 
-    console.log('🔧 CreateContract: Starting contract creation process');
     setIsLoading(true);
     
     try {
@@ -177,8 +158,6 @@ export default function CreateContract() {
       
       // Check if user is authenticated and has wallet address
       setLoadingMessage('Initializing...');
-      console.log('🔧 CreateContract: User object:', user);
-      console.log('🔧 CreateContract: user.walletAddress:', user?.walletAddress);
       
       if (!user?.walletAddress) {
         console.error('🔧 CreateContract: No wallet address found in user object');
@@ -204,9 +183,6 @@ export default function CreateContract() {
         serviceLink: config.serviceLink
       };
 
-      console.log('🔧 CreateContract: About to call authenticatedFetch');
-      console.log('🔧 CreateContract: authenticatedFetch type:', typeof authenticatedFetch);
-      console.log('🔧 CreateContract: authenticatedFetch is:', authenticatedFetch);
       
       if (!authenticatedFetch) {
         throw new Error('authenticatedFetch is not available');

@@ -157,7 +157,7 @@ describe('CreateContract - microUSDC Amount Handling', () => {
       render(<CreateContract />);
 
       // Fill out the form
-      fireEvent.change(screen.getByPlaceholderText('buyer@example.com'), {
+      fireEvent.change(screen.getByPlaceholderText('Search Farcaster user or enter email'), {
         target: { value: 'buyer@test.com' },
       });
 
@@ -301,6 +301,7 @@ describe('CreateContract - microUSDC Amount Handling', () => {
         const requestBody = JSON.parse(requestOptions.body);
         expect(requestBody).toEqual({
           buyerEmail: 'buyer@test.com',
+          buyerFarcasterHandle: '',
           sellerEmail: 'seller@test.com',
           sellerAddress: '0xSellerAddress',
           amount: 250000, // microUSDC format
@@ -339,7 +340,7 @@ describe('CreateContract - microUSDC Amount Handling', () => {
       render(<CreateContract />);
 
       // Fill out form and submit
-      fireEvent.change(screen.getByPlaceholderText('buyer@example.com'), {
+      fireEvent.change(screen.getByPlaceholderText('Search Farcaster user or enter email'), {
         target: { value: 'buyer@test.com' },
       });
 

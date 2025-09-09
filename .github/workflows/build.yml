@@ -58,6 +58,7 @@ jobs:
           NEXT_PUBLIC_BASE_PATH: ${{ vars.NEXT_PUBLIC_BASE_PATH }}
           PRODUCT_NAME: ${{ vars.PRODUCT_NAME }}
           SERVICE_LINK: ${{ vars.SERVICE_LINK }}
+          ALLOWED_FRAME_ANCESTORS: ${{ vars.ALLOWED_FRAME_ANCESTORS }}
         run: |
           yarn install
           
@@ -161,6 +162,7 @@ jobs:
             -e SERVICE_LINK="${{ vars.SERVICE_LINK }}" \\
             -e NEYNAR_API_KEY="${{ secrets.NEYNAR_API_KEY }}" \\
             -e NEYNAR_API_URL="${{ vars.NEYNAR_API_URL }}" \\
+            -e ALLOWED_FRAME_ANCESTORS="${{ vars.ALLOWED_FRAME_ANCESTORS }}" \\
             ghcr.io/${{ env.REPO_LOWER }}:${{ env.SHA_TAG }}
           EOF
           

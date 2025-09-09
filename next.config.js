@@ -16,8 +16,30 @@ const nextConfig = {
     ]
   },
   
-  // Farcaster mini-app specific headers
+  // Headers configuration for iframe embedding and security
   async headers() {
+    // Default frame ancestors for development and basic functionality
+    const defaultFrameAncestors = "'self' https://warpcast.com https://*.farcaster.xyz https://farcaster.xyz";
+    
+    // Check environment variable for additional allowed domains
+    // Can be set to:
+    // - Specific domains: "https://merchant1.com https://merchant2.com"
+    // - Wildcard patterns: "https://*.wordpress.com https://*.shopify.com"
+    // - '*' to allow all domains (use with caution)
+    const allowedFrameAncestors = process.env.ALLOWED_FRAME_ANCESTORS;
+    
+    let frameAncestorsValue;
+    if (allowedFrameAncestors === '*') {
+      // Allow all domains - removes frame-ancestors restriction entirely
+      frameAncestorsValue = "*";
+    } else if (allowedFrameAncestors) {
+      // Combine default with additional allowed domains
+      frameAncestorsValue = `${defaultFrameAncestors} ${allowedFrameAncestors}`;
+    } else {
+      // Use default frame ancestors
+      frameAncestorsValue = defaultFrameAncestors;
+    }
+
     return [
       {
         source: '/(.*)',
@@ -28,7 +50,7 @@ const nextConfig = {
           },
           {
             key: 'Content-Security-Policy',
-            value: "frame-ancestors 'self' https://warpcast.com https://*.farcaster.xyz https://farcaster.xyz"
+            value: `frame-ancestors ${frameAncestorsValue}`
           }
         ]
       }

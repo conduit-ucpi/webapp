@@ -90,6 +90,9 @@ class Web3AuthProviderImpl implements IAuthProvider {
           chainConfig
         });
 
+        // Note: Removing MetaMask disabling logic as it's causing connection issues
+        // Web3Auth Modal can handle MetaMask coexistence properly without manual intervention
+
         this.web3auth = new Web3Auth({
           clientId: this.config.web3AuthClientId,
           web3AuthNetwork: web3AuthNetworkSetting,
@@ -237,9 +240,17 @@ class Web3AuthProviderImpl implements IAuthProvider {
       
       await this.updateUserFromProvider();
       
-      if (!this.state.user || !this.state.token) {
+      // For external wallets like MetaMask, we may not have a token but should have user data
+      if (!this.state.user) {
         throw new Error('Failed to get user data');
       }
+      
+      console.log('🔧 Web3Auth: Connection successful', {
+        hasUser: !!this.state.user,
+        hasToken: !!this.state.token,
+        userId: this.state.user?.userId,
+        walletAddress: this.state.user?.walletAddress
+      });
       
       this.state.isConnected = true;
       this.emit({ type: 'connected', user: this.state.user, token: this.state.token });
@@ -288,17 +299,29 @@ class Web3AuthProviderImpl implements IAuthProvider {
   }
   
   private async updateUserFromProvider(): Promise<void> {
-    if (!this.web3auth || !this.provider) return;
+    if (!this.web3auth || !this.provider) {
+      console.log('🔧 Web3Auth: Missing web3auth or provider in updateUserFromProvider');
+      return;
+    }
     
     try {
+      console.log('🔧 Web3Auth: Getting user info...');
       // Get user info
       const userInfo = await this.web3auth.getUserInfo();
+      console.log('🔧 Web3Auth: User info received:', {
+        verifierId: userInfo?.verifierId,
+        email: userInfo?.email,
+        name: userInfo?.name,
+        hasIdToken: !!userInfo?.idToken
+      });
       
+      console.log('🔧 Web3Auth: Getting wallet address...');
       // Get wallet address
       const ethers = await import('ethers');
       const ethersProvider = new ethers.BrowserProvider(this.provider);
       const signer = await ethersProvider.getSigner();
       const walletAddress = await signer.getAddress();
+      console.log('🔧 Web3Auth: Wallet address obtained:', walletAddress);
       
       // Get ID token if available
       const idToken = userInfo?.idToken || '';
@@ -314,11 +337,16 @@ class Web3AuthProviderImpl implements IAuthProvider {
         authProvider: 'web3auth'
       };
       
+      console.log('🔧 Web3Auth: Setting user state:', { userId: user.userId, walletAddress: user.walletAddress });
       this.state.user = user;
       this.state.token = idToken;
       
     } catch (error) {
-      console.error('Failed to update user from provider:', error);
+      console.error('🔧 Web3Auth: Failed to update user from provider:', error);
+      console.error('🔧 Web3Auth: Error details:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : 'No stack'
+      });
       throw error;
     }
   }

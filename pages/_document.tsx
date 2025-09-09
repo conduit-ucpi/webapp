@@ -45,27 +45,7 @@ export default class CustomDocument extends Document<DocumentProps> {
         
         {/* Farcaster domain verification */}
         <link rel="canonical" href="/.well-known/farcaster.json" />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              // Store original ethereum provider for later restoration
-              if (typeof window !== 'undefined' && window.ethereum && window.ethereum.isMetaMask) {
-                console.log('MetaMask detected - storing reference for Web3Auth compatibility');
-                window.__originalEthereum = window.ethereum;
-                
-                // Prevent MetaMask from auto-connecting during page load
-                const originalRequest = window.ethereum.request;
-                window.ethereum.request = function(args) {
-                  if (args.method === 'eth_requestAccounts') {
-                    console.log('Blocking MetaMask auto-connect during Web3Auth initialization');
-                    return Promise.reject(new Error('MetaMask temporarily disabled for Web3Auth compatibility'));
-                  }
-                  return originalRequest.call(this, args);
-                };
-              }
-            `,
-          }}
-        />
+        {/* MetaMask compatibility script removed - Web3Auth Modal handles MetaMask coexistence automatically */}
       </Head>
       <body>
         <Main />

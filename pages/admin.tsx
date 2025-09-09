@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/components/auth';
-import ConnectWallet from '@/components/auth/ConnectWallet';
+import ConnectWalletEmbedded from '@/components/auth/ConnectWalletEmbedded';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
@@ -119,7 +119,7 @@ export default function AdminPage() {
         <p className="text-gray-600 mb-6">
           You need to connect your wallet to access this page.
         </p>
-        <ConnectWallet />
+        <ConnectWalletEmbedded />
       </div>
     );
   }

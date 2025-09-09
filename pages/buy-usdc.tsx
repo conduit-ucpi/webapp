@@ -1,6 +1,6 @@
 import { useRouter } from 'next/router';
 import { useAuth } from '@/components/auth';
-import ConnectWallet from '@/components/auth/ConnectWallet';
+import ConnectWalletEmbedded from '@/components/auth/ConnectWalletEmbedded';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import USDCGuide from '@/components/ui/USDCGuide';
@@ -62,7 +62,7 @@ export default function BuyUSDC() {
         <p className="text-gray-600 mb-6">
           You need to connect your wallet to buy or sell USDC.
         </p>
-        <ConnectWallet />
+        <ConnectWalletEmbedded />
       </div>
     );
   }

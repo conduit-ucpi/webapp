@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { useAuth } from '@/components/auth';
 import EnhancedDashboard from '@/components/dashboard/EnhancedDashboard';
-import ConnectWallet from '@/components/auth/ConnectWallet';
+import ConnectWalletEmbedded from '@/components/auth/ConnectWalletEmbedded';
 import Button from '@/components/ui/Button';
 import { SkeletonCard } from '@/components/ui/Skeleton';
 import ExpandableHash from '@/components/ui/ExpandableHash';
@@ -41,7 +41,7 @@ export default function Dashboard() {
         <p className="text-secondary-600 mb-6">
           You need to connect your wallet to view your contracts.
         </p>
-        <ConnectWallet />
+        <ConnectWalletEmbedded />
       </div>
     );
   }

@@ -47,10 +47,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
           setProvider(authProvider);
           setAuthState(authProvider.getState());
         } else {
-          // Load Web3Auth provider
-          console.log('🔧 AuthProvider: Loading Web3Auth provider...');
-          const { getWeb3AuthProvider } = await import('./web3auth');
-          const authProvider = getWeb3AuthProvider(config!);
+          // Load Web3Auth no-modal provider
+          console.log('🔧 AuthProvider: Loading Web3Auth no-modal provider...');
+          const { getWeb3AuthNoModalProvider } = await import('./web3authNoModal');
+          const authProvider = getWeb3AuthNoModalProvider(config!);
           
           try {
             await authProvider.initialize();
@@ -185,17 +185,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
     ...authState,
 
     // Methods - delegate to the loaded provider
-    connect: async () => {
+    connect: async (loginHint?: string) => {
       try {
         // First connect to the auth provider (Web3Auth)
-        const authResult = await provider.connect();
+        await provider.connect();
         const newState = provider.getState();
         
         // If we got a token and wallet address, verify with backend
-        if (authResult.token && authResult.user.walletAddress) {
+        if (newState.token && newState.user?.walletAddress) {
           const backendResult = await backendAuth.login(
-            authResult.token,
-            authResult.user.walletAddress
+            newState.token,
+            newState.user.walletAddress
           );
           
           if (backendResult.success && backendResult.user) {
@@ -332,6 +332,59 @@ export function AuthProvider({ children }: AuthProviderProps) {
       throw new Error('raiseDispute not available from provider');
     },
     
+    // No-modal specific method for connecting with specific adapters
+    connectWithAdapter: async (adapter: string, loginHint?: string) => {
+      try {
+        // Check if provider has connectWithAdapter method
+        const providerWithAdapter = provider as any;
+        if (!providerWithAdapter.connectWithAdapter) {
+          // Fall back to regular connect for providers that don't support adapters
+          await provider.connect();
+          return;
+        }
+        
+        // First connect to the auth provider (Web3Auth)
+        const authResult = await providerWithAdapter.connectWithAdapter(adapter, loginHint);
+        const newState = provider.getState();
+        
+        // If we got a token and wallet address, verify with backend
+        if (authResult.success && authResult.user?.walletAddress) {
+          const backendResult = await backendAuth.login(
+            newState.token || '',
+            authResult.user.walletAddress
+          );
+          
+          if (backendResult.success && backendResult.user) {
+            // Merge backend user data with provider user data
+            newState.user = {
+              ...newState.user,
+              ...backendResult.user,
+              // Keep provider-specific fields
+              fid: newState.user?.fid,
+              username: newState.user?.username,
+              displayName: newState.user?.displayName || backendResult.user.email,
+              authProvider: newState.user?.authProvider || 'unknown',
+            } as AuthUser;
+          } else {
+            // Backend verification failed  
+            newState.error = backendResult.error || 'Backend authentication failed';
+            newState.isConnected = false;
+          }
+        }
+        
+        setAuthState(newState);
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Connection failed';
+        setAuthState(prev => ({
+          ...prev,
+          error: errorMessage,
+          isConnected: false,
+          isLoading: false
+        }));
+        throw error;
+      }
+    },
+
     // Use BackendAuth for authenticated API calls
     authenticatedFetch: (url: string, options?: RequestInit) => {
       return backendAuth.authenticatedFetch(url, options);
@@ -560,10 +613,10 @@ function RegularAuthProvider({ children }: AuthProviderProps) {
         const newState = provider.getState();
         
         // If we got a token and wallet address, verify with backend
-        if (authResult.token && authResult.user.walletAddress) {
+        if (newState.token && newState.user?.walletAddress) {
           const backendResult = await backendAuth.login(
-            authResult.token,
-            authResult.user.walletAddress
+            newState.token,
+            newState.user.walletAddress
           );
           
           if (backendResult.success && backendResult.user) {

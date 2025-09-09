@@ -87,7 +87,8 @@ export interface ContractFundingResult {
 
 export interface AuthMethods {
   // Core authentication
-  connect: () => Promise<void>;
+  connect: (loginHint?: string) => Promise<void>;
+  connectWithAdapter?: (adapter: string, loginHint?: string) => Promise<void>;
   disconnect: () => Promise<void>;
   
   // Token management

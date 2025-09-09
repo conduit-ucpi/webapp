@@ -1,6 +1,6 @@
 import { useAuth } from '@/components/auth';
 import CreateContractWizard from '@/components/contracts/CreateContractWizard';
-import ConnectWallet from '@/components/auth/ConnectWallet';
+import ConnectWalletEmbedded from '@/components/auth/ConnectWalletEmbedded';
 import Skeleton from '@/components/ui/Skeleton';
 import { useState } from 'react';
 
@@ -55,7 +55,7 @@ export default function CreatePage() {
         <p className="text-secondary-600 mb-6">
           You need to connect your wallet to create time-locked payments.
         </p>
-        <ConnectWallet />
+        <ConnectWalletEmbedded />
       </div>
     );
   }

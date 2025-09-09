@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/components/auth';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { useWeb3SDK } from '@/hooks/useWeb3SDK';
-import ConnectWallet from '@/components/auth/ConnectWallet';
+import ConnectWalletEmbedded from '@/components/auth/ConnectWalletEmbedded';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
@@ -303,7 +303,7 @@ export default function Wallet() {
         <p className="text-gray-600 mb-6">
           You need to connect your wallet to manage your funds.
         </p>
-        <ConnectWallet />
+        <ConnectWalletEmbedded />
       </div>
     );
   }

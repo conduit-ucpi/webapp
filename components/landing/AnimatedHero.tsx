@@ -2,7 +2,7 @@
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useAuth } from '@/components/auth';
-import ConnectWallet from '@/components/auth/ConnectWallet';
+import ConnectWalletEmbedded from '@/components/auth/ConnectWalletEmbedded';
 import Button from '@/components/ui/Button';
 
 const AnimatedMoneyFlow = () => {
@@ -248,7 +248,7 @@ export default function AnimatedHero() {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >
-                <ConnectWallet />
+                <ConnectWalletEmbedded buttonText="Get Started Now" />
               </motion.div>
               <div className="text-sm text-secondary-600 max-w-md">
                 <p className="mb-2">

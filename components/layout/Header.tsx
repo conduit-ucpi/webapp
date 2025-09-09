@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { useAuth } from '@/components/auth';
-import ConnectWallet from '@/components/auth/ConnectWallet';
+import ConnectWalletEmbedded from '@/components/auth/ConnectWalletEmbedded';
 import Button from '@/components/ui/Button';
 import ThemeToggle from '@/components/theme/ThemeToggle';
 import {
@@ -93,7 +93,7 @@ export default function Header() {
                 </Button>
               </div>
             ) : (
-              <ConnectWallet />
+              <ConnectWalletEmbedded compact={true} />
             )}
           </div>
         </div>

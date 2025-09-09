@@ -73,7 +73,6 @@ describe('Wallet Provider Abstraction', () => {
 
     const allowedFiles = [
       // These files are allowed to access Web3Auth directly as they implement the abstraction
-      'auth/ConnectWallet.tsx',
       'auth/Web3AuthProviderWrapper.tsx',
       'auth/Web3AuthContextProvider.tsx',
       'auth/AuthProvider.tsx' // May need to clean up Web3Auth state
@@ -205,7 +204,6 @@ describe('Wallet Provider Abstraction', () => {
     test.each(componentFilesToCheck)('%s should not import Web3Auth directly', (file) => {
       // Skip allowed files that need direct Web3Auth access
       const allowedFiles = [
-        'auth/ConnectWallet.tsx',
         'auth/Web3AuthProviderWrapper.tsx', 
         'auth/Web3AuthContextProvider.tsx',
         'auth/AuthProvider.tsx'

@@ -48,10 +48,10 @@ jest.mock('@/components/ui/LoadingSpinner', () => {
   };
 });
 
-// Mock ConnectWallet
-jest.mock('@/components/auth/ConnectWallet', () => {
-  return function MockConnectWallet() {
-    return <div data-testid="connect-wallet">Connect Wallet</div>;
+// Mock ConnectWalletEmbedded
+jest.mock('@/components/auth/ConnectWalletEmbedded', () => {
+  return function MockConnectWalletEmbedded() {
+    return <div data-testid="connect-wallet-embedded">Connect Wallet Embedded</div>;
   };
 });
 

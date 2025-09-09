@@ -108,7 +108,8 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
           privateKeyProvider: privateKeyProvider,
           adapterSettings: {
             uxMode: 'popup',
-            // Remove custom loginConfig - let Web3Auth handle Google OAuth internally
+            // Remove custom loginConfig and let Web3Auth use its default email passwordless verifier
+            // Web3Auth should have built-in support for email_passwordless
           },
         });
         
@@ -231,12 +232,18 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
       if (adapter === 'openlogin') {
         // For social logins and email, we can pass additional params
         const extraLoginOptions: any = {};
-        if (loginHint && loginHint !== 'email') {
+        let loginProvider = loginHint || 'google';
+        
+        if (typeof loginHint === 'string' && loginHint.includes('@')) {
+          // If loginHint contains an email address, use it for email_passwordless
+          loginProvider = 'email_passwordless';
+          extraLoginOptions.login_hint = loginHint;
+        } else if (loginHint && loginHint !== 'email') {
           extraLoginOptions.login_hint = loginHint;
         }
         
         const connectOptions = {
-          loginProvider: loginHint || 'google', // Supports: 'google', 'facebook', 'email', etc.
+          loginProvider: loginProvider, // Supports: 'google', 'facebook', 'email_passwordless', etc.
           extraLoginOptions,
           chainId: this.chainConfig.chainId, // Add explicit chainId
         };

@@ -255,7 +255,7 @@ class Web3AuthProviderImpl implements IAuthProvider {
       this.state.isConnected = true;
       this.emit({ type: 'connected', user: this.state.user, token: this.state.token || '' });
       
-      return { user: this.state.user, token: this.state.token };
+      return { user: this.state.user, token: this.state.token || '' };
       
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Connection failed';

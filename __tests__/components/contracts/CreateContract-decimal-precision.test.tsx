@@ -179,7 +179,7 @@ describe('CreateContract Decimal Precision', () => {
     render(<CreateContract />);
 
     // Fill in the form with valid data including 3 decimal places
-    const buyerEmailInput = screen.getByPlaceholderText('buyer@example.com');
+    const buyerEmailInput = screen.getByPlaceholderText('Search Farcaster user or enter email');
     const amountInput = screen.getByPlaceholderText('100.00');
     const descriptionInput = screen.getByPlaceholderText(/brief description/i);
 

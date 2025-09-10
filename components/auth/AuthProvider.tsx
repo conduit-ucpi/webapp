@@ -309,7 +309,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
       console.log('🔧 AuthProvider: fundContract called, delegating to provider');
       const providerWithContract = provider as any;
       if (providerWithContract.fundContract) {
-        return await providerWithContract.fundContract(...args);
+        // Pass authenticatedFetch as the second parameter to reuse existing auth logic
+        return await providerWithContract.fundContract(args[0], backendAuth.authenticatedFetch);
       }
       throw new Error('fundContract not available from provider');
     },

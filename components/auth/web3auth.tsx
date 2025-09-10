@@ -520,7 +520,7 @@ class Web3AuthProviderImpl implements IAuthProvider {
   /**
    * Fund contract - complete flow: create, approve, deposit
    */
-  async fundContract(params: any): Promise<any> {
+  async fundContract(params: any, authenticatedFetch?: any): Promise<any> {
     console.log('🔧 Web3AuthProvider: fundContract called');
     
     if (!this.provider) {
@@ -534,7 +534,7 @@ class Web3AuthProviderImpl implements IAuthProvider {
       async (txParams: any) => {
         return await this.signContractTransaction(txParams);
       },
-      async (url: string, options?: RequestInit) => {
+      authenticatedFetch || (async (url: string, options?: RequestInit) => {
         return fetch(url, {
           ...options,
           credentials: 'include',
@@ -542,7 +542,7 @@ class Web3AuthProviderImpl implements IAuthProvider {
             ...options?.headers,
           }
         });
-      }
+      })
     );
 
     return await contractMethods.fundContract(params);

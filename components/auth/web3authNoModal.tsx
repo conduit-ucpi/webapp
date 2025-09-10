@@ -557,14 +557,28 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
     }
   }
 
-  async fundContract(params: any): Promise<any> {
+  async fundContract(params: any, authenticatedFetch?: any): Promise<any> {
     console.log('🔧 Web3Auth No-Modal: fundContract called');
     
     if (!this.provider) {
       throw new Error('Provider not available');
     }
 
-    const contractMethods = this.createContractMethods();
+    const contractMethods = createWeb3AuthContractMethods(
+      async (txParams: any) => {
+        return await this.signContractTransaction(txParams);
+      },
+      authenticatedFetch || (async (url: string, options?: RequestInit) => {
+        return fetch(url, {
+          ...options,
+          credentials: 'include',
+          headers: {
+            ...options?.headers,
+          }
+        });
+      })
+    );
+
     return await contractMethods.fundContract(params);
   }
 

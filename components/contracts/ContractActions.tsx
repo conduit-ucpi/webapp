@@ -33,7 +33,22 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
   const isPending = !('contractAddress' in contract);
   
   const handleOpenDisputeModal = () => {
-    if (!config || !isBuyer || isPending || (contract as Contract).status !== 'ACTIVE' || !user || isLoading) return;
+    console.log('🔧 ContractActions: handleOpenDisputeModal called', {
+      config: !!config,
+      isBuyer,
+      isPending,
+      contractStatus: (contract as Contract).status,
+      user: !!user,
+      isLoading,
+      shouldOpen: config && isBuyer && !isPending && (contract as Contract).status === 'ACTIVE' && user && !isLoading
+    });
+    
+    if (!config || !isBuyer || isPending || (contract as Contract).status !== 'ACTIVE' || !user || isLoading) {
+      console.log('🔴 ContractActions: Dispute modal blocked - conditions not met');
+      return;
+    }
+    
+    console.log('✅ ContractActions: Opening dispute modal');
     setShowDisputeModal(true);
   };
 

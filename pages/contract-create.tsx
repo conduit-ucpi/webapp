@@ -174,8 +174,10 @@ export default function ContractCreate() {
         currency: 'microUSDC',
         description: form.description,
         expiryTimestamp: expiryTimestamp,
+        chainId: config.chainId?.toString() || "8453",
         serviceLink: config.serviceLink,
-        productName: order_id ? `Order #${order_id}` : undefined
+        productName: order_id ? `Order #${order_id}` : undefined,
+        state: "OK"
       };
 
       console.log('🔧 ContractCreate: About to call authenticatedFetch');

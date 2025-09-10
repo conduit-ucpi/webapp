@@ -32,6 +32,19 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
 
   const isPending = !('contractAddress' in contract);
   
+  // Debug contract data when status is ERROR
+  if ((contract as Contract).status === 'ERROR') {
+    console.log('🔴 ContractActions: Contract has ERROR status. Debug info:', {
+      contractId: contract.id,
+      contractAddress: 'contractAddress' in contract ? (contract as Contract).contractAddress : 'N/A',
+      status: (contract as Contract).status,
+      ctaType: contract.ctaType,
+      ctaLabel: contract.ctaLabel,
+      isPending,
+      fullContract: contract
+    });
+  }
+  
   const handleOpenDisputeModal = () => {
     console.log('🔧 ContractActions: handleOpenDisputeModal called', {
       config: !!config,
@@ -43,7 +56,11 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
       shouldOpen: config && isBuyer && !isPending && (contract as Contract).status === 'ACTIVE' && user && !isLoading
     });
     
-    if (!config || !isBuyer || isPending || (contract as Contract).status !== 'ACTIVE' || !user || isLoading) {
+    // Temporarily allow ERROR status for debugging
+    const allowedStatuses = ['ACTIVE', 'ERROR'];
+    const contractStatus = (contract as Contract).status;
+    
+    if (!config || !isBuyer || isPending || !allowedStatuses.includes(contractStatus) || !user || isLoading) {
       console.log('🔴 ContractActions: Dispute modal blocked - conditions not met');
       return;
     }
@@ -53,7 +70,11 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
   };
 
   const handleRaiseDispute = async (reason: string, refundPercent: number) => {
-    if (!config || !isBuyer || isPending || (contract as Contract).status !== 'ACTIVE' || !user || isLoading) return;
+    // Temporarily allow ERROR status for debugging
+    const allowedStatuses = ['ACTIVE', 'ERROR'];
+    const contractStatus = (contract as Contract).status;
+    
+    if (!config || !isBuyer || isPending || !allowedStatuses.includes(contractStatus) || !user || isLoading) return;
 
     setIsLoading(true);
     setLoadingMessage('Raising dispute...');

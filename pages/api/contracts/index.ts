@@ -79,6 +79,27 @@ async function handleCreateContract(req: NextApiRequest, res: NextApiResponse) {
       body: JSON.stringify(req.body)
     });
 
+    console.log('Contract Service response status:', response.status);
+    console.log('Contract Service response headers:', Object.fromEntries(response.headers.entries()));
+
+    if (!response.ok) {
+      console.error('Contract Service returned error status:', response.status);
+      let errorData;
+      try {
+        errorData = await response.text();
+        console.log('Contract Service error body:', errorData);
+        // Try to parse as JSON, fallback to text
+        try {
+          errorData = JSON.parse(errorData);
+        } catch (e) {
+          // Keep as text if not valid JSON
+        }
+      } catch (e) {
+        errorData = { error: 'No response body available' };
+      }
+      return res.status(response.status).json(errorData);
+    }
+
     const responseData = await response.json();
     console.log('Contract Service response:', responseData);
     

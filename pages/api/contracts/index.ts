@@ -67,10 +67,15 @@ async function handleCreateContract(req: NextApiRequest, res: NextApiResponse) {
     };
 
     // Add X-API-Key header if available
+    console.log('X_API_KEY environment variable:', process.env.X_API_KEY ? 'Present' : 'Missing');
     if (process.env.X_API_KEY) {
       headers['X-API-Key'] = process.env.X_API_KEY;
+      console.log('Added X-API-Key header to request');
+    } else {
+      console.log('X_API_KEY environment variable not found - header will not be added');
     }
 
+    console.log('Headers being sent to contract service:', JSON.stringify(headers, null, 2));
     console.log('Calling Contract Service:', `${process.env.CONTRACT_SERVICE_URL}/api/contracts`);
 
     const response = await fetch(`${process.env.CONTRACT_SERVICE_URL}/api/contracts`, {

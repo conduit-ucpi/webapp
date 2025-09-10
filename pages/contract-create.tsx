@@ -7,9 +7,18 @@ import { useWeb3SDK } from '@/hooks/useWeb3SDK';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import ConnectWalletEmbedded from '@/components/auth/ConnectWalletEmbedded';
 import { isValidEmail, isValidDescription, isValidAmount, isValidWalletAddress } from '@/utils/validation';
 
 console.log('🔧 ContractCreate: FILE LOADED - imports successful');
+
+// Helper function to generate seller email from wallet address
+const generateSellerEmail = (walletAddress: string): string => {
+  if (!walletAddress) return 'noseller@seller.com';
+  // Take first 20 characters of wallet address and append @seller.com
+  const prefix = walletAddress.substring(0, 20);
+  return `${prefix}@seller.com`;
+};
 
 interface ContractCreateForm {
   seller: string;
@@ -38,7 +47,7 @@ export default function ContractCreate() {
   const { utils, isReady, error: sdkError } = useWeb3SDK();
   
   // Query parameters
-  const { seller, amount, description, return: returnUrl, order_id } = router.query;
+  const { seller, amount, description, email: queryEmail, return: returnUrl, order_id } = router.query;
   
   // Check if we're in an iframe
   const [isInIframe, setIsInIframe] = useState(false);
@@ -149,8 +158,8 @@ export default function ContractCreate() {
       const defaultExpiryTimestamp = Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60);
       
       const pendingContractRequest = {
-        buyerEmail: user?.email || '', // Current user is the buyer
-        sellerEmail: '', // We don't have seller email, just wallet address
+        buyerEmail: (queryEmail as string) || user?.email || 'noemail@notsupplied.com', // Current user is the buyer
+        sellerEmail: generateSellerEmail(form.seller), // Generate email from wallet address
         sellerAddress: form.seller,
         amount: utils?.toMicroUSDC ? utils.toMicroUSDC(parseFloat(form.amount.trim())) : Math.round(parseFloat(form.amount.trim()) * 1000000), // Convert to microUSDC format
         currency: 'microUSDC',
@@ -229,8 +238,8 @@ export default function ContractCreate() {
           sellerAddress: form.seller,
           expiryTimestamp: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60),
           description: form.description,
-          buyerEmail: user?.email || '',
-          sellerEmail: ''
+          buyerEmail: (queryEmail as string) || user?.email || 'noemail@notsupplied.com',
+          sellerEmail: generateSellerEmail(form.seller)
         },
         userAddress: user?.walletAddress!,
         config: {
@@ -327,20 +336,10 @@ export default function ContractCreate() {
           <title>Create Contract - Conduit UCPI</title>
           <meta name="viewport" content="width=device-width, initial-scale=1" />
         </Head>
-        <div className="text-center p-6 max-w-md">
+        <div className="text-center p-6 max-w-md mx-auto">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Connect Wallet</h2>
           <p className="text-gray-600 mb-6">Please connect your wallet to create a secure escrow contract.</p>
-          <Button
-            onClick={() => {
-              if (window.location.href.includes('/contract-create')) {
-                // Redirect to main app for wallet connection
-                window.location.href = `/?redirect=${encodeURIComponent(window.location.href)}`;
-              }
-            }}
-            className="w-full bg-primary-500 hover:bg-primary-600"
-          >
-            Connect Wallet
-          </Button>
+          <ConnectWalletEmbedded />
         </div>
       </div>
     );

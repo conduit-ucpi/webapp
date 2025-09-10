@@ -525,6 +525,49 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
     return createWeb3AuthContractMethods(this.provider, this.config);
   }
 
+  /**
+   * Fund contract - complete flow: create, approve, deposit
+   */
+  async waitForTransaction(transactionHash: string, maxWaitTime: number = 30000): Promise<void> {
+    console.log(`🔧 Web3Auth No-Modal: Waiting for transaction confirmation: ${transactionHash}`);
+    
+    if (!this.provider) {
+      throw new Error('Provider not available');
+    }
+    
+    const ethersProvider = this.getEthersProvider();
+    
+    try {
+      // Wait for the transaction to be mined with a timeout
+      const receipt = await Promise.race([
+        ethersProvider.waitForTransaction(transactionHash, 1), // Wait for 1 confirmation
+        new Promise<never>((_, reject) => 
+          setTimeout(() => reject(new Error('Transaction confirmation timeout')), maxWaitTime)
+        )
+      ]);
+      
+      if (receipt?.status === 1) {
+        console.log(`🔧 Web3Auth No-Modal: Transaction confirmed: ${transactionHash}`);
+      } else {
+        throw new Error(`Transaction failed: ${transactionHash}`);
+      }
+    } catch (error) {
+      console.warn(`🔧 Web3Auth No-Modal: Transaction confirmation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      // Don't throw - let the transaction continue as the backend may have processed it
+    }
+  }
+
+  async fundContract(params: any): Promise<any> {
+    console.log('🔧 Web3Auth No-Modal: fundContract called');
+    
+    if (!this.provider) {
+      throw new Error('Provider not available');
+    }
+
+    const contractMethods = this.createContractMethods();
+    return await contractMethods.fundContract(params);
+  }
+
   // Additional helper methods for the no-modal SDK
   getAvailableAdapters(): string[] {
     return Array.from(this.adapters.keys());

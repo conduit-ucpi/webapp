@@ -188,15 +188,22 @@ export default function ContractCreate() {
 
       const result = await response.json();
       console.log('🔧 ContractCreate: Contract created successfully:', result);
+      console.log('🔧 ContractCreate: Contract result.id:', result.id);
+      console.log('🔧 ContractCreate: Contract result.contractId:', result.contractId);
+      console.log('🔧 ContractCreate: All result fields:', Object.keys(result));
       
-      setContractId(result.id);
+      // Use result.contractId or result.id depending on what the backend returns
+      const contractId = result.contractId || result.id;
+      console.log('🔧 ContractCreate: Using contractId:', contractId);
+      
+      setContractId(contractId);
       setStep('payment');
       
       // Send contract created event
       sendPostMessage({
         type: 'contract_created',
         data: {
-          contractId: result.id,
+          contract_id: contractId, // Use contract_id to match the expected field name
           amount: form.amount,
           description: form.description,
           seller: form.seller,

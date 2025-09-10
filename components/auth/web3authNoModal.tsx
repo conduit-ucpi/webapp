@@ -610,14 +610,13 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
     }
   }
 
-  async fundContract(params: any, authenticatedFetch?: any): Promise<any> {
-    console.log('🔧 Web3Auth No-Modal: fundContract called');
-    
+  // Get contract methods helper
+  private getContractMethods(authenticatedFetch?: any) {
     if (!this.provider) {
       throw new Error('Provider not available');
     }
 
-    const contractMethods = createWeb3AuthContractMethods(
+    return createWeb3AuthContractMethods(
       async (txParams: any) => {
         return await this.signContractTransaction(txParams);
       },
@@ -631,8 +630,37 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
         });
       })
     );
+  }
 
+  async fundContract(params: any, authenticatedFetch?: any): Promise<any> {
+    console.log('🔧 Web3Auth No-Modal: fundContract called, delegating to contract methods');
+    const contractMethods = this.getContractMethods(authenticatedFetch);
     return await contractMethods.fundContract(params);
+  }
+
+  async raiseDispute(params: {
+    contractAddress: string;
+    userAddress: string;
+    reason: string;
+    refundPercent: number;
+    contract?: any;
+    config?: any;
+    utils?: any;
+  }): Promise<any> {
+    console.log('🔧 Web3Auth No-Modal: raiseDispute called, delegating to contract methods');
+    const contractMethods = this.getContractMethods();
+    return await contractMethods.raiseDispute(params);
+  }
+
+  async claimFunds(contractAddress: string, userAddress: string): Promise<any> {
+    console.log('🔧 Web3Auth No-Modal: claimFunds called, delegating to contract methods');
+    const contractMethods = this.getContractMethods();
+    return await contractMethods.claimFunds(contractAddress, userAddress);
+  }
+
+  async manageFunds(contractAddress: string, userAddress: string): Promise<any> {
+    console.log('🔧 Web3Auth No-Modal: manageFunds called, delegating to claimFunds');
+    return await this.claimFunds(contractAddress, userAddress);
   }
 
   // Additional helper methods for the no-modal SDK

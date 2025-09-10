@@ -47,7 +47,7 @@ export default function ContractCreate() {
   const { utils, isReady, error: sdkError } = useWeb3SDK();
   
   // Query parameters
-  const { seller, amount, description, email: queryEmail, return: returnUrl, order_id } = router.query;
+  const { seller, amount, description, email: queryEmail, return: returnUrl, order_id, epoch_expiry } = router.query;
   
   // Check if we're in an iframe
   const [isInIframe, setIsInIframe] = useState(false);
@@ -71,7 +71,7 @@ export default function ContractCreate() {
     userWallet: user?.walletAddress,
     isReady,
     sdkError,
-    queryParams: { seller, amount, description, returnUrl, order_id }
+    queryParams: { seller, amount, description, returnUrl, order_id, epoch_expiry }
   });
 
   // Initialize form from query parameters
@@ -154,8 +154,17 @@ export default function ContractCreate() {
       // Create pending contract via Contract Service
       setLoadingMessage('Creating secure escrow contract...');
       
-      // Set default expiry to 7 days from now
-      const defaultExpiryTimestamp = Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60);
+      // Parse epoch_expiry from query params if provided and valid
+      let expiryTimestamp = Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60); // Default to 7 days
+      
+      if (epoch_expiry) {
+        const parsedExpiry = parseInt(epoch_expiry as string, 10);
+        if (!isNaN(parsedExpiry) && parsedExpiry > Math.floor(Date.now() / 1000)) {
+          expiryTimestamp = parsedExpiry;
+        } else {
+          console.warn('Invalid or past epoch_expiry provided:', epoch_expiry);
+        }
+      }
       
       const pendingContractRequest = {
         buyerEmail: (queryEmail as string) || user?.email || 'noemail@notsupplied.com', // Current user is the buyer
@@ -164,7 +173,7 @@ export default function ContractCreate() {
         amount: utils?.toMicroUSDC ? utils.toMicroUSDC(parseFloat(form.amount.trim())) : Math.round(parseFloat(form.amount.trim()) * 1000000), // Convert to microUSDC format
         currency: 'microUSDC',
         description: form.description,
-        expiryTimestamp: defaultExpiryTimestamp,
+        expiryTimestamp: expiryTimestamp,
         serviceLink: config.serviceLink,
         productName: order_id ? `Order #${order_id}` : undefined
       };
@@ -236,6 +245,15 @@ export default function ContractCreate() {
     try {
       console.log('🔧 ContractCreate: Starting payment process');
       
+      // Parse expiry timestamp same way as in contract creation
+      let expiryTimestamp = Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60); // Default to 7 days
+      if (epoch_expiry) {
+        const parsedExpiry = parseInt(epoch_expiry as string, 10);
+        if (!isNaN(parsedExpiry) && parsedExpiry > Math.floor(Date.now() / 1000)) {
+          expiryTimestamp = parsedExpiry;
+        }
+      }
+      
       // Fund the contract using the provider-specific implementation
       const result = await fundContract({
         contract: {
@@ -243,7 +261,7 @@ export default function ContractCreate() {
           amount: utils?.toMicroUSDC ? utils.toMicroUSDC(parseFloat(form.amount.trim())) : Math.round(parseFloat(form.amount.trim()) * 1000000),
           currency: 'microUSDC',
           sellerAddress: form.seller,
-          expiryTimestamp: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60),
+          expiryTimestamp: expiryTimestamp,
           description: form.description,
           buyerEmail: (queryEmail as string) || user?.email || 'noemail@notsupplied.com',
           sellerEmail: generateSellerEmail(form.seller)

@@ -87,10 +87,25 @@ export class ContractTransactionService {
     // Handle both possible response formats from backend
     const contractAddress = result.contractAddress || result.address || result.data;
     
+    console.log(`🚨 SECURITY DEBUG - createContract response:`, {
+      rawResult: result,
+      extractedAddress: contractAddress,
+      contractId: contract.id,
+      responseFields: Object.keys(result),
+      timestamp: new Date().toISOString()
+    });
+    
     if (!contractAddress) {
       console.error('🔧 ContractTransactionService: No address in response:', result);
       throw new Error(result.error || 'Contract creation failed - no address returned');
     }
+
+    console.log(`🚨 SECURITY DEBUG - createContract returning:`, {
+      contractAddress: contractAddress,
+      contractId: contract.id,
+      addressLength: contractAddress.length,
+      isValidHex: contractAddress.startsWith('0x')
+    });
 
     return contractAddress;
   }
@@ -202,6 +217,14 @@ export class ContractTransactionService {
   async depositFunds(params: ContractFundingParams & { contractAddress: string }): Promise<string> {
     const { contract, userAddress, contractAddress, config, utils } = params;
     
+    console.log(`🚨 SECURITY DEBUG - depositFunds called with:`, {
+      contractAddress: contractAddress,
+      contractId: contract.id,
+      userAddress: userAddress,
+      timestamp: new Date().toISOString(),
+      stackTrace: new Error().stack
+    });
+    
     // Sign the deposit transaction
     const depositTx = await this.signer.signContractTransaction({
       contractAddress,
@@ -209,6 +232,12 @@ export class ContractTransactionService {
       functionName: 'depositFunds',
       functionArgs: [],
       debugLabel: 'DEPOSIT'
+    });
+    
+    console.log(`🚨 SECURITY DEBUG - depositFunds transaction signed:`, {
+      contractAddress: contractAddress,
+      signedTxLength: depositTx.length,
+      contractId: contract.id
     });
 
     // Convert amount for API
@@ -260,8 +289,20 @@ export class ContractTransactionService {
   }> {
     const { contract, userAddress, config, utils } = params;
 
+    console.log(`🚨 SECURITY DEBUG - fundContract started:`, {
+      contractId: contract.id,
+      userAddress: userAddress,
+      timestamp: new Date().toISOString()
+    });
+
     // Step 1: Create contract
     const contractAddress = await this.createContract(contract, userAddress, config, utils);
+    
+    console.log(`🚨 SECURITY DEBUG - Contract created:`, {
+      contractAddress: contractAddress,
+      contractId: contract.id,
+      step: 'CREATE_CONTRACT'
+    });
 
     // Step 2: Approve USDC
     const approvalTxHash = await this.approveUSDC(
@@ -272,11 +313,31 @@ export class ContractTransactionService {
       config,
       utils
     );
+    
+    console.log(`🚨 SECURITY DEBUG - USDC approved:`, {
+      contractAddress: contractAddress,
+      approvalTxHash: approvalTxHash,
+      contractId: contract.id,
+      step: 'APPROVE_USDC'
+    });
 
     // Step 3: Deposit funds
+    console.log(`🚨 SECURITY DEBUG - About to deposit funds:`, {
+      contractAddress: contractAddress,
+      contractId: contract.id,
+      step: 'BEFORE_DEPOSIT'
+    });
+    
     const depositTxHash = await this.depositFunds({
       ...params,
       contractAddress
+    });
+    
+    console.log(`🚨 SECURITY DEBUG - Funds deposited:`, {
+      contractAddress: contractAddress,
+      depositTxHash: depositTxHash,
+      contractId: contract.id,
+      step: 'DEPOSIT_COMPLETE'
     });
 
     return {

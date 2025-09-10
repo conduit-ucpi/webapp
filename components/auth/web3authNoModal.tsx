@@ -499,7 +499,22 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
     }
   }
 
-  async signContractTransaction(params: any): Promise<string> {
+  async signContractTransaction(params: {
+    contractAddress: string;
+    abi: any[];
+    functionName: string;
+    functionArgs: any[];
+    debugLabel?: string;
+  }): Promise<string> {
+    console.log(`🚨 SECURITY DEBUG - signContractTransaction called with:`, {
+      contractAddress: params.contractAddress,
+      functionName: params.functionName,
+      functionArgs: params.functionArgs,
+      debugLabel: params.debugLabel,
+      timestamp: new Date().toISOString(),
+      stackTrace: new Error().stack
+    });
+    
     if (!this.provider) {
       throw new Error('No provider available');
     }
@@ -508,11 +523,49 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
       const ethersProvider = this.getEthersProvider();
       const signer = await ethersProvider.getSigner();
       
-      // Sign the transaction parameters
-      const signedTx = await signer.signTransaction(params);
+      // Create contract instance with the EXACT address passed in
+      const { Contract } = require('ethers');
+      const contract = new Contract(params.contractAddress, params.abi, signer);
+      
+      console.log(`🚨 SECURITY DEBUG - Contract instance created:`, {
+        contractAddress: contract.target || contract.address,
+        functionToCall: params.functionName,
+        inputAddress: params.contractAddress,
+        addressMatch: (contract.target || contract.address) === params.contractAddress
+      });
+      
+      // Build the transaction
+      const txRequest = await contract[params.functionName].populateTransaction(...params.functionArgs);
+      
+      console.log(`🚨 SECURITY DEBUG - Transaction request populated:`, {
+        to: txRequest.to,
+        data: txRequest.data,
+        inputContractAddress: params.contractAddress,
+        populatedTo: txRequest.to,
+        addressesMatch: txRequest.to === params.contractAddress,
+        functionName: params.functionName,
+        debugLabel: params.debugLabel
+      });
+      
+      // Sign the transaction
+      const signedTx = await signer.signTransaction(txRequest);
+      
+      console.log(`🚨 SECURITY DEBUG - Transaction signed:`, {
+        signedTxLength: signedTx.length,
+        debugLabel: params.debugLabel,
+        originalContractAddress: params.contractAddress,
+        transactionTo: txRequest.to
+      });
+      
       return signedTx;
     } catch (error) {
       console.error('🔧 Web3Auth No-Modal: Sign contract transaction failed:', error);
+      console.error('🚨 SECURITY DEBUG - Sign transaction error details:', {
+        error: error,
+        contractAddress: params.contractAddress,
+        functionName: params.functionName,
+        debugLabel: params.debugLabel
+      });
       throw error;
     }
   }

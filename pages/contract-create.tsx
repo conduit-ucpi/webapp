@@ -263,6 +263,17 @@ export default function ContractCreate() {
 
       console.log('🔧 ContractCreate: Payment completed successfully:', result);
       
+      // Add debugging for transaction verification
+      if (result.depositTxHash) {
+        console.log('🔧 ContractCreate: Deposit transaction hash received:', result.depositTxHash);
+        console.log('🔧 ContractCreate: Contract address should receive USDC:', result.contractAddress);
+        
+        // TODO: Add transaction receipt verification here
+        // We should wait for the transaction to be mined and verify it succeeded
+      } else {
+        console.warn('🔧 ContractCreate: No deposit transaction hash received!');
+      }
+      
       // Send payment completed event
       sendPostMessage({
         type: 'payment_completed',

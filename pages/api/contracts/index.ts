@@ -77,6 +77,7 @@ async function handleCreateContract(req: NextApiRequest, res: NextApiResponse) {
 
     console.log('Headers being sent to contract service:', JSON.stringify(headers, null, 2));
     console.log('Calling Contract Service:', `${process.env.CONTRACT_SERVICE_URL}/api/contracts`);
+    console.log('REQUEST_BODY being sent:', JSON.stringify(req.body, null, 2));
 
     const response = await fetch(`${process.env.CONTRACT_SERVICE_URL}/api/contracts`, {
       method: 'POST',

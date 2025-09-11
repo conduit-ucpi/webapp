@@ -31,6 +31,12 @@ interface PostMessageEvent {
   error?: string;
 }
 
+type PaymentStep = {
+  id: string;
+  label: string;
+  status: 'pending' | 'active' | 'completed' | 'error';
+};
+
 export default function ContractCreate() {
   console.log('🔧 ContractCreate: Component mounted/rendered');
   
@@ -56,6 +62,13 @@ export default function ContractCreate() {
   const [loadingMessage, setLoadingMessage] = useState('');
   const [contractId, setContractId] = useState<string | null>(null);
   const [step, setStep] = useState<'create' | 'payment'>('create');
+  const [paymentSteps, setPaymentSteps] = useState<PaymentStep[]>([
+    { id: 'verify', label: 'Verifying wallet connection', status: 'pending' },
+    { id: 'approve', label: 'Approving USDC payment', status: 'pending' },
+    { id: 'escrow', label: 'Securing funds in escrow', status: 'pending' },
+    { id: 'confirm', label: 'Confirming transaction on blockchain', status: 'pending' },
+    { id: 'complete', label: 'Payment complete', status: 'pending' }
+  ]);
 
   console.log('🔧 ContractCreate: Hooks initialized', {
     hasConfig: !!config,
@@ -89,6 +102,24 @@ export default function ContractCreate() {
       console.log('🔧 ContractCreate: Sending postMessage:', event);
       window.parent.postMessage(event, '*');
     }
+  };
+
+  // Update payment step status
+  const updatePaymentStep = (stepId: string, status: 'active' | 'completed' | 'error') => {
+    setPaymentSteps(prev => prev.map(step => {
+      if (step.id === stepId) {
+        return { ...step, status };
+      }
+      // If we're marking a step as active, ensure all previous steps are completed
+      if (status === 'active') {
+        const currentIndex = prev.findIndex(s => s.id === stepId);
+        const stepIndex = prev.findIndex(s => s.id === step.id);
+        if (stepIndex < currentIndex) {
+          return { ...step, status: 'completed' };
+        }
+      }
+      return step;
+    }));
   };
 
   const validateForm = (): boolean => {
@@ -160,7 +191,7 @@ export default function ContractCreate() {
       }
       
       const pendingContractRequest = {
-        buyerEmail: (queryEmail as string) || user?.email || 'noemail@notsupplied.com', // Current user is the buyer
+        buyerEmail: user?.email || (queryEmail as string) || 'noemail@notsupplied.com', // Prefer authenticated user's email
         sellerAddress: form.seller, // Backend will handle email lookup from wallet address
         amount: utils?.toMicroUSDC ? utils.toMicroUSDC(parseFloat(form.amount.trim())) : Math.round(parseFloat(form.amount.trim()) * 1000000), // Convert to microUSDC format
         currency: 'microUSDC',
@@ -234,10 +265,24 @@ export default function ContractCreate() {
     }
 
     setIsLoading(true);
-    setLoadingMessage('Processing payment...');
+    
+    // Reset payment steps to initial state
+    setPaymentSteps([
+      { id: 'verify', label: 'Verifying wallet connection', status: 'pending' },
+      { id: 'approve', label: 'Approving USDC payment', status: 'pending' },
+      { id: 'escrow', label: 'Securing funds in escrow', status: 'pending' },
+      { id: 'confirm', label: 'Confirming transaction on blockchain', status: 'pending' },
+      { id: 'complete', label: 'Payment complete', status: 'pending' }
+    ]);
 
     try {
       console.log('🔧 ContractCreate: Starting payment process');
+      
+      // Step 1: Verify wallet connection
+      updatePaymentStep('verify', 'active');
+      setLoadingMessage('Verifying wallet connection...');
+      await new Promise(resolve => setTimeout(resolve, 500)); // Brief pause for UI feedback
+      updatePaymentStep('verify', 'completed');
       
       // Parse expiry timestamp same way as in contract creation
       let expiryTimestamp = Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60); // Default to 7 days
@@ -248,6 +293,11 @@ export default function ContractCreate() {
         }
       }
       
+      // Step 2-4: These will be updated by the fundContract implementation
+      // The fundContract function should handle updating these steps internally
+      updatePaymentStep('approve', 'active');
+      setLoadingMessage('Approving USDC payment...');
+      
       // Fund the contract using the provider-specific implementation
       const result = await fundContract({
         contract: {
@@ -257,7 +307,7 @@ export default function ContractCreate() {
           sellerAddress: form.seller,
           expiryTimestamp: expiryTimestamp,
           description: form.description,
-          buyerEmail: (queryEmail as string) || user?.email || 'noemail@notsupplied.com'
+          buyerEmail: user?.email || (queryEmail as string) || 'noemail@notsupplied.com'
         },
         userAddress: user?.walletAddress!,
         config: {
@@ -269,10 +319,31 @@ export default function ContractCreate() {
           toMicroUSDC: utils?.toMicroUSDC,
           toUSDCForWeb3: utils?.toUSDCForWeb3,
           formatDateTimeWithTZ: utils?.formatDateTimeWithTZ
+        },
+        onStatusUpdate: (step: string, message: string) => {
+          // Map the status messages to our step IDs
+          if (message.toLowerCase().includes('approv')) {
+            updatePaymentStep('approve', 'active');
+            setLoadingMessage(message);
+          } else if (message.toLowerCase().includes('escrow') || message.toLowerCase().includes('deposit')) {
+            updatePaymentStep('approve', 'completed');
+            updatePaymentStep('escrow', 'active');
+            setLoadingMessage(message);
+          } else if (message.toLowerCase().includes('confirm') || message.toLowerCase().includes('transaction')) {
+            updatePaymentStep('escrow', 'completed');
+            updatePaymentStep('confirm', 'active');
+            setLoadingMessage(message);
+          } else {
+            setLoadingMessage(message);
+          }
         }
       });
 
       console.log('🔧 ContractCreate: Payment completed successfully:', result);
+      
+      // Mark all steps as completed
+      updatePaymentStep('confirm', 'completed');
+      updatePaymentStep('complete', 'completed');
       
       // Add debugging for transaction verification
       if (result.depositTxHash) {
@@ -317,6 +388,13 @@ export default function ContractCreate() {
 
     } catch (error: any) {
       console.error('Payment failed:', error);
+      
+      // Mark the current active step as error
+      const activeStep = paymentSteps.find(s => s.status === 'active');
+      if (activeStep) {
+        updatePaymentStep(activeStep.id, 'error');
+      }
+      
       sendPostMessage({
         type: 'payment_error',
         error: error.message || 'Payment failed'
@@ -492,6 +570,53 @@ export default function ContractCreate() {
                 </div>
               )}
             </div>
+
+            {/* Payment Progress Steps */}
+            {isLoading && (
+              <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+                <h3 className="text-sm font-medium text-gray-700 mb-3">Payment Progress</h3>
+                <div className="space-y-2">
+                  {paymentSteps.map((step, index) => (
+                    <div key={step.id} className="flex items-center">
+                      <div className="flex-shrink-0 mr-3">
+                        {step.status === 'completed' ? (
+                          <div className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
+                            <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            </svg>
+                          </div>
+                        ) : step.status === 'active' ? (
+                          <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
+                            <LoadingSpinner className="w-3 h-3 text-white" />
+                          </div>
+                        ) : step.status === 'error' ? (
+                          <div className="w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
+                            <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                            </svg>
+                          </div>
+                        ) : (
+                          <div className="w-5 h-5 bg-gray-300 rounded-full"></div>
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <p className={`text-sm ${
+                          step.status === 'completed' ? 'text-green-700' :
+                          step.status === 'active' ? 'text-blue-700 font-medium' :
+                          step.status === 'error' ? 'text-red-700' :
+                          'text-gray-500'
+                        }`}>
+                          {step.label}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {loadingMessage && (
+                  <p className="mt-3 text-sm text-gray-600 italic">{loadingMessage}</p>
+                )}
+              </div>
+            )}
 
             <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4 mb-6">
               <p className="text-sm text-yellow-800">

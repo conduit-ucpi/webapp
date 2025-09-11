@@ -40,6 +40,7 @@ export interface ContractFundingParams {
     toUSDCForWeb3?: (amount: number, currency?: string) => string;
     formatDateTimeWithTZ?: (timestamp: number) => string;
   };
+  onStatusUpdate?: (step: string, message: string) => void;
 }
 
 export class ContractTransactionService {
@@ -287,7 +288,7 @@ export class ContractTransactionService {
     approvalTxHash: string;
     depositTxHash: string;
   }> {
-    const { contract, userAddress, config, utils } = params;
+    const { contract, userAddress, config, utils, onStatusUpdate } = params;
 
     console.log(`🚨 SECURITY DEBUG - fundContract started:`, {
       contractId: contract.id,
@@ -296,6 +297,7 @@ export class ContractTransactionService {
     });
 
     // Step 1: Create contract
+    onStatusUpdate?.('create', 'Creating secure escrow contract...');
     const contractAddress = await this.createContract(contract, userAddress, config, utils);
     
     console.log(`🚨 SECURITY DEBUG - Contract created:`, {
@@ -305,6 +307,7 @@ export class ContractTransactionService {
     });
 
     // Step 2: Approve USDC
+    onStatusUpdate?.('approve', 'Approving USDC payment...');
     const approvalTxHash = await this.approveUSDC(
       contractAddress,
       contract.amount,
@@ -322,6 +325,7 @@ export class ContractTransactionService {
     });
 
     // Step 3: Deposit funds
+    onStatusUpdate?.('deposit', 'Securing funds in escrow...');
     console.log(`🚨 SECURITY DEBUG - About to deposit funds:`, {
       contractAddress: contractAddress,
       contractId: contract.id,
@@ -339,6 +343,9 @@ export class ContractTransactionService {
       contractId: contract.id,
       step: 'DEPOSIT_COMPLETE'
     });
+
+    // Step 4: Confirm transaction
+    onStatusUpdate?.('confirm', 'Confirming transaction on blockchain...');
 
     return {
       contractAddress,

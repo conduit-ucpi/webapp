@@ -318,12 +318,44 @@ export class Web3Service {
     // Create transaction data
     const txData = contract.interface.encodeFunctionData(params.functionName, params.functionArgs);
     
-    // Estimate gas with a proper from address
-    const gasEstimate = await this.provider.estimateGas({
-      from: userAddress,
-      to: params.contractAddress,
-      data: txData
-    });
+    // Estimate gas with direct RPC call to bypass Web3Auth's stale cached estimates
+    let gasEstimate: bigint;
+    try {
+      const response = await fetch(this.config.rpcUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'eth_estimateGas',
+          params: [{
+            from: userAddress,
+            to: params.contractAddress,
+            data: txData
+          }],
+          id: 1
+        })
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        if (result.result) {
+          gasEstimate = BigInt(result.result);
+          console.log('Using live RPC gas estimate:', gasEstimate.toString(), 'gas');
+        } else {
+          throw new Error('No gas estimate in RPC response');
+        }
+      } else {
+        throw new Error('RPC call failed');
+      }
+    } catch (error) {
+      console.warn('Failed to get live gas estimate from RPC, falling back to provider:', error);
+      // Fallback to provider's gas estimation if RPC call fails
+      gasEstimate = await this.provider!.estimateGas({
+        from: userAddress,
+        to: params.contractAddress,
+        data: txData
+      });
+    }
     
     if (params.debugLabel) {
       console.log(`=== ${params.debugLabel} TRANSACTION DEBUG ===`);
@@ -358,12 +390,44 @@ export class Web3Service {
     const userAddress = await this.getUserAddress();
     const value = ethers.parseEther(amount);
     
-    // Estimate gas for AVAX transfer
-    const gasEstimate = await this.provider.estimateGas({
-      from: userAddress,
-      to: to,
-      value: value
-    });
+    // Estimate gas for AVAX transfer with direct RPC call to bypass Web3Auth's stale cached estimates
+    let gasEstimate: bigint;
+    try {
+      const response = await fetch(this.config.rpcUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'eth_estimateGas',
+          params: [{
+            from: userAddress,
+            to: to,
+            value: `0x${value.toString(16)}`
+          }],
+          id: 1
+        })
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        if (result.result) {
+          gasEstimate = BigInt(result.result);
+          console.log('Using live RPC gas estimate for AVAX transfer:', gasEstimate.toString(), 'gas');
+        } else {
+          throw new Error('No gas estimate in RPC response');
+        }
+      } else {
+        throw new Error('RPC call failed');
+      }
+    } catch (error) {
+      console.warn('Failed to get live gas estimate from RPC for AVAX transfer, falling back to provider:', error);
+      // Fallback to provider's gas estimation if RPC call fails
+      gasEstimate = await this.provider.estimateGas({
+        from: userAddress,
+        to: to,
+        value: value
+      });
+    }
 
     // Sign transaction
     const signedTx = await this.signTransaction({

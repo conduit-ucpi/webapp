@@ -504,8 +504,7 @@ export default function ContractCreate() {
 
             <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4 mb-6">
               <p className="text-sm text-yellow-800">
-                Your ${form.amount} USDC will be held securely in escrow until the seller delivers the goods/services. 
-                Funds are protected by time-locked smart contracts.
+                Your ${form.amount} USDC will be held securely in escrow and released to the seller on the payout date unless you raise a dispute (see email for instructions).
               </p>
             </div>
 

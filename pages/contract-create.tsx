@@ -350,8 +350,8 @@ export default function ContractCreate() {
     }
   };
 
-  // Loading screen for SDK initialization
-  if (!isReady || !config) {
+  // Loading screen for SDK initialization - only show if config is missing or if user is connected but SDK isn't ready
+  if (!config || (user && !isReady)) {
     return (
       <div className={`min-h-screen flex items-center justify-center ${isInIframe ? 'bg-gray-50' : 'bg-white'}`}>
         <Head>

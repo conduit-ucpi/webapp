@@ -12,13 +12,6 @@ import { isValidEmail, isValidDescription, isValidAmount, isValidWalletAddress }
 
 console.log('🔧 ContractCreate: FILE LOADED - imports successful');
 
-// Helper function to generate seller email from wallet address
-const generateSellerEmail = (walletAddress: string): string => {
-  if (!walletAddress) return 'noseller@seller.com';
-  // Take first 20 characters of wallet address and append @seller.com
-  const prefix = walletAddress.substring(0, 20);
-  return `${prefix}@seller.com`;
-};
 
 interface ContractCreateForm {
   seller: string;
@@ -168,8 +161,7 @@ export default function ContractCreate() {
       
       const pendingContractRequest = {
         buyerEmail: (queryEmail as string) || user?.email || 'noemail@notsupplied.com', // Current user is the buyer
-        sellerEmail: generateSellerEmail(form.seller), // Generate email from wallet address
-        sellerAddress: form.seller,
+        sellerAddress: form.seller, // Backend will handle email lookup from wallet address
         amount: utils?.toMicroUSDC ? utils.toMicroUSDC(parseFloat(form.amount.trim())) : Math.round(parseFloat(form.amount.trim()) * 1000000), // Convert to microUSDC format
         currency: 'microUSDC',
         description: form.description,
@@ -265,8 +257,7 @@ export default function ContractCreate() {
           sellerAddress: form.seller,
           expiryTimestamp: expiryTimestamp,
           description: form.description,
-          buyerEmail: (queryEmail as string) || user?.email || 'noemail@notsupplied.com',
-          sellerEmail: generateSellerEmail(form.seller)
+          buyerEmail: (queryEmail as string) || user?.email || 'noemail@notsupplied.com'
         },
         userAddress: user?.walletAddress!,
         config: {

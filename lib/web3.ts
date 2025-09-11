@@ -99,11 +99,10 @@ export class Web3Service {
         console.warn('Failed to get live gas price from RPC, falling back to provider:', error);
       }
       
-      // Fallback to provider's gas price if RPC call fails
+      // Fallback to minimum gas price if RPC call fails (don't use provider's getFeeData as it may include MetaMask's inflated suggestions)
       if (!gasPrice) {
-        const feeData = await this.provider.getFeeData();
-        gasPrice = feeData.gasPrice || BigInt(this.config.minGasWei);
-        console.log('Using provider gas price:', gasPrice.toString(), 'wei');
+        gasPrice = BigInt(this.config.minGasWei);
+        console.log('Using fallback minimum gas price:', gasPrice.toString(), 'wei');
       }
     }
     
@@ -200,45 +199,6 @@ export class Web3Service {
     return ethers.keccak256(ethers.toUtf8Bytes(description));
   }
 
-  // Helper method to prepare transaction with gas estimation and pricing
-  private async prepareTransactionWithGas(tx: any, gasEstimate: bigint): Promise<any> {
-    if (!this.provider) {
-      throw new Error('Provider not initialized');
-    }
-    
-    const feeData = await this.provider.getFeeData();
-    
-    // Set minimum gas price thresholds
-    const minGasPrice = this.config.chainId === 43114 
-      ? '1000000000'  // 1 nAVAX minimum for mainnet
-      : this.config.minGasWei; // Configurable minimum for testnet
-    
-    const fallbackGasPrice = this.config.chainId === 43114 
-      ? '1000000000'  // 1 nAVAX fallback for mainnet
-      : '67000000';   // 0.000000067 nAVAX fallback for testnet
-    
-    // Use network gas price but enforce minimum
-    const networkGasPrice = feeData.gasPrice ? BigInt(feeData.gasPrice.toString()) : BigInt(0);
-    const minGasPriceBigInt = BigInt(minGasPrice);
-    const finalGasPrice = networkGasPrice > minGasPriceBigInt 
-      ? networkGasPrice.toString()  // Use network price if above minimum
-      : (networkGasPrice > BigInt(0) ? minGasPrice : fallbackGasPrice);  // Use minimum or fallback
-    
-    console.log('Gas calculation:', {
-      gasEstimate: `${gasEstimate.toString()} gas`,
-      networkGasPrice: `${networkGasPrice.toString()} wei`,
-      finalGasPrice: `${finalGasPrice} wei`,
-      finalGasPriceInNAVAX: `${(Number(finalGasPrice) / 1e9).toFixed(12)} nAVAX`
-    });
-    
-    return {
-      ...tx,
-      gasLimit: gasEstimate,
-      gasPrice: finalGasPrice,
-      maxFeePerGas: undefined,
-      maxPriorityFeePerGas: undefined
-    };
-  }
 
   // Get contract info from deployed escrow contract
   async getContractInfo(contractAddress: string) {

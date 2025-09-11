@@ -35,6 +35,7 @@ const ERC20_ABI = [
  */
 class FarcasterSyntheticProvider {
   private jsonRpcProvider: ethers.JsonRpcProvider;
+  private rpcUrl: string;
   private address: string | undefined;
   private signMessageAsync: ((args: { message: string }) => Promise<string>) | undefined;
   
@@ -44,6 +45,7 @@ class FarcasterSyntheticProvider {
     signMessageAsync?: (args: { message: string }) => Promise<string>
   ) {
     this.jsonRpcProvider = new ethers.JsonRpcProvider(rpcUrl);
+    this.rpcUrl = rpcUrl;
     this.address = address;
     this.signMessageAsync = signMessageAsync;
   }
@@ -70,7 +72,39 @@ class FarcasterSyntheticProvider {
   }
   
   async getFeeData() {
-    return this.jsonRpcProvider.getFeeData();
+    // Use direct RPC call instead of provider's getFeeData to avoid inflated gas values
+    try {
+      const response = await fetch(this.rpcUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'eth_gasPrice',
+          params: [],
+          id: 1
+        })
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        if (result.result) {
+          return {
+            gasPrice: BigInt(result.result),
+            maxFeePerGas: null,
+            maxPriorityFeePerGas: null
+          };
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to get gas price from RPC in Farcaster provider:', error);
+    }
+    
+    // Fallback to a reasonable gas price instead of provider's getFeeData
+    return {
+      gasPrice: BigInt('1000000000'), // 1 gwei fallback
+      maxFeePerGas: null,
+      maxPriorityFeePerGas: null
+    };
   }
   
   async call(tx: any) {
@@ -713,8 +747,34 @@ function FarcasterAuthProviderInner({ children, AuthContext }: {
         to: params.contractAddress,
         data 
       });
-      const feeData = await jsonProvider.getFeeData();
-      const gasPrice = feeData.gasPrice;
+      // Get gas price via direct RPC call to avoid inflated values
+      let gasPrice: bigint | null = null;
+      try {
+        const response = await fetch(config.rpcUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            method: 'eth_gasPrice',
+            params: [],
+            id: 1
+          })
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          if (result.result) {
+            gasPrice = BigInt(result.result);
+          }
+        }
+      } catch (error) {
+        console.warn('Failed to get gas price from RPC:', error);
+      }
+      
+      // Fallback to reasonable gas price if RPC fails
+      if (!gasPrice) {
+        gasPrice = BigInt('1000000000'); // 1 gwei fallback
+      }
       const chainId = (await jsonProvider.getNetwork()).chainId;
       
       const transaction = {
@@ -1340,8 +1400,34 @@ function FarcasterAuthProviderInner({ children, AuthContext }: {
             to: params.contractAddress,
             data 
           });
-          const feeData = await jsonProvider.getFeeData();
-          const gasPrice = feeData.gasPrice;
+          // Get gas price via direct RPC call to avoid inflated values
+          let gasPrice: bigint | null = null;
+          try {
+            const response = await fetch(config.rpcUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                jsonrpc: '2.0',
+                method: 'eth_gasPrice',
+                params: [],
+                id: 1
+              })
+            });
+            
+            if (response.ok) {
+              const result = await response.json();
+              if (result.result) {
+                gasPrice = BigInt(result.result);
+              }
+            }
+          } catch (error) {
+            console.warn('Failed to get gas price from RPC in Farcaster:', error);
+          }
+          
+          // Fallback to reasonable gas price if RPC fails
+          if (!gasPrice) {
+            gasPrice = BigInt('1000000000'); // 1 gwei fallback
+          }
           const chainId = (await jsonProvider.getNetwork()).chainId;
           
           // Create the transaction object

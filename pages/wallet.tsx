@@ -65,9 +65,33 @@ export default function Wallet() {
       // Get current block number
       const blockNumber = await ethersProvider.getBlockNumber();
 
-      // Get current gas price
-      const feeData = await ethersProvider.getFeeData();
-      const gasPrice = feeData.gasPrice ? ethers.formatUnits(feeData.gasPrice, 'gwei') : null;
+      // Get current gas price via direct RPC call to avoid MetaMask's inflated values
+      let gasPrice: string | null = null;
+      if (config && config.rpcUrl) {
+        try {
+          const response = await fetch(config.rpcUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            method: 'eth_gasPrice',
+            params: [],
+            id: 1
+          })
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          if (result.result) {
+            const gasPriceWei = BigInt(result.result);
+            gasPrice = ethers.formatUnits(gasPriceWei, 'gwei');
+          }
+        }
+        } catch (error) {
+          console.warn('Failed to get gas price from RPC:', error);
+          gasPrice = null;
+        }
+      }
 
       // Determine chain name based on chainId
       const chainNames: Record<number, string> = {

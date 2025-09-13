@@ -25,6 +25,7 @@ describe('/api/chain/create-contract - microUSDC Handling', () => {
           'cookie': 'AUTH-TOKEN=valid-token'
         },
         body: {
+          tokenAddress: '0xUSDCContractAddress',
           buyer: '0xBuyerAddress',
           seller: '0xSellerAddress', 
           amount: '250000', // 0.25 USDC in microUSDC format
@@ -57,6 +58,7 @@ describe('/api/chain/create-contract - microUSDC Handling', () => {
             'Cookie': 'AUTH-TOKEN=valid-token'
           },
           body: JSON.stringify({
+            tokenAddress: '0xUSDCContractAddress',
             buyer: '0xBuyerAddress',
             seller: '0xSellerAddress',
             amount: '250000', // Should remain as microUSDC string
@@ -77,6 +79,7 @@ describe('/api/chain/create-contract - microUSDC Handling', () => {
           'cookie': 'AUTH-TOKEN=valid-token'
         },
         body: {
+          tokenAddress: '0xUSDCContractAddress',
           buyer: '0xBuyerAddress',
           seller: '0xSellerAddress',
           amount: '1234567890', // 1234.567890 USDC in microUSDC
@@ -122,6 +125,7 @@ describe('/api/chain/create-contract - microUSDC Handling', () => {
             'cookie': 'AUTH-TOKEN=valid-token'
           },
           body: {
+            tokenAddress: '0xUSDCContractAddress',
             buyer: '0xBuyerAddress',
             seller: '0xSellerAddress',
             amount: testCase.amount,
@@ -204,6 +208,7 @@ describe('/api/chain/create-contract - microUSDC Handling', () => {
           'cookie': 'AUTH-TOKEN=valid-token'
         },
         body: {
+          tokenAddress: '0xUSDCContractAddress',
           buyer: '0xBuyerAddress',
           seller: '0xSellerAddress',
           amount: '250000',
@@ -234,6 +239,7 @@ describe('/api/chain/create-contract - microUSDC Handling', () => {
   describe('Request structure validation', () => {
     it('should forward complete request body with microUSDC amounts', async () => {
       const requestBody = {
+        tokenAddress: '0xUSDCContractAddress',
         buyer: '0xBuyerAddress123',
         seller: '0xSellerAddress456',
         amount: '1500000', // 1.5 USDC in microUSDC - critical test case

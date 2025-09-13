@@ -8,6 +8,7 @@ import {
   isValidDescription,
   isValidEmail,
   formatWalletAddress,
+  ensureAddressPrefix,
   formatUSDC,
   formatCurrency,
   displayCurrency,
@@ -229,6 +230,36 @@ describe('validation utils', () => {
       const address = '0x1234567890';
       const result = formatWalletAddress(address);
       expect(result).toBe('0x1234...7890');
+    });
+  });
+
+  describe('ensureAddressPrefix', () => {
+    it('should not double-prefix address that already has 0x', () => {
+      const address = '0x1234567890abcdef1234567890abcdef12345678';
+      const result = ensureAddressPrefix(address);
+      expect(result).toBe('0x1234567890abcdef1234567890abcdef12345678');
+    });
+
+    it('should add 0x prefix to address without it', () => {
+      const address = '1234567890abcdef1234567890abcdef12345678';
+      const result = ensureAddressPrefix(address);
+      expect(result).toBe('0x1234567890abcdef1234567890abcdef12345678');
+    });
+
+    it('should handle mixed case 0X prefix', () => {
+      const address = '0X1234567890abcdef1234567890abcdef12345678';
+      const result = ensureAddressPrefix(address);
+      expect(result).toBe('0X1234567890abcdef1234567890abcdef12345678');
+    });
+
+    it('should handle empty address', () => {
+      const result = ensureAddressPrefix('');
+      expect(result).toBe('');
+    });
+
+    it('should handle null/undefined address', () => {
+      expect(ensureAddressPrefix(null as any)).toBe(null);
+      expect(ensureAddressPrefix(undefined as any)).toBe(undefined);
     });
   });
 

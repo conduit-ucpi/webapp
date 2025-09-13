@@ -1,6 +1,7 @@
 import { ethers } from 'ethers';
 import { ERC20_ABI, ESCROW_CONTRACT_ABI } from '@conduit-ucpi/sdk';
 import { CreateContractRequest } from '@/types';
+import { ensureAddressPrefix } from '@/utils/validation';
 
 export interface TransactionSigner {
   signContractTransaction: (params: {
@@ -63,8 +64,9 @@ export class ContractTransactionService {
     const amountInMicroUSDC = contract.amount;
     
     const contractRequest: CreateContractRequest = {
-      buyer: userAddress,
-      seller: contract.sellerAddress,
+      tokenAddress: ensureAddressPrefix(config.usdcContractAddress),
+      buyer: ensureAddressPrefix(userAddress),
+      seller: ensureAddressPrefix(contract.sellerAddress),
       amount: amountInMicroUSDC.toString(),
       expiryTimestamp: contract.expiryTimestamp,
       description: contract.description,
@@ -132,10 +134,10 @@ export class ContractTransactionService {
     
     // Sign the approval transaction
     const approvalTx = await this.signer.signContractTransaction({
-      contractAddress: config.usdcContractAddress,
+      contractAddress: ensureAddressPrefix(config.usdcContractAddress),
       abi: ERC20_ABI,
       functionName: 'approve',
-      functionArgs: [contractAddress, amountWei],
+      functionArgs: [ensureAddressPrefix(contractAddress), amountWei],
       debugLabel: 'USDC APPROVAL'
     });
 
@@ -228,7 +230,7 @@ export class ContractTransactionService {
     
     // Sign the deposit transaction
     const depositTx = await this.signer.signContractTransaction({
-      contractAddress,
+      contractAddress: ensureAddressPrefix(contractAddress),
       abi: ESCROW_CONTRACT_ABI,
       functionName: 'depositFunds',
       functionArgs: [],

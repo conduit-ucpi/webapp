@@ -83,6 +83,14 @@ export function formatWalletAddress(address: string): string {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }
 
+/**
+ * Ensures an address has the 0x prefix without double-prefixing
+ */
+export function ensureAddressPrefix(address: string): string {
+  if (!address) return address;
+  return address.toLowerCase().startsWith('0x') ? address : `0x${address}`;
+}
+
 
 // ===================================
 // CURRENCY UTILITIES

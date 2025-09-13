@@ -1,6 +1,7 @@
 import { WALLET_CONNECTORS, WEB3AUTH_NETWORK } from "@web3auth/modal";
 import { Web3AuthContextConfig } from "@web3auth/modal/react";
 import { CHAIN_NAMESPACES, CustomChainConfig } from "@web3auth/base";
+import { getNetworkInfo } from "@/utils/networkUtils";
 
 // This matches the pattern from the Web3Auth examples
 export const createWeb3AuthConfig = (config: {
@@ -10,49 +11,7 @@ export const createWeb3AuthConfig = (config: {
   explorerBaseUrl: string;
   web3AuthNetwork: string;
 }): Web3AuthContextConfig => {
-  // Determine network details based on chainId
-  const getNetworkInfo = () => {
-    // Common chain configurations
-    const chainConfigs: Record<number, { name: string; ticker: string; tickerName: string; logo: string }> = {
-      // Ethereum
-      1: { name: 'Ethereum Mainnet', ticker: 'ETH', tickerName: 'Ethereum', logo: 'https://images.toruswallet.io/ethereum.svg' },
-      11155111: { name: 'Sepolia Testnet', ticker: 'ETH', tickerName: 'Sepolia ETH', logo: 'https://images.toruswallet.io/ethereum.svg' },
-      
-      // Avalanche
-      43114: { name: 'Avalanche C-Chain', ticker: 'AVAX', tickerName: 'Avalanche', logo: 'https://images.toruswallet.io/avax.svg' },
-      43113: { name: 'Avalanche Fuji Testnet', ticker: 'AVAX', tickerName: 'Avalanche', logo: 'https://images.toruswallet.io/avax.svg' },
-      
-      // Polygon
-      137: { name: 'Polygon Mainnet', ticker: 'MATIC', tickerName: 'Polygon', logo: 'https://images.toruswallet.io/polygon.svg' },
-      80001: { name: 'Mumbai Testnet', ticker: 'MATIC', tickerName: 'Mumbai MATIC', logo: 'https://images.toruswallet.io/polygon.svg' },
-      
-      // Base
-      8453: { name: 'Base Mainnet', ticker: 'ETH', tickerName: 'Base ETH', logo: 'https://images.toruswallet.io/ethereum.svg' },
-      84532: { name: 'Base Sepolia', ticker: 'ETH', tickerName: 'Base Sepolia ETH', logo: 'https://images.toruswallet.io/ethereum.svg' },
-      
-      // Arbitrum
-      42161: { name: 'Arbitrum One', ticker: 'ETH', tickerName: 'Arbitrum ETH', logo: 'https://images.toruswallet.io/ethereum.svg' },
-      421614: { name: 'Arbitrum Sepolia', ticker: 'ETH', tickerName: 'Arbitrum Sepolia ETH', logo: 'https://images.toruswallet.io/ethereum.svg' },
-      
-      // Optimism
-      10: { name: 'Optimism Mainnet', ticker: 'ETH', tickerName: 'Optimism ETH', logo: 'https://images.toruswallet.io/ethereum.svg' },
-      11155420: { name: 'Optimism Sepolia', ticker: 'ETH', tickerName: 'Optimism Sepolia ETH', logo: 'https://images.toruswallet.io/ethereum.svg' },
-      
-      // BSC
-      56: { name: 'BNB Smart Chain', ticker: 'BNB', tickerName: 'BNB', logo: 'https://images.toruswallet.io/binance.svg' },
-      97: { name: 'BSC Testnet', ticker: 'BNB', tickerName: 'Test BNB', logo: 'https://images.toruswallet.io/binance.svg' },
-    };
-    
-    // Return specific config if known, otherwise generic EVM config
-    return chainConfigs[config.chainId] || {
-      name: `EVM Chain ${config.chainId}`,
-      ticker: 'ETH',
-      tickerName: 'Native Token',
-      logo: 'https://images.toruswallet.io/ethereum.svg'
-    };
-  };
-
-  const networkInfo = getNetworkInfo();
+  const networkInfo = getNetworkInfo(config.chainId);
 
   const chainConfig: CustomChainConfig = {
     chainNamespace: CHAIN_NAMESPACES.EIP155,

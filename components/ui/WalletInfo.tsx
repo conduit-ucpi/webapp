@@ -1,0 +1,109 @@
+import { useState, useEffect } from 'react';
+import { useAuth } from '@/components/auth';
+import { useConfig } from '@/components/auth/ConfigProvider';
+import { getNetworkName } from '@/utils/networkUtils';
+import { formatWalletAddress, formatCurrency } from '@/utils/validation';
+import Button from '@/components/ui/Button';
+
+interface WalletInfoProps {
+  className?: string;
+}
+
+export default function WalletInfo({ className = '' }: WalletInfoProps) {
+  const { user, getUSDCBalance } = useAuth();
+  const { config } = useConfig();
+  const [balance, setBalance] = useState<string>('0.0000');
+  const [isLoadingBalance, setIsLoadingBalance] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  // Fetch USDC balance
+  useEffect(() => {
+    if (user?.walletAddress && getUSDCBalance) {
+      setIsLoadingBalance(true);
+      getUSDCBalance(user.walletAddress)
+        .then((bal) => {
+          // Balance is returned as a string in USDC format already
+          const formatted = formatCurrency(bal, 'USDC');
+          setBalance(formatted.amount);
+        })
+        .catch((error) => {
+          console.error('Failed to fetch USDC balance:', error);
+          setBalance('Error');
+        })
+        .finally(() => {
+          setIsLoadingBalance(false);
+        });
+    }
+  }, [user?.walletAddress, getUSDCBalance]);
+
+  const copyToClipboard = async () => {
+    if (user?.walletAddress) {
+      try {
+        await navigator.clipboard.writeText(user.walletAddress);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      } catch (error) {
+        console.error('Failed to copy address:', error);
+      }
+    }
+  };
+
+  if (!user?.walletAddress || !config) {
+    return null;
+  }
+
+  const networkName = getNetworkName(config.chainId);
+
+  return (
+    <div className={`bg-secondary-50 rounded-lg p-4 border border-secondary-200 ${className}`}>
+      <h3 className="text-sm font-medium text-secondary-900 mb-3">Wallet Information</h3>
+      
+      <div className="space-y-3">
+        {/* Wallet Address */}
+        <div>
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-secondary-600">Wallet Address:</span>
+            <div className="flex items-center space-x-2">
+              <span className="text-xs font-mono text-secondary-900">
+                {formatWalletAddress(user.walletAddress)}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={copyToClipboard}
+                className="text-xs py-1 px-2 h-auto"
+                disabled={copied}
+              >
+                {copied ? '✓' : 'Copy'}
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* USDC Balance */}
+        <div>
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-secondary-600">USDC Balance:</span>
+            <span className="text-xs font-medium text-secondary-900">
+              {isLoadingBalance ? (
+                <span className="animate-pulse">Loading...</span>
+              ) : (
+                `${balance} USDC`
+              )}
+            </span>
+          </div>
+        </div>
+
+        {/* Network */}
+        <div>
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-secondary-600">Network:</span>
+            <span className="text-xs font-medium text-secondary-900">
+              {networkName}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

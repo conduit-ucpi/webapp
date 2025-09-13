@@ -7,6 +7,7 @@ import { useToast } from '@/components/ui/Toast';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 import BuyerInput from '@/components/ui/BuyerInput';
+import WalletInfo from '@/components/ui/WalletInfo';
 import { Wizard, WizardStep, WizardNavigation, WizardStep as Step } from '@/components/ui/Wizard';
 import { isValidEmail, isValidDescription, isValidAmount, isValidBuyerIdentifier } from '@/utils/validation';
 
@@ -487,6 +488,9 @@ export default function CreateContractWizard() {
 
   return (
     <div className="w-full max-w-2xl mx-auto">
+      {/* Wallet Info Section */}
+      <WalletInfo className="mb-6" />
+      
       <Wizard
         steps={steps}
         currentStep={currentStep}

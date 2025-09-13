@@ -8,6 +8,7 @@ import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import ConnectWalletEmbedded from '@/components/auth/ConnectWalletEmbedded';
+import WalletInfo from '@/components/ui/WalletInfo';
 import { isValidEmail, isValidDescription, isValidAmount, isValidWalletAddress } from '@/utils/validation';
 
 console.log('🔧 ContractCreate: FILE LOADED - imports successful');
@@ -461,12 +462,16 @@ export default function ContractCreate() {
 
       <div className={`${isInIframe ? 'p-4' : 'container mx-auto p-6'} max-w-md mx-auto`}>
         {step === 'create' ? (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">
-              {isInIframe ? 'Secure Payment' : 'Create Escrow Contract'}
-            </h2>
+          <>
+            {/* Wallet Info Section */}
+            <WalletInfo className="mb-4" />
             
-            <div className="space-y-4">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">
+                {isInIframe ? 'Stablecoin payment protected by escrow, no gas fees' : 'Create Escrow Contract'}
+              </h2>
+              
+              <div className="space-y-4">
               <div>
                 <Input
                   label="Seller Wallet Address"
@@ -545,7 +550,8 @@ export default function ContractCreate() {
                 </Button>
               </div>
             </div>
-          </div>
+            </div>
+          </>
         ) : (
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">Complete Payment</h2>

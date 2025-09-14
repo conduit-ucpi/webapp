@@ -205,9 +205,9 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
       
       console.log(`🔧 Web3Auth No-Modal: Connecting with ${adapter}...`);
       
-      // Check if adapter exists in our registered adapters
-      if (!this.adapters.has(adapter)) {
-        const availableAdapters = Array.from(this.adapters.keys());
+      // Check if adapter exists in our registered adapters or is external wallet
+      if (!this.adapters.has(adapter) && adapter !== 'external_wallet') {
+        const availableAdapters = this.getAvailableAdapters();
         throw new Error(`Adapter '${adapter}' not found. Available adapters: ${availableAdapters.join(', ')}`);
       }
       
@@ -237,8 +237,12 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
         
         // Use WALLET_ADAPTERS.AUTH for OpenLogin as per Web3Auth docs
         web3authProvider = await this.web3auth.connectTo('openlogin', connectOptions);
+      } else if (adapter === 'external_wallet') {
+        // Handle external wallet connection directly (not through Web3Auth)
+        console.log('🔧 Web3Auth No-Modal: Handling external wallet connection');
+        return await this.handleExternalWalletConnection();
       } else {
-        // For wallet adapters (MetaMask, WalletConnect)
+        // For other wallet adapters (WalletConnect, etc.)
         console.log(`🔧 Web3Auth No-Modal: Connecting to ${adapter} wallet adapter`);
         web3authProvider = await this.web3auth.connectTo(adapter);
       }
@@ -771,12 +775,77 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
     return await this.claimFunds(contractAddress, userAddress);
   }
 
+  /**
+   * Handle external wallet connection (MetaMask, etc.) using signature authentication
+   * This bypasses Web3Auth entirely and connects directly to external wallets
+   */
+  private async handleExternalWalletConnection(): Promise<{ success: boolean; user?: any; token?: string; error?: string }> {
+    try {
+      // Check if external wallet is available
+      const { ExternalWalletProvider } = await import('@/lib/wallet/external-wallet-provider');
+      if (!ExternalWalletProvider.isAvailable()) {
+        throw new Error('No external wallet found. Please install MetaMask or another compatible wallet.');
+      }
+
+      // Create external wallet auth provider
+      const { ExternalWalletAuthProvider } = await import('@/lib/auth/external-wallet-provider');
+      const externalAuthProvider = new ExternalWalletAuthProvider();
+      
+      await externalAuthProvider.initialize();
+      
+      // Connect and get signature token
+      const authResult = await externalAuthProvider.connect();
+      
+      // Set the raw ethereum provider (not the ethers provider) for subsequent operations
+      // The Web3Auth methods expect this.provider to be the raw provider
+      this.provider = (window as any).ethereum;
+      
+      // Create user object
+      this.state.user = {
+        userId: authResult.walletAddress,
+        email: authResult.walletAddress,
+        displayName: 'External Wallet User',
+        profileImageUrl: '',
+        walletAddress: authResult.walletAddress,
+        authProvider: 'external_wallet'
+      };
+
+      this.state.isConnected = true;
+      this.state.token = authResult.idToken;
+      
+      // Emit connected event
+      this.emit({ type: 'connected', user: this.state.user, token: this.state.token });
+      
+      return {
+        success: true,
+        user: this.state.user,
+        token: this.state.token
+      };
+    } catch (error) {
+      console.error('🔧 Web3Auth No-Modal: External wallet connection failed:', error);
+      const errorMessage = error instanceof Error ? error.message : 'External wallet connection failed';
+      this.state.error = errorMessage;
+      this.emit({ type: 'error', error: errorMessage });
+      return {
+        success: false,
+        error: errorMessage
+      };
+    }
+  }
+
   // Additional helper methods for the no-modal SDK
   getAvailableAdapters(): string[] {
-    return Array.from(this.adapters.keys());
+    const adapters = Array.from(this.adapters.keys());
+    // Add external wallet as an available option
+    adapters.push('external_wallet');
+    return adapters;
   }
 
   isAdapterReady(adapter: string): boolean {
+    if (adapter === 'external_wallet') {
+      const { ExternalWalletProvider } = require('@/lib/wallet/external-wallet-provider');
+      return ExternalWalletProvider.isAvailable();
+    }
     return this.adapters.has(adapter) && this.web3auth?.status === 'ready';
   }
 }

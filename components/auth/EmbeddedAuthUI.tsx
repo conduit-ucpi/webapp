@@ -78,40 +78,11 @@ export default function EmbeddedAuthUI({ className = '', onSuccess, compact = fa
         throw new Error('No external wallet found. Please install MetaMask or another compatible wallet.');
       }
 
-      // Create external wallet auth provider
-      const { ExternalWalletAuthProvider } = await import('@/lib/auth/external-wallet-provider');
-      const externalAuthProvider = new ExternalWalletAuthProvider();
-      
-      await externalAuthProvider.initialize();
-      
-      // Connect and get signature token
-      const authResult = await externalAuthProvider.connect();
-      
-      // Use the backend auth system to authenticate with signature token
-      const { BackendAuth } = await import('./backendAuth');
-      const backendAuth = BackendAuth.getInstance();
-      
-      // Login with signature token (which is already in the correct format)
-      const backendResult = await backendAuth.login(
-        authResult.idToken,
-        authResult.walletAddress
-      );
-      
-      if (!backendResult.success) {
-        throw new Error(backendResult.error || 'Backend authentication failed');
-      }
-
-      // Instead of redirecting, trigger a forced re-initialization of the AuthProvider
-      // This will make it detect the new backend session and update the UI state
-      if (typeof window !== 'undefined') {
-        // Trigger a custom event that the AuthProvider can listen for
-        window.dispatchEvent(new CustomEvent('external-wallet-auth-complete', {
-          detail: {
-            user: backendResult.user,
-            token: authResult.idToken,
-            walletAddress: authResult.walletAddress
-          }
-        }));
+      // Use connectWithAdapter with 'external_wallet' to integrate with existing provider system
+      if (connectWithAdapter) {
+        await connectWithAdapter('external_wallet');
+      } else {
+        throw new Error('connectWithAdapter not available');
       }
       
       if (onSuccess) {

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from './index';
+import { useRouter } from 'next/router';
 import { ExternalWalletProvider } from '@/lib/wallet/external-wallet-provider';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
@@ -13,6 +14,7 @@ interface EmbeddedAuthUIProps {
 
 export default function EmbeddedAuthUI({ className = '', onSuccess, compact = false }: EmbeddedAuthUIProps) {
   const { connect, connectWithAdapter, isLoading, error } = useAuth();
+  const router = useRouter();
   const [localLoading, setLocalLoading] = useState<string | null>(null);
   const [walletConnectUri, setWalletConnectUri] = useState<string | null>(null);
   const [showQRModal, setShowQRModal] = useState(false);
@@ -98,10 +100,19 @@ export default function EmbeddedAuthUI({ className = '', onSuccess, compact = fa
       if (!backendResult.success) {
         throw new Error(backendResult.error || 'Backend authentication failed');
       }
-      
-      // Force a page refresh to trigger AuthProvider to detect the new backend session
-      // This ensures the UI updates to show the logged-in state
-      window.location.reload();
+
+      // Instead of redirecting, trigger a forced re-initialization of the AuthProvider
+      // This will make it detect the new backend session and update the UI state
+      if (typeof window !== 'undefined') {
+        // Trigger a custom event that the AuthProvider can listen for
+        window.dispatchEvent(new CustomEvent('external-wallet-auth-complete', {
+          detail: {
+            user: backendResult.user,
+            token: authResult.idToken,
+            walletAddress: authResult.walletAddress
+          }
+        }));
+      }
       
       if (onSuccess) {
         onSuccess();

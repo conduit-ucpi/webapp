@@ -38,6 +38,7 @@ class Web3AuthProviderImpl implements IAuthProvider {
   
   private web3auth: any = null;
   private provider: any = null;
+  private web3Service: any = null;
   private listeners = new Map<AuthEvent['type'], Set<(event: AuthEvent) => void>>();
   private visitedKey = 'web3auth_visited';
   private config: any = null;
@@ -125,6 +126,7 @@ class Web3AuthProviderImpl implements IAuthProvider {
           if (this.web3auth.connected) {
             console.log('🔧 Web3Auth: Already connected, updating user data');
             this.provider = this.web3auth.provider;
+            await this.initializeWeb3Service();
             await this.updateUserFromProvider();
           }
         } catch (initError) {
@@ -227,6 +229,9 @@ class Web3AuthProviderImpl implements IAuthProvider {
         console.log('🔧 Web3Auth: Already connected, using existing provider');
         this.provider = this.web3auth.provider;
       }
+      
+      // Initialize Web3Service for fundAndSendTransaction functionality
+      await this.initializeWeb3Service();
       
       console.log('🔧 Web3Auth: Final provider check:', {
         provider: !!this.provider,
@@ -518,6 +523,49 @@ class Web3AuthProviderImpl implements IAuthProvider {
   }
 
   /**
+   * Initialize Web3Service for fundAndSendTransaction functionality
+   */
+  private async initializeWeb3Service(): Promise<void> {
+    if (!this.provider || !this.config) {
+      console.warn('🔧 Web3Auth: Cannot initialize Web3Service - provider or config missing');
+      return;
+    }
+
+    try {
+      const { Web3Service } = await import('@/lib/web3');
+      this.web3Service = new Web3Service(this.config);
+      
+      // Create a compatible wallet provider for Web3Service
+      const walletProvider = {
+        getEthersProvider: () => this.getEthersProvider(),
+        request: async ({ method, params }: { method: string; params: any[] }) => {
+          if (method === 'eth_sendTransaction') {
+            // Use Web3Auth's provider to send transactions
+            return await this.provider.request({ method, params });
+          }
+          throw new Error(`Method ${method} not supported by Web3Auth provider wrapper`);
+        }
+      };
+      
+      await this.web3Service.initializeProvider(walletProvider);
+      console.log('🔧 Web3Auth: Web3Service initialized successfully');
+    } catch (error) {
+      console.error('🔧 Web3Auth: Failed to initialize Web3Service:', error);
+    }
+  }
+
+  /**
+   * Fund and send transaction using Web3Service
+   */
+  async fundAndSendTransaction(txParams: { to: string; data: string; value?: string; gasLimit?: bigint; gasPrice?: bigint; }): Promise<string> {
+    if (!this.web3Service) {
+      throw new Error('Web3Service not initialized - call initializeWeb3Service first');
+    }
+    
+    return await this.web3Service.fundAndSendTransaction(txParams);
+  }
+
+  /**
    * Fund contract - complete flow: create, approve, deposit
    */
   async fundContract(params: any, authenticatedFetch?: any): Promise<any> {
@@ -542,7 +590,10 @@ class Web3AuthProviderImpl implements IAuthProvider {
             ...options?.headers,
           }
         });
-      })
+      }),
+      async (txParams: any) => {
+        return await this.fundAndSendTransaction(txParams);
+      }
     );
 
     return await contractMethods.fundContract(params);
@@ -643,6 +694,11 @@ export function Web3AuthProvider({ children }: { children: React.ReactNode }) {
             ...options?.headers,
           }
         });
+      },
+      async (txParams: any) => {
+        if (!provider) throw new Error('Provider not initialized');
+        if (!provider.fundAndSendTransaction) throw new Error('fundAndSendTransaction not available on provider');
+        return await provider.fundAndSendTransaction(txParams);
       }
     );
   }, [provider]);

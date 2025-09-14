@@ -718,282 +718,71 @@ function FarcasterAuthProviderInner({ children, AuthContext }: {
       }
     };
     
-    // Shared transaction signing function to avoid code duplication
-    const signTransactionWithWagmi = async (params: {
-      contractAddress: string;
-      abi: any[];
-      functionName: string;
-      functionArgs: any[];
-      debugLabel?: string;
-    }): Promise<string> => {
-      if (!signMessageAsync || !address) {
-        throw new Error('Sign message not available - ensure Farcaster connector is connected');
-      }
-      
-      console.log(`🔧 Farcaster: Signing transaction for ${params.debugLabel} using Wagmi address:`, address);
-      
-      // Create contract interface to encode the function call
-      const iface = new ethers.Interface(params.abi);
-      const data = iface.encodeFunctionData(params.functionName, params.functionArgs);
-      
-      // Build transaction with Wagmi address
-      if (!config) {
-        throw new Error('Config not available');
-      }
-      const jsonProvider = new ethers.JsonRpcProvider(config.rpcUrl);
-      const nonce = await jsonProvider.getTransactionCount(address);
-      const gasLimit = await jsonProvider.estimateGas({ 
-        from: address,
-        to: params.contractAddress,
-        data 
-      });
-      // Get gas price via direct RPC call to avoid inflated values
-      let gasPrice: bigint | null = null;
-      try {
-        const response = await fetch(config.rpcUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            jsonrpc: '2.0',
-            method: 'eth_gasPrice',
-            params: [],
-            id: 1
-          })
-        });
-        
-        if (response.ok) {
-          const result = await response.json();
-          if (result.result) {
-            gasPrice = BigInt(result.result);
-          }
-        }
-      } catch (error) {
-        console.warn('Failed to get gas price from RPC:', error);
-      }
-      
-      // Fallback to reasonable gas price if RPC fails
-      if (!gasPrice) {
-        gasPrice = BigInt('1000000000'); // 1 gwei fallback
-      }
-      const chainId = (await jsonProvider.getNetwork()).chainId;
-      
-      const transaction = {
-        to: params.contractAddress,
-        data,
-        value: 0,
-        gasLimit,
-        gasPrice,
-        nonce,
-        chainId: Number(chainId),
-        type: 0 // Legacy transaction type for compatibility
-      };
-      
-      console.log('🔧 Farcaster: Transaction object:', transaction);
-      
-      console.log('🔧 Farcaster: Trying direct EIP-1193 provider methods...');
-      
-      // Let's try several different approaches to get transaction signing
-      if (walletClient && walletClient.transport && walletClient.transport.request) {
-        
-        // Try 1: Standard eth_signTransaction
-        try {
-          console.log('🔧 Farcaster: Trying standard eth_signTransaction');
-          
-          // Ensure all values are properly formatted as hex strings
-          const value = transaction.value || 0;
-          const gas = transaction.gasLimit || 21000;
-          const gasPrice = transaction.gasPrice || 1000000000; // 1 gwei fallback
-          const nonce = transaction.nonce || 0;
-          
-          const txRequest = {
-            from: address,
-            to: transaction.to,
-            data: transaction.data || '0x',
-            value: `0x${value.toString(16)}`,
-            gas: `0x${gas.toString(16)}`,
-            gasPrice: `0x${gasPrice.toString(16)}`,
-            nonce: `0x${nonce.toString(16)}`,
-          };
-          
-          console.log('🔧 Farcaster: Transaction request:', txRequest);
-          
-          const signedTx = await walletClient.transport.request({
-            method: 'eth_signTransaction',
-            params: [txRequest],
-          });
-          
-          console.log('🔧 Farcaster: ✅ eth_signTransaction successful! Signed transaction:', signedTx);
-          return signedTx as string; // This returns the signed transaction bytes
-          
-        } catch (error) {
-          console.log('🔧 Farcaster: eth_signTransaction failed:', (error as any).message);
-        }
-        
-        // Try 2: Alternative method names that might work
-        const alternativeMethods = [
-          'eth_sign',
-          'wallet_signTransaction', 
-          'personal_signTransaction',
-          'fc_signTransaction', // Farcaster-specific?
-          'miniapp_signTransaction' // Mini-app specific?
-        ];
-        
-        for (const method of alternativeMethods) {
-          try {
-            console.log(`🔧 Farcaster: Trying alternative method: ${method}`);
-            
-            const txRequest = {
-              from: address,
-              to: transaction.to,
-              data: transaction.data || '0x',
-              value: `0x${(transaction.value || 0).toString(16)}`,
-              gas: `0x${(transaction.gasLimit || 21000).toString(16)}`,
-              gasPrice: `0x${(transaction.gasPrice || 1000000000).toString(16)}`,
-              nonce: `0x${(transaction.nonce || 0).toString(16)}`,
-            };
-            
-            const result = await walletClient.transport.request({
-              method,
-              params: [txRequest],
-            });
-            
-            console.log(`🔧 Farcaster: ✅ ${method} worked! Result:`, result);
-            return result as string;
-            
-          } catch (error) {
-            console.log(`🔧 Farcaster: ${method} failed:`, (error as any).message);
-          }
-        }
-        
-        // Try 3: See what methods ARE available
-        try {
-          console.log('🔧 Farcaster: Checking what methods are available...');
-          
-          // Some providers expose available methods
-          const methods = await walletClient.transport.request({
-            method: 'rpc_modules',
-            params: [],
-          });
-          
-          console.log('🔧 Farcaster: Available RPC modules:', methods);
-          
-        } catch (error) {
-          console.log('🔧 Farcaster: Could not enumerate methods:', (error as any).message);
-        }
-      }
-      
-      // Second attempt: Try wagmi's native signTransaction if available
-      if (walletClient && walletClient.signTransaction) {
-        try {
-          console.log('🔧 Farcaster: Using walletClient.signTransaction');
-          const signedTx = await walletClient.signTransaction({
-            to: transaction.to as `0x${string}`,
-            data: transaction.data as `0x${string}`,
-            value: BigInt(transaction.value),
-            gas: transaction.gasLimit ? BigInt(transaction.gasLimit) : undefined,
-            gasPrice: transaction.gasPrice ? BigInt(transaction.gasPrice) : undefined,
-            nonce: transaction.nonce,
-            chainId: Number(chainId),
-          });
-          
-          console.log('🔧 Farcaster: ✅ Native transaction signing successful!');
-          return signedTx;
-          
-        } catch (error) {
-          console.log('🔧 Farcaster: Native transaction signing failed:', (error as any).message);
-        }
-      }
-      
-      console.log('🔧 Farcaster: Falling back to signature conversion approach...');
-      
-      // Alternative approach: Use the mathematical relationship between signatures
-      const ethersTransaction = ethers.Transaction.from(transaction);
-      const transactionHash = ethers.keccak256(ethersTransaction.unsignedSerialized);
-      
-      console.log('🔧 Farcaster: Raw transaction hash:', transactionHash);
-      console.log('🔧 Farcaster: Attempting signature conversion approach...');
-      
-      // Get the message signature (this will have the Ethereum prefix)
-      const messageSignature = await signMessageAsync({ message: transactionHash });
-      
-      // Parse the signature components
-      const sigBytes = ethers.getBytes(messageSignature);
-      const r = ethers.hexlify(sigBytes.slice(0, 32));
-      const s = ethers.hexlify(sigBytes.slice(32, 64));
-      
-      console.log('🔧 Farcaster: Extracted signature components:', { r, s });
-      
-      // Try to construct a valid transaction signature using these r,s components
-      // We'll test different recovery IDs to see if any produce the correct address
-      for (let recoveryId = 0; recoveryId <= 3; recoveryId++) {
-        try {
-          const v = recoveryId + (Number(chainId) * 2 + 35); // EIP-155 v value
-          
-          console.log(`🔧 Farcaster: Testing recoveryId ${recoveryId}, v=${v}`);
-          
-          const testTransaction = ethers.Transaction.from(transaction);
-          testTransaction.signature = { r, s, v };
-          
-          console.log(`🔧 Farcaster: Test transaction from: ${testTransaction.from}`);
-          
-          if (testTransaction.from?.toLowerCase() === address.toLowerCase()) {
-            console.log(`🔧 Farcaster: ✅ Found working signature! recoveryId=${recoveryId}, v=${v}`);
-            return testTransaction.serialized;
-          }
-          
-        } catch (error) {
-          console.log(`🔧 Farcaster: RecoveryId ${recoveryId} failed:`, (error as any).message);
-        }
-      }
-      
-      // If we get here, the signature conversion didn't work
-      console.error('🔧 Farcaster: Could not find valid recovery parameters');
-      console.log('🔧 Farcaster: This suggests the fundamental incompatibility between message and transaction signatures');
-      throw new Error('Signature conversion failed - Farcaster may not support transaction signing');
-      
-      // Unreachable code removed - throw above always exits
-      /* try {
-        const parsedTx = ethers.Transaction.from(signedTx);
-        console.log('🔧 Final transaction from:', parsedTx.from, 'Expected:', address);
-        if (parsedTx.from?.toLowerCase() === address?.toLowerCase()) {
-          console.log('🔧 Farcaster: ✅ Transaction signature verification passed!');
-        } else {
-          console.error('❌ WRONG SIGNER! Expected:', address || 'unknown', 'Got:', parsedTx.from);
-        }
-      } catch (parseError) {
-        console.warn('🔧 Farcaster: Could not verify transaction signature:', parseError);
-      }
-      
-      return signedTx; */
+    // Simple transaction signing for legacy compatibility (not used in unified approach)
+    const signTransactionWithWagmi = async (params: any): Promise<string> => {
+      throw new Error('Legacy transaction signing - should use fundAndSendTransaction instead');
     };
     
-    // Set up the callback for signContractTransaction using the shared signing function
-    (provider as any).setSignContractTransactionCallback?.(async (params: any) => {
-      console.log(`🔧 Farcaster: Provider CALLBACK called for ${params.debugLabel}`);
-      try {
-        return await signTransactionWithWagmi(params);
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        console.error(`🔧 Farcaster: Provider callback signing failed:`, errorMessage);
-        throw new Error(`Provider callback signing failed: ${errorMessage}`);
+    // Legacy callback no longer needed - using unified Web3Auth approach
+    
+    // Create simple provider wrapper that exposes eth_sendTransaction for Web3Auth fundAndSendTransaction
+    const createFarcasterProvider = () => {
+      if (!walletClient || !walletClient.transport) {
+        throw new Error('Wagmi wallet client not available');
       }
+      
+      return {
+        // This is all we need - fundAndSendTransaction will handle everything else
+        request: async ({ method, params }: { method: string; params: any[] }) => {
+          if (method === 'eth_sendTransaction') {
+            return await walletClient.transport.request({ method, params });
+          }
+          throw new Error(`Method ${method} not supported by Farcaster provider wrapper`);
+        }
+      };
+    };
+    
+    // Import and set up Web3Service with Farcaster provider
+    const setupWeb3Service = async () => {
+      if (!config) return;
+      
+      const { Web3Service } = await import('@/lib/web3');
+      const web3Service = new Web3Service(config);
+      
+      // Initialize with our simple Farcaster provider wrapper
+      const farcasterProvider = createFarcasterProvider();
+      await web3Service.initializeProvider({
+        getEthersProvider: () => new ethers.JsonRpcProvider(config.rpcUrl),
+        request: farcasterProvider.request
+      } as any); // Type assertion for now - Web3Service expects WalletProvider but we only need request method
+      
+      // Create fundAndSendTransaction method from Web3Service
+      const fundAndSendTransaction = web3Service.fundAndSendTransaction.bind(web3Service);
+      
+      // Use the exact same Web3Auth contract methods
+      const { createWeb3AuthContractMethods } = await import('@/utils/contractTransactionFactory');
+      
+      return { fundAndSendTransaction, createWeb3AuthContractMethods };
+    };
+    
+    setupWeb3Service().then(result => {
+      if (!result) return;
+      
+      const { fundAndSendTransaction, createWeb3AuthContractMethods } = result;
+    
+      const contractMethods = createWeb3AuthContractMethods(
+        signTransactionWithWagmi, // For operations that need signing
+        (url: string, options?: RequestInit) => {
+          const backendAuth = BackendAuth.getInstance();
+          return backendAuth.authenticatedFetch(url, options);
+        },
+        fundAndSendTransaction // The exact same fundAndSendTransaction as Web3Auth uses
+      );
+      
+      (provider as any).setContractMethods?.(contractMethods);
+    }).catch(error => {
+      console.error('🔧 Farcaster: Failed to setup Web3Service:', error);
     });
-    
-    // Set up contract methods on the provider instance
-    console.log('🔧 Farcaster: Setting up contract methods on provider instance');
-    
-    const contractMethods = createFarcasterContractMethods(
-      signTransactionWithWagmi,
-      (url: string, options?: RequestInit) => {
-        // Use the BackendAuth instance for proper authenticated requests
-        const backendAuth = BackendAuth.getInstance();
-        console.log('🔧 Farcaster: Using BackendAuth.authenticatedFetch for:', url, 'hasToken:', !!backendAuth.getToken());
-        return backendAuth.authenticatedFetch(url, options);
-      },
-      walletClient
-    );
-    
-    (provider as any).setContractMethods?.(contractMethods);
   }, [provider, signMessageAsync, config, address, walletClient, walletConnected, connectors]);
   
   // Step 1: Initialize Farcaster SDK (singleton to prevent React Strict Mode duplicates)
@@ -1282,44 +1071,11 @@ function FarcasterAuthProviderInner({ children, AuthContext }: {
   
   // Note: Early return moved to after all hooks to comply with Rules of Hooks
 
-  // Create contract transaction methods
+  // Contract methods are now set up in useEffect - this useMemo is just for the context value
   const contractMethods = React.useMemo(() => {
-    console.log('🔧 Farcaster: Creating contract methods with:', {
-      hasSignMessageAsync: !!signMessageAsync,
-      hasAddress: !!address,
-      hasWalletClient: !!walletClient,
-      address
-    });
-    
-    if (!signMessageAsync || !address) {
-      console.log('🔧 Farcaster: Missing prerequisites for contract methods');
-      return {};
-    }
-
-    const methods = createFarcasterContractMethods(
-      async (params: any) => {
-        // Transaction signing stub - will be replaced by the provider
-        throw new Error('Transaction signing not available in this context');
-      },
-      (url: string, options?: RequestInit) => {
-        // Use the authenticatedFetch from auth context if available
-        // This ensures proper cookie handling
-        return fetch(url, options);
-      },
-      walletClient  // Pass the wallet client for eth_sendTransaction
-    );
-    
-    console.log('🔧 Farcaster: Contract methods created:', {
-      hasFundContract: !!methods.fundContract,
-      hasClaimFunds: !!methods.claimFunds,
-      hasRaiseDispute: !!methods.raiseDispute,
-      hasApproveUSDC: !!methods.approveUSDC,
-      hasDepositFunds: !!methods.depositFunds,
-      methodKeys: Object.keys(methods)
-    });
-    
-    return methods;
-  }, [signMessageAsync, address, walletClient]);
+    // Methods will be populated by the useEffect that sets up the provider
+    return {};
+  }, []);
   
   // Force logging of current values
   React.useEffect(() => {
@@ -1375,150 +1131,9 @@ function FarcasterAuthProviderInner({ children, AuthContext }: {
       return new ethers.JsonRpcProvider(config.rpcUrl);
     },
     
-    // Contract transaction signing using the working Wagmi pattern
-    signContractTransaction: async (params: {
-      contractAddress: string;
-      abi: any[];
-      functionName: string;
-      functionArgs: any[];
-      debugLabel?: string;
-    }) => {
-      console.log(`🔧 Farcaster: signContractTransaction DIRECT METHOD called for ${params.debugLabel}`);
-      
-      // This method should be overridden by the provider when available
-      throw new Error('Transaction signing not available - ensure wallet is connected');
-      // Unreachable code removed
-      // The following code is unreachable due to throw above
-      /* try {
-        console.log(`🔧 Farcaster: ${params.debugLabel} signing transaction`);
-        
-        // Build the transaction object with proper parameters
-          const jsonProvider = new ethers.JsonRpcProvider(config.rpcUrl);
-          const nonce = await jsonProvider.getTransactionCount(address);
-          const gasLimit = await jsonProvider.estimateGas({ 
-            from: address,
-            to: params.contractAddress,
-            data 
-          });
-          // Get gas price via direct RPC call to avoid inflated values
-          let gasPrice: bigint | null = null;
-          try {
-            const response = await fetch(config.rpcUrl, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                jsonrpc: '2.0',
-                method: 'eth_gasPrice',
-                params: [],
-                id: 1
-              })
-            });
-            
-            if (response.ok) {
-              const result = await response.json();
-              if (result.result) {
-                gasPrice = BigInt(result.result);
-              }
-            }
-          } catch (error) {
-            console.warn('Failed to get gas price from RPC in Farcaster:', error);
-          }
-          
-          // Fallback to reasonable gas price if RPC fails
-          if (!gasPrice) {
-            gasPrice = BigInt('1000000000'); // 1 gwei fallback
-          }
-          const chainId = (await jsonProvider.getNetwork()).chainId;
-          
-          // Create the transaction object
-          const transaction = {
-            to: params.contractAddress,
-            data,
-            value: 0,
-            gasLimit,
-            gasPrice,
-            nonce,
-            chainId: Number(chainId),
-            type: 0 // Legacy transaction type for compatibility
-          };
-          
-          console.log('🔧 Farcaster: Transaction object:', transaction);
-          
-          // Create ethers Transaction and get the unsigned serialized bytes
-          const ethersTransaction = ethers.Transaction.from(transaction);
-          const unsignedTxBytes = ethersTransaction.unsignedSerialized;
-          
-          console.log('🔧 Farcaster: Unsigned transaction bytes:', unsignedTxBytes);
-          
-          console.log('🔧 Farcaster: Signing transaction bytes as message using signMessageAsync');
-          const signature = await signMessageAsync({ message: unsignedTxBytes });
-          
-          // Verify who signed this message to confirm it's the right wallet  
-          const recoveredAddress = ethers.verifyMessage(unsignedTxBytes, signature);
-          console.log('🔧 Farcaster: Message signed by:', recoveredAddress, 'Expected:', address);
-          
-          // Parse signature into proper v, r, s components for transaction reconstruction
-          const sigBytes = ethers.getBytes(signature);
-          const r = ethers.hexlify(sigBytes.slice(0, 32));
-          const s = ethers.hexlify(sigBytes.slice(32, 64));
-          const recoveryId = sigBytes[64];
-          
-          // Try both possible recovery IDs to see which gives us the correct address
-          console.log('🔧 Farcaster: Testing signature recovery...');
-          let correctV = null;
-          
-          for (let testRecoveryId = 0; testRecoveryId <= 1; testRecoveryId++) {
-            const testV = testRecoveryId + (Number(chainId) * 2 + 35);
-            const testTransaction = ethers.Transaction.from(transaction);
-            testTransaction.signature = { r, s, v: testV };
-            
-            console.log(`🔧 Farcaster: Testing recoveryId ${testRecoveryId}, v=${testV}, from=${testTransaction.from}`);
-            
-            if (testTransaction.from?.toLowerCase() === address.toLowerCase()) {
-              console.log(`🔧 Farcaster: ✅ Found correct v value: ${testV}`);
-              correctV = testV;
-              break;
-            }
-          }
-          
-          if (!correctV) {
-            console.error('🔧 Farcaster: Could not find correct recovery ID for transaction signature');
-            throw new Error('Failed to reconstruct transaction with correct signer');
-          }
-          
-          console.log('🔧 Farcaster: Using correct signature components:', { r, s, v: correctV, recoveryId, chainId });
-          
-          // Reconstruct transaction with proper signature (from address will be derived from signature)
-          const signedTransaction = ethers.Transaction.from(transaction);
-          signedTransaction.signature = { r, s, v: correctV };
-          
-          const signedTx = signedTransaction.serialized;
-          console.log('🔧 Farcaster: Transaction reconstructed with proper signature');
-          
-          console.log(`🔧 Farcaster: ${params.debugLabel || 'Contract'} transaction signed on attempt ${attempt}`);
-          console.log(`🔧 Farcaster: Signer address: ${address}`);
-          
-          // Verify the transaction signature
-          try {
-            const parsedTx = ethers.Transaction.from(signedTx);
-            console.log(`🔧 Farcaster: Verified transaction signature - from: ${parsedTx.from}, expected: ${address}`);
-            
-            if (parsedTx.from?.toLowerCase() === address?.toLowerCase()) {
-              console.log('🔧 Farcaster: ✅ Transaction signature verification passed!');
-            } else {
-              console.error('🔧 Farcaster: ❌ Transaction signature verification failed!');
-            }
-          } catch (parseError) {
-            console.warn('🔧 Farcaster: Could not verify transaction signature:', parseError);
-          }
-          
-          return signedTx;
-          
-        } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
-          console.error(`🔧 Farcaster: ${params.debugLabel} signing failed:`, errorMessage);
-          throw new Error(`Transaction signing failed: ${errorMessage}`);
-        } */
+    // Legacy transaction signing - no longer used with unified approach
+    signContractTransaction: async (params: any) => {
+      throw new Error('Legacy signContractTransaction - use fundAndSendTransaction instead');
     },
     
     // Blockchain operations

@@ -1,5 +1,6 @@
 import Header from './Header';
 import Footer from './Footer';
+import EmailPromptManager from '../auth/EmailPromptManager';
 import { LoggerDemo } from '../debug/LoggerDemo';
 
 interface LayoutProps {
@@ -11,7 +12,9 @@ export default function Layout({ children }: LayoutProps) {
     <div className="min-h-screen flex flex-col bg-white dark:bg-secondary-900 transition-colors">
       <Header />
       <main className="flex-grow">
-        {children}
+        <EmailPromptManager>
+          {children}
+        </EmailPromptManager>
       </main>
       <Footer />
       <LoggerDemo />

@@ -21,7 +21,7 @@ export interface AuthUser {
   
   // Metadata
   userType?: string;               // admin, user, etc.
-  authProvider: 'farcaster' | 'web3auth' | 'unknown';
+  authProvider: 'farcaster' | 'web3auth' | 'external_wallet' | 'unknown';
 }
 
 export interface AuthState {

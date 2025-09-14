@@ -170,8 +170,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // Listen for external wallet authentication completion
   useEffect(() => {
-    const handleExternalWalletAuth = async (event: CustomEvent) => {
-      console.log('🔧 AuthProvider: External wallet auth complete event received', event.detail);
+    const handleExternalWalletAuth = async (event: Event) => {
+      const customEvent = event as CustomEvent;
+      console.log('🔧 AuthProvider: External wallet auth complete event received', customEvent.detail);
       
       // Force check backend auth status to refresh state
       const backendStatus = await backendAuth.checkAuthStatus();
@@ -183,14 +184,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
         const externalWalletState: AuthState = {
           user: {
             userId: backendStatus.user.userId,
-            email: backendStatus.user.email || event.detail.walletAddress,
+            email: backendStatus.user.email || customEvent.detail.walletAddress,
             displayName: backendStatus.user.email || 'External Wallet User',
             profileImageUrl: '',
-            walletAddress: event.detail.walletAddress,
+            walletAddress: customEvent.detail.walletAddress,
             authProvider: 'external_wallet',
             userType: backendStatus.user.userType || 'normal'
           },
-          token: event.detail.token,
+          token: customEvent.detail.token,
           isConnected: true,
           isLoading: false,
           isInitialized: true,
@@ -203,10 +204,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
     };
 
     if (typeof window !== 'undefined') {
-      window.addEventListener('external-wallet-auth-complete', handleExternalWalletAuth as EventListener);
+      window.addEventListener('external-wallet-auth-complete', handleExternalWalletAuth);
       
       return () => {
-        window.removeEventListener('external-wallet-auth-complete', handleExternalWalletAuth as EventListener);
+        window.removeEventListener('external-wallet-auth-complete', handleExternalWalletAuth);
       };
     }
   }, [backendAuth]);

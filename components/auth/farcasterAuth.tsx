@@ -732,12 +732,46 @@ function FarcasterAuthProviderInner({ children, AuthContext }: {
       }
       
       return {
-        // This is all we need - fundAndSendTransaction will handle everything else
-        request: async ({ method, params }: { method: string; params: any[] }) => {
-          if (method === 'eth_sendTransaction') {
-            return await walletClient.transport.request({ method, params });
+        getAddress: async () => {
+          if (!address) {
+            throw new Error('Wallet address not available');
           }
-          throw new Error(`Method ${method} not supported by Farcaster provider wrapper`);
+          return address; // We already have the address from wagmi useAccount
+        },
+        signTransaction: async (params: any): Promise<string> => {
+          // For Farcaster, we can use wagmi's wallet client
+          const txRequest = {
+            from: params.from || address,
+            to: params.to,
+            data: params.data,
+            value: params.value || '0x0',
+            gasLimit: params.gasLimit,
+            gasPrice: params.gasPrice,
+            nonce: params.nonce
+          };
+          const result = await walletClient.transport.request({ method: 'eth_signTransaction', params: [txRequest] });
+          return result as string;
+        },
+        signMessage: async (message: string) => {
+          if (!signMessageAsync) {
+            throw new Error('signMessageAsync not available');
+          }
+          return await signMessageAsync({ message });
+        },
+        request: async ({ method, params }: { method: string; params: any[] }) => {
+          return await walletClient.transport.request({ method, params });
+        },
+        isConnected: () => {
+          return walletConnected;
+        },
+        getProviderName: () => {
+          return 'farcaster';
+        },
+        getEthersProvider: () => {
+          if (!config?.rpcUrl) {
+            throw new Error('RPC URL not configured');
+          }
+          return new ethers.JsonRpcProvider(config.rpcUrl);
         }
       };
     };
@@ -751,10 +785,7 @@ function FarcasterAuthProviderInner({ children, AuthContext }: {
       
       // Initialize with our simple Farcaster provider wrapper
       const farcasterProvider = createFarcasterProvider();
-      await web3Service.initializeProvider({
-        getEthersProvider: () => new ethers.JsonRpcProvider(config.rpcUrl),
-        request: farcasterProvider.request
-      } as any); // Type assertion for now - Web3Service expects WalletProvider but we only need request method
+      await web3Service.initializeProvider(farcasterProvider);
       
       // Create fundAndSendTransaction method from Web3Service
       const fundAndSendTransaction = web3Service.fundAndSendTransaction.bind(web3Service);

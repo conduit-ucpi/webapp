@@ -599,14 +599,41 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
       
       // Create a compatible wallet provider for Web3Service
       const walletProvider = {
-        getEthersProvider: () => this.getEthersProvider(),
-        request: async ({ method, params }: { method: string; params: any[] }) => {
-          if (method === 'eth_sendTransaction') {
-            // Use Web3Auth's provider to send transactions
-            return await this.provider.request({ method, params });
+        getAddress: async () => {
+          const accounts = await this.provider.request({ method: 'eth_accounts', params: [] });
+          if (!accounts || accounts.length === 0) {
+            throw new Error('No accounts available');
           }
-          throw new Error(`Method ${method} not supported by Web3Auth provider wrapper`);
-        }
+          return accounts[0];
+        },
+        signTransaction: async (params: any) => {
+          // For Web3Auth, we can use the provider's request method
+          const txRequest = {
+            from: params.from,
+            to: params.to,
+            data: params.data,
+            value: params.value || '0x0',
+            gasLimit: params.gasLimit,
+            gasPrice: params.gasPrice,
+            nonce: params.nonce
+          };
+          return await this.provider.request({ method: 'eth_signTransaction', params: [txRequest] });
+        },
+        signMessage: async (message: string) => {
+          const accounts = await this.provider.request({ method: 'eth_accounts', params: [] });
+          const address = accounts[0];
+          return await this.provider.request({ method: 'personal_sign', params: [message, address] });
+        },
+        request: async ({ method, params }: { method: string; params: any[] }) => {
+          return await this.provider.request({ method, params });
+        },
+        isConnected: () => {
+          return this.state.isConnected;
+        },
+        getProviderName: () => {
+          return 'web3auth-nomodal';
+        },
+        getEthersProvider: () => this.getEthersProvider()
       };
       
       await this.web3Service.initializeProvider(walletProvider);

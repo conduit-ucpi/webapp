@@ -82,30 +82,16 @@ export function createContractTransactionMethods(
       contractAddress: string,
       userAddress: string
     ): Promise<string> => {
-      console.log('🔧 Base: Claiming funds via signContractTransaction + backend');
+      console.log('🔧 Base: Claiming funds via chainservice as gas payer');
       
-      // Import the ESCROW_CONTRACT_ABI
-      const { ESCROW_CONTRACT_ABI } = await import('../lib/web3');
-      
-      // Sign the claimFunds transaction
-      const signedTx = await signContractTransaction({
-        contractAddress,
-        abi: ESCROW_CONTRACT_ABI,
-        functionName: 'claimFunds',
-        functionArgs: [],
-        debugLabel: 'CLAIM FUNDS'
-      });
-
-      // Submit signed transaction to chain service
-      const response = await authenticatedFetch('/api/chain/claim-funds', {
+      // Call chainservice to handle the transaction and pay gas
+      const response = await authenticatedFetch('/api/chain/claim-funds-as-gas-payer', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          contractAddress,
-          userWalletAddress: userAddress,
-          signedTransaction: signedTx
+          contractAddress
         })
       });
 
@@ -119,7 +105,7 @@ export function createContractTransactionMethods(
         throw new Error(result.error || 'Claim failed');
       }
 
-      return result.transactionHash || signedTx;
+      return result.transactionHash;
     },
 
     /**
@@ -411,39 +397,36 @@ export function createFarcasterContractMethods(
       }
     },
 
-    // Farcaster-specific claim funds using eth_sendTransaction  
+    // Farcaster-specific claim funds using chainservice as gas payer  
     claimFunds: async (
       contractAddress: string,
       userAddress: string
     ): Promise<string> => {
-      console.log('🔧 Farcaster: Claiming funds using eth_sendTransaction');
+      console.log('🔧 Farcaster: Claiming funds via chainservice as gas payer');
       
       try {
-        // Get wallet client for eth_sendTransaction
-        if (!walletClient || !walletClient.transport || !walletClient.transport.request) {
-          throw new Error('Farcaster wallet client not properly initialized');
-        }
-
-        const { ethers } = await import('ethers');
-        
-        // Create the claimFunds transaction request
-        const txRequest = {
-          from: userAddress,
-          to: contractAddress,
-          data: new ethers.Interface([
-            'function claimFunds()'
-          ]).encodeFunctionData('claimFunds', []),
-          value: '0x0',
-        };
-
-        console.log('🔧 Farcaster: Sending claimFunds via eth_sendTransaction:', txRequest);
-
-        // Use Farcaster's eth_sendTransaction
-        const txHash = await walletClient.transport.request({
-          method: 'eth_sendTransaction',
-          params: [txRequest],
+        // Call chainservice to handle the transaction and pay gas
+        const response = await authenticatedFetch('/api/chain/claim-funds-as-gas-payer', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            contractAddress
+          })
         });
 
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || 'Failed to claim funds');
+        }
+
+        const result = await response.json();
+        if (!result.success) {
+          throw new Error(result.error || 'Claim failed');
+        }
+
+        const txHash = result.transactionHash;
         console.log('🔧 Farcaster: ClaimFunds transaction hash:', txHash);
         
         // For Farcaster, invalidate cache after successful transaction

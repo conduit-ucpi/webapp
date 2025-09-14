@@ -125,7 +125,19 @@ export class ExternalWalletAuthProvider implements AuthProvider {
     try {
       console.log('External wallet connecting...');
 
-      // Request wallet connection
+      // Force MetaMask to show account selection dialog
+      // This allows users to switch accounts even if already connected
+      try {
+        await (window as any).ethereum.request({
+          method: 'wallet_requestPermissions',
+          params: [{ eth_accounts: {} }],
+        });
+      } catch (permError) {
+        // If wallet_requestPermissions fails or is cancelled, fall back to eth_requestAccounts
+        console.log('wallet_requestPermissions failed or cancelled, falling back to eth_requestAccounts');
+      }
+
+      // Request wallet connection (will use the account selected above)
       await (window as any).ethereum.request({
         method: 'eth_requestAccounts',
       });

@@ -74,7 +74,6 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
         const { CHAIN_NAMESPACES, WEB3AUTH_NETWORK } = await import('@web3auth/base');
         const { EthereumPrivateKeyProvider } = await import('@web3auth/ethereum-provider');
         const { OpenloginAdapter } = await import('@web3auth/openlogin-adapter');
-        const { MetamaskAdapter } = await import('@web3auth/metamask-adapter');
         
         const web3AuthNetworkSetting = this.config.web3AuthNetwork === 'sapphire_mainnet' 
           ? WEB3AUTH_NETWORK.SAPPHIRE_MAINNET 
@@ -116,18 +115,6 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
         console.log('🔧 Web3Auth No-Modal: OpenLogin adapter created');
         this.adapters.set('openlogin', openloginAdapter);
 
-        // Create and configure MetaMask adapter
-        console.log('🔧 Web3Auth No-Modal: Creating MetaMask adapter...');
-        const metamaskAdapter = new MetamaskAdapter({
-          chainConfig: this.chainConfig,
-          sessionTime: 3600, // 1 hour
-          web3AuthNetwork: web3AuthNetworkSetting,
-          clientId: this.config.web3AuthClientId,
-        });
-        
-        console.log('🔧 Web3Auth No-Modal: MetaMask adapter created');
-        this.adapters.set('metamask', metamaskAdapter);
-
         // Initialize Web3Auth No-Modal instance
         console.log('🔧 Web3Auth No-Modal: Creating Web3AuthNoModal instance...');
         this.web3auth = new Web3AuthNoModal({
@@ -142,9 +129,6 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
         console.log('🔧 Web3Auth No-Modal: Configuring adapters...');
         this.web3auth.configureAdapter(openloginAdapter);
         console.log('🔧 Web3Auth No-Modal: OpenLogin adapter configured');
-        
-        this.web3auth.configureAdapter(metamaskAdapter);
-        console.log('🔧 Web3Auth No-Modal: MetaMask adapter configured');
 
         // Add WalletConnect adapter (simplified - remove for now due to config complexity)
         // TODO: Add WalletConnect support later

@@ -124,7 +124,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
       });
       
       if (token && providerState.user?.walletAddress) {
-        console.log('🔧 AuthProvider: Calling backendAuth.login...');
+        console.log('🔧 AuthProvider: Calling backendAuth.login...', {
+          hasIdToken: !!token,
+          authProvider: providerState.user.authProvider,
+          tokenLength: token.length
+        });
         const backendResult = await backendAuth.login(
           token,
           providerState.user.walletAddress
@@ -154,7 +158,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
           }));
         }
       } else {
-        console.error('🔧 AuthProvider: Missing token or wallet address for backend auth');
+        console.error('🔧 AuthProvider: Missing token or wallet address for backend auth', {
+          hasToken: !!token,
+          hasWalletAddress: !!providerState.user?.walletAddress
+        });
       }
     };
     
@@ -349,9 +356,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
         const newState = provider.getState();
         
         // If we got a token and wallet address, verify with backend
-        if (authResult.success && authResult.user?.walletAddress) {
+        if (authResult.success && newState.token && authResult.user?.walletAddress) {
           const backendResult = await backendAuth.login(
-            newState.token || '',
+            newState.token,
             authResult.user.walletAddress
           );
           

@@ -392,6 +392,23 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
       const userInfo = await this.web3auth.getUserInfo();
       console.log('🔧 Web3Auth No-Modal: User info:', userInfo);
 
+      // For external wallets, try to get the idToken using getIdentityToken()
+      // This should provide a proper JWT token even for MetaMask connections
+      let idToken = userInfo.idToken;
+      if (!idToken && this.web3auth.getIdentityToken) {
+        try {
+          console.log('🔧 Web3Auth No-Modal: No idToken from getUserInfo, trying getIdentityToken...');
+          const authUser = await this.web3auth.getIdentityToken();
+          console.log('🔧 Web3Auth No-Modal: getIdentityToken result:', authUser);
+          if (authUser?.idToken) {
+            idToken = authUser.idToken;
+            console.log('🔧 Web3Auth No-Modal: Got idToken from getIdentityToken!');
+          }
+        } catch (error) {
+          console.warn('🔧 Web3Auth No-Modal: getIdentityToken failed:', error);
+        }
+      }
+
       // Get wallet address
       const { ethers } = await import('ethers');
       const ethersProvider = new ethers.BrowserProvider(this.provider);
@@ -425,13 +442,30 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
       };
 
       this.state.isConnected = true;
-      this.state.token = userInfo.idToken;
+      this.state.token = idToken || null;
       
       // Mark as visited
       localStorage.setItem(this.visitedKey, 'true');
       
+      // Emit connected event only if we have both user and a valid token
+      // This ensures proper backend authentication for all wallet types
+      console.log('🔧 Web3Auth No-Modal: Connection result', {
+        hasUser: !!this.state.user,
+        hasToken: !!this.state.token,
+        authProvider: this.state.user?.authProvider,
+        tokenLength: this.state.token?.length
+      });
+      
       if (this.state.user && this.state.token) {
         this.emit({ type: 'connected', user: this.state.user, token: this.state.token });
+      } else {
+        const missingItems = [];
+        if (!this.state.user) missingItems.push('user');
+        if (!this.state.token) missingItems.push('token');
+        
+        this.state.error = `Authentication incomplete: missing ${missingItems.join(' and ')}`;
+        this.emit({ type: 'error', error: this.state.error });
+        console.error('🔧 Web3Auth No-Modal: Authentication incomplete', { missingItems });
       }
     } catch (error) {
       console.error('🔧 Web3Auth No-Modal: Failed to handle connection:', error);

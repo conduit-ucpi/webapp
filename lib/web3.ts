@@ -445,4 +445,151 @@ export class Web3Service {
     const txResponse = await this.provider.broadcastTransaction(signedTx);
     return { hash: txResponse.hash };
   }
+
+  /**
+   * Fund wallet with gas and send transaction
+   * 1. Estimates gas for the transaction
+   * 2. Calls chainservice to fund wallet with estimated gas + 20%
+   * 3. Sends the transaction via RPC once wallet is funded
+   * 
+   * @param txParams Transaction parameters (to, data, value, etc.)
+   * @returns Transaction hash
+   */
+  async fundAndSendTransaction(txParams: {
+    to: string;
+    data: string;
+    value?: string;
+    gasLimit?: bigint;
+    gasPrice?: bigint;
+  }): Promise<string> {
+    if (!this.provider) {
+      throw new Error('Provider not initialized');
+    }
+
+    const userAddress = await this.getUserAddress();
+    
+    // Step 1: Estimate gas
+    let gasEstimate: bigint;
+    if (txParams.gasLimit) {
+      gasEstimate = txParams.gasLimit;
+      console.log('Using provided gas limit:', gasEstimate.toString());
+    } else {
+      try {
+        // Try direct RPC call first
+        const response = await fetch(this.config.rpcUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            method: 'eth_estimateGas',
+            params: [{
+              from: userAddress,
+              to: txParams.to,
+              data: txParams.data,
+              value: txParams.value || '0x0'
+            }],
+            id: 1
+          })
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          if (result.result) {
+            gasEstimate = BigInt(result.result);
+            console.log('Using live RPC gas estimate:', gasEstimate.toString(), 'gas');
+          } else {
+            throw new Error('No gas estimate in RPC response');
+          }
+        } else {
+          throw new Error('RPC call failed');
+        }
+      } catch (error) {
+        console.warn('Failed to get live gas estimate from RPC, falling back to provider:', error);
+        // Fallback to provider's gas estimation
+        gasEstimate = await this.provider.estimateGas({
+          from: userAddress,
+          to: txParams.to,
+          data: txParams.data,
+          value: txParams.value || '0x0'
+        });
+      }
+    }
+    
+    // Get gas price
+    let gasPrice = txParams.gasPrice;
+    if (!gasPrice) {
+      try {
+        // Get live gas price from RPC
+        const response = await fetch(this.config.rpcUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            method: 'eth_gasPrice',
+            params: [],
+            id: 1
+          })
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          if (result.result) {
+            gasPrice = BigInt(result.result);
+            console.log('Using live RPC gas price:', gasPrice.toString(), 'wei');
+          }
+        }
+      } catch (error) {
+        console.warn('Failed to get live gas price from RPC:', error);
+      }
+      
+      if (!gasPrice) {
+        gasPrice = BigInt(this.config.minGasWei);
+        console.log('Using fallback minimum gas price:', gasPrice.toString(), 'wei');
+      }
+    }
+    
+    // Step 2: Calculate total gas needed (with 20% buffer)
+    const totalGasNeeded = (gasEstimate * gasPrice * BigInt(120)) / BigInt(100);
+    console.log('Total gas needed (with 20% buffer):', totalGasNeeded.toString(), 'wei');
+    
+    // Step 3: Call chainservice to fund wallet
+    console.log('Requesting wallet funding from chainservice...');
+    const fundResponse = await fetch('/api/chain/fund-wallet', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        walletAddress: userAddress,
+        totalAmountNeededWei: totalGasNeeded.toString()
+      })
+    });
+    
+    if (!fundResponse.ok) {
+      const errorData = await fundResponse.json().catch(() => ({}));
+      throw new Error(`Failed to fund wallet: ${errorData.error || fundResponse.statusText}`);
+    }
+    
+    const fundResult = await fundResponse.json();
+    if (!fundResult.success) {
+      throw new Error(`Wallet funding failed: ${fundResult.error || 'Unknown error'}`);
+    }
+    
+    console.log('Wallet funded successfully:', fundResult.message || 'Ready to send transaction');
+    
+    // Step 4: Send the transaction
+    console.log('Sending transaction with funded wallet...');
+    
+    // Get signer and send transaction directly
+    const signer = await this.getSigner();
+    const txResponse = await signer.sendTransaction({
+      to: txParams.to,
+      data: txParams.data,
+      value: txParams.value || '0x0',
+      gasLimit: gasEstimate,
+      gasPrice: gasPrice
+    });
+    
+    console.log('Transaction sent successfully:', txResponse.hash);
+    return txResponse.hash;
+  }
 }

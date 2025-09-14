@@ -449,13 +449,14 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
       // If we still don't have an idToken, this might be an external wallet
       // where Web3Auth doesn't provide idTokens. In this case, we need to
       // generate a signature-based authentication token.
-      if (!idToken && (userInfo.typeOfLogin === 'metamask' || this.web3auth?.connectedConnectorName === 'metamask')) {
-        console.log('🔧 Web3Auth No-Modal: External wallet detected, attempting signature-based auth...');
+      if (!idToken) {
+        console.log('🔧 Web3Auth No-Modal: No idToken available, generating signature-based token...');
         try {
           idToken = await this.generateSignatureToken(address);
-          console.log('🔧 Web3Auth No-Modal: Generated signature token for external wallet');
+          console.log('🔧 Web3Auth No-Modal: Generated signature token for Web3Auth external wallet connection');
         } catch (sigError) {
           console.error('🔧 Web3Auth No-Modal: Signature token generation failed:', sigError);
+          console.error('🔧 Web3Auth No-Modal: This connection cannot be authenticated without a token');
         }
       }
 

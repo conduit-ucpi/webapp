@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import Layout from '../components/layout/Layout'
 import Head from 'next/head'
 import { useConfig } from '../components/auth/ConfigProvider'
 import { getChainName } from '../utils/chainNames'
@@ -77,7 +76,7 @@ export default function PluginPage() {
   const [activeSection, setActiveSection] = useState<keyof typeof sections>('faq')
 
   return (
-    <Layout>
+    <>
       <Head>
         <title>Plugin Information - Conduit UCPI</title>
         <meta name="description" content="FAQ, Terms & Conditions, Privacy Policy, and Arbitration information for Conduit UCPI" />
@@ -120,7 +119,7 @@ export default function PluginPage() {
           </div>
         </div>
       </div>
-    </Layout>
+    </>
   )
 }
 

@@ -114,21 +114,9 @@ export interface AuthMethods {
     userAddress: string;
     reason: string;
     refundPercent: number;
-    // Additional data needed for Web3Auth backend notifications
+    // Only contract ID needed for database updates
     contract?: {
       id: string;
-      buyerEmail?: string;
-      sellerEmail?: string;
-      expiryTimestamp: number;
-      amount: number;
-      description: string;
-    };
-    config?: {
-      serviceLink: string;
-    };
-    utils?: {
-      formatDateTimeWithTZ?: (timestamp: number) => string;
-      toMicroUSDC?: (amount: number) => number;
     };
   }) => Promise<string>;
   

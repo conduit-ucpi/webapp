@@ -26,8 +26,8 @@ async function handleSubmitDisputeEntry(req: NextApiRequest, res: NextApiRespons
 
     // Validate request body
     const disputeEntry: SubmitDisputeEntryRequest = req.body;
-    if (!disputeEntry.timestamp || !disputeEntry.userEmail || !disputeEntry.reason || disputeEntry.refundPercent === undefined) {
-      return res.status(400).json({ error: 'Missing required fields: timestamp, userEmail, reason, refundPercent' });
+    if (!disputeEntry.timestamp || !disputeEntry.reason || disputeEntry.refundPercent === undefined) {
+      return res.status(400).json({ error: 'Missing required fields: timestamp, reason, refundPercent' });
     }
 
     if (disputeEntry.refundPercent < 0 || disputeEntry.refundPercent > 100) {

@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Contract, SubmitDisputeEntryRequest } from '@/types';
-import { useAuth } from '@/components/auth';
 import { formatTimestamp, displayCurrency, formatCurrency } from '@/utils/validation';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
@@ -14,7 +13,6 @@ interface DisputeManagementModalProps {
 }
 
 export default function DisputeManagementModal({ isOpen, onClose, contract, onRefresh }: DisputeManagementModalProps) {
-  const { user } = useAuth();
   const [reason, setReason] = useState('');
   const [refundPercent, setRefundPercent] = useState<number>(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -22,7 +20,7 @@ export default function DisputeManagementModal({ isOpen, onClose, contract, onRe
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!user?.email || !reason.trim() || refundPercent < 0 || refundPercent > 100) {
+    if (!reason.trim() || refundPercent < 0 || refundPercent > 100) {
       return;
     }
 
@@ -31,7 +29,6 @@ export default function DisputeManagementModal({ isOpen, onClose, contract, onRe
     try {
       const disputeEntry: SubmitDisputeEntryRequest = {
         timestamp: Math.floor(Date.now() / 1000),
-        userEmail: user.email,
         reason: reason.trim(),
         refundPercent: Math.round(refundPercent)
       };

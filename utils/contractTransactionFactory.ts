@@ -133,23 +133,11 @@ export function createContractTransactionMethods(
       refundPercent: number;
       contract?: {
         id: string;
-        buyerEmail?: string;
-        sellerEmail?: string;
-        expiryTimestamp: number;
-        amount: number;
-        description: string;
-      };
-      config?: {
-        serviceLink: string;
-      };
-      utils?: {
-        formatDateTimeWithTZ?: (timestamp: number) => string;
-        toMicroUSDC?: (amount: number) => number;
       };
     }): Promise<string> => {
       console.log('🔧 Base: Raising dispute via signContractTransaction + backend');
       
-      const { contractAddress, userAddress, reason, refundPercent, contract, config, utils } = params;
+      const { contractAddress, userAddress, reason, refundPercent, contract } = params;
       
       // Import the ESCROW_CONTRACT_ABI
       const { ESCROW_CONTRACT_ABI } = await import('../lib/web3');
@@ -163,7 +151,7 @@ export function createContractTransactionMethods(
         debugLabel: 'DISPUTE'
       });
 
-      // Build the full dispute request with all details for email notifications
+      // Build the simplified dispute request (email notifications handled by emailservice now)
       const disputeRequest: any = {
         contractAddress,
         userWalletAddress: userAddress,
@@ -172,30 +160,9 @@ export function createContractTransactionMethods(
         refundPercent
       };
 
-      // Add additional details if provided (needed for Web3Auth backend)
-      if (contract) {
+      // Add database ID if provided
+      if (contract?.id) {
         disputeRequest.databaseId = contract.id;
-        disputeRequest.buyerEmail = contract.buyerEmail;
-        disputeRequest.sellerEmail = contract.sellerEmail;
-        disputeRequest.contractDescription = contract.description;
-        disputeRequest.productName = process.env.PRODUCT_NAME || contract.description;
-        
-        if (utils?.formatDateTimeWithTZ) {
-          disputeRequest.payoutDateTime = utils.formatDateTimeWithTZ(contract.expiryTimestamp);
-        } else {
-          disputeRequest.payoutDateTime = new Date(contract.expiryTimestamp * 1000).toISOString();
-        }
-        
-        if (utils?.toMicroUSDC) {
-          disputeRequest.amount = utils.toMicroUSDC(contract.amount).toString();
-        } else {
-          disputeRequest.amount = (contract.amount * 1000000).toString();
-        }
-        disputeRequest.currency = "microUSDC";
-      }
-
-      if (config?.serviceLink) {
-        disputeRequest.serviceLink = config.serviceLink;
       }
 
       // Submit signed transaction to chain service
@@ -516,9 +483,9 @@ export function createFarcasterContractMethods(
       userAddress: string;
       reason: string;
       refundPercent: number;
-      contract?: any;
-      config?: any;
-      utils?: any;
+      contract?: {
+        id: string;
+      };
     }): Promise<string> => {
       console.log('🔧 Farcaster: Raising dispute using eth_sendTransaction');
       

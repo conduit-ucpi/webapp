@@ -155,11 +155,10 @@ export class ContractServiceClientSpec {
           type: 'object',
           properties: {
             timestamp: { type: 'number' },
-            userEmail: { type: 'string' },
             reason: { type: 'string', maxLength: 160 },
             refundPercent: { type: 'number', minimum: 0, maximum: 100 }
           },
-          required: ['timestamp', 'userEmail', 'reason', 'refundPercent']
+          required: ['timestamp', 'reason', 'refundPercent']
         },
         responseSchema: {
           type: 'object',

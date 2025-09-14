@@ -96,19 +96,10 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
         userAddress,
         reason,
         refundPercent,
-        // Additional contract details for Web3Auth backend notifications
+        // Only provide contract ID for database record updates
         contract: {
-          id: regularContract.id || '',
-          buyerEmail: regularContract.buyerEmail || user?.email || '',
-          sellerEmail: regularContract.sellerEmail,
-          expiryTimestamp: regularContract.expiryTimestamp,
-          amount: regularContract.amount,
-          description: regularContract.description
-        },
-        config: {
-          serviceLink: config.serviceLink
-        },
-        utils
+          id: regularContract.id || ''
+        }
       });
 
       console.log('✅ Raise dispute successful! Transaction hash:', txHash);

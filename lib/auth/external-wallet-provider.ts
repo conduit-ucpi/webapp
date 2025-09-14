@@ -78,16 +78,13 @@ export class ExternalWalletAuthProvider implements AuthProvider {
 
   /**
    * Generate a signature token according to backend requirements
+   * Uses the SAME message components that were signed to ensure consistency
    */
-  private async generateSignatureToken(walletAddress: string, signature: string): Promise<string> {
-    const timestamp = Date.now();
-    const nonce = this.generateNonce();
-    const message = this.createAuthMessage(walletAddress, timestamp, nonce);
-
+  private async generateSignatureToken(walletAddress: string, signature: string, timestamp: number, nonce: string, originalMessage: string): Promise<string> {
     const tokenData = {
       type: "signature_auth",
       walletAddress: walletAddress.toLowerCase(),
-      message: message,
+      message: originalMessage,
       signature: signature,
       timestamp: timestamp,
       nonce: nonce,
@@ -146,7 +143,7 @@ export class ExternalWalletAuthProvider implements AuthProvider {
       const walletAddress = await this.walletProvider.getAddress();
       console.log('Connected wallet address:', walletAddress);
 
-      // Create authentication message
+      // Create authentication message components ONCE
       const timestamp = Date.now();
       const nonce = this.generateNonce();
       const message = this.createAuthMessage(walletAddress, timestamp, nonce);
@@ -157,8 +154,8 @@ export class ExternalWalletAuthProvider implements AuthProvider {
       const signature = await this.walletProvider.signMessage(message);
       console.log('Signature received:', signature);
 
-      // Generate signature token
-      const signatureToken = await this.generateSignatureToken(walletAddress, signature);
+      // Generate signature token using the SAME timestamp, nonce, and message
+      const signatureToken = await this.generateSignatureToken(walletAddress, signature, timestamp, nonce, message);
 
       // Update connection state
       this._isConnected = true;

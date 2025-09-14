@@ -114,10 +114,11 @@ export interface AuthMethods {
     userAddress: string;
     reason: string;
     refundPercent: number;
-    // Only contract ID needed for database updates
-    contract?: {
-      id: string;
-    };
+    // Contract data for database updates and email notifications
+    contract?: any;
+    // Configuration and utilities for email processing
+    config?: any;
+    utils?: any;
   }) => Promise<string>;
   
   // Backend API helpers

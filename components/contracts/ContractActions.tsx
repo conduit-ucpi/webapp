@@ -8,6 +8,7 @@ import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import DisputeModal from './DisputeModal';
 import DisputeManagementModal from './DisputeManagementModal';
+import { formatDateTimeWithTZ } from '@/utils/validation';
 
 interface ContractActionsProps {
   contract: Contract | PendingContract;
@@ -91,14 +92,27 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
 
       // Use the abstracted raiseDispute method (works for both Web3Auth and Farcaster)
       const regularContract = contract as Contract;
+      
+      // Create enhanced contract object with email fallbacks
+      const enhancedContract = {
+        ...regularContract,
+        id: regularContract.id || '', // Ensure id is always a string
+        // If buyerEmail is missing and user is the buyer, use user's email as fallback, or empty string if no user email
+        buyerEmail: regularContract.buyerEmail || (isBuyer ? (user?.email || '') : regularContract.buyerEmail) || '',
+        // Explicitly preserve sellerEmail (could be undefined)
+        sellerEmail: regularContract.sellerEmail
+      };
+      
       const txHash = await raiseDispute({
         contractAddress: regularContract.contractAddress,
         userAddress,
         reason,
         refundPercent,
-        // Only provide contract ID for database record updates
-        contract: {
-          id: regularContract.id || ''
+        // Pass the enhanced contract object with email fallbacks
+        contract: enhancedContract,
+        config,
+        utils: {
+          formatDateTimeWithTZ
         }
       });
 

@@ -395,18 +395,41 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
       // For external wallets, try to get the idToken using getIdentityToken()
       // This should provide a proper JWT token even for MetaMask connections
       let idToken = userInfo.idToken;
-      if (!idToken && this.web3auth.getIdentityToken) {
-        try {
-          console.log('🔧 Web3Auth No-Modal: No idToken from getUserInfo, trying getIdentityToken...');
-          const authUser = await this.web3auth.getIdentityToken();
-          console.log('🔧 Web3Auth No-Modal: getIdentityToken result:', authUser);
-          if (authUser?.idToken) {
-            idToken = authUser.idToken;
-            console.log('🔧 Web3Auth No-Modal: Got idToken from getIdentityToken!');
+      
+      console.log('🔧 Web3Auth No-Modal: Token debugging:', {
+        userInfoIdToken: userInfo.idToken,
+        hasGetIdentityTokenMethod: !!this.web3auth.getIdentityToken,
+        web3authMethods: Object.keys(this.web3auth || {}),
+        connectedConnectorName: this.web3auth?.connectedConnectorName
+      });
+      
+      if (!idToken) {
+        if (this.web3auth.getIdentityToken) {
+          try {
+            console.log('🔧 Web3Auth No-Modal: No idToken from getUserInfo, trying getIdentityToken...');
+            const authUser = await this.web3auth.getIdentityToken();
+            console.log('🔧 Web3Auth No-Modal: getIdentityToken result:', authUser);
+            if (authUser?.idToken) {
+              idToken = authUser.idToken;
+              console.log('🔧 Web3Auth No-Modal: Got idToken from getIdentityToken!');
+            } else {
+              console.warn('🔧 Web3Auth No-Modal: getIdentityToken returned no idToken:', authUser);
+            }
+          } catch (error) {
+            console.error('🔧 Web3Auth No-Modal: getIdentityToken failed:', error);
           }
-        } catch (error) {
-          console.warn('🔧 Web3Auth No-Modal: getIdentityToken failed:', error);
+        } else {
+          console.error('🔧 Web3Auth No-Modal: getIdentityToken method not available!');
         }
+        
+        // Final attempt: check if web3auth has any token properties
+        console.log('🔧 Web3Auth No-Modal: Web3Auth instance properties:', {
+          sessionId: this.web3auth.sessionId,
+          state: this.web3auth.state,
+          status: this.web3auth.status,
+          privKey: this.web3auth.privKey ? 'present' : 'missing'
+        });
+        
       }
 
       // Get wallet address
@@ -414,6 +437,19 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
       const ethersProvider = new ethers.BrowserProvider(this.provider);
       const signer = await ethersProvider.getSigner();
       const address = await signer.getAddress();
+
+      // If we still don't have an idToken, this might be an external wallet
+      // where Web3Auth doesn't provide idTokens. In this case, we need to
+      // generate a signature-based authentication token.
+      if (!idToken && (userInfo.typeOfLogin === 'metamask' || this.web3auth?.connectedConnectorName === 'metamask')) {
+        console.log('🔧 Web3Auth No-Modal: External wallet detected, attempting signature-based auth...');
+        try {
+          idToken = await this.generateSignatureToken(address);
+          console.log('🔧 Web3Auth No-Modal: Generated signature token for external wallet');
+        } catch (sigError) {
+          console.error('🔧 Web3Auth No-Modal: Signature token generation failed:', sigError);
+        }
+      }
 
       // Get USDC balance
       let usdcBalance = '0';
@@ -449,11 +485,15 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
       
       // Emit connected event only if we have both user and a valid token
       // This ensures proper backend authentication for all wallet types
+      // Token can be either:
+      // 1. Web3Auth idToken (for social logins) - JWT signed by Web3Auth
+      // 2. Signature token (for external wallets) - Base64 encoded signature data
       console.log('🔧 Web3Auth No-Modal: Connection result', {
         hasUser: !!this.state.user,
         hasToken: !!this.state.token,
         authProvider: this.state.user?.authProvider,
-        tokenLength: this.state.token?.length
+        tokenLength: this.state.token?.length,
+        tokenType: this.state.token?.startsWith('ey') ? 'JWT' : 'Signature'
       });
       
       if (this.state.user && this.state.token) {
@@ -641,6 +681,56 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
     } catch (error) {
       console.warn(`🔧 Web3Auth No-Modal: Transaction confirmation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
       // Don't throw - let the transaction continue as the backend may have processed it
+    }
+  }
+
+  /**
+   * Generate a signature-based authentication token for external wallets
+   * This provides secure authentication when Web3Auth doesn't provide idTokens
+   */
+  private async generateSignatureToken(walletAddress: string): Promise<string> {
+    if (!this.provider) {
+      throw new Error('No provider available for signature generation');
+    }
+
+    try {
+      // Create a message to sign that includes timestamp and wallet address
+      // This prevents replay attacks and proves wallet ownership
+      const timestamp = Date.now();
+      const nonce = Math.random().toString(36).substring(2, 15);
+      const message = `Authenticate wallet ${walletAddress} at ${timestamp} with nonce ${nonce}`;
+
+      console.log('🔧 Web3Auth No-Modal: Generating signature for message:', message);
+
+      // Sign the message with the user's wallet
+      const signature = await this.signMessage(message);
+
+      // Create a custom JWT-like token (not a real JWT, but structured for compatibility)
+      // The backend should verify this signature matches the wallet address
+      const signatureToken = btoa(JSON.stringify({
+        type: 'signature_auth',
+        walletAddress,
+        message,
+        signature,
+        timestamp,
+        nonce,
+        issuer: 'web3auth_external_wallet',
+        // Add a simple header/payload structure for compatibility
+        header: { alg: 'ECDSA', typ: 'SIG' },
+        payload: { 
+          sub: walletAddress, 
+          iat: Math.floor(timestamp / 1000),
+          iss: 'web3auth_external_wallet',
+          wallet_type: 'external'
+        }
+      }));
+
+      console.log('🔧 Web3Auth No-Modal: Generated signature token length:', signatureToken.length);
+      return signatureToken;
+
+    } catch (error) {
+      console.error('🔧 Web3Auth No-Modal: Failed to generate signature token:', error);
+      throw new Error(`Signature authentication failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 

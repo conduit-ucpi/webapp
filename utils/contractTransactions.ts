@@ -130,7 +130,8 @@ export class ContractTransactionService {
     currency: string | undefined,
     userAddress: string,
     config: ContractTransactionConfig,
-    utils: ContractFundingParams['utils']
+    utils: ContractFundingParams['utils'],
+    onStatusUpdate?: (step: string, message: string) => void
   ): Promise<string> {
     if (!this.signer.fundAndSendTransaction) {
       throw new Error('fundAndSendTransaction not supported by this signer');
@@ -152,6 +153,7 @@ export class ContractTransactionService {
     ]);
 
     console.log('🔧 ContractTransactionService: Approving USDC via fundAndSendTransaction');
+    onStatusUpdate?.('approve', 'Submitting USDC approval transaction...');
     
     // Use fundAndSendTransaction to handle funding and sending in one step
     const txHash = await this.signer.fundAndSendTransaction({
@@ -160,11 +162,8 @@ export class ContractTransactionService {
     });
 
     console.log('🔧 ContractTransactionService: USDC approval transaction submitted:', txHash);
-    
-    // Wait for transaction confirmation before proceeding
-    console.log('🔧 ContractTransactionService: Waiting for USDC approval confirmation...');
-    await this.waitForTransactionConfirmation(txHash, config);
-    console.log('🔧 ContractTransactionService: USDC approval transaction confirmed');
+    onStatusUpdate?.('approve', 'USDC approval confirmed on blockchain');
+    console.log('🔧 ContractTransactionService: USDC approval transaction confirmed (fundAndSendTransaction waits internally)');
 
     return txHash;
   }
@@ -276,7 +275,7 @@ export class ContractTransactionService {
   /**
    * Deposits funds using fundAndSendTransaction (direct RPC)
    */
-  async depositAndSendFunds(params: ContractFundingParams & { contractAddress: string }): Promise<string> {
+  async depositAndSendFunds(params: ContractFundingParams & { contractAddress: string, onStatusUpdate?: (step: string, message: string) => void }): Promise<string> {
     const { contract, userAddress, contractAddress, config, utils } = params;
     
     if (!this.signer.fundAndSendTransaction) {
@@ -295,6 +294,7 @@ export class ContractTransactionService {
     const txData = escrowContract.interface.encodeFunctionData('depositFunds', []);
 
     console.log('🔧 ContractTransactionService: Depositing funds via fundAndSendTransaction');
+    params.onStatusUpdate?.('deposit', 'Submitting funds to secure escrow...');
     
     // Use fundAndSendTransaction to handle funding and sending in one step
     const txHash = await this.signer.fundAndSendTransaction({
@@ -303,11 +303,8 @@ export class ContractTransactionService {
     });
 
     console.log('🔧 ContractTransactionService: Deposit transaction submitted:', txHash);
-    
-    // Wait for transaction confirmation before proceeding
-    console.log('🔧 ContractTransactionService: Waiting for deposit confirmation...');
-    await this.waitForTransactionConfirmation(txHash, config);
-    console.log('🔧 ContractTransactionService: Deposit transaction confirmed:', txHash);
+    params.onStatusUpdate?.('deposit', 'Funds secured in escrow contract');
+    console.log('🔧 ContractTransactionService: Deposit transaction confirmed (fundAndSendTransaction waits internally)');
 
     // Notify contractservice about the successful deposit
     try {
@@ -398,7 +395,8 @@ export class ContractTransactionService {
       contract.currency,
       userAddress,
       config,
-      utils
+      utils,
+      onStatusUpdate
     );
     
     console.log(`🚨 SECURITY DEBUG - USDC approved:`, {
@@ -418,7 +416,8 @@ export class ContractTransactionService {
     
     const depositTxHash = await this.depositAndSendFunds({
       ...params,
-      contractAddress
+      contractAddress,
+      onStatusUpdate
     });
     
     console.log(`🚨 SECURITY DEBUG - Funds deposited:`, {

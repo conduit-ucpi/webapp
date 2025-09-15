@@ -320,153 +320,34 @@ export class ContractTransactionService {
       console.warn('🔧 ContractTransactionService: Deposit notification error:', error);
       // Don't throw - the transaction succeeded, notification failure shouldn't break the flow
     }
+
+    // Invalidate chainservice cache after successful deposit
+    try {
+      console.log('🔧 ContractTransactionService: Invalidating chainservice cache for contract:', contractAddress);
+      const cacheResponse = await this.fetcher.authenticatedFetch('/api/admin/cache/invalidate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contractAddress,
+          reason: 'After successful deposit transaction'
+        })
+      });
+
+      if (cacheResponse.ok) {
+        console.log('🔧 ContractTransactionService: Cache invalidation successful');
+      } else {
+        const errorData = await cacheResponse.json().catch(() => ({}));
+        console.warn('🔧 ContractTransactionService: Cache invalidation failed:', errorData);
+      }
+    } catch (error) {
+      console.warn('🔧 ContractTransactionService: Cache invalidation error:', error);
+      // Don't throw - the transaction succeeded, cache invalidation failure shouldn't break the flow
+    }
     
     return txHash;
   }
 
-  /**
-   * Deposits funds to the escrow contract
-   */
-  async depositFunds(params: ContractFundingParams & { contractAddress: string }): Promise<string> {
-    const { contract, userAddress, contractAddress, config, utils } = params;
-    
-    console.log(`🚨 SECURITY DEBUG - depositFunds called with:`, {
-      contractAddress: contractAddress,
-      contractId: contract.id,
-      userAddress: userAddress,
-      timestamp: new Date().toISOString(),
-      stackTrace: new Error().stack
-    });
-    
-    // Sign the deposit transaction
-    const depositTx = await this.signer.signContractTransaction({
-      contractAddress: ensureAddressPrefix(contractAddress),
-      abi: ESCROW_CONTRACT_ABI,
-      functionName: 'depositFunds',
-      functionArgs: [],
-      debugLabel: 'DEPOSIT'
-    });
-    
-    console.log(`🚨 SECURITY DEBUG - depositFunds transaction signed:`, {
-      contractAddress: contractAddress,
-      signedTxLength: depositTx.length,
-      contractId: contract.id
-    });
 
-    // Convert amount for API
-    const amountInMicroUSDC = utils?.toMicroUSDC 
-      ? utils.toMicroUSDC(contract.amount) 
-      : (contract.amount * 1000000);
-
-    // Submit to backend
-    const response = await this.fetcher.authenticatedFetch('/api/chain/deposit-funds', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contractAddress,
-        userWalletAddress: userAddress,
-        signedTransaction: depositTx,
-        contractId: contract.id,
-        buyerEmail: contract.buyerEmail,
-        sellerEmail: contract.sellerEmail,
-        contractDescription: contract.description,
-        amount: amountInMicroUSDC.toString(),
-        currency: "USDC",
-        payoutDateTime: utils?.formatDateTimeWithTZ 
-          ? utils.formatDateTimeWithTZ(contract.expiryTimestamp) 
-          : new Date(contract.expiryTimestamp * 1000).toISOString(),
-        contractLink: config.serviceLink
-      })
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Fund deposit failed');
-    }
-
-    const result = await response.json();
-    if (!result.success) {
-      throw new Error(result.error || 'Fund deposit failed');
-    }
-
-    return result.transactionHash || 'deposit-completed';
-  }
-
-  /**
-   * Complete contract funding process: create contract, approve USDC, deposit funds
-   * @deprecated Use fundAndSendContract instead for direct RPC transactions
-   */
-  async fundContract(params: ContractFundingParams): Promise<{
-    contractAddress: string;
-    approvalTxHash: string;
-    depositTxHash: string;
-  }> {
-    console.warn('⚠️ DEPRECATED: fundContract uses chainservice backend. Use fundAndSendContract for direct RPC transactions.');
-    const { contract, userAddress, config, utils, onStatusUpdate } = params;
-
-    console.log(`🚨 SECURITY DEBUG - fundContract started:`, {
-      contractId: contract.id,
-      userAddress: userAddress,
-      timestamp: new Date().toISOString()
-    });
-
-    // Step 1: Create contract
-    onStatusUpdate?.('create', 'Creating secure escrow contract...');
-    const contractAddress = await this.createContract(contract, userAddress, config, utils);
-    
-    console.log(`🚨 SECURITY DEBUG - Contract created:`, {
-      contractAddress: contractAddress,
-      contractId: contract.id,
-      step: 'CREATE_CONTRACT'
-    });
-
-    // Step 2: Approve USDC
-    onStatusUpdate?.('approve', 'Approving USDC payment...');
-    const approvalTxHash = await this.approveUSDC(
-      contractAddress,
-      contract.amount,
-      contract.currency,
-      userAddress,
-      config,
-      utils
-    );
-    
-    console.log(`🚨 SECURITY DEBUG - USDC approved:`, {
-      contractAddress: contractAddress,
-      approvalTxHash: approvalTxHash,
-      contractId: contract.id,
-      step: 'APPROVE_USDC'
-    });
-
-    // Step 3: Deposit funds
-    onStatusUpdate?.('deposit', 'Securing funds in escrow...');
-    console.log(`🚨 SECURITY DEBUG - About to deposit funds:`, {
-      contractAddress: contractAddress,
-      contractId: contract.id,
-      step: 'BEFORE_DEPOSIT'
-    });
-    
-    const depositTxHash = await this.depositFunds({
-      ...params,
-      contractAddress
-    });
-    
-    console.log(`🚨 SECURITY DEBUG - Funds deposited:`, {
-      contractAddress: contractAddress,
-      depositTxHash: depositTxHash,
-      contractId: contract.id,
-      step: 'DEPOSIT_COMPLETE'
-    });
-
-    // Step 4: Confirm transaction
-    onStatusUpdate?.('confirm', 'Confirming transaction on blockchain...');
-
-    return {
-      contractAddress,
-      approvalTxHash,
-      depositTxHash
-    };
-  }
 
   /**
    * Complete contract funding process using fundAndSendTransaction (direct RPC)

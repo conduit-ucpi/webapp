@@ -53,7 +53,7 @@ export function createContractTransactionMethods(
     depositFunds: async (
       params: ContractFundingParams & { contractAddress: string }
     ): Promise<string> => {
-      return await service.depositFunds(params);
+      return await service.depositAndSendFunds(params);
     },
 
     /**

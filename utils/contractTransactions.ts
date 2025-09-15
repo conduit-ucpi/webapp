@@ -159,7 +159,12 @@ export class ContractTransactionService {
       data: txData
     });
 
-    console.log('🔧 ContractTransactionService: USDC approval transaction confirmed:', txHash);
+    console.log('🔧 ContractTransactionService: USDC approval transaction submitted:', txHash);
+    
+    // Wait for transaction confirmation before proceeding
+    console.log('🔧 ContractTransactionService: Waiting for USDC approval confirmation...');
+    await this.waitForTransactionConfirmation(txHash, config);
+    console.log('🔧 ContractTransactionService: USDC approval transaction confirmed');
 
     return txHash;
   }
@@ -297,6 +302,11 @@ export class ContractTransactionService {
       data: txData
     });
 
+    console.log('🔧 ContractTransactionService: Deposit transaction submitted:', txHash);
+    
+    // Wait for transaction confirmation before proceeding
+    console.log('🔧 ContractTransactionService: Waiting for deposit confirmation...');
+    await this.waitForTransactionConfirmation(txHash, config);
     console.log('🔧 ContractTransactionService: Deposit transaction confirmed:', txHash);
 
     // Notify contractservice about the successful deposit

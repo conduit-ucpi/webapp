@@ -11,10 +11,11 @@ import {
  */
 export function createContractTransactionMethods(
   signContractTransaction: (params: ContractTransactionParams) => Promise<string>,
-  authenticatedFetch: (url: string, options?: RequestInit) => Promise<Response>
+  authenticatedFetch: (url: string, options?: RequestInit) => Promise<Response>,
+  fundAndSendTransaction?: (txParams: { to: string; data: string; value?: string; gasLimit?: bigint; gasPrice?: bigint; }) => Promise<string>
 ) {
   const service = new ContractTransactionService(
-    { signContractTransaction },
+    { signContractTransaction, fundAndSendTransaction },
     { authenticatedFetch }
   );
 
@@ -62,16 +63,20 @@ export function createContractTransactionMethods(
     fundContract: async (
       params: ContractFundingParams
     ): Promise<ContractFundingResult> => {
-      console.log('🔧 Base: Using ContractTransactionService for fundContract');
+      console.log('🔧 Base: Using ContractTransactionService for fundAndSendContract');
+      
+      if (!fundAndSendTransaction) {
+        throw new Error('fundAndSendTransaction not available - direct RPC transactions required');
+      }
       
       // Use the real service implementation
       const { ContractTransactionService } = await import('./contractTransactions');
       const service = new ContractTransactionService(
-        { signContractTransaction },
+        { signContractTransaction, fundAndSendTransaction },
         { authenticatedFetch }
       );
       
-      return await service.fundContract(params);
+      return await service.fundAndSendContract(params);
     },
 
     /**
@@ -184,7 +189,7 @@ export function createWeb3AuthContractMethods(
   authenticatedFetch: (url: string, options?: RequestInit) => Promise<Response>,
   fundAndSendTransaction: (txParams: { to: string; data: string; value?: string; gasLimit?: bigint; gasPrice?: bigint; }) => Promise<string>
 ) {
-  const baseMethods = createContractTransactionMethods(signContractTransaction, authenticatedFetch);
+  const baseMethods = createContractTransactionMethods(signContractTransaction, authenticatedFetch, fundAndSendTransaction);
   
   return {
     ...baseMethods,

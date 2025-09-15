@@ -590,6 +590,12 @@ export class Web3Service {
     });
     
     console.log('Transaction sent successfully:', txResponse.hash);
+    console.log('Waiting for transaction confirmation...');
+    
+    // Wait for the transaction to be mined
+    const receipt = await txResponse.wait();
+    console.log('Transaction confirmed in block:', receipt?.blockNumber);
+    
     return txResponse.hash;
   }
 }

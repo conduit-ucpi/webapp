@@ -159,17 +159,14 @@ export class ContractTransactionService {
       data: txData
     });
 
-    console.log('🔧 ContractTransactionService: USDC approval transaction sent:', txHash);
-    
-    // Wait for transaction confirmation before returning
-    await this.waitForTransactionConfirmation(txHash, config);
-    console.log('🔧 ContractTransactionService: USDC approval confirmed');
+    console.log('🔧 ContractTransactionService: USDC approval transaction confirmed:', txHash);
 
     return txHash;
   }
 
   /**
    * Approves USDC spending for the escrow contract
+   * @deprecated Use approveAndSendUSDC instead for direct RPC transactions
    */
   async approveUSDC(
     contractAddress: string,
@@ -179,6 +176,8 @@ export class ContractTransactionService {
     config: ContractTransactionConfig,
     utils: ContractFundingParams['utils']
   ): Promise<string> {
+    console.warn('⚠️ DEPRECATED: approveUSDC uses chainservice backend. Use approveAndSendUSDC for direct RPC transactions.');
+    
     // Convert to USDC format for approval (preserve precision for Web3)
     const usdcAmount = utils?.toUSDCForWeb3 
       ? utils.toUSDCForWeb3(amount, currency || 'microUSDC') 
@@ -298,11 +297,7 @@ export class ContractTransactionService {
       data: txData
     });
 
-    console.log('🔧 ContractTransactionService: Deposit transaction sent:', txHash);
-    
-    // Wait for transaction confirmation
-    await this.waitForTransactionConfirmation(txHash, config);
-    console.log('🔧 ContractTransactionService: Deposit confirmed');
+    console.log('🔧 ContractTransactionService: Deposit transaction confirmed:', txHash);
 
     // Notify contractservice about the successful deposit
     try {
@@ -399,12 +394,14 @@ export class ContractTransactionService {
 
   /**
    * Complete contract funding process: create contract, approve USDC, deposit funds
+   * @deprecated Use fundAndSendContract instead for direct RPC transactions
    */
   async fundContract(params: ContractFundingParams): Promise<{
     contractAddress: string;
     approvalTxHash: string;
     depositTxHash: string;
   }> {
+    console.warn('⚠️ DEPRECATED: fundContract uses chainservice backend. Use fundAndSendContract for direct RPC transactions.');
     const { contract, userAddress, config, utils, onStatusUpdate } = params;
 
     console.log(`🚨 SECURITY DEBUG - fundContract started:`, {
@@ -590,14 +587,7 @@ export class ContractTransactionService {
       data: txData
     });
 
-    console.log('🔧 ContractTransactionService: Dispute transaction sent:', txHash);
-    
-    // Wait for transaction confirmation
-    await this.waitForTransactionConfirmation(txHash, { 
-      usdcContractAddress: '', 
-      serviceLink: '' 
-    });
-    console.log('🔧 ContractTransactionService: Dispute confirmed');
+    console.log('🔧 ContractTransactionService: Dispute transaction confirmed:', txHash);
 
     // Notify contractservice about the successful dispute
     if (contract?.id) {

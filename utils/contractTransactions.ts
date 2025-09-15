@@ -307,6 +307,7 @@ export class ContractTransactionService {
     console.log('🔧 ContractTransactionService: Deposit transaction confirmed (fundAndSendTransaction waits internally)');
 
     // Notify contractservice about the successful deposit
+    // Note: contractservice will handle cache invalidation when it receives this notification
     try {
       console.log('🔧 ContractTransactionService: Notifying contractservice about deposit');
       const notificationResponse = await this.fetcher.authenticatedFetch('/api/contracts/deposit-notification', {
@@ -326,29 +327,6 @@ export class ContractTransactionService {
     } catch (error) {
       console.warn('🔧 ContractTransactionService: Deposit notification error:', error);
       // Don't throw - the transaction succeeded, notification failure shouldn't break the flow
-    }
-
-    // Invalidate chainservice cache after successful deposit
-    try {
-      console.log('🔧 ContractTransactionService: Invalidating chainservice cache for contract:', contractAddress);
-      const cacheResponse = await this.fetcher.authenticatedFetch('/api/admin/cache/invalidate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contractAddress,
-          reason: 'After successful deposit transaction'
-        })
-      });
-
-      if (cacheResponse.ok) {
-        console.log('🔧 ContractTransactionService: Cache invalidation successful');
-      } else {
-        const errorData = await cacheResponse.json().catch(() => ({}));
-        console.warn('🔧 ContractTransactionService: Cache invalidation failed:', errorData);
-      }
-    } catch (error) {
-      console.warn('🔧 ContractTransactionService: Cache invalidation error:', error);
-      // Don't throw - the transaction succeeded, cache invalidation failure shouldn't break the flow
     }
     
     return txHash;

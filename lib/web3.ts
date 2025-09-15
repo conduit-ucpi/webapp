@@ -469,49 +469,86 @@ export class Web3Service {
     const userAddress = await this.getUserAddress();
     
     // Step 1: Estimate gas
-    let gasEstimate: bigint;
+    let gasEstimate: bigint = BigInt(0); // Initialize to avoid TypeScript errors
     if (txParams.gasLimit) {
       gasEstimate = txParams.gasLimit;
       console.log('Using provided gas limit:', gasEstimate.toString());
     } else {
-      try {
-        // Try direct RPC call first
-        const response = await fetch(this.config.rpcUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            jsonrpc: '2.0',
-            method: 'eth_estimateGas',
-            params: [{
+      // Try RPC gas estimation with retries
+      let rpcSuccess = false;
+      const maxRetries = 3;
+      
+      for (let attempt = 1; attempt <= maxRetries && !rpcSuccess; attempt++) {
+        try {
+          console.log(`Attempting RPC gas estimation (attempt ${attempt}/${maxRetries})`);
+          const response = await fetch(this.config.rpcUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              jsonrpc: '2.0',
+              method: 'eth_estimateGas',
+              params: [{
+                from: userAddress,
+                to: txParams.to,
+                data: txParams.data,
+                value: txParams.value || '0x0'
+              }],
+              id: 1
+            })
+          });
+          
+          if (response.ok) {
+            const result = await response.json();
+            if (result.result) {
+              gasEstimate = BigInt(result.result);
+              console.log('Using live RPC gas estimate:', gasEstimate.toString(), 'gas');
+              rpcSuccess = true;
+            } else {
+              throw new Error('No gas estimate in RPC response');
+            }
+          } else {
+            throw new Error(`RPC call failed with status: ${response.status}`);
+          }
+        } catch (error) {
+          console.warn(`RPC gas estimation attempt ${attempt} failed:`, error);
+          if (attempt < maxRetries) {
+            // Wait 1 second before retry
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+        }
+      }
+      
+      // If RPC failed, try provider estimation with retries
+      if (!rpcSuccess) {
+        console.warn('All RPC gas estimation attempts failed, trying provider...');
+        let providerSuccess = false;
+        
+        for (let attempt = 1; attempt <= maxRetries && !providerSuccess; attempt++) {
+          try {
+            console.log(`Attempting provider gas estimation (attempt ${attempt}/${maxRetries})`);
+            gasEstimate = await this.provider.estimateGas({
               from: userAddress,
               to: txParams.to,
               data: txParams.data,
               value: txParams.value || '0x0'
-            }],
-            id: 1
-          })
-        });
-        
-        if (response.ok) {
-          const result = await response.json();
-          if (result.result) {
-            gasEstimate = BigInt(result.result);
-            console.log('Using live RPC gas estimate:', gasEstimate.toString(), 'gas');
-          } else {
-            throw new Error('No gas estimate in RPC response');
+            });
+            console.log('Using provider gas estimate:', gasEstimate.toString(), 'gas');
+            providerSuccess = true;
+          } catch (providerError) {
+            console.warn(`Provider gas estimation attempt ${attempt} failed:`, providerError);
+            if (attempt < maxRetries) {
+              // Wait 1 second before retry
+              await new Promise(resolve => setTimeout(resolve, 1000));
+            }
           }
-        } else {
-          throw new Error('RPC call failed');
         }
-      } catch (error) {
-        console.warn('Failed to get live gas estimate from RPC, falling back to provider:', error);
-        // Fallback to provider's gas estimation
-        gasEstimate = await this.provider.estimateGas({
-          from: userAddress,
-          to: txParams.to,
-          data: txParams.data,
-          value: txParams.value || '0x0'
-        });
+        
+        // Final fallback if both RPC and provider failed
+        if (!providerSuccess) {
+          console.error('All gas estimation attempts failed, using fallback');
+          gasEstimate = BigInt(100000); // 100k gas units - reasonable for most transactions
+          console.warn('Using fallback gas estimate:', gasEstimate.toString(), 'gas');
+        }
       }
     }
     
@@ -550,7 +587,7 @@ export class Web3Service {
     
     // Step 2: Calculate total gas needed (with 20% buffer)
     const totalGasNeeded = (gasEstimate * gasPrice * BigInt(120)) / BigInt(100);
-    console.log('Total gas needed (with 20% buffer):', totalGasNeeded.toString(), 'wei');
+    console.log('Gas calculation - Estimate:', gasEstimate.toString(), 'Price:', gasPrice.toString(), 'Total needed:', totalGasNeeded.toString(), 'wei');
     
     // Step 3: Call chainservice to fund wallet
     console.log('Requesting wallet funding from chainservice...');

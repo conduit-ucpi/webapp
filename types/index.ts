@@ -110,6 +110,7 @@ export interface PendingContract {
 }
 
 export interface CreateContractRequest {
+  contractserviceId: string;
   tokenAddress: string;
   buyer: string;
   seller: string;

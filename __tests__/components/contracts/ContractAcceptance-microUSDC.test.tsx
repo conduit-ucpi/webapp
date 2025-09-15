@@ -191,8 +191,14 @@ describe('ContractAcceptance - microUSDC Amount Handling', () => {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            ...contract,
+            contractserviceId: contract.id,
+            tokenAddress: config.usdcContractAddress,
+            buyer: params.userAddress,
+            seller: contract.sellerAddress,
             amount: amountInMicroUSDC,
+            expiryTimestamp: contract.expiryTimestamp,
+            description: contract.description,
+            serviceLink: config.serviceLink,
           }),
         });
         
@@ -420,6 +426,7 @@ describe('ContractAcceptance - microUSDC Amount Handling', () => {
 
       const requestBody = JSON.parse(createContractCall[1].body);
       expect(requestBody.amount).toBe('250000'); // Should be microUSDC as string, no conversion
+      expect(requestBody.contractserviceId).toBe('test-contract-123'); // Should include contractservice ID
     });
 
     it('should handle large amounts in contract creation', async () => {

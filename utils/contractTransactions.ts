@@ -71,6 +71,7 @@ export class ContractTransactionService {
     const amountInMicroUSDC = contract.amount;
     
     const contractRequest: CreateContractRequest = {
+      contractserviceId: contract.id,
       tokenAddress: ensureAddressPrefix(config.usdcContractAddress),
       buyer: ensureAddressPrefix(userAddress),
       seller: ensureAddressPrefix(contract.sellerAddress),

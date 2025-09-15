@@ -25,6 +25,7 @@ describe('/api/chain/create-contract - microUSDC Handling', () => {
           'cookie': 'AUTH-TOKEN=valid-token'
         },
         body: {
+          contractserviceId: 'test-contract-123',
           tokenAddress: '0xUSDCContractAddress',
           buyer: '0xBuyerAddress',
           seller: '0xSellerAddress', 
@@ -58,6 +59,7 @@ describe('/api/chain/create-contract - microUSDC Handling', () => {
             'Cookie': 'AUTH-TOKEN=valid-token'
           },
           body: JSON.stringify({
+            contractserviceId: 'test-contract-123',
             tokenAddress: '0xUSDCContractAddress',
             buyer: '0xBuyerAddress',
             seller: '0xSellerAddress',

@@ -125,6 +125,9 @@ export interface AuthMethods {
   // Backend API helpers
   authenticatedFetch?: (url: string, options?: RequestInit) => Promise<Response>;
   
+  // Debug helpers
+  clearStoredToken?: () => void;
+  
   // State checks
   hasVisitedBefore: () => boolean;
   markAsVisited: () => void;

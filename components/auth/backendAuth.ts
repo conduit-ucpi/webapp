@@ -40,6 +40,14 @@ export class BackendAuth {
   getToken(): string | null {
     return this.authToken;
   }
+
+  /**
+   * Force clear the auth token (useful for debugging)
+   */
+  clearToken(): void {
+    console.log('🔧 BackendAuth: Clearing stored auth token');
+    this.authToken = null;
+  }
   
   /**
    * Set the auth token (called after successful authentication)
@@ -195,7 +203,10 @@ export class BackendAuth {
     
     // Always include auth token if available
     if (this.authToken) {
+      console.log('🔧 BackendAuth: Sending auth token:', this.authToken.substring(0, 20) + '...');
       headers['Authorization'] = `Bearer ${this.authToken}`;
+    } else {
+      console.log('🔧 BackendAuth: No auth token available, using cookies only');
     }
     
     const fetchOptions = {

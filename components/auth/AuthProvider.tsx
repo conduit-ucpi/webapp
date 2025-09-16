@@ -398,6 +398,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
     authenticatedFetch: (url: string, options?: RequestInit) => {
       return backendAuth.authenticatedFetch(url, options);
     },
+
+    // Debug method to clear stored token
+    clearStoredToken: () => {
+      backendAuth.clearToken();
+    },
     });
   }, [authState, provider, backendAuth]);
 
@@ -711,6 +716,11 @@ function RegularAuthProvider({ children }: AuthProviderProps) {
     // Use BackendAuth for authenticated API calls
     authenticatedFetch: (url: string, options?: RequestInit) => {
       return backendAuth.authenticatedFetch(url, options);
+    },
+
+    // Debug method to clear stored token
+    clearStoredToken: () => {
+      backendAuth.clearToken();
     },
   };
 

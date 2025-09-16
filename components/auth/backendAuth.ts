@@ -48,6 +48,15 @@ export class BackendAuth {
     console.log('🔧 BackendAuth: Clearing stored auth token');
     this.authToken = null;
   }
+
+  /**
+   * Force clear all auth state - both JWT token and cookies (useful for debugging)
+   */
+  clearAllAuthState(): void {
+    console.log('🔧 BackendAuth: Clearing all auth state (token + cookies)');
+    this.authToken = null;
+    this.clearLocalCookies();
+  }
   
   /**
    * Set the auth token (called after successful authentication)
@@ -118,7 +127,7 @@ export class BackendAuth {
   
   /**
    * Logout the current user
-   * Clears backend session and the stored auth token
+   * Clears backend session, stored auth token, and local cookies
    */
   async logout(): Promise<void> {
     try {
@@ -131,12 +140,41 @@ export class BackendAuth {
           }
         });
       }
+      
       // Clear the stored token
       this.authToken = null;
+      
+      // Clear local cookies as backup (in case backend didn't clear them)
+      this.clearLocalCookies();
+      
     } catch (error) {
       console.error('Backend logout error:', error);
-      // Even if logout fails, clear the token
+      // Even if logout fails, clear the token and cookies
       this.authToken = null;
+      this.clearLocalCookies();
+    }
+  }
+
+  /**
+   * Clear local auth cookies as backup cleanup
+   */
+  private clearLocalCookies(): void {
+    try {
+      // Clear common auth cookie names
+      const cookiesToClear = ['AUTH-TOKEN', 'auth-token', 'authToken', 'session'];
+      
+      cookiesToClear.forEach(cookieName => {
+        // Clear for current domain
+        document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=None; Secure`;
+        // Clear for current domain without path
+        document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; SameSite=None; Secure`;
+        // Clear for localhost (development)
+        document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=localhost; SameSite=None; Secure`;
+      });
+      
+      console.log('🔧 BackendAuth: Local cookies cleared');
+    } catch (error) {
+      console.warn('🔧 BackendAuth: Failed to clear local cookies:', error);
     }
   }
   

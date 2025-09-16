@@ -127,6 +127,7 @@ export interface AuthMethods {
   
   // Debug helpers
   clearStoredToken?: () => void;
+  clearAllAuthState?: () => void;
   
   // State checks
   hasVisitedBefore: () => boolean;

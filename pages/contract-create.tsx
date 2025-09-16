@@ -43,7 +43,7 @@ export default function ContractCreate() {
   
   const router = useRouter();
   const { config } = useConfig();
-  const { user, authenticatedFetch, fundContract } = useAuth();
+  const { user, authenticatedFetch, fundContract, isLoading: authLoading } = useAuth();
   const { utils, isReady, error: sdkError } = useWeb3SDK();
   
   // Query parameters
@@ -73,12 +73,20 @@ export default function ContractCreate() {
 
   console.log('🔧 ContractCreate: Hooks initialized', {
     hasConfig: !!config,
+    authLoading,
     hasUser: !!user,
+    userEmail: user?.email,
     hasAuthenticatedFetch: !!authenticatedFetch,
     userWallet: user?.walletAddress,
     isReady,
     sdkError,
     queryParams: { seller, amount, description, returnUrl, order_id, epoch_expiry }
+  });
+
+  console.log('🔧 ContractCreate: Auth state decision', {
+    willShowLoading: !config || authLoading || (user && !isReady),
+    willShowAuth: !authLoading && !user,
+    willShowForm: !authLoading && !!user
   });
 
   // Initialize form from query parameters
@@ -420,8 +428,8 @@ export default function ContractCreate() {
     }
   };
 
-  // Loading screen for SDK initialization - only show if config is missing or if user is connected but SDK isn't ready
-  if (!config || (user && !isReady)) {
+  // Loading screen for initialization - show if config is missing, auth is loading, or if user is connected but SDK isn't ready
+  if (!config || authLoading || (user && !isReady)) {
     return (
       <div className={`min-h-screen flex items-center justify-center ${isInIframe ? 'bg-gray-50' : 'bg-white'}`}>
         <Head>

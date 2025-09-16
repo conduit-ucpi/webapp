@@ -399,9 +399,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
       return backendAuth.authenticatedFetch(url, options);
     },
 
-    // Debug method to clear stored token
+    // Debug methods
     clearStoredToken: () => {
       backendAuth.clearToken();
+    },
+    clearAllAuthState: () => {
+      backendAuth.clearAllAuthState();
     },
     });
   }, [authState, provider, backendAuth]);
@@ -718,9 +721,12 @@ function RegularAuthProvider({ children }: AuthProviderProps) {
       return backendAuth.authenticatedFetch(url, options);
     },
 
-    // Debug method to clear stored token
+    // Debug methods
     clearStoredToken: () => {
       backendAuth.clearToken();
+    },
+    clearAllAuthState: () => {
+      backendAuth.clearAllAuthState();
     },
   };
 

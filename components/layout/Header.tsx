@@ -1,25 +1,25 @@
+import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/router';
 import { useAuth } from '@/components/auth';
+import { useNavigation } from '@/components/navigation/NavigationProvider';
 import ConnectWalletEmbedded from '@/components/auth/ConnectWalletEmbedded';
-import Button from '@/components/ui/Button';
-import ThemeToggle from '@/components/theme/ThemeToggle';
+import MobileDrawer from './MobileDrawer';
 import {
-  HomeIcon,
-  PlusIcon,
-  RectangleStackIcon,
-  WalletIcon,
-  QuestionMarkCircleIcon,
-  ScaleIcon,
+  Bars3Icon,
+  ArrowLeftIcon,
 } from '@heroicons/react/24/outline';
 export default function Header() {
+  const router = useRouter();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { canGoBack, goBack } = useNavigation();
+  
   let user = null;
-  let disconnect = () => {};
   let isLoading = false;
 
   try {
     const authContext = useAuth();
     user = authContext.user;
-    disconnect = authContext.disconnect;
     isLoading = authContext.isLoading;
   } catch (error) {
     // Auth context not available during SSR or hydration
@@ -29,75 +29,75 @@ export default function Header() {
   // Authentication is determined by user presence alone, not provider
   const isAuthenticated = !!user;
 
-  const handleLogout = async () => {
-    await disconnect();
+  // Don't show header on plugin pages
+  if (router.pathname === '/contract-create') {
+    return null;
+  }
+
+  const handleBack = () => {
+    goBack();
   };
 
   return (
-    <header className="bg-white dark:bg-secondary-800 shadow-sm border-b border-secondary-200 dark:border-secondary-700 transition-colors">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          <div className="flex items-center">
-            <Link href="/" className="flex flex-col">
-              <span className="text-xl font-bold italic text-secondary-900 dark:text-white">
-                Instant Escrow
-              </span>
-              <span className="text-xs text-primary-600 dark:text-primary-400 -mt-1">
-                running on Conduit UCPI
-              </span>
-            </Link>
-          </div>
-
-          <nav className="hidden md:flex space-x-8">
-            <Link href="/" className="flex items-center gap-1.5 text-secondary-600 hover:text-secondary-900 dark:text-secondary-300 dark:hover:text-white">
-              <HomeIcon className="w-4 h-4" />
-              Home
-            </Link>
-            {isAuthenticated && (
-              <>
-                <Link href="/create" className="flex items-center gap-1.5 text-secondary-600 hover:text-secondary-900 dark:text-secondary-300 dark:hover:text-white">
-                  <PlusIcon className="w-4 h-4" />
-                  New Request
-                </Link>
-                <Link href="/dashboard" className="flex items-center gap-1.5 text-secondary-600 hover:text-secondary-900 dark:text-secondary-300 dark:hover:text-white">
-                  <RectangleStackIcon className="w-4 h-4" />
-                  Dashboard
-                </Link>
-                <Link href="/wallet" className="flex items-center gap-1.5 text-secondary-600 hover:text-secondary-900 dark:text-secondary-300 dark:hover:text-white">
-                  <WalletIcon className="w-4 h-4" />
-                  Wallet
-                </Link>
-              </>
-            )}
-            <Link href="/faq" className="flex items-center gap-1.5 text-secondary-600 hover:text-secondary-900 dark:text-secondary-300 dark:hover:text-white">
-              <QuestionMarkCircleIcon className="w-4 h-4" />
-              FAQ
-            </Link>
-            <Link href="/arbitration-policy" className="flex items-center gap-1.5 text-secondary-600 hover:text-secondary-900 dark:text-secondary-300 dark:hover:text-white">
-              <ScaleIcon className="w-4 h-4" />
-              Arbitration
-            </Link>
-          </nav>
-
-          <div className="flex items-center space-x-4">
-            <ThemeToggle />
-            {isLoading ? (
-              <div className="w-32 h-10 bg-secondary-100 dark:bg-secondary-700 animate-pulse rounded-md" />
-            ) : isAuthenticated ? (
-              <div className="flex items-center space-x-4">
-                <span className="text-sm text-secondary-600 dark:text-secondary-300">
-                  {user?.email || 'User'}
+    <>
+      <header className="bg-white dark:bg-secondary-800 shadow-sm border-b border-secondary-200 dark:border-secondary-700 transition-colors">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-14">
+            {/* Left side: Back button or Menu */}
+            <div className="flex items-center">
+              {canGoBack ? (
+                <button
+                  onClick={handleBack}
+                  className="mr-3 p-2 rounded-lg hover:bg-secondary-100 dark:hover:bg-secondary-800 transition-colors"
+                  aria-label="Go back"
+                >
+                  <ArrowLeftIcon className="w-5 h-5 text-secondary-600 dark:text-secondary-300" />
+                </button>
+              ) : (
+                <button
+                  onClick={() => setMobileMenuOpen(true)}
+                  className="mr-3 p-2 rounded-lg hover:bg-secondary-100 dark:hover:bg-secondary-800 transition-colors"
+                  aria-label="Open menu"
+                >
+                  <Bars3Icon className="w-5 h-5 text-secondary-600 dark:text-secondary-300" />
+                </button>
+              )}
+              
+              <Link href="/" className="flex flex-col">
+                <span className="text-lg font-bold italic text-secondary-900 dark:text-white">
+                  Instant Escrow
                 </span>
-                <Button variant="outline" size="sm" onClick={handleLogout}>
-                  Logout
-                </Button>
-              </div>
-            ) : (
-              <ConnectWalletEmbedded compact={true} />
-            )}
+                <span className="text-xs text-primary-600 dark:text-primary-400 -mt-1">
+                  Conduit UCPI
+                </span>
+              </Link>
+            </div>
+
+            {/* Right side: Auth status */}
+
+            <div className="flex items-center">
+              {isLoading ? (
+                <div className="w-24 h-8 bg-secondary-100 dark:bg-secondary-700 animate-pulse rounded-md" />
+              ) : isAuthenticated ? (
+                <div className="flex items-center gap-2">
+                  <span className="hidden sm:inline text-sm text-secondary-600 dark:text-secondary-300 truncate max-w-[150px]">
+                    {user?.email || 'User'}
+                  </span>
+                  <div className="w-2 h-2 bg-green-500 rounded-full" />
+                </div>
+              ) : (
+                <ConnectWalletEmbedded compact={true} />
+              )}
+            </div>
           </div>
         </div>
-      </div>
-    </header>
+      </header>
+
+      {/* Mobile navigation drawer */}
+      <MobileDrawer 
+        isOpen={mobileMenuOpen} 
+        onClose={() => setMobileMenuOpen(false)} 
+      />
+    </>
   );
 }

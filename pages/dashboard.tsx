@@ -77,7 +77,9 @@ export default function Dashboard() {
                 <div className="flex items-center gap-2">
                   <ExpandableHash hash={walletAddress || ''} className="text-sm" />
                   <span className="text-xs text-secondary-500 dark:text-secondary-400">•</span>
-                  <span className="text-xs text-secondary-600 dark:text-secondary-400">{user.email}</span>
+                  <span className="text-xs text-secondary-600 dark:text-secondary-400">
+                    {user.username ? `@${user.username}` : user.email}
+                  </span>
                 </div>
               </div>
             </div>

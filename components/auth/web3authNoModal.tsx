@@ -648,7 +648,12 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
    */
   async fundAndSendTransaction(txParams: { to: string; data: string; value?: string; gasLimit?: bigint; gasPrice?: bigint; }): Promise<string> {
     if (!this.web3Service) {
-      throw new Error('Web3Service not initialized - call initializeWeb3Service first');
+      console.warn('🔧 Web3Auth No-Modal: Web3Service not initialized, attempting to initialize...');
+      await this.initializeWeb3Service();
+      
+      if (!this.web3Service) {
+        throw new Error('Web3Service not initialized - call initializeWeb3Service first');
+      }
     }
     
     return await this.web3Service.fundAndSendTransaction(txParams);

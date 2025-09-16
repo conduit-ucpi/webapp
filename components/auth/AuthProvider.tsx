@@ -406,6 +406,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
     clearAllAuthState: () => {
       backendAuth.clearAllAuthState();
     },
+    getAuthToken: () => {
+      return backendAuth.getToken();
+    },
     });
   }, [authState, provider, backendAuth]);
 
@@ -727,6 +730,9 @@ function RegularAuthProvider({ children }: AuthProviderProps) {
     },
     clearAllAuthState: () => {
       backendAuth.clearAllAuthState();
+    },
+    getAuthToken: () => {
+      return backendAuth.getToken();
     },
   };
 

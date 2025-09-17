@@ -39,7 +39,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
 
       setIsLoadingBalance(true);
       try {
-        const balance = await getUSDCBalance(user.walletAddress);
+        const balance = await getUSDCBalance();
         setUserBalance(balance);
       } catch (error) {
         console.error('Failed to fetch USDC balance:', error);

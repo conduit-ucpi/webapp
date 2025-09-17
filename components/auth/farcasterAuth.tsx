@@ -821,7 +821,17 @@ function FarcasterAuthProviderInner({ children, AuthContext }: {
           if (!config?.rpcUrl) {
             throw new Error('RPC URL not configured');
           }
-          return new ethers.JsonRpcProvider(config.rpcUrl);
+          console.log('🔧 Farcaster: createFarcasterProvider using FarcasterSyntheticProvider');
+          
+          // Use our synthetic provider that integrates with Wagmi for signing
+          const syntheticProvider = new FarcasterSyntheticProvider(
+            config.rpcUrl,
+            address,
+            signMessageAsync ? (args: { message: string }) => signMessageAsync(args) : undefined,
+            walletClient
+          );
+          
+          return syntheticProvider as any;
         }
       };
     };

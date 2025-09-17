@@ -111,8 +111,22 @@ class FarcasterSyntheticProvider {
     return this.jsonRpcProvider.call(tx);
   }
   
+  // Account-related methods that ethers.js BrowserProvider might call
+  async listAccounts(): Promise<string[]> {
+    if (!this.address) {
+      return [];
+    }
+    return [this.address];
+  }
+  
   // The key method - returns a signer that uses Wagmi for signing
-  async getSigner() {
+  async getSigner(index?: number) {
+    // ethers.js BrowserProvider.getSigner() accepts an optional index
+    // We only have one account, so if index is specified and not 0, throw
+    if (index !== undefined && index !== 0) {
+      throw new Error('no such account');
+    }
+    
     if (!this.address || !this.signMessageAsync) {
       throw new Error('Wallet not connected');
     }

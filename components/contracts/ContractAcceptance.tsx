@@ -63,14 +63,16 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
   const hasInsufficientBalance = () => {
     if (!userBalance || !contract.amount) return false;
     
-    // Convert balance from microUSDC to same units as contract amount
-    // Both should be in microUSDC already
-    const balanceNum = parseInt(userBalance);
+    // SDK returns balance as decimal USDC string (e.g., "0.46269")
+    // Contract amount is in microUSDC (e.g., 1000000 for $1.00)
+    // Convert SDK balance to microUSDC for comparison
+    const balanceInUSDC = parseFloat(userBalance);
+    const balanceInMicroUSDC = Math.round(balanceInUSDC * 1000000);
     const requiredAmount = typeof contract.amount === 'string' 
       ? parseInt(contract.amount) 
       : contract.amount;
     
-    return balanceNum < requiredAmount;
+    return balanceInMicroUSDC < requiredAmount;
   };
 
   const handleAccept = async () => {
@@ -283,7 +285,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
             {isLoadingBalance ? (
               <LoadingSpinner className="w-4 h-4" />
             ) : userBalance !== null ? (
-              `$${utils?.formatCurrency ? utils.formatCurrency(userBalance, 'microUSDC').amount : userBalance} USDC`
+              `$${parseFloat(userBalance).toFixed(4)} USDC`
             ) : (
               'Unable to load'
             )}
@@ -302,7 +304,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
       {hasInsufficientBalance() ? (
         <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-6">
           <p className="text-sm text-red-800">
-            <strong>Insufficient balance:</strong> You need ${utils?.formatCurrency ? utils.formatCurrency(contract.amount, contract.currency || 'microUSDC').amount : contract.amount} USDC but only have ${userBalance !== null ? (utils?.formatCurrency ? utils.formatCurrency(userBalance, 'microUSDC').amount : userBalance) : '0'} USDC in your wallet.
+            <strong>Insufficient balance:</strong> You need ${utils?.formatCurrency ? utils.formatCurrency(contract.amount, contract.currency || 'microUSDC').amount : contract.amount} USDC but only have ${userBalance !== null ? parseFloat(userBalance).toFixed(4) : '0'} USDC in your wallet.
           </p>
           <p className="text-sm text-red-800 mt-2">
             Please add USDC to your wallet before proceeding.

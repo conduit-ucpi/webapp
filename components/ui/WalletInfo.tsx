@@ -37,26 +37,18 @@ export default function WalletInfo({ className = '' }: WalletInfoProps) {
   }, [user?.walletAddress, getUSDCBalance]);
 
   const copyToClipboard = async () => {
-    console.log('Copy button clicked', { walletAddress: user?.walletAddress });
-    
-    if (!user?.walletAddress) {
-      console.error('No wallet address available');
-      return;
-    }
+    if (!user?.walletAddress) return;
     
     try {
-      // First try the modern clipboard API
+      // Try modern clipboard API first (should work now with permissions fixed)
       if (navigator.clipboard && window.isSecureContext) {
-        console.log('Using modern clipboard API');
         await navigator.clipboard.writeText(user.walletAddress);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
-        console.log('Successfully copied with clipboard API');
         return;
       }
       
-      // Fallback for older browsers or non-HTTPS contexts
-      console.log('Using fallback copy method');
+      // Fallback for older browsers
       const textArea = document.createElement('textarea');
       textArea.value = user.walletAddress;
       textArea.style.position = 'fixed';
@@ -65,6 +57,7 @@ export default function WalletInfo({ className = '' }: WalletInfoProps) {
       document.body.appendChild(textArea);
       textArea.focus();
       textArea.select();
+      textArea.setSelectionRange(0, 99999); // For mobile devices
       
       const successful = document.execCommand('copy');
       document.body.removeChild(textArea);
@@ -72,13 +65,11 @@ export default function WalletInfo({ className = '' }: WalletInfoProps) {
       if (successful) {
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
-        console.log('Successfully copied with fallback method');
       } else {
-        throw new Error('Copy command failed');
+        throw new Error('Copy failed');
       }
     } catch (error) {
       console.error('Failed to copy address:', error);
-      // Show user-friendly error message
       alert('Could not copy address. Please copy manually: ' + user.walletAddress);
     }
   };

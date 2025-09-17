@@ -9,7 +9,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(400).json({ error: 'Contract ID is required' });
   }
 
-  if (req.method === 'POST') {
+  if (req.method === 'POST' || req.method === 'PATCH') {
     return handleSubmitDisputeEntry(req, res, id);
   }
   
@@ -24,10 +24,14 @@ async function handleSubmitDisputeEntry(req: NextApiRequest, res: NextApiRespons
     console.log('Auth token:', authToken ? 'Present' : 'Missing');
     console.log('Dispute entry data:', req.body);
 
-    // Validate request body
-    const disputeEntry: SubmitDisputeEntryRequest = req.body;
-    if (!disputeEntry.timestamp || !disputeEntry.reason || disputeEntry.refundPercent === undefined) {
-      return res.status(400).json({ error: 'Missing required fields: timestamp, reason, refundPercent' });
+    // Validate request body - handle both formats
+    const disputeEntry: SubmitDisputeEntryRequest = {
+      ...req.body,
+      timestamp: req.body.timestamp || Date.now() // Add timestamp if not provided
+    };
+    
+    if (!disputeEntry.reason || disputeEntry.refundPercent === undefined) {
+      return res.status(400).json({ error: 'Missing required fields: reason, refundPercent' });
     }
 
     if (disputeEntry.refundPercent < 0 || disputeEntry.refundPercent > 100) {

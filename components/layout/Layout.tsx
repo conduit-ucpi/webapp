@@ -1,9 +1,7 @@
 import { useRouter } from 'next/router';
 import Header from './Header';
 import Footer from './Footer';
-import FloatingActionButton from './FloatingActionButton';
 import EmailPromptManager from '../auth/EmailPromptManager';
-import { LoggerDemo } from '../debug/LoggerDemo';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -31,9 +29,7 @@ export default function Layout({ children }: LayoutProps) {
           {children}
         </EmailPromptManager>
       </main>
-      <FloatingActionButton />
       <Footer />
-      <LoggerDemo />
     </div>
   );
 }

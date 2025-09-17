@@ -2,28 +2,9 @@ import { useAuth } from '@/components/auth';
 import CreateContractWizard from '@/components/contracts/CreateContractWizard';
 import ConnectWalletEmbedded from '@/components/auth/ConnectWalletEmbedded';
 import Skeleton from '@/components/ui/Skeleton';
-import { useState } from 'react';
 
 export default function CreatePage() {
-  const { user, isLoading, signMessage } = useAuth();
-  const [testResult, setTestResult] = useState<string>('');
-
-  const handleAuthSign = async () => {
-    try {
-      setTestResult('🔄 Testing auth signing...');
-      if (!user?.walletAddress || !signMessage) {
-        setTestResult('❌ Auth not available');
-        return;
-      }
-      
-      const signature = await signMessage('Test message from Create page');
-      setTestResult(`✅ Signed successfully by ${user.walletAddress}`);
-      console.log('Create page test signature:', signature);
-    } catch (error) {
-      setTestResult(`❌ Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      console.error('Create page test error:', error);
-    }
-  };
+  const { user, isLoading } = useAuth();
 
   if (isLoading) {
     return (
@@ -68,22 +49,6 @@ export default function CreatePage() {
           <p className="mt-2 text-secondary-600">
             Set up a secure time-delayed escrow with automatic dispute resolution
           </p>
-          
-          {/* Test section */}
-          <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <p className="text-sm text-blue-800 mb-2">
-              <strong>Debug Test:</strong> Current user: {user?.walletAddress}
-            </p>
-            <button 
-              onClick={handleAuthSign}
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm mr-3"
-            >
-              Test Auth Signing
-            </button>
-            {testResult && (
-              <span className="text-sm">{testResult}</span>
-            )}
-          </div>
         </div>
 
         <div className="flex justify-center">

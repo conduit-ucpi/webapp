@@ -238,7 +238,7 @@ export const FarcasterLoggerProvider: React.FC<FarcasterLoggerProviderProps> = (
   };
 
   // Show overlay in Farcaster OR development mode for testing
-  const shouldShowOverlay = isInFarcaster || (process.env.NODE_ENV === 'development') || true; // Always show for debugging
+  const shouldShowOverlay = false; // Disabled - was: isInFarcaster || (process.env.NODE_ENV === 'development')
   
   // Debug the visibility conditions (only once when isInFarcaster changes)
   useEffect(() => {
@@ -265,23 +265,6 @@ export const FarcasterLoggerProvider: React.FC<FarcasterLoggerProviderProps> = (
     <FarcasterLoggerContext.Provider value={value}>
       {children}
       {shouldShowOverlay && <FarcasterLoggerOverlay />}
-      {/* FORCE RENDER TEST - ALWAYS SHOW */}
-      <div
-        style={{
-          position: 'fixed',
-          top: '50px',
-          left: '50px',
-          zIndex: 999999,
-          padding: '10px',
-          backgroundColor: 'orange',
-          color: 'black',
-          border: '2px solid black',
-          borderRadius: '5px',
-          fontWeight: 'bold'
-        }}
-      >
-        LOGGER TEST: {shouldShowOverlay ? 'SHOULD SHOW' : 'HIDDEN'}
-      </div>
     </FarcasterLoggerContext.Provider>
   );
 };

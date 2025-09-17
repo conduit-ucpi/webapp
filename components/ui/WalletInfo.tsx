@@ -37,14 +37,49 @@ export default function WalletInfo({ className = '' }: WalletInfoProps) {
   }, [user?.walletAddress, getUSDCBalance]);
 
   const copyToClipboard = async () => {
-    if (user?.walletAddress) {
-      try {
+    console.log('Copy button clicked', { walletAddress: user?.walletAddress });
+    
+    if (!user?.walletAddress) {
+      console.error('No wallet address available');
+      return;
+    }
+    
+    try {
+      // First try the modern clipboard API
+      if (navigator.clipboard && window.isSecureContext) {
+        console.log('Using modern clipboard API');
         await navigator.clipboard.writeText(user.walletAddress);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
-      } catch (error) {
-        console.error('Failed to copy address:', error);
+        console.log('Successfully copied with clipboard API');
+        return;
       }
+      
+      // Fallback for older browsers or non-HTTPS contexts
+      console.log('Using fallback copy method');
+      const textArea = document.createElement('textarea');
+      textArea.value = user.walletAddress;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-999999px';
+      textArea.style.top = '-999999px';
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      
+      const successful = document.execCommand('copy');
+      document.body.removeChild(textArea);
+      
+      if (successful) {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+        console.log('Successfully copied with fallback method');
+      } else {
+        throw new Error('Copy command failed');
+      }
+    } catch (error) {
+      console.error('Failed to copy address:', error);
+      // Show user-friendly error message
+      alert('Could not copy address. Please copy manually: ' + user.walletAddress);
     }
   };
 
@@ -71,10 +106,12 @@ export default function WalletInfo({ className = '' }: WalletInfoProps) {
                 variant="outline"
                 size="sm"
                 onClick={copyToClipboard}
-                className="text-xs py-1 px-2 h-auto"
+                className="text-xs py-1 px-2 h-auto relative z-10 cursor-pointer"
                 disabled={copied}
+                type="button"
+                title={copied ? 'Address copied!' : 'Click to copy wallet address'}
               >
-                {copied ? '✓' : 'Copy'}
+                {copied ? '✓ Copied' : 'Copy'}
               </Button>
             </div>
           </div>

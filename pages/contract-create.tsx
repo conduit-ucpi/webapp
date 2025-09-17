@@ -209,7 +209,8 @@ export default function ContractCreate() {
         chainId: config.chainId?.toString() || "8453",
         serviceLink: config.serviceLink,
         productName: order_id ? `Order #${order_id}` : undefined,
-        state: "OK"
+        state: "OK",
+        suppressSending: true
       };
 
       console.log('🔧 ContractCreate: About to call authenticatedFetch');

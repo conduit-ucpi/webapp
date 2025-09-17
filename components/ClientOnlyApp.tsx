@@ -10,7 +10,6 @@ import { SDKProvider } from '@/components/auth/SDKProvider';
 import FarcasterReady from '@/components/farcaster/FarcasterReady';
 import { FarcasterDetectionProvider } from '@/components/farcaster/FarcasterDetectionProvider';
 import { NavigationProvider } from '@/components/navigation/NavigationProvider';
-import { SimpleDebugLogger } from '@/components/debug/SimpleDebugLogger';
 
 interface ClientOnlyAppProps {
   Component: any;
@@ -49,7 +48,6 @@ export default function ClientOnlyApp({ Component, pageProps }: ClientOnlyAppPro
                         <Layout>
                           <Component {...pageProps} />
                         </Layout>
-                        <SimpleDebugLogger />
                       </TourProvider>
                     </ToastProvider>
                   </NavigationProvider>

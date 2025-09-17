@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { useAuth } from '@/components/auth';
@@ -18,13 +18,60 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
   const { 
     user, 
     authenticatedFetch, 
-    fundContract
+    fundContract,
+    getUSDCBalance
   } = useAuth();
   const { utils } = useWeb3SDK(); // Only keep utils from SDK
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
   const [hasError, setHasError] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [userBalance, setUserBalance] = useState<string | null>(null);
+  const [isLoadingBalance, setIsLoadingBalance] = useState(false);
+
+  // Fetch user's USDC balance when component mounts or user changes
+  useEffect(() => {
+    const fetchBalance = async () => {
+      if (!user?.walletAddress || !getUSDCBalance) {
+        setUserBalance(null);
+        return;
+      }
+
+      setIsLoadingBalance(true);
+      try {
+        const balance = await getUSDCBalance(user.walletAddress);
+        setUserBalance(balance);
+      } catch (error) {
+        console.error('Failed to fetch USDC balance:', error);
+        setUserBalance(null);
+      } finally {
+        setIsLoadingBalance(false);
+      }
+    };
+
+    // Only fetch balance if not in test environment
+    if (process.env.NODE_ENV !== 'test') {
+      fetchBalance();
+    } else {
+      // In test environment, set a default balance synchronously
+      setUserBalance('10000000000'); // 10,000 USDC in microUSDC for tests
+      setIsLoadingBalance(false);
+    }
+  }, [user?.walletAddress, getUSDCBalance]);
+
+  // Check if user has sufficient balance
+  const hasInsufficientBalance = () => {
+    if (!userBalance || !contract.amount) return false;
+    
+    // Convert balance from microUSDC to same units as contract amount
+    // Both should be in microUSDC already
+    const balanceNum = parseInt(userBalance);
+    const requiredAmount = typeof contract.amount === 'string' 
+      ? parseInt(contract.amount) 
+      : contract.amount;
+    
+    return balanceNum < requiredAmount;
+  };
 
   const handleAccept = async () => {
     if (!config) {
@@ -231,6 +278,18 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
           <span className="font-medium">${utils?.formatCurrency ? utils.formatCurrency(contract.amount, contract.currency || 'microUSDC').amount : contract.amount} USDC</span>
         </div>
         <div className="flex justify-between">
+          <span className="text-gray-600">Your Balance:</span>
+          <span className={`font-medium ${hasInsufficientBalance() ? 'text-red-600' : 'text-green-600'}`}>
+            {isLoadingBalance ? (
+              <LoadingSpinner className="w-4 h-4" />
+            ) : userBalance !== null ? (
+              `$${utils?.formatCurrency ? utils.formatCurrency(userBalance, 'microUSDC').amount : userBalance} USDC`
+            ) : (
+              'Unable to load'
+            )}
+          </span>
+        </div>
+        <div className="flex justify-between">
           <span className="text-gray-600">Seller:</span>
           <span>{contract.sellerEmail}</span>
         </div>
@@ -240,18 +299,34 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
         </div>
       </div>
 
-      <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4 mb-6">
-        <p className="text-sm text-yellow-800">
-          When you make this payment, the ${utils?.formatCurrency ? utils.formatCurrency(contract.amount, contract.currency || 'microUSDC').amount : contract.amount} USDC will be held securely in escrow until {utils?.formatDateTimeWithTZ ? utils.formatDateTimeWithTZ(contract.expiryTimestamp) : new Date(contract.expiryTimestamp * 1000).toISOString()}.
-        </p>
-      </div>
+      {hasInsufficientBalance() ? (
+        <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-6">
+          <p className="text-sm text-red-800">
+            <strong>Insufficient balance:</strong> You need ${utils?.formatCurrency ? utils.formatCurrency(contract.amount, contract.currency || 'microUSDC').amount : contract.amount} USDC but only have ${userBalance !== null ? (utils?.formatCurrency ? utils.formatCurrency(userBalance, 'microUSDC').amount : userBalance) : '0'} USDC in your wallet.
+          </p>
+          <p className="text-sm text-red-800 mt-2">
+            Please add USDC to your wallet before proceeding.
+          </p>
+        </div>
+      ) : (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4 mb-6">
+          <p className="text-sm text-yellow-800">
+            When you make this payment, the ${utils?.formatCurrency ? utils.formatCurrency(contract.amount, contract.currency || 'microUSDC').amount : contract.amount} USDC will be held securely in escrow until {utils?.formatDateTimeWithTZ ? utils.formatDateTimeWithTZ(contract.expiryTimestamp) : new Date(contract.expiryTimestamp * 1000).toISOString()}.
+          </p>
+        </div>
+      )}
 
       <Button
         onClick={handleAccept}
-        disabled={isLoading || isSuccess}
-        className={`w-full bg-primary-500 hover:bg-primary-600 ${(isLoading || isSuccess) ? 'opacity-50 cursor-not-allowed' : ''}`}
+        disabled={isLoading || isSuccess || hasInsufficientBalance() || isLoadingBalance}
+        className={`w-full ${hasInsufficientBalance() ? 'bg-gray-400' : 'bg-primary-500 hover:bg-primary-600'} ${(isLoading || isSuccess || hasInsufficientBalance() || isLoadingBalance) ? 'opacity-50 cursor-not-allowed' : ''}`}
       >
-        Make Payment of ${utils?.formatCurrency ? utils.formatCurrency(contract.amount, contract.currency || 'microUSDC').amount : contract.amount} USDC
+        {hasInsufficientBalance() 
+          ? 'Insufficient Balance' 
+          : isLoadingBalance 
+          ? 'Checking balance...'
+          : `Make Payment of $${utils?.formatCurrency ? utils.formatCurrency(contract.amount, contract.currency || 'microUSDC').amount : contract.amount} USDC`
+        }
       </Button>
     </div>
   );

@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react';
+import { render, act } from '@testing-library/react';
 import { screen, fireEvent, waitFor } from '@testing-library/dom';
 import { useRouter } from 'next/router';
 import ContractAcceptance from '../../../components/contracts/ContractAcceptance';
@@ -132,7 +132,7 @@ describe('ContractAcceptance - Core Redirect Behavior', () => {
       markAsVisited: jest.fn(),
       signMessage: jest.fn(),
       getEthersProvider: jest.fn(),
-      getUSDCBalance: jest.fn(() => Promise.resolve('100.0')),
+      getUSDCBalance: jest.fn(() => Promise.resolve('100000000')), // 100 USDC in microUSDC
       signContractTransaction: jest.fn(),
       authenticatedFetch: jest.fn((url, options) => {
         // Mock the authenticatedFetch to use the global mockFetch
@@ -238,12 +238,19 @@ describe('ContractAcceptance - Core Redirect Behavior', () => {
   it('should call router.push and onAcceptComplete on successful acceptance', async () => {
     mockPush.mockResolvedValue(true);
 
-    render(
-      <ContractAcceptance 
-        contract={testContract} 
-        onAcceptComplete={mockOnAcceptComplete} 
-      />
-    );
+    await act(async () => {
+      render(
+        <ContractAcceptance 
+          contract={testContract} 
+          onAcceptComplete={mockOnAcceptComplete} 
+        />
+      );
+    });
+
+    // Wait for balance to load
+    await waitFor(() => {
+      expect(screen.getByText(/Make Payment of/)).toBeInTheDocument();
+    });
 
     const acceptButton = screen.getByText(/Make Payment of/);
     fireEvent.click(acceptButton);

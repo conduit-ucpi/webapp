@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react';
+import { render, act } from '@testing-library/react';
 import { screen, fireEvent, waitFor } from '@testing-library/dom';
 
 // Mock the dependencies BEFORE importing components
@@ -131,7 +131,7 @@ describe('ContractAcceptance - Redirect Behavior', () => {
       markAsVisited: jest.fn(),
       signMessage: jest.fn(),
       getEthersProvider: jest.fn(),
-      getUSDCBalance: jest.fn(() => Promise.resolve('100.0')),
+      getUSDCBalance: jest.fn(() => Promise.resolve('100000000')), // 100 USDC in microUSDC
       signContractTransaction: jest.fn(),
       authenticatedFetch: jest.fn((url, options) => {
         // Mock the authenticatedFetch to use the global mockFetch

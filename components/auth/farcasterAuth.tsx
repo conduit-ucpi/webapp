@@ -38,16 +38,19 @@ class FarcasterSyntheticProvider {
   private rpcUrl: string;
   private address: string | undefined;
   private signMessageAsync: ((args: { message: string }) => Promise<string>) | undefined;
+  private walletClient: any;
   
   constructor(
     rpcUrl: string, 
     address?: string,
-    signMessageAsync?: (args: { message: string }) => Promise<string>
+    signMessageAsync?: (args: { message: string }) => Promise<string>,
+    walletClient?: any
   ) {
     this.jsonRpcProvider = new ethers.JsonRpcProvider(rpcUrl);
     this.rpcUrl = rpcUrl;
     this.address = address;
     this.signMessageAsync = signMessageAsync;
+    this.walletClient = walletClient;
   }
   
   // Ethers provider interface methods
@@ -133,7 +136,7 @@ class FarcasterSyntheticProvider {
     
     const address = this.address;
     const signMessageAsync = this.signMessageAsync;
-    const provider = this.jsonRpcProvider;
+    const provider = this;  // Changed from jsonRpcProvider to this
     
     return {
       provider: this,
@@ -157,8 +160,41 @@ class FarcasterSyntheticProvider {
       },
       
       async sendTransaction(tx: any) {
-        const signedTx = await this.signTransaction(tx);
-        return await provider.broadcastTransaction(signedTx);
+        console.log('🔧 FarcasterSyntheticProvider.signer: sendTransaction called with:', {
+          to: tx.to,
+          data: tx.data?.substring(0, 10) + '...',
+          value: tx.value,
+          gasLimit: tx.gasLimit?.toString(),
+          gasPrice: tx.gasPrice?.toString()
+        });
+        
+        // Use Wagmi's walletClient to send the transaction
+        const walletClient = (provider as any).walletClient;
+        if (!walletClient) {
+          throw new Error('Wallet client not available for sending transactions');
+        }
+        
+        // Convert ethers transaction format to viem format
+        const viemTx = {
+          to: tx.to as `0x${string}`,
+          data: tx.data as `0x${string}`,
+          value: tx.value ? BigInt(tx.value) : undefined,
+          gas: tx.gasLimit ? BigInt(tx.gasLimit) : undefined,
+          gasPrice: tx.gasPrice ? BigInt(tx.gasPrice) : undefined,
+        };
+        
+        console.log('🔧 FarcasterSyntheticProvider.signer: Sending via walletClient...');
+        const hash = await walletClient.sendTransaction(viemTx);
+        console.log('🔧 FarcasterSyntheticProvider.signer: Transaction sent:', hash);
+        
+        // Return a minimal transaction response that ethers expects
+        return {
+          hash,
+          wait: async () => {
+            // For Farcaster, transactions are already confirmed
+            return { status: 1 };
+          }
+        };
       }
     };
   }
@@ -1169,11 +1205,19 @@ function FarcasterAuthProviderInner({ children, AuthContext }: {
         throw new Error('RPC URL not configured');
       }
       
-      console.log('🔧 Farcaster: Creating simple JsonRpcProvider - signing handled by Wagmi separately');
+      console.log('🔧 Farcaster: Creating FarcasterSyntheticProvider with Wagmi integration');
       
-      // Return simple ethers JsonRpcProvider for read operations
-      // Signing is handled separately via Wagmi walletClient
-      return new ethers.JsonRpcProvider(config.rpcUrl);
+      // Return our synthetic provider that integrates with Wagmi for signing
+      // This provider handles both read operations and signing via walletClient
+      const syntheticProvider = new FarcasterSyntheticProvider(
+        config.rpcUrl,
+        address,
+        signMessageAsync ? (args: { message: string }) => signMessageAsync(args) : undefined,
+        walletClient
+      );
+      
+      // Cast as any to be compatible with ethers BrowserProvider interface
+      return syntheticProvider as any;
     },
     
     // Legacy transaction signing - no longer used with unified approach

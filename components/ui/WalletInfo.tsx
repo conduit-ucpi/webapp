@@ -40,15 +40,7 @@ export default function WalletInfo({ className = '' }: WalletInfoProps) {
     if (!user?.walletAddress) return;
     
     try {
-      // Try modern clipboard API first (should work now with permissions fixed)
-      if (navigator.clipboard && window.isSecureContext) {
-        await navigator.clipboard.writeText(user.walletAddress);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-        return;
-      }
-      
-      // Fallback for older browsers
+      // Use fallback method first since clipboard API may be blocked in iframe
       const textArea = document.createElement('textarea');
       textArea.value = user.walletAddress;
       textArea.style.position = 'fixed';
@@ -65,9 +57,18 @@ export default function WalletInfo({ className = '' }: WalletInfoProps) {
       if (successful) {
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
-      } else {
-        throw new Error('Copy failed');
+        return;
       }
+      
+      // If fallback fails, try modern clipboard API
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(user.walletAddress);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+        return;
+      }
+      
+      throw new Error('Both copy methods failed');
     } catch (error) {
       console.error('Failed to copy address:', error);
       alert('Could not copy address. Please copy manually: ' + user.walletAddress);

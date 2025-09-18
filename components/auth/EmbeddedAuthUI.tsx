@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useAuth } from './index';
 import { useRouter } from 'next/router';
 import { ExternalWalletProvider } from '@/lib/wallet/external-wallet-provider';
+import AuthRouter from './AuthRouter';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import QRCodeModal from '@/components/ui/QRCodeModal';
@@ -10,9 +11,10 @@ interface EmbeddedAuthUIProps {
   className?: string;
   onSuccess?: () => void;
   compact?: boolean;
+  useSmartRouting?: boolean; // Enable smart routing
 }
 
-export default function EmbeddedAuthUI({ className = '', onSuccess, compact = false }: EmbeddedAuthUIProps) {
+export default function EmbeddedAuthUI({ className = '', onSuccess, compact = false, useSmartRouting = false }: EmbeddedAuthUIProps) {
   const { connect, connectWithAdapter, isLoading, error } = useAuth();
   const router = useRouter();
   const [localLoading, setLocalLoading] = useState<string | null>(null);
@@ -21,6 +23,11 @@ export default function EmbeddedAuthUI({ className = '', onSuccess, compact = fa
   const [showEmailForm, setShowEmailForm] = useState(false);
   const [showWalletOptions, setShowWalletOptions] = useState(false);
   const [email, setEmail] = useState('');
+  
+  // Use smart routing if enabled
+  if (useSmartRouting) {
+    return <AuthRouter compact={compact} onSuccess={onSuccess} className={className} />;
+  }
 
   // Set up WalletConnect URI handler
   if (typeof window !== 'undefined') {

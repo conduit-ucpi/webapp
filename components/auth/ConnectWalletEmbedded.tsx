@@ -12,13 +12,15 @@ interface ConnectWalletEmbeddedProps {
   compact?: boolean;
   buttonText?: string;
   buttonClassName?: string;
+  useSmartRouting?: boolean; // Enable smart auth routing
 }
 
 export default function ConnectWalletEmbedded({ 
   className = '', 
   compact = false,
   buttonText = 'Get Started',
-  buttonClassName = 'bg-green-500 hover:bg-green-600 text-gray-900 px-6 py-3 rounded-lg font-semibold disabled:opacity-50'
+  buttonClassName = 'bg-green-500 hover:bg-green-600 text-gray-900 px-6 py-3 rounded-lg font-semibold disabled:opacity-50',
+  useSmartRouting = false
 }: ConnectWalletEmbeddedProps) {
   const { config } = useConfig();
   const { user, isLoading: authLoading, disconnect } = useAuth();
@@ -96,6 +98,7 @@ export default function ConnectWalletEmbedded({
       <EmbeddedAuthUI 
         className={className}
         compact={true}
+        useSmartRouting={useSmartRouting}
         onSuccess={() => {
           // Auth successful, UI will update automatically
         }}
@@ -127,6 +130,7 @@ export default function ConnectWalletEmbedded({
         title="Connect Your Account"
       >
         <EmbeddedAuthUI 
+          useSmartRouting={useSmartRouting}
           onSuccess={() => {
             setShowAuthModal(false);
           }}

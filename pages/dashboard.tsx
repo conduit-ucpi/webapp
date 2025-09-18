@@ -58,8 +58,8 @@ export default function Dashboard() {
           </div>
 
           <Link href="/create" data-tour="create-button">
-            <Button className="bg-primary-500 hover:bg-primary-600 text-sm sm:text-base px-3 sm:px-4 py-2 sm:py-2.5 whitespace-normal min-w-[100px] max-w-[140px] sm:max-w-none text-center">
-              New Payment Request
+            <Button className="bg-primary-500 hover:bg-primary-600 text-sm sm:text-base px-3 sm:px-4 py-3 sm:py-2.5 whitespace-normal min-w-[100px] max-w-[140px] sm:max-w-none text-center leading-tight">
+              Request Payment
             </Button>
           </Link>
         </div>

@@ -112,7 +112,7 @@ export class WalletConnectV2Provider {
       await new Promise(resolve => setTimeout(resolve, 1000));
 
       // Verify session was established - check both session object and provider.session
-      if (!session || !session.topic) {
+      if (!session || !(session as any).topic) {
         throw new Error('WalletConnect session approval failed - no valid session returned');
       }
 
@@ -124,7 +124,7 @@ export class WalletConnectV2Provider {
         if (!this.provider.session) {
           console.warn('WalletConnect: Provider session still not available, using returned session object');
           // Manually set the session if needed
-          this.provider.session = session;
+          (this.provider as any).session = session;
         }
       }
 
@@ -180,7 +180,7 @@ export class WalletConnectV2Provider {
             ethers.hexlify(ethers.toUtf8Bytes(message)),
             walletAddress
           ]
-        });
+        }) as string;
 
         console.log('WalletConnect: Signature received');
         

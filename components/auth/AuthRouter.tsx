@@ -254,7 +254,8 @@ export default function AuthRouter({ compact = false, onSuccess, className = '' 
           
           <div className="space-y-2">
             {/* Wallet options */}
-            {deviceInfo.hasMetaMask && (
+            {(deviceInfo.hasMetaMask || deviceInfo.walletType === 'metamask' || 
+              (deviceInfo.isWalletBrowser && deviceInfo.isMobile && (window as any).ethereum?.isMetaMask)) && (
               <Button
                 onClick={() => handleAuth('metamask')}
                 disabled={isAnyLoading}
@@ -271,7 +272,8 @@ export default function AuthRouter({ compact = false, onSuccess, className = '' 
               </Button>
             )}
             
-            {deviceInfo.hasWallet && !deviceInfo.hasMetaMask && (
+            {deviceInfo.hasWallet && !deviceInfo.hasMetaMask && deviceInfo.walletType !== 'metamask' && 
+             !(deviceInfo.isWalletBrowser && deviceInfo.isMobile && (window as any).ethereum?.isMetaMask) && (
               <Button
                 onClick={() => handleAuth('external_wallet')}
                 disabled={isAnyLoading}

@@ -116,6 +116,16 @@ function detectWalletBrowser(): boolean {
     return true;
   }
   
+  // Additional MetaMask mobile detection
+  // MetaMask mobile sometimes doesn't set isMetaMask correctly in the in-app browser
+  if (/mobile/.test(userAgent) && (
+    userAgent.includes('metamask') ||
+    ethereum._metamask ||
+    ethereum.providerName === 'MetaMask'
+  )) {
+    return true;
+  }
+  
   // Check for other indicators
   if ((window as any).ReactNativeWebView) return true;
   
@@ -169,7 +179,14 @@ function detectWallets(): { hasWallet: boolean; walletType?: string; hasMetaMask
 function identifyWalletType(provider: any): string | undefined {
   if (!provider) return undefined;
   
-  if (provider.isMetaMask) return 'metamask';
+  // Check for MetaMask first with multiple indicators
+  if (provider.isMetaMask || 
+      provider._metamask || 
+      provider.providerName === 'MetaMask' ||
+      (typeof navigator !== 'undefined' && navigator.userAgent.toLowerCase().includes('metamask'))) {
+    return 'metamask';
+  }
+  
   if (provider.isTrust) return 'trust';
   if (provider.isCoinbaseWallet) return 'coinbase';
   if (provider.isRabby) return 'rabby';
@@ -193,8 +210,11 @@ export function getBestAuthMethod(deviceInfo: DeviceInfo, context: AuthContext):
     return 'farcaster';
   }
   
-  // 2. If we're in a wallet browser, use the injected provider
+  // 2. If we're in a wallet browser, prioritize MetaMask if detected
   if (deviceInfo.isWalletBrowser && deviceInfo.hasWallet) {
+    if (deviceInfo.hasMetaMask || deviceInfo.walletType === 'metamask') {
+      return 'metamask';
+    }
     return 'external_wallet';
   }
   
@@ -210,7 +230,11 @@ export function getBestAuthMethod(deviceInfo: DeviceInfo, context: AuthContext):
   
   // 5. Mobile device strategies
   if (deviceInfo.isMobile) {
-    // If has wallet in mobile browser, use it
+    // If has MetaMask in mobile browser, prioritize it
+    if (deviceInfo.hasMetaMask || deviceInfo.walletType === 'metamask') {
+      return 'metamask';
+    }
+    // If has other wallet in mobile browser, use it
     if (deviceInfo.hasWallet) {
       return 'external_wallet';
     }
@@ -284,7 +308,7 @@ export function getViableAuthMethods(deviceInfo: DeviceInfo, context: AuthContex
   }
   
   // Add wallet-based methods
-  if (deviceInfo.hasMetaMask) {
+  if (deviceInfo.hasMetaMask || deviceInfo.walletType === 'metamask') {
     methods.push('metamask');
   } else if (deviceInfo.hasWallet) {
     methods.push('external_wallet');

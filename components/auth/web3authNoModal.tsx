@@ -76,6 +76,7 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
         const { EthereumPrivateKeyProvider } = await import('@web3auth/ethereum-provider');
         const { OpenloginAdapter } = await import('@web3auth/openlogin-adapter');
         const { MetamaskAdapter } = await import('@web3auth/metamask-adapter');
+        const { WalletConnectV2Adapter } = await import('@web3auth/wallet-connect-v2-adapter');
         
         const web3AuthNetworkSetting = this.config.web3AuthNetwork === 'sapphire_mainnet' 
           ? WEB3AUTH_NETWORK.SAPPHIRE_MAINNET 
@@ -129,6 +130,35 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
         console.log('🔧 Web3Auth No-Modal: MetaMask adapter created');
         this.adapters.set('metamask', metamaskAdapter);
 
+        // Create and configure WalletConnect v2 adapter
+        console.log('🔧 Web3Auth No-Modal: Creating WalletConnect v2 adapter...');
+        const walletConnectProjectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || process.env.WALLETCONNECT_PROJECT_ID;
+        
+        if (walletConnectProjectId && walletConnectProjectId !== 'your_project_id_here') {
+          const walletConnectAdapter = new WalletConnectV2Adapter({
+            clientId: this.config.web3AuthClientId,
+            sessionTime: 3600 * 24 * 7, // 7 days
+            web3AuthNetwork: web3AuthNetworkSetting,
+            chainConfig: this.chainConfig,
+            adapterSettings: {
+              walletConnectInitOptions: {
+                projectId: walletConnectProjectId,
+                metadata: {
+                  name: 'Conduit UCPI',
+                  description: 'Instant Escrow - Secure payment gateway',
+                  url: typeof window !== 'undefined' ? window.location.origin : 'https://conduit-ucpi.com',
+                  icons: ['https://conduit-ucpi.com/logo.png']
+                }
+              }
+            }
+          });
+          
+          console.log('🔧 Web3Auth No-Modal: WalletConnect v2 adapter created with project ID');
+          this.adapters.set('walletconnect', walletConnectAdapter);
+        } else {
+          console.warn('🔧 Web3Auth No-Modal: WalletConnect Project ID not configured, skipping WalletConnect adapter');
+        }
+
         // Initialize Web3Auth No-Modal instance
         console.log('🔧 Web3Auth No-Modal: Creating Web3AuthNoModal instance...');
         this.web3auth = new Web3AuthNoModal({
@@ -147,16 +177,11 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
         this.web3auth.configureAdapter(metamaskAdapter);
         console.log('🔧 Web3Auth No-Modal: MetaMask adapter configured');
 
-        // Add WalletConnect adapter (simplified - remove for now due to config complexity)
-        // TODO: Add WalletConnect support later
-        // const walletConnectAdapter = new WalletConnectV2Adapter({
-        //   clientId: this.config.web3AuthClientId,
-        //   sessionTime: 3600 * 24 * 7,
-        //   web3AuthNetwork: web3AuthNetworkSetting,
-        //   chainConfig
-        // });
-        // this.web3auth.configureAdapter(walletConnectAdapter);
-        // this.adapters.set('walletconnect', walletConnectAdapter);
+        // Configure WalletConnect adapter if available
+        if (this.adapters.has('walletconnect')) {
+          this.web3auth.configureAdapter(this.adapters.get('walletconnect'));
+          console.log('🔧 Web3Auth No-Modal: WalletConnect adapter configured');
+        }
 
         // Verify we have at least one adapter configured
         if (this.adapters.size === 0) {
@@ -186,13 +211,13 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
         }
         
         if (this.state.user && this.state.token) {
-        this.emit({ type: 'connected', user: this.state.user, token: this.state.token });
+        this.emit({ type: 'connected', user: this.state.user, token: this.state.token || '' });
       }
       } else {
         // Test environment
         this.state.isInitialized = true;
         if (this.state.user && this.state.token) {
-        this.emit({ type: 'connected', user: this.state.user, token: this.state.token });
+        this.emit({ type: 'connected', user: this.state.user, token: this.state.token || '' });
       }
       }
     } catch (error) {
@@ -258,12 +283,16 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
         // MetaMask uses its own adapter
         console.log('🔧 Web3Auth No-Modal: Connecting to MetaMask adapter');
         web3authProvider = await this.web3auth.connectTo(adapter);
+      } else if (adapter === 'walletconnect') {
+        // Use our custom WalletConnect v2 provider
+        console.log('🔧 Web3Auth No-Modal: Connecting to WalletConnect v2');
+        return await this.handleWalletConnectV2Connection();
       } else if (adapter === 'external_wallet') {
         // Handle external wallet connection directly (not through Web3Auth)
         console.log('🔧 Web3Auth No-Modal: Handling external wallet connection');
         return await this.handleExternalWalletConnection();
       } else {
-        // For other wallet adapters (WalletConnect, etc.)
+        // For other wallet adapters
         console.log(`🔧 Web3Auth No-Modal: Connecting to ${adapter} wallet adapter`);
         web3authProvider = await this.web3auth.connectTo(adapter);
       }
@@ -279,7 +308,7 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
       return {
         success: true,
         user: this.state.user || {},
-        token: this.state.token || ''
+        token: this.state.token || '' || ''
       };
     } catch (error) {
       console.error('🔧 Web3Auth No-Modal: Connection failed:', error);
@@ -508,7 +537,7 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
       });
       
       if (this.state.user && this.state.token) {
-        this.emit({ type: 'connected', user: this.state.user, token: this.state.token });
+        this.emit({ type: 'connected', user: this.state.user, token: this.state.token || '' });
       } else {
         const missingItems = [];
         if (!this.state.user) missingItems.push('user');
@@ -931,16 +960,66 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
       this.state.token = authResult.idToken;
       
       // Emit connected event
-      this.emit({ type: 'connected', user: this.state.user, token: this.state.token });
+      this.emit({ type: 'connected', user: this.state.user, token: this.state.token || '' });
       
       return {
         success: true,
         user: this.state.user,
-        token: this.state.token
+        token: this.state.token || ''
       };
     } catch (error) {
       console.error('🔧 Web3Auth No-Modal: External wallet connection failed:', error);
       const errorMessage = error instanceof Error ? error.message : 'External wallet connection failed';
+      this.state.error = errorMessage;
+      this.emit({ type: 'error', error: errorMessage });
+      return {
+        success: false,
+        error: errorMessage
+      };
+    }
+  }
+
+  private async handleWalletConnectV2Connection(): Promise<{ success: boolean; user?: any; token?: string; error?: string }> {
+    try {
+      console.log('🔧 Web3Auth No-Modal: Initializing WalletConnect v2...');
+      
+      // Import and create WalletConnect v2 provider
+      const { WalletConnectV2Provider } = await import('./walletConnectV2Provider');
+      const walletConnectProvider = new WalletConnectV2Provider(
+        this.chainConfig?.chainId || parseInt(process.env.NEXT_PUBLIC_CHAIN_ID || '8453')
+      );
+      
+      // Connect using WalletConnect
+      const authResult = await walletConnectProvider.connect();
+      
+      // Set the provider for subsequent operations
+      this.provider = await walletConnectProvider.getProvider();
+      
+      // Create user object
+      this.state.user = {
+        userId: authResult.user.walletAddress,
+        email: authResult.user.walletAddress,
+        displayName: 'WalletConnect User',
+        profileImageUrl: '',
+        walletAddress: authResult.user.walletAddress,
+        authProvider: 'walletconnect'
+      };
+
+      this.state.isConnected = true;
+      // For WalletConnect, we need to get the token from the user data
+      this.state.token = authResult.user.idToken || '';
+      
+      // Emit connected event
+      this.emit({ type: 'connected', user: this.state.user, token: this.state.token || '' });
+      
+      return {
+        success: true,
+        user: this.state.user,
+        token: this.state.token || ''
+      };
+    } catch (error) {
+      console.error('🔧 Web3Auth No-Modal: WalletConnect v2 connection failed:', error);
+      const errorMessage = error instanceof Error ? error.message : 'WalletConnect connection failed';
       this.state.error = errorMessage;
       this.emit({ type: 'error', error: errorMessage });
       return {

@@ -17,6 +17,7 @@ export interface Config {
   explorerBaseUrl: string;
   serviceLink: string;
   neynarApiKey?: string;
+  walletConnectProjectId?: string;
   // Optional wallet services configuration
   walletServicesShowWidget?: string;
   walletServicesButtonPosition?: string;
@@ -26,6 +27,11 @@ export interface Config {
   gitTag?: string;
   gitSha?: string;
   buildVersion?: string;
+}
+
+export interface ConfigContextType {
+  config: Config | null;
+  isLoading: boolean;
 }
 
 export interface User {

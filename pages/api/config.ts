@@ -18,6 +18,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log('EXPLORER_BASE_URL:', process.env.EXPLORER_BASE_URL);
     console.log('SERVICE_LINK:', process.env.SERVICE_LINK);
     console.log('CONTRACT_ADDRESS:', process.env.CONTRACT_ADDRESS);
+    console.log('WALLETCONNECT_PROJECT_ID:', process.env.WALLETCONNECT_PROJECT_ID ? 'Present' : 'Missing');
 
     const basePath = process.env.NEXT_PUBLIC_BASE_PATH === 'null' ? '' : (process.env.NEXT_PUBLIC_BASE_PATH || '/webapp');
     
@@ -38,6 +39,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       explorerBaseUrl: process.env.EXPLORER_BASE_URL,
       serviceLink: process.env.SERVICE_LINK || 'http://localhost:3000',
       neynarApiKey: process.env.NEYNAR_API_KEY,
+      walletConnectProjectId: process.env.WALLETCONNECT_PROJECT_ID,
       // Optional wallet services configuration
       walletServicesShowWidget: process.env.WALLET_SERVICES_SHOW_WIDGET,
       walletServicesButtonPosition: process.env.WALLET_SERVICES_BUTTON_POSITION,

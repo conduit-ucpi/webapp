@@ -984,10 +984,9 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
       console.log('🔧 Web3Auth No-Modal: Initializing WalletConnect v2...');
       
       // Import and create WalletConnect v2 provider
-      const { WalletConnectV2Provider } = await import('./walletConnectV2Provider');
-      const walletConnectProvider = new WalletConnectV2Provider(
-        this.chainConfig?.chainId || parseInt(process.env.NEXT_PUBLIC_CHAIN_ID || '8453')
-      );
+      const walletConnectModule = await import('./walletConnectV2Provider');
+      const WalletConnectV2Provider = walletConnectModule.WalletConnectV2Provider;
+      const walletConnectProvider = new WalletConnectV2Provider(this.config);
       
       // Connect using WalletConnect
       const authResult = await walletConnectProvider.connect();

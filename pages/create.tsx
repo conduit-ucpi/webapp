@@ -36,7 +36,7 @@ export default function CreatePage() {
         <p className="text-secondary-600 mb-6">
           You need to connect your wallet to create time-locked payments.
         </p>
-        <ConnectWalletEmbedded />
+        <ConnectWalletEmbedded useSmartRouting={true} />
       </div>
     );
   }

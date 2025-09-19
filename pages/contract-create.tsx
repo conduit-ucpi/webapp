@@ -456,7 +456,7 @@ export default function ContractCreate() {
         <div className="text-center p-6 max-w-md mx-auto">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Connect Wallet</h2>
           <p className="text-gray-600 mb-6">Please connect your wallet to create a secure escrow contract.</p>
-          <ConnectWalletEmbedded compact={true} />
+          <ConnectWalletEmbedded compact={true} useSmartRouting={true} />
         </div>
       </div>
     );

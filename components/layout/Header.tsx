@@ -86,7 +86,7 @@ export default function Header() {
                   <div className="w-2 h-2 bg-green-500 rounded-full" />
                 </div>
               ) : (
-                <ConnectWalletEmbedded compact={true} />
+                <ConnectWalletEmbedded compact={true} useSmartRouting={true} />
               )}
             </div>
           </div>

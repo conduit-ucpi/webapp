@@ -62,7 +62,7 @@ export default function BuyUSDC() {
         <p className="text-gray-600 mb-6">
           You need to connect your wallet to buy or sell USDC.
         </p>
-        <ConnectWalletEmbedded />
+        <ConnectWalletEmbedded useSmartRouting={true} />
       </div>
     );
   }

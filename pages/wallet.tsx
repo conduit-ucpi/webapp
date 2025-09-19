@@ -327,7 +327,7 @@ export default function Wallet() {
         <p className="text-gray-600 mb-6">
           You need to connect your wallet to manage your funds.
         </p>
-        <ConnectWalletEmbedded />
+        <ConnectWalletEmbedded useSmartRouting={true} />
       </div>
     );
   }

@@ -119,7 +119,7 @@ export default function AdminPage() {
         <p className="text-gray-600 mb-6">
           You need to connect your wallet to access this page.
         </p>
-        <ConnectWalletEmbedded />
+        <ConnectWalletEmbedded useSmartRouting={true} />
       </div>
     );
   }

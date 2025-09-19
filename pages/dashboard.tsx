@@ -41,7 +41,7 @@ export default function Dashboard() {
         <p className="text-secondary-600 mb-6">
           You need to connect your wallet to view your contracts.
         </p>
-        <ConnectWalletEmbedded />
+        <ConnectWalletEmbedded useSmartRouting={true} />
       </div>
     );
   }

@@ -132,7 +132,8 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
 
         // Create and configure WalletConnect v2 adapter
         console.log('🔧 Web3Auth No-Modal: Creating WalletConnect v2 adapter...');
-        const walletConnectProjectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || process.env.WALLETCONNECT_PROJECT_ID;
+        const walletConnectProjectId = this.config.walletConnectProjectId;
+        console.log('🔧 Web3Auth No-Modal: WalletConnect Project ID from config:', walletConnectProjectId ? 'Present' : 'Missing');
         
         if (walletConnectProjectId && walletConnectProjectId !== 'your_project_id_here') {
           const walletConnectAdapter = new WalletConnectV2Adapter({

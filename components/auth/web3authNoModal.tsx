@@ -10,7 +10,6 @@ import {
 import { useConfig } from './ConfigProvider';
 import { formatUnits } from 'ethers';
 import { createWeb3AuthContractMethods } from '@/utils/contractTransactionFactory';
-import type { WalletConnectV2Provider } from './walletConnectV2Provider';
 
 // Minimal ERC20 ABI for balance checking
 const ERC20_ABI = [

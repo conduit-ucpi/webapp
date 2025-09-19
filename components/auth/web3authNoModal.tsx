@@ -247,8 +247,8 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
       
       console.log(`🔧 Web3Auth No-Modal: Connecting with ${adapter}...`);
       
-      // Check if adapter exists in our registered adapters or is external wallet
-      if (!this.adapters.has(adapter) && adapter !== 'external_wallet') {
+      // Check if adapter exists in our registered adapters or is a special case
+      if (!this.adapters.has(adapter) && adapter !== 'external_wallet' && adapter !== 'walletconnect') {
         const availableAdapters = this.getAvailableAdapters();
         throw new Error(`Adapter '${adapter}' not found. Available adapters: ${availableAdapters.join(', ')}`);
       }
@@ -1030,8 +1030,9 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
   // Additional helper methods for the no-modal SDK
   getAvailableAdapters(): string[] {
     const adapters = Array.from(this.adapters.keys());
-    // Add external wallet as an available option
+    // Add external wallet and walletconnect as available options
     adapters.push('external_wallet');
+    adapters.push('walletconnect');
     return adapters;
   }
 
@@ -1039,6 +1040,10 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
     if (adapter === 'external_wallet') {
       const { ExternalWalletProvider } = require('@/lib/wallet/external-wallet-provider');
       return ExternalWalletProvider.isAvailable();
+    }
+    if (adapter === 'walletconnect') {
+      // WalletConnect is always available as we use our custom provider
+      return true;
     }
     return this.adapters.has(adapter) && this.web3auth?.status === 'ready';
   }

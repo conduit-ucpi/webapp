@@ -18,6 +18,7 @@ import {
   Cog6ToothIcon,
 } from '@heroicons/react/24/outline';
 import { useAuth } from '@/components/auth';
+import { useConfig } from '@/components/auth/ConfigProvider';
 import ThemeToggle from '@/components/theme/ThemeToggle';
 
 interface MobileDrawerProps {
@@ -41,6 +42,7 @@ interface NavItem {
 export default function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
   const router = useRouter();
   const { user, disconnect } = useAuth();
+  const { config } = useConfig();
   const isAuthenticated = !!user;
   const isAdmin = (user as any)?.isAdmin;
 
@@ -267,6 +269,20 @@ export default function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
                     </button>
                   ))}
                 </div>
+
+                {/* Version Info */}
+                {config && (config.gitTag || config.gitSha) && (
+                  <div className="mb-3 px-2 py-1.5 bg-secondary-50 dark:bg-secondary-800 rounded text-xs text-secondary-500 dark:text-secondary-400">
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium">Version</span>
+                      <span className="font-mono">
+                        {config.gitTag && config.gitTag !== 'unknown' ? config.gitTag : ''}
+                        {config.gitTag && config.gitTag !== 'unknown' && config.gitSha && config.gitSha !== 'unknown' && ' • '}
+                        {config.gitSha && config.gitSha !== 'unknown' ? config.gitSha : ''}
+                      </span>
+                    </div>
+                  </div>
+                )}
 
                 {/* Auth Button */}
                 {isAuthenticated ? (

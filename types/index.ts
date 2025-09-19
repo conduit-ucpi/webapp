@@ -22,6 +22,10 @@ export interface Config {
   walletServicesButtonPosition?: string;
   walletServicesEnableKeyExport?: string;
   walletServicesHideTopup?: string;
+  // Build information
+  gitTag?: string;
+  gitSha?: string;
+  buildVersion?: string;
 }
 
 export interface User {

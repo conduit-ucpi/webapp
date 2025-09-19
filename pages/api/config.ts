@@ -42,7 +42,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       walletServicesShowWidget: process.env.WALLET_SERVICES_SHOW_WIDGET,
       walletServicesButtonPosition: process.env.WALLET_SERVICES_BUTTON_POSITION,
       walletServicesEnableKeyExport: process.env.WALLET_SERVICES_ENABLE_KEY_EXPORT,
-      walletServicesHideTopup: process.env.WALLET_SERVICES_HIDE_TOPUP
+      walletServicesHideTopup: process.env.WALLET_SERVICES_HIDE_TOPUP,
+      // Build information
+      gitTag: process.env.GIT_TAG || 'unknown',
+      gitSha: process.env.GIT_SHA || 'unknown',
+      buildVersion: process.env.BUILD_VERSION || 'unknown'
     };
 
     if (!config.usdcContractAddress) {

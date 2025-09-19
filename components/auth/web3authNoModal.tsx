@@ -10,6 +10,7 @@ import {
 import { useConfig } from './ConfigProvider';
 import { formatUnits } from 'ethers';
 import { createWeb3AuthContractMethods } from '@/utils/contractTransactionFactory';
+import type { WalletConnectV2Provider } from './walletConnectV2Provider';
 
 // Minimal ERC20 ABI for balance checking
 const ERC20_ABI = [
@@ -984,8 +985,7 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
       console.log('🔧 Web3Auth No-Modal: Initializing WalletConnect v2...');
       
       // Import and create WalletConnect v2 provider
-      const walletConnectModule = await import('./walletConnectV2Provider');
-      const WalletConnectV2Provider = walletConnectModule.WalletConnectV2Provider;
+      const { WalletConnectV2Provider } = await import('./walletConnectV2Provider');
       const walletConnectProvider = new WalletConnectV2Provider(this.config);
       
       // Connect using WalletConnect

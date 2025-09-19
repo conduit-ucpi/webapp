@@ -130,35 +130,9 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
         console.log('🔧 Web3Auth No-Modal: MetaMask adapter created');
         this.adapters.set('metamask', metamaskAdapter);
 
-        // Create and configure WalletConnect v2 adapter
-        console.log('🔧 Web3Auth No-Modal: Creating WalletConnect v2 adapter...');
-        const walletConnectProjectId = this.config.walletConnectProjectId;
-        console.log('🔧 Web3Auth No-Modal: WalletConnect Project ID from config:', walletConnectProjectId ? 'Present' : 'Missing');
-        
-        if (walletConnectProjectId && walletConnectProjectId !== 'your_project_id_here') {
-          const walletConnectAdapter = new WalletConnectV2Adapter({
-            clientId: this.config.web3AuthClientId,
-            sessionTime: 3600 * 24 * 7, // 7 days
-            web3AuthNetwork: web3AuthNetworkSetting,
-            chainConfig: this.chainConfig,
-            adapterSettings: {
-              walletConnectInitOptions: {
-                projectId: walletConnectProjectId,
-                metadata: {
-                  name: 'Conduit UCPI',
-                  description: 'Instant Escrow - Secure payment gateway',
-                  url: typeof window !== 'undefined' ? window.location.origin : 'https://conduit-ucpi.com',
-                  icons: ['https://conduit-ucpi.com/logo.png']
-                }
-              }
-            }
-          });
-          
-          console.log('🔧 Web3Auth No-Modal: WalletConnect v2 adapter created with project ID');
-          this.adapters.set('walletconnect', walletConnectAdapter);
-        } else {
-          console.warn('🔧 Web3Auth No-Modal: WalletConnect Project ID not configured, skipping WalletConnect adapter');
-        }
+        // Skip Web3Auth's WalletConnect adapter - we use our custom implementation instead
+        console.log('🔧 Web3Auth No-Modal: Skipping Web3Auth WalletConnect adapter - using custom implementation');
+        // Note: WalletConnect functionality is handled by our custom WalletConnectV2Provider
 
         // Initialize Web3Auth No-Modal instance
         console.log('🔧 Web3Auth No-Modal: Creating Web3AuthNoModal instance...');
@@ -178,11 +152,7 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
         this.web3auth.configureAdapter(metamaskAdapter);
         console.log('🔧 Web3Auth No-Modal: MetaMask adapter configured');
 
-        // Configure WalletConnect adapter if available
-        if (this.adapters.has('walletconnect')) {
-          this.web3auth.configureAdapter(this.adapters.get('walletconnect'));
-          console.log('🔧 Web3Auth No-Modal: WalletConnect adapter configured');
-        }
+        // WalletConnect adapter configuration skipped - using custom implementation
 
         // Verify we have at least one adapter configured
         if (this.adapters.size === 0) {

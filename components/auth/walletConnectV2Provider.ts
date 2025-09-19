@@ -25,10 +25,14 @@ export class WalletConnectV2Provider {
 
   async connect(): Promise<{ user: any; provider: ethers.BrowserProvider | null }> {
     try {
-      // Clean up any existing session first to allow re-launch
-      await this.disconnect();
+      // Only clean up if we have a provider instance
+      if (this.provider) {
+        console.log('WalletConnect: Cleaning up existing provider...');
+        await this.cleanup();
+      }
 
       // Initialize Universal Provider
+      console.log('WalletConnect: Initializing Universal Provider...');
       this.provider = await UniversalProvider.init({
         projectId: this.projectId,
         metadata: {
@@ -104,9 +108,24 @@ export class WalletConnectV2Provider {
         this.modal.closeModal();
       }
 
-      // Verify session was established
+      // Give the provider a moment to update its session property
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Verify session was established - check both session object and provider.session
+      if (!session || !session.topic) {
+        throw new Error('WalletConnect session approval failed - no valid session returned');
+      }
+
+      // If provider.session is not yet available, wait a bit more
       if (!this.provider.session) {
-        throw new Error('WalletConnect session not established after approval');
+        console.log('WalletConnect: Provider session not yet available, waiting...');
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        if (!this.provider.session) {
+          console.warn('WalletConnect: Provider session still not available, using returned session object');
+          // Manually set the session if needed
+          this.provider.session = session;
+        }
       }
 
       return await this.createUserFromSession();
@@ -124,6 +143,12 @@ export class WalletConnectV2Provider {
     }
 
     try {
+      console.log('WalletConnect: Session details:', {
+        topic: this.provider.session.topic,
+        expiry: this.provider.session.expiry,
+        namespaces: Object.keys(this.provider.session.namespaces || {})
+      });
+
       // First, let's get the accounts directly from the session to ensure it's active
       const accounts = this.provider.session.namespaces?.eip155?.accounts || [];
       if (accounts.length === 0) {
@@ -134,40 +159,66 @@ export class WalletConnectV2Provider {
       const walletAddress = accounts[0].split(':')[2];
       console.log('WalletConnect: Wallet address from session:', walletAddress);
 
-      // Create ethers provider with the connected provider
+      // Create ethers provider WITHOUT automatic network detection to avoid JsonRpcProvider errors
+      console.log('WalletConnect: Creating ethers provider...');
       const ethersProvider = new ethers.BrowserProvider(this.provider as any);
 
-      // Test the connection by getting the signer 
-      console.log('WalletConnect: Getting signer...');
-      const signer = await ethersProvider.getSigner();
+      // Instead of using getSigner() which might trigger network detection,
+      // let's use the wallet address directly from the session
+      console.log('WalletConnect: Using address from session for authentication');
       
-      // Verify the address matches
-      const signerAddress = await signer.getAddress();
-      console.log('WalletConnect: Signer address:', signerAddress);
-      
-      if (signerAddress.toLowerCase() !== walletAddress.toLowerCase()) {
-        console.warn('WalletConnect: Address mismatch, using signer address');
-      }
-
-      // Authenticate with backend
-      const message = `Sign this message to authenticate with Conduit UCPI\n\nWallet: ${signerAddress}\nTimestamp: ${Date.now()}`;
+      // Create a minimal signer interface for signing messages
+      // We'll request the signature through WalletConnect directly
+      const message = `Sign this message to authenticate with Conduit UCPI\n\nWallet: ${walletAddress}\nTimestamp: ${Date.now()}`;
       console.log('WalletConnect: Requesting signature for authentication...');
-      const signature = await signer.signMessage(message);
-      
-      // Create a simple auth token for WalletConnect
-      const authToken = `wc2_${signature.slice(0, 32)}`;
-      const { user } = await this.backendAuth.login(authToken, signerAddress);
-      
-      // Add required fields for compatibility
-      const enrichedUser = {
-        ...user,
-        walletAddress: signerAddress,
-        idToken: `wc2_${signature.slice(0, 32)}`, // Create a unique token
-        authProvider: 'walletconnect'
-      };
-      
-      console.log('WalletConnect: Authentication successful');
-      return { user: enrichedUser, provider: ethersProvider };
+
+      try {
+        // Request signature using WalletConnect provider directly
+        const signature = await this.provider.request({
+          method: 'personal_sign',
+          params: [
+            ethers.hexlify(ethers.toUtf8Bytes(message)),
+            walletAddress
+          ]
+        });
+
+        console.log('WalletConnect: Signature received');
+        
+        // Create a simple auth token for WalletConnect
+        const authToken = `wc2_${signature.slice(0, 32)}`;
+        const { user } = await this.backendAuth.login(authToken, walletAddress);
+        
+        // Add required fields for compatibility
+        const enrichedUser = {
+          ...user,
+          walletAddress: walletAddress,
+          idToken: `wc2_${signature.slice(0, 32)}`, // Create a unique token
+          authProvider: 'walletconnect'
+        };
+        
+        console.log('WalletConnect: Authentication successful');
+        return { user: enrichedUser, provider: ethersProvider };
+      } catch (signError) {
+        console.error('WalletConnect: Signature request failed, trying with signer:', signError);
+        
+        // Fallback to ethers signer method
+        const signer = await ethersProvider.getSigner();
+        const signerAddress = await signer.getAddress();
+        console.log('WalletConnect: Fallback - Signer address:', signerAddress);
+        
+        const signature = await signer.signMessage(message);
+        const authToken = `wc2_${signature.slice(0, 32)}`;
+        const { user } = await this.backendAuth.login(authToken, signerAddress);
+        
+        const enrichedUser = {
+          ...user,
+          walletAddress: signerAddress,
+          idToken: `wc2_${signature.slice(0, 32)}`,
+          authProvider: 'walletconnect'
+        };
+        
+        return { user: enrichedUser, provider: ethersProvider };
+      }
     } catch (error) {
       console.error('WalletConnect: Failed to create user from session:', error);
       throw error;

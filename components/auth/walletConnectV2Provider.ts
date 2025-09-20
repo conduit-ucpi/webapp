@@ -243,15 +243,35 @@ export class WalletConnectV2Provider {
 
         console.log('WalletConnect: Signature received');
         
-        // Create a simple auth token for WalletConnect
-        const authToken = `wc2_${signature.slice(0, 32)}`;
+        // Create a signature-based auth token compatible with backend expectations
+        // Use the same format as Web3Auth external wallet authentication
+        const timestamp = Date.now();
+        const authToken = btoa(JSON.stringify({
+          type: 'signature_auth',
+          walletAddress,
+          message,
+          signature,
+          timestamp,
+          nonce: 'walletconnect_v2',
+          issuer: 'walletconnect_v2',
+          // Add a simple header/payload structure for compatibility
+          header: { alg: 'ECDSA', typ: 'SIG' },
+          payload: { 
+            sub: walletAddress, 
+            iat: Math.floor(timestamp / 1000),
+            iss: 'walletconnect_v2',
+            wallet_type: 'walletconnect'
+          }
+        }));
+        
+        console.log('WalletConnect: Created signature token for backend authentication');
         const { user } = await this.backendAuth.login(authToken, walletAddress);
         
         // Add required fields for compatibility
         const enrichedUser = {
           ...user,
           walletAddress: walletAddress,
-          idToken: `wc2_${signature.slice(0, 32)}`, // Create a unique token
+          idToken: authToken, // Use the full signature token
           authProvider: 'walletconnect'
         };
         
@@ -266,13 +286,33 @@ export class WalletConnectV2Provider {
         console.log('WalletConnect: Fallback - Signer address:', signerAddress);
         
         const signature = await signer.signMessage(message);
-        const authToken = `wc2_${signature.slice(0, 32)}`;
+        
+        // Create a signature-based auth token compatible with backend expectations
+        const timestamp = Date.now();
+        const authToken = btoa(JSON.stringify({
+          type: 'signature_auth',
+          walletAddress: signerAddress,
+          message,
+          signature,
+          timestamp,
+          nonce: 'walletconnect_v2_fallback',
+          issuer: 'walletconnect_v2',
+          // Add a simple header/payload structure for compatibility
+          header: { alg: 'ECDSA', typ: 'SIG' },
+          payload: { 
+            sub: signerAddress, 
+            iat: Math.floor(timestamp / 1000),
+            iss: 'walletconnect_v2',
+            wallet_type: 'walletconnect'
+          }
+        }));
+        
         const { user } = await this.backendAuth.login(authToken, signerAddress);
         
         const enrichedUser = {
           ...user,
           walletAddress: signerAddress,
-          idToken: `wc2_${signature.slice(0, 32)}`,
+          idToken: authToken,
           authProvider: 'walletconnect'
         };
         

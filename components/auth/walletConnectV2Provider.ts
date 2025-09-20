@@ -55,10 +55,23 @@ export class WalletConnectV2Provider {
         });
       }
 
-      // Check if already connected
+      // Check if already connected and validate the session
       if (this.provider.session) {
-        console.log('WalletConnect: Using existing session');
-        return await this.createUserFromSession();
+        console.log('WalletConnect: Found existing session, validating...');
+        try {
+          // Test if the session is actually valid by making a simple request
+          await this.provider.request({
+            method: 'eth_accounts',
+            params: []
+          });
+          console.log('WalletConnect: Existing session is valid, using it');
+          return await this.createUserFromSession();
+        } catch (error) {
+          console.warn('WalletConnect: Existing session is invalid, clearing and creating new connection:', error);
+          // Clear the invalid session
+          this.provider.session = undefined;
+          await this.provider.disconnect().catch(() => {}); // Ignore disconnect errors
+        }
       }
 
       // Request connection
@@ -173,6 +186,11 @@ export class WalletConnectV2Provider {
       console.log('WalletConnect: Requesting signature for authentication...');
 
       try {
+        // First verify the provider is still connected
+        if (!this.provider.session) {
+          throw new Error('Session no longer exists');
+        }
+
         // Request signature using WalletConnect provider directly
         const signature = await this.provider.request({
           method: 'personal_sign',
@@ -230,8 +248,35 @@ export class WalletConnectV2Provider {
       if (this.modal) {
         this.modal.closeModal();
       }
-      if (this.provider?.session) {
-        await this.provider.disconnect();
+      if (this.provider) {
+        // Clear any existing session first
+        if (this.provider.session) {
+          try {
+            await this.provider.disconnect();
+          } catch (disconnectError) {
+            console.warn('WalletConnect: Error during disconnect, forcing cleanup:', disconnectError);
+            // Force clear the session if disconnect fails
+            this.provider.session = undefined;
+          }
+        }
+        // Clear any pending proposals or connections
+        if (this.provider.client) {
+          try {
+            const pendingProposals = this.provider.client.proposal.getAll();
+            for (const proposal of pendingProposals) {
+              try {
+                await this.provider.client.proposal.delete(proposal.id, {
+                  code: 5100,
+                  message: 'User rejected connection'
+                });
+              } catch (e) {
+                // Ignore proposal deletion errors
+              }
+            }
+          } catch (e) {
+            // Ignore if proposal methods don't exist
+          }
+        }
       }
     } catch (error) {
       console.error('WalletConnect cleanup error:', error);

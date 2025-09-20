@@ -129,15 +129,35 @@ export class WalletConnectV2Provider {
         throw new Error('WalletConnect session approval failed - no valid session returned');
       }
 
-      // If provider.session is not yet available, wait a bit more
+      // If provider.session is not yet available, we need to wait for it to be set
       if (!this.provider.session) {
-        console.log('WalletConnect: Provider session not yet available, waiting...');
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        console.log('WalletConnect: Provider session not yet available, checking provider client...');
         
-        if (!this.provider.session) {
-          console.warn('WalletConnect: Provider session still not available, using returned session object');
-          // Manually set the session if needed
-          (this.provider as any).session = session;
+        // The session should be available through the provider's client
+        if (this.provider.client && session) {
+          console.log('WalletConnect: Setting up provider with approved session...');
+          
+          // Force the provider to use the approved session
+          // The provider should pick up the session from its client
+          const sessionWithTopic = session as any;
+          await this.provider.client.session.set(sessionWithTopic.topic, sessionWithTopic);
+          
+          // Give the provider time to update
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          // Check if session is now available
+          if (!this.provider.session) {
+            // As a last resort, try to get the session from the client
+            const sessions = this.provider.client.session.getAll();
+            if (sessions && sessions.length > 0) {
+              (this.provider as any).session = sessions[0];
+              console.log('WalletConnect: Manually set session from client sessions');
+            } else {
+              throw new Error('WalletConnect session could not be established');
+            }
+          }
+        } else {
+          throw new Error('WalletConnect provider client not initialized');
         }
       }
 
@@ -191,14 +211,35 @@ export class WalletConnectV2Provider {
           throw new Error('Session no longer exists');
         }
 
-        // Request signature using WalletConnect provider directly
-        const signature = await this.provider.request({
-          method: 'personal_sign',
-          params: [
-            ethers.hexlify(ethers.toUtf8Bytes(message)),
-            walletAddress
-          ]
-        }) as string;
+        // Check if provider.client is available for direct requests
+        let signature: string;
+        if (this.provider.client && this.provider.client.request) {
+          console.log('WalletConnect: Using client.request for signature...');
+          // Use the client's request method directly
+          signature = await this.provider.client.request({
+            topic: this.provider.session.topic,
+            chainId: `eip155:${this.chainId}`,
+            request: {
+              method: 'personal_sign',
+              params: [
+                ethers.hexlify(ethers.toUtf8Bytes(message)),
+                walletAddress
+              ]
+            }
+          }) as string;
+        } else if (this.provider.request) {
+          console.log('WalletConnect: Using provider.request for signature...');
+          // Fallback to provider.request
+          signature = await this.provider.request({
+            method: 'personal_sign',
+            params: [
+              ethers.hexlify(ethers.toUtf8Bytes(message)),
+              walletAddress
+            ]
+          }) as string;
+        } else {
+          throw new Error('No request method available on provider');
+        }
 
         console.log('WalletConnect: Signature received');
         

@@ -425,19 +425,40 @@ export class WalletConnectV2Provider {
   }
 
   getEthersProvider(): any {
-    if (!this.provider?.session) return null;
+    if (!this.provider?.session) {
+      console.warn('WalletConnect: getEthersProvider called but no session available');
+      return null;
+    }
+    
+    console.log('WalletConnect: Creating ethers provider wrapper...');
     
     // The WalletConnect UniversalProvider should already be EIP-1193 compatible
     // We'll create a minimal wrapper that delegates to the provider
     const provider = this.provider;
     
+    // Log provider details for debugging
+    console.log('WalletConnect: Provider has request method:', typeof provider.request === 'function');
+    console.log('WalletConnect: Provider type:', provider.constructor?.name);
+    
     // Create a proper EIP-1193 provider wrapper with a base object that has the required method
     const eip1193Provider = new Proxy({ 
       request: async (args: { method: string; params?: any[] }) => {
+        console.log('WalletConnect: Proxy request called with:', args.method);
         if (!provider || !provider.request) {
+          console.error('WalletConnect: Provider or request method not available!', {
+            provider: !!provider,
+            hasRequest: provider ? typeof provider.request === 'function' : false
+          });
           throw new Error('Provider not initialized or request method not available');
         }
-        return await provider.request(args);
+        try {
+          const result = await provider.request(args);
+          console.log('WalletConnect: Request successful for', args.method);
+          return result;
+        } catch (error) {
+          console.error('WalletConnect: Request failed for', args.method, error);
+          throw error;
+        }
       }
     } as any, {
       get(target, prop) {
@@ -448,11 +469,11 @@ export class WalletConnectV2Provider {
         
         // Handle event methods
         if (prop === 'on') {
-          return provider.on ? provider.on.bind(provider) : () => {};
+          return provider?.on ? provider.on.bind(provider) : () => {};
         }
         
         if (prop === 'removeListener') {
-          return provider.removeListener ? provider.removeListener.bind(provider) : () => {};
+          return provider?.removeListener ? provider.removeListener.bind(provider) : () => {};
         }
         
         // For any other property, try to get it from the provider
@@ -465,6 +486,7 @@ export class WalletConnectV2Provider {
       }
     });
     
+    console.log('WalletConnect: Ethers provider wrapper created');
     return new ethers.BrowserProvider(eip1193Provider);
   }
 }

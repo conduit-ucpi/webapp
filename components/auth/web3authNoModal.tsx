@@ -365,9 +365,12 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
   }
 
   getEthersProvider(): any {
-    // For WalletConnect, use its getEthersProvider method
+    // For WalletConnect, use its getEthersProvider method and cache the result
     if (this.walletConnectProvider && this.walletConnectProvider.getEthersProvider) {
-      return this.walletConnectProvider.getEthersProvider();
+      if (!this.cachedEthersProvider) {
+        this.cachedEthersProvider = this.walletConnectProvider.getEthersProvider();
+      }
+      return this.cachedEthersProvider;
     }
     
     if (!this.provider) {
@@ -981,6 +984,13 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
       // The walletConnectProvider has getEthersProvider() method that the AuthProvider needs
       this.walletConnectProvider = walletConnectProvider;
       this.provider = authResult.provider; // This is already an ethers.BrowserProvider from connect()
+      
+      // Clear any cached provider since we have a new connection
+      this.cachedEthersProvider = null;
+      
+      console.log('🔧 Web3Auth No-Modal: WalletConnect provider stored successfully');
+      console.log('🔧 Web3Auth No-Modal: Provider type:', this.provider?.constructor?.name);
+      console.log('🔧 Web3Auth No-Modal: Has walletConnectProvider:', !!this.walletConnectProvider);
       
       // Create user object
       this.state.user = {

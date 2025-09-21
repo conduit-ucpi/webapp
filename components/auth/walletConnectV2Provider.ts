@@ -3,6 +3,7 @@ import { WalletConnectModal } from '@walletconnect/modal';
 // Simple WalletConnect v2 utility - not a full auth provider
 import { ethers } from 'ethers';
 import { BackendAuth } from './backendAuth';
+import { createWeb3AuthContractMethods } from '../../utils/contractTransactionFactory';
 
 export class WalletConnectV2Provider {
   private provider: UniversalProvider | null = null;
@@ -11,12 +12,15 @@ export class WalletConnectV2Provider {
   private projectId: string;
   private chainId: number;
   private rpcUrl: string;
+  private web3Service: any = null;
+  private config: any;
 
   constructor(config: any) {
     this.backendAuth = new BackendAuth();
     this.chainId = config.chainId;
     this.rpcUrl = config.rpcUrl;
     this.projectId = config.walletConnectProjectId || '';
+    this.config = config;
     
     if (!this.projectId || this.projectId === 'your_project_id_here') {
       console.warn('WalletConnect Project ID not configured. Please set WALLETCONNECT_PROJECT_ID in your environment.');
@@ -440,5 +444,300 @@ export class WalletConnectV2Provider {
     
     console.log('WalletConnect: Created reliable JsonRpcProvider for network calls');
     return jsonRpcProvider;
+  }
+
+  // Contract operation methods - making WalletConnect a first-class provider
+
+  async signContractTransaction(params: {
+    contractAddress: string;
+    abi: any[];
+    functionName: string;
+    functionArgs: any[];
+    debugLabel?: string;
+  }): Promise<string> {
+    console.log(`🚨 SECURITY DEBUG - WalletConnect signContractTransaction called with:`, {
+      contractAddress: params.contractAddress,
+      functionName: params.functionName,
+      functionArgs: params.functionArgs,
+      debugLabel: params.debugLabel,
+      timestamp: new Date().toISOString(),
+      stackTrace: new Error().stack
+    });
+
+    if (!this.provider?.session) {
+      throw new Error('WalletConnect session not available');
+    }
+
+    try {
+      // Get the user's wallet address from the session
+      const accounts = this.provider.session.namespaces?.eip155?.accounts || [];
+      if (accounts.length === 0) {
+        throw new Error('No accounts found in WalletConnect session');
+      }
+      const walletAddress = accounts[0].split(':')[2];
+
+      // Use JsonRpcProvider for contract interaction (read-only operations)
+      const jsonRpcProvider = new ethers.JsonRpcProvider(this.rpcUrl);
+      
+      // Create contract instance for transaction building
+      const contract = new ethers.Contract(params.contractAddress, params.abi, jsonRpcProvider);
+      
+      console.log(`🚨 SECURITY DEBUG - WalletConnect Contract instance created:`, {
+        contractAddress: contract.target || contract.address,
+        functionToCall: params.functionName,
+        inputAddress: params.contractAddress,
+        addressMatch: (contract.target || contract.address) === params.contractAddress
+      });
+
+      // Build the transaction data
+      const txRequest = await contract[params.functionName].populateTransaction(...params.functionArgs);
+      
+      console.log(`🚨 SECURITY DEBUG - WalletConnect Transaction request populated:`, {
+        to: txRequest.to,
+        data: txRequest.data,
+        inputContractAddress: params.contractAddress,
+        populatedTo: txRequest.to,
+        addressesMatch: txRequest.to === params.contractAddress,
+        functionName: params.functionName,
+        debugLabel: params.debugLabel
+      });
+
+      // Prepare the transaction for WalletConnect signing
+      const transaction = {
+        from: walletAddress,
+        to: txRequest.to,
+        data: txRequest.data,
+        value: txRequest.value ? ethers.toBeHex(txRequest.value) : '0x0',
+        gasLimit: txRequest.gasLimit ? ethers.toBeHex(txRequest.gasLimit) : undefined,
+        gasPrice: txRequest.gasPrice ? ethers.toBeHex(txRequest.gasPrice) : undefined,
+      };
+
+      // Remove undefined values
+      Object.keys(transaction).forEach(key => {
+        if ((transaction as any)[key] === undefined) {
+          delete (transaction as any)[key];
+        }
+      });
+
+      // Sign the transaction using WalletConnect - prefer client.request if available
+      let signedTx: string;
+      if (this.provider.client) {
+        console.log('WalletConnect: Using client.request for transaction signing...');
+        signedTx = await this.provider.client.request({
+          topic: this.provider.session.topic,
+          chainId: `eip155:${this.chainId}`,
+          request: {
+            method: 'eth_signTransaction',
+            params: [transaction]
+          }
+        }) as string;
+      } else {
+        console.log('WalletConnect: Using provider.request for transaction signing...');
+        signedTx = await this.provider.request({
+          method: 'eth_signTransaction',
+          params: [transaction]
+        }) as string;
+      }
+
+      console.log(`🚨 SECURITY DEBUG - WalletConnect Transaction signed:`, {
+        signedTxLength: signedTx.length,
+        debugLabel: params.debugLabel,
+        originalContractAddress: params.contractAddress,
+        transactionTo: txRequest.to
+      });
+
+      return signedTx;
+    } catch (error) {
+      console.error('🔧 WalletConnect: Sign contract transaction failed:', error);
+      console.error('🚨 SECURITY DEBUG - WalletConnect Sign transaction error details:', {
+        error: error,
+        contractAddress: params.contractAddress,
+        functionName: params.functionName,
+        debugLabel: params.debugLabel
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Initialize Web3Service for fundAndSendTransaction functionality
+   * Same pattern as Web3Auth - reuse the existing transaction logic
+   */
+  private async initializeWeb3Service(): Promise<void> {
+    if (!this.provider?.session || !this.config) {
+      console.warn('🔧 WalletConnect: Cannot initialize Web3Service - provider or config missing');
+      return;
+    }
+
+    try {
+      const { Web3Service } = await import('@/lib/web3');
+      this.web3Service = new Web3Service(this.config);
+      
+      // Create a compatible wallet provider for Web3Service
+      const walletProvider = {
+        getAddress: async () => {
+          const accounts = this.provider!.session!.namespaces?.eip155?.accounts || [];
+          if (accounts.length === 0) {
+            throw new Error('No accounts found in WalletConnect session');
+          }
+          return accounts[0].split(':')[2];
+        },
+        
+        sendTransaction: async (txRequest: any) => {
+          // Use WalletConnect's eth_sendTransaction
+          const transaction = {
+            from: await walletProvider.getAddress(),
+            to: txRequest.to,
+            data: txRequest.data || '0x',
+            value: txRequest.value ? ethers.toBeHex(txRequest.value) : '0x0',
+            gasLimit: txRequest.gasLimit ? ethers.toBeHex(txRequest.gasLimit) : undefined,
+            gasPrice: txRequest.gasPrice ? ethers.toBeHex(txRequest.gasPrice) : undefined,
+          };
+
+          // Remove undefined values
+          Object.keys(transaction).forEach(key => {
+            if ((transaction as any)[key] === undefined) {
+              delete (transaction as any)[key];
+            }
+          });
+
+          // Send via WalletConnect - prefer client.request if available
+          if (this.provider!.client) {
+            return await this.provider!.client.request({
+              topic: this.provider!.session!.topic,
+              chainId: `eip155:${this.chainId}`,
+              request: {
+                method: 'eth_sendTransaction',
+                params: [transaction]
+              }
+            }) as string;
+          } else {
+            return await this.provider!.request({
+              method: 'eth_sendTransaction',
+              params: [transaction]
+            }) as string;
+          }
+        }
+      };
+      
+      await this.web3Service.initialize(walletProvider);
+      console.log('🔧 WalletConnect: Web3Service initialized successfully');
+    } catch (error) {
+      console.error('🔧 WalletConnect: Failed to initialize Web3Service:', error);
+      this.web3Service = null;
+    }
+  }
+
+  async fundAndSendTransaction(txParams: { to: string; data: string; value?: string; gasLimit?: bigint; gasPrice?: bigint; }): Promise<string> {
+    if (!this.web3Service) {
+      console.warn('🔧 WalletConnect: Web3Service not initialized, attempting to initialize...');
+      await this.initializeWeb3Service();
+      
+      if (!this.web3Service) {
+        throw new Error('Web3Service not initialized - call initializeWeb3Service first');
+      }
+    }
+    
+    return await this.web3Service.fundAndSendTransaction(txParams);
+  }
+
+  // Get contract methods helper - same pattern as Web3Auth
+  private getContractMethods(authenticatedFetch?: any) {
+    if (!this.provider?.session) {
+      throw new Error('WalletConnect session not available');
+    }
+
+    return createWeb3AuthContractMethods(
+      async (txParams: any) => {
+        return await this.signContractTransaction(txParams);
+      },
+      authenticatedFetch || (async (url: string, options?: RequestInit) => {
+        return fetch(url, {
+          ...options,
+          credentials: 'include',
+          headers: {
+            ...options?.headers,
+          }
+        });
+      }),
+      async (txParams: any) => {
+        return await this.fundAndSendTransaction(txParams);
+      }
+    );
+  }
+
+  // High-level contract operation delegates - same pattern as Web3Auth
+  async fundContract(params: any, authenticatedFetch?: any): Promise<any> {
+    console.log('🔧 WalletConnect: fundContract called, delegating to contract methods');
+    const contractMethods = this.getContractMethods(authenticatedFetch);
+    return await contractMethods.fundContract(params);
+  }
+
+  async raiseDispute(params: {
+    contractAddress: string;
+    userAddress: string;
+    reason: string;
+    refundPercent: number;
+    contract?: any;
+    config?: any;
+    utils?: any;
+  }): Promise<any> {
+    console.log('🔧 WalletConnect: raiseDispute called, delegating to contract methods');
+    const contractMethods = this.getContractMethods();
+    return await contractMethods.raiseDispute(params);
+  }
+
+  async claimFunds(contractAddress: string, userAddress: string): Promise<any> {
+    console.log('🔧 WalletConnect: claimFunds called, delegating to contract methods');
+    const contractMethods = this.getContractMethods();
+    return await contractMethods.claimFunds(contractAddress, userAddress);
+  }
+
+  async createContract(contract: any, userAddress: string, config: any, utils: any): Promise<string> {
+    console.log('🔧 WalletConnect: createContract called, delegating to contract methods');
+    const contractMethods = this.getContractMethods();
+    return await contractMethods.createContract(contract, userAddress, config, utils);
+  }
+
+  async approveUSDC(contractAddress: string, amount: number, currency: string | undefined, userAddress: string, config: any, utils: any): Promise<string> {
+    console.log('🔧 WalletConnect: approveUSDC called, delegating to contract methods');
+    const contractMethods = this.getContractMethods();
+    return await contractMethods.approveUSDC(contractAddress, amount, currency, userAddress, config, utils);
+  }
+
+  async depositFunds(params: any): Promise<string> {
+    console.log('🔧 WalletConnect: depositFunds called, delegating to contract methods');
+    const contractMethods = this.getContractMethods();
+    return await contractMethods.depositFunds(params);
+  }
+
+  // Additional helper methods for compatibility
+  async waitForTransaction(transactionHash: string, maxWaitTime: number = 30000): Promise<void> {
+    console.log(`🔧 WalletConnect: Waiting for transaction confirmation: ${transactionHash}`);
+    
+    if (!this.provider?.session) {
+      throw new Error('WalletConnect session not available');
+    }
+    
+    const jsonRpcProvider = new ethers.JsonRpcProvider(this.rpcUrl);
+    
+    try {
+      // Wait for the transaction to be mined with a timeout
+      const receipt = await Promise.race([
+        jsonRpcProvider.waitForTransaction(transactionHash, 1), // Wait for 1 confirmation
+        new Promise<never>((_, reject) => 
+          setTimeout(() => reject(new Error('Transaction confirmation timeout')), maxWaitTime)
+        )
+      ]);
+      
+      if (receipt?.status === 1) {
+        console.log(`🔧 WalletConnect: Transaction confirmed: ${transactionHash}`);
+      } else {
+        throw new Error('Transaction failed or was reverted');
+      }
+    } catch (error) {
+      console.error(`🔧 WalletConnect: Transaction wait failed for ${transactionHash}:`, error);
+      throw error;
+    }
   }
 }

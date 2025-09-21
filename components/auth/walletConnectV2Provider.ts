@@ -192,9 +192,8 @@ export class WalletConnectV2Provider {
       const walletAddress = accounts[0].split(':')[2];
       console.log('WalletConnect: Wallet address from session:', walletAddress);
 
-      // Create ethers provider WITHOUT automatic network detection to avoid JsonRpcProvider errors
-      console.log('WalletConnect: Creating ethers provider...');
-      const ethersProvider = new ethers.BrowserProvider(this.provider as any);
+      // Keep the raw provider for SDK compatibility
+      console.log('WalletConnect: Using raw provider for SDK compatibility...');
 
       // Instead of using getSigner() which might trigger network detection,
       // let's use the wallet address directly from the session
@@ -276,11 +275,12 @@ export class WalletConnectV2Provider {
         };
         
         console.log('WalletConnect: Authentication successful');
-        return { user: enrichedUser, provider: ethersProvider };
+        return { user: enrichedUser, provider: new ethers.BrowserProvider(this.provider as any) };
       } catch (signError) {
         console.error('WalletConnect: Signature request failed, trying with signer:', signError);
         
         // Fallback to ethers signer method
+        const ethersProvider = new ethers.BrowserProvider(this.provider as any);
         const signer = await ethersProvider.getSigner();
         const signerAddress = await signer.getAddress();
         console.log('WalletConnect: Fallback - Signer address:', signerAddress);
@@ -316,7 +316,7 @@ export class WalletConnectV2Provider {
           authProvider: 'walletconnect'
         };
         
-        return { user: enrichedUser, provider: ethersProvider };
+        return { user: enrichedUser, provider: new ethers.BrowserProvider(this.provider as any) };
       }
     } catch (error) {
       console.error('WalletConnect: Failed to create user from session:', error);
@@ -419,7 +419,12 @@ export class WalletConnectV2Provider {
   }
 
   async getProvider(): Promise<ethers.BrowserProvider | null> {
-    if (!this.provider) return null;
+    if (!this.provider?.session) return null;
+    return new ethers.BrowserProvider(this.provider as any);
+  }
+
+  getEthersProvider(): any {
+    if (!this.provider?.session) return null;
     return new ethers.BrowserProvider(this.provider as any);
   }
 }

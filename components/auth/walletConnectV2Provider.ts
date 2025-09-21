@@ -430,20 +430,15 @@ export class WalletConnectV2Provider {
       return null;
     }
     
-    console.log('WalletConnect: Creating direct ethers provider (no wrapper)...');
+    console.log('WalletConnect: Creating JsonRpcProvider for reliable network operations...');
+    console.log('WalletConnect: Using RPC URL:', this.rpcUrl);
     
-    // Log provider details for debugging
-    console.log('WalletConnect: Provider has request method:', typeof this.provider.request === 'function');
-    console.log('WalletConnect: Provider type:', this.provider.constructor?.name);
+    // For WalletConnect, we'll use a JsonRpcProvider for all read operations
+    // This avoids the complexity of getting WalletConnect's provider to work with ethers
+    // The WalletConnect provider will still be used for signing transactions when needed
+    const jsonRpcProvider = new ethers.JsonRpcProvider(this.rpcUrl);
     
-    // Try using the WalletConnect provider directly with ethers
-    // The Universal Provider should be EIP-1193 compatible
-    try {
-      console.log('WalletConnect: Creating BrowserProvider directly with WalletConnect provider');
-      return new ethers.BrowserProvider(this.provider as any);
-    } catch (error) {
-      console.error('WalletConnect: Failed to create BrowserProvider directly:', error);
-      throw error;
-    }
+    console.log('WalletConnect: Created reliable JsonRpcProvider for network calls');
+    return jsonRpcProvider;
   }
 }

@@ -275,7 +275,8 @@ export class WalletConnectV2Provider {
         };
         
         console.log('WalletConnect: Authentication successful');
-        return { user: enrichedUser, provider: new ethers.BrowserProvider(this.provider as any) };
+        // Return the properly wrapped ethers provider
+        return { user: enrichedUser, provider: this.getEthersProvider() };
       } catch (signError) {
         console.error('WalletConnect: Signature request failed, trying with signer:', signError);
         
@@ -316,7 +317,7 @@ export class WalletConnectV2Provider {
           authProvider: 'walletconnect'
         };
         
-        return { user: enrichedUser, provider: new ethers.BrowserProvider(this.provider as any) };
+        return { user: enrichedUser, provider: this.getEthersProvider() };
       }
     } catch (error) {
       console.error('WalletConnect: Failed to create user from session:', error);
@@ -425,6 +426,45 @@ export class WalletConnectV2Provider {
 
   getEthersProvider(): any {
     if (!this.provider?.session) return null;
-    return new ethers.BrowserProvider(this.provider as any);
+    
+    // The WalletConnect UniversalProvider should already be EIP-1193 compatible
+    // We'll create a minimal wrapper that delegates to the provider
+    const provider = this.provider;
+    
+    // Create a proper EIP-1193 provider wrapper with a base object that has the required method
+    const eip1193Provider = new Proxy({ 
+      request: async (args: { method: string; params?: any[] }) => {
+        if (!provider || !provider.request) {
+          throw new Error('Provider not initialized or request method not available');
+        }
+        return await provider.request(args);
+      }
+    } as any, {
+      get(target, prop) {
+        // If the property exists on our base object, use it
+        if (prop in target) {
+          return target[prop];
+        }
+        
+        // Handle event methods
+        if (prop === 'on') {
+          return provider.on ? provider.on.bind(provider) : () => {};
+        }
+        
+        if (prop === 'removeListener') {
+          return provider.removeListener ? provider.removeListener.bind(provider) : () => {};
+        }
+        
+        // For any other property, try to get it from the provider
+        if (provider && prop in provider) {
+          const value = provider[prop as keyof typeof provider];
+          return typeof value === 'function' ? value.bind(provider) : value;
+        }
+        
+        return undefined;
+      }
+    });
+    
+    return new ethers.BrowserProvider(eip1193Provider);
   }
 }

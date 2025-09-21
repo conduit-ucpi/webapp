@@ -574,48 +574,59 @@ export class WalletConnectV2Provider {
       this.web3Service = new Web3Service(this.config);
       
       // Create a compatible wallet provider for Web3Service
+      // Web3Service expects a provider with a 'request' method (like window.ethereum)
       const walletProvider = {
-        getAddress: async () => {
-          const accounts = this.provider!.session!.namespaces?.eip155?.accounts || [];
-          if (accounts.length === 0) {
-            throw new Error('No accounts found in WalletConnect session');
-          }
-          return accounts[0].split(':')[2];
-        },
-        
-        sendTransaction: async (txRequest: any) => {
-          // Use WalletConnect's eth_sendTransaction
-          const transaction = {
-            from: await walletProvider.getAddress(),
-            to: txRequest.to,
-            data: txRequest.data || '0x',
-            value: txRequest.value ? ethers.toBeHex(txRequest.value) : '0x0',
-            gasLimit: txRequest.gasLimit ? ethers.toBeHex(txRequest.gasLimit) : undefined,
-            gasPrice: txRequest.gasPrice ? ethers.toBeHex(txRequest.gasPrice) : undefined,
-          };
-
-          // Remove undefined values
-          Object.keys(transaction).forEach(key => {
-            if ((transaction as any)[key] === undefined) {
-              delete (transaction as any)[key];
+        request: async ({ method, params }: { method: string; params?: any[] }) => {
+          console.log('🔧 WalletConnect: Wallet provider request:', { method, params });
+          
+          if (method === 'eth_accounts') {
+            const accounts = this.provider!.session!.namespaces?.eip155?.accounts || [];
+            if (accounts.length === 0) {
+              throw new Error('No accounts found in WalletConnect session');
             }
-          });
+            // Return just the address part (without chain prefix)
+            return [accounts[0].split(':')[2]];
+          }
+          
+          if (method === 'eth_sendTransaction') {
+            const [transaction] = params || [];
+            if (!transaction) {
+              throw new Error('No transaction data provided');
+            }
 
-          // Send via WalletConnect - prefer client.request if available
+            // Send via WalletConnect - prefer client.request if available
+            if (this.provider!.client) {
+              return await this.provider!.client.request({
+                topic: this.provider!.session!.topic,
+                chainId: `eip155:${this.chainId}`,
+                request: {
+                  method: 'eth_sendTransaction',
+                  params: [transaction]
+                }
+              }) as string;
+            } else {
+              return await this.provider!.request({
+                method: 'eth_sendTransaction',
+                params: [transaction]
+              }) as string;
+            }
+          }
+          
+          // For other methods, delegate to WalletConnect provider
           if (this.provider!.client) {
             return await this.provider!.client.request({
               topic: this.provider!.session!.topic,
               chainId: `eip155:${this.chainId}`,
               request: {
-                method: 'eth_sendTransaction',
-                params: [transaction]
+                method,
+                params: params || []
               }
-            }) as string;
+            });
           } else {
             return await this.provider!.request({
-              method: 'eth_sendTransaction',
-              params: [transaction]
-            }) as string;
+              method,
+              params: params || []
+            });
           }
         }
       };

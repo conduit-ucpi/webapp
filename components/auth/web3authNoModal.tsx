@@ -991,15 +991,22 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
       console.log('🔧 Web3Auth No-Modal: WalletConnect provider stored successfully');
       console.log('🔧 Web3Auth No-Modal: Provider type:', this.provider?.constructor?.name);
       console.log('🔧 Web3Auth No-Modal: Has walletConnectProvider:', !!this.walletConnectProvider);
+      console.log('🔧 Web3Auth No-Modal: WalletConnect backend user data:', {
+        userId: authResult.user.userId,
+        email: authResult.user.email,
+        displayName: authResult.user.displayName,
+        walletAddress: authResult.user.walletAddress
+      });
       
-      // Create user object
+      // Create user object using backend data from WalletConnect authentication
       this.state.user = {
-        userId: authResult.user.walletAddress,
-        email: authResult.user.walletAddress,
-        displayName: 'WalletConnect User',
-        profileImageUrl: '',
+        userId: authResult.user.userId || authResult.user.walletAddress,
+        email: authResult.user.email || '',
+        displayName: authResult.user.displayName || authResult.user.email || 'WalletConnect User',
+        profileImageUrl: authResult.user.profileImageUrl || '',
         walletAddress: authResult.user.walletAddress,
-        authProvider: 'walletconnect'
+        authProvider: 'walletconnect',
+        userType: authResult.user.userType || ''
       };
 
       this.state.isConnected = true;

@@ -81,7 +81,7 @@ export default function Header() {
               ) : isAuthenticated ? (
                 <div className="flex items-center gap-2">
                   <span className="hidden sm:inline text-sm text-secondary-600 dark:text-secondary-300 truncate max-w-[150px]">
-                    {user?.email || 'User'}
+                    {user?.email || user?.walletAddress || 'User'}
                   </span>
                   <div className="w-2 h-2 bg-green-500 rounded-full" />
                 </div>

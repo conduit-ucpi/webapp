@@ -46,6 +46,7 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
   private cachedEthersProvider: any = null;
   private adapters: Map<string, any> = new Map();
   private chainConfig: any = null;
+  private walletConnectProvider: any = null; // Store WalletConnect provider instance
 
   constructor(config?: any) {
     this.config = config;
@@ -313,6 +314,16 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
   }
 
   async disconnect(): Promise<void> {
+    // Handle WalletConnect disconnect
+    if (this.walletConnectProvider) {
+      try {
+        await this.walletConnectProvider.disconnect();
+      } catch (error) {
+        console.warn('WalletConnect disconnect error:', error);
+      }
+      this.walletConnectProvider = null;
+    }
+    
     if (!this.web3auth) return;
     
     try {
@@ -354,6 +365,11 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
   }
 
   getEthersProvider(): any {
+    // For WalletConnect, use its getEthersProvider method
+    if (this.walletConnectProvider && this.walletConnectProvider.getEthersProvider) {
+      return this.walletConnectProvider.getEthersProvider();
+    }
+    
     if (!this.provider) {
       throw new Error('No provider available');
     }
@@ -961,8 +977,10 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
       // Connect using WalletConnect
       const authResult = await walletConnectProvider.connect();
       
-      // Set the provider for subsequent operations
-      this.provider = await walletConnectProvider.getProvider();
+      // Store the WalletConnect provider instance itself so we can access its methods
+      // The walletConnectProvider has getEthersProvider() method that the AuthProvider needs
+      this.walletConnectProvider = walletConnectProvider;
+      this.provider = authResult.provider; // This is already an ethers.BrowserProvider from connect()
       
       // Create user object
       this.state.user = {

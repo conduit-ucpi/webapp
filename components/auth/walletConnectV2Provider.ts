@@ -452,7 +452,8 @@ export class WalletConnectV2Provider {
           throw new Error('Provider not initialized or request method not available');
         }
         try {
-          const result = await provider.request(args);
+          // Bind the request method to the provider to ensure correct 'this' context
+          const result = await provider.request.bind(provider)(args);
           console.log('WalletConnect: Request successful for', args.method);
           return result;
         } catch (error) {

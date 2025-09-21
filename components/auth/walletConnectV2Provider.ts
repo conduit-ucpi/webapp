@@ -430,64 +430,20 @@ export class WalletConnectV2Provider {
       return null;
     }
     
-    console.log('WalletConnect: Creating ethers provider wrapper...');
-    
-    // The WalletConnect UniversalProvider should already be EIP-1193 compatible
-    // We'll create a minimal wrapper that delegates to the provider
-    const provider = this.provider;
+    console.log('WalletConnect: Creating direct ethers provider (no wrapper)...');
     
     // Log provider details for debugging
-    console.log('WalletConnect: Provider has request method:', typeof provider.request === 'function');
-    console.log('WalletConnect: Provider type:', provider.constructor?.name);
+    console.log('WalletConnect: Provider has request method:', typeof this.provider.request === 'function');
+    console.log('WalletConnect: Provider type:', this.provider.constructor?.name);
     
-    // Create a proper EIP-1193 provider wrapper with a base object that has the required method
-    const eip1193Provider = new Proxy({ 
-      request: async (args: { method: string; params?: any[] }) => {
-        console.log('WalletConnect: Proxy request called with:', args.method);
-        if (!provider || !provider.request) {
-          console.error('WalletConnect: Provider or request method not available!', {
-            provider: !!provider,
-            hasRequest: provider ? typeof provider.request === 'function' : false
-          });
-          throw new Error('Provider not initialized or request method not available');
-        }
-        try {
-          // Bind the request method to the provider to ensure correct 'this' context
-          const result = await provider.request.bind(provider)(args);
-          console.log('WalletConnect: Request successful for', args.method);
-          return result;
-        } catch (error) {
-          console.error('WalletConnect: Request failed for', args.method, error);
-          throw error;
-        }
-      }
-    } as any, {
-      get(target, prop) {
-        // If the property exists on our base object, use it
-        if (prop in target) {
-          return target[prop];
-        }
-        
-        // Handle event methods
-        if (prop === 'on') {
-          return provider?.on ? provider.on.bind(provider) : () => {};
-        }
-        
-        if (prop === 'removeListener') {
-          return provider?.removeListener ? provider.removeListener.bind(provider) : () => {};
-        }
-        
-        // For any other property, try to get it from the provider
-        if (provider && prop in provider) {
-          const value = provider[prop as keyof typeof provider];
-          return typeof value === 'function' ? value.bind(provider) : value;
-        }
-        
-        return undefined;
-      }
-    });
-    
-    console.log('WalletConnect: Ethers provider wrapper created');
-    return new ethers.BrowserProvider(eip1193Provider);
+    // Try using the WalletConnect provider directly with ethers
+    // The Universal Provider should be EIP-1193 compatible
+    try {
+      console.log('WalletConnect: Creating BrowserProvider directly with WalletConnect provider');
+      return new ethers.BrowserProvider(this.provider as any);
+    } catch (error) {
+      console.error('WalletConnect: Failed to create BrowserProvider directly:', error);
+      throw error;
+    }
   }
 }

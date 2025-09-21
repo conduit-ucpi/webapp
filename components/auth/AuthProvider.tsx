@@ -399,6 +399,24 @@ export function AuthProvider({ children }: AuthProviderProps) {
       return backendAuth.authenticatedFetch(url, options);
     },
 
+    // Refresh user data from backend
+    refreshUserData: async () => {
+      try {
+        const backendStatus = await backendAuth.checkAuthStatus();
+        if (backendStatus.success && backendStatus.user) {
+          setAuthState(prev => ({
+            ...prev,
+            user: prev.user ? {
+              ...prev.user,
+              ...backendStatus.user
+            } : backendStatus.user as any
+          }));
+        }
+      } catch (error) {
+        console.error('Failed to refresh user data:', error);
+      }
+    },
+
     // Debug methods
     clearStoredToken: () => {
       backendAuth.clearToken();

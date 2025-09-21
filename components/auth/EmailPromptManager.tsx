@@ -3,7 +3,7 @@ import { useAuth } from './AuthProvider';
 import EmailCollection from './EmailCollection';
 
 export default function EmailPromptManager({ children }: { children: React.ReactNode }) {
-  const { user, isLoading, isConnected } = useAuth();
+  const { user, isLoading, isConnected, refreshUserData } = useAuth();
   const [showEmailPrompt, setShowEmailPrompt] = useState(false);
   const [emailPromptDismissed, setEmailPromptDismissed] = useState(false);
 
@@ -39,8 +39,10 @@ export default function EmailPromptManager({ children }: { children: React.React
       setShowEmailPrompt(false);
       setEmailPromptDismissed(true);
       
-      // Optionally refresh user data or show success message
-      // The backend should have updated the user's email in the database
+      // Refresh user data to reflect the new email in the current session
+      if (refreshUserData) {
+        await refreshUserData();
+      }
       
     } catch (error) {
       console.error('Failed to update email:', error);

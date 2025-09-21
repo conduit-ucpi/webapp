@@ -95,6 +95,7 @@ export interface AuthMethods {
   // Token management
   getToken: () => string | null;
   refreshToken?: () => Promise<string | null>;
+  refreshUserData?: () => Promise<void>;
   
   // Wallet operations
   signMessage: (message: string) => Promise<string>;

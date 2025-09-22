@@ -10,6 +10,7 @@ import {
 import { useConfig } from './ConfigProvider';
 import { formatUnits } from 'ethers';
 import { createWeb3AuthContractMethods } from '@/utils/contractTransactionFactory';
+import { toHexString } from '@/utils/hexUtils';
 
 // Minimal ERC20 ABI for balance checking
 const ERC20_ABI = [
@@ -84,7 +85,7 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
         
         this.chainConfig = {
           chainNamespace: CHAIN_NAMESPACES.EIP155,
-          chainId: `0x${this.config.chainId.toString(16)}`,
+          chainId: toHexString(this.config.chainId),
           rpcTarget: this.config.rpcUrl,
           displayName: this.getChainDisplayName(),
           blockExplorerUrl: this.config.explorerBaseUrl,

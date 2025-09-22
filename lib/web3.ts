@@ -1,6 +1,7 @@
 import { ethers } from 'ethers';
 import { Config } from '@/types';
 import { WalletProvider } from './wallet/types';
+import { toHex, toHexString, ensureHexPrefix } from '@/utils/hexUtils';
 
 // ERC20 ABI for USDC interactions
 export const ERC20_ABI = [
@@ -126,8 +127,8 @@ export class Web3Service {
       to: txParams.to,
       data: txParams.data,
       value: txParams.value || '0x0',
-      gasLimit: `0x${txParams.gasLimit.toString(16)}`,
-      gasPrice: `0x${gasPrice.toString(16)}`,
+      gasLimit: toHex(txParams.gasLimit),
+      gasPrice: toHex(gasPrice),
       nonce: nonce,
       chainId: this.config.chainId
     });
@@ -362,7 +363,7 @@ export class Web3Service {
           params: [{
             from: userAddress,
             to: to,
-            value: `0x${value.toString(16)}`
+            value: toHex(value)
           }],
           id: 1
         })
@@ -393,7 +394,7 @@ export class Web3Service {
     const signedTx = await this.signTransaction({
       to: to,
       data: '0x',
-      value: `0x${value.toString(16)}`,
+      value: toHex(value),
       gasLimit: gasEstimate
     });
 
@@ -628,8 +629,8 @@ export class Web3Service {
         to: txParams.to,
         data: txParams.data,
         value: txParams.value || '0x0',
-        gasLimit: `0x${gasEstimate.toString(16)}`,
-        gasPrice: `0x${gasPrice.toString(16)}`
+        gasLimit: toHexString(gasEstimate),
+        gasPrice: toHexString(gasPrice)
       }]
     });
     

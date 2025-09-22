@@ -1,4 +1,5 @@
 import { ethers } from 'ethers';
+import { ensureHexPrefix } from './hexUtils';
 
 export function isValidWalletAddress(address: string): boolean {
   try {
@@ -88,7 +89,7 @@ export function formatWalletAddress(address: string): string {
  */
 export function ensureAddressPrefix(address: string): string {
   if (!address) return address;
-  return address.toLowerCase().startsWith('0x') ? address : `0x${address}`;
+  return ensureHexPrefix(address.toLowerCase());
 }
 
 

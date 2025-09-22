@@ -2,6 +2,7 @@ import { WALLET_CONNECTORS, WEB3AUTH_NETWORK } from "@web3auth/modal";
 import { Web3AuthContextConfig } from "@web3auth/modal/react";
 import { CHAIN_NAMESPACES, CustomChainConfig } from "@web3auth/base";
 import { getNetworkInfo } from "@/utils/networkUtils";
+import { toHexString } from "@/utils/hexUtils";
 
 // This matches the pattern from the Web3Auth examples
 export const createWeb3AuthConfig = (config: {
@@ -15,7 +16,7 @@ export const createWeb3AuthConfig = (config: {
 
   const chainConfig: CustomChainConfig = {
     chainNamespace: CHAIN_NAMESPACES.EIP155,
-    chainId: `0x${config.chainId.toString(16)}`, // Convert to hex
+    chainId: toHexString(config.chainId), // Convert to hex
     rpcTarget: config.rpcUrl,
     displayName: networkInfo.name,
     blockExplorerUrl: config.explorerBaseUrl,

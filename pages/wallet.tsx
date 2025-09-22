@@ -12,6 +12,7 @@ import { ethers } from 'ethers';
 import { useFarcaster } from '@/components/farcaster/FarcasterDetectionProvider';
 import { useWalletAddress } from '@/hooks/useWalletAddress';
 import { TransferUSDCRequest } from '@/types';
+import { ensureHexPrefix } from '@/utils/hexUtils';
 
 interface WalletBalances {
   native: string;
@@ -128,7 +129,7 @@ export default function Wallet() {
 
       setChainInfo({
         chainId,
-        chainIdHex: `0x${chainId.toString(16)}`,
+        chainIdHex: ensureHexPrefix(chainId.toString(16)),
         name,
         blockNumber,
         gasPrice

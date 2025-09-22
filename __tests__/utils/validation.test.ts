@@ -249,7 +249,7 @@ describe('validation utils', () => {
     it('should handle mixed case 0X prefix', () => {
       const address = '0X1234567890abcdef1234567890abcdef12345678';
       const result = ensureAddressPrefix(address);
-      expect(result).toBe('0X1234567890abcdef1234567890abcdef12345678');
+      expect(result).toBe('0x1234567890abcdef1234567890abcdef12345678');
     });
 
     it('should handle empty address', () => {

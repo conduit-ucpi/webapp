@@ -1,5 +1,6 @@
 import { ethers } from 'ethers';
 import { WalletProvider, TransactionRequest } from './types';
+import { toHexString, ensureHexPrefix } from '@/utils/hexUtils';
 
 /**
  * Web3Auth implementation of WalletProvider
@@ -42,10 +43,10 @@ export class Web3AuthWalletProvider implements WalletProvider {
       from: fromAddress,
       to: params.to,
       data: params.data,
-      value: params.value || '0x0',
+      value: ensureHexPrefix(params.value || '0'),
       gasLimit: params.gasLimit,
       gasPrice: params.gasPrice,
-      nonce: params.nonce ? (typeof params.nonce === 'string' ? params.nonce : `0x${params.nonce.toString(16)}`) : undefined
+      nonce: params.nonce ? (typeof params.nonce === 'string' ? params.nonce : ensureHexPrefix(params.nonce.toString(16))) : undefined
     };
 
     // Remove undefined fields
@@ -60,7 +61,7 @@ export class Web3AuthWalletProvider implements WalletProvider {
       const tx = ethers.Transaction.from({
         to: params.to,
         data: params.data,
-        value: params.value || '0x0',
+        value: ensureHexPrefix(params.value || '0'),
         gasLimit: params.gasLimit,
         gasPrice: params.gasPrice,
         nonce: typeof params.nonce === 'string' ? parseInt(params.nonce, 16) : params.nonce,

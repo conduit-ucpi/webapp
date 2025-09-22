@@ -148,9 +148,18 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
         
         // Import and create WalletConnect's own modal
         const { WalletConnectModal } = await import('@walletconnect/modal');
+        
+        console.log('🔧 DEBUG: WalletConnect Modal chainId values:', {
+          rawConfigChainId: this.config.chainId,
+          typeofChainId: typeof this.config.chainId,
+          oldEip155String: `eip155:${this.config.chainId}`,
+          newEip155String: `eip155:0x${this.config.chainId.toString(16)}`,
+          expectedHex: `eip155:0x2105`
+        });
+        
         const walletConnectModal = new WalletConnectModal({
           projectId: walletConnectProjectId,
-          chains: [`eip155:${this.config.chainId}`],
+          chains: [`eip155:0x${this.config.chainId.toString(16)}`],
           themeMode: 'light',
           themeVariables: {
             '--wcm-z-index': '99999',

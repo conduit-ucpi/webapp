@@ -136,8 +136,9 @@ export default function Wallet() {
 
     setIsLoadingBalances(true);
     try {
-      // Get the real wallet address from SDK
-      const userAddress = await getUserAddress();
+      // Get the wallet address directly from ethers (avoid SDK provider issues)
+      const signer = await ethersProvider.getSigner();
+      const userAddress = await signer.getAddress();
       console.log('Loading balances for address:', userAddress);
       
       // Get network info for debugging
@@ -153,9 +154,41 @@ export default function Wallet() {
       const nativeFormatted = ethers.formatEther(nativeBalance);
       console.log('Native balance:', { raw: nativeBalance.toString(), formatted: nativeFormatted });
 
-      // Get USDC balance using SDK
-      const usdcBalance = await getUSDCBalance();
-      console.log('USDC balance:', usdcBalance);
+      // Get USDC balance using ethers directly (avoid problematic SDK path)
+      let usdcBalance = '0';
+      if (config?.usdcContractAddress) {
+        try {
+          console.log('Getting USDC balance with ethers for contract:', config.usdcContractAddress);
+          
+          // ERC20 ABI for balanceOf function
+          const erc20Abi = [
+            'function balanceOf(address owner) view returns (uint256)'
+          ];
+          
+          const usdcContract = new ethers.Contract(
+            config.usdcContractAddress,
+            erc20Abi,
+            ethersProvider
+          );
+          
+          const balance = await usdcContract.balanceOf(userAddress);
+          usdcBalance = ethers.formatUnits(balance, 6); // USDC has 6 decimals
+          console.log('USDC balance from ethers:', { raw: balance.toString(), formatted: usdcBalance });
+        } catch (error) {
+          console.warn('Failed to get USDC balance with ethers:', error);
+          // Fallback to SDK if ethers fails
+          try {
+            usdcBalance = await getUSDCBalance();
+            console.log('USDC balance from SDK fallback:', usdcBalance);
+          } catch (sdkError) {
+            console.error('Both ethers and SDK USDC balance failed:', sdkError);
+            usdcBalance = '0';
+          }
+        }
+      } else {
+        console.warn('No USDC contract address configured, using SDK fallback');
+        usdcBalance = await getUSDCBalance();
+      }
 
       // Format native balance with scientific notation for small values
       const nativeValue = parseFloat(nativeFormatted);

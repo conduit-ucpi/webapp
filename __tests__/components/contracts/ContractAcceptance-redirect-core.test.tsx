@@ -27,7 +27,6 @@ global.fetch = mockFetch;
 const mockWeb3Service = {
   initializeProvider: jest.fn(),
   getUserAddress: jest.fn().mockResolvedValue('0xBuyerAddress'),
-  getUSDCBalance: jest.fn().mockResolvedValue('1.00'),
   signContractTransaction: jest.fn().mockImplementation((params) => {
     if (params.functionName === 'raiseDispute') return Promise.resolve('mock-dispute-tx');
     if (params.functionName === 'claimFunds') return Promise.resolve('mock-claim-tx');
@@ -132,7 +131,6 @@ describe('ContractAcceptance - Core Redirect Behavior', () => {
       markAsVisited: jest.fn(),
       signMessage: jest.fn(),
       getEthersProvider: jest.fn(),
-      getUSDCBalance: jest.fn(() => Promise.resolve('100000000')), // 100 USDC in microUSDC
       signContractTransaction: jest.fn(),
       authenticatedFetch: jest.fn((url, options) => {
         // Mock the authenticatedFetch to use the global mockFetch

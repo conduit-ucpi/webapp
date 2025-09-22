@@ -15,7 +15,6 @@ jest.mock('../../../hooks/useWeb3SDK', () => ({
     isReady: true,
     error: null,
     isConnected: true,
-    getUSDCBalance: jest.fn().mockResolvedValue('100000000'), // 100 USDC in microUSDC
     getUSDCAllowance: jest.fn().mockResolvedValue('1000.0'),
     signUSDCTransfer: jest.fn().mockResolvedValue('mock-signed-transaction'),
     getContractInfo: jest.fn().mockResolvedValue({}),
@@ -148,7 +147,6 @@ describe('ContractActions - Context Fields for Dispute', () => {
       markAsVisited: jest.fn(),
       signMessage: jest.fn(),
       getEthersProvider: jest.fn(),
-      getUSDCBalance: jest.fn().mockResolvedValue('100000000'), // 100 USDC in microUSDC
       signContractTransaction: jest.fn(),
       authenticatedFetch: jest.fn(),
       raiseDispute: jest.fn().mockResolvedValue('mock-tx-hash'),

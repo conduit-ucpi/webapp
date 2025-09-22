@@ -294,7 +294,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
         signMessage: async () => { throw new Error('Auth provider not initialized'); },
         signContractTransaction: async () => { throw new Error('Auth provider not initialized'); },
         getEthersProvider: () => { throw new Error('Auth provider not initialized'); },
-        getUSDCBalance: async () => '0',
         authenticatedFetch: undefined,
       };
     }
@@ -400,14 +399,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
       throw new Error('Web3Service not available for signature authentication');
     },
 
-    getUSDCBalance: async (userAddress?: string) => {
-      // Cast to access getUSDCBalance method
-      const providerWithUSDC = provider as any;
-      if (providerWithUSDC.getUSDCBalance) {
-        return await providerWithUSDC.getUSDCBalance(userAddress);
-      }
-      throw new Error('getUSDCBalance not available');
-    },
 
     signContractTransaction: async (params: any) => {
       // Cast to access signContractTransaction method
@@ -901,13 +892,6 @@ function RegularAuthProvider({ children }: AuthProviderProps) {
     // Expose Web3Service for direct access when needed
     getWeb3Service: () => web3Service,
     
-    getUSDCBalance: async (userAddress?: string) => {
-      const providerWithBalance = provider as any;
-      if (providerWithBalance.getUSDCBalance) {
-        return await providerWithBalance.getUSDCBalance(userAddress);
-      }
-      return '0';
-    },
     
     signContractTransaction: async (params: any) => {
       const providerWithSign = provider as any;

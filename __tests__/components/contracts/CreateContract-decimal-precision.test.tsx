@@ -88,7 +88,6 @@ describe('CreateContract Decimal Precision', () => {
       markAsVisited: jest.fn(),
       signMessage: jest.fn(),
       getEthersProvider: jest.fn(),
-      getUSDCBalance: jest.fn().mockResolvedValue('100000000'), // 100 USDC in microUSDC
       signContractTransaction: jest.fn(),
       authenticatedFetch: jest.fn(),
     });

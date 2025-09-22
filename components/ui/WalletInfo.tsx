@@ -4,37 +4,56 @@ import { useConfig } from '@/components/auth/ConfigProvider';
 import { getNetworkName } from '@/utils/networkUtils';
 import { formatWalletAddress, formatCurrency } from '@/utils/validation';
 import Button from '@/components/ui/Button';
+import { ethers } from 'ethers';
 
 interface WalletInfoProps {
   className?: string;
 }
 
 export default function WalletInfo({ className = '' }: WalletInfoProps) {
-  const { user, getUSDCBalance } = useAuth();
+  const { user, getEthersProvider } = useAuth();
   const { config } = useConfig();
   const [balance, setBalance] = useState<string>('0.0000');
   const [isLoadingBalance, setIsLoadingBalance] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  // Fetch USDC balance
+  // Fetch USDC balance using ethers directly
   useEffect(() => {
-    if (user?.walletAddress && getUSDCBalance) {
+    if (user?.walletAddress && config?.usdcContractAddress) {
       setIsLoadingBalance(true);
-      getUSDCBalance(user.walletAddress)
-        .then((bal) => {
-          // Balance is returned as a string in USDC format already
-          const formatted = formatCurrency(bal, 'USDC');
+      
+      const fetchBalance = async () => {
+        try {
+          const ethersProvider = getEthersProvider();
+          
+          // ERC20 ABI for balanceOf function
+          const erc20Abi = [
+            'function balanceOf(address owner) view returns (uint256)'
+          ];
+          
+          const usdcContract = new ethers.Contract(
+            config.usdcContractAddress,
+            erc20Abi,
+            ethersProvider
+          );
+          
+          const balance = await usdcContract.balanceOf(user.walletAddress);
+          const formattedBalance = ethers.formatUnits(balance, 6); // USDC has 6 decimals
+          
+          // Format to always show 4 decimal places
+          const formatted = formatCurrency(formattedBalance, 'USDC');
           setBalance(formatted.amount);
-        })
-        .catch((error) => {
+        } catch (error) {
           console.error('Failed to fetch USDC balance:', error);
           setBalance('Error');
-        })
-        .finally(() => {
+        } finally {
           setIsLoadingBalance(false);
-        });
+        }
+      };
+      
+      fetchBalance();
     }
-  }, [user?.walletAddress, getUSDCBalance]);
+  }, [user?.walletAddress, config?.usdcContractAddress, getEthersProvider]);
 
   const copyToClipboard = async () => {
     if (!user?.walletAddress) return;

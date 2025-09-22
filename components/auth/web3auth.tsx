@@ -813,12 +813,6 @@ export function Web3AuthProvider({ children }: { children: React.ReactNode }) {
     
     getEthersProvider: () => provider?.getEthersProvider?.() || null,
     
-    getUSDCBalance: async (userAddress?: string) => {
-      if (!provider) {
-        throw new Error('Provider not initialized');
-      }
-      return await provider.getUSDCBalance(userAddress);
-    },
     
     signContractTransaction: async (params: any) => {
       if (!provider) {

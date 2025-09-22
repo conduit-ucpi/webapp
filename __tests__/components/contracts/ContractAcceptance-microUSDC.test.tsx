@@ -14,7 +14,6 @@ jest.mock('../../../hooks/useWeb3SDK', () => ({
     isReady: true,
     error: null,
     isConnected: true,
-    getUSDCBalance: jest.fn(() => Promise.resolve('10000000000')), // 10,000 USDC in microUSDC
     getUSDCAllowance: jest.fn().mockResolvedValue('1000.0'),
     signUSDCTransfer: jest.fn().mockResolvedValue('mock-signed-transaction'),
     getContractInfo: jest.fn().mockResolvedValue({}),
@@ -162,7 +161,6 @@ describe('ContractAcceptance - microUSDC Amount Handling', () => {
       markAsVisited: jest.fn(),
       signMessage: jest.fn(),
       getEthersProvider: jest.fn(),
-      getUSDCBalance: jest.fn(() => Promise.resolve('10000000000')), // 10,000 USDC in microUSDC
       signContractTransaction: jest.fn(),
       authenticatedFetch: jest.fn((url, options) => {
         // Mock the authenticatedFetch to use the global mockFetch

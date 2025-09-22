@@ -171,7 +171,6 @@ describe('AdminPage', () => {
       markAsVisited: jest.fn(),
       signMessage: jest.fn(),
       getEthersProvider: jest.fn(),
-      getUSDCBalance: jest.fn(() => Promise.resolve('100.0')),
       signContractTransaction: jest.fn(),
       authenticatedFetch: jest.fn(),
     });
@@ -203,7 +202,6 @@ describe('AdminPage', () => {
       markAsVisited: jest.fn(),
       signMessage: jest.fn(),
       getEthersProvider: jest.fn(),
-      getUSDCBalance: jest.fn(() => Promise.resolve('100.0')),
       signContractTransaction: jest.fn(),
       authenticatedFetch: jest.fn(),
     });
@@ -242,7 +240,6 @@ describe('AdminPage', () => {
       markAsVisited: jest.fn(),
       signMessage: jest.fn(),
       getEthersProvider: jest.fn(),
-      getUSDCBalance: jest.fn(() => Promise.resolve('100.0')),
       signContractTransaction: jest.fn(),
       authenticatedFetch: jest.fn(),
     });
@@ -282,7 +279,6 @@ describe('AdminPage', () => {
       markAsVisited: jest.fn(),
       signMessage: jest.fn(),
       getEthersProvider: jest.fn(),
-      getUSDCBalance: jest.fn(() => Promise.resolve('100.0')),
       signContractTransaction: jest.fn(),
       authenticatedFetch: jest.fn(),
     });
@@ -322,7 +318,6 @@ describe('AdminPage', () => {
       markAsVisited: jest.fn(),
       signMessage: jest.fn(),
       getEthersProvider: jest.fn(),
-      getUSDCBalance: jest.fn(() => Promise.resolve('100.0')),
       signContractTransaction: jest.fn(),
       authenticatedFetch: jest.fn(),
     });
@@ -383,7 +378,6 @@ describe('AdminPage', () => {
       markAsVisited: jest.fn(),
       signMessage: jest.fn(),
       getEthersProvider: jest.fn(),
-      getUSDCBalance: jest.fn(() => Promise.resolve('100.0')),
       signContractTransaction: jest.fn(),
       authenticatedFetch: jest.fn(),
     });
@@ -452,7 +446,6 @@ describe('Contract Selection and Details', () => {
       markAsVisited: jest.fn(),
       signMessage: jest.fn(),
       getEthersProvider: jest.fn(),
-      getUSDCBalance: jest.fn(() => Promise.resolve('100.0')),
       signContractTransaction: jest.fn(),
       authenticatedFetch: jest.fn(),
     });

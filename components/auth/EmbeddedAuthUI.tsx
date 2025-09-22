@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from './index';
 import { useRouter } from 'next/router';
 import { ExternalWalletProvider } from '@/lib/wallet/external-wallet-provider';
@@ -29,13 +29,39 @@ export default function EmbeddedAuthUI({ className = '', onSuccess, compact = fa
     return <AuthRouter compact={compact} onSuccess={onSuccess} className={className} />;
   }
 
-  // Set up WalletConnect URI handler
-  if (typeof window !== 'undefined') {
-    window.web3authWalletConnectUri = (uri: string) => {
-      setWalletConnectUri(uri);
-      setShowQRModal(true);
+  // Set up WalletConnect URI handler using event listeners
+  useEffect(() => {
+    const handleWalletConnectUri = (event: CustomEvent) => {
+      console.log('🔧 EmbeddedAuthUI: Received WalletConnect URI event:', event.detail?.uri);
+      setWalletConnectUri(event.detail?.uri || null);
+      if (event.detail?.uri) {
+        setShowQRModal(true);
+      }
     };
-  }
+
+    const handleWalletConnectClose = () => {
+      console.log('🔧 EmbeddedAuthUI: Received WalletConnect close event');
+      setWalletConnectUri(null);
+      setShowQRModal(false);
+    };
+
+    // Listen for custom events from WalletConnect adapter
+    window.addEventListener('walletconnect-uri', handleWalletConnectUri as EventListener);
+    window.addEventListener('walletconnect-close', handleWalletConnectClose);
+
+    // Legacy support for direct window function
+    if (typeof window !== 'undefined') {
+      window.web3authWalletConnectUri = (uri: string) => {
+        setWalletConnectUri(uri);
+        setShowQRModal(true);
+      };
+    }
+
+    return () => {
+      window.removeEventListener('walletconnect-uri', handleWalletConnectUri as EventListener);
+      window.removeEventListener('walletconnect-close', handleWalletConnectClose);
+    };
+  }, []);
 
   const handleConnect = async (method: string, userEmail?: string) => {
     try {

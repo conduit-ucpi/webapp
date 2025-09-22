@@ -44,6 +44,26 @@ export default function AuthRouter({ compact = false, onSuccess, className = '' 
   
   // Set up WalletConnect URI handler
   useEffect(() => {
+    const handleWalletConnectUri = (event: CustomEvent) => {
+      console.log('🔧 AuthRouter: Received WalletConnect URI event:', event.detail?.uri);
+      setWalletConnectUri(event.detail?.uri || null);
+      // Only show QR on desktop/tablet, mobile should deep link
+      if (event.detail?.uri && deviceInfo && !deviceInfo.isMobile) {
+        setShowQRModal(true);
+      }
+    };
+
+    const handleWalletConnectClose = () => {
+      console.log('🔧 AuthRouter: Received WalletConnect close event');
+      setWalletConnectUri(null);
+      setShowQRModal(false);
+    };
+
+    // Listen for custom events from WalletConnect adapter
+    window.addEventListener('walletconnect-uri', handleWalletConnectUri as EventListener);
+    window.addEventListener('walletconnect-close', handleWalletConnectClose);
+
+    // Legacy support for direct window function
     if (typeof window !== 'undefined') {
       (window as any).web3authWalletConnectUri = (uri: string) => {
         setWalletConnectUri(uri);
@@ -53,6 +73,11 @@ export default function AuthRouter({ compact = false, onSuccess, className = '' 
         }
       };
     }
+
+    return () => {
+      window.removeEventListener('walletconnect-uri', handleWalletConnectUri as EventListener);
+      window.removeEventListener('walletconnect-close', handleWalletConnectClose);
+    };
   }, [deviceInfo]);
   
   // Detect device and context on mount

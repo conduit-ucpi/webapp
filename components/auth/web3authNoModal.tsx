@@ -132,12 +132,51 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
 
         // Configure WalletConnect V2 adapter
         console.log('🔧 Web3Auth No-Modal: Creating WalletConnect V2 adapter...');
+        
+        // WalletConnect adapter needs its own project ID
+        const walletConnectProjectId = this.config.walletConnectProjectId || this.config.web3AuthClientId;
+        console.log('🔧 Web3Auth No-Modal: Using WalletConnect Project ID:', walletConnectProjectId?.substring(0, 10) + '...');
+        
+        // Create a custom QR code modal implementation for WalletConnect
+        const customQRCodeModal = {
+          async openModal(options: { uri: string }) {
+            console.log('🔧 WalletConnect QR Modal: Opening with URI:', options.uri);
+            // Store the URI in a global variable that the UI can access
+            if (typeof window !== 'undefined') {
+              (window as any).walletConnectUri = options.uri;
+              // Dispatch a custom event to notify the UI
+              window.dispatchEvent(new CustomEvent('walletconnect-uri', { 
+                detail: { uri: options.uri } 
+              }));
+            }
+          },
+          async closeModal() {
+            console.log('🔧 WalletConnect QR Modal: Closing');
+            if (typeof window !== 'undefined') {
+              (window as any).walletConnectUri = null;
+              // Dispatch a custom event to notify the UI to close
+              window.dispatchEvent(new CustomEvent('walletconnect-close'));
+            }
+          }
+        };
+        
         const walletConnectAdapter = new WalletConnectV2Adapter({
           chainConfig: this.chainConfig,
-          clientId: this.config.web3AuthClientId,
+          clientId: walletConnectProjectId,
           web3AuthNetwork: web3AuthNetworkSetting,
           sessionTime: 3600 * 24 * 7, // 1 week
-          qrcodeModal: true
+          adapterSettings: {
+            qrcodeModal: customQRCodeModal,
+            walletConnectInitOptions: {
+              projectId: walletConnectProjectId,
+              metadata: {
+                name: 'Conduit UCPI',
+                description: 'Instant Escrow - Secure payment gateway',
+                url: typeof window !== 'undefined' ? window.location.origin : 'https://conduit-ucpi.com',
+                icons: ['https://conduit-ucpi.com/logo.png']
+              }
+            }
+          }
         } as any);
         
         console.log('🔧 Web3Auth No-Modal: WalletConnect V2 adapter created');

@@ -34,19 +34,60 @@ export const ESCROW_CONTRACT_ABI = [
 export class Web3Service {
   private provider: ethers.BrowserProvider | null = null;
   private walletProvider: WalletProvider | null = null;
+  private eip1193Provider: any = null; // Raw EIP-1193 provider
   private config: Config;
 
   constructor(config: Config) {
     this.config = config;
   }
 
+  /**
+   * Initialize with generic WalletProvider abstraction (legacy)
+   */
   async initializeProvider(walletProvider: WalletProvider) {
     try {
+      console.log('[Web3Service] Initializing with WalletProvider abstraction');
       this.walletProvider = walletProvider;
       this.provider = walletProvider.getEthersProvider();
+      console.log('[Web3Service] ✅ Provider initialized via WalletProvider');
     } catch (error) {
-      console.error('Failed to initialize ethers provider:', error);
+      console.error('[Web3Service] ❌ Failed to initialize ethers provider:', error);
       throw new Error('Provider initialization failed: ' + (error as Error).message);
+    }
+  }
+
+  /**
+   * Initialize directly with any EIP-1193 provider
+   * This is the new unified path that works with any wallet connection
+   */
+  async initializeWithEIP1193(eip1193Provider: any) {
+    try {
+      console.log('[Web3Service] Initializing with EIP-1193 provider');
+      console.log('[Web3Service] Provider type:', eip1193Provider.constructor?.name || typeof eip1193Provider);
+      
+      // Store the raw EIP-1193 provider
+      this.eip1193Provider = eip1193Provider;
+      
+      // Wrap with ethers
+      console.log('[Web3Service] Wrapping EIP-1193 provider with ethers.BrowserProvider...');
+      this.provider = new ethers.BrowserProvider(eip1193Provider);
+      
+      // Test the connection by getting network info
+      const network = await this.provider.getNetwork();
+      console.log('[Web3Service] ✅ Connected to network:', {
+        chainId: network.chainId.toString(),
+        name: network.name
+      });
+      
+      // Get the connected address to verify authentication
+      const signer = await this.provider.getSigner();
+      const address = await signer.getAddress();
+      console.log('[Web3Service] ✅ Connected wallet address:', address);
+      
+      console.log('[Web3Service] ✅ EIP-1193 provider initialized successfully');
+    } catch (error) {
+      console.error('[Web3Service] ❌ Failed to initialize EIP-1193 provider:', error);
+      throw new Error('EIP-1193 provider initialization failed: ' + (error as Error).message);
     }
   }
 
@@ -62,9 +103,15 @@ export class Web3Service {
     gasPrice?: bigint;
     nonce?: number;
   }): Promise<string> {
-    if (!this.walletProvider || !this.provider) {
-      throw new Error('Providers not initialized. Please connect your wallet.');
+    console.log('[Web3Service.signTransaction] Starting transaction signing...');
+    
+    if (!this.provider) {
+      throw new Error('Provider not initialized. Please connect your wallet.');
     }
+    
+    // Check which type of provider we're using
+    const usingLegacyProvider = !!this.walletProvider;
+    console.log('[Web3Service.signTransaction] Provider type:', usingLegacyProvider ? 'WalletProvider abstraction' : 'Direct EIP-1193');
 
     // Get the actual wallet address
     const fromAddress = await this.getUserAddress();
@@ -121,8 +168,10 @@ export class Web3Service {
       nonce: nonce
     });
     
-    // Use the wallet provider abstraction to sign
-    return await this.walletProvider.signTransaction({
+    // Sign the transaction based on provider type
+    if (this.walletProvider) {
+      console.log('[Web3Service.signTransaction] Using WalletProvider.signTransaction()');
+      return await this.walletProvider.signTransaction({
       from: fromAddress,
       to: txParams.to,
       data: txParams.data,
@@ -130,8 +179,31 @@ export class Web3Service {
       gasLimit: toHex(txParams.gasLimit),
       gasPrice: toHex(gasPrice),
       nonce: nonce,
-      chainId: this.config.chainId
-    });
+        chainId: this.config.chainId
+      });
+    } else {
+      // Direct EIP-1193 signing via ethers signer
+      console.log('[Web3Service.signTransaction] Using ethers signer for EIP-1193 provider');
+      const signer = await this.provider.getSigner();
+      
+      const tx = {
+        from: fromAddress,
+        to: txParams.to,
+        data: txParams.data,
+        value: txParams.value || '0x0',
+        gasLimit: txParams.gasLimit,
+        gasPrice: gasPrice,
+        nonce: nonce,
+        chainId: this.config.chainId
+      };
+      
+      console.log('[Web3Service.signTransaction] Transaction to sign:', tx);
+      
+      // Sign the transaction using ethers signer (works with any EIP-1193 provider)
+      const signedTx = await signer.signTransaction(tx);
+      console.log('[Web3Service.signTransaction] ✅ Transaction signed successfully');
+      return signedTx;
+    }
   }
 
   async getSigner() {
@@ -142,10 +214,22 @@ export class Web3Service {
   }
 
   async getUserAddress(): Promise<string> {
-    if (!this.walletProvider) {
-      throw new Error('Wallet provider not initialized');
+    // If using WalletProvider abstraction
+    if (this.walletProvider) {
+      console.log('[Web3Service.getUserAddress] Using WalletProvider abstraction');
+      return await this.walletProvider.getAddress();
     }
-    return await this.walletProvider.getAddress();
+    
+    // If using direct EIP-1193 provider
+    if (this.provider) {
+      console.log('[Web3Service.getUserAddress] Using EIP-1193 provider via ethers');
+      const signer = await this.provider.getSigner();
+      const address = await signer.getAddress();
+      console.log('[Web3Service.getUserAddress] Got address:', address);
+      return address;
+    }
+    
+    throw new Error('No provider initialized');
   }
 
   async getUSDCBalance(userAddress: string): Promise<string> {
@@ -617,22 +701,49 @@ export class Web3Service {
     // Step 4: Send the transaction via EIP-1193 provider.request
     console.log('Sending transaction with funded wallet...');
     
-    if (!this.walletProvider) {
-      throw new Error('Wallet provider not initialized');
-    }
+    // Use the appropriate provider based on what's available
+    let transactionHash: string;
     
-    // Use EIP-1193 provider.request for eth_sendTransaction (provider-agnostic)
-    const transactionHash = await this.walletProvider.request({
-      method: 'eth_sendTransaction',
-      params: [{
-        from: userAddress,
+    if (this.walletProvider) {
+      console.log('[Web3Service.fundAndSendTransaction] Using WalletProvider.request()');
+      transactionHash = await this.walletProvider.request({
+        method: 'eth_sendTransaction',
+        params: [{
+          from: userAddress,
+          to: txParams.to,
+          data: txParams.data,
+          value: txParams.value || '0x0',
+          gasLimit: toHexString(gasEstimate),
+          gasPrice: toHexString(gasPrice)
+        }]
+      });
+    } else if (this.eip1193Provider) {
+      console.log('[Web3Service.fundAndSendTransaction] Using raw EIP-1193 provider.request()');
+      transactionHash = await this.eip1193Provider.request({
+        method: 'eth_sendTransaction',
+        params: [{
+          from: userAddress,
+          to: txParams.to,
+          data: txParams.data,
+          value: txParams.value || '0x0',
+          gasLimit: toHexString(gasEstimate),
+          gasPrice: toHexString(gasPrice)
+        }]
+      });
+    } else if (this.provider) {
+      console.log('[Web3Service.fundAndSendTransaction] Using ethers signer.sendTransaction()');
+      const signer = await this.provider.getSigner();
+      const txResponse = await signer.sendTransaction({
         to: txParams.to,
         data: txParams.data,
         value: txParams.value || '0x0',
-        gasLimit: toHexString(gasEstimate),
-        gasPrice: toHexString(gasPrice)
-      }]
-    });
+        gasLimit: gasEstimate,
+        gasPrice: gasPrice
+      });
+      transactionHash = txResponse.hash;
+    } else {
+      throw new Error('No provider available for sending transaction');
+    }
     
     console.log('Transaction sent successfully:', transactionHash);
     

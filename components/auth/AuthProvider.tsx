@@ -3,6 +3,7 @@ import { useFarcaster } from '@/components/farcaster/FarcasterDetectionProvider'
 import { useConfig } from './ConfigProvider';
 import { AuthContextType, AuthState, IAuthProvider, AuthUser } from './authInterface';
 import { BackendAuth } from './backendAuth';
+import { Web3Service } from '@/lib/web3';
 
 // The unified context that the rest of the app uses
 const AuthContext = React.createContext<AuthContextType | null>(null);
@@ -15,6 +16,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const { isInFarcaster, isLoading: envDetectionLoading } = useFarcaster();
   const { config, isLoading: configLoading } = useConfig();
   const [provider, setProvider] = useState<IAuthProvider | null>(null);
+  const [web3Service, setWeb3Service] = useState<Web3Service | null>(null);
   const [authState, setAuthState] = useState<AuthState>({
     user: null,
     token: null,
@@ -93,20 +95,70 @@ export function AuthProvider({ children }: AuthProviderProps) {
     loadProvider();
   }, [isInFarcaster, config, configLoading, backendAuth]);
 
-  // Monitor provider state for connection and handle backend auth
+  // Monitor provider state for connection and handle backend auth + Web3Service initialization
   useEffect(() => {
-    if (!provider || !authState.isConnected) return;
+    if (!provider || !authState.isConnected || !config) return;
     
-    console.log('🔧 AuthProvider: Checking if backend auth needed...', {
+    console.log('🔧 AuthProvider: Checking if backend auth and Web3Service initialization needed...', {
       hasProvider: !!provider,
       isConnected: authState.isConnected,
       hasUserId: !!authState.user?.userId,
-      hasBackendToken: !!backendAuth.getToken()
+      hasBackendToken: !!backendAuth.getToken(),
+      hasWeb3Service: !!web3Service
     });
+    
+    // Initialize Web3Service with EIP-1193 provider if not already done
+    const initializeWeb3Service = async () => {
+      if (!web3Service) {
+        try {
+          console.log('[AuthProvider] Initializing Web3Service with EIP-1193 provider...');
+          
+          // Get the raw EIP-1193 provider from the auth provider
+          let eip1193Provider: any;
+          
+          // Different auth providers expose the EIP-1193 provider differently
+          const authProviderImpl = provider as any;
+          
+          if (authProviderImpl.provider) {
+            // Web3Auth and most providers store it as 'provider'
+            eip1193Provider = authProviderImpl.provider;
+            console.log('[AuthProvider] Found EIP-1193 provider at authProvider.provider');
+          } else if (authProviderImpl.getProvider && typeof authProviderImpl.getProvider === 'function') {
+            // Some providers might expose it via a method
+            eip1193Provider = authProviderImpl.getProvider();
+            console.log('[AuthProvider] Got EIP-1193 provider via authProvider.getProvider()');
+          } else if (authProviderImpl.web3Provider) {
+            // Alternative naming
+            eip1193Provider = authProviderImpl.web3Provider;
+            console.log('[AuthProvider] Found EIP-1193 provider at authProvider.web3Provider');
+          } else {
+            console.warn('[AuthProvider] Could not find raw EIP-1193 provider, auth provider structure:', {
+              keys: Object.keys(authProviderImpl),
+              type: authProviderImpl.constructor?.name
+            });
+            return;
+          }
+          
+          if (eip1193Provider) {
+            // Create and initialize Web3Service with the EIP-1193 provider
+            const newWeb3Service = new Web3Service(config);
+            await newWeb3Service.initializeWithEIP1193(eip1193Provider);
+            setWeb3Service(newWeb3Service);
+            console.log('[AuthProvider] ✅ Web3Service initialized with EIP-1193 provider');
+            
+            // Store it globally for backward compatibility (some components might access it directly)
+            (window as any).web3Service = newWeb3Service;
+          }
+        } catch (error) {
+          console.error('[AuthProvider] ❌ Failed to initialize Web3Service:', error);
+        }
+      }
+    };
     
     // Skip if we already have backend auth
     if (backendAuth.getToken()) {
-      console.log('🔧 AuthProvider: Backend token already exists, skipping');
+      console.log('🔧 AuthProvider: Backend token already exists, skipping backend auth');
+      initializeWeb3Service();
       return;
     }
     
@@ -149,6 +201,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
             } as AuthUser;
           }
           setAuthState(newState);
+          
+          // Initialize Web3Service after successful backend auth
+          await initializeWeb3Service();
         } else {
           console.error('🔧 AuthProvider: Backend auth failed:', backendResult.error);
           setAuthState(prev => ({
@@ -166,7 +221,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     };
     
     handleBackendAuth();
-  }, [provider, authState.isConnected, backendAuth]);
+  }, [provider, authState.isConnected, backendAuth, config, web3Service]);
 
 
   // Create the unified context value - memoize to prevent re-renders (must be before early returns)
@@ -262,13 +317,23 @@ export function AuthProvider({ children }: AuthProviderProps) {
     },
 
     getEthersProvider: () => {
-      // Cast to access getEthersProvider method
+      // If we have a unified Web3Service, use it
+      if (web3Service && (web3Service as any).provider) {
+        console.log('[AuthProvider] Returning ethers provider from Web3Service');
+        return (web3Service as any).provider;
+      }
+      
+      // Fallback to auth provider's method
       const providerWithEthers = provider as any;
       if (providerWithEthers.getEthersProvider) {
+        console.log('[AuthProvider] Returning ethers provider from auth provider');
         return providerWithEthers.getEthersProvider();
       }
       throw new Error('Ethers provider not available');
     },
+    
+    // Expose Web3Service for direct access when needed
+    getWeb3Service: () => web3Service,
 
     getUSDCBalance: async (userAddress?: string) => {
       // Cast to access getUSDCBalance method
@@ -466,7 +531,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       return backendAuth.getToken();
     },
     });
-  }, [authState, provider, backendAuth]);
+  }, [authState, provider, backendAuth, web3Service]);
 
   // Memoize callbacks to prevent FarcasterAuthProviderWrapper re-renders (must be before early returns)
   const handleProviderReady = React.useCallback((p: IAuthProvider) => {
@@ -603,7 +668,9 @@ const FarcasterAuthProviderWrapper = React.memo(function FarcasterAuthProviderWr
   return React.createElement(FarcasterComponent, { AuthContext }, children);
 });
 
-// Component for regular (non-Farcaster) authentication
+// Component for regular (non-Farcaster) authentication - REMOVED (no longer needed)
+// The main AuthProvider handles all authentication methods now
+/*
 function RegularAuthProvider({ children }: AuthProviderProps) {
   const { config, isLoading: configLoading } = useConfig();
   const [provider, setProvider] = useState<IAuthProvider | null>(null);
@@ -751,13 +818,23 @@ function RegularAuthProvider({ children }: AuthProviderProps) {
     },
 
     getEthersProvider: () => {
-      // Cast to access getEthersProvider method
+      // If we have a unified Web3Service, use it
+      if (web3Service && (web3Service as any).provider) {
+        console.log('[AuthProvider] Returning ethers provider from Web3Service');
+        return (web3Service as any).provider;
+      }
+      
+      // Fallback to auth provider's method
       const providerWithEthers = provider as any;
       if (providerWithEthers.getEthersProvider) {
+        console.log('[AuthProvider] Returning ethers provider from auth provider');
         return providerWithEthers.getEthersProvider();
       }
       throw new Error('Ethers provider not available');
     },
+    
+    // Expose Web3Service for direct access when needed
+    getWeb3Service: () => web3Service,
     
     getUSDCBalance: async (userAddress?: string) => {
       const providerWithBalance = provider as any;
@@ -798,6 +875,7 @@ function RegularAuthProvider({ children }: AuthProviderProps) {
     </AuthContext.Provider>
   );
 }
+*/
 
 // The ONLY hook the rest of the app should use
 export function useAuth(): AuthContextType {

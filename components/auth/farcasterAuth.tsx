@@ -228,6 +228,7 @@ class FarcasterAuthProviderImpl implements IAuthProvider {
   };
   
   private sdk: any = null;
+  public provider: any = null; // Store the EIP-1193 provider from Wagmi's walletClient.transport
   private listeners = new Map<AuthEvent['type'], Set<(event: AuthEvent) => void>>();
   private visitedKey = 'farcaster_auth_visited';
 
@@ -406,6 +407,11 @@ class FarcasterAuthProviderImpl implements IAuthProvider {
   
   getEthersProvider(): any {
     throw new Error('getEthersProvider must be implemented by React component');
+  }
+  
+  // Get the raw EIP-1193 provider (for unified Web3Service initialization)
+  getProvider(): any {
+    return this.provider;
   }
   
   async getUSDCBalance(userAddress?: string): Promise<string> {
@@ -690,7 +696,7 @@ function FarcasterAuthProviderInner({ children, AuthContext }: {
   const { data: walletClient } = useWalletClient();
   const { config } = useConfig();
   
-  // Debug logging for wallet state
+  // Debug logging for wallet state and update EIP-1193 provider
   React.useEffect(() => {
     console.log('🔧 FarcasterAuth: Wagmi wallet state changed');
     console.log('🔧 FarcasterAuth: address =', address);
@@ -701,6 +707,13 @@ function FarcasterAuthProviderInner({ children, AuthContext }: {
       type: c.type,
       ready: c.ready
     })));
+    
+    // Store the EIP-1193 provider from Wagmi's walletClient.transport
+    if (walletClient && walletClient.transport && walletConnected) {
+      console.log('[Farcaster] Storing EIP-1193 provider from walletClient.transport');
+      (provider as any).provider = walletClient.transport; // This IS the EIP-1193 provider
+      console.log('[Farcaster] EIP-1193 provider stored successfully');
+    }
     console.log('🔧 FarcasterAuth: Total connectors found:', connectors.length);
     
     // Check if these are browser extension wallets

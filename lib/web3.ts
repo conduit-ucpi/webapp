@@ -231,6 +231,64 @@ export class Web3Service {
     
     throw new Error('No provider initialized');
   }
+  
+  /**
+   * Generate a signature-based authentication token
+   * This is used when external wallets don't provide JWT tokens
+   */
+  async generateSignatureAuthToken(): Promise<string> {
+    if (!this.provider && !this.walletProvider) {
+      throw new Error('No provider available for signature generation');
+    }
+
+    try {
+      console.log('[Web3Service.generateSignatureAuthToken] Generating signature-based auth token...');
+      
+      // Get wallet address
+      const walletAddress = await this.getUserAddress();
+      
+      // Create a message to sign that includes timestamp and wallet address
+      // This prevents replay attacks and proves wallet ownership
+      const timestamp = Date.now();
+      const nonce = Math.random().toString(36).substring(2, 15);
+      const message = `Authenticate wallet ${walletAddress} at ${timestamp} with nonce ${nonce}`;
+
+      console.log('[Web3Service.generateSignatureAuthToken] Signing message:', message);
+
+      // Sign the message using ethers signer
+      if (!this.provider) {
+        throw new Error('Ethers provider not available');
+      }
+      const signer = await this.provider.getSigner();
+      const signature = await signer.signMessage(message);
+
+      // Create a base64-encoded JSON token
+      const signatureToken = btoa(JSON.stringify({
+        type: 'signature_auth',
+        walletAddress,
+        message,
+        signature,
+        timestamp,
+        nonce,
+        issuer: 'unified_web3_service',
+        // Add a simple header/payload structure for compatibility
+        header: { alg: 'ECDSA', typ: 'SIG' },
+        payload: { 
+          sub: walletAddress, 
+          iat: Math.floor(timestamp / 1000),
+          iss: 'unified_web3_service',
+          wallet_type: 'external'
+        }
+      }));
+
+      console.log('[Web3Service.generateSignatureAuthToken] ✅ Signature token generated');
+      return signatureToken;
+
+    } catch (error) {
+      console.error('[Web3Service.generateSignatureAuthToken] ❌ Failed:', error);
+      throw new Error(`Signature authentication failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
 
   async getUSDCBalance(userAddress: string): Promise<string> {
     if (!this.provider) {

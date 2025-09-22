@@ -204,6 +204,45 @@ export function AuthProvider({ children }: AuthProviderProps) {
           
           // Initialize Web3Service after successful backend auth
           await initializeWeb3Service();
+        } else if (backendResult.error?.includes('TEMP_SKIP_AUTH') || token === 'TEMP_SKIP_AUTH') {
+          // Legacy temporary auth - try signature authentication with unified Web3Service
+          console.log('🔧 AuthProvider: Detected temp auth, attempting signature authentication...');
+          try {
+            if (web3Service) {
+              const signatureToken = await web3Service.generateSignatureAuthToken();
+              
+              // Retry backend auth with signature token
+              const signatureBackendResult = await backendAuth.login(
+                signatureToken,
+                providerState.user?.walletAddress || ''
+              );
+              
+              if (signatureBackendResult.success && signatureBackendResult.user) {
+                console.log('🔧 AuthProvider: ✅ Signature authentication successful!');
+                const newState = { ...providerState };
+                if (newState.user) {
+                  newState.user = {
+                    ...newState.user,
+                    ...signatureBackendResult.user,
+                    fid: newState.user.fid,
+                    username: newState.user.username,
+                    displayName: newState.user.displayName || signatureBackendResult.user.email,
+                  } as AuthUser;
+                }
+                setAuthState(newState);
+                return; // Exit early on success
+              }
+            }
+          } catch (signatureError) {
+            console.error('🔧 AuthProvider: ❌ Signature authentication failed:', signatureError);
+          }
+          
+          // If signature auth failed, show error
+          setAuthState(prev => ({
+            ...prev,
+            error: 'Authentication failed - unable to verify wallet ownership',
+            isConnected: false
+          }));
         } else {
           console.error('🔧 AuthProvider: Backend auth failed:', backendResult.error);
           setAuthState(prev => ({
@@ -334,6 +373,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
     
     // Expose Web3Service for direct access when needed
     getWeb3Service: () => web3Service,
+    
+    // Generate signature-based authentication token
+    generateSignatureAuthToken: async () => {
+      if (web3Service) {
+        console.log('[AuthProvider] Generating signature auth token via Web3Service...');
+        return await web3Service.generateSignatureAuthToken();
+      }
+      throw new Error('Web3Service not available for signature authentication');
+    },
 
     getUSDCBalance: async (userAddress?: string) => {
       // Cast to access getUSDCBalance method

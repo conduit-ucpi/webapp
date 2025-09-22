@@ -101,6 +101,7 @@ export interface AuthMethods {
   signMessage: (message: string) => Promise<string>;
   getEthersProvider: () => any; // Returns ethers provider for SDK integration
   getWeb3Service?: () => any; // Returns the unified Web3Service instance
+  generateSignatureAuthToken?: () => Promise<string>; // Generate signature-based auth token
   getUSDCBalance: (userAddress?: string) => Promise<string>;
   signContractTransaction: (params: ContractTransactionParams) => Promise<string>;
   fundAndSendTransaction?: (txParams: { to: string; data: string; value?: string; gasLimit?: bigint; gasPrice?: bigint; }) => Promise<string>;

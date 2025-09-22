@@ -93,17 +93,10 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
           ? WEB3AUTH_NETWORK.SAPPHIRE_MAINNET 
           : WEB3AUTH_NETWORK.SAPPHIRE_DEVNET;
         
-        const hexChainId = toHexString(this.config.chainId);
-        console.log('🔧 DEBUG: Chain config creation:', {
-          originalChainId: this.config.chainId,
-          typeOfOriginal: typeof this.config.chainId,
-          toHexStringResult: hexChainId,
-          expectedResult: '0x2105'
-        });
-        
+        // Try using raw decimal instead of hex to avoid double prefix issues
         this.chainConfig = {
           chainNamespace: CHAIN_NAMESPACES.EIP155,
-          chainId: hexChainId,
+          chainId: this.config.chainId.toString(),
           rpcTarget: this.config.rpcUrl,
           displayName: this.getChainDisplayName(),
           blockExplorerUrl: this.config.explorerBaseUrl,

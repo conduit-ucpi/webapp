@@ -200,8 +200,8 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
             qrcodeModal: walletConnectModal,
             walletConnectInitOptions: {
               projectId: walletConnectProjectId,
-              chains: [decimalChainId], // Pass decimal chainId to match Modal config
-              optionalChains: [decimalChainId]
+              chains: [`eip155:${decimalChainId}`], // Use CAIP-2 format to match Modal config
+              optionalChains: [`eip155:${decimalChainId}`]
             }
           }
         } as any);
@@ -316,6 +316,21 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
   async connectWithAdapter(adapter: string, loginHint?: string): Promise<{ success: boolean; user?: any; token?: string; error?: string }> {
     if (!this.web3auth) {
       throw new Error('Web3Auth not initialized');
+    }
+    
+    // Clear any existing WalletConnect sessions to avoid chain mismatch
+    if (adapter === 'walletconnect') {
+      console.log('🔧 Web3Auth No-Modal: Clearing WalletConnect localStorage to avoid chain conflicts...');
+      // Clear WalletConnect v2 storage
+      const wcKeys = Object.keys(localStorage).filter(key => 
+        key.startsWith('wc@2') || 
+        key.startsWith('walletconnect') ||
+        key.includes('WalletConnect')
+      );
+      wcKeys.forEach(key => {
+        console.log(`🔧 Removing WalletConnect key: ${key}`);
+        localStorage.removeItem(key);
+      });
     }
 
     try {
@@ -807,22 +822,11 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
           const accounts = await this.provider.request({ method: 'eth_accounts', params: [] });
           const address = accounts[0];
           
-          // For WalletConnect, we need to specify chainId in CAIP-2 format (decimal)
-          const decimalChainId = typeof this.config.chainId === 'string' ? 
-            parseInt(this.config.chainId, 10) : this.config.chainId;
-          const chainId = `eip155:${decimalChainId}`;
-          console.log('🔧 DEBUG: signMessage chainId conversion:', {
-            originalConfig: this.config.chainId,
-            typeOfOriginal: typeof this.config.chainId,
-            decimal: decimalChainId,
-            finalChainId: chainId,
-            shouldBe: 'eip155:8453'
-          });
+          console.log('🔧 DEBUG: signMessage - personal_sign does not use chainId parameter');
           
           return await this.provider.request({ 
             method: 'personal_sign', 
-            params: [message, address],
-            chainId: chainId
+            params: [message, address]
           });
         },
         request: async ({ method, params }: { method: string; params: any[] }) => {

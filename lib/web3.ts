@@ -613,26 +613,28 @@ export class Web3Service {
     
     console.log('Wallet funded successfully:', fundResult.message || 'Ready to send transaction');
     
-    // Step 4: Send the transaction
+    // Step 4: Send the transaction via EIP-1193 provider.request
     console.log('Sending transaction with funded wallet...');
     
-    // Get signer and send transaction directly
-    const signer = await this.getSigner();
-    const txResponse = await signer.sendTransaction({
-      to: txParams.to,
-      data: txParams.data,
-      value: txParams.value || '0x0',
-      gasLimit: gasEstimate,
-      gasPrice: gasPrice
+    if (!this.walletProvider) {
+      throw new Error('Wallet provider not initialized');
+    }
+    
+    // Use EIP-1193 provider.request for eth_sendTransaction (provider-agnostic)
+    const transactionHash = await this.walletProvider.request({
+      method: 'eth_sendTransaction',
+      params: [{
+        from: userAddress,
+        to: txParams.to,
+        data: txParams.data,
+        value: txParams.value || '0x0',
+        gasLimit: `0x${gasEstimate.toString(16)}`,
+        gasPrice: `0x${gasPrice.toString(16)}`
+      }]
     });
     
-    console.log('Transaction sent successfully:', txResponse.hash);
-    console.log('Waiting for transaction confirmation...');
+    console.log('Transaction sent successfully:', transactionHash);
     
-    // Wait for the transaction to be mined
-    const receipt = await txResponse.wait();
-    console.log('Transaction confirmed in block:', receipt?.blockNumber);
-    
-    return txResponse.hash;
+    return transactionHash;
   }
 }

@@ -314,31 +314,69 @@ export function AuthProvider({ children }: AuthProviderProps) {
     },
 
     fundContract: async (...args: any[]) => {
-      console.log('🔧 AuthProvider: fundContract called, delegating to provider');
-      const providerWithContract = provider as any;
-      if (providerWithContract.fundContract) {
-        // Pass authenticatedFetch as the second parameter to reuse existing auth logic
-        return await providerWithContract.fundContract(args[0], backendAuth.authenticatedFetch);
+      console.log('🔧 AuthProvider: fundContract called, using shared contract service');
+      
+      // Use shared contract service with current provider for transactions
+      const { createContractTransactionMethods } = await import('../../utils/contractTransactionFactory');
+      
+      // Get the actual provider for low-level operations
+      const actualProvider = (provider as any).getActualProvider ? (provider as any).getActualProvider() : provider;
+      
+      if (!actualProvider.signContractTransaction || !actualProvider.fundAndSendTransaction) {
+        throw new Error('Provider does not support required transaction methods');
       }
-      throw new Error('fundContract not available from provider');
+      
+      const contractMethods = createContractTransactionMethods(
+        actualProvider.signContractTransaction.bind(actualProvider),
+        backendAuth.authenticatedFetch,
+        actualProvider.fundAndSendTransaction.bind(actualProvider)
+      );
+      
+      return await contractMethods.fundContract(args[0]);
     },
 
     claimFunds: async (...args: any[]) => {
-      console.log('🔧 AuthProvider: claimFunds called, delegating to provider');
-      const providerWithContract = provider as any;
-      if (providerWithContract.claimFunds) {
-        return await providerWithContract.claimFunds(...args);
+      console.log('🔧 AuthProvider: claimFunds called, using shared contract service');
+      
+      // Use shared contract service with current provider for transactions
+      const { createContractTransactionMethods } = await import('../../utils/contractTransactionFactory');
+      
+      // Get the actual provider for low-level operations
+      const actualProvider = (provider as any).getActualProvider ? (provider as any).getActualProvider() : provider;
+      
+      if (!actualProvider.signContractTransaction || !actualProvider.fundAndSendTransaction) {
+        throw new Error('Provider does not support required transaction methods');
       }
-      throw new Error('claimFunds not available from provider');
+      
+      const contractMethods = createContractTransactionMethods(
+        actualProvider.signContractTransaction.bind(actualProvider),
+        backendAuth.authenticatedFetch,
+        actualProvider.fundAndSendTransaction.bind(actualProvider)
+      );
+      
+      return await contractMethods.claimFunds(args[0], args[1]);
     },
 
     raiseDispute: async (...args: any[]) => {
-      console.log('🔧 AuthProvider: raiseDispute called, delegating to provider');
-      const providerWithContract = provider as any;
-      if (providerWithContract.raiseDispute) {
-        return await providerWithContract.raiseDispute(...args);
+      console.log('🔧 AuthProvider: raiseDispute called, using shared contract service');
+      
+      // Use shared contract service with current provider for transactions
+      const { createContractTransactionMethods } = await import('../../utils/contractTransactionFactory');
+      
+      // Get the actual provider for low-level operations
+      const actualProvider = (provider as any).getActualProvider ? (provider as any).getActualProvider() : provider;
+      
+      if (!actualProvider.signContractTransaction || !actualProvider.fundAndSendTransaction) {
+        throw new Error('Provider does not support required transaction methods');
       }
-      throw new Error('raiseDispute not available from provider');
+      
+      const contractMethods = createContractTransactionMethods(
+        actualProvider.signContractTransaction.bind(actualProvider),
+        backendAuth.authenticatedFetch,
+        actualProvider.fundAndSendTransaction.bind(actualProvider)
+      );
+      
+      return await contractMethods.raiseDispute(args[0]);
     },
     
     // No-modal specific method for connecting with specific adapters

@@ -385,6 +385,19 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
     return this.cachedEthersProvider;
   }
 
+  // Get the actual underlying provider for contract operations
+  getActualProvider(): any {
+    // If using WalletConnect, return the WalletConnect provider directly
+    if (this.walletConnectProvider) {
+      console.log('🔧 Web3Auth No-Modal: Returning WalletConnect provider for contract operations');
+      return this.walletConnectProvider;
+    }
+    
+    // Otherwise return this wrapper (for Web3Auth, external wallets, etc.)
+    console.log('🔧 Web3Auth No-Modal: Returning wrapper for contract operations');
+    return this;
+  }
+
   getState(): AuthState {
     return { ...this.state };
   }
@@ -662,9 +675,10 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
     }
   }
 
-  /**
-   * Fund and send transaction using Web3Service
-   */
+  // Web3Auth provider only handles low-level transaction operations
+  // High-level contract logic is in shared services
+
+  // Supporting methods for Web3Auth contract operations
   async fundAndSendTransaction(txParams: { to: string; data: string; value?: string; gasLimit?: bigint; gasPrice?: bigint; }): Promise<string> {
     if (!this.web3Service) {
       console.warn('🔧 Web3Auth No-Modal: Web3Service not initialized, attempting to initialize...');
@@ -749,61 +763,8 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
     }
   }
 
-  // Contract transaction methods
-  createContractMethods() {
-    if (!this.provider) {
-      throw new Error('No provider available');
-    }
-    return createWeb3AuthContractMethods(
-      async (txParams: any) => {
-        return await this.signContractTransaction(txParams);
-      },
-      async (url: string, options?: RequestInit) => {
-        return fetch(url, {
-          ...options,
-          credentials: 'include',
-          headers: {
-            ...options?.headers,
-          }
-        });
-      },
-      async (txParams: any) => {
-        return await this.fundAndSendTransaction(txParams);
-      }
-    );
-  }
 
-  /**
-   * Fund contract - complete flow: create, approve, deposit
-   */
-  async waitForTransaction(transactionHash: string, maxWaitTime: number = 30000): Promise<void> {
-    console.log(`🔧 Web3Auth No-Modal: Waiting for transaction confirmation: ${transactionHash}`);
-    
-    if (!this.provider) {
-      throw new Error('Provider not available');
-    }
-    
-    const ethersProvider = this.getEthersProvider();
-    
-    try {
-      // Wait for the transaction to be mined with a timeout
-      const receipt = await Promise.race([
-        ethersProvider.waitForTransaction(transactionHash, 1), // Wait for 1 confirmation
-        new Promise<never>((_, reject) => 
-          setTimeout(() => reject(new Error('Transaction confirmation timeout')), maxWaitTime)
-        )
-      ]);
-      
-      if (receipt?.status === 1) {
-        console.log(`🔧 Web3Auth No-Modal: Transaction confirmed: ${transactionHash}`);
-      } else {
-        throw new Error(`Transaction failed: ${transactionHash}`);
-      }
-    } catch (error) {
-      console.warn(`🔧 Web3Auth No-Modal: Transaction confirmation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      // Don't throw - let the transaction continue as the backend may have processed it
-    }
-  }
+
 
   /**
    * Generate a signature-based authentication token for external wallets
@@ -855,61 +816,6 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
     }
   }
 
-  // Get contract methods helper
-  private getContractMethods(authenticatedFetch?: any) {
-    if (!this.provider) {
-      throw new Error('Provider not available');
-    }
-
-    return createWeb3AuthContractMethods(
-      async (txParams: any) => {
-        return await this.signContractTransaction(txParams);
-      },
-      authenticatedFetch || (async (url: string, options?: RequestInit) => {
-        return fetch(url, {
-          ...options,
-          credentials: 'include',
-          headers: {
-            ...options?.headers,
-          }
-        });
-      }),
-      async (txParams: any) => {
-        return await this.fundAndSendTransaction(txParams);
-      }
-    );
-  }
-
-  async fundContract(params: any, authenticatedFetch?: any): Promise<any> {
-    console.log('🔧 Web3Auth No-Modal: fundContract called, delegating to contract methods');
-    const contractMethods = this.getContractMethods(authenticatedFetch);
-    return await contractMethods.fundContract(params);
-  }
-
-  async raiseDispute(params: {
-    contractAddress: string;
-    userAddress: string;
-    reason: string;
-    refundPercent: number;
-    contract?: any;
-    config?: any;
-    utils?: any;
-  }): Promise<any> {
-    console.log('🔧 Web3Auth No-Modal: raiseDispute called, delegating to contract methods');
-    const contractMethods = this.getContractMethods();
-    return await contractMethods.raiseDispute(params);
-  }
-
-  async claimFunds(contractAddress: string, userAddress: string): Promise<any> {
-    console.log('🔧 Web3Auth No-Modal: claimFunds called, delegating to contract methods');
-    const contractMethods = this.getContractMethods();
-    return await contractMethods.claimFunds(contractAddress, userAddress);
-  }
-
-  async manageFunds(contractAddress: string, userAddress: string): Promise<any> {
-    console.log('🔧 Web3Auth No-Modal: manageFunds called, delegating to claimFunds');
-    return await this.claimFunds(contractAddress, userAddress);
-  }
 
   /**
    * Handle external wallet connection (MetaMask, etc.) using signature authentication
@@ -971,54 +877,40 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
 
   private async handleWalletConnectV2Connection(): Promise<{ success: boolean; user?: any; token?: string; error?: string }> {
     try {
-      console.log('🔧 Web3Auth No-Modal: Initializing WalletConnect v2...');
+      console.log('🔧 Web3Auth No-Modal: Connecting to WalletConnect v2 via Web3Auth adapter...');
       
-      // Import and create WalletConnect v2 provider
-      const { WalletConnectV2Provider } = await import('./walletConnectV2Provider');
-      const walletConnectProvider = new WalletConnectV2Provider(this.config);
+      // Use Web3Auth's WalletConnect adapter
+      if (!this.web3auth) {
+        throw new Error('Web3Auth not initialized');
+      }
       
-      // Connect using WalletConnect
-      const authResult = await walletConnectProvider.connect();
+      // Connect through Web3Auth's WalletConnect adapter
+      const web3authProvider = await this.web3auth.connectTo('wallet-connect-v2');
       
-      // Store the WalletConnect provider instance itself so we can access its methods
-      // The walletConnectProvider has getEthersProvider() method that the AuthProvider needs
-      this.walletConnectProvider = walletConnectProvider;
-      this.provider = authResult.provider; // This is already an ethers.BrowserProvider from connect()
+      if (!web3authProvider) {
+        throw new Error('Failed to connect to WalletConnect via Web3Auth');
+      }
+      
+      this.provider = web3authProvider;
+      
+      // Initialize Web3 service
+      await this.initializeWeb3Service();
+      
+      // Handle the connected state
+      await this.handleConnected();
       
       // Clear any cached provider since we have a new connection
       this.cachedEthersProvider = null;
       
-      console.log('🔧 Web3Auth No-Modal: WalletConnect provider stored successfully');
+      console.log('🔧 Web3Auth No-Modal: WalletConnect connected successfully via Web3Auth adapter');
       console.log('🔧 Web3Auth No-Modal: Provider type:', this.provider?.constructor?.name);
-      console.log('🔧 Web3Auth No-Modal: Has walletConnectProvider:', !!this.walletConnectProvider);
-      console.log('🔧 Web3Auth No-Modal: WalletConnect backend user data:', {
-        userId: authResult.user.userId,
-        email: authResult.user.email,
-        displayName: authResult.user.displayName,
-        walletAddress: authResult.user.walletAddress
-      });
       
-      // Create user object using backend data from WalletConnect authentication
-      this.state.user = {
-        userId: authResult.user.userId || authResult.user.walletAddress,
-        email: authResult.user.email || '',
-        displayName: authResult.user.displayName || authResult.user.email || 'WalletConnect User',
-        profileImageUrl: authResult.user.profileImageUrl || '',
-        walletAddress: authResult.user.walletAddress,
-        authProvider: 'walletconnect',
-        userType: authResult.user.userType || ''
-      };
-
-      this.state.isConnected = true;
-      // For WalletConnect, we need to get the token from the user data
-      this.state.token = authResult.user.idToken || '';
-      
-      // Emit connected event
-      this.emit({ type: 'connected', user: this.state.user, token: this.state.token || '' });
+      // The user state will be handled by handleConnected()
+      // which was already called above
       
       return {
         success: true,
-        user: this.state.user,
+        user: this.state.user || {},
         token: this.state.token || ''
       };
     } catch (error) {

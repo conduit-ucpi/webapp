@@ -85,7 +85,7 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
         
         this.chainConfig = {
           chainNamespace: CHAIN_NAMESPACES.EIP155,
-          chainId: toHexString(this.config.chainId),
+          chainId: this.config.chainId.toString(),
           rpcTarget: this.config.rpcUrl,
           displayName: this.getChainDisplayName(),
           blockExplorerUrl: this.config.explorerBaseUrl,
@@ -160,6 +160,8 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
         console.log('🔧 DEBUG: WalletConnect chain config:', {
           chainConfig: this.chainConfig,
           rawChainId: this.config.chainId,
+          decimalChainId: this.config.chainId.toString(),
+          hexChainId: `0x${this.config.chainId.toString(16)}`,
           eip155Chain: `eip155:${this.config.chainId}`
         });
         

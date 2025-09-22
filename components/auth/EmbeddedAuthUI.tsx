@@ -24,12 +24,8 @@ export default function EmbeddedAuthUI({ className = '', onSuccess, compact = fa
   const [showWalletOptions, setShowWalletOptions] = useState(false);
   const [email, setEmail] = useState('');
   
-  // Use smart routing if enabled
-  if (useSmartRouting) {
-    return <AuthRouter compact={compact} onSuccess={onSuccess} className={className} />;
-  }
-
   // Set up WalletConnect URI handler using event listeners
+  // Must be before any conditional returns to comply with React hooks rules
   useEffect(() => {
     const handleWalletConnectUri = (event: CustomEvent) => {
       console.log('🔧 EmbeddedAuthUI: Received WalletConnect URI event:', event.detail?.uri);
@@ -62,6 +58,11 @@ export default function EmbeddedAuthUI({ className = '', onSuccess, compact = fa
       window.removeEventListener('walletconnect-close', handleWalletConnectClose);
     };
   }, []);
+  
+  // Use smart routing if enabled
+  if (useSmartRouting) {
+    return <AuthRouter compact={compact} onSuccess={onSuccess} className={className} />;
+  }
 
   const handleConnect = async (method: string, userEmail?: string) => {
     try {

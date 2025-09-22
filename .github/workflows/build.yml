@@ -61,7 +61,7 @@ jobs:
           SERVICE_LINK: ${{ vars.SERVICE_LINK }}
           ALLOWED_FRAME_ANCESTORS: ${{ vars.ALLOWED_FRAME_ANCESTORS }}
         run: |
-          yarn install
+          npm ci --legacy-peer-deps
           
           # Generate Farcaster manifest with correct domain
           echo "=== Generating Farcaster manifest ==="
@@ -79,7 +79,7 @@ jobs:
           echo "=== Generated manifest content ==="
           cat public/.well-known/farcaster.json
           
-          yarn build
+          npm run build
           mkdir -p .next/standalone
           # Debug: Check what files exist before copying
           echo "=== Checking build output ==="

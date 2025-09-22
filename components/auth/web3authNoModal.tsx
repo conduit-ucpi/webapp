@@ -206,10 +206,40 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
         this.state.isInitialized = true;
         console.log('🔧 Web3Auth No-Modal: Initialization complete');
         
-        // Check if already connected
+        // Check if already connected, but only if we haven't recently disconnected
         if (this.web3auth.connected) {
-          console.log('🔧 Web3Auth No-Modal: Already connected, fetching user info...');
-          await this.handleConnected();
+          console.log('🔧 Web3Auth No-Modal: Web3Auth reports connected status');
+          console.log('🔧 Web3Auth No-Modal: Checking if this is a valid session...');
+          
+          try {
+            // Try to get user info to verify the connection is valid
+            const userInfo = await this.web3auth.getUserInfo();
+            console.log('🔧 Web3Auth No-Modal: User info check:', userInfo);
+            
+            // Only proceed if we have a provider and valid user info
+            if (this.web3auth.provider && (userInfo.email || userInfo.name || userInfo.verifierId)) {
+              console.log('🔧 Web3Auth No-Modal: Valid session found, auto-connecting...');
+              await this.handleConnected();
+            } else {
+              console.log('🔧 Web3Auth No-Modal: Invalid session detected, clearing...');
+              // Clear invalid session
+              try {
+                await this.web3auth.logout();
+              } catch (e) {
+                console.warn('Error clearing invalid session:', e);
+              }
+            }
+          } catch (error) {
+            console.log('🔧 Web3Auth No-Modal: Session verification failed, clearing session:', error);
+            // If we can't get user info, the session is invalid
+            try {
+              await this.web3auth.logout();
+            } catch (e) {
+              console.warn('Error clearing invalid session:', e);
+            }
+          }
+        } else {
+          console.log('🔧 Web3Auth No-Modal: No existing connection found');
         }
         
         if (this.state.user && this.state.token) {
@@ -349,7 +379,18 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
     
     try {
       this.state.isLoading = true;
+      
+      console.log('🔧 Web3Auth No-Modal: Starting disconnect process...');
+      console.log('🔧 Web3Auth No-Modal: Web3Auth status before logout:', this.web3auth.status);
+      console.log('🔧 Web3Auth No-Modal: Web3Auth connected before logout:', this.web3auth.connected);
+      
+      // Logout from Web3Auth
       await this.web3auth.logout();
+      
+      console.log('🔧 Web3Auth No-Modal: Web3Auth status after logout:', this.web3auth.status);
+      console.log('🔧 Web3Auth No-Modal: Web3Auth connected after logout:', this.web3auth.connected);
+      
+      // Clear all local state
       this.provider = null;
       this.cachedEthersProvider = null;
       this.state.user = null;
@@ -359,6 +400,51 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
       // Clear session storage
       localStorage.removeItem(this.visitedKey);
       
+      // Clear any Web3Auth related storage that might persist
+      // These are common Web3Auth storage keys that might persist session state
+      const keysToRemove = [
+        'Web3Auth-cachedAdapter',
+        'openlogin_store',
+        'Web3Auth-wallet-connect',
+        'walletconnect',
+        'wc@2:client:0.3',
+        'wc@2:core:0.3'
+      ];
+      
+      keysToRemove.forEach(key => {
+        try {
+          localStorage.removeItem(key);
+          sessionStorage.removeItem(key);
+        } catch (e) {
+          // Ignore errors when clearing storage
+        }
+      });
+      
+      // Clear any Web3Auth storage with wildcard patterns
+      if (typeof window !== 'undefined') {
+        try {
+          Object.keys(localStorage).forEach(key => {
+            if (key.includes('web3auth') || 
+                key.includes('openlogin') || 
+                key.includes('walletconnect') ||
+                key.includes('wc@2:')) {
+              localStorage.removeItem(key);
+            }
+          });
+          Object.keys(sessionStorage).forEach(key => {
+            if (key.includes('web3auth') || 
+                key.includes('openlogin') || 
+                key.includes('walletconnect') ||
+                key.includes('wc@2:')) {
+              sessionStorage.removeItem(key);
+            }
+          });
+        } catch (e) {
+          console.warn('Error clearing Web3Auth storage:', e);
+        }
+      }
+      
+      console.log('🔧 Web3Auth No-Modal: Disconnect completed successfully');
       this.emit({ type: 'disconnected' });
     } catch (error) {
       console.error('🔧 Web3Auth No-Modal: Disconnect failed:', error);

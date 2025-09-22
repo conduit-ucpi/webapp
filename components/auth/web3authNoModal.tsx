@@ -180,12 +180,15 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
           }
         });
         
-        console.log('🔧 DEBUG: WalletConnect chain config:', {
+        console.log('🔧 DEBUG: WalletConnect complete configuration:', {
           chainConfig: this.chainConfig,
-          rawChainId: this.config.chainId,
-          decimalChainId: this.config.chainId.toString(),
-          hexChainId: `0x${this.config.chainId.toString(16)}`,
-          eip155Chain: `eip155:${this.config.chainId}`
+          modalChains: [`eip155:${decimalChainId}`],
+          adapterChains: [decimalChainId],
+          originalConfigChainId: this.config.chainId,
+          decimalChainId: decimalChainId,
+          typeOfDecimal: typeof decimalChainId,
+          expectedCAIP2: 'eip155:8453',
+          actualCAIP2: `eip155:${decimalChainId}`
         });
         
         const walletConnectAdapter = new WalletConnectV2Adapter({
@@ -196,7 +199,9 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
           adapterSettings: {
             qrcodeModal: walletConnectModal,
             walletConnectInitOptions: {
-              projectId: walletConnectProjectId
+              projectId: walletConnectProjectId,
+              chains: [decimalChainId], // Pass decimal chainId to match Modal config
+              optionalChains: [decimalChainId]
             }
           }
         } as any);
@@ -801,7 +806,24 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
         signMessage: async (message: string) => {
           const accounts = await this.provider.request({ method: 'eth_accounts', params: [] });
           const address = accounts[0];
-          return await this.provider.request({ method: 'personal_sign', params: [message, address] });
+          
+          // For WalletConnect, we need to specify chainId in CAIP-2 format (decimal)
+          const decimalChainId = typeof this.config.chainId === 'string' ? 
+            parseInt(this.config.chainId, 10) : this.config.chainId;
+          const chainId = `eip155:${decimalChainId}`;
+          console.log('🔧 DEBUG: signMessage chainId conversion:', {
+            originalConfig: this.config.chainId,
+            typeOfOriginal: typeof this.config.chainId,
+            decimal: decimalChainId,
+            finalChainId: chainId,
+            shouldBe: 'eip155:8453'
+          });
+          
+          return await this.provider.request({ 
+            method: 'personal_sign', 
+            params: [message, address],
+            chainId: chainId
+          });
         },
         request: async ({ method, params }: { method: string; params: any[] }) => {
           return await this.provider.request({ method, params });

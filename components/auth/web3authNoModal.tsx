@@ -46,7 +46,6 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
   private cachedEthersProvider: any = null;
   private adapters: Map<string, any> = new Map();
   private chainConfig: any = null;
-  private walletConnectProvider: any = null; // Store WalletConnect provider instance
 
   constructor(config?: any) {
     this.config = config;
@@ -131,9 +130,18 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
         console.log('🔧 Web3Auth No-Modal: MetaMask adapter created');
         this.adapters.set('metamask', metamaskAdapter);
 
-        // Skip Web3Auth's WalletConnect adapter - we use our custom implementation instead
-        console.log('🔧 Web3Auth No-Modal: Skipping Web3Auth WalletConnect adapter - using custom implementation');
-        // Note: WalletConnect functionality is handled by our custom WalletConnectV2Provider
+        // Configure WalletConnect V2 adapter
+        console.log('🔧 Web3Auth No-Modal: Creating WalletConnect V2 adapter...');
+        const walletConnectAdapter = new WalletConnectV2Adapter({
+          chainConfig: this.chainConfig,
+          clientId: this.config.web3AuthClientId,
+          web3AuthNetwork: web3AuthNetworkSetting,
+          sessionTime: 3600 * 24 * 7, // 1 week
+          qrcodeModal: true
+        } as any);
+        
+        console.log('🔧 Web3Auth No-Modal: WalletConnect V2 adapter created');
+        this.adapters.set('wallet-connect-v2', walletConnectAdapter);
 
         // Initialize Web3Auth No-Modal instance
         console.log('🔧 Web3Auth No-Modal: Creating Web3AuthNoModal instance...');
@@ -152,8 +160,9 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
         
         this.web3auth.configureAdapter(metamaskAdapter);
         console.log('🔧 Web3Auth No-Modal: MetaMask adapter configured');
-
-        // WalletConnect adapter configuration skipped - using custom implementation
+        
+        this.web3auth.configureAdapter(walletConnectAdapter);
+        console.log('🔧 Web3Auth No-Modal: WalletConnect V2 adapter configured');
 
         // Verify we have at least one adapter configured
         if (this.adapters.size === 0) {
@@ -314,15 +323,6 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
   }
 
   async disconnect(): Promise<void> {
-    // Handle WalletConnect disconnect
-    if (this.walletConnectProvider) {
-      try {
-        await this.walletConnectProvider.disconnect();
-      } catch (error) {
-        console.warn('WalletConnect disconnect error:', error);
-      }
-      this.walletConnectProvider = null;
-    }
     
     if (!this.web3auth) return;
     
@@ -365,13 +365,6 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
   }
 
   getEthersProvider(): any {
-    // For WalletConnect, use its getEthersProvider method and cache the result
-    if (this.walletConnectProvider && this.walletConnectProvider.getEthersProvider) {
-      if (!this.cachedEthersProvider) {
-        this.cachedEthersProvider = this.walletConnectProvider.getEthersProvider();
-      }
-      return this.cachedEthersProvider;
-    }
     
     if (!this.provider) {
       throw new Error('No provider available');
@@ -387,11 +380,6 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
 
   // Get the actual underlying provider for contract operations
   getActualProvider(): any {
-    // If using WalletConnect, return the WalletConnect provider directly
-    if (this.walletConnectProvider) {
-      console.log('🔧 Web3Auth No-Modal: Returning WalletConnect provider for contract operations');
-      return this.walletConnectProvider;
-    }
     
     // Otherwise return this wrapper (for Web3Auth, external wallets, etc.)
     console.log('🔧 Web3Auth No-Modal: Returning wrapper for contract operations');

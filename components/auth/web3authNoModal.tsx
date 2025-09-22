@@ -157,6 +157,12 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
           }
         });
         
+        console.log('🔧 DEBUG: WalletConnect chain config:', {
+          chainConfig: this.chainConfig,
+          rawChainId: this.config.chainId,
+          eip155Chain: `eip155:${this.config.chainId}`
+        });
+        
         const walletConnectAdapter = new WalletConnectV2Adapter({
           chainConfig: this.chainConfig,
           clientId: this.config.web3AuthClientId,

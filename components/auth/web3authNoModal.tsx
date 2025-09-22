@@ -49,6 +49,16 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
   private chainConfig: any = null;
 
   constructor(config?: any) {
+    console.log('🔧 DEBUG: Web3AuthNoModal constructor config.chainId:', {
+      chainId: config?.chainId,
+      type: typeof config?.chainId,
+      valueOf: config?.chainId?.valueOf?.(),
+      toString: config?.chainId?.toString?.(),
+      isString: typeof config?.chainId === 'string',
+      isNumber: typeof config?.chainId === 'number',
+      parseIntResult: parseInt(config?.chainId),
+      parseIntIsNaN: isNaN(parseInt(config?.chainId))
+    });
     this.config = config;
   }
 
@@ -85,7 +95,7 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
         
         this.chainConfig = {
           chainNamespace: CHAIN_NAMESPACES.EIP155,
-          chainId: this.config.chainId.toString(),
+          chainId: toHexString(this.config.chainId),
           rpcTarget: this.config.rpcUrl,
           displayName: this.getChainDisplayName(),
           blockExplorerUrl: this.config.explorerBaseUrl,
@@ -149,17 +159,17 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
         // Import and create WalletConnect's own modal
         const { WalletConnectModal } = await import('@walletconnect/modal');
         
-        console.log('🔧 DEBUG: WalletConnect Modal chainId values:', {
-          rawConfigChainId: this.config.chainId,
-          typeofChainId: typeof this.config.chainId,
-          oldEip155String: `eip155:${this.config.chainId}`,
-          newEip155String: `eip155:0x${this.config.chainId.toString(16)}`,
-          expectedHex: `eip155:0x2105`
+        console.log('🔧 DEBUG: About to create WalletConnect Modal with chainId:', {
+          configChainId: this.config.chainId,
+          typeOfChainId: typeof this.config.chainId,
+          eip155Format: `eip155:${this.config.chainId}`,
+          shouldBeDecimal8453: 'eip155:8453',
+          currentlyGetting: `eip155:${this.config.chainId}`
         });
         
         const walletConnectModal = new WalletConnectModal({
           projectId: walletConnectProjectId,
-          chains: [`eip155:0x${this.config.chainId.toString(16)}`],
+          chains: [`eip155:${this.config.chainId}`],
           themeMode: 'light',
           themeVariables: {
             '--wcm-z-index': '99999',

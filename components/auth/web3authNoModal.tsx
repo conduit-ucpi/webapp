@@ -902,25 +902,63 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
       
       this.provider = web3authProvider;
       
+      // Get wallet address
+      const { ethers } = await import('ethers');
+      const ethersProvider = new ethers.BrowserProvider(this.provider);
+      const signer = await ethersProvider.getSigner();
+      const walletAddress = await signer.getAddress();
+      
+      // Get the idToken from Web3Auth for WalletConnect
+      let idToken: string;
+      try {
+        const userInfo = await this.web3auth.getUserInfo();
+        idToken = userInfo.idToken;
+        
+        if (!idToken) {
+          // Try alternative method for getting token
+          if (this.web3auth.getIdentityToken) {
+            const authUser = await this.web3auth.getIdentityToken();
+            idToken = authUser?.idToken;
+          }
+          
+          // If still no token, generate signature-based token
+          if (!idToken) {
+            console.log('🔧 Web3Auth No-Modal: No idToken from Web3Auth, generating signature token...');
+            idToken = await this.generateSignatureToken(walletAddress);
+          }
+        }
+      } catch (error) {
+        console.log('🔧 Web3Auth No-Modal: Failed to get Web3Auth token, generating signature token...');
+        idToken = await this.generateSignatureToken(walletAddress);
+      }
+      
+      // Create basic user object - AuthProvider will handle backend auth and merging
+      this.state.user = {
+        userId: walletAddress, // Use wallet address as initial userId
+        email: '', // Will be filled by backend auth
+        walletAddress,
+        authProvider: 'walletconnect'
+      };
+      this.state.token = idToken;
+      this.state.isConnected = true;
+      
       // Initialize Web3 service
       await this.initializeWeb3Service();
-      
-      // Handle the connected state
-      await this.handleConnected();
       
       // Clear any cached provider since we have a new connection
       this.cachedEthersProvider = null;
       
-      console.log('🔧 Web3Auth No-Modal: WalletConnect connected successfully via Web3Auth adapter');
-      console.log('🔧 Web3Auth No-Modal: Provider type:', this.provider?.constructor?.name);
-      
-      // The user state will be handled by handleConnected()
-      // which was already called above
+      console.log('🔧 Web3Auth No-Modal: WalletConnect connected successfully');
+      console.log('🔧 Web3Auth No-Modal: Provider user data (before backend auth):', {
+        userId: this.state.user?.userId,
+        walletAddress: this.state.user?.walletAddress,
+        authProvider: this.state.user?.authProvider
+      });
       
       return {
         success: true,
-        user: this.state.user || {},
-        token: this.state.token || ''
+        user: this.state.user,
+        token: this.state.token
       };
     } catch (error) {
       console.error('🔧 Web3Auth No-Modal: WalletConnect v2 connection failed:', error);

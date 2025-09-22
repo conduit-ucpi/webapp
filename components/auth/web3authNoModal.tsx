@@ -49,20 +49,13 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
   private chainConfig: any = null;
 
   constructor(config?: any) {
-    console.log('🔧 DEBUG: Web3AuthNoModal constructor config.chainId:', {
-      chainId: config?.chainId,
-      type: typeof config?.chainId,
-      valueOf: config?.chainId?.valueOf?.(),
-      toString: config?.chainId?.toString?.(),
-      isString: typeof config?.chainId === 'string',
-      isNumber: typeof config?.chainId === 'number',
-      parseIntResult: parseInt(config?.chainId),
-      parseIntIsNaN: isNaN(parseInt(config?.chainId))
-    });
+    console.log('🚨🚨🚨 CONSTRUCTOR CALLED - config.chainId:', config?.chainId, 'type:', typeof config?.chainId);
+    console.log('🚨🚨🚨 CONSTRUCTOR FULL CONFIG:', JSON.stringify(config, null, 2));
     this.config = config;
   }
 
   async initialize(): Promise<void> {
+    console.log('🚨🚨🚨 INITIALIZE CALLED - this.config.chainId:', this.config?.chainId);
     if (this.state.isInitialized) return;
     
     try {
@@ -168,9 +161,19 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
           currentlyGetting: `eip155:${this.config.chainId}`
         });
         
+        // Ensure chainId is decimal format for CAIP-2 compliance
+        const decimalChainId = typeof this.config.chainId === 'string' ? 
+          parseInt(this.config.chainId, 10) : this.config.chainId;
+        
+        console.log('🔧 DEBUG: WalletConnect Modal chainId conversion:', {
+          original: this.config.chainId,
+          decimal: decimalChainId,
+          caip2Format: `eip155:${decimalChainId}`
+        });
+        
         const walletConnectModal = new WalletConnectModal({
           projectId: walletConnectProjectId,
-          chains: [`eip155:${this.config.chainId}`],
+          chains: [`eip155:${decimalChainId}`],
           themeMode: 'light',
           themeVariables: {
             '--wcm-z-index': '99999',

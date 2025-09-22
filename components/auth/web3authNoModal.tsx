@@ -87,9 +87,12 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
           : WEB3AUTH_NETWORK.SAPPHIRE_DEVNET;
         
         // Try using raw decimal instead of hex to avoid double prefix issues
+        // Ensure chainId is in hex format for Web3Auth/WalletConnect compatibility
+        const hexChainId = '0x' + this.config.chainId.toString(16);
+        
         this.chainConfig = {
           chainNamespace: CHAIN_NAMESPACES.EIP155,
-          chainId: this.config.chainId.toString(),
+          chainId: hexChainId,
           rpcTarget: this.config.rpcUrl,
           displayName: this.getChainDisplayName(),
           blockExplorerUrl: this.config.explorerBaseUrl,
@@ -649,16 +652,11 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
 
       // If we still don't have an idToken, this might be an external wallet
       // where Web3Auth doesn't provide idTokens. In this case, we need to
-      // generate a signature-based authentication token.
+      // TEMPORARILY DISABLED: Skip signature generation to test WalletConnect connection
       if (!idToken) {
-        console.log('🔧 Web3Auth No-Modal: No idToken available, generating signature-based token...');
-        try {
-          idToken = await this.generateSignatureToken(address);
-          console.log('🔧 Web3Auth No-Modal: Generated signature token for Web3Auth external wallet connection');
-        } catch (sigError) {
-          console.error('🔧 Web3Auth No-Modal: Signature token generation failed:', sigError);
-          console.error('🔧 Web3Auth No-Modal: This connection cannot be authenticated without a token');
-        }
+        console.log('🔧 Web3Auth No-Modal: TEMPORARILY SKIPPING signature generation to test connection');
+        // idToken = await this.generateSignatureToken(address);
+        idToken = 'TEMP_SKIP_AUTH'; // Temporary placeholder
       }
 
       // Get USDC balance
@@ -1085,15 +1083,15 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
             idToken = authUser?.idToken;
           }
           
-          // If still no token, generate signature-based token
+          // TEMPORARILY DISABLED: Skip signature generation
           if (!idToken) {
-            console.log('🔧 Web3Auth No-Modal: No idToken from Web3Auth, generating signature token...');
-            idToken = await this.generateSignatureToken(walletAddress);
+            console.log('🔧 Web3Auth No-Modal: TEMPORARILY SKIPPING signature generation...');
+            idToken = 'TEMP_SKIP_AUTH'; // Temporary placeholder
           }
         }
       } catch (error) {
-        console.log('🔧 Web3Auth No-Modal: Failed to get Web3Auth token, generating signature token...');
-        idToken = await this.generateSignatureToken(walletAddress);
+        console.log('🔧 Web3Auth No-Modal: TEMPORARILY SKIPPING signature token generation...');
+        idToken = 'TEMP_SKIP_AUTH'; // Temporary placeholder
       }
       
       // Create basic user object - AuthProvider will handle backend auth and merging

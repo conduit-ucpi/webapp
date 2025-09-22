@@ -83,17 +83,9 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
           ? WEB3AUTH_NETWORK.SAPPHIRE_MAINNET 
           : WEB3AUTH_NETWORK.SAPPHIRE_DEVNET;
         
-        const hexChainId = toHexString(this.config.chainId);
-        console.log('🔧 DEBUG: Chain ID conversion:', {
-          originalChainId: this.config.chainId,
-          originalType: typeof this.config.chainId,
-          convertedHexChainId: hexChainId,
-          convertedType: typeof hexChainId
-        });
-        
         this.chainConfig = {
           chainNamespace: CHAIN_NAMESPACES.EIP155,
-          chainId: hexChainId,
+          chainId: toHexString(this.config.chainId),
           rpcTarget: this.config.rpcUrl,
           displayName: this.getChainDisplayName(),
           blockExplorerUrl: this.config.explorerBaseUrl,

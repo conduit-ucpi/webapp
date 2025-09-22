@@ -11,7 +11,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log('NEXT_PUBLIC_BASE_PATH:', process.env.NEXT_PUBLIC_BASE_PATH);
     console.log('WEB3AUTH_CLIENT_ID:', process.env.WEB3AUTH_CLIENT_ID ? 'Present' : 'Missing');
     console.log('CHAIN_ID:', process.env.CHAIN_ID);
-    console.log('RPC_URL:', process.env.RPC_URL ? 'Present' : 'Missing');
+    console.log('RPC_URL:', process.env.RPC_URL || 'MISSING - THIS WILL CAUSE ERRORS');
     console.log('USDC_CONTRACT_ADDRESS:', process.env.USDC_CONTRACT_ADDRESS);
     console.log('MOONPAY_API_KEY:', process.env.MOONPAY_API_KEY ? 'Present' : 'Missing');
     console.log('MIN_GAS_WEI:', process.env.MIN_GAS_WEI);
@@ -21,6 +21,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log('WALLETCONNECT_PROJECT_ID:', process.env.WALLETCONNECT_PROJECT_ID ? 'Present' : 'Missing');
 
     const basePath = process.env.NEXT_PUBLIC_BASE_PATH === 'null' ? '' : (process.env.NEXT_PUBLIC_BASE_PATH || '/webapp');
+    
+    // Validate critical configuration
+    if (!process.env.RPC_URL) {
+      throw new Error('RPC_URL environment variable is required but not set');
+    }
+    if (!process.env.WEB3AUTH_CLIENT_ID) {
+      throw new Error('WEB3AUTH_CLIENT_ID environment variable is required but not set');
+    }
     
     const config = {
       web3AuthClientId: process.env.WEB3AUTH_CLIENT_ID,

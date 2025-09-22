@@ -98,6 +98,14 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
           web3AuthNetwork: web3AuthNetworkSetting,
           chainConfig: this.chainConfig
         });
+        
+        console.log('🔧 DEBUG: Chain config details:', {
+          chainId: this.chainConfig.chainId,
+          rpcTarget: this.chainConfig.rpcTarget,
+          rpcTargetType: typeof this.chainConfig.rpcTarget,
+          configRpcUrl: this.config.rpcUrl,
+          configRpcUrlType: typeof this.config.rpcUrl
+        });
 
         // Create Ethereum provider
         const privateKeyProvider = new EthereumPrivateKeyProvider({
@@ -479,8 +487,20 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
     }
 
     if (!this.cachedEthersProvider) {
+      console.log('🔧 DEBUG: Creating ethers BrowserProvider from Web3Auth provider');
       const { ethers } = require('ethers');
       this.cachedEthersProvider = new ethers.BrowserProvider(this.provider);
+      
+      // Try to get network info to debug
+      this.cachedEthersProvider.getNetwork().then((network: any) => {
+        console.log('🔧 DEBUG: Ethers provider network:', {
+          chainId: network.chainId,
+          name: network.name,
+          ensAddress: network.ensAddress
+        });
+      }).catch((error: any) => {
+        console.error('🔧 DEBUG: Failed to get network from ethers provider:', error);
+      });
     }
 
     return this.cachedEthersProvider;

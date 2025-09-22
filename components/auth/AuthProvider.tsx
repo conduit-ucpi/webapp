@@ -113,11 +113,32 @@ export function AuthProvider({ children }: AuthProviderProps) {
         try {
           console.log('[AuthProvider] Initializing Web3Service with EIP-1193 provider...');
           
-          // Get the raw EIP-1193 provider from the auth provider
-          let eip1193Provider: any;
-          
-          // Different auth providers expose the EIP-1193 provider differently
+          // Check if the auth provider already has an ethers provider we can reuse
           const authProviderImpl = provider as any;
+          
+          if (authProviderImpl.getEthersProvider && typeof authProviderImpl.getEthersProvider === 'function') {
+            try {
+              // Reuse the existing ethers provider instead of wrapping the EIP-1193 again
+              console.log('[AuthProvider] Reusing existing ethers provider from auth provider');
+              const existingEthersProvider = authProviderImpl.getEthersProvider();
+              
+              // Create Web3Service with the existing ethers provider
+              const newWeb3Service = new Web3Service(config);
+              // Set the provider directly instead of initializing
+              (newWeb3Service as any).provider = existingEthersProvider;
+              setWeb3Service(newWeb3Service);
+              console.log('[AuthProvider] ✅ Web3Service initialized with reused ethers provider');
+              
+              // Store it globally for backward compatibility
+              (window as any).web3Service = newWeb3Service;
+              return;
+            } catch (error) {
+              console.warn('[AuthProvider] Failed to reuse ethers provider, will try EIP-1193:', error);
+            }
+          }
+          
+          // Fallback: Get the raw EIP-1193 provider (only if reuse failed)
+          let eip1193Provider: any;
           
           if (authProviderImpl.provider) {
             // Web3Auth and most providers store it as 'provider'
@@ -127,12 +148,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
             // Some providers might expose it via a method
             eip1193Provider = authProviderImpl.getProvider();
             console.log('[AuthProvider] Got EIP-1193 provider via authProvider.getProvider()');
-          } else if (authProviderImpl.web3Provider) {
-            // Alternative naming
-            eip1193Provider = authProviderImpl.web3Provider;
-            console.log('[AuthProvider] Found EIP-1193 provider at authProvider.web3Provider');
           } else {
-            console.warn('[AuthProvider] Could not find raw EIP-1193 provider, auth provider structure:', {
+            console.warn('[AuthProvider] Could not find EIP-1193 provider, auth provider structure:', {
               keys: Object.keys(authProviderImpl),
               type: authProviderImpl.constructor?.name
             });
@@ -365,7 +382,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Fallback to auth provider's method
       const providerWithEthers = provider as any;
       if (providerWithEthers.getEthersProvider) {
-        console.log('[AuthProvider] Returning ethers provider from auth provider');
+        console.log('[AuthProvider] ⚠️ Returning ethers provider from auth provider (may have chain ID issues)');
         return providerWithEthers.getEthersProvider();
       }
       throw new Error('Ethers provider not available');
@@ -875,7 +892,7 @@ function RegularAuthProvider({ children }: AuthProviderProps) {
       // Fallback to auth provider's method
       const providerWithEthers = provider as any;
       if (providerWithEthers.getEthersProvider) {
-        console.log('[AuthProvider] Returning ethers provider from auth provider');
+        console.log('[AuthProvider] ⚠️ Returning ethers provider from auth provider (may have chain ID issues)');
         return providerWithEthers.getEthersProvider();
       }
       throw new Error('Ethers provider not available');

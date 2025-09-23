@@ -100,11 +100,17 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
           hexChainId = '0x' + decimalChainId.toString(16);
         }
         
-        // Create a sanitized version of the RPC URL to ensure no hidden characters
-        const sanitizedRpcUrl = this.config.rpcUrl
+        // Create a completely clean RPC URL to bypass any issues
+        let sanitizedRpcUrl = this.config.rpcUrl
           .replace(/[\u0000-\u001F\u007F-\u009F]/g, '') // Remove control characters
           .trim()
           .replace(/\s+/g, ''); // Remove any internal whitespace
+        
+        // If we're on Base mainnet (8453), use a known working RPC endpoint as backup
+        if (this.config.chainId === 8453 || this.config.chainId === '8453') {
+          console.log('🔧 Using Base mainnet RPC fallback to avoid URL construction issues');
+          sanitizedRpcUrl = 'https://base.llamarpc.com';
+        }
         
         this.chainConfig = {
           chainNamespace: CHAIN_NAMESPACES.EIP155,

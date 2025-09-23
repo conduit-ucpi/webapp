@@ -76,9 +76,22 @@ class Web3AuthProviderImpl implements IAuthProvider {
           ? WEB3AUTH_NETWORK.SAPPHIRE_MAINNET 
           : WEB3AUTH_NETWORK.SAPPHIRE_DEVNET;
         
+        // Ensure chainId is properly formatted as hex
+        let hexChainId: string;
+        if (typeof this.config.chainId === 'string' && this.config.chainId.startsWith('0x')) {
+          // Already in hex format, use as-is
+          hexChainId = this.config.chainId;
+        } else {
+          // Convert decimal to hex
+          const decimalChainId = typeof this.config.chainId === 'string' 
+            ? parseInt(this.config.chainId, 10) 
+            : this.config.chainId;
+          hexChainId = ensureHexPrefix(decimalChainId.toString(16));
+        }
+        
         const chainConfig = {
           chainNamespace: CHAIN_NAMESPACES.EIP155,
-          chainId: ensureHexPrefix(this.config.chainId.toString(16)),
+          chainId: hexChainId,
           rpcTarget: this.config.rpcUrl,
           displayName: this.getChainDisplayName(),
           blockExplorerUrl: this.config.explorerBaseUrl,

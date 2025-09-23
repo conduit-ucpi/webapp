@@ -86,9 +86,19 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
           ? WEB3AUTH_NETWORK.SAPPHIRE_MAINNET 
           : WEB3AUTH_NETWORK.SAPPHIRE_DEVNET;
         
-        // Try using raw decimal instead of hex to avoid double prefix issues
-        // Ensure chainId is in hex format for Web3Auth/WalletConnect compatibility
-        const hexChainId = '0x' + this.config.chainId.toString(16);
+        // Ensure chainId is properly formatted as hex for Web3Auth/WalletConnect
+        // Handle both decimal and hex input formats to avoid double-prefixing
+        let hexChainId: string;
+        if (typeof this.config.chainId === 'string' && this.config.chainId.startsWith('0x')) {
+          // Already in hex format, use as-is
+          hexChainId = this.config.chainId;
+        } else {
+          // Convert decimal to hex
+          const decimalChainId = typeof this.config.chainId === 'string' 
+            ? parseInt(this.config.chainId, 10) 
+            : this.config.chainId;
+          hexChainId = '0x' + decimalChainId.toString(16);
+        }
         
         this.chainConfig = {
           chainNamespace: CHAIN_NAMESPACES.EIP155,
@@ -542,12 +552,47 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
 
     if (!this.cachedEthersProvider) {
       console.log('🔧 DEBUG: Creating ethers BrowserProvider from Web3Auth provider');
+      
+      // Debug: Check what the raw provider returns for chainId
+      if (this.provider.request) {
+        this.provider.request({ method: 'eth_chainId' })
+          .then((rawChainId: any) => {
+            console.log('🔧 DEBUG: Raw provider eth_chainId response:', {
+              rawChainId,
+              typeOfRawChainId: typeof rawChainId,
+              isHex: typeof rawChainId === 'string' && rawChainId.startsWith('0x'),
+              hasDoublePrefix: typeof rawChainId === 'string' && rawChainId.startsWith('0x0x')
+            });
+          })
+          .catch((err: any) => {
+            console.log('🔧 DEBUG: Could not get eth_chainId from raw provider:', err);
+          });
+      }
+      
       const { ethers } = require('ethers');
-      this.cachedEthersProvider = new ethers.BrowserProvider(this.provider);
+      
+      // Create a custom provider that fixes the chainId if needed
+      const originalProvider = this.provider;
+      const wrappedProvider = {
+        ...originalProvider,
+        request: async (args: any) => {
+          const result = await originalProvider.request(args);
+          
+          // Fix double-prefixed chainId if detected
+          if (args.method === 'eth_chainId' && typeof result === 'string' && result.startsWith('0x0x')) {
+            console.log('🔧 DEBUG: Fixing double-prefixed chainId:', result, '->', result.slice(2));
+            return result.slice(2); // Remove the extra "0x"
+          }
+          
+          return result;
+        }
+      };
+      
+      this.cachedEthersProvider = new ethers.BrowserProvider(wrappedProvider);
       
       // Try to get network info to debug
       this.cachedEthersProvider.getNetwork().then((network: any) => {
-        console.log('🔧 DEBUG: Ethers provider network:', {
+        console.log('🔧 DEBUG: Ethers provider network after wrapping:', {
           chainId: network.chainId,
           name: network.name,
           ensAddress: network.ensAddress

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/components/auth';
 import { useConfig } from '@/components/auth/ConfigProvider';
-import { useWeb3SDK } from '@/hooks/useWeb3SDK';
+// Removed useWeb3SDK - using ethers directly instead
 import ConnectWalletEmbedded from '@/components/auth/ConnectWalletEmbedded';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
@@ -38,7 +38,7 @@ export default function Wallet() {
   const { isInFarcaster } = useFarcaster();
   const { config } = useConfig();
   const { walletAddress, isLoading: isWalletAddressLoading } = useWalletAddress();
-  const { getUSDCBalance, signUSDCTransfer, getUserAddress, isReady, error: sdkError } = useWeb3SDK();
+  // Using ethers directly instead of SDK
   const [balances, setBalances] = useState<WalletBalances>({ native: '0.0000', usdc: '0.0000' });
   const [isLoadingBalances, setIsLoadingBalances] = useState(false);
   const [sendForm, setSendForm] = useState<SendFormData>({
@@ -129,8 +129,8 @@ export default function Wallet() {
 
   const loadBalances = async () => {
     const ethersProvider = getEthersProvider();
-    if (!user || !config || !ethersProvider || !isReady) {
-      console.log('Skipping balance load:', { user: !!user, config: !!config, ethersProvider: !!ethersProvider, isReady });
+    if (!user || !config || !ethersProvider) {
+      console.log('Skipping balance load:', { user: !!user, config: !!config, ethersProvider: !!ethersProvider });
       return;
     }
 
@@ -175,19 +175,12 @@ export default function Wallet() {
           usdcBalance = ethers.formatUnits(balance, 6); // USDC has 6 decimals
           console.log('USDC balance from ethers:', { raw: balance.toString(), formatted: usdcBalance });
         } catch (error) {
-          console.warn('Failed to get USDC balance with ethers:', error);
-          // Fallback to SDK if ethers fails
-          try {
-            usdcBalance = await getUSDCBalance();
-            console.log('USDC balance from SDK fallback:', usdcBalance);
-          } catch (sdkError) {
-            console.error('Both ethers and SDK USDC balance failed:', sdkError);
-            usdcBalance = '0';
-          }
+          console.error('Failed to get USDC balance with ethers:', error);
+          usdcBalance = '0';
         }
       } else {
-        console.warn('No USDC contract address configured, using SDK fallback');
-        usdcBalance = await getUSDCBalance();
+        console.warn('No USDC contract address configured');
+        usdcBalance = '0';
       }
 
       // Format native balance with scientific notation for small values
@@ -230,7 +223,7 @@ export default function Wallet() {
       loadBalances();
       loadChainInfo();
     }
-  }, [user, config, getEthersProvider, isReady]);
+  }, [user, config, getEthersProvider]);
 
   const handleSendSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -245,12 +238,8 @@ export default function Wallet() {
     setIsSending(true);
 
     try {
-      if (!isReady) {
-        throw new Error('SDK not ready. Please ensure wallet is connected.');
-      }
-
-      if (sdkError) {
-        throw new Error(`SDK error: ${sdkError}`);
+      if (!ethersProvider) {
+        throw new Error('Wallet not connected. Please ensure wallet is connected.');
       }
 
       if (sendForm.currency === 'NATIVE') {
@@ -262,11 +251,26 @@ export default function Wallet() {
         });
         setSendSuccess(`Native token sent successfully! Transaction: ${tx.hash}`);
       } else {
-        // Send USDC via chain-service using SDK
-        const signedTx = await signUSDCTransfer(sendForm.recipient, sendForm.amount);
-
-        // Get the user's wallet address from SDK
-        const userAddress = await getUserAddress();
+        // Send USDC via chain-service using ethers
+        const signer = await ethersProvider.getSigner();
+        const userAddress = await signer.getAddress();
+        
+        // Create USDC transfer transaction
+        const usdcContract = new ethers.Contract(
+          config?.usdcContractAddress || '',
+          ['function transfer(address to, uint256 amount) returns (bool)'],
+          signer
+        );
+        
+        // Convert amount to microUSDC (6 decimals)
+        const amountInMicroUSDC = ethers.parseUnits(sendForm.amount, 6);
+        
+        // Sign the transaction but don't send it (we'll send via chain service)
+        const unsignedTx = await usdcContract.transfer.populateTransaction(
+          sendForm.recipient,
+          amountInMicroUSDC
+        );
+        const signedTx = await signer.signTransaction(unsignedTx);
 
         // Submit signed transaction to chain service
         const transferRequest: TransferUSDCRequest = {

@@ -34,7 +34,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       web3AuthClientId: process.env.WEB3AUTH_CLIENT_ID,
       web3AuthNetwork: process.env.WEB3AUTH_NETWORK || 'sapphire_devnet',
       chainId: parseInt(process.env.CHAIN_ID || '43113'),
-      rpcUrl: process.env.RPC_URL,
+      rpcUrl: process.env.RPC_URL?.trim(),
       usdcContractAddress: process.env.USDC_CONTRACT_ADDRESS,
       contractAddress: process.env.CONTRACT_ADDRESS,
       contractFactoryAddress: process.env.CONTRACT_FACTORY_ADDRESS,

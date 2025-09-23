@@ -100,10 +100,16 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
           hexChainId = '0x' + decimalChainId.toString(16);
         }
         
+        // Create a sanitized version of the RPC URL to ensure no hidden characters
+        const sanitizedRpcUrl = this.config.rpcUrl
+          .replace(/[\u0000-\u001F\u007F-\u009F]/g, '') // Remove control characters
+          .trim()
+          .replace(/\s+/g, ''); // Remove any internal whitespace
+        
         this.chainConfig = {
           chainNamespace: CHAIN_NAMESPACES.EIP155,
           chainId: hexChainId,
-          rpcTarget: this.config.rpcUrl,
+          rpcTarget: sanitizedRpcUrl,
           displayName: this.getChainDisplayName(),
           blockExplorerUrl: this.config.explorerBaseUrl,
           ticker: this.getChainTicker(),
@@ -209,7 +215,10 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
           decimalChainId: decimalChainId,
           typeOfDecimal: typeof decimalChainId,
           expectedCAIP2: 'eip155:8453',
-          actualCAIP2: `eip155:${decimalChainId}`
+          actualCAIP2: `eip155:${decimalChainId}`,
+          originalRpcUrl: this.config.rpcUrl,
+          sanitizedRpcUrl: sanitizedRpcUrl,
+          rpcUrlsMatch: this.config.rpcUrl === sanitizedRpcUrl
         });
         
         const walletConnectAdapter = new WalletConnectV2Adapter({
@@ -224,7 +233,10 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
               chains: [`eip155:${decimalChainId}`], // Use CAIP-2 format to match Modal config
               optionalChains: [`eip155:${decimalChainId}`],
               rpcMap: {
-                [decimalChainId]: this.config.rpcUrl
+                [decimalChainId]: sanitizedRpcUrl,
+                [`eip155:${decimalChainId}`]: sanitizedRpcUrl, // Also provide CAIP-2 format
+                8453: sanitizedRpcUrl, // Hardcode Base mainnet as backup
+                'eip155:8453': sanitizedRpcUrl // CAIP-2 format for Base mainnet
               }
             }
           }
@@ -234,7 +246,28 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
           chainConfig: this.chainConfig,
           rpcMap: { [decimalChainId]: this.config.rpcUrl },
           decimalChainId,
-          rpcUrl: this.config.rpcUrl
+          rpcUrl: this.config.rpcUrl,
+          rpcUrlValidation: (() => {
+            try {
+              new URL(this.config.rpcUrl);
+              return `✅ Valid URL: "${this.config.rpcUrl}"`;
+            } catch (e) {
+              return `❌ Invalid URL: "${this.config.rpcUrl}" - ${e.message}`;
+            }
+          })(),
+          rpcUrlLength: this.config.rpcUrl?.length,
+          rpcUrlCharCodes: this.config.rpcUrl?.split('').map(c => c.charCodeAt(0)),
+          walletConnectInitOptions: {
+            projectId: walletConnectProjectId,
+            chains: [`eip155:${decimalChainId}`],
+            optionalChains: [`eip155:${decimalChainId}`],
+            rpcMap: {
+              [decimalChainId]: sanitizedRpcUrl,
+              [`eip155:${decimalChainId}`]: sanitizedRpcUrl,
+              8453: sanitizedRpcUrl,
+              'eip155:8453': sanitizedRpcUrl
+            }
+          }
         });
         this.adapters.set('wallet-connect-v2', walletConnectAdapter);
 

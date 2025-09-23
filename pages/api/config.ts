@@ -12,6 +12,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log('WEB3AUTH_CLIENT_ID:', process.env.WEB3AUTH_CLIENT_ID ? 'Present' : 'Missing');
     console.log('CHAIN_ID:', process.env.CHAIN_ID);
     console.log('RPC_URL:', process.env.RPC_URL || 'MISSING - THIS WILL CAUSE ERRORS');
+    console.log('RPC_URL raw bytes:', process.env.RPC_URL ? Array.from(process.env.RPC_URL).map(c => c.charCodeAt(0)) : 'N/A');
+    console.log('RPC_URL trimmed:', process.env.RPC_URL?.trim());
+    console.log('RPC_URL trimmed bytes:', process.env.RPC_URL?.trim() ? Array.from(process.env.RPC_URL.trim()).map(c => c.charCodeAt(0)) : 'N/A');
     console.log('USDC_CONTRACT_ADDRESS:', process.env.USDC_CONTRACT_ADDRESS);
     console.log('MOONPAY_API_KEY:', process.env.MOONPAY_API_KEY ? 'Present' : 'Missing');
     console.log('MIN_GAS_WEI:', process.env.MIN_GAS_WEI);

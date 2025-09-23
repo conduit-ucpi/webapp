@@ -252,11 +252,11 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
               new URL(this.config.rpcUrl);
               return `✅ Valid URL: "${this.config.rpcUrl}"`;
             } catch (e) {
-              return `❌ Invalid URL: "${this.config.rpcUrl}" - ${e.message}`;
+              return `❌ Invalid URL: "${this.config.rpcUrl}" - ${e instanceof Error ? e.message : String(e)}`;
             }
           })(),
           rpcUrlLength: this.config.rpcUrl?.length,
-          rpcUrlCharCodes: this.config.rpcUrl?.split('').map(c => c.charCodeAt(0)),
+          rpcUrlCharCodes: this.config.rpcUrl?.split('').map((c: string) => c.charCodeAt(0)),
           walletConnectInitOptions: {
             projectId: walletConnectProjectId,
             chains: [`eip155:${decimalChainId}`],

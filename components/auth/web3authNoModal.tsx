@@ -684,10 +684,14 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
               console.log('🔧 DEBUG: Using fallback chainId:', correctChainId);
             }
             
-            // Create fixed transaction parameters
+            // Convert hex chainId to decimal for CAIP-2 format (eip155:chainId)
+            const decimalChainId = parseInt(correctChainId, 16);
+            console.log('🔧 DEBUG: Converting chainId for WalletConnect - hex:', correctChainId, 'decimal:', decimalChainId);
+            
+            // Create fixed transaction parameters with CAIP-2 chainId format
             const fixedTxParams = {
               ...txParams,
-              chainId: correctChainId
+              chainId: `eip155:${decimalChainId}`
             };
             
             console.log('🔧 DEBUG: Fixed transaction params:', fixedTxParams);

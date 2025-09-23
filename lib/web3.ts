@@ -756,92 +756,23 @@ export class Web3Service {
     
     console.log('Wallet funded successfully:', fundResult.message || 'Ready to send transaction');
     
-    // Step 4: Send the transaction via EIP-1193 provider.request
-    console.log('Sending transaction with funded wallet...');
+    // Step 4: Send the transaction via ethers signer (works with any EIP-1193 provider)
+    console.log('Sending transaction with funded wallet using ethers...');
     
-    // Use the appropriate provider based on what's available
-    let transactionHash: string;
-    
-    if (this.walletProvider) {
-      console.log('[Web3Service.fundAndSendTransaction] Using WalletProvider.request()');
-      
-      // Get the current chainId and ensure it's in proper hex format
-      let chainId = await this.walletProvider.request({ method: 'eth_chainId', params: [] });
-      console.log('[Web3Service] Raw ChainId for transaction:', chainId, 'type:', typeof chainId);
-      
-      // Ensure chainId is in proper hex format (not double-prefixed)
-      if (typeof chainId === 'string' && chainId.startsWith('0x0x')) {
-        chainId = chainId.slice(2); // Remove extra "0x"
-        console.log('[Web3Service] Fixed double-prefixed chainId:', chainId);
-      }
-      
-      // Ensure it starts with 0x
-      if (typeof chainId === 'string' && !chainId.startsWith('0x')) {
-        chainId = '0x' + chainId;
-        console.log('[Web3Service] Added 0x prefix to chainId:', chainId);
-      }
-      
-      console.log('[Web3Service] Final ChainId for transaction:', chainId);
-      
-      transactionHash = await this.walletProvider.request({
-        method: 'eth_sendTransaction',
-        params: [{
-          from: userAddress,
-          to: txParams.to,
-          data: txParams.data,
-          value: txParams.value || '0x0',
-          gasLimit: toHexString(gasEstimate),
-          gasPrice: toHexString(gasPrice),
-          chainId: chainId // Include chainId for WalletConnect v2
-        }]
-      });
-    } else if (this.eip1193Provider) {
-      console.log('[Web3Service.fundAndSendTransaction] Using raw EIP-1193 provider.request()');
-      
-      // Get the current chainId and ensure it's in proper hex format
-      let chainId = await this.eip1193Provider.request({ method: 'eth_chainId', params: [] });
-      console.log('[Web3Service] EIP-1193 Raw ChainId for transaction:', chainId, 'type:', typeof chainId);
-      
-      // Ensure chainId is in proper hex format (not double-prefixed)
-      if (typeof chainId === 'string' && chainId.startsWith('0x0x')) {
-        chainId = chainId.slice(2); // Remove extra "0x"
-        console.log('[Web3Service] EIP-1193 Fixed double-prefixed chainId:', chainId);
-      }
-      
-      // Ensure it starts with 0x
-      if (typeof chainId === 'string' && !chainId.startsWith('0x')) {
-        chainId = '0x' + chainId;
-        console.log('[Web3Service] EIP-1193 Added 0x prefix to chainId:', chainId);
-      }
-      
-      console.log('[Web3Service] EIP-1193 Final ChainId for transaction:', chainId);
-      
-      transactionHash = await this.eip1193Provider.request({
-        method: 'eth_sendTransaction',
-        params: [{
-          from: userAddress,
-          to: txParams.to,
-          data: txParams.data,
-          value: txParams.value || '0x0',
-          gasLimit: toHexString(gasEstimate),
-          gasPrice: toHexString(gasPrice),
-          chainId: chainId // Include chainId for WalletConnect v2
-        }]
-      });
-    } else if (this.provider) {
-      console.log('[Web3Service.fundAndSendTransaction] Using ethers signer.sendTransaction()');
-      const signer = await this.provider.getSigner();
-      const txResponse = await signer.sendTransaction({
-        to: txParams.to,
-        data: txParams.data,
-        value: txParams.value || '0x0',
-        gasLimit: gasEstimate,
-        gasPrice: gasPrice
-      });
-      transactionHash = txResponse.hash;
-    } else {
-      throw new Error('No provider available for sending transaction');
+    if (!this.provider) {
+      throw new Error('Ethers provider not available for sending transaction');
     }
+    
+    console.log('[Web3Service.fundAndSendTransaction] Using ethers signer.sendTransaction()');
+    const signer = await this.provider.getSigner();
+    const txResponse = await signer.sendTransaction({
+      to: txParams.to,
+      data: txParams.data,
+      value: txParams.value || '0x0',
+      gasLimit: gasEstimate,
+      gasPrice: gasPrice
+    });
+    const transactionHash = txResponse.hash;
     
     console.log('Transaction sent successfully:', transactionHash);
     

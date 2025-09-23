@@ -121,7 +121,15 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
           rpcTarget: this.chainConfig.rpcTarget,
           rpcTargetType: typeof this.chainConfig.rpcTarget,
           configRpcUrl: this.config.rpcUrl,
-          configRpcUrlType: typeof this.config.rpcUrl
+          configRpcUrlType: typeof this.config.rpcUrl,
+          rpcTargetIsValidUrl: this.chainConfig.rpcTarget ? (() => {
+            try {
+              new URL(this.chainConfig.rpcTarget);
+              return 'valid';
+            } catch {
+              return 'invalid';
+            }
+          })() : 'null'
         });
 
         // Create Ethereum provider
@@ -214,12 +222,20 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
             walletConnectInitOptions: {
               projectId: walletConnectProjectId,
               chains: [`eip155:${decimalChainId}`], // Use CAIP-2 format to match Modal config
-              optionalChains: [`eip155:${decimalChainId}`]
+              optionalChains: [`eip155:${decimalChainId}`],
+              rpcMap: {
+                [decimalChainId]: this.config.rpcUrl
+              }
             }
           }
         } as any);
         
-        console.log('🔧 Web3Auth No-Modal: WalletConnect V2 adapter created');
+        console.log('🔧 Web3Auth No-Modal: WalletConnect V2 adapter created with config:', {
+          chainConfig: this.chainConfig,
+          rpcMap: { [decimalChainId]: this.config.rpcUrl },
+          decimalChainId,
+          rpcUrl: this.config.rpcUrl
+        });
         this.adapters.set('wallet-connect-v2', walletConnectAdapter);
 
         // Initialize Web3Auth No-Modal instance
@@ -576,15 +592,34 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
       const wrappedProvider = {
         ...originalProvider,
         request: async (args: any) => {
-          const result = await originalProvider.request(args);
+          console.log('🔧 DEBUG: Provider request:', args.method, 'with params:', args.params);
           
-          // Fix double-prefixed chainId if detected
-          if (args.method === 'eth_chainId' && typeof result === 'string' && result.startsWith('0x0x')) {
-            console.log('🔧 DEBUG: Fixing double-prefixed chainId:', result, '->', result.slice(2));
-            return result.slice(2); // Remove the extra "0x"
+          try {
+            const result = await originalProvider.request(args);
+            
+            // Fix double-prefixed chainId if detected
+            if (args.method === 'eth_chainId' && typeof result === 'string' && result.startsWith('0x0x')) {
+              console.log('🔧 DEBUG: Fixing double-prefixed chainId:', result, '->', result.slice(2));
+              return result.slice(2); // Remove the extra "0x"
+            }
+            
+            return result;
+          } catch (error) {
+            console.error('🔧 DEBUG: Provider request failed for', args.method, ':', error);
+            
+            // Try to extract more details about URL construction errors
+            if (error instanceof Error && error.message.includes('Failed to construct \'URL\'')) {
+              console.error('🔧 DEBUG: URL construction error details:', {
+                method: args.method,
+                params: args.params,
+                errorMessage: error.message,
+                chainConfig: this.chainConfig,
+                configRpcUrl: this.config?.rpcUrl
+              });
+            }
+            
+            throw error;
           }
-          
-          return result;
         }
       };
       

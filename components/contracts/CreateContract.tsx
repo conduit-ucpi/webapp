@@ -2,12 +2,11 @@ import { useState } from 'react';
 import { useRouter } from 'next/router';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { useAuth } from '@/components/auth';
-import { useWeb3SDK } from '@/hooks/useWeb3SDK';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import BuyerInput from '@/components/ui/BuyerInput';
-import { isValidEmail, isValidDescription, isValidAmount, isValidBuyerIdentifier } from '@/utils/validation';
+import { isValidEmail, isValidDescription, isValidAmount, isValidBuyerIdentifier, toMicroUSDC } from '@/utils/validation';
 
 
 interface CreateContractForm {
@@ -29,7 +28,6 @@ export default function CreateContract() {
   const router = useRouter();
   const { config } = useConfig();
   const { user, authenticatedFetch } = useAuth();
-  const { getUserAddress, utils, isReady, error: sdkError } = useWeb3SDK();
   // Initialize with tomorrow's date at current time
   const getDefaultTimestamp = (): number => {
     const tomorrow = new Date();
@@ -105,9 +103,9 @@ export default function CreateContract() {
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
 
-    // Use SDK utils if available, otherwise fall back to local validation
-    const amountValidator = utils?.isValidAmount || isValidAmount;
-    const descriptionValidator = utils?.isValidDescription || isValidDescription;
+    // Use local validation functions directly
+    const amountValidator = isValidAmount;
+    const descriptionValidator = isValidDescription;
 
     // Validate buyer identifier (email or Farcaster handle)
     const buyerValidation = isValidBuyerIdentifier(form.buyerEmail);
@@ -176,7 +174,7 @@ export default function CreateContract() {
         buyerFarcasterHandle: form.buyerType === 'farcaster' ? form.buyerEmail : '',
         sellerEmail: user?.email || '', // Get from authenticated user
         sellerAddress: userAddress,
-        amount: utils?.toMicroUSDC ? utils.toMicroUSDC(parseFloat(form.amount.trim())) : Math.round(parseFloat(form.amount.trim()) * 1000000), // Convert to microUSDC format
+        amount: toMicroUSDC(parseFloat(form.amount.trim())), // Convert to microUSDC format
         currency: 'microUSDC',
         description: form.description,
         expiryTimestamp: form.payoutTimestamp, // Already a Unix timestamp in seconds

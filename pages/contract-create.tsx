@@ -3,13 +3,12 @@ import { useRouter } from 'next/router';
 import Head from 'next/head';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { useAuth } from '@/components/auth';
-import { useWeb3SDK } from '@/hooks/useWeb3SDK';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import ConnectWalletEmbedded from '@/components/auth/ConnectWalletEmbedded';
 import WalletInfo from '@/components/ui/WalletInfo';
-import { isValidEmail, isValidDescription, isValidAmount, isValidWalletAddress } from '@/utils/validation';
+import { isValidEmail, isValidDescription, isValidAmount, isValidWalletAddress, toMicroUSDC, toUSDCForWeb3, formatDateTimeWithTZ } from '@/utils/validation';
 
 console.log('🔧 ContractCreate: FILE LOADED - imports successful');
 
@@ -44,7 +43,6 @@ export default function ContractCreate() {
   const router = useRouter();
   const { config } = useConfig();
   const { user, authenticatedFetch, fundContract, isLoading: authLoading } = useAuth();
-  const { utils, isReady, error: sdkError } = useWeb3SDK();
   
   // Query parameters
   const { seller, amount, description, email: queryEmail, return: returnUrl, order_id, epoch_expiry } = router.query;
@@ -78,13 +76,11 @@ export default function ContractCreate() {
     userEmail: user?.email,
     hasAuthenticatedFetch: !!authenticatedFetch,
     userWallet: user?.walletAddress,
-    isReady,
-    sdkError,
     queryParams: { seller, amount, description, returnUrl, order_id, epoch_expiry }
   });
 
   console.log('🔧 ContractCreate: Auth state decision', {
-    willShowLoading: !config || authLoading || (user && !isReady),
+    willShowLoading: !config || authLoading,
     willShowAuth: !authLoading && !user,
     willShowForm: !authLoading && !!user
   });
@@ -134,9 +130,9 @@ export default function ContractCreate() {
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
 
-    // Use SDK utils if available, otherwise fall back to local validation
-    const amountValidator = utils?.isValidAmount || isValidAmount;
-    const descriptionValidator = utils?.isValidDescription || isValidDescription;
+    // Use local validation functions directly
+    const amountValidator = isValidAmount;
+    const descriptionValidator = isValidDescription;
 
     // Validate seller (must be wallet address)
     if (!isValidWalletAddress(form.seller)) {
@@ -202,7 +198,7 @@ export default function ContractCreate() {
       const pendingContractRequest = {
         buyerEmail: user?.email || (queryEmail as string) || 'noemail@notsupplied.com', // Prefer authenticated user's email
         sellerAddress: form.seller, // Backend will handle email lookup from wallet address
-        amount: utils?.toMicroUSDC ? utils.toMicroUSDC(parseFloat(form.amount.trim())) : Math.round(parseFloat(form.amount.trim()) * 1000000), // Convert to microUSDC format
+        amount: toMicroUSDC(parseFloat(form.amount.trim())), // Convert to microUSDC format
         currency: 'microUSDC',
         description: form.description,
         expiryTimestamp: expiryTimestamp,
@@ -312,7 +308,7 @@ export default function ContractCreate() {
       const result = await fundContract({
         contract: {
           id: contractId,
-          amount: utils?.toMicroUSDC ? utils.toMicroUSDC(parseFloat(form.amount.trim())) : Math.round(parseFloat(form.amount.trim()) * 1000000),
+          amount: toMicroUSDC(parseFloat(form.amount.trim())),
           currency: 'microUSDC',
           sellerAddress: form.seller,
           expiryTimestamp: expiryTimestamp,
@@ -326,9 +322,9 @@ export default function ContractCreate() {
           rpcUrl: config.rpcUrl
         },
         utils: {
-          toMicroUSDC: utils?.toMicroUSDC,
-          toUSDCForWeb3: utils?.toUSDCForWeb3,
-          formatDateTimeWithTZ: utils?.formatDateTimeWithTZ
+          toMicroUSDC,
+          toUSDCForWeb3,
+          formatDateTimeWithTZ
         },
         onStatusUpdate: (step: string, message: string) => {
           // Map the status messages to our step IDs
@@ -429,8 +425,8 @@ export default function ContractCreate() {
     }
   };
 
-  // Loading screen for initialization - show if config is missing, auth is loading, or if user is connected but SDK isn't ready
-  if (!config || authLoading || (user && !isReady)) {
+  // Loading screen for initialization - show if config is missing or auth is loading
+  if (!config || authLoading) {
     return (
       <div className={`min-h-screen flex items-center justify-center ${isInIframe ? 'bg-gray-50' : 'bg-white'}`}>
         <Head>

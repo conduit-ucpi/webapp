@@ -126,18 +126,7 @@ describe('Wallet Provider Abstraction', () => {
   });
 
   describe('Proper Abstraction Usage', () => {
-    const requiredPatterns = [
-      {
-        pattern: /useWallet\(\)/,
-        description: 'useWallet() hook usage'
-      },
-      {
-        pattern: /walletProvider/,
-        description: 'walletProvider variable usage'
-      }
-    ];
-
-    // Files that should be using the wallet abstraction (components that interact with Web3)
+    // Files that should be using the auth abstraction (components that interact with Web3)
     const walletUsingComponents = [
       'contracts/CreateContract.tsx',
       'contracts/ContractActions.tsx',
@@ -145,7 +134,7 @@ describe('Wallet Provider Abstraction', () => {
       'contracts/CreateContractWizard.tsx'
     ];
 
-    test.each(walletUsingComponents)('%s should use wallet abstraction', (file) => {
+    test.each(walletUsingComponents)('%s should use auth context for wallet operations', (file) => {
       const fullPath = path.join(__dirname, '../../components', file);
       
       if (!fs.existsSync(fullPath)) {
@@ -154,20 +143,25 @@ describe('Wallet Provider Abstraction', () => {
 
       const content = fs.readFileSync(fullPath, 'utf-8');
 
-      // Should import useWeb3SDK (which uses useWallet internally) or useWallet directly
-      const hasSDKAbstraction = /import.*useWeb3SDK.*from.*@\/hooks\/useWeb3SDK/.test(content);
-      const hasWalletAbstraction = /import.*useWallet.*from.*@\/lib\/wallet/.test(content);
+      // Should import useAuth from auth context
+      const hasAuthImport = /import.*useAuth.*from.*@\/components\/auth/.test(content);
       
-      if (!hasSDKAbstraction && !hasWalletAbstraction) {
-        throw new Error(`${file} should use either useWeb3SDK hook (which wraps useWallet) or useWallet hook directly`);
+      if (!hasAuthImport) {
+        throw new Error(`${file} should import useAuth from @/components/auth to access wallet functionality`);
       }
       
-      // Should use the abstraction (either pattern is acceptable)
-      const usesSDK = /useWeb3SDK\(\)/.test(content);
-      const usesWallet = /useWallet\(\)/.test(content);
+      // Should use the auth context
+      const usesAuth = /useAuth\(\)/.test(content);
       
-      if (!usesSDK && !usesWallet) {
-        throw new Error(`${file} should call either useWeb3SDK() or useWallet() to access wallet functionality`);
+      if (!usesAuth) {
+        throw new Error(`${file} should call useAuth() to access wallet functionality`);
+      }
+
+      // Should not use deprecated useWeb3SDK hook
+      const usesDeprecatedSDK = /useWeb3SDK\(\)/.test(content);
+      
+      if (usesDeprecatedSDK) {
+        throw new Error(`${file} should not use deprecated useWeb3SDK hook - use useAuth() instead`);
       }
     });
   });
@@ -224,10 +218,13 @@ describe('Wallet Provider Abstraction', () => {
       // Should not import Web3Auth SDK directly
       expect(content).not.toMatch(/import.*from.*@web3auth/);
       
-      // Should not import ethers for wallet operations (should go through abstraction)
-      if (content.includes('Web3Service')) {
-        // If using Web3Service, should import useWallet
-        expect(content).toMatch(/import.*useWallet.*from.*@\/lib\/wallet/);
+      // Should not import deprecated useWeb3SDK hook
+      expect(content).not.toMatch(/import.*useWeb3SDK.*from.*@\/hooks\/useWeb3SDK/);
+      
+      // If interacting with wallet functionality, should use auth context
+      if (content.includes('walletAddress') || content.includes('getEthersProvider')) {
+        // Should import useAuth from auth context
+        expect(content).toMatch(/import.*useAuth.*from.*@\/components\/auth/);
       }
     });
   });

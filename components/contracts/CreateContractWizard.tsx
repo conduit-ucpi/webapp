@@ -2,14 +2,13 @@ import { useState } from 'react';
 import { useRouter } from 'next/router';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { useAuth } from '@/components/auth';
-import { useWeb3SDK } from '@/hooks/useWeb3SDK';
 import { useToast } from '@/components/ui/Toast';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 import BuyerInput from '@/components/ui/BuyerInput';
 import WalletInfo from '@/components/ui/WalletInfo';
 import { Wizard, WizardStep, WizardNavigation, WizardStep as Step } from '@/components/ui/Wizard';
-import { isValidEmail, isValidDescription, isValidAmount, isValidBuyerIdentifier } from '@/utils/validation';
+import { isValidEmail, isValidDescription, isValidAmount, isValidBuyerIdentifier, toMicroUSDC, formatUSDC, formatDateTimeWithTZ } from '@/utils/validation';
 
 interface CreateContractForm {
   buyerEmail: string;
@@ -49,7 +48,6 @@ export default function CreateContractWizard() {
   const router = useRouter();
   const { config } = useConfig();
   const { user, authenticatedFetch } = useAuth();
-  const { getUserAddress, utils, isReady, error: sdkError } = useWeb3SDK();
   const { showToast } = useToast();
   
   const [currentStep, setCurrentStep] = useState(0);
@@ -146,7 +144,7 @@ export default function CreateContractWizard() {
     switch (step) {
       case 0: // Basic Details
         // Use SDK utils if available, otherwise fall back to local validation
-        const descriptionValidator = utils?.isValidDescription || isValidDescription;
+        const descriptionValidator = isValidDescription;
         
         // Validate buyer identifier (email or Farcaster handle)
         const buyerValidation = isValidBuyerIdentifier(form.buyerEmail);
@@ -161,7 +159,7 @@ export default function CreateContractWizard() {
         
       case 1: // Payment Terms
         // Use SDK utils if available, otherwise fall back to local validation
-        const amountValidator = utils?.isValidAmount || isValidAmount;
+        const amountValidator = isValidAmount;
         
         if (!amountValidator(form.amount)) {
           newErrors.amount = 'Please enter a valid amount';
@@ -224,7 +222,7 @@ export default function CreateContractWizard() {
         buyerFarcasterHandle: form.buyerType === 'farcaster' ? form.buyerEmail : '',
         sellerEmail: user.email,
         sellerAddress: user.walletAddress,
-        amount: utils?.toMicroUSDC ? utils.toMicroUSDC(parseFloat(form.amount.trim())) : Math.round(parseFloat(form.amount.trim()) * 1000000),
+        amount: toMicroUSDC(parseFloat(form.amount.trim())),
         currency: 'microUSDC',
         description: form.description,
         expiryTimestamp: form.payoutTimestamp,
@@ -405,13 +403,13 @@ export default function CreateContractWizard() {
                   <div className="flex justify-between">
                     <span className="text-secondary-600">Amount:</span>
                     <span className="font-medium text-lg">
-                      {utils?.formatUSDC ? utils.formatUSDC(utils.toMicroUSDC ? utils.toMicroUSDC(parseFloat(form.amount || '0')) : Math.round(parseFloat(form.amount || '0') * 1000000)) : (form.amount || '0')} USDC
+                      {formatUSDC(toMicroUSDC(parseFloat(form.amount || '0')))} USDC
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-secondary-600">Release date:</span>
                     <span className="font-medium">
-                      {utils?.formatDateTimeWithTZ ? utils.formatDateTimeWithTZ(form.payoutTimestamp) : new Date(form.payoutTimestamp * 1000).toISOString()}
+                      {formatDateTimeWithTZ(form.payoutTimestamp)}
                     </span>
                   </div>
                   <div className="flex justify-between">
@@ -433,11 +431,11 @@ export default function CreateContractWizard() {
                   </li>
                   <li className="flex items-start">
                     <span className="font-medium mr-2">2.</span>
-                    <span>They pay {utils?.formatUSDC ? utils.formatUSDC(utils.toMicroUSDC ? utils.toMicroUSDC(parseFloat(form.amount || '0')) : Math.round(parseFloat(form.amount || '0') * 1000000)) : (form.amount || '0')} USDC to our secure escrow</span>
+                    <span>They pay {formatUSDC(toMicroUSDC(parseFloat(form.amount || '0')))} USDC to our secure escrow</span>
                   </li>
                   <li className="flex items-start">
                     <span className="font-medium mr-2">3.</span>
-                    <span>Funds are automatically released to you on {utils?.formatDateTimeWithTZ ? utils.formatDateTimeWithTZ(form.payoutTimestamp) : new Date(form.payoutTimestamp * 1000).toISOString()}</span>
+                    <span>Funds are automatically released to you on {formatDateTimeWithTZ(form.payoutTimestamp)}</span>
                   </li>
                   <li className="flex items-start">
                     <span className="font-medium mr-2">4.</span>

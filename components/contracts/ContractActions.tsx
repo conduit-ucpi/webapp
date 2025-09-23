@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Contract, PendingContract, RaiseDisputeRequest } from '@/types';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { useAuth } from '@/components/auth';
-import { useWeb3SDK } from '@/hooks/useWeb3SDK';
 import { ESCROW_CONTRACT_ABI } from '@conduit-ucpi/sdk';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
@@ -24,7 +23,6 @@ interface ContractActionsProps {
 export default function ContractActions({ contract, isBuyer, isSeller, onAction, onAccept, isClaimingInProgress, onClaimStart, onClaimComplete }: ContractActionsProps) {
   const { config } = useConfig();
   const { user, claimFunds, raiseDispute } = useAuth();
-  const { getUserAddress, utils, isReady, error: sdkError } = useWeb3SDK();
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
   const [hasError, setHasError] = useState(false);
@@ -88,7 +86,10 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
       }
       
       // Get the actual user wallet address
-      const userAddress = await getUserAddress();
+      const userAddress = user?.walletAddress;
+      if (!userAddress) {
+        throw new Error('User wallet address not available');
+      }
 
       // Use the abstracted raiseDispute method (works for both Web3Auth and Farcaster)
       const regularContract = contract as Contract;
@@ -160,7 +161,10 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
       }
       
       // Get the actual user wallet address
-      const userAddress = await getUserAddress();
+      const userAddress = user?.walletAddress;
+      if (!userAddress) {
+        throw new Error('User wallet address not available');
+      }
 
       // Use the abstracted claimFunds method (works for both Web3Auth and Farcaster)
       const txHash = await claimFunds(

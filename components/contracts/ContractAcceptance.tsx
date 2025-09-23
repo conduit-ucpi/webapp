@@ -2,11 +2,11 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { useAuth } from '@/components/auth';
-import { useWeb3SDK } from '@/hooks/useWeb3SDK';
 import { PendingContract } from '@/types';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { ethers } from 'ethers';
+import { formatCurrency, formatDateTimeWithTZ, toMicroUSDC, toUSDCForWeb3 } from '@/utils/validation';
 
 interface ContractAcceptanceProps {
   contract: PendingContract;
@@ -22,7 +22,6 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
     fundContract,
     getEthersProvider
   } = useAuth();
-  const { utils } = useWeb3SDK(); // Only keep utils from SDK
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
   const [hasError, setHasError] = useState(false);
@@ -195,9 +194,9 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
             rpcUrl: config.rpcUrl
           },
           utils: {
-            toMicroUSDC: utils?.toMicroUSDC,
-            toUSDCForWeb3: utils?.toUSDCForWeb3,
-            formatDateTimeWithTZ: utils?.formatDateTimeWithTZ
+            toMicroUSDC,
+            toUSDCForWeb3,
+            formatDateTimeWithTZ
           }
         });
 
@@ -265,7 +264,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
         <div className="space-y-3 mb-6">
           <div className="flex justify-between">
             <span className="text-gray-600">Amount:</span>
-            <span className="font-medium">${utils?.formatCurrency ? utils.formatCurrency(contract.amount, contract.currency || 'microUSDC').amount : contract.amount} USDC</span>
+            <span className="font-medium">${formatCurrency(contract.amount, contract.currency || 'microUSDC').amount} USDC</span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-600">Seller:</span>
@@ -303,7 +302,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
       <div className="space-y-3 mb-6">
         <div className="flex justify-between">
           <span className="text-gray-600">Amount:</span>
-          <span className="font-medium">${utils?.formatCurrency ? utils.formatCurrency(contract.amount, contract.currency || 'microUSDC').amount : contract.amount} USDC</span>
+          <span className="font-medium">${formatCurrency(contract.amount, contract.currency || 'microUSDC').amount} USDC</span>
         </div>
         <div className="flex justify-between">
           <span className="text-gray-600">Your Balance:</span>
@@ -330,7 +329,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
       {hasInsufficientBalance() ? (
         <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-6">
           <p className="text-sm text-red-800">
-            <strong>Insufficient balance:</strong> You need ${utils?.formatCurrency ? utils.formatCurrency(contract.amount, contract.currency || 'microUSDC').amount : contract.amount} USDC but only have ${userBalance !== null ? parseFloat(userBalance).toFixed(4) : '0'} USDC in your wallet.
+            <strong>Insufficient balance:</strong> You need ${formatCurrency(contract.amount, contract.currency || 'microUSDC').amount} USDC but only have ${userBalance !== null ? parseFloat(userBalance).toFixed(4) : '0'} USDC in your wallet.
           </p>
           <p className="text-sm text-red-800 mt-2">
             Please add USDC to your wallet before proceeding.
@@ -339,7 +338,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
       ) : (
         <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4 mb-6">
           <p className="text-sm text-yellow-800">
-            When you make this payment, the ${utils?.formatCurrency ? utils.formatCurrency(contract.amount, contract.currency || 'microUSDC').amount : contract.amount} USDC will be held securely in escrow until {utils?.formatDateTimeWithTZ ? utils.formatDateTimeWithTZ(contract.expiryTimestamp) : new Date(contract.expiryTimestamp * 1000).toISOString()}.
+            When you make this payment, the ${formatCurrency(contract.amount, contract.currency || 'microUSDC').amount} USDC will be held securely in escrow until {formatDateTimeWithTZ(contract.expiryTimestamp)}.
           </p>
         </div>
       )}
@@ -353,7 +352,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
           ? 'Insufficient Balance' 
           : isLoadingBalance 
           ? 'Checking balance...'
-          : `Make Payment of $${utils?.formatCurrency ? utils.formatCurrency(contract.amount, contract.currency || 'microUSDC').amount : contract.amount} USDC`
+          : `Make Payment of $${formatCurrency(contract.amount, contract.currency || 'microUSDC').amount} USDC`
         }
       </Button>
     </div>

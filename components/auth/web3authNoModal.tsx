@@ -101,16 +101,10 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
         }
         
         // Create a completely clean RPC URL to bypass any issues
-        let sanitizedRpcUrl = this.config.rpcUrl
+        const sanitizedRpcUrl = this.config.rpcUrl
           .replace(/[\u0000-\u001F\u007F-\u009F]/g, '') // Remove control characters
           .trim()
           .replace(/\s+/g, ''); // Remove any internal whitespace
-        
-        // If we're on Base mainnet (8453), use a known working RPC endpoint as backup
-        if (this.config.chainId === 8453 || this.config.chainId === '8453') {
-          console.log('🔧 Using Base mainnet RPC fallback to avoid URL construction issues');
-          sanitizedRpcUrl = 'https://base.llamarpc.com';
-        }
         
         this.chainConfig = {
           chainNamespace: CHAIN_NAMESPACES.EIP155,
@@ -240,9 +234,7 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
               optionalChains: [`eip155:${decimalChainId}`],
               rpcMap: {
                 [decimalChainId]: sanitizedRpcUrl,
-                [`eip155:${decimalChainId}`]: sanitizedRpcUrl, // Also provide CAIP-2 format
-                8453: sanitizedRpcUrl, // Hardcode Base mainnet as backup
-                'eip155:8453': sanitizedRpcUrl // CAIP-2 format for Base mainnet
+                [`eip155:${decimalChainId}`]: sanitizedRpcUrl // Also provide CAIP-2 format
               }
             }
           }
@@ -269,9 +261,7 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
             optionalChains: [`eip155:${decimalChainId}`],
             rpcMap: {
               [decimalChainId]: sanitizedRpcUrl,
-              [`eip155:${decimalChainId}`]: sanitizedRpcUrl,
-              8453: sanitizedRpcUrl,
-              'eip155:8453': sanitizedRpcUrl
+              [`eip155:${decimalChainId}`]: sanitizedRpcUrl
             }
           }
         });
@@ -633,10 +623,23 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
         request: async (args: any) => {
           console.log('🔧 DEBUG: Provider request:', args.method, 'with params:', args.params);
           
-          // For RPC methods that are failing, make direct RPC calls to bypass WalletConnect
-          const problematicMethods = ['eth_blockNumber', 'eth_getBalance', 'eth_call', 'eth_estimateGas'];
+          // For READ-ONLY RPC methods that are failing, make direct RPC calls to bypass WalletConnect
+          // NEVER bypass wallet-specific methods that require private keys!
+          const readOnlyMethods = [
+            'eth_blockNumber', 
+            'eth_getBalance', 
+            'eth_call', 
+            'eth_estimateGas',
+            'eth_getBlockByNumber',
+            'eth_gasPrice',
+            'eth_maxPriorityFeePerGas',
+            'eth_getTransactionReceipt',
+            'eth_getTransactionCount',
+            'eth_getCode',
+            'eth_getLogs'
+          ];
           
-          if (problematicMethods.includes(args.method)) {
+          if (readOnlyMethods.includes(args.method)) {
             console.log('🔧 DEBUG: Bypassing WalletConnect for method:', args.method);
             try {
               const response = await fetch(this.chainConfig.rpcTarget, {

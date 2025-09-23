@@ -765,8 +765,23 @@ export class Web3Service {
     if (this.walletProvider) {
       console.log('[Web3Service.fundAndSendTransaction] Using WalletProvider.request()');
       
-      // Get the current chainId
-      const chainId = await this.walletProvider.request({ method: 'eth_chainId', params: [] });
+      // Get the current chainId and ensure it's in proper hex format
+      let chainId = await this.walletProvider.request({ method: 'eth_chainId', params: [] });
+      console.log('[Web3Service] Raw ChainId for transaction:', chainId, 'type:', typeof chainId);
+      
+      // Ensure chainId is in proper hex format (not double-prefixed)
+      if (typeof chainId === 'string' && chainId.startsWith('0x0x')) {
+        chainId = chainId.slice(2); // Remove extra "0x"
+        console.log('[Web3Service] Fixed double-prefixed chainId:', chainId);
+      }
+      
+      // Ensure it starts with 0x
+      if (typeof chainId === 'string' && !chainId.startsWith('0x')) {
+        chainId = '0x' + chainId;
+        console.log('[Web3Service] Added 0x prefix to chainId:', chainId);
+      }
+      
+      console.log('[Web3Service] Final ChainId for transaction:', chainId);
       
       transactionHash = await this.walletProvider.request({
         method: 'eth_sendTransaction',
@@ -783,8 +798,23 @@ export class Web3Service {
     } else if (this.eip1193Provider) {
       console.log('[Web3Service.fundAndSendTransaction] Using raw EIP-1193 provider.request()');
       
-      // Get the current chainId
-      const chainId = await this.eip1193Provider.request({ method: 'eth_chainId', params: [] });
+      // Get the current chainId and ensure it's in proper hex format
+      let chainId = await this.eip1193Provider.request({ method: 'eth_chainId', params: [] });
+      console.log('[Web3Service] EIP-1193 Raw ChainId for transaction:', chainId, 'type:', typeof chainId);
+      
+      // Ensure chainId is in proper hex format (not double-prefixed)
+      if (typeof chainId === 'string' && chainId.startsWith('0x0x')) {
+        chainId = chainId.slice(2); // Remove extra "0x"
+        console.log('[Web3Service] EIP-1193 Fixed double-prefixed chainId:', chainId);
+      }
+      
+      // Ensure it starts with 0x
+      if (typeof chainId === 'string' && !chainId.startsWith('0x')) {
+        chainId = '0x' + chainId;
+        console.log('[Web3Service] EIP-1193 Added 0x prefix to chainId:', chainId);
+      }
+      
+      console.log('[Web3Service] EIP-1193 Final ChainId for transaction:', chainId);
       
       transactionHash = await this.eip1193Provider.request({
         method: 'eth_sendTransaction',

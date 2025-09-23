@@ -764,6 +764,10 @@ export class Web3Service {
     
     if (this.walletProvider) {
       console.log('[Web3Service.fundAndSendTransaction] Using WalletProvider.request()');
+      
+      // Get the current chainId
+      const chainId = await this.walletProvider.request({ method: 'eth_chainId', params: [] });
+      
       transactionHash = await this.walletProvider.request({
         method: 'eth_sendTransaction',
         params: [{
@@ -772,11 +776,16 @@ export class Web3Service {
           data: txParams.data,
           value: txParams.value || '0x0',
           gasLimit: toHexString(gasEstimate),
-          gasPrice: toHexString(gasPrice)
+          gasPrice: toHexString(gasPrice),
+          chainId: chainId // Include chainId for WalletConnect v2
         }]
       });
     } else if (this.eip1193Provider) {
       console.log('[Web3Service.fundAndSendTransaction] Using raw EIP-1193 provider.request()');
+      
+      // Get the current chainId
+      const chainId = await this.eip1193Provider.request({ method: 'eth_chainId', params: [] });
+      
       transactionHash = await this.eip1193Provider.request({
         method: 'eth_sendTransaction',
         params: [{
@@ -785,7 +794,8 @@ export class Web3Service {
           data: txParams.data,
           value: txParams.value || '0x0',
           gasLimit: toHexString(gasEstimate),
-          gasPrice: toHexString(gasPrice)
+          gasPrice: toHexString(gasPrice),
+          chainId: chainId // Include chainId for WalletConnect v2
         }]
       });
     } else if (this.provider) {

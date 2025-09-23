@@ -17,6 +17,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const { config, isLoading: configLoading } = useConfig();
   const [provider, setProvider] = useState<IAuthProvider | null>(null);
   const [web3Service, setWeb3Service] = useState<Web3Service | null>(null);
+  // Track initialization to prevent race conditions
+  const [isInitializingWeb3Service, setIsInitializingWeb3Service] = useState(false);
   const [authState, setAuthState] = useState<AuthState>({
     user: null,
     token: null,
@@ -109,7 +111,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
     
     // Initialize Web3Service with EIP-1193 provider if not already done
     const initializeWeb3Service = async () => {
-      if (!web3Service) {
+      if (!web3Service && !isInitializingWeb3Service) {
+        setIsInitializingWeb3Service(true);
         try {
           console.log('[AuthProvider] Initializing Web3Service with EIP-1193 provider...');
           
@@ -168,6 +171,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
           }
         } catch (error) {
           console.error('[AuthProvider] ❌ Failed to initialize Web3Service:', error);
+        } finally {
+          setIsInitializingWeb3Service(false);
         }
       }
     };

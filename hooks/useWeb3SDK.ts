@@ -15,46 +15,19 @@ export const useWeb3SDK = () => {
   const [error, setError] = useState<string | null>(null);
   const [sdkWalletConnected, setSdkWalletConnected] = useState(false);
 
-  // Create SDK wallet provider adapter
-  const createSDKWalletProvider = useCallback((): SDKWalletProvider | null => {
-    if (!user?.walletAddress || !isConnected) return null;
+  // SDK wallet provider is created inline in the useEffect to avoid dependency issues
 
-    // Create adapter that implements SDK WalletProvider interface
-    return {
-      getProviderName: () => user.authProvider || 'Unknown',
-      getAddress: async () => {
-        if (!user.walletAddress) throw new Error('No wallet address available');
-        return user.walletAddress;
-      },
-      getEthersProvider: () => {
-        // Use the real ethers provider from the auth system
-        return getEthersProvider();
-      },
-      signTransaction: async (txRequest) => {
-        // Use the ethers provider to sign the transaction
-        const ethersProvider = getEthersProvider();
-        const signer = await ethersProvider.getSigner();
-        return await signer.signTransaction(txRequest);
-      },
-      signMessage: async (message: string) => {
-        return await signMessage(message);
-      },
-      request: async (args: { method: string; params?: any[] }) => {
-        // TODO: Need to implement provider requests in new auth system
-        console.warn('Provider request called but not implemented in new auth system:', args);
-        throw new Error('Provider request not yet implemented in new auth system');
-      },
-      isConnected: () => isConnected
-    };
-  }, [user, isConnected, signMessage]);
-
+  // Track the last connected wallet address to prevent unnecessary reconnections
+  const [lastConnectedAddress, setLastConnectedAddress] = useState<string | null>(null);
+  
   // Reset SDK connection when wallet address changes
   useEffect(() => {
-    if (sdkWalletConnected && user?.walletAddress) {
-      // Force reconnection when wallet address changes
+    if (sdkWalletConnected && user?.walletAddress && user.walletAddress !== lastConnectedAddress) {
+      console.log('Wallet address changed, resetting SDK connection');
       setSdkWalletConnected(false);
+      setLastConnectedAddress(null);
     }
-  }, [user?.walletAddress]);
+  }, [user?.walletAddress, lastConnectedAddress, sdkWalletConnected]);
 
   // Initialize SDK with wallet when both are ready
   useEffect(() => {
@@ -68,11 +41,39 @@ export const useWeb3SDK = () => {
       // If SDK is ready but wallet isn't connected to SDK yet, connect it
       if (isConnected && !sdkWalletConnected) {
         try {
-          const sdkWalletProvider = createSDKWalletProvider();
+          // Create SDK wallet provider adapter inline to avoid dependency issues
+          const sdkWalletProvider: SDKWalletProvider | null = user?.walletAddress ? {
+            getProviderName: () => user.authProvider || 'Unknown',
+            getAddress: async () => {
+              if (!user.walletAddress) throw new Error('No wallet address available');
+              return user.walletAddress;
+            },
+            getEthersProvider: () => {
+              // Use the real ethers provider from the auth system
+              return getEthersProvider();
+            },
+            signTransaction: async (txRequest) => {
+              // Use the ethers provider to sign the transaction
+              const ethersProvider = getEthersProvider();
+              const signer = await ethersProvider.getSigner();
+              return await signer.signTransaction(txRequest);
+            },
+            signMessage: async (message: string) => {
+              return await signMessage(message);
+            },
+            request: async (args: { method: string; params?: any[] }) => {
+              // TODO: Need to implement provider requests in new auth system
+              console.warn('Provider request called but not implemented in new auth system:', args);
+              throw new Error('Provider request not yet implemented in new auth system');
+            },
+            isConnected: () => isConnected
+          } : null;
+          
           if (sdkWalletProvider) {
             console.log('Connecting wallet to SDK...');
             await sdk.connectWallet(sdkWalletProvider);
             setSdkWalletConnected(true);
+            setLastConnectedAddress(user?.walletAddress || null);
             setIsReady(true);
             setError(null);
             console.log('Wallet connected to SDK successfully');
@@ -97,7 +98,7 @@ export const useWeb3SDK = () => {
     };
 
     initializeSDKWallet();
-  }, [sdk, isInitialized, sdkError, createSDKWalletProvider, isConnected, sdkWalletConnected, user?.walletAddress]);
+  }, [sdk, isInitialized, sdkError, isConnected, sdkWalletConnected, user?.walletAddress, getEthersProvider, signMessage]);
 
   // Web3 operations using SDK
   const getUSDCBalance = useCallback(async (userAddress?: string): Promise<string> => {

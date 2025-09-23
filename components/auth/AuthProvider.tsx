@@ -116,9 +116,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
         try {
           console.log('[AuthProvider] Initializing Web3Service with EIP-1193 provider...');
           
-          // Check if the auth provider already has an ethers provider we can reuse
+          // First check if the auth provider already has a Web3Service we can reuse
           const authProviderImpl = provider as any;
           
+          if (authProviderImpl.getWeb3Service && typeof authProviderImpl.getWeb3Service === 'function') {
+            const existingWeb3Service = authProviderImpl.getWeb3Service();
+            if (existingWeb3Service) {
+              console.log('[AuthProvider] ✅ Reusing existing Web3Service from auth provider');
+              setWeb3Service(existingWeb3Service);
+              // Store it globally for backward compatibility
+              (window as any).web3Service = existingWeb3Service;
+              return;
+            }
+          }
+          
+          // Check if the auth provider already has an ethers provider we can reuse
           if (authProviderImpl.getEthersProvider && typeof authProviderImpl.getEthersProvider === 'function') {
             try {
               // Reuse the existing ethers provider instead of wrapping the EIP-1193 again

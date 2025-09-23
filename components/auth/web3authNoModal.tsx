@@ -763,6 +763,10 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
     localStorage.setItem(this.visitedKey, 'true');
   }
 
+  getWeb3Service(): any {
+    return this.web3Service;
+  }
+
   async getUSDCBalance(userAddress?: string): Promise<string> {
     const address = userAddress || this.state.user?.walletAddress;
     if (!address || !this.config?.usdcContractAddress) {

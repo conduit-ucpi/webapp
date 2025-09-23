@@ -626,12 +626,37 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
       
       const { ethers } = require('ethers');
       
-      // Create a custom provider that fixes the chainId if needed
+      // Create a custom provider that completely bypasses WalletConnect's RPC handling for problematic methods
       const originalProvider = this.provider;
       const wrappedProvider = {
         ...originalProvider,
         request: async (args: any) => {
           console.log('🔧 DEBUG: Provider request:', args.method, 'with params:', args.params);
+          
+          // For RPC methods that are failing, make direct RPC calls to bypass WalletConnect
+          const problematicMethods = ['eth_blockNumber', 'eth_getBalance', 'eth_call', 'eth_estimateGas'];
+          
+          if (problematicMethods.includes(args.method)) {
+            console.log('🔧 DEBUG: Bypassing WalletConnect for method:', args.method);
+            try {
+              const response = await fetch(this.chainConfig.rpcTarget, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  jsonrpc: '2.0',
+                  id: Date.now(),
+                  method: args.method,
+                  params: args.params || []
+                })
+              });
+              const result = await response.json();
+              if (result.error) throw new Error(result.error.message);
+              return result.result;
+            } catch (directRpcError) {
+              console.error('🔧 DEBUG: Direct RPC call failed:', directRpcError);
+              // Fall back to original provider
+            }
+          }
           
           try {
             const result = await originalProvider.request(args);

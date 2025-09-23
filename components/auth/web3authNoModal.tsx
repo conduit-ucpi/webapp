@@ -661,6 +661,53 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
             }
           }
           
+          // Special handling for eth_sendTransaction to fix chainId parameter
+          if (args.method === 'eth_sendTransaction' && args.params && args.params[0]) {
+            const txParams = args.params[0];
+            console.log('🔧 DEBUG: Original transaction params:', txParams);
+            
+            // Get the correct chainId from the provider
+            let correctChainId;
+            try {
+              correctChainId = await originalProvider.request({ method: 'eth_chainId', params: [] });
+              console.log('🔧 DEBUG: Got chainId from provider:', correctChainId);
+              
+              // Fix double-prefixed chainId if detected
+              if (typeof correctChainId === 'string' && correctChainId.startsWith('0x0x')) {
+                correctChainId = correctChainId.slice(2);
+                console.log('🔧 DEBUG: Fixed double-prefixed chainId:', correctChainId);
+              }
+            } catch (chainIdError) {
+              console.error('🔧 DEBUG: Failed to get chainId:', chainIdError);
+              // Use the configured chainId as fallback
+              correctChainId = '0x' + parseInt(this.config.chainId.toString()).toString(16);
+              console.log('🔧 DEBUG: Using fallback chainId:', correctChainId);
+            }
+            
+            // Create fixed transaction parameters
+            const fixedTxParams = {
+              ...txParams,
+              chainId: correctChainId
+            };
+            
+            console.log('🔧 DEBUG: Fixed transaction params:', fixedTxParams);
+            
+            // Make the request with fixed parameters
+            const fixedArgs = {
+              ...args,
+              params: [fixedTxParams]
+            };
+            
+            try {
+              const result = await originalProvider.request(fixedArgs);
+              console.log('🔧 DEBUG: Transaction successful with fixed chainId:', result);
+              return result;
+            } catch (error) {
+              console.error('🔧 DEBUG: Transaction failed even with fixed chainId:', error);
+              throw error;
+            }
+          }
+          
           try {
             const result = await originalProvider.request(args);
             

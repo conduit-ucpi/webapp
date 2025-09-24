@@ -25,6 +25,41 @@ jest.mock('@/components/farcaster/FarcasterDetectionProvider', () => ({
   }),
 }));
 
+// Mock Web3Auth and related modules
+const mockProvider = {
+  initialize: jest.fn().mockResolvedValue(undefined),
+  getState: jest.fn(() => ({
+    user: null,
+    isConnected: false,
+    isLoading: false,
+    error: null
+  })),
+  connect: jest.fn(),
+  disconnect: jest.fn(),
+  getToken: jest.fn(() => null),
+  hasVisitedBefore: jest.fn(() => false),
+  markAsVisited: jest.fn(),
+};
+
+jest.mock('@/components/auth/web3authNoModal', () => ({
+  getWeb3AuthNoModalProvider: jest.fn().mockReturnValue(mockProvider),
+  Web3AuthNoModalProvider: jest.fn(),
+}));
+
+// Mock backend auth
+jest.mock('@/components/auth/backendAuth', () => ({
+  BackendAuth: {
+    getInstance: jest.fn().mockReturnValue({
+      login: jest.fn().mockResolvedValue({ success: true, user: null }),
+      logout: jest.fn().mockResolvedValue(undefined),
+      getToken: jest.fn().mockReturnValue(null),
+      clearAllAuthState: jest.fn(),
+      clearToken: jest.fn(),
+      authenticatedFetch: jest.fn(),
+    }),
+  },
+}));
+
 // Mock console to capture errors
 const mockConsoleError = jest.fn();
 const originalConsoleError = console.error;
@@ -95,9 +130,7 @@ describe('MetaMask Conflict Issue (TDD)', () => {
 
     // This should NOT throw errors or cause infinite loading
     const TestComponent = () => (
-      <AuthProvider>
-        <div data-testid="app-content">Test App</div>
-      </AuthProvider>
+      <AuthProvider children={<div data-testid="app-content">Test App</div>} />
     );
 
     // The render should complete without errors
@@ -144,9 +177,7 @@ describe('MetaMask Conflict Issue (TDD)', () => {
     };
 
     const TestComponent = () => (
-      <AuthProvider>
-        <div data-testid="app-content">Test App</div>
-      </AuthProvider>
+      <AuthProvider children={<div data-testid="app-content">Test App</div>} />
     );
 
     // This should not throw runtime errors
@@ -192,9 +223,7 @@ describe('MetaMask Conflict Issue (TDD)', () => {
     };
 
     const TestComponent = () => (
-      <AuthProvider>
-        <div data-testid="app-content">Test App</div>
-      </AuthProvider>
+      <AuthProvider children={<div data-testid="app-content">Test App</div>} />
     );
 
     render(<TestComponent />);

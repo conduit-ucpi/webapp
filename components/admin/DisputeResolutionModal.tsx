@@ -216,7 +216,7 @@ export default function DisputeResolutionModal({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={handleModalClose} title="Address Dispute">
+    <Modal isOpen={isOpen} onClose={handleModalClose} title="Address Dispute" children={
       <div className="max-w-4xl">
         {isLoading ? (
           <div className="flex justify-center py-8">
@@ -366,6 +366,6 @@ export default function DisputeResolutionModal({
           </div>
         ) : null}
       </div>
-    </Modal>
+    } />
   );
 }

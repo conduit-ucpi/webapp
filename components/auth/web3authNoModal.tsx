@@ -11,6 +11,7 @@ import { useConfig } from './ConfigProvider';
 import { formatUnits } from 'ethers';
 import { createWeb3AuthContractMethods } from '@/utils/contractTransactionFactory';
 import { toHexString } from '@/utils/hexUtils';
+import { ReownWalletConnectProvider } from './reownWalletConnect';
 
 // Minimal ERC20 ABI for balance checking
 const ERC20_ABI = [
@@ -80,7 +81,7 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
         const { EthereumPrivateKeyProvider } = await import('@web3auth/ethereum-provider');
         const { OpenloginAdapter } = await import('@web3auth/openlogin-adapter');
         const { MetamaskAdapter } = await import('@web3auth/metamask-adapter');
-        const { WalletConnectV2Adapter } = await import('@web3auth/wallet-connect-v2-adapter');
+        // WalletConnect is now handled directly via Reown AppKit, no adapter needed
         
         const web3AuthNetworkSetting = this.config.web3AuthNetwork === 'sapphire_mainnet' 
           ? WEB3AUTH_NETWORK.SAPPHIRE_MAINNET 
@@ -221,51 +222,8 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
           rpcUrlsMatch: this.config.rpcUrl === sanitizedRpcUrl
         });
         
-        const walletConnectAdapter = new WalletConnectV2Adapter({
-          chainConfig: this.chainConfig,
-          clientId: this.config.web3AuthClientId,
-          web3AuthNetwork: web3AuthNetworkSetting,
-          sessionTime: 3600 * 24 * 7, // 1 week
-          adapterSettings: {
-            qrcodeModal: walletConnectModal,
-            walletConnectInitOptions: {
-              projectId: walletConnectProjectId,
-              chains: [`eip155:${decimalChainId}`], // Use CAIP-2 format to match Modal config
-              optionalChains: [`eip155:${decimalChainId}`],
-              rpcMap: {
-                [decimalChainId]: sanitizedRpcUrl,
-                [`eip155:${decimalChainId}`]: sanitizedRpcUrl // Also provide CAIP-2 format
-              }
-            }
-          }
-        } as any);
-        
-        console.log('🔧 Web3Auth No-Modal: WalletConnect V2 adapter created with config:', {
-          chainConfig: this.chainConfig,
-          rpcMap: { [decimalChainId]: this.config.rpcUrl },
-          decimalChainId,
-          rpcUrl: this.config.rpcUrl,
-          rpcUrlValidation: (() => {
-            try {
-              new URL(this.config.rpcUrl);
-              return `✅ Valid URL: "${this.config.rpcUrl}"`;
-            } catch (e) {
-              return `❌ Invalid URL: "${this.config.rpcUrl}" - ${e instanceof Error ? e.message : String(e)}`;
-            }
-          })(),
-          rpcUrlLength: this.config.rpcUrl?.length,
-          rpcUrlCharCodes: this.config.rpcUrl?.split('').map((c: string) => c.charCodeAt(0)),
-          walletConnectInitOptions: {
-            projectId: walletConnectProjectId,
-            chains: [`eip155:${decimalChainId}`],
-            optionalChains: [`eip155:${decimalChainId}`],
-            rpcMap: {
-              [decimalChainId]: sanitizedRpcUrl,
-              [`eip155:${decimalChainId}`]: sanitizedRpcUrl
-            }
-          }
-        });
-        this.adapters.set('wallet-connect-v2', walletConnectAdapter);
+        // WalletConnect V2 is now handled directly via Reown AppKit
+        // No Web3Auth adapter configuration needed
 
         // Initialize Web3Auth No-Modal instance
         console.log('🔧 Web3Auth No-Modal: Creating Web3AuthNoModal instance...');
@@ -285,8 +243,7 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
         this.web3auth.configureAdapter(metamaskAdapter);
         console.log('🔧 Web3Auth No-Modal: MetaMask adapter configured');
         
-        this.web3auth.configureAdapter(walletConnectAdapter);
-        console.log('🔧 Web3Auth No-Modal: WalletConnect V2 adapter configured');
+        // WalletConnect V2 adapter removed - using direct Reown AppKit integration
 
         // Verify we have at least one adapter configured
         if (this.adapters.size === 0) {
@@ -434,9 +391,9 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
         console.log('🔧 Web3Auth No-Modal: Connecting to MetaMask adapter');
         web3authProvider = await this.web3auth.connectTo(adapter);
       } else if (adapter === 'walletconnect') {
-        // Use our custom WalletConnect v2 provider
-        console.log('🔧 Web3Auth No-Modal: Connecting to WalletConnect v2');
-        return await this.handleWalletConnectV2Connection();
+        // Use direct Reown AppKit WalletConnect integration
+        console.log('🔧 Web3Auth No-Modal: Connecting to WalletConnect via Reown AppKit');
+        return await this.handleReownWalletConnectConnection();
       } else if (adapter === 'external_wallet') {
         // Handle external wallet connection directly (not through Web3Auth)
         console.log('🔧 Web3Auth No-Modal: Handling external wallet connection');
@@ -688,19 +645,20 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
             const decimalChainId = parseInt(correctChainId, 16);
             console.log('🔧 DEBUG: Converting chainId for WalletConnect - hex:', correctChainId, 'decimal:', decimalChainId);
             
-            // Create fixed transaction parameters with CAIP-2 chainId format
-            const fixedTxParams = {
-              ...txParams,
-              chainId: `eip155:${decimalChainId}`
-            };
+            // WalletConnect v2 expects chainId at request level, NOT in transaction params
+            // Remove any existing chainId from transaction params
+            const {chainId: _, ...cleanTxParams} = txParams;
             
-            console.log('🔧 DEBUG: Fixed transaction params:', fixedTxParams);
+            console.log('🔧 DEBUG: Clean transaction params (no chainId):', cleanTxParams);
             
-            // Make the request with fixed parameters
+            // Set chainId at the request level in CAIP-2 format (eip155:chainId)
             const fixedArgs = {
               ...args,
-              params: [fixedTxParams]
+              params: [cleanTxParams], // Transaction params without chainId
+              chainId: `eip155:${decimalChainId}` // ChainId at request level
             };
+            
+            console.log('🔧 DEBUG: Final request args being sent to WalletConnect:', fixedArgs);
             
             try {
               const result = await originalProvider.request(fixedArgs);
@@ -715,10 +673,27 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
           try {
             const result = await originalProvider.request(args);
             
-            // Fix double-prefixed chainId if detected
-            if (args.method === 'eth_chainId' && typeof result === 'string' && result.startsWith('0x0x')) {
-              console.log('🔧 DEBUG: Fixing double-prefixed chainId:', result, '->', result.slice(2));
-              return result.slice(2); // Remove the extra "0x"
+            // Fix chainId responses to ensure ethers gets the correct value
+            if (args.method === 'eth_chainId') {
+              let fixedChainId = result;
+              
+              // Fix double-prefixed chainId if detected
+              if (typeof result === 'string' && result.startsWith('0x0x')) {
+                fixedChainId = result.slice(2); // Remove the extra "0x"
+                console.log('🔧 DEBUG: Fixed double-prefixed chainId:', result, '->', fixedChainId);
+              }
+              
+              // Ensure chainId is proper hex format for ethers
+              if (typeof fixedChainId === 'string' && !fixedChainId.startsWith('0x')) {
+                fixedChainId = '0x' + fixedChainId;
+              }
+              
+              // Convert to decimal for ethers (ethers expects number, not hex string for chainId)
+              const decimalChainId = parseInt(fixedChainId, 16);
+              console.log('🔧 DEBUG: Converting chainId for ethers - hex:', fixedChainId, 'decimal:', decimalChainId);
+              
+              // Return decimal chainId that ethers expects
+              return decimalChainId;
             }
             
             return result;
@@ -1248,6 +1223,63 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
       return {
         success: false,
         error: errorMessage
+      };
+    }
+  }
+
+  private async handleReownWalletConnectConnection(): Promise<{ success: boolean; user?: any; token?: string; error?: string }> {
+    try {
+      console.log('🔧 Web3Auth No-Modal: Connecting via Reown AppKit WalletConnect...');
+      
+      // Create Reown WalletConnect provider
+      const reownProvider = new ReownWalletConnectProvider(this.config);
+      
+      // Connect to WalletConnect
+      const connectionResult = await reownProvider.connect();
+      
+      if (!connectionResult.success) {
+        throw new Error(connectionResult.error || 'Failed to connect to WalletConnect');
+      }
+      
+      // Get the EIP-1193 provider
+      const eip1193Provider = reownProvider.createEIP1193Provider();
+      this.provider = eip1193Provider;
+      
+      // Get wallet address
+      const walletAddress = reownProvider.getAddress();
+      if (!walletAddress) {
+        throw new Error('No wallet address available after connection');
+      }
+      
+      console.log('🔧 Web3Auth No-Modal: ✅ Reown WalletConnect connected:', walletAddress);
+      
+      // Generate signature-based auth token
+      let authToken: string;
+      try {
+        authToken = await reownProvider.generateSignatureAuthToken();
+        console.log('🔧 Web3Auth No-Modal: ✅ Reown auth token generated successfully');
+      } catch (error) {
+        console.error('🔧 Web3Auth No-Modal: ❌ Failed to generate Reown auth token:', error);
+        throw error;
+      }
+      
+      // Initialize Web3Service with the EIP-1193 provider
+      await this.initializeWeb3Service();
+      
+      return {
+        success: true,
+        user: {
+          walletAddress,
+          provider: 'reown_walletconnect'
+        },
+        token: authToken
+      };
+      
+    } catch (error) {
+      console.error('🔧 Web3Auth No-Modal: ❌ Reown WalletConnect connection failed:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown Reown WalletConnect error'
       };
     }
   }

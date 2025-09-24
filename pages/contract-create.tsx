@@ -429,10 +429,12 @@ export default function ContractCreate() {
   if (!config || authLoading) {
     return (
       <div className={`min-h-screen flex items-center justify-center ${isInIframe ? 'bg-gray-50' : 'bg-white'}`}>
-        <Head>
-          <title>Create Contract - Conduit UCPI</title>
-          <meta name="viewport" content="width=device-width, initial-scale=1" />
-        </Head>
+        <Head children={
+          <>
+            <title>Create Contract - Conduit UCPI</title>
+            <meta name="viewport" content="width=device-width, initial-scale=1" />
+          </>
+        } />
         <div className="text-center p-6">
           <LoadingSpinner size="lg" />
           <p className="mt-4 text-gray-600">Initializing secure payment system...</p>
@@ -445,10 +447,12 @@ export default function ContractCreate() {
   if (!user) {
     return (
       <div className={`min-h-screen flex items-center justify-center ${isInIframe ? 'bg-gray-50' : 'bg-white'}`}>
-        <Head>
-          <title>Create Contract - Conduit UCPI</title>
-          <meta name="viewport" content="width=device-width, initial-scale=1" />
-        </Head>
+        <Head children={
+          <>
+            <title>Create Contract - Conduit UCPI</title>
+            <meta name="viewport" content="width=device-width, initial-scale=1" />
+          </>
+        } />
         <div className="text-center p-6 max-w-md mx-auto">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Connect Wallet</h2>
           <p className="text-gray-600 mb-6">Please connect your wallet to create a secure escrow contract.</p>
@@ -460,10 +464,12 @@ export default function ContractCreate() {
 
   return (
     <div className={`${isInIframe ? 'min-h-screen bg-gray-50' : 'min-h-screen bg-white'}`}>
-      <Head>
-        <title>Create Contract - Conduit UCPI</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-      </Head>
+      <Head children={
+        <>
+          <title>Create Contract - Conduit UCPI</title>
+          <meta name="viewport" content="width=device-width, initial-scale=1" />
+        </>
+      } />
 
       <div className={`${isInIframe ? 'p-4' : 'container mx-auto p-6'} max-w-md mx-auto`}>
         {step === 'create' ? (

@@ -41,11 +41,9 @@ describe('FarcasterLogger', () => {
     const consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
     
     render(
-      <FarcasterDetectionProvider>
-        <FarcasterLoggerProvider>
-          <TestComponent />
-        </FarcasterLoggerProvider>
-      </FarcasterDetectionProvider>
+      <FarcasterDetectionProvider children={
+        <FarcasterLoggerProvider children={<TestComponent />} />
+      } />
     );
 
     const testButton = screen.getByTestId('test-button');
@@ -60,11 +58,9 @@ describe('FarcasterLogger', () => {
   it('renders without errors when used correctly', () => {
     expect(() => {
       render(
-        <FarcasterDetectionProvider>
-          <FarcasterLoggerProvider>
-            <div>Test content</div>
-          </FarcasterLoggerProvider>
-        </FarcasterDetectionProvider>
+        <FarcasterDetectionProvider children={
+          <FarcasterLoggerProvider children={<div>Test content</div>} />
+        } />
       );
     }).not.toThrow();
   });
@@ -78,11 +74,9 @@ describe('FarcasterLogger', () => {
     };
 
     render(
-      <FarcasterDetectionProvider>
-        <FarcasterLoggerProvider>
-          <TestHookComponent />
-        </FarcasterLoggerProvider>
-      </FarcasterDetectionProvider>
+      <FarcasterDetectionProvider children={
+        <FarcasterLoggerProvider children={<TestHookComponent />} />
+      } />
     );
 
     // Verify all logging functions are available

@@ -36,11 +36,12 @@ export function SkeletonText({ lines = 1, className = '' }: { lines?: number; cl
   return (
     <div className={`space-y-2 ${className}`}>
       {Array.from({ length: lines }).map((_, i) => (
-        <Skeleton 
-          key={i}
-          variant="text" 
-          className={`h-4 ${i === lines - 1 ? 'w-3/4' : 'w-full'}`}
-        />
+        <div key={i}>
+          <Skeleton 
+            variant="text" 
+            className={`h-4 ${i === lines - 1 ? 'w-3/4' : 'w-full'}`}
+          />
+        </div>
       ))}
     </div>
   );

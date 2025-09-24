@@ -77,10 +77,12 @@ export default function PluginPage() {
 
   return (
     <>
-      <Head>
-        <title>Plugin Information - Conduit UCPI</title>
-        <meta name="description" content="FAQ, Terms & Conditions, Privacy Policy, and Arbitration information for Conduit UCPI" />
-      </Head>
+      <Head children={
+        <>
+          <title>Plugin Information - Conduit UCPI</title>
+          <meta name="description" content="FAQ, Terms & Conditions, Privacy Policy, and Arbitration information for Conduit UCPI" />
+        </>
+      } />
 
       <div className="min-h-screen bg-gray-50 py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

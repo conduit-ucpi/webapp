@@ -14,9 +14,7 @@ export default function Layout({ children }: LayoutProps) {
   if (router.pathname === '/contract-create') {
     return (
       <div className="min-h-screen bg-gray-50">
-        <EmailPromptManager>
-          {children}
-        </EmailPromptManager>
+        <EmailPromptManager children={children} />
       </div>
     );
   }
@@ -25,9 +23,7 @@ export default function Layout({ children }: LayoutProps) {
     <div className="min-h-screen flex flex-col bg-white dark:bg-secondary-900 transition-colors">
       <Header />
       <main className="flex-grow pb-20">
-        <EmailPromptManager>
-          {children}
-        </EmailPromptManager>
+        <EmailPromptManager children={children} />
       </main>
       <Footer />
     </div>

@@ -609,8 +609,8 @@ export default function EnhancedDashboard() {
       </div>
 
       {/* Contract List or Empty State */}
-      <TabPanel isActive={true}>
-        {error ? (
+      <TabPanel isActive={true} children={
+        error ? (
           <ErrorEmptyState onRetry={fetchContracts} />
         ) : filteredContracts.length === 0 ? (
           searchTerm ? (
@@ -646,8 +646,8 @@ export default function EnhancedDashboard() {
               </div>
             ))}
           </div>
-        )}
-      </TabPanel>
+        )
+      } />
 
       {/* Contract Acceptance Modal */}
       {showAcceptance && contractToAccept && (

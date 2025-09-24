@@ -74,7 +74,9 @@ function ToastContainer() {
   return (
     <div className="fixed bottom-0 right-0 z-50 p-4 space-y-2 sm:p-6 sm:space-y-3 max-w-full sm:max-w-sm">
       {toasts.map(toast => (
-        <ToastItem key={toast.id} toast={toast} onDismiss={dismissToast} />
+        <div key={toast.id}>
+          <ToastItem toast={toast} onDismiss={dismissToast} />
+        </div>
       ))}
     </div>
   );

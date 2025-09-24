@@ -28,7 +28,7 @@ export default function QRCodeModal({ uri, onClose }: QRCodeModalProps) {
   };
 
   return (
-    <Modal isOpen={true} onClose={onClose} title="Connect with WalletConnect">
+    <Modal isOpen={true} onClose={onClose} title="Connect with WalletConnect" children={
       <div className="space-y-4">
         <div className="text-center">
           <p className="text-sm text-gray-600 mb-4">
@@ -77,6 +77,6 @@ export default function QRCodeModal({ uri, onClose }: QRCodeModalProps) {
           </Button>
         </div>
       </div>
-    </Modal>
+    } />
   );
 }

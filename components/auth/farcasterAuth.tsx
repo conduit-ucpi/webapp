@@ -1372,9 +1372,7 @@ export function FarcasterAuthProvider({ children, AuthContext }: {
   return (
     <QueryClientProvider client={queryClient}>
       <WagmiProvider config={wagmiConfig}>
-        <FarcasterAuthProviderInner AuthContext={AuthContext}>
-          {children}
-        </FarcasterAuthProviderInner>
+        <FarcasterAuthProviderInner AuthContext={AuthContext} children={children} />
       </WagmiProvider>
     </QueryClientProvider>
   );

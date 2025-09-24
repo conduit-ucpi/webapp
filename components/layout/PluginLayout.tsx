@@ -13,9 +13,7 @@ interface PluginLayoutProps {
 export default function PluginLayout({ children }: PluginLayoutProps) {
   return (
     <div className="min-h-screen bg-gray-50">
-      <ToastProvider>
-        {children}
-      </ToastProvider>
+      <ToastProvider children={children} />
     </div>
   );
 }

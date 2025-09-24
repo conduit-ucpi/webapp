@@ -128,14 +128,15 @@ export default function ConnectWalletEmbedded({
         isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}
         title="Connect Your Account"
-      >
+        children={
         <EmbeddedAuthUI 
           useSmartRouting={useSmartRouting}
           onSuccess={() => {
             setShowAuthModal(false);
           }}
         />
-      </Modal>
+        }
+      />
     </>
   );
 }

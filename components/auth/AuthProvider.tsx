@@ -647,9 +647,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
         <FarcasterAuthProviderWrapper 
           onProviderReady={handleProviderReady}
           onStateChange={handleStateChange}
-        >
-          {children}
-        </FarcasterAuthProviderWrapper>
+          children={children}
+        />
       ) : (
         children
       )}

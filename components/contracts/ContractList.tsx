@@ -259,18 +259,19 @@ export default function ContractList() {
                 {/* Render all contracts using unified ContractCard */}
                 {filteredContracts.map((contract) => {
                   const isPending = 'id' in contract && !('contractAddress' in contract);
-                  const key = isPending ? (contract as PendingContract).id : (contract as Contract).contractAddress;
+                  const contractKey = isPending ? (contract as PendingContract).id : (contract as Contract).contractAddress;
                   
                   return (
-                    <ContractCard
-                      key={key}
-                      contract={contract}
-                      onAction={handleContractAction}
-                      onAccept={handleAcceptContract}
-                      isClaimingInProgress={isClaimingInProgress}
-                      onClaimStart={handleClaimStart}
-                      onClaimComplete={handleClaimComplete}
-                    />
+                    <div key={contractKey}>
+                      <ContractCard
+                        contract={contract}
+                        onAction={handleContractAction}
+                        onAccept={handleAcceptContract}
+                        isClaimingInProgress={isClaimingInProgress}
+                        onClaimStart={handleClaimStart}
+                        onClaimComplete={handleClaimComplete}
+                      />
+                    </div>
                   );
                 })}
               </div>

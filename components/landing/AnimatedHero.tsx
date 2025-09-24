@@ -68,7 +68,7 @@ const AnimatedMoneyFlow = () => {
           strokeDasharray="0 1000"
           initial={{ strokeDasharray: "0 1000" }}
           animate={{ strokeDasharray: "1000 0" }}
-          transition={{ delay: 1.5, duration: 1.5, ease: "easeInOut" }}
+          transition={{ delay: 1.5, duration: 1.5 }}
         />
         <motion.path
           d="M 240 150 Q 270 120 260 80"
@@ -76,7 +76,7 @@ const AnimatedMoneyFlow = () => {
           strokeDasharray="0 1000"
           initial={{ strokeDasharray: "0 1000" }}
           animate={{ strokeDasharray: "1000 0" }}
-          transition={{ delay: 3.0, duration: 1.5, ease: "easeInOut" }}
+          transition={{ delay: 3.0, duration: 1.5 }}
         />
 
         {/* Arrow heads */}
@@ -101,7 +101,7 @@ const AnimatedMoneyFlow = () => {
           className="text-lg font-bold fill-primary-600"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: [0, 1, 1, 0], y: [20, 0, 0, -20] }}
-          transition={{ delay: 1.5, duration: 2, ease: "easeInOut" }}
+          transition={{ delay: 1.5, duration: 2 }}
         >
           $
         </motion.text>
@@ -110,7 +110,7 @@ const AnimatedMoneyFlow = () => {
           className="text-lg font-bold fill-primary-600"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: [0, 1, 1, 0], y: [20, 0, 0, -20] }}
-          transition={{ delay: 3.0, duration: 2, ease: "easeInOut" }}
+          transition={{ delay: 3.0, duration: 2 }}
         >
           $
         </motion.text>
@@ -148,7 +148,6 @@ const AnimatedMoneyFlow = () => {
           transition={{
             repeat: Infinity,
             duration: 3 + i * 0.5,
-            ease: "easeInOut",
           }}
         />
       ))}
@@ -178,7 +177,6 @@ export default function AnimatedHero() {
       y: 0,
       transition: {
         duration: 0.6,
-        ease: "easeOut",
       },
     },
   };

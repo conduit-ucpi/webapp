@@ -35,27 +35,29 @@ export default function ClientOnlyApp({ Component, pageProps }: ClientOnlyAppPro
   }
   
   return (
-    <ErrorBoundary>
-      <ThemeProvider>
-        <FarcasterReady />
-        <FarcasterDetectionProvider>
-            <ConfigProvider>
-              <SDKProvider>
-                <AuthProvider>
-                  <NavigationProvider>
-                    <ToastProvider>
-                      <TourProvider>
-                        <Layout>
+    <ErrorBoundary children={
+      <ThemeProvider children={
+        <>
+          <FarcasterReady />
+          <FarcasterDetectionProvider children={
+            <ConfigProvider children={
+              <SDKProvider children={
+                <AuthProvider children={
+                  <NavigationProvider children={
+                    <ToastProvider children={
+                      <TourProvider children={
+                        <Layout children={
                           <Component {...pageProps} />
-                        </Layout>
-                      </TourProvider>
-                    </ToastProvider>
-                  </NavigationProvider>
-                </AuthProvider>
-              </SDKProvider>
-            </ConfigProvider>
-        </FarcasterDetectionProvider>
-      </ThemeProvider>
-    </ErrorBoundary>
+                        } />
+                      } />
+                    } />
+                  } />
+                } />
+              } />
+            } />
+          } />
+        </>
+      } />
+    } />
   );
 }

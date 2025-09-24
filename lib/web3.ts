@@ -756,23 +756,34 @@ export class Web3Service {
     
     console.log('Wallet funded successfully:', fundResult.message || 'Ready to send transaction');
     
-    // Step 4: Send the transaction via ethers signer (works with any EIP-1193 provider)
-    console.log('Sending transaction with funded wallet using ethers...');
+    // Step 4: Send the transaction via direct provider request (required for WalletConnect v2 compatibility)
+    console.log('Sending transaction with funded wallet using direct provider request...');
     
-    if (!this.provider) {
-      throw new Error('Ethers provider not available for sending transaction');
+    // Use the EIP-1193 provider directly to ensure proper WalletConnect v2 format
+    const providerToUse = this.eip1193Provider || this.walletProvider;
+    if (!providerToUse) {
+      throw new Error('No EIP-1193 provider available for sending transaction');
     }
     
-    console.log('[Web3Service.fundAndSendTransaction] Using ethers signer.sendTransaction()');
-    const signer = await this.provider.getSigner();
-    const txResponse = await signer.sendTransaction({
+    console.log('[Web3Service.fundAndSendTransaction] Using direct provider.request()');
+    
+    // Build transaction parameters (without chainId - WalletConnect v2 handles this at request level)
+    const txParamsForSending = {
+      from: userAddress,
       to: txParams.to,
       data: txParams.data,
       value: txParams.value || '0x0',
-      gasLimit: gasEstimate,
-      gasPrice: gasPrice
+      gasLimit: toHexString(gasEstimate),
+      gasPrice: toHexString(gasPrice)
+    };
+    
+    console.log('[Web3Service.fundAndSendTransaction] Transaction params:', txParamsForSending);
+    
+    // Send via direct provider request (our wrapper will handle WalletConnect v2 format)
+    const transactionHash = await providerToUse.request({
+      method: 'eth_sendTransaction',
+      params: [txParamsForSending]
     });
-    const transactionHash = txResponse.hash;
     
     console.log('Transaction sent successfully:', transactionHash);
     

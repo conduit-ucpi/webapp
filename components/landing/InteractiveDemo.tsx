@@ -212,7 +212,7 @@ export default function InteractiveDemo() {
             viewport={{ once: true }}
             transition={{ delay: index * 0.1, duration: 0.6 }}
           >
-            <DemoCard isActive={activeStep === index}>
+            <DemoCard isActive={activeStep === index} children={
               <div className="flex items-start space-x-4">
                 <motion.div
                   className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${
@@ -243,7 +243,7 @@ export default function InteractiveDemo() {
                   </AnimatePresence>
                 </div>
               </div>
-            </DemoCard>
+            } />
           </motion.div>
         ))}
       </div>

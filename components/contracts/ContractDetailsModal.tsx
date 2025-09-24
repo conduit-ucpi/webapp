@@ -74,7 +74,7 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
       onClose={onClose}
       title="Contract Details"
       size="large"
-    >
+      children={
       <div className="space-y-6">
         {/* Header Section */}
         <div className="flex flex-col sm:flex-row sm:items-start justify-between pb-4 border-b border-secondary-200">
@@ -404,6 +404,7 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
           </Button>
         </div>
       </div>
-    </Modal>
+      }
+    />
   );
 }

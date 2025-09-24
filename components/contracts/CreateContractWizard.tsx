@@ -267,203 +267,209 @@ export default function CreateContractWizard() {
     switch (currentStep) {
       case 0:
         return (
-          <WizardStep>
-            <h2 className="text-xl font-semibold text-secondary-900 mb-2">
-              Who's the buyer?
-            </h2>
-            <p className="text-secondary-600 mb-6">
-              Tell us who will be making the payment and what this request is for.
-            </p>
-            
-            <div className="space-y-6">
-              <BuyerInput
-                label="Buyer's email address"
-                value={form.buyerEmail}
-                onChange={(value, type, fid) => setForm(prev => ({ 
-                  ...prev, 
-                  buyerEmail: value,
-                  buyerType: type,
-                  buyerFid: fid
-                }))}
-                error={errors.buyerEmail}
-                placeholder="Search Farcaster user or enter email"
-                helpText="They'll receive an email with payment instructions"
-              />
-
-              <div>
-                <label className="block text-sm font-medium text-secondary-700 mb-2">
-                  What are you selling? ({form.description.length}/160)
-                </label>
-                <textarea
-                  className="w-full border border-secondary-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                  rows={3}
-                  maxLength={160}
-                  value={form.description}
-                  onChange={(e) => setForm(prev => ({ ...prev, description: e.target.value }))}
-                  placeholder="Brief description of what you're selling..."
+          <WizardStep children={
+            <>
+              <h2 className="text-xl font-semibold text-secondary-900 mb-2">
+                Who's the buyer?
+              </h2>
+              <p className="text-secondary-600 mb-6">
+                Tell us who will be making the payment and what this request is for.
+              </p>
+              
+              <div className="space-y-6">
+                <BuyerInput
+                  label="Buyer's email address"
+                  value={form.buyerEmail}
+                  onChange={(value, type, fid) => setForm(prev => ({ 
+                    ...prev, 
+                    buyerEmail: value,
+                    buyerType: type,
+                    buyerFid: fid
+                  }))}
+                  error={errors.buyerEmail}
+                  placeholder="Search Farcaster user or enter email"
+                  helpText="They'll receive an email with payment instructions"
                 />
-                {errors.description && (
-                  <p className="text-sm text-error-600 mt-1">{errors.description}</p>
-                )}
-                <p className="text-xs text-secondary-500 mt-2">
-                  This will appear in the payment request email to the buyer.
-                </p>
+
+                <div>
+                  <label className="block text-sm font-medium text-secondary-700 mb-2">
+                    What are you selling? ({form.description.length}/160)
+                  </label>
+                  <textarea
+                    className="w-full border border-secondary-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    rows={3}
+                    maxLength={160}
+                    value={form.description}
+                    onChange={(e) => setForm(prev => ({ ...prev, description: e.target.value }))}
+                    placeholder="Brief description of what you're selling..."
+                  />
+                  {errors.description && (
+                    <p className="text-sm text-error-600 mt-1">{errors.description}</p>
+                  )}
+                  <p className="text-xs text-secondary-500 mt-2">
+                    This will appear in the payment request email to the buyer.
+                  </p>
+                </div>
               </div>
-            </div>
-          </WizardStep>
+            </>
+          } />
         );
 
       case 1:
         return (
-          <WizardStep>
-            <h2 className="text-xl font-semibold text-secondary-900 mb-2">
-              Payment terms
-            </h2>
-            <p className="text-secondary-600 mb-6">
-              Set the amount and when funds should be released.
-            </p>
-            
-            <div className="space-y-6">
-              <div>
-                <Input
-                  label="Amount (USDC)"
-                  type="number"
-                  step="0.001"
-                  min="0"
-                  value={form.amount}
-                  onChange={(e) => setForm(prev => ({ ...prev, amount: e.target.value }))}
-                  placeholder="100.00"
-                  error={errors.amount}
-                  helpText="Amount must be over $1, or exactly 0.001 for testing"
-                />
-                <div className="mt-2 p-3 bg-info-50 border border-info-200 rounded-md">
-                  <p className="text-sm text-info-800">
-                    💡 <strong>How it works:</strong> The buyer pays this amount upfront. 
-                    Funds are held securely until the release date, then automatically 
-                    transferred to you.
-                  </p>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-secondary-700 mb-2">
-                  When should funds be released?
-                  <span className="ml-2 text-xs font-normal text-secondary-500">
-                    (Your timezone: {getUserTimezone()})
-                  </span>
-                </label>
-                <input
-                  type="datetime-local"
-                  className="w-full border border-secondary-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                  value={timestampToDatetimeLocal(form.payoutTimestamp)}
-                  onChange={(e) => setForm(prev => ({ 
-                    ...prev, 
-                    payoutTimestamp: datetimeLocalToTimestamp(e.target.value) 
-                  }))}
-                  min={getCurrentLocalDatetime()}
-                  max={getMaxLocalDatetime()}
-                />
-                {errors.expiry && (
-                  <p className="text-sm text-error-600 mt-1">{errors.expiry}</p>
-                )}
-                <div className="flex justify-between items-center mt-2">
-                  <p className="text-xs text-secondary-500">
-                    Funds will be released automatically at this time
-                  </p>
-                  {form.payoutTimestamp && !errors.expiry && (
-                    <p className="text-xs font-medium text-primary-600">
-                      {getRelativeTime(form.payoutTimestamp)}
+          <WizardStep children={
+            <>
+              <h2 className="text-xl font-semibold text-secondary-900 mb-2">
+                Payment terms
+              </h2>
+              <p className="text-secondary-600 mb-6">
+                Set the amount and when funds should be released.
+              </p>
+              
+              <div className="space-y-6">
+                <div>
+                  <Input
+                    label="Amount (USDC)"
+                    type="number"
+                    step="0.001"
+                    min="0"
+                    value={form.amount}
+                    onChange={(e) => setForm(prev => ({ ...prev, amount: e.target.value }))}
+                    placeholder="100.00"
+                    error={errors.amount}
+                    helpText="Amount must be over $1, or exactly 0.001 for testing"
+                  />
+                  <div className="mt-2 p-3 bg-info-50 border border-info-200 rounded-md">
+                    <p className="text-sm text-info-800">
+                      💡 <strong>How it works:</strong> The buyer pays this amount upfront. 
+                      Funds are held securely until the release date, then automatically 
+                      transferred to you.
                     </p>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-secondary-700 mb-2">
+                    When should funds be released?
+                    <span className="ml-2 text-xs font-normal text-secondary-500">
+                      (Your timezone: {getUserTimezone()})
+                    </span>
+                  </label>
+                  <input
+                    type="datetime-local"
+                    className="w-full border border-secondary-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    value={timestampToDatetimeLocal(form.payoutTimestamp)}
+                    onChange={(e) => setForm(prev => ({ 
+                      ...prev, 
+                      payoutTimestamp: datetimeLocalToTimestamp(e.target.value) 
+                    }))}
+                    min={getCurrentLocalDatetime()}
+                    max={getMaxLocalDatetime()}
+                  />
+                  {errors.expiry && (
+                    <p className="text-sm text-error-600 mt-1">{errors.expiry}</p>
                   )}
+                  <div className="flex justify-between items-center mt-2">
+                    <p className="text-xs text-secondary-500">
+                      Funds will be released automatically at this time
+                    </p>
+                    {form.payoutTimestamp && !errors.expiry && (
+                      <p className="text-xs font-medium text-primary-600">
+                        {getRelativeTime(form.payoutTimestamp)}
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          </WizardStep>
+            </>
+          } />
         );
 
       case 2:
         return (
-          <WizardStep>
-            <h2 className="text-xl font-semibold text-secondary-900 mb-2">
-              Review payment request
-            </h2>
-            <p className="text-secondary-600 mb-6">
-              Double-check the details before sending to the buyer.
-            </p>
-            
-            <div className="space-y-6">
-              {/* Contract Summary */}
-              <div className="bg-secondary-50 rounded-lg p-4">
-                <h3 className="font-medium text-secondary-900 mb-4">Payment Request Summary</h3>
-                <div className="space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-secondary-600">Buyer:</span>
-                    <span className="font-medium">{form.buyerEmail}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-secondary-600">Amount:</span>
-                    <span className="font-medium text-lg">
-                      {formatUSDC(toMicroUSDC(parseFloat(form.amount || '0')))} USDC
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-secondary-600">Release date:</span>
-                    <span className="font-medium">
-                      {formatDateTimeWithTZ(form.payoutTimestamp)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-secondary-600">Description:</span>
-                    <span className="font-medium text-right max-w-xs">
-                      {form.description}
-                    </span>
+          <WizardStep children={
+            <>
+              <h2 className="text-xl font-semibold text-secondary-900 mb-2">
+                Review payment request
+              </h2>
+              <p className="text-secondary-600 mb-6">
+                Double-check the details before sending to the buyer.
+              </p>
+              
+              <div className="space-y-6">
+                {/* Contract Summary */}
+                <div className="bg-secondary-50 rounded-lg p-4">
+                  <h3 className="font-medium text-secondary-900 mb-4">Payment Request Summary</h3>
+                  <div className="space-y-3">
+                    <div className="flex justify-between">
+                      <span className="text-secondary-600">Buyer:</span>
+                      <span className="font-medium">{form.buyerEmail}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-secondary-600">Amount:</span>
+                      <span className="font-medium text-lg">
+                        {formatUSDC(toMicroUSDC(parseFloat(form.amount || '0')))} USDC
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-secondary-600">Release date:</span>
+                      <span className="font-medium">
+                        {formatDateTimeWithTZ(form.payoutTimestamp)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-secondary-600">Description:</span>
+                      <span className="font-medium text-right max-w-xs">
+                        {form.description}
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* What happens next */}
-              <div className="bg-primary-50 rounded-lg p-4">
-                <h3 className="font-medium text-primary-900 mb-3">What happens next?</h3>
-                <ol className="space-y-2 text-sm text-primary-800">
-                  <li className="flex items-start">
-                    <span className="font-medium mr-2">1.</span>
-                    <span>{form.buyerEmail} receives an email with payment instructions</span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="font-medium mr-2">2.</span>
-                    <span>They pay {formatUSDC(toMicroUSDC(parseFloat(form.amount || '0')))} USDC to our secure escrow</span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="font-medium mr-2">3.</span>
-                    <span>Funds are automatically released to you on {formatDateTimeWithTZ(form.payoutTimestamp)}</span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="font-medium mr-2">4.</span>
-                    <span>Both parties can raise disputes if needed before the release date</span>
-                  </li>
-                </ol>
-              </div>
+                {/* What happens next */}
+                <div className="bg-primary-50 rounded-lg p-4">
+                  <h3 className="font-medium text-primary-900 mb-3">What happens next?</h3>
+                  <ol className="space-y-2 text-sm text-primary-800">
+                    <li className="flex items-start">
+                      <span className="font-medium mr-2">1.</span>
+                      <span>{form.buyerEmail} receives an email with payment instructions</span>
+                    </li>
+                    <li className="flex items-start">
+                      <span className="font-medium mr-2">2.</span>
+                      <span>They pay {formatUSDC(toMicroUSDC(parseFloat(form.amount || '0')))} USDC to our secure escrow</span>
+                    </li>
+                    <li className="flex items-start">
+                      <span className="font-medium mr-2">3.</span>
+                      <span>Funds are automatically released to you on {formatDateTimeWithTZ(form.payoutTimestamp)}</span>
+                    </li>
+                    <li className="flex items-start">
+                      <span className="font-medium mr-2">4.</span>
+                      <span>Both parties can raise disputes if needed before the release date</span>
+                    </li>
+                  </ol>
+                </div>
 
 
-              {/* Edit buttons */}
-              <div className="grid grid-cols-2 gap-4 pt-4 border-t border-secondary-200">
-                <Button
-                  variant="outline"
-                  onClick={() => setCurrentStep(0)}
-                  className="text-sm"
-                >
-                  Edit Details
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => setCurrentStep(1)}
-                  className="text-sm"
-                >
-                  Edit Payment Terms
-                </Button>
+                {/* Edit buttons */}
+                <div className="grid grid-cols-2 gap-4 pt-4 border-t border-secondary-200">
+                  <Button
+                    variant="outline"
+                    onClick={() => setCurrentStep(0)}
+                    className="text-sm"
+                  >
+                    Edit Details
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setCurrentStep(1)}
+                    className="text-sm"
+                  >
+                    Edit Payment Terms
+                  </Button>
+                </div>
               </div>
-            </div>
-          </WizardStep>
+            </>
+          } />
         );
 
       default:
@@ -499,25 +505,28 @@ export default function CreateContractWizard() {
             setErrors({});
           }
         }}
-      >
-        {renderStepContent()}
-        
-        <div className="mt-8">
-          <WizardNavigation
-            currentStep={currentStep}
-            totalSteps={steps.length}
-            onNext={handleNext}
-            onPrevious={currentStep > 0 ? handlePrevious : undefined}
-            isNextDisabled={!canProceed()}
-            isNextLoading={isLoading}
-            nextLabel={
-              currentStep === steps.length - 1 
-                ? 'Create Payment Request'
-                : 'Continue'
-            }
-          />
-        </div>
-      </Wizard>
+        children={
+          <>
+            {renderStepContent()}
+            
+            <div className="mt-8">
+              <WizardNavigation
+                currentStep={currentStep}
+                totalSteps={steps.length}
+                onNext={handleNext}
+                onPrevious={currentStep > 0 ? handlePrevious : undefined}
+                isNextDisabled={!canProceed()}
+                isNextLoading={isLoading}
+                nextLabel={
+                  currentStep === steps.length - 1 
+                    ? 'Create Payment Request'
+                    : 'Continue'
+                }
+              />
+            </div>
+          </>
+        }
+      />
     </div>
   );
 }

@@ -88,24 +88,39 @@ export class ReownWalletConnectProvider {
       // Wait for connection to be established
       // AppKit manages the connection state internally
       return new Promise((resolve) => {
-        const checkConnection = () => {
-          const isConnected = this.appKit.getIsConnected()
-          const address = this.appKit.getAddress()
-          
-          if (isConnected && address) {
-            console.log('🔧 ReownWalletConnect: ✅ Connected successfully')
-            console.log('🔧 ReownWalletConnect: Address:', address)
+        const checkConnection = async () => {
+          try {
+            // Check if we have an active connection by getting the account
+            // The AppKit modal state is managed internally
+            const caipAddress = this.appKit.getCaipAddress()
 
-            // Get the ethers provider from AppKit
-            const ethersProvider = this.appKit.getWalletProvider()
-            
-            resolve({
-              success: true,
-              user: { walletAddress: address },
-              provider: ethersProvider
-            })
-          } else {
-            // Check again in 500ms
+            if (caipAddress) {
+              // Extract address from CAIP format (e.g., "eip155:8453:0x...")
+              const parts = caipAddress.split(':')
+              const address = parts[2] // The address is the third part
+
+              console.log('🔧 ReownWalletConnect: ✅ Connected successfully')
+              console.log('🔧 ReownWalletConnect: CAIP Address:', caipAddress)
+              console.log('🔧 ReownWalletConnect: Address:', address)
+
+              // Get the wallet provider (UniversalProvider)
+              const walletProvider = this.appKit.getWalletProvider()
+
+              if (!walletProvider) {
+                throw new Error('No wallet provider available from AppKit')
+              }
+
+              resolve({
+                success: true,
+                user: { walletAddress: address },
+                provider: walletProvider
+              })
+            } else {
+              // Check again in 500ms
+              setTimeout(checkConnection, 500)
+            }
+          } catch (error) {
+            console.log('🔧 ReownWalletConnect: Waiting for connection...', error)
             setTimeout(checkConnection, 500)
           }
         }
@@ -115,7 +130,8 @@ export class ReownWalletConnectProvider {
 
         // Timeout after 30 seconds
         setTimeout(() => {
-          if (!this.appKit.getIsConnected()) {
+          const caipAddress = this.appKit.getCaipAddress()
+          if (!caipAddress) {
             resolve({
               success: false,
               error: 'Connection timeout - user may have cancelled'
@@ -152,11 +168,18 @@ export class ReownWalletConnectProvider {
   }
 
   isConnected(): boolean {
-    return this.appKit ? this.appKit.getIsConnected() : false
+    if (!this.appKit) return false
+    const caipAddress = this.appKit.getCaipAddress()
+    return !!caipAddress
   }
 
   getAddress(): string | null {
-    return this.appKit ? this.appKit.getAddress() : null
+    if (!this.appKit) return null
+    const caipAddress = this.appKit.getCaipAddress()
+    if (!caipAddress) return null
+    // Extract address from CAIP format (e.g., "eip155:8453:0x...")
+    const parts = caipAddress.split(':')
+    return parts[2] || null
   }
 
   /**

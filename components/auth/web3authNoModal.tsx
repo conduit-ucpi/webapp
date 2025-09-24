@@ -1230,29 +1230,29 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
   private async handleReownWalletConnectConnection(): Promise<{ success: boolean; user?: any; token?: string; error?: string }> {
     try {
       console.log('🔧 Web3Auth No-Modal: Connecting via Reown AppKit WalletConnect...');
-      
+
       // Create Reown WalletConnect provider
       const reownProvider = new ReownWalletConnectProvider(this.config);
-      
+
       // Connect to WalletConnect
       const connectionResult = await reownProvider.connect();
-      
+
       if (!connectionResult.success) {
         throw new Error(connectionResult.error || 'Failed to connect to WalletConnect');
       }
-      
+
       // Get the EIP-1193 provider
       const eip1193Provider = reownProvider.createEIP1193Provider();
       this.provider = eip1193Provider;
-      
+
       // Get wallet address
       const walletAddress = reownProvider.getAddress();
       if (!walletAddress) {
         throw new Error('No wallet address available after connection');
       }
-      
+
       console.log('🔧 Web3Auth No-Modal: ✅ Reown WalletConnect connected:', walletAddress);
-      
+
       // Generate signature-based auth token
       let authToken: string;
       try {
@@ -1262,24 +1262,41 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
         console.error('🔧 Web3Auth No-Modal: ❌ Failed to generate Reown auth token:', error);
         throw error;
       }
-      
+
       // Initialize Web3Service with the EIP-1193 provider
       await this.initializeWeb3Service();
-      
+
+      // Set auth state properly
+      this.state.user = {
+        userId: walletAddress,
+        email: '',
+        displayName: 'WalletConnect User',
+        profileImageUrl: '',
+        walletAddress: walletAddress,
+        authProvider: 'walletconnect'
+      };
+      this.state.isConnected = true;
+      this.state.token = authToken;
+
+      // Mark as visited
+      localStorage.setItem(this.visitedKey, 'true');
+
+      // Emit connected event for backend auth to trigger
+      this.emit({ type: 'connected', user: this.state.user, token: authToken });
+
       return {
         success: true,
-        user: {
-          walletAddress,
-          provider: 'reown_walletconnect'
-        },
+        user: this.state.user,
         token: authToken
       };
-      
+
     } catch (error) {
       console.error('🔧 Web3Auth No-Modal: ❌ Reown WalletConnect connection failed:', error);
+      this.state.error = error instanceof Error ? error.message : 'Unknown Reown WalletConnect error';
+      this.emit({ type: 'error', error: this.state.error });
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown Reown WalletConnect error'
+        error: this.state.error
       };
     }
   }

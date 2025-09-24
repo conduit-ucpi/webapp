@@ -764,9 +764,18 @@ export class Web3Service {
     if (!providerToUse) {
       throw new Error('No EIP-1193 provider available for sending transaction');
     }
-    
+
     console.log('[Web3Service.fundAndSendTransaction] Using direct provider.request()');
-    
+
+    // Debug provider state before transaction
+    try {
+      const currentChainId = await providerToUse.request({ method: 'eth_chainId' });
+      const accounts = await providerToUse.request({ method: 'eth_accounts' });
+      console.log('[Web3Service.fundAndSendTransaction] Provider state - chainId:', currentChainId, 'accounts:', accounts.length);
+    } catch (debugError) {
+      console.warn('[Web3Service.fundAndSendTransaction] Could not verify provider state:', debugError);
+    }
+
     // Build transaction parameters (without chainId - WalletConnect v2 handles this at request level)
     const txParamsForSending = {
       from: userAddress,
@@ -778,13 +787,15 @@ export class Web3Service {
     };
     
     console.log('[Web3Service.fundAndSendTransaction] Transaction params:', txParamsForSending);
-    
+
+    console.log('[Web3Service.fundAndSendTransaction] Requesting signature from wallet...');
+
     // Send via direct provider request (our wrapper will handle WalletConnect v2 format)
     const transactionHash = await providerToUse.request({
       method: 'eth_sendTransaction',
       params: [txParamsForSending]
     });
-    
+
     console.log('Transaction sent successfully:', transactionHash);
     
     return transactionHash;

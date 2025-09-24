@@ -6,10 +6,11 @@ import {
 } from '@/components/auth/authInterface';
 
 /**
- * Factory to create contract transaction methods for auth providers
- * This allows different implementations for Web3Auth vs Farcaster
+ * INTERNAL: Base factory for contract transaction methods
+ * DO NOT USE DIRECTLY - use createWeb3AuthContractMethods instead
+ * This base implementation uses signContractTransaction which calls eth_signTransaction (not supported by WalletConnect)
  */
-export function createContractTransactionMethods(
+function createBaseContractTransactionMethods(
   signContractTransaction: (params: ContractTransactionParams) => Promise<string>,
   authenticatedFetch: (url: string, options?: RequestInit) => Promise<Response>,
   fundAndSendTransaction?: (txParams: { to: string; data: string; value?: string; gasLimit?: bigint; gasPrice?: bigint; }) => Promise<string>
@@ -189,7 +190,7 @@ export function createWeb3AuthContractMethods(
   authenticatedFetch: (url: string, options?: RequestInit) => Promise<Response>,
   fundAndSendTransaction: (txParams: { to: string; data: string; value?: string; gasLimit?: bigint; gasPrice?: bigint; }) => Promise<string>
 ) {
-  const baseMethods = createContractTransactionMethods(signContractTransaction, authenticatedFetch, fundAndSendTransaction);
+  const baseMethods = createBaseContractTransactionMethods(signContractTransaction, authenticatedFetch, fundAndSendTransaction);
   
   return {
     ...baseMethods,
@@ -242,9 +243,31 @@ export function createWeb3AuthContractMethods(
 }
 
 /**
+ * DEPRECATED: Use createWeb3AuthContractMethods instead
+ * This method was causing WalletConnect issues by using signContractTransaction (eth_signTransaction)
+ * instead of fundAndSendTransaction for raiseDispute
+ *
+ * @deprecated Use createWeb3AuthContractMethods directly - all providers should use the same implementation
+ */
+export function createContractTransactionMethods(
+  signContractTransaction: (params: ContractTransactionParams) => Promise<string>,
+  authenticatedFetch: (url: string, options?: RequestInit) => Promise<Response>,
+  fundAndSendTransaction?: (txParams: { to: string; data: string; value?: string; gasLimit?: bigint; gasPrice?: bigint; }) => Promise<string>
+) {
+  console.warn('⚠️ DEPRECATED: createContractTransactionMethods is deprecated. Use createWeb3AuthContractMethods instead to avoid WalletConnect issues.');
+
+  // Force users to provide fundAndSendTransaction for compatibility
+  if (!fundAndSendTransaction) {
+    throw new Error('createContractTransactionMethods is deprecated. Use createWeb3AuthContractMethods with fundAndSendTransaction instead.');
+  }
+
+  return createWeb3AuthContractMethods(signContractTransaction, authenticatedFetch, fundAndSendTransaction);
+}
+
+/**
  * Farcaster now uses the same Web3Auth contract methods
  * This function is kept for backwards compatibility but simply delegates to Web3Auth implementation
- * 
+ *
  * @deprecated Use createWeb3AuthContractMethods directly - Farcaster and Web3Auth now use the same implementation
  */
 export function createFarcasterContractMethods(

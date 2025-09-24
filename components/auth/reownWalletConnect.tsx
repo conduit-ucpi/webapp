@@ -161,18 +161,32 @@ export class ReownWalletConnectProvider {
 
   /**
    * Create an EIP-1193 compatible provider for ethers
+   * Includes a disconnect method for proper cleanup
    */
   createEIP1193Provider() {
     const walletProvider = this.getProvider()
-    
+
     if (!walletProvider) {
       throw new Error('No wallet provider available')
     }
 
     console.log('🔧 ReownWalletConnect: Creating EIP-1193 provider from AppKit')
-    
-    // AppKit should provide a proper EIP-1193 provider
-    return walletProvider
+
+    // Wrap the provider with disconnect capability
+    const provider = {
+      ...walletProvider,
+      request: walletProvider.request.bind(walletProvider),
+      // Add disconnect method that cleans up the AppKit session
+      disconnect: async () => {
+        console.log('🔧 ReownWalletConnect: EIP-1193 provider disconnect called')
+        await this.disconnect()
+      },
+      // Keep reference to original provider if needed
+      _originalProvider: walletProvider,
+      _reownInstance: this
+    }
+
+    return provider
   }
 
   /**

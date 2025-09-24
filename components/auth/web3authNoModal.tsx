@@ -449,21 +449,31 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
   }
 
   async disconnect(): Promise<void> {
-    
-    if (!this.web3auth) return;
-    
     try {
       this.state.isLoading = true;
-      
+
       console.log('🔧 Web3Auth No-Modal: Starting disconnect process...');
-      console.log('🔧 Web3Auth No-Modal: Web3Auth status before logout:', this.web3auth.status);
-      console.log('🔧 Web3Auth No-Modal: Web3Auth connected before logout:', this.web3auth.connected);
-      
-      // Logout from Web3Auth
-      await this.web3auth.logout();
-      
-      console.log('🔧 Web3Auth No-Modal: Web3Auth status after logout:', this.web3auth.status);
-      console.log('🔧 Web3Auth No-Modal: Web3Auth connected after logout:', this.web3auth.connected);
+
+      // If the provider has its own disconnect method (like WalletConnect), call it
+      if (this.provider && typeof this.provider.disconnect === 'function') {
+        console.log('🔧 Web3Auth No-Modal: Provider has disconnect method, calling it...');
+        try {
+          await this.provider.disconnect();
+        } catch (error) {
+          console.warn('🔧 Web3Auth No-Modal: Error disconnecting provider:', error);
+        }
+      }
+
+      // Also logout from Web3Auth if it exists
+      if (this.web3auth) {
+        console.log('🔧 Web3Auth No-Modal: Web3Auth status before logout:', this.web3auth.status);
+        console.log('🔧 Web3Auth No-Modal: Web3Auth connected before logout:', this.web3auth.connected);
+
+        await this.web3auth.logout();
+
+        console.log('🔧 Web3Auth No-Modal: Web3Auth status after logout:', this.web3auth.status);
+        console.log('🔧 Web3Auth No-Modal: Web3Auth connected after logout:', this.web3auth.connected);
+      }
       
       // Clear all local state
       this.provider = null;
@@ -495,27 +505,37 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
         }
       });
       
-      // Clear any Web3Auth storage with wildcard patterns
+      // Clear any Web3Auth/WalletConnect storage with wildcard patterns
       if (typeof window !== 'undefined') {
         try {
           Object.keys(localStorage).forEach(key => {
-            if (key.includes('web3auth') || 
-                key.includes('openlogin') || 
+            if (key.includes('web3auth') ||
+                key.includes('openlogin') ||
                 key.includes('walletconnect') ||
-                key.includes('wc@2:')) {
+                key.includes('WalletConnect') ||
+                key.includes('wc@') ||
+                key.includes('wc:') ||
+                key.includes('reown') ||
+                key.includes('@w3m') ||
+                key.includes('@appkit')) {
               localStorage.removeItem(key);
             }
           });
           Object.keys(sessionStorage).forEach(key => {
-            if (key.includes('web3auth') || 
-                key.includes('openlogin') || 
+            if (key.includes('web3auth') ||
+                key.includes('openlogin') ||
                 key.includes('walletconnect') ||
-                key.includes('wc@2:')) {
+                key.includes('WalletConnect') ||
+                key.includes('wc@') ||
+                key.includes('wc:') ||
+                key.includes('reown') ||
+                key.includes('@w3m') ||
+                key.includes('@appkit')) {
               sessionStorage.removeItem(key);
             }
           });
         } catch (e) {
-          console.warn('Error clearing Web3Auth storage:', e);
+          console.warn('Error clearing storage:', e);
         }
       }
       

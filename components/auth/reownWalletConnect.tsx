@@ -76,13 +76,40 @@ export class ReownWalletConnectProvider {
 
   async connect(): Promise<{ success: boolean; user?: any; provider?: any; error?: string }> {
     try {
-      console.log('🔧 ReownWalletConnect: Opening connection modal...')
+      console.log('🔧 ReownWalletConnect: Starting connection process...')
 
       if (!this.appKit) {
         await this.initialize()
       }
 
+      // Check if already connected first
+      const existingCaipAddress = this.appKit.getCaipAddress()
+      if (existingCaipAddress) {
+        console.log('🔧 ReownWalletConnect: Already connected, using existing connection')
+        const parts = existingCaipAddress.split(':')
+        const address = parts[2]
+        const walletProvider = this.appKit.getWalletProvider()
+
+        if (walletProvider) {
+          // Test that the provider is working
+          try {
+            const accounts = await walletProvider.request({ method: 'eth_accounts' })
+            if (accounts && accounts.length > 0) {
+              console.log('🔧 ReownWalletConnect: Existing connection is ready')
+              return {
+                success: true,
+                user: { walletAddress: address },
+                provider: walletProvider
+              }
+            }
+          } catch (error) {
+            console.log('🔧 ReownWalletConnect: Existing connection not working, reconnecting...')
+          }
+        }
+      }
+
       // Open the connection modal
+      console.log('🔧 ReownWalletConnect: Opening connection modal...')
       await this.appKit.open()
 
       // Wait for connection to be established
@@ -108,6 +135,21 @@ export class ReownWalletConnectProvider {
 
               if (!walletProvider) {
                 throw new Error('No wallet provider available from AppKit')
+              }
+
+              // Ensure the provider is ready by testing it can get accounts
+              try {
+                const accounts = await walletProvider.request({ method: 'eth_accounts' })
+                if (!accounts || accounts.length === 0) {
+                  console.log('🔧 ReownWalletConnect: Provider not ready yet, retrying...')
+                  setTimeout(checkConnection, 500)
+                  return
+                }
+                console.log('🔧 ReownWalletConnect: Provider ready with accounts:', accounts)
+              } catch (providerError) {
+                console.log('🔧 ReownWalletConnect: Provider test failed, retrying...', providerError)
+                setTimeout(checkConnection, 500)
+                return
               }
 
               resolve({

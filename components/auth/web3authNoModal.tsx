@@ -695,23 +695,34 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
             
             // Fix chainId responses to ensure ethers gets the correct value
             if (args.method === 'eth_chainId') {
-              let fixedChainId = result;
-              
+              let chainIdResult = result;
+
               // Fix double-prefixed chainId if detected
               if (typeof result === 'string' && result.startsWith('0x0x')) {
-                fixedChainId = result.slice(2); // Remove the extra "0x"
-                console.log('🔧 DEBUG: Fixed double-prefixed chainId:', result, '->', fixedChainId);
+                chainIdResult = result.slice(2); // Remove the extra "0x"
+                console.log('🔧 DEBUG: Fixed double-prefixed chainId:', result, '->', chainIdResult);
               }
-              
-              // Ensure chainId is proper hex format for ethers
-              if (typeof fixedChainId === 'string' && !fixedChainId.startsWith('0x')) {
-                fixedChainId = '0x' + fixedChainId;
+
+              // Convert to decimal based on the input format
+              let decimalChainId;
+
+              if (typeof chainIdResult === 'number') {
+                // Already a number (decimal)
+                decimalChainId = chainIdResult;
+              } else if (typeof chainIdResult === 'string' && chainIdResult.startsWith('0x')) {
+                // Hex string - convert to decimal
+                decimalChainId = parseInt(chainIdResult, 16);
+                console.log('🔧 DEBUG: Converting hex chainId to decimal:', chainIdResult, '->', decimalChainId);
+              } else if (typeof chainIdResult === 'string' && /^\d+$/.test(chainIdResult)) {
+                // Decimal string - convert to number
+                decimalChainId = parseInt(chainIdResult, 10);
+                console.log('🔧 DEBUG: Converting decimal string to number:', chainIdResult, '->', decimalChainId);
+              } else {
+                // Unknown format - try to parse as decimal first, then hex
+                decimalChainId = parseInt(chainIdResult.toString(), 10);
+                console.log('🔧 DEBUG: Unknown chainId format, parsed as decimal:', chainIdResult, '->', decimalChainId);
               }
-              
-              // Convert to decimal for ethers (ethers expects number, not hex string for chainId)
-              const decimalChainId = parseInt(fixedChainId, 16);
-              console.log('🔧 DEBUG: Converting chainId for ethers - hex:', fixedChainId, 'decimal:', decimalChainId);
-              
+
               // Return decimal chainId that ethers expects
               return decimalChainId;
             }

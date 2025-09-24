@@ -115,7 +115,17 @@ export class ReownWalletConnectProvider {
       // Wait for connection to be established
       // AppKit manages the connection state internally
       return new Promise((resolve) => {
+        let isResolved = false
+        const resolveOnce = (result: any) => {
+          if (!isResolved) {
+            isResolved = true
+            resolve(result)
+          }
+        }
+
         const checkConnection = async () => {
+          if (isResolved) return // Don't continue if already resolved
+
           try {
             // Check if we have an active connection by getting the account
             // The AppKit modal state is managed internally
@@ -152,7 +162,7 @@ export class ReownWalletConnectProvider {
                 return
               }
 
-              resolve({
+              resolveOnce({
                 success: true,
                 user: { walletAddress: address },
                 provider: walletProvider
@@ -170,16 +180,13 @@ export class ReownWalletConnectProvider {
         // Start checking
         checkConnection()
 
-        // Timeout after 30 seconds
+        // Timeout after 60 seconds (increased from 30)
         setTimeout(() => {
-          const caipAddress = this.appKit.getCaipAddress()
-          if (!caipAddress) {
-            resolve({
-              success: false,
-              error: 'Connection timeout - user may have cancelled'
-            })
-          }
-        }, 30000)
+          resolveOnce({
+            success: false,
+            error: 'Connection timeout - user may have cancelled'
+          })
+        }, 60000)
       })
 
     } catch (error) {

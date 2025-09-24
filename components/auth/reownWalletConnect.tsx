@@ -2,6 +2,7 @@ import { createAppKit } from '@reown/appkit/react'
 import { EthersAdapter } from '@reown/appkit-adapter-ethers'
 import { mainnet, base, sepolia, baseSepolia } from '@reown/appkit/networks'
 import { ethers } from 'ethers'
+import { toHex } from '@/utils/hexUtils'
 
 export class ReownWalletConnectProvider {
   private appKit: any = null
@@ -91,19 +92,32 @@ export class ReownWalletConnectProvider {
         const walletProvider = this.appKit.getWalletProvider()
 
         if (walletProvider) {
-          // Test that the provider is working
+          // Test that the provider is working and on the correct network
           try {
             const accounts = await walletProvider.request({ method: 'eth_accounts' })
             if (accounts && accounts.length > 0) {
-              console.log('🔧 ReownWalletConnect: Existing connection is ready')
-              return {
-                success: true,
-                user: { walletAddress: address },
-                provider: walletProvider
+              // Check if we're on the correct network
+              const currentChainId = await walletProvider.request({ method: 'eth_chainId' })
+              const expectedChainId = this.config.chainId // Use chainId from config (decimal from ENV)
+              const currentChainIdNum = typeof currentChainId === 'string'
+                ? (currentChainId.startsWith('0x') ? parseInt(currentChainId, 16) : parseInt(currentChainId, 10))
+                : currentChainId
+
+              console.log('🔧 ReownWalletConnect: Existing connection network check - current:', currentChainIdNum, 'expected:', expectedChainId)
+
+              if (currentChainIdNum === expectedChainId) {
+                console.log('🔧 ReownWalletConnect: Existing connection is ready and on correct network')
+                return {
+                  success: true,
+                  user: { walletAddress: address },
+                  provider: walletProvider
+                }
+              } else {
+                console.log('🔧 ReownWalletConnect: Existing connection on wrong network, will request switch in connection flow')
               }
             }
           } catch (error) {
-            console.log('🔧 ReownWalletConnect: Existing connection not working, reconnecting...')
+            console.log('🔧 ReownWalletConnect: Existing connection not working, reconnecting...', error)
           }
         }
       }
@@ -160,6 +174,50 @@ export class ReownWalletConnectProvider {
                 console.log('🔧 ReownWalletConnect: Provider test failed, retrying...', providerError)
                 setTimeout(checkConnection, 500)
                 return
+              }
+
+              // Verify the network is correct
+              try {
+                const currentChainId = await walletProvider.request({ method: 'eth_chainId' })
+                const expectedChainId = this.config.chainId // Use chainId from config (decimal from ENV)
+                const currentChainIdNum = typeof currentChainId === 'string'
+                  ? (currentChainId.startsWith('0x') ? parseInt(currentChainId, 16) : parseInt(currentChainId, 10))
+                  : currentChainId
+
+                console.log('🔧 ReownWalletConnect: Network check - current:', currentChainIdNum, 'expected:', expectedChainId)
+
+                if (currentChainIdNum !== expectedChainId) {
+                  console.log('🔧 ReownWalletConnect: Wrong network, requesting switch to:', expectedChainId)
+                  try {
+                    // Convert decimal chainId to hex for the wallet_switchEthereumChain request
+                    const expectedChainIdHex = toHex(expectedChainId)
+                    console.log('🔧 ReownWalletConnect: Switching to network - decimal:', expectedChainId, 'hex:', expectedChainIdHex)
+
+                    await walletProvider.request({
+                      method: 'wallet_switchEthereumChain',
+                      params: [{ chainId: expectedChainIdHex }]
+                    })
+
+                    // Verify the switch worked
+                    const newChainId = await walletProvider.request({ method: 'eth_chainId' })
+                    const newChainIdNum = typeof newChainId === 'string'
+                      ? (newChainId.startsWith('0x') ? parseInt(newChainId, 16) : parseInt(newChainId, 10))
+                      : newChainId
+
+                    if (newChainIdNum !== expectedChainId) {
+                      console.warn('🔧 ReownWalletConnect: Network switch failed - still on:', newChainIdNum)
+                      // Continue anyway - some wallets don't support programmatic switching
+                    } else {
+                      console.log('🔧 ReownWalletConnect: ✅ Network switched successfully to:', newChainIdNum)
+                    }
+                  } catch (switchError) {
+                    console.warn('🔧 ReownWalletConnect: Network switch failed:', switchError)
+                    // Continue anyway - user might switch manually
+                  }
+                }
+              } catch (chainError) {
+                console.warn('🔧 ReownWalletConnect: Could not verify network:', chainError)
+                // Continue anyway
               }
 
               resolveOnce({

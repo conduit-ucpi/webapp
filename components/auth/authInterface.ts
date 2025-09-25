@@ -76,7 +76,7 @@ export interface ContractFundingParams {
     toUSDCForWeb3?: (amount: number, currency?: string) => string;
     formatDateTimeWithTZ?: (timestamp: number) => string;
   };
-  onStatusUpdate?: (step: string, message: string) => void;
+  onStatusUpdate?: (step: string, message: string, data?: any) => void;
 }
 
 // Contract funding result

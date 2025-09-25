@@ -48,7 +48,7 @@ export interface ContractFundingParams {
     toUSDCForWeb3?: (amount: number, currency?: string) => string;
     formatDateTimeWithTZ?: (timestamp: number) => string;
   };
-  onStatusUpdate?: (step: string, message: string) => void;
+  onStatusUpdate?: (step: string, message: string, data?: any) => void;
 }
 
 export class ContractTransactionService {
@@ -131,7 +131,7 @@ export class ContractTransactionService {
     userAddress: string,
     config: ContractTransactionConfig,
     utils: ContractFundingParams['utils'],
-    onStatusUpdate?: (step: string, message: string) => void
+    onStatusUpdate?: (step: string, message: string, data?: any) => void
   ): Promise<string> {
     if (!this.signer.fundAndSendTransaction) {
       throw new Error('fundAndSendTransaction not supported by this signer');
@@ -275,7 +275,7 @@ export class ContractTransactionService {
   /**
    * Deposits funds using fundAndSendTransaction (direct RPC)
    */
-  async depositAndSendFunds(params: ContractFundingParams & { contractAddress: string, onStatusUpdate?: (step: string, message: string) => void }): Promise<string> {
+  async depositAndSendFunds(params: ContractFundingParams & { contractAddress: string, onStatusUpdate?: (step: string, message: string, data?: any) => void }): Promise<string> {
     const { contract, userAddress, contractAddress, config, utils } = params;
     
     if (!this.signer.fundAndSendTransaction) {
@@ -358,12 +358,15 @@ export class ContractTransactionService {
     // Step 1: Create contract (still uses backend as it needs to store in MongoDB)
     onStatusUpdate?.('create', 'Creating secure escrow contract...');
     const contractAddress = await this.createContract(contract, userAddress, config, utils);
-    
+
     console.log(`🚨 SECURITY DEBUG - Contract created:`, {
       contractAddress: contractAddress,
       contractId: contract.id,
       step: 'CREATE_CONTRACT'
     });
+
+    // Notify that contract has been created with its address
+    onStatusUpdate?.('create-complete', 'Escrow contract created', { contractAddress });
 
     // Step 2: Approve USDC using fundAndSendTransaction
     onStatusUpdate?.('approve', 'Approving USDC payment...');

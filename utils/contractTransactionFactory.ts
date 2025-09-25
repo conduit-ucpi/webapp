@@ -128,6 +128,7 @@ function createBaseContractTransactionMethods(
       };
     }): Promise<string> => {
       console.log('🔧 Base: Raising dispute via signContractTransaction + backend');
+      console.log('🔧 Base: raiseDispute base method called with params:', params);
       
       const { contractAddress, userAddress, reason, refundPercent, contract } = params;
       
@@ -223,14 +224,15 @@ export function createWeb3AuthContractMethods(
     },
 
     // Web3Auth uses direct blockchain raise dispute method
-    raiseDispute: async (params: { 
-      contractAddress: string; 
-      userAddress: string; 
-      reason: string; 
-      refundPercent: number; 
-      contract?: { id: string; }; 
+    raiseDispute: async (params: {
+      contractAddress: string;
+      userAddress: string;
+      reason: string;
+      refundPercent: number;
+      contract?: { id: string; };
     }): Promise<string> => {
       console.log('🔧 Web3Auth: Raising dispute via direct blockchain transactions');
+      console.log('🔧 Web3Auth: raiseDispute override called with params:', params);
       
       const service = new (await import('./contractTransactions')).ContractTransactionService(
         { signContractTransaction, fundAndSendTransaction },

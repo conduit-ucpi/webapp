@@ -28,6 +28,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
   const [isSuccess, setIsSuccess] = useState(false);
   const [userBalance, setUserBalance] = useState<string | null>(null);
   const [isLoadingBalance, setIsLoadingBalance] = useState(false);
+  const [contractAddress, setContractAddress] = useState<string | null>(null);
 
   // Fetch user's USDC balance when component mounts or user changes
   useEffect(() => {
@@ -174,7 +175,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
 
       // Fund the contract using the provider-specific implementation
       console.log('🔧 ContractAcceptance: About to call fundContract with params');
-      
+
       try {
         const result = await fundContract({
           contract: {
@@ -197,6 +198,14 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
             toMicroUSDC,
             toUSDCForWeb3,
             formatDateTimeWithTZ
+          },
+          onStatusUpdate: (step: string, message: string, data?: any) => {
+            console.log(`🔧 ContractAcceptance: Status update - ${step}: ${message}`, data);
+            setLoadingMessage(message);
+            // Capture contract address when it's created
+            if (step === 'create-complete' && data?.contractAddress) {
+              setContractAddress(data.contractAddress);
+            }
           }
         });
 
@@ -248,6 +257,13 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
       <div className="flex flex-col items-center justify-center py-8">
         <LoadingSpinner size="lg" />
         <p className="mt-4 text-gray-600">{loadingMessage}</p>
+        {contractAddress && !isSuccess && (
+          <div className="mt-4 text-center">
+            <p className="text-sm text-gray-500">Your escrow contract ID:</p>
+            <p className="text-xs font-mono text-gray-600 break-all px-4">{contractAddress}</p>
+            <p className="text-xs text-gray-500 mt-1">You may be prompted to approve operations on it</p>
+          </div>
+        )}
         {isSuccess && (
           <p className="mt-2 text-green-600 font-medium">Contract accepted successfully!</p>
         )}

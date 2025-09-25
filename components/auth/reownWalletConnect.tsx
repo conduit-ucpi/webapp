@@ -355,6 +355,20 @@ export class ReownWalletConnectProvider {
         this.onMobileActionRequired('sign')
       }
 
+      // Ensure provider is fully ready by making a test request first
+      // This helps establish the WalletConnect relay connection properly
+      try {
+        console.log('🔧 ReownWalletConnect: Ensuring provider is ready...')
+        await provider.request({ method: 'eth_accounts' })
+
+        // Small delay to ensure WalletConnect relay is fully established
+        // This helps with the issue where signature request doesn't reach mobile wallet immediately
+        await new Promise(resolve => setTimeout(resolve, 500))
+      } catch (e) {
+        console.warn('🔧 ReownWalletConnect: Provider readiness check failed:', e)
+      }
+
+      console.log('🔧 ReownWalletConnect: Requesting signature from wallet...')
       const signature = await signer.signMessage(message)
 
       // Create auth token

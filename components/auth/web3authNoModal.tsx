@@ -1300,6 +1300,11 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
 
       console.log('🔧 Web3Auth No-Modal: ✅ Reown WalletConnect connected:', walletAddress);
 
+      // Add a small delay to ensure WalletConnect session is fully established
+      // This prevents the modal from closing too early
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      console.log('🔧 Web3Auth No-Modal: WalletConnect session stabilized, generating auth token...');
+
       // Generate signature-based auth token
       let authToken: string;
       try {

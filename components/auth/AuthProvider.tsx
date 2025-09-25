@@ -279,6 +279,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
         } else if (backendResult.error?.includes('TEMP_SKIP_AUTH') || token === 'TEMP_SKIP_AUTH') {
           // Legacy temporary auth - try signature authentication with unified Web3Service
           console.log('🔧 AuthProvider: Detected temp auth, attempting signature authentication...');
+
+          // Initialize Web3Service first if not already done
+          if (!web3Service && !isInitializingWeb3Service) {
+            await initializeWeb3Service();
+          }
+
           try {
             if (web3Service) {
               const signatureToken = await web3Service.generateSignatureAuthToken();

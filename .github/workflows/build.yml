@@ -112,14 +112,17 @@ jobs:
           driver: docker
 
       - name: Build and push image
-        uses: docker/build-push-action@v5
+        uses: nick-invision/retry@v3
         with:
-          context: .
-          file: Dockerfile
-          push: true
-          tags: |
-            ghcr.io/${{ env.REPO_LOWER }}:${{ env.SHA_TAG }}
-            ghcr.io/${{ env.REPO_LOWER }}:${{ env.ENV_TAG }}
+          timeout_minutes: 2
+          max_attempts: 3
+          retry_on: error
+          command: |
+            docker buildx build \
+              --file Dockerfile \
+              --push \
+              --tag ghcr.io/${{ env.REPO_LOWER }}:${{ env.SHA_TAG }} \
+              .
 
       # Deploy step
       - name: Deploy to GCP

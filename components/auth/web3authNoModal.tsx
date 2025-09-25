@@ -12,6 +12,7 @@ import { formatUnits } from 'ethers';
 import { createWeb3AuthContractMethods } from '@/utils/contractTransactionFactory';
 import { toHexString } from '@/utils/hexUtils';
 import { ReownWalletConnectProvider } from './reownWalletConnect';
+import { MobileWalletPrompt } from '@/components/ui/MobileWalletPrompt';
 
 // Minimal ERC20 ABI for balance checking
 const ERC20_ABI = [
@@ -38,12 +39,14 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
     error: null,
     providerName: 'web3auth'
   };
-  
+
   private web3auth: any = null;
   private provider: any = null;
   private web3Service: any = null;
   private listeners = new Map<AuthEvent['type'], Set<(event: AuthEvent) => void>>();
   private visitedKey = 'web3auth_visited';
+  private onMobileActionRequired?: (actionType: 'sign' | 'transaction') => void;
+  private reownProviderInstance?: ReownWalletConnectProvider;
   private config: any = null;
   private cachedEthersProvider: any = null;
   private adapters: Map<string, any> = new Map();
@@ -967,6 +970,15 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
     localStorage.setItem(this.visitedKey, 'true');
   }
 
+  setMobileActionCallback(callback: (actionType: 'sign' | 'transaction') => void) {
+    this.onMobileActionRequired = callback;
+    // Also set it on the reown provider if it exists
+    if (this.reownProviderInstance) {
+      console.log('🔧 Web3Auth No-Modal: Setting mobile action callback on Reown provider');
+      // The reown provider already has the callback set in its constructor
+    }
+  }
+
   getWeb3Service(): any {
     return this.web3Service;
   }
@@ -1262,8 +1274,12 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
     try {
       console.log('🔧 Web3Auth No-Modal: Connecting via Reown AppKit WalletConnect...');
 
-      // Create Reown WalletConnect provider
-      const reownProvider = new ReownWalletConnectProvider(this.config);
+      // Create Reown WalletConnect provider with mobile action callback
+      const reownProvider = new ReownWalletConnectProvider(
+        this.config,
+        this.onMobileActionRequired
+      );
+      this.reownProviderInstance = reownProvider;
 
       // Connect to WalletConnect
       const connectionResult = await reownProvider.connect();

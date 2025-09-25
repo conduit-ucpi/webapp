@@ -36,9 +36,26 @@ export class Web3Service {
   private walletProvider: WalletProvider | null = null;
   private eip1193Provider: any = null; // Raw EIP-1193 provider
   private config: Config;
+  private onMobileActionRequired?: (actionType: 'sign' | 'transaction') => void;
+  private isDesktopQRSession: boolean = false;
 
   constructor(config: Config) {
     this.config = config;
+  }
+
+  /**
+   * Set callback for when mobile wallet action is required (for QR code sessions)
+   */
+  setMobileActionCallback(callback: (actionType: 'sign' | 'transaction') => void) {
+    this.onMobileActionRequired = callback;
+  }
+
+  /**
+   * Set whether this is a desktop-to-mobile QR session
+   */
+  setDesktopQRSession(isQRSession: boolean) {
+    this.isDesktopQRSession = isQRSession;
+    console.log('[Web3Service] Desktop QR session:', isQRSession);
   }
 
   /**
@@ -104,9 +121,15 @@ export class Web3Service {
     nonce?: number;
   }): Promise<string> {
     console.log('[Web3Service.signTransaction] Starting transaction signing...');
-    
+
     if (!this.provider) {
       throw new Error('Provider not initialized. Please connect your wallet.');
+    }
+
+    // If this is a desktop-to-mobile QR session, show the mobile prompt
+    if (this.isDesktopQRSession && this.onMobileActionRequired) {
+      console.log('[Web3Service] Desktop QR session detected, showing mobile prompt for transaction');
+      this.onMobileActionRequired('transaction');
     }
     
     // Check which type of provider we're using
@@ -254,6 +277,12 @@ export class Web3Service {
       const message = `Authenticate wallet ${walletAddress} at ${timestamp} with nonce ${nonce}`;
 
       console.log('[Web3Service.generateSignatureAuthToken] Signing message:', message);
+
+      // If this is a desktop-to-mobile QR session, show the mobile prompt
+      if (this.isDesktopQRSession && this.onMobileActionRequired) {
+        console.log('[Web3Service] Desktop QR session detected, showing mobile prompt for signature');
+        this.onMobileActionRequired('sign');
+      }
 
       // Sign the message using ethers signer
       if (!this.provider) {

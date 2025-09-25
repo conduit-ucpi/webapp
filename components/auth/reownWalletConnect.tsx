@@ -3,14 +3,18 @@ import { EthersAdapter } from '@reown/appkit-adapter-ethers'
 import { mainnet, base, sepolia, baseSepolia } from '@reown/appkit/networks'
 import { ethers } from 'ethers'
 import { toHex } from '@/utils/hexUtils'
+import { detectDevice } from '@/utils/deviceDetection'
 
 export class ReownWalletConnectProvider {
   private appKit: any = null
   private provider: any = null
   private config: any
+  private isDesktopQRSession: boolean = false
+  private onMobileActionRequired?: (actionType: 'sign' | 'transaction') => void
 
-  constructor(config: any) {
+  constructor(config: any, onMobileActionRequired?: (actionType: 'sign' | 'transaction') => void) {
     this.config = config
+    this.onMobileActionRequired = onMobileActionRequired
   }
 
   async initialize() {
@@ -78,6 +82,11 @@ export class ReownWalletConnectProvider {
   async connect(): Promise<{ success: boolean; user?: any; provider?: any; error?: string }> {
     try {
       console.log('🔧 ReownWalletConnect: Starting connection process...')
+
+      // Detect if we're on desktop (which would use QR code for mobile wallet)
+      const deviceInfo = detectDevice()
+      this.isDesktopQRSession = deviceInfo.isDesktop
+      console.log('🔧 ReownWalletConnect: Device type:', deviceInfo.isDesktop ? 'Desktop (QR code flow)' : 'Mobile/Tablet (direct flow)')
 
       if (!this.appKit) {
         await this.initialize()
@@ -339,6 +348,13 @@ export class ReownWalletConnectProvider {
       const message = `Authenticate wallet ${address} at ${timestamp} with nonce ${nonce}`
 
       console.log('🔧 ReownWalletConnect: Signing auth message:', message)
+
+      // If this is a desktop-to-mobile QR session, show the mobile prompt
+      if (this.isDesktopQRSession && this.onMobileActionRequired) {
+        console.log('🔧 ReownWalletConnect: Desktop QR session detected, showing mobile prompt')
+        this.onMobileActionRequired('sign')
+      }
+
       const signature = await signer.signMessage(message)
 
       // Create auth token

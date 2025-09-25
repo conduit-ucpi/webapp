@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useFarcaster } from '@/components/farcaster/FarcasterDetectionProvider';
 import { useConfig } from './ConfigProvider';
 import { AuthContextType, AuthState, IAuthProvider, AuthUser } from './authInterface';
 import { BackendAuth } from './backendAuth';
 import { Web3Service } from '@/lib/web3';
+import { MobileWalletPrompt } from '@/components/ui/MobileWalletPrompt';
+import { detectDevice } from '@/utils/deviceDetection';
 
 // The unified context that the rest of the app uses
 const AuthContext = React.createContext<AuthContextType | null>(null);
@@ -28,6 +30,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
     error: null,
     providerName: 'loading'
   });
+  const [showMobilePrompt, setShowMobilePrompt] = useState(false);
+  const [mobilePromptAction, setMobilePromptAction] = useState<'sign' | 'transaction'>('sign');
+  const [isDesktopQRSession, setIsDesktopQRSession] = useState(false);
   
   // Get backend auth instance
   const backendAuth = BackendAuth.getInstance();
@@ -55,7 +60,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
           console.log('🔧 AuthProvider: Loading Web3Auth no-modal provider...');
           const { getWeb3AuthNoModalProvider } = await import('./web3authNoModal');
           const authProvider = getWeb3AuthNoModalProvider(config!);
-          
+
+          // Set up mobile action callback for desktop QR sessions
+          const deviceInfo = detectDevice();
+          if (deviceInfo.isDesktop) {
+            const providerImpl = authProvider as any;
+            if (providerImpl.setMobileActionCallback) {
+              providerImpl.setMobileActionCallback((actionType: 'sign' | 'transaction') => {
+                console.log('[AuthProvider] Mobile action required (from provider):', actionType);
+                setMobilePromptAction(actionType);
+                setShowMobilePrompt(true);
+                setIsDesktopQRSession(true);
+              });
+            }
+          }
+
           try {
             await authProvider.initialize();
             console.log('🔧 AuthProvider: Web3Auth provider initialized successfully');
@@ -175,9 +194,28 @@ export function AuthProvider({ children }: AuthProviderProps) {
             // Create and initialize Web3Service with the EIP-1193 provider
             const newWeb3Service = new Web3Service(config);
             await newWeb3Service.initializeWithEIP1193(eip1193Provider);
+
+            // Check if this is a desktop QR session (WalletConnect on desktop)
+            const deviceInfo = detectDevice();
+            const isWalletConnect = authState.providerName === 'walletconnect';
+            const isQRSession = isWalletConnect && deviceInfo.isDesktop;
+
+            if (isQRSession) {
+              console.log('[AuthProvider] Detected desktop WalletConnect QR session');
+              setIsDesktopQRSession(true);
+              newWeb3Service.setDesktopQRSession(true);
+
+              // Set the mobile action callback
+              newWeb3Service.setMobileActionCallback((actionType) => {
+                console.log('[AuthProvider] Mobile action required:', actionType);
+                setMobilePromptAction(actionType);
+                setShowMobilePrompt(true);
+              });
+            }
+
             setWeb3Service(newWeb3Service);
             console.log('[AuthProvider] ✅ Web3Service initialized with EIP-1193 provider');
-            
+
             // Store it globally for backward compatibility (some components might access it directly)
             (window as any).web3Service = newWeb3Service;
           }
@@ -644,13 +682,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
   return (
     <AuthContext.Provider value={contextValue}>
       {isInFarcaster ? (
-        <FarcasterAuthProviderWrapper 
+        <FarcasterAuthProviderWrapper
           onProviderReady={handleProviderReady}
           onStateChange={handleStateChange}
           children={children}
         />
       ) : (
         children
+      )}
+      {showMobilePrompt && (
+        <MobileWalletPrompt
+          isOpen={showMobilePrompt}
+          onClose={() => setShowMobilePrompt(false)}
+          walletName={authState.user?.authProvider === 'walletconnect' ? 'your wallet' : 'MetaMask'}
+          actionType={mobilePromptAction}
+        />
       )}
     </AuthContext.Provider>
   );
@@ -933,12 +979,6 @@ function RegularAuthProvider({ children }: AuthProviderProps) {
       return backendAuth.getToken();
     },
   };
-
-  return (
-    <AuthContext.Provider value={contextValue}>
-      {children}
-    </AuthContext.Provider>
-  );
 }
 */
 

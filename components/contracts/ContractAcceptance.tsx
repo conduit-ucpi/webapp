@@ -202,8 +202,8 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
           onStatusUpdate: (step: string, message: string, data?: any) => {
             console.log(`🔧 ContractAcceptance: Status update - ${step}: ${message}`, data);
             setLoadingMessage(message);
-            // Capture contract address when it's created
-            if (step === 'create-complete' && data?.contractAddress) {
+            // Capture contract address when it's created or passed in any step
+            if (data?.contractAddress) {
               setContractAddress(data.contractAddress);
             }
           }

@@ -369,7 +369,7 @@ export class ContractTransactionService {
     onStatusUpdate?.('create-complete', 'Escrow contract created', { contractAddress });
 
     // Step 2: Approve USDC using fundAndSendTransaction
-    onStatusUpdate?.('approve', 'Approving USDC payment...');
+    onStatusUpdate?.('approve', 'Approving USDC payment...', { contractAddress });
     const approvalTxHash = await this.approveAndSendUSDC(
       contractAddress,
       contract.amount,
@@ -377,7 +377,7 @@ export class ContractTransactionService {
       userAddress,
       config,
       utils,
-      onStatusUpdate
+      (step: string, message: string) => onStatusUpdate?.(step, message, { contractAddress })
     );
     
     console.log(`🚨 SECURITY DEBUG - USDC approved:`, {
@@ -388,7 +388,7 @@ export class ContractTransactionService {
     });
 
     // Step 3: Deposit funds using fundAndSendTransaction
-    onStatusUpdate?.('deposit', 'Securing funds in escrow...');
+    onStatusUpdate?.('deposit', 'Securing funds in escrow...', { contractAddress });
     console.log(`🚨 SECURITY DEBUG - About to deposit funds:`, {
       contractAddress: contractAddress,
       contractId: contract.id,
@@ -398,7 +398,7 @@ export class ContractTransactionService {
     const depositTxHash = await this.depositAndSendFunds({
       ...params,
       contractAddress,
-      onStatusUpdate
+      onStatusUpdate: (step: string, message: string) => onStatusUpdate?.(step, message, { contractAddress })
     });
     
     console.log(`🚨 SECURITY DEBUG - Funds deposited:`, {
@@ -409,7 +409,7 @@ export class ContractTransactionService {
     });
 
     // Step 4: Confirm transaction
-    onStatusUpdate?.('confirm', 'Confirming transaction on blockchain...');
+    onStatusUpdate?.('confirm', 'Confirming transaction on blockchain...', { contractAddress });
 
     return {
       contractAddress,

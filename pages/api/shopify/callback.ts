@@ -14,6 +14,13 @@ const shopify = shopifyApi({
 });
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  console.log('Shopify callback called with query:', req.query);
+  console.log('Environment variables check:', {
+    hasClientId: !!process.env.SHOPIFY_CLIENT_ID,
+    hasClientSecret: !!process.env.SHOPIFY_CLIENT_SECRET,
+    appUrl: process.env.NEXT_PUBLIC_APP_URL,
+  });
+
   try {
     // Complete OAuth callback
     const callbackResponse = await shopify.auth.callback({
@@ -21,11 +28,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       rawResponse: res,
     });
 
+    console.log('Callback response received:', callbackResponse);
+
     const { session } = callbackResponse;
 
     if (!session?.shop || !session?.accessToken) {
+      console.error('Invalid session data:', { session });
       throw new Error('Invalid session data from Shopify');
     }
+
+    console.log('Valid session received for shop:', session.shop);
 
     // Save initial merchant settings
     await saveMerchantSettings({
@@ -38,11 +50,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       accessToken: session.accessToken,
     });
 
+    console.log('Merchant settings saved for shop:', session.shop);
+
     // Redirect to settings page
     const settingsUrl = `/shopify/merchant-settings?shop=${encodeURIComponent(session.shop)}&success=true`;
+    console.log('Redirecting to:', settingsUrl);
     res.redirect(settingsUrl);
   } catch (error) {
     console.error('Shopify callback error:', error);
-    res.status(500).json({ error: 'Failed to complete OAuth flow' });
+    console.error('Error details:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name,
+    });
+    res.status(500).json({
+      error: 'Failed to complete OAuth flow',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 }

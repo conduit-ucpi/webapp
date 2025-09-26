@@ -8,7 +8,9 @@ const shopify = shopifyApi({
   apiSecretKey: process.env.SHOPIFY_CLIENT_SECRET!,
   scopes: (process.env.SHOPIFY_SCOPES || 'write_orders,write_draft_orders').split(','),
   hostName: process.env.NEXT_PUBLIC_APP_URL?.replace(/https?:\/\//, '') || 'localhost:3000',
-  apiVersion: ApiVersion.October23,
+  apiVersion: ApiVersion.October22,
+  isEmbeddedApp: false,
+  isCustomStoreApp: false,
 });
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {

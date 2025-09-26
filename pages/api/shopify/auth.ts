@@ -7,7 +7,9 @@ const shopify = shopifyApi({
   apiSecretKey: process.env.SHOPIFY_CLIENT_SECRET!,
   scopes: (process.env.SHOPIFY_SCOPES || 'write_orders,write_draft_orders').split(','),
   hostName: process.env.NEXT_PUBLIC_APP_URL?.replace(/https?:\/\//, '') || 'localhost:3000',
-  apiVersion: ApiVersion.October23,
+  apiVersion: ApiVersion.October22,
+  isEmbeddedApp: false,
+  isCustomStoreApp: false,
 });
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -21,15 +23,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const shopDomain = shop.includes('.') ? shop : `${shop}.myshopify.com`;
 
   try {
-    // Generate auth URL
+    // Generate auth URL using the new API
     const authUrl = await shopify.auth.begin({
       shop: shopDomain,
       callbackPath: '/api/shopify/callback',
       isOnline: false, // Offline access for persistent token
+      rawRequest: req,
+      rawResponse: res,
     });
 
-    // Redirect to Shopify OAuth
-    res.redirect(authUrl);
+    // The begin method handles the redirect internally
   } catch (error) {
     console.error('Shopify auth error:', error);
     res.status(500).json({ error: 'Failed to start OAuth flow' });

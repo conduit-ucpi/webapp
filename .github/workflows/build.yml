@@ -60,6 +60,12 @@ jobs:
           PRODUCT_NAME: ${{ vars.PRODUCT_NAME }}
           SERVICE_LINK: ${{ vars.SERVICE_LINK }}
           ALLOWED_FRAME_ANCESTORS: ${{ vars.ALLOWED_FRAME_ANCESTORS }}
+          SHOPIFY_CLIENT_ID: ${{ secrets.SHOPIFY_CLIENT_ID }}
+          SHOPIFY_CLIENT_SECRET: ${{ secrets.SHOPIFY_CLIENT_SECRET }}
+          SHOPIFY_NAME: ${{ vars.SHOPIFY_NAME }}
+          SHOPIFY_SCOPES: ${{ vars.SHOPIFY_SCOPES }}
+          SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
         run: |
           npm ci --legacy-peer-deps
           
@@ -168,6 +174,12 @@ jobs:
             -e NEYNAR_API_URL="${{ vars.NEYNAR_API_URL }}" \\
             -e WALLETCONNECT_PROJECT_ID="${{ secrets.WALLETCONNECT_PROJECT_ID }}" \\
             -e ALLOWED_FRAME_ANCESTORS="${{ vars.ALLOWED_FRAME_ANCESTORS }}" \\
+            -e SHOPIFY_CLIENT_ID="${{ secrets.SHOPIFY_CLIENT_ID }}" \\
+            -e SHOPIFY_CLIENT_SECRET="${{ secrets.SHOPIFY_CLIENT_SECRET }}" \\
+            -e SHOPIFY_NAME="${{ vars.SHOPIFY_NAME }}" \\
+            -e SHOPIFY_SCOPES="${{ vars.SHOPIFY_SCOPES }}" \\
+            -e SESSION_SECRET="${{ secrets.SESSION_SECRET }}" \\
+            -e MONGODB_URI="${{ secrets.MONGODB_URI }}" \\
             ghcr.io/${{ env.REPO_LOWER }}:${{ env.SHA_TAG }}
           EOF
           

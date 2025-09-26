@@ -34,7 +34,7 @@ interface SendFormData {
 }
 
 export default function Wallet() {
-  const { user, isLoading: authLoading, getEthersProvider } = useAuth();
+  const { user, isLoading: authLoading, getEthersProvider, fundAndSendTransaction } = useAuth();
   const { isInFarcaster } = useFarcaster();
   const { config } = useConfig();
   const { walletAddress, isLoading: isWalletAddressLoading } = useWalletAddress();
@@ -251,54 +251,33 @@ export default function Wallet() {
         });
         setSendSuccess(`Native token sent successfully! Transaction: ${tx.hash}`);
       } else {
-        // Send USDC via chain-service using ethers
-        const signer = await ethersProvider.getSigner();
-        const userAddress = await signer.getAddress();
-        
-        // Create USDC transfer transaction
+        // Send USDC using the same fundAndSendTransaction method used for contracts
+        if (!fundAndSendTransaction) {
+          throw new Error('Transaction method not available. Please reconnect your wallet.');
+        }
+
+        // Create USDC transfer transaction data
         const usdcContract = new ethers.Contract(
           config?.usdcContractAddress || '',
-          ['function transfer(address to, uint256 amount) returns (bool)'],
-          signer
+          ['function transfer(address to, uint256 amount) returns (bool)']
         );
-        
+
         // Convert amount to microUSDC (6 decimals)
         const amountInMicroUSDC = ethers.parseUnits(sendForm.amount, 6);
-        
-        // Sign the transaction but don't send it (we'll send via chain service)
-        const unsignedTx = await usdcContract.transfer.populateTransaction(
+
+        // Encode the transfer function call
+        const txData = usdcContract.interface.encodeFunctionData('transfer', [
           sendForm.recipient,
           amountInMicroUSDC
-        );
-        const signedTx = await signer.signTransaction(unsignedTx);
+        ]);
 
-        // Submit signed transaction to chain service
-        const transferRequest: TransferUSDCRequest = {
-          recipientAddress: sendForm.recipient,
-          amount: sendForm.amount,
-          userWalletAddress: userAddress,
-          signedTransaction: signedTx
-        };
-
-        const response = await fetch('/api/chain/transfer-usdc', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(transferRequest)
+        // Use fundAndSendTransaction to handle funding and sending in one step
+        const txHash = await fundAndSendTransaction({
+          to: config?.usdcContractAddress || '',
+          data: txData
         });
 
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.error || 'Failed to transfer USDC');
-        }
-
-        const result = await response.json();
-        if (!result.success) {
-          throw new Error(result.error || 'Transfer failed');
-        }
-
-        setSendSuccess(`USDC sent successfully! Transaction: ${result.transactionHash}`);
+        setSendSuccess(`USDC sent successfully! Transaction: ${txHash}`);
       }
 
       // Reset form and reload balances

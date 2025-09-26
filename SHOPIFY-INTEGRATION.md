@@ -10,7 +10,84 @@ The integration allows any Shopify merchant to accept USDC payments with:
 - **No gas fees** for customers
 - **Direct wallet payouts** for merchants
 
-## Setup Process
+## Initial Setup - Shopify App Configuration
+
+### Prerequisites
+
+Before merchants can use your integration, you need to configure the Shopify app in your Partners account:
+
+1. **Go to Shopify Partners:**
+   ```
+   https://partners.shopify.com
+   ```
+
+2. **Navigate to your app:**
+   - Click on "Apps" in the sidebar
+   - Select your app (buyer-protected-usdc-checkout)
+
+3. **Configure App URLs:**
+
+   In the **App setup** section, configure these URLs:
+
+   **For Production (app.instantescrow.nz):**
+
+   - **App URL:**
+     ```
+     https://app.instantescrow.nz/shopify
+     ```
+
+   - **Allowed redirection URL(s):** Add ALL of these (one per line):
+     ```
+     https://app.instantescrow.nz/api/shopify/callback
+     https://app.instantescrow.nz/shopify/merchant-settings
+     https://app.instantescrow.nz/shopify/install-button
+     https://app.instantescrow.nz/shopify
+     ```
+
+   **For Test Environment (test.conduit-ucpi.com):**
+
+   - **App URL:**
+     ```
+     https://test.conduit-ucpi.com/shopify
+     ```
+
+   - **Allowed redirection URL(s):** Add ALL of these (one per line):
+     ```
+     https://test.conduit-ucpi.com/api/shopify/callback
+     https://test.conduit-ucpi.com/shopify/merchant-settings
+     https://test.conduit-ucpi.com/shopify/install-button
+     https://test.conduit-ucpi.com/shopify
+     ```
+
+   **Note:** You can have multiple redirect URLs, so add both test and production URLs if you want to test in both environments.
+
+4. **Configure OAuth scopes (if not already set):**
+   - `write_orders` - To create orders
+   - `write_draft_orders` - To create draft orders
+   - `write_products` - To read product information
+   - `read_customers` - To read customer information
+
+5. **Save your changes**
+
+### Environment Variables Required
+
+Make sure your webapp has these environment variables configured:
+
+```bash
+# From your Shopify app settings
+SHOPIFY_CLIENT_ID=3d76e8d2767514c1a7775ff91432a995
+SHOPIFY_CLIENT_SECRET=ad56e2021d08a7ccf4091ac4f9f8eabb
+SHOPIFY_NAME=buyer-protected-usdc-checkout
+SHOPIFY_SCOPES=write_orders,write_draft_orders,write_products,read_customers
+
+# Generate a secure random string
+SESSION_SECRET=<generate-a-secure-random-string>
+
+# Optional - for persistent storage (otherwise uses in-memory)
+MONGODB_URI=mongodb://...
+```
+
+## Merchant Setup Process
 
 ### Step 1: Connect Your Shopify Store
 

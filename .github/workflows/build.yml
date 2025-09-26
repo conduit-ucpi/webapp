@@ -66,6 +66,7 @@ jobs:
           SHOPIFY_SCOPES: ${{ vars.SHOPIFY_SCOPES }}
           SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          NEXT_PUBLIC_APP_URL: ${{ vars.NEXT_PUBLIC_APP_URL }}
         run: |
           npm ci --legacy-peer-deps
           
@@ -180,6 +181,7 @@ jobs:
             -e SHOPIFY_SCOPES="${{ vars.SHOPIFY_SCOPES }}" \\
             -e SESSION_SECRET="${{ secrets.SESSION_SECRET }}" \\
             -e MONGODB_URI="${{ secrets.MONGODB_URI }}" \\
+            -e NEXT_PUBLIC_APP_URL="${{ vars.NEXT_PUBLIC_APP_URL }}" \\
             ghcr.io/${{ env.REPO_LOWER }}:${{ env.SHA_TAG }}
           EOF
           

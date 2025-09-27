@@ -646,13 +646,43 @@ export class Web3Service {
       gasEstimate = txParams.gasLimit;
       console.log('Using provided gas limit:', gasEstimate.toString());
     } else {
-      // Try RPC gas estimation with retries
-      let rpcSuccess = false;
-      const maxRetries = 3;
-      
-      for (let attempt = 1; attempt <= maxRetries && !rpcSuccess; attempt++) {
+      // Try provider estimation first since it's more reliable
+      let estimationSuccess = false;
+      const maxRetries = 2; // Reduced retries since provider usually works
+
+      // Try provider estimation first (more reliable)
+      for (let attempt = 1; attempt <= maxRetries && !estimationSuccess; attempt++) {
         try {
-          console.log(`Attempting RPC gas estimation (attempt ${attempt}/${maxRetries})`);
+          console.log(`Estimating gas via provider (attempt ${attempt}/${maxRetries})...`);
+          gasEstimate = await this.provider.estimateGas({
+            from: userAddress,
+            to: txParams.to,
+            data: txParams.data,
+            value: txParams.value || '0x0'
+          });
+          console.log('Gas estimate successful:', gasEstimate.toString(), 'gas');
+          estimationSuccess = true;
+        } catch (providerError: any) {
+          // Only log detailed error on last attempt
+          if (attempt === maxRetries) {
+            console.warn('Provider gas estimation failed:', providerError.message || providerError);
+          }
+          if (attempt < maxRetries) {
+            // Shorter wait before retry
+            await new Promise(resolve => setTimeout(resolve, 500));
+          }
+        }
+      }
+
+      // If provider failed, try direct RPC as backup (usually less reliable)
+      if (!estimationSuccess) {
+        console.log('Trying direct RPC estimation as fallback...');
+
+        try {
+          // Create timeout for older browsers that don't support AbortSignal.timeout
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 5000);
+
           const response = await fetch(this.config.rpcUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -666,57 +696,27 @@ export class Web3Service {
                 value: txParams.value || '0x0'
               }],
               id: 1
-            })
+            }),
+            signal: controller.signal
           });
-          
+
+          clearTimeout(timeoutId);
+
           if (response.ok) {
             const result = await response.json();
             if (result.result) {
               gasEstimate = BigInt(result.result);
-              console.log('Using live RPC gas estimate:', gasEstimate.toString(), 'gas');
-              rpcSuccess = true;
-            } else {
-              throw new Error('No gas estimate in RPC response');
+              console.log('Using RPC gas estimate:', gasEstimate.toString(), 'gas');
+              estimationSuccess = true;
             }
-          } else {
-            throw new Error(`RPC call failed with status: ${response.status}`);
           }
         } catch (error) {
-          console.warn(`RPC gas estimation attempt ${attempt} failed:`, error);
-          if (attempt < maxRetries) {
-            // Wait 1 second before retry
-            await new Promise(resolve => setTimeout(resolve, 1000));
-          }
+          // Silently fail RPC, we'll use fallback
         }
       }
-      
-      // If RPC failed, try provider estimation with retries
-      if (!rpcSuccess) {
-        console.warn('All RPC gas estimation attempts failed, trying provider...');
-        let providerSuccess = false;
-        
-        for (let attempt = 1; attempt <= maxRetries && !providerSuccess; attempt++) {
-          try {
-            console.log(`Attempting provider gas estimation (attempt ${attempt}/${maxRetries})`);
-            gasEstimate = await this.provider.estimateGas({
-              from: userAddress,
-              to: txParams.to,
-              data: txParams.data,
-              value: txParams.value || '0x0'
-            });
-            console.log('Using provider gas estimate:', gasEstimate.toString(), 'gas');
-            providerSuccess = true;
-          } catch (providerError) {
-            console.warn(`Provider gas estimation attempt ${attempt} failed:`, providerError);
-            if (attempt < maxRetries) {
-              // Wait 1 second before retry
-              await new Promise(resolve => setTimeout(resolve, 1000));
-            }
-          }
-        }
-        
-        // Final fallback if both RPC and provider failed
-        if (!providerSuccess) {
+
+      // Final fallback if both methods failed
+      if (!estimationSuccess) {
           console.error('All gas estimation attempts failed, using fallback');
           gasEstimate = BigInt(100000); // 100k gas units - reasonable for most transactions
           console.warn('Using fallback gas estimate:', gasEstimate.toString(), 'gas');

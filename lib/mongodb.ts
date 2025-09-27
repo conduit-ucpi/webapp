@@ -11,8 +11,13 @@ const MONGODB_URI = process.env.MONGODB_URI || '';
 const MONGODB_DB = process.env.MONGODB_DB || 'shopify-app';
 
 export async function getDatabase(): Promise<Db | null> {
-  // Check if MongoDB URI is valid
-  if (!MONGODB_URI || MONGODB_URI === 'undefined' || MONGODB_URI === 'null' || MONGODB_URI.trim() === '') {
+  // Check if MongoDB URI is valid - handle empty strings, whitespace, and placeholder values
+  if (!MONGODB_URI ||
+      MONGODB_URI === 'undefined' ||
+      MONGODB_URI === 'null' ||
+      MONGODB_URI.trim() === '' ||
+      MONGODB_URI.trim() === ' ' ||
+      MONGODB_URI === ' ') {
     return null; // Will use in-memory store
   }
 

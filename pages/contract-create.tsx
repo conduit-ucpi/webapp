@@ -267,9 +267,13 @@ export default function ContractCreate() {
   const handlePayment = async () => {
     if (!contractId || !fundContract || !config) {
       console.error('🔧 ContractCreate: Missing required data for payment');
+      console.error('🔧 ContractCreate: contractId:', contractId);
+      console.error('🔧 ContractCreate: fundContract:', !!fundContract);
+      console.error('🔧 ContractCreate: config:', !!config);
       return;
     }
 
+    console.log('🔧 ContractCreate: handlePayment starting with fundContract method');
     setIsLoading(true);
     
     // Reset payment steps to initial state
@@ -303,7 +307,9 @@ export default function ContractCreate() {
       // The fundContract function should handle updating these steps internally
       updatePaymentStep('approve', 'active');
       setLoadingMessage('Approving USDC payment...');
-      
+
+      console.log('🔧 ContractCreate: About to call fundContract with params');
+
       // Fund the contract using the provider-specific implementation
       const result = await fundContract({
         contract: {
@@ -393,14 +399,17 @@ export default function ContractCreate() {
       }
 
     } catch (error: any) {
-      console.error('Payment failed:', error);
-      
+      console.error('🔧 ContractCreate: Payment failed:', error);
+      console.error('🔧 ContractCreate: Error type:', error.name);
+      console.error('🔧 ContractCreate: Error message:', error.message);
+      console.error('🔧 ContractCreate: Error stack:', error.stack);
+
       // Mark the current active step as error
       const activeStep = paymentSteps.find(s => s.status === 'active');
       if (activeStep) {
         updatePaymentStep(activeStep.id, 'error');
       }
-      
+
       sendPostMessage({
         type: 'payment_error',
         error: error.message || 'Payment failed'

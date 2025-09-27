@@ -345,7 +345,11 @@ export class ContractTransactionService {
   }> {
     const { contract, userAddress, config, utils, onStatusUpdate } = params;
 
+    console.log('🔧 ContractTransactionService: fundAndSendContract called');
+    console.log('🔧 ContractTransactionService: signer has fundAndSendTransaction:', !!this.signer.fundAndSendTransaction);
+
     if (!this.signer.fundAndSendTransaction) {
+      console.error('🔧 ContractTransactionService: ERROR - fundAndSendTransaction not available!');
       throw new Error('fundAndSendTransaction not supported by this signer');
     }
 

@@ -497,6 +497,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     fundContract: async (...args: any[]) => {
       console.log('🔧 AuthProvider: fundContract called, using Web3Auth contract service');
+      console.log('🔧 AuthProvider: fundContract - provider type:', provider?.constructor?.name || 'unknown');
 
       // Use Web3Auth contract service with current provider for transactions
       const { createWeb3AuthContractMethods } = await import('../../utils/contractTransactionFactory');
@@ -504,7 +505,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Get the actual provider for low-level operations
       const actualProvider = (provider as any).getActualProvider ? (provider as any).getActualProvider() : provider;
 
+      console.log('🔧 AuthProvider: fundContract - checking provider methods');
+      console.log('🔧 AuthProvider: fundContract - has signContractTransaction:', !!actualProvider.signContractTransaction);
+      console.log('🔧 AuthProvider: fundContract - has fundAndSendTransaction:', !!actualProvider.fundAndSendTransaction);
+
       if (!actualProvider.signContractTransaction || !actualProvider.fundAndSendTransaction) {
+        console.error('🔧 AuthProvider: Provider missing required methods!');
         throw new Error('Provider does not support required transaction methods');
       }
 
@@ -514,6 +520,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         actualProvider.fundAndSendTransaction.bind(actualProvider)
       );
 
+      console.log('🔧 AuthProvider: fundContract - calling contractMethods.fundContract');
       return await contractMethods.fundContract(args[0]);
     },
 

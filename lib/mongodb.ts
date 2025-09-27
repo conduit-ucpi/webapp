@@ -11,17 +11,29 @@ const MONGODB_URI = process.env.MONGODB_URI || '';
 const MONGODB_DB = process.env.MONGODB_DB || 'shopify-app';
 
 export async function getDatabase(): Promise<Db | null> {
-  if (!MONGODB_URI) {
+  // Check if MongoDB URI is valid
+  if (!MONGODB_URI || MONGODB_URI === 'undefined' || MONGODB_URI === 'null' || MONGODB_URI.trim() === '') {
     return null; // Will use in-memory store
   }
 
-  if (!client) {
-    client = new MongoClient(MONGODB_URI);
-    await client.connect();
-    db = client.db(MONGODB_DB);
+  // Validate URI format
+  if (!MONGODB_URI.startsWith('mongodb://') && !MONGODB_URI.startsWith('mongodb+srv://')) {
+    console.log('Invalid MongoDB URI format, using in-memory store');
+    return null;
   }
 
-  return db;
+  try {
+    if (!client) {
+      client = new MongoClient(MONGODB_URI);
+      await client.connect();
+      db = client.db(MONGODB_DB);
+      console.log('Connected to MongoDB');
+    }
+    return db;
+  } catch (error) {
+    console.error('MongoDB connection failed, using in-memory store:', error);
+    return null;
+  }
 }
 
 // Merchant settings storage interface

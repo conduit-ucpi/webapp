@@ -120,6 +120,7 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
   const {
     shop,
     product_id,
+    variant_id,
     title = 'Product',
     price = '0',
     quantity = '1',
@@ -188,7 +189,8 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
   const sellerWallet = merchantSettings.walletAddress;
 
   // Generate payment URL (using your existing contract-create page)
-  const description = `${shop} - Order ${orderId}`;
+  const shopString = Array.isArray(shop) ? shop[0] : shop;
+  const description = `${shopString} - Order ${orderId}`;
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
   const paymentUrl = `${baseUrl}/contract-create?` +
     `seller=${encodeURIComponent(sellerWallet)}&` +
@@ -196,12 +198,12 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
     `description=${encodeURIComponent(description)}&` +
     `order_id=${encodeURIComponent(orderId)}&` +
     `epoch_expiry=${epochExpiry}&` +
-    `shop=${encodeURIComponent(shop)}&` +
+    `shop=${encodeURIComponent(shopString)}&` +
     `product_id=${product_id || ''}&` +
     `variant_id=${variant_id || ''}&` +
     `title=${encodeURIComponent(title as string || productData.title)}&` +
     `quantity=${quantity || '1'}&` +
-    `return=${encodeURIComponent(`https://${shop}`)}`;
+    `return=${encodeURIComponent(`https://${shopString}`)}`;
 
   return {
     props: {

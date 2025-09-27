@@ -6,7 +6,11 @@
 
   // Configuration - Automatically detect the webapp domain from where script was loaded
   const scriptSrc = document.currentScript ? document.currentScript.src : '';
-  const baseUrl = scriptSrc ? new URL(scriptSrc).origin : 'https://test.conduit-ucpi.com';
+  if (!scriptSrc) {
+    console.error('InstantEscrow: Unable to detect script source. Script must be loaded with a proper src attribute.');
+    return; // Exit early if we can't determine the base URL
+  }
+  const baseUrl = new URL(scriptSrc).origin;
   const CHECKOUT_URL = baseUrl + '/shopify/quick-checkout';
   const BUTTON_STYLES = `
     .instant-usdc-button {

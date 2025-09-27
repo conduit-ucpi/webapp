@@ -4,8 +4,10 @@
 (function() {
   'use strict';
 
-  // Configuration - update this to your domain
-  const CHECKOUT_URL = window.location.origin + '/shopify/quick-checkout';
+  // Configuration - Automatically detect the webapp domain from where script was loaded
+  const scriptSrc = document.currentScript ? document.currentScript.src : '';
+  const baseUrl = scriptSrc ? new URL(scriptSrc).origin : 'https://test.conduit-ucpi.com';
+  const CHECKOUT_URL = baseUrl + '/shopify/quick-checkout';
   const BUTTON_STYLES = `
     .instant-usdc-button {
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);

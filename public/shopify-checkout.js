@@ -85,9 +85,30 @@
 
   // Get product data from the page
   function getProductData() {
-    // Try to get Shopify's product data
+    // Try to get Shopify's product data from various sources
     if (window.ShopifyAnalytics && window.ShopifyAnalytics.meta && window.ShopifyAnalytics.meta.product) {
-      return window.ShopifyAnalytics.meta.product;
+      const product = window.ShopifyAnalytics.meta.product;
+      return {
+        id: product.id,
+        title: product.title || product.name,
+        price: product.price ? (product.price / 100).toFixed(2) : '',
+        image: product.image,
+        variant_id: product.variants?.[0]?.id,
+        variants: product.variants || []
+      };
+    }
+
+    // Try window.meta if available (some themes)
+    if (window.meta && window.meta.product) {
+      const product = window.meta.product;
+      return {
+        id: product.id,
+        title: product.title,
+        price: product.price ? (product.price / 100).toFixed(2) : '',
+        image: product.featured_image,
+        variant_id: product.variants?.[0]?.id,
+        variants: product.variants || []
+      };
     }
 
     // Try to get from meta tags
@@ -133,6 +154,7 @@
   // Handle button click
   function handleCheckout() {
     const product = getProductData();
+    console.log('InstantEscrow: Product data detected:', product);
     const shop = window.Shopify ? window.Shopify.shop : window.location.hostname;
 
     // Get selected variant

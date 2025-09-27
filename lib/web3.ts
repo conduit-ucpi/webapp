@@ -717,10 +717,9 @@ export class Web3Service {
 
       // Final fallback if both methods failed
       if (!estimationSuccess) {
-          console.error('All gas estimation attempts failed, using fallback');
-          gasEstimate = BigInt(100000); // 100k gas units - reasonable for most transactions
-          console.warn('Using fallback gas estimate:', gasEstimate.toString(), 'gas');
-        }
+        console.error('All gas estimation attempts failed, using fallback');
+        gasEstimate = BigInt(100000); // 100k gas units - reasonable for most transactions
+        console.warn('Using fallback gas estimate:', gasEstimate.toString(), 'gas');
       }
     }
     

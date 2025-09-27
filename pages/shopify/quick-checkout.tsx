@@ -196,6 +196,11 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
     `description=${encodeURIComponent(description)}&` +
     `order_id=${encodeURIComponent(orderId)}&` +
     `epoch_expiry=${epochExpiry}&` +
+    `shop=${encodeURIComponent(shop)}&` +
+    `product_id=${product_id || ''}&` +
+    `variant_id=${variant_id || ''}&` +
+    `title=${encodeURIComponent(title as string || productData.title)}&` +
+    `quantity=${quantity || '1'}&` +
     `return=${encodeURIComponent(`https://${shop}`)}`;
 
   return {

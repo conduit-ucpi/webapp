@@ -45,7 +45,20 @@ export default function ContractCreate() {
   const { user, authenticatedFetch, fundContract, isLoading: authLoading } = useAuth();
   
   // Query parameters
-  const { seller, amount, description, email: queryEmail, return: returnUrl, order_id, epoch_expiry } = router.query;
+  const {
+    seller,
+    amount,
+    description,
+    email: queryEmail,
+    return: returnUrl,
+    order_id,
+    epoch_expiry,
+    shop,
+    product_id,
+    variant_id,
+    title,
+    quantity
+  } = router.query;
   
   // Check if we're in an iframe
   const [isInIframe, setIsInIframe] = useState(false);
@@ -352,22 +365,55 @@ export default function ContractCreate() {
       });
 
       console.log('🔧 ContractCreate: Payment completed successfully:', result);
-      
+
       // Mark all steps as completed
       updatePaymentStep('confirm', 'completed');
       updatePaymentStep('complete', 'completed');
-      
+
       // Add debugging for transaction verification
       if (result.depositTxHash) {
         console.log('🔧 ContractCreate: Deposit transaction hash received:', result.depositTxHash);
         console.log('🔧 ContractCreate: Contract address should receive USDC:', result.contractAddress);
-        
+
         // TODO: Add transaction receipt verification here
         // We should wait for the transaction to be mined and verify it succeeded
       } else {
         console.warn('🔧 ContractCreate: No deposit transaction hash received!');
       }
-      
+
+      // Create order in Shopify if this is from a shop
+      if (shop) {
+        console.log('🔧 ContractCreate: Creating Shopify order for shop:', shop);
+        try {
+          const orderResponse = await fetch('/api/shopify/create-order', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              shop: shop as string,
+              orderId: order_id as string,
+              contractId,
+              productId: product_id as string,
+              variantId: variant_id as string,
+              title: title as string || form.description,
+              price: form.amount,
+              quantity: parseInt((quantity as string) || '1'),
+              buyerEmail: user?.email || queryEmail as string,
+              transactionHash: result?.depositTxHash
+            })
+          });
+
+          const orderData = await orderResponse.json();
+          console.log('🔧 ContractCreate: Shopify order creation result:', orderData);
+
+          if (orderData.shopifyOrderCreated) {
+            console.log('🔧 ContractCreate: Shopify order created successfully!', orderData.shopifyOrderNumber);
+          }
+        } catch (orderError) {
+          console.error('🔧 ContractCreate: Failed to create Shopify order:', orderError);
+          // Don't fail the payment flow - payment was successful
+        }
+      }
+
       // Send payment completed event
       sendPostMessage({
         type: 'payment_completed',

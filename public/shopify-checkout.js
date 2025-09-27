@@ -90,22 +90,42 @@
       return window.ShopifyAnalytics.meta.product;
     }
 
-    // Fallback: try to get from meta tags
-    const productId = document.querySelector('meta[property="product:id"]')?.content;
-    const productTitle = document.querySelector('meta[property="og:title"]')?.content || document.title;
-    const productPrice = document.querySelector('meta[property="product:price:amount"]')?.content;
-    const productImage = document.querySelector('meta[property="og:image"]')?.content;
+    // Try to get from meta tags
+    const productId = document.querySelector('meta[property="product:id"]')?.content ||
+                      document.querySelector('meta[property="og:product:id"]')?.content;
+
+    const productTitle = document.querySelector('meta[property="og:title"]')?.content ||
+                        document.querySelector('h1')?.textContent?.trim() ||
+                        document.title;
+
+    const productPrice = document.querySelector('meta[property="product:price:amount"]')?.content ||
+                        document.querySelector('meta[property="og:price:amount"]')?.content ||
+                        document.querySelector('[class*="price"]')?.textContent?.match(/[\d.]+/)?.[0];
+
+    const productImage = document.querySelector('meta[property="og:image"]')?.content ||
+                        document.querySelector('meta[property="og:image:secure_url"]')?.content;
 
     // Try to get selected variant
     const variantSelect = document.querySelector('[name="id"]');
     const selectedVariant = variantSelect ? variantSelect.value : null;
 
+    // Try to extract price from the page if not in meta tags
+    let finalPrice = productPrice;
+    if (!finalPrice) {
+      // Look for price in common Shopify price selectors
+      const priceElement = document.querySelector('.product__price, .price, [class*="price"], [data-price]');
+      if (priceElement) {
+        const priceText = priceElement.textContent || priceElement.getAttribute('data-price');
+        finalPrice = priceText?.match(/[\d.]+/)?.[0];
+      }
+    }
+
     return {
-      id: productId,
-      title: productTitle,
-      price: productPrice,
-      image: productImage,
-      variant_id: selectedVariant,
+      id: productId || '',
+      title: productTitle || '',
+      price: finalPrice || '',
+      image: productImage || '',
+      variant_id: selectedVariant || '',
       variants: []
     };
   }

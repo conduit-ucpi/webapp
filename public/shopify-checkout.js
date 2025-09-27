@@ -193,7 +193,10 @@
       for (const selector of titleSelectors) {
         const element = document.querySelector(selector);
         if (element && element.textContent?.trim()) {
-          finalTitle = element.textContent.trim();
+          finalTitle = element.textContent.trim()
+            .replace(/\s+/g, ' ') // Replace multiple whitespace with single space
+            .replace(/(.+?)\1+/g, '$1') // Remove duplicates like "Title Title"
+            .trim();
           console.log(`InstantEscrow: Found title using selector "${selector}":`, finalTitle);
           break;
         }

@@ -137,10 +137,13 @@ There are three ways to add the USDC payment button to your Shopify store:
 2. **Add it to your theme:**
    - Go to your Shopify Admin
    - Navigate to **Online Store → Themes**
-   - Click **Actions → Edit code**
-   - Find the file `layout/theme.liquid`
+   - Find your current theme and click the **three dots (...)** button
+   - Select **Edit code** from the dropdown
+   - In the file list on the left, open **Layout** folder
+   - Click on **theme.liquid**
+   - Search for `</head>` (use Ctrl+F or Cmd+F)
    - Paste the code just before `</head>`
-   - Click **Save**
+   - Click **Save** (top right corner)
 
 3. **That's it!** The button will automatically appear on:
    - All product pages

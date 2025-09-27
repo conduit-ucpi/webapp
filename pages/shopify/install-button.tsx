@@ -160,10 +160,12 @@ export default function InstallButton() {
               </h3>
               <ol style={{ paddingLeft: '20px' }}>
                 <li>Go to <strong>Online Store → Themes</strong></li>
-                <li>Click <strong>Actions → Edit code</strong></li>
-                <li>Find <strong>theme.liquid</strong></li>
+                <li>Find your current theme and click the <strong>three dots (...)</strong> button</li>
+                <li>Select <strong>Edit code</strong> from the dropdown</li>
+                <li>In the file list, open <strong>Layout</strong> folder → click <strong>theme.liquid</strong></li>
+                <li>Search for <code>&lt;/head&gt;</code> (use Ctrl+F or Cmd+F)</li>
                 <li>Paste the code just before <code>&lt;/head&gt;</code></li>
-                <li>Save!</li>
+                <li>Click <strong>Save</strong> (top right)</li>
               </ol>
             </div>
 

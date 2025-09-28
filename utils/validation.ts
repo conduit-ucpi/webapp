@@ -442,6 +442,35 @@ export function isExpired(timestamp: number | string): boolean {
   return Date.now() > normalized;
 }
 
+/**
+ * Convert Unix timestamp to datetime-local input format
+ * Uses local time components to avoid timezone issues
+ * @param timestamp - Unix timestamp in seconds
+ * @returns Formatted string for datetime-local input (YYYY-MM-DDTHH:MM)
+ */
+export function timestampToDatetimeLocal(timestamp: number): string {
+  const date = new Date(timestamp * 1000);
+  const year = date.getFullYear();
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+  const day = date.getDate().toString().padStart(2, '0');
+  const hours = date.getHours().toString().padStart(2, '0');
+  const minutes = date.getMinutes().toString().padStart(2, '0');
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
+/**
+ * Convert datetime-local input value to Unix timestamp
+ * Note: datetime-local inputs only support minute precision, so seconds are always 0
+ * @param datetimeLocal - Value from datetime-local input (YYYY-MM-DDTHH:MM)
+ * @returns Unix timestamp in seconds (with seconds component as 0)
+ */
+export function datetimeLocalToTimestamp(datetimeLocal: string): number {
+  const date = new Date(datetimeLocal);
+  // datetime-local only has minute precision, ensure seconds are 0
+  date.setSeconds(0, 0);
+  return Math.floor(date.getTime() / 1000);
+}
+
 
 
 

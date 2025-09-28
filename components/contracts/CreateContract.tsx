@@ -6,7 +6,15 @@ import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import BuyerInput from '@/components/ui/BuyerInput';
-import { isValidEmail, isValidDescription, isValidAmount, isValidBuyerIdentifier, toMicroUSDC } from '@/utils/validation';
+import {
+  isValidEmail,
+  isValidDescription,
+  isValidAmount,
+  isValidBuyerIdentifier,
+  toMicroUSDC,
+  timestampToDatetimeLocal,
+  datetimeLocalToTimestamp
+} from '@/utils/validation';
 
 
 interface CreateContractForm {
@@ -36,23 +44,6 @@ export default function CreateContract() {
     return Math.floor(tomorrow.getTime() / 1000);
   };
 
-  // Convert Unix timestamp to datetime-local input format
-  const timestampToDatetimeLocal = (timestamp: number): string => {
-    // datetime-local expects YYYY-MM-DDTHH:MM format in LOCAL time (no timezone)
-    const date = new Date(timestamp * 1000);
-    const year = date.getFullYear();
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const day = date.getDate().toString().padStart(2, '0');
-    const hours = date.getHours().toString().padStart(2, '0');
-    const minutes = date.getMinutes().toString().padStart(2, '0');
-    return `${year}-${month}-${day}T${hours}:${minutes}`;
-  };
-
-  // Convert datetime-local input to Unix timestamp
-  const datetimeLocalToTimestamp = (datetimeLocal: string): number => {
-    const date = new Date(datetimeLocal);
-    return Math.floor(date.getTime() / 1000);
-  };
 
   // Get current local time in datetime-local format
   const getCurrentLocalDatetime = (): string => {

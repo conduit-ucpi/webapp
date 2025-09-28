@@ -8,7 +8,17 @@ import Button from '@/components/ui/Button';
 import BuyerInput from '@/components/ui/BuyerInput';
 import WalletInfo from '@/components/ui/WalletInfo';
 import { Wizard, WizardStep, WizardNavigation, WizardStep as Step } from '@/components/ui/Wizard';
-import { isValidEmail, isValidDescription, isValidAmount, isValidBuyerIdentifier, toMicroUSDC, formatUSDC, formatDateTimeWithTZ } from '@/utils/validation';
+import {
+  isValidEmail,
+  isValidDescription,
+  isValidAmount,
+  isValidBuyerIdentifier,
+  toMicroUSDC,
+  formatUSDC,
+  formatDateTimeWithTZ,
+  timestampToDatetimeLocal,
+  datetimeLocalToTimestamp
+} from '@/utils/validation';
 
 interface CreateContractForm {
   buyerEmail: string;
@@ -80,20 +90,6 @@ export default function CreateContractWizard() {
     return parts[parts.length - 1];
   };
 
-  const timestampToDatetimeLocal = (timestamp: number): string => {
-    const date = new Date(timestamp * 1000);
-    const year = date.getFullYear();
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const day = date.getDate().toString().padStart(2, '0');
-    const hours = date.getHours().toString().padStart(2, '0');
-    const minutes = date.getMinutes().toString().padStart(2, '0');
-    return `${year}-${month}-${day}T${hours}:${minutes}`;
-  };
-
-  const datetimeLocalToTimestamp = (datetimeLocal: string): number => {
-    const date = new Date(datetimeLocal);
-    return Math.floor(date.getTime() / 1000);
-  };
 
   const getCurrentLocalDatetime = (): string => {
     const now = new Date();

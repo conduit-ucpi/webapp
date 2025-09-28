@@ -90,18 +90,6 @@ export class ReownWalletConnectProvider {
     try {
       console.log('🔧 ReownWalletConnect: Starting connection process...')
 
-      // Check if already connected
-      if (this.isConnected()) {
-        console.log('🔧 ReownWalletConnect: Already connected, returning existing connection')
-        const address = this.getAddress()
-        const provider = this.getProvider()
-        return {
-          success: true,
-          user: { walletAddress: address },
-          provider: provider
-        }
-      }
-
       this.isConnecting = true
 
       // Detect if we're on desktop (which would use QR code for mobile wallet)
@@ -111,6 +99,18 @@ export class ReownWalletConnectProvider {
 
       if (!this.appKit) {
         await this.initialize()
+      }
+
+      // Check if already connected AFTER AppKit is initialized
+      if (this.isConnected()) {
+        console.log('🔧 ReownWalletConnect: Already connected after initialization, returning existing connection')
+        const address = this.getAddress()
+        const provider = this.getProvider()
+        return {
+          success: true,
+          user: { walletAddress: address },
+          provider: provider
+        }
       }
 
       // Enhanced session persistence - check if already connected and authenticated
@@ -428,9 +428,9 @@ export class ReownWalletConnectProvider {
         await this.initialize()
       }
 
-      // Check if already connected and try to reuse cached auth
+      // Check if already connected and try to reuse cached auth AFTER initialization
       if (this.isConnected()) {
-        console.log('🔧 ReownWalletConnect: Already connected, checking for cached auth...')
+        console.log('🔧 ReownWalletConnect: Already connected after initialization, checking for cached auth...')
         const address = this.getAddress()
         const provider = this.getProvider()
 

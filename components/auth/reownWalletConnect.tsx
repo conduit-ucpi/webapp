@@ -92,13 +92,41 @@ export class ReownWalletConnectProvider {
         await this.initialize()
       }
 
-      // Check if already connected first
+      // Enhanced session persistence - check if already connected and authenticated
       const existingCaipAddress = this.appKit.getCaipAddress()
       if (existingCaipAddress) {
-        console.log('🔧 ReownWalletConnect: Already connected, using existing connection')
+        console.log('🔧 ReownWalletConnect: Existing session found, checking authentication status...')
         const parts = existingCaipAddress.split(':')
         const address = parts[2]
         const walletProvider = this.appKit.getWalletProvider()
+
+        // Check if we have a valid cached auth token for this session
+        const cachedAuthKey = `walletconnect_auth_${address}`
+        const cachedAuth = localStorage.getItem(cachedAuthKey)
+
+        if (cachedAuth) {
+          try {
+            const authData = JSON.parse(cachedAuth)
+            // Check if cached auth is still valid (within 24 hours)
+            const authAge = Date.now() - authData.timestamp
+            const isAuthValid = authAge < (24 * 60 * 60 * 1000) // 24 hours
+
+            if (isAuthValid && authData.walletAddress === address) {
+              console.log('🔧 ReownWalletConnect: Valid cached authentication found, skipping sign step')
+              return {
+                success: true,
+                user: { walletAddress: address },
+                provider: walletProvider
+              }
+            } else {
+              console.log('🔧 ReownWalletConnect: Cached auth expired or invalid, will re-authenticate')
+              localStorage.removeItem(cachedAuthKey)
+            }
+          } catch (e) {
+            console.log('🔧 ReownWalletConnect: Failed to parse cached auth, will re-authenticate')
+            localStorage.removeItem(cachedAuthKey)
+          }
+        }
 
         if (walletProvider) {
           // Test that the provider is working and on the correct network
@@ -331,6 +359,170 @@ export class ReownWalletConnectProvider {
   /**
    * Generate signature-based auth token for backend authentication
    */
+  /**
+   * Get cached authentication token if available and valid
+   */
+  getCachedAuthToken(address: string): string | null {
+    try {
+      const cachedAuthKey = `walletconnect_auth_${address}`
+      const cachedAuth = localStorage.getItem(cachedAuthKey)
+
+      if (cachedAuth) {
+        const authData = JSON.parse(cachedAuth)
+        const authAge = Date.now() - authData.timestamp
+        const isAuthValid = authAge < (24 * 60 * 60 * 1000) // 24 hours
+
+        if (isAuthValid && authData.walletAddress === address) {
+          console.log('🔧 ReownWalletConnect: Using cached auth token')
+          return authData.authToken
+        } else {
+          localStorage.removeItem(cachedAuthKey)
+        }
+      }
+    } catch (e) {
+      console.warn('🔧 ReownWalletConnect: Failed to get cached auth token:', e)
+    }
+    return null
+  }
+
+  /**
+   * Attempt to batch connect and sign operations in a single user interaction
+   * Falls back to sequential operations if batching isn't supported
+   */
+  async connectAndAuthenticate(): Promise<{ success: boolean; authToken?: string; user?: any; provider?: any; error?: string }> {
+    try {
+      console.log('🔧 ReownWalletConnect: Attempting batched connect + authenticate...')
+
+      if (!this.appKit) {
+        await this.initialize()
+      }
+
+      // First ensure we have a connection
+      const connectionResult = await this.connect()
+      if (!connectionResult.success) {
+        return connectionResult
+      }
+
+      const provider = this.getProvider()
+      if (!provider) {
+        throw new Error('No provider available after connection')
+      }
+
+      const ethersProvider = new ethers.BrowserProvider(provider)
+      const signer = await ethersProvider.getSigner()
+      const address = await signer.getAddress()
+
+      // Check for cached auth token first
+      const cachedToken = this.getCachedAuthToken(address)
+      if (cachedToken) {
+        return {
+          success: true,
+          authToken: cachedToken,
+          user: { walletAddress: address },
+          provider: provider
+        }
+      }
+
+      // Create message to sign
+      const timestamp = Date.now()
+      const nonce = Math.random().toString(36).substring(2, 15)
+      const message = `Authenticate wallet ${address} at ${timestamp} with nonce ${nonce}`
+
+      console.log('🔧 ReownWalletConnect: Testing batched request support...')
+
+      // Try batched requests first - this might work with some WalletConnect implementations
+      try {
+        const requests = [
+          { method: 'eth_accounts' },
+          { method: 'personal_sign', params: [message, address] }
+        ]
+
+        // Test if wallet supports batching
+        const batchResult = await provider.request({
+          method: 'wallet_batch',
+          params: requests
+        })
+
+        console.log('🔧 ReownWalletConnect: ✅ Batched request succeeded!', batchResult)
+
+        if (batchResult && batchResult[1]) {
+          const signature = batchResult[1]
+          return this.buildAuthTokenResponse(address, message, signature, timestamp, nonce, provider)
+        }
+      } catch (batchError) {
+        console.log('🔧 ReownWalletConnect: Batched requests not supported, falling back to sequential:', batchError instanceof Error ? batchError.message : String(batchError))
+      }
+
+      // Alternative: Try eth_sendRawTransaction with multiple operations
+      try {
+        // Some wallets support queuing multiple operations
+        console.log('🔧 ReownWalletConnect: Trying alternative batch method...')
+
+        const multiRequest = await provider.request({
+          method: 'wallet_requestPermissions',
+          params: [
+            {
+              eth_accounts: {},
+              personal_sign: {
+                message: message,
+                address: address
+              }
+            }
+          ]
+        })
+
+        console.log('🔧 ReownWalletConnect: Multi-request result:', multiRequest)
+      } catch (multiError) {
+        console.log('🔧 ReownWalletConnect: Multi-request not supported:', multiError instanceof Error ? multiError.message : String(multiError))
+      }
+
+      // Fall back to individual signing
+      console.log('🔧 ReownWalletConnect: Falling back to individual signature request...')
+      const authToken = await this.generateSignatureAuthToken()
+      return {
+        success: true,
+        authToken,
+        user: { walletAddress: address },
+        provider: provider
+      }
+
+    } catch (error) {
+      console.error('🔧 ReownWalletConnect: ❌ Batched connect + auth failed:', error)
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
+    }
+  }
+
+  private buildAuthTokenResponse(address: string, message: string, signature: string, timestamp: number, nonce: string, provider: any) {
+    const authToken = btoa(JSON.stringify({
+      type: 'signature_auth',
+      walletAddress: address,
+      message,
+      signature,
+      timestamp,
+      nonce,
+      issuer: 'reown_walletconnect',
+      header: { alg: 'ECDSA', typ: 'SIG' },
+      payload: {
+        sub: address,
+        iat: Math.floor(timestamp / 1000),
+        iss: 'reown_walletconnect',
+        wallet_type: 'walletconnect'
+      }
+    }))
+
+    // Cache the authentication
+    const cachedAuthKey = `walletconnect_auth_${address}`
+    const authCache = { timestamp, walletAddress: address, authToken }
+    localStorage.setItem(cachedAuthKey, JSON.stringify(authCache))
+
+    return {
+      success: true,
+      authToken,
+      user: { walletAddress: address },
+      provider: provider
+    }
+  }
+
   async generateSignatureAuthToken(): Promise<string> {
     try {
       const provider = this.getProvider()
@@ -341,6 +533,12 @@ export class ReownWalletConnectProvider {
       const ethersProvider = new ethers.BrowserProvider(provider)
       const signer = await ethersProvider.getSigner()
       const address = await signer.getAddress()
+
+      // Check for cached auth token first
+      const cachedToken = this.getCachedAuthToken(address)
+      if (cachedToken) {
+        return cachedToken
+      }
 
       // Create message to sign
       const timestamp = Date.now()
@@ -390,6 +588,17 @@ export class ReownWalletConnectProvider {
       }))
 
       console.log('🔧 ReownWalletConnect: ✅ Signature auth token generated')
+
+      // Cache the authentication for this address to avoid repeated signing
+      const cachedAuthKey = `walletconnect_auth_${address}`
+      const authCache = {
+        timestamp: Date.now(),
+        walletAddress: address,
+        authToken: authToken
+      }
+      localStorage.setItem(cachedAuthKey, JSON.stringify(authCache))
+      console.log('🔧 ReownWalletConnect: Authentication cached for 24 hours')
+
       return authToken
 
     } catch (error) {

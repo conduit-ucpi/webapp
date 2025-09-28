@@ -11,6 +11,7 @@ export class ReownWalletConnectProvider {
   private config: any
   private isDesktopQRSession: boolean = false
   private onMobileActionRequired?: (actionType: 'sign' | 'transaction') => void
+  private isConnecting: boolean = false
 
   constructor(config: any, onMobileActionRequired?: (actionType: 'sign' | 'transaction') => void) {
     this.config = config
@@ -80,8 +81,28 @@ export class ReownWalletConnectProvider {
   }
 
   async connect(): Promise<{ success: boolean; user?: any; provider?: any; error?: string }> {
+    // Prevent race conditions for regular connect as well
+    if (this.isConnecting) {
+      console.log('🔧 ReownWalletConnect: Connection already in progress, waiting...')
+      return { success: false, error: 'Connection already in progress' }
+    }
+
     try {
       console.log('🔧 ReownWalletConnect: Starting connection process...')
+
+      // Check if already connected
+      if (this.isConnected()) {
+        console.log('🔧 ReownWalletConnect: Already connected, returning existing connection')
+        const address = this.getAddress()
+        const provider = this.getProvider()
+        return {
+          success: true,
+          user: { walletAddress: address },
+          provider: provider
+        }
+      }
+
+      this.isConnecting = true
 
       // Detect if we're on desktop (which would use QR code for mobile wallet)
       const deviceInfo = detectDevice()
@@ -290,6 +311,8 @@ export class ReownWalletConnectProvider {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown connection error'
       }
+    } finally {
+      this.isConnecting = false
     }
   }
 
@@ -390,6 +413,14 @@ export class ReownWalletConnectProvider {
    * Falls back to sequential operations if batching isn't supported
    */
   async connectAndAuthenticate(): Promise<{ success: boolean; authToken?: string; user?: any; provider?: any; error?: string }> {
+    // Prevent race conditions - if already connecting, wait for current attempt
+    if (this.isConnecting) {
+      console.log('🔧 ReownWalletConnect: Connection already in progress, waiting...')
+      return { success: false, error: 'Connection already in progress' }
+    }
+
+    this.isConnecting = true
+
     try {
       console.log('🔧 ReownWalletConnect: Attempting batched connect + authenticate...')
 
@@ -397,29 +428,67 @@ export class ReownWalletConnectProvider {
         await this.initialize()
       }
 
-      // First ensure we have a connection
-      const connectionResult = await this.connect()
-      if (!connectionResult.success) {
-        return connectionResult
+      // Check if already connected and try to reuse cached auth
+      if (this.isConnected()) {
+        console.log('🔧 ReownWalletConnect: Already connected, checking for cached auth...')
+        const address = this.getAddress()
+        const provider = this.getProvider()
+
+        if (address) {
+          // Check for cached auth token first
+          const cachedToken = this.getCachedAuthToken(address)
+          if (cachedToken) {
+            console.log('🔧 ReownWalletConnect: Found cached auth token, returning...')
+            return {
+              success: true,
+              authToken: cachedToken,
+              user: { walletAddress: address },
+              provider: provider
+            }
+          }
+
+          // No cached token, continue with authentication (skip connection)
+          console.log('🔧 ReownWalletConnect: No cached auth, proceeding with signature request...')
+        }
       }
 
-      const provider = this.getProvider()
-      if (!provider) {
-        throw new Error('No provider available after connection')
-      }
+      // If not already connected, establish connection first
+      let provider: any
+      let address: string
 
-      const ethersProvider = new ethers.BrowserProvider(provider)
-      const signer = await ethersProvider.getSigner()
-      const address = await signer.getAddress()
+      if (this.isConnected()) {
+        // Already connected, get existing connection details
+        provider = this.getProvider()
+        const connectedAddress = this.getAddress()
+        if (!provider || !connectedAddress) {
+          throw new Error('Connected but missing provider or address')
+        }
+        address = connectedAddress
+      } else {
+        // Need to connect first
+        const connectionResult = await this.connect()
+        if (!connectionResult.success) {
+          return connectionResult
+        }
 
-      // Check for cached auth token first
-      const cachedToken = this.getCachedAuthToken(address)
-      if (cachedToken) {
-        return {
-          success: true,
-          authToken: cachedToken,
-          user: { walletAddress: address },
-          provider: provider
+        provider = this.getProvider()
+        if (!provider) {
+          throw new Error('No provider available after connection')
+        }
+
+        const ethersProvider = new ethers.BrowserProvider(provider)
+        const signer = await ethersProvider.getSigner()
+        address = await signer.getAddress()
+
+        // Check for cached auth token again after connection
+        const cachedToken = this.getCachedAuthToken(address)
+        if (cachedToken) {
+          return {
+            success: true,
+            authToken: cachedToken,
+            user: { walletAddress: address },
+            provider: provider
+          }
         }
       }
 
@@ -489,6 +558,8 @@ export class ReownWalletConnectProvider {
     } catch (error) {
       console.error('🔧 ReownWalletConnect: ❌ Batched connect + auth failed:', error)
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
+    } finally {
+      this.isConnecting = false
     }
   }
 

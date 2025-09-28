@@ -60,8 +60,9 @@ export default function ContractCreate() {
     quantity
   } = router.query;
   
-  // Check if we're in an iframe
+  // Check if we're in an iframe or popup
   const [isInIframe, setIsInIframe] = useState(false);
+  const [isInPopup, setIsInPopup] = useState(false);
   
   // Form state
   const [form, setForm] = useState<ContractCreateForm>({
@@ -109,9 +110,10 @@ export default function ContractCreate() {
     }
   }, [seller, amount, description]);
 
-  // Detect iframe environment
+  // Detect iframe and popup environment
   useEffect(() => {
     setIsInIframe(window !== window.parent);
+    setIsInPopup(window.opener !== null);
   }, []);
 
   // Send postMessage to parent window
@@ -435,8 +437,18 @@ export default function ContractCreate() {
         setTimeout(() => {
           sendPostMessage({ type: 'close_modal' });
         }, 2000);
+      } else if (isInPopup) {
+        // In popup - close popup and redirect opener to return URL
+        setTimeout(() => {
+          if (returnUrl && typeof returnUrl === 'string' && window.opener) {
+            // Redirect the opener window to the return URL
+            window.opener.location.href = returnUrl;
+          }
+          // Close the popup
+          window.close();
+        }, 2000);
       } else {
-        // Not in iframe - redirect to return URL or dashboard
+        // Not in iframe or popup - redirect to return URL or dashboard
         if (returnUrl && typeof returnUrl === 'string') {
           window.location.href = returnUrl;
         } else {
@@ -468,9 +480,18 @@ export default function ContractCreate() {
 
   const handleCancel = () => {
     sendPostMessage({ type: 'payment_cancelled' });
-    
+
     if (isInIframe) {
       sendPostMessage({ type: 'close_modal' });
+    } else if (isInPopup) {
+      // In popup - close popup and return to opener
+      if (window.opener) {
+        // Optionally redirect opener back to store
+        if (returnUrl && typeof returnUrl === 'string') {
+          window.opener.location.href = returnUrl;
+        }
+      }
+      window.close();
     } else {
       if (returnUrl && typeof returnUrl === 'string') {
         window.location.href = returnUrl;
@@ -483,7 +504,7 @@ export default function ContractCreate() {
   // Loading screen for initialization - show if config is missing or auth is loading
   if (!config || authLoading) {
     return (
-      <div className={`min-h-screen flex items-center justify-center ${isInIframe ? 'bg-gray-50' : 'bg-white'}`}>
+      <div className={`min-h-screen flex items-center justify-center ${isInIframe || isInPopup ? 'bg-gray-50' : 'bg-white'}`}>
         <Head children={
           <>
             <title>Create Contract - Conduit UCPI</title>
@@ -501,7 +522,7 @@ export default function ContractCreate() {
   // Not authenticated
   if (!user) {
     return (
-      <div className={`min-h-screen flex items-center justify-center ${isInIframe ? 'bg-gray-50' : 'bg-white'}`}>
+      <div className={`min-h-screen flex items-center justify-center ${isInIframe || isInPopup ? 'bg-gray-50' : 'bg-white'}`}>
         <Head children={
           <>
             <title>Create Contract - Conduit UCPI</title>
@@ -518,7 +539,7 @@ export default function ContractCreate() {
   }
 
   return (
-    <div className={`${isInIframe ? 'min-h-screen bg-gray-50' : 'min-h-screen bg-white'}`}>
+    <div className={`${isInIframe || isInPopup ? 'min-h-screen bg-gray-50' : 'min-h-screen bg-white'}`}>
       <Head children={
         <>
           <title>Create Contract - Conduit UCPI</title>
@@ -526,7 +547,7 @@ export default function ContractCreate() {
         </>
       } />
 
-      <div className={`${isInIframe ? 'p-4' : 'container mx-auto p-6'} max-w-md mx-auto`}>
+      <div className={`${isInIframe || isInPopup ? 'p-4' : 'container mx-auto p-6'} max-w-md mx-auto`}>
         {step === 'create' ? (
           <>
             {/* Wallet Info Section */}
@@ -534,7 +555,7 @@ export default function ContractCreate() {
             
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <h2 className="text-xl font-semibold text-gray-900 mb-4">
-                {isInIframe ? 'Stablecoin payment protected by escrow, no gas fees' : 'Create Escrow Contract'}
+                {isInIframe || isInPopup ? 'Stablecoin payment protected by escrow, no gas fees' : 'Create Escrow Contract'}
               </h2>
               
               <div className="space-y-4">
@@ -563,7 +584,7 @@ export default function ContractCreate() {
                   disabled={isLoading || !!amount} // Disable if provided via query param
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  {isInIframe ? 'Secure escrow payment' : 'Amount includes $1 fee, minimum $1.001'}
+                  {isInIframe || isInPopup ? 'Secure escrow payment' : 'Amount includes $1 fee, minimum $1.001'}
                 </p>
               </div>
 
@@ -611,7 +632,7 @@ export default function ContractCreate() {
                       {loadingMessage || 'Creating...'}
                     </>
                   ) : (
-                    isInIframe ? 'Create Payment' : 'Create Contract'
+                    isInIframe || isInPopup ? 'Create Payment' : 'Create Contract'
                   )}
                 </Button>
               </div>

@@ -95,6 +95,7 @@ export class ReownWalletConnectProvider {
       // Detect if we're on desktop (which would use QR code for mobile wallet)
       const deviceInfo = detectDevice()
       this.isDesktopQRSession = deviceInfo.isDesktop
+      const isMobile = deviceInfo.isMobile || deviceInfo.isTablet
       console.log('🔧 ReownWalletConnect: Device type:', deviceInfo.isDesktop ? 'Desktop (QR code flow)' : 'Mobile/Tablet (direct flow)')
 
       if (!this.appKit) {
@@ -188,20 +189,122 @@ export class ReownWalletConnectProvider {
       // AppKit manages the connection state internally
       return new Promise((resolve) => {
         let isResolved = false
-        const resolveOnce = (result: any) => {
+        let checkAttempts = 0
+        const maxAttempts = 120 // 60 seconds with 500ms intervals
+
+        // Track cleanup functions
+        const cleanupFunctions: Array<() => void> = []
+
+        let resolveOnce = (result: any) => {
           if (!isResolved) {
             isResolved = true
+
+            // Clean up all listeners and intervals
+            document.removeEventListener('visibilitychange', handleVisibilityChange)
+            if (isMobile) {
+              window.removeEventListener('focus', handleFocus)
+              if (mobilePollingInterval) {
+                clearInterval(mobilePollingInterval)
+              }
+            }
+
+            // Execute all cleanup functions
+            cleanupFunctions.forEach(cleanup => {
+              try {
+                cleanup()
+              } catch (error) {
+                console.warn('🔧 ReownWalletConnect: Cleanup error:', error)
+              }
+            })
+
             resolve(result)
           }
+        }
+
+        // Add visibility change listener to detect when user returns from wallet app
+        const handleVisibilityChange = () => {
+          if (document.visibilityState === 'visible' && !isResolved) {
+            console.log('🔧 ReownWalletConnect: App became visible, checking connection status...')
+            // Force a check when the page becomes visible again
+            checkConnection()
+          }
+        }
+        document.addEventListener('visibilitychange', handleVisibilityChange)
+
+        // On mobile, also use focus event as backup for detection
+        const handleFocus = () => {
+          if (!isResolved) {
+            console.log('🔧 ReownWalletConnect: Window focused, checking connection status...')
+            checkConnection()
+          }
+        }
+        if (isMobile) {
+          window.addEventListener('focus', handleFocus)
+        }
+
+        // Mobile-specific: Additional polling when WalletConnect modal is open
+        let mobilePollingInterval: any = null
+        if (isMobile) {
+          console.log('🔧 ReownWalletConnect: Mobile detected, using additional polling...')
+          mobilePollingInterval = setInterval(() => {
+            if (!isResolved) {
+              checkConnection()
+            } else if (mobilePollingInterval) {
+              clearInterval(mobilePollingInterval)
+            }
+          }, 1000) // Check every 1000ms on mobile
         }
 
         const checkConnection = async () => {
           if (isResolved) return // Don't continue if already resolved
 
+          checkAttempts++
+          if (checkAttempts > maxAttempts) {
+            document.removeEventListener('visibilitychange', handleVisibilityChange)
+            resolveOnce({
+              success: false,
+              error: 'Connection timeout - user may have cancelled'
+            })
+            return
+          }
+
           try {
             // Check if we have an active connection by getting the account
             // The AppKit modal state is managed internally
             const caipAddress = this.appKit.getCaipAddress()
+
+            // Also check if modal is still open - if it's closed but no connection, user cancelled
+            const modalState = this.appKit.getState()
+            if (modalState?.open === false && !caipAddress && checkAttempts > 4) {
+              console.log('🔧 ReownWalletConnect: Modal closed without connection')
+              resolveOnce({
+                success: false,
+                error: 'User cancelled connection'
+              })
+              return
+            }
+
+            // Mobile-specific: If on mobile and we've been checking for a while, try to refresh the modal state
+            if (isMobile && checkAttempts > 10 && checkAttempts % 10 === 0) {
+              console.log('🔧 ReownWalletConnect: Mobile refresh attempt - closing and reopening modal...')
+              try {
+                // Close the modal briefly then reopen to refresh state
+                await this.appKit.close()
+                await new Promise(resolve => setTimeout(resolve, 100))
+
+                // Check if connection was established while modal was closed
+                const refreshedCaip = this.appKit.getCaipAddress()
+                if (refreshedCaip) {
+                  console.log('🔧 ReownWalletConnect: Connection found after refresh!')
+                  // Continue to normal connection handling
+                } else {
+                  // Reopen modal for user to continue
+                  await this.appKit.open()
+                }
+              } catch (refreshError) {
+                console.log('🔧 ReownWalletConnect: Could not refresh modal:', refreshError)
+              }
+            }
 
             if (caipAddress) {
               // Extract address from CAIP format (e.g., "eip155:8453:0x...")
@@ -233,6 +336,9 @@ export class ReownWalletConnectProvider {
                 setTimeout(checkConnection, 500)
                 return
               }
+
+              // Clean up visibility listener
+              document.removeEventListener('visibilitychange', handleVisibilityChange)
 
               // Verify the network is correct
               try {
@@ -293,16 +399,65 @@ export class ReownWalletConnectProvider {
           }
         }
 
+        // Set up event listeners for AppKit state changes
+        const subscribeToEvents = () => {
+          try {
+            // Subscribe to AppKit events if available
+            if (this.appKit.subscribeEvents) {
+              console.log('🔧 ReownWalletConnect: Setting up event subscriptions...')
+
+              const unsubscribe = this.appKit.subscribeEvents((event: any) => {
+                console.log('🔧 ReownWalletConnect: AppKit event:', event)
+
+                // Check on any connection-related event
+                if (event?.type === 'session_event' ||
+                    event?.type === 'connect' ||
+                    event?.type === 'session_update' ||
+                    event?.name === 'accountsChanged') {
+                  console.log('🔧 ReownWalletConnect: Session event detected, checking connection...')
+                  checkConnection()
+                }
+              })
+
+              // Add cleanup function
+              if (unsubscribe) {
+                cleanupFunctions.push(() => unsubscribe())
+              }
+            }
+
+            // Also try to subscribe to the underlying provider events if available
+            const provider = this.appKit.getWalletProvider()
+            if (provider && provider.on) {
+              console.log('🔧 ReownWalletConnect: Setting up provider event listeners...')
+
+              const handleConnect = () => {
+                console.log('🔧 ReownWalletConnect: Provider connect event, checking connection...')
+                checkConnection()
+              }
+
+              provider.on('connect', handleConnect)
+              provider.on('session_event', handleConnect)
+              provider.on('session_update', handleConnect)
+
+              // Add cleanup function
+              cleanupFunctions.push(() => {
+                if (provider.off) {
+                  provider.off('connect', handleConnect)
+                  provider.off('session_event', handleConnect)
+                  provider.off('session_update', handleConnect)
+                }
+              })
+            }
+          } catch (error) {
+            console.log('🔧 ReownWalletConnect: Could not set up event subscriptions:', error)
+          }
+        }
+
+        // Set up event subscriptions
+        subscribeToEvents()
+
         // Start checking
         checkConnection()
-
-        // Timeout after 60 seconds (increased from 30)
-        setTimeout(() => {
-          resolveOnce({
-            success: false,
-            error: 'Connection timeout - user may have cancelled'
-          })
-        }, 60000)
       })
 
     } catch (error) {

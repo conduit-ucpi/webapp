@@ -191,6 +191,7 @@ export class ReownWalletConnectProvider {
         let isResolved = false
         let checkAttempts = 0
         const maxAttempts = 120 // 60 seconds with 500ms intervals
+        let hasInitiatedConnection = false
 
         // Track cleanup functions
         const cleanupFunctions: Array<() => void> = []
@@ -222,9 +223,10 @@ export class ReownWalletConnectProvider {
         }
 
         // Add visibility change listener to detect when user returns from wallet app
+        // Only trigger if we've actually initiated a connection
         const handleVisibilityChange = () => {
-          if (document.visibilityState === 'visible' && !isResolved) {
-            console.log('🔧 ReownWalletConnect: App became visible, checking connection status...')
+          if (document.visibilityState === 'visible' && !isResolved && hasInitiatedConnection) {
+            console.log('🔧 ReownWalletConnect: App became visible after wallet interaction, checking connection status...')
             // Force a check when the page becomes visible again
             checkConnection()
           }
@@ -233,8 +235,8 @@ export class ReownWalletConnectProvider {
 
         // On mobile, also use focus event as backup for detection
         const handleFocus = () => {
-          if (!isResolved) {
-            console.log('🔧 ReownWalletConnect: Window focused, checking connection status...')
+          if (!isResolved && hasInitiatedConnection) {
+            console.log('🔧 ReownWalletConnect: Window focused after wallet interaction, checking connection status...')
             checkConnection()
           }
         }
@@ -243,17 +245,8 @@ export class ReownWalletConnectProvider {
         }
 
         // Mobile-specific: Additional polling when WalletConnect modal is open
+        // Will be started only after connection is initiated
         let mobilePollingInterval: any = null
-        if (isMobile) {
-          console.log('🔧 ReownWalletConnect: Mobile detected, using additional polling...')
-          mobilePollingInterval = setInterval(() => {
-            if (!isResolved) {
-              checkConnection()
-            } else if (mobilePollingInterval) {
-              clearInterval(mobilePollingInterval)
-            }
-          }, 1000) // Check every 1000ms on mobile
-        }
 
         const checkConnection = async () => {
           if (isResolved) return // Don't continue if already resolved
@@ -303,6 +296,25 @@ export class ReownWalletConnectProvider {
                 }
               } catch (refreshError) {
                 console.log('🔧 ReownWalletConnect: Could not refresh modal:', refreshError)
+              }
+            }
+
+            // Check if we detect any wallet provider activity indicating connection attempt
+            const walletProvider = this.appKit.getWalletProvider()
+            if (walletProvider && !hasInitiatedConnection) {
+              console.log('🔧 ReownWalletConnect: Wallet provider detected, connection initiated')
+              hasInitiatedConnection = true
+
+              // Start mobile polling now that connection is initiated
+              if (isMobile && !mobilePollingInterval) {
+                console.log('🔧 ReownWalletConnect: Starting mobile polling after connection initiation...')
+                mobilePollingInterval = setInterval(() => {
+                  if (!isResolved) {
+                    checkConnection()
+                  } else if (mobilePollingInterval) {
+                    clearInterval(mobilePollingInterval)
+                  }
+                }, 1000) // Check every 1000ms on mobile
               }
             }
 
@@ -409,6 +421,28 @@ export class ReownWalletConnectProvider {
               const unsubscribe = this.appKit.subscribeEvents((event: any) => {
                 console.log('🔧 ReownWalletConnect: AppKit event:', event)
 
+                // Check for events that indicate wallet selection/connection attempt
+                if (event?.type === 'wallet_selected' ||
+                    event?.type === 'connect_started' ||
+                    event?.type === 'session_request') {
+                  console.log('🔧 ReownWalletConnect: Connection initiated event detected')
+                  if (!hasInitiatedConnection) {
+                    hasInitiatedConnection = true
+
+                    // Start mobile polling now that connection is initiated
+                    if (isMobile && !mobilePollingInterval) {
+                      console.log('🔧 ReownWalletConnect: Starting mobile polling after wallet selection...')
+                      mobilePollingInterval = setInterval(() => {
+                        if (!isResolved) {
+                          checkConnection()
+                        } else if (mobilePollingInterval) {
+                          clearInterval(mobilePollingInterval)
+                        }
+                      }, 1000)
+                    }
+                  }
+                }
+
                 // Check on any connection-related event
                 if (event?.type === 'session_event' ||
                     event?.type === 'connect' ||
@@ -432,6 +466,22 @@ export class ReownWalletConnectProvider {
 
               const handleConnect = () => {
                 console.log('🔧 ReownWalletConnect: Provider connect event, checking connection...')
+                if (!hasInitiatedConnection) {
+                  console.log('🔧 ReownWalletConnect: Connection initiated via provider event')
+                  hasInitiatedConnection = true
+
+                  // Start mobile polling now that connection is initiated
+                  if (isMobile && !mobilePollingInterval) {
+                    console.log('🔧 ReownWalletConnect: Starting mobile polling after provider event...')
+                    mobilePollingInterval = setInterval(() => {
+                      if (!isResolved) {
+                        checkConnection()
+                      } else if (mobilePollingInterval) {
+                        clearInterval(mobilePollingInterval)
+                      }
+                    }, 1000)
+                  }
+                }
                 checkConnection()
               }
 

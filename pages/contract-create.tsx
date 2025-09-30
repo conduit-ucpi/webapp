@@ -126,6 +126,44 @@ export default function ContractCreate() {
     }
   };
 
+  // Helper function to build WordPress payment status URLs
+  const buildWordPressStatusUrl = (status: 'completed' | 'cancelled' | 'error', additionalParams: Record<string, string> = {}): string => {
+    if (!returnUrl || typeof returnUrl !== 'string' || !order_id || wordpress_source !== 'true') {
+      return (typeof returnUrl === 'string') ? returnUrl : '/dashboard'; // Return original URL if not WordPress integration
+    }
+
+    try {
+      const url = new URL(returnUrl);
+      const orderId = order_id;
+
+      // Extract order key from original return URL if it exists
+      const orderKey = url.searchParams.get('key') || '';
+
+      // Build new URL with /usdc-payment-status/ path
+      const baseUrl = `${url.origin}/usdc-payment-status/${orderId}/`;
+      const statusUrl = new URL(baseUrl);
+
+      // Add required parameters
+      if (orderKey) {
+        statusUrl.searchParams.set('key', orderKey);
+      }
+      statusUrl.searchParams.set('payment_status', status);
+
+      // Add additional parameters (contract_id, tx_hash, error, etc.)
+      Object.entries(additionalParams).forEach(([key, value]) => {
+        if (value) {
+          statusUrl.searchParams.set(key, value);
+        }
+      });
+
+      console.log('🔧 ContractCreate: Built WordPress status URL:', statusUrl.toString());
+      return statusUrl.toString();
+    } catch (error) {
+      console.error('🔧 ContractCreate: Failed to build WordPress status URL:', error);
+      return (typeof returnUrl === 'string') ? returnUrl : '/dashboard'; // Fallback to original URL
+    }
+  };
+
   // Update payment step status
   const updatePaymentStep = (stepId: string, status: 'active' | 'completed' | 'error') => {
     setPaymentSteps(prev => prev.map(step => {
@@ -486,8 +524,12 @@ export default function ContractCreate() {
         // In popup - close popup and redirect opener to return URL
         setTimeout(() => {
           if (returnUrl && typeof returnUrl === 'string' && window.opener) {
-            // Redirect the opener window to the return URL
-            window.opener.location.href = returnUrl;
+            // Build WordPress status URL for completed payment
+            const completedUrl = buildWordPressStatusUrl('completed', {
+              contract_id: contractId || '',
+              tx_hash: result?.depositTxHash || ''
+            });
+            window.opener.location.href = completedUrl;
           }
           // Close the popup
           window.close();
@@ -495,7 +537,12 @@ export default function ContractCreate() {
       } else {
         // Not in iframe or popup - redirect to return URL or dashboard
         if (returnUrl && typeof returnUrl === 'string') {
-          window.location.href = returnUrl;
+          // Build WordPress status URL for completed payment
+          const completedUrl = buildWordPressStatusUrl('completed', {
+            contract_id: contractId || '',
+            tx_hash: result?.depositTxHash || ''
+          });
+          window.location.href = completedUrl;
         } else {
           router.push('/dashboard');
         }
@@ -517,7 +564,23 @@ export default function ContractCreate() {
         type: 'payment_error',
         error: error.message || 'Payment failed'
       });
-      alert(error.message || 'Payment failed');
+
+      // For WordPress integration, redirect to error status page
+      if (wordpress_source === 'true' && returnUrl && typeof returnUrl === 'string') {
+        const errorUrl = buildWordPressStatusUrl('error', {
+          error: encodeURIComponent(error.message || 'Payment failed')
+        });
+
+        if (isInPopup && window.opener) {
+          window.opener.location.href = errorUrl;
+          window.close();
+        } else if (!isInIframe) {
+          window.location.href = errorUrl;
+        }
+      } else {
+        alert(error.message || 'Payment failed');
+      }
+
       setIsLoading(false);
       setLoadingMessage('');
     }
@@ -531,15 +594,18 @@ export default function ContractCreate() {
     } else if (isInPopup) {
       // In popup - close popup and return to opener
       if (window.opener) {
-        // Optionally redirect opener back to store
+        // For WordPress integration, redirect to cancelled status page
         if (returnUrl && typeof returnUrl === 'string') {
-          window.opener.location.href = returnUrl;
+          const cancelUrl = buildWordPressStatusUrl('cancelled');
+          window.opener.location.href = cancelUrl;
         }
       }
       window.close();
     } else {
       if (returnUrl && typeof returnUrl === 'string') {
-        window.location.href = returnUrl;
+        // Build WordPress status URL for cancelled payment
+        const cancelUrl = buildWordPressStatusUrl('cancelled');
+        window.location.href = cancelUrl;
       } else {
         router.push('/dashboard');
       }

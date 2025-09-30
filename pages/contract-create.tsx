@@ -57,7 +57,9 @@ export default function ContractCreate() {
     product_id,
     variant_id,
     title,
-    quantity
+    quantity,
+    webhook_url,
+    wordpress_source
   } = router.query;
   
   // Check if we're in an iframe or popup
@@ -160,6 +162,19 @@ export default function ContractCreate() {
 
     if (!descriptionValidator(form.description)) {
       newErrors.description = 'Description must be 1-160 characters';
+    }
+
+    // Validate WordPress integration parameters
+    if (wordpress_source === 'true' && !webhook_url) {
+      console.error('WordPress integration missing webhook_url parameter');
+      alert('Configuration error: Missing webhook URL for WordPress integration');
+      return false;
+    }
+
+    if (wordpress_source === 'true' && !order_id) {
+      console.error('WordPress integration missing order_id parameter');
+      alert('Configuration error: Missing order ID for WordPress integration');
+      return false;
     }
 
     setErrors(newErrors);
@@ -377,8 +392,38 @@ export default function ContractCreate() {
         console.log('🔧 ContractCreate: Deposit transaction hash received:', result.depositTxHash);
         console.log('🔧 ContractCreate: Contract address should receive USDC:', result.contractAddress);
 
-        // TODO: Add transaction receipt verification here
-        // We should wait for the transaction to be mined and verify it succeeded
+        // If webhook_url is provided (WordPress integration), verify payment and send webhook
+        if (webhook_url && wordpress_source === 'true' && authenticatedFetch) {
+          console.log('🔧 ContractCreate: WordPress integration detected, sending verification webhook');
+          try {
+            const verifyResponse = await authenticatedFetch('/api/payment/verify-and-webhook', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                transaction_hash: result.depositTxHash,
+                contract_address: result.contractAddress,
+                webhook_url: webhook_url,
+                order_id: parseInt(order_id as string || '0'),
+                expected_amount: parseFloat(form.amount),
+                expected_recipient: form.seller,
+                merchant_wallet: form.seller
+              })
+            });
+
+            if (!verifyResponse.ok) {
+              console.error('🔧 ContractCreate: Payment verification failed:', await verifyResponse.text());
+              // Don't fail the payment flow - payment was successful, just webhook failed
+            } else {
+              const verifyResult = await verifyResponse.json();
+              console.log('🔧 ContractCreate: Payment verification and webhook sent successfully:', verifyResult);
+            }
+          } catch (verifyError) {
+            console.error('🔧 ContractCreate: Payment verification error:', verifyError);
+            // Don't fail the payment flow - payment was successful, just webhook failed
+          }
+        }
       } else {
         console.warn('🔧 ContractCreate: No deposit transaction hash received!');
       }

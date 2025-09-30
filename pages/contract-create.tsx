@@ -126,6 +126,17 @@ export default function ContractCreate() {
     }
   };
 
+  // Extract WordPress order key from return URL
+  const getWordPressOrderKey = (): string | null => {
+    if (!returnUrl || typeof returnUrl !== 'string') return null;
+    try {
+      const url = new URL(returnUrl);
+      return url.searchParams.get('key');
+    } catch {
+      return null;
+    }
+  };
+
   // Helper function to build WordPress payment status URLs
   const buildWordPressStatusUrl = (status: 'completed' | 'cancelled' | 'error', additionalParams: Record<string, string> = {}): string => {
     if (!returnUrl || typeof returnUrl !== 'string' || !order_id || wordpress_source !== 'true') {
@@ -442,6 +453,7 @@ export default function ContractCreate() {
               body: JSON.stringify({
                 transaction_hash: result.depositTxHash,
                 contract_address: result.contractAddress,
+                contract_id: contractId,
                 webhook_url: webhook_url,
                 order_id: parseInt(order_id as string || '0'),
                 expected_amount: parseFloat(form.amount),

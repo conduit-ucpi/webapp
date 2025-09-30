@@ -20,7 +20,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       headers['X-API-Key'] = process.env.X_API_KEY;
     }
 
-    const response = await fetch(`${process.env.CHAIN_SERVICE_URL}/api/verify-and-webhook`, {
+    const response = await fetch(`${process.env.CHAIN_SERVICE_URL}/api/chain/verify-and-webhook`, {
       method: 'POST',
       headers,
       body: JSON.stringify(req.body)

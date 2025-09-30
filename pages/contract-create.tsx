@@ -445,7 +445,7 @@ export default function ContractCreate() {
                 webhook_url: webhook_url,
                 order_id: parseInt(order_id as string || '0'),
                 expected_amount: parseFloat(form.amount),
-                expected_recipient: form.seller,
+                expected_recipient: result.contractAddress,
                 merchant_wallet: form.seller
               })
             });

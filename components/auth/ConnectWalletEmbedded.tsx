@@ -110,8 +110,28 @@ export default function ConnectWalletEmbedded({
 
         if (result.success && result.user) {
           console.log('WalletConnect connected:', result.user.walletAddress);
-          // Force page refresh to update auth context
-          window.location.reload();
+
+          // Now authenticate with backend using signature
+          const { BackendAuth } = await import('./backendAuth');
+          const backendAuth = BackendAuth.getInstance();
+
+          try {
+            // Generate signature auth token
+            const authToken = await reownProvider.generateSignatureAuthToken();
+
+            // Send to backend for authentication
+            const backendResult = await backendAuth.login(authToken, result.user.walletAddress);
+
+            if (backendResult.success) {
+              console.log('Backend authentication successful');
+              // The page should now recognize the user as authenticated
+              // No need to reload - the auth context should update
+            } else {
+              console.error('Backend authentication failed:', backendResult.error);
+            }
+          } catch (authError) {
+            console.error('Authentication failed:', authError);
+          }
         }
       } catch (err) {
         console.error('WalletConnect failed:', err);

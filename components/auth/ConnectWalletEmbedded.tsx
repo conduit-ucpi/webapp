@@ -97,22 +97,27 @@ export default function ConnectWalletEmbedded({
   // If showTwoOptionLayout is enabled, show two clear buttons
   if (showTwoOptionLayout) {
     const handleWalletConnect = async () => {
-      // Directly open Reown/WalletConnect modal
+      // For WalletConnect, we need to use the direct provider since Web3Auth modal doesn't support it
       try {
-        // Import and use Reown WalletConnect directly
-        const { ReownWalletConnectProvider } = await import('./reownWalletConnect');
-        const reownProvider = new ReownWalletConnectProvider(config);
+        if (connectWithAdapter) {
+          // Try connectWithAdapter first (works with no-modal provider)
+          await connectWithAdapter('walletconnect');
+        } else {
+          // Web3Auth modal provider doesn't have connectWithAdapter, use direct Reown
+          const { ReownWalletConnectProvider } = await import('./reownWalletConnect');
+          const reownProvider = new ReownWalletConnectProvider(config);
 
-        // Initialize (it will check internally if already initialized)
-        await reownProvider.initialize();
+          // Initialize (it will check internally if already initialized)
+          await reownProvider.initialize();
 
-        // Connect and open the modal
-        const result = await reownProvider.connect();
+          // Connect and open the modal
+          const result = await reownProvider.connect();
 
-        if (result.success && result.user) {
-          // Handle successful connection
-          // The auth context should update automatically
-          console.log('WalletConnect connected:', result.user.walletAddress);
+          if (result.success && result.user) {
+            console.log('WalletConnect connected:', result.user.walletAddress);
+            // Force page refresh to update auth context
+            window.location.reload();
+          }
         }
       } catch (err) {
         console.error('WalletConnect failed:', err);

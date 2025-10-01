@@ -112,6 +112,10 @@ export default function ConnectWalletEmbedded({
         const { ReownWalletConnectProvider } = await import('./reownWalletConnect');
         const reownProvider = new ReownWalletConnectProvider(config);
 
+        // Initialize and disconnect any existing session to force fresh connection
+        await reownProvider.initialize();
+        await reownProvider.disconnect();
+
         // 1. Open WalletConnect modal and connect
         const connectResult = await reownProvider.connect();
         if (!connectResult.success) {

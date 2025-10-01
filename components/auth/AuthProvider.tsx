@@ -437,7 +437,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
       if (walletConnectProvider && walletConnectProvider.isConnected()) {
         console.log('[AuthProvider] Returning WalletConnect ethers provider');
         try {
-          return walletConnectProvider.createEIP1193Provider();
+          const eip1193Provider = walletConnectProvider.createEIP1193Provider();
+          // Wrap with ethers BrowserProvider for proper contract support
+          const { BrowserProvider } = require('ethers');
+          return new BrowserProvider(eip1193Provider);
         } catch (error) {
           console.error('[AuthProvider] Failed to create WalletConnect provider:', error);
         }
@@ -964,7 +967,10 @@ function RegularAuthProvider({ children }: AuthProviderProps) {
       if (walletConnectProvider && walletConnectProvider.isConnected()) {
         console.log('[AuthProvider] Returning WalletConnect ethers provider');
         try {
-          return walletConnectProvider.createEIP1193Provider();
+          const eip1193Provider = walletConnectProvider.createEIP1193Provider();
+          // Wrap with ethers BrowserProvider for proper contract support
+          const { BrowserProvider } = require('ethers');
+          return new BrowserProvider(eip1193Provider);
         } catch (error) {
           console.error('[AuthProvider] Failed to create WalletConnect provider:', error);
         }

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/components/auth';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { getNetworkName } from '@/utils/networkUtils';
-import { formatWalletAddress, formatCurrency } from '@/utils/validation';
+import { formatWalletAddress } from '@/utils/validation';
 import { fetchUSDCBalance } from '@/utils/usdcBalance';
 import Button from '@/components/ui/Button';
 
@@ -31,9 +31,10 @@ export default function WalletInfo({ className = '' }: WalletInfoProps) {
             ethersProvider
           );
 
-          // Format to always show 4 decimal places
-          const formatted = formatCurrency(formattedBalance, 'USDC');
-          setBalance(formatted.amount);
+          // The fetchUSDCBalance utility already returns properly formatted USDC
+          // Just ensure 4 decimal places for display consistency
+          const balanceNumber = parseFloat(formattedBalance);
+          setBalance(balanceNumber.toFixed(4));
         } catch (error) {
           console.error('Failed to fetch USDC balance:', error);
           setBalance('Error');

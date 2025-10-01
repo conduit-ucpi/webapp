@@ -105,22 +105,18 @@ export default function ConnectWalletEmbedded({
         // Initialize (it will check internally if already initialized)
         await reownProvider.initialize();
 
-        // Connect and open the modal
-        const result = await reownProvider.connect();
+        // Use connectAndAuthenticate which handles both connection and signing
+        const result = await reownProvider.connectAndAuthenticate();
 
-        if (result.success && result.user) {
-          console.log('WalletConnect connected:', result.user.walletAddress);
+        if (result.success && result.authToken && result.user) {
+          console.log('WalletConnect connected and authenticated:', result.user.walletAddress);
 
-          // Now authenticate with backend using signature
+          // Send auth token to backend
           const { BackendAuth } = await import('./backendAuth');
           const backendAuth = BackendAuth.getInstance();
 
           try {
-            // Generate signature auth token
-            const authToken = await reownProvider.generateSignatureAuthToken();
-
-            // Send to backend for authentication
-            const backendResult = await backendAuth.login(authToken, result.user.walletAddress);
+            const backendResult = await backendAuth.login(result.authToken, result.user.walletAddress);
 
             if (backendResult.success) {
               console.log('Backend authentication successful');

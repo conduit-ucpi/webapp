@@ -13,6 +13,7 @@ import { useFarcaster } from '@/components/farcaster/FarcasterDetectionProvider'
 import { useWalletAddress } from '@/hooks/useWalletAddress';
 import { TransferUSDCRequest } from '@/types';
 import { ensureHexPrefix } from '@/utils/hexUtils';
+import { fetchUSDCBalance } from '@/utils/usdcBalance';
 
 interface WalletBalances {
   native: string;
@@ -154,28 +155,17 @@ export default function Wallet() {
       const nativeFormatted = ethers.formatEther(nativeBalance);
       console.log('Native balance:', { raw: nativeBalance.toString(), formatted: nativeFormatted });
 
-      // Get USDC balance using ethers directly (avoid problematic SDK path)
+      // Get USDC balance using shared utility function
       let usdcBalance = '0';
       if (config?.usdcContractAddress) {
         try {
-          console.log('Getting USDC balance with ethers for contract:', config.usdcContractAddress);
-          
-          // ERC20 ABI for balanceOf function
-          const erc20Abi = [
-            'function balanceOf(address owner) view returns (uint256)'
-          ];
-          
-          const usdcContract = new ethers.Contract(
+          usdcBalance = await fetchUSDCBalance(
+            userAddress,
             config.usdcContractAddress,
-            erc20Abi,
             ethersProvider
           );
-          
-          const balance = await usdcContract.balanceOf(userAddress);
-          usdcBalance = ethers.formatUnits(balance, 6); // USDC has 6 decimals
-          console.log('USDC balance from ethers:', { raw: balance.toString(), formatted: usdcBalance });
         } catch (error) {
-          console.error('Failed to get USDC balance with ethers:', error);
+          console.error('Failed to get USDC balance with shared utility:', error);
           usdcBalance = '0';
         }
       } else {

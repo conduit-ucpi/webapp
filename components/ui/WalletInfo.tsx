@@ -3,8 +3,8 @@ import { useAuth } from '@/components/auth';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { getNetworkName } from '@/utils/networkUtils';
 import { formatWalletAddress, formatCurrency } from '@/utils/validation';
+import { fetchUSDCBalance } from '@/utils/usdcBalance';
 import Button from '@/components/ui/Button';
-import { ethers } from 'ethers';
 
 interface WalletInfoProps {
   className?: string;
@@ -25,21 +25,12 @@ export default function WalletInfo({ className = '' }: WalletInfoProps) {
       const fetchBalance = async () => {
         try {
           const ethersProvider = getEthersProvider();
-          
-          // ERC20 ABI for balanceOf function
-          const erc20Abi = [
-            'function balanceOf(address owner) view returns (uint256)'
-          ];
-          
-          const usdcContract = new ethers.Contract(
+          const formattedBalance = await fetchUSDCBalance(
+            user.walletAddress,
             config.usdcContractAddress,
-            erc20Abi,
             ethersProvider
           );
-          
-          const balance = await usdcContract.balanceOf(user.walletAddress);
-          const formattedBalance = ethers.formatUnits(balance, 6); // USDC has 6 decimals
-          
+
           // Format to always show 4 decimal places
           const formatted = formatCurrency(formattedBalance, 'USDC');
           setBalance(formatted.amount);

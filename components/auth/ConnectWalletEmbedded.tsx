@@ -97,58 +97,67 @@ export default function ConnectWalletEmbedded({
   // If showTwoOptionLayout is enabled, show two clear buttons
   if (showTwoOptionLayout) {
     const handleWalletConnect = async () => {
-      // Always use direct Reown provider for WalletConnect (Web3Auth modal doesn't support it)
       try {
+        // Clear any existing cached tokens first
+        const clearCachedTokens = () => {
+          const keys = Object.keys(localStorage).filter(key => key.startsWith('walletconnect_auth_'));
+          keys.forEach(key => localStorage.removeItem(key));
+        };
+        clearCachedTokens();
+
         const { ReownWalletConnectProvider } = await import('./reownWalletConnect');
         const reownProvider = new ReownWalletConnectProvider(config);
 
-        // Initialize (it will check internally if already initialized)
-        await reownProvider.initialize();
+        // 1. Open WalletConnect modal and connect
+        const connectResult = await reownProvider.connect();
+        if (!connectResult.success) {
+          throw new Error('WalletConnect connection failed');
+        }
 
-        // Use connectAndAuthenticate which handles both connection and signing
-        const result = await reownProvider.connectAndAuthenticate();
+        // 2. Generate signature for backend auth
+        const authToken = await reownProvider.generateSignatureAuthToken();
+        const address = reownProvider.getAddress();
 
-        if (result.success && result.authToken && result.user) {
-          console.log('WalletConnect connected and authenticated:', result.user.walletAddress);
+        if (!address) {
+          throw new Error('No wallet address available');
+        }
 
-          // Send auth token to backend
-          const { BackendAuth } = await import('./backendAuth');
-          const backendAuth = BackendAuth.getInstance();
+        // 3. Send to backend
+        const { BackendAuth } = await import('./backendAuth');
+        const backendAuth = BackendAuth.getInstance();
+        const backendResult = await backendAuth.login(authToken, address);
 
-          try {
-            const backendResult = await backendAuth.login(result.authToken, result.user.walletAddress);
-
-            if (backendResult.success) {
-              console.log('Backend authentication successful');
-
-              // Check if we can access the auth status now
-              const authStatus = await backendAuth.checkAuthStatus();
-              console.log('Auth status after login:', authStatus);
-
-              if (authStatus.success && authStatus.user) {
-                console.log('User authenticated, reloading to update context');
-                window.location.reload();
-              } else {
-                console.log('Auth status check failed, something went wrong');
-              }
-            } else {
-              console.error('Backend authentication failed:', backendResult.error);
-            }
-          } catch (authError) {
-            console.error('Authentication failed:', authError);
-          }
+        if (backendResult.success) {
+          // Success - reload to show contract form
+          window.location.reload();
+        } else {
+          // Failed - clear everything and show error
+          clearCachedTokens();
+          await reownProvider.disconnect();
+          await backendAuth.logout();
+          console.error('Backend authentication failed');
         }
       } catch (err) {
+        // Failed - clear everything
+        const keys = Object.keys(localStorage).filter(key => key.startsWith('walletconnect_auth_'));
+        keys.forEach(key => localStorage.removeItem(key));
         console.error('WalletConnect failed:', err);
       }
     };
 
     const handleWeb3Auth = async () => {
-      // Now that we're using the modal SDK, this will show the Web3Auth modal
       try {
+        // Clear any existing auth state first
+        await disconnect();
+
+        // 1. Open Web3Auth modal and connect
         await connect();
+        // connect() handles both frontend and backend auth automatically via AuthProvider
+        // If successful, the page will reload via the auth context
       } catch (err) {
-        console.error('Web3Auth modal failed:', err);
+        // Failed - clear everything
+        await disconnect();
+        console.error('Web3Auth failed:', err);
       }
     };
 

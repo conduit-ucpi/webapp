@@ -115,27 +115,34 @@ export default function ConnectWalletEmbedded({
         }
 
         // 2. Generate signature for backend auth
+        console.log('🔧 WalletConnect: Starting signature generation...');
         const authToken = await reownProvider.generateSignatureAuthToken();
+        console.log('🔧 WalletConnect: Signature generated, getting address...');
         const address = reownProvider.getAddress();
 
         if (!address) {
           throw new Error('No wallet address available');
         }
 
+        console.log('🔧 WalletConnect: Sending to backend - address:', address);
+
         // 3. Send to backend
         const { BackendAuth } = await import('./backendAuth');
         const backendAuth = BackendAuth.getInstance();
+        console.log('🔧 WalletConnect: Calling backend login...');
         const backendResult = await backendAuth.login(authToken, address);
+        console.log('🔧 WalletConnect: Backend result:', backendResult);
 
         if (backendResult.success) {
+          console.log('🔧 WalletConnect: Backend auth successful, reloading...');
           // Success - reload to show contract form
           window.location.reload();
         } else {
+          console.error('🔧 WalletConnect: Backend authentication failed:', backendResult);
           // Failed - clear everything and show error
           clearCachedTokens();
           await reownProvider.disconnect();
           await backendAuth.logout();
-          console.error('Backend authentication failed');
         }
       } catch (err) {
         // Failed - clear everything

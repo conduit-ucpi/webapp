@@ -141,7 +141,11 @@ export default function ConnectWalletEmbedded({
 
         console.log('🔧 WalletConnect: ✅ Backend auth successful, refreshing auth context...');
 
-        // 4. Refresh the auth context to pick up the new backend session
+        // 4. Store the WalletConnect provider for later use
+        // We need to make it available globally so the AuthProvider can access it
+        (window as any).__walletConnectProvider = reownProvider;
+
+        // 5. Refresh the auth context to pick up the new backend session
         if (refreshUserData) {
           await refreshUserData();
         }

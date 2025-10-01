@@ -432,12 +432,23 @@ export function AuthProvider({ children }: AuthProviderProps) {
     },
 
     getEthersProvider: () => {
+      // Check for WalletConnect provider first (if user authenticated via WalletConnect)
+      const walletConnectProvider = (window as any).__walletConnectProvider;
+      if (walletConnectProvider && walletConnectProvider.isConnected()) {
+        console.log('[AuthProvider] Returning WalletConnect ethers provider');
+        try {
+          return walletConnectProvider.createEIP1193Provider();
+        } catch (error) {
+          console.error('[AuthProvider] Failed to create WalletConnect provider:', error);
+        }
+      }
+
       // If we have a unified Web3Service, use it
       if (web3Service && (web3Service as any).provider) {
         console.log('[AuthProvider] Returning ethers provider from Web3Service');
         return (web3Service as any).provider;
       }
-      
+
       // Fallback to auth provider's method
       const providerWithEthers = provider as any;
       if (providerWithEthers.getEthersProvider) {
@@ -948,12 +959,23 @@ function RegularAuthProvider({ children }: AuthProviderProps) {
     },
 
     getEthersProvider: () => {
+      // Check for WalletConnect provider first (if user authenticated via WalletConnect)
+      const walletConnectProvider = (window as any).__walletConnectProvider;
+      if (walletConnectProvider && walletConnectProvider.isConnected()) {
+        console.log('[AuthProvider] Returning WalletConnect ethers provider');
+        try {
+          return walletConnectProvider.createEIP1193Provider();
+        } catch (error) {
+          console.error('[AuthProvider] Failed to create WalletConnect provider:', error);
+        }
+      }
+
       // If we have a unified Web3Service, use it
       if (web3Service && (web3Service as any).provider) {
         console.log('[AuthProvider] Returning ethers provider from Web3Service');
         return (web3Service as any).provider;
       }
-      
+
       // Fallback to auth provider's method
       const providerWithEthers = provider as any;
       if (providerWithEthers.getEthersProvider) {

@@ -13,17 +13,19 @@ interface ConnectWalletEmbeddedProps {
   buttonText?: string;
   buttonClassName?: string;
   useSmartRouting?: boolean; // Enable smart auth routing
+  showTwoOptionLayout?: boolean; // Show two-button layout for wallet choices
 }
 
-export default function ConnectWalletEmbedded({ 
-  className = '', 
+export default function ConnectWalletEmbedded({
+  className = '',
   compact = false,
   buttonText = 'Get Started',
   buttonClassName = 'bg-green-500 hover:bg-green-600 text-gray-900 px-6 py-3 rounded-lg font-semibold disabled:opacity-50',
-  useSmartRouting = false
+  useSmartRouting = false,
+  showTwoOptionLayout = false
 }: ConnectWalletEmbeddedProps) {
   const { config } = useConfig();
-  const { user, isLoading: authLoading, disconnect } = useAuth();
+  const { user, isLoading: authLoading, disconnect, connect, connectWithAdapter } = useAuth();
   const { isInFarcaster } = useFarcaster();
   const [showAuthModal, setShowAuthModal] = useState(false);
 
@@ -92,10 +94,73 @@ export default function ConnectWalletEmbedded({
     );
   }
 
+  // If showTwoOptionLayout is enabled, show two clear buttons
+  if (showTwoOptionLayout) {
+    const handleWalletConnect = async () => {
+      // Directly open Reown/WalletConnect modal
+      try {
+        // Import and use Reown WalletConnect directly
+        const { ReownWalletConnectProvider } = await import('./reownWalletConnect');
+        const reownProvider = new ReownWalletConnectProvider(config);
+
+        // Initialize (it will check internally if already initialized)
+        await reownProvider.initialize();
+
+        // Connect and open the modal
+        const result = await reownProvider.connect();
+
+        if (result.success && result.user) {
+          // Handle successful connection
+          // The auth context should update automatically
+          console.log('WalletConnect connected:', result.user.walletAddress);
+        }
+      } catch (err) {
+        console.error('WalletConnect failed:', err);
+      }
+    };
+
+    const handleWeb3Auth = async () => {
+      // Now that we're using the modal SDK, this will show the Web3Auth modal
+      try {
+        await connect();
+      } catch (err) {
+        console.error('Web3Auth modal failed:', err);
+      }
+    };
+
+    return (
+      <div className={`space-y-4 ${className}`}>
+        <Button
+          onClick={handleWalletConnect}
+          disabled={authLoading}
+          className="w-full bg-[#3B99FC] hover:bg-[#2E7FD3] text-white px-6 py-3 rounded-lg font-semibold flex items-center justify-center"
+        >
+          <svg className="w-5 h-5 mr-3" viewBox="0 0 318.6 318.6">
+            <style>{`.st6{fill:#FFFFFF;stroke:#FFFFFF;}`}</style>
+            <polygon className="st6" points="274.1,35.5 174.6,109.4 193,65.8"/>
+            <polygon className="st6" points="44.4,35.5 143.1,110.1 125.6,65.8"/>
+          </svg>
+          I want to connect my wallet
+        </Button>
+
+        <Button
+          onClick={handleWeb3Auth}
+          disabled={authLoading}
+          className="w-full bg-green-500 hover:bg-green-600 text-gray-900 px-6 py-3 rounded-lg font-semibold flex items-center justify-center"
+        >
+          <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+          </svg>
+          I want to use an email-based wallet
+        </Button>
+      </div>
+    );
+  }
+
   // If compact mode, show the embedded auth UI directly
   if (compact) {
     return (
-      <EmbeddedAuthUI 
+      <EmbeddedAuthUI
         className={className}
         compact={true}
         useSmartRouting={useSmartRouting}

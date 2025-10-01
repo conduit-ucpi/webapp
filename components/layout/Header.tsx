@@ -1,9 +1,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { useAuth } from '@/components/auth';
 import { useNavigation } from '@/components/navigation/NavigationProvider';
-import ConnectWalletEmbedded from '@/components/auth/ConnectWalletEmbedded';
 import MobileDrawer from './MobileDrawer';
 import {
   Bars3Icon,
@@ -13,21 +11,6 @@ export default function Header() {
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { canGoBack, goBack } = useNavigation();
-  
-  let user = null;
-  let isLoading = false;
-
-  try {
-    const authContext = useAuth();
-    user = authContext.user;
-    isLoading = authContext.isLoading;
-  } catch (error) {
-    // Auth context not available during SSR or hydration
-    console.log('Auth context not available in Header:', error instanceof Error ? error.message : String(error));
-  }
-
-  // Authentication is determined by user presence alone, not provider
-  const isAuthenticated = !!user;
 
   // Don't show header on plugin pages
   if (router.pathname === '/contract-create') {
@@ -73,21 +56,9 @@ export default function Header() {
               </Link>
             </div>
 
-            {/* Right side: Auth status */}
-
+            {/* Right side: Empty for now */}
             <div className="flex items-center">
-              {isLoading ? (
-                <div className="w-24 h-8 bg-secondary-100 dark:bg-secondary-700 animate-pulse rounded-md" />
-              ) : isAuthenticated ? (
-                <div className="flex items-center gap-2">
-                  <span className="hidden sm:inline text-sm text-secondary-600 dark:text-secondary-300 truncate max-w-[150px]">
-                    {user?.email || user?.walletAddress || 'User'}
-                  </span>
-                  <div className="w-2 h-2 bg-green-500 rounded-full" />
-                </div>
-              ) : (
-                <ConnectWalletEmbedded compact={true} useSmartRouting={true} />
-              )}
+              {/* Authentication moved to individual pages */}
             </div>
           </div>
         </div>

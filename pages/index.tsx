@@ -73,7 +73,10 @@ export default function Home() {
               </div>
             ) : (
               <div className="space-y-4 pt-6">
-                <ConnectWalletEmbedded useSmartRouting={true} />
+                <ConnectWalletEmbedded
+                  useSmartRouting={false}
+                  showTwoOptionLayout={true}
+                />
                 <div className="flex items-center space-x-6 text-sm text-secondary-600 dark:text-secondary-400">
                   <div className="flex items-center">
                     <svg className="w-4 h-4 mr-2 text-primary-500" fill="currentColor" viewBox="0 0 20 20">

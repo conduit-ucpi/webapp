@@ -39,10 +39,10 @@ type PaymentStep = {
 
 export default function ContractCreate() {
   console.log('🔧 ContractCreate: Component mounted/rendered');
-  
+
   const router = useRouter();
   const { config } = useConfig();
-  const { user, authenticatedFetch, fundContract, isLoading: authLoading } = useAuth();
+  const { user, authenticatedFetch, fundContract, disconnect, isLoading: authLoading } = useAuth();
   
   // Query parameters
   const {
@@ -653,9 +653,13 @@ export default function ContractCreate() {
           </>
         } />
         <div className="text-center p-6 max-w-md mx-auto">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Connect Wallet</h2>
-          <p className="text-gray-600 mb-6">Please connect your wallet to create a secure escrow contract.</p>
-          <ConnectWalletEmbedded compact={true} useSmartRouting={true} />
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">Connect Your Account</h2>
+          <p className="text-gray-600 mb-6">Choose how you'd like to connect to create a secure escrow contract.</p>
+          <ConnectWalletEmbedded
+            compact={true}
+            useSmartRouting={false}
+            showTwoOptionLayout={true}
+          />
         </div>
       </div>
     );
@@ -675,7 +679,25 @@ export default function ContractCreate() {
           <>
             {/* Wallet Info Section */}
             <WalletInfo className="mb-4" />
-            
+
+            {/* Logout Button */}
+            <div className="flex justify-end mb-4">
+              <Button
+                onClick={async () => {
+                  await disconnect();
+                  // The page will re-render and show the auth screen
+                }}
+                variant="outline"
+                size="sm"
+                className="text-gray-600 hover:text-gray-800"
+              >
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                Logout
+              </Button>
+            </div>
+
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <h2 className="text-xl font-semibold text-gray-900 mb-4">
                 {isInIframe || isInPopup ? 'Stablecoin payment protected by escrow, no gas fees' : 'Create Escrow Contract'}

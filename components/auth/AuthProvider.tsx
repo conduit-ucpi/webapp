@@ -56,10 +56,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
           setProvider(authProvider);
           setAuthState(authProvider.getState());
         } else {
-          // Load Web3Auth no-modal provider
-          console.log('🔧 AuthProvider: Loading Web3Auth no-modal provider...');
-          const { getWeb3AuthNoModalProvider } = await import('./web3authNoModal');
-          const authProvider = getWeb3AuthNoModalProvider(config!);
+          // Load Web3Auth modal provider (changed from no-modal)
+          console.log('🔧 AuthProvider: Loading Web3Auth modal provider...');
+          const { getWeb3AuthProvider } = await import('./web3auth');
+          const authProvider = getWeb3AuthProvider(config!);
 
           // Set up mobile action callback for desktop QR sessions
           const deviceInfo = detectDevice();

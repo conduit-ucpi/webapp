@@ -124,8 +124,8 @@ export default function ConnectWalletEmbedded({
 
             if (backendResult.success) {
               console.log('Backend authentication successful');
-              // The page should now recognize the user as authenticated
-              // No need to reload - the auth context should update
+              // Force the page to reload so the auth context picks up the new auth state
+              window.location.reload();
             } else {
               console.error('Backend authentication failed:', backendResult.error);
             }

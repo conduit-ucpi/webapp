@@ -14,6 +14,7 @@ interface ConnectWalletEmbeddedProps {
   buttonClassName?: string;
   useSmartRouting?: boolean; // Enable smart auth routing
   showTwoOptionLayout?: boolean; // Show two-button layout for wallet choices
+  onSuccess?: () => void; // Callback when authentication succeeds
 }
 
 export default function ConnectWalletEmbedded({
@@ -22,10 +23,11 @@ export default function ConnectWalletEmbedded({
   buttonText = 'Get Started',
   buttonClassName = 'bg-green-500 hover:bg-green-600 text-gray-900 px-6 py-3 rounded-lg font-semibold disabled:opacity-50',
   useSmartRouting = false,
-  showTwoOptionLayout = false
+  showTwoOptionLayout = false,
+  onSuccess
 }: ConnectWalletEmbeddedProps) {
   const { config } = useConfig();
-  const { user, isLoading: authLoading, disconnect, connect, connectWithAdapter } = useAuth();
+  const { user, isLoading: authLoading, disconnect, connect, connectWithAdapter, refreshUserData } = useAuth();
   const { isInFarcaster } = useFarcaster();
   const [showAuthModal, setShowAuthModal] = useState(false);
 
@@ -98,6 +100,8 @@ export default function ConnectWalletEmbedded({
   if (showTwoOptionLayout) {
     const handleWalletConnect = async () => {
       try {
+        console.log('🔧 WalletConnect: Starting connection...');
+
         // Clear any existing cached tokens first
         const clearCachedTokens = () => {
           const keys = Object.keys(localStorage).filter(key => key.startsWith('walletconnect_auth_'));
@@ -115,40 +119,41 @@ export default function ConnectWalletEmbedded({
         }
 
         // 2. Generate signature for backend auth
-        console.log('🔧 WalletConnect: Starting signature generation...');
         const authToken = await reownProvider.generateSignatureAuthToken();
-        console.log('🔧 WalletConnect: Signature generated, getting address...');
         const address = reownProvider.getAddress();
 
         if (!address) {
           throw new Error('No wallet address available');
         }
 
-        console.log('🔧 WalletConnect: Sending to backend - address:', address);
-
         // 3. Send to backend
         const { BackendAuth } = await import('./backendAuth');
         const backendAuth = BackendAuth.getInstance();
-        console.log('🔧 WalletConnect: Calling backend login...');
         const backendResult = await backendAuth.login(authToken, address);
-        console.log('🔧 WalletConnect: Backend result:', backendResult);
 
-        if (backendResult.success) {
-          console.log('🔧 WalletConnect: Backend auth successful, reloading...');
-          // Success - reload to show contract form
-          window.location.reload();
-        } else {
-          console.error('🔧 WalletConnect: Backend authentication failed:', backendResult);
-          // Failed - clear everything and show error
-          clearCachedTokens();
-          await reownProvider.disconnect();
-          await backendAuth.logout();
+        if (!backendResult.success) {
+          throw new Error('Backend authentication failed');
         }
+
+        console.log('🔧 WalletConnect: ✅ Backend auth successful, refreshing auth context...');
+
+        // 4. Refresh the auth context to pick up the new backend session
+        if (refreshUserData) {
+          await refreshUserData();
+        }
+
+        // 5. Trigger the success callback if provided
+        if (onSuccess) {
+          onSuccess();
+        }
+
+        console.log('🔧 WalletConnect: Auth context refreshed, user should now be authenticated');
+
       } catch (err) {
-        // Failed - clear everything
+        console.error('🔧 WalletConnect: ❌ Connection failed:', err);
+        // Clean up on failure
         const keys = Object.keys(localStorage).filter(key => key.startsWith('walletconnect_auth_'));
         keys.forEach(key => localStorage.removeItem(key));
-        console.error('WalletConnect failed:', err);
       }
     };
 

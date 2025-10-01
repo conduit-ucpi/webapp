@@ -91,12 +91,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
           
           if (backendStatus.success && backendStatus.user) {
             const providerState = authProvider.getState();
-            if (providerState.user) {
-              providerState.user = {
-                ...providerState.user,
-                ...backendStatus.user
-              } as AuthUser;
-            }
+            // Always use backend user data when available, regardless of provider state
+            providerState.user = {
+              ...providerState.user,
+              ...backendStatus.user
+            } as AuthUser;
             providerState.isConnected = true;
             setAuthState(providerState);
           } else {

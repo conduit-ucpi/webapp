@@ -287,7 +287,10 @@ export default function Home() {
                 <p className="text-2xl text-primary-600 font-semibold mb-8">
                   Time to upgrade.
                 </p>
-                <ConnectWalletEmbedded useSmartRouting={true} />
+                <ConnectWalletEmbedded
+                  useSmartRouting={false}
+                  showTwoOptionLayout={true}
+                />
                 <div className="mt-6 flex items-center justify-center space-x-6 text-sm text-secondary-600">
                   <div className="flex items-center">
                     <svg className="w-4 h-4 mr-2 text-primary-500" fill="currentColor" viewBox="0 0 20 20">

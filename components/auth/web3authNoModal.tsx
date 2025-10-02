@@ -1236,7 +1236,10 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
       // Set the raw ethereum provider (not the ethers provider) for subsequent operations
       // The Web3Auth methods expect this.provider to be the raw provider
       this.provider = (window as any).ethereum;
-      
+
+      // Initialize Web3Service with the external wallet provider
+      await this.initializeWeb3Service();
+
       // Create user object
       this.state.user = {
         userId: authResult.walletAddress,

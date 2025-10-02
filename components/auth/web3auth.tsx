@@ -140,7 +140,14 @@ class Web3AuthProviderImpl implements IAuthProvider {
           if (this.web3auth.connected) {
             console.log('🔧 Web3Auth: Already connected, updating user data');
             this.provider = this.web3auth.provider;
-            await this.initializeWeb3Service();
+
+            // Try to initialize Web3Service, but don't fail if it doesn't work
+            try {
+              await this.initializeWeb3Service();
+            } catch (error) {
+              console.warn('🔧 Web3Auth: Web3Service initialization failed during init, will retry during funding:', error);
+            }
+
             await this.updateUserFromProvider();
           }
         } catch (initError) {
@@ -245,7 +252,13 @@ class Web3AuthProviderImpl implements IAuthProvider {
       }
       
       // Initialize Web3Service for fundAndSendTransaction functionality
-      await this.initializeWeb3Service();
+      // Don't fail the connection if Web3Service initialization fails - it can be retried later
+      try {
+        await this.initializeWeb3Service();
+      } catch (error) {
+        console.warn('🔧 Web3Auth: Web3Service initialization failed during connect, will retry during funding:', error);
+        // Don't throw - let the connection succeed and retry Web3Service initialization during funding
+      }
       
       console.log('🔧 Web3Auth: Final provider check:', {
         provider: !!this.provider,
@@ -541,14 +554,16 @@ class Web3AuthProviderImpl implements IAuthProvider {
    */
   private async initializeWeb3Service(): Promise<void> {
     if (!this.provider || !this.config) {
-      console.warn('🔧 Web3Auth: Cannot initialize Web3Service - provider or config missing');
-      return;
+      const error = `Cannot initialize Web3Service - provider: ${!!this.provider}, config: ${!!this.config}`;
+      console.error('🔧 Web3Auth:', error);
+      throw new Error(error);
     }
 
     try {
+      console.log('🔧 Web3Auth: Starting Web3Service initialization...');
       const { Web3Service } = await import('@/lib/web3');
       this.web3Service = new Web3Service(this.config);
-      
+
       // Create a compatible wallet provider for Web3Service
       const walletProvider = {
         getAddress: async () => {
@@ -587,11 +602,13 @@ class Web3AuthProviderImpl implements IAuthProvider {
         },
         getEthersProvider: () => this.getEthersProvider()
       };
-      
+
       await this.web3Service.initializeProvider(walletProvider);
       console.log('🔧 Web3Auth: Web3Service initialized successfully');
     } catch (error) {
       console.error('🔧 Web3Auth: Failed to initialize Web3Service:', error);
+      this.web3Service = null; // Ensure it's cleared on failure
+      throw error; // Re-throw so the caller knows initialization failed
     }
   }
 
@@ -599,10 +616,22 @@ class Web3AuthProviderImpl implements IAuthProvider {
    * Fund and send transaction using Web3Service
    */
   async fundAndSendTransaction(txParams: { to: string; data: string; value?: string; gasLimit?: bigint; gasPrice?: bigint; }): Promise<string> {
+    // If Web3Service is not initialized, try to initialize it now
     if (!this.web3Service) {
-      throw new Error('Web3Service not initialized - call initializeWeb3Service first');
+      console.log('🔧 Web3Auth: Web3Service not initialized, attempting initialization before funding...');
+      try {
+        await this.initializeWeb3Service();
+      } catch (error) {
+        console.error('🔧 Web3Auth: Failed to initialize Web3Service during funding:', error);
+        throw new Error(`Web3Service initialization failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
     }
-    
+
+    // Double-check that initialization succeeded
+    if (!this.web3Service) {
+      throw new Error('Web3Service initialization failed - service is still null');
+    }
+
     return await this.web3Service.fundAndSendTransaction(txParams);
   }
 
@@ -634,18 +663,38 @@ class Web3AuthProviderImpl implements IAuthProvider {
   }
 
   /**
+   * Check if Web3Service is ready for funding operations
+   */
+  isWeb3ServiceReady(): boolean {
+    return !!this.web3Service;
+  }
+
+  /**
+   * Get Web3Service status for debugging
+   */
+  getWeb3ServiceStatus(): { isReady: boolean; hasProvider: boolean; hasConfig: boolean; error?: string } {
+    return {
+      isReady: !!this.web3Service,
+      hasProvider: !!this.provider,
+      hasConfig: !!this.config,
+      error: this.web3Service ? undefined : 'Web3Service not initialized'
+    };
+  }
+
+  /**
    * Fund contract - complete flow: create, approve, deposit
    */
   async fundContract(params: any, authenticatedFetch?: any): Promise<any> {
     console.log('🔧 Web3AuthProvider: fundContract called');
-    
+    console.log('🔧 Web3AuthProvider: Web3Service status:', this.getWeb3ServiceStatus());
+
     if (!this.provider) {
       throw new Error('Provider not available');
     }
 
     // Create the contract transaction methods
     const { createWeb3AuthContractMethods } = await import('@/utils/contractTransactionFactory');
-    
+
     const contractMethods = createWeb3AuthContractMethods(
       async (txParams: any) => {
         return await this.signContractTransaction(txParams);

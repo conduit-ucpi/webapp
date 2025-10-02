@@ -11,6 +11,7 @@ import { useConfig } from './ConfigProvider';
 import { formatUnits } from 'ethers';
 import { createWeb3AuthContractMethods } from '@/utils/contractTransactionFactory';
 import { ensureHexPrefix } from '@/utils/hexUtils';
+import { Web3Service } from '@/lib/web3';
 
 // Minimal ERC20 ABI for balance checking
 const ERC20_ABI = [
@@ -543,6 +544,7 @@ class Web3AuthProviderImpl implements IAuthProvider {
 
   /**
    * Initialize Web3Service for fundAndSendTransaction functionality
+   * FIXED: Now uses the same unified approach as balance reading (initializeWithEIP1193)
    */
   private async initializeWeb3Service(): Promise<void> {
     if (!this.provider || !this.config) {
@@ -555,58 +557,31 @@ class Web3AuthProviderImpl implements IAuthProvider {
     const { Web3Service } = await import('@/lib/web3');
     this.web3Service = Web3Service.getInstance(this.config);
 
-    // Create a compatible wallet provider for Web3Service
-    const walletProvider = {
-      getAddress: async () => {
-        const accounts = await this.provider.request({ method: 'eth_accounts', params: [] });
-        if (!accounts || accounts.length === 0) {
-          throw new Error('No accounts available');
-        }
-        return accounts[0];
-      },
-      signTransaction: async (params: any) => {
-        // For Web3Auth, we can use the provider's request method
-        const txRequest = {
-          from: params.from,
-          to: params.to,
-          data: params.data,
-          value: params.value || '0x0',
-          gasLimit: params.gasLimit,
-          gasPrice: params.gasPrice,
-          nonce: params.nonce
-        };
-        return await this.provider.request({ method: 'eth_signTransaction', params: [txRequest] });
-      },
-      signMessage: async (message: string) => {
-        const accounts = await this.provider.request({ method: 'eth_accounts', params: [] });
-        const address = accounts[0];
-        return await this.provider.request({ method: 'personal_sign', params: [message, address] });
-      },
-      request: async ({ method, params }: { method: string; params: any[] }) => {
-        return await this.provider.request({ method, params });
-      },
-      isConnected: () => {
-        return this.state.isConnected;
-      },
-      getProviderName: () => {
-        return 'web3auth';
-      },
-      getEthersProvider: () => this.getEthersProvider()
-    };
-
-    await this.web3Service.initializeProvider(walletProvider);
-    console.log('🔧 Web3Auth: Web3Service initialized successfully');
+    // FIXED: Use the same unified EIP-1193 provider approach as balance reading
+    // This ensures fundAndSendTransaction uses the exact same ethers provider as balance reading
+    console.log('🔧 Web3Auth: Using unified EIP-1193 provider approach (same as balance reading)');
+    await this.web3Service.initializeWithEIP1193(this.provider);
+    console.log('🔧 Web3Auth: Web3Service initialized successfully via unified approach');
   }
 
   /**
    * Fund and send transaction using Web3Service
    */
   async fundAndSendTransaction(txParams: { to: string; data: string; value?: string; gasLimit?: bigint; gasPrice?: bigint; }): Promise<string> {
-    if (!this.web3Service) {
-      throw new Error('Web3Service not initialized. Connection must be established before funding transactions.');
+    // Use the universal Web3Service that works with any ethers provider
+    const web3Service = Web3Service.getInstance(this.config);
+
+    if (!web3Service.isServiceInitialized() && this.provider) {
+      // Initialize Web3Service with the same provider used for balance reading
+      const rawProvider = (this.provider as any).provider || this.provider;
+      await web3Service.initializeWithEIP1193(rawProvider);
     }
 
-    return await this.web3Service.fundAndSendTransaction(txParams);
+    if (!web3Service.isServiceInitialized()) {
+      throw new Error('Web3Service not available. Connection must be established before funding transactions.');
+    }
+
+    return await web3Service.fundAndSendTransaction(txParams);
   }
 
   /**

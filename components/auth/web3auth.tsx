@@ -428,19 +428,11 @@ class Web3AuthProviderImpl implements IAuthProvider {
   }
   
   async signMessage(message: string): Promise<string> {
-    if (!this.provider) {
-      throw new Error('Provider not available');
+    if (!this.web3Service) {
+      throw new Error('Web3Service not initialized. Connection must be established.');
     }
-    
-    try {
-      const ethers = await import('ethers');
-      const ethersProvider = new ethers.BrowserProvider(this.provider);
-      const signer = await ethersProvider.getSigner();
-      const signature = await signer.signMessage(message);
-      return signature;
-    } catch (error) {
-      throw new Error(`Failed to sign message: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
+    // Delegate to Web3Service which uses the unified ethers provider
+    return await this.web3Service.signMessage(message);
   }
 
   getEthersProvider(): any {
@@ -458,6 +450,9 @@ class Web3AuthProviderImpl implements IAuthProvider {
     return this.cachedEthersProvider;
   }
   
+  /**
+   * Sign contract transaction - delegates to Web3Service for unified approach
+   */
   async signContractTransaction(params: {
     contractAddress: string;
     abi: any[];
@@ -465,81 +460,34 @@ class Web3AuthProviderImpl implements IAuthProvider {
     functionArgs: any[];
     debugLabel?: string;
   }): Promise<string> {
-    console.log(`🔧 Web3Auth: Signing ${params.debugLabel || 'contract'} transaction`);
-    
-    if (!this.provider) {
-      throw new Error('Provider not available');
+    if (!this.web3Service) {
+      throw new Error('Web3Service not initialized. Connection must be established.');
     }
-    
-    const ethersProvider = this.getEthersProvider();
-    const signer = await ethersProvider.getSigner();
-    
-    // Create contract instance
-    const { Contract } = require('ethers');
-    const contract = new Contract(params.contractAddress, params.abi, signer);
-    
-    // Build the transaction
-    const txRequest = await contract[params.functionName].populateTransaction(...params.functionArgs);
-    
-    // Sign the transaction
-    const signedTx = await signer.signTransaction(txRequest);
-    console.log(`🔧 Web3Auth: ${params.debugLabel || 'Contract'} transaction signed`);
-    
-    return signedTx;
+    // Delegate to Web3Service which handles all contract interactions
+    return await this.web3Service.signContractTransaction(params);
   }
   
   async waitForTransaction(transactionHash: string, maxWaitTime: number = 30000): Promise<void> {
-    console.log(`🔧 Web3Auth: Waiting for transaction confirmation: ${transactionHash}`);
-    
-    if (!this.provider) {
-      throw new Error('Provider not available');
+    if (!this.web3Service) {
+      throw new Error('Web3Service not initialized. Connection must be established.');
     }
-    
-    const ethersProvider = this.getEthersProvider();
-    
-    try {
-      // Wait for the transaction to be mined with a timeout
-      const receipt = await Promise.race([
-        ethersProvider.waitForTransaction(transactionHash, 1), // Wait for 1 confirmation
-        new Promise<never>((_, reject) => 
-          setTimeout(() => reject(new Error('Transaction confirmation timeout')), maxWaitTime)
-        )
-      ]);
-      
-      if (receipt?.status === 1) {
-        console.log(`🔧 Web3Auth: Transaction confirmed: ${transactionHash}`);
-      } else {
-        throw new Error(`Transaction failed: ${transactionHash}`);
-      }
-    } catch (error) {
-      console.warn(`🔧 Web3Auth: Transaction confirmation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      // Don't throw - let the transaction continue as the backend may have processed it
-    }
+    // Delegate to Web3Service which uses the unified ethers provider
+    return await this.web3Service.waitForTransaction(transactionHash, maxWaitTime);
   }
   
+  /**
+   * Get USDC balance - delegates to Web3Service for unified approach
+   */
   async getUSDCBalance(userAddress?: string): Promise<string> {
-    if (!this.provider) {
-      throw new Error('Provider not available');
+    if (!this.web3Service) {
+      throw new Error('Web3Service not initialized. Connection must be established.');
     }
-    
-    if (!this.config?.usdcContractAddress) {
-      console.warn('USDC contract address not configured');
-      return '0';
+    // Delegate to Web3Service which uses the same ethers provider
+    const address = userAddress || this.state.user?.walletAddress;
+    if (!address) {
+      throw new Error('No wallet address available. Please connect your wallet first.');
     }
-    
-    const ethersProvider = this.getEthersProvider();
-    const signer = await ethersProvider.getSigner();
-    const address = userAddress || await signer.getAddress();
-    
-    // Create contract instance
-    const { Contract } = require('ethers');
-    const usdcContract = new Contract(this.config.usdcContractAddress, ERC20_ABI, ethersProvider);
-    
-    // Get balance
-    const balance = await usdcContract.balanceOf(address);
-    
-    // Convert from smallest unit (6 decimals for USDC) to string
-    return formatUnits(balance, 6);
+    return await this.web3Service.getUSDCBalance(address);
   }
 
   /**
@@ -565,27 +513,20 @@ class Web3AuthProviderImpl implements IAuthProvider {
   }
 
   /**
-   * Fund and send transaction using Web3Service
+   * Fund and send transaction - delegates to Web3Service
+   * This method ensures gas funding via chainservice before sending
    */
   async fundAndSendTransaction(txParams: { to: string; data: string; value?: string; gasLimit?: bigint; gasPrice?: bigint; }): Promise<string> {
-    // Use the universal Web3Service that works with any ethers provider
-    const web3Service = Web3Service.getInstance(this.config);
-
-    if (!web3Service.isServiceInitialized() && this.provider) {
-      // Initialize Web3Service with the same provider used for balance reading
-      const rawProvider = (this.provider as any).provider || this.provider;
-      await web3Service.initializeWithEIP1193(rawProvider);
+    if (!this.web3Service) {
+      console.error('🔧 Web3Auth: ERROR - Web3Service not initialized!');
+      throw new Error('Web3Service not initialized. Connection must be established before funding transactions.');
     }
-
-    if (!web3Service.isServiceInitialized()) {
-      throw new Error('Web3Service not available. Connection must be established before funding transactions.');
-    }
-
-    return await web3Service.fundAndSendTransaction(txParams);
+    // Delegate to Web3Service which handles chainservice gas funding + transaction
+    return await this.web3Service.fundAndSendTransaction(txParams);
   }
 
   /**
-   * Get the Web3Service instance (implements AuthInterface method)
+   * Get the Web3Service instance for direct blockchain operations
    */
   getWeb3Service(): any {
     return this.web3Service;

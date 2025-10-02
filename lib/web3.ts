@@ -768,4 +768,58 @@ export class Web3Service {
       throw new Error(`Transaction failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
+
+  /**
+   * Sign a message using the unified ethers provider
+   * @param message The message to sign
+   * @returns The signature
+   */
+  async signMessage(message: string): Promise<string> {
+    if (!this.provider) {
+      throw new Error('Provider not initialized');
+    }
+
+    try {
+      console.log('[Web3Service.signMessage] Signing message via unified ethers provider');
+      const signer = await this.provider.getSigner();
+      const signature = await signer.signMessage(message);
+      console.log('[Web3Service.signMessage] Message signed successfully');
+      return signature;
+    } catch (error) {
+      console.error('[Web3Service.signMessage] Failed to sign message:', error);
+      throw new Error(`Failed to sign message: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  /**
+   * Wait for transaction confirmation using the unified ethers provider
+   * @param transactionHash The transaction hash to wait for
+   * @param maxWaitTime Maximum wait time in milliseconds (default: 30 seconds)
+   */
+  async waitForTransaction(transactionHash: string, maxWaitTime: number = 30000): Promise<void> {
+    if (!this.provider) {
+      throw new Error('Provider not initialized');
+    }
+
+    console.log(`[Web3Service.waitForTransaction] Waiting for transaction confirmation: ${transactionHash}`);
+
+    try {
+      // Wait for the transaction to be mined with a timeout
+      const receipt = await Promise.race([
+        this.provider.waitForTransaction(transactionHash, 1), // Wait for 1 confirmation
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('Transaction confirmation timeout')), maxWaitTime)
+        )
+      ]);
+
+      if (receipt?.status === 1) {
+        console.log(`[Web3Service.waitForTransaction] Transaction confirmed: ${transactionHash}`);
+      } else {
+        throw new Error(`Transaction failed: ${transactionHash}`);
+      }
+    } catch (error) {
+      console.warn(`[Web3Service.waitForTransaction] Transaction confirmation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      // Don't throw - let the transaction continue as the backend may have processed it
+    }
+  }
 }

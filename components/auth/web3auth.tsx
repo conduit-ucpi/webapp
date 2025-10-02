@@ -47,7 +47,16 @@ class Web3AuthProviderImpl implements IAuthProvider {
   private cachedEthersProvider: any = null;
 
   constructor(config?: any) {
+    // SAFETY: Ensure only one instance can be created
+    if (web3authProvider && web3authProvider !== this) {
+      console.error('🚨 Web3Auth: MULTIPLE INSTANCES DETECTED! Using singleton pattern.');
+      console.error('🚨 Web3Auth: Someone is creating instances outside getWeb3AuthProvider()');
+      console.error('🚨 Web3Auth: Stack trace:', new Error().stack);
+      throw new Error('Multiple Web3AuthProvider instances detected. Use getWeb3AuthProvider() instead.');
+    }
+
     this.config = config;
+    console.log('🔧 Web3Auth: Constructor called with config:', !!config);
   }
 
   async initialize(): Promise<void> {
@@ -523,7 +532,10 @@ class Web3AuthProviderImpl implements IAuthProvider {
       isConnected: this.state.isConnected,
       isInitialized: this.state.isInitialized,
       web3ServiceStatus: this.web3Service ? 'initialized' : 'null',
-      providerType: this.provider ? typeof this.provider : 'no provider'
+      providerType: this.provider ? typeof this.provider : 'no provider',
+      instanceId: this.constructor.name,
+      configExists: !!this.config,
+      singletonCheck: web3authProvider === this ? 'IS_SINGLETON' : 'NOT_SINGLETON'
     });
 
     if (!this.web3Service) {
@@ -667,15 +679,18 @@ class Web3AuthProviderImpl implements IAuthProvider {
   }
 }
 
-// Create singleton instance
+// STRICT singleton instance - only ONE provider instance EVER
 let web3authProvider: Web3AuthProviderImpl | null = null;
 
 export function getWeb3AuthProvider(config?: any): IAuthProvider {
-  if (!web3authProvider) {
-    console.log('🔧 Web3Auth: Creating new provider instance');
-    web3authProvider = new Web3AuthProviderImpl(config);
-  } else {
-    console.log('🔧 Web3Auth: Reusing existing provider instance');
+  console.log('🔧 Web3Auth: getWeb3AuthProvider called', {
+    existingProvider: !!web3authProvider,
+    callerStack: new Error().stack?.split('\n')[1]?.trim()
+  });
+
+  // STRICT: If we already have a provider, ALWAYS return it, NEVER create new one
+  if (web3authProvider) {
+    console.log('🔧 Web3Auth: ✅ STRICT SINGLETON - Reusing existing provider instance');
 
     // Ensure config is properly set if provided
     if (config) {
@@ -685,14 +700,29 @@ export function getWeb3AuthProvider(config?: any): IAuthProvider {
         providerWithConfig.config = config;
       }
     }
+
+    // Log state before returning
+    console.log('🔧 Web3Auth: Provider singleton state:', {
+      hasProvider: !!web3authProvider,
+      isInitialized: web3authProvider.getState().isInitialized,
+      isConnected: web3authProvider.getState().isConnected,
+      hasConfig: !!(web3authProvider as any).config,
+      providerInstanceId: web3authProvider.constructor.name
+    });
+
+    return web3authProvider;
   }
 
-  // Additional safety check - log the provider state
-  console.log('🔧 Web3Auth: Provider singleton state:', {
+  // ONLY create if none exists
+  console.log('🔧 Web3Auth: 🆕 Creating FIRST AND ONLY provider instance');
+  web3authProvider = new Web3AuthProviderImpl(config);
+
+  console.log('🔧 Web3Auth: Provider created with state:', {
     hasProvider: !!web3authProvider,
     isInitialized: web3authProvider.getState().isInitialized,
     isConnected: web3authProvider.getState().isConnected,
-    hasConfig: !!(web3authProvider as any).config
+    hasConfig: !!(web3authProvider as any).config,
+    providerInstanceId: web3authProvider.constructor.name
   });
 
   return web3authProvider;

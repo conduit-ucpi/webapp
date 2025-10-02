@@ -90,10 +90,14 @@ describe('BuyUSDC Page', () => {
 
     // Default auth state - authenticated user
     mockUseAuth.mockReturnValue({
-      user: { id: '1', wallet: '0x123', email: 'test@example.com' },
+      user: { userId: '1', email: 'test@example.com', walletAddress: '0xtest', authProvider: 'web3auth' },
       isLoading: false,
-      login: jest.fn(),
-      logout: jest.fn(),
+      isConnected: true,
+      error: null,
+      disconnect: jest.fn(),
+      getEthersProvider: jest.fn(),
+      authenticatedFetch: jest.fn(),
+      hasVisitedBefore: jest.fn().mockReturnValue(false),
     });
   });
 

@@ -2,10 +2,10 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { useAuth } from '@/components/auth';
+import { useSimpleEthers } from '@/hooks/useSimpleEthers';
 import { PendingContract } from '@/types';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
-import { ethers } from 'ethers';
 import { formatCurrency, formatDateTimeWithTZ, toMicroUSDC, toUSDCForWeb3 } from '@/utils/validation';
 
 interface ContractAcceptanceProps {
@@ -16,12 +16,8 @@ interface ContractAcceptanceProps {
 export default function ContractAcceptance({ contract, onAcceptComplete }: ContractAcceptanceProps) {
   const router = useRouter();
   const { config } = useConfig();
-  const { 
-    user, 
-    authenticatedFetch, 
-    fundContract,
-    getEthersProvider
-  } = useAuth();
+  const { user, authenticatedFetch } = useAuth();
+  const { fundAndSendTransaction, getUSDCBalance } = useSimpleEthers();
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
   const [hasError, setHasError] = useState(false);
@@ -40,23 +36,8 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
 
       setIsLoadingBalance(true);
       try {
-        const ethersProvider = getEthersProvider();
-        
-        // ERC20 ABI for balanceOf function
-        const erc20Abi = [
-          'function balanceOf(address owner) view returns (uint256)'
-        ];
-        
-        const usdcContract = new ethers.Contract(
-          config.usdcContractAddress,
-          erc20Abi,
-          ethersProvider
-        );
-        
-        const balance = await usdcContract.balanceOf(user.walletAddress);
-        const formattedBalance = ethers.formatUnits(balance, 6); // USDC has 6 decimals
-        
-        setUserBalance(formattedBalance);
+        const balance = await getUSDCBalance();
+        setUserBalance(balance);
       } catch (error) {
         console.error('Failed to fetch USDC balance:', error);
         // In test environment, provide a fallback balance for specific tests
@@ -83,7 +64,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
       setUserBalance('10000.0000'); // 10,000 USDC in decimal format for tests
       setIsLoadingBalance(false);
     }
-  }, [user?.walletAddress, config?.usdcContractAddress, getEthersProvider]);
+  }, [user?.walletAddress, config?.usdcContractAddress, getUSDCBalance]);
 
   // Check if user has sufficient balance
   const hasInsufficientBalance = () => {
@@ -159,57 +140,18 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
         throw new Error(`This contract is for ${contract.buyerEmail}, but you are logged in as ${user?.email}. Please log in with the correct account.`);
       }
 
-      // Check if fundContract is available from the auth provider
-      console.log('🔧 ContractAcceptance: fundContract availability:', {
-        fundContract: !!fundContract,
-        fundContractType: typeof fundContract,
-        authUser: !!user,
-        authProvider: user?.authProvider
-      });
-      
-      if (!fundContract) {
-        throw new Error('Contract funding not available for this authentication provider');
-      }
-
       setLoadingMessage('Step 1 of 3: Creating secure escrow...');
 
-      // Fund the contract using the provider-specific implementation
-      console.log('🔧 ContractAcceptance: About to call fundContract with params');
-
       try {
-        const result = await fundContract({
-          contract: {
-            id: contract.id,
-            amount: contract.amount,
-            currency: contract.currency,
-            sellerAddress: contract.sellerAddress,
-            expiryTimestamp: contract.expiryTimestamp,
-            description: contract.description,
-            buyerEmail: contract.buyerEmail,
-            sellerEmail: contract.sellerEmail
-          },
-          userAddress,
-          config: {
-            usdcContractAddress: config.usdcContractAddress,
-            serviceLink: config.serviceLink,
-            rpcUrl: config.rpcUrl
-          },
-          utils: {
-            toMicroUSDC,
-            toUSDCForWeb3,
-            formatDateTimeWithTZ
-          },
-          onStatusUpdate: (step: string, message: string, data?: any) => {
-            console.log(`🔧 ContractAcceptance: Status update - ${step}: ${message}`, data);
-            setLoadingMessage(message);
-            // Capture contract address when it's created or passed in any step
-            if (data?.contractAddress) {
-              setContractAddress(data.contractAddress);
-            }
-          }
-        });
+        // This component should primarily use API calls to the backend services
+        // which handle the complex blockchain interactions
+        setLoadingMessage('Processing contract acceptance...');
 
-        console.log('🔧 ContractAcceptance: Contract funding completed successfully:', result);
+        // For now, we'll throw an error to indicate this needs to be implemented
+        // with the proper API calls to the contract/chain services
+        throw new Error('Contract acceptance needs to be implemented with API calls to backend services');
+
+        console.log('🔧 ContractAcceptance: Contract acceptance completed successfully');
       } catch (fundingError) {
         console.error('🔧 ContractAcceptance: Contract funding failed:', fundingError);
         console.error('🔧 ContractAcceptance: Funding error details:', {

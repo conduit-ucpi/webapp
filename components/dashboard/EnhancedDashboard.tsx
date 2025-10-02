@@ -333,7 +333,7 @@ export default function EnhancedDashboard() {
     console.log('🔧 Dashboard auth state:', { hasAuthenticatedFetch: !!authenticatedFetch, hasFetched: hasFetched.current });
     
     // Only fetch if we have authentication available AND haven't fetched yet
-    if (authenticatedFetch && !hasFetched.current) {
+    if (user && !hasFetched.current) {
       console.log('🔧 Calling fetchContracts because authenticatedFetch is available');
       hasFetched.current = true;
       fetchContracts();

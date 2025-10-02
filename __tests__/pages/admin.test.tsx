@@ -159,20 +159,12 @@ describe('AdminPage', () => {
     mockUseAuth.mockReturnValue({
       user: null,
       isLoading: true,
-      connect: jest.fn(),
-      disconnect: jest.fn(),
       isConnected: true,
-      isInitialized: true,
       error: null,
-      token: 'mock-token',
-      providerName: 'web3auth',
-      getToken: jest.fn(() => 'mock-token'),
-      hasVisitedBefore: jest.fn(() => false),
-      markAsVisited: jest.fn(),
-      signMessage: jest.fn(),
+      disconnect: jest.fn(),
       getEthersProvider: jest.fn(),
-      signContractTransaction: jest.fn(),
       authenticatedFetch: jest.fn(),
+      hasVisitedBefore: jest.fn().mockReturnValue(false),
     });
 
     // mockUseWeb3AuthInstance.mockReturnValue({
@@ -190,20 +182,12 @@ describe('AdminPage', () => {
     mockUseAuth.mockReturnValue({
       user: null,
       isLoading: false,
-      connect: jest.fn(),
-      disconnect: jest.fn(),
       isConnected: true,
-      isInitialized: true,
       error: null,
-      token: 'mock-token',
-      providerName: 'web3auth',
-      getToken: jest.fn(() => 'mock-token'),
-      hasVisitedBefore: jest.fn(() => false),
-      markAsVisited: jest.fn(),
-      signMessage: jest.fn(),
+      disconnect: jest.fn(),
       getEthersProvider: jest.fn(),
-      signContractTransaction: jest.fn(),
       authenticatedFetch: jest.fn(),
+      hasVisitedBefore: jest.fn().mockReturnValue(false),
     });
 
     // mockUseWeb3AuthInstance.mockReturnValue({
@@ -220,28 +204,14 @@ describe('AdminPage', () => {
 
   it('shows access denied when user is not admin', () => {
     mockUseAuth.mockReturnValue({
-      user: {
-        userId: '1',
-        email: 'user@example.com',
-        walletAddress: '0x123',
-        userType: 'user',
-        authProvider: 'web3auth' as const,
-      },
+      user: { email: 'user@example.com', userId: 'user-123', walletAddress: '0x123', authProvider: 'web3auth' },
       isLoading: false,
-      connect: jest.fn(),
-      disconnect: jest.fn(),
       isConnected: true,
-      isInitialized: true,
       error: null,
-      token: 'mock-token',
-      providerName: 'web3auth',
-      getToken: jest.fn(() => 'mock-token'),
-      hasVisitedBefore: jest.fn(() => false),
-      markAsVisited: jest.fn(),
-      signMessage: jest.fn(),
+      disconnect: jest.fn(),
       getEthersProvider: jest.fn(),
-      signContractTransaction: jest.fn(),
       authenticatedFetch: jest.fn(),
+      hasVisitedBefore: jest.fn().mockReturnValue(false),
     });
 
     // mockUseWeb3AuthInstance.mockReturnValue({
@@ -259,28 +229,14 @@ describe('AdminPage', () => {
 
   it('shows admin dashboard when user is admin', () => {
     mockUseAuth.mockReturnValue({
-      user: {
-        userId: '1',
-        email: 'admin@example.com',
-        walletAddress: '0x123',
-        userType: 'admin',
-        authProvider: 'web3auth' as const,
-      },
+      user: { email: 'admin@example.com', userId: 'admin-123', walletAddress: '0xadmin', authProvider: 'web3auth' },
       isLoading: false,
-      connect: jest.fn(),
-      disconnect: jest.fn(),
       isConnected: true,
-      isInitialized: true,
       error: null,
-      token: 'mock-token',
-      providerName: 'web3auth',
-      getToken: jest.fn(() => 'mock-token'),
-      hasVisitedBefore: jest.fn(() => false),
-      markAsVisited: jest.fn(),
-      signMessage: jest.fn(),
+      disconnect: jest.fn(),
       getEthersProvider: jest.fn(),
-      signContractTransaction: jest.fn(),
       authenticatedFetch: jest.fn(),
+      hasVisitedBefore: jest.fn().mockReturnValue(false),
     });
 
     // mockUseWeb3AuthInstance.mockReturnValue({
@@ -298,28 +254,14 @@ describe('AdminPage', () => {
 
   it('shows contract details when contract is selected from list', async () => {
     mockUseAuth.mockReturnValue({
-      user: {
-        userId: '1',
-        email: 'admin@example.com',
-        walletAddress: '0x123',
-        userType: 'admin',
-        authProvider: 'web3auth' as const,
-      },
+      user: { email: 'admin@example.com', userId: 'admin-123', walletAddress: '0xadmin', authProvider: 'web3auth' },
       isLoading: false,
-      connect: jest.fn(),
-      disconnect: jest.fn(),
       isConnected: true,
-      isInitialized: true,
       error: null,
-      token: 'mock-token',
-      providerName: 'web3auth',
-      getToken: jest.fn(() => 'mock-token'),
-      hasVisitedBefore: jest.fn(() => false),
-      markAsVisited: jest.fn(),
-      signMessage: jest.fn(),
+      disconnect: jest.fn(),
       getEthersProvider: jest.fn(),
-      signContractTransaction: jest.fn(),
       authenticatedFetch: jest.fn(),
+      hasVisitedBefore: jest.fn().mockReturnValue(false),
     });
 
     // mockUseWeb3AuthInstance.mockReturnValue({
@@ -358,28 +300,14 @@ describe('AdminPage', () => {
 
   it('can close contract details', async () => {
     mockUseAuth.mockReturnValue({
-      user: {
-        userId: '1',
-        email: 'admin@example.com',
-        walletAddress: '0x123',
-        userType: 'admin',
-        authProvider: 'web3auth' as const,
-      },
+      user: { email: 'admin@example.com', userId: 'admin-123', walletAddress: '0xadmin', authProvider: 'web3auth' },
       isLoading: false,
-      connect: jest.fn(),
-      disconnect: jest.fn(),
       isConnected: true,
-      isInitialized: true,
       error: null,
-      token: 'mock-token',
-      providerName: 'web3auth',
-      getToken: jest.fn(() => 'mock-token'),
-      hasVisitedBefore: jest.fn(() => false),
-      markAsVisited: jest.fn(),
-      signMessage: jest.fn(),
+      disconnect: jest.fn(),
       getEthersProvider: jest.fn(),
-      signContractTransaction: jest.fn(),
       authenticatedFetch: jest.fn(),
+      hasVisitedBefore: jest.fn().mockReturnValue(false),
     });
 
     // mockUseWeb3AuthInstance.mockReturnValue({
@@ -426,28 +354,14 @@ describe('AdminPage', () => {
 describe('Contract Selection and Details', () => {
   beforeEach(() => {
     mockUseAuth.mockReturnValue({
-      user: {
-        userId: '1',
-        email: 'admin@example.com',
-        walletAddress: '0x123',
-        userType: 'admin',
-        authProvider: 'web3auth' as const,
-      },
+      user: { email: 'admin@example.com', userId: 'admin-123', walletAddress: '0xadmin', authProvider: 'web3auth' },
       isLoading: false,
-      connect: jest.fn(),
-      disconnect: jest.fn(),
       isConnected: true,
-      isInitialized: true,
       error: null,
-      token: 'mock-token',
-      providerName: 'web3auth',
-      getToken: jest.fn(() => 'mock-token'),
-      hasVisitedBefore: jest.fn(() => false),
-      markAsVisited: jest.fn(),
-      signMessage: jest.fn(),
+      disconnect: jest.fn(),
       getEthersProvider: jest.fn(),
-      signContractTransaction: jest.fn(),
       authenticatedFetch: jest.fn(),
+      hasVisitedBefore: jest.fn().mockReturnValue(false),
     });
 
     // mockUseWeb3AuthInstance.mockReturnValue({

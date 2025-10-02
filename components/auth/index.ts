@@ -7,8 +7,8 @@
  * IMPORTANT: Only AuthProvider.tsx should import farcasterAuth, web3auth, or backendAuth
  */
 
-// Export the unified hook and provider from the NEW AuthProvider
-export { useAuth, AuthProvider } from './AuthProvider';
+// Export the unified hook and provider from the Simple AuthProvider
+export { useAuth, SimpleAuthProvider as AuthProvider } from './SimpleAuthProvider';
 
 // Export types
 export type { User, AuthContextType } from '@/types';

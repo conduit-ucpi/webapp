@@ -1,6 +1,6 @@
 import React from 'react';
 import { ConfigProvider } from '@/components/auth/ConfigProvider';
-import { AuthProvider } from '@/components/auth/AuthProvider';
+import { SimpleAuthProvider as AuthProvider } from '@/components/auth/SimpleAuthProvider';
 import Layout from '@/components/layout/Layout';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { ToastProvider } from '@/components/ui/Toast';
@@ -10,6 +10,7 @@ import { SDKProvider } from '@/components/auth/SDKProvider';
 import FarcasterReady from '@/components/farcaster/FarcasterReady';
 import { FarcasterDetectionProvider } from '@/components/farcaster/FarcasterDetectionProvider';
 import { NavigationProvider } from '@/components/navigation/NavigationProvider';
+import { EthersProvider } from '@/components/providers/EthersProvider';
 
 interface ClientOnlyAppProps {
   Component: any;
@@ -41,13 +42,15 @@ export default function ClientOnlyApp({ Component, pageProps }: ClientOnlyAppPro
           <FarcasterReady />
           <FarcasterDetectionProvider children={
             <ConfigProvider children={
-              <SDKProvider children={
-                <AuthProvider children={
-                  <NavigationProvider children={
-                    <ToastProvider children={
-                      <TourProvider children={
-                        <Layout children={
-                          <Component {...pageProps} />
+              <EthersProvider children={
+                <SDKProvider children={
+                  <AuthProvider children={
+                    <NavigationProvider children={
+                      <ToastProvider children={
+                        <TourProvider children={
+                          <Layout children={
+                            <Component {...pageProps} />
+                          } />
                         } />
                       } />
                     } />

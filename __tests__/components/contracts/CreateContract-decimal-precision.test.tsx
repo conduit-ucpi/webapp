@@ -73,23 +73,15 @@ describe('CreateContract Decimal Precision', () => {
       isLoading: false,
     });
 
-    mockUseAuth.mockReturnValue({
+        mockUseAuth.mockReturnValue({
       user: mockUser,
       isLoading: false,
-      connect: jest.fn(),
-      disconnect: jest.fn(),
       isConnected: true,
-      isInitialized: true,
       error: null,
-      token: 'mock-token',
-      providerName: 'web3auth',
-      getToken: jest.fn(() => 'mock-token'),
-      hasVisitedBefore: jest.fn(() => false),
-      markAsVisited: jest.fn(),
-      signMessage: jest.fn(),
+      disconnect: jest.fn(),
       getEthersProvider: jest.fn(),
-      signContractTransaction: jest.fn(),
       authenticatedFetch: jest.fn(),
+      hasVisitedBefore: jest.fn().mockReturnValue(false),
     });
 
     // mockUseWeb3AuthInstance.mockReturnValue({

@@ -3,7 +3,7 @@ import { useAuth } from '@/components/auth';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { getNetworkName } from '@/utils/networkUtils';
 import { formatWalletAddress } from '@/utils/validation';
-import { fetchUSDCBalance } from '@/utils/usdcBalance';
+import { useSimpleEthers } from '@/hooks/useSimpleEthers';
 import Button from '@/components/ui/Button';
 
 interface WalletInfoProps {
@@ -11,8 +11,9 @@ interface WalletInfoProps {
 }
 
 export default function WalletInfo({ className = '' }: WalletInfoProps) {
-  const { user, getEthersProvider } = useAuth();
+  const { user } = useAuth();
   const { config } = useConfig();
+  const { getUSDCBalance } = useSimpleEthers();
   const [balance, setBalance] = useState<string>('0.0000');
   const [isLoadingBalance, setIsLoadingBalance] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -24,14 +25,9 @@ export default function WalletInfo({ className = '' }: WalletInfoProps) {
       
       const fetchBalance = async () => {
         try {
-          const ethersProvider = getEthersProvider();
-          const formattedBalance = await fetchUSDCBalance(
-            user.walletAddress,
-            config.usdcContractAddress,
-            ethersProvider
-          );
+          const formattedBalance = await getUSDCBalance(user.walletAddress);
 
-          // The fetchUSDCBalance utility already returns properly formatted USDC
+          // The getUSDCBalance method already returns properly formatted USDC
           // Just ensure 4 decimal places for display consistency
           const balanceNumber = parseFloat(formattedBalance);
           setBalance(balanceNumber.toFixed(4));
@@ -45,7 +41,7 @@ export default function WalletInfo({ className = '' }: WalletInfoProps) {
       
       fetchBalance();
     }
-  }, [user?.walletAddress, config?.usdcContractAddress, getEthersProvider]);
+  }, [user?.walletAddress, config?.usdcContractAddress, getUSDCBalance]);
 
   const copyToClipboard = async () => {
     if (!user?.walletAddress) return;

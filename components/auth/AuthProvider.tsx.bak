@@ -3,9 +3,10 @@ import { useFarcaster } from '@/components/farcaster/FarcasterDetectionProvider'
 import { useConfig } from './ConfigProvider';
 import { AuthContextType, AuthState, IAuthProvider, AuthUser } from './authInterface';
 import { BackendAuth } from './backendAuth';
-import { Web3Service } from '@/lib/web3';
 import { MobileWalletPrompt } from '@/components/ui/MobileWalletPrompt';
 import { detectDevice } from '@/utils/deviceDetection';
+import { useEthersProvider } from '@/components/providers/EthersProvider';
+import { getWeb3AuthProvider } from './web3auth';
 
 // The unified context that the rest of the app uses
 const AuthContext = React.createContext<AuthContextType | null>(null);
@@ -17,10 +18,8 @@ interface AuthProviderProps {
 export function AuthProvider({ children }: AuthProviderProps) {
   const { isInFarcaster, isLoading: envDetectionLoading } = useFarcaster();
   const { config, isLoading: configLoading } = useConfig();
+  const { setProvider: setAppEthersProvider } = useEthersProvider();
   const [provider, setProvider] = useState<IAuthProvider | null>(null);
-  const [web3Service, setWeb3Service] = useState<Web3Service | null>(null);
-  // Track initialization to prevent race conditions
-  const [isInitializingWeb3Service, setIsInitializingWeb3Service] = useState(false);
   const [authState, setAuthState] = useState<AuthState>({
     user: null,
     token: null,
@@ -58,7 +57,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         } else {
           // Load Web3Auth modal provider (changed from no-modal)
           console.log('🔧 AuthProvider: Loading Web3Auth modal provider...');
-          const { getWeb3AuthProvider } = await import('./web3auth');
+          // Web3Auth provider no longer needed - using simple ethers approach
           const authProvider = getWeb3AuthProvider(config!);
 
           // Set up mobile action callback for desktop QR sessions
@@ -124,7 +123,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       isConnected: authState.isConnected,
       hasUserId: !!authState.user?.userId,
       hasBackendToken: !!backendAuth.getToken(),
-      hasWeb3Service: !!web3Service
+      hasWeb3Service: false
     });
     
     // Initialize Web3Service with EIP-1193 provider if not already done
@@ -448,70 +447,41 @@ export function AuthProvider({ children }: AuthProviderProps) {
     },
 
     getEthersProvider: () => {
-      // Check for WalletConnect provider first (if user authenticated via WalletConnect)
+      console.log('🔧 AuthProvider: getEthersProvider - Creating/setting app-level provider');
+
+      // Step 1: Get the raw EIP-1193 provider from auth method
+      let rawProvider = null;
+
+      // Check for WalletConnect provider first
       const walletConnectProvider = (window as any).__walletConnectProvider;
       if (walletConnectProvider && walletConnectProvider.isConnected()) {
-        console.log('[AuthProvider] Returning WalletConnect ethers provider');
-        try {
-          const eip1193Provider = walletConnectProvider.createEIP1193Provider();
-          // Wrap with ethers BrowserProvider for proper contract support
-          const { BrowserProvider } = require('ethers');
-          return new BrowserProvider(eip1193Provider);
-        } catch (error) {
-          console.error('[AuthProvider] Failed to create WalletConnect provider:', error);
-        }
+        console.log('🔧 AuthProvider: Using WalletConnect EIP-1193 provider');
+        rawProvider = walletConnectProvider.createEIP1193Provider();
       }
-
-      // If we have a unified Web3Service, use it
-      if (web3Service && (web3Service as any).provider) {
-        console.log('[AuthProvider] Returning ethers provider from Web3Service');
-        return (web3Service as any).provider;
-      }
-
       // Fallback to auth provider's method
-      const providerWithEthers = provider as any;
-      if (providerWithEthers.getEthersProvider) {
-        console.log('[AuthProvider] ⚠️ Returning ethers provider from auth provider (may have chain ID issues)');
-        return providerWithEthers.getEthersProvider();
-      }
-      throw new Error('Ethers provider not available');
-    },
-
-    // Expose Web3Service for direct access when needed
-    getWeb3Service: () => {
-      // Return the state Web3Service if available, otherwise try singleton
-      if (web3Service) {
-        return web3Service;
-      }
-      try {
-        const singletonInstance = Web3Service.getInstance();
-        if (singletonInstance.isServiceInitialized()) {
-          return singletonInstance;
-        }
-      } catch (e) {
-        // Singleton not available
-      }
-      return null;
-    },
-
-    // Generate signature-based authentication token
-    generateSignatureAuthToken: async () => {
-      // Use existing Web3Service or try singleton
-      let web3ServiceInstance = web3Service;
-      if (!web3ServiceInstance) {
-        try {
-          web3ServiceInstance = Web3Service.getInstance();
-        } catch (e) {
-          throw new Error('Web3Service not available for signature authentication');
+      else if (provider) {
+        const providerWithEthers = provider as any;
+        if (providerWithEthers.getEthersProvider) {
+          console.log('🔧 AuthProvider: Getting raw provider from auth provider');
+          rawProvider = providerWithEthers.getEthersProvider();
         }
       }
 
-      if (web3ServiceInstance && web3ServiceInstance.isServiceInitialized()) {
-        console.log('[AuthProvider] Generating signature auth token via Web3Service...');
-        return await web3ServiceInstance.generateSignatureAuthToken();
+      if (!rawProvider) {
+        throw new Error('No raw provider available');
       }
-      throw new Error('Web3Service not properly initialized for signature authentication');
+
+      // Step 2: Create ethers provider and set it at app level
+      const { BrowserProvider } = require('ethers');
+      const ethersProvider = new BrowserProvider(rawProvider);
+
+      console.log('🔧 AuthProvider: Setting ethers provider at app level');
+      setAppEthersProvider(ethersProvider);
+
+      return ethersProvider;
     },
+
+    // Simple helper methods - contract operations now use app-level provider directly
 
 
     signContractTransaction: async (params: any) => {
@@ -708,7 +678,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       return backendAuth.getToken();
     },
     });
-  }, [authState, provider, backendAuth, web3Service]);
+  }, [authState, provider, backendAuth]);
 
   // Memoize callbacks to prevent FarcasterAuthProviderWrapper re-renders (must be before early returns)
   const handleProviderReady = React.useCallback((p: IAuthProvider) => {

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/components/auth';
 import { useConfig } from '@/components/auth/ConfigProvider';
-// Removed useWeb3SDK - using ethers directly instead
+import { useSimpleEthers } from '@/hooks/useSimpleEthers';
 import ConnectWalletEmbedded from '@/components/auth/ConnectWalletEmbedded';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
@@ -13,7 +13,6 @@ import { useFarcaster } from '@/components/farcaster/FarcasterDetectionProvider'
 import { useWalletAddress } from '@/hooks/useWalletAddress';
 import { TransferUSDCRequest } from '@/types';
 import { ensureHexPrefix } from '@/utils/hexUtils';
-import { fetchUSDCBalance } from '@/utils/usdcBalance';
 
 interface WalletBalances {
   native: string;
@@ -35,7 +34,8 @@ interface SendFormData {
 }
 
 export default function Wallet() {
-  const { user, isLoading: authLoading, getEthersProvider, fundAndSendTransaction } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
+  const { provider, fundAndSendTransaction, getUSDCBalance, getNativeBalance, getUserAddress } = useSimpleEthers();
   const { isInFarcaster } = useFarcaster();
   const { config } = useConfig();
   const { walletAddress, isLoading: isWalletAddressLoading } = useWalletAddress();
@@ -54,24 +54,23 @@ export default function Wallet() {
   const [isLoadingChainInfo, setIsLoadingChainInfo] = useState(false);
 
   const loadChainInfo = async () => {
-    const ethersProvider = getEthersProvider();
-    if (!ethersProvider) return;
+    if (!provider) return;
 
     setIsLoadingChainInfo(true);
     try {
 
       // Get network info directly from ethers provider
-      const network = await ethersProvider.getNetwork();
+      const network = await provider.getNetwork();
       const chainId = Number(network.chainId);
 
       // Get current block number
-      const blockNumber = await ethersProvider.getBlockNumber();
+      const blockNumber = await provider.getBlockNumber();
 
       // Get current gas price using ethers (more reliable than manual RPC calls)
       let gasPrice: string | null = null;
       try {
         console.log('Loading chain info - fetching gas price with ethers...');
-        const feeData = await ethersProvider.getFeeData();
+        const feeData = await provider.getFeeData();
         if (feeData.gasPrice) {
           gasPrice = ethers.formatUnits(feeData.gasPrice, 'gwei');
           console.log('Got gas price from ethers:', gasPrice, 'gwei');
@@ -129,97 +128,49 @@ export default function Wallet() {
   };
 
   const loadBalances = async () => {
-    const ethersProvider = getEthersProvider();
-    if (!user || !config || !ethersProvider) {
-      console.log('Skipping balance load:', { user: !!user, config: !!config, ethersProvider: !!ethersProvider });
+    if (!user || !config) {
+      console.log('Skipping balance load:', { user: !!user, config: !!config });
       return;
     }
 
     setIsLoadingBalances(true);
     try {
-      // Get the wallet address directly from ethers (avoid SDK provider issues)
-      const signer = await ethersProvider.getSigner();
-      const userAddress = await signer.getAddress();
-      console.log('Loading balances for address:', userAddress);
-      
-      // Get network info for debugging
-      const network = await ethersProvider.getNetwork();
-      console.log('Current network:', { 
-        chainId: network.chainId.toString(), 
-        name: network.name,
-        ensAddress: network.ensAddress,
-        full: network
+      console.log('🔧 Wallet: Loading balances via Web3Service');
+
+      // Use Web3Service for all balance operations
+      const [nativeBalance, usdcBalance] = await Promise.all([
+        getNativeBalance(),
+        getUSDCBalance()
+      ]);
+
+      console.log('Balances loaded via Web3Service:', {
+        native: nativeBalance,
+        usdc: usdcBalance
       });
-      
-      const nativeBalance = await ethersProvider.getBalance(userAddress);
-      const nativeFormatted = ethers.formatEther(nativeBalance);
-      console.log('Native balance:', { raw: nativeBalance.toString(), formatted: nativeFormatted });
-
-      // Get USDC balance using shared utility function
-      let usdcBalance = '0';
-      if (config?.usdcContractAddress) {
-        try {
-          usdcBalance = await fetchUSDCBalance(
-            userAddress,
-            config.usdcContractAddress,
-            ethersProvider
-          );
-        } catch (error) {
-          console.error('Failed to get USDC balance with shared utility:', error);
-          usdcBalance = '0';
-        }
-      } else {
-        console.warn('No USDC contract address configured');
-        usdcBalance = '0';
-      }
-
-      // Format native balance with scientific notation for small values
-      const nativeValue = parseFloat(nativeFormatted);
-      let nativeDisplay: string;
-      if (nativeValue < 0.0001 && nativeValue > 0) {
-        // Use scientific notation for very small values
-        // toExponential(3) gives us 4 significant figures (e.g., "1.234e-5")
-        nativeDisplay = nativeValue.toExponential(3);
-      } else {
-        // Always show 4 decimal places for consistency
-        nativeDisplay = nativeValue.toFixed(4);
-      }
-
-      // Parse and format USDC to always show 4 decimal places
-      const usdcValue = parseFloat(usdcBalance);
-      const usdcDisplay = usdcValue.toFixed(4);
-
-      console.log('Final display values:', { native: nativeDisplay, usdc: usdcDisplay });
 
       setBalances({
-        native: nativeDisplay,
-        usdc: usdcDisplay
+        native: nativeBalance,
+        usdc: usdcBalance
       });
     } catch (error) {
-      console.error('Error loading balances - full error:', error);
-      // Optionally show error to user
-      setBalances({
-        native: 'Error',
-        usdc: 'Error'
-      });
+      console.error('Error loading balances:', error);
+      setBalances({ native: 'Error', usdc: 'Error' });
     } finally {
       setIsLoadingBalances(false);
     }
   };
 
   useEffect(() => {
-    const ethersProvider = getEthersProvider();
-    if (ethersProvider) {
+    if (user && config) {
       loadBalances();
       loadChainInfo();
     }
-  }, [user, config, getEthersProvider]);
+  }, [user, config]);
 
   const handleSendSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const ethersProvider = getEthersProvider();
-    if (!user || !config || !ethersProvider) {
-      setSendError('Wallet provider not available. Please reconnect your wallet.');
+    if (!user || !config) {
+      setSendError('User or config not available. Please reconnect your wallet.');
       return;
     }
 
@@ -228,23 +179,18 @@ export default function Wallet() {
     setIsSending(true);
 
     try {
-      if (!ethersProvider) {
-        throw new Error('Wallet not connected. Please ensure wallet is connected.');
-      }
+      console.log('🔧 Wallet: Sending transaction via Web3Service');
 
       if (sendForm.currency === 'NATIVE') {
-        // Send native token
-        const signer = await ethersProvider.getSigner();
-        const tx = await signer.sendTransaction({
+        // Send native token via fundAndSendTransaction
+        const txHash = await fundAndSendTransaction({
           to: sendForm.recipient,
-          value: ethers.parseEther(sendForm.amount)
+          data: '0x',
+          value: ethers.parseEther(sendForm.amount).toString()
         });
-        setSendSuccess(`Native token sent successfully! Transaction: ${tx.hash}`);
+        setSendSuccess(`Native token sent successfully! Transaction: ${txHash}`);
       } else {
-        // Send USDC using the same fundAndSendTransaction method used for contracts
-        if (!fundAndSendTransaction) {
-          throw new Error('Transaction method not available. Please reconnect your wallet.');
-        }
+        // Send USDC via fundAndSendTransaction
 
         // Create USDC transfer transaction data
         const usdcContract = new ethers.Contract(

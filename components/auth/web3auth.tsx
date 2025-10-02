@@ -531,10 +531,24 @@ class Web3AuthProviderImpl implements IAuthProvider {
       console.error('🔧 Web3Auth: Debug info:', {
         thisObject: this.constructor.name,
         hasConfig: !!this.config,
+        hasProvider: !!this.provider,
         stateKeys: Object.keys(this.state),
         thisKeys: Object.keys(this).filter(k => !k.startsWith('_'))
       });
-      throw new Error('Web3Service not initialized. Connection must be established before funding transactions.');
+
+      // Try to initialize Web3Service if we have a provider and config
+      if (this.provider && this.config) {
+        console.log('🔧 Web3Auth: Attempting emergency Web3Service initialization...');
+        try {
+          await this.initializeWeb3Service();
+          console.log('🔧 Web3Auth: Emergency Web3Service initialization successful!');
+        } catch (error) {
+          console.error('🔧 Web3Auth: Emergency Web3Service initialization failed:', error);
+          throw new Error('Web3Service not initialized and emergency initialization failed. Connection must be established before funding transactions.');
+        }
+      } else {
+        throw new Error('Web3Service not initialized. Connection must be established before funding transactions.');
+      }
     }
     // Delegate to Web3Service which handles chainservice gas funding + transaction
     return await this.web3Service.fundAndSendTransaction(txParams);
@@ -662,11 +676,25 @@ export function getWeb3AuthProvider(config?: any): IAuthProvider {
     web3authProvider = new Web3AuthProviderImpl(config);
   } else {
     console.log('🔧 Web3Auth: Reusing existing provider instance');
-    // Update config if it's changed
-    if (config && !web3authProvider['config']) {
-      (web3authProvider as any).config = config;
+
+    // Ensure config is properly set if provided
+    if (config) {
+      const providerWithConfig = web3authProvider as any;
+      if (!providerWithConfig.config) {
+        console.log('🔧 Web3Auth: Setting config on existing provider');
+        providerWithConfig.config = config;
+      }
     }
   }
+
+  // Additional safety check - log the provider state
+  console.log('🔧 Web3Auth: Provider singleton state:', {
+    hasProvider: !!web3authProvider,
+    isInitialized: web3authProvider.getState().isInitialized,
+    isConnected: web3authProvider.getState().isConnected,
+    hasConfig: !!(web3authProvider as any).config
+  });
+
   return web3authProvider;
 }
 

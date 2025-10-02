@@ -32,15 +32,53 @@ export const ESCROW_CONTRACT_ABI = [
 ];
 
 export class Web3Service {
+  private static instance: Web3Service | null = null;
   private provider: ethers.BrowserProvider | null = null;
   private walletProvider: WalletProvider | null = null;
   private eip1193Provider: any = null; // Raw EIP-1193 provider
   private config: Config;
   private onMobileActionRequired?: (actionType: 'sign' | 'transaction') => void;
   private isDesktopQRSession: boolean = false;
+  private isInitialized: boolean = false;
 
-  constructor(config: Config) {
+  private constructor(config: Config) {
     this.config = config;
+  }
+
+  /**
+   * Get the singleton instance of Web3Service
+   */
+  static getInstance(config?: Config): Web3Service {
+    if (!Web3Service.instance) {
+      if (!config) {
+        throw new Error('Config required for first Web3Service initialization');
+      }
+      console.log('[Web3Service] Creating new singleton instance');
+      Web3Service.instance = new Web3Service(config);
+    } else {
+      console.log('[Web3Service] Returning existing singleton instance');
+      // Update config if provided and different
+      if (config && Web3Service.instance.config !== config) {
+        console.log('[Web3Service] Updating config on existing instance');
+        Web3Service.instance.config = config;
+      }
+    }
+    return Web3Service.instance;
+  }
+
+  /**
+   * Check if the Web3Service is properly initialized with a provider
+   */
+  isServiceInitialized(): boolean {
+    return this.isInitialized && (!!this.provider || !!this.walletProvider);
+  }
+
+  /**
+   * Clear the singleton instance (for testing or reset)
+   */
+  static clearInstance(): void {
+    console.log('[Web3Service] Clearing singleton instance');
+    Web3Service.instance = null;
   }
 
   /**
@@ -66,9 +104,11 @@ export class Web3Service {
       console.log('[Web3Service] Initializing with WalletProvider abstraction');
       this.walletProvider = walletProvider;
       this.provider = walletProvider.getEthersProvider();
+      this.isInitialized = true;
       console.log('[Web3Service] ✅ Provider initialized via WalletProvider');
     } catch (error) {
       console.error('[Web3Service] ❌ Failed to initialize ethers provider:', error);
+      this.isInitialized = false;
       throw new Error('Provider initialization failed: ' + (error as Error).message);
     }
   }
@@ -100,10 +140,12 @@ export class Web3Service {
       const signer = await this.provider.getSigner();
       const address = await signer.getAddress();
       console.log('[Web3Service] ✅ Connected wallet address:', address);
-      
+
+      this.isInitialized = true;
       console.log('[Web3Service] ✅ EIP-1193 provider initialized successfully');
     } catch (error) {
       console.error('[Web3Service] ❌ Failed to initialize EIP-1193 provider:', error);
+      this.isInitialized = false;
       throw new Error('EIP-1193 provider initialization failed: ' + (error as Error).message);
     }
   }
@@ -122,8 +164,8 @@ export class Web3Service {
   }): Promise<string> {
     console.log('[Web3Service.signTransaction] Starting transaction signing...');
 
-    if (!this.provider) {
-      throw new Error('Provider not initialized. Please connect your wallet.');
+    if (!this.isServiceInitialized()) {
+      throw new Error('Web3Service not initialized. Please ensure the wallet is connected and provider is properly initialized.');
     }
 
     // If this is a desktop-to-mobile QR session, show the mobile prompt
@@ -140,6 +182,9 @@ export class Web3Service {
     const fromAddress = await this.getUserAddress();
     
     // Get nonce if not provided
+    if (!this.provider) {
+      throw new Error('Provider not initialized');
+    }
     const nonce = txParams.nonce ?? await this.provider.getTransactionCount(fromAddress);
     
     // Get gas price if not provided
@@ -207,6 +252,9 @@ export class Web3Service {
     } else {
       // Direct EIP-1193 signing via ethers signer
       console.log('[Web3Service.signTransaction] Using ethers signer for EIP-1193 provider');
+      if (!this.provider) {
+        throw new Error('Provider not initialized');
+      }
       const signer = await this.provider.getSigner();
       
       const tx = {

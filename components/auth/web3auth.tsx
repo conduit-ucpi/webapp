@@ -553,7 +553,7 @@ class Web3AuthProviderImpl implements IAuthProvider {
 
     console.log('🔧 Web3Auth: Starting Web3Service initialization...');
     const { Web3Service } = await import('@/lib/web3');
-    this.web3Service = new Web3Service(this.config);
+    this.web3Service = Web3Service.getInstance(this.config);
 
     // Create a compatible wallet provider for Web3Service
     const walletProvider = {
@@ -607,6 +607,13 @@ class Web3AuthProviderImpl implements IAuthProvider {
     }
 
     return await this.web3Service.fundAndSendTransaction(txParams);
+  }
+
+  /**
+   * Get the Web3Service instance (implements AuthInterface method)
+   */
+  getWeb3Service(): any {
+    return this.web3Service;
   }
 
   /**

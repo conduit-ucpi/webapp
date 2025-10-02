@@ -155,10 +155,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
               console.log('[AuthProvider] Reusing existing ethers provider from auth provider');
               const existingEthersProvider = authProviderImpl.getEthersProvider();
               
-              // Create Web3Service with the existing ethers provider
-              const newWeb3Service = new Web3Service(config);
+              // Get singleton Web3Service instance and set the existing ethers provider
+              const newWeb3Service = Web3Service.getInstance(config);
               // Set the provider directly instead of initializing
               (newWeb3Service as any).provider = existingEthersProvider;
+              (newWeb3Service as any).isInitialized = true;
               setWeb3Service(newWeb3Service);
               console.log('[AuthProvider] ✅ Web3Service initialized with reused ethers provider');
               
@@ -172,7 +173,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           
           // Fallback: Get the raw EIP-1193 provider (only if reuse failed)
           let eip1193Provider: any;
-          
+
           if (authProviderImpl.provider) {
             // Web3Auth and most providers store it as 'provider'
             eip1193Provider = authProviderImpl.provider;
@@ -188,10 +189,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
             });
             return;
           }
-          
+
           if (eip1193Provider) {
-            // Create and initialize Web3Service with the EIP-1193 provider
-            const newWeb3Service = new Web3Service(config);
+            // Get singleton Web3Service instance and initialize with the EIP-1193 provider
+            const newWeb3Service = Web3Service.getInstance(config);
             await newWeb3Service.initializeWithEIP1193(eip1193Provider);
 
             // Check if this is a desktop QR session (WalletConnect on desktop)
@@ -285,15 +286,28 @@ export function AuthProvider({ children }: AuthProviderProps) {
           }
 
           try {
-            if (web3Service) {
-              const signatureToken = await web3Service.generateSignatureAuthToken();
-              
+            // Use the singleton Web3Service instance if available
+            let web3ServiceInstance = web3Service;
+
+            // Try to get singleton instance if we don't have one yet
+            if (!web3ServiceInstance) {
+              try {
+                web3ServiceInstance = Web3Service.getInstance();
+              } catch (e) {
+                // getInstance might fail if no config provided yet
+                console.log('🔧 AuthProvider: Web3Service singleton not available yet');
+              }
+            }
+
+            if (web3ServiceInstance && web3ServiceInstance.isServiceInitialized()) {
+              const signatureToken = await web3ServiceInstance.generateSignatureAuthToken();
+
               // Retry backend auth with signature token
               const signatureBackendResult = await backendAuth.login(
                 signatureToken,
                 providerState.user?.walletAddress || ''
               );
-              
+
               if (signatureBackendResult.success && signatureBackendResult.user) {
                 console.log('🔧 AuthProvider: ✅ Signature authentication successful!');
                 const newState = { ...providerState };
@@ -309,6 +323,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 setAuthState(newState);
                 return; // Exit early on success
               }
+            } else {
+              console.log('🔧 AuthProvider: Web3Service not available for signature auth');
             }
           } catch (signatureError) {
             console.error('🔧 AuthProvider: ❌ Signature authentication failed:', signatureError);
@@ -460,17 +476,41 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
       throw new Error('Ethers provider not available');
     },
-    
+
     // Expose Web3Service for direct access when needed
-    getWeb3Service: () => web3Service,
-    
+    getWeb3Service: () => {
+      // Return the state Web3Service if available, otherwise try singleton
+      if (web3Service) {
+        return web3Service;
+      }
+      try {
+        const singletonInstance = Web3Service.getInstance();
+        if (singletonInstance.isServiceInitialized()) {
+          return singletonInstance;
+        }
+      } catch (e) {
+        // Singleton not available
+      }
+      return null;
+    },
+
     // Generate signature-based authentication token
     generateSignatureAuthToken: async () => {
-      if (web3Service) {
-        console.log('[AuthProvider] Generating signature auth token via Web3Service...');
-        return await web3Service.generateSignatureAuthToken();
+      // Use existing Web3Service or try singleton
+      let web3ServiceInstance = web3Service;
+      if (!web3ServiceInstance) {
+        try {
+          web3ServiceInstance = Web3Service.getInstance();
+        } catch (e) {
+          throw new Error('Web3Service not available for signature authentication');
+        }
       }
-      throw new Error('Web3Service not available for signature authentication');
+
+      if (web3ServiceInstance && web3ServiceInstance.isServiceInitialized()) {
+        console.log('[AuthProvider] Generating signature auth token via Web3Service...');
+        return await web3ServiceInstance.generateSignatureAuthToken();
+      }
+      throw new Error('Web3Service not properly initialized for signature authentication');
     },
 
 

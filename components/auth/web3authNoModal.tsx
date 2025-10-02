@@ -1016,7 +1016,7 @@ class Web3AuthNoModalProviderImpl implements IAuthProvider {
 
     try {
       const { Web3Service } = await import('@/lib/web3');
-      this.web3Service = new Web3Service(this.config);
+      this.web3Service = Web3Service.getInstance(this.config);
       
       // Create a compatible wallet provider for Web3Service
       const walletProvider = {

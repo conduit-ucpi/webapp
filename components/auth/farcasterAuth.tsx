@@ -854,7 +854,7 @@ function FarcasterAuthProviderInner({ children, AuthContext }: {
       if (!config) return;
       
       const { Web3Service } = await import('@/lib/web3');
-      const web3Service = new Web3Service(config);
+      const web3Service = Web3Service.getInstance(config);
       
       // Initialize with our simple Farcaster provider wrapper
       const farcasterProvider = createFarcasterProvider();

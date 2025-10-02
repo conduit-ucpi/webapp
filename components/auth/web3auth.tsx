@@ -517,8 +517,23 @@ class Web3AuthProviderImpl implements IAuthProvider {
    * This method ensures gas funding via chainservice before sending
    */
   async fundAndSendTransaction(txParams: { to: string; data: string; value?: string; gasLimit?: bigint; gasPrice?: bigint; }): Promise<string> {
+    console.log('🔧 Web3Auth: fundAndSendTransaction called', {
+      hasWeb3Service: !!this.web3Service,
+      hasProvider: !!this.provider,
+      isConnected: this.state.isConnected,
+      isInitialized: this.state.isInitialized,
+      web3ServiceStatus: this.web3Service ? 'initialized' : 'null',
+      providerType: this.provider ? typeof this.provider : 'no provider'
+    });
+
     if (!this.web3Service) {
       console.error('🔧 Web3Auth: ERROR - Web3Service not initialized!');
+      console.error('🔧 Web3Auth: Debug info:', {
+        thisObject: this.constructor.name,
+        hasConfig: !!this.config,
+        stateKeys: Object.keys(this.state),
+        thisKeys: Object.keys(this).filter(k => !k.startsWith('_'))
+      });
       throw new Error('Web3Service not initialized. Connection must be established before funding transactions.');
     }
     // Delegate to Web3Service which handles chainservice gas funding + transaction

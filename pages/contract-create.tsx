@@ -160,7 +160,7 @@ export default function ContractCreate() {
       }
       statusUrl.searchParams.set('payment_status', status);
 
-      // Add additional parameters (contract_id, tx_hash, error, etc.)
+      // Add additional parameters (contract_id, contract_hash, tx_hash, error, etc.)
       Object.entries(additionalParams).forEach(([key, value]) => {
         if (value) {
           statusUrl.searchParams.set(key, value);
@@ -453,6 +453,7 @@ export default function ContractCreate() {
               body: JSON.stringify({
                 transaction_hash: result.depositTxHash,
                 contract_address: result.contractAddress,
+                contract_hash: result.contractAddress, // Include as both contract_address and contract_hash for compatibility
                 contract_id: contractId,
                 webhook_url: webhook_url,
                 order_id: parseInt(order_id as string || '0'),
@@ -539,6 +540,7 @@ export default function ContractCreate() {
             // Build WordPress status URL for completed payment
             const completedUrl = buildWordPressStatusUrl('completed', {
               contract_id: contractId || '',
+              contract_hash: result?.contractAddress || '',
               tx_hash: result?.depositTxHash || ''
             });
             window.opener.location.href = completedUrl;
@@ -552,6 +554,7 @@ export default function ContractCreate() {
           // Build WordPress status URL for completed payment
           const completedUrl = buildWordPressStatusUrl('completed', {
             contract_id: contractId || '',
+            contract_hash: result?.contractAddress || '',
             tx_hash: result?.depositTxHash || ''
           });
           window.location.href = completedUrl;

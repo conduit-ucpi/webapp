@@ -98,10 +98,11 @@ export class Web3Service {
 
   /**
    * Initialize with generic WalletProvider abstraction (legacy)
+   * DEPRECATED: Use initializeWithEIP1193 for new unified approach
    */
   async initializeProvider(walletProvider: WalletProvider) {
     try {
-      console.log('[Web3Service] Initializing with WalletProvider abstraction');
+      console.log('[Web3Service] Initializing with WalletProvider abstraction (legacy)');
       this.walletProvider = walletProvider;
       this.provider = walletProvider.getEthersProvider();
       this.isInitialized = true;
@@ -115,43 +116,46 @@ export class Web3Service {
 
   /**
    * Initialize directly with any EIP-1193 provider
-   * This is the new unified path that works with any wallet connection
+   * This is the unified path that works consistently across all wallet types
+   * FIXED: All operations (balance reading + transactions) now use the same ethers provider
    */
   async initializeWithEIP1193(eip1193Provider: any) {
     try {
-      console.log('[Web3Service] Initializing with EIP-1193 provider');
+      console.log('[Web3Service] Initializing with unified EIP-1193 provider approach');
       console.log('[Web3Service] Provider type:', eip1193Provider.constructor?.name || typeof eip1193Provider);
-      
-      // Store the raw EIP-1193 provider
+
+      // Store the raw EIP-1193 provider (mainly for debugging/logging)
       this.eip1193Provider = eip1193Provider;
-      
-      // Wrap with ethers
-      console.log('[Web3Service] Wrapping EIP-1193 provider with ethers.BrowserProvider...');
+
+      // Create the unified ethers provider that will handle ALL operations
+      console.log('[Web3Service] Creating unified ethers.BrowserProvider...');
       this.provider = new ethers.BrowserProvider(eip1193Provider);
-      
+
       // Test the connection by getting network info
       const network = await this.provider.getNetwork();
       console.log('[Web3Service] ✅ Connected to network:', {
         chainId: network.chainId.toString(),
         name: network.name
       });
-      
+
       // Get the connected address to verify authentication
       const signer = await this.provider.getSigner();
       const address = await signer.getAddress();
       console.log('[Web3Service] ✅ Connected wallet address:', address);
 
       this.isInitialized = true;
-      console.log('[Web3Service] ✅ EIP-1193 provider initialized successfully');
+      console.log('[Web3Service] ✅ Unified ethers provider initialized successfully');
+      console.log('[Web3Service] 🎯 Balance reading ✅ + Transaction signing ✅ now use same provider');
     } catch (error) {
-      console.error('[Web3Service] ❌ Failed to initialize EIP-1193 provider:', error);
+      console.error('[Web3Service] ❌ Failed to initialize unified provider:', error);
       this.isInitialized = false;
-      throw new Error('EIP-1193 provider initialization failed: ' + (error as Error).message);
+      throw new Error('Unified provider initialization failed: ' + (error as Error).message);
     }
   }
 
   /**
    * Single centralized method for signing transactions
+   * FIXED: Now uses the same unified ethers provider approach as balance reading
    * All transaction signing in the app MUST go through this method
    */
   async signTransaction(txParams: {
@@ -162,7 +166,7 @@ export class Web3Service {
     gasPrice?: bigint;
     nonce?: number;
   }): Promise<string> {
-    console.log('[Web3Service.signTransaction] Starting transaction signing...');
+    console.log('[Web3Service.signTransaction] Starting unified transaction signing...');
 
     if (!this.isServiceInitialized()) {
       throw new Error('Web3Service not initialized. Please ensure the wallet is connected and provider is properly initialized.');
@@ -173,61 +177,38 @@ export class Web3Service {
       console.log('[Web3Service] Desktop QR session detected, showing mobile prompt for transaction');
       this.onMobileActionRequired('transaction');
     }
-    
-    // Check which type of provider we're using
-    const usingLegacyProvider = !!this.walletProvider;
-    console.log('[Web3Service.signTransaction] Provider type:', usingLegacyProvider ? 'WalletProvider abstraction' : 'Direct EIP-1193');
 
-    // Get the actual wallet address
+    console.log('[Web3Service.signTransaction] Using unified ethers provider (same as balance reading)');
+
+    // Get the actual wallet address using unified approach
     const fromAddress = await this.getUserAddress();
-    
-    // Get nonce if not provided
+
+    // Get nonce using unified ethers provider
     if (!this.provider) {
       throw new Error('Provider not initialized');
     }
     const nonce = txParams.nonce ?? await this.provider.getTransactionCount(fromAddress);
-    
-    // Get gas price if not provided
+
+    // Get gas price using unified ethers provider
     let gasPrice = txParams.gasPrice;
     if (!gasPrice) {
       try {
-        // Get live gas price directly from RPC to bypass Web3Auth's stale cached prices
-        const response = await fetch(this.config.rpcUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            jsonrpc: '2.0',
-            method: 'eth_gasPrice',
-            params: [],
-            id: 1
-          })
-        });
-        
-        if (response.ok) {
-          const result = await response.json();
-          if (result.result) {
-            const liveGasPrice = BigInt(result.result);
-            console.log('Using live RPC gas price:', liveGasPrice.toString(), 'wei');
-            gasPrice = liveGasPrice;
-          }
-        }
+        const feeData = await this.provider.getFeeData();
+        gasPrice = feeData.gasPrice || BigInt(this.config.minGasWei);
+        console.log('Using unified ethers provider gas price:', gasPrice.toString(), 'wei');
       } catch (error) {
-        console.warn('Failed to get live gas price from RPC, falling back to provider:', error);
-      }
-      
-      // Fallback to minimum gas price if RPC call fails (don't use provider's getFeeData as it may include MetaMask's inflated suggestions)
-      if (!gasPrice) {
+        console.warn('Failed to get gas price from unified provider, using fallback:', error);
         gasPrice = BigInt(this.config.minGasWei);
         console.log('Using fallback minimum gas price:', gasPrice.toString(), 'wei');
       }
     }
-    
+
     // Use provided gasLimit or throw error (caller should estimate)
     if (!txParams.gasLimit) {
       throw new Error('Gas limit must be provided');
     }
-    
-    console.log('Signing transaction:', {
+
+    console.log('[Web3Service.signTransaction] Transaction details:', {
       from: fromAddress,
       to: txParams.to,
       value: txParams.value || '0x0',
@@ -235,28 +216,12 @@ export class Web3Service {
       gasPrice: gasPrice.toString(),
       nonce: nonce
     });
-    
-    // Sign the transaction based on provider type
-    if (this.walletProvider) {
-      console.log('[Web3Service.signTransaction] Using WalletProvider.signTransaction()');
-      return await this.walletProvider.signTransaction({
-      from: fromAddress,
-      to: txParams.to,
-      data: txParams.data,
-      value: txParams.value || '0x0',
-      gasLimit: toHex(txParams.gasLimit),
-      gasPrice: toHex(gasPrice),
-      nonce: nonce,
-        chainId: this.config.chainId
-      });
-    } else {
-      // Direct EIP-1193 signing via ethers signer
-      console.log('[Web3Service.signTransaction] Using ethers signer for EIP-1193 provider');
-      if (!this.provider) {
-        throw new Error('Provider not initialized');
-      }
+
+    try {
+      // Use unified ethers signer for all wallet types
+      console.log('[Web3Service.signTransaction] Using unified ethers signer');
       const signer = await this.provider.getSigner();
-      
+
       const tx = {
         from: fromAddress,
         to: txParams.to,
@@ -267,13 +232,32 @@ export class Web3Service {
         nonce: nonce,
         chainId: this.config.chainId
       };
-      
-      console.log('[Web3Service.signTransaction] Transaction to sign:', tx);
-      
-      // Sign the transaction using ethers signer (works with any EIP-1193 provider)
+
+      console.log('[Web3Service.signTransaction] Signing transaction via unified approach...');
+
+      // Sign the transaction using ethers signer (works with any wallet type)
       const signedTx = await signer.signTransaction(tx);
-      console.log('[Web3Service.signTransaction] ✅ Transaction signed successfully');
+      console.log('[Web3Service.signTransaction] ✅ Transaction signed successfully via unified provider');
       return signedTx;
+
+    } catch (error) {
+      // Legacy fallback for older initialization paths
+      if (this.walletProvider) {
+        console.log('[Web3Service.signTransaction] Falling back to legacy WalletProvider.signTransaction()');
+        return await this.walletProvider.signTransaction({
+          from: fromAddress,
+          to: txParams.to,
+          data: txParams.data,
+          value: txParams.value || '0x0',
+          gasLimit: toHex(txParams.gasLimit),
+          gasPrice: toHex(gasPrice),
+          nonce: nonce,
+          chainId: this.config.chainId
+        });
+      }
+
+      console.error('[Web3Service.signTransaction] ❌ Failed with both unified and legacy approaches:', error);
+      throw new Error(`Transaction signing failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
@@ -285,21 +269,21 @@ export class Web3Service {
   }
 
   async getUserAddress(): Promise<string> {
-    // If using WalletProvider abstraction
-    if (this.walletProvider) {
-      console.log('[Web3Service.getUserAddress] Using WalletProvider abstraction');
-      return await this.walletProvider.getAddress();
-    }
-    
-    // If using direct EIP-1193 provider
+    // Use the unified ethers provider approach for all wallet types
     if (this.provider) {
-      console.log('[Web3Service.getUserAddress] Using EIP-1193 provider via ethers');
+      console.log('[Web3Service.getUserAddress] Using unified ethers provider');
       const signer = await this.provider.getSigner();
       const address = await signer.getAddress();
       console.log('[Web3Service.getUserAddress] Got address:', address);
       return address;
     }
-    
+
+    // Legacy fallback for older initialization paths
+    if (this.walletProvider) {
+      console.log('[Web3Service.getUserAddress] Using legacy WalletProvider abstraction');
+      return await this.walletProvider.getAddress();
+    }
+
     throw new Error('No provider initialized');
   }
   
@@ -668,10 +652,11 @@ export class Web3Service {
 
   /**
    * Fund wallet with gas and send transaction
-   * 1. Estimates gas for the transaction
+   * FIXED: Now uses the same unified ethers provider approach as balance reading
+   * 1. Estimates gas for the transaction using ethers provider
    * 2. Calls chainservice to fund wallet with estimated gas + 20%
-   * 3. Sends the transaction via RPC once wallet is funded
-   * 
+   * 3. Sends the transaction via ethers provider (consistent with balance reading)
+   *
    * @param txParams Transaction parameters (to, data, value, etc.)
    * @returns Transaction hash
    */
@@ -686,129 +671,50 @@ export class Web3Service {
       throw new Error('Provider not initialized');
     }
 
+    console.log('[Web3Service.fundAndSendTransaction] Using unified ethers provider approach (same as balance reading)');
+
     const userAddress = await this.getUserAddress();
-    
-    // Step 1: Estimate gas
-    let gasEstimate: bigint = BigInt(0); // Initialize to avoid TypeScript errors
+
+    // Step 1: Estimate gas using the same ethers provider used for balance reading
+    let gasEstimate: bigint = BigInt(0);
     if (txParams.gasLimit) {
       gasEstimate = txParams.gasLimit;
       console.log('Using provided gas limit:', gasEstimate.toString());
     } else {
-      // Try provider estimation first since it's more reliable
-      let estimationSuccess = false;
-      const maxRetries = 2; // Reduced retries since provider usually works
-
-      // Try provider estimation first (more reliable)
-      for (let attempt = 1; attempt <= maxRetries && !estimationSuccess; attempt++) {
-        try {
-          console.log(`Estimating gas via provider (attempt ${attempt}/${maxRetries})...`);
-          gasEstimate = await this.provider.estimateGas({
-            from: userAddress,
-            to: txParams.to,
-            data: txParams.data,
-            value: txParams.value || '0x0'
-          });
-          console.log('Gas estimate successful:', gasEstimate.toString(), 'gas');
-          estimationSuccess = true;
-        } catch (providerError: any) {
-          // Only log detailed error on last attempt
-          if (attempt === maxRetries) {
-            console.warn('Provider gas estimation failed:', providerError.message || providerError);
-          }
-          if (attempt < maxRetries) {
-            // Shorter wait before retry
-            await new Promise(resolve => setTimeout(resolve, 500));
-          }
-        }
-      }
-
-      // If provider failed, try direct RPC as backup (usually less reliable)
-      if (!estimationSuccess) {
-        console.log('Trying direct RPC estimation as fallback...');
-
-        try {
-          // Create timeout for older browsers that don't support AbortSignal.timeout
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 5000);
-
-          const response = await fetch(this.config.rpcUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              jsonrpc: '2.0',
-              method: 'eth_estimateGas',
-              params: [{
-                from: userAddress,
-                to: txParams.to,
-                data: txParams.data,
-                value: txParams.value || '0x0'
-              }],
-              id: 1
-            }),
-            signal: controller.signal
-          });
-
-          clearTimeout(timeoutId);
-
-          if (response.ok) {
-            const result = await response.json();
-            if (result.result) {
-              gasEstimate = BigInt(result.result);
-              console.log('Using RPC gas estimate:', gasEstimate.toString(), 'gas');
-              estimationSuccess = true;
-            }
-          }
-        } catch (error) {
-          // Silently fail RPC, we'll use fallback
-        }
-      }
-
-      // Final fallback if both methods failed
-      if (!estimationSuccess) {
-        console.error('All gas estimation attempts failed, using fallback');
+      try {
+        console.log('Estimating gas via unified ethers provider...');
+        gasEstimate = await this.provider.estimateGas({
+          from: userAddress,
+          to: txParams.to,
+          data: txParams.data,
+          value: txParams.value || '0x0'
+        });
+        console.log('Gas estimate successful:', gasEstimate.toString(), 'gas');
+      } catch (error) {
+        console.warn('Provider gas estimation failed, using fallback:', error);
         gasEstimate = BigInt(100000); // 100k gas units - reasonable for most transactions
-        console.warn('Using fallback gas estimate:', gasEstimate.toString(), 'gas');
       }
     }
-    
-    // Get gas price
+
+    // Step 2: Get gas price using ethers provider
     let gasPrice = txParams.gasPrice;
     if (!gasPrice) {
       try {
-        // Get live gas price from RPC
-        const response = await fetch(this.config.rpcUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            jsonrpc: '2.0',
-            method: 'eth_gasPrice',
-            params: [],
-            id: 1
-          })
-        });
-        
-        if (response.ok) {
-          const result = await response.json();
-          if (result.result) {
-            gasPrice = BigInt(result.result);
-            console.log('Using live RPC gas price:', gasPrice.toString(), 'wei');
-          }
-        }
+        const feeData = await this.provider.getFeeData();
+        gasPrice = feeData.gasPrice || BigInt(this.config.minGasWei);
+        console.log('Using ethers provider gas price:', gasPrice.toString(), 'wei');
       } catch (error) {
-        console.warn('Failed to get live gas price from RPC:', error);
-      }
-      
-      if (!gasPrice) {
+        console.warn('Failed to get gas price from ethers provider:', error);
         gasPrice = BigInt(this.config.minGasWei);
         console.log('Using fallback minimum gas price:', gasPrice.toString(), 'wei');
       }
     }
-    
-    // Step 2: Calculate total gas needed (with 20% buffer)
+
+    // Step 3: Calculate total gas needed (with 20% buffer)
     const totalGasNeeded = (gasEstimate * gasPrice * BigInt(120)) / BigInt(100);
     console.log('Gas calculation - Estimate:', gasEstimate.toString(), 'Price:', gasPrice.toString(), 'Total needed:', totalGasNeeded.toString(), 'wei');
-    
-    // Step 3: Call chainservice to fund wallet
+
+    // Step 4: Call chainservice to fund wallet
     console.log('Requesting wallet funding from chainservice...');
     const fundResponse = await fetch('/api/chain/fund-wallet', {
       method: 'POST',
@@ -819,61 +725,47 @@ export class Web3Service {
         totalAmountNeededWei: totalGasNeeded.toString()
       })
     });
-    
+
     if (!fundResponse.ok) {
       const errorData = await fundResponse.json().catch(() => ({}));
       throw new Error(`Failed to fund wallet: ${errorData.error || fundResponse.statusText}`);
     }
-    
+
     const fundResult = await fundResponse.json();
     if (!fundResult.success) {
       throw new Error(`Wallet funding failed: ${fundResult.error || 'Unknown error'}`);
     }
-    
+
     console.log('Wallet funded successfully:', fundResult.message || 'Ready to send transaction');
-    
-    // Step 4: Send the transaction via direct provider request (required for WalletConnect v2 compatibility)
-    console.log('Sending transaction with funded wallet using direct provider request...');
-    
-    // Use the EIP-1193 provider directly to ensure proper WalletConnect v2 format
-    const providerToUse = this.eip1193Provider || this.walletProvider;
-    if (!providerToUse) {
-      throw new Error('No EIP-1193 provider available for sending transaction');
-    }
 
-    console.log('[Web3Service.fundAndSendTransaction] Using direct provider.request()');
+    // Step 5: Send transaction using the same unified ethers provider approach
+    console.log('[Web3Service.fundAndSendTransaction] Sending transaction via unified ethers provider...');
 
-    // Debug provider state before transaction
     try {
-      const currentChainId = await providerToUse.request({ method: 'eth_chainId' });
-      const accounts = await providerToUse.request({ method: 'eth_accounts' });
-      console.log('[Web3Service.fundAndSendTransaction] Provider state - chainId:', currentChainId, 'accounts:', accounts.length);
-    } catch (debugError) {
-      console.warn('[Web3Service.fundAndSendTransaction] Could not verify provider state:', debugError);
+      // Get the signer from the same ethers provider used for balance reading
+      const signer = await this.provider.getSigner();
+
+      // Build transaction object for ethers
+      const tx = {
+        to: txParams.to,
+        data: txParams.data,
+        value: txParams.value || '0x0',
+        gasLimit: gasEstimate,
+        gasPrice: gasPrice
+      };
+
+      console.log('[Web3Service.fundAndSendTransaction] Transaction params:', tx);
+      console.log('[Web3Service.fundAndSendTransaction] Sending transaction via ethers signer...');
+
+      // Send transaction using ethers signer (consistent with all other operations)
+      const txResponse = await signer.sendTransaction(tx);
+      console.log('Transaction sent successfully via ethers provider:', txResponse.hash);
+
+      return txResponse.hash;
+
+    } catch (error) {
+      console.error('[Web3Service.fundAndSendTransaction] Failed to send via ethers, error:', error);
+      throw new Error(`Transaction failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
-
-    // Build transaction parameters (without chainId - WalletConnect v2 handles this at request level)
-    const txParamsForSending = {
-      from: userAddress,
-      to: txParams.to,
-      data: txParams.data,
-      value: txParams.value || '0x0',
-      gasLimit: toHexString(gasEstimate),
-      gasPrice: toHexString(gasPrice)
-    };
-    
-    console.log('[Web3Service.fundAndSendTransaction] Transaction params:', txParamsForSending);
-
-    console.log('[Web3Service.fundAndSendTransaction] Requesting signature from wallet...');
-
-    // Send via direct provider request (our wrapper will handle WalletConnect v2 format)
-    const transactionHash = await providerToUse.request({
-      method: 'eth_sendTransaction',
-      params: [txParamsForSending]
-    });
-
-    console.log('Transaction sent successfully:', transactionHash);
-    
-    return transactionHash;
   }
 }

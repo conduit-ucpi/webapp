@@ -6,7 +6,6 @@ import ErrorBoundary from '@/components/ErrorBoundary';
 import { ToastProvider } from '@/components/ui/Toast';
 import { ThemeProvider } from '@/components/theme/ThemeProvider';
 import { TourProvider } from '@/components/onboarding/TourProvider';
-import { SDKProvider } from '@/components/auth/SDKProvider';
 import FarcasterReady from '@/components/farcaster/FarcasterReady';
 import { FarcasterDetectionProvider } from '@/components/farcaster/FarcasterDetectionProvider';
 import { NavigationProvider } from '@/components/navigation/NavigationProvider';
@@ -43,8 +42,7 @@ export default function ClientOnlyApp({ Component, pageProps }: ClientOnlyAppPro
           <FarcasterDetectionProvider children={
             <ConfigProvider children={
               <EthersProvider children={
-                <SDKProvider children={
-                  <AuthProvider children={
+                <AuthProvider children={
                     <NavigationProvider children={
                       <ToastProvider children={
                         <TourProvider children={
@@ -58,7 +56,6 @@ export default function ClientOnlyApp({ Component, pageProps }: ClientOnlyAppPro
                 } />
               } />
             } />
-          } />
         </>
       } />
     } />

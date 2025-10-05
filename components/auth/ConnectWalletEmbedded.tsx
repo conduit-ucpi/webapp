@@ -12,7 +12,7 @@ interface ConnectWalletEmbeddedProps {
 }
 
 export default function ConnectWalletEmbedded({
-  buttonText = "Connect Wallet",
+  buttonText = "Get Started",
   useSmartRouting = true,
   showTwoOptionLayout = false,
   className = "",

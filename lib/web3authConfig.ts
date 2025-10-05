@@ -53,9 +53,9 @@ export const createWeb3AuthConfig = (config: {
     },
   };
 
-  // Return config that can be used to configure adapters separately
+  // Return config
   return {
     web3AuthOptions,
-    chainConfig, // Also return chainConfig for use in adapters
+    chainConfig
   };
 };

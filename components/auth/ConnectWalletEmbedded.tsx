@@ -21,6 +21,7 @@ export default function ConnectWalletEmbedded({
 }: ConnectWalletEmbeddedProps) {
   const { user, isLoading, connect } = useAuth();
 
+
   if (isLoading) {
     return (
       <div className="p-4 text-center">

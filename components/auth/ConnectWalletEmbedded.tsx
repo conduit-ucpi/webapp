@@ -2,7 +2,23 @@ import React from 'react';
 import { useAuth } from '@/components/auth';
 import Button from '@/components/ui/Button';
 
-export default function ConnectWalletEmbedded() {
+interface ConnectWalletEmbeddedProps {
+  buttonText?: string;
+  useSmartRouting?: boolean;
+  showTwoOptionLayout?: boolean;
+  className?: string;
+  compact?: boolean;
+  onSuccess?: () => void;
+}
+
+export default function ConnectWalletEmbedded({
+  buttonText = "Connect Wallet",
+  useSmartRouting = true,
+  showTwoOptionLayout = false,
+  className = "",
+  compact = false,
+  onSuccess
+}: ConnectWalletEmbeddedProps) {
   const { user, isLoading, connect } = useAuth();
 
   if (isLoading) {
@@ -22,18 +38,35 @@ export default function ConnectWalletEmbedded() {
     );
   }
 
+  const handleConnect = async () => {
+    if (connect) {
+      try {
+        await connect();
+        onSuccess?.();
+      } catch (error) {
+        console.error('Connect wallet error:', error);
+      }
+    }
+  };
+
+  const containerClass = compact
+    ? `${className} text-center`
+    : `p-4 text-center ${className}`;
+
   return (
-    <div className="p-4 text-center">
+    <div className={containerClass}>
       <Button
-        onClick={() => connect?.()}
-        className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg"
+        onClick={handleConnect}
+        className="bg-primary-500 hover:bg-primary-600 text-white px-6 py-2 rounded-lg"
         disabled={!connect}
       >
-        Connect Wallet
+        {buttonText}
       </Button>
-      <p className="mt-2 text-sm text-gray-600">
-        Connect your wallet to get started
-      </p>
+      {!compact && (
+        <p className="mt-2 text-sm text-secondary-600 dark:text-secondary-400">
+          Connect your wallet to get started
+        </p>
+      )}
     </div>
   );
 }

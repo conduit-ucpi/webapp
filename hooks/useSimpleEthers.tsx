@@ -1,4 +1,5 @@
 import { useEthersProvider } from '@/components/providers/EthersProvider';
+import { useConfig } from '@/components/auth/ConfigProvider';
 import { ethers } from 'ethers';
 
 /**
@@ -7,14 +8,29 @@ import { ethers } from 'ethers';
  */
 export function useSimpleEthers() {
   const { provider, isReady } = useEthersProvider();
+  const { config } = useConfig();
 
   const getWeb3Service = async () => {
     if (!provider) {
       throw new Error('Ethers provider not available');
     }
 
+    if (!config) {
+      throw new Error('Config not available');
+    }
+
     const { Web3Service } = await import('@/lib/web3');
-    return Web3Service.getInstance();
+
+    // Get or create Web3Service instance with current config
+    const web3Service = Web3Service.getInstance(config);
+
+    // Initialize Web3Service with the current ethers provider if not already initialized
+    if (!web3Service.isServiceInitialized()) {
+      console.log('🔧 useSimpleEthers: Initializing Web3Service with current ethers provider');
+      await web3Service.initializeWithEIP1193(provider.provider);
+    }
+
+    return web3Service;
   };
 
   return {

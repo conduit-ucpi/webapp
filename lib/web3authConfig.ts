@@ -1,17 +1,21 @@
-import { WALLET_CONNECTORS, WEB3AUTH_NETWORK } from "@web3auth/modal";
+import { WALLET_CONNECTORS, WEB3AUTH_NETWORK, Web3AuthOptions } from "@web3auth/modal";
 import { Web3AuthContextConfig } from "@web3auth/modal/react";
 import { CHAIN_NAMESPACES, CustomChainConfig } from "@web3auth/base";
 import { getNetworkInfo } from "@/utils/networkUtils";
 import { toHexString } from "@/utils/hexUtils";
 
-// This matches the pattern from the Web3Auth examples
+// This creates the full Web3Auth config with all adapters
 export const createWeb3AuthConfig = (config: {
   web3AuthClientId: string;
   chainId: number;
   rpcUrl: string;
   explorerBaseUrl: string;
   web3AuthNetwork: string;
-}): Web3AuthContextConfig => {
+  walletConnectProjectId?: string;
+}): {
+  web3AuthOptions: Web3AuthOptions;
+  chainConfig: CustomChainConfig;
+} => {
   const networkInfo = getNetworkInfo(config.chainId);
 
   const chainConfig: CustomChainConfig = {
@@ -33,45 +37,25 @@ export const createWeb3AuthConfig = (config: {
     web3AuthNetwork: config.web3AuthNetwork
   });
 
-  return {
-    web3AuthOptions: {
-      clientId: config.web3AuthClientId,
-      web3AuthNetwork: config.web3AuthNetwork as any, // Will be WEB3AUTH_NETWORK.SAPPHIRE_MAINNET or similar
-      chainConfig,
-      uiConfig: {
-        appName: "Conduit UCPI",
-        theme: {
-          primary: "#0364ff",
-        },
-        mode: "auto",
-        logoLight: "https://web3auth.io/images/web3authlog.png",
-        logoDark: "https://web3auth.io/images/web3authlogodark.png",
-        defaultLanguage: "en",
-        loginGridCol: 3,
-        primaryButton: "externalLogin",
-      },
-      modalConfig: {
-        connectors: {
-          [WALLET_CONNECTORS.AUTH]: {
-            label: "auth",
-            loginMethods: {
-              google: {
-                name: "google login",
-                showOnModal: true,
-              },
-              facebook: {
-                name: "facebook login", 
-                showOnModal: true,
-              },
-              email_passwordless: {
-                name: "email passwordless login",
-                showOnModal: true,
-              },
-            },
-            showOnModal: true,
-          },
-        },
+  // Base Web3Auth options with social logins enabled
+  const web3AuthOptions: Web3AuthOptions = {
+    clientId: config.web3AuthClientId,
+    web3AuthNetwork: config.web3AuthNetwork as any,
+    uiConfig: {
+      appName: "Conduit UCPI",
+      logoLight: "https://web3auth.io/images/web3authlog.png",
+      logoDark: "https://web3auth.io/images/web3authlogodark.png",
+      defaultLanguage: "en",
+      mode: "auto" as any,
+      theme: {
+        primary: "#0364ff",
       },
     },
-  } as Web3AuthContextConfig;
+  };
+
+  // Return config that can be used to configure adapters separately
+  return {
+    web3AuthOptions,
+    chainConfig, // Also return chainConfig for use in adapters
+  };
 };

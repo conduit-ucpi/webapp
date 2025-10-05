@@ -1,0 +1,11 @@
+at the moment we have a number of problems with the provider/login connection. Here's what we need it to do:
+- User clicks on 'Sign In' button
+- walletconnect modal opens
+- if user chooses gmail/passwordless email/social login then use web3auth from the walletconnect modal
+- if user chooses one of the wallet connect options (eg trustwallet or metamask) then go through the walletconnect process with them
+- once user has connected a wallet they need to do backend auth - in some cases (eg via web3auth.io) they have a token to authenticate on our backend with (check the pre-existing code we have for this) and in some cases they need to sign a message which is sent to the backend instead (check pre-existing code for this too).
+- once the backend login is complete, if they started on the main landing page, they should end up on the dashboard; if they started on the contract-create page, then you continue with that process
+- as soon as any authentication has taken place, even if it's just front end, the user needs to have a logout button (in the hamburger menu is fine) for logout. The logout must be thorough and clear tokens, cookies etc...
+- once the front end auth process is complete, the whole app should then have access to the ethers-wrapped provider and what goes on underneath the hood is of no concern to the rest of the app. Then all of the function the user needs to perform (eg fundAndSendTransaction, createContract, raiseDispute etc...) should be just calls to the wrapper. 
+- the walletconnect modal needs to be intelligent about how to behave on desktop vs mobile, when to show QR codes etc...
+- almost all the code for all of this (everything I've said in this doc) is already written, you just haven't hooked it up correctly.

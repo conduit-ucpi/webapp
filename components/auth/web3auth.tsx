@@ -1,69 +1,153 @@
 import { Web3Auth } from "@web3auth/modal";
 import { createWeb3AuthConfig } from "@/lib/web3authConfig";
+import { BackendAuth } from "./backendAuth";
+import { ethers } from "ethers";
 
 let web3authInstance: Web3Auth | null = null;
 
+/**
+ * Unified provider using Web3Auth Modal with all adapters
+ * Includes social logins, WalletConnect, and direct wallet connections
+ */
 export function getWeb3AuthProvider(config: any) {
+  const backendAuth = BackendAuth.getInstance();
+
   return {
     initialize: async () => {
-      console.log('🔧 Web3Auth provider: Initialize called');
-      // Don't initialize Web3Auth here - wait for user to actually connect
+      console.log('🔧 Unified provider: Initialize called');
+      // Don't pre-initialize to save resources
     },
     dispose: async () => {
       if (web3authInstance) {
-        console.log('🔧 Web3Auth provider: Disposing instance');
+        console.log('🔧 Unified provider: Disposing Web3Auth instance');
         await web3authInstance.logout();
         web3authInstance = null;
       }
     },
     connect: async () => {
-      console.log('🔧 Web3Auth provider: Connect called - initializing Web3Auth modal');
+      console.log('🔧 Unified provider: Connect called - initializing Web3Auth modal with all adapters');
 
-      // Initialize Web3Auth only when user wants to connect
-      if (!web3authInstance) {
-        console.log('🔧 Web3Auth provider: Creating new Web3Auth instance');
-        const web3authConfig = createWeb3AuthConfig(config);
-        web3authInstance = new Web3Auth(web3authConfig.web3AuthOptions);
+      try {
+        // Initialize Web3Auth if not already done
+        if (!web3authInstance) {
+          console.log('🔧 Unified provider: Creating Web3Auth instance');
+          const web3authConfig = createWeb3AuthConfig({
+            ...config,
+            walletConnectProjectId: config.walletConnectProjectId || process.env.WALLETCONNECT_PROJECT_ID
+          });
 
-        console.log('🔧 Web3Auth provider: Initializing Web3Auth');
-        await web3authInstance.init();
-        console.log('🔧 Web3Auth provider: Web3Auth initialized');
+          web3authInstance = new Web3Auth(web3authConfig.web3AuthOptions);
+
+          // Initialize Web3Auth Modal
+          console.log('🔧 Unified provider: Initializing Web3Auth');
+          await web3authInstance.init();
+          console.log('🔧 Unified provider: Web3Auth initialized successfully');
+        }
+
+        // Connect - this will show the modal with all options
+        console.log('🔧 Unified provider: Opening Web3Auth modal');
+        const provider = await web3authInstance.connect();
+
+        if (!provider) {
+          throw new Error('No provider returned from Web3Auth');
+        }
+
+        console.log('🔧 Unified provider: Connected, getting user info');
+
+        // Get user info and determine auth method
+        const user = await web3authInstance.getUserInfo();
+        const ethersProvider = new ethers.BrowserProvider(provider);
+        const signer = await ethersProvider.getSigner();
+        const address = await signer.getAddress();
+
+        let authToken: string;
+
+        // Check if this is a social login (has email) or wallet connection
+        if (user.email || user.idToken) {
+          // Social login - use the idToken
+          console.log('🔧 Unified provider: Social login detected, using idToken');
+          authToken = user.idToken || `social:${address}`;
+        } else {
+          // Wallet connection - generate signature auth token
+          console.log('🔧 Unified provider: Wallet connection detected, generating signature');
+          const timestamp = Date.now();
+          const nonce = Math.random().toString(36).substring(2, 15);
+          const message = `Authenticate wallet ${address} at ${timestamp} with nonce ${nonce}`;
+          const signature = await signer.signMessage(message);
+
+          authToken = btoa(JSON.stringify({
+            type: 'signature_auth',
+            walletAddress: address,
+            message,
+            signature,
+            timestamp,
+            nonce,
+            issuer: 'web3auth_unified'
+          }));
+        }
+
+        // Authenticate with backend
+        console.log('🔧 Unified provider: Authenticating with backend');
+        const backendResult = await backendAuth.login(authToken, address);
+        if (!backendResult.success) {
+          console.error('🔧 Unified provider: Backend auth failed:', backendResult.error);
+          throw new Error(backendResult.error || 'Backend authentication failed');
+        }
+
+        console.log('🔧 Unified provider: ✅ Successfully connected and authenticated');
+        return provider;
+
+      } catch (error) {
+        console.error('🔧 Unified provider: Connection failed:', error);
+        throw error;
       }
-
-      // Now connect - this will show the Web3Auth modal for provider selection
-      console.log('🔧 Web3Auth provider: Connecting to Web3Auth');
-      const provider = await web3authInstance.connect();
-      console.log('🔧 Web3Auth provider: Connected, provider:', !!provider);
-
-      return provider;
     },
     disconnect: async () => {
+      await backendAuth.logout();
+
       if (web3authInstance) {
-        console.log('🔧 Web3Auth provider: Disconnecting');
+        console.log('🔧 Unified provider: Disconnecting Web3Auth');
         await web3authInstance.logout();
         web3authInstance = null;
       }
     },
-    getToken: () => null,
-    signMessage: async () => '',
+    getToken: () => backendAuth.getToken(),
+    signMessage: async (message: string) => {
+      if (web3authInstance?.provider) {
+        const ethersProvider = new ethers.BrowserProvider(web3authInstance.provider);
+        const signer = await ethersProvider.getSigner();
+        return await signer.signMessage(message);
+      }
+      throw new Error('No provider available for signing');
+    },
     getEthersProvider: async () => {
       if (web3authInstance?.provider) {
-        return web3authInstance.provider;
+        return new ethers.BrowserProvider(web3authInstance.provider);
       }
       return null;
     },
     signContractTransaction: async () => '',
-    hasVisitedBefore: () => false,
-    markAsVisited: () => {},
+    hasVisitedBefore: () => {
+      try {
+        return !!localStorage.getItem('conduit-has-visited');
+      } catch {
+        return false;
+      }
+    },
+    markAsVisited: () => {
+      try {
+        localStorage.setItem('conduit-has-visited', 'true');
+      } catch {}
+    },
     isReady: true,
     getState: () => ({
       user: null,
-      token: null,
+      token: backendAuth.getToken(),
       isConnected: !!web3authInstance?.connected,
       isLoading: false,
       isInitialized: true,
       error: null,
-      providerName: 'web3auth'
+      providerName: 'web3auth_unified'
     })
   };
 }

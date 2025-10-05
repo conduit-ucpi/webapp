@@ -46,23 +46,7 @@ jest.mock('@/components/auth/ConfigProvider', () => ({
 //   }),
 // }));
 
-// Mock the auth context provider (new abstraction)
-jest.mock('@/lib/auth/AuthContextProvider', () => ({
-  useAuthContext: () => ({
-    authProvider: {
-      getProviderName: () => 'Web3Auth',
-      isConnected: () => false,
-      hasVisitedBefore: () => true,
-      markAsVisited: jest.fn(),
-    },
-    isConnected: false,
-    isConnecting: false,
-    userInfo: null,
-    connectAuth: jest.fn(),
-    disconnectAuth: jest.fn(),
-    hasVisitedBefore: true,
-  }),
-}));
+// AuthContextProvider has been removed - using SimpleAuthProvider instead
 
 // Mock the wallet provider
 jest.mock('@/lib/wallet/WalletProvider', () => ({

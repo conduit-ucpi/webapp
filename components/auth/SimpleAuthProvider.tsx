@@ -40,7 +40,7 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
     };
 
     updateEthersProvider();
-  }, [newAuth.isConnected, newAuth.getEthersProvider, setProvider]);
+  }, [newAuth.isConnected, setProvider]); // Removed getEthersProvider from deps to prevent loop
 
   // Expose the new auth with the old interface
   const authValue = {

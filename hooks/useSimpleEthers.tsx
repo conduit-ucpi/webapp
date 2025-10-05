@@ -1,4 +1,4 @@
-import { useEthersProvider } from '@/components/providers/EthersProvider';
+import { useAuth } from '@/components/auth';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { ethers } from 'ethers';
 
@@ -7,16 +7,22 @@ import { ethers } from 'ethers';
  * This is the ONLY way components should access blockchain functionality
  */
 export function useSimpleEthers() {
-  const { provider, isReady } = useEthersProvider();
+  const { isConnected, getEthersProvider } = useAuth();
   const { config } = useConfig();
 
   const getWeb3Service = async () => {
-    if (!provider) {
-      throw new Error('Ethers provider not available');
+    if (!isConnected) {
+      throw new Error('Wallet not connected');
     }
 
     if (!config) {
       throw new Error('Config not available');
+    }
+
+    // Get the provider directly from auth
+    const provider = await getEthersProvider();
+    if (!provider) {
+      throw new Error('Ethers provider not available');
     }
 
     const { Web3Service } = await import('@/lib/web3');
@@ -26,16 +32,16 @@ export function useSimpleEthers() {
 
     // Initialize Web3Service with the current ethers provider if not already initialized
     if (!web3Service.isServiceInitialized()) {
-      console.log('🔧 useSimpleEthers: Initializing Web3Service with current ethers provider');
-      await web3Service.initializeWithEIP1193(provider.provider);
+      console.log('🔧 useSimpleEthers: Initializing Web3Service with auth provider');
+      await web3Service.initializeWithEIP1193(provider.provider || provider);
     }
 
     return web3Service;
   };
 
   return {
-    provider, // Still expose for direct access if needed
-    isReady,
+    provider: null, // Legacy compatibility
+    isReady: isConnected,
 
     // All blockchain operations go through Web3Service
     getWeb3Service,
@@ -56,16 +62,10 @@ export function useSimpleEthers() {
     },
 
     getNativeBalance: async (address?: string) => {
-      console.log('🔧 useSimpleEthers: getNativeBalance via ethers provider');
-      if (!provider) throw new Error('Provider not available');
-
-      let userAddress: string;
-      if (address) {
-        userAddress = address;
-      } else {
-        const signer = await provider.getSigner();
-        userAddress = await signer.getAddress();
-      }
+      console.log('🔧 useSimpleEthers: getNativeBalance via Web3Service');
+      const web3Service = await getWeb3Service();
+      const userAddress = address || await web3Service.getUserAddress();
+      const provider = await getEthersProvider();
       const balance = await provider.getBalance(userAddress);
       return ethers.formatEther(balance);
     },

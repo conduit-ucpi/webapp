@@ -5,7 +5,6 @@
 import React, { useState, useEffect } from 'react';
 import { AuthProvider as NewAuthProvider, useAuth as useNewAuth, BackendClient } from '@/lib/auth';
 import { useConfig } from './ConfigProvider';
-import { useEthersProvider } from '@/components/providers/EthersProvider';
 
 // Simple context that matches the old interface for backward compatibility
 const AuthContext = React.createContext<any>(null);
@@ -17,30 +16,6 @@ interface SimpleAuthProviderProps {
 function AuthWrapper({ children }: { children: React.ReactNode }) {
   const newAuth = useNewAuth();
   const backendClient = BackendClient.getInstance();
-  const { setProvider } = useEthersProvider();
-
-  // Update EthersProvider when auth provider changes
-  useEffect(() => {
-    const updateEthersProvider = async () => {
-      if (newAuth.isConnected) {
-        try {
-          console.log('🔧 SimpleAuthProvider: Auth connected, updating EthersProvider');
-          const ethersProvider = await newAuth.getEthersProvider();
-          if (ethersProvider) {
-            console.log('🔧 SimpleAuthProvider: Setting ethers provider in EthersProvider context');
-            setProvider(ethersProvider);
-          }
-        } catch (error) {
-          console.error('🔧 SimpleAuthProvider: Failed to get ethers provider:', error);
-        }
-      } else {
-        console.log('🔧 SimpleAuthProvider: Auth disconnected, clearing EthersProvider');
-        setProvider(null);
-      }
-    };
-
-    updateEthersProvider();
-  }, [newAuth.isConnected, setProvider]); // Removed getEthersProvider from deps to prevent loop
 
   // Expose the new auth with the old interface
   const authValue = {

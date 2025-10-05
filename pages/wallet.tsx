@@ -34,8 +34,8 @@ interface SendFormData {
 }
 
 export default function Wallet() {
-  const { user, isLoading: authLoading } = useAuth();
-  const { provider, fundAndSendTransaction, getUSDCBalance, getNativeBalance, getUserAddress } = useSimpleEthers();
+  const { user, isLoading: authLoading, getEthersProvider } = useAuth();
+  const { fundAndSendTransaction, getUSDCBalance, getNativeBalance, getUserAddress } = useSimpleEthers();
   const { isInFarcaster } = useFarcaster();
   const { config } = useConfig();
   const { walletAddress, isLoading: isWalletAddressLoading } = useWalletAddress();
@@ -54,23 +54,29 @@ export default function Wallet() {
   const [isLoadingChainInfo, setIsLoadingChainInfo] = useState(false);
 
   const loadChainInfo = async () => {
-    if (!provider) return;
+    if (!user) return;
 
     setIsLoadingChainInfo(true);
     try {
+      // Get the provider from auth
+      const ethersProvider = await getEthersProvider();
+      if (!ethersProvider) {
+        console.warn('No ethers provider available');
+        return;
+      }
 
       // Get network info directly from ethers provider
-      const network = await provider.getNetwork();
+      const network = await ethersProvider.getNetwork();
       const chainId = Number(network.chainId);
 
       // Get current block number
-      const blockNumber = await provider.getBlockNumber();
+      const blockNumber = await ethersProvider.getBlockNumber();
 
       // Get current gas price using ethers (more reliable than manual RPC calls)
       let gasPrice: string | null = null;
       try {
         console.log('Loading chain info - fetching gas price with ethers...');
-        const feeData = await provider.getFeeData();
+        const feeData = await ethersProvider.getFeeData();
         if (feeData.gasPrice) {
           gasPrice = ethers.formatUnits(feeData.gasPrice, 'gwei');
           console.log('Got gas price from ethers:', gasPrice, 'gwei');

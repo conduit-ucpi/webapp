@@ -3,7 +3,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { AuthProvider as NewAuthProvider, useAuth as useNewAuth } from '@/lib/auth';
+import { AuthProvider as NewAuthProvider, useAuth as useNewAuth, BackendClient } from '@/lib/auth';
 import { useConfig } from './ConfigProvider';
 
 // Simple context that matches the old interface for backward compatibility
@@ -15,6 +15,7 @@ interface SimpleAuthProviderProps {
 
 function AuthWrapper({ children }: { children: React.ReactNode }) {
   const newAuth = useNewAuth();
+  const backendClient = BackendClient.getInstance();
 
   // Expose the new auth with the old interface
   const authValue = {
@@ -26,12 +27,21 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
     disconnect: newAuth.disconnect,
     getEthersProvider: newAuth.getEthersProvider,
     authenticatedFetch: async (url: string, options?: RequestInit): Promise<Response> => {
-      // Simplified fetch - the new auth system handles cookies automatically
-      return fetch(url, options);
+      // Use proper backend client with authentication headers
+      return backendClient.authenticatedFetch(url, options);
     },
     hasVisitedBefore: () => false,
     refreshUserData: async () => {
-      // The new auth system handles this automatically
+      // Refresh user data from the backend
+      try {
+        const result = await backendClient.checkAuthStatus();
+        if (result.success && result.user) {
+          // The user data will be automatically updated through the auth context
+          console.log('🔧 SimpleAuthProvider: User data refreshed');
+        }
+      } catch (error) {
+        console.error('🔧 SimpleAuthProvider: Failed to refresh user data:', error);
+      }
     }
   };
 
@@ -68,11 +78,9 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
   };
 
   return (
-    <NewAuthProvider config={authConfig}>
-      <AuthWrapper>
-        {children}
-      </AuthWrapper>
-    </NewAuthProvider>
+    <NewAuthProvider config={authConfig} children={
+      <AuthWrapper children={children} />
+    } />
   );
 }
 

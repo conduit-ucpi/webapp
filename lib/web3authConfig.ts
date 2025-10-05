@@ -41,6 +41,7 @@ export const createWeb3AuthConfig = (config: {
   const web3AuthOptions: Web3AuthOptions = {
     clientId: config.web3AuthClientId,
     web3AuthNetwork: config.web3AuthNetwork as any,
+    chainConfig: chainConfig, // Add the chain configuration
     uiConfig: {
       appName: "Conduit UCPI",
       logoLight: "https://web3auth.io/images/web3authlog.png",
@@ -50,7 +51,10 @@ export const createWeb3AuthConfig = (config: {
       theme: {
         primary: "#0364ff",
       },
+      modalZIndex: "99999",
     },
+    // Ensure all wallets are shown by default
+    enableLogging: true,
   };
 
   // Return config

@@ -154,21 +154,12 @@ jest.mock('@conduit-ucpi/sdk', () => ({
   ESCROW_CONTRACT_ABI: []
 }))
 
-// Mock SDK Provider and hook
-jest.mock('./components/auth/SDKProvider', () => ({
-  SDKProvider: ({ children }) => children,
-  useSDK: () => ({
-    sdk: {
-      connectWallet: jest.fn().mockResolvedValue(undefined),
-      disconnectWallet: jest.fn().mockResolvedValue(undefined),
-      isWalletConnected: jest.fn().mockReturnValue(true),
-      getWalletAddress: jest.fn().mockResolvedValue('0x1234567890123456789012345678901234567890'),
-      services: {
-        user: { login: jest.fn(), logout: jest.fn(), getIdentity: jest.fn() },
-        chain: { createContract: jest.fn(), raiseDispute: jest.fn(), claimFunds: jest.fn() },
-        contracts: { create: jest.fn(), getById: jest.fn(), getAll: jest.fn() }
-      },
-      utils: {
+// SDKProvider was removed as part of auth system reorganization
+
+// Mock SDK utils
+jest.mock('./lib/sdk', () => ({
+  SDK: jest.fn().mockImplementation(() => ({
+    utils: {
         isValidEmail: jest.fn().mockReturnValue(true),
         isValidAmount: jest.fn().mockReturnValue(true),
         isValidDescription: jest.fn().mockReturnValue(true),

@@ -86,7 +86,17 @@ export class Web3AuthProvider implements AuthProvider {
           signature,
           timestamp,
           nonce,
-          issuer: 'web3auth_unified'
+          issuer: 'web3auth_unified',
+          header: {
+            alg: 'ECDSA',
+            typ: 'SIG'
+          },
+          payload: {
+            sub: address,
+            iat: Math.floor(timestamp / 1000), // Convert to seconds
+            iss: 'web3auth_unified',
+            wallet_type: 'external'
+          }
         }));
       }
 

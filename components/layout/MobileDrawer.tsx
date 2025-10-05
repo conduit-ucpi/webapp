@@ -41,9 +41,9 @@ interface NavItem {
 
 export default function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
   const router = useRouter();
-  const { user, disconnect } = useAuth();
+  const { user, disconnect, isConnected } = useAuth();
   const { config } = useConfig();
-  const isAuthenticated = !!user;
+  const isAuthenticated = !!user || !!isConnected;
   const isAdmin = (user as any)?.isAdmin;
 
   const navSections: NavSection[] = [

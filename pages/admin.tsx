@@ -333,68 +333,6 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* Admin Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">System Monitoring</h3>
-            <p className="text-gray-600 text-sm mb-4">
-              Monitor system health and performance metrics
-            </p>
-            <Button variant="outline" className="w-full" disabled>
-              Coming Soon
-            </Button>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">User Management</h3>
-            <p className="text-gray-600 text-sm mb-4">
-              View and manage user accounts and permissions
-            </p>
-            <Button variant="outline" className="w-full" disabled>
-              Coming Soon
-            </Button>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">Contract Analytics</h3>
-            <p className="text-gray-600 text-sm mb-4">
-              View contract statistics and analytics
-            </p>
-            <Button variant="outline" className="w-full" disabled>
-              Coming Soon
-            </Button>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">System Configuration</h3>
-            <p className="text-gray-600 text-sm mb-4">
-              Configure system settings and parameters
-            </p>
-            <Button variant="outline" className="w-full" disabled>
-              Coming Soon
-            </Button>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">Transaction Logs</h3>
-            <p className="text-gray-600 text-sm mb-4">
-              View detailed transaction logs and audit trails
-            </p>
-            <Button variant="outline" className="w-full" disabled>
-              Coming Soon
-            </Button>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">Emergency Controls</h3>
-            <p className="text-gray-600 text-sm mb-4">
-              Emergency system controls and overrides
-            </p>
-            <Button variant="outline" className="w-full text-red-600 border-red-300" disabled>
-              Coming Soon
-            </Button>
-          </div>
-        </div>
 
         {/* Development Info */}
         <div className="mt-8 bg-yellow-50 border border-yellow-200 rounded-lg p-6">

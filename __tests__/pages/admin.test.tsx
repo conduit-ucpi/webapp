@@ -229,7 +229,7 @@ describe('AdminPage', () => {
 
   it('shows admin dashboard when user is admin', () => {
     mockUseAuth.mockReturnValue({
-      user: { email: 'admin@example.com', userId: 'admin-123', walletAddress: '0xadmin', authProvider: 'web3auth' },
+      user: { email: 'admin@example.com', userId: 'admin-123', walletAddress: '0xadmin', authProvider: 'web3auth', userType: 'admin' },
       isLoading: false,
       isConnected: true,
       error: null,
@@ -254,7 +254,7 @@ describe('AdminPage', () => {
 
   it('shows contract details when contract is selected from list', async () => {
     mockUseAuth.mockReturnValue({
-      user: { email: 'admin@example.com', userId: 'admin-123', walletAddress: '0xadmin', authProvider: 'web3auth' },
+      user: { email: 'admin@example.com', userId: 'admin-123', walletAddress: '0xadmin', authProvider: 'web3auth', userType: 'admin' },
       isLoading: false,
       isConnected: true,
       error: null,
@@ -300,7 +300,7 @@ describe('AdminPage', () => {
 
   it('can close contract details', async () => {
     mockUseAuth.mockReturnValue({
-      user: { email: 'admin@example.com', userId: 'admin-123', walletAddress: '0xadmin', authProvider: 'web3auth' },
+      user: { email: 'admin@example.com', userId: 'admin-123', walletAddress: '0xadmin', authProvider: 'web3auth', userType: 'admin' },
       isLoading: false,
       isConnected: true,
       error: null,
@@ -354,7 +354,7 @@ describe('AdminPage', () => {
 describe('Contract Selection and Details', () => {
   beforeEach(() => {
     mockUseAuth.mockReturnValue({
-      user: { email: 'admin@example.com', userId: 'admin-123', walletAddress: '0xadmin', authProvider: 'web3auth' },
+      user: { email: 'admin@example.com', userId: 'admin-123', walletAddress: '0xadmin', authProvider: 'web3auth', userType: 'admin' },
       isLoading: false,
       isConnected: true,
       error: null,

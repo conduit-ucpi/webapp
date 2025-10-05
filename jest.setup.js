@@ -253,9 +253,17 @@ const createMockWeb3SDK = () => ({
     sdk: null
 });
 
-// Mock useWeb3SDK hook
-jest.mock('./hooks/useWeb3SDK', () => ({
-  useWeb3SDK: () => createMockWeb3SDK()
+// Mock useSimpleEthers hook (replacement for useWeb3SDK)
+jest.mock('./hooks/useSimpleEthers', () => ({
+  useSimpleEthers: () => ({
+    provider: null,
+    isReady: true,
+    getWeb3Service: jest.fn(),
+    fundAndSendTransaction: jest.fn().mockResolvedValue('0xtxhash'),
+    getUSDCBalance: jest.fn().mockResolvedValue('100.0'),
+    getNativeBalance: jest.fn().mockResolvedValue('1.0'),
+    getUserAddress: jest.fn().mockResolvedValue('0xuser'),
+  })
 }))
 
 // Mock WalletProvider

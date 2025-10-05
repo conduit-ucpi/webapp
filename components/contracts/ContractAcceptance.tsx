@@ -143,15 +143,71 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
       setLoadingMessage('Step 1 of 3: Creating secure escrow...');
 
       try {
-        // This component should primarily use API calls to the backend services
-        // which handle the complex blockchain interactions
-        setLoadingMessage('Processing contract acceptance...');
+        // Step 1: Create the contract on the blockchain
+        setLoadingMessage('Step 1 of 3: Creating secure escrow...');
 
-        // For now, we'll throw an error to indicate this needs to be implemented
-        // with the proper API calls to the contract/chain services
-        throw new Error('Contract acceptance needs to be implemented with API calls to backend services');
+        const createResponse = await authenticatedFetch('/api/chain/create-contract', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...contract,
+            amount: toMicroUSDC(String(contract.amount))
+          })
+        });
 
-        console.log('🔧 ContractAcceptance: Contract acceptance completed successfully');
+        if (!createResponse.ok) {
+          const errorData = await createResponse.json().catch(() => ({}));
+          throw new Error(errorData.error || 'Contract creation failed');
+        }
+
+        const createData = await createResponse.json();
+        const contractAddress = createData.contractAddress;
+        setContractAddress(contractAddress);
+
+        // Step 2: Approve USDC spending
+        setLoadingMessage('Step 2 of 3: Approving USDC transfer...');
+
+        const approveResponse = await authenticatedFetch('/api/chain/approve-usdc', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contractAddress,
+            amount: toMicroUSDC(String(contract.amount)),
+            currency: contract.currency
+          })
+        });
+
+        if (!approveResponse.ok) {
+          const errorData = await approveResponse.json().catch(() => ({}));
+          throw new Error(errorData.error || 'USDC approval failed');
+        }
+
+        // Step 3: Deposit funds into the contract
+        setLoadingMessage('Step 3 of 3: Depositing funds...');
+
+        const depositResponse = await authenticatedFetch('/api/chain/deposit-funds', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contractAddress,
+            userWalletAddress: user?.walletAddress,
+            contractId: contract.id,
+            buyerEmail: contract.buyerEmail || user?.email,
+            sellerEmail: contract.sellerEmail,
+            amount: toMicroUSDC(String(contract.amount)),
+            currency: contract.currency,
+            payoutDateTime: formatDateTimeWithTZ(contract.expiryTimestamp),
+            contractDescription: contract.description,
+            contractLink: config?.serviceLink || window.location.origin
+          })
+        });
+
+        if (!depositResponse.ok) {
+          const errorData = await depositResponse.json().catch(() => ({}));
+          throw new Error(errorData.error || 'Deposit failed');
+        }
+
+        console.log('🔧 ContractAcceptance: Contract funding completed successfully');
       } catch (fundingError) {
         console.error('🔧 ContractAcceptance: Contract funding failed:', fundingError);
         console.error('🔧 ContractAcceptance: Funding error details:', {

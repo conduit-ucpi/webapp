@@ -15,7 +15,7 @@ import {
 } from './authInterface';
 import { useConfig } from '../auth/ConfigProvider';
 import { ethers, formatUnits } from 'ethers';
-import { createFarcasterContractMethods } from '@/utils/contractTransactionFactory';
+// Contract methods are now deprecated - use API endpoints instead
 import { BackendAuth } from './backendAuth';
 
 // Minimal ERC20 ABI for balance checking
@@ -474,78 +474,19 @@ class FarcasterAuthProviderImpl implements IAuthProvider {
   }
 
   async fundContract(...args: any[]): Promise<any> {
-    console.log('🔧 Farcaster Provider: fundContract called, checking availability:', {
-      hasMethod: !!this.contractMethods.fundContract,
-      contractMethodsKeys: Object.keys(this.contractMethods)
-    });
-    
-    if (this.contractMethods.fundContract) {
-      try {
-        console.log('🔧 Farcaster Provider: Calling contract methods fundContract...');
-        const result = await this.contractMethods.fundContract(...args);
-        console.log('🔧 Farcaster Provider: fundContract completed successfully');
-        return result;
-      } catch (error) {
-        console.error('🔧 Farcaster Provider: fundContract failed:', error);
-        console.error('🔧 Farcaster Provider: Error details:', {
-          message: error instanceof Error ? error.message : 'Unknown error',
-          name: error instanceof Error ? error.name : 'Unknown',
-          stack: error instanceof Error ? error.stack : 'No stack'
-        });
-        throw error;
-      }
-    }
-    throw new Error('fundContract not available');
+    // This method is deprecated - contract funding should be done through API calls
+    // The ContractAcceptance component now uses authenticatedFetch to call the chain service APIs
+    throw new Error('fundContract is deprecated. Use API endpoints /api/chain/create-contract, /api/chain/approve-usdc, and /api/chain/deposit-funds instead');
   }
 
   async claimFunds(...args: any[]): Promise<any> {
-    console.log('🔧 Farcaster Provider: claimFunds called, checking availability:', {
-      hasMethod: !!this.contractMethods.claimFunds,
-      contractMethodsKeys: Object.keys(this.contractMethods)
-    });
-    
-    if (this.contractMethods.claimFunds) {
-      try {
-        console.log('🔧 Farcaster Provider: Calling contract methods claimFunds...');
-        const result = await this.contractMethods.claimFunds(...args);
-        console.log('🔧 Farcaster Provider: claimFunds completed successfully');
-        return result;
-      } catch (error) {
-        console.error('🔧 Farcaster Provider: claimFunds failed:', error);
-        console.error('🔧 Farcaster Provider: Error details:', {
-          message: error instanceof Error ? error.message : 'Unknown error',
-          name: error instanceof Error ? error.name : 'Unknown',
-          stack: error instanceof Error ? error.stack : 'No stack'
-        });
-        throw error;
-      }
-    }
-    throw new Error('claimFunds not available');
+    // This method is deprecated - claiming funds should be done through API calls
+    throw new Error('claimFunds is deprecated. Use API endpoint /api/chain/claim-funds instead');
   }
 
   async raiseDispute(...args: any[]): Promise<any> {
-    console.log('🔧 Farcaster Provider: raiseDispute called, checking availability:', {
-      hasMethod: !!this.contractMethods.raiseDispute,
-      contractMethodsKeys: Object.keys(this.contractMethods)
-    });
-    
-    if (this.contractMethods.raiseDispute) {
-      try {
-        console.log('🔧 Farcaster Provider: Calling contract methods raiseDispute...');
-        const result = await this.contractMethods.raiseDispute(...args);
-        console.log('🔧 Farcaster Provider: raiseDispute completed successfully');
-        return result;
-      } catch (error) {
-        console.error('🔧 Farcaster Provider: raiseDispute failed:', error);
-        console.error('🔧 Farcaster Provider: Error details:', {
-          message: error instanceof Error ? error.message : 'Unknown error',
-          name: error instanceof Error ? error.name : 'Unknown',
-          stack: error instanceof Error ? error.stack : 'No stack'
-        });
-        throw error;
-      }
-    }
-    throw new Error('raiseDispute not available');
+    // This method is deprecated - raising disputes should be done through API calls
+    throw new Error('raiseDispute is deprecated. Use API endpoint /api/chain/raise-dispute instead');
   }
 }
 
@@ -863,27 +804,16 @@ function FarcasterAuthProviderInner({ children, AuthContext }: {
       // Create fundAndSendTransaction method from Web3Service
       const fundAndSendTransaction = web3Service.fundAndSendTransaction.bind(web3Service);
       
-      // Use the exact same Web3Auth contract methods
-      const { createWeb3AuthContractMethods } = await import('@/utils/contractTransactionFactory');
-      
-      return { fundAndSendTransaction, createWeb3AuthContractMethods };
+      return { fundAndSendTransaction };
     };
     
     setupWeb3Service().then(result => {
       if (!result) return;
       
-      const { fundAndSendTransaction, createWeb3AuthContractMethods } = result;
-    
-      const contractMethods = createWeb3AuthContractMethods(
-        signTransactionWithWagmi, // For operations that need signing
-        (url: string, options?: RequestInit) => {
-          const backendAuth = BackendAuth.getInstance();
-          return backendAuth.authenticatedFetch(url, options);
-        },
-        fundAndSendTransaction // The exact same fundAndSendTransaction as Web3Auth uses
-      );
-      
-      (provider as any).setContractMethods?.(contractMethods);
+      const { fundAndSendTransaction } = result;
+
+      // Contract methods are deprecated - we now use API endpoints directly
+      // No need to set contract methods anymore
     }).catch(error => {
       console.error('🔧 Farcaster: Failed to setup Web3Service:', error);
     });

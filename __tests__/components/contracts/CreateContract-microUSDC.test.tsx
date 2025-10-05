@@ -1,5 +1,6 @@
 import { render } from '@testing-library/react';
 import { screen, fireEvent, waitFor } from '@testing-library/dom';
+import userEvent from '@testing-library/user-event';
 
 // Mock the dependencies BEFORE importing components
 jest.mock('next/router', () => ({
@@ -9,38 +10,16 @@ jest.mock('../../../components/auth/ConfigProvider');
 jest.mock('../../../components/auth');
 // jest.mock('../../../components/auth/Web3AuthContextProvider'); // Not needed
 
-// Override the SDK mock for this test
-jest.mock('../../../hooks/useWeb3SDK', () => ({
-  useWeb3SDK: () => ({
+// Override the global SDK mock with test-specific values
+jest.mock('../../../hooks/useSimpleEthers', () => ({
+  useSimpleEthers: () => ({
+    provider: null,
     isReady: true,
-    error: null,
-    isConnected: true,
-    getUSDCAllowance: jest.fn().mockResolvedValue('1000.0'),
-    signUSDCTransfer: jest.fn().mockResolvedValue('mock-signed-transaction'),
-    getContractInfo: jest.fn().mockResolvedValue({}),
-    getContractState: jest.fn().mockResolvedValue({}),
-    signContractTransaction: jest.fn().mockResolvedValue('mock-signed-transaction'),
-    hashDescription: jest.fn().mockReturnValue('0x1234'),
-    getUserAddress: jest.fn().mockResolvedValue('0xSellerAddress'), // Test-specific address
-    services: {
-      user: { login: jest.fn(), logout: jest.fn(), getIdentity: jest.fn() },
-      chain: { createContract: jest.fn(), raiseDispute: jest.fn(), claimFunds: jest.fn() },
-      contracts: { create: jest.fn(), getById: jest.fn(), getAll: jest.fn() }
-    },
-    utils: {
-      isValidEmail: jest.fn().mockReturnValue(true),
-      isValidAmount: jest.fn().mockReturnValue(true),
-      isValidDescription: jest.fn().mockReturnValue(true),
-      formatCurrency: jest.fn().mockReturnValue({ amount: '1.0000', currency: 'USDC', numericAmount: 1 }),
-      formatUSDC: jest.fn().mockReturnValue('1.0000'),
-      toMicroUSDC: jest.fn().mockImplementation((amount) => {
-        const num = typeof amount === 'string' ? parseFloat(amount) : amount;
-        return Math.round(num * 1000000);
-      }),
-      formatDateTimeWithTZ: jest.fn().mockReturnValue('2024-01-01T00:00:00-05:00'),
-      toUSDCForWeb3: jest.fn().mockReturnValue('1.0')
-    },
-    sdk: null
+    getWeb3Service: jest.fn(),
+    fundAndSendTransaction: jest.fn().mockResolvedValue('0xtxhash'),
+    getUSDCBalance: jest.fn().mockResolvedValue('100.0'),
+    getNativeBalance: jest.fn().mockResolvedValue('1.0'),
+    getUserAddress: jest.fn().mockResolvedValue('0xSellerAddress'), // Test-specific address for CreateContract
   })
 }));
 
@@ -70,6 +49,23 @@ Object.defineProperty(window, 'web3authProvider', {
 
 // Mock window.alert to prevent jsdom errors
 global.alert = jest.fn();
+
+// Mock BuyerInput component to simplify form interaction in tests
+jest.mock('../../../components/ui/BuyerInput', () => {
+  return function MockBuyerInput({ value, onChange, placeholder, label }: any) {
+    return (
+      <div>
+        <label>{label}</label>
+        <input
+          type="text"
+          placeholder={placeholder}
+          value={value}
+          onChange={(e) => onChange(e.target.value, 'email')}
+        />
+      </div>
+    );
+  };
+});
 
 describe('CreateContract - microUSDC Amount Handling', () => {
   const mockConfig = {
@@ -135,10 +131,22 @@ describe('CreateContract - microUSDC Amount Handling', () => {
 
   describe('Amount conversion to microUSDC', () => {
     const setupFormAndSubmit = async (amount: string) => {
-      // Mock successful API response
-      mockFetch.mockResolvedValueOnce({
+      // Mock successful API response for authenticatedFetch (used by CreateContract)
+      const mockResponse = {
         ok: true,
         json: jest.fn().mockResolvedValue({ success: true, contractId: 'test-id' }),
+      };
+
+      // The CreateContract component uses authenticatedFetch, not global fetch
+      mockUseAuth.mockReturnValue({
+        user: mockUser,
+        isLoading: false,
+        isConnected: true,
+        error: null,
+        disconnect: jest.fn(),
+        getEthersProvider: jest.fn(),
+        authenticatedFetch: jest.fn().mockResolvedValue(mockResponse),
+        hasVisitedBefore: jest.fn().mockReturnValue(false),
       });
 
       render(<CreateContract />);
@@ -183,10 +191,14 @@ describe('CreateContract - microUSDC Amount Handling', () => {
 
       // Wait for the API call
       await waitFor(() => {
-        expect(mockFetch).toHaveBeenCalled();
-      });
+        const mockAuth = mockUseAuth.mock.results[mockUseAuth.mock.results.length - 1].value;
+        expect(mockAuth.authenticatedFetch).toHaveBeenCalled();
+      }, { timeout: 5000 });
 
-      return mockFetch.mock.calls[0][1]; // Return the request options
+      // Get the authenticatedFetch call arguments
+      const mockAuth = mockUseAuth.mock.results[mockUseAuth.mock.results.length - 1].value;
+      const [url, options] = mockAuth.authenticatedFetch.mock.calls[0];
+      return options; // Return the request options
     };
 
     it('should convert 0.25 USDC to 250000 microUSDC', async () => {
@@ -319,9 +331,21 @@ describe('CreateContract - microUSDC Amount Handling', () => {
 
   describe('Error handling with amount conversion', () => {
     it('should handle API errors gracefully without exposing microUSDC details', async () => {
-      mockFetch.mockResolvedValueOnce({
+      // Mock error response for authenticatedFetch
+      const mockErrorResponse = {
         ok: false,
         json: jest.fn().mockResolvedValue({ error: 'Contract creation failed' }),
+      };
+
+      mockUseAuth.mockReturnValue({
+        user: mockUser,
+        isLoading: false,
+        isConnected: true,
+        error: null,
+        disconnect: jest.fn(),
+        getEthersProvider: jest.fn(),
+        authenticatedFetch: jest.fn().mockResolvedValue(mockErrorResponse),
+        hasVisitedBefore: jest.fn().mockReturnValue(false),
       });
 
       render(<CreateContract />);
@@ -363,12 +387,14 @@ describe('CreateContract - microUSDC Amount Handling', () => {
 
       // The component should handle the error without crashing
       await waitFor(() => {
-        expect(mockFetch).toHaveBeenCalled();
+        const mockAuth = mockUseAuth.mock.results[mockUseAuth.mock.results.length - 1].value;
+        expect(mockAuth.authenticatedFetch).toHaveBeenCalled();
       });
 
       // Verify the request was made with correct microUSDC amount despite the error
-      const requestOptions = mockFetch.mock.calls[0][1];
-      const requestBody = JSON.parse(requestOptions.body);
+      const mockAuth = mockUseAuth.mock.results[mockUseAuth.mock.results.length - 1].value;
+      const [url, options] = mockAuth.authenticatedFetch.mock.calls[0];
+      const requestBody = JSON.parse(options.body);
       expect(requestBody.amount).toBe(250000);
     });
   });

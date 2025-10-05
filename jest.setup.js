@@ -156,43 +156,7 @@ jest.mock('@conduit-ucpi/sdk', () => ({
 
 // SDKProvider was removed as part of auth system reorganization
 
-// Mock SDK utils
-jest.mock('./lib/sdk', () => ({
-  SDK: jest.fn().mockImplementation(() => ({
-    utils: {
-        isValidEmail: jest.fn().mockReturnValue(true),
-        isValidAmount: jest.fn().mockReturnValue(true),
-        isValidDescription: jest.fn().mockReturnValue(true),
-        formatCurrency: jest.fn().mockImplementation((amount, currency = 'microUSDC') => {
-        let numericAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
-        
-        // Smart conversion logic similar to SDK
-        if (currency === 'microUSDC' || (currency === 'USDC' && numericAmount >= 1000)) {
-          numericAmount = numericAmount / 1000000;
-        }
-        
-        return { 
-          amount: numericAmount.toFixed(4), 
-          currency: 'USDC', 
-          numericAmount: numericAmount 
-        };
-      }),
-        formatUSDC: jest.fn().mockImplementation((amount) => {
-        const num = typeof amount === 'string' ? parseFloat(amount) : amount;
-        return (num / 1000000).toFixed(4);
-      }),
-        toMicroUSDC: jest.fn().mockImplementation((amount) => {
-        const num = typeof amount === 'string' ? parseFloat(amount) : amount;
-        return Math.round(num * 1000000);
-      }),
-        formatDateTimeWithTZ: jest.fn().mockReturnValue('2024-01-01T00:00:00-05:00'),
-        toUSDCForWeb3: jest.fn().mockReturnValue('1.0')
-      }
-    },
-    isInitialized: true,
-    error: null
-  })
-}))
+// SDK mock removed - lib/sdk no longer exists
 
 // Create a mock that can be overridden by individual tests
 const createMockWeb3SDK = () => ({
@@ -257,26 +221,7 @@ jest.mock('./hooks/useSimpleEthers', () => ({
   })
 }))
 
-// Mock WalletProvider
-jest.mock('./lib/wallet/WalletProvider', () => ({
-  WalletProvider: ({ children }) => children,
-  useWallet: () => ({
-    walletProvider: {
-      getAddress: jest.fn().mockResolvedValue('0x1234567890123456789012345678901234567890'),
-      signTransaction: jest.fn().mockResolvedValue('mock-signed-transaction'),
-      signMessage: jest.fn().mockResolvedValue('mock-signature'),
-      request: jest.fn().mockResolvedValue([]),
-      isConnected: jest.fn().mockReturnValue(true),
-      getProviderName: jest.fn().mockReturnValue('Mock Wallet'),
-      getEthersProvider: jest.fn().mockReturnValue({})
-    },
-    isConnected: true,
-    address: '0x1234567890123456789012345678901234567890',
-    connectWallet: jest.fn(),
-    disconnectWallet: jest.fn(),
-    isLoading: false
-  })
-}))
+// WalletProvider mock removed - file no longer exists after auth system reorganization
 
 // Mock ResizeObserver for jsdom environment
 global.ResizeObserver = jest.fn().mockImplementation(() => ({

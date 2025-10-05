@@ -41,7 +41,6 @@ export const createWeb3AuthConfig = (config: {
   const web3AuthOptions: Web3AuthOptions = {
     clientId: config.web3AuthClientId,
     web3AuthNetwork: config.web3AuthNetwork as any,
-    chainConfig: chainConfig, // Add the chain configuration
     uiConfig: {
       appName: "Conduit UCPI",
       logoLight: "https://web3auth.io/images/web3authlog.png",

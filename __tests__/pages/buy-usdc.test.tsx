@@ -48,15 +48,15 @@ jest.mock('@/components/auth/ConfigProvider', () => ({
 
 // AuthContextProvider has been removed - using SimpleAuthProvider instead
 
-// Mock the wallet provider
-jest.mock('@/lib/wallet/WalletProvider', () => ({
-  useWallet: () => ({
-    walletProvider: null,
-    isConnected: false,
-    address: null,
-    connectWallet: jest.fn(),
-    disconnectWallet: jest.fn(),
+// Mock the auth provider (WalletProvider was removed during auth system reorganization)
+jest.mock('@/components/auth/SimpleAuthProvider', () => ({
+  useAuth: () => ({
+    user: null,
     isLoading: false,
+    isConnected: false,
+    connect: jest.fn(),
+    disconnect: jest.fn(),
+    getEthersProvider: jest.fn().mockResolvedValue(null),
   }),
 }));
 

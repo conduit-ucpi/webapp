@@ -432,6 +432,46 @@ export function formatExpiryDate(expiryTimestamp: number | string): string {
   });
 }
 
+// Date utility functions for forms
+export function getDefaultTimestamp(): number {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  return Math.floor(tomorrow.getTime() / 1000);
+}
+
+export function getCurrentLocalDatetime(): string {
+  const now = Math.floor(Date.now() / 1000);
+  return timestampToDatetimeLocal(now);
+}
+
+export function getMaxLocalDatetime(): string {
+  const oneYearFromNow = new Date();
+  oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
+  return timestampToDatetimeLocal(Math.floor(oneYearFromNow.getTime() / 1000));
+}
+
+// Calculate relative time from now using Unix timestamp
+export function getRelativeTime(timestamp: number): string {
+  const now = Math.floor(Date.now() / 1000);
+  const diffSeconds = timestamp - now;
+
+  if (diffSeconds <= 0) return 'in the past';
+
+  const diffMins = Math.floor(diffSeconds / 60);
+  const diffHours = Math.floor(diffSeconds / 3600);
+  const diffDays = Math.floor(diffSeconds / 86400);
+
+  if (diffMins < 60) return `in ${diffMins} minute${diffMins !== 1 ? 's' : ''}`;
+  if (diffHours < 24) return `in ${diffHours} hour${diffHours !== 1 ? 's' : ''}`;
+  if (diffDays < 7) return `in ${diffDays} day${diffDays !== 1 ? 's' : ''}`;
+
+  const diffWeeks = Math.floor(diffDays / 7);
+  if (diffWeeks < 4) return `in ${diffWeeks} week${diffWeeks !== 1 ? 's' : ''}`;
+
+  const diffMonths = Math.floor(diffDays / 30);
+  return `in ${diffMonths} month${diffMonths !== 1 ? 's' : ''}`;
+}
+
 /**
  * Check if a timestamp represents an expired date
  * @param timestamp - Unix timestamp in seconds or milliseconds

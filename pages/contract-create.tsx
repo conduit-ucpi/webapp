@@ -9,7 +9,8 @@ import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import ConnectWalletEmbedded from '@/components/auth/ConnectWalletEmbedded';
 import WalletInfo from '@/components/ui/WalletInfo';
-import { isValidEmail, isValidDescription, isValidAmount, isValidWalletAddress, toMicroUSDC, toUSDCForWeb3, formatDateTimeWithTZ } from '@/utils/validation';
+import { isValidWalletAddress, toMicroUSDC, toUSDCForWeb3, formatDateTimeWithTZ } from '@/utils/validation';
+import { useContractCreateValidation } from '@/hooks/useContractValidation';
 
 console.log('🔧 ContractCreate: FILE LOADED - imports successful');
 
@@ -20,11 +21,7 @@ interface ContractCreateForm {
   description: string;
 }
 
-interface FormErrors {
-  seller?: string;
-  amount?: string;
-  description?: string;
-}
+// FormErrors type now imported from validation hook
 
 interface PostMessageEvent {
   type: 'contract_created' | 'payment_completed' | 'payment_cancelled' | 'payment_error' | 'close_modal';
@@ -45,6 +42,7 @@ export default function ContractCreate() {
   const { config } = useConfig();
   const { user, authenticatedFetch, disconnect, isLoading: authLoading } = useAuth();
   const { approveUSDC, depositToContract } = useSimpleEthers();
+  const { errors, validateForm, clearErrors } = useContractCreateValidation();
   
   // Query parameters
   const {
@@ -74,7 +72,7 @@ export default function ContractCreate() {
     amount: '',
     description: ''
   });
-  const [errors, setErrors] = useState<FormErrors>({});
+  // errors now provided by useContractCreateValidation hook
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
   const [contractId, setContractId] = useState<string | null>(null);
@@ -195,47 +193,12 @@ export default function ContractCreate() {
     }));
   };
 
-  const validateForm = (): boolean => {
-    const newErrors: FormErrors = {};
-
-    // Use local validation functions directly
-    const amountValidator = isValidAmount;
-    const descriptionValidator = isValidDescription;
-
-    // Validate seller (must be wallet address)
-    if (!isValidWalletAddress(form.seller)) {
-      newErrors.seller = 'Invalid seller wallet address';
-    }
-
-    if (!amountValidator(form.amount)) {
-      newErrors.amount = 'Invalid amount';
-    }
-
-    if (!descriptionValidator(form.description)) {
-      newErrors.description = 'Description must be 1-160 characters';
-    }
-
-    // Validate WordPress integration parameters
-    if (wordpress_source === 'true' && !webhook_url) {
-      console.error('WordPress integration missing webhook_url parameter');
-      alert('Configuration error: Missing webhook URL for WordPress integration');
-      return false;
-    }
-
-    if (wordpress_source === 'true' && !order_id) {
-      console.error('WordPress integration missing order_id parameter');
-      alert('Configuration error: Missing order ID for WordPress integration');
-      return false;
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
+  // validateForm function now provided by useContractCreateValidation hook
 
   const handleCreateContract = async () => {
     console.log('🔧 ContractCreate: handleCreateContract called');
     
-    const formValid = validateForm();
+    const formValid = validateForm(form, { wordpress_source, webhook_url, order_id });
     console.log('🔧 ContractCreate: form validation result:', formValid);
     
     if (!formValid || !config) {

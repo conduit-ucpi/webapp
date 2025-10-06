@@ -17,7 +17,11 @@ import {
   formatUSDC,
   formatDateTimeWithTZ,
   timestampToDatetimeLocal,
-  datetimeLocalToTimestamp
+  datetimeLocalToTimestamp,
+  getDefaultTimestamp,
+  getCurrentLocalDatetime,
+  getMaxLocalDatetime,
+  getRelativeTime
 } from '@/utils/validation';
 
 interface CreateContractForm {
@@ -63,13 +67,6 @@ export default function CreateContractWizard() {
   const [currentStep, setCurrentStep] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Initialize with tomorrow's date at current time
-  const getDefaultTimestamp = (): number => {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    return Math.floor(tomorrow.getTime() / 1000);
-  };
-
   const [form, setForm] = useState<CreateContractForm>({
     buyerEmail: '',
     buyerType: 'email',
@@ -91,47 +88,6 @@ export default function CreateContractWizard() {
   };
 
 
-  const getCurrentLocalDatetime = (): string => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = (now.getMonth() + 1).toString().padStart(2, '0');
-    const day = now.getDate().toString().padStart(2, '0');
-    const hours = now.getHours().toString().padStart(2, '0');
-    const minutes = now.getMinutes().toString().padStart(2, '0');
-    return `${year}-${month}-${day}T${hours}:${minutes}`;
-  };
-
-  const getMaxLocalDatetime = (): string => {
-    const oneYearFromNow = new Date();
-    oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
-    const year = oneYearFromNow.getFullYear();
-    const month = (oneYearFromNow.getMonth() + 1).toString().padStart(2, '0');
-    const day = oneYearFromNow.getDate().toString().padStart(2, '0');
-    const hours = oneYearFromNow.getHours().toString().padStart(2, '0');
-    const minutes = oneYearFromNow.getMinutes().toString().padStart(2, '0');
-    return `${year}-${month}-${day}T${hours}:${minutes}`;
-  };
-
-  const getRelativeTime = (timestamp: number): string => {
-    const now = Math.floor(Date.now() / 1000);
-    const diffSeconds = timestamp - now;
-    
-    if (diffSeconds <= 0) return 'in the past';
-    
-    const diffMins = Math.floor(diffSeconds / 60);
-    const diffHours = Math.floor(diffSeconds / 3600);
-    const diffDays = Math.floor(diffSeconds / 86400);
-    
-    if (diffMins < 60) return `in ${diffMins} minute${diffMins !== 1 ? 's' : ''}`;
-    if (diffHours < 24) return `in ${diffHours} hour${diffHours !== 1 ? 's' : ''}`;
-    if (diffDays < 7) return `in ${diffDays} day${diffDays !== 1 ? 's' : ''}`;
-    
-    const diffWeeks = Math.floor(diffDays / 7);
-    if (diffWeeks < 4) return `in ${diffWeeks} week${diffWeeks !== 1 ? 's' : ''}`;
-    
-    const diffMonths = Math.floor(diffDays / 30);
-    return `in ${diffMonths} month${diffMonths !== 1 ? 's' : ''}`;
-  };
 
   // Validation for each step
   const validateStep = (step: number): boolean => {

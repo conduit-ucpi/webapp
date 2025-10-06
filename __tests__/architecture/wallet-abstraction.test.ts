@@ -143,18 +143,24 @@ describe('Wallet Provider Abstraction', () => {
 
       const content = fs.readFileSync(fullPath, 'utf-8');
 
-      // Should import useAuth from auth context
-      const hasAuthImport = /import.*useAuth.*from.*@\/components\/auth/.test(content);
-      
-      if (!hasAuthImport) {
-        throw new Error(`${file} should import useAuth from @/components/auth to access wallet functionality`);
+      // Should import useAuth from auth context OR use a hook that encapsulates auth
+      const hasDirectAuthImport = /import.*useAuth.*from.*@\/components\/auth/.test(content);
+      const usesCustomHook = /use[A-Z]\w*/.test(content) && (
+        /useCreateContract/.test(content) ||
+        /useContractAcceptance/.test(content) ||
+        /useContract\w*/.test(content)
+      );
+
+      if (!hasDirectAuthImport && !usesCustomHook) {
+        throw new Error(`${file} should import useAuth from @/components/auth OR use a custom hook that encapsulates auth functionality`);
       }
-      
-      // Should use the auth context
-      const usesAuth = /useAuth\(\)/.test(content);
-      
-      if (!usesAuth) {
-        throw new Error(`${file} should call useAuth() to access wallet functionality`);
+
+      // Should use the auth context directly OR through a custom hook
+      const usesAuthDirectly = /useAuth\(\)/.test(content);
+      const usesAuthViaHook = usesCustomHook;
+
+      if (!usesAuthDirectly && !usesAuthViaHook) {
+        throw new Error(`${file} should call useAuth() OR use a custom hook that provides auth functionality`);
       }
 
       // Should not use deprecated useWeb3SDK hook

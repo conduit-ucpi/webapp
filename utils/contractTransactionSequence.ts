@@ -79,12 +79,17 @@ export async function executeContractTransactionSequence(
 
       if (receipt) {
         console.log('🔧 ContractSequence: ✅ Contract creation confirmed. Block:', receipt.blockNumber);
+
+        // Additional safety: Ensure nonce has updated after transaction confirmation
+        // This prevents the next transaction from using the same nonce
+        await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds for nonce to update
+        console.log('🔧 ContractSequence: ✅ Nonce update delay completed');
       } else {
-        console.warn('🔧 ContractSequence: ⚠️ Contract creation timed out but proceeding anyway');
+        throw new Error('Contract creation timed out or failed - cannot proceed without confirmation');
       }
     } catch (waitError) {
-      console.error('🔧 ContractSequence: ⚠️ Error waiting for contract creation, proceeding anyway:', waitError);
-      // Don't fail - proceed with approval as the contract might still be valid
+      console.error('🔧 ContractSequence: ❌ Contract creation confirmation failed:', waitError);
+      throw new Error(`Contract creation confirmation failed: ${waitError instanceof Error ? waitError.message : 'Unknown error'}`);
     }
   } else {
     console.log('🔧 ContractSequence: No transaction hash returned, proceeding to approval immediately');
@@ -111,12 +116,16 @@ export async function executeContractTransactionSequence(
 
       if (receipt) {
         console.log('🔧 ContractSequence: ✅ USDC approval confirmed. Block:', receipt.blockNumber);
+
+        // Additional safety: Ensure nonce has updated after transaction confirmation
+        await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds for nonce to update
+        console.log('🔧 ContractSequence: ✅ Nonce update delay completed');
       } else {
-        console.warn('🔧 ContractSequence: ⚠️ USDC approval timed out but proceeding anyway');
+        throw new Error('USDC approval timed out or failed - cannot proceed without confirmation');
       }
     } catch (waitError) {
-      console.error('🔧 ContractSequence: ⚠️ Error waiting for USDC approval, proceeding anyway:', waitError);
-      // Don't fail - proceed with deposit as the approval might still be valid
+      console.error('🔧 ContractSequence: ❌ USDC approval confirmation failed:', waitError);
+      throw new Error(`USDC approval confirmation failed: ${waitError instanceof Error ? waitError.message : 'Unknown error'}`);
     }
   } else {
     console.log('🔧 ContractSequence: No approval transaction hash returned, proceeding to deposit immediately');
@@ -141,11 +150,13 @@ export async function executeContractTransactionSequence(
       if (receipt) {
         console.log('🔧 ContractSequence: ✅ Deposit confirmed. Block:', receipt.blockNumber);
       } else {
-        console.warn('🔧 ContractSequence: ⚠️ Deposit timed out but likely successful');
+        console.warn('🔧 ContractSequence: ⚠️ Deposit confirmation timed out - transaction may still be pending');
+        // Don't fail here - deposit transactions are more tolerant of confirmation delays
+        // The user can check their dashboard to see if the contract was funded
       }
     } catch (waitError) {
-      console.error('🔧 ContractSequence: ⚠️ Error waiting for deposit confirmation:', waitError);
-      // Don't fail - deposit was likely successful
+      console.warn('🔧 ContractSequence: ⚠️ Error waiting for deposit confirmation:', waitError);
+      // Don't fail - deposit was likely successful, user can verify on dashboard
     }
   }
 

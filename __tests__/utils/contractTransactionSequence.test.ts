@@ -54,15 +54,15 @@ describe('executeContractTransactionSequence', () => {
     mockApproveUSDC.mockResolvedValue('0xApprovalTxHash');
     mockDepositToContract.mockResolvedValue('0xDepositTxHash');
 
-    // Mock successful transaction confirmations
-    mockWaitForTransaction.mockResolvedValue({
-      blockNumber: 12345,
-      status: 1
-    });
+    // Note: Don't set default mockWaitForTransaction behavior here
+    // Each test should set up its own waitForTransaction expectations
   });
 
   describe('Transaction Sequencing', () => {
     it('should wait for contract creation confirmation before proceeding to approval', async () => {
+      // Mock successful confirmations for all transactions
+      mockWaitForTransaction.mockResolvedValue({ blockNumber: 12345, status: 1 });
+
       const result = await executeContractTransactionSequence(defaultParams, defaultOptions);
 
       // Verify the sequence of calls
@@ -90,6 +90,9 @@ describe('executeContractTransactionSequence', () => {
     });
 
     it('should wait for approval confirmation before proceeding to deposit', async () => {
+      // Mock successful confirmations for all transactions
+      mockWaitForTransaction.mockResolvedValue({ blockNumber: 12345, status: 1 });
+
       await executeContractTransactionSequence(defaultParams, defaultOptions);
 
       // Verify that deposit wasn't called until after approval wait
@@ -102,6 +105,9 @@ describe('executeContractTransactionSequence', () => {
     });
 
     it('should call onProgress callbacks in correct order', async () => {
+      // Mock successful confirmations for all transactions
+      mockWaitForTransaction.mockResolvedValue({ blockNumber: 12345, status: 1 });
+
       await executeContractTransactionSequence(defaultParams, defaultOptions);
 
       const progressCalls = mockOnProgress.mock.calls.map(call => call[0]);
@@ -119,6 +125,9 @@ describe('executeContractTransactionSequence', () => {
 
   describe('Transaction Confirmation Waiting', () => {
     it('should wait for each transaction confirmation with 2 minute timeout', async () => {
+      // Mock successful confirmations for all transactions
+      mockWaitForTransaction.mockResolvedValue({ blockNumber: 12345, status: 1 });
+
       await executeContractTransactionSequence(defaultParams, defaultOptions);
 
       // Verify each waitForTransaction call uses 120000ms (2 minute) timeout
@@ -137,6 +146,9 @@ describe('executeContractTransactionSequence', () => {
         })
       });
 
+      // Mock successful confirmations for remaining transactions
+      mockWaitForTransaction.mockResolvedValue({ blockNumber: 12345, status: 1 });
+
       const result = await executeContractTransactionSequence(defaultParams, defaultOptions);
 
       // Should only wait for approval and deposit confirmations
@@ -147,47 +159,61 @@ describe('executeContractTransactionSequence', () => {
       expect(result.contractCreationTxHash).toBeUndefined();
     });
 
-    it('should proceed if transaction confirmation times out', async () => {
+    it('should fail if transaction confirmation times out', async () => {
       // Mock timeout for contract creation
       mockWaitForTransaction
         .mockResolvedValueOnce(null) // Contract creation times out
-        .mockResolvedValueOnce({ blockNumber: 12346, status: 1 }) // Approval succeeds
-        .mockResolvedValueOnce({ blockNumber: 12347, status: 1 }); // Deposit succeeds
+        .mockResolvedValueOnce({ blockNumber: 12346, status: 1 }) // Approval succeeds (but won't be reached)
+        .mockResolvedValueOnce({ blockNumber: 12347, status: 1 }); // Deposit succeeds (but won't be reached)
 
-      const result = await executeContractTransactionSequence(defaultParams, defaultOptions);
+      // Should fail and throw error
+      await expect(executeContractTransactionSequence(defaultParams, defaultOptions))
+        .rejects.toThrow('Contract creation timed out or failed - cannot proceed without confirmation');
 
-      // Should still complete successfully
-      expect(result).toEqual({
-        contractAddress: '0xContractAddress',
-        contractCreationTxHash: '0xContractCreationTxHash',
-        approvalTxHash: '0xApprovalTxHash',
-        depositTxHash: '0xDepositTxHash'
-      });
-
-      // All transactions should still be attempted
-      expect(mockApproveUSDC).toHaveBeenCalledTimes(1);
-      expect(mockDepositToContract).toHaveBeenCalledTimes(1);
+      // Subsequent transactions should NOT be attempted when contract creation fails
+      expect(mockApproveUSDC).not.toHaveBeenCalled();
+      expect(mockDepositToContract).not.toHaveBeenCalled();
     });
 
-    it('should proceed if transaction confirmation throws error', async () => {
-      // Mock error for approval confirmation
-      mockWaitForTransaction
-        .mockResolvedValueOnce({ blockNumber: 12345, status: 1 }) // Contract creation succeeds
-        .mockRejectedValueOnce(new Error('Network error')) // Approval confirmation fails
-        .mockResolvedValueOnce({ blockNumber: 12347, status: 1 }); // Deposit succeeds
+    it('should fail if transaction confirmation throws error', async () => {
+      // Clear all mocks and reset implementations completely
+      jest.clearAllMocks();
+      mockWaitForTransaction.mockReset();
+      mockAuthenticatedFetch.mockReset();
+      mockApproveUSDC.mockReset();
+      mockDepositToContract.mockReset();
 
-      const result = await executeContractTransactionSequence(defaultParams, defaultOptions);
-
-      // Should still complete successfully
-      expect(result).toEqual({
-        contractAddress: '0xContractAddress',
-        contractCreationTxHash: '0xContractCreationTxHash',
-        approvalTxHash: '0xApprovalTxHash',
-        depositTxHash: '0xDepositTxHash'
+      // Set up fresh mocks for this test
+      mockAuthenticatedFetch.mockResolvedValue({
+        ok: true,
+        json: jest.fn().mockResolvedValue({
+          contractAddress: '0xContractAddress',
+          transactionHash: '0xContractCreationTxHash'
+        })
       });
 
-      // All transactions should still be attempted
-      expect(mockDepositToContract).toHaveBeenCalledTimes(1);
+      mockApproveUSDC.mockResolvedValue('0xApprovalTxHash');
+      mockDepositToContract.mockResolvedValue('0xDepositTxHash');
+
+      // Mock error for approval confirmation - should fail on the SECOND call to waitForTransaction
+      mockWaitForTransaction
+        .mockResolvedValueOnce({ blockNumber: 12345, status: 1 }) // Contract creation succeeds
+        .mockRejectedValueOnce(new Error('Network error')); // Approval confirmation fails
+
+      await expect(executeContractTransactionSequence(defaultParams, defaultOptions))
+        .rejects.toThrow('USDC approval confirmation failed: Network error');
+
+      // Contract creation should have been called
+      expect(mockAuthenticatedFetch).toHaveBeenCalledTimes(1);
+
+      // Approval should have been attempted
+      expect(mockApproveUSDC).toHaveBeenCalledTimes(1);
+
+      // waitForTransaction should have been called twice (creation + approval, but approval failed)
+      expect(mockWaitForTransaction).toHaveBeenCalledTimes(2);
+
+      // But deposit should NOT be called due to approval confirmation failure
+      expect(mockDepositToContract).not.toHaveBeenCalled();
     });
   });
 
@@ -209,7 +235,30 @@ describe('executeContractTransactionSequence', () => {
     });
 
     it('should throw error if USDC approval fails', async () => {
+      // Reset all mocks completely for this test
+      jest.clearAllMocks();
+      mockWaitForTransaction.mockReset();
+      mockAuthenticatedFetch.mockReset();
+      mockApproveUSDC.mockReset();
+      mockDepositToContract.mockReset();
+
+      // Set up fresh mocks for this test
+      mockAuthenticatedFetch.mockResolvedValue({
+        ok: true,
+        json: jest.fn().mockResolvedValue({
+          contractAddress: '0xContractAddress',
+          transactionHash: '0xContractCreationTxHash'
+        })
+      });
+
+      // Mock successful contract creation confirmation
+      mockWaitForTransaction.mockResolvedValueOnce({ blockNumber: 12345, status: 1 });
+
+      // Mock USDC approval failure
       mockApproveUSDC.mockRejectedValue(new Error('Approval failed'));
+
+      // Mock other methods (won't be called but need to be defined)
+      mockDepositToContract.mockResolvedValue('0xDepositTxHash');
 
       await expect(executeContractTransactionSequence(defaultParams, defaultOptions))
         .rejects.toThrow('Approval failed');
@@ -217,11 +266,17 @@ describe('executeContractTransactionSequence', () => {
       // Contract creation should have been called
       expect(mockAuthenticatedFetch).toHaveBeenCalledTimes(1);
 
+      // Approval should have been attempted (and failed)
+      expect(mockApproveUSDC).toHaveBeenCalledTimes(1);
+
       // Deposit should not be called
       expect(mockDepositToContract).not.toHaveBeenCalled();
     });
 
     it('should throw error if deposit fails', async () => {
+      // Mock successful confirmations for contract creation and approval
+      mockWaitForTransaction.mockResolvedValue({ blockNumber: 12345, status: 1 });
+
       mockDepositToContract.mockRejectedValue(new Error('Deposit failed'));
 
       await expect(executeContractTransactionSequence(defaultParams, defaultOptions))
@@ -255,6 +310,9 @@ describe('executeContractTransactionSequence', () => {
 
   describe('Parameter Validation', () => {
     it('should pass correct parameters to contract creation', async () => {
+      // Mock successful confirmations for all transactions
+      mockWaitForTransaction.mockResolvedValue({ blockNumber: 12345, status: 1 });
+
       await executeContractTransactionSequence(defaultParams, defaultOptions);
 
       expect(mockAuthenticatedFetch).toHaveBeenCalledWith('/api/chain/create-contract', {
@@ -265,6 +323,9 @@ describe('executeContractTransactionSequence', () => {
     });
 
     it('should pass correct parameters to USDC approval', async () => {
+      // Mock successful confirmations for all transactions
+      mockWaitForTransaction.mockResolvedValue({ blockNumber: 12345, status: 1 });
+
       await executeContractTransactionSequence(defaultParams, defaultOptions);
 
       expect(mockApproveUSDC).toHaveBeenCalledWith(
@@ -274,6 +335,9 @@ describe('executeContractTransactionSequence', () => {
     });
 
     it('should pass correct parameters to deposit', async () => {
+      // Mock successful confirmations for all transactions
+      mockWaitForTransaction.mockResolvedValue({ blockNumber: 12345, status: 1 });
+
       await executeContractTransactionSequence(defaultParams, defaultOptions);
 
       expect(mockDepositToContract).toHaveBeenCalledWith('0xContractAddress');

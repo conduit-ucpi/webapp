@@ -1432,8 +1432,9 @@ export class Web3Service {
    * Wait for transaction confirmation using the unified ethers provider
    * @param transactionHash The transaction hash to wait for
    * @param maxWaitTime Maximum wait time in milliseconds (default: 30 seconds)
+   * @returns Transaction receipt if confirmed, null if timeout/failed
    */
-  async waitForTransaction(transactionHash: string, maxWaitTime: number = 30000): Promise<void> {
+  async waitForTransaction(transactionHash: string, maxWaitTime: number = 30000): Promise<any | null> {
     if (!this.provider) {
       throw new Error('Provider not initialized');
     }
@@ -1451,12 +1452,14 @@ export class Web3Service {
 
       if (receipt?.status === 1) {
         console.log(`[Web3Service.waitForTransaction] Transaction confirmed: ${transactionHash}`);
+        return receipt;
       } else {
-        throw new Error(`Transaction failed: ${transactionHash}`);
+        console.warn(`[Web3Service.waitForTransaction] Transaction failed: ${transactionHash}`);
+        return null;
       }
     } catch (error) {
       console.warn(`[Web3Service.waitForTransaction] Transaction confirmation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      // Don't throw - let the transaction continue as the backend may have processed it
+      return null;
     }
   }
 }

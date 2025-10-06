@@ -64,7 +64,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
       setUserBalance('10000.0000'); // 10,000 USDC in decimal format for tests
       setIsLoadingBalance(false);
     }
-  }, [user?.walletAddress, config?.usdcContractAddress, getUSDCBalance]);
+  }, [user?.walletAddress, config?.usdcContractAddress]);
 
   // Check if user has sufficient balance
   const hasInsufficientBalance = () => {

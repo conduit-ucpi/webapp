@@ -368,7 +368,7 @@ export default function AdminDatabaseList({ onContractSelect }: AdminDatabaseLis
                     {formatDateTimeWithTZ(contract.createdAt)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {displayCurrency(contract.amount, contract.currency)}
+                    {displayCurrency(contract.amount, 'microUSDC')}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {contract.sellerEmail}

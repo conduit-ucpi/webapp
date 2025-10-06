@@ -230,7 +230,7 @@ export default function DisputeResolutionModal({
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <span className="text-gray-600">Amount:</span>
-                  <span className="ml-2 font-medium">{displayCurrency(contract.amount, contract.currency)}</span>
+                  <span className="ml-2 font-medium">{displayCurrency(contract.amount, 'microUSDC')}</span>
                 </div>
                 <div>
                   <span className="text-gray-600">Seller:</span>

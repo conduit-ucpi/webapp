@@ -162,7 +162,7 @@ export default function EnhancedContractCard({
         </div>
         <div className="text-right">
           <p className="text-2xl font-bold text-secondary-900">
-            {displayCurrency(contract.amount, isPending ? (contract.currency || 'microUSDC') : 'microUSDC')}
+            {displayCurrency(contract.amount, 'microUSDC')}
           </p>
           <p className="text-xs text-secondary-500 mt-1">
             {isPending ? 'Pending' : `#${formatWalletAddress(contract.contractAddress)}`}

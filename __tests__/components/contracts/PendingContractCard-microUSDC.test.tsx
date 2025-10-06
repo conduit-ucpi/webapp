@@ -34,9 +34,12 @@ describe('PendingContractCard - microUSDC Amount Display', () => {
     // Default mock implementation returns the formatted amount with dollar sign
     mockDisplayCurrency.mockImplementation((amount, currency) => {
       const numericAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
-      // Smart detection: if amount is large and currency is "USDC", it's likely microUSDC
+      // All amounts should be treated as microUSDC since that's our standard
       let usdc;
-      if (currency === 'microUSDC' || (currency === 'USDC' && numericAmount >= 1000)) {
+      if (currency === 'microUSDC') {
+        usdc = numericAmount / 1000000;
+      } else if (currency === 'USDC' && numericAmount >= 1000) {
+        // Legacy compatibility for old buggy behavior
         usdc = numericAmount / 1000000;
       } else {
         usdc = numericAmount || 0;
@@ -54,8 +57,8 @@ describe('PendingContractCard - microUSDC Amount Display', () => {
         />
       );
 
-      // Verify displayCurrency was called with the microUSDC amount and currency
-      expect(mockDisplayCurrency).toHaveBeenCalledWith(250000, 'USDC');
+      // Verify displayCurrency was called with the microUSDC amount and correct currency
+      expect(mockDisplayCurrency).toHaveBeenCalledWith(250000, 'microUSDC');
       expect(mockDisplayCurrency).toHaveBeenCalledTimes(1);
       
       // The component should display the formatted amount
@@ -72,7 +75,7 @@ describe('PendingContractCard - microUSDC Amount Display', () => {
         />
       );
 
-      expect(mockDisplayCurrency).toHaveBeenCalledWith(1000000, 'USDC');
+      expect(mockDisplayCurrency).toHaveBeenCalledWith(1000000, 'microUSDC');
       expect(screen.getByText('$1.00')).toBeInTheDocument();
     });
 
@@ -86,13 +89,13 @@ describe('PendingContractCard - microUSDC Amount Display', () => {
         />
       );
 
-      expect(mockDisplayCurrency).toHaveBeenCalledWith(10500000, 'USDC');
+      expect(mockDisplayCurrency).toHaveBeenCalledWith(10500000, 'microUSDC');
       expect(screen.getByText('$10.50')).toBeInTheDocument();
     });
 
     it('should display 0.00 USDC for very small microUSDC amounts', () => {
-      const contract = { ...baseContract, amount: 1 }; // 0.000001 USDC (but smart detection treats as 1 USDC due to small value)
-      
+      const contract = { ...baseContract, amount: 1 }; // 0.000001 USDC in microUSDC format
+
       render(
         <PendingContractCard
           contract={contract}
@@ -100,9 +103,9 @@ describe('PendingContractCard - microUSDC Amount Display', () => {
         />
       );
 
-      expect(mockDisplayCurrency).toHaveBeenCalledWith(1, 'USDC');
-      // Due to smart detection, small amounts with USDC tag are treated as USDC, not microUSDC
-      expect(screen.getByText('$1.00')).toBeInTheDocument();
+      expect(mockDisplayCurrency).toHaveBeenCalledWith(1, 'microUSDC');
+      // With correct microUSDC handling, 1 microUSDC = 0.000001 USDC ≈ $0.00
+      expect(screen.getByText('$0.00')).toBeInTheDocument();
     });
 
     it('should handle zero amount correctly', () => {
@@ -115,7 +118,7 @@ describe('PendingContractCard - microUSDC Amount Display', () => {
         />
       );
 
-      expect(mockDisplayCurrency).toHaveBeenCalledWith(0, 'USDC');
+      expect(mockDisplayCurrency).toHaveBeenCalledWith(0, 'microUSDC');
       expect(screen.getByText('$0.00')).toBeInTheDocument();
     });
 
@@ -129,7 +132,7 @@ describe('PendingContractCard - microUSDC Amount Display', () => {
         />
       );
 
-      expect(mockDisplayCurrency).toHaveBeenCalledWith(1000000000, 'USDC');
+      expect(mockDisplayCurrency).toHaveBeenCalledWith(1000000000, 'microUSDC');
       expect(screen.getByText('$1000.00')).toBeInTheDocument();
     });
   });
@@ -155,7 +158,7 @@ describe('PendingContractCard - microUSDC Amount Display', () => {
           />
         );
 
-        expect(mockDisplayCurrency).toHaveBeenCalledWith(microUSDC, 'USDC');
+        expect(mockDisplayCurrency).toHaveBeenCalledWith(microUSDC, 'microUSDC');
         expect(screen.getByText(expected)).toBeInTheDocument();
       });
     });
@@ -268,11 +271,11 @@ describe('PendingContractCard - microUSDC Amount Display', () => {
         />
       );
 
-      expect(mockDisplayCurrency).toHaveBeenCalledWith(undefined, 'USDC');
+      expect(mockDisplayCurrency).toHaveBeenCalledWith(undefined, 'microUSDC');
     });
 
     it('should handle negative amounts (edge case)', () => {
-      const contract = { ...baseContract, amount: -250000 }; // Negative amount (treated as USDC due to being < 1000)
+      const contract = { ...baseContract, amount: -250000 }; // Negative amount in microUSDC (-0.25 USDC)
       
       render(
         <PendingContractCard
@@ -281,9 +284,9 @@ describe('PendingContractCard - microUSDC Amount Display', () => {
         />
       );
 
-      expect(mockDisplayCurrency).toHaveBeenCalledWith(-250000, 'USDC');
-      // Negative amounts are < 1000 so treated as USDC by smart detection
-      expect(screen.getByText('$-250000.00')).toBeInTheDocument();
+      expect(mockDisplayCurrency).toHaveBeenCalledWith(-250000, 'microUSDC');
+      // Negative amounts in microUSDC: -250000 microUSDC = -$0.25 USDC
+      expect(screen.getByText('$-0.25')).toBeInTheDocument();
     });
 
     it('should handle string amounts if they somehow occur', () => {
@@ -296,7 +299,7 @@ describe('PendingContractCard - microUSDC Amount Display', () => {
         />
       );
 
-      expect(mockDisplayCurrency).toHaveBeenCalledWith('250000', 'USDC');
+      expect(mockDisplayCurrency).toHaveBeenCalledWith('250000', 'microUSDC');
     });
   });
 });

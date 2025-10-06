@@ -45,7 +45,7 @@ export default function PendingContractCard({
         </div>
         <div className="text-right">
           <div className="text-2xl font-bold text-gray-900">
-            {displayCurrency(contract.amount, contract.currency)}
+            {displayCurrency(contract.amount, 'microUSDC')}
           </div>
           <div className="text-sm text-gray-600">USDC</div>
         </div>

@@ -145,9 +145,40 @@ describe('SimpleAuthProvider Hydration Behavior', () => {
     expect(testElement.textContent).not.toContain('Error:');
   });
 
+  it('should show loading screen when config is null even if mounted', () => {
+    // This test specifically catches the bug where children were rendered
+    // when mounted && !isLoading && !config, causing useAuth to fail
+
+    // Mock useConfig to return null config but not loading
+    jest.spyOn(require('@/components/auth/ConfigProvider'), 'useConfig').mockReturnValue({
+      config: null,
+      isLoading: false
+    });
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <SimpleAuthProvider>{children}</SimpleAuthProvider>
+    );
+
+    // This component would fail if the bug exists
+    function TestConfigNull() {
+      const auth = useAuth();
+      return <div data-testid="config-null-test">Auth: {auth ? 'available' : 'null'}</div>;
+    }
+
+    const { container } = render(<TestConfigNull />, { wrapper });
+
+    // When config is null, should show loading screen, not the test component
+    // This prevents the "useAuth must be used within a SimpleAuthProvider" error
+    expect(screen.queryByTestId('config-null-test')).not.toBeInTheDocument();
+    expect(container.textContent).toContain('Loading configuration...');
+
+    // Restore mock
+    jest.restoreAllMocks();
+  });
+
   describe('Regression Test for Production Error', () => {
     it('should never throw the exact error reported by user', () => {
-      // This test specifically replicates the conditions that caused the production error
+      // This test ensures that useAuth never throws during any loading/config state
       let errorMessage = '';
 
       function ProblematicComponent() {
@@ -165,14 +196,20 @@ describe('SimpleAuthProvider Hydration Behavior', () => {
         <SimpleAuthProvider>{children}</SimpleAuthProvider>
       );
 
-      render(<ProblematicComponent />, { wrapper });
+      const { container } = render(<ProblematicComponent />, { wrapper });
 
-      // The specific error that was occurring in production
+      // The specific error that was occurring in production should never happen
       expect(errorMessage).not.toBe('useAuth must be used within a SimpleAuthProvider');
 
-      // Should render successfully
-      expect(screen.getByTestId('success')).toBeInTheDocument();
+      // Should never show a failure component
       expect(screen.queryByTestId('failure')).not.toBeInTheDocument();
+
+      // Should either show the success component OR show loading screen (both are valid)
+      const successElement = screen.queryByTestId('success');
+      const hasLoadingText = container.textContent?.includes('Loading configuration...');
+
+      // One of these should be true: either success component or loading screen
+      expect(successElement || hasLoadingText).toBeTruthy();
     });
   });
 });

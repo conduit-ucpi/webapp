@@ -115,6 +115,39 @@ export class Web3Service {
   }
 
   /**
+   * Initialize with an ethers provider directly
+   * Use this when you already have an ethers provider (e.g., from auth system)
+   */
+  async initializeWithEthersProvider(ethersProvider: ethers.BrowserProvider) {
+    try {
+      console.log('[Web3Service] Initializing with ethers provider directly');
+
+      // Store the ethers provider directly
+      this.provider = ethersProvider;
+
+      // Test the connection by getting network info
+      const network = await this.provider.getNetwork();
+      console.log('[Web3Service] ✅ Connected to network:', {
+        chainId: network.chainId.toString(),
+        name: network.name
+      });
+
+      // Get the connected address to verify authentication
+      const signer = await this.provider.getSigner();
+      const address = await signer.getAddress();
+      console.log('[Web3Service] ✅ Connected wallet address:', address);
+
+      this.isInitialized = true;
+      console.log('[Web3Service] ✅ Ethers provider initialized successfully');
+      console.log('[Web3Service] 🎯 All blockchain operations use the unified ethers provider');
+    } catch (error) {
+      console.error('[Web3Service] ❌ Failed to initialize ethers provider:', error);
+      this.isInitialized = false;
+      throw new Error('Ethers provider initialization failed: ' + (error as Error).message);
+    }
+  }
+
+  /**
    * Initialize directly with any EIP-1193 provider
    * This is the unified path that works consistently across all wallet types
    * FIXED: All operations (balance reading + transactions) now use the same ethers provider

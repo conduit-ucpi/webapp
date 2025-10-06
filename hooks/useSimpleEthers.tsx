@@ -19,9 +19,9 @@ export function useSimpleEthers() {
       throw new Error('Config not available');
     }
 
-    // Get the provider directly from auth
-    const provider = await getEthersProvider();
-    if (!provider) {
+    // Get the ethers provider directly from auth
+    const ethersProvider = await getEthersProvider();
+    if (!ethersProvider) {
       throw new Error('Ethers provider not available');
     }
 
@@ -30,10 +30,10 @@ export function useSimpleEthers() {
     // Get or create Web3Service instance with current config
     const web3Service = Web3Service.getInstance(config);
 
-    // Initialize Web3Service with the current ethers provider if not already initialized
+    // Initialize Web3Service directly with the ethers provider (not EIP-1193)
     if (!web3Service.isServiceInitialized()) {
-      console.log('🔧 useSimpleEthers: Initializing Web3Service with auth provider');
-      await web3Service.initializeWithEIP1193(provider.provider || provider);
+      console.log('🔧 useSimpleEthers: Initializing Web3Service with ethers provider');
+      await web3Service.initializeWithEthersProvider(ethersProvider);
     }
 
     return web3Service;

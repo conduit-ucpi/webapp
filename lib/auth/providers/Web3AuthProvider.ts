@@ -13,6 +13,7 @@ export class Web3AuthProvider implements AuthProvider {
   private web3authInstance: Web3Auth | null = null;
   private config: AuthConfig;
   private tokenManager: TokenManager;
+  private cachedEthersProvider: ethers.BrowserProvider | null = null;
 
   constructor(config: AuthConfig) {
     this.config = config;
@@ -60,8 +61,12 @@ export class Web3AuthProvider implements AuthProvider {
 
       // Get user info and determine auth method
       const user = await this.web3authInstance.getUserInfo();
-      const ethersProvider = new ethers.BrowserProvider(provider);
-      const signer = await ethersProvider.getSigner();
+
+      // Create and cache the ethers provider (SINGLE INSTANCE)
+      this.cachedEthersProvider = new ethers.BrowserProvider(provider);
+      console.log('🔧 Web3AuthProvider: Created and cached single ethers provider instance');
+
+      const signer = await this.cachedEthersProvider.getSigner();
       const address = await signer.getAddress();
 
       let authToken: string;
@@ -120,6 +125,10 @@ export class Web3AuthProvider implements AuthProvider {
       this.web3authInstance = null;
     }
 
+    // Clear the cached ethers provider
+    this.cachedEthersProvider = null;
+    console.log('🔧 Web3AuthProvider: Cleared cached ethers provider');
+
     this.tokenManager.clearToken();
   }
 
@@ -128,20 +137,17 @@ export class Web3AuthProvider implements AuthProvider {
   }
 
   async signMessage(message: string): Promise<string> {
-    if (!this.web3authInstance?.provider) {
-      throw new Error('No provider available for signing');
+    if (!this.cachedEthersProvider) {
+      throw new Error('No ethers provider available for signing');
     }
 
-    const ethersProvider = new ethers.BrowserProvider(this.web3authInstance.provider);
-    const signer = await ethersProvider.getSigner();
+    const signer = await this.cachedEthersProvider.getSigner();
     return await signer.signMessage(message);
   }
 
   async getEthersProvider(): Promise<any> {
-    if (!this.web3authInstance?.provider) {
-      return null;
-    }
-    return new ethers.BrowserProvider(this.web3authInstance.provider);
+    // Return the cached ethers provider (SINGLE INSTANCE)
+    return this.cachedEthersProvider;
   }
 
   hasVisitedBefore(): boolean {

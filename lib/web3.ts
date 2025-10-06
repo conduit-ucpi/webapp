@@ -991,7 +991,10 @@ export class Web3Service {
       // WORKAROUND: Web3Auth's signer.sendTransaction() pre-validates with wrong gas prices
       // Instead, we'll sign the transaction and send it raw to bypass Web3Auth's validation
       try {
+        console.log('[RPC DEBUG] Starting direct RPC transaction approach...');
+
         // First, get the nonce
+        console.log('[RPC DEBUG] Fetching nonce for address:', userAddress);
         const nonceResponse = await fetch(this.config.rpcUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1004,19 +1007,42 @@ export class Web3Service {
         });
 
         const nonceData = await nonceResponse.json();
+        console.log('[RPC DEBUG] Nonce response:', nonceData);
+
+        if (nonceData.error) {
+          console.error('[RPC DEBUG] Nonce fetch failed:', nonceData.error);
+          throw new Error(`Failed to fetch nonce: ${nonceData.error.message || JSON.stringify(nonceData.error)}`);
+        }
+
         const nonce = nonceData.result ? parseInt(nonceData.result, 16) : 0;
+        console.log('[RPC DEBUG] Parsed nonce:', nonce);
 
         // Add nonce and chainId to transaction
         tx.nonce = nonce;
         tx.chainId = this.config.chainId;
 
+        console.log('[RPC DEBUG] Final transaction object before signing:', {
+          to: tx.to,
+          data: tx.data,
+          value: tx.value?.toString(),
+          gasLimit: tx.gasLimit?.toString(),
+          maxFeePerGas: tx.maxFeePerGas?.toString(),
+          maxPriorityFeePerGas: tx.maxPriorityFeePerGas?.toString(),
+          gasPrice: tx.gasPrice?.toString(),
+          nonce: tx.nonce,
+          chainId: tx.chainId,
+          type: tx.type
+        });
+
         console.log('[Web3Service.fundAndSendTransaction] Signing transaction with nonce:', nonce);
 
         // Sign the transaction
         const signedTx = await signer.signTransaction(tx);
-        console.log('[Web3Service.fundAndSendTransaction] Transaction signed, sending raw to RPC...');
+        console.log('[RPC DEBUG] Transaction signed successfully, raw tx length:', signedTx.length);
+        console.log('[RPC DEBUG] Raw signed transaction (first 100 chars):', signedTx.substring(0, 100) + '...');
 
         // Send the raw signed transaction directly to RPC, bypassing Web3Auth validation
+        console.log('[RPC DEBUG] Sending raw transaction to RPC:', this.config.rpcUrl);
         const sendResponse = await fetch(this.config.rpcUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1028,13 +1054,77 @@ export class Web3Service {
           })
         });
 
+        console.log('[RPC DEBUG] RPC response status:', sendResponse.status, sendResponse.statusText);
         const sendResult = await sendResponse.json();
+        console.log('[RPC DEBUG] RPC response body:', sendResult);
 
         if (sendResult.error) {
+          console.error('[RPC DEBUG] RPC returned error:', {
+            code: sendResult.error.code,
+            message: sendResult.error.message,
+            data: sendResult.error.data,
+            fullError: sendResult.error
+          });
+
+          // Special handling for "replacement transaction underpriced"
+          if (sendResult.error.message && sendResult.error.message.includes('replacement transaction underpriced')) {
+            console.error('[RPC DEBUG] REPLACEMENT TRANSACTION UNDERPRICED ERROR ANALYSIS:');
+            console.error('[RPC DEBUG] This error suggests a nonce collision or pending transaction with higher gas');
+            console.error('[RPC DEBUG] Current nonce used:', nonce);
+            console.error('[RPC DEBUG] Transaction gas price:', tx.maxFeePerGas?.toString() || tx.gasPrice?.toString());
+            console.error('[RPC DEBUG] Consider checking for pending transactions with same nonce');
+
+            // Try to get more information about the current state
+            try {
+              // Check if there's a different nonce we should be using
+              const latestNonceResponse = await fetch(this.config.rpcUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  jsonrpc: '2.0',
+                  method: 'eth_getTransactionCount',
+                  params: [userAddress, 'latest'],
+                  id: 2
+                })
+              });
+              const latestNonceData = await latestNonceResponse.json();
+              const latestNonce = latestNonceData.result ? parseInt(latestNonceData.result, 16) : 0;
+
+              console.error('[RPC DEBUG] Nonce comparison:');
+              console.error('[RPC DEBUG] - Used nonce (pending):', nonce);
+              console.error('[RPC DEBUG] - Latest nonce (latest):', latestNonce);
+              console.error('[RPC DEBUG] - Difference:', nonce - latestNonce);
+
+              // Check current gas price on network
+              const gasPriceResponse = await fetch(this.config.rpcUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  jsonrpc: '2.0',
+                  method: 'eth_gasPrice',
+                  params: [],
+                  id: 3
+                })
+              });
+              const gasPriceData = await gasPriceResponse.json();
+              const currentNetworkGasPrice = gasPriceData.result ? BigInt(gasPriceData.result) : BigInt(0);
+              const currentNetworkGasPriceGwei = Number(currentNetworkGasPrice) / 1000000000;
+
+              console.error('[RPC DEBUG] Gas price comparison:');
+              console.error('[RPC DEBUG] - Our transaction gas price:', formatWeiAsEthForLogging(tx.maxFeePerGas || tx.gasPrice || BigInt(0)));
+              console.error('[RPC DEBUG] - Current network gas price:', formatWeiAsEthForLogging(currentNetworkGasPrice));
+              console.error('[RPC DEBUG] - Our vs Network ratio:', (Number(tx.maxFeePerGas || tx.gasPrice || BigInt(0)) / Number(currentNetworkGasPrice)).toFixed(4));
+
+            } catch (debugError) {
+              console.error('[RPC DEBUG] Could not get additional debug info:', debugError);
+            }
+          }
+
           throw new Error(`RPC error: ${sendResult.error.message || JSON.stringify(sendResult.error)}`);
         }
 
         if (!sendResult.result) {
+          console.error('[RPC DEBUG] No transaction hash in successful response:', sendResult);
           throw new Error('No transaction hash returned from RPC');
         }
 

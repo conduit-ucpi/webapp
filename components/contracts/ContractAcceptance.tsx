@@ -7,6 +7,7 @@ import { PendingContract } from '@/types';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { formatCurrency, formatDateTimeWithTZ, toUSDCForWeb3 } from '@/utils/validation';
+import { executeContractTransactionSequence } from '@/utils/contractTransactionSequence';
 
 interface ContractAcceptanceProps {
   contract: PendingContract;
@@ -17,7 +18,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
   const router = useRouter();
   const { config } = useConfig();
   const { user, authenticatedFetch } = useAuth();
-  const { fundAndSendTransaction, getUSDCBalance, approveUSDC, depositToContract } = useSimpleEthers();
+  const { fundAndSendTransaction, getUSDCBalance, approveUSDC, depositToContract, getWeb3Service } = useSimpleEthers();
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
   const [hasError, setHasError] = useState(false);
@@ -140,16 +141,10 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
         throw new Error(`This contract is for ${contract.buyerEmail}, but you are logged in as ${user?.email}. Please log in with the correct account.`);
       }
 
-      setLoadingMessage('Step 1 of 3: Creating secure escrow...');
-
       try {
-        // Step 1: Create the contract on the blockchain
-        setLoadingMessage('Step 1 of 3: Creating secure escrow...');
-
-        const createResponse = await authenticatedFetch('/api/chain/create-contract', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
+        // Execute the complete transaction sequence with proper confirmation waiting
+        const result = await executeContractTransactionSequence(
+          {
             contractserviceId: contract.id,
             tokenAddress: config.usdcContractAddress,
             buyer: user.walletAddress,
@@ -157,32 +152,45 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
             amount: contract.amount, // Already in microUSDC format
             expiryTimestamp: contract.expiryTimestamp,
             description: contract.description
-          })
-        });
+          },
+          {
+            authenticatedFetch,
+            approveUSDC,
+            depositToContract,
+            getWeb3Service,
+            onProgress: (step, message) => {
+              console.log(`🔧 ContractAcceptance: ${step} - ${message}`);
 
-        if (!createResponse.ok) {
-          const errorData = await createResponse.json().catch(() => ({}));
-          throw new Error(errorData.error || 'Contract creation failed');
-        }
-
-        const createData = await createResponse.json();
-        const contractAddress = createData.contractAddress;
-        setContractAddress(contractAddress);
-
-        // Step 2: Approve USDC spending
-        setLoadingMessage('Step 2 of 3: Approving USDC transfer...');
-
-        await approveUSDC(
-          contractAddress,
-          contract.amount.toString() // Contract.amount is already in microUSDC format
+              // Update UI based on progress step
+              switch (step) {
+                case 'contract_creation':
+                  setLoadingMessage('Step 1 of 3: Creating secure escrow...');
+                  break;
+                case 'contract_confirmation':
+                  setLoadingMessage('Step 1.5 of 3: Waiting for contract creation to be confirmed...');
+                  break;
+                case 'usdc_approval':
+                  setLoadingMessage('Step 2 of 3: Approving USDC transfer...');
+                  break;
+                case 'approval_confirmation':
+                  setLoadingMessage('Step 2.5 of 3: Waiting for USDC approval to be confirmed...');
+                  break;
+                case 'deposit':
+                  setLoadingMessage('Step 3 of 3: Depositing funds...');
+                  break;
+                case 'deposit_confirmation':
+                  setLoadingMessage('Step 3.5 of 3: Waiting for deposit to be confirmed...');
+                  break;
+                case 'complete':
+                  setLoadingMessage('Transaction sequence completed successfully');
+                  break;
+              }
+            }
+          }
         );
 
-        // Step 3: Deposit funds into the contract
-        setLoadingMessage('Step 3 of 3: Depositing funds...');
-
-        await depositToContract(contractAddress);
-
-        console.log('🔧 ContractAcceptance: Contract funding completed successfully');
+        setContractAddress(result.contractAddress);
+        console.log('🔧 ContractAcceptance: Contract funding completed successfully:', result);
       } catch (fundingError) {
         console.error('🔧 ContractAcceptance: Contract funding failed:', fundingError);
         console.error('🔧 ContractAcceptance: Funding error details:', {

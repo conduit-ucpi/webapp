@@ -11,6 +11,7 @@ import ConnectWalletEmbedded from '@/components/auth/ConnectWalletEmbedded';
 import WalletInfo from '@/components/ui/WalletInfo';
 import { isValidWalletAddress, toMicroUSDC, toUSDCForWeb3, formatDateTimeWithTZ } from '@/utils/validation';
 import { useContractCreateValidation } from '@/hooks/useContractValidation';
+import { executeContractTransactionSequence } from '@/utils/contractTransactionSequence';
 
 console.log('🔧 ContractCreate: FILE LOADED - imports successful');
 
@@ -41,7 +42,7 @@ export default function ContractCreate() {
   const router = useRouter();
   const { config } = useConfig();
   const { user, authenticatedFetch, disconnect, isLoading: authLoading } = useAuth();
-  const { approveUSDC, depositToContract } = useSimpleEthers();
+  const { approveUSDC, depositToContract, getWeb3Service } = useSimpleEthers();
   const { errors, validateForm, clearErrors } = useContractCreateValidation();
   
   // Query parameters
@@ -346,60 +347,64 @@ export default function ContractCreate() {
         }
       }
       
-      // Step 1: Create the contract on the blockchain
+      // Execute the complete transaction sequence with proper confirmation waiting
       updatePaymentStep('approve', 'active');
-      setLoadingMessage('Step 1 of 4: Creating secure escrow...');
 
-      const createResponse = await authenticatedFetch('/api/chain/create-contract', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const result = await executeContractTransactionSequence(
+        {
           contractserviceId: contractId,
           tokenAddress: config.usdcContractAddress,
-          buyer: user?.walletAddress,
+          buyer: user?.walletAddress || '',
           seller: form.seller,
           amount: toMicroUSDC(parseFloat(form.amount.trim())),
           expiryTimestamp: expiryTimestamp,
           description: form.description
-        })
-      });
+        },
+        {
+          authenticatedFetch,
+          approveUSDC,
+          depositToContract,
+          getWeb3Service,
+          onProgress: (step, message) => {
+            console.log(`🔧 ContractCreate: ${step} - ${message}`);
 
-      if (!createResponse.ok) {
-        const errorData = await createResponse.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Contract creation failed');
-      }
-
-      const createData = await createResponse.json();
-      const contractAddress = createData.contractAddress;
-
-      // Step 2: Approve USDC spending
-      updatePaymentStep('approve', 'completed');
-      updatePaymentStep('escrow', 'active');
-      setLoadingMessage('Step 2 of 4: Approving USDC transfer...');
-
-      await approveUSDC(
-        contractAddress,
-        toMicroUSDC(parseFloat(form.amount.trim())).toString()
+            // Update UI based on progress step
+            switch (step) {
+              case 'contract_creation':
+                setLoadingMessage('Step 1 of 4: Creating secure escrow...');
+                break;
+              case 'contract_confirmation':
+                setLoadingMessage('Step 1.5 of 4: Waiting for contract creation to be confirmed...');
+                break;
+              case 'usdc_approval':
+                updatePaymentStep('approve', 'completed');
+                updatePaymentStep('escrow', 'active');
+                setLoadingMessage('Step 2 of 4: Approving USDC transfer...');
+                break;
+              case 'approval_confirmation':
+                setLoadingMessage('Step 2.5 of 4: Waiting for USDC approval to be confirmed...');
+                break;
+              case 'deposit':
+                updatePaymentStep('escrow', 'completed');
+                updatePaymentStep('confirm', 'active');
+                setLoadingMessage('Step 3 of 4: Depositing funds...');
+                break;
+              case 'deposit_confirmation':
+                setLoadingMessage('Step 3.5 of 4: Waiting for deposit to be confirmed...');
+                break;
+              case 'complete':
+                updatePaymentStep('confirm', 'completed');
+                updatePaymentStep('complete', 'completed');
+                setLoadingMessage('Step 4 of 4: Payment complete!');
+                break;
+            }
+          }
+        }
       );
 
-      // Step 3: Deposit funds into the contract
-      updatePaymentStep('escrow', 'completed');
-      updatePaymentStep('confirm', 'active');
-      setLoadingMessage('Step 3 of 4: Depositing funds...');
-
-      const depositResult = await depositToContract(contractAddress);
-
-      // Create result object for compatibility with existing code
-      const result = {
-        contractAddress: contractAddress,
-        depositTxHash: depositResult, // depositToContract returns the transaction hash
-      };
+      // result now contains: { contractAddress, contractCreationTxHash?, approvalTxHash, depositTxHash }
 
       console.log('🔧 ContractCreate: Payment completed successfully:', result);
-
-      // Mark all steps as completed
-      updatePaymentStep('confirm', 'completed');
-      updatePaymentStep('complete', 'completed');
 
       // Add debugging for transaction verification
       if (result.depositTxHash) {

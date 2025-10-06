@@ -11,12 +11,13 @@ describe('ContractAcceptance API Call Monitoring', () => {
     const fs = require('fs');
     const path = require('path');
 
-    const componentPath = path.join(process.cwd(), 'components/contracts/ContractAcceptance.tsx');
-    const componentSource = fs.readFileSync(componentPath, 'utf8');
+    // The API call has been moved to the shared utility
+    const utilityPath = path.join(process.cwd(), 'utils/contractTransactionSequence.ts');
+    const utilitySource = fs.readFileSync(utilityPath, 'utf8');
 
-    // Extract the specific create-contract API call
-    const createContractCallMatch = componentSource.match(
-      /const createResponse = await authenticatedFetch\('\/api\/chain\/create-contract'[\s\S]*?}\)\);/
+    // Extract the specific create-contract API call from the utility
+    const createContractCallMatch = utilitySource.match(
+      /const createResponse = await authenticatedFetch\('\/api\/chain\/create-contract'[\s\S]*?JSON\.stringify\(params\)/
     );
 
     expect(createContractCallMatch).toBeTruthy();
@@ -28,7 +29,7 @@ describe('ContractAcceptance API Call Monitoring', () => {
     // This hash will change if ANYONE modifies the API call
     // If this test fails, it means the API call structure was changed
     // Update the hash only after verifying the change is intentional and correct
-    const expectedHash = 'd0d95d9a556c94f66c76ee62fd323ebd0285401c47b999ae91feee540d02ca0e';
+    const expectedHash = '048a0b2b4fba7db51d7031ccaa8cf54dcf69b436769f8bf3ed579acd2c4623fd';
 
     if (apiCallHash !== expectedHash) {
       console.log('🚨 API CALL STRUCTURE CHANGED! 🚨');
@@ -40,15 +41,22 @@ describe('ContractAcceptance API Call Monitoring', () => {
       console.log('If this change is accidental, revert your changes and investigate.');
     }
 
-    // For now, just verify the key elements are present instead of exact hash
-    // This allows for safe refactoring while catching dangerous changes
-    expect(createContractCall).toContain('contractserviceId: contract.id');
-    expect(createContractCall).toContain('tokenAddress: config.usdcContractAddress');
-    expect(createContractCall).toContain('buyer: user.walletAddress');
-    expect(createContractCall).toContain('seller: contract.sellerAddress');
-    expect(createContractCall).toContain('amount: contract.amount');
-    expect(createContractCall).toContain('expiryTimestamp: contract.expiryTimestamp');
-    expect(createContractCall).toContain('description: contract.description');
+    // Verify the API call uses the params object (which contains all required fields)
+    expect(createContractCall).toContain('/api/chain/create-contract');
+    expect(createContractCall).toContain('JSON.stringify(params)');
+    expect(createContractCall).toContain('POST');
+
+    // Also verify that ContractAcceptance passes the correct params to the utility
+    const componentPath = path.join(process.cwd(), 'components/contracts/ContractAcceptance.tsx');
+    const componentSource = fs.readFileSync(componentPath, 'utf8');
+
+    expect(componentSource).toContain('contractserviceId: contract.id');
+    expect(componentSource).toContain('tokenAddress: config.usdcContractAddress');
+    expect(componentSource).toContain('buyer: user.walletAddress');
+    expect(componentSource).toContain('seller: contract.sellerAddress');
+    expect(componentSource).toContain('amount: contract.amount');
+    expect(componentSource).toContain('expiryTimestamp: contract.expiryTimestamp');
+    expect(componentSource).toContain('description: contract.description');
   });
 
   it('should validate all 7 required fields are still present in the source code', () => {
@@ -157,19 +165,19 @@ describe('ContractAcceptance API Call Monitoring', () => {
     const fs = require('fs');
     const path = require('path');
 
+    // Check that the ContractAcceptance component passes the correct field structure
     const componentPath = path.join(process.cwd(), 'components/contracts/ContractAcceptance.tsx');
     const componentSource = fs.readFileSync(componentPath, 'utf8');
 
-    // Look for the specific API call block and extract field names
-    const apiCallMatch = componentSource.match(
-      /body:\s*JSON\.stringify\(\s*\{([^}]+)\}\s*\)/
+    // Look for the params object passed to executeContractTransactionSequence
+    const executeCallMatch = componentSource.match(
+      /executeContractTransactionSequence\([\s\S]*?\{([^}]+)\}/
     );
 
-    expect(apiCallMatch).toBeTruthy();
-    const fieldsBlock = apiCallMatch[1];
+    expect(executeCallMatch).toBeTruthy();
+    const fieldsBlock = executeCallMatch[1];
 
     // Extract field names (everything before the colon, ignoring comments)
-    // Handle multi-line fields split by comments
     const fieldNames = fieldsBlock
       .split(/,|\n/)  // Split by both commas and newlines
       .map((line: string) => line.trim())
@@ -198,21 +206,38 @@ describe('ContractAcceptance API Call Monitoring', () => {
     fieldNames.forEach((fieldName: string) => {
       expect(expectedFieldNames).toContain(fieldName);
     });
+
+    // Also verify the interface definition in the utility matches
+    const utilityPath = path.join(process.cwd(), 'utils/contractTransactionSequence.ts');
+    const utilitySource = fs.readFileSync(utilityPath, 'utf8');
+
+    expectedFieldNames.forEach((fieldName: string) => {
+      expect(utilitySource).toContain(`${fieldName}:`);
+    });
   });
 
   it('should ensure proper error handling for missing required fields', () => {
     const fs = require('fs');
     const path = require('path');
 
+    // Check error handling in the shared utility where the API call now lives
+    const utilityPath = path.join(process.cwd(), 'utils/contractTransactionSequence.ts');
+    const utilitySource = fs.readFileSync(utilityPath, 'utf8');
+
+    // Verify error handling exists for the create-contract call in the utility
+    expect(utilitySource).toContain('if (!createResponse.ok)');
+    expect(utilitySource).toContain('createResponse.json()');
+    expect(utilitySource).toContain('throw new Error');
+    expect(utilitySource).toContain('Contract creation failed');
+
+    // Also verify that ContractAcceptance handles errors from the utility
     const componentPath = path.join(process.cwd(), 'components/contracts/ContractAcceptance.tsx');
     const componentSource = fs.readFileSync(componentPath, 'utf8');
 
-    // Verify error handling exists for the create-contract call
-    expect(componentSource).toContain('if (!createResponse.ok)');
-    expect(componentSource).toContain('createResponse.json()');
-    expect(componentSource).toContain('throw new Error');
-
-    // Verify user-friendly error messages
-    expect(componentSource).toContain('Contract creation failed');
+    // Verify the component catches and handles errors from executeContractTransactionSequence
+    expect(componentSource).toContain('catch (fundingError)');
+    expect(componentSource).toContain('throw fundingError');
+    expect(componentSource).toContain('catch (error: any)');
+    expect(componentSource).toContain('alert(error.message');
   });
 });

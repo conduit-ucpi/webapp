@@ -31,16 +31,25 @@ describe('ContractAcceptance Regression Protection', () => {
       expect(componentSource).not.toContain('contract.amount * 1e6');
     });
 
-    it('should verify approveUSDC call uses contract.amount directly', () => {
+    it('should verify approveUSDC call uses params.amount directly', () => {
+      // The approveUSDC call has moved to the shared utility
+      const utilityPath = path.join(process.cwd(), 'utils/contractTransactionSequence.ts');
+      const utilitySource = fs.readFileSync(utilityPath, 'utf8');
+
+      // CRITICAL: approveUSDC should receive params.amount.toString()
+      // (already in microUSDC), not toMicroUSDC conversion
+      expect(utilitySource).toContain('params.amount.toString()');
+
+      // Must NOT double-convert in approveUSDC call
+      expect(utilitySource).not.toContain('toMicroUSDC(String(params.amount)).toString()');
+      expect(utilitySource).not.toContain('toMicroUSDC(params.amount)');
+
+      // Also verify ContractAcceptance passes amount correctly to the utility
       const componentPath = path.join(process.cwd(), 'components/contracts/ContractAcceptance.tsx');
       const componentSource = fs.readFileSync(componentPath, 'utf8');
 
-      // CRITICAL: approveUSDC should receive contract.amount.toString()
-      // (already in microUSDC), not toMicroUSDC conversion
-      expect(componentSource).toContain('contract.amount.toString()');
-
-      // Must NOT double-convert in approveUSDC call
-      expect(componentSource).not.toContain('toMicroUSDC(String(contract.amount)).toString()');
+      expect(componentSource).toContain('amount: contract.amount, // Already in microUSDC format');
+      expect(componentSource).not.toContain('amount: toMicroUSDC(contract.amount)');
     });
 
     it('should verify all test files use correct microUSDC format', () => {
@@ -117,13 +126,14 @@ describe('ContractAcceptance Regression Protection', () => {
 
   describe('API Call Structure Protection', () => {
 
-    it('should verify correct API call structure in ContractAcceptance', () => {
-      const componentPath = path.join(process.cwd(), 'components/contracts/ContractAcceptance.tsx');
-      const componentSource = fs.readFileSync(componentPath, 'utf8');
+    it('should verify correct API call structure in shared utility', () => {
+      // The API call has moved to the shared utility
+      const utilityPath = path.join(process.cwd(), 'utils/contractTransactionSequence.ts');
+      const utilitySource = fs.readFileSync(utilityPath, 'utf8');
 
-      // Find the create-contract API call
-      const apiCallMatch = componentSource.match(
-        /authenticatedFetch\(.*?\/api\/chain\/create-contract.*?body:\s*JSON\.stringify\(\s*\{([^}]+)\}/s
+      // Find the create-contract API call in the utility
+      const apiCallMatch = utilitySource.match(
+        /authenticatedFetch\(.*?\/api\/chain\/create-contract.*?body:\s*JSON\.stringify\(params\)/s
       );
 
       expect(apiCallMatch).toBeTruthy();
@@ -131,19 +141,25 @@ describe('ContractAcceptance Regression Protection', () => {
       if (apiCallMatch) {
         const requestBody = apiCallMatch[0];
 
-        // Verify all required fields are present with correct patterns
-        expect(requestBody).toContain('contractserviceId: contract.id');
-        expect(requestBody).toContain('tokenAddress: config.usdcContractAddress');
-        expect(requestBody).toContain('buyer: user.walletAddress');
-        expect(requestBody).toContain('seller: contract.sellerAddress');
-        expect(requestBody).toContain('amount: contract.amount'); // CRITICAL: Direct use
-        expect(requestBody).toContain('expiryTimestamp: contract.expiryTimestamp');
-        expect(requestBody).toContain('description: contract.description');
-
-        // Verify incorrect patterns are NOT present
+        // Verify the utility uses params object (no field manipulation)
+        expect(requestBody).toContain('/api/chain/create-contract');
+        expect(requestBody).toContain('JSON.stringify(params)');
         expect(requestBody).not.toContain('...contract'); // No spread operator
         expect(requestBody).not.toContain('toMicroUSDC('); // No double conversion
       }
+
+      // Verify ContractAcceptance passes correct structure to utility
+      const componentPath = path.join(process.cwd(), 'components/contracts/ContractAcceptance.tsx');
+      const componentSource = fs.readFileSync(componentPath, 'utf8');
+
+      // Verify all required fields are passed correctly to executeContractTransactionSequence
+      expect(componentSource).toContain('contractserviceId: contract.id');
+      expect(componentSource).toContain('tokenAddress: config.usdcContractAddress');
+      expect(componentSource).toContain('buyer: user.walletAddress');
+      expect(componentSource).toContain('seller: contract.sellerAddress');
+      expect(componentSource).toContain('amount: contract.amount'); // CRITICAL: Direct use
+      expect(componentSource).toContain('expiryTimestamp: contract.expiryTimestamp');
+      expect(componentSource).toContain('description: contract.description');
     });
   });
 

@@ -235,6 +235,22 @@ describe('Gas Estimation Regression Tests - No Provider Bullshit', () => {
     });
   });
 
+  describe('Web3Auth Bypass: Direct RPC Transaction Sending', () => {
+    it('should document that we bypass Web3Auth validation by using direct RPC', () => {
+      // This test exists to document our architectural decision:
+      // We bypass Web3Auth's gas validation by:
+      // 1. Getting gas estimates from Base RPC directly
+      // 2. Getting gas prices from Base RPC directly
+      // 3. Signing transactions with Web3Auth signer
+      // 4. Sending raw signed transactions to Base RPC directly
+
+      // This prevents Web3Auth from pre-validating transactions with wrong gas prices
+      // and allows us to use Base network's actual gas economics (0.001 gwei vs 1.5 gwei)
+
+      expect(true).toBe(true); // This test documents intent
+    });
+  });
+
   describe('Regression Prevention: No Provider Fee Usage', () => {
     it('should document that we bypass provider.getFeeData() entirely', () => {
       // This test exists to document our architectural decision:
@@ -251,17 +267,18 @@ describe('Gas Estimation Regression Tests - No Provider Bullshit', () => {
 
     it('should ensure gas price caps prevent the $3500 transaction bug', async () => {
       // Setup: Simulate the exact scenario that caused the original bug
+      // Use values that exceed our cap to test the capping mechanism
       mockFetch
         .mockResolvedValueOnce({
           ok: true,
           json: () => Promise.resolve({
-            result: '0x58d15e176280000' // 1.5 gwei in hex (the problematic value)
+            result: '0x3b9aca00' // 1,000,000,000 wei = 1 gwei (should be capped)
           })
         } as Response)
         .mockResolvedValueOnce({
           ok: true,
           json: () => Promise.resolve({
-            result: '0x58d15e176280000' // 1.5 gwei in hex
+            result: '0x3b9aca00' // 1,000,000,000 wei = 1 gwei (should be capped)
           })
         } as Response);
 

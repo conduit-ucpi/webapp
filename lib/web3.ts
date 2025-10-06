@@ -770,24 +770,47 @@ export class Web3Service {
 
     const userAddress = await this.getUserAddress();
 
-    // Step 1: Estimate gas using the same ethers provider used for balance reading
+    // Step 1: Estimate gas using our RPC directly to avoid Web3Auth pre-validation issues
     let gasEstimate: bigint = BigInt(0);
     if (txParams.gasLimit) {
       gasEstimate = txParams.gasLimit;
       console.log('Using provided gas limit:', gasEstimate.toString());
     } else {
       try {
-        console.log('Estimating gas via unified ethers provider...');
-        gasEstimate = await this.provider.estimateGas({
-          from: userAddress,
-          to: txParams.to,
-          data: txParams.data,
-          value: txParams.value || '0x0'
+        // Use our Base RPC directly instead of the provider to avoid Web3Auth's internal validation
+        console.log('Estimating gas via Base RPC directly (bypassing Web3Auth provider)...');
+
+        const estimateResponse = await fetch(this.config.rpcUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            method: 'eth_estimateGas',
+            params: [{
+              from: userAddress,
+              to: txParams.to,
+              data: txParams.data,
+              value: txParams.value || '0x0'
+            }],
+            id: 1
+          })
         });
-        console.log('Gas estimate successful:', gasEstimate.toString(), 'gas');
+
+        if (estimateResponse.ok) {
+          const estimateData = await estimateResponse.json();
+          if (estimateData.result) {
+            gasEstimate = BigInt(estimateData.result);
+            console.log('✅ Gas estimate from Base RPC:', gasEstimate.toString(), 'gas');
+          } else {
+            throw new Error('No result from RPC gas estimation');
+          }
+        } else {
+          throw new Error('RPC gas estimation failed');
+        }
       } catch (error) {
-        console.warn('Provider gas estimation failed, using fallback:', error);
-        gasEstimate = BigInt(100000); // 100k gas units - reasonable for most transactions
+        console.warn('RPC gas estimation failed, using safe fallback:', error);
+        // Use a safe default for USDC operations (approve/transfer typically use 60-80k)
+        gasEstimate = BigInt(100000); // 100k gas units - safe for most transactions
       }
     }
 
@@ -911,13 +934,69 @@ export class Web3Service {
       }
 
       console.log('[Web3Service.fundAndSendTransaction] Transaction params:', tx);
-      console.log('[Web3Service.fundAndSendTransaction] Sending transaction via ethers signer...');
+      console.log('[Web3Service.fundAndSendTransaction] Preparing transaction for Web3Auth workaround...');
 
-      // Send transaction using ethers signer (consistent with all other operations)
-      const txResponse = await signer.sendTransaction(tx);
-      console.log('Transaction sent successfully via ethers provider:', txResponse.hash);
+      // WORKAROUND: Web3Auth's signer.sendTransaction() pre-validates with wrong gas prices
+      // Instead, we'll sign the transaction and send it raw to bypass Web3Auth's validation
+      try {
+        // First, get the nonce
+        const nonceResponse = await fetch(this.config.rpcUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            method: 'eth_getTransactionCount',
+            params: [userAddress, 'pending'],
+            id: 1
+          })
+        });
 
-      return txResponse.hash;
+        const nonceData = await nonceResponse.json();
+        const nonce = nonceData.result ? parseInt(nonceData.result, 16) : 0;
+
+        // Add nonce and chainId to transaction
+        tx.nonce = nonce;
+        tx.chainId = this.config.chainId;
+
+        console.log('[Web3Service.fundAndSendTransaction] Signing transaction with nonce:', nonce);
+
+        // Sign the transaction
+        const signedTx = await signer.signTransaction(tx);
+        console.log('[Web3Service.fundAndSendTransaction] Transaction signed, sending raw to RPC...');
+
+        // Send the raw signed transaction directly to RPC, bypassing Web3Auth validation
+        const sendResponse = await fetch(this.config.rpcUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            method: 'eth_sendRawTransaction',
+            params: [signedTx],
+            id: 1
+          })
+        });
+
+        const sendResult = await sendResponse.json();
+
+        if (sendResult.error) {
+          throw new Error(`RPC error: ${sendResult.error.message || JSON.stringify(sendResult.error)}`);
+        }
+
+        if (!sendResult.result) {
+          throw new Error('No transaction hash returned from RPC');
+        }
+
+        console.log('✅ Transaction sent successfully via direct RPC (bypassed Web3Auth validation):', sendResult.result);
+        return sendResult.result;
+
+      } catch (signError) {
+        console.warn('[Web3Service.fundAndSendTransaction] Direct RPC approach failed, falling back to signer.sendTransaction:', signError);
+
+        // Fallback: Try the normal signer.sendTransaction (might still fail with Web3Auth)
+        const txResponse = await signer.sendTransaction(tx);
+        console.log('Transaction sent successfully via ethers provider:', txResponse.hash);
+        return txResponse.hash;
+      }
 
     } catch (error) {
       console.error('[Web3Service.fundAndSendTransaction] Failed to send via ethers, error:', error);

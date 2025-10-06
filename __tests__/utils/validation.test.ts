@@ -373,9 +373,10 @@ describe('validation utils', () => {
       expect(result.numericAmount).toBe(1.5);
     });
 
-    it('should handle USDC amounts correctly', () => {
+    it('should handle USDC parameter as already-converted USDC', () => {
+      // With 'USDC' parameter, the amount is treated as already in USDC
       const result = formatCurrency(1.50, 'USDC');
-      expect(result.amount).toBe('1.5000');
+      expect(result.amount).toBe('1.5000'); // 1.50 USDC stays as 1.50 USDC
       expect(result.currency).toBe('USDC');
       expect(result.numericAmount).toBe(1.5);
     });
@@ -399,24 +400,25 @@ describe('validation utils', () => {
       expect(result.numericAmount).toBe(0);
     });
 
-    it('should handle unknown currency tags as USDC', () => {
+    it('should treat unknown currency tags as microUSDC (simplified behavior)', () => {
+      // With simplified logic, all unknown currencies are treated as microUSDC
       const result = formatCurrency(1.50, 'UNKNOWN');
-      expect(result.amount).toBe('1.5000');
+      expect(result.amount).toBe('0.0000'); // 1.50 microUSDC = 0.0000015 USDC ≈ 0.0000
       expect(result.currency).toBe('USDC');
     });
 
-    it('should smart-detect microUSDC amounts with USDC currency tag (legacy compatibility)', () => {
-      // Large amounts with "USDC" tag are likely microUSDC
+    it('should handle large USDC amounts as already-converted USDC', () => {
+      // Large amounts with "USDC" tag are treated as already in USDC
       const result = formatCurrency(250000, 'USDC');
-      expect(result.amount).toBe('0.2500');
+      expect(result.amount).toBe('250000.0000');
       expect(result.currency).toBe('USDC');
-      expect(result.numericAmount).toBe(0.25);
+      expect(result.numericAmount).toBe(250000);
     });
 
-    it('should handle small amounts with USDC currency tag as actual USDC', () => {
-      // Small amounts with "USDC" tag are likely actual USDC
+    it('should handle small USDC amounts as already-converted USDC', () => {
+      // With 'USDC' parameter, the amount is treated as already in USDC
       const result = formatCurrency(1.50, 'USDC');
-      expect(result.amount).toBe('1.5000');
+      expect(result.amount).toBe('1.5000'); // 1.50 USDC stays as 1.50 USDC
       expect(result.currency).toBe('USDC');
       expect(result.numericAmount).toBe(1.5);
     });
@@ -495,9 +497,9 @@ describe('validation utils', () => {
       expect(toUSDCForWeb3(5, 'USDC')).toBe('5');
     });
 
-    it('should smart-detect microUSDC with USDC currency tag', () => {
-      expect(toUSDCForWeb3(250000, 'USDC')).toBe('0.25');
-      expect(toUSDCForWeb3(5000000, 'USDC')).toBe('5');
+    it('should handle USDC amounts correctly', () => {
+      expect(toUSDCForWeb3(250000, 'USDC')).toBe('250000');
+      expect(toUSDCForWeb3(5000000, 'USDC')).toBe('5000000');
     });
 
     it('should handle invalid input', () => {

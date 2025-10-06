@@ -15,7 +15,8 @@
     "validate-api:user-service": "tsx src/validation/ApiValidationRunner.ts user-service",
     "validate-api:chain-service": "tsx src/validation/ApiValidationRunner.ts chain-service",
     "validate-api:contract-service": "tsx src/validation/ApiValidationRunner.ts contract-service",
-    "test-api-conformance": "tsx src/validation/WebappApiConformanceTest.ts"
+    "test-api-conformance": "tsx src/validation/WebappApiConformanceTest.ts",
+    "check-currency-boundaries": "node scripts/check-currency-boundaries.js"
   },
   "dependencies": {
     "@conduit-ucpi/sdk": "^0.1.0",

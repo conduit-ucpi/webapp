@@ -50,37 +50,37 @@ describe('Double Conversion Prevention Test', () => {
     });
   });
 
-  describe('Verify the legacy USDC parameter behavior for comparison', () => {
-    it('should show how the legacy USDC parameter caused the bug', () => {
-      // This simulates the OLD buggy behavior where we passed 'USDC' instead of 'microUSDC'
-      const amount = 1000; // 1000 microUSDC from database
+  describe('Verify proper currency parameter handling', () => {
+    it('should correctly handle different currency parameters', () => {
+      const amount = 1000; // This could be 1000 microUSDC OR 1000 USDC depending on parameter
 
-      // With 'USDC' parameter (old buggy way):
-      // Small amounts < 10000 with 'USDC' are treated as already converted
-      const legacyResult = displayCurrency(amount, 'USDC');
-      expect(legacyResult).toBe('$1000.0000'); // This was the bug!
+      // With 'USDC' parameter: treat as 1000 USDC (already converted)
+      const usdcParamResult = displayCurrency(amount, 'USDC');
+      expect(usdcParamResult).toBe('$1000.0000'); // 1000 USDC displayed as $1000
 
-      // With 'microUSDC' parameter (new correct way):
-      const correctResult = displayCurrency(amount, 'microUSDC');
-      expect(correctResult).toBe('$0.0010'); // This is correct!
+      // With 'microUSDC' parameter: treat as 1000 microUSDC (needs conversion)
+      const microUsdcParamResult = displayCurrency(amount, 'microUSDC');
+      expect(microUsdcParamResult).toBe('$0.0010'); // 1000 microUSDC = $0.001
 
-      // Demonstrate they're different
-      expect(legacyResult).not.toBe(correctResult);
+      // Parameters behave differently based on input currency
+      expect(usdcParamResult).not.toBe(microUsdcParamResult);
     });
 
-    it('should show how larger amounts would work with both parameters', () => {
-      const amount = 250000; // 250000 microUSDC = $0.25 USDC
+    it('should demonstrate the fix prevents the original bug', () => {
+      // Original bug: microUSDC amounts from database were displayed with wrong currency parameter
+      const microUsdcFromDatabase = 250000; // 250000 microUSDC = $0.25 USDC
 
-      // With 'USDC' parameter (triggers legacy smart detection for large amounts):
-      const legacyResult = displayCurrency(amount, 'USDC');
-      expect(legacyResult).toBe('$0.2500'); // This works because amount >= 1000
+      // CORRECT: Using 'microUSDC' parameter for microUSDC amounts
+      const correctResult = displayCurrency(microUsdcFromDatabase, 'microUSDC');
+      expect(correctResult).toBe('$0.2500');
 
-      // With 'microUSDC' parameter (new correct way):
-      const correctResult = displayCurrency(amount, 'microUSDC');
-      expect(correctResult).toBe('$0.2500'); // Same result!
+      // WRONG: Using 'USDC' parameter for microUSDC amounts (would cause the bug)
+      // This would show $250,000 instead of $0.25 - but that's what caller asked for
+      const wrongParameterResult = displayCurrency(microUsdcFromDatabase, 'USDC');
+      expect(wrongParameterResult).toBe('$250000.0000');
 
-      // Both happen to be the same for larger amounts
-      expect(legacyResult).toBe(correctResult);
+      // The fix is: use the correct parameter for your data type
+      expect(correctResult).not.toBe(wrongParameterResult);
     });
   });
 

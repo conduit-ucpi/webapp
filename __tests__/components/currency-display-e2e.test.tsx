@@ -181,20 +181,25 @@ describe('Currency Display E2E Test - Real Components with Real Functions', () =
       });
     });
 
-    it('should verify the old buggy behavior would have been different', () => {
-      // Demonstrate what the OLD code would have done (using 'USDC' parameter)
-      const microUSDC = 1000;
+    it('should handle currency parameters correctly based on their meaning', () => {
+      // Different currency parameters should behave differently based on their meaning
+      const amount = 1000;
 
-      // Old buggy way (what components used to do):
-      const oldResult = displayCurrency(microUSDC, 'USDC');
-      expect(oldResult).toBe('$1000.0000'); // This was the bug!
+      // 'USDC' parameter: treat as already-converted USDC
+      const result1 = displayCurrency(amount, 'USDC');
+      expect(result1).toBe('$1000.0000'); // 1000 USDC = $1000
 
-      // New correct way (what components do now):
-      const newResult = displayCurrency(microUSDC, 'microUSDC');
-      expect(newResult).toBe('$0.0010'); // This is correct!
+      // 'microUSDC' parameter: convert from microUSDC to USDC
+      const result2 = displayCurrency(amount, 'microUSDC');
+      expect(result2).toBe('$0.0010'); // 1000 microUSDC = $0.001
 
-      // Verify they're different
-      expect(oldResult).not.toBe(newResult);
+      // 'UNKNOWN' parameter: default to microUSDC conversion
+      const result3 = displayCurrency(amount, 'UNKNOWN');
+      expect(result3).toBe('$0.0010'); // defaults to microUSDC conversion
+
+      // Only microUSDC and unknown should behave the same
+      expect(result2).toBe(result3);
+      expect(result1).not.toBe(result2); // USDC vs microUSDC should be different
     });
   });
 });

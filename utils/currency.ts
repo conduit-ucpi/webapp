@@ -4,7 +4,10 @@
  */
 
 /**
- * Formats currency amounts with proper decimal places and units
+ * Formats currency amounts for display
+ * Handles both USDC and microUSDC inputs based on currency parameter
+ * - If currency='microUSDC': divides by 1,000,000 to convert to USDC for display
+ * - If currency='USDC': uses the amount as-is (already in USDC)
  */
 export function formatCurrency(amount: string | number, currency: string = 'microUSDC'): {
   amount: string;
@@ -24,26 +27,20 @@ export function formatCurrency(amount: string | number, currency: string = 'micr
       numericAmount = amount;
     }
 
-    // Convert microUSDC to USDC for display
     let displayAmount: number;
-    let displayCurrency: string;
 
     if (currency === 'microUSDC') {
-      displayAmount = numericAmount / 1000000; // Convert microUSDC to USDC
-      displayCurrency = 'USDC';
+      // Convert microUSDC to USDC (divide by 1,000,000)
+      displayAmount = numericAmount / 1000000;
     } else if (currency === 'USDC') {
-      // Smart detection: large numbers with USDC tag are likely microUSDC (legacy compatibility)
-      if (numericAmount >= 10000) {
-        displayAmount = numericAmount / 1000000; // Treat as microUSDC
-        displayCurrency = 'USDC';
-      } else {
-        displayAmount = numericAmount; // Treat as actual USDC
-        displayCurrency = 'USDC';
-      }
-    } else {
+      // Amount is already in USDC
       displayAmount = numericAmount;
-      displayCurrency = 'USDC'; // Default unknown currencies to USDC
+    } else {
+      // Default to treating as microUSDC for unknown currencies
+      displayAmount = numericAmount / 1000000;
     }
+
+    const displayCurrency = 'USDC';
 
     // Format to 4 decimal places
     const formattedAmount = displayAmount.toFixed(4);
@@ -119,16 +116,12 @@ export function toUSDCForWeb3(amount: string | number, currency: string = 'micro
       const usdcAmount = numericAmount / 1000000;
       return usdcAmount.toString();
     } else if (currency === 'USDC') {
-      // Smart detection: large numbers with USDC tag are likely microUSDC (legacy compatibility)
-      if (numericAmount >= 10000) {
-        const usdcAmount = numericAmount / 1000000;
-        return usdcAmount.toString();
-      } else {
-        return numericAmount.toString();
-      }
-    } else {
-      // Unknown currency, return as string
+      // Amount is already in USDC
       return numericAmount.toString();
+    } else {
+      // Default to treating as microUSDC for unknown currencies
+      const usdcAmount = numericAmount / 1000000;
+      return usdcAmount.toString();
     }
   } catch {
     return '0';

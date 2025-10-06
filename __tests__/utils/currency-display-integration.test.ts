@@ -33,17 +33,17 @@ describe('Currency Display Integration - No Double Conversion', () => {
     });
   });
 
-  describe('Verify no double conversion with legacy USDC parameter', () => {
-    it('should handle large amounts with USDC parameter correctly (legacy compatibility)', () => {
-      // Large amounts with 'USDC' should be treated as microUSDC
+  describe('Verify proper currency parameter handling', () => {
+    it('should treat USDC parameter as already-converted USDC amounts', () => {
+      // With 'USDC' parameter, amounts are treated as already in USDC
       const result = displayCurrency(1000000, 'USDC');
-      expect(result).toBe('$1.0000'); // Should convert 1000000 microUSDC to $1.00
+      expect(result).toBe('$1000000.0000'); // 1000000 USDC displayed as $1,000,000
     });
 
-    it('should handle small amounts with USDC parameter as already converted', () => {
-      // Small amounts with 'USDC' should be treated as already in USDC
+    it('should handle small USDC amounts correctly', () => {
+      // With 'USDC' parameter, even small amounts are treated as USDC
       const result = displayCurrency(1, 'USDC');
-      expect(result).toBe('$1.0000'); // Should treat 1 as 1 USDC
+      expect(result).toBe('$1.0000'); // 1 USDC displayed as $1.00
     });
   });
 

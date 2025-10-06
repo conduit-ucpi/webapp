@@ -253,7 +253,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
         <div className="space-y-3 mb-6">
           <div className="flex justify-between">
             <span className="text-gray-600">Amount:</span>
-            <span className="font-medium">${formatCurrency(contract.amount, contract.currency || 'microUSDC').amount} USDC</span>
+            <span className="font-medium">${formatCurrency(contract.amount, 'microUSDC').amount} USDC</span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-600">Seller:</span>
@@ -291,7 +291,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
       <div className="space-y-3 mb-6">
         <div className="flex justify-between">
           <span className="text-gray-600">Amount:</span>
-          <span className="font-medium">${formatCurrency(contract.amount, contract.currency || 'microUSDC').amount} USDC</span>
+          <span className="font-medium">${formatCurrency(contract.amount, 'microUSDC').amount} USDC</span>
         </div>
         <div className="flex justify-between">
           <span className="text-gray-600">Your Balance:</span>
@@ -318,7 +318,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
       {hasInsufficientBalance() ? (
         <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-6">
           <p className="text-sm text-red-800">
-            <strong>Insufficient balance:</strong> You need ${formatCurrency(contract.amount, contract.currency || 'microUSDC').amount} USDC but only have ${userBalance !== null ? parseFloat(userBalance).toFixed(4) : '0'} USDC in your wallet.
+            <strong>Insufficient balance:</strong> You need ${formatCurrency(contract.amount, 'microUSDC').amount} USDC but only have ${userBalance !== null ? parseFloat(userBalance).toFixed(4) : '0'} USDC in your wallet.
           </p>
           <p className="text-sm text-red-800 mt-2">
             Please add USDC to your wallet before proceeding.
@@ -327,7 +327,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
       ) : (
         <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4 mb-6">
           <p className="text-sm text-yellow-800">
-            When you make this payment, the ${formatCurrency(contract.amount, contract.currency || 'microUSDC').amount} USDC will be held securely in escrow until {formatDateTimeWithTZ(contract.expiryTimestamp)}.
+            When you make this payment, the ${formatCurrency(contract.amount, 'microUSDC').amount} USDC will be held securely in escrow until {formatDateTimeWithTZ(contract.expiryTimestamp)}.
           </p>
         </div>
       )}
@@ -341,7 +341,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
           ? 'Insufficient Balance' 
           : isLoadingBalance 
           ? 'Checking balance...'
-          : `Make Payment of $${formatCurrency(contract.amount, contract.currency || 'microUSDC').amount} USDC`
+          : `Make Payment of $${formatCurrency(contract.amount, 'microUSDC').amount} USDC`
         }
       </Button>
     </div>

@@ -335,11 +335,20 @@ class FarcasterAuthProviderImpl implements IAuthProvider {
   
   async disconnect(): Promise<void> {
     try {
+      // Clear Web3Service singleton to ensure fresh provider on next login
+      try {
+        const { Web3Service } = await import('@/lib/web3');
+        Web3Service.clearInstance();
+        console.log('🔧 FarcasterAuth: Cleared Web3Service singleton');
+      } catch (error) {
+        console.warn('Could not clear Web3Service singleton:', error);
+      }
+
       // Clear state
       this.state.user = null;
       this.state.token = null;
       this.state.isConnected = false;
-      
+
       this.emit({ type: 'disconnected' });
     } catch (error) {
       this.state.error = error instanceof Error ? error.message : 'Disconnect failed';

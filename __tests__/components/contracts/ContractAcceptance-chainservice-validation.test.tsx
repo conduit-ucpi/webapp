@@ -52,7 +52,7 @@ const testContract: PendingContract = {
   id: 'test-contract-123',
   sellerEmail: 'seller@example.com',
   buyerEmail: 'user@example.com',
-  amount: 1.5, // 1.50 USDC
+  amount: 1500000, // Already in microUSDC format
   currency: 'USDC',
   description: 'Test contract for validation',
   expiryTimestamp: 1735689600,
@@ -306,7 +306,7 @@ describe('ContractAcceptance Chainservice Validation', () => {
 
   it('should handle edge case validation scenarios', async () => {
     // Test edge case: minimum amount
-    const minimumAmountContract = { ...testContract, amount: 0.000001 }; // 1 microUSDC
+    const minimumAmountContract = { ...testContract, amount: 1 }; // 1 microUSDC
     const onAcceptComplete = jest.fn();
 
     const { unmount } = render(

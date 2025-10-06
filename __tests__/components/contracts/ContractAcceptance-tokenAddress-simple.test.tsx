@@ -73,7 +73,7 @@ describe('ContractAcceptance tokenAddress Regression - Data Structure', () => {
     // ❌ BAD: This caused the "missing tokenAddress" error
     body: JSON.stringify({
       ...contract,  // PendingContract interface has no tokenAddress field!
-      amount: toMicroUSDC(String(contract.amount))
+      amount: contract.amount // Already in microUSDC format
     })
 
     // Error: "missing (therefore NULL) value for creator parameter tokenAddress"
@@ -86,7 +86,7 @@ describe('ContractAcceptance tokenAddress Regression - Data Structure', () => {
       tokenAddress: config.usdcContractAddress,  // CRITICAL: Must include this!
       buyer: user.walletAddress,
       seller: contract.sellerAddress,
-      amount: toMicroUSDC(String(contract.amount)),
+      amount: contract.amount // Already in microUSDC format,
       expiryTimestamp: contract.expiryTimestamp,
       description: contract.description  // Also required
     })

@@ -6,7 +6,7 @@ import { useSimpleEthers } from '@/hooks/useSimpleEthers';
 import { PendingContract } from '@/types';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
-import { formatCurrency, formatDateTimeWithTZ, toMicroUSDC, toUSDCForWeb3 } from '@/utils/validation';
+import { formatCurrency, formatDateTimeWithTZ, toUSDCForWeb3 } from '@/utils/validation';
 
 interface ContractAcceptanceProps {
   contract: PendingContract;
@@ -154,7 +154,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
             tokenAddress: config.usdcContractAddress,
             buyer: user.walletAddress,
             seller: contract.sellerAddress,
-            amount: toMicroUSDC(String(contract.amount)),
+            amount: contract.amount, // Already in microUSDC format
             expiryTimestamp: contract.expiryTimestamp,
             description: contract.description
           })
@@ -174,7 +174,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
 
         await approveUSDC(
           contractAddress,
-          toMicroUSDC(String(contract.amount)).toString()
+          contract.amount.toString() // Contract.amount is already in microUSDC format
         );
 
         // Step 3: Deposit funds into the contract

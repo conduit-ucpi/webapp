@@ -56,7 +56,7 @@ const mockContract: PendingContract = {
   id: 'contract-abc123',
   sellerEmail: 'seller@example.com',
   buyerEmail: 'test@example.com',
-  amount: 2.5, // 2.50 USDC as decimal
+  amount: 2500000, // Already in microUSDC format
   currency: 'USDC',
   description: 'API contract test payment',
   expiryTimestamp: 1735689600, // Unix timestamp
@@ -216,7 +216,7 @@ describe('ContractAcceptance API Contract Validation', () => {
   it('should handle edge cases that could break the API contract', async () => {
     const edgeCaseContract: PendingContract = {
       ...mockContract,
-      amount: 0.000001, // Very small amount
+      amount: 1, // 1 microUSDC (very small amount)
       description: 'A'.repeat(160), // Maximum length description
     };
 
@@ -267,7 +267,7 @@ describe('ContractAcceptance API Contract Validation', () => {
     expect(componentSource).toContain('tokenAddress: config.usdcContractAddress');
     expect(componentSource).toContain('buyer: user.walletAddress');
     expect(componentSource).toContain('seller: contract.sellerAddress');
-    expect(componentSource).toContain('amount: toMicroUSDC');
+    expect(componentSource).toContain('amount: contract.amount');
     expect(componentSource).toContain('expiryTimestamp: contract.expiryTimestamp');
     expect(componentSource).toContain('description: contract.description');
   });

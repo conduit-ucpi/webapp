@@ -28,7 +28,7 @@ describe('ContractAcceptance API Call Monitoring', () => {
     // This hash will change if ANYONE modifies the API call
     // If this test fails, it means the API call structure was changed
     // Update the hash only after verifying the change is intentional and correct
-    const expectedHash = '4c8d3b0a5e6f7c9d2a1b3c4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5';
+    const expectedHash = 'd0d95d9a556c94f66c76ee62fd323ebd0285401c47b999ae91feee540d02ca0e';
 
     if (apiCallHash !== expectedHash) {
       console.log('🚨 API CALL STRUCTURE CHANGED! 🚨');
@@ -46,7 +46,7 @@ describe('ContractAcceptance API Call Monitoring', () => {
     expect(createContractCall).toContain('tokenAddress: config.usdcContractAddress');
     expect(createContractCall).toContain('buyer: user.walletAddress');
     expect(createContractCall).toContain('seller: contract.sellerAddress');
-    expect(createContractCall).toContain('amount: toMicroUSDC');
+    expect(createContractCall).toContain('amount: contract.amount');
     expect(createContractCall).toContain('expiryTimestamp: contract.expiryTimestamp');
     expect(createContractCall).toContain('description: contract.description');
   });
@@ -129,7 +129,7 @@ describe('ContractAcceptance API Call Monitoring', () => {
       'config.usdcContractAddress': 'tokenAddress',
       'user.walletAddress': 'buyer',
       'contract.sellerAddress': 'seller',
-      'toMicroUSDC(String(contract.amount))': 'amount',
+      'contract.amount': 'amount', // Already in microUSDC format
       'contract.expiryTimestamp': 'expiryTimestamp',
       'contract.description': 'description'
     };
@@ -168,11 +168,18 @@ describe('ContractAcceptance API Call Monitoring', () => {
     expect(apiCallMatch).toBeTruthy();
     const fieldsBlock = apiCallMatch[1];
 
-    // Extract field names (everything before the colon)
+    // Extract field names (everything before the colon, ignoring comments)
+    // Handle multi-line fields split by comments
     const fieldNames = fieldsBlock
-      .split(',')
-      .map((line: string) => line.trim().split(':')[0].trim())
-      .filter((name: string) => name.length > 0);
+      .split(/,|\n/)  // Split by both commas and newlines
+      .map((line: string) => line.trim())
+      .filter((line: string) => line.includes(':'))  // Only lines with colons are field definitions
+      .map((line: string) => {
+        const beforeColon = line.split(':')[0].trim();
+        // Remove any comments from the field name
+        return beforeColon.replace(/\/\/.*$/, '').trim();
+      })
+      .filter((name: string) => name.length > 0 && !name.startsWith('//'));
 
     // Verify we have exactly the expected field names
     const expectedFieldNames = [

@@ -53,7 +53,7 @@ const mockContract: PendingContract = {
   id: 'contract-123',
   sellerEmail: 'seller@example.com',
   buyerEmail: 'buyer@example.com',
-  amount: 1, // 1.00 USDC as decimal (will be converted to 1000000 microUSDC)
+  amount: 1000000, // Already in microUSDC format
   currency: 'USDC',
   description: 'Test contract',
   expiryTimestamp: Date.now() + 86400000, // 24 hours from now
@@ -190,7 +190,7 @@ describe('ContractAcceptance tokenAddress Regression Prevention', () => {
       tokenAddress: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
       buyer: '0xBuyerAddress',
       seller: '0xSellerAddress',
-      amount: 1000000, // Should be converted to microUSDC (1 -> 1000000)
+      amount: 1000000, // Already in microUSDC format, passed through as-is
       expiryTimestamp: expect.any(Number),
       description: 'Test contract'
     });
@@ -280,7 +280,7 @@ describe('ContractAcceptance tokenAddress Regression Prevention', () => {
     // ❌ BAD: This caused the tokenAddress missing error
     body: JSON.stringify({
       ...contract,  // PendingContract doesn't have tokenAddress!
-      amount: toMicroUSDC(String(contract.amount))
+      amount: contract.amount // Already in microUSDC format
     })
     `;
 
@@ -291,7 +291,7 @@ describe('ContractAcceptance tokenAddress Regression Prevention', () => {
       tokenAddress: config.usdcContractAddress,  // Required field!
       buyer: user.walletAddress,
       seller: contract.sellerAddress,
-      amount: toMicroUSDC(String(contract.amount)),
+      amount: contract.amount // Already in microUSDC format,
       expiryTimestamp: contract.expiryTimestamp,
       description: contract.description  // Also required
     })

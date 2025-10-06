@@ -105,6 +105,15 @@ export function getWeb3AuthProvider(config: any) {
     disconnect: async () => {
       await backendAuth.logout();
 
+      // Clear Web3Service singleton to ensure fresh provider on next login
+      try {
+        const { Web3Service } = await import('@/lib/web3');
+        Web3Service.clearInstance();
+        console.log('🔧 Unified provider: Cleared Web3Service singleton');
+      } catch (error) {
+        console.warn('Could not clear Web3Service singleton:', error);
+      }
+
       if (web3authInstance) {
         console.log('🔧 Unified provider: Disconnecting Web3Auth');
         await web3authInstance.logout();

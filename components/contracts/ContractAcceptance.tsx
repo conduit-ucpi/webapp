@@ -150,8 +150,12 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            ...contract,
-            amount: toMicroUSDC(String(contract.amount))
+            contractserviceId: contract.id,
+            tokenAddress: config.usdcContractAddress,
+            buyer: user.walletAddress,
+            seller: contract.sellerAddress,
+            amount: toMicroUSDC(String(contract.amount)),
+            expiryTimestamp: contract.expiryTimestamp
           })
         });
 

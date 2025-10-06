@@ -25,6 +25,7 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
     error: newAuth.error,
     connect: newAuth.connect,
     disconnect: newAuth.disconnect,
+    switchWallet: newAuth.switchWallet,
     getEthersProvider: newAuth.getEthersProvider,
     authenticatedFetch: async (url: string, options?: RequestInit): Promise<Response> => {
       // Use proper backend client with authentication headers

@@ -41,7 +41,7 @@ interface NavItem {
 
 export default function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
   const router = useRouter();
-  const { user, disconnect, isConnected } = useAuth();
+  const { user, disconnect, switchWallet, isConnected } = useAuth();
   const { config } = useConfig();
   const isAuthenticated = !!user || !!isConnected;
   const isAdmin = (user as any)?.isAdmin;
@@ -127,6 +127,15 @@ export default function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
     await disconnect();
     onClose();
     router.push('/');
+  };
+
+  const handleSwitchWallet = async () => {
+    try {
+      await switchWallet();
+      onClose();
+    } catch (error) {
+      console.error('Failed to switch wallet:', error);
+    }
   };
 
   const isActive = (href: string) => {
@@ -284,15 +293,24 @@ export default function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
                   </div>
                 )}
 
-                {/* Auth Button */}
+                {/* Auth Buttons */}
                 {isAuthenticated ? (
-                  <button
-                    onClick={handleLogout}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-secondary-100 dark:bg-secondary-800 text-secondary-700 dark:text-secondary-200 rounded-lg hover:bg-secondary-200 dark:hover:bg-secondary-700 transition-colors"
-                  >
-                    <ArrowLeftOnRectangleIcon className="w-4 h-4" />
-                    <span className="text-sm font-medium">Logout</span>
-                  </button>
+                  <div className="space-y-2">
+                    <button
+                      onClick={handleSwitchWallet}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300 rounded-lg hover:bg-primary-100 dark:hover:bg-primary-900/30 transition-colors"
+                    >
+                      <WalletIcon className="w-4 h-4" />
+                      <span className="text-sm font-medium">Switch Wallet</span>
+                    </button>
+                    <button
+                      onClick={handleLogout}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-secondary-100 dark:bg-secondary-800 text-secondary-700 dark:text-secondary-200 rounded-lg hover:bg-secondary-200 dark:hover:bg-secondary-700 transition-colors"
+                    >
+                      <ArrowLeftOnRectangleIcon className="w-4 h-4" />
+                      <span className="text-sm font-medium">Logout</span>
+                    </button>
+                  </div>
                 ) : (
                   <div className="text-center">
                     <p className="text-xs text-secondary-500 dark:text-secondary-400 mb-2">

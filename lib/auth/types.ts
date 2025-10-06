@@ -49,6 +49,7 @@ export interface AuthProvider {
   initialize(): Promise<void>;
   connect(): Promise<any>;
   disconnect(): Promise<void>;
+  switchWallet(): Promise<any>;
   getToken(): string | null;
   signMessage(message: string): Promise<string>;
   getEthersProvider(): Promise<any>;

@@ -19,6 +19,7 @@ interface AuthContextValue {
   // Actions
   connect: () => Promise<AuthResult>;
   disconnect: () => Promise<void>;
+  switchWallet: () => Promise<AuthResult>;
   signMessage: (message: string) => Promise<string>;
 
   // Blockchain
@@ -164,6 +165,52 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
     }
   }, [authManager, authService]);
 
+  const switchWallet = useCallback(async (): Promise<AuthResult> => {
+    try {
+      // Get current provider and call switchWallet
+      const currentProvider = authManager.getCurrentProvider();
+      if (currentProvider && typeof currentProvider.switchWallet === 'function') {
+        const result = await currentProvider.switchWallet();
+
+        if (result) {
+          // Get wallet address and authenticate with backend
+          const ethersProvider = await currentProvider.getEthersProvider();
+          if (ethersProvider) {
+            const signer = await ethersProvider.getSigner();
+            const address = await signer.getAddress();
+
+            // Authenticate with backend using new connection
+            const token = currentProvider.getToken();
+            if (token) {
+              const backendResult = await authService.authenticateWithBackend(token, address);
+
+              if (backendResult.success && backendResult.user) {
+                setUser(backendResult.user);
+                return {
+                  success: true,
+                  user: backendResult.user,
+                  token,
+                  provider: result
+                };
+              } else {
+                throw new Error(backendResult.error || 'Backend authentication failed');
+              }
+            }
+          }
+        }
+      }
+
+      throw new Error('Switch wallet not supported by current provider');
+
+    } catch (error) {
+      console.error('🔧 AuthProvider: Switch wallet failed:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Switch wallet failed'
+      };
+    }
+  }, [authManager, authService]);
+
   const signMessage = useCallback(async (message: string): Promise<string> => {
     return await authManager.signMessage(message);
   }, [authManager]);
@@ -183,6 +230,7 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
     // Actions
     connect,
     disconnect,
+    switchWallet,
     signMessage,
 
     // Blockchain

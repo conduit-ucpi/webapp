@@ -132,6 +132,31 @@ export class Web3AuthProvider implements AuthProvider {
     this.tokenManager.clearToken();
   }
 
+  async switchWallet(): Promise<any> {
+    console.log('🔧 Web3AuthProvider: Switching wallet - clearing cache and showing modal');
+
+    // Initialize Web3Auth if not already done
+    if (!this.web3authInstance) {
+      console.log('🔧 Web3AuthProvider: Creating Web3Auth instance for wallet switch');
+      const web3authConfig = createWeb3AuthConfig({
+        ...this.config,
+        walletConnectProjectId: this.config.walletConnectProjectId || process.env.WALLETCONNECT_PROJECT_ID
+      });
+
+      this.web3authInstance = new Web3Auth(web3authConfig.web3AuthOptions);
+      await this.web3authInstance.init();
+    }
+
+    // Clear any cached connection to force modal selection
+    if (this.web3authInstance.connected) {
+      console.log('🔧 Web3AuthProvider: Clearing existing connection to force modal');
+      await this.web3authInstance.logout();
+    }
+
+    // Now connect which will show the modal with all options
+    return this.connect();
+  }
+
   getToken(): string | null {
     return this.tokenManager.getToken();
   }

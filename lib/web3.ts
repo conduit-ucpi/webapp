@@ -309,12 +309,14 @@ export class Web3Service {
 
       // Check if we should use EIP-1559 format
       try {
-        const feeData = await this.provider.getFeeData();
-        if (feeData.maxFeePerGas && feeData.maxPriorityFeePerGas) {
-          // Use EIP-1559 transaction format (Web3Auth often prefers this)
-          tx.maxFeePerGas = gasPrice; // Use our calculated gas price as maxFeePerGas
-          tx.maxPriorityFeePerGas = feeData.maxPriorityFeePerGas;
-          console.log('Using EIP-1559 transaction format for signing');
+        const providerFeeData = await this.provider.getFeeData();
+        if (providerFeeData.maxFeePerGas && providerFeeData.maxPriorityFeePerGas) {
+          // Use EIP-1559 transaction format with our reliable fee data
+          const reliableFees = await this.getReliableEIP1559FeeData();
+          tx.maxFeePerGas = reliableFees.maxFeePerGas;
+          tx.maxPriorityFeePerGas = reliableFees.maxPriorityFeePerGas;
+          console.log('Using EIP-1559 transaction format with reliable Base RPC fees');
+          console.log(`Final EIP-1559 fees: maxFee=${tx.maxFeePerGas.toString()} wei, priority=${tx.maxPriorityFeePerGas.toString()} wei`);
         } else {
           // Use legacy transaction format
           tx.gasPrice = gasPrice;
@@ -889,12 +891,14 @@ export class Web3Service {
 
       // Check if we should use EIP-1559 format
       try {
-        const feeData = await this.provider.getFeeData();
-        if (feeData.maxFeePerGas && feeData.maxPriorityFeePerGas) {
-          // Use EIP-1559 transaction format (Web3Auth often prefers this)
-          tx.maxFeePerGas = gasPrice; // Use our calculated gas price as maxFeePerGas
-          tx.maxPriorityFeePerGas = feeData.maxPriorityFeePerGas;
-          console.log('Using EIP-1559 transaction format');
+        const providerFeeData = await this.provider.getFeeData();
+        if (providerFeeData.maxFeePerGas && providerFeeData.maxPriorityFeePerGas) {
+          // Use EIP-1559 transaction format with our reliable fee data
+          const reliableFees = await this.getReliableEIP1559FeeData();
+          tx.maxFeePerGas = reliableFees.maxFeePerGas;
+          tx.maxPriorityFeePerGas = reliableFees.maxPriorityFeePerGas;
+          console.log('Using EIP-1559 transaction format with reliable Base RPC fees');
+          console.log(`Final EIP-1559 fees: maxFee=${tx.maxFeePerGas.toString()} wei, priority=${tx.maxPriorityFeePerGas.toString()} wei`);
         } else {
           // Use legacy transaction format
           tx.gasPrice = gasPrice;
@@ -927,6 +931,89 @@ export class Web3Service {
   private getMaxGasPriceInWei(): bigint {
     const maxGasPriceGwei = parseFloat(this.config.maxGasPriceGwei);
     return BigInt(Math.round(maxGasPriceGwei * 1000000000)); // Convert gwei to wei
+  }
+
+  /**
+   * Get reliable EIP-1559 fee data from our configured RPC endpoint
+   */
+  private async getReliableEIP1559FeeData(): Promise<{
+    maxFeePerGas: bigint;
+    maxPriorityFeePerGas: bigint;
+  }> {
+    if (!this.config.rpcUrl) {
+      throw new Error('No RPC URL configured');
+    }
+
+    try {
+      // Get current base fee and priority fee from our RPC
+      const [gasPriceResponse, priorityFeeResponse] = await Promise.all([
+        fetch(this.config.rpcUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            method: 'eth_gasPrice',
+            params: [],
+            id: 1
+          })
+        }),
+        fetch(this.config.rpcUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            method: 'eth_maxPriorityFeePerGas',
+            params: [],
+            id: 2
+          })
+        })
+      ]);
+
+      let baseFee = BigInt(0);
+      let priorityFee = BigInt(0);
+
+      if (gasPriceResponse.ok) {
+        const gasData = await gasPriceResponse.json();
+        if (gasData.result) {
+          baseFee = BigInt(gasData.result);
+          console.log(`✅ Got base fee from RPC (${this.config.rpcUrl}):`, baseFee.toString(), 'wei');
+        }
+      }
+
+      if (priorityFeeResponse.ok) {
+        const priorityData = await priorityFeeResponse.json();
+        if (priorityData.result) {
+          priorityFee = BigInt(priorityData.result);
+          console.log(`✅ Got priority fee from RPC:`, priorityFee.toString(), 'wei');
+        }
+      }
+
+      // Apply our configured caps
+      const maxAllowed = this.getMaxGasPriceInWei();
+
+      // Cap both values to our configured maximum
+      const cappedBaseFee = baseFee > maxAllowed ? maxAllowed : baseFee;
+      const cappedPriorityFee = priorityFee > maxAllowed ? maxAllowed : priorityFee;
+
+      // For maxFeePerGas, ensure it covers base fee + priority fee, but cap at our maximum
+      const maxFeePerGas = cappedBaseFee + cappedPriorityFee > maxAllowed ? maxAllowed : cappedBaseFee + cappedPriorityFee;
+
+      console.log(`🔧 EIP-1559 fees: maxFee=${maxFeePerGas.toString()} wei, priority=${cappedPriorityFee.toString()} wei`);
+
+      return {
+        maxFeePerGas,
+        maxPriorityFeePerGas: cappedPriorityFee
+      };
+    } catch (error) {
+      console.warn(`Failed to get EIP-1559 fees from RPC (${this.config.rpcUrl}):`, error);
+
+      // Fallback to our configured caps
+      const fallbackFee = this.getMaxGasPriceInWei();
+      return {
+        maxFeePerGas: fallbackFee,
+        maxPriorityFeePerGas: fallbackFee
+      };
+    }
   }
 
   /**

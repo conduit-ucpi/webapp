@@ -12,7 +12,7 @@ import { toUSDCForWeb3 } from '@/utils/validation';
 const AuthContext = React.createContext<any>(null);
 
 interface SimpleAuthProviderProps {
-  children: React.ReactNode;
+  children?: React.ReactNode;
 }
 
 function AuthWrapper({ children }: { children: React.ReactNode }) {
@@ -121,16 +121,42 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
 
 export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
   const { config, isLoading } = useConfig();
+  const [mounted, setMounted] = useState(false);
 
-  // Show loading state while config is being fetched
-  if (isLoading || !config) {
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // During SSR or initial render, provide a minimal context to prevent hydration issues
+  if (!mounted || isLoading || !config) {
+    // Create a minimal auth context that won't break components during hydration
+    const fallbackAuthValue = {
+      user: null,
+      isLoading: !mounted || isLoading,
+      isConnected: false,
+      error: null,
+      connect: () => Promise.resolve(),
+      disconnect: () => Promise.resolve(),
+      switchWallet: () => Promise.resolve(),
+      getEthersProvider: () => null,
+      authenticatedFetch: async () => new Response('{}', { status: 200 }),
+      hasVisitedBefore: () => false,
+      refreshUserData: async () => {},
+      claimFunds: async () => { throw new Error('Auth not ready'); },
+      raiseDispute: async () => { throw new Error('Auth not ready'); }
+    };
+
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading configuration...</p>
-        </div>
-      </div>
+      <AuthContext.Provider value={fallbackAuthValue}>
+        {!mounted || isLoading ? (
+          <div className="min-h-screen flex items-center justify-center bg-white">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading configuration...</p>
+            </div>
+          </div>
+        ) : children}
+      </AuthContext.Provider>
     );
   }
 

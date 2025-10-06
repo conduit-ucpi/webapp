@@ -4,6 +4,7 @@
 
 import { ethers } from 'ethers';
 import { ProviderWrapper } from './ProviderWrapper';
+import { formatWeiAsEthForLogging } from '@/utils/logging';
 
 export interface TransactionOptions {
   gasLimit?: bigint;
@@ -52,7 +53,7 @@ export class TransactionManager {
         try {
           const estimated = await signer.estimateGas(transaction);
           transaction.gasLimit = estimated + (estimated / BigInt(10)); // Add 10% buffer
-          console.log('🔧 TransactionManager: Estimated gas:', transaction.gasLimit.toString());
+          console.log(`🔧 TransactionManager: Estimated gas: ${transaction.gasLimit.toString()} gas`);
         } catch (gasError) {
           console.warn('🔧 TransactionManager: Gas estimation failed:', gasError);
         }

@@ -31,6 +31,8 @@ export const ESCROW_CONTRACT_ABI = [
   'event FundsClaimed(address recipient, uint256 amount, uint256 timestamp)'
 ];
 
+import { formatWeiAsEthForLogging, formatGweiAsEthForLogging, formatMicroUSDCForLogging } from '@/utils/logging';
+
 export class Web3Service {
   private static instance: Web3Service | null = null;
   private provider: ethers.BrowserProvider | null = null;
@@ -247,8 +249,8 @@ export class Web3Service {
             const gweiValue = Number(feeData.gasPrice) / 1000000000;
             const weiValue = Number(feeData.gasPrice);
             console.log('🔍 DEBUGGING: Provider gas price analysis:');
-            console.log(`  If this is wei: ${weiValue} wei = ${gweiValue} gwei`);
-            console.log(`  If this is gwei: ${weiValue} gwei = ${weiValue * 1000000000} wei`);
+            console.log(`  If this is wei: ${formatWeiAsEthForLogging(weiValue)} = ${formatGweiAsEthForLogging(gweiValue)}`);
+            console.log(`  If this is gwei: ${formatGweiAsEthForLogging(weiValue)} = ${formatWeiAsEthForLogging(weiValue * 1000000000)}`);
 
             // If the "wei" value is suspiciously small (like 5-50), it's probably gwei
             if (feeData.gasPrice < this.getMaxGasPriceInWei() && feeData.gasPrice > BigInt(0)) {
@@ -273,8 +275,8 @@ export class Web3Service {
         }
       }
 
-      console.log(`Using realistic gas price for network ${this.config.chainId}:`, gasPrice.toString(), 'wei');
-      console.log('Expected transaction cost for 100k gas:', ((gasPrice * BigInt(100000)) / BigInt(1000000000000000000)).toString(), 'ETH');
+      console.log(`Using realistic gas price for network ${this.config.chainId}: ${formatWeiAsEthForLogging(gasPrice)}`);
+      console.log(`Expected transaction cost for 100k gas: ${formatWeiAsEthForLogging(gasPrice * BigInt(100000))} ETH`);
     }
 
     // Use provided gasLimit or throw error (caller should estimate)
@@ -316,7 +318,7 @@ export class Web3Service {
           tx.maxFeePerGas = reliableFees.maxFeePerGas;
           tx.maxPriorityFeePerGas = reliableFees.maxPriorityFeePerGas;
           console.log('Using EIP-1559 transaction format with reliable Base RPC fees');
-          console.log(`Final EIP-1559 fees: maxFee=${tx.maxFeePerGas.toString()} wei, priority=${tx.maxPriorityFeePerGas.toString()} wei`);
+          console.log(`Final EIP-1559 fees: maxFee=${formatWeiAsEthForLogging(tx.maxFeePerGas)}, priority=${formatWeiAsEthForLogging(tx.maxPriorityFeePerGas)}`);
         } else {
           // Use legacy transaction format
           tx.gasPrice = gasPrice;
@@ -463,7 +465,7 @@ export class Web3Service {
     const balance = await usdcContract.balanceOf(userAddress);
     const decimals = await usdcContract.decimals();
     
-    console.log('getUSDCBalance - raw balance:', balance.toString());
+    console.log(`getUSDCBalance - raw balance: ${formatMicroUSDCForLogging(balance)}`);
     console.log('getUSDCBalance - decimals:', decimals);
     const formattedBalance = ethers.formatUnits(balance, decimals);
     console.log('getUSDCBalance - formatted balance:', formattedBalance);
@@ -599,7 +601,7 @@ export class Web3Service {
         const result = await response.json();
         if (result.result) {
           gasEstimate = BigInt(result.result);
-          console.log('Using live RPC gas estimate:', gasEstimate.toString(), 'gas');
+          console.log(`Using live RPC gas estimate: ${gasEstimate.toString()} gas`);
         } else {
           throw new Error('No gas estimate in RPC response');
         }
@@ -621,7 +623,7 @@ export class Web3Service {
       console.log('Contract:', params.contractAddress);
       console.log('Function:', params.functionName);
       console.log('Args:', params.functionArgs);
-      console.log('Gas estimate:', gasEstimate.toString());
+      console.log(`Gas estimate: ${gasEstimate.toString()} gas`);
     }
     
     // Use centralized signing method
@@ -671,7 +673,7 @@ export class Web3Service {
         const result = await response.json();
         if (result.result) {
           gasEstimate = BigInt(result.result);
-          console.log('Using live RPC gas estimate for AVAX transfer:', gasEstimate.toString(), 'gas');
+          console.log(`Using live RPC gas estimate for AVAX transfer: ${gasEstimate.toString()} gas`);
         } else {
           throw new Error('No gas estimate in RPC response');
         }
@@ -774,7 +776,7 @@ export class Web3Service {
     let gasEstimate: bigint = BigInt(0);
     if (txParams.gasLimit) {
       gasEstimate = txParams.gasLimit;
-      console.log('Using provided gas limit:', gasEstimate.toString());
+      console.log(`Using provided gas limit: ${gasEstimate.toString()} gas`);
     } else {
       try {
         // Use our Base RPC directly instead of the provider to avoid Web3Auth's internal validation
@@ -800,7 +802,7 @@ export class Web3Service {
           const estimateData = await estimateResponse.json();
           if (estimateData.result) {
             gasEstimate = BigInt(estimateData.result);
-            console.log('✅ Gas estimate from Base RPC:', gasEstimate.toString(), 'gas');
+            console.log(`✅ Gas estimate from Base RPC: ${gasEstimate.toString()} gas`);
           } else {
             throw new Error('No result from RPC gas estimation');
           }
@@ -860,8 +862,8 @@ export class Web3Service {
             const gweiValue = Number(feeData.gasPrice) / 1000000000;
             const weiValue = Number(feeData.gasPrice);
             console.log('🔍 DEBUGGING: Provider gas price analysis:');
-            console.log(`  If this is wei: ${weiValue} wei = ${gweiValue} gwei`);
-            console.log(`  If this is gwei: ${weiValue} gwei = ${weiValue * 1000000000} wei`);
+            console.log(`  If this is wei: ${formatWeiAsEthForLogging(weiValue)} = ${formatGweiAsEthForLogging(gweiValue)}`);
+            console.log(`  If this is gwei: ${formatGweiAsEthForLogging(weiValue)} = ${formatWeiAsEthForLogging(weiValue * 1000000000)}`);
 
             // If the "wei" value is suspiciously small (like 5-50), it's probably gwei
             if (feeData.gasPrice < this.getMaxGasPriceInWei() && feeData.gasPrice > BigInt(0)) {
@@ -886,13 +888,13 @@ export class Web3Service {
         }
       }
 
-      console.log(`Using realistic gas price for network ${this.config.chainId}:`, gasPrice.toString(), 'wei');
-      console.log('Expected transaction cost for 100k gas:', ((gasPrice * BigInt(100000)) / BigInt(1000000000000000000)).toString(), 'ETH');
+      console.log(`Using realistic gas price for network ${this.config.chainId}: ${formatWeiAsEthForLogging(gasPrice)}`);
+      console.log(`Expected transaction cost for 100k gas: ${formatWeiAsEthForLogging(gasPrice * BigInt(100000))} ETH`);
     }
 
     // Step 3: Calculate total gas needed (with 20% buffer)
     const totalGasNeeded = (gasEstimate * gasPrice * BigInt(120)) / BigInt(100);
-    console.log('Gas calculation - Estimate:', gasEstimate.toString(), 'Price:', gasPrice.toString(), 'Total needed:', totalGasNeeded.toString(), 'wei');
+    console.log(`Gas calculation - Estimate: ${gasEstimate.toString()} gas, Price: ${formatWeiAsEthForLogging(gasPrice)}, Total needed: ${formatWeiAsEthForLogging(totalGasNeeded)}`);
 
     // Step 4: Call chainservice to fund wallet
     console.log('Requesting wallet funding from chainservice...');
@@ -942,7 +944,7 @@ export class Web3Service {
           tx.maxFeePerGas = reliableFees.maxFeePerGas;
           tx.maxPriorityFeePerGas = reliableFees.maxPriorityFeePerGas;
           console.log('Using EIP-1559 transaction format with reliable Base RPC fees');
-          console.log(`Final EIP-1559 fees: maxFee=${tx.maxFeePerGas.toString()} wei, priority=${tx.maxPriorityFeePerGas.toString()} wei`);
+          console.log(`Final EIP-1559 fees: maxFee=${formatWeiAsEthForLogging(tx.maxFeePerGas)}, priority=${formatWeiAsEthForLogging(tx.maxPriorityFeePerGas)}`);
         } else {
           // Use legacy transaction format
           tx.gasPrice = gasPrice;
@@ -983,7 +985,7 @@ export class Web3Service {
         );
       }
 
-      console.log(`✅ Transaction cost validation passed: ${(Number(transactionCostWei) / 1000000000).toFixed(4)} gwei (within ${(Number(maxAllowedCostWei) / 1000000000).toFixed(4)} gwei limit)`);
+      console.log(`✅ Transaction cost validation passed: ${formatWeiAsEthForLogging(transactionCostWei)} (within ${formatWeiAsEthForLogging(maxAllowedCostWei)} limit)`);
       console.log('[Web3Service.fundAndSendTransaction] Preparing transaction for Web3Auth workaround...');
 
       // WORKAROUND: Web3Auth's signer.sendTransaction() pre-validates with wrong gas prices
@@ -1048,17 +1050,56 @@ export class Web3Service {
             errorMessage.includes('insufficient funds') ||
             errorMessage.includes('gas too low')) {
 
-          // Provide helpful error message to user
-          const currentGasPrice = tx.maxFeePerGas || tx.gasPrice || BigInt(0);
-          const currentGasPriceGwei = Number(currentGasPrice) / 1000000000;
-          const maxAllowedGwei = Number(this.getMaxGasPriceInWei()) / 1000000000;
+          // Get comprehensive gas information for debugging
+          const transactionGasPrice = tx.maxFeePerGas || tx.gasPrice || BigInt(0);
+          const transactionGasPriceGwei = Number(transactionGasPrice) / 1000000000;
+          const maxAllowedPriceGwei = Number(this.getMaxGasPriceInWei()) / 1000000000;
+          const maxAllowedCostGwei = Number(this.getMaxGasCostInWei()) / 1000000000;
+
+          // Calculate transaction costs
+          const gasLimit = Number(tx.gasLimit || gasEstimate);
+          const transactionCostWei = transactionGasPrice * BigInt(gasLimit);
+          const transactionCostGwei = Number(transactionCostWei) / 1000000000;
+
+          // Try to get current network gas prices for comparison
+          let networkGasPriceGwei = 'unknown';
+          let networkCostGwei = 'unknown';
+          try {
+            if (this.config.rpcUrl) {
+              const response = await fetch(this.config.rpcUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  jsonrpc: '2.0',
+                  method: 'eth_gasPrice',
+                  params: [],
+                  id: 1
+                })
+              });
+              const data = await response.json();
+              if (data.result) {
+                const networkGasPriceWei = BigInt(data.result);
+                networkGasPriceGwei = (Number(networkGasPriceWei) / 1000000000).toFixed(4);
+                const networkCostWei = networkGasPriceWei * BigInt(gasLimit);
+                networkCostGwei = (Number(networkCostWei) / 1000000000).toFixed(4);
+              }
+            }
+          } catch (networkError) {
+            // Ignore network errors when getting current prices
+          }
 
           throw new Error(
-            `Transaction failed due to gas pricing. ` +
-            `Base network requires higher gas than configured maximum. ` +
-            `Current network gas: ~${currentGasPriceGwei.toFixed(4)} gwei, ` +
-            `Your MAX_GAS_PRICE_GWEI: ${maxAllowedGwei} gwei. ` +
-            `Please contact support to adjust gas settings.`
+            `Transaction failed: Base network rejected the transaction due to insufficient gas price.\n\n` +
+            `📊 GAS ANALYSIS:\n` +
+            `Gas Required: ${gasLimit.toLocaleString()} units\n` +
+            `Network Gas Price: ${networkGasPriceGwei} gwei${networkGasPriceGwei !== 'unknown' ? ' (current)' : ''}\n` +
+            `Network Gas Cost: ${networkCostGwei} gwei${networkCostGwei !== 'unknown' ? ' (required total)' : ''}\n` +
+            `Your Gas Price: ${transactionGasPriceGwei.toFixed(4)} gwei (capped by MAX_GAS_PRICE_GWEI)\n` +
+            `Your Gas Cost: ${transactionCostGwei.toFixed(4)} gwei (supplied total)\n\n` +
+            `⚙️ YOUR LIMITS:\n` +
+            `MAX_GAS_PRICE_GWEI: ${maxAllowedPriceGwei} gwei (per unit)\n` +
+            `MAX_GAS_COST_GWEI: ${maxAllowedCostGwei.toFixed(4)} gwei (total transaction)\n\n` +
+            `💡 SOLUTION: Increase your MAX_GAS_PRICE_GWEI setting or wait for network gas prices to decrease.`
           );
         }
 
@@ -1177,7 +1218,7 @@ export class Web3Service {
         const gasData = await gasPriceResponse.json();
         if (gasData.result) {
           baseFee = BigInt(gasData.result);
-          console.log(`✅ Got base fee from RPC (${this.config.rpcUrl}):`, baseFee.toString(), 'wei');
+          console.log(`✅ Got base fee from RPC (${this.config.rpcUrl}): ${formatWeiAsEthForLogging(baseFee)}`);
         }
       }
 
@@ -1185,7 +1226,7 @@ export class Web3Service {
         const priorityData = await priorityFeeResponse.json();
         if (priorityData.result) {
           priorityFee = BigInt(priorityData.result);
-          console.log(`✅ Got priority fee from RPC:`, priorityFee.toString(), 'wei');
+          console.log(`✅ Got priority fee from RPC: ${formatWeiAsEthForLogging(priorityFee)}`);
         }
       }
 
@@ -1202,7 +1243,7 @@ export class Web3Service {
         maxFeePerGas = maxAllowedGasPrice;
       }
 
-      console.log(`🔧 EIP-1559 fees: maxFee=${maxFeePerGas.toString()} wei, priority=${cappedPriorityFee.toString()} wei`);
+      console.log(`🔧 EIP-1559 fees: maxFee=${formatWeiAsEthForLogging(maxFeePerGas)}, priority=${formatWeiAsEthForLogging(cappedPriorityFee)}`);
 
       return {
         maxFeePerGas,
@@ -1213,7 +1254,7 @@ export class Web3Service {
 
       // Fallback to configured MAX_GAS_PRICE_GWEI
       const fallbackFee = this.getMaxGasPriceInWei();
-      console.log(`Using fallback EIP-1559 fees (MAX_GAS_PRICE_GWEI): ${fallbackFee.toString()} wei (${Number(fallbackFee) / 1000000000} gwei)`);
+      console.log(`Using fallback EIP-1559 fees (MAX_GAS_PRICE_GWEI): ${formatWeiAsEthForLogging(fallbackFee)}`);
       return {
         maxFeePerGas: fallbackFee,
         maxPriorityFeePerGas: fallbackFee
@@ -1246,13 +1287,13 @@ export class Web3Service {
         const data = await response.json();
         if (data.result) {
           const gasPrice = BigInt(data.result);
-          console.log(`✅ Got gas price from configured RPC (${this.config.rpcUrl}):`, gasPrice.toString(), 'wei');
+          console.log(`✅ Got gas price from configured RPC (${this.config.rpcUrl}): ${formatWeiAsEthForLogging(gasPrice)}`);
 
           // Use configured MAX_GAS_PRICE_GWEI to cap gas prices
           const maxAllowedGasPrice = this.getMaxGasPriceInWei(); // This reads MAX_GAS_PRICE_GWEI from config
 
           if (gasPrice <= maxAllowedGasPrice) {
-            console.log(`✅ Using actual gas price from RPC: ${gasPrice} wei (${Number(gasPrice) / 1000000000} gwei)`);
+            console.log(`✅ Using actual gas price from RPC: ${formatWeiAsEthForLogging(gasPrice)}`);
             return gasPrice;
           } else {
             const actualGwei = Number(gasPrice) / 1000000000;
@@ -1271,7 +1312,7 @@ export class Web3Service {
 
     // Method 2: Fallback to configured MAX_GAS_PRICE_GWEI
     const fallbackGasPrice = this.getMaxGasPriceInWei();
-    console.log(`Using fallback gas price (MAX_GAS_PRICE_GWEI):`, fallbackGasPrice.toString(), 'wei (${Number(fallbackGasPrice) / 1000000000} gwei)');
+    console.log(`Using fallback gas price (MAX_GAS_PRICE_GWEI): ${formatWeiAsEthForLogging(fallbackGasPrice)}`);
     return fallbackGasPrice;
   }
 

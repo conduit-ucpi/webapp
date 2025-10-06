@@ -13,6 +13,7 @@ import { useFarcaster } from '@/components/farcaster/FarcasterDetectionProvider'
 import { useWalletAddress } from '@/hooks/useWalletAddress';
 import { TransferUSDCRequest } from '@/types';
 import { ensureHexPrefix } from '@/utils/hexUtils';
+import { formatGweiAsEthForLogging } from '@/utils/logging';
 
 interface WalletBalances {
   native: string;
@@ -79,7 +80,7 @@ export default function Wallet() {
         const feeData = await ethersProvider.getFeeData();
         if (feeData.gasPrice) {
           gasPrice = ethers.formatUnits(feeData.gasPrice, 'gwei');
-          console.log('Got gas price from ethers:', gasPrice, 'gwei');
+          console.log(`Got gas price from ethers: ${formatGweiAsEthForLogging(parseFloat(gasPrice))}`);
         }
       } catch (error) {
         console.warn('Failed to get gas price from ethers:', error);

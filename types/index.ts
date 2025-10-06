@@ -14,6 +14,9 @@ export interface Config {
   moonPayApiKey: string;
   minGasWei: string;
   maxGasPriceGwei: string;
+  maxGasCostGwei: string;
+  usdcGrantFoundryGas: string;
+  depositFundsFoundryGas: string;
   basePath: string;
   explorerBaseUrl: string;
   serviceLink: string;

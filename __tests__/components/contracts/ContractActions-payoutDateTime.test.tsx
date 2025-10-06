@@ -65,6 +65,9 @@ describe('ContractActions - PayoutDateTime', () => {
     moonPayApiKey: 'test-moonpay-key',
     minGasWei: '5',
     maxGasPriceGwei: '0.001',
+    maxGasCostGwei: '0.15',
+    usdcGrantFoundryGas: '150000',
+    depositFundsFoundryGas: '150000',
     basePath: '',
     explorerBaseUrl: 'https://testnet.snowtrace.io',
     serviceLink: 'http://localhost:3000'

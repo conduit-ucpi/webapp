@@ -19,6 +19,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log('MOONPAY_API_KEY:', process.env.MOONPAY_API_KEY ? 'Present' : 'Missing');
     console.log('MIN_GAS_WEI:', process.env.MIN_GAS_WEI);
     console.log('MAX_GAS_PRICE_GWEI:', process.env.MAX_GAS_PRICE_GWEI);
+    console.log('MAX_GAS_COST_GWEI:', process.env.MAX_GAS_COST_GWEI);
+    console.log('USDC_GRANT_FOUNDRY_GAS:', process.env.USDC_GRANT_FOUNDRY_GAS);
+    console.log('DEPOSIT_FUNDS_FOUNDRY_GAS:', process.env.DEPOSIT_FUNDS_FOUNDRY_GAS);
     console.log('EXPLORER_BASE_URL:', process.env.EXPLORER_BASE_URL);
     console.log('SERVICE_LINK:', process.env.SERVICE_LINK);
     console.log('CONTRACT_ADDRESS:', process.env.CONTRACT_ADDRESS);
@@ -48,6 +51,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       moonPayApiKey: process.env.MOONPAY_API_KEY,
       minGasWei: process.env.MIN_GAS_WEI || '5',
       maxGasPriceGwei: process.env.MAX_GAS_PRICE_GWEI || '0.001',
+      maxGasCostGwei: process.env.MAX_GAS_COST_GWEI || '0.15',
+      usdcGrantFoundryGas: process.env.USDC_GRANT_FOUNDRY_GAS || '150000',
+      depositFundsFoundryGas: process.env.DEPOSIT_FUNDS_FOUNDRY_GAS || '150000',
       basePath,
       explorerBaseUrl: process.env.EXPLORER_BASE_URL,
       serviceLink: process.env.SERVICE_LINK || 'http://localhost:3000',

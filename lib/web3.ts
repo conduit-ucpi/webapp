@@ -805,12 +805,33 @@ export class Web3Service {
             throw new Error('No result from RPC gas estimation');
           }
         } else {
+          const errorText = await estimateResponse.text();
+          console.warn('RPC gas estimation response not ok:', errorText);
           throw new Error('RPC gas estimation failed');
         }
       } catch (error) {
         console.warn('RPC gas estimation failed, using safe fallback:', error);
-        // Use a safe default for USDC operations (approve/transfer typically use 60-80k)
-        gasEstimate = BigInt(100000); // 100k gas units - safe for most transactions
+
+        // Check if this is a network connectivity issue
+        if (error instanceof Error && error.message.includes('fetch')) {
+          console.warn('⚠️ Network connectivity issue with RPC. Using fallback gas estimate.');
+        }
+
+        // Use appropriate Foundry gas estimate fallback based on transaction type
+        // Detect transaction type from encoded function data
+        const transactionType = this.detectTransactionType(txParams.data);
+        let foundryGasEstimate: number;
+
+        if (transactionType === 'depositFunds') {
+          foundryGasEstimate = parseInt(this.config.depositFundsFoundryGas);
+          console.log(`Using Foundry fallback for depositFunds (DEPOSIT_FUNDS_FOUNDRY_GAS): ${foundryGasEstimate} gas`);
+        } else {
+          // Default to USDC operations (approve, transfer, etc.)
+          foundryGasEstimate = parseInt(this.config.usdcGrantFoundryGas);
+          console.log(`Using Foundry fallback for USDC operations (USDC_GRANT_FOUNDRY_GAS): ${foundryGasEstimate} gas`);
+        }
+
+        gasEstimate = BigInt(foundryGasEstimate);
       }
     }
 
@@ -934,6 +955,35 @@ export class Web3Service {
       }
 
       console.log('[Web3Service.fundAndSendTransaction] Transaction params:', tx);
+
+      // Validate transaction cost against MAX_GAS_COST_GWEI limit
+      let transactionCostWei: bigint;
+      if (tx.maxFeePerGas) {
+        // EIP-1559 transaction
+        transactionCostWei = tx.maxFeePerGas * gasEstimate;
+      } else if (tx.gasPrice) {
+        // Legacy transaction
+        transactionCostWei = tx.gasPrice * gasEstimate;
+      } else {
+        throw new Error('No gas price set for transaction');
+      }
+
+      const maxAllowedCostWei = this.getMaxGasCostInWei();
+
+      if (transactionCostWei > maxAllowedCostWei) {
+        const actualCostGwei = Number(transactionCostWei) / 1000000000;
+        const maxAllowedCostGwei = Number(maxAllowedCostWei) / 1000000000;
+        const gasPriceGwei = tx.maxFeePerGas ? Number(tx.maxFeePerGas) / 1000000000 : Number(tx.gasPrice!) / 1000000000;
+
+        throw new Error(
+          `Transaction cost exceeds configured maximum. ` +
+          `Estimated cost: ${actualCostGwei.toFixed(4)} gwei (${Number(gasEstimate).toLocaleString()} gas × ${gasPriceGwei.toFixed(4)} gwei/gas), ` +
+          `Maximum allowed: ${maxAllowedCostGwei.toFixed(4)} gwei. ` +
+          `Please contact support to adjust gas cost limits.`
+        );
+      }
+
+      console.log(`✅ Transaction cost validation passed: ${(Number(transactionCostWei) / 1000000000).toFixed(4)} gwei (within ${(Number(maxAllowedCostWei) / 1000000000).toFixed(4)} gwei limit)`);
       console.log('[Web3Service.fundAndSendTransaction] Preparing transaction for Web3Auth workaround...');
 
       // WORKAROUND: Web3Auth's signer.sendTransaction() pre-validates with wrong gas prices
@@ -992,10 +1042,43 @@ export class Web3Service {
       } catch (signError) {
         console.warn('[Web3Service.fundAndSendTransaction] Direct RPC approach failed, falling back to signer.sendTransaction:', signError);
 
+        // Check if this is a gas-related error
+        const errorMessage = signError instanceof Error ? signError.message : String(signError);
+        if (errorMessage.includes('replacement transaction underpriced') ||
+            errorMessage.includes('insufficient funds') ||
+            errorMessage.includes('gas too low')) {
+
+          // Provide helpful error message to user
+          const currentGasPrice = tx.maxFeePerGas || tx.gasPrice || BigInt(0);
+          const currentGasPriceGwei = Number(currentGasPrice) / 1000000000;
+          const maxAllowedGwei = Number(this.getMaxGasPriceInWei()) / 1000000000;
+
+          throw new Error(
+            `Transaction failed due to gas pricing. ` +
+            `Base network requires higher gas than configured maximum. ` +
+            `Current network gas: ~${currentGasPriceGwei.toFixed(4)} gwei, ` +
+            `Your MAX_GAS_PRICE_GWEI: ${maxAllowedGwei} gwei. ` +
+            `Please contact support to adjust gas settings.`
+          );
+        }
+
         // Fallback: Try the normal signer.sendTransaction (might still fail with Web3Auth)
-        const txResponse = await signer.sendTransaction(tx);
-        console.log('Transaction sent successfully via ethers provider:', txResponse.hash);
-        return txResponse.hash;
+        try {
+          const txResponse = await signer.sendTransaction(tx);
+          console.log('Transaction sent successfully via ethers provider:', txResponse.hash);
+          return txResponse.hash;
+        } catch (fallbackError) {
+          // Check again for gas-related errors in fallback
+          const fallbackErrorMessage = fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
+          if (fallbackErrorMessage.includes('insufficient funds for intrinsic transaction cost')) {
+            throw new Error(
+              `Transaction failed: Insufficient funds for gas. ` +
+              `Web3Auth estimates you need more funds to cover gas fees. ` +
+              `Try adding more ETH to your wallet or contact support if this persists.`
+            );
+          }
+          throw fallbackError;
+        }
       }
 
     } catch (error) {
@@ -1010,6 +1093,45 @@ export class Web3Service {
   private getMaxGasPriceInWei(): bigint {
     const maxGasPriceGwei = parseFloat(this.config.maxGasPriceGwei);
     return BigInt(Math.round(maxGasPriceGwei * 1000000000)); // Convert gwei to wei
+  }
+
+  /**
+   * Convert gwei to wei using the configured max gas cost
+   */
+  private getMaxGasCostInWei(): bigint {
+    const maxGasCostGwei = parseFloat(this.config.maxGasCostGwei);
+    return BigInt(Math.round(maxGasCostGwei * 1000000000)); // Convert gwei to wei
+  }
+
+  /**
+   * Detect transaction type from encoded function data to choose appropriate Foundry gas fallback
+   */
+  private detectTransactionType(data: string): 'depositFunds' | 'approve' | 'transfer' | 'unknown' {
+    if (!data || data === '0x') {
+      return 'unknown';
+    }
+
+    // Function selectors (first 4 bytes of keccak256 hash of function signature)
+    const functionSelector = data.slice(0, 10); // '0x' + 8 hex chars = 10 chars total
+
+    // Common function selectors
+    const FUNCTION_SELECTORS = {
+      // depositFunds() - for escrow contract funding
+      'depositFunds': '0x24600fc3', // keccak256("depositFunds()")[:4]
+      // approve(address,uint256) - for USDC token approval
+      'approve': '0x095ea7b3', // keccak256("approve(address,uint256)")[:4]
+      // transfer(address,uint256) - for USDC token transfer
+      'transfer': '0xa9059cbb', // keccak256("transfer(address,uint256)")[:4]
+    };
+
+    // Check against known function selectors
+    for (const [functionName, selector] of Object.entries(FUNCTION_SELECTORS)) {
+      if (functionSelector === selector) {
+        return functionName as 'depositFunds' | 'approve' | 'transfer';
+      }
+    }
+
+    return 'unknown';
   }
 
   /**
@@ -1067,15 +1189,18 @@ export class Web3Service {
         }
       }
 
-      // Apply our configured caps
-      const maxAllowed = this.getMaxGasPriceInWei();
+      // Apply configured MAX_GAS_PRICE_GWEI cap
+      const maxAllowedGasPrice = this.getMaxGasPriceInWei();
 
-      // Cap both values to our configured maximum
-      const cappedBaseFee = baseFee > maxAllowed ? maxAllowed : baseFee;
-      const cappedPriorityFee = priorityFee > maxAllowed ? maxAllowed : priorityFee;
+      // Cap both values at configured maximum
+      const cappedBaseFee = baseFee > maxAllowedGasPrice ? maxAllowedGasPrice : baseFee;
+      const cappedPriorityFee = priorityFee > maxAllowedGasPrice ? maxAllowedGasPrice : priorityFee;
 
-      // For maxFeePerGas, ensure it covers base fee + priority fee, but cap at our maximum
-      const maxFeePerGas = cappedBaseFee + cappedPriorityFee > maxAllowed ? maxAllowed : cappedBaseFee + cappedPriorityFee;
+      // For maxFeePerGas, ensure it covers base fee + priority fee, but cap total at configured max
+      let maxFeePerGas = cappedBaseFee + cappedPriorityFee;
+      if (maxFeePerGas > maxAllowedGasPrice) {
+        maxFeePerGas = maxAllowedGasPrice;
+      }
 
       console.log(`🔧 EIP-1559 fees: maxFee=${maxFeePerGas.toString()} wei, priority=${cappedPriorityFee.toString()} wei`);
 
@@ -1086,8 +1211,9 @@ export class Web3Service {
     } catch (error) {
       console.warn(`Failed to get EIP-1559 fees from RPC (${this.config.rpcUrl}):`, error);
 
-      // Fallback to our configured caps
+      // Fallback to configured MAX_GAS_PRICE_GWEI
       const fallbackFee = this.getMaxGasPriceInWei();
+      console.log(`Using fallback EIP-1559 fees (MAX_GAS_PRICE_GWEI): ${fallbackFee.toString()} wei (${Number(fallbackFee) / 1000000000} gwei)`);
       return {
         maxFeePerGas: fallbackFee,
         maxPriorityFeePerGas: fallbackFee
@@ -1122,20 +1248,20 @@ export class Web3Service {
           const gasPrice = BigInt(data.result);
           console.log(`✅ Got gas price from configured RPC (${this.config.rpcUrl}):`, gasPrice.toString(), 'wei');
 
-          // Network-specific sanity checks
-          let maxReasonableGas: bigint;
-          if (this.config.chainId === 8453 || this.config.chainId === 84532) {
-            // Base networks: use configured max gas price
-            maxReasonableGas = this.getMaxGasPriceInWei();
-          } else {
-            // Other networks: cap at 50 gwei
-            maxReasonableGas = BigInt(50000000000); // 50 gwei
-          }
+          // Use configured MAX_GAS_PRICE_GWEI to cap gas prices
+          const maxAllowedGasPrice = this.getMaxGasPriceInWei(); // This reads MAX_GAS_PRICE_GWEI from config
 
-          if (gasPrice <= maxReasonableGas) {
+          if (gasPrice <= maxAllowedGasPrice) {
+            console.log(`✅ Using actual gas price from RPC: ${gasPrice} wei (${Number(gasPrice) / 1000000000} gwei)`);
             return gasPrice;
           } else {
-            console.warn(`🚨 RPC returned suspicious gas price (${gasPrice} wei > ${maxReasonableGas} wei), using fallback`);
+            const actualGwei = Number(gasPrice) / 1000000000;
+            const maxGwei = Number(maxAllowedGasPrice) / 1000000000;
+            console.warn(
+              `🚨 WARNING: Base network gas price (${actualGwei.toFixed(4)} gwei) exceeds MAX_GAS_PRICE_GWEI (${maxGwei} gwei). ` +
+              `Transactions may fail. Consider updating MAX_GAS_PRICE_GWEI to at least ${actualGwei.toFixed(4)} gwei.`
+            );
+            return maxAllowedGasPrice;
           }
         }
       }
@@ -1143,17 +1269,9 @@ export class Web3Service {
       console.warn(`Failed to get gas price from configured RPC (${this.config.rpcUrl}):`, error);
     }
 
-    // Method 2: Fallback to network-appropriate gas price
-    let fallbackGasPrice: bigint;
-    if (this.config.chainId === 8453 || this.config.chainId === 84532) {
-      // Base networks: use configured max gas
-      fallbackGasPrice = this.getMaxGasPriceInWei();
-    } else {
-      // Other networks: use configured minimum or reasonable default
-      fallbackGasPrice = BigInt(this.config.minGasWei) || BigInt(1000000000); // 1 gwei default
-    }
-
-    console.log(`Using fallback gas price for network ${this.config.chainId}:`, fallbackGasPrice.toString(), 'wei');
+    // Method 2: Fallback to configured MAX_GAS_PRICE_GWEI
+    const fallbackGasPrice = this.getMaxGasPriceInWei();
+    console.log(`Using fallback gas price (MAX_GAS_PRICE_GWEI):`, fallbackGasPrice.toString(), 'wei (${Number(fallbackGasPrice) / 1000000000} gwei)');
     return fallbackGasPrice;
   }
 

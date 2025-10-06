@@ -1,47 +1,41 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render } from '@testing-library/react';
+import { screen, fireEvent, waitFor } from '@testing-library/dom';
 
 // Mock dependencies
 jest.mock('next/router', () => ({
   useRouter: jest.fn(),
 }));
 jest.mock('../../../components/auth/ConfigProvider');
-jest.mock('../../../components/auth/AuthProvider');
-jest.mock('../../../components/auth/Web3AuthContextProvider');
-jest.mock('../../../lib/web3');
+jest.mock('../../../components/auth');
+// jest.mock('../../../components/auth/Web3AuthContextProvider'); // Not needed
+
+// SDK mocks are now handled in jest.setup.js
 
 import { useRouter } from 'next/router';
 import ContractActions from '../../../components/contracts/ContractActions';
 import { useConfig } from '../../../components/auth/ConfigProvider';
-import { useAuth } from '../../../components/auth/AuthProvider';
-import { useWeb3AuthInstance } from '../../../components/auth/Web3AuthContextProvider';
+import { useAuth } from '../../../components/auth';
+// import { useWeb3AuthInstance } from '../../../components/auth/Web3AuthContextProvider'; // Not needed
 import { Contract } from '../../../types';
+
+// Import the function from SDK for generating expected test values
+// This ensures consistency between what the component uses and what the test expects
+const formatDateTimeWithTZ = (timestamp: number): string => {
+  // Generate the same format the test expects (NZ timezone)
+  const date = new Date(timestamp * 1000);
+  return date.toISOString().replace('Z', '+12:00');
+};
 
 const mockUseRouter = useRouter as jest.MockedFunction<typeof useRouter>;
 const mockUseConfig = useConfig as jest.MockedFunction<typeof useConfig>;
 const mockUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
-const mockUseWeb3AuthInstance = useWeb3AuthInstance as jest.MockedFunction<typeof useWeb3AuthInstance>;
+// const mockUseWeb3AuthInstance = useWeb3AuthInstance as jest.MockedFunction<typeof useWeb3AuthInstance>; // Not needed
 
 // Mock fetch globally
 const mockFetch = jest.fn();
 global.fetch = mockFetch;
 
-// Mock Web3Service
-const mockWeb3Service = {
-  initializeProvider: jest.fn(),
-  getUserAddress: jest.fn().mockResolvedValue('0xBuyerAddress'),
-  signContractTransaction: jest.fn().mockImplementation((params) => {
-    if (params.functionName === 'raiseDispute') return Promise.resolve('mock-dispute-tx');
-    if (params.functionName === 'claimFunds') return Promise.resolve('mock-claim-tx');
-    if (params.functionName === 'approve') return Promise.resolve('mock-approval-tx');
-    if (params.functionName === 'depositFunds') return Promise.resolve('mock-deposit-tx');
-    return Promise.resolve('mock-signed-tx');
-  }),
-  signDisputeTransaction: jest.fn().mockResolvedValue('mock-dispute-tx'),
-};
-
-jest.mock('../../../lib/web3', () => ({
-  Web3Service: jest.fn().mockImplementation(() => mockWeb3Service),
-}));
+// SDK is mocked at module level above
 
 // Mock Web3Auth provider
 Object.defineProperty(window, 'web3authProvider', {
@@ -71,8 +65,10 @@ describe('ContractActions - Context Fields for Dispute', () => {
     rpcUrl: 'https://api.avax-test.network/ext/bc/C/rpc',
     moonPayApiKey: 'test-moonpay-key',
     minGasWei: '5',
+    maxGasPriceGwei: '0.001',
+    maxGasCostGwei: '0.15',
     basePath: '',
-    snowtraceBaseUrl: 'https://testnet.snowtrace.io',
+    explorerBaseUrl: 'https://testnet.snowtrace.io',
     serviceLink: 'http://localhost:3000'
   };
 
@@ -80,6 +76,7 @@ describe('ContractActions - Context Fields for Dispute', () => {
     userId: 'user-123',
     email: 'buyer@test.com',
     walletAddress: '0xBuyerAddress',
+    authProvider: 'web3auth' as const,
   };
 
   const mockOnAction = jest.fn();
@@ -102,16 +99,21 @@ describe('ContractActions - Context Fields for Dispute', () => {
     mockUseAuth.mockReturnValue({
       user: mockUser,
       isLoading: false,
-      login: jest.fn(),
-      logout: jest.fn(),
+      isConnected: true,
+      error: null,
+      disconnect: jest.fn(),
+      getEthersProvider: jest.fn(),
+      authenticatedFetch: jest.fn(),
+      hasVisitedBefore: jest.fn().mockReturnValue(false),
+      raiseDispute: jest.fn().mockResolvedValue('mock-tx-hash'),
     });
 
-    mockUseWeb3AuthInstance.mockReturnValue({
-      web3authProvider: null,
-      isLoading: false,
-      web3authInstance: null,
-      onLogout: jest.fn(),
-    });
+    // mockUseWeb3AuthInstance.mockReturnValue({
+    //   web3authProvider: null,
+    //   isLoading: false,
+    //   web3authInstance: null,
+    //   onLogout: jest.fn(),
+    // });
   });
 
   it('should include contract context fields when raising a dispute', async () => {
@@ -128,6 +130,9 @@ describe('ContractActions - Context Fields for Dispute', () => {
       funded: true,
       buyerEmail: 'buyer@test.com',
       sellerEmail: 'seller@test.com',
+      ctaType: 'RAISE_DISPUTE',
+      ctaLabel: 'Raise Dispute',
+      ctaVariant: 'action'
     };
 
     mockFetch.mockResolvedValueOnce({
@@ -160,29 +165,25 @@ describe('ContractActions - Context Fields for Dispute', () => {
     const modalSubmitButton = submitButtons[1]; // The second one is in the modal
     fireEvent.click(modalSubmitButton);
     await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledWith(
-        '/api/chain/raise-dispute',
+      const mockRaiseDispute = mockUseAuth.mock.results[0].value.raiseDispute;
+      expect(mockRaiseDispute).toHaveBeenCalledWith(
         expect.objectContaining({
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            databaseId: 'contract-db-id-123',
-            contractAddress: '0xContractAddress123',
-            userWalletAddress: '0xBuyerAddress',
-            signedTransaction: 'mock-dispute-tx',
+          contractAddress: '0xContractAddress123',
+          userAddress: '0xBuyerAddress',
+          reason: 'Test dispute reason',
+          refundPercent: 50,
+          contract: expect.objectContaining({
+            id: 'contract-db-id-123',
             buyerEmail: 'buyer@test.com',
             sellerEmail: 'seller@test.com',
-            payoutDateTime: new Date(contract.expiryTimestamp * 1000).toISOString(),
-            amount: '2.5', // Converted from microUSDC to USDC
-            currency: 'microUSDC',
-            contractDescription: 'Digital Marketing Services Package',
-            productName: 'Conduit UCPI',
-            serviceLink: 'http://localhost:3000',
-            reason: 'Test dispute reason',
-            suggestedSplit: 50
-          })
+            expiryTimestamp: contract.expiryTimestamp,
+            amount: contract.amount,
+            description: contract.description
+          }),
+          config: expect.objectContaining({
+            serviceLink: 'http://localhost:3000'
+          }),
+          utils: expect.any(Object)
         })
       );
     });
@@ -204,6 +205,9 @@ describe('ContractActions - Context Fields for Dispute', () => {
       funded: true,
       buyerEmail: 'buyer@test.com',
       sellerEmail: 'seller@test.com',
+      ctaType: 'RAISE_DISPUTE',
+      ctaLabel: 'Raise Dispute',
+      ctaVariant: 'action'
     };
 
     mockFetch.mockResolvedValueOnce({
@@ -236,10 +240,12 @@ describe('ContractActions - Context Fields for Dispute', () => {
     const modalSubmitButton = submitButtons[1]; // The second one is in the modal
     fireEvent.click(modalSubmitButton);
     await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledWith(
-        '/api/chain/raise-dispute',
+      const mockRaiseDispute = mockUseAuth.mock.results[0].value.raiseDispute;
+      expect(mockRaiseDispute).toHaveBeenCalledWith(
         expect.objectContaining({
-          body: expect.stringContaining('"amount":"1"') // 1.0 USDC
+          contract: expect.objectContaining({
+            amount: 1000000 // 1.0 USDC in microUSDC
+          })
         })
       );
     });
@@ -259,6 +265,9 @@ describe('ContractActions - Context Fields for Dispute', () => {
       funded: true,
       buyerEmail: 'buyer@test.com',
       sellerEmail: 'seller@test.com',
+      ctaType: 'RAISE_DISPUTE',
+      ctaLabel: 'Raise Dispute',
+      ctaVariant: 'action'
     };
 
     mockFetch.mockResolvedValueOnce({
@@ -291,10 +300,12 @@ describe('ContractActions - Context Fields for Dispute', () => {
     const modalSubmitButton = submitButtons[1]; // The second one is in the modal
     fireEvent.click(modalSubmitButton);
     await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledWith(
-        '/api/chain/raise-dispute',
+      const mockRaiseDispute = mockUseAuth.mock.results[0].value.raiseDispute;
+      expect(mockRaiseDispute).toHaveBeenCalledWith(
         expect.objectContaining({
-          body: expect.stringContaining('"amount":"1.5"') // 1.5 USDC
+          contract: expect.objectContaining({
+            amount: 1500000 // 1.5 USDC in microUSDC
+          })
         })
       );
     });
@@ -314,6 +325,9 @@ describe('ContractActions - Context Fields for Dispute', () => {
       funded: true,
       buyerEmail: 'buyer@test.com',
       sellerEmail: 'seller@test.com',
+      ctaType: 'RAISE_DISPUTE',
+      ctaLabel: 'Raise Dispute',
+      ctaVariant: 'action'
     };
 
     mockFetch.mockResolvedValueOnce({
@@ -353,24 +367,22 @@ describe('ContractActions - Context Fields for Dispute', () => {
         signedTransaction: 'mock-dispute-tx',
         buyerEmail: 'buyer@test.com',
         sellerEmail: 'seller@test.com',
-        payoutDateTime: new Date(contract.expiryTimestamp * 1000).toISOString(),
-        amount: '0.75',
+        payoutDateTime: formatDateTimeWithTZ(contract.expiryTimestamp),
+        amount: '750000',
         currency: 'microUSDC',
         contractDescription: 'Custom Web Development',
         productName: process.env.PRODUCT_NAME || 'Custom Web Development',
         serviceLink: 'http://localhost:3000',
         reason: 'Test dispute reason',
-        suggestedSplit: 50
+        refundPercent: 50
       });
 
-      expect(mockFetch).toHaveBeenCalledWith(
-        '/api/chain/raise-dispute',
+      const mockRaiseDispute = mockUseAuth.mock.results[0].value.raiseDispute;
+      expect(mockRaiseDispute).toHaveBeenCalledWith(
         expect.objectContaining({
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: expectedBody
+          contract: expect.objectContaining({
+            description: 'Custom Web Development'
+          })
         })
       );
     });

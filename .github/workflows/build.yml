@@ -51,6 +51,9 @@ jobs:
           X_API_KEY: ${{ secrets.X_API_KEY }}
           MIN_GAS_WEI: ${{ vars.MIN_GAS_WEI }}
           MAX_GAS_PRICE_GWEI: ${{ vars.MAX_GAS_PRICE_GWEI }}
+          MAX_GAS_COST_GWEI: ${{ vars.MAX_GAS_COST_GWEI }}
+          USDC_GRANT_FOUNDRY_GAS: ${{ vars.USDC_GRANT_FOUNDRY_GAS }}
+          DEPOSIT_FUNDS_FOUNDRY_GAS: ${{ vars.DEPOSIT_FUNDS_FOUNDRY_GAS }}
           NEYNAR_API_KEY: ${{ secrets.NEYNAR_API_KEY }}
           NEYNAR_API_URL: ${{ vars.NEYNAR_API_URL }}
           WALLETCONNECT_PROJECT_ID: ${{ secrets.WALLETCONNECT_PROJECT_ID }}
@@ -169,6 +172,9 @@ jobs:
             -e USDC_CONTRACT_ADDRESS="${{ vars.USDC_CONTRACT_ADDRESS }}" \\
             -e MIN_GAS_WEI="${{ vars.MIN_GAS_WEI }}" \\
             -e MAX_GAS_PRICE_GWEI="${{ vars.MAX_GAS_PRICE_GWEI }}" \\
+            -e MAX_GAS_COST_GWEI="${{ vars.MAX_GAS_COST_GWEI }}" \\
+            -e USDC_GRANT_FOUNDRY_GAS="${{ vars.USDC_GRANT_FOUNDRY_GAS }}" \\
+            -e DEPOSIT_FUNDS_FOUNDRY_GAS="${{ vars.DEPOSIT_FUNDS_FOUNDRY_GAS }}" \\
             -e NEXT_PUBLIC_BASE_PATH="${{ vars.NEXT_PUBLIC_BASE_PATH }}" \\
             -e EXPLORER_BASE_URL="${{ vars.EXPLORER_BASE_URL }}" \\
             -e PRODUCT_NAME="${{ vars.PRODUCT_NAME }}" \\

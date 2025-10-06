@@ -485,8 +485,8 @@ class FarcasterAuthProviderImpl implements IAuthProvider {
   }
 
   async raiseDispute(...args: any[]): Promise<any> {
-    // This method is deprecated - raising disputes should be done through API calls
-    throw new Error('raiseDispute is deprecated. Use API endpoint /api/chain/raise-dispute instead');
+    // This method is deprecated - raising disputes should be done through auth context
+    throw new Error('raiseDispute is deprecated. Use auth context raiseDispute method instead');
   }
 }
 

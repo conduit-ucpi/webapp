@@ -35,6 +35,8 @@ jest.mock('@/hooks/useSimpleEthers', () => ({
   useSimpleEthers: () => ({
     getUSDCBalance: jest.fn().mockResolvedValue('5.00'),
     fundAndSendTransaction: jest.fn(),
+    approveUSDC: jest.fn().mockResolvedValue('0x1234...'), // Mock transaction hash
+    depositToContract: jest.fn().mockResolvedValue('0x5678...'), // Mock transaction hash
   }),
 }));
 
@@ -77,7 +79,7 @@ describe('ContractAcceptance Chainservice Validation', () => {
       if (url === '/api/chain/create-contract') {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ contractAddress: '0xNewContract' })
+          json: () => Promise.resolve({ contractAddress: '0x1234567890123456789012345678901234567890' })
         });
       }
       return Promise.resolve({ ok: false });

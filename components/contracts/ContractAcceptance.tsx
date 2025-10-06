@@ -17,7 +17,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
   const router = useRouter();
   const { config } = useConfig();
   const { user, authenticatedFetch } = useAuth();
-  const { fundAndSendTransaction, getUSDCBalance } = useSimpleEthers();
+  const { fundAndSendTransaction, getUSDCBalance, approveUSDC, depositToContract } = useSimpleEthers();
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
   const [hasError, setHasError] = useState(false);
@@ -172,45 +172,15 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
         // Step 2: Approve USDC spending
         setLoadingMessage('Step 2 of 3: Approving USDC transfer...');
 
-        const approveResponse = await authenticatedFetch('/api/chain/approve-usdc', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contractAddress,
-            amount: toMicroUSDC(String(contract.amount)),
-            currency: contract.currency
-          })
-        });
-
-        if (!approveResponse.ok) {
-          const errorData = await approveResponse.json().catch(() => ({}));
-          throw new Error(errorData.error || 'USDC approval failed');
-        }
+        await approveUSDC(
+          contractAddress,
+          toMicroUSDC(String(contract.amount)).toString()
+        );
 
         // Step 3: Deposit funds into the contract
         setLoadingMessage('Step 3 of 3: Depositing funds...');
 
-        const depositResponse = await authenticatedFetch('/api/chain/deposit-funds', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contractAddress,
-            userWalletAddress: user?.walletAddress,
-            contractId: contract.id,
-            buyerEmail: contract.buyerEmail || user?.email,
-            sellerEmail: contract.sellerEmail,
-            amount: toMicroUSDC(String(contract.amount)),
-            currency: contract.currency,
-            payoutDateTime: formatDateTimeWithTZ(contract.expiryTimestamp),
-            contractDescription: contract.description,
-            contractLink: config?.serviceLink || window.location.origin
-          })
-        });
-
-        if (!depositResponse.ok) {
-          const errorData = await depositResponse.json().catch(() => ({}));
-          throw new Error(errorData.error || 'Deposit failed');
-        }
+        await depositToContract(contractAddress);
 
         console.log('🔧 ContractAcceptance: Contract funding completed successfully');
       } catch (fundingError) {

@@ -82,6 +82,48 @@ export function useSimpleEthers() {
       console.log('🔧 useSimpleEthers: getUserAddress via Web3Service');
       const web3Service = await getWeb3Service();
       return await web3Service.getUserAddress();
+    },
+
+    // High-level contract interaction methods
+    approveUSDC: async (contractAddress: string, amount: string) => {
+      console.log('🔧 useSimpleEthers: approveUSDC via fundAndSendTransaction');
+
+      if (!config?.usdcContractAddress) {
+        throw new Error('USDC contract address not configured');
+      }
+
+      // Encode USDC approve function call
+      const usdcAbi = [
+        "function approve(address spender, uint256 amount) external returns (bool)"
+      ];
+      const usdcInterface = new ethers.Interface(usdcAbi);
+      const data = usdcInterface.encodeFunctionData('approve', [
+        contractAddress, // spender (the escrow contract)
+        amount // amount in microUSDC as string
+      ]);
+
+      const web3Service = await getWeb3Service();
+      return await web3Service.fundAndSendTransaction({
+        to: config.usdcContractAddress,
+        data,
+        value: '0' // No ETH value needed for approval
+      });
+    },
+
+    depositToContract: async (contractAddress: string) => {
+      console.log('🔧 useSimpleEthers: depositToContract via fundAndSendTransaction');
+
+      // Encode escrow contract deposit function call
+      const { ESCROW_CONTRACT_ABI } = await import('@conduit-ucpi/sdk');
+      const escrowInterface = new ethers.Interface(ESCROW_CONTRACT_ABI);
+      const data = escrowInterface.encodeFunctionData('depositFunds', []);
+
+      const web3Service = await getWeb3Service();
+      return await web3Service.fundAndSendTransaction({
+        to: contractAddress,
+        data,
+        value: '0' // No ETH value needed for deposit
+      });
     }
   };
 }

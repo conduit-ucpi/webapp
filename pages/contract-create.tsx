@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import Head from 'next/head';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { useAuth } from '@/components/auth';
+import { useSimpleEthers } from '@/hooks/useSimpleEthers';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
@@ -42,7 +43,8 @@ export default function ContractCreate() {
 
   const router = useRouter();
   const { config } = useConfig();
-  const { user, authenticatedFetch, fundContract, disconnect, isLoading: authLoading } = useAuth();
+  const { user, authenticatedFetch, disconnect, isLoading: authLoading } = useAuth();
+  const { approveUSDC, depositToContract } = useSimpleEthers();
   
   // Query parameters
   const {
@@ -344,15 +346,14 @@ export default function ContractCreate() {
   };
 
   const handlePayment = async () => {
-    if (!contractId || !fundContract || !config) {
+    if (!contractId || !config) {
       console.error('🔧 ContractCreate: Missing required data for payment');
       console.error('🔧 ContractCreate: contractId:', contractId);
-      console.error('🔧 ContractCreate: fundContract:', !!fundContract);
       console.error('🔧 ContractCreate: config:', !!config);
       return;
     }
 
-    console.log('🔧 ContractCreate: handlePayment starting with fundContract method');
+    console.log('🔧 ContractCreate: handlePayment starting with modern fundAndSendTransaction method');
     setIsLoading(true);
     
     // Reset payment steps to initial state
@@ -382,53 +383,54 @@ export default function ContractCreate() {
         }
       }
       
-      // Step 2-4: These will be updated by the fundContract implementation
-      // The fundContract function should handle updating these steps internally
+      // Step 1: Create the contract on the blockchain
       updatePaymentStep('approve', 'active');
-      setLoadingMessage('Approving USDC payment...');
+      setLoadingMessage('Step 1 of 4: Creating secure escrow...');
 
-      console.log('🔧 ContractCreate: About to call fundContract with params');
-
-      // Fund the contract using the provider-specific implementation
-      const result = await fundContract({
-        contract: {
-          id: contractId,
+      const createResponse = await authenticatedFetch('/api/chain/create-contract', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contractserviceId: contractId,
+          tokenAddress: config.usdcContractAddress,
+          buyer: user?.walletAddress,
+          seller: form.seller,
           amount: toMicroUSDC(parseFloat(form.amount.trim())),
-          currency: 'microUSDC',
-          sellerAddress: form.seller,
           expiryTimestamp: expiryTimestamp,
-          description: form.description,
-          buyerEmail: user?.email || (queryEmail as string) || 'noemail@notsupplied.com'
-        },
-        userAddress: user?.walletAddress!,
-        config: {
-          usdcContractAddress: config.usdcContractAddress,
-          serviceLink: config.serviceLink,
-          rpcUrl: config.rpcUrl
-        },
-        utils: {
-          toMicroUSDC,
-          toUSDCForWeb3,
-          formatDateTimeWithTZ
-        },
-        onStatusUpdate: (step: string, message: string) => {
-          // Map the status messages to our step IDs
-          if (message.toLowerCase().includes('approv')) {
-            updatePaymentStep('approve', 'active');
-            setLoadingMessage(message);
-          } else if (message.toLowerCase().includes('escrow') || message.toLowerCase().includes('deposit')) {
-            updatePaymentStep('approve', 'completed');
-            updatePaymentStep('escrow', 'active');
-            setLoadingMessage(message);
-          } else if (message.toLowerCase().includes('confirm') || message.toLowerCase().includes('transaction')) {
-            updatePaymentStep('escrow', 'completed');
-            updatePaymentStep('confirm', 'active');
-            setLoadingMessage(message);
-          } else {
-            setLoadingMessage(message);
-          }
-        }
+          description: form.description
+        })
       });
+
+      if (!createResponse.ok) {
+        const errorData = await createResponse.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Contract creation failed');
+      }
+
+      const createData = await createResponse.json();
+      const contractAddress = createData.contractAddress;
+
+      // Step 2: Approve USDC spending
+      updatePaymentStep('approve', 'completed');
+      updatePaymentStep('escrow', 'active');
+      setLoadingMessage('Step 2 of 4: Approving USDC transfer...');
+
+      await approveUSDC(
+        contractAddress,
+        toMicroUSDC(parseFloat(form.amount.trim())).toString()
+      );
+
+      // Step 3: Deposit funds into the contract
+      updatePaymentStep('escrow', 'completed');
+      updatePaymentStep('confirm', 'active');
+      setLoadingMessage('Step 3 of 4: Depositing funds...');
+
+      const depositResult = await depositToContract(contractAddress);
+
+      // Create result object for compatibility with existing code
+      const result = {
+        contractAddress: contractAddress,
+        depositTxHash: depositResult, // depositToContract returns the transaction hash
+      };
 
       console.log('🔧 ContractCreate: Payment completed successfully:', result);
 

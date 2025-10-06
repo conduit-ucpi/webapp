@@ -5,6 +5,8 @@
 import React, { useState, useEffect } from 'react';
 import { AuthProvider as NewAuthProvider, useAuth as useNewAuth, BackendClient } from '@/lib/auth';
 import { useConfig } from './ConfigProvider';
+import { useSimpleEthers } from '@/hooks/useSimpleEthers';
+import { toUSDCForWeb3 } from '@/utils/validation';
 
 // Simple context that matches the old interface for backward compatibility
 const AuthContext = React.createContext<any>(null);
@@ -16,6 +18,7 @@ interface SimpleAuthProviderProps {
 function AuthWrapper({ children }: { children: React.ReactNode }) {
   const newAuth = useNewAuth();
   const backendClient = BackendClient.getInstance();
+  const { fundAndSendTransaction } = useSimpleEthers();
 
   // Expose the new auth with the old interface
   const authValue = {
@@ -43,6 +46,69 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
       } catch (error) {
         console.error('🔧 SimpleAuthProvider: Failed to refresh user data:', error);
       }
+    },
+
+    // Blockchain operations using fundAndSendTransaction
+    claimFunds: async (contractAddress: string, userAddress: string): Promise<string> => {
+      console.log('🔧 SimpleAuthProvider: claimFunds called', { contractAddress, userAddress });
+
+      if (!contractAddress || !userAddress) {
+        throw new Error('Contract address and user address are required');
+      }
+
+      // Import contract ABI
+      const { ESCROW_CONTRACT_ABI } = await import('@conduit-ucpi/sdk');
+      const { ethers } = await import('ethers');
+
+      // Encode the claimFunds function call
+      const contractInterface = new ethers.Interface(ESCROW_CONTRACT_ABI);
+      const data = contractInterface.encodeFunctionData('claimFunds', []);
+
+      // Use fundAndSendTransaction for the blockchain operation
+      return await fundAndSendTransaction({
+        to: contractAddress,
+        data,
+        value: '0' // No value needed for claiming
+      });
+    },
+
+    raiseDispute: async (params: {
+      contractAddress: string;
+      userAddress: string;
+      reason: string;
+      refundPercent: number;
+      contract?: any;
+      config?: any;
+      utils?: any;
+    }): Promise<string> => {
+      console.log('🔧 SimpleAuthProvider: raiseDispute called', {
+        contractAddress: params.contractAddress,
+        userAddress: params.userAddress,
+        reason: params.reason,
+        refundPercent: params.refundPercent
+      });
+
+      if (!params.contractAddress || !params.userAddress || !params.reason || params.refundPercent == null) {
+        throw new Error('Contract address, user address, reason, and refund percent are required');
+      }
+
+      // Import contract ABI
+      const { ESCROW_CONTRACT_ABI } = await import('@conduit-ucpi/sdk');
+      const { ethers } = await import('ethers');
+
+      // Encode the raiseDispute function call
+      const contractInterface = new ethers.Interface(ESCROW_CONTRACT_ABI);
+      const data = contractInterface.encodeFunctionData('raiseDispute', [
+        params.reason,
+        params.refundPercent
+      ]);
+
+      // Use fundAndSendTransaction for the blockchain operation
+      return await fundAndSendTransaction({
+        to: params.contractAddress,
+        data,
+        value: '0' // No value needed for raising dispute
+      });
     }
   };
 

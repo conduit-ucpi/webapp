@@ -14,12 +14,13 @@ describe('ContractAcceptance tokenAddress Regression - Data Structure', () => {
       'buyer',
       'seller',
       'amount',
-      'expiryTimestamp'
+      'expiryTimestamp',
+      'description' // Also required by chainservice
     ];
 
     // Verify the required fields are documented
     expect(requiredFields).toContain('tokenAddress');
-    expect(requiredFields).toHaveLength(6);
+    expect(requiredFields).toHaveLength(7);
   });
 
   it('should demonstrate the correct data transformation for create-contract', () => {
@@ -28,7 +29,8 @@ describe('ContractAcceptance tokenAddress Regression - Data Structure', () => {
       id: 'contract-123',
       sellerAddress: '0xSellerAddress',
       amount: 1, // 1.00 USDC as decimal
-      expiryTimestamp: 1735689600
+      expiryTimestamp: 1735689600,
+      description: 'Test contract'
     };
 
     const mockUser = {
@@ -46,7 +48,8 @@ describe('ContractAcceptance tokenAddress Regression - Data Structure', () => {
       buyer: mockUser.walletAddress,
       seller: mockContract.sellerAddress,
       amount: toMicroUSDC(String(mockContract.amount)), // 1000000
-      expiryTimestamp: mockContract.expiryTimestamp
+      expiryTimestamp: mockContract.expiryTimestamp,
+      description: mockContract.description // Also required by chainservice
     };
 
     // Verify the structure is correct
@@ -56,7 +59,8 @@ describe('ContractAcceptance tokenAddress Regression - Data Structure', () => {
       buyer: '0xBuyerAddress',
       seller: '0xSellerAddress',
       amount: 1000000,
-      expiryTimestamp: 1735689600
+      expiryTimestamp: 1735689600,
+      description: 'Test contract'
     });
 
     // Verify tokenAddress is present and not null/undefined
@@ -83,7 +87,8 @@ describe('ContractAcceptance tokenAddress Regression - Data Structure', () => {
       buyer: user.walletAddress,
       seller: contract.sellerAddress,
       amount: toMicroUSDC(String(contract.amount)),
-      expiryTimestamp: contract.expiryTimestamp
+      expiryTimestamp: contract.expiryTimestamp,
+      description: contract.description  // Also required
     })
     `;
 
@@ -105,6 +110,7 @@ describe('ContractAcceptance tokenAddress Regression - Data Structure', () => {
     expect(componentSource).toContain('contractserviceId: contract.id');
     expect(componentSource).toContain('buyer: user.walletAddress');
     expect(componentSource).toContain('seller: contract.sellerAddress');
+    expect(componentSource).toContain('description: contract.description');
 
     // Verify the old problematic pattern is NOT present
     expect(componentSource).not.toContain('...contract,');
@@ -119,6 +125,7 @@ describe('ContractAcceptance tokenAddress Regression - Data Structure', () => {
       seller: string;
       amount: number;
       expiryTimestamp: number;
+      description: string;  // Also required
     }
 
     // Verify the interface has the required fields
@@ -128,7 +135,8 @@ describe('ContractAcceptance tokenAddress Regression - Data Structure', () => {
       buyer: '0xBuyer',
       seller: '0xSeller',
       amount: 1000000,
-      expiryTimestamp: 1735689600
+      expiryTimestamp: 1735689600,
+      description: 'Test description'
     };
 
     expect(mockRequest.tokenAddress).toBeDefined();

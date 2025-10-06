@@ -155,7 +155,8 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
             buyer: user.walletAddress,
             seller: contract.sellerAddress,
             amount: toMicroUSDC(String(contract.amount)),
-            expiryTimestamp: contract.expiryTimestamp
+            expiryTimestamp: contract.expiryTimestamp,
+            description: contract.description
           })
         });
 

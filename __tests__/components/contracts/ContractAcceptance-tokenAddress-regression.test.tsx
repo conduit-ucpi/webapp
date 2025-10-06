@@ -191,7 +191,8 @@ describe('ContractAcceptance tokenAddress Regression Prevention', () => {
       buyer: '0xBuyerAddress',
       seller: '0xSellerAddress',
       amount: 1000000, // Should be converted to microUSDC (1 -> 1000000)
-      expiryTimestamp: expect.any(Number)
+      expiryTimestamp: expect.any(Number),
+      description: 'Test contract'
     });
 
     // Verify types are correct
@@ -201,6 +202,7 @@ describe('ContractAcceptance tokenAddress Regression Prevention', () => {
     expect(typeof requestBody.seller).toBe('string');
     expect(typeof requestBody.amount).toBe('number');
     expect(typeof requestBody.expiryTimestamp).toBe('number');
+    expect(typeof requestBody.description).toBe('string');
   });
 
   it('should NOT include extra fields from PendingContract that chainservice does not expect', async () => {
@@ -237,12 +239,13 @@ describe('ContractAcceptance tokenAddress Regression Prevention', () => {
     expect(requestBody).not.toHaveProperty('sellerEmail');
     expect(requestBody).not.toHaveProperty('buyerEmail');
     expect(requestBody).not.toHaveProperty('currency');
-    expect(requestBody).not.toHaveProperty('description');
     expect(requestBody).not.toHaveProperty('createdAt');
     expect(requestBody).not.toHaveProperty('createdBy');
     expect(requestBody).not.toHaveProperty('state');
     expect(requestBody).not.toHaveProperty('status');
     expect(requestBody).not.toHaveProperty('id'); // Using contractserviceId instead
+
+    // Note: description IS now a required field, so we want it to be present
   });
 
   it('should handle missing config gracefully', async () => {
@@ -289,7 +292,8 @@ describe('ContractAcceptance tokenAddress Regression Prevention', () => {
       buyer: user.walletAddress,
       seller: contract.sellerAddress,
       amount: toMicroUSDC(String(contract.amount)),
-      expiryTimestamp: contract.expiryTimestamp
+      expiryTimestamp: contract.expiryTimestamp,
+      description: contract.description  // Also required
     })
     `;
 

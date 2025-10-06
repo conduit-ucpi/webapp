@@ -176,6 +176,33 @@ describe('SimpleAuthProvider Hydration Behavior', () => {
     jest.restoreAllMocks();
   });
 
+  it('should provide default auth context when used outside any provider', () => {
+    // This test ensures useAuth NEVER throws, even when used completely outside providers
+    function StandaloneComponent() {
+      try {
+        const auth = useAuth();
+        return (
+          <div data-testid="standalone-test">
+            Standalone auth: user={auth.user ? 'yes' : 'no'}, loading={auth.isLoading ? 'yes' : 'no'}
+          </div>
+        );
+      } catch (error: any) {
+        return <div data-testid="standalone-error">Error: {error.message}</div>;
+      }
+    }
+
+    // Render without ANY wrapper - this should use the default context
+    render(<StandaloneComponent />);
+
+    // Should render successfully with default auth values
+    const element = screen.getByTestId('standalone-test');
+    expect(element).toBeInTheDocument();
+    expect(element.textContent).toContain('Standalone auth: user=no, loading=yes');
+
+    // Should NOT show an error
+    expect(screen.queryByTestId('standalone-error')).not.toBeInTheDocument();
+  });
+
   describe('Regression Test for Production Error', () => {
     it('should never throw the exact error reported by user', () => {
       // This test ensures that useAuth never throws during any loading/config state

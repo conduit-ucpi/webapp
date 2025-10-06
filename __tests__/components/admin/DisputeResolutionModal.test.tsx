@@ -123,6 +123,7 @@ describe('DisputeResolutionModal', () => {
         usdcContractAddress: '0x5425890298aed601595a70AB815c96711a31Bc65',
         moonPayApiKey: 'test-key',
         minGasWei: '20000000000',
+        maxGasPriceGwei: '0.001',
         basePath: '',
         explorerBaseUrl: 'https://testnet.snowtrace.io',
         serviceLink: 'http://localhost:3000'

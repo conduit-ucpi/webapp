@@ -222,18 +222,59 @@ export class Web3Service {
     }
     const nonce = txParams.nonce ?? await this.provider.getTransactionCount(fromAddress);
 
-    // Get gas price using unified ethers provider
+    // Use reliable gas price sources instead of trusting unknown providers
     let gasPrice = txParams.gasPrice;
     if (!gasPrice) {
-      try {
-        const feeData = await this.provider.getFeeData();
-        gasPrice = feeData.gasPrice || BigInt(this.config.minGasWei);
-        console.log('Using unified ethers provider gas price:', gasPrice.toString(), 'wei');
-      } catch (error) {
-        console.warn('Failed to get gas price from unified provider, using fallback:', error);
-        gasPrice = BigInt(this.config.minGasWei);
-        console.log('Using fallback minimum gas price:', gasPrice.toString(), 'wei');
+      // Use known-good gas prices for specific networks instead of unreliable provider estimates
+      if (this.config.chainId === 8453) {
+        // Base mainnet: Use reliable external API or hardcoded reasonable values
+        gasPrice = await this.getReliableBaseGasPrice();
+      } else if (this.config.chainId === 84532) {
+        // Base testnet: Use configured max gas price
+        gasPrice = this.getMaxGasPriceInWei();
+      } else {
+        // Other networks: try provider but analyze the units it's returning
+        try {
+          const feeData = await this.provider.getFeeData();
+          console.log('🔍 DEBUGGING: Raw fee data from provider:', {
+            gasPrice: feeData.gasPrice?.toString(),
+            maxFeePerGas: feeData.maxFeePerGas?.toString(),
+            maxPriorityFeePerGas: feeData.maxPriorityFeePerGas?.toString()
+          });
+
+          // Analyze if the provider might be returning gwei instead of wei
+          if (feeData.gasPrice) {
+            const gweiValue = Number(feeData.gasPrice) / 1000000000;
+            const weiValue = Number(feeData.gasPrice);
+            console.log('🔍 DEBUGGING: Provider gas price analysis:');
+            console.log(`  If this is wei: ${weiValue} wei = ${gweiValue} gwei`);
+            console.log(`  If this is gwei: ${weiValue} gwei = ${weiValue * 1000000000} wei`);
+
+            // If the "wei" value is suspiciously small (like 5-50), it's probably gwei
+            if (feeData.gasPrice < this.getMaxGasPriceInWei() && feeData.gasPrice > BigInt(0)) {
+              console.log('🚨 PROVIDER UNIT MISMATCH: Provider likely returning gwei, converting to wei');
+              gasPrice = feeData.gasPrice * BigInt(1000000000); // Convert gwei to wei
+            } else {
+              gasPrice = feeData.gasPrice;
+            }
+          } else {
+            gasPrice = BigInt(this.config.minGasWei);
+          }
+
+          // Final sanity check
+          const MAX_REASONABLE_GAS_PRICE = BigInt(50000000000); // 50 gwei max
+          if (gasPrice > MAX_REASONABLE_GAS_PRICE) {
+            console.log('🚨 GAS PRICE TOO HIGH: Capping at 50 gwei');
+            gasPrice = MAX_REASONABLE_GAS_PRICE;
+          }
+
+        } catch (error) {
+          gasPrice = BigInt(this.config.minGasWei);
+        }
       }
+
+      console.log(`Using realistic gas price for network ${this.config.chainId}:`, gasPrice.toString(), 'wei');
+      console.log('Expected transaction cost for 100k gas:', ((gasPrice * BigInt(100000)) / BigInt(1000000000000000000)).toString(), 'ETH');
     }
 
     // Use provided gasLimit or throw error (caller should estimate)
@@ -255,16 +296,35 @@ export class Web3Service {
       console.log('[Web3Service.signTransaction] Using unified ethers signer');
       const signer = await this.provider.getSigner();
 
-      const tx = {
+      // Build transaction object with Web3Auth compatibility
+      let tx: any = {
         from: fromAddress,
         to: txParams.to,
         data: txParams.data,
         value: txParams.value || '0x0',
         gasLimit: txParams.gasLimit,
-        gasPrice: gasPrice,
         nonce: nonce,
         chainId: this.config.chainId
       };
+
+      // Check if we should use EIP-1559 format
+      try {
+        const feeData = await this.provider.getFeeData();
+        if (feeData.maxFeePerGas && feeData.maxPriorityFeePerGas) {
+          // Use EIP-1559 transaction format (Web3Auth often prefers this)
+          tx.maxFeePerGas = gasPrice; // Use our calculated gas price as maxFeePerGas
+          tx.maxPriorityFeePerGas = feeData.maxPriorityFeePerGas;
+          console.log('Using EIP-1559 transaction format for signing');
+        } else {
+          // Use legacy transaction format
+          tx.gasPrice = gasPrice;
+          console.log('Using legacy transaction format for signing');
+        }
+      } catch (error) {
+        // Fallback to legacy format
+        tx.gasPrice = gasPrice;
+        console.log('Fallback to legacy transaction format for signing');
+      }
 
       console.log('[Web3Service.signTransaction] Signing transaction via unified approach...');
 
@@ -729,18 +789,59 @@ export class Web3Service {
       }
     }
 
-    // Step 2: Get gas price using ethers provider
+    // Step 2: Use reliable gas price sources instead of trusting unknown providers
     let gasPrice = txParams.gasPrice;
     if (!gasPrice) {
-      try {
-        const feeData = await this.provider.getFeeData();
-        gasPrice = feeData.gasPrice || BigInt(this.config.minGasWei);
-        console.log('Using ethers provider gas price:', gasPrice.toString(), 'wei');
-      } catch (error) {
-        console.warn('Failed to get gas price from ethers provider:', error);
-        gasPrice = BigInt(this.config.minGasWei);
-        console.log('Using fallback minimum gas price:', gasPrice.toString(), 'wei');
+      // Use known-good gas prices for specific networks instead of unreliable provider estimates
+      if (this.config.chainId === 8453) {
+        // Base mainnet: Use reliable external API or hardcoded reasonable values
+        gasPrice = await this.getReliableBaseGasPrice();
+      } else if (this.config.chainId === 84532) {
+        // Base testnet: Use configured max gas price
+        gasPrice = this.getMaxGasPriceInWei();
+      } else {
+        // Other networks: try provider but analyze the units it's returning
+        try {
+          const feeData = await this.provider.getFeeData();
+          console.log('🔍 DEBUGGING: Raw fee data from provider:', {
+            gasPrice: feeData.gasPrice?.toString(),
+            maxFeePerGas: feeData.maxFeePerGas?.toString(),
+            maxPriorityFeePerGas: feeData.maxPriorityFeePerGas?.toString()
+          });
+
+          // Analyze if the provider might be returning gwei instead of wei
+          if (feeData.gasPrice) {
+            const gweiValue = Number(feeData.gasPrice) / 1000000000;
+            const weiValue = Number(feeData.gasPrice);
+            console.log('🔍 DEBUGGING: Provider gas price analysis:');
+            console.log(`  If this is wei: ${weiValue} wei = ${gweiValue} gwei`);
+            console.log(`  If this is gwei: ${weiValue} gwei = ${weiValue * 1000000000} wei`);
+
+            // If the "wei" value is suspiciously small (like 5-50), it's probably gwei
+            if (feeData.gasPrice < this.getMaxGasPriceInWei() && feeData.gasPrice > BigInt(0)) {
+              console.log('🚨 PROVIDER UNIT MISMATCH: Provider likely returning gwei, converting to wei');
+              gasPrice = feeData.gasPrice * BigInt(1000000000); // Convert gwei to wei
+            } else {
+              gasPrice = feeData.gasPrice;
+            }
+          } else {
+            gasPrice = BigInt(this.config.minGasWei);
+          }
+
+          // Final sanity check
+          const MAX_REASONABLE_GAS_PRICE = BigInt(50000000000); // 50 gwei max
+          if (gasPrice > MAX_REASONABLE_GAS_PRICE) {
+            console.log('🚨 GAS PRICE TOO HIGH: Capping at 50 gwei');
+            gasPrice = MAX_REASONABLE_GAS_PRICE;
+          }
+
+        } catch (error) {
+          gasPrice = BigInt(this.config.minGasWei);
+        }
       }
+
+      console.log(`Using realistic gas price for network ${this.config.chainId}:`, gasPrice.toString(), 'wei');
+      console.log('Expected transaction cost for 100k gas:', ((gasPrice * BigInt(100000)) / BigInt(1000000000000000000)).toString(), 'ETH');
     }
 
     // Step 3: Calculate total gas needed (with 20% buffer)
@@ -778,14 +879,32 @@ export class Web3Service {
       // Get the signer from the same ethers provider used for balance reading
       const signer = await this.provider.getSigner();
 
-      // Build transaction object for ethers
-      const tx = {
+      // Build transaction object for ethers with Web3Auth compatibility
+      let tx: any = {
         to: txParams.to,
         data: txParams.data,
         value: txParams.value || '0x0',
-        gasLimit: gasEstimate,
-        gasPrice: gasPrice
+        gasLimit: gasEstimate
       };
+
+      // Check if we should use EIP-1559 format
+      try {
+        const feeData = await this.provider.getFeeData();
+        if (feeData.maxFeePerGas && feeData.maxPriorityFeePerGas) {
+          // Use EIP-1559 transaction format (Web3Auth often prefers this)
+          tx.maxFeePerGas = gasPrice; // Use our calculated gas price as maxFeePerGas
+          tx.maxPriorityFeePerGas = feeData.maxPriorityFeePerGas;
+          console.log('Using EIP-1559 transaction format');
+        } else {
+          // Use legacy transaction format
+          tx.gasPrice = gasPrice;
+          console.log('Using legacy transaction format');
+        }
+      } catch (error) {
+        // Fallback to legacy format
+        tx.gasPrice = gasPrice;
+        console.log('Fallback to legacy transaction format');
+      }
 
       console.log('[Web3Service.fundAndSendTransaction] Transaction params:', tx);
       console.log('[Web3Service.fundAndSendTransaction] Sending transaction via ethers signer...');
@@ -800,6 +919,76 @@ export class Web3Service {
       console.error('[Web3Service.fundAndSendTransaction] Failed to send via ethers, error:', error);
       throw new Error(`Transaction failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
+  }
+
+  /**
+   * Convert gwei to wei using the configured max gas price
+   */
+  private getMaxGasPriceInWei(): bigint {
+    const maxGasPriceGwei = parseFloat(this.config.maxGasPriceGwei);
+    return BigInt(Math.round(maxGasPriceGwei * 1000000000)); // Convert gwei to wei
+  }
+
+  /**
+   * Get reliable gas price for current network using configured RPC endpoint
+   */
+  private async getReliableBaseGasPrice(): Promise<bigint> {
+    try {
+      // Method 1: Use the configured RPC endpoint from environment
+      if (!this.config.rpcUrl) {
+        throw new Error('No RPC URL configured');
+      }
+
+      const response = await fetch(this.config.rpcUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'eth_gasPrice',
+          params: [],
+          id: 1
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.result) {
+          const gasPrice = BigInt(data.result);
+          console.log(`✅ Got gas price from configured RPC (${this.config.rpcUrl}):`, gasPrice.toString(), 'wei');
+
+          // Network-specific sanity checks
+          let maxReasonableGas: bigint;
+          if (this.config.chainId === 8453 || this.config.chainId === 84532) {
+            // Base networks: use configured max gas price
+            maxReasonableGas = this.getMaxGasPriceInWei();
+          } else {
+            // Other networks: cap at 50 gwei
+            maxReasonableGas = BigInt(50000000000); // 50 gwei
+          }
+
+          if (gasPrice <= maxReasonableGas) {
+            return gasPrice;
+          } else {
+            console.warn(`🚨 RPC returned suspicious gas price (${gasPrice} wei > ${maxReasonableGas} wei), using fallback`);
+          }
+        }
+      }
+    } catch (error) {
+      console.warn(`Failed to get gas price from configured RPC (${this.config.rpcUrl}):`, error);
+    }
+
+    // Method 2: Fallback to network-appropriate gas price
+    let fallbackGasPrice: bigint;
+    if (this.config.chainId === 8453 || this.config.chainId === 84532) {
+      // Base networks: use configured max gas
+      fallbackGasPrice = this.getMaxGasPriceInWei();
+    } else {
+      // Other networks: use configured minimum or reasonable default
+      fallbackGasPrice = BigInt(this.config.minGasWei) || BigInt(1000000000); // 1 gwei default
+    }
+
+    console.log(`Using fallback gas price for network ${this.config.chainId}:`, fallbackGasPrice.toString(), 'wei');
+    return fallbackGasPrice;
   }
 
   /**

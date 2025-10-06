@@ -42,6 +42,7 @@ describe('USDCGuide', () => {
     usdcContractAddress: '0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E',
     moonPayApiKey: 'test-api-key',
     minGasWei: '5',
+    maxGasPriceGwei: '0.001',
     basePath: '',
     explorerBaseUrl: 'https://snowtrace.io',
     serviceLink: 'http://localhost:3000'

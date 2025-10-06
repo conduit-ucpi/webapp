@@ -13,6 +13,7 @@ export interface Config {
   contractServiceUrl?: string;
   moonPayApiKey: string;
   minGasWei: string;
+  maxGasPriceGwei: string;
   basePath: string;
   explorerBaseUrl: string;
   serviceLink: string;

@@ -64,6 +64,7 @@ describe('ContractActions - PayoutDateTime', () => {
     rpcUrl: 'https://api.avax-test.network/ext/bc/C/rpc',
     moonPayApiKey: 'test-moonpay-key',
     minGasWei: '5',
+    maxGasPriceGwei: '0.001',
     basePath: '',
     explorerBaseUrl: 'https://testnet.snowtrace.io',
     serviceLink: 'http://localhost:3000'

@@ -62,6 +62,12 @@ export class FarcasterProvider implements AuthProvider {
     this.tokenManager.clearToken();
   }
 
+  async switchWallet(): Promise<any> {
+    // Farcaster frames don't support wallet switching as the user context
+    // is provided by the parent frame
+    throw new Error('Wallet switching is not supported in Farcaster frames');
+  }
+
   getToken(): string | null {
     return this.tokenManager.getToken();
   }

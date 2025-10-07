@@ -12,10 +12,6 @@ export function useSimpleEthers() {
   const { config } = useConfig();
 
   const getWeb3Service = useCallback(async () => {
-    if (!isConnected) {
-      throw new Error('Wallet not connected');
-    }
-
     if (!config) {
       throw new Error('Config not available');
     }
@@ -23,7 +19,7 @@ export function useSimpleEthers() {
     // Get the ethers provider directly from auth
     const ethersProvider = await getEthersProvider();
     if (!ethersProvider) {
-      throw new Error('Ethers provider not available');
+      throw new Error('Wallet not connected');
     }
 
     const { Web3Service } = await import('@/lib/web3');
@@ -38,7 +34,7 @@ export function useSimpleEthers() {
     }
 
     return web3Service;
-  }, [isConnected, config, getEthersProvider]);
+  }, [config, getEthersProvider]);
 
   return {
     provider: null, // Legacy compatibility

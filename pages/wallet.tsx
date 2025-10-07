@@ -184,16 +184,29 @@ export default function Wallet() {
       showWalletUI: !!showWalletUI
     });
 
-    if (!showWalletUI) {
-      alert('Wallet services not available. Please connect with Web3Auth.');
-      return;
+    // Try the programmatic approach first
+    if (showWalletUI) {
+      try {
+        console.log('🔧 Trying programmatic showWalletUI...');
+        await showWalletUI();
+        return;
+      } catch (error) {
+        console.error('🔧 Programmatic wallet UI failed:', error);
+        // Fall through to alternative method
+      }
     }
 
+    // Alternative: Open the Web3Auth wallet management URL directly
+    console.log('🔧 Opening Web3Auth wallet services URL directly...');
+    const walletUrl = 'https://wallet.web3auth.io';
+
+    // Try to open in the same tab (better for wallet connection)
     try {
-      await showWalletUI();
+      window.location.href = walletUrl;
     } catch (error) {
-      console.error('Failed to show wallet services:', error);
-      alert('Failed to open wallet services. Please try again.');
+      // Fallback: open in new tab
+      console.log('🔧 Fallback: opening in new tab');
+      window.open(walletUrl, '_blank');
     }
   };
 
@@ -341,12 +354,12 @@ export default function Wallet() {
               </Button>
               <Button
                 onClick={handleShowWalletServices}
-                disabled={false}
+                disabled={!user}
                 variant="outline"
                 size="sm"
-                title={`User: ${user?.authProvider || 'none'}, showWalletUI: ${!!showWalletUI}`}
+                title={!user ? 'Please connect your wallet first' : 'Open wallet management interface'}
               >
-                Wallet Services (Debug)
+                Wallet Services
               </Button>
             </div>
           </div>

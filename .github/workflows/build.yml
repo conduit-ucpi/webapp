@@ -54,6 +54,7 @@ jobs:
           MAX_GAS_COST_GWEI: ${{ vars.MAX_GAS_COST_GWEI }}
           USDC_GRANT_FOUNDRY_GAS: ${{ vars.USDC_GRANT_FOUNDRY_GAS }}
           DEPOSIT_FUNDS_FOUNDRY_GAS: ${{ vars.DEPOSIT_FUNDS_FOUNDRY_GAS }}
+          GAS_PRICE_BUFFER: ${{ vars.GAS_PRICE_BUFFER }}
           NEYNAR_API_KEY: ${{ secrets.NEYNAR_API_KEY }}
           NEYNAR_API_URL: ${{ vars.NEYNAR_API_URL }}
           WALLETCONNECT_PROJECT_ID: ${{ secrets.WALLETCONNECT_PROJECT_ID }}
@@ -175,6 +176,7 @@ jobs:
             -e MAX_GAS_COST_GWEI="${{ vars.MAX_GAS_COST_GWEI }}" \\
             -e USDC_GRANT_FOUNDRY_GAS="${{ vars.USDC_GRANT_FOUNDRY_GAS }}" \\
             -e DEPOSIT_FUNDS_FOUNDRY_GAS="${{ vars.DEPOSIT_FUNDS_FOUNDRY_GAS }}" \\
+            -e GAS_PRICE_BUFFER="${{ vars.GAS_PRICE_BUFFER }}" \\
             -e NEXT_PUBLIC_BASE_PATH="${{ vars.NEXT_PUBLIC_BASE_PATH }}" \\
             -e EXPLORER_BASE_URL="${{ vars.EXPLORER_BASE_URL }}" \\
             -e PRODUCT_NAME="${{ vars.PRODUCT_NAME }}" \\

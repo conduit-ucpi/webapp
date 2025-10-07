@@ -114,9 +114,11 @@ export function useSimpleEthers() {
     depositToContract: async (contractAddress: string) => {
       console.log('🔧 useSimpleEthers: depositToContract via fundAndSendTransaction');
 
-      // Encode escrow contract deposit function call
-      const { ESCROW_CONTRACT_ABI } = await import('@conduit-ucpi/sdk');
-      const escrowInterface = new ethers.Interface(ESCROW_CONTRACT_ABI);
+      // Encode escrow contract deposit function call using hardcoded ABI
+      const escrowAbi = [
+        "function depositFunds() external"
+      ];
+      const escrowInterface = new ethers.Interface(escrowAbi);
       const data = escrowInterface.encodeFunctionData('depositFunds', []);
 
       const web3Service = await getWeb3Service();

@@ -52,7 +52,7 @@ export class TransactionManager {
       if (!options.gasLimit) {
         try {
           const estimated = await signer.estimateGas(transaction);
-          transaction.gasLimit = estimated + (estimated / BigInt(10)); // Add 10% buffer
+          transaction.gasLimit = estimated;
           console.log(`🔧 TransactionManager: Estimated gas: ${transaction.gasLimit.toString()} gas`);
         } catch (gasError) {
           console.warn('🔧 TransactionManager: Gas estimation failed:', gasError);
@@ -132,7 +132,7 @@ export class TransactionManager {
       if (!options.gasLimit) {
         try {
           const estimated = await contract[methodName].estimateGas(...params, options);
-          options.gasLimit = estimated + (estimated / BigInt(10)); // Add 10% buffer
+          options.gasLimit = estimated;
         } catch (gasError) {
           console.warn('🔧 TransactionManager: Gas estimation failed:', gasError);
         }

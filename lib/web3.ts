@@ -927,12 +927,17 @@ export class Web3Service {
       // Get the signer from the same ethers provider used for balance reading
       const signer = await this.provider.getSigner();
 
+      // Apply gas buffer for transaction execution (not estimation)
+      const gasPriceBuffer = parseFloat(this.config.gasPriceBuffer);
+      const bufferedGasLimit = BigInt(Math.round(Number(gasEstimate) * gasPriceBuffer));
+      console.log(`Applying gas buffer: ${gasEstimate.toString()} → ${bufferedGasLimit.toString()} (${gasPriceBuffer}x)`);
+
       // Build transaction object for ethers with Web3Auth compatibility
       let tx: any = {
         to: txParams.to,
         data: txParams.data,
         value: txParams.value || '0x0',
-        gasLimit: gasEstimate
+        gasLimit: bufferedGasLimit
       };
 
       // Check if we should use EIP-1559 format
@@ -958,14 +963,14 @@ export class Web3Service {
 
       console.log('[Web3Service.fundAndSendTransaction] Transaction params:', tx);
 
-      // Validate transaction cost against MAX_GAS_COST_GWEI limit
+      // Validate transaction cost against MAX_GAS_COST_GWEI limit using buffered gas limit
       let transactionCostWei: bigint;
       if (tx.maxFeePerGas) {
         // EIP-1559 transaction
-        transactionCostWei = tx.maxFeePerGas * gasEstimate;
+        transactionCostWei = tx.maxFeePerGas * bufferedGasLimit;
       } else if (tx.gasPrice) {
         // Legacy transaction
-        transactionCostWei = tx.gasPrice * gasEstimate;
+        transactionCostWei = tx.gasPrice * bufferedGasLimit;
       } else {
         throw new Error('No gas price set for transaction');
       }

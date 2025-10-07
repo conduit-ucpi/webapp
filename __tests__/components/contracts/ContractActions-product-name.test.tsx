@@ -60,6 +60,7 @@ describe('ContractActions - PRODUCT_NAME Environment Variable', () => {
     maxGasCostGwei: '0.15',
     usdcGrantFoundryGas: '150000',
     depositFundsFoundryGas: '150000',
+    gasPriceBuffer: '1',
     basePath: '',
     explorerBaseUrl: 'https://testnet.snowtrace.io',
     serviceLink: 'http://localhost:3000'

@@ -200,13 +200,14 @@ export default function Wallet() {
     console.log('🔧 Opening Web3Auth wallet services URL directly...');
     const walletUrl = 'https://wallet.web3auth.io';
 
-    // Try to open in the same tab (better for wallet connection)
+    // Open in a new tab/window
     try {
-      window.location.href = walletUrl;
+      console.log('🔧 Opening in new tab');
+      window.open(walletUrl, '_blank', 'noopener,noreferrer');
     } catch (error) {
-      // Fallback: open in new tab
-      console.log('🔧 Fallback: opening in new tab');
-      window.open(walletUrl, '_blank');
+      // Fallback: navigate in same window if popup blocked
+      console.log('🔧 Fallback: opening in same window (popup might be blocked)');
+      window.location.href = walletUrl;
     }
   };
 

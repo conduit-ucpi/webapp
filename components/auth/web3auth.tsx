@@ -44,12 +44,19 @@ export function getWeb3AuthProvider(config: any) {
           };
           web3authInstance = new Web3Auth(web3authOptions as any);
 
-          // Configure OpenLogin adapter for mobile redirect support
-          console.log('🔧 Unified provider: Configuring OpenLogin adapter for mobile');
+          // Configure ONLY OpenLogin adapter to prevent auto-detection of MetaMask
+          console.log('🔧 Unified provider: Configuring ONLY OpenLogin adapter to prevent auto-connection');
           if (typeof (web3authInstance as any).configureAdapter === 'function') {
+            // Clear default adapters first
+            const clearMethod = (web3authInstance as any).clearCache || (web3authInstance as any).clearAdapters;
+            if (clearMethod) {
+              clearMethod.call(web3authInstance);
+            }
+
+            // Add only our OpenLogin adapter
             (web3authInstance as any).configureAdapter(web3authConfig.openloginAdapter);
           } else {
-            console.warn('🔧 Unified provider: configureAdapter method not available - using default adapters');
+            console.warn('🔧 Unified provider: configureAdapter method not available - may have auto-detection issues');
           }
 
           // Initialize Web3Auth Modal
@@ -58,7 +65,7 @@ export function getWeb3AuthProvider(config: any) {
           console.log('🔧 Unified provider: Web3Auth initialized successfully');
         }
 
-        // Connect - this will show the modal with all options
+        // Connect - this will show the modal with all options (disable auto-connection)
         console.log('🔧 Unified provider: Opening Web3Auth modal');
         const provider = await web3authInstance.connect();
 

@@ -1,6 +1,6 @@
 import { WALLET_CONNECTORS, WEB3AUTH_NETWORK, Web3AuthOptions } from "@web3auth/modal";
 import { Web3AuthContextConfig } from "@web3auth/modal/react";
-import { CHAIN_NAMESPACES, CustomChainConfig, UX_MODE } from "@web3auth/base";
+import { CHAIN_NAMESPACES, CustomChainConfig, UX_MODE, ADAPTER_EVENTS } from "@web3auth/base";
 import { OpenloginAdapter } from "@web3auth/openlogin-adapter";
 import { getNetworkInfo } from "@/utils/networkUtils";
 import { toHexString } from "@/utils/hexUtils";
@@ -51,7 +51,7 @@ export const createWeb3AuthConfig = (config: {
     privateKeyProvider: undefined, // Will use the default provider
   });
 
-  // Base Web3Auth options (free tier compatible)
+  // Base Web3Auth options (free tier compatible) - disable auto-detection but keep wallet options
   const web3AuthOptions: Web3AuthOptions = {
     clientId: config.web3AuthClientId,
     web3AuthNetwork: config.web3AuthNetwork as any,

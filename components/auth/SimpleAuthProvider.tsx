@@ -5,7 +5,6 @@
 import React, { useState, useEffect } from 'react';
 import { AuthProvider as NewAuthProvider, useAuth as useNewAuth, BackendClient } from '@/lib/auth';
 import { useConfig } from './ConfigProvider';
-import { useSimpleEthers } from '@/hooks/useSimpleEthers';
 import { toUSDCForWeb3 } from '@/utils/validation';
 
 // Create a default auth context value to prevent "context not found" errors
@@ -36,7 +35,7 @@ interface SimpleAuthProviderProps {
 function AuthWrapper({ children }: { children: React.ReactNode }) {
   const newAuth = useNewAuth();
   const backendClient = BackendClient.getInstance();
-  const { fundAndSendTransaction } = useSimpleEthers();
+  const { config } = useConfig();
 
   // Expose the new auth with the old interface
   const authValue = {
@@ -83,8 +82,28 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
       const contractInterface = new ethers.Interface(ESCROW_CONTRACT_ABI);
       const data = contractInterface.encodeFunctionData('claimFunds', []);
 
-      // Use fundAndSendTransaction for the blockchain operation
-      return await fundAndSendTransaction({
+      if (!config) {
+        throw new Error('Config not available');
+      }
+
+      // Get ethers provider directly from auth (avoid circular dependency)
+      const ethersProvider = await newAuth.getEthersProvider();
+      if (!ethersProvider) {
+        throw new Error('Ethers provider not available');
+      }
+
+      // Import and create Web3Service directly (avoid useSimpleEthers hook)
+      const { Web3Service } = await import('@/lib/web3');
+      const web3Service = Web3Service.getInstance(config!);
+
+      // Initialize Web3Service if needed
+      if (!web3Service.isServiceInitialized()) {
+        console.log('🔧 SimpleAuthProvider: Initializing Web3Service for claim');
+        await web3Service.initializeWithEthersProvider(ethersProvider);
+      }
+
+      // Use Web3Service directly for the blockchain operation
+      return await web3Service.fundAndSendTransaction({
         to: contractAddress,
         data,
         value: '0' // No value needed for claiming
@@ -121,8 +140,24 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
       const contractInterface = new ethers.Interface(escrowAbi);
       const data = contractInterface.encodeFunctionData('raiseDispute', []);
 
-      // Step 1: Execute blockchain transaction
-      const txHash = await fundAndSendTransaction({
+      // Get ethers provider directly from auth (avoid circular dependency)
+      const ethersProvider = await newAuth.getEthersProvider();
+      if (!ethersProvider) {
+        throw new Error('Ethers provider not available');
+      }
+
+      // Import and create Web3Service directly (avoid useSimpleEthers hook)
+      const { Web3Service } = await import('@/lib/web3');
+      const web3Service = Web3Service.getInstance(config!);
+
+      // Initialize Web3Service if needed
+      if (!web3Service.isServiceInitialized()) {
+        console.log('🔧 SimpleAuthProvider: Initializing Web3Service for dispute');
+        await web3Service.initializeWithEthersProvider(ethersProvider);
+      }
+
+      // Step 1: Execute blockchain transaction using Web3Service directly
+      const txHash = await web3Service.fundAndSendTransaction({
         to: params.contractAddress,
         data,
         value: '0' // No value needed for raising dispute

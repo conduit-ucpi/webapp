@@ -37,7 +37,7 @@ export const createWeb3AuthConfig = (config: {
     web3AuthNetwork: config.web3AuthNetwork
   });
 
-  // Base Web3Auth options with social logins enabled (no whitelabel features)
+  // Base Web3Auth options with mobile-optimized settings
   const web3AuthOptions: Web3AuthOptions = {
     clientId: config.web3AuthClientId,
     web3AuthNetwork: config.web3AuthNetwork as any,
@@ -45,6 +45,15 @@ export const createWeb3AuthConfig = (config: {
       defaultLanguage: "en",
       mode: "auto" as any,
       modalZIndex: "99999",
+      // Mobile-specific UI optimizations
+      appName: "Conduit UCPI",
+      appUrl: typeof window !== 'undefined' ? window.location.origin : '',
+      theme: {
+        primary: "#0052ff"
+      },
+      uxMode: "redirect", // Use redirect mode for better mobile compatibility
+      logoLight: "https://web3auth.io/images/web3authlog.png",
+      logoDark: "https://web3auth.io/images/web3authlogodark.png",
     },
     // Ensure all wallets are shown by default
     enableLogging: true,

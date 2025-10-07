@@ -32,7 +32,7 @@ interface TransactionSequenceOptions {
   approveUSDC: (contractAddress: string, amount: string) => Promise<string>;
   depositToContract: (contractAddress: string) => Promise<string>;
   getWeb3Service: () => Promise<any>;
-  onProgress?: (step: string, message: string) => void;
+  onProgress?: (step: string, message: string, contractAddress?: string) => void;
 }
 
 /**
@@ -79,6 +79,9 @@ export async function executeContractTransactionSequence(
 
       if (receipt) {
         console.log('🔧 ContractSequence: ✅ Contract creation confirmed. Block:', receipt.blockNumber);
+
+        // Notify UI that contract is created and ready
+        onProgress?.('contract_created', `Your contract is: ${contractAddress}. Depending on your wallet configuration, you may be required to approve transactions.`, contractAddress);
 
         // Additional safety: Ensure nonce has updated after transaction confirmation
         // This prevents the next transaction from using the same nonce
@@ -150,13 +153,14 @@ export async function executeContractTransactionSequence(
       if (receipt) {
         console.log('🔧 ContractSequence: ✅ Deposit confirmed. Block:', receipt.blockNumber);
       } else {
+        // Timeout - transaction may still be pending, this is acceptable
         console.warn('🔧 ContractSequence: ⚠️ Deposit confirmation timed out - transaction may still be pending');
         // Don't fail here - deposit transactions are more tolerant of confirmation delays
-        // The user can check their dashboard to see if the contract was funded
       }
     } catch (waitError) {
-      console.warn('🔧 ContractSequence: ⚠️ Error waiting for deposit confirmation:', waitError);
-      // Don't fail - deposit was likely successful, user can verify on dashboard
+      // Transaction failed - this should cause the sequence to fail
+      console.error('🔧 ContractSequence: ❌ Deposit transaction failed:', waitError);
+      throw new Error(`Deposit transaction failed: ${waitError instanceof Error ? waitError.message : 'Unknown error'}`);
     }
   }
 

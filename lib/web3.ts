@@ -1245,21 +1245,30 @@ export class Web3Service {
     // Function selectors (first 4 bytes of keccak256 hash of function signature)
     const functionSelector = data.slice(0, 10); // '0x' + 8 hex chars = 10 chars total
 
-    // Common function selectors
-    const FUNCTION_SELECTORS = {
-      // depositFunds() - for escrow contract funding
-      'depositFunds': '0x24600fc3', // keccak256("depositFunds()")[:4]
-      // approve(address,uint256) - for USDC token approval
-      'approve': '0x095ea7b3', // keccak256("approve(address,uint256)")[:4]
-      // transfer(address,uint256) - for USDC token transfer
-      'transfer': '0xa9059cbb', // keccak256("transfer(address,uint256)")[:4]
-    };
+    // Dynamically calculate function selectors using ethers.js
+    try {
+      // Define function signatures we want to detect
+      const functionSignatures = {
+        'depositFunds': 'function depositFunds()',
+        'approve': 'function approve(address,uint256)',
+        'transfer': 'function transfer(address,uint256)'
+      };
 
-    // Check against known function selectors
-    for (const [functionName, selector] of Object.entries(FUNCTION_SELECTORS)) {
-      if (functionSelector === selector) {
-        return functionName as 'depositFunds' | 'approve' | 'transfer';
+      // Calculate selectors dynamically
+      for (const [functionName, signature] of Object.entries(functionSignatures)) {
+        const iface = new ethers.Interface([signature]);
+        const func = iface.getFunction(functionName);
+        if (func) {
+          const calculatedSelector = func.selector;
+
+          if (functionSelector === calculatedSelector) {
+            return functionName as 'depositFunds' | 'approve' | 'transfer';
+          }
+        }
       }
+    } catch (error) {
+      console.warn('Error calculating function selectors:', error);
+      // Fallback to unknown if selector calculation fails
     }
 
     return 'unknown';
@@ -1453,13 +1462,26 @@ export class Web3Service {
       if (receipt?.status === 1) {
         console.log(`[Web3Service.waitForTransaction] Transaction confirmed: ${transactionHash}`);
         return receipt;
-      } else {
+      } else if (receipt?.status === 0) {
         console.warn(`[Web3Service.waitForTransaction] Transaction failed: ${transactionHash}`);
-        return null;
+        throw new Error('Transaction failed');
+      } else {
+        console.warn(`[Web3Service.waitForTransaction] Transaction status unknown: ${transactionHash}`);
+        throw new Error('Transaction failed');
       }
     } catch (error) {
-      console.warn(`[Web3Service.waitForTransaction] Transaction confirmation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      return null;
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+      if (errorMessage.includes('Transaction confirmation timeout')) {
+        console.warn(`[Web3Service.waitForTransaction] Transaction confirmation timed out: ${transactionHash}`);
+        return null; // Timeout - return null
+      } else if (errorMessage.includes('Transaction failed')) {
+        console.warn(`[Web3Service.waitForTransaction] Transaction failed: ${transactionHash}`);
+        throw error; // Failed transaction - re-throw the error
+      } else {
+        console.warn(`[Web3Service.waitForTransaction] Transaction confirmation failed: ${errorMessage}`);
+        return null; // Other errors (network issues, etc.) - treat as timeout
+      }
     }
   }
 }

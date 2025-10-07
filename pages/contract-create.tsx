@@ -12,6 +12,7 @@ import WalletInfo from '@/components/ui/WalletInfo';
 import { isValidWalletAddress, toMicroUSDC, toUSDCForWeb3, formatDateTimeWithTZ } from '@/utils/validation';
 import { useContractCreateValidation } from '@/hooks/useContractValidation';
 import { executeContractTransactionSequence } from '@/utils/contractTransactionSequence';
+import { createContractProgressHandler } from '@/utils/contractProgressHandler';
 
 console.log('🔧 ContractCreate: FILE LOADED - imports successful');
 
@@ -365,40 +366,10 @@ export default function ContractCreate() {
           approveUSDC,
           depositToContract,
           getWeb3Service,
-          onProgress: (step, message) => {
-            console.log(`🔧 ContractCreate: ${step} - ${message}`);
-
-            // Update UI based on progress step
-            switch (step) {
-              case 'contract_creation':
-                setLoadingMessage('Step 1 of 4: Creating secure escrow...');
-                break;
-              case 'contract_confirmation':
-                setLoadingMessage('Step 1.5 of 4: Waiting for contract creation to be confirmed...');
-                break;
-              case 'usdc_approval':
-                updatePaymentStep('approve', 'completed');
-                updatePaymentStep('escrow', 'active');
-                setLoadingMessage('Step 2 of 4: Approving USDC transfer...');
-                break;
-              case 'approval_confirmation':
-                setLoadingMessage('Step 2.5 of 4: Waiting for USDC approval to be confirmed...');
-                break;
-              case 'deposit':
-                updatePaymentStep('escrow', 'completed');
-                updatePaymentStep('confirm', 'active');
-                setLoadingMessage('Step 3 of 4: Depositing funds...');
-                break;
-              case 'deposit_confirmation':
-                setLoadingMessage('Step 3.5 of 4: Waiting for deposit to be confirmed...');
-                break;
-              case 'complete':
-                updatePaymentStep('confirm', 'completed');
-                updatePaymentStep('complete', 'completed');
-                setLoadingMessage('Step 4 of 4: Payment complete!');
-                break;
-            }
-          }
+          onProgress: createContractProgressHandler({
+            setLoadingMessage,
+            updatePaymentStep
+          }, 'Step')
         }
       );
 
@@ -829,7 +800,7 @@ export default function ContractCreate() {
                   ))}
                 </div>
                 {loadingMessage && (
-                  <p className="mt-3 text-sm text-gray-600 italic">{loadingMessage}</p>
+                  <p className="mt-3 text-sm text-gray-600 italic whitespace-pre-line">{loadingMessage}</p>
                 )}
               </div>
             )}

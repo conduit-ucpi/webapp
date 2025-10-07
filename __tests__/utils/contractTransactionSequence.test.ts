@@ -114,6 +114,7 @@ describe('executeContractTransactionSequence', () => {
       expect(progressCalls).toEqual([
         'contract_creation',
         'contract_confirmation',
+        'contract_created',
         'usdc_approval',
         'approval_confirmation',
         'deposit',

@@ -49,7 +49,7 @@ describe('Foundry Gas Fallback Tests', () => {
     });
 
     it('should detect depositFunds() function calls', () => {
-      const depositFundsData = '0x24600fc3'; // depositFunds()
+      const depositFundsData = '0xe2c41dbc'; // depositFunds()
       const transactionType = (web3Service as any).detectTransactionType(depositFundsData);
       expect(transactionType).toBe('depositFunds');
     });
@@ -84,7 +84,7 @@ describe('Foundry Gas Fallback Tests', () => {
     });
 
     it('should correctly identify depositFunds function selector', () => {
-      const depositFundsData = '0x24600fc3';
+      const depositFundsData = '0xe2c41dbc';
       const type = (web3Service as any).detectTransactionType(depositFundsData);
       expect(type).toBe('depositFunds');
     });
@@ -112,7 +112,7 @@ describe('Foundry Gas Fallback Tests', () => {
 
   describe('Fallback Selection Logic', () => {
     it('should select DEPOSIT_FUNDS_FOUNDRY_GAS for depositFunds transactions', () => {
-      const depositFundsData = '0x24600fc3';
+      const depositFundsData = '0xe2c41dbc';
       const transactionType = (web3Service as any).detectTransactionType(depositFundsData);
 
       // This would result in using DEPOSIT_FUNDS_FOUNDRY_GAS (85000)

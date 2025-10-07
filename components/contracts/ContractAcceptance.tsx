@@ -8,6 +8,7 @@ import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { formatCurrency, formatDateTimeWithTZ, toUSDCForWeb3 } from '@/utils/validation';
 import { executeContractTransactionSequence } from '@/utils/contractTransactionSequence';
+import { createContractProgressHandler } from '@/utils/contractProgressHandler';
 
 interface ContractAcceptanceProps {
   contract: PendingContract;
@@ -163,34 +164,10 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
             approveUSDC,
             depositToContract,
             getWeb3Service,
-            onProgress: (step, message) => {
-              console.log(`🔧 ContractAcceptance: ${step} - ${message}`);
-
-              // Update UI based on progress step
-              switch (step) {
-                case 'contract_creation':
-                  setLoadingMessage('Step 1 of 3: Creating secure escrow...');
-                  break;
-                case 'contract_confirmation':
-                  setLoadingMessage('Step 1.5 of 3: Waiting for contract creation to be confirmed...');
-                  break;
-                case 'usdc_approval':
-                  setLoadingMessage('Step 2 of 3: Approving USDC transfer...');
-                  break;
-                case 'approval_confirmation':
-                  setLoadingMessage('Step 2.5 of 3: Waiting for USDC approval to be confirmed...');
-                  break;
-                case 'deposit':
-                  setLoadingMessage('Step 3 of 3: Depositing funds...');
-                  break;
-                case 'deposit_confirmation':
-                  setLoadingMessage('Step 3.5 of 3: Waiting for deposit to be confirmed...');
-                  break;
-                case 'complete':
-                  setLoadingMessage('Transaction sequence completed successfully');
-                  break;
-              }
-            }
+            onProgress: createContractProgressHandler({
+              setLoadingMessage,
+              setContractAddress
+            }, 'Step')
           }
         );
 
@@ -242,14 +219,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
     return (
       <div className="flex flex-col items-center justify-center py-8">
         <LoadingSpinner size="lg" />
-        <p className="mt-4 text-gray-600">{loadingMessage}</p>
-        {contractAddress && !isSuccess && (
-          <div className="mt-4 text-center">
-            <p className="text-sm text-gray-500">Your escrow contract ID:</p>
-            <p className="text-xs font-mono text-gray-600 break-all px-4">{contractAddress}</p>
-            <p className="text-xs text-gray-500 mt-1">You may be prompted to approve operations on it</p>
-          </div>
-        )}
+        <p className="mt-4 text-gray-600 whitespace-pre-line">{loadingMessage}</p>
         {isSuccess && (
           <p className="mt-2 text-green-600 font-medium">Contract accepted successfully!</p>
         )}

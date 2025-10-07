@@ -34,19 +34,35 @@ describe('Nonce Collision Prevention - Contract Transaction Sequence', () => {
       waitForTransaction: mockWaitForTransaction
     };
 
-    // Mock contract creation with tracking
-    mockAuthenticatedFetch = jest.fn().mockImplementation(() => {
-      executionLog.push('CONTRACT_CREATION_START');
-      return Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve({
-          contractAddress: '0xContractAddress',
-          transactionHash: '0xContractCreationTx'
-        })
-      }).then(result => {
-        executionLog.push('CONTRACT_CREATION_COMPLETE');
-        return result;
-      });
+    // Mock authenticated fetch with tracking (handles both contract creation and deposit notification)
+    let fetchCallCount = 0;
+    mockAuthenticatedFetch = jest.fn().mockImplementation((url: string) => {
+      fetchCallCount++;
+
+      if (fetchCallCount === 1) {
+        // First call: Contract creation
+        executionLog.push('CONTRACT_CREATION_START');
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            contractAddress: '0xContractAddress',
+            transactionHash: '0xContractCreationTx'
+          })
+        }).then(result => {
+          executionLog.push('CONTRACT_CREATION_COMPLETE');
+          return result;
+        });
+      } else {
+        // Second call: Deposit notification (happens after all transactions)
+        executionLog.push('DEPOSIT_NOTIFICATION_START');
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ success: true })
+        }).then(result => {
+          executionLog.push('DEPOSIT_NOTIFICATION_COMPLETE');
+          return result;
+        });
+      }
     });
 
     // Mock USDC approval with tracking
@@ -106,7 +122,9 @@ describe('Nonce Collision Prevention - Contract Transaction Sequence', () => {
       'DEPOSIT_START',
       'DEPOSIT_COMPLETE',
       'WAIT_START:0xDepositTx',
-      'WAIT_COMPLETE:0xDepositTx'
+      'WAIT_COMPLETE:0xDepositTx',
+      'DEPOSIT_NOTIFICATION_START',
+      'DEPOSIT_NOTIFICATION_COMPLETE'
     ];
 
     expect(executionLog).toEqual(expectedOrder);

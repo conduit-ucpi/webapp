@@ -111,23 +111,55 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
         throw new Error('Contract address, user address, reason, and refund percent are required');
       }
 
-      // Import contract ABI
-      const { ESCROW_CONTRACT_ABI } = await import('@conduit-ucpi/sdk');
+      // Import ethers for encoding
       const { ethers } = await import('ethers');
 
-      // Encode the raiseDispute function call
-      const contractInterface = new ethers.Interface(ESCROW_CONTRACT_ABI);
-      const data = contractInterface.encodeFunctionData('raiseDispute', [
-        params.reason,
-        params.refundPercent
-      ]);
+      // Encode the raiseDispute function call using hardcoded ABI (takes no parameters)
+      const escrowAbi = [
+        "function raiseDispute() external"
+      ];
+      const contractInterface = new ethers.Interface(escrowAbi);
+      const data = contractInterface.encodeFunctionData('raiseDispute', []);
 
-      // Use fundAndSendTransaction for the blockchain operation
-      return await fundAndSendTransaction({
+      // Step 1: Execute blockchain transaction
+      const txHash = await fundAndSendTransaction({
         to: params.contractAddress,
         data,
         value: '0' // No value needed for raising dispute
       });
+
+      // Step 2: Notify contractservice about the dispute (if contract ID is provided)
+      if (params.contract?.id) {
+        console.log('Notifying contractservice about dispute...');
+
+        try {
+          const disputeEntry = {
+            timestamp: Math.floor(Date.now() / 1000),
+            reason: params.reason || 'Dispute raised on blockchain',
+            refundPercent: params.refundPercent || 0
+          };
+
+          const response = await backendClient.authenticatedFetch(`/api/contracts/${params.contract.id}/dispute`, {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(disputeEntry)
+          });
+
+          if (!response.ok) {
+            console.error('Contract service notification failed:', await response.text());
+            // Don't throw - the blockchain transaction succeeded
+          } else {
+            console.log('✅ Contract service notified about dispute');
+          }
+        } catch (error) {
+          console.error('Failed to notify contract service:', error);
+          // Don't throw - the blockchain transaction succeeded
+        }
+      }
+
+      return txHash;
     }
   };
 

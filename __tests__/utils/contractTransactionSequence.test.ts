@@ -65,8 +65,8 @@ describe('executeContractTransactionSequence', () => {
 
       const result = await executeContractTransactionSequence(defaultParams, defaultOptions);
 
-      // Verify the sequence of calls
-      expect(mockAuthenticatedFetch).toHaveBeenCalledTimes(1);
+      // Verify the sequence of calls (1 for contract creation + 1 for deposit notification)
+      expect(mockAuthenticatedFetch).toHaveBeenCalledTimes(2);
       expect(mockWaitForTransaction).toHaveBeenNthCalledWith(1, '0xContractCreationTxHash', 120000);
       expect(mockApproveUSDC).toHaveBeenCalledTimes(1);
       expect(mockWaitForTransaction).toHaveBeenNthCalledWith(2, '0xApprovalTxHash', 120000);

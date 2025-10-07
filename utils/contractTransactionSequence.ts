@@ -162,6 +162,33 @@ export async function executeContractTransactionSequence(
       console.error('🔧 ContractSequence: ❌ Deposit transaction failed:', waitError);
       throw new Error(`Deposit transaction failed: ${waitError instanceof Error ? waitError.message : 'Unknown error'}`);
     }
+
+    // Step 4: Notify contractservice about the deposit
+    console.log('🔧 ContractSequence: Notifying contractservice about deposit...');
+
+    try {
+      const depositNotification = {
+        contractHash: contractAddress // The on-chain contract address
+      };
+
+      const response = await authenticatedFetch('/api/contracts/deposit-notification', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(depositNotification)
+      });
+
+      if (!response.ok) {
+        console.error('Contract service deposit notification failed:', await response.text());
+        // Don't throw - the blockchain transaction succeeded
+      } else {
+        console.log('✅ Contract service notified about deposit');
+      }
+    } catch (error) {
+      console.error('Failed to notify contract service about deposit:', error);
+      // Don't throw - the blockchain transaction succeeded
+    }
   }
 
   onProgress?.('complete', 'Transaction sequence completed successfully');

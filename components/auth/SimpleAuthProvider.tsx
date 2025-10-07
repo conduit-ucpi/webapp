@@ -18,6 +18,7 @@ const defaultAuthValue = {
   disconnect: () => Promise.resolve(),
   switchWallet: () => Promise.resolve(),
   getEthersProvider: () => null,
+  showWalletUI: async () => { throw new Error('Auth not ready'); },
   authenticatedFetch: async () => new Response('{}', { status: 200 }),
   hasVisitedBefore: () => false,
   refreshUserData: async () => {},
@@ -47,6 +48,7 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
     disconnect: newAuth.disconnect,
     switchWallet: newAuth.switchWallet,
     getEthersProvider: newAuth.getEthersProvider,
+    showWalletUI: newAuth.showWalletUI || undefined,
     authenticatedFetch: async (url: string, options?: RequestInit): Promise<Response> => {
       // Use proper backend client with authentication headers
       return backendClient.authenticatedFetch(url, options);
@@ -156,6 +158,7 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
       disconnect: () => Promise.resolve(),
       switchWallet: () => Promise.resolve(),
       getEthersProvider: () => null,
+      showWalletUI: async () => { throw new Error('Auth not ready'); },
       authenticatedFetch: async () => new Response('{}', { status: 200 }),
       hasVisitedBefore: () => false,
       refreshUserData: async () => {},

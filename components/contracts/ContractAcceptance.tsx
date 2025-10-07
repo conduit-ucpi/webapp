@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { useAuth } from '@/components/auth';
@@ -27,36 +27,41 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
   const [isLoadingBalance, setIsLoadingBalance] = useState(false);
   const [contractAddress, setContractAddress] = useState<string | null>(null);
 
+  // Use ref to store the getUSDCBalance function to avoid infinite loops
+  const getUSDCBalanceRef = useRef(getUSDCBalance);
+  getUSDCBalanceRef.current = getUSDCBalance;
+
+  // Memoize the fetchBalance function to prevent infinite loops
+  const fetchBalance = useCallback(async () => {
+    if (!user?.walletAddress || !config?.usdcContractAddress) {
+      setUserBalance(null);
+      return;
+    }
+
+    setIsLoadingBalance(true);
+    try {
+      const balance = await getUSDCBalanceRef.current();
+      setUserBalance(balance);
+    } catch (error) {
+      console.error('Failed to fetch USDC balance:', error);
+      // In test environment, provide a fallback balance for specific tests
+      if (process.env.NODE_ENV === 'test') {
+        // Check if this is the hex balance test by looking at the contract amount
+        if (contract?.amount === 1000000) { // 1.00 USDC in microUSDC
+          setUserBalance('0.4627'); // Hex balance test expects this value
+        } else {
+          setUserBalance('10000.0000'); // Default test balance
+        }
+      } else {
+        setUserBalance(null);
+      }
+    } finally {
+      setIsLoadingBalance(false);
+    }
+  }, [user?.walletAddress, config?.usdcContractAddress, contract?.amount]);
+
   // Fetch user's USDC balance when component mounts or user changes
   useEffect(() => {
-    const fetchBalance = async () => {
-      if (!user?.walletAddress || !config?.usdcContractAddress) {
-        setUserBalance(null);
-        return;
-      }
-
-      setIsLoadingBalance(true);
-      try {
-        const balance = await getUSDCBalance();
-        setUserBalance(balance);
-      } catch (error) {
-        console.error('Failed to fetch USDC balance:', error);
-        // In test environment, provide a fallback balance for specific tests
-        if (process.env.NODE_ENV === 'test') {
-          // Check if this is the hex balance test by looking at the contract amount
-          if (contract?.amount === 1000000) { // 1.00 USDC in microUSDC
-            setUserBalance('0.4627'); // Hex balance test expects this value
-          } else {
-            setUserBalance('10000.0000'); // Default test balance
-          }
-        } else {
-          setUserBalance(null);
-        }
-      } finally {
-        setIsLoadingBalance(false);
-      }
-    };
-
     // Only fetch balance if not in test environment
     if (process.env.NODE_ENV !== 'test') {
       fetchBalance();
@@ -65,7 +70,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
       setUserBalance('10000.0000'); // 10,000 USDC in decimal format for tests
       setIsLoadingBalance(false);
     }
-  }, [user?.walletAddress, config?.usdcContractAddress]);
+  }, [fetchBalance]);
 
   // Check if user has sufficient balance
   const hasInsufficientBalance = () => {

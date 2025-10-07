@@ -35,7 +35,7 @@ interface SendFormData {
 }
 
 export default function Wallet() {
-  const { user, isLoading: authLoading, getEthersProvider } = useAuth();
+  const { user, isLoading: authLoading, getEthersProvider, showWalletUI } = useAuth();
   const { fundAndSendTransaction, getUSDCBalance, getNativeBalance, getUserAddress } = useSimpleEthers();
   const { isInFarcaster } = useFarcaster();
   const { config } = useConfig();
@@ -173,6 +173,20 @@ export default function Wallet() {
       loadChainInfo();
     }
   }, [user, config]);
+
+  const handleShowWalletServices = async () => {
+    if (!showWalletUI) {
+      alert('Wallet services not available. Please connect with Web3Auth.');
+      return;
+    }
+
+    try {
+      await showWalletUI();
+    } catch (error) {
+      console.error('Failed to show wallet services:', error);
+      alert('Failed to open wallet services. Please try again.');
+    }
+  };
 
   const handleSendSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -315,6 +329,15 @@ export default function Wallet() {
                 size="sm"
               >
                 {(isLoadingBalances || isLoadingChainInfo) ? 'Refreshing...' : 'Refresh'}
+              </Button>
+              <Button
+                onClick={handleShowWalletServices}
+                disabled={!user || user.authProvider !== 'web3auth'}
+                variant="outline"
+                size="sm"
+                title={!user || user.authProvider !== 'web3auth' ? 'Wallet services only available with Web3Auth' : 'Open wallet management interface'}
+              >
+                Wallet Services
               </Button>
             </div>
           </div>

@@ -25,6 +25,7 @@ interface AuthContextValue {
   // Blockchain
   provider: ProviderWrapper | null;
   getEthersProvider: () => Promise<any>;
+  showWalletUI?: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);

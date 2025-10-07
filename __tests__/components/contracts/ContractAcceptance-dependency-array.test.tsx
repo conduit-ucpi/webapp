@@ -108,7 +108,7 @@ describe('ContractAcceptance Dependency Array Safety', () => {
     const componentSource = fs.readFileSync(componentPath, 'utf8');
 
     // Verify the specific line we fixed
-    const fixedLine = componentSource.includes('}, [user?.walletAddress, config?.usdcContractAddress]);');
+    const fixedLine = componentSource.includes('}, [user?.walletAddress, config?.usdcContractAddress, contract?.amount]);');
     expect(fixedLine).toBe(true);
 
     // Verify the problematic pattern is NOT present

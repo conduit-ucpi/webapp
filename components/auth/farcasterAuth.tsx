@@ -795,6 +795,9 @@ function FarcasterAuthProviderInner({ children, AuthContext }: {
           );
           
           return syntheticProvider as any;
+        },
+        showWalletUI: async () => {
+          throw new Error('Wallet services not available in Farcaster mode. Please use Web3Auth for wallet management.');
         }
       };
     };
@@ -1181,7 +1184,11 @@ function FarcasterAuthProviderInner({ children, AuthContext }: {
       // Cast as any to be compatible with ethers BrowserProvider interface
       return syntheticProvider as any;
     },
-    
+
+    showWalletUI: async () => {
+      throw new Error('Wallet services not available in Farcaster mode. Please use Web3Auth for wallet management.');
+    },
+
     // Legacy transaction signing - no longer used with unified approach
     signContractTransaction: async (params: any) => {
       throw new Error('Legacy signContractTransaction - use fundAndSendTransaction instead');

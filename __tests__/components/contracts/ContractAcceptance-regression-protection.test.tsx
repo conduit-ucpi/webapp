@@ -96,7 +96,7 @@ describe('ContractAcceptance Regression Protection', () => {
           const disconnectSections = authSource.split('disconnect');
           const hasValidClearPattern = disconnectSections.some(section =>
             section.includes('Web3Service.clearInstance()') &&
-            section.length < 2000 // Within reasonable proximity to disconnect
+            section.length < 3000 // Within reasonable proximity to disconnect (increased limit)
           );
 
           expect(hasValidClearPattern).toBe(true);

@@ -135,6 +135,24 @@ export function getWeb3AuthProvider(config: any) {
       }
       return null;
     },
+    showWalletUI: async () => {
+      if (web3authInstance) {
+        try {
+          console.log('🔧 Unified provider: Opening Web3Auth wallet services UI');
+          // Check if showWalletUi method exists on the instance
+          if (typeof (web3authInstance as any).showWalletUi === 'function') {
+            await (web3authInstance as any).showWalletUi({ show: true });
+          } else {
+            throw new Error('showWalletUi method not available on this Web3Auth instance. Please ensure you are using Web3Auth Modal SDK v10+.');
+          }
+        } catch (error) {
+          console.error('🔧 Unified provider: Failed to show wallet UI:', error);
+          throw error;
+        }
+      } else {
+        throw new Error('Web3Auth not initialized - cannot show wallet UI');
+      }
+    },
     signContractTransaction: async () => '',
     hasVisitedBefore: () => {
       try {

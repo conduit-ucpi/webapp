@@ -43,6 +43,9 @@ export interface SimpleAuthContextType {
   // Direct ethers access (for advanced usage)
   getEthersProvider?: () => Promise<any>;
 
+  // Wallet services access (for wallet management)
+  showWalletUI?: () => Promise<void>;
+
   // Deprecated methods - throw errors directing to useSimpleEthers
   fundContract?: (...args: any[]) => Promise<any>;
   claimFunds?: (...args: any[]) => Promise<any>;

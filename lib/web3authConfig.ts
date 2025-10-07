@@ -1,6 +1,7 @@
 import { WALLET_CONNECTORS, WEB3AUTH_NETWORK, Web3AuthOptions } from "@web3auth/modal";
 import { Web3AuthContextConfig } from "@web3auth/modal/react";
-import { CHAIN_NAMESPACES, CustomChainConfig } from "@web3auth/base";
+import { CHAIN_NAMESPACES, CustomChainConfig, UX_MODE } from "@web3auth/base";
+import { OpenloginAdapter } from "@web3auth/openlogin-adapter";
 import { getNetworkInfo } from "@/utils/networkUtils";
 import { toHexString } from "@/utils/hexUtils";
 
@@ -15,6 +16,7 @@ export const createWeb3AuthConfig = (config: {
 }): {
   web3AuthOptions: Web3AuthOptions;
   chainConfig: CustomChainConfig;
+  openloginAdapter: OpenloginAdapter;
 } => {
   const networkInfo = getNetworkInfo(config.chainId);
 
@@ -37,7 +39,19 @@ export const createWeb3AuthConfig = (config: {
     web3AuthNetwork: config.web3AuthNetwork
   });
 
-  // Base Web3Auth options with mobile-optimized settings
+  // Create OpenLogin adapter with mobile redirect settings (no premium features)
+  const openloginAdapter = new OpenloginAdapter({
+    adapterSettings: {
+      uxMode: UX_MODE.REDIRECT, // Critical: Use redirect mode for mobile
+      network: config.web3AuthNetwork as any,
+    },
+    loginSettings: {
+      mfaLevel: "optional",
+    },
+    privateKeyProvider: undefined, // Will use the default provider
+  });
+
+  // Base Web3Auth options (free tier compatible)
   const web3AuthOptions: Web3AuthOptions = {
     clientId: config.web3AuthClientId,
     web3AuthNetwork: config.web3AuthNetwork as any,
@@ -45,23 +59,14 @@ export const createWeb3AuthConfig = (config: {
       defaultLanguage: "en",
       mode: "auto" as any,
       modalZIndex: "99999",
-      // Mobile-specific UI optimizations
-      appName: "Conduit UCPI",
-      appUrl: typeof window !== 'undefined' ? window.location.origin : '',
-      theme: {
-        primary: "#0052ff"
-      },
-      uxMode: "redirect", // Use redirect mode for better mobile compatibility
-      logoLight: "https://web3auth.io/images/web3authlog.png",
-      logoDark: "https://web3auth.io/images/web3authlogodark.png",
     },
-    // Ensure all wallets are shown by default
     enableLogging: true,
   };
 
-  // Return config
+  // Return config with adapter
   return {
     web3AuthOptions,
-    chainConfig
+    chainConfig,
+    openloginAdapter
   };
 };

@@ -36,7 +36,21 @@ export function getWeb3AuthProvider(config: any) {
             walletConnectProjectId: config.walletConnectProjectId || process.env.WALLETCONNECT_PROJECT_ID
           });
 
-          web3authInstance = new Web3Auth(web3authConfig.web3AuthOptions);
+          // Create Web3Auth instance with mobile-friendly options
+          const web3authOptions = {
+            ...web3authConfig.web3AuthOptions,
+            // Pass chainConfig during initialization for mobile support
+            chainConfig: web3authConfig.chainConfig,
+          };
+          web3authInstance = new Web3Auth(web3authOptions as any);
+
+          // Configure OpenLogin adapter for mobile redirect support
+          console.log('🔧 Unified provider: Configuring OpenLogin adapter for mobile');
+          if (typeof (web3authInstance as any).configureAdapter === 'function') {
+            (web3authInstance as any).configureAdapter(web3authConfig.openloginAdapter);
+          } else {
+            console.warn('🔧 Unified provider: configureAdapter method not available - using default adapters');
+          }
 
           // Initialize Web3Auth Modal
           console.log('🔧 Unified provider: Initializing Web3Auth');

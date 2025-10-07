@@ -698,6 +698,28 @@ export default function ContractCreate() {
                 {errors.description && <p className="text-sm text-red-600 mt-1">{errors.description}</p>}
               </div>
 
+              <div className="bg-gray-50 border border-gray-200 rounded-md p-3">
+                <p className="text-sm text-gray-700">
+                  <strong>Payout Date:</strong>
+                </p>
+                <p className="text-sm text-gray-900">
+                  {(() => {
+                    // Calculate expiry timestamp (same logic as in handleCreateContract)
+                    let expiryTimestamp = Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60); // Default to 7 days
+                    if (epoch_expiry) {
+                      const parsedExpiry = parseInt(epoch_expiry as string, 10);
+                      if (!isNaN(parsedExpiry) && parsedExpiry > Math.floor(Date.now() / 1000)) {
+                        expiryTimestamp = parsedExpiry;
+                      }
+                    }
+                    return formatDateTimeWithTZ(expiryTimestamp);
+                  })()}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Funds will be released to the seller after this date if not disputed
+                </p>
+              </div>
+
               {order_id && (
                 <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
                   <p className="text-sm text-blue-800">
@@ -745,6 +767,22 @@ export default function ContractCreate() {
               <div className="flex justify-between">
                 <span className="text-gray-600">Seller:</span>
                 <span className="text-sm font-mono">{form.seller.slice(0, 6)}...{form.seller.slice(-4)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Payout Date:</span>
+                <span className="font-medium">
+                  {(() => {
+                    // Calculate expiry timestamp (same logic as in handleCreateContract)
+                    let expiryTimestamp = Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60); // Default to 7 days
+                    if (epoch_expiry) {
+                      const parsedExpiry = parseInt(epoch_expiry as string, 10);
+                      if (!isNaN(parsedExpiry) && parsedExpiry > Math.floor(Date.now() / 1000)) {
+                        expiryTimestamp = parsedExpiry;
+                      }
+                    }
+                    return formatDateTimeWithTZ(expiryTimestamp);
+                  })()}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Description:</span>

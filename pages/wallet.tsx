@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/components/auth';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { useSimpleEthers } from '@/hooks/useSimpleEthers';
@@ -134,7 +134,7 @@ export default function Wallet() {
     }
   };
 
-  const loadBalances = async () => {
+  const loadBalances = useCallback(async () => {
     if (!user || !config) {
       console.log('Skipping balance load:', { user: !!user, config: !!config });
       return;
@@ -165,16 +165,25 @@ export default function Wallet() {
     } finally {
       setIsLoadingBalances(false);
     }
-  };
+  }, [user, config, getNativeBalance, getUSDCBalance]);
 
   useEffect(() => {
     if (user && config) {
       loadBalances();
       loadChainInfo();
     }
-  }, [user, config]);
+  }, [user, config, loadBalances]);
 
   const handleShowWalletServices = async () => {
+    console.log('🔧 Wallet Services Debug:', {
+      user: user ? {
+        authProvider: user.authProvider,
+        email: user.email,
+        walletAddress: user.walletAddress
+      } : null,
+      showWalletUI: !!showWalletUI
+    });
+
     if (!showWalletUI) {
       alert('Wallet services not available. Please connect with Web3Auth.');
       return;
@@ -332,12 +341,12 @@ export default function Wallet() {
               </Button>
               <Button
                 onClick={handleShowWalletServices}
-                disabled={!user || user.authProvider !== 'web3auth'}
+                disabled={false}
                 variant="outline"
                 size="sm"
-                title={!user || user.authProvider !== 'web3auth' ? 'Wallet services only available with Web3Auth' : 'Open wallet management interface'}
+                title={`User: ${user?.authProvider || 'none'}, showWalletUI: ${!!showWalletUI}`}
               >
-                Wallet Services
+                Wallet Services (Debug)
               </Button>
             </div>
           </div>

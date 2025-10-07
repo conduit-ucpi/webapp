@@ -1,6 +1,7 @@
 import { useAuth } from '@/components/auth';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { ethers } from 'ethers';
+import { useCallback } from 'react';
 
 /**
  * Simple hook that provides Web3Service for ALL blockchain operations
@@ -10,7 +11,7 @@ export function useSimpleEthers() {
   const { isConnected, getEthersProvider } = useAuth();
   const { config } = useConfig();
 
-  const getWeb3Service = async () => {
+  const getWeb3Service = useCallback(async () => {
     if (!isConnected) {
       throw new Error('Wallet not connected');
     }
@@ -37,7 +38,7 @@ export function useSimpleEthers() {
     }
 
     return web3Service;
-  };
+  }, [isConnected, config, getEthersProvider]);
 
   return {
     provider: null, // Legacy compatibility
@@ -54,21 +55,21 @@ export function useSimpleEthers() {
     },
 
     // Balance methods
-    getUSDCBalance: async (address?: string) => {
+    getUSDCBalance: useCallback(async (address?: string) => {
       console.log('🔧 useSimpleEthers: getUSDCBalance via Web3Service');
       const web3Service = await getWeb3Service();
       const userAddress = address || await web3Service.getUserAddress();
       return await web3Service.getUSDCBalance(userAddress);
-    },
+    }, [getWeb3Service]),
 
-    getNativeBalance: async (address?: string) => {
+    getNativeBalance: useCallback(async (address?: string) => {
       console.log('🔧 useSimpleEthers: getNativeBalance via Web3Service');
       const web3Service = await getWeb3Service();
       const userAddress = address || await web3Service.getUserAddress();
       const provider = await getEthersProvider();
       const balance = await provider.getBalance(userAddress);
       return ethers.formatEther(balance);
-    },
+    }, [getWeb3Service, getEthersProvider]),
 
     // Contract query methods
     getContractInfo: async (contractAddress: string) => {

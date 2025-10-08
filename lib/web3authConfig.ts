@@ -61,10 +61,21 @@ export const createWeb3AuthConfig = (config: {
       modalZIndex: "99999",
     },
     enableLogging: true,
-    // Prevent auto-detection/auto-connection on mobile
+    // Disable problematic connectors on mobile to prevent auto-detection
     ...(typeof window !== 'undefined' && /Mobile|Android|iPhone|iPad/.test(navigator.userAgent) && {
       connectorsModalConfig: {
-        hideWalletDiscovery: false, // Keep wallet options visible
+        hideWalletDiscovery: false, // Keep social options visible
+        connectors: {
+          // Disable MetaMask-specific connectors that auto-detect on mobile
+          [WALLET_CONNECTORS.METAMASK]: {
+            showOnDesktop: true,
+            showOnMobile: false, // Disable MetaMask connector on mobile
+          },
+          [WALLET_CONNECTORS.WALLET_CONNECT_V2]: {
+            showOnDesktop: true,
+            showOnMobile: true, // Keep WalletConnect (user can manually choose MetaMask through it)
+          },
+        }
       }
     }),
   };

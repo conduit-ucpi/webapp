@@ -8,6 +8,7 @@ import { createWeb3AuthConfig } from "@/lib/web3authConfig";
 import { AuthProvider, AuthState, AuthConfig } from '../types';
 import { TokenManager } from '../core/TokenManager';
 import { ethers } from "ethers";
+import { mLog } from '../../../utils/mobileLogger';
 
 export class Web3AuthProvider implements AuthProvider {
   private web3authInstance: Web3Auth | null = null;
@@ -30,27 +31,41 @@ export class Web3AuthProvider implements AuthProvider {
   }
 
   async connect(): Promise<any> {
-    console.log('🔧 Web3AuthProvider: Connect called - initializing Web3Auth modal with all adapters');
+    mLog.info('Web3AuthProvider', 'Connect called - initializing Web3Auth modal with all adapters');
 
     try {
       // Initialize Web3Auth if not already done
       if (!this.web3authInstance) {
-        console.log('🔧 Web3AuthProvider: Creating Web3Auth instance');
+        mLog.info('Web3AuthProvider', 'Creating Web3Auth instance');
         const web3authConfig = createWeb3AuthConfig({
           ...this.config,
           walletConnectProjectId: this.config.walletConnectProjectId || process.env.WALLETCONNECT_PROJECT_ID
         });
 
+        mLog.debug('Web3AuthProvider', 'Config created successfully');
+
         this.web3authInstance = new Web3Auth(web3authConfig.web3AuthOptions);
 
         // Initialize Web3Auth Modal
-        console.log('🔧 Web3AuthProvider: Initializing Web3Auth');
+        mLog.info('Web3AuthProvider', 'Initializing Web3Auth');
         await this.web3authInstance.init();
-        console.log('🔧 Web3AuthProvider: Web3Auth initialized successfully');
+        mLog.info('Web3AuthProvider', 'Web3Auth initialized successfully');
+
+        // Log current connection state after init
+        mLog.debug('Web3AuthProvider', 'Post-init state check', {
+          connected: this.web3authInstance.connected,
+          hasProvider: !!this.web3authInstance.provider
+        });
+      }
+
+      // Check if already connected after init (auto-connect behavior)
+      if (this.web3authInstance.connected) {
+        mLog.warn('Web3AuthProvider', 'Already connected after init - auto-connect occurred!');
+        return this.web3authInstance.provider;
       }
 
       // Connect - this will show the modal with all options
-      console.log('🔧 Web3AuthProvider: Opening Web3Auth modal');
+      mLog.info('Web3AuthProvider', 'Opening Web3Auth modal');
       const provider = await this.web3authInstance.connect();
 
       if (!provider) {

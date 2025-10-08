@@ -81,7 +81,7 @@ export const createWeb3AuthConfig = (config: {
       modalZIndex: "99999",
     },
     enableLogging: true,
-    sessionTime: 86400,
+    sessionTime: 86400
   };
 
   mLog.debug('Web3AuthConfig', 'Web3Auth options created', {

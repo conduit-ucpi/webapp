@@ -59,9 +59,22 @@ export class Web3AuthProvider implements AuthProvider {
 
         // If auto-connected, logout to force modal choice
         if (this.web3authInstance.connected) {
-          mLog.warn('Web3AuthProvider', 'Auto-connected detected - logging out to show modal choice');
-          await this.web3authInstance.logout();
-          mLog.info('Web3AuthProvider', 'Logged out, will now show modal for user choice');
+          mLog.warn('Web3AuthProvider', 'Auto-connected detected - checking if logout is needed');
+
+          // Only logout if there's actually a provider (real connection)
+          if (this.web3authInstance.provider) {
+            mLog.info('Web3AuthProvider', 'Real connection detected, logging out to show modal choice');
+            try {
+              await this.web3authInstance.logout();
+              mLog.info('Web3AuthProvider', 'Logged out successfully, will now show modal for user choice');
+            } catch (logoutError) {
+              mLog.warn('Web3AuthProvider', 'Logout failed, continuing anyway', {
+                error: logoutError instanceof Error ? logoutError.message : String(logoutError)
+              });
+            }
+          } else {
+            mLog.info('Web3AuthProvider', 'False positive connection (no provider), continuing to modal');
+          }
         }
       }
 

@@ -16,7 +16,7 @@ export function getWeb3AuthProvider(config: any) {
   return {
     initialize: async () => {
       console.log('🔧 Unified provider: Initialize called');
-      // Don't pre-initialize to save resources
+      // Mobile redirect completion is handled by AuthManager.restoreSession()
     },
     dispose: async () => {
       if (web3authInstance) {
@@ -97,10 +97,38 @@ export function getWeb3AuthProvider(config: any) {
           await web3authInstance.logout();
         }
 
-        // CRITICAL: Force modal to show without auto-selecting MetaMask
-        console.log('🔧 Unified provider: Connecting with Modal - should prevent auto-selection');
+        // CRITICAL: Handle mobile vs desktop connection differently
+        console.log('🔧 Unified provider: Connecting with Modal');
 
-        const provider = await web3authInstance.connect();
+        const isMobileDevice = /Mobile|Android|iPhone|iPad/.test(navigator.userAgent);
+        let provider;
+
+        if (isMobileDevice) {
+          console.log('🔧 Unified provider: Mobile connection - checking for existing session first');
+
+          // On mobile, check if we're already connected (returning from redirect)
+          if (web3authInstance.status === 'connected' && web3authInstance.provider) {
+            console.log('🔧 Unified provider: Already connected on mobile - using existing provider');
+            provider = web3authInstance.provider;
+          } else {
+            console.log('🔧 Unified provider: Starting mobile connection');
+
+            // For mobile, check if we have redirect parameters indicating a completed auth
+            const urlParams = new URLSearchParams(window.location.search);
+            const hasAuthParams = urlParams.has('code') || urlParams.has('state') || urlParams.has('access_token');
+
+            if (hasAuthParams) {
+              console.log('🔧 Unified provider: Mobile redirect detected - attempting to complete authentication');
+              // Web3Auth should automatically handle the redirect completion
+              provider = await web3authInstance.connect();
+            } else {
+              console.log('🔧 Unified provider: Starting new mobile authentication flow');
+              provider = await web3authInstance.connect();
+            }
+          }
+        } else {
+          provider = await web3authInstance.connect();
+        }
 
         if (!provider) {
           throw new Error('No provider returned from Web3Auth');

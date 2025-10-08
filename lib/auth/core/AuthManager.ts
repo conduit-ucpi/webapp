@@ -226,13 +226,56 @@ export class AuthManager {
   }
 
   private async restoreSession(): Promise<void> {
+    // MOBILE ENHANCEMENT: Check for redirect parameters indicating completed auth (even without stored token)
+    const isMobile = typeof window !== 'undefined' && /Mobile|Android|iPhone|iPad/.test(navigator.userAgent);
+    const hasRedirectParams = typeof window !== 'undefined' &&
+      (window.location.search.includes('code=') ||
+       window.location.search.includes('state=') ||
+       window.location.search.includes('access_token='));
+
+    if (isMobile && hasRedirectParams) {
+      console.log('🔧 AuthManager: Mobile redirect detected - attempting to complete authentication');
+
+      // Try to connect with the primary provider to complete the mobile flow
+      const providers = this.providerRegistry.getAllProviders();
+      const primaryProvider = providers.find(p => p.getProviderName().includes('web3auth'));
+
+      if (primaryProvider) {
+        try {
+          console.log('🔧 AuthManager: Attempting mobile auth completion with Web3Auth');
+          const result = await primaryProvider.connect();
+          if (result.success) {
+            this.currentProvider = primaryProvider;
+            this.setState({
+              isConnected: true,
+              token: result.token,
+              user: result.user,
+              providerName: primaryProvider.getProviderName()
+            });
+            console.log('🔧 AuthManager: ✅ Mobile authentication completed successfully');
+
+            // Clean up URL parameters
+            if (typeof window !== 'undefined') {
+              const url = new URL(window.location.href);
+              url.searchParams.delete('code');
+              url.searchParams.delete('state');
+              url.searchParams.delete('access_token');
+              window.history.replaceState({}, '', url.toString());
+            }
+            return;
+          }
+        } catch (error) {
+          console.warn('🔧 AuthManager: Mobile auth completion failed:', error);
+        }
+      }
+    }
+
     // Check if we have a stored token and try to restore session
     const token = this.tokenManager.getToken();
     if (token) {
       console.log('🔧 AuthManager: Found stored token, attempting to restore session');
-      // Implementation depends on backend integration
-      // For now, we'll just check if any provider thinks it's connected
 
+      // Standard session restoration
       const providers = this.providerRegistry.getAllProviders();
       for (const provider of providers) {
         if (provider.isConnected()) {

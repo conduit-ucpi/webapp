@@ -6,6 +6,8 @@ import { ethers } from "ethers";
 import { mLog } from "@/utils/mobileLogger";
 
 let web3authInstance: Web3Auth | null = null;
+let connectionInProgress = false;
+let lastSignatureRequest: { message: string; timestamp: number } | null = null;
 
 /**
  * Unified provider using Web3Auth Modal with all adapters
@@ -32,8 +34,21 @@ export function getWeb3AuthProvider(config: any) {
       mLog.debug('Web3AuthProvider', 'Current connection state', {
         url: window.location.href,
         web3authStatus: web3authInstance?.status,
-        hasInstance: !!web3authInstance
+        hasInstance: !!web3authInstance,
+        connectionInProgress
       });
+
+      // Prevent duplicate connection attempts
+      if (connectionInProgress) {
+        mLog.warn('Web3AuthProvider', 'Connection already in progress, rejecting duplicate request');
+        return {
+          success: false,
+          error: 'Connection already in progress'
+        };
+      }
+
+      connectionInProgress = true;
+      mLog.debug('Web3AuthProvider', 'Connection state set to in progress');
 
       try {
         // Initialize Web3Auth if not already done
@@ -194,25 +209,64 @@ export function getWeb3AuthProvider(config: any) {
         // Check if this is a social login (has email) or wallet connection
         if (user.email || user.idToken) {
           // Social login - use the idToken
-          console.log('🔧 Unified provider: Social login detected, using idToken');
+          mLog.info('Web3AuthProvider', 'Social login detected, using idToken');
           authToken = user.idToken || `social:${address}`;
         } else {
           // Wallet connection - generate signature auth token
-          console.log('🔧 Unified provider: Wallet connection detected, generating signature');
+          mLog.info('Web3AuthProvider', 'Wallet connection detected, generating signature');
           const timestamp = Date.now();
           const nonce = Math.random().toString(36).substring(2, 15);
           const message = `Authenticate wallet ${address} at ${timestamp} with nonce ${nonce}`;
-          const signature = await signer.signMessage(message);
 
-          authToken = btoa(JSON.stringify({
-            type: 'signature_auth',
-            walletAddress: address,
+          // Check for duplicate signature requests
+          if (lastSignatureRequest &&
+              lastSignatureRequest.message === message &&
+              (Date.now() - lastSignatureRequest.timestamp) < 30000) { // 30 second window
+            mLog.error('Web3AuthProvider', 'Duplicate signature request detected', {
+              currentMessage: message,
+              lastMessage: lastSignatureRequest.message,
+              timeDiff: Date.now() - lastSignatureRequest.timestamp
+            });
+            throw new Error('Duplicate signature request - please wait before trying again');
+          }
+
+          mLog.debug('Web3AuthProvider', 'About to request signature', {
             message,
-            signature,
             timestamp,
             nonce,
-            issuer: 'web3auth_unified'
-          }));
+            address
+          });
+
+          // Record this signature request
+          lastSignatureRequest = { message, timestamp: Date.now() };
+
+          try {
+            const signature = await signer.signMessage(message);
+            mLog.debug('Web3AuthProvider', 'Signature obtained successfully', {
+              signatureLength: signature.length,
+              signaturePreview: signature.substring(0, 20) + '...'
+            });
+
+            authToken = btoa(JSON.stringify({
+              type: 'signature_auth',
+              walletAddress: address,
+              message,
+              signature,
+              timestamp,
+              nonce,
+              issuer: 'web3auth_unified'
+            }));
+
+            mLog.debug('Web3AuthProvider', 'Auth token created', {
+              tokenLength: authToken.length
+            });
+          } catch (signError) {
+            mLog.error('Web3AuthProvider', 'Signature generation failed', {
+              error: signError instanceof Error ? signError.message : String(signError),
+              stack: signError instanceof Error ? signError.stack : undefined
+            });
+            throw signError;
+          }
         }
 
         // Authenticate with backend
@@ -264,6 +318,12 @@ export function getWeb3AuthProvider(config: any) {
 
         // Force flush logs on success
         await mLog.forceFlush();
+
+        // Clear connection state on success
+        connectionInProgress = false;
+        lastSignatureRequest = null;
+        mLog.debug('Web3AuthProvider', 'Connection state cleared after success');
+
         return result;
 
       } catch (error) {
@@ -281,26 +341,44 @@ export function getWeb3AuthProvider(config: any) {
 
         // Force flush logs on error
         await mLog.forceFlush();
+
+        // Clear connection state on error
+        connectionInProgress = false;
+        lastSignatureRequest = null;
+        mLog.debug('Web3AuthProvider', 'Connection state cleared after error');
+
         return errorResult;
+      } finally {
+        // Ensure connection state is always cleared
+        connectionInProgress = false;
+        lastSignatureRequest = null;
       }
     },
     disconnect: async () => {
+      mLog.info('Web3AuthProvider', 'Starting disconnect process');
+
+      // Clear connection state immediately
+      connectionInProgress = false;
+      lastSignatureRequest = null;
+
       await backendAuth.logout();
 
       // Clear Web3Service singleton to ensure fresh provider on next login
       try {
         const { Web3Service } = await import('@/lib/web3');
         Web3Service.clearInstance();
-        console.log('🔧 Unified provider: Cleared Web3Service singleton');
+        mLog.debug('Web3AuthProvider', 'Cleared Web3Service singleton');
       } catch (error) {
-        console.warn('Could not clear Web3Service singleton:', error);
+        mLog.warn('Web3AuthProvider', 'Could not clear Web3Service singleton', { error });
       }
 
       if (web3authInstance) {
-        console.log('🔧 Unified provider: Disconnecting Web3Auth');
+        mLog.info('Web3AuthProvider', 'Disconnecting Web3Auth');
         await web3authInstance.logout();
         web3authInstance = null;
       }
+
+      mLog.info('Web3AuthProvider', 'Disconnect completed');
     },
     getToken: () => backendAuth.getToken(),
     signMessage: async (message: string) => {

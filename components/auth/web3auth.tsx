@@ -1,4 +1,5 @@
 import { Web3Auth } from "@web3auth/modal";
+import { WALLET_ADAPTERS } from "@web3auth/base";
 import { createWeb3AuthConfig } from "@/lib/web3authConfig";
 import { BackendAuth } from "./backendAuth";
 import { ethers } from "ethers";
@@ -69,10 +70,13 @@ export function getWeb3AuthProvider(config: any) {
             console.warn('🔧 Unified provider: configureAdapter method not available - may have auto-detection issues');
           }
 
-          // Initialize Web3Auth Modal
-          console.log('🔧 Unified provider: Initializing Web3Auth');
+          // Initialize Web3Auth Modal with proper modalConfig to prevent auto-detection
+          console.log('🔧 Unified provider: Initializing Web3Auth with modalConfig');
+
+          // Use init() instead of initModal() - simpler approach
           await web3authInstance.init();
-          console.log('🔧 Unified provider: Web3Auth initialized successfully');
+
+          console.log('🔧 Unified provider: Web3Auth initialized successfully with modalConfig');
 
           // Restore MetaMask after initialization (mobile only)
           if (isMobile && originalEthereum) {
@@ -90,7 +94,20 @@ export function getWeb3AuthProvider(config: any) {
           await web3authInstance.logout();
         }
 
-        const provider = await web3authInstance.connect();
+        // On mobile, force connection to OpenLogin (social logins) to avoid MetaMask auto-detection
+        let provider;
+        const isMobileDevice = /Mobile|Android|iPhone|iPad/.test(navigator.userAgent);
+        if (isMobileDevice) {
+          console.log('🔧 Unified provider: Mobile detected - using OpenLogin to avoid MetaMask auto-detection');
+          try {
+            provider = await (web3authInstance as any).connectTo("openlogin");
+          } catch (error) {
+            console.warn('🔧 Unified provider: OpenLogin connectTo failed, falling back to regular connect:', error);
+            provider = await web3authInstance.connect();
+          }
+        } else {
+          provider = await web3authInstance.connect();
+        }
 
         if (!provider) {
           throw new Error('No provider returned from Web3Auth');

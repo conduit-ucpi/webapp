@@ -51,7 +51,7 @@ export const createWeb3AuthConfig = (config: {
     privateKeyProvider: undefined, // Will use the default provider
   });
 
-  // Base Web3Auth options (free tier compatible) - prevent auto-redirect but keep options
+  // Base Web3Auth options (free tier compatible) - clean config
   const web3AuthOptions: Web3AuthOptions = {
     clientId: config.web3AuthClientId,
     web3AuthNetwork: config.web3AuthNetwork as any,
@@ -61,23 +61,6 @@ export const createWeb3AuthConfig = (config: {
       modalZIndex: "99999",
     },
     enableLogging: true,
-    // Disable problematic connectors on mobile to prevent auto-detection
-    ...(typeof window !== 'undefined' && /Mobile|Android|iPhone|iPad/.test(navigator.userAgent) && {
-      connectorsModalConfig: {
-        hideWalletDiscovery: false, // Keep social options visible
-        connectors: {
-          // Disable MetaMask-specific connectors that auto-detect on mobile
-          [WALLET_CONNECTORS.METAMASK]: {
-            showOnDesktop: true,
-            showOnMobile: false, // Disable MetaMask connector on mobile
-          },
-          [WALLET_CONNECTORS.WALLET_CONNECT_V2]: {
-            showOnDesktop: true,
-            showOnMobile: true, // Keep WalletConnect (user can manually choose MetaMask through it)
-          },
-        }
-      }
-    }),
   };
 
   // Return config with adapter

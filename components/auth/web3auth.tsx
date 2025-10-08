@@ -33,13 +33,27 @@ export function getWeb3AuthProvider(config: any) {
         if (!web3authInstance) {
           console.log('🔧 Unified provider: Creating Web3Auth instance');
 
-          // CRITICAL: Hide MetaMask from Web3Auth during initialization (MOBILE ONLY)
+          // MOBILE-SPECIFIC: Prevent deep link interception
           const isMobile = /Mobile|Android|iPhone|iPad/.test(navigator.userAgent);
-          const originalEthereum = (window as any).ethereum;
 
-          if (isMobile && originalEthereum) {
-            console.log('🔧 Unified provider: Mobile detected - temporarily hiding window.ethereum to prevent auto-detection');
-            delete (window as any).ethereum;
+          if (isMobile) {
+            console.log('🔧 Unified provider: Mobile detected - setting up deep link prevention');
+
+            // Intercept and prevent metamask:// and other wallet deep links
+            const originalOpen = window.open;
+            const originalLocation = window.location;
+
+            // Override window.open to prevent wallet app launches
+            window.open = function(url?: string | URL, target?: string, features?: string) {
+              if (typeof url === 'string' && (url.includes('metamask://') || url.includes('wallet://') || url.includes('wc:'))) {
+                console.log('🔧 Unified provider: Blocked deep link:', url);
+                return null;
+              }
+              return originalOpen.call(window, url, target, features);
+            };
+
+            // Store original to restore later
+            (window as any)._originalOpen = originalOpen;
           }
 
           const web3authConfig = createWeb3AuthConfig({
@@ -76,13 +90,7 @@ export function getWeb3AuthProvider(config: any) {
           // Use init() instead of initModal() - simpler approach
           await web3authInstance.init();
 
-          console.log('🔧 Unified provider: Web3Auth initialized successfully with modalConfig');
-
-          // Restore MetaMask after initialization (mobile only)
-          if (isMobile && originalEthereum) {
-            console.log('🔧 Unified provider: Restoring window.ethereum after initialization');
-            (window as any).ethereum = originalEthereum;
-          }
+          console.log('🔧 Unified provider: Web3Auth initialized successfully');
         }
 
         // Connect - force showing modal without auto-connection
@@ -165,6 +173,13 @@ export function getWeb3AuthProvider(config: any) {
     },
     disconnect: async () => {
       await backendAuth.logout();
+
+      // Restore original window.open if we overrode it
+      if ((window as any)._originalOpen) {
+        console.log('🔧 Unified provider: Restoring original window.open');
+        window.open = (window as any)._originalOpen;
+        delete (window as any)._originalOpen;
+      }
 
       // Clear Web3Service singleton to ensure fresh provider on next login
       try {

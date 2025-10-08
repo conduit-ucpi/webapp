@@ -70,35 +70,58 @@ export class Web3AuthProvider implements AuthProvider {
       const provider = await this.web3authInstance.connect();
 
       if (!provider) {
+        mLog.error('Web3AuthProvider', 'No provider returned from Web3Auth');
         throw new Error('No provider returned from Web3Auth');
       }
 
-      console.log('🔧 Web3AuthProvider: Connected, getting user info');
+      mLog.info('Web3AuthProvider', 'Connected successfully, getting user info');
 
       // Get user info and determine auth method
       const user = await this.web3authInstance.getUserInfo();
+      mLog.debug('Web3AuthProvider', 'User info retrieved', {
+        hasEmail: !!user.email,
+        hasIdToken: !!user.idToken,
+        authMethod: user.email ? 'social' : 'wallet'
+      });
 
       // Create and cache the ethers provider (SINGLE INSTANCE)
       this.cachedEthersProvider = new ethers.BrowserProvider(provider);
-      console.log('🔧 Web3AuthProvider: Created and cached single ethers provider instance');
+      mLog.info('Web3AuthProvider', 'Created and cached single ethers provider instance');
 
       const signer = await this.cachedEthersProvider.getSigner();
       const address = await signer.getAddress();
+      mLog.debug('Web3AuthProvider', 'Got wallet address', { address });
 
       let authToken: string;
 
       // Check if this is a social login (has email) or wallet connection
       if (user.email || user.idToken) {
         // Social login - use the idToken
-        console.log('🔧 Web3AuthProvider: Social login detected, using idToken');
+        mLog.info('Web3AuthProvider', 'Social login detected, using idToken');
         authToken = user.idToken || `social:${address}`;
       } else {
         // Wallet connection - generate signature auth token
-        console.log('🔧 Web3AuthProvider: Wallet connection detected, generating signature');
+        mLog.info('Web3AuthProvider', 'Wallet connection detected, generating signature');
         const timestamp = Date.now();
         const nonce = Math.random().toString(36).substring(2, 15);
         const message = `Authenticate wallet ${address} at ${timestamp} with nonce ${nonce}`;
-        const signature = await signer.signMessage(message);
+
+        mLog.debug('Web3AuthProvider', 'Requesting signature from wallet', {
+          message,
+          timestamp,
+          nonce
+        });
+
+        let signature: string;
+        try {
+          signature = await signer.signMessage(message);
+          mLog.info('Web3AuthProvider', 'Signature received successfully');
+        } catch (signError) {
+          mLog.error('Web3AuthProvider', 'Signature failed', {
+            error: signError instanceof Error ? signError.message : String(signError)
+          });
+          throw signError;
+        }
 
         authToken = btoa(JSON.stringify({
           type: 'signature_auth',

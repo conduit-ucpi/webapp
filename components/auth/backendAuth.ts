@@ -2,11 +2,13 @@
  * Backend authentication handler
  * This class handles the actual backend verification of tokens and wallet addresses
  * It doesn't know or care whether the token came from Farcaster or Web3Auth
- * 
+ *
  * Authentication strategy:
  * - Web browsers: Use http-only cookies (secure, automatic)
  * - Farcaster frames: May need to use Authorization header with token if cookies don't work
  */
+
+import { mLog } from '../../utils/mobileLogger';
 
 export interface BackendUser {
   userId: string;
@@ -69,16 +71,24 @@ export class BackendAuth {
    * Login with a token and wallet address
    * The token could be from Farcaster (JWT) or Web3Auth (idToken)
    * Stores the token for use in all subsequent backend requests
-   * 
+   *
    * @param token - Authentication token (JWT from Farcaster or idToken from Web3Auth)
    * @param walletAddress - User's wallet address
    * @returns Backend user data or error
    */
   async login(token: string, walletAddress: string): Promise<BackendAuthResult> {
+    mLog.info('BackendAuth', 'Starting login process');
+    mLog.debug('BackendAuth', 'Login request details', {
+      tokenLength: token.length,
+      walletAddress,
+      tokenPreview: token.substring(0, 20) + '...'
+    });
+
     try {
       // Store the token for future requests
       this.authToken = token;
-      
+      mLog.debug('BackendAuth', 'Token stored for future requests');
+
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         credentials: 'include', // Include cookies if they work
@@ -86,24 +96,44 @@ export class BackendAuth {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ 
-          address: walletAddress 
+        body: JSON.stringify({
+          address: walletAddress
         })
       });
-      
+
+      mLog.debug('BackendAuth', 'Received login response', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok
+      });
+
       if (!response.ok) {
         // Clear token on failure
         this.authToken = null;
         const errorData = await response.json().catch(() => ({}));
-        return {
+        const errorResult = {
           success: false,
           error: errorData.error || `Login failed with status ${response.status}`
         };
+
+        mLog.error('BackendAuth', 'Login failed', {
+          status: response.status,
+          error: errorResult.error,
+          errorData
+        });
+
+        return errorResult;
       }
-      
+
       const userData = await response.json();
-      
-      return {
+      mLog.debug('BackendAuth', 'Login successful, received user data', {
+        hasUserId: !!userData.userId,
+        hasEmail: !!userData.email,
+        hasWalletAddress: !!userData.walletAddress,
+        userType: userData.userType
+      });
+
+      const result = {
         success: true,
         user: {
           userId: userData.userId,
@@ -113,11 +143,18 @@ export class BackendAuth {
           ...userData // Include any other fields
         }
       };
-      
+
+      mLog.info('BackendAuth', 'Login completed successfully');
+      return result;
+
     } catch (error) {
       // Clear token on error
       this.authToken = null;
-      console.error('Backend login error:', error);
+      mLog.error('BackendAuth', 'Login error', {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      });
+
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Backend login failed'

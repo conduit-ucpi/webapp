@@ -71,7 +71,7 @@ export class AuthManager {
    * Connect using the best available provider
    */
   async connect(preferredProvider?: ProviderType): Promise<AuthResult> {
-    console.log('🔧 AuthManager: Starting connection process');
+    mLog.info('AuthManager', 'Starting connection process', { preferredProvider });
 
     try {
       this.setState({ isLoading: true, error: null });
@@ -82,10 +82,14 @@ export class AuthManager {
         : this.providerRegistry.getBestProvider();
 
       if (!provider) {
+        mLog.error('AuthManager', 'No auth provider available');
         throw new Error('No auth provider available');
       }
 
-      console.log(`🔧 AuthManager: Using provider: ${provider.getProviderName()}`);
+      mLog.info('AuthManager', 'Using provider', { providerName: provider.getProviderName() });
+
+      // Force flush logs before connecting (in case connection hangs)
+      await mLog.forceFlush();
 
       // Connect with the provider
       const providerResult = await provider.connect();
@@ -93,13 +97,26 @@ export class AuthManager {
       // Store the successful provider
       this.currentProvider = provider;
 
+      mLog.debug('AuthManager', 'Provider connect completed', {
+        hasResult: !!providerResult,
+        resultType: typeof providerResult,
+        hasSuccess: providerResult && typeof providerResult === 'object' && 'success' in providerResult
+      });
+
       // Check if the provider returned an AuthResult or just the raw provider
       let result: AuthResult;
       if (providerResult && typeof providerResult === 'object' && 'success' in providerResult) {
         // Provider returned an AuthResult object (mobile case)
+        mLog.debug('AuthManager', 'Using AuthResult from provider', {
+          success: providerResult.success,
+          hasToken: !!providerResult.token,
+          hasUser: !!providerResult.user,
+          error: providerResult.error
+        });
         result = providerResult;
       } else {
         // Provider returned the raw Web3Auth provider (normal case)
+        mLog.debug('AuthManager', 'Creating AuthResult from raw provider');
         result = {
           success: true,
           provider: providerResult,
@@ -116,21 +133,35 @@ export class AuthManager {
         providerName: provider.getProviderName()
       });
 
-      console.log('🔧 AuthManager: ✅ Connection successful');
+      mLog.info('AuthManager', '✅ Connection successful', {
+        hasToken: !!result.token,
+        hasUser: !!result.user,
+        providerName: provider.getProviderName()
+      });
+
+      // Force flush logs after successful connection
+      await mLog.forceFlush();
       return result;
 
     } catch (error) {
-      console.error('🔧 AuthManager: ❌ Connection failed:', error);
+      mLog.error('AuthManager', '❌ Connection failed', {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      });
 
       this.setState({
         isLoading: false,
         error: error instanceof Error ? error.message : 'Connection failed'
       });
 
-      return {
+      const errorResult = {
         success: false,
         error: error instanceof Error ? error.message : 'Connection failed'
       };
+
+      // Force flush logs on error
+      await mLog.forceFlush();
+      return errorResult;
     }
   }
 

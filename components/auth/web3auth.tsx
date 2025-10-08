@@ -38,9 +38,10 @@ export function getWeb3AuthProvider(config: any) {
       try {
         // Initialize Web3Auth if not already done
         if (!web3authInstance) {
-          console.log('🔧 Unified provider: Creating Web3Auth instance');
+          mLog.info('Web3AuthProvider', 'Creating Web3Auth instance');
 
 
+          mLog.debug('Web3AuthProvider', 'Creating Web3Auth config');
           const web3authConfig = createWeb3AuthConfig({
             ...config,
             walletConnectProjectId: config.walletConnectProjectId || process.env.WALLETCONNECT_PROJECT_ID
@@ -53,22 +54,31 @@ export function getWeb3AuthProvider(config: any) {
             chainConfig: web3authConfig.chainConfig,
           };
 
+          mLog.debug('Web3AuthProvider', 'Web3Auth config created', {
+            clientId: web3authOptions.clientId.substring(0, 20) + '...',
+            network: web3authOptions.web3AuthNetwork,
+            hasChainConfig: !!web3authOptions.chainConfig
+          });
 
           web3authInstance = new Web3Auth(web3authOptions as any);
+          mLog.info('Web3AuthProvider', 'Web3Auth instance created');
 
+          // Force flush before initialization (in case it hangs)
+          await mLog.forceFlush();
 
           // Initialize Web3Auth Modal with proper modalConfig to prevent auto-detection
-          console.log('🔧 Unified provider: Initializing Web3Auth with modalConfig');
+          mLog.info('Web3AuthProvider', 'Initializing Web3Auth...');
 
           // Use initModal() with modalConfig to hide external wallets on mobile
           const isMobile = /Mobile|Android|iPhone|iPad/.test(navigator.userAgent);
 
           // Initialize Web3Auth - check if we can configure modal after init
           await web3authInstance.init();
+          mLog.info('Web3AuthProvider', 'Web3Auth initialization completed');
 
           // For mobile, try to hide external wallets using the correct API for your version
           if (isMobile) {
-            console.log('🔧 Unified provider: Mobile - attempting to hide external wallets');
+            mLog.info('Web3AuthProvider', 'Mobile - attempting to hide external wallets');
 
             // Try different approaches for hiding external wallets
             try {
@@ -76,36 +86,39 @@ export function getWeb3AuthProvider(config: any) {
               if (typeof (web3authInstance as any).hideAdapter === 'function') {
                 (web3authInstance as any).hideAdapter('metamask');
                 (web3authInstance as any).hideAdapter('torus-evm');
-                console.log('🔧 Unified provider: Hidden external adapters using hideAdapter');
+                mLog.debug('Web3AuthProvider', 'Hidden external adapters using hideAdapter');
               }
               // Method 2: Check for other configuration methods
               else if (typeof (web3authInstance as any).configureModalSettings === 'function') {
                 (web3authInstance as any).configureModalSettings({
                   showExternalWallets: false
                 });
-                console.log('🔧 Unified provider: Configured modal settings');
+                mLog.debug('Web3AuthProvider', 'Configured modal settings');
               }
             } catch (error) {
-              console.warn('🔧 Unified provider: Could not hide external wallets:', error);
+              mLog.warn('Web3AuthProvider', 'Could not hide external wallets', { error });
             }
           } else {
-            console.log('🔧 Unified provider: Desktop - using all wallet options');
+            mLog.debug('Web3AuthProvider', 'Desktop - using all wallet options');
           }
 
-          console.log('🔧 Unified provider: Web3Auth initialized successfully');
+          mLog.info('Web3AuthProvider', 'Web3Auth initialized successfully');
         }
 
         // Connect - force showing modal without auto-connection
-        console.log('🔧 Unified provider: Opening Web3Auth modal');
+        mLog.info('Web3AuthProvider', 'Opening Web3Auth modal');
 
         // Check if already connected (this might be causing auto-redirect)
         if (web3authInstance.connected) {
-          console.log('🔧 Unified provider: Already connected, logging out first');
+          mLog.info('Web3AuthProvider', 'Already connected, logging out first');
           await web3authInstance.logout();
         }
 
+        // Force flush before connection attempt (in case it hangs)
+        await mLog.forceFlush();
+
         // CRITICAL: Handle mobile vs desktop connection differently
-        console.log('🔧 Unified provider: Connecting with Modal');
+        mLog.info('Web3AuthProvider', 'Starting connection with Modal');
 
         const isMobileDevice = /Mobile|Android|iPhone|iPad/.test(navigator.userAgent);
         let provider;
@@ -139,18 +152,25 @@ export function getWeb3AuthProvider(config: any) {
               mLog.info('Web3AuthProvider', 'Mobile redirect detected - attempting to complete authentication');
               // Web3Auth should automatically handle the redirect completion
               provider = await web3authInstance.connect();
+              mLog.debug('Web3AuthProvider', 'Mobile redirect connection completed', { hasProvider: !!provider });
             } else {
               mLog.info('Web3AuthProvider', 'Starting new mobile authentication flow');
               provider = await web3authInstance.connect();
+              mLog.debug('Web3AuthProvider', 'New mobile connection completed', { hasProvider: !!provider });
             }
           }
         } else {
+          mLog.info('Web3AuthProvider', 'Starting desktop connection');
           provider = await web3authInstance.connect();
+          mLog.debug('Web3AuthProvider', 'Desktop connection completed', { hasProvider: !!provider });
         }
 
         if (!provider) {
+          mLog.error('Web3AuthProvider', 'No provider returned from Web3Auth');
           throw new Error('No provider returned from Web3Auth');
         }
+
+        mLog.info('Web3AuthProvider', 'Web3Auth connection successful, proceeding with authentication');
 
         mLog.info('Web3AuthProvider', 'Connected, getting user info');
         mLog.debug('Web3AuthProvider', 'Provider received', { hasProvider: !!provider });

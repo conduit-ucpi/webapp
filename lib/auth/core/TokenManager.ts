@@ -2,6 +2,8 @@
  * Token management (storage, validation, etc.)
  */
 
+import { mLog } from '../../../utils/mobileLogger';
+
 export class TokenManager {
   private static instance: TokenManager;
   private currentToken: string | null = null;
@@ -22,6 +24,11 @@ export class TokenManager {
    * Store a token
    */
   setToken(token: string | null): void {
+    mLog.debug('TokenManager', 'Setting token', {
+      hasToken: !!token,
+      tokenLength: token?.length,
+      tokenType: token ? this.getTokenMetadata(token)?.type : null
+    });
     this.currentToken = token;
     if (token) {
       this.saveToStorage(token);
@@ -34,6 +41,10 @@ export class TokenManager {
    * Get current token
    */
   getToken(): string | null {
+    mLog.debug('TokenManager', 'Getting token', {
+      hasToken: !!this.currentToken,
+      tokenLength: this.currentToken?.length
+    });
     return this.currentToken;
   }
 
@@ -41,6 +52,7 @@ export class TokenManager {
    * Clear token
    */
   clearToken(): void {
+    mLog.info('TokenManager', 'Clearing token');
     this.currentToken = null;
     this.clearStorage();
   }
@@ -136,13 +148,23 @@ export class TokenManager {
     try {
       // Use sessionStorage for temporary tokens, localStorage for persistent ones
       const metadata = this.getTokenMetadata(token);
-      if (metadata?.type === 'social' || metadata?.issuer === 'web3auth') {
+      const storageType = (metadata?.type === 'social' || metadata?.issuer === 'web3auth') ? 'localStorage' : 'sessionStorage';
+
+      mLog.debug('TokenManager', 'Saving token to storage', {
+        storageType,
+        tokenType: metadata?.type,
+        tokenLength: token.length
+      });
+
+      if (storageType === 'localStorage') {
         localStorage.setItem('auth_token', token);
       } else {
         sessionStorage.setItem('auth_token', token);
       }
     } catch (error) {
-      console.warn('🔧 TokenManager: Failed to save token to storage:', error);
+      mLog.error('TokenManager', 'Failed to save token to storage', {
+        error: error instanceof Error ? error.message : String(error)
+      });
     }
   }
 
@@ -150,24 +172,42 @@ export class TokenManager {
     try {
       // Try localStorage first, then sessionStorage
       let token = localStorage.getItem('auth_token');
+      let storageSource = 'localStorage';
+
       if (!token) {
         token = sessionStorage.getItem('auth_token');
+        storageSource = 'sessionStorage';
       }
+
+      mLog.debug('TokenManager', 'Loading token from storage', {
+        hasToken: !!token,
+        storageSource,
+        tokenLength: token?.length,
+        isValid: token ? this.isValidToken(token) : false
+      });
 
       if (token && this.isValidToken(token)) {
         this.currentToken = token;
+        mLog.info('TokenManager', 'Token loaded from storage successfully');
+      } else if (token) {
+        mLog.warn('TokenManager', 'Invalid token found in storage, ignoring');
       }
     } catch (error) {
-      console.warn('🔧 TokenManager: Failed to load token from storage:', error);
+      mLog.error('TokenManager', 'Failed to load token from storage', {
+        error: error instanceof Error ? error.message : String(error)
+      });
     }
   }
 
   private clearStorage(): void {
     try {
+      mLog.debug('TokenManager', 'Clearing token from all storage');
       localStorage.removeItem('auth_token');
       sessionStorage.removeItem('auth_token');
     } catch (error) {
-      console.warn('🔧 TokenManager: Failed to clear token storage:', error);
+      mLog.error('TokenManager', 'Failed to clear token storage', {
+        error: error instanceof Error ? error.message : String(error)
+      });
     }
   }
 

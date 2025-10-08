@@ -1,6 +1,7 @@
 import React from 'react';
 import { useAuth } from '@/components/auth';
 import Button from '@/components/ui/Button';
+import { mLog } from '@/utils/mobileLogger';
 
 interface ConnectWalletEmbeddedProps {
   buttonText?: string;
@@ -40,13 +41,28 @@ export default function ConnectWalletEmbedded({
   }
 
   const handleConnect = async () => {
+    mLog.info('ConnectWalletEmbedded', 'Get Started button clicked');
+    mLog.debug('ConnectWalletEmbedded', 'Connect function availability', { hasConnect: !!connect });
+
     if (connect) {
       try {
+        mLog.info('ConnectWalletEmbedded', 'Calling connect function...');
+        await mLog.forceFlush(); // Flush before calling connect (in case it hangs)
+
         await connect();
+
+        mLog.info('ConnectWalletEmbedded', 'Connect function completed successfully');
         onSuccess?.();
+        await mLog.forceFlush(); // Flush after success
       } catch (error) {
-        console.error('Connect wallet error:', error);
+        mLog.error('ConnectWalletEmbedded', 'Connect wallet error', {
+          error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined
+        });
+        await mLog.forceFlush(); // Flush on error
       }
+    } else {
+      mLog.error('ConnectWalletEmbedded', 'No connect function available');
     }
   };
 

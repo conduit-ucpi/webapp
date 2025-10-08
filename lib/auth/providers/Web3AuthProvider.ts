@@ -56,12 +56,13 @@ export class Web3AuthProvider implements AuthProvider {
           connected: this.web3authInstance.connected,
           hasProvider: !!this.web3authInstance.provider
         });
-      }
 
-      // Check if already connected after init (auto-connect behavior)
-      if (this.web3authInstance.connected) {
-        mLog.warn('Web3AuthProvider', 'Already connected after init - auto-connect occurred!');
-        return this.web3authInstance.provider;
+        // If auto-connected, logout to force modal choice
+        if (this.web3authInstance.connected) {
+          mLog.warn('Web3AuthProvider', 'Auto-connected detected - logging out to show modal choice');
+          await this.web3authInstance.logout();
+          mLog.info('Web3AuthProvider', 'Logged out, will now show modal for user choice');
+        }
       }
 
       // Connect - this will show the modal with all options

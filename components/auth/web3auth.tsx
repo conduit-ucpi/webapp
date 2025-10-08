@@ -3,6 +3,7 @@ import { WALLET_ADAPTERS } from "@web3auth/base";
 import { createWeb3AuthConfig } from "@/lib/web3authConfig";
 import { BackendAuth } from "./backendAuth";
 import { ethers } from "ethers";
+import { mLog } from "@/utils/mobileLogger";
 
 let web3authInstance: Web3Auth | null = null;
 
@@ -14,6 +15,7 @@ export function getWeb3AuthProvider(config: any) {
   const backendAuth = BackendAuth.getInstance();
 
   return {
+    getProviderName: () => 'web3auth_unified',
     initialize: async () => {
       console.log('🔧 Unified provider: Initialize called');
       // Mobile redirect completion is handled by AuthManager.restoreSession()
@@ -26,7 +28,12 @@ export function getWeb3AuthProvider(config: any) {
       }
     },
     connect: async () => {
-      console.log('🔧 Unified provider: Connect called - initializing Web3Auth modal with all adapters');
+      mLog.info('Web3AuthProvider', 'Connect called - initializing Web3Auth modal with all adapters');
+      mLog.debug('Web3AuthProvider', 'Current connection state', {
+        url: window.location.href,
+        web3authStatus: web3authInstance?.status,
+        hasInstance: !!web3authInstance
+      });
 
       try {
         // Initialize Web3Auth if not already done
@@ -104,25 +111,36 @@ export function getWeb3AuthProvider(config: any) {
         let provider;
 
         if (isMobileDevice) {
-          console.log('🔧 Unified provider: Mobile connection - checking for existing session first');
+          mLog.info('Web3AuthProvider', 'Mobile connection - checking for existing session first');
+          mLog.debug('Web3AuthProvider', 'Web3Auth mobile state', {
+            status: web3authInstance.status,
+            hasProvider: !!web3authInstance.provider
+          });
+
+          // For mobile, check if we have redirect parameters indicating a completed auth
+          const urlParams = new URLSearchParams(window.location.search);
+          const hasAuthParams = urlParams.has('code') || urlParams.has('state') || urlParams.has('access_token');
+          mLog.debug('Web3AuthProvider', 'Mobile URL analysis', {
+            urlParams: urlParams.toString(),
+            hasAuthParams,
+            hasCode: urlParams.has('code'),
+            hasState: urlParams.has('state'),
+            hasAccessToken: urlParams.has('access_token')
+          });
 
           // On mobile, check if we're already connected (returning from redirect)
           if (web3authInstance.status === 'connected' && web3authInstance.provider) {
-            console.log('🔧 Unified provider: Already connected on mobile - using existing provider');
+            mLog.info('Web3AuthProvider', 'Already connected on mobile - using existing provider');
             provider = web3authInstance.provider;
           } else {
-            console.log('🔧 Unified provider: Starting mobile connection');
-
-            // For mobile, check if we have redirect parameters indicating a completed auth
-            const urlParams = new URLSearchParams(window.location.search);
-            const hasAuthParams = urlParams.has('code') || urlParams.has('state') || urlParams.has('access_token');
+            mLog.info('Web3AuthProvider', 'Starting mobile connection');
 
             if (hasAuthParams) {
-              console.log('🔧 Unified provider: Mobile redirect detected - attempting to complete authentication');
+              mLog.info('Web3AuthProvider', 'Mobile redirect detected - attempting to complete authentication');
               // Web3Auth should automatically handle the redirect completion
               provider = await web3authInstance.connect();
             } else {
-              console.log('🔧 Unified provider: Starting new mobile authentication flow');
+              mLog.info('Web3AuthProvider', 'Starting new mobile authentication flow');
               provider = await web3authInstance.connect();
             }
           }
@@ -134,13 +152,22 @@ export function getWeb3AuthProvider(config: any) {
           throw new Error('No provider returned from Web3Auth');
         }
 
-        console.log('🔧 Unified provider: Connected, getting user info');
+        mLog.info('Web3AuthProvider', 'Connected, getting user info');
+        mLog.debug('Web3AuthProvider', 'Provider received', { hasProvider: !!provider });
 
         // Get user info and determine auth method
         const user = await web3authInstance.getUserInfo();
+        mLog.debug('Web3AuthProvider', 'User info retrieved', {
+          hasEmail: !!user.email,
+          hasIdToken: !!user.idToken,
+          name: user.name,
+          verifier: (user as any).verifier
+        });
+
         const ethersProvider = new ethers.BrowserProvider(provider);
         const signer = await ethersProvider.getSigner();
         const address = await signer.getAddress();
+        mLog.debug('Web3AuthProvider', 'Address obtained', { address });
 
         let authToken: string;
 
@@ -169,19 +196,72 @@ export function getWeb3AuthProvider(config: any) {
         }
 
         // Authenticate with backend
-        console.log('🔧 Unified provider: Authenticating with backend');
+        mLog.info('Web3AuthProvider', 'Authenticating with backend');
+        mLog.debug('Web3AuthProvider', 'Backend auth request', {
+          authTokenLength: authToken.length,
+          address,
+          authTokenType: user.email ? 'social' : 'signature'
+        });
+
         const backendResult = await backendAuth.login(authToken, address);
+
+        // Get the stored token from backendAuth
+        const storedToken = backendAuth.getToken();
+
+        mLog.debug('Web3AuthProvider', 'Backend auth result', {
+          success: backendResult.success,
+          hasStoredToken: !!storedToken,
+          hasUser: !!backendResult.user,
+          error: backendResult.error
+        });
+
         if (!backendResult.success) {
-          console.error('🔧 Unified provider: Backend auth failed:', backendResult.error);
-          throw new Error(backendResult.error || 'Backend authentication failed');
+          mLog.error('Web3AuthProvider', 'Backend auth failed', { error: backendResult.error });
+          const errorResult = {
+            success: false,
+            error: backendResult.error || 'Backend authentication failed'
+          };
+          await mLog.forceFlush(); // Flush logs before returning error
+          return errorResult;
         }
 
-        console.log('🔧 Unified provider: ✅ Successfully connected and authenticated');
-        return provider;
+        mLog.info('Web3AuthProvider', '✅ Successfully connected and authenticated');
+
+        // Store the provider for later use
+        // Return the expected result format for AuthManager
+        const result = {
+          success: true,
+          provider: provider,
+          token: storedToken,
+          user: backendResult.user
+        };
+        mLog.debug('Web3AuthProvider', 'Returning success result', {
+          success: result.success,
+          hasProvider: !!result.provider,
+          hasToken: !!result.token,
+          hasUser: !!result.user
+        });
+
+        // Force flush logs on success
+        await mLog.forceFlush();
+        return result;
 
       } catch (error) {
-        console.error('🔧 Unified provider: Connection failed:', error);
-        throw error;
+        mLog.error('Web3AuthProvider', 'Connection failed', {
+          error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined
+        });
+
+        // Return error result instead of throwing
+        const errorResult = {
+          success: false,
+          error: error instanceof Error ? error.message : 'Connection failed'
+        };
+        mLog.debug('Web3AuthProvider', 'Returning error result', errorResult);
+
+        // Force flush logs on error
+        await mLog.forceFlush();
+        return errorResult;
       }
     },
     disconnect: async () => {
@@ -249,6 +329,12 @@ export function getWeb3AuthProvider(config: any) {
       } catch {}
     },
     isReady: true,
+    isConnected: () => {
+      return !!web3authInstance?.connected;
+    },
+    getUserInfo: () => {
+      return web3authInstance?.getUserInfo();
+    },
     getState: () => ({
       user: null,
       token: backendAuth.getToken(),

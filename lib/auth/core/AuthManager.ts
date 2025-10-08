@@ -6,6 +6,7 @@
 import { AuthProvider, AuthState, AuthResult, AuthConfig, ProviderType } from '../types';
 import { ProviderRegistry } from './ProviderRegistry';
 import { TokenManager } from './TokenManager';
+import { mLog } from '../../../utils/mobileLogger';
 
 export class AuthManager {
   private static instance: AuthManager;
@@ -92,18 +93,26 @@ export class AuthManager {
       // Store the successful provider
       this.currentProvider = provider;
 
-      // Extract auth result
-      const result: AuthResult = {
-        success: true,
-        provider: providerResult,
-        token: provider.getToken() || undefined
-      };
+      // Check if the provider returned an AuthResult or just the raw provider
+      let result: AuthResult;
+      if (providerResult && typeof providerResult === 'object' && 'success' in providerResult) {
+        // Provider returned an AuthResult object (mobile case)
+        result = providerResult;
+      } else {
+        // Provider returned the raw Web3Auth provider (normal case)
+        result = {
+          success: true,
+          provider: providerResult,
+          token: provider.getToken() || undefined
+        };
+      }
 
       // Update state
       this.setState({
         isConnected: true,
         isLoading: false,
         token: result.token,
+        user: result.user || null,
         providerName: provider.getProviderName()
       });
 
@@ -226,33 +235,56 @@ export class AuthManager {
   }
 
   private async restoreSession(): Promise<void> {
+    mLog.info('AuthManager', 'Starting restoreSession...');
+
     // MOBILE ENHANCEMENT: Check for redirect parameters indicating completed auth (even without stored token)
     const isMobile = typeof window !== 'undefined' && /Mobile|Android|iPhone|iPad/.test(navigator.userAgent);
+    const currentUrl = typeof window !== 'undefined' ? window.location.href : '';
+    const urlParams = typeof window !== 'undefined' ? window.location.search : '';
+
+    mLog.debug('AuthManager', 'Mobile check', { isMobile, currentUrl, urlParams });
+
     const hasRedirectParams = typeof window !== 'undefined' &&
       (window.location.search.includes('code=') ||
        window.location.search.includes('state=') ||
        window.location.search.includes('access_token='));
 
+    mLog.debug('AuthManager', 'Redirect params check', { hasRedirectParams, urlParams });
+
     if (isMobile && hasRedirectParams) {
-      console.log('🔧 AuthManager: Mobile redirect detected - attempting to complete authentication');
+      mLog.info('AuthManager', 'Mobile redirect detected - attempting to complete authentication');
+      mLog.debug('AuthManager', 'URL search params', { searchParams: window.location.search });
 
       // Try to connect with the primary provider to complete the mobile flow
       const providers = this.providerRegistry.getAllProviders();
+      mLog.debug('AuthManager', 'Available providers', { providerNames: providers.map(p => p.getProviderName()) });
+
       const primaryProvider = providers.find(p => p.getProviderName().includes('web3auth'));
+      mLog.debug('AuthManager', 'Primary provider found', { providerName: primaryProvider?.getProviderName() });
 
       if (primaryProvider) {
         try {
-          console.log('🔧 AuthManager: Attempting mobile auth completion with Web3Auth');
+          mLog.info('AuthManager', 'Attempting mobile auth completion with Web3Auth');
+          this.setState({ isLoading: true });
+
           const result = await primaryProvider.connect();
+          mLog.debug('AuthManager', 'Provider connect result', {
+            success: result.success,
+            hasToken: !!result.token,
+            hasUser: !!result.user,
+            error: result.error
+          });
+
           if (result.success) {
             this.currentProvider = primaryProvider;
             this.setState({
               isConnected: true,
+              isLoading: false,
               token: result.token,
               user: result.user,
               providerName: primaryProvider.getProviderName()
             });
-            console.log('🔧 AuthManager: ✅ Mobile authentication completed successfully');
+            mLog.info('AuthManager', '✅ Mobile authentication completed successfully');
 
             // Clean up URL parameters
             if (typeof window !== 'undefined') {
@@ -260,14 +292,31 @@ export class AuthManager {
               url.searchParams.delete('code');
               url.searchParams.delete('state');
               url.searchParams.delete('access_token');
-              window.history.replaceState({}, '', url.toString());
+              const cleanUrl = url.toString();
+              mLog.debug('AuthManager', 'Cleaning URL', { from: window.location.href, to: cleanUrl });
+              window.history.replaceState({}, '', cleanUrl);
             }
+
+            // Force flush logs immediately on success
+            await mLog.forceFlush();
             return;
+          } else {
+            mLog.error('AuthManager', 'Provider connect failed', { error: result.error });
+            this.setState({ isLoading: false, error: result.error });
           }
         } catch (error) {
-          console.warn('🔧 AuthManager: Mobile auth completion failed:', error);
+          mLog.error('AuthManager', 'Mobile auth completion failed', {
+            error: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined
+          });
+          this.setState({ isLoading: false, error: error instanceof Error ? error.message : 'Mobile auth failed' });
         }
+      } else {
+        mLog.error('AuthManager', 'No Web3Auth provider found for mobile redirect completion');
       }
+
+      // Force flush logs on mobile redirect attempts
+      await mLog.forceFlush();
     }
 
     // Check if we have a stored token and try to restore session

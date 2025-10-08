@@ -31,6 +31,16 @@ export function getWeb3AuthProvider(config: any) {
         // Initialize Web3Auth if not already done
         if (!web3authInstance) {
           console.log('🔧 Unified provider: Creating Web3Auth instance');
+
+          // CRITICAL: Hide MetaMask from Web3Auth during initialization (MOBILE ONLY)
+          const isMobile = /Mobile|Android|iPhone|iPad/.test(navigator.userAgent);
+          const originalEthereum = (window as any).ethereum;
+
+          if (isMobile && originalEthereum) {
+            console.log('🔧 Unified provider: Mobile detected - temporarily hiding window.ethereum to prevent auto-detection');
+            delete (window as any).ethereum;
+          }
+
           const web3authConfig = createWeb3AuthConfig({
             ...config,
             walletConnectProjectId: config.walletConnectProjectId || process.env.WALLETCONNECT_PROJECT_ID
@@ -63,6 +73,12 @@ export function getWeb3AuthProvider(config: any) {
           console.log('🔧 Unified provider: Initializing Web3Auth');
           await web3authInstance.init();
           console.log('🔧 Unified provider: Web3Auth initialized successfully');
+
+          // Restore MetaMask after initialization (mobile only)
+          if (isMobile && originalEthereum) {
+            console.log('🔧 Unified provider: Restoring window.ethereum after initialization');
+            (window as any).ethereum = originalEthereum;
+          }
         }
 
         // Connect - force showing modal without auto-connection

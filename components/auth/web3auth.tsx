@@ -33,28 +33,6 @@ export function getWeb3AuthProvider(config: any) {
         if (!web3authInstance) {
           console.log('🔧 Unified provider: Creating Web3Auth instance');
 
-          // MOBILE-SPECIFIC: Prevent deep link interception
-          const isMobile = /Mobile|Android|iPhone|iPad/.test(navigator.userAgent);
-
-          if (isMobile) {
-            console.log('🔧 Unified provider: Mobile detected - setting up deep link prevention');
-
-            // Intercept and prevent metamask:// and other wallet deep links
-            const originalOpen = window.open;
-            const originalLocation = window.location;
-
-            // Override window.open to prevent wallet app launches
-            window.open = function(url?: string | URL, target?: string, features?: string) {
-              if (typeof url === 'string' && (url.includes('metamask://') || url.includes('wallet://') || url.includes('wc:'))) {
-                console.log('🔧 Unified provider: Blocked deep link:', url);
-                return null;
-              }
-              return originalOpen.call(window, url, target, features);
-            };
-
-            // Store original to restore later
-            (window as any)._originalOpen = originalOpen;
-          }
 
           const web3authConfig = createWeb3AuthConfig({
             ...config,
@@ -68,32 +46,44 @@ export function getWeb3AuthProvider(config: any) {
             chainConfig: web3authConfig.chainConfig,
           };
 
-          // On mobile, completely disable external wallet adapters
-          if (isMobile) {
-            console.log('🔧 Unified provider: Mobile - creating Web3Auth with NO external adapters');
-            // This should prevent Web3Auth from detecting and auto-selecting MetaMask
-            delete (window as any).ethereum;  // Hide MetaMask completely
-          }
 
           web3authInstance = new Web3Auth(web3authOptions as any);
 
-          // MOBILE ONLY: Configure to disable ALL external wallet adapters
-          if (isMobile) {
-            console.log('🔧 Unified provider: Mobile detected - configuring ONLY social logins');
-
-            // Try to configure only OpenLogin adapter
-            if (typeof (web3authInstance as any).configureAdapter === 'function') {
-              (web3authInstance as any).configureAdapter(web3authConfig.openloginAdapter);
-            }
-          } else {
-            console.log('🔧 Unified provider: Desktop - using all adapters');
-          }
 
           // Initialize Web3Auth Modal with proper modalConfig to prevent auto-detection
           console.log('🔧 Unified provider: Initializing Web3Auth with modalConfig');
 
-          // Use init() instead of initModal() - simpler approach
+          // Use initModal() with modalConfig to hide external wallets on mobile
+          const isMobile = /Mobile|Android|iPhone|iPad/.test(navigator.userAgent);
+
+          // Initialize Web3Auth - check if we can configure modal after init
           await web3authInstance.init();
+
+          // For mobile, try to hide external wallets using the correct API for your version
+          if (isMobile) {
+            console.log('🔧 Unified provider: Mobile - attempting to hide external wallets');
+
+            // Try different approaches for hiding external wallets
+            try {
+              // Method 1: Check if there's a way to configure adapters after init
+              if (typeof (web3authInstance as any).hideAdapter === 'function') {
+                (web3authInstance as any).hideAdapter('metamask');
+                (web3authInstance as any).hideAdapter('torus-evm');
+                console.log('🔧 Unified provider: Hidden external adapters using hideAdapter');
+              }
+              // Method 2: Check for other configuration methods
+              else if (typeof (web3authInstance as any).configureModalSettings === 'function') {
+                (web3authInstance as any).configureModalSettings({
+                  showExternalWallets: false
+                });
+                console.log('🔧 Unified provider: Configured modal settings');
+              }
+            } catch (error) {
+              console.warn('🔧 Unified provider: Could not hide external wallets:', error);
+            }
+          } else {
+            console.log('🔧 Unified provider: Desktop - using all wallet options');
+          }
 
           console.log('🔧 Unified provider: Web3Auth initialized successfully');
         }
@@ -168,13 +158,6 @@ export function getWeb3AuthProvider(config: any) {
     },
     disconnect: async () => {
       await backendAuth.logout();
-
-      // Restore original window.open if we overrode it
-      if ((window as any)._originalOpen) {
-        console.log('🔧 Unified provider: Restoring original window.open');
-        window.open = (window as any)._originalOpen;
-        delete (window as any)._originalOpen;
-      }
 
       // Clear Web3Service singleton to ensure fresh provider on next login
       try {

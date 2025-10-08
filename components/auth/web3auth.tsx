@@ -67,21 +67,26 @@ export function getWeb3AuthProvider(config: any) {
             // Pass chainConfig during initialization for mobile support
             chainConfig: web3authConfig.chainConfig,
           };
+
+          // On mobile, completely disable external wallet adapters
+          if (isMobile) {
+            console.log('🔧 Unified provider: Mobile - creating Web3Auth with NO external adapters');
+            // This should prevent Web3Auth from detecting and auto-selecting MetaMask
+            delete (window as any).ethereum;  // Hide MetaMask completely
+          }
+
           web3authInstance = new Web3Auth(web3authOptions as any);
 
-          // Configure ONLY OpenLogin adapter to prevent auto-detection of MetaMask
-          console.log('🔧 Unified provider: Configuring ONLY OpenLogin adapter to prevent auto-connection');
-          if (typeof (web3authInstance as any).configureAdapter === 'function') {
-            // Clear default adapters first
-            const clearMethod = (web3authInstance as any).clearCache || (web3authInstance as any).clearAdapters;
-            if (clearMethod) {
-              clearMethod.call(web3authInstance);
-            }
+          // MOBILE ONLY: Configure to disable ALL external wallet adapters
+          if (isMobile) {
+            console.log('🔧 Unified provider: Mobile detected - configuring ONLY social logins');
 
-            // Add only our OpenLogin adapter
-            (web3authInstance as any).configureAdapter(web3authConfig.openloginAdapter);
+            // Try to configure only OpenLogin adapter
+            if (typeof (web3authInstance as any).configureAdapter === 'function') {
+              (web3authInstance as any).configureAdapter(web3authConfig.openloginAdapter);
+            }
           } else {
-            console.warn('🔧 Unified provider: configureAdapter method not available - may have auto-detection issues');
+            console.log('🔧 Unified provider: Desktop - using all adapters');
           }
 
           // Initialize Web3Auth Modal with proper modalConfig to prevent auto-detection
@@ -102,20 +107,10 @@ export function getWeb3AuthProvider(config: any) {
           await web3authInstance.logout();
         }
 
-        // On mobile, force connection to OpenLogin (social logins) to avoid MetaMask auto-detection
-        let provider;
-        const isMobileDevice = /Mobile|Android|iPhone|iPad/.test(navigator.userAgent);
-        if (isMobileDevice) {
-          console.log('🔧 Unified provider: Mobile detected - using OpenLogin to avoid MetaMask auto-detection');
-          try {
-            provider = await (web3authInstance as any).connectTo("openlogin");
-          } catch (error) {
-            console.warn('🔧 Unified provider: OpenLogin connectTo failed, falling back to regular connect:', error);
-            provider = await web3authInstance.connect();
-          }
-        } else {
-          provider = await web3authInstance.connect();
-        }
+        // CRITICAL: Force modal to show without auto-selecting MetaMask
+        console.log('🔧 Unified provider: Connecting with Modal - should prevent auto-selection');
+
+        const provider = await web3authInstance.connect();
 
         if (!provider) {
           throw new Error('No provider returned from Web3Auth');

@@ -51,7 +51,7 @@ export const createWeb3AuthConfig = (config: {
     privateKeyProvider: undefined, // Will use the default provider
   });
 
-  // Base Web3Auth options (free tier compatible) - clean config
+  // Base Web3Auth options (free tier compatible) - disable auto-connection
   const web3AuthOptions: Web3AuthOptions = {
     clientId: config.web3AuthClientId,
     web3AuthNetwork: config.web3AuthNetwork as any,
@@ -61,6 +61,7 @@ export const createWeb3AuthConfig = (config: {
       modalZIndex: "99999",
     },
     enableLogging: true,
+    sessionTime: 86400,
   };
 
   // Return config with adapter

@@ -54,7 +54,7 @@ export const createWeb3AuthConfig = (config: {
     web3AuthNetwork: config.web3AuthNetwork
   });
 
-  // Create OpenLogin adapter that doesn't auto-redirect
+  // Create OpenLogin adapter
   mLog.debug('Web3AuthConfig', 'Creating OpenLogin adapter', {
     uxMode: UX_MODE.POPUP,
     network: config.web3AuthNetwork
@@ -62,7 +62,7 @@ export const createWeb3AuthConfig = (config: {
 
   const openloginAdapter = new OpenloginAdapter({
     adapterSettings: {
-      uxMode: UX_MODE.POPUP, // Use popup mode to prevent auto-redirects
+      uxMode: UX_MODE.POPUP, // Use popup mode
       network: config.web3AuthNetwork as any,
     },
     loginSettings: {

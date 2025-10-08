@@ -65,8 +65,15 @@ export function getWeb3AuthProvider(config: any) {
           console.log('🔧 Unified provider: Web3Auth initialized successfully');
         }
 
-        // Connect - this will show the modal with all options (disable auto-connection)
+        // Connect - force showing modal without auto-connection
         console.log('🔧 Unified provider: Opening Web3Auth modal');
+
+        // Check if already connected (this might be causing auto-redirect)
+        if (web3authInstance.connected) {
+          console.log('🔧 Unified provider: Already connected, logging out first');
+          await web3authInstance.logout();
+        }
+
         const provider = await web3authInstance.connect();
 
         if (!provider) {

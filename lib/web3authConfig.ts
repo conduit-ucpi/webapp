@@ -39,10 +39,10 @@ export const createWeb3AuthConfig = (config: {
     web3AuthNetwork: config.web3AuthNetwork
   });
 
-  // Create OpenLogin adapter with mobile redirect settings (no premium features)
+  // Create OpenLogin adapter that doesn't auto-redirect
   const openloginAdapter = new OpenloginAdapter({
     adapterSettings: {
-      uxMode: UX_MODE.REDIRECT, // Critical: Use redirect mode for mobile
+      uxMode: UX_MODE.POPUP, // Use popup mode to prevent auto-redirects
       network: config.web3AuthNetwork as any,
     },
     loginSettings: {
@@ -51,7 +51,7 @@ export const createWeb3AuthConfig = (config: {
     privateKeyProvider: undefined, // Will use the default provider
   });
 
-  // Base Web3Auth options (free tier compatible) - disable auto-detection but keep wallet options
+  // Base Web3Auth options (free tier compatible) - prevent auto-redirect but keep options
   const web3AuthOptions: Web3AuthOptions = {
     clientId: config.web3AuthClientId,
     web3AuthNetwork: config.web3AuthNetwork as any,
@@ -61,6 +61,12 @@ export const createWeb3AuthConfig = (config: {
       modalZIndex: "99999",
     },
     enableLogging: true,
+    // Prevent auto-detection/auto-connection on mobile
+    ...(typeof window !== 'undefined' && /Mobile|Android|iPhone|iPad/.test(navigator.userAgent) && {
+      connectorsModalConfig: {
+        hideWalletDiscovery: false, // Keep wallet options visible
+      }
+    }),
   };
 
   // Return config with adapter

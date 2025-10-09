@@ -54,15 +54,19 @@ export const createWeb3AuthConfig = (config: {
     web3AuthNetwork: config.web3AuthNetwork
   });
 
-  // Create OpenLogin adapter
+  // Detect mobile and use appropriate UX mode
+  const isMobile = typeof window !== 'undefined' && /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(window.navigator.userAgent);
+  const uxMode = isMobile ? UX_MODE.REDIRECT : UX_MODE.POPUP;
+
   mLog.debug('Web3AuthConfig', 'Creating OpenLogin adapter', {
-    uxMode: UX_MODE.POPUP,
+    isMobile,
+    uxMode: uxMode === UX_MODE.REDIRECT ? 'REDIRECT' : 'POPUP',
     network: config.web3AuthNetwork
   });
 
   const openloginAdapter = new OpenloginAdapter({
     adapterSettings: {
-      uxMode: UX_MODE.POPUP, // Use popup mode
+      uxMode, // Use redirect for mobile, popup for desktop
       network: config.web3AuthNetwork as any,
     },
     loginSettings: {

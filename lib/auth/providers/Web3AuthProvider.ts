@@ -15,6 +15,7 @@ export class Web3AuthProvider implements AuthProvider {
   private config: AuthConfig;
   private tokenManager: TokenManager;
   private cachedEthersProvider: ethers.BrowserProvider | null = null;
+  private isConnecting: boolean = false;
 
   constructor(config: AuthConfig) {
     this.config = config;
@@ -32,6 +33,23 @@ export class Web3AuthProvider implements AuthProvider {
 
   async connect(): Promise<any> {
     mLog.info('Web3AuthProvider', 'Connect called - initializing Web3Auth modal with all adapters');
+
+    // Prevent duplicate connection attempts
+    if (this.isConnecting) {
+      mLog.warn('Web3AuthProvider', 'Connection already in progress, waiting for current attempt');
+      // Wait for current connection attempt to finish
+      while (this.isConnecting) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      // Return current state if connected
+      if (this.web3authInstance?.connected && this.web3authInstance?.provider) {
+        mLog.info('Web3AuthProvider', 'Using existing connection from previous attempt');
+        return this.web3authInstance.provider;
+      }
+    }
+
+    this.isConnecting = true;
+    mLog.debug('Web3AuthProvider', 'Set isConnecting flag to prevent duplicates');
 
     try {
       // Initialize Web3Auth if not already done
@@ -127,11 +145,37 @@ export class Web3AuthProvider implements AuthProvider {
 
         let signature: string;
         try {
-          signature = await signer.signMessage(message);
+          // Double-check connection state before signing
+          if (!this.web3authInstance?.connected || !this.web3authInstance?.provider) {
+            throw new Error('Web3Auth connection lost before signing');
+          }
+
+          mLog.info('Web3AuthProvider', 'About to call signer.signMessage - this may trigger app switch');
+          mLog.debug('Web3AuthProvider', 'Pre-signature connection state', {
+            connected: this.web3authInstance.connected,
+            hasProvider: !!this.web3authInstance.provider,
+            hasEthersProvider: !!this.cachedEthersProvider
+          });
+
+          // Add timeout to detect hanging signature requests
+          const signPromise = signer.signMessage(message);
+          const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Signature request timeout after 60 seconds')), 60000)
+          );
+
+          signature = await Promise.race([signPromise, timeoutPromise]) as string;
           mLog.info('Web3AuthProvider', 'Signature received successfully');
+
+          // Verify connection state after signing
+          mLog.debug('Web3AuthProvider', 'Post-signature connection state', {
+            connected: this.web3authInstance?.connected,
+            hasProvider: !!this.web3authInstance?.provider,
+            signatureLength: signature.length
+          });
         } catch (signError) {
           mLog.error('Web3AuthProvider', 'Signature failed', {
-            error: signError instanceof Error ? signError.message : String(signError)
+            error: signError instanceof Error ? signError.message : String(signError),
+            errorType: signError instanceof Error ? signError.constructor.name : typeof signError
           });
           throw signError;
         }
@@ -166,6 +210,9 @@ export class Web3AuthProvider implements AuthProvider {
     } catch (error) {
       console.error('🔧 Web3AuthProvider: Connection failed:', error);
       throw error;
+    } finally {
+      this.isConnecting = false;
+      mLog.debug('Web3AuthProvider', 'Cleared isConnecting flag');
     }
   }
 
@@ -186,6 +233,12 @@ export class Web3AuthProvider implements AuthProvider {
 
   async switchWallet(): Promise<any> {
     console.log('🔧 Web3AuthProvider: Switching wallet - clearing cache and showing modal');
+
+    // Prevent duplicate switch attempts
+    if (this.isConnecting) {
+      mLog.warn('Web3AuthProvider', 'Connection already in progress, cannot switch wallet now');
+      throw new Error('Connection already in progress, please wait');
+    }
 
     // Initialize Web3Auth if not already done
     if (!this.web3authInstance) {

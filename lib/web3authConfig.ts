@@ -17,7 +17,6 @@ export const createWeb3AuthConfig = (config: {
 }): {
   web3AuthOptions: Web3AuthOptions;
   chainConfig: CustomChainConfig;
-  openloginAdapter: OpenloginAdapter;
 } => {
   mLog.info('Web3AuthConfig', 'Creating Web3Auth configuration');
   mLog.debug('Web3AuthConfig', 'Input config', {
@@ -75,7 +74,8 @@ export const createWeb3AuthConfig = (config: {
     privateKeyProvider: undefined, // Will use the default provider
   });
 
-  // Base Web3Auth options with auto-detection disabled
+
+  // Base Web3Auth options (WalletConnect is built-in in v10)
   const web3AuthOptions: Web3AuthOptions = {
     clientId: config.web3AuthClientId,
     web3AuthNetwork: config.web3AuthNetwork as any,
@@ -98,10 +98,9 @@ export const createWeb3AuthConfig = (config: {
 
   mLog.info('Web3AuthConfig', 'Web3Auth configuration completed successfully');
 
-  // Return config with adapter
+  // Return simplified config
   return {
     web3AuthOptions,
-    chainConfig,
-    openloginAdapter
+    chainConfig
   };
 };

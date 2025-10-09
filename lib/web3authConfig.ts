@@ -1,6 +1,7 @@
 import { WALLET_CONNECTORS, WEB3AUTH_NETWORK, Web3AuthOptions } from "@web3auth/modal";
 import { Web3AuthContextConfig } from "@web3auth/modal/react";
 import { CHAIN_NAMESPACES, CustomChainConfig, UX_MODE, ADAPTER_EVENTS } from "@web3auth/base";
+import { OpenloginAdapter } from "@web3auth/openlogin-adapter";
 import { getNetworkInfo } from "@/utils/networkUtils";
 import { toHexString } from "@/utils/hexUtils";
 import { mLog } from "@/utils/mobileLogger";
@@ -16,6 +17,8 @@ export const createWeb3AuthConfig = (config: {
 }): {
   web3AuthOptions: Web3AuthOptions;
   chainConfig: CustomChainConfig;
+  openloginAdapter: OpenloginAdapter;
+  walletConnectV2Adapter: any;
 } => {
   mLog.info('Web3AuthConfig', 'Creating Web3Auth configuration');
   mLog.debug('Web3AuthConfig', 'Input config', {
@@ -62,7 +65,7 @@ export const createWeb3AuthConfig = (config: {
     network: config.web3AuthNetwork
   });
 
-  // Base Web3Auth options with proper modalConfig to prevent auto-connection
+  // Base Web3Auth options with explicit adapter control
   const web3AuthOptions: Web3AuthOptions = {
     clientId: config.web3AuthClientId,
     web3AuthNetwork: config.web3AuthNetwork as any,
@@ -77,9 +80,21 @@ export const createWeb3AuthConfig = (config: {
     ...(config.walletConnectProjectId && {
       projectId: config.walletConnectProjectId
     }),
-    // On mobile, let Web3Auth handle default modal behavior without restrictions
-    // The UX_MODE.REDIRECT should prevent auto-connection issues
-    modalConfig: undefined
+    // Force modal to show by explicitly controlling adapters
+    modalConfig: isMobile ? {
+      [WALLET_CONNECTORS.METAMASK]: {
+        label: "metamask",
+        showOnModal: false, // Hide on mobile
+      } as any,
+      [WALLET_CONNECTORS.WALLET_CONNECT_V2]: {
+        label: "walletconnect",
+        showOnModal: true,
+      } as any,
+      [WALLET_CONNECTORS.AUTH]: {
+        label: "auth",
+        showOnModal: true,
+      } as any,
+    } as any : undefined
   };
 
   mLog.debug('Web3AuthConfig', 'Web3Auth options created', {
@@ -92,9 +107,40 @@ export const createWeb3AuthConfig = (config: {
 
   mLog.info('Web3AuthConfig', 'Web3Auth configuration completed successfully');
 
-  // Return simplified config
+  // Create adapters manually to have full control
+  const openloginAdapter = new OpenloginAdapter({
+    adapterSettings: {
+      uxMode,
+      network: config.web3AuthNetwork as any,
+    },
+    loginSettings: {
+      mfaLevel: "optional",
+    },
+  });
+
+  // Create WalletConnect adapter (dynamically imported to avoid test issues)
+  let walletConnectV2Adapter: any = null;
+  if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'test') {
+    try {
+      // Dynamic import to avoid loading WalletConnect in test environment
+      const { WalletConnectV2Adapter } = require('@web3auth/wallet-connect-v2-adapter');
+      walletConnectV2Adapter = new WalletConnectV2Adapter({
+        adapterSettings: {
+          walletConnectInitOptions: {
+            projectId: config.walletConnectProjectId || "",
+          },
+        },
+      });
+    } catch (error) {
+      mLog.warn('Web3AuthConfig', 'Failed to load WalletConnect adapter', { error });
+    }
+  }
+
+  // Return config with manually created adapters
   return {
     web3AuthOptions,
-    chainConfig
+    chainConfig,
+    openloginAdapter,
+    walletConnectV2Adapter
   };
 };

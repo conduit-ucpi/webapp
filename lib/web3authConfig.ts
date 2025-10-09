@@ -75,7 +75,7 @@ export const createWeb3AuthConfig = (config: {
   });
 
 
-  // Base Web3Auth options with mobile-specific adapter configuration
+  // Base Web3Auth options with proper modalConfig to prevent auto-connection
   const web3AuthOptions: Web3AuthOptions = {
     clientId: config.web3AuthClientId,
     web3AuthNetwork: config.web3AuthNetwork as any,
@@ -93,7 +93,20 @@ export const createWeb3AuthConfig = (config: {
     // Include WalletConnect project ID to enable WalletConnect
     ...(config.walletConnectProjectId && {
       projectId: config.walletConnectProjectId
-    })
+    }),
+    // Configure modal to prevent auto-connection - using available connectors
+    modalConfig: {
+      [WALLET_CONNECTORS.METAMASK]: {
+        showOnModal: true,
+        showOnMobile: !isMobile, // Hide MetaMask on mobile to prevent auto-connection
+        showOnDesktop: true,
+      } as any, // Type assertion since Web3Auth types may be incomplete
+      [WALLET_CONNECTORS.WALLET_CONNECT_V2]: {
+        showOnModal: true,
+        showOnMobile: true,
+        showOnDesktop: true,
+      } as any,
+    } as any
   };
 
   mLog.debug('Web3AuthConfig', 'Web3Auth options created', {

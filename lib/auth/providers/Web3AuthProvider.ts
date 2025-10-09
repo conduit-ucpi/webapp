@@ -141,7 +141,7 @@ export class Web3AuthProvider implements AuthProvider {
       }
 
       // Connect - this will show the modal with all options
-      mLog.info('Web3AuthProvider', 'Opening Web3Auth modal');
+      mLog.info('Web3AuthProvider', 'Opening Web3Auth modal with modalConfig preventing auto-connection');
       const provider = await this.web3authInstance.connect();
 
       if (!provider) {

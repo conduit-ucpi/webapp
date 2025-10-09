@@ -75,7 +75,7 @@ export const createWeb3AuthConfig = (config: {
   });
 
 
-  // Base Web3Auth options (WalletConnect is built-in in v10)
+  // Base Web3Auth options with WalletConnect project ID
   const web3AuthOptions: Web3AuthOptions = {
     clientId: config.web3AuthClientId,
     web3AuthNetwork: config.web3AuthNetwork as any,
@@ -85,7 +85,11 @@ export const createWeb3AuthConfig = (config: {
       modalZIndex: "99999",
     },
     enableLogging: true,
-    sessionTime: 86400
+    sessionTime: 86400,
+    // Include WalletConnect project ID to enable WalletConnect
+    ...(config.walletConnectProjectId && {
+      projectId: config.walletConnectProjectId
+    })
   };
 
   mLog.debug('Web3AuthConfig', 'Web3Auth options created', {

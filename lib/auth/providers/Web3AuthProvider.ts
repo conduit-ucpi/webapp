@@ -9,6 +9,7 @@ import { AuthProvider, AuthState, AuthConfig } from '../types';
 import { TokenManager } from '../core/TokenManager';
 import { ethers } from "ethers";
 import { mLog } from '../../../utils/mobileLogger';
+import { detectDevice } from '../../../utils/deviceDetection';
 
 export class Web3AuthProvider implements AuthProvider {
   private web3authInstance: Web3Auth | null = null;
@@ -51,6 +52,9 @@ export class Web3AuthProvider implements AuthProvider {
     this.isConnecting = true;
     mLog.debug('Web3AuthProvider', 'Set isConnecting flag to prevent duplicates');
 
+    // Detect device for mobile-specific handling
+    const deviceInfo = detectDevice();
+
     try {
       // Initialize Web3Auth if not already done
       if (!this.web3authInstance) {
@@ -75,25 +79,51 @@ export class Web3AuthProvider implements AuthProvider {
           hasProvider: !!this.web3authInstance.provider
         });
 
-        // If auto-connected, logout to force modal choice
+        // Force logout on mobile to prevent auto-connection to MetaMask
         if (this.web3authInstance.connected) {
-          mLog.warn('Web3AuthProvider', 'Auto-connected detected - checking if logout is needed');
+          mLog.warn('Web3AuthProvider', 'Auto-connected detected', {
+            isMobile: deviceInfo.isMobile,
+            hasProvider: !!this.web3authInstance.provider
+          });
 
-          // Only logout if there's actually a provider (real connection)
-          if (this.web3authInstance.provider) {
-            mLog.info('Web3AuthProvider', 'Real connection detected, logging out to show modal choice');
+          // On mobile, ALWAYS logout to force modal choice and prevent MetaMask auto-selection
+          if (deviceInfo.isMobile || this.web3authInstance.provider) {
+            mLog.info('Web3AuthProvider', 'Forcing logout to show modal choice (mobile or real connection)');
             try {
               await this.web3authInstance.logout();
               mLog.info('Web3AuthProvider', 'Logged out successfully, will now show modal for user choice');
+
+              // Clear any cached session data
+              if (typeof window !== 'undefined') {
+                window.localStorage.removeItem('Web3Auth-cachedAdapter');
+                window.sessionStorage.removeItem('Web3Auth-cachedAdapter');
+                mLog.debug('Web3AuthProvider', 'Cleared cached adapter data');
+              }
             } catch (logoutError) {
               mLog.warn('Web3AuthProvider', 'Logout failed, continuing anyway', {
                 error: logoutError instanceof Error ? logoutError.message : String(logoutError)
               });
             }
           } else {
-            mLog.info('Web3AuthProvider', 'False positive connection (no provider), continuing to modal');
+            mLog.info('Web3AuthProvider', 'False positive connection (desktop, no provider), continuing to modal');
           }
         }
+      }
+
+      // On mobile, clear additional cache to prevent auto-selection
+      if (deviceInfo.isMobile && typeof window !== 'undefined') {
+        // Clear any Web3Auth session storage that might cause auto-connection
+        const keysToRemove = [];
+        for (let i = 0; i < window.localStorage.length; i++) {
+          const key = window.localStorage.key(i);
+          if (key && key.includes('web3auth')) {
+            keysToRemove.push(key);
+          }
+        }
+        keysToRemove.forEach(key => {
+          window.localStorage.removeItem(key);
+          mLog.debug('Web3AuthProvider', 'Cleared localStorage key', { key });
+        });
       }
 
       // Connect - this will show the modal with all options

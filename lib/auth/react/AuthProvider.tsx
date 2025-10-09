@@ -3,10 +3,11 @@
  */
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { AuthState, AuthResult, AuthUser, AuthConfig } from '../types';
+import { AuthConfig } from '../types';
+import { AuthState, AuthUser, ConnectionResult } from '../types/unified-provider';
 import { AuthManager } from '../core/AuthManager';
 import { AuthService } from '../backend/AuthService';
-import { ProviderWrapper } from '../blockchain/ProviderWrapper';
+import { ethers } from 'ethers';
 
 interface AuthContextValue {
   // State
@@ -17,14 +18,13 @@ interface AuthContextValue {
   error: string | null;
 
   // Actions
-  connect: () => Promise<AuthResult>;
+  connect: () => Promise<ConnectionResult>;
   disconnect: () => Promise<void>;
-  switchWallet: () => Promise<AuthResult>;
+  switchWallet: () => Promise<ConnectionResult>;
   signMessage: (message: string) => Promise<string>;
 
   // Blockchain
-  provider: ProviderWrapper | null;
-  getEthersProvider: () => Promise<any>;
+  getEthersProvider: () => Promise<ethers.BrowserProvider | null>;
   showWalletUI?: () => Promise<void>;
 }
 
@@ -40,7 +40,6 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
   const [authService] = useState(() => AuthService.getInstance());
   const [state, setState] = useState<AuthState>(() => authManager.getState());
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [provider, setProvider] = useState<ProviderWrapper | null>(null);
 
   // Initialize auth manager
   useEffect(() => {
@@ -78,58 +77,28 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
     return unsubscribe;
   }, [authManager]);
 
-  // Update provider when connected
-  useEffect(() => {
-    const updateProvider = async () => {
-      if (state.isConnected) {
-        try {
-          const ethersProvider = await authManager.getEthersProvider();
-          if (ethersProvider) {
-            const currentProvider = authManager.getCurrentProvider();
-            const wrapper = new ProviderWrapper(
-              ethersProvider,
-              currentProvider?.getProviderName() || 'unknown'
-            );
-            setProvider(wrapper);
-          }
-        } catch (error) {
-          console.error('🔧 AuthProvider: Failed to create provider wrapper:', error);
-        }
-      } else {
-        setProvider(null);
-      }
-    };
+  // No need to manage provider separately - it's cached in AuthManager
 
-    updateProvider();
-  }, [state.isConnected, authManager]);
-
-  const connect = useCallback(async (): Promise<AuthResult> => {
+  const connect = useCallback(async (): Promise<ConnectionResult> => {
     try {
       // Connect with auth manager (handles provider selection)
       const result = await authManager.connect();
 
-      if (result.success && result.provider) {
+      if (result.success) {
         // Get wallet address
         const currentProvider = authManager.getCurrentProvider();
         if (currentProvider) {
           const ethersProvider = await currentProvider.getEthersProvider();
-          if (ethersProvider) {
-            const signer = await ethersProvider.getSigner();
-            const address = await signer.getAddress();
-
+          if (ethersProvider && result.address) {
             // Authenticate with backend
-            const token = currentProvider.getToken();
+            const token = currentProvider.getAuthToken();
             if (token) {
-              const backendResult = await authService.authenticateWithBackend(token, address);
+              const backendResult = await authService.authenticateWithBackend(token, result.address);
 
               if (backendResult.success && backendResult.user) {
                 setUser(backendResult.user);
-                return {
-                  success: true,
-                  user: backendResult.user,
-                  token,
-                  provider: result.provider
-                };
+                // Return result as-is since it's already a ConnectionResult
+                return result;
               } else {
                 throw new Error(backendResult.error || 'Backend authentication failed');
               }
@@ -138,13 +107,19 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
         }
       }
 
-      throw new Error(result.error || 'Connection failed');
+      return result; // Return the ConnectionResult whether success or failure
 
     } catch (error) {
       console.error('🔧 AuthProvider: Connect failed:', error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Connection failed'
+        error: error instanceof Error ? error.message : 'Connection failed',
+        capabilities: {
+          canSign: false,
+          canTransact: false,
+          canSwitchWallets: false,
+          isAuthOnly: true
+        }
       };
     }
   }, [authManager, authService]);
@@ -159,55 +134,44 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
 
       // Clear local state
       setUser(null);
-      setProvider(null);
 
     } catch (error) {
       console.error('🔧 AuthProvider: Disconnect failed:', error);
     }
   }, [authManager, authService]);
 
-  const switchWallet = useCallback(async (): Promise<AuthResult> => {
+  const switchWallet = useCallback(async (): Promise<ConnectionResult> => {
     try {
-      // Get current provider and call switchWallet
-      const currentProvider = authManager.getCurrentProvider();
-      if (currentProvider && typeof currentProvider.switchWallet === 'function') {
-        const result = await currentProvider.switchWallet();
+      // Use AuthManager's switchWallet method
+      const result = await authManager.switchWallet();
 
-        if (result) {
-          // Get wallet address and authenticate with backend
-          const ethersProvider = await currentProvider.getEthersProvider();
-          if (ethersProvider) {
-            const signer = await ethersProvider.getSigner();
-            const address = await signer.getAddress();
+      if (result.success && result.address) {
+        // Authenticate with backend using new connection
+        const currentProvider = authManager.getCurrentProvider();
+        const token = currentProvider?.getAuthToken();
 
-            // Authenticate with backend using new connection
-            const token = currentProvider.getToken();
-            if (token) {
-              const backendResult = await authService.authenticateWithBackend(token, address);
+        if (token) {
+          const backendResult = await authService.authenticateWithBackend(token, result.address);
 
-              if (backendResult.success && backendResult.user) {
-                setUser(backendResult.user);
-                return {
-                  success: true,
-                  user: backendResult.user,
-                  token,
-                  provider: result
-                };
-              } else {
-                throw new Error(backendResult.error || 'Backend authentication failed');
-              }
-            }
+          if (backendResult.success && backendResult.user) {
+            setUser(backendResult.user);
           }
         }
       }
 
-      throw new Error('Switch wallet not supported by current provider');
+      return result;
 
     } catch (error) {
       console.error('🔧 AuthProvider: Switch wallet failed:', error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Switch wallet failed'
+        error: error instanceof Error ? error.message : 'Switch wallet failed',
+        capabilities: {
+          canSign: false,
+          canTransact: false,
+          canSwitchWallets: false,
+          isAuthOnly: true
+        }
       };
     }
   }, [authManager, authService]);
@@ -216,7 +180,7 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
     return await authManager.signMessage(message);
   }, [authManager]);
 
-  const getEthersProvider = useCallback(async (): Promise<any> => {
+  const getEthersProvider = useCallback(async (): Promise<ethers.BrowserProvider | null> => {
     return await authManager.getEthersProvider();
   }, [authManager]);
 
@@ -235,7 +199,6 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
     signMessage,
 
     // Blockchain
-    provider,
     getEthersProvider
   };
 

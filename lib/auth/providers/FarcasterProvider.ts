@@ -1,15 +1,24 @@
 /**
  * Farcaster provider implementation
- * Handles Farcaster frame authentication
+ * Implements unified provider interface for Farcaster frame authentication
+ * Note: This is an auth-only provider with no blockchain capabilities
  */
 
-import { AuthProvider, AuthState, AuthConfig } from '../types';
+import { AuthConfig } from '../types';
+import {
+  UnifiedProvider,
+  ConnectionResult,
+  ProviderCapabilities,
+  TransactionRequest
+} from '../types/unified-provider';
 import { TokenManager } from '../core/TokenManager';
+import { ethers } from 'ethers';
 
-export class FarcasterProvider implements AuthProvider {
+export class FarcasterProvider implements UnifiedProvider {
   private config: AuthConfig;
   private tokenManager: TokenManager;
-  private farcasterUser: any = null;
+  private farcasterUser: { id: string; username?: string } | null = null;
+  private isConnectedState: boolean = false;
 
   constructor(config: AuthConfig) {
     this.config = config;
@@ -25,7 +34,7 @@ export class FarcasterProvider implements AuthProvider {
     // Farcaster frames are initialized by the parent frame
   }
 
-  async connect(): Promise<any> {
+  async connect(): Promise<ConnectionResult> {
     console.log('🔧 FarcasterProvider: Connect called');
 
     try {
@@ -33,83 +42,86 @@ export class FarcasterProvider implements AuthProvider {
       // This is a simplified implementation - actual Farcaster integration
       // would use the Farcaster SDK and frame protocols
 
-      // For now, return a mock provider that works with the existing system
-      const mockProvider = {
-        request: async (args: { method: string; params?: any[] }) => {
-          if (args.method === 'eth_accounts') {
-            return ['0x1234567890123456789012345678901234567890']; // Mock address
-          }
-          throw new Error(`Method ${args.method} not supported in Farcaster frames`);
-        }
-      };
-
       // Store a mock token for Farcaster
       const authToken = `farcaster:${Date.now()}`;
       this.tokenManager.setToken(authToken);
 
+      this.isConnectedState = true;
+
       console.log('🔧 FarcasterProvider: ✅ Connected via Farcaster frame');
-      return mockProvider;
+
+      return {
+        success: true,
+        address: '0x1234567890123456789012345678901234567890', // Mock address
+        token: authToken,
+        capabilities: this.getCapabilities()
+      };
 
     } catch (error) {
       console.error('🔧 FarcasterProvider: Connection failed:', error);
-      throw error;
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Connection failed',
+        capabilities: this.getCapabilities()
+      };
     }
   }
 
   async disconnect(): Promise<void> {
     console.log('🔧 FarcasterProvider: Disconnecting');
     this.farcasterUser = null;
+    this.isConnectedState = false;
     this.tokenManager.clearToken();
   }
 
-  async switchWallet(): Promise<any> {
+  async switchWallet(): Promise<ConnectionResult> {
     // Farcaster frames don't support wallet switching as the user context
     // is provided by the parent frame
-    throw new Error('Wallet switching is not supported in Farcaster frames');
+    return {
+      success: false,
+      error: 'Wallet switching is not supported in Farcaster frames',
+      capabilities: this.getCapabilities()
+    };
   }
 
-  getToken(): string | null {
+  getAuthToken(): string | null {
     return this.tokenManager.getToken();
   }
 
   async signMessage(message: string): Promise<string> {
     // In Farcaster frames, signing would be handled by the frame protocol
-    throw new Error('Message signing not supported in Farcaster frames');
+    throw new Error('Message signing not supported in Farcaster frames - blockchain operations require external wallet');
   }
 
-  async getEthersProvider(): Promise<any> {
-    // Farcaster frames typically don't provide direct ethers access
+  async signTransaction(params: TransactionRequest): Promise<string> {
+    // Farcaster frames don't support direct transaction signing
+    throw new Error('Transaction signing not supported in Farcaster frames - blockchain operations require external wallet');
+  }
+
+  getEthersProvider(): ethers.BrowserProvider | null {
+    // Farcaster frames don't provide direct ethers access
     return null;
   }
 
-  hasVisitedBefore(): boolean {
-    // In frames, we might not have localStorage access
-    return true; // Assume users in frames have visited before
-  }
-
-  markAsVisited(): void {
-    // No-op in frames
-  }
-
-  isReady: boolean = true;
-
-  getState(): AuthState {
-    return {
-      user: this.farcasterUser,
-      token: this.getToken(),
-      isConnected: !!this.farcasterUser,
-      isLoading: false,
-      isInitialized: true,
-      error: null,
-      providerName: 'farcaster'
-    };
+  async getAddress(): Promise<string> {
+    // Return mock address for Farcaster
+    return '0x1234567890123456789012345678901234567890';
   }
 
   isConnected(): boolean {
-    return !!this.farcasterUser;
+    return this.isConnectedState;
   }
 
-  getUserInfo(): any {
+  getUserInfo(): { id: string; username?: string } | null {
     return this.farcasterUser;
+  }
+
+  getCapabilities(): ProviderCapabilities {
+    return {
+      canSign: false,
+      canTransact: false,
+      canSwitchWallets: false,
+      isAuthOnly: true  // Auth-only provider
+    };
   }
 }

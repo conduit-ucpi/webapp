@@ -2,11 +2,12 @@
  * Provider registry for managing available auth providers
  */
 
-import { AuthProvider, AuthConfig, ProviderType } from '../types';
+import { AuthConfig, ProviderType } from '../types';
+import { UnifiedProvider } from '../types/unified-provider';
 import { mLog } from '../../../utils/mobileLogger';
 
 export class ProviderRegistry {
-  private providers: Map<ProviderType, AuthProvider> = new Map();
+  private providers: Map<ProviderType, UnifiedProvider> = new Map();
   private initialized = false;
 
   async initialize(config: AuthConfig): Promise<void> {
@@ -49,7 +50,7 @@ export class ProviderRegistry {
     }
   }
 
-  getProvider(type: ProviderType): AuthProvider | null {
+  getProvider(type: ProviderType): UnifiedProvider | null {
     const provider = this.providers.get(type) || null;
     mLog.debug('ProviderRegistry', 'Getting provider', {
       requestedType: type,
@@ -59,10 +60,10 @@ export class ProviderRegistry {
     return provider;
   }
 
-  getBestProvider(): AuthProvider | null {
+  getBestProvider(): UnifiedProvider | null {
     // Return the first available provider
     // Priority: farcaster (if in frame) -> web3auth
-    let bestProvider: AuthProvider | null = null;
+    let bestProvider: UnifiedProvider | null = null;
     let selectedType: string = 'none';
 
     if (this.providers.has('farcaster')) {
@@ -82,7 +83,7 @@ export class ProviderRegistry {
     return bestProvider;
   }
 
-  getAllProviders(): AuthProvider[] {
+  getAllProviders(): UnifiedProvider[] {
     const providers = Array.from(this.providers.values());
     mLog.debug('ProviderRegistry', 'Getting all providers', {
       count: providers.length,

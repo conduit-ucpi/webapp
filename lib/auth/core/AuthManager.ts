@@ -1,16 +1,23 @@
 /**
  * Core authentication manager (framework-agnostic)
- * Orchestrates the entire auth flow
+ * Orchestrates the entire auth flow using unified providers
  */
 
-import { AuthProvider, AuthState, AuthResult, AuthConfig, ProviderType } from '../types';
+import { AuthConfig, ProviderType } from '../types';
+import {
+  UnifiedProvider,
+  ConnectionResult,
+  AuthState,
+  AuthUser
+} from '../types/unified-provider';
 import { ProviderRegistry } from './ProviderRegistry';
 import { TokenManager } from './TokenManager';
 import { mLog } from '../../../utils/mobileLogger';
+import { ethers } from 'ethers';
 
 export class AuthManager {
   private static instance: AuthManager;
-  private currentProvider: AuthProvider | null = null;
+  private currentProvider: UnifiedProvider | null = null;
   private providerRegistry: ProviderRegistry;
   private tokenManager: TokenManager;
   private state: AuthState;
@@ -20,13 +27,14 @@ export class AuthManager {
     this.providerRegistry = new ProviderRegistry();
     this.tokenManager = new TokenManager();
     this.state = {
-      user: null,
-      token: null,
       isConnected: false,
       isLoading: false,
       isInitialized: false,
-      error: null,
-      providerName: 'none'
+      address: null,
+      token: null,
+      providerName: null,
+      capabilities: null,
+      error: null
     };
   }
 
@@ -70,7 +78,7 @@ export class AuthManager {
   /**
    * Connect using the best available provider
    */
-  async connect(preferredProvider?: ProviderType): Promise<AuthResult> {
+  async connect(preferredProvider?: ProviderType): Promise<ConnectionResult> {
     mLog.info('AuthManager', 'Starting connection process', { preferredProvider });
 
     try {
@@ -83,7 +91,16 @@ export class AuthManager {
 
       if (!provider) {
         mLog.error('AuthManager', 'No auth provider available');
-        throw new Error('No auth provider available');
+        return {
+          success: false,
+          error: 'No auth provider available',
+          capabilities: {
+            canSign: false,
+            canTransact: false,
+            canSwitchWallets: false,
+            isAuthOnly: true
+          }
+        };
       }
 
       mLog.info('AuthManager', 'Using provider', { providerName: provider.getProviderName() });
@@ -91,55 +108,42 @@ export class AuthManager {
       // Force flush logs before connecting (in case connection hangs)
       await mLog.forceFlush();
 
-      // Connect with the provider
-      const providerResult = await provider.connect();
+      // Connect with the unified provider
+      const result = await provider.connect();
 
-      // Store the successful provider
-      this.currentProvider = provider;
+      if (result.success) {
+        // Store the successful provider
+        this.currentProvider = provider;
 
-      mLog.debug('AuthManager', 'Provider connect completed', {
-        hasResult: !!providerResult,
-        resultType: typeof providerResult,
-        hasSuccess: providerResult && typeof providerResult === 'object' && 'success' in providerResult
-      });
-
-      // Check if the provider returned an AuthResult or just the raw provider
-      let result: AuthResult;
-      if (providerResult && typeof providerResult === 'object' && 'success' in providerResult) {
-        // Provider returned an AuthResult object (mobile case)
-        mLog.debug('AuthManager', 'Using AuthResult from provider', {
-          success: providerResult.success,
-          hasToken: !!providerResult.token,
-          hasUser: !!providerResult.user,
-          error: providerResult.error
+        // Update state
+        this.setState({
+          isConnected: true,
+          isLoading: false,
+          address: result.address || null,
+          token: result.token || null,
+          providerName: provider.getProviderName(),
+          capabilities: result.capabilities,
+          error: null
         });
-        result = providerResult;
+
+        mLog.info('AuthManager', '✅ Connection successful', {
+          hasToken: !!result.token,
+          address: result.address,
+          providerName: provider.getProviderName(),
+          capabilities: result.capabilities
+        });
       } else {
-        // Provider returned the raw Web3Auth provider (normal case)
-        mLog.debug('AuthManager', 'Creating AuthResult from raw provider');
-        result = {
-          success: true,
-          provider: providerResult,
-          token: provider.getToken() || undefined
-        };
+        this.setState({
+          isLoading: false,
+          error: result.error || 'Connection failed'
+        });
+
+        mLog.error('AuthManager', '❌ Connection failed', {
+          error: result.error
+        });
       }
 
-      // Update state
-      this.setState({
-        isConnected: true,
-        isLoading: false,
-        token: result.token,
-        user: result.user || null,
-        providerName: provider.getProviderName()
-      });
-
-      mLog.info('AuthManager', '✅ Connection successful', {
-        hasToken: !!result.token,
-        hasUser: !!result.user,
-        providerName: provider.getProviderName()
-      });
-
-      // Force flush logs after successful connection
+      // Force flush logs after connection attempt
       await mLog.forceFlush();
       return result;
 
@@ -154,9 +158,15 @@ export class AuthManager {
         error: error instanceof Error ? error.message : 'Connection failed'
       });
 
-      const errorResult = {
+      const errorResult: ConnectionResult = {
         success: false,
-        error: error instanceof Error ? error.message : 'Connection failed'
+        error: error instanceof Error ? error.message : 'Connection failed',
+        capabilities: {
+          canSign: false,
+          canTransact: false,
+          canSwitchWallets: false,
+          isAuthOnly: true
+        }
       };
 
       // Force flush logs on error
@@ -181,11 +191,12 @@ export class AuthManager {
 
       // Reset state
       this.setState({
-        user: null,
-        token: null,
         isConnected: false,
-        error: null,
-        providerName: 'none'
+        address: null,
+        token: null,
+        providerName: null,
+        capabilities: null,
+        error: null
       });
 
       this.currentProvider = null;
@@ -194,6 +205,45 @@ export class AuthManager {
     } catch (error) {
       console.error('🔧 AuthManager: ❌ Disconnect failed:', error);
     }
+  }
+
+  /**
+   * Switch wallet (if supported by current provider)
+   */
+  async switchWallet(): Promise<ConnectionResult> {
+    if (!this.currentProvider) {
+      return {
+        success: false,
+        error: 'No provider connected',
+        capabilities: {
+          canSign: false,
+          canTransact: false,
+          canSwitchWallets: false,
+          isAuthOnly: true
+        }
+      };
+    }
+
+    if (!this.currentProvider.switchWallet) {
+      return {
+        success: false,
+        error: 'Current provider does not support wallet switching',
+        capabilities: this.currentProvider.getCapabilities()
+      };
+    }
+
+    const result = await this.currentProvider.switchWallet();
+
+    if (result.success) {
+      // Update state with new connection info
+      this.setState({
+        address: result.address || null,
+        token: result.token || null,
+        capabilities: result.capabilities
+      });
+    }
+
+    return result;
   }
 
   /**
@@ -221,7 +271,7 @@ export class AuthManager {
   /**
    * Get current provider
    */
-  getCurrentProvider(): AuthProvider | null {
+  getCurrentProvider(): UnifiedProvider | null {
     return this.currentProvider;
   }
 
@@ -239,17 +289,38 @@ export class AuthManager {
     if (!this.currentProvider) {
       throw new Error('No provider connected');
     }
+
+    // Check capabilities
+    if (!this.state.capabilities?.canSign) {
+      throw new Error('Current provider does not support message signing');
+    }
+
     return this.currentProvider.signMessage(message);
   }
 
   /**
-   * Get ethers provider from current provider
+   * Get ethers provider from current provider (single instance)
    */
-  async getEthersProvider(): Promise<any> {
+  async getEthersProvider(): Promise<ethers.BrowserProvider | null> {
     if (!this.currentProvider) {
-      throw new Error('No provider connected');
+      return null;
     }
     return this.currentProvider.getEthersProvider();
+  }
+
+  /**
+   * Get current wallet address
+   */
+  async getAddress(): Promise<string | null> {
+    if (!this.currentProvider) {
+      return null;
+    }
+
+    try {
+      return await this.currentProvider.getAddress();
+    } catch {
+      return null;
+    }
   }
 
   private setState(newState: Partial<AuthState>): void {
@@ -302,7 +373,7 @@ export class AuthManager {
           mLog.debug('AuthManager', 'Provider connect result', {
             success: result.success,
             hasToken: !!result.token,
-            hasUser: !!result.user,
+            address: result.address,
             error: result.error
           });
 
@@ -311,9 +382,11 @@ export class AuthManager {
             this.setState({
               isConnected: true,
               isLoading: false,
-              token: result.token,
-              user: result.user,
-              providerName: primaryProvider.getProviderName()
+              address: result.address || null,
+              token: result.token || null,
+              providerName: primaryProvider.getProviderName(),
+              capabilities: result.capabilities,
+              error: null
             });
             mLog.info('AuthManager', '✅ Mobile authentication completed successfully');
 
@@ -360,10 +433,19 @@ export class AuthManager {
       for (const provider of providers) {
         if (provider.isConnected()) {
           this.currentProvider = provider;
+
+          // Get address if possible
+          let address: string | null = null;
+          try {
+            address = await provider.getAddress();
+          } catch {}
+
           this.setState({
             isConnected: true,
             token,
-            providerName: provider.getProviderName()
+            address,
+            providerName: provider.getProviderName(),
+            capabilities: provider.getCapabilities()
           });
           console.log(`🔧 AuthManager: Restored session with ${provider.getProviderName()}`);
           break;

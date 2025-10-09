@@ -12,4 +12,3 @@ export { useAuth, SimpleAuthProvider as AuthProvider } from './SimpleAuthProvide
 
 // Export types
 export type { User, AuthContextType } from '@/types';
-export type { WalletProvider, WalletContextType } from '@/lib/wallet/types';

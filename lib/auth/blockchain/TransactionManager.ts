@@ -3,7 +3,7 @@
  */
 
 import { ethers } from 'ethers';
-import { ProviderWrapper } from './ProviderWrapper';
+// ProviderWrapper removed - using ethers.BrowserProvider directly
 import { formatWeiAsEthForLogging } from '@/utils/logging';
 
 export interface TransactionOptions {
@@ -20,9 +20,9 @@ export interface TransactionResult {
 }
 
 export class TransactionManager {
-  private provider: ProviderWrapper;
+  private provider: ethers.BrowserProvider;
 
-  constructor(provider: ProviderWrapper) {
+  constructor(provider: ethers.BrowserProvider) {
     this.provider = provider;
   }
 
@@ -49,11 +49,11 @@ export class TransactionManager {
       };
 
       // Estimate gas if not provided
-      if (!options.gasLimit) {
+      if (!options?.gasLimit) {
         try {
           const estimated = await signer.estimateGas(transaction);
           transaction.gasLimit = estimated;
-          console.log(`🔧 TransactionManager: Estimated gas: ${transaction.gasLimit.toString()} gas`);
+          console.log(`🔧 TransactionManager: Estimated gas: ${transaction.gasLimit!.toString()} gas`);
         } catch (gasError) {
           console.warn('🔧 TransactionManager: Gas estimation failed:', gasError);
         }
@@ -91,7 +91,7 @@ export class TransactionManager {
     params: any[] = []
   ): Promise<any> {
     try {
-      const ethersProvider = this.provider.getEthersProvider();
+      const ethersProvider = this.provider;
       if (!ethersProvider) {
         throw new Error('No ethers provider available');
       }
@@ -164,7 +164,7 @@ export class TransactionManager {
    */
   async getTransactionStatus(hash: string): Promise<'pending' | 'confirmed' | 'failed' | 'not_found'> {
     try {
-      const ethersProvider = this.provider.getEthersProvider();
+      const ethersProvider = this.provider;
       if (!ethersProvider) {
         return 'not_found';
       }
@@ -193,7 +193,7 @@ export class TransactionManager {
     timeoutMs: number = 60000
   ): Promise<ethers.TransactionReceipt | null> {
     try {
-      const ethersProvider = this.provider.getEthersProvider();
+      const ethersProvider = this.provider;
       if (!ethersProvider) {
         return null;
       }

@@ -1,6 +1,6 @@
 import { ethers } from 'ethers';
 import { Config } from '@/types';
-import { WalletProvider } from './wallet/types';
+// WalletProvider removed - using ethers.BrowserProvider directly
 import { toHex, toHexString, ensureHexPrefix } from '@/utils/hexUtils';
 
 // ERC20 ABI for USDC interactions
@@ -36,8 +36,6 @@ import { formatWeiAsEthForLogging, formatGweiAsEthForLogging, formatMicroUSDCFor
 export class Web3Service {
   private static instance: Web3Service | null = null;
   private provider: ethers.BrowserProvider | null = null;
-  private walletProvider: WalletProvider | null = null;
-  private eip1193Provider: any = null; // Raw EIP-1193 provider
   private config: Config;
   private onMobileActionRequired?: (actionType: 'sign' | 'transaction') => void;
   private isDesktopQRSession: boolean = false;
@@ -72,7 +70,7 @@ export class Web3Service {
    * Check if the Web3Service is properly initialized with a provider
    */
   isServiceInitialized(): boolean {
-    return this.isInitialized && (!!this.provider || !!this.walletProvider);
+    return this.isInitialized && !!this.provider;
   }
 
   /**
@@ -99,32 +97,19 @@ export class Web3Service {
   }
 
   /**
-   * Initialize with generic WalletProvider abstraction (legacy)
-   * DEPRECATED: Use initializeWithEIP1193 for new unified approach
+   * Initialize Web3Service with an ethers provider
+   * This is the single unified initialization method
+   * The provider should come from the auth system (already cached there)
    */
-  async initializeProvider(walletProvider: WalletProvider) {
+  async initialize(ethersProvider: ethers.BrowserProvider | null) {
     try {
-      console.log('[Web3Service] Initializing with WalletProvider abstraction (legacy)');
-      this.walletProvider = walletProvider;
-      this.provider = walletProvider.getEthersProvider();
-      this.isInitialized = true;
-      console.log('[Web3Service] ✅ Provider initialized via WalletProvider');
-    } catch (error) {
-      console.error('[Web3Service] ❌ Failed to initialize ethers provider:', error);
-      this.isInitialized = false;
-      throw new Error('Provider initialization failed: ' + (error as Error).message);
-    }
-  }
+      if (!ethersProvider) {
+        throw new Error('No provider provided for initialization');
+      }
 
-  /**
-   * Initialize with an ethers provider directly
-   * Use this when you already have an ethers provider (e.g., from auth system)
-   */
-  async initializeWithEthersProvider(ethersProvider: ethers.BrowserProvider) {
-    try {
-      console.log('[Web3Service] Initializing with ethers provider directly');
+      console.log('[Web3Service] Initializing with unified ethers provider');
 
-      // Store the ethers provider directly
+      // Store the ethers provider (single instance from auth system)
       this.provider = ethersProvider;
 
       // Test the connection by getting network info
@@ -140,51 +125,12 @@ export class Web3Service {
       console.log('[Web3Service] ✅ Connected wallet address:', address);
 
       this.isInitialized = true;
-      console.log('[Web3Service] ✅ Ethers provider initialized successfully');
-      console.log('[Web3Service] 🎯 All blockchain operations use the unified ethers provider');
+      console.log('[Web3Service] ✅ Provider initialized successfully');
+      console.log('[Web3Service] 🎯 Using single provider instance from auth system');
     } catch (error) {
-      console.error('[Web3Service] ❌ Failed to initialize ethers provider:', error);
+      console.error('[Web3Service] ❌ Failed to initialize provider:', error);
       this.isInitialized = false;
-      throw new Error('Ethers provider initialization failed: ' + (error as Error).message);
-    }
-  }
-
-  /**
-   * Initialize directly with any EIP-1193 provider
-   * This is the unified path that works consistently across all wallet types
-   * FIXED: All operations (balance reading + transactions) now use the same ethers provider
-   */
-  async initializeWithEIP1193(eip1193Provider: any) {
-    try {
-      console.log('[Web3Service] Initializing with unified EIP-1193 provider approach');
-      console.log('[Web3Service] Provider type:', eip1193Provider.constructor?.name || typeof eip1193Provider);
-
-      // Store the raw EIP-1193 provider (mainly for debugging/logging)
-      this.eip1193Provider = eip1193Provider;
-
-      // Create the unified ethers provider that will handle ALL operations
-      console.log('[Web3Service] Creating unified ethers.BrowserProvider...');
-      this.provider = new ethers.BrowserProvider(eip1193Provider);
-
-      // Test the connection by getting network info
-      const network = await this.provider.getNetwork();
-      console.log('[Web3Service] ✅ Connected to network:', {
-        chainId: network.chainId.toString(),
-        name: network.name
-      });
-
-      // Get the connected address to verify authentication
-      const signer = await this.provider.getSigner();
-      const address = await signer.getAddress();
-      console.log('[Web3Service] ✅ Connected wallet address:', address);
-
-      this.isInitialized = true;
-      console.log('[Web3Service] ✅ Unified ethers provider initialized successfully');
-      console.log('[Web3Service] 🎯 Balance reading ✅ + Transaction signing ✅ now use same provider');
-    } catch (error) {
-      console.error('[Web3Service] ❌ Failed to initialize unified provider:', error);
-      this.isInitialized = false;
-      throw new Error('Unified provider initialization failed: ' + (error as Error).message);
+      throw new Error('Provider initialization failed: ' + (error as Error).message);
     }
   }
 
@@ -338,22 +284,7 @@ export class Web3Service {
       return signedTx;
 
     } catch (error) {
-      // Legacy fallback for older initialization paths
-      if (this.walletProvider) {
-        console.log('[Web3Service.signTransaction] Falling back to legacy WalletProvider.signTransaction()');
-        return await this.walletProvider.signTransaction({
-          from: fromAddress,
-          to: txParams.to,
-          data: txParams.data,
-          value: txParams.value || '0x0',
-          gasLimit: toHex(txParams.gasLimit),
-          gasPrice: toHex(gasPrice),
-          nonce: nonce,
-          chainId: this.config.chainId
-        });
-      }
-
-      console.error('[Web3Service.signTransaction] ❌ Failed with both unified and legacy approaches:', error);
+      console.error('[Web3Service.signTransaction] ❌ Transaction signing failed:', error);
       throw new Error(`Transaction signing failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
@@ -375,11 +306,7 @@ export class Web3Service {
       return address;
     }
 
-    // Legacy fallback for older initialization paths
-    if (this.walletProvider) {
-      console.log('[Web3Service.getUserAddress] Using legacy WalletProvider abstraction');
-      return await this.walletProvider.getAddress();
-    }
+    // No legacy fallback needed - provider should always be available
 
     throw new Error('No provider initialized');
   }
@@ -389,7 +316,7 @@ export class Web3Service {
    * This is used when external wallets don't provide JWT tokens
    */
   async generateSignatureAuthToken(): Promise<string> {
-    if (!this.provider && !this.walletProvider) {
+    if (!this.provider) {
       throw new Error('No provider available for signature generation');
     }
 

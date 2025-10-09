@@ -27,10 +27,10 @@ export function useSimpleEthers() {
     // Get or create Web3Service instance with current config
     const web3Service = Web3Service.getInstance(config);
 
-    // Initialize Web3Service directly with the ethers provider (not EIP-1193)
+    // Initialize Web3Service with the ethers provider from auth system
     if (!web3Service.isServiceInitialized()) {
       console.log('🔧 useSimpleEthers: Initializing Web3Service with ethers provider');
-      await web3Service.initializeWithEthersProvider(ethersProvider);
+      await web3Service.initialize(ethersProvider);
     }
 
     return web3Service;

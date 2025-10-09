@@ -60,7 +60,7 @@ describe('Provider Switching and MicroUSDC Regression Protection', () => {
 
       // Step 1: Initialize with first provider (e.g., MetaMask)
       const service1 = Web3Service.getInstance({} as any);
-      await service1.initializeWithEthersProvider(mockProvider1);
+      await service1.initialize(mockProvider1);
 
       expect(service1.isServiceInitialized()).toBe(true);
 
@@ -71,7 +71,7 @@ describe('Provider Switching and MicroUSDC Regression Protection', () => {
       const service2 = Web3Service.getInstance({} as any);
       expect(service2.isServiceInitialized()).toBe(false); // Should be fresh instance
 
-      await service2.initializeWithEthersProvider(mockProvider2);
+      await service2.initialize(mockProvider2);
       expect(service2.isServiceInitialized()).toBe(true);
 
       // Step 4: Verify the services are different instances
@@ -99,7 +99,7 @@ describe('Provider Switching and MicroUSDC Regression Protection', () => {
 
       // Step 1: Initialize with first provider
       const service1 = Web3Service.getInstance({} as any);
-      await service1.initializeWithEthersProvider(mockProvider1);
+      await service1.initialize(mockProvider1);
 
       // Step 2: Try to get another instance without clearing (this should return same instance)
       const service2 = Web3Service.getInstance({} as any);
@@ -109,7 +109,7 @@ describe('Provider Switching and MicroUSDC Regression Protection', () => {
       expect(service2.isServiceInitialized()).toBe(true);
 
       // Step 4: Attempting to initialize again should not change the provider
-      await service2.initializeWithEthersProvider(mockProvider2);
+      await service2.initialize(mockProvider2);
 
       // This demonstrates the bug - once initialized, the singleton won't reinitialize
       expect(service1).toBe(service2);
@@ -242,7 +242,7 @@ describe('Provider Switching and MicroUSDC Regression Protection', () => {
 
       // Step 1: User connects MetaMask
       const metaMaskService = Web3Service.getInstance({} as any);
-      await metaMaskService.initializeWithEthersProvider(mockMetaMaskProvider);
+      await metaMaskService.initialize(mockMetaMaskProvider);
 
       expect(metaMaskService.isServiceInitialized()).toBe(true);
 
@@ -251,7 +251,7 @@ describe('Provider Switching and MicroUSDC Regression Protection', () => {
 
       // Step 3: User connects Web3Auth
       const web3AuthService = Web3Service.getInstance({} as any);
-      await web3AuthService.initializeWithEthersProvider(mockWeb3AuthProvider);
+      await web3AuthService.initialize(mockWeb3AuthProvider);
 
       // Step 4: Verify new service instance with correct provider
       expect(web3AuthService).not.toBe(metaMaskService); // Different instances

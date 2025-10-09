@@ -77,7 +77,7 @@ describe('Gas Price vs Cost Confusion Prevention', () => {
     };
 
     const web3Service = Web3Service.getInstance(mockConfig);
-    await web3Service.initializeWithEthersProvider(mockProvider as any);
+    await web3Service.initialize(mockProvider as any);
 
     // Real-world scenario: 0.0075 gwei price, 60k gas limit
     // This should be VALID since:

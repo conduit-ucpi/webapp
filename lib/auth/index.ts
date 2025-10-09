@@ -5,16 +5,18 @@
 
 // Types
 export type {
-  AuthUser,
-  AuthState,
-  AuthResult,
-  BackendAuthResult,
-  WalletProvider,
-  AuthProvider as AuthProviderInterface,
   AuthConfig,
-  ProviderType,
-  AuthContextType
+  ProviderType
 } from './types';
+
+export type {
+  UnifiedProvider,
+  ConnectionResult,
+  ProviderCapabilities,
+  TransactionRequest,
+  AuthState,
+  AuthUser
+} from './types/unified-provider';
 
 // Core (framework-agnostic)
 export { AuthManager } from './core/AuthManager';
@@ -30,7 +32,6 @@ export { BackendClient } from './backend/BackendClient';
 export { AuthService } from './backend/AuthService';
 
 // Blockchain
-export { ProviderWrapper } from './blockchain/ProviderWrapper';
 export { TransactionManager } from './blockchain/TransactionManager';
 export type { TransactionOptions, TransactionResult } from './blockchain/TransactionManager';
 

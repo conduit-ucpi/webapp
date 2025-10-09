@@ -99,7 +99,7 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
       // Initialize Web3Service if needed
       if (!web3Service.isServiceInitialized()) {
         console.log('🔧 SimpleAuthProvider: Initializing Web3Service for claim');
-        await web3Service.initializeWithEthersProvider(ethersProvider);
+        await web3Service.initialize(ethersProvider);
       }
 
       // Use Web3Service directly for the blockchain operation
@@ -153,7 +153,7 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
       // Initialize Web3Service if needed
       if (!web3Service.isServiceInitialized()) {
         console.log('🔧 SimpleAuthProvider: Initializing Web3Service for dispute');
-        await web3Service.initializeWithEthersProvider(ethersProvider);
+        await web3Service.initialize(ethersProvider);
       }
 
       // Step 1: Execute blockchain transaction using Web3Service directly

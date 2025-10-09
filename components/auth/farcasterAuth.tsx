@@ -809,9 +809,9 @@ function FarcasterAuthProviderInner({ children, AuthContext }: {
       const { Web3Service } = await import('@/lib/web3');
       const web3Service = Web3Service.getInstance(config);
       
-      // Initialize with our simple Farcaster provider wrapper
-      const farcasterProvider = createFarcasterProvider();
-      await web3Service.initializeProvider(farcasterProvider);
+      // Note: Farcaster frames don't provide ethers provider
+      // Web3Service cannot be initialized in Farcaster frames
+      // This will throw an error which is expected behavior
       
       // Create fundAndSendTransaction method from Web3Service
       const fundAndSendTransaction = web3Service.fundAndSendTransaction.bind(web3Service);

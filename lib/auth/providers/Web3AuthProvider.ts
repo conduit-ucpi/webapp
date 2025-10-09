@@ -1,19 +1,27 @@
 /**
  * Web3Auth provider implementation
- * Handles Web3Auth Modal with all adapters (social + wallet connections)
+ * Implements the unified provider interface for Web3Auth Modal with all adapters
  */
 
 import { Web3Auth } from "@web3auth/modal";
 import { createWeb3AuthConfig } from "@/lib/web3authConfig";
-import { AuthProvider, AuthState, AuthConfig } from '../types';
+import { AuthConfig } from '../types';
+import {
+  UnifiedProvider,
+  ConnectionResult,
+  ProviderCapabilities,
+  TransactionRequest
+} from '../types/unified-provider';
 import { TokenManager } from '../core/TokenManager';
 import { ethers } from "ethers";
 
-export class Web3AuthProvider implements AuthProvider {
+export class Web3AuthProvider implements UnifiedProvider {
   private web3authInstance: Web3Auth | null = null;
   private config: AuthConfig;
   private tokenManager: TokenManager;
   private cachedEthersProvider: ethers.BrowserProvider | null = null;
+  private currentAddress: string | null = null;
+  private userInfo: { email?: string; idToken?: string; name?: string } | null = null;
 
   constructor(config: AuthConfig) {
     this.config = config;
@@ -29,7 +37,7 @@ export class Web3AuthProvider implements AuthProvider {
     // Don't pre-initialize to save resources - lazy load when needed
   }
 
-  async connect(): Promise<any> {
+  async connect(): Promise<ConnectionResult> {
     console.log('🔧 Web3AuthProvider: Connect called - initializing Web3Auth modal with all adapters');
 
     try {
@@ -54,39 +62,43 @@ export class Web3AuthProvider implements AuthProvider {
       const provider = await this.web3authInstance.connect();
 
       if (!provider) {
-        throw new Error('No provider returned from Web3Auth');
+        return {
+          success: false,
+          error: 'No provider returned from Web3Auth',
+          capabilities: this.getCapabilities()
+        };
       }
 
       console.log('🔧 Web3AuthProvider: Connected, getting user info');
 
       // Get user info and determine auth method
-      const user = await this.web3authInstance.getUserInfo();
+      this.userInfo = await this.web3authInstance.getUserInfo();
 
       // Create and cache the ethers provider (SINGLE INSTANCE)
       this.cachedEthersProvider = new ethers.BrowserProvider(provider);
       console.log('🔧 Web3AuthProvider: Created and cached single ethers provider instance');
 
       const signer = await this.cachedEthersProvider.getSigner();
-      const address = await signer.getAddress();
+      this.currentAddress = await signer.getAddress();
 
       let authToken: string;
 
       // Check if this is a social login (has email) or wallet connection
-      if (user.email || user.idToken) {
+      if (this.userInfo.email || this.userInfo.idToken) {
         // Social login - use the idToken
         console.log('🔧 Web3AuthProvider: Social login detected, using idToken');
-        authToken = user.idToken || `social:${address}`;
+        authToken = this.userInfo.idToken || `social:${this.currentAddress}`;
       } else {
         // Wallet connection - generate signature auth token
         console.log('🔧 Web3AuthProvider: Wallet connection detected, generating signature');
         const timestamp = Date.now();
         const nonce = Math.random().toString(36).substring(2, 15);
-        const message = `Authenticate wallet ${address} at ${timestamp} with nonce ${nonce}`;
+        const message = `Authenticate wallet ${this.currentAddress} at ${timestamp} with nonce ${nonce}`;
         const signature = await signer.signMessage(message);
 
         authToken = btoa(JSON.stringify({
           type: 'signature_auth',
-          walletAddress: address,
+          walletAddress: this.currentAddress,
           message,
           signature,
           timestamp,
@@ -97,7 +109,7 @@ export class Web3AuthProvider implements AuthProvider {
             typ: 'SIG'
           },
           payload: {
-            sub: address,
+            sub: this.currentAddress,
             iat: Math.floor(timestamp / 1000), // Convert to seconds
             iss: 'web3auth_unified',
             wallet_type: 'external'
@@ -109,11 +121,21 @@ export class Web3AuthProvider implements AuthProvider {
       this.tokenManager.setToken(authToken);
 
       console.log('🔧 Web3AuthProvider: ✅ Successfully connected and authenticated');
-      return provider;
+
+      return {
+        success: true,
+        address: this.currentAddress,
+        token: authToken,
+        capabilities: this.getCapabilities()
+      };
 
     } catch (error) {
       console.error('🔧 Web3AuthProvider: Connection failed:', error);
-      throw error;
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Connection failed',
+        capabilities: this.getCapabilities()
+      };
     }
   }
 
@@ -125,14 +147,17 @@ export class Web3AuthProvider implements AuthProvider {
       this.web3authInstance = null;
     }
 
-    // Clear the cached ethers provider
+    // Clear the cached ethers provider and address
     this.cachedEthersProvider = null;
+    this.currentAddress = null;
+    this.userInfo = null;
+
     console.log('🔧 Web3AuthProvider: Cleared cached ethers provider');
 
     this.tokenManager.clearToken();
   }
 
-  async switchWallet(): Promise<any> {
+  async switchWallet(): Promise<ConnectionResult> {
     console.log('🔧 Web3AuthProvider: Switching wallet - clearing cache and showing modal');
 
     // Initialize Web3Auth if not already done
@@ -157,7 +182,7 @@ export class Web3AuthProvider implements AuthProvider {
     return this.connect();
   }
 
-  getToken(): string | null {
+  getAuthToken(): string | null {
     return this.tokenManager.getToken();
   }
 
@@ -170,44 +195,62 @@ export class Web3AuthProvider implements AuthProvider {
     return await signer.signMessage(message);
   }
 
-  async getEthersProvider(): Promise<any> {
+  async signTransaction(params: TransactionRequest): Promise<string> {
+    if (!this.cachedEthersProvider) {
+      throw new Error('No ethers provider available for signing');
+    }
+
+    const signer = await this.cachedEthersProvider.getSigner();
+
+    // Convert to ethers transaction format
+    const tx = {
+      to: params.to,
+      data: params.data,
+      value: params.value ? BigInt(params.value) : undefined,
+      gasLimit: params.gasLimit ? BigInt(params.gasLimit.toString()) : undefined,
+      gasPrice: params.gasPrice ? BigInt(params.gasPrice.toString()) : undefined,
+      nonce: typeof params.nonce === 'string' ? parseInt(params.nonce) : params.nonce,
+      chainId: params.chainId
+    };
+
+    // Sign the transaction
+    const signedTx = await signer.signTransaction(tx);
+    return signedTx;
+  }
+
+  getEthersProvider(): ethers.BrowserProvider | null {
     // Return the cached ethers provider (SINGLE INSTANCE)
     return this.cachedEthersProvider;
   }
 
-  hasVisitedBefore(): boolean {
-    try {
-      return !!localStorage.getItem('conduit-has-visited');
-    } catch {
-      return false;
+  async getAddress(): Promise<string> {
+    if (this.currentAddress) {
+      return this.currentAddress;
     }
-  }
 
-  markAsVisited(): void {
-    try {
-      localStorage.setItem('conduit-has-visited', 'true');
-    } catch {}
-  }
+    if (!this.cachedEthersProvider) {
+      throw new Error('No provider connected');
+    }
 
-  isReady: boolean = true;
-
-  getState(): AuthState {
-    return {
-      user: null, // Will be populated by backend after auth
-      token: this.getToken(),
-      isConnected: !!this.web3authInstance?.connected,
-      isLoading: false,
-      isInitialized: true,
-      error: null,
-      providerName: 'web3auth'
-    };
+    const signer = await this.cachedEthersProvider.getSigner();
+    this.currentAddress = await signer.getAddress();
+    return this.currentAddress;
   }
 
   isConnected(): boolean {
-    return !!this.web3authInstance?.connected;
+    return !!this.web3authInstance?.connected && !!this.cachedEthersProvider;
   }
 
-  getUserInfo(): any {
-    return this.web3authInstance?.getUserInfo() || null;
+  getUserInfo(): { email?: string; idToken?: string; name?: string } | null {
+    return this.userInfo;
+  }
+
+  getCapabilities(): ProviderCapabilities {
+    return {
+      canSign: true,
+      canTransact: true,
+      canSwitchWallets: true,
+      isAuthOnly: false
+    };
   }
 }

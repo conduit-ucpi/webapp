@@ -201,6 +201,12 @@ export class Web3AuthProvider implements AuthProvider {
             hasEthersProvider: !!this.cachedEthersProvider
           });
 
+          // On mobile, wait a moment for any pending requests to clear
+          if (deviceInfo.isMobile) {
+            mLog.info('Web3AuthProvider', 'Mobile detected - waiting 2 seconds for pending requests to clear');
+            await new Promise(resolve => setTimeout(resolve, 2000));
+          }
+
           // Add timeout to detect hanging signature requests
           const signPromise = signer.signMessage(message);
           const timeoutPromise = new Promise((_, reject) =>
@@ -217,11 +223,29 @@ export class Web3AuthProvider implements AuthProvider {
             signatureLength: signature.length
           });
         } catch (signError) {
+          const errorMessage = signError instanceof Error ? signError.message : String(signError);
           mLog.error('Web3AuthProvider', 'Signature failed', {
-            error: signError instanceof Error ? signError.message : String(signError),
+            error: errorMessage,
             errorType: signError instanceof Error ? signError.constructor.name : typeof signError
           });
-          throw signError;
+
+          // Handle specific case of pending signature request
+          if (errorMessage.includes('already pending')) {
+            mLog.warn('Web3AuthProvider', 'Pending signature detected, retrying after delay');
+            // Wait for pending request to clear and retry once
+            await new Promise(resolve => setTimeout(resolve, 3000));
+            try {
+              signature = await signer.signMessage(message);
+              mLog.info('Web3AuthProvider', 'Retry signature successful');
+            } catch (retryError) {
+              mLog.error('Web3AuthProvider', 'Retry signature also failed', {
+                error: retryError instanceof Error ? retryError.message : String(retryError)
+              });
+              throw retryError;
+            }
+          } else {
+            throw signError;
+          }
         }
 
         authToken = btoa(JSON.stringify({

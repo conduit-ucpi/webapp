@@ -69,11 +69,7 @@ export const createWeb3AuthConfig = (config: {
     uiConfig: {
       defaultLanguage: "en",
       mode: "auto" as any,
-      modalZIndex: "99999",
-      // On mobile, show social options but guide wallet users to WalletConnect
-      ...(isMobile && {
-        loginMethodsOrder: ["google", "facebook", "email", "wallet_connect_v2"]
-      })
+      modalZIndex: "99999"
     },
     enableLogging: true,
     sessionTime: 86400,
@@ -81,13 +77,9 @@ export const createWeb3AuthConfig = (config: {
     ...(config.walletConnectProjectId && {
       projectId: config.walletConnectProjectId
     }),
-    // Configure modal to prevent auto-connection on mobile
-    modalConfig: !isMobile ? undefined : {
-      [WALLET_CONNECTORS.METAMASK]: {
-        label: "metamask",
-        showOnModal: false, // Hide MetaMask on mobile to prevent auto-connection
-      } as any,
-    } as any
+    // On mobile, let Web3Auth handle default modal behavior without restrictions
+    // The UX_MODE.REDIRECT should prevent auto-connection issues
+    modalConfig: undefined
   };
 
   mLog.debug('Web3AuthConfig', 'Web3Auth options created', {

@@ -110,13 +110,13 @@ export class Web3AuthProvider implements AuthProvider {
         }
       }
 
-      // On mobile, clear additional cache to prevent auto-selection
+      // On mobile, clear ALL cache to prevent auto-selection
       if (deviceInfo.isMobile && typeof window !== 'undefined') {
         // Clear any Web3Auth session storage that might cause auto-connection
         const keysToRemove = [];
         for (let i = 0; i < window.localStorage.length; i++) {
           const key = window.localStorage.key(i);
-          if (key && key.includes('web3auth')) {
+          if (key && (key.includes('web3auth') || key.includes('Web3Auth') || key.includes('openlogin'))) {
             keysToRemove.push(key);
           }
         }
@@ -124,6 +124,20 @@ export class Web3AuthProvider implements AuthProvider {
           window.localStorage.removeItem(key);
           mLog.debug('Web3AuthProvider', 'Cleared localStorage key', { key });
         });
+
+        // Also clear sessionStorage
+        for (let i = 0; i < window.sessionStorage.length; i++) {
+          const key = window.sessionStorage.key(i);
+          if (key && (key.includes('web3auth') || key.includes('Web3Auth') || key.includes('openlogin'))) {
+            window.sessionStorage.removeItem(key);
+            mLog.debug('Web3AuthProvider', 'Cleared sessionStorage key', { key });
+          }
+        }
+
+        // Clear the specific cached adapter key
+        window.localStorage.removeItem('Web3Auth-cachedAdapter');
+        window.sessionStorage.removeItem('Web3Auth-cachedAdapter');
+        mLog.info('Web3AuthProvider', 'Cleared all Web3Auth cache on mobile');
       }
 
       // Connect - this will show the modal with all options

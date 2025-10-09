@@ -75,7 +75,7 @@ export const createWeb3AuthConfig = (config: {
   });
 
 
-  // Base Web3Auth options with WalletConnect project ID
+  // Base Web3Auth options with mobile-specific adapter configuration
   const web3AuthOptions: Web3AuthOptions = {
     clientId: config.web3AuthClientId,
     web3AuthNetwork: config.web3AuthNetwork as any,
@@ -83,6 +83,10 @@ export const createWeb3AuthConfig = (config: {
       defaultLanguage: "en",
       mode: "auto" as any,
       modalZIndex: "99999",
+      // On mobile, show social options but guide wallet users to WalletConnect
+      ...(isMobile && {
+        loginMethodsOrder: ["google", "facebook", "email", "wallet_connect_v2"]
+      })
     },
     enableLogging: true,
     sessionTime: 86400,

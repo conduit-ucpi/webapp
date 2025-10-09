@@ -68,7 +68,7 @@ export class Web3AuthProvider implements AuthProvider {
 
         this.web3authInstance = new Web3Auth(web3authConfig.web3AuthOptions);
 
-        // Initialize Web3Auth Modal (adapters are automatically available in v10)
+        // Initialize Web3Auth Modal (v10 includes social logins by default)
         mLog.info('Web3AuthProvider', 'Initializing Web3Auth with built-in adapters');
         await this.web3authInstance.init();
         mLog.info('Web3AuthProvider', 'Web3Auth initialized successfully');

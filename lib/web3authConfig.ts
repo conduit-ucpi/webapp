@@ -1,7 +1,6 @@
 import { WALLET_CONNECTORS, WEB3AUTH_NETWORK, Web3AuthOptions } from "@web3auth/modal";
 import { Web3AuthContextConfig } from "@web3auth/modal/react";
 import { CHAIN_NAMESPACES, CustomChainConfig, UX_MODE, ADAPTER_EVENTS } from "@web3auth/base";
-import { OpenloginAdapter } from "@web3auth/openlogin-adapter";
 import { getNetworkInfo } from "@/utils/networkUtils";
 import { toHexString } from "@/utils/hexUtils";
 import { mLog } from "@/utils/mobileLogger";
@@ -63,18 +62,6 @@ export const createWeb3AuthConfig = (config: {
     network: config.web3AuthNetwork
   });
 
-  const openloginAdapter = new OpenloginAdapter({
-    adapterSettings: {
-      uxMode, // Use redirect for mobile, popup for desktop
-      network: config.web3AuthNetwork as any,
-    },
-    loginSettings: {
-      mfaLevel: "optional",
-    },
-    privateKeyProvider: undefined, // Will use the default provider
-  });
-
-
   // Base Web3Auth options with proper modalConfig to prevent auto-connection
   const web3AuthOptions: Web3AuthOptions = {
     clientId: config.web3AuthClientId,
@@ -94,17 +81,11 @@ export const createWeb3AuthConfig = (config: {
     ...(config.walletConnectProjectId && {
       projectId: config.walletConnectProjectId
     }),
-    // Configure modal to prevent auto-connection - using available connectors
-    modalConfig: {
+    // Configure modal to prevent auto-connection on mobile
+    modalConfig: !isMobile ? undefined : {
       [WALLET_CONNECTORS.METAMASK]: {
-        showOnModal: true,
-        showOnMobile: !isMobile, // Hide MetaMask on mobile to prevent auto-connection
-        showOnDesktop: true,
-      } as any, // Type assertion since Web3Auth types may be incomplete
-      [WALLET_CONNECTORS.WALLET_CONNECT_V2]: {
-        showOnModal: true,
-        showOnMobile: true,
-        showOnDesktop: true,
+        label: "metamask",
+        showOnModal: false, // Hide MetaMask on mobile to prevent auto-connection
       } as any,
     } as any
   };

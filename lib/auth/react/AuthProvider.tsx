@@ -40,6 +40,7 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
   const [authService] = useState(() => AuthService.getInstance());
   const [state, setState] = useState<AuthState>(() => authManager.getState());
   const [user, setUser] = useState<AuthUser | null>(null);
+  const [isConnecting, setIsConnecting] = useState(false);
 
   // Initialize auth manager
   useEffect(() => {
@@ -80,6 +81,23 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
   // No need to manage provider separately - it's cached in AuthManager
 
   const connect = useCallback(async (): Promise<ConnectionResult> => {
+    // Prevent multiple simultaneous connection attempts
+    if (isConnecting) {
+      console.log('🔧 AuthProvider: Connection already in progress, ignoring duplicate request');
+      return {
+        success: false,
+        error: 'Connection already in progress',
+        capabilities: {
+          canSign: false,
+          canTransact: false,
+          canSwitchWallets: false,
+          isAuthOnly: true
+        }
+      };
+    }
+
+    setIsConnecting(true);
+
     try {
       // Connect with auth manager (handles provider selection)
       const result = await authManager.connect();
@@ -121,8 +139,10 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
           isAuthOnly: true
         }
       };
+    } finally {
+      setIsConnecting(false);
     }
-  }, [authManager, authService]);
+  }, [authManager, authService, isConnecting]);
 
   const disconnect = useCallback(async (): Promise<void> => {
     try {

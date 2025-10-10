@@ -22,6 +22,7 @@ export class AuthManager {
   private tokenManager: TokenManager;
   private state: AuthState;
   private listeners: Array<(state: AuthState) => void> = [];
+  private isConnectInProgress: boolean = false;
 
   private constructor() {
     this.providerRegistry = new ProviderRegistry();
@@ -79,6 +80,22 @@ export class AuthManager {
    * Connect using the best available provider
    */
   async connect(preferredProvider?: ProviderType): Promise<ConnectionResult> {
+    // Prevent multiple simultaneous connection attempts at the manager level
+    if (this.isConnectInProgress) {
+      mLog.warn('AuthManager', 'Connection already in progress, blocking duplicate attempt');
+      return {
+        success: false,
+        error: 'Connection already in progress',
+        capabilities: {
+          canSign: false,
+          canTransact: false,
+          canSwitchWallets: false,
+          isAuthOnly: true
+        }
+      };
+    }
+
+    this.isConnectInProgress = true;
     mLog.info('AuthManager', 'Starting connection process', { preferredProvider });
 
     try {
@@ -172,6 +189,8 @@ export class AuthManager {
       // Force flush logs on error
       await mLog.forceFlush();
       return errorResult;
+    } finally {
+      this.isConnectInProgress = false;
     }
   }
 
@@ -180,6 +199,7 @@ export class AuthManager {
    */
   async disconnect(): Promise<void> {
     console.log('🔧 AuthManager: Disconnecting');
+    this.isConnectInProgress = false; // Reset connection flag on disconnect
 
     try {
       if (this.currentProvider) {

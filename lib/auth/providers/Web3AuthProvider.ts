@@ -14,6 +14,8 @@ import {
 } from '../types/unified-provider';
 import { TokenManager } from '../core/TokenManager';
 import { ethers } from "ethers";
+import { mLog } from '../../../utils/mobileLogger';
+import { detectDevice } from '../../../utils/deviceDetection';
 
 export class Web3AuthProvider implements UnifiedProvider {
   private web3authInstance: Web3Auth | null = null;
@@ -33,17 +35,17 @@ export class Web3AuthProvider implements UnifiedProvider {
   }
 
   async initialize(): Promise<void> {
-    console.log('🔧 Web3AuthProvider: Initialize called');
+    mLog.info('Web3AuthProvider', 'Initialize called');
     // Don't pre-initialize to save resources - lazy load when needed
   }
 
   async connect(): Promise<ConnectionResult> {
-    console.log('🔧 Web3AuthProvider: Connect called - initializing Web3Auth modal with all adapters');
+    mLog.info('Web3AuthProvider', 'Connect called - initializing Web3Auth modal with all adapters');
 
     try {
       // Initialize Web3Auth if not already done
       if (!this.web3authInstance) {
-        console.log('🔧 Web3AuthProvider: Creating Web3Auth instance');
+        mLog.info('Web3AuthProvider', 'Creating Web3Auth instance');
         const web3authConfig = createWeb3AuthConfig({
           ...this.config,
           walletConnectProjectId: this.config.walletConnectProjectId || process.env.WALLETCONNECT_PROJECT_ID
@@ -52,14 +54,25 @@ export class Web3AuthProvider implements UnifiedProvider {
         this.web3authInstance = new Web3Auth(web3authConfig.web3AuthOptions);
 
         // Initialize Web3Auth Modal
-        console.log('🔧 Web3AuthProvider: Initializing Web3Auth');
+        mLog.info('Web3AuthProvider', 'Initializing Web3Auth');
         await this.web3authInstance.init();
-        console.log('🔧 Web3AuthProvider: Web3Auth initialized successfully');
+        mLog.info('Web3AuthProvider', 'Web3Auth initialized successfully');
       }
 
       // Connect - this will show the modal with all options
-      console.log('🔧 Web3AuthProvider: Opening Web3Auth modal');
+      mLog.info('Web3AuthProvider', 'Opening Web3Auth modal');
       const provider = await this.web3authInstance.connect();
+
+      // Continue with normal flow - mobile MetaMask signing will be handled directly
+
+      mLog.debug('Web3AuthProvider', 'Provider received', {
+        type: typeof provider,
+        constructor: provider?.constructor?.name,
+        hasRequest: typeof provider?.request === 'function',
+        hasSend: typeof provider?.send === 'function',
+        hasOn: typeof provider?.on === 'function',
+        providerKeys: provider ? Object.keys(provider) : []
+      });
 
       if (!provider) {
         return {
@@ -69,32 +82,60 @@ export class Web3AuthProvider implements UnifiedProvider {
         };
       }
 
-      console.log('🔧 Web3AuthProvider: Connected, getting user info');
+      mLog.info('Web3AuthProvider', 'Connected, getting user info');
 
       // Get user info and determine auth method
       this.userInfo = await this.web3authInstance.getUserInfo();
 
       // Create and cache the ethers provider (SINGLE INSTANCE)
+      mLog.info('Web3AuthProvider', 'Creating ethers.BrowserProvider...');
       this.cachedEthersProvider = new ethers.BrowserProvider(provider);
-      console.log('🔧 Web3AuthProvider: Created and cached single ethers provider instance');
+      mLog.info('Web3AuthProvider', 'Created and cached single ethers provider instance');
 
+      mLog.info('Web3AuthProvider', 'Getting signer...');
       const signer = await this.cachedEthersProvider.getSigner();
+      mLog.debug('Web3AuthProvider', 'Signer obtained', {
+        signerType: typeof signer,
+        hasSignMessage: typeof signer.signMessage === 'function'
+      });
+
+      mLog.info('Web3AuthProvider', 'Getting address...');
       this.currentAddress = await signer.getAddress();
+      mLog.info('Web3AuthProvider', 'Address obtained', { address: this.currentAddress });
 
       let authToken: string;
 
       // Check if this is a social login (has email) or wallet connection
       if (this.userInfo.email || this.userInfo.idToken) {
         // Social login - use the idToken
-        console.log('🔧 Web3AuthProvider: Social login detected, using idToken');
+        mLog.info('Web3AuthProvider', 'Social login detected, using idToken');
         authToken = this.userInfo.idToken || `social:${this.currentAddress}`;
       } else {
-        // Wallet connection - generate signature auth token
-        console.log('🔧 Web3AuthProvider: Wallet connection detected, generating signature');
+        // External wallet - need signature for authentication
+        mLog.info('Web3AuthProvider', 'External wallet detected, generating signature');
+
         const timestamp = Date.now();
         const nonce = Math.random().toString(36).substring(2, 15);
         const message = `Authenticate wallet ${this.currentAddress} at ${timestamp} with nonce ${nonce}`;
-        const signature = await signer.signMessage(message);
+
+        let signature: string;
+
+        // Check if this is MetaMask and if we should use direct signing
+        const deviceInfo = detectDevice();
+        const isMobile = deviceInfo.isMobile || deviceInfo.isTablet;
+        const isMetaMask = this.isMetaMaskProvider(provider);
+
+        if (isMobile && isMetaMask && typeof window !== 'undefined' && window.ethereum) {
+          // Use MetaMask directly, bypassing Web3Auth's broken provider wrapper
+          mLog.info('Web3AuthProvider', 'CRITICAL: Using direct MetaMask signing on mobile to bypass Web3Auth provider wrapper');
+          await mLog.forceFlush();
+          signature = await this.signWithDirectMetaMask(message, this.currentAddress);
+        } else {
+          // Use Web3Auth's provider wrapper (works for desktop and non-MetaMask)
+          mLog.info('Web3AuthProvider', 'Using Web3Auth provider for signing', { isMobile, isMetaMask, hasWindowEthereum: !!(typeof window !== 'undefined' && window.ethereum) });
+          await mLog.forceFlush();
+          signature = await signer.signMessage(message);
+        }
 
         authToken = btoa(JSON.stringify({
           type: 'signature_auth',
@@ -110,7 +151,7 @@ export class Web3AuthProvider implements UnifiedProvider {
           },
           payload: {
             sub: this.currentAddress,
-            iat: Math.floor(timestamp / 1000), // Convert to seconds
+            iat: Math.floor(timestamp / 1000),
             iss: 'web3auth_unified',
             wallet_type: 'external'
           }
@@ -120,7 +161,7 @@ export class Web3AuthProvider implements UnifiedProvider {
       // Store token
       this.tokenManager.setToken(authToken);
 
-      console.log('🔧 Web3AuthProvider: ✅ Successfully connected and authenticated');
+      mLog.info('Web3AuthProvider', '✅ Successfully connected and authenticated');
 
       return {
         success: true,
@@ -130,7 +171,9 @@ export class Web3AuthProvider implements UnifiedProvider {
       };
 
     } catch (error) {
-      console.error('🔧 Web3AuthProvider: Connection failed:', error);
+      mLog.error('Web3AuthProvider', 'Connection failed', {
+        error: error instanceof Error ? error.message : String(error)
+      });
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Connection failed',
@@ -253,4 +296,62 @@ export class Web3AuthProvider implements UnifiedProvider {
       isAuthOnly: false
     };
   }
+
+  /**
+   * Check if the provider is from MetaMask
+   */
+  private isMetaMaskProvider(provider: any): boolean {
+    if (!provider) return false;
+
+    // Check various MetaMask identifiers
+    const isMetaMask = provider.isMetaMask === true ||
+                      provider._metamask !== undefined ||
+                      provider.constructor?.name?.toLowerCase().includes('metamask') ||
+                      (provider.connection && provider.connection.url?.includes('metamask'));
+
+    mLog.debug('Web3AuthProvider', 'MetaMask detection', {
+      isMetaMask,
+      hasIsMetaMaskFlag: provider.isMetaMask === true,
+      hasMetamaskProperty: provider._metamask !== undefined,
+      constructorName: provider.constructor?.name,
+      connectionUrl: provider.connection?.url
+    });
+
+    return isMetaMask;
+  }
+
+  /**
+   * Sign message directly with MetaMask, bypassing Web3Auth's provider wrapper
+   */
+  private async signWithDirectMetaMask(message: string, address: string): Promise<string> {
+    const ethereum = (window as any).ethereum;
+
+    if (!ethereum || !ethereum.isMetaMask) {
+      throw new Error('MetaMask not available');
+    }
+
+    // Use personal_sign directly with MetaMask
+    const msgHex = ethers.hexlify(ethers.toUtf8Bytes(message));
+
+    try {
+      const signature = await ethereum.request({
+        method: 'personal_sign',
+        params: [msgHex, address]
+      });
+
+      if (!signature) {
+        throw new Error('No signature returned from MetaMask');
+      }
+
+      mLog.info('Web3AuthProvider', 'CRITICAL: Direct MetaMask signing SUCCESS');
+      await mLog.forceFlush();
+      return signature;
+    } catch (error) {
+      mLog.error('Web3AuthProvider', 'Direct MetaMask signing failed', {
+        error: error instanceof Error ? error.message : String(error)
+      });
+      throw error;
+    }
+  }
+
 }

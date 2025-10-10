@@ -20,7 +20,7 @@ export default function ConnectWalletEmbedded({
   compact = false,
   onSuccess
 }: ConnectWalletEmbeddedProps) {
-  const { user, isLoading, connect } = useAuth();
+  const { user, isLoading, connect, authenticateBackend } = useAuth();
 
 
   if (isLoading) {
@@ -49,11 +49,24 @@ export default function ConnectWalletEmbedded({
         mLog.info('ConnectWalletEmbedded', 'Calling connect function...');
         await mLog.forceFlush(); // Flush before calling connect (in case it hangs)
 
-        await connect();
+        const connectionResult = await connect();
 
-        mLog.info('ConnectWalletEmbedded', 'Connect function completed successfully');
-        onSuccess?.();
-        await mLog.forceFlush(); // Flush after success
+        if (connectionResult.success) {
+          mLog.info('ConnectWalletEmbedded', 'Connection successful, authenticating with backend...');
+
+          const authSuccess = await authenticateBackend();
+
+          if (authSuccess) {
+            mLog.info('ConnectWalletEmbedded', 'Backend authentication successful');
+            onSuccess?.();
+          } else {
+            mLog.error('ConnectWalletEmbedded', 'Backend authentication failed');
+          }
+        } else {
+          mLog.error('ConnectWalletEmbedded', 'Wallet connection failed', { error: connectionResult.error });
+        }
+
+        await mLog.forceFlush(); // Flush after completion
       } catch (error) {
         mLog.error('ConnectWalletEmbedded', 'Connect wallet error', {
           error: error instanceof Error ? error.message : String(error),

@@ -261,7 +261,6 @@ describe('Wallet Provider Abstraction', () => {
         'getEthersProvider\\(\\): ethers\\.BrowserProvider \\| null',
         'getAddress\\(\\): Promise<string>',
         'signMessage\\(message: string\\): Promise<string>',
-        'getAuthToken\\(\\): string \\| null',
         'getCapabilities\\(\\): ProviderCapabilities'
       ];
 

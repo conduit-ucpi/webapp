@@ -11,18 +11,15 @@ import {
   ProviderCapabilities,
   TransactionRequest
 } from '../types/unified-provider';
-import { TokenManager } from '../core/TokenManager';
 import { ethers } from 'ethers';
 
 export class FarcasterProvider implements UnifiedProvider {
   private config: AuthConfig;
-  private tokenManager: TokenManager;
   private farcasterUser: { id: string; username?: string } | null = null;
   private isConnectedState: boolean = false;
 
   constructor(config: AuthConfig) {
     this.config = config;
-    this.tokenManager = TokenManager.getInstance();
   }
 
   getProviderName(): string {
@@ -42,10 +39,6 @@ export class FarcasterProvider implements UnifiedProvider {
       // This is a simplified implementation - actual Farcaster integration
       // would use the Farcaster SDK and frame protocols
 
-      // Store a mock token for Farcaster
-      const authToken = `farcaster:${Date.now()}`;
-      this.tokenManager.setToken(authToken);
-
       this.isConnectedState = true;
 
       console.log('🔧 FarcasterProvider: ✅ Connected via Farcaster frame');
@@ -53,7 +46,6 @@ export class FarcasterProvider implements UnifiedProvider {
       return {
         success: true,
         address: '0x1234567890123456789012345678901234567890', // Mock address
-        token: authToken,
         capabilities: this.getCapabilities()
       };
 
@@ -71,7 +63,6 @@ export class FarcasterProvider implements UnifiedProvider {
     console.log('🔧 FarcasterProvider: Disconnecting');
     this.farcasterUser = null;
     this.isConnectedState = false;
-    this.tokenManager.clearToken();
   }
 
   async switchWallet(): Promise<ConnectionResult> {
@@ -82,10 +73,6 @@ export class FarcasterProvider implements UnifiedProvider {
       error: 'Wallet switching is not supported in Farcaster frames',
       capabilities: this.getCapabilities()
     };
-  }
-
-  getAuthToken(): string | null {
-    return this.tokenManager.getToken();
   }
 
   async signMessage(message: string): Promise<string> {

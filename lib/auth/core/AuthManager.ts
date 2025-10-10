@@ -31,8 +31,8 @@ export class AuthManager {
       isConnected: false,
       isLoading: false,
       isInitialized: false,
+      isAuthenticated: false,
       address: null,
-      token: null,
       providerName: null,
       capabilities: null,
       error: null
@@ -137,14 +137,12 @@ export class AuthManager {
           isConnected: true,
           isLoading: false,
           address: result.address || null,
-          token: result.token || null,
           providerName: provider.getProviderName(),
           capabilities: result.capabilities,
           error: null
         });
 
         mLog.info('AuthManager', '✅ Connection successful', {
-          hasToken: !!result.token,
           address: result.address,
           providerName: provider.getProviderName(),
           capabilities: result.capabilities
@@ -195,6 +193,65 @@ export class AuthManager {
   }
 
   /**
+   * Sign a message for backend authentication
+   * This is called AFTER successful connection to authenticate with backend
+   */
+  async signMessageForAuth(): Promise<string> {
+    if (!this.currentProvider) {
+      throw new Error('No provider connected');
+    }
+
+    if (!this.state.address) {
+      throw new Error('No wallet address available');
+    }
+
+    // Generate authentication message with timestamp and nonce
+    const timestamp = Date.now();
+    const nonce = Math.random().toString(36).substring(2, 15);
+    const message = `Authenticate wallet ${this.state.address} at ${timestamp} with nonce ${nonce}`;
+
+    mLog.info('AuthManager', 'Signing message for backend authentication', {
+      address: this.state.address,
+      providerName: this.state.providerName
+    });
+
+    try {
+      // Use the provider's signMessage method (which handles mobile MetaMask workaround internally)
+      const signature = await this.currentProvider.signMessage(message);
+
+      // Create the auth token in the standard format
+      const authToken = btoa(JSON.stringify({
+        type: 'signature_auth',
+        walletAddress: this.state.address,
+        message,
+        signature,
+        timestamp,
+        nonce,
+        issuer: 'web3auth_unified',
+        header: {
+          alg: 'ECDSA',
+          typ: 'SIG'
+        },
+        payload: {
+          sub: this.state.address,
+          iat: Math.floor(timestamp / 1000),
+          iss: 'web3auth_unified',
+          wallet_type: this.state.providerName
+        }
+      }));
+
+      mLog.info('AuthManager', '✅ Message signed successfully for backend auth');
+      return authToken;
+
+    } catch (error) {
+      mLog.error('AuthManager', 'Failed to sign message for auth', {
+        error: error instanceof Error ? error.message : String(error)
+      });
+      throw error;
+    }
+  }
+
+  /**
    * Disconnect current session
    */
   async disconnect(): Promise<void> {
@@ -212,8 +269,8 @@ export class AuthManager {
       // Reset state
       this.setState({
         isConnected: false,
+        isAuthenticated: false,
         address: null,
-        token: null,
         providerName: null,
         capabilities: null,
         error: null
@@ -258,7 +315,6 @@ export class AuthManager {
       // Update state with new connection info
       this.setState({
         address: result.address || null,
-        token: result.token || null,
         capabilities: result.capabilities
       });
     }
@@ -343,7 +399,7 @@ export class AuthManager {
     }
   }
 
-  private setState(newState: Partial<AuthState>): void {
+  setState(newState: Partial<AuthState>): void {
     this.state = { ...this.state, ...newState };
 
     // Notify all listeners
@@ -392,7 +448,6 @@ export class AuthManager {
           const result = await primaryProvider.connect();
           mLog.debug('AuthManager', 'Provider connect result', {
             success: result.success,
-            hasToken: !!result.token,
             address: result.address,
             error: result.error
           });
@@ -403,7 +458,6 @@ export class AuthManager {
               isConnected: true,
               isLoading: false,
               address: result.address || null,
-              token: result.token || null,
               providerName: primaryProvider.getProviderName(),
               capabilities: result.capabilities,
               error: null
@@ -462,7 +516,7 @@ export class AuthManager {
 
           this.setState({
             isConnected: true,
-            token,
+            isAuthenticated: true, // If we have a token, we were authenticated
             address,
             providerName: provider.getProviderName(),
             capabilities: provider.getCapabilities()

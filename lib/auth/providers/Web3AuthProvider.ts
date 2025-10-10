@@ -12,22 +12,18 @@ import {
   ProviderCapabilities,
   TransactionRequest
 } from '../types/unified-provider';
-import { TokenManager } from '../core/TokenManager';
 import { ethers } from "ethers";
 import { mLog } from '../../../utils/mobileLogger';
-import { detectDevice } from '../../../utils/deviceDetection';
 
 export class Web3AuthProvider implements UnifiedProvider {
   private web3authInstance: Web3Auth | null = null;
   private config: AuthConfig;
-  private tokenManager: TokenManager;
   private cachedEthersProvider: ethers.BrowserProvider | null = null;
   private currentAddress: string | null = null;
   private userInfo: { email?: string; idToken?: string; name?: string } | null = null;
 
   constructor(config: AuthConfig) {
     this.config = config;
-    this.tokenManager = TokenManager.getInstance();
   }
 
   getProviderName(): string {
@@ -84,7 +80,7 @@ export class Web3AuthProvider implements UnifiedProvider {
 
       mLog.info('Web3AuthProvider', 'Connected, getting user info');
 
-      // Get user info and determine auth method
+      // Get user info for potential future use
       this.userInfo = await this.web3authInstance.getUserInfo();
 
       // Create and cache the ethers provider (SINGLE INSTANCE)
@@ -103,70 +99,11 @@ export class Web3AuthProvider implements UnifiedProvider {
       this.currentAddress = await signer.getAddress();
       mLog.info('Web3AuthProvider', 'Address obtained', { address: this.currentAddress });
 
-      let authToken: string;
-
-      // Check if this is a social login (has email) or wallet connection
-      if (this.userInfo.email || this.userInfo.idToken) {
-        // Social login - use the idToken
-        mLog.info('Web3AuthProvider', 'Social login detected, using idToken');
-        authToken = this.userInfo.idToken || `social:${this.currentAddress}`;
-      } else {
-        // External wallet - need signature for authentication
-        mLog.info('Web3AuthProvider', 'External wallet detected, generating signature');
-
-        const timestamp = Date.now();
-        const nonce = Math.random().toString(36).substring(2, 15);
-        const message = `Authenticate wallet ${this.currentAddress} at ${timestamp} with nonce ${nonce}`;
-
-        let signature: string;
-
-        // Check if this is MetaMask and if we should use direct signing
-        const deviceInfo = detectDevice();
-        const isMobile = deviceInfo.isMobile || deviceInfo.isTablet;
-        const isMetaMask = this.isMetaMaskProvider(provider);
-
-        if (isMobile && isMetaMask && typeof window !== 'undefined' && window.ethereum) {
-          // Use MetaMask directly, bypassing Web3Auth's broken provider wrapper
-          mLog.info('Web3AuthProvider', 'CRITICAL: Using direct MetaMask signing on mobile to bypass Web3Auth provider wrapper');
-          await mLog.forceFlush();
-          signature = await this.signWithDirectMetaMask(message, this.currentAddress);
-        } else {
-          // Use Web3Auth's provider wrapper (works for desktop and non-MetaMask)
-          mLog.info('Web3AuthProvider', 'Using Web3Auth provider for signing', { isMobile, isMetaMask, hasWindowEthereum: !!(typeof window !== 'undefined' && window.ethereum) });
-          await mLog.forceFlush();
-          signature = await signer.signMessage(message);
-        }
-
-        authToken = btoa(JSON.stringify({
-          type: 'signature_auth',
-          walletAddress: this.currentAddress,
-          message,
-          signature,
-          timestamp,
-          nonce,
-          issuer: 'web3auth_unified',
-          header: {
-            alg: 'ECDSA',
-            typ: 'SIG'
-          },
-          payload: {
-            sub: this.currentAddress,
-            iat: Math.floor(timestamp / 1000),
-            iss: 'web3auth_unified',
-            wallet_type: 'external'
-          }
-        }));
-      }
-
-      // Store token
-      this.tokenManager.setToken(authToken);
-
-      mLog.info('Web3AuthProvider', '✅ Successfully connected and authenticated');
+      mLog.info('Web3AuthProvider', '✅ Successfully connected');
 
       return {
         success: true,
         address: this.currentAddress,
-        token: authToken,
         capabilities: this.getCapabilities()
       };
 
@@ -196,8 +133,6 @@ export class Web3AuthProvider implements UnifiedProvider {
     this.userInfo = null;
 
     console.log('🔧 Web3AuthProvider: Cleared cached ethers provider');
-
-    this.tokenManager.clearToken();
   }
 
   async switchWallet(): Promise<ConnectionResult> {
@@ -225,17 +160,30 @@ export class Web3AuthProvider implements UnifiedProvider {
     return this.connect();
   }
 
-  getAuthToken(): string | null {
-    return this.tokenManager.getToken();
-  }
-
   async signMessage(message: string): Promise<string> {
     if (!this.cachedEthersProvider) {
       throw new Error('No ethers provider available for signing');
     }
 
-    const signer = await this.cachedEthersProvider.getSigner();
-    return await signer.signMessage(message);
+    // Check if we should use direct MetaMask signing on mobile
+    const { detectDevice } = await import('../../../utils/deviceDetection');
+    const deviceInfo = detectDevice();
+    const isMobile = deviceInfo.isMobile || deviceInfo.isTablet;
+
+    // Check if the current provider is MetaMask
+    const provider = this.cachedEthersProvider.provider;
+    const isMetaMask = this.isMetaMaskProvider(provider);
+
+    if (isMobile && isMetaMask && typeof window !== 'undefined' && window.ethereum) {
+      // Use MetaMask directly on mobile to bypass potential issues
+      mLog.info('Web3AuthProvider', 'Using direct MetaMask signing on mobile');
+      const address = await this.getAddress();
+      return await this.signWithDirectMetaMask(message, address);
+    } else {
+      // Standard signing through ethers provider
+      const signer = await this.cachedEthersProvider.getSigner();
+      return await signer.signMessage(message);
+    }
   }
 
   async signTransaction(params: TransactionRequest): Promise<string> {

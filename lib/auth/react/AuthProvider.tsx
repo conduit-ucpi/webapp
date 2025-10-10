@@ -14,11 +14,13 @@ interface AuthContextValue {
   state: AuthState;
   user: AuthUser | null;
   isConnected: boolean;
+  isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
 
   // Actions
   connect: () => Promise<ConnectionResult>;
+  authenticateBackend: () => Promise<boolean>;
   disconnect: () => Promise<void>;
   switchWallet: () => Promise<ConnectionResult>;
   signMessage: (message: string) => Promise<string>;
@@ -99,32 +101,8 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
     setIsConnecting(true);
 
     try {
-      // Connect with auth manager (handles provider selection)
+      // Connect with auth manager (handles provider selection - NO auth)
       const result = await authManager.connect();
-
-      if (result.success) {
-        // Get wallet address
-        const currentProvider = authManager.getCurrentProvider();
-        if (currentProvider) {
-          const ethersProvider = await currentProvider.getEthersProvider();
-          if (ethersProvider && result.address) {
-            // Authenticate with backend
-            const token = currentProvider.getAuthToken();
-            if (token) {
-              const backendResult = await authService.authenticateWithBackend(token, result.address);
-
-              if (backendResult.success && backendResult.user) {
-                setUser(backendResult.user);
-                // Return result as-is since it's already a ConnectionResult
-                return result;
-              } else {
-                throw new Error(backendResult.error || 'Backend authentication failed');
-              }
-            }
-          }
-        }
-      }
-
       return result; // Return the ConnectionResult whether success or failure
 
     } catch (error) {
@@ -142,7 +120,42 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
     } finally {
       setIsConnecting(false);
     }
-  }, [authManager, authService, isConnecting]);
+  }, [authManager, isConnecting]);
+
+  const authenticateBackend = useCallback(async (): Promise<boolean> => {
+    if (!state.isConnected) {
+      console.error('🔧 AuthProvider: Cannot authenticate - no wallet connected');
+      return false;
+    }
+
+    if (!state.address) {
+      console.error('🔧 AuthProvider: Cannot authenticate - no address available');
+      return false;
+    }
+
+    try {
+      // Sign message for authentication
+      const authToken = await authManager.signMessageForAuth();
+
+      // Send to backend
+      const backendResult = await authService.authenticateWithBackend(authToken, state.address);
+
+      if (backendResult.success && backendResult.user) {
+        setUser(backendResult.user);
+        // Update auth manager state to reflect successful authentication
+        authManager.setState({ ...authManager.getState(), isAuthenticated: true });
+        return true;
+      } else {
+        console.error('🔧 AuthProvider: Backend authentication failed:', backendResult.error);
+        // Authentication failed - caller should handle disconnection if needed
+        return false;
+      }
+    } catch (error) {
+      console.error('🔧 AuthProvider: Authentication error:', error);
+      // Signing failed - caller should handle disconnection if needed
+      return false;
+    }
+  }, [authManager, authService, state.isConnected, state.address]);
 
   const disconnect = useCallback(async (): Promise<void> => {
     try {
@@ -166,17 +179,8 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
       const result = await authManager.switchWallet();
 
       if (result.success && result.address) {
-        // Authenticate with backend using new connection
-        const currentProvider = authManager.getCurrentProvider();
-        const token = currentProvider?.getAuthToken();
-
-        if (token) {
-          const backendResult = await authService.authenticateWithBackend(token, result.address);
-
-          if (backendResult.success && backendResult.user) {
-            setUser(backendResult.user);
-          }
-        }
+        // After successful wallet switch, re-authenticate with backend
+        await authenticateBackend();
       }
 
       return result;
@@ -194,7 +198,7 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
         }
       };
     }
-  }, [authManager, authService]);
+  }, [authManager, authService, authenticateBackend]);
 
   const signMessage = useCallback(async (message: string): Promise<string> => {
     return await authManager.signMessage(message);
@@ -209,11 +213,13 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
     state,
     user,
     isConnected: state.isConnected,
+    isAuthenticated: state.isAuthenticated,
     isLoading: state.isLoading,
     error: state.error,
 
     // Actions
     connect,
+    authenticateBackend,
     disconnect,
     switchWallet,
     signMessage,

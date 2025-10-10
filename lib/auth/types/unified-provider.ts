@@ -35,7 +35,6 @@ export interface ProviderCapabilities {
 export interface ConnectionResult {
   success: boolean;
   address?: string;
-  token?: string;
   error?: string;
   capabilities: ProviderCapabilities;
 }
@@ -60,9 +59,6 @@ export interface UnifiedProvider {
   getAddress(): Promise<string>;
   signMessage(message: string): Promise<string>;
   signTransaction(params: TransactionRequest): Promise<string>;
-
-  // Auth operations
-  getAuthToken(): string | null;
 
   // Capabilities
   getCapabilities(): ProviderCapabilities;
@@ -90,8 +86,8 @@ export interface AuthState {
   isConnected: boolean;
   isLoading: boolean;
   isInitialized: boolean;
+  isAuthenticated: boolean;
   address: string | null;
-  token: string | null;
   providerName: string | null;
   capabilities: ProviderCapabilities | null;
   error: string | null;

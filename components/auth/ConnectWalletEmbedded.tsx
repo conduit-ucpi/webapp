@@ -54,7 +54,7 @@ export default function ConnectWalletEmbedded({
         if (connectionResult.success) {
           mLog.info('ConnectWalletEmbedded', 'Connection successful, authenticating with backend...');
 
-          const authSuccess = await authenticateBackend();
+          const authSuccess = await authenticateBackend(connectionResult);
 
           if (authSuccess) {
             mLog.info('ConnectWalletEmbedded', 'Backend authentication successful');

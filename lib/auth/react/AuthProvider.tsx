@@ -8,6 +8,7 @@ import { AuthState, AuthUser, ConnectionResult } from '../types/unified-provider
 import { AuthManager } from '../core/AuthManager';
 import { AuthService } from '../backend/AuthService';
 import { ethers } from 'ethers';
+import { mLog } from '../../../utils/mobileLogger';
 
 interface AuthContextValue {
   // State
@@ -20,7 +21,7 @@ interface AuthContextValue {
 
   // Actions
   connect: () => Promise<ConnectionResult>;
-  authenticateBackend: () => Promise<boolean>;
+  authenticateBackend: (connectionResult?: ConnectionResult) => Promise<boolean>;
   disconnect: () => Promise<void>;
   switchWallet: () => Promise<ConnectionResult>;
   signMessage: (message: string) => Promise<string>;
@@ -122,37 +123,84 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
     }
   }, [authManager, isConnecting]);
 
-  const authenticateBackend = useCallback(async (): Promise<boolean> => {
-    if (!state.isConnected) {
-      console.error('🔧 AuthProvider: Cannot authenticate - no wallet connected');
+  const authenticateBackend = useCallback(async (connectionResult?: ConnectionResult): Promise<boolean> => {
+    mLog.info('AuthProvider', 'authenticateBackend called', {
+      hasConnectionResult: !!connectionResult,
+      connectionSuccess: connectionResult?.success,
+      connectionAddress: connectionResult?.address,
+      reactStateConnected: state.isConnected,
+      reactStateAddress: state.address
+    });
+
+    // Use connection result if provided, otherwise fall back to React state
+    const isConnected = connectionResult?.success ?? state.isConnected;
+    const address = connectionResult?.address ?? state.address;
+
+    mLog.debug('AuthProvider', 'Authentication state check', {
+      isConnected,
+      address,
+      usingConnectionResult: !!connectionResult
+    });
+
+    if (!isConnected) {
+      mLog.error('AuthProvider', 'Cannot authenticate - no wallet connected', {
+        connectionResultSuccess: connectionResult?.success,
+        reactStateConnected: state.isConnected,
+        usingConnectionResult: !!connectionResult
+      });
       return false;
     }
 
-    if (!state.address) {
-      console.error('🔧 AuthProvider: Cannot authenticate - no address available');
+    if (!address) {
+      mLog.error('AuthProvider', 'Cannot authenticate - no address available', {
+        connectionResultAddress: connectionResult?.address,
+        reactStateAddress: state.address,
+        usingConnectionResult: !!connectionResult
+      });
       return false;
     }
 
     try {
+      mLog.info('AuthProvider', 'Starting message signing for authentication', {
+        address
+      });
+
       // Sign message for authentication
       const authToken = await authManager.signMessageForAuth();
 
+      mLog.info('AuthProvider', 'Message signed successfully, sending to backend', {
+        address,
+        hasToken: !!authToken
+      });
+
       // Send to backend
-      const backendResult = await authService.authenticateWithBackend(authToken, state.address);
+      const backendResult = await authService.authenticateWithBackend(authToken, address);
+
+      mLog.debug('AuthProvider', 'Backend authentication result', {
+        success: backendResult.success,
+        hasUser: !!backendResult.user,
+        error: backendResult.error
+      });
 
       if (backendResult.success && backendResult.user) {
         setUser(backendResult.user);
         // Update auth manager state to reflect successful authentication
         authManager.setState({ ...authManager.getState(), isAuthenticated: true });
+        mLog.info('AuthProvider', '✅ Backend authentication successful');
         return true;
       } else {
-        console.error('🔧 AuthProvider: Backend authentication failed:', backendResult.error);
-        // Authentication failed - caller should handle disconnection if needed
+        mLog.error('AuthProvider', 'Backend authentication failed', {
+          success: backendResult.success,
+          error: backendResult.error,
+          hasUser: !!backendResult.user
+        });
         return false;
       }
     } catch (error) {
-      console.error('🔧 AuthProvider: Authentication error:', error);
-      // Signing failed - caller should handle disconnection if needed
+      mLog.error('AuthProvider', 'Authentication error during signing or backend call', {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      });
       return false;
     }
   }, [authManager, authService, state.isConnected, state.address]);
@@ -180,7 +228,7 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
 
       if (result.success && result.address) {
         // After successful wallet switch, re-authenticate with backend
-        await authenticateBackend();
+        await authenticateBackend(result);
       }
 
       return result;

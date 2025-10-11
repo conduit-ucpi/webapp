@@ -73,12 +73,23 @@ export class Web3AuthProvider implements UnifiedProvider {
 
           // Try connecting via WalletConnect
           try {
+            mLog.info('Web3AuthProvider', 'Starting WalletConnect connection...');
             provider = await this.web3authInstance.connectTo(WALLET_CONNECTORS.WALLET_CONNECT_V2, {
               chainNamespace: 'eip155'
             });
+
+            if (provider) {
+              mLog.info('Web3AuthProvider', 'WalletConnect connection successful', {
+                providerType: typeof provider,
+                providerConstructor: provider?.constructor?.name
+              });
+            } else {
+              mLog.error('Web3AuthProvider', 'WalletConnect returned null provider');
+            }
           } catch (wcError) {
             mLog.error('Web3AuthProvider', 'WalletConnect connection failed', {
-              error: wcError instanceof Error ? wcError.message : String(wcError)
+              error: wcError instanceof Error ? wcError.message : String(wcError),
+              stack: wcError instanceof Error ? wcError.stack : undefined
             });
             throw wcError;
           }

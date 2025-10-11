@@ -81,19 +81,19 @@ export const createWeb3AuthConfig = (config: {
         showOnMobile: true,
         showOnDesktop: true,
       },
-      // MetaMask connector - always show
+      // MetaMask connector - only show on desktop (mobile uses WalletConnect)
       [WALLET_CONNECTORS.METAMASK]: {
         label: "metamask",
         showOnModal: true,
-        showOnMobile: true,
+        showOnMobile: false, // Mobile MetaMask should use WalletConnect
         showOnDesktop: true,
       },
-      // WalletConnect for mobile wallets
+      // WalletConnect for mobile wallets (including MetaMask Mobile)
       [WALLET_CONNECTORS.WALLET_CONNECT_V2]: {
-        label: "wallet-connect-v2",
+        label: "Mobile Wallets", // Clear label for mobile users
         showOnModal: true,
         showOnMobile: true,
-        showOnDesktop: true, // Show on both for now
+        showOnDesktop: true, // Also available on desktop for QR code scanning
         adapterSettings: {
           walletConnectInitOptions: {
             projectId: config.walletConnectProjectId,

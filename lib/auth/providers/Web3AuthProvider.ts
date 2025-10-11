@@ -352,20 +352,36 @@ export class Web3AuthProvider implements UnifiedProvider {
         },
       });
 
-      mLog.info('Web3AuthProvider', 'MetaMask SDK initialized, connecting...');
+      mLog.info('Web3AuthProvider', 'MetaMask SDK initialized, waiting for provider...');
 
-      // Get the provider from MetaMask SDK
-      const metaMaskProvider = this.metamaskSDK.getProvider();
+      // Wait for SDK to be ready and get provider
+      let metaMaskProvider = null;
+      let retries = 0;
+      const maxRetries = 10;
 
-      if (!metaMaskProvider) {
-        throw new Error('MetaMask SDK provider not available');
+      while (!metaMaskProvider && retries < maxRetries) {
+        await new Promise(resolve => setTimeout(resolve, 100)); // Wait 100ms
+        metaMaskProvider = this.metamaskSDK.getProvider();
+        retries++;
+
+        if (!metaMaskProvider) {
+          mLog.debug('Web3AuthProvider', `Provider not ready, retry ${retries}/${maxRetries}`);
+        }
       }
 
-      // Request connection
-      mLog.info('Web3AuthProvider', 'Requesting MetaMask connection...');
-      await metaMaskProvider.request({ method: 'eth_requestAccounts' });
+      if (!metaMaskProvider) {
+        throw new Error('MetaMask SDK provider not available after initialization timeout');
+      }
 
-      mLog.info('Web3AuthProvider', 'MetaMask SDK connection successful');
+      mLog.info('Web3AuthProvider', 'MetaMask SDK provider ready, requesting connection...');
+
+      // Request connection
+      const accounts = await metaMaskProvider.request({ method: 'eth_requestAccounts' }) as string[];
+
+      mLog.info('Web3AuthProvider', 'MetaMask SDK connection successful', {
+        accountsCount: accounts ? accounts.length : 0
+      });
+
       return metaMaskProvider;
 
     } catch (error) {

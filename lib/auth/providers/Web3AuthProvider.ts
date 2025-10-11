@@ -14,6 +14,7 @@ import {
 } from '../types/unified-provider';
 import { ethers } from "ethers";
 import { mLog } from '../../../utils/mobileLogger';
+import { MetaMaskSDK } from '@metamask/sdk';
 
 export class Web3AuthProvider implements UnifiedProvider {
   private web3authInstance: Web3Auth | null = null;
@@ -22,6 +23,7 @@ export class Web3AuthProvider implements UnifiedProvider {
   private currentAddress: string | null = null;
   private userInfo: { email?: string; idToken?: string; name?: string } | null = null;
   private shouldRedirectToWalletConnect: boolean = false;
+  private metamaskSDK: MetaMaskSDK | null = null;
 
   constructor(config: AuthConfig) {
     this.config = config;
@@ -66,32 +68,19 @@ export class Web3AuthProvider implements UnifiedProvider {
       try {
         provider = await this.web3authInstance.connect();
       } catch (error: any) {
-        // Check if we should redirect to WalletConnect
+        // Check if we should redirect to MetaMask SDK
         if (this.shouldRedirectToWalletConnect && error?.message === 'User closed the modal') {
-          mLog.info('Web3AuthProvider', 'Modal closed for WalletConnect redirect, attempting WalletConnect connection');
+          mLog.info('Web3AuthProvider', 'Modal closed for MetaMask SDK redirect, attempting direct MetaMask connection');
           this.shouldRedirectToWalletConnect = false;
 
-          // Try connecting via WalletConnect
+          // Use MetaMask SDK directly for mobile connections
           try {
-            mLog.info('Web3AuthProvider', 'Starting WalletConnect connection...');
-            provider = await this.web3authInstance.connectTo(WALLET_CONNECTORS.WALLET_CONNECT_V2, {
-              chainNamespace: 'eip155'
+            provider = await this.connectWithMetaMaskSDK();
+          } catch (metaMaskError) {
+            mLog.error('Web3AuthProvider', 'MetaMask SDK connection failed', {
+              error: metaMaskError instanceof Error ? metaMaskError.message : String(metaMaskError)
             });
-
-            if (provider) {
-              mLog.info('Web3AuthProvider', 'WalletConnect connection successful', {
-                providerType: typeof provider,
-                providerConstructor: provider?.constructor?.name
-              });
-            } else {
-              mLog.error('Web3AuthProvider', 'WalletConnect returned null provider');
-            }
-          } catch (wcError) {
-            mLog.error('Web3AuthProvider', 'WalletConnect connection failed', {
-              error: wcError instanceof Error ? wcError.message : String(wcError),
-              stack: wcError instanceof Error ? wcError.stack : undefined
-            });
-            throw wcError;
+            throw metaMaskError;
           }
         } else {
           // Re-throw other errors
@@ -343,7 +332,52 @@ export class Web3AuthProvider implements UnifiedProvider {
   }
 
   /**
-   * Setup interceptor to redirect mobile MetaMask clicks to WalletConnect
+   * Connect using MetaMask SDK directly for mobile
+   */
+  private async connectWithMetaMaskSDK(): Promise<any> {
+    mLog.info('Web3AuthProvider', 'Initializing MetaMask SDK for mobile connection');
+
+    try {
+      // Initialize MetaMask SDK
+      this.metamaskSDK = new MetaMaskSDK({
+        dappMetadata: {
+          name: 'Conduit UCPI',
+          url: typeof window !== 'undefined' ? window.location.origin : 'https://test.conduit-ucpi.com',
+        },
+        // Force mobile connection options
+        preferDesktop: false,
+        openDeeplink: (link: string) => {
+          mLog.info('Web3AuthProvider', 'Opening MetaMask deep link', { link });
+          window.open(link, '_self');
+        },
+      });
+
+      mLog.info('Web3AuthProvider', 'MetaMask SDK initialized, connecting...');
+
+      // Get the provider from MetaMask SDK
+      const metaMaskProvider = this.metamaskSDK.getProvider();
+
+      if (!metaMaskProvider) {
+        throw new Error('MetaMask SDK provider not available');
+      }
+
+      // Request connection
+      mLog.info('Web3AuthProvider', 'Requesting MetaMask connection...');
+      await metaMaskProvider.request({ method: 'eth_requestAccounts' });
+
+      mLog.info('Web3AuthProvider', 'MetaMask SDK connection successful');
+      return metaMaskProvider;
+
+    } catch (error) {
+      mLog.error('Web3AuthProvider', 'MetaMask SDK connection error', {
+        error: error instanceof Error ? error.message : String(error)
+      });
+      throw new Error(`MetaMask connection failed: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  /**
+   * Setup interceptor to handle mobile MetaMask clicks
    */
   private setupMobileMetaMaskInterceptor(): void {
     if (!this.web3authInstance) return;
@@ -366,17 +400,17 @@ export class Web3AuthProvider implements UnifiedProvider {
 
       // Check if MetaMask was selected on mobile
       if (data?.connector === 'metamask') {
-        mLog.info('Web3AuthProvider', 'MetaMask selected on mobile - setting flag to redirect to WalletConnect');
+        mLog.info('Web3AuthProvider', 'MetaMask selected on mobile - redirecting to MetaMask SDK');
 
-        // Set flag so connect method knows to redirect when modal closes
+        // Set flag so connect method knows to use MetaMask SDK when modal closes
         this.shouldRedirectToWalletConnect = true;
 
-        // Close the modal to trigger the error handling in connect()
+        // Close the modal to trigger the MetaMask SDK handling in connect()
         setTimeout(() => {
           try {
             const modal = (this.web3authInstance as any).loginModal;
             if (modal && typeof modal.closeModal === 'function') {
-              mLog.info('Web3AuthProvider', 'Closing modal to trigger WalletConnect redirect');
+              mLog.info('Web3AuthProvider', 'Closing modal to trigger MetaMask SDK connection');
               modal.closeModal();
             }
           } catch (error) {

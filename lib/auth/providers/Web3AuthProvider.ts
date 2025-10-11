@@ -332,15 +332,33 @@ export class Web3AuthProvider implements UnifiedProvider {
     mLog.info('Web3AuthProvider', 'Mobile detected - setting up debug interceptors');
 
     // Listen to ALL Web3Auth events for debugging
-    const events = ['connecting', 'connected', 'disconnected', 'errored', 'MODAL_VISIBILITY'];
+    const events = [
+      'connecting', 'connected', 'disconnected', 'errored', 'MODAL_VISIBILITY',
+      'adapter_connecting', 'adapter_connected', 'adapter_errored',
+      'wallet_adapter_connected', 'wallet_adapter_connecting'
+    ];
 
     events.forEach(eventName => {
       this.web3authInstance!.on(eventName as any, (data: any) => {
         mLog.info('Web3AuthProvider', `Event: ${eventName}`, {
           data: JSON.stringify(data)
         });
+
+        // Force flush for all events to see them immediately
+        mLog.forceFlush();
+
+        // Special handling for MetaMask selection
+        if (eventName === 'connecting' && data && data.connector === 'metamask') {
+          mLog.info('Web3AuthProvider', 'METAMASK SELECTED - About to open deep link', {
+            timestamp: Date.now(),
+            data: JSON.stringify(data)
+          });
+          mLog.forceFlush();
+        }
       });
     });
+
+    // Focus on the specific events that matter most for debugging MetaMask connection
 
     // Try to intercept window.open calls to see deep links
     const originalWindowOpen = window.open;
@@ -350,6 +368,7 @@ export class Web3AuthProvider implements UnifiedProvider {
         target: args[1],
         features: args[2]
       });
+      mLog.forceFlush(); // Force flush immediately
       return originalWindowOpen.apply(window, args as any);
     };
 
@@ -363,6 +382,7 @@ export class Web3AuthProvider implements UnifiedProvider {
           text: link.textContent,
           target: link.target
         });
+        mLog.forceFlush(); // Force flush immediately
       }
     }, true); // Use capture phase
 
@@ -415,8 +435,51 @@ export class Web3AuthProvider implements UnifiedProvider {
 
     observer.observe(document.body, {
       childList: true,
-      subtree: true
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['src', 'href']
     });
+
+    // Also monitor for iframe src changes
+    const originalCreateElement = document.createElement;
+    document.createElement = function(tagName: string) {
+      const element = originalCreateElement.call(document, tagName);
+      if (tagName.toLowerCase() === 'iframe') {
+        const iframe = element as HTMLIFrameElement;
+        Object.defineProperty(iframe, 'src', {
+          get: function() {
+            return this.getAttribute('src');
+          },
+          set: function(value: string) {
+            if (value && (value.includes('metamask') || value.startsWith('metamask://'))) {
+              mLog.info('Web3AuthProvider', 'IFRAME SRC SET TO METAMASK URL', {
+                src: value
+              });
+            }
+            this.setAttribute('src', value);
+          }
+        });
+      }
+      return element;
+    };
+
+    // Monitor for any navigation attempts via document.location
+    const originalDocumentLocation = document.location;
+    try {
+      Object.defineProperty(document, 'location', {
+        get: function() {
+          return originalDocumentLocation;
+        },
+        set: function(value) {
+          mLog.info('Web3AuthProvider', 'DOCUMENT.LOCATION SET', {
+            newLocation: value
+          });
+          originalDocumentLocation.href = value;
+        }
+      });
+    } catch (e) {
+      // Already defined
+    }
   }
 
 }

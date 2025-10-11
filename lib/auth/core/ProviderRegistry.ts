@@ -31,9 +31,14 @@ export class ProviderRegistry {
         mLog.info('ProviderRegistry', 'Detected Farcaster environment, registering Farcaster provider');
         await this.registerFarcasterProvider(config);
       } else {
-        mLog.info('ProviderRegistry', 'Detected Web environment, registering Web3Auth provider');
-        await this.registerWeb3AuthProvider(config);
-        // WalletConnect is integrated into Web3Auth Modal now
+        // Check if Dynamic is configured, otherwise fall back to Web3Auth
+        if (config.dynamicEnvironmentId) {
+          mLog.info('ProviderRegistry', 'Dynamic environment ID found, registering Dynamic provider');
+          await this.registerDynamicProvider(config);
+        } else {
+          mLog.info('ProviderRegistry', 'No Dynamic config, falling back to Web3Auth provider');
+          await this.registerWeb3AuthProvider(config);
+        }
       }
 
       this.initialized = true;
@@ -62,13 +67,16 @@ export class ProviderRegistry {
 
   getBestProvider(): UnifiedProvider | null {
     // Return the first available provider
-    // Priority: farcaster (if in frame) -> web3auth
+    // Priority: farcaster (if in frame) -> dynamic -> web3auth
     let bestProvider: UnifiedProvider | null = null;
     let selectedType: string = 'none';
 
     if (this.providers.has('farcaster')) {
       bestProvider = this.providers.get('farcaster')!;
       selectedType = 'farcaster';
+    } else if (this.providers.has('dynamic')) {
+      bestProvider = this.providers.get('dynamic')!;
+      selectedType = 'dynamic';
     } else if (this.providers.has('web3auth')) {
       bestProvider = this.providers.get('web3auth')!;
       selectedType = 'web3auth';
@@ -113,6 +121,29 @@ export class ProviderRegistry {
       mLog.info('ProviderRegistry', 'Registered Web3Auth provider successfully');
     } catch (error) {
       mLog.error('ProviderRegistry', 'Failed to register Web3Auth provider', {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      });
+    }
+  }
+
+  private async registerDynamicProvider(config: AuthConfig): Promise<void> {
+    try {
+      mLog.info('ProviderRegistry', 'Registering Dynamic provider');
+      // Dynamic import to avoid bundle size
+      const { DynamicProvider } = await import('../providers/DynamicProvider');
+      mLog.debug('ProviderRegistry', 'DynamicProvider imported successfully');
+
+      const provider = new DynamicProvider(config);
+      mLog.debug('ProviderRegistry', 'DynamicProvider instance created');
+
+      await provider.initialize();
+      mLog.debug('ProviderRegistry', 'DynamicProvider initialized');
+
+      this.providers.set('dynamic', provider);
+      mLog.info('ProviderRegistry', 'Registered Dynamic provider successfully');
+    } catch (error) {
+      mLog.error('ProviderRegistry', 'Failed to register Dynamic provider', {
         error: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined
       });

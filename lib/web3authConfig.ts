@@ -131,6 +131,11 @@ export const createWeb3AuthConfig = (config: {
 
   if (config.walletConnectProjectId) {
     mLog.info('Web3AuthConfig', 'All connectors configured via modalConfig including WalletConnect V2 for mobile wallet connections');
+    mLog.debug('Web3AuthConfig', 'WalletConnect Project ID configured', {
+      projectIdPreview: config.walletConnectProjectId.substring(0, 10) + '...',
+      globalSet: !!(window as any).WALLETCONNECT_PROJECT_ID,
+      inOptions: !!(web3AuthOptions as any).walletConnectProjectId
+    });
   } else {
     mLog.warn('Web3AuthConfig', 'No WalletConnect project ID provided, using default connectors only');
   }

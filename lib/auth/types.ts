@@ -64,6 +64,7 @@ export interface AuthProvider {
 // Configuration types
 export interface AuthConfig {
   web3AuthClientId: string;
+  dynamicEnvironmentId?: string; // Dynamic.xyz environment ID
   chainId: number;
   rpcUrl: string;
   explorerBaseUrl: string;
@@ -71,7 +72,7 @@ export interface AuthConfig {
   walletConnectProjectId?: string;
 }
 
-export type ProviderType = 'web3auth' | 'farcaster' | 'walletconnect';
+export type ProviderType = 'web3auth' | 'farcaster' | 'walletconnect' | 'dynamic';
 
 // React context types
 export interface AuthContextType {

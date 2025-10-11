@@ -352,9 +352,25 @@ export class Web3AuthProvider implements UnifiedProvider {
         if (eventName === 'connecting' && data && data.connector === 'metamask') {
           mLog.info('Web3AuthProvider', 'METAMASK SELECTED - About to open deep link', {
             timestamp: Date.now(),
-            data: JSON.stringify(data)
+            data: JSON.stringify(data),
+            windowEthereum: !!(window as any).ethereum,
+            isMetaMaskInstalled: !!(window as any).ethereum?.isMetaMask,
+            isMobileUserAgent: /Mobile|Android|iPhone|iPad/.test(navigator.userAgent),
+            web3AuthConnected: this.web3authInstance?.connected,
+            web3AuthStatus: this.web3authInstance?.status
           });
           mLog.forceFlush();
+
+          // Also log what Web3Auth thinks about the environment
+          setTimeout(() => {
+            mLog.info('Web3AuthProvider', 'POST-METAMASK-SELECTION STATE', {
+              web3AuthConnected: this.web3authInstance?.connected,
+              web3AuthStatus: this.web3authInstance?.status,
+              provider: this.web3authInstance?.provider ? 'provider exists' : 'no provider',
+              connectedAdapterName: (this.web3authInstance as any)?.connectedAdapterName || 'unknown'
+            });
+            mLog.forceFlush();
+          }, 100);
         }
       });
     });
@@ -375,24 +391,35 @@ export class Web3AuthProvider implements UnifiedProvider {
       return originalWindowOpen.apply(window, args as any);
     };
 
-    // Method 2: window.location assignment
-    const originalLocationAssign = window.location.assign;
-    window.location.assign = function(url: string) {
-      mLog.info('Web3AuthProvider', 'LOCATION.ASSIGN INTERCEPTED', { url });
-      mLog.forceFlush();
-      return originalLocationAssign.call(window.location, url);
-    };
-
-    // Method 3: window.location.href assignment
-    let originalHref = window.location.href;
-    Object.defineProperty(window.location, 'href', {
-      get: function() { return originalHref; },
-      set: function(url: string) {
-        mLog.info('Web3AuthProvider', 'LOCATION.HREF SET INTERCEPTED', { url });
-        mLog.forceFlush();
-        originalHref = url;
-        window.location.assign(url);
+    // Method 2: Try to intercept location changes (safely)
+    try {
+      const originalLocationAssign = window.location.assign;
+      if (typeof originalLocationAssign === 'function') {
+        window.location.assign = function(url: string) {
+          mLog.info('Web3AuthProvider', 'LOCATION.ASSIGN INTERCEPTED', { url });
+          mLog.forceFlush();
+          return originalLocationAssign.call(window.location, url);
+        };
       }
+    } catch (error) {
+      mLog.warn('Web3AuthProvider', 'Could not intercept location.assign', { error: String(error) });
+    }
+
+    // Method 3: Monitor location changes via popstate
+    window.addEventListener('beforeunload', (event) => {
+      mLog.info('Web3AuthProvider', 'BEFOREUNLOAD EVENT', {
+        newURL: (event as any).newURL,
+        currentURL: window.location.href
+      });
+      mLog.forceFlush();
+    });
+
+    window.addEventListener('popstate', (event) => {
+      mLog.info('Web3AuthProvider', 'POPSTATE EVENT', {
+        state: event.state,
+        url: window.location.href
+      });
+      mLog.forceFlush();
     });
 
     // Method 4: Monitor postMessage events instead of overriding (safer)

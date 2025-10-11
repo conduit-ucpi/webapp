@@ -74,11 +74,26 @@ export const createWeb3AuthConfig = (config: {
   // Configure WalletConnect for mobile wallets if project ID is available
   const modalConfig = config.walletConnectProjectId ? {
     connectors: {
+      // Standard auth connector (social logins) - always show
+      [WALLET_CONNECTORS.AUTH]: {
+        label: "auth",
+        showOnModal: true,
+        showOnMobile: true,
+        showOnDesktop: true,
+      },
+      // MetaMask connector - always show
+      [WALLET_CONNECTORS.METAMASK]: {
+        label: "metamask",
+        showOnModal: true,
+        showOnMobile: true,
+        showOnDesktop: true,
+      },
+      // WalletConnect for mobile wallets
       [WALLET_CONNECTORS.WALLET_CONNECT_V2]: {
         label: "wallet-connect-v2",
         showOnModal: true,
         showOnMobile: true,
-        showOnDesktop: false, // Only show on mobile for WalletConnect
+        showOnDesktop: true, // Show on both for now
         adapterSettings: {
           walletConnectInitOptions: {
             projectId: config.walletConnectProjectId,
@@ -121,9 +136,9 @@ export const createWeb3AuthConfig = (config: {
   });
 
   if (config.walletConnectProjectId) {
-    mLog.info('Web3AuthConfig', 'WalletConnect V2 configured for mobile wallet connections via modalConfig');
+    mLog.info('Web3AuthConfig', 'All connectors configured via modalConfig including WalletConnect V2 for mobile wallet connections');
   } else {
-    mLog.warn('Web3AuthConfig', 'No WalletConnect project ID provided, mobile wallet connections may not work');
+    mLog.warn('Web3AuthConfig', 'No WalletConnect project ID provided, using default connectors only');
   }
 
   mLog.info('Web3AuthConfig', 'Web3Auth configuration completed successfully');

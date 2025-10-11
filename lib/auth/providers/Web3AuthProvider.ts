@@ -3,7 +3,7 @@
  * Implements the unified provider interface for Web3Auth Modal with all adapters
  */
 
-import { Web3Auth } from "@web3auth/modal";
+import { Web3Auth, WALLET_CONNECTORS } from "@web3auth/modal";
 import { createWeb3AuthConfig } from "@/lib/web3authConfig";
 import { AuthConfig } from '../types';
 import {
@@ -53,6 +53,9 @@ export class Web3AuthProvider implements UnifiedProvider {
         mLog.info('Web3AuthProvider', 'Initializing Web3Auth');
         await this.web3authInstance.init();
         mLog.info('Web3AuthProvider', 'Web3Auth initialized successfully');
+
+        // Setup interceptor AFTER initialization
+        this.setupMobileMetaMaskInterceptor();
       }
 
       // Connect - this will show the modal with all options
@@ -300,6 +303,62 @@ export class Web3AuthProvider implements UnifiedProvider {
       });
       throw error;
     }
+  }
+
+  /**
+   * Setup interceptor to redirect mobile MetaMask clicks to WalletConnect
+   */
+  private setupMobileMetaMaskInterceptor(): void {
+    if (!this.web3authInstance) return;
+
+    // Check if we're on mobile
+    const { detectDevice } = require('../../../utils/deviceDetection');
+    const deviceInfo = detectDevice();
+    const isMobile = deviceInfo.isMobile || deviceInfo.isTablet;
+
+    if (!isMobile) {
+      mLog.debug('Web3AuthProvider', 'Not on mobile, skipping MetaMask interceptor');
+      return;
+    }
+
+    mLog.info('Web3AuthProvider', 'Setting up mobile MetaMask interceptor');
+
+    // Listen for the connecting event - this fires when a connector is selected
+    this.web3authInstance.on('connecting', (data: { connector: string }) => {
+      mLog.debug('Web3AuthProvider', 'Connecting event received', data);
+
+      // Check if MetaMask was selected on mobile
+      if (data?.connector === 'metamask') {
+        mLog.info('Web3AuthProvider', 'MetaMask selected on mobile - intercepting to use WalletConnect instead');
+
+        // Cancel the MetaMask connection attempt
+        // The modal will still be open, but we'll redirect to WalletConnect
+        setTimeout(async () => {
+          try {
+            // Close the modal if it's still open
+            const modal = (this.web3authInstance as any).loginModal;
+            if (modal && typeof modal.closeModal === 'function') {
+              modal.closeModal();
+            }
+
+            mLog.info('Web3AuthProvider', 'Redirecting to WalletConnect for mobile wallet connection');
+
+            // Connect via WalletConnect instead
+            const provider = await this.web3authInstance!.connectTo(WALLET_CONNECTORS.WALLET_CONNECT_V2, {
+              chainNamespace: 'eip155'
+            });
+
+            if (provider) {
+              mLog.info('Web3AuthProvider', 'Successfully connected via WalletConnect');
+            }
+          } catch (error) {
+            mLog.error('Web3AuthProvider', 'Failed to redirect to WalletConnect', {
+              error: error instanceof Error ? error.message : String(error)
+            });
+          }
+        }, 100); // Small delay to ensure the modal is ready
+      }
+    });
   }
 
 }

@@ -71,43 +71,31 @@ export const createWeb3AuthConfig = (config: {
     privateKeyProvider: undefined, // Will use the default provider
   });
 
-  // Configure WalletConnect for mobile wallets if project ID is available
-  const modalConfig = config.walletConnectProjectId ? {
+  // Configure modal to show connectors - modalConfig only controls UI visibility
+  // It does NOT configure the actual adapters
+  const modalConfig = {
     connectors: {
-      // Standard auth connector (social logins) - always show
+      // These only control what shows in the modal UI, not adapter behavior
       [WALLET_CONNECTORS.AUTH]: {
         label: "auth",
         showOnModal: true,
-        showOnMobile: true,
-        showOnDesktop: true,
       },
-      // MetaMask connector - only show on desktop (mobile uses WalletConnect)
       [WALLET_CONNECTORS.METAMASK]: {
         label: "metamask",
         showOnModal: true,
-        showOnMobile: false, // Mobile MetaMask should use WalletConnect
-        showOnDesktop: true,
       },
-      // WalletConnect for mobile wallets (including MetaMask Mobile)
       [WALLET_CONNECTORS.WALLET_CONNECT_V2]: {
-        label: "Mobile Wallets", // Clear label for mobile users
+        label: "wallet-connect-v2",
         showOnModal: true,
-        showOnMobile: true,
-        showOnDesktop: true, // Also available on desktop for QR code scanning
-        adapterSettings: {
-          walletConnectInitOptions: {
-            projectId: config.walletConnectProjectId,
-            metadata: {
-              name: "Conduit UCPI",
-              description: "Secure escrow payments on Base",
-              url: typeof window !== 'undefined' ? window.location.origin : 'https://conduit-ucpi.com',
-              icons: ['https://conduit-ucpi.com/logo.png']
-            }
-          }
-        }
       }
     }
-  } : undefined;
+  };
+
+  // Set WalletConnect project ID globally if available
+  if (config.walletConnectProjectId && typeof window !== 'undefined') {
+    // Web3Auth Modal might look for this global
+    (window as any).WALLETCONNECT_PROJECT_ID = config.walletConnectProjectId;
+  }
 
   // Base Web3Auth options with external wallet configuration
   const web3AuthOptions: Web3AuthOptions = {
@@ -121,8 +109,7 @@ export const createWeb3AuthConfig = (config: {
     modalConfig,
     enableLogging: true,
     sessionTime: 86400,
-    // Configure external wallet connections
-    privateKeyProvider: undefined, // Let Web3Auth handle this
+    privateKeyProvider: undefined,
   };
 
   mLog.debug('Web3AuthConfig', 'Web3Auth options created', {
@@ -132,7 +119,7 @@ export const createWeb3AuthConfig = (config: {
     sessionTime: web3AuthOptions.sessionTime,
     modalZIndex: web3AuthOptions.uiConfig?.modalZIndex,
     hasModalConfig: !!modalConfig,
-    hasWalletConnectConfig: !!(modalConfig?.connectors?.[WALLET_CONNECTORS.WALLET_CONNECT_V2])
+    hasWalletConnectInModal: !!modalConfig.connectors[WALLET_CONNECTORS.WALLET_CONNECT_V2]
   });
 
   if (config.walletConnectProjectId) {

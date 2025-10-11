@@ -353,18 +353,69 @@ export class Web3AuthProvider implements UnifiedProvider {
       return originalWindowOpen.apply(window, args as any);
     };
 
-    // Also try to intercept location changes
-    const originalLocation = Object.getOwnPropertyDescriptor(window, 'location');
-    Object.defineProperty(window, 'location', {
-      get: function() {
-        return originalLocation?.get?.call(window);
-      },
-      set: function(value) {
-        mLog.info('Web3AuthProvider', 'LOCATION CHANGE INTERCEPTED', {
-          newLocation: value
+    // Intercept click events on the entire document to catch deep links
+    document.addEventListener('click', (event) => {
+      const target = event.target as HTMLElement;
+      if (target.tagName === 'A') {
+        const link = target as HTMLAnchorElement;
+        mLog.info('Web3AuthProvider', 'ANCHOR CLICK INTERCEPTED', {
+          href: link.href,
+          text: link.textContent,
+          target: link.target
         });
-        originalLocation?.set?.call(window, value);
       }
+    }, true); // Use capture phase
+
+    // Intercept all navigations
+    const originalPushState = history.pushState;
+    history.pushState = function(data: any, unused: string, url?: string | URL | null) {
+      mLog.info('Web3AuthProvider', 'PUSHSTATE INTERCEPTED', {
+        url: url
+      });
+      return originalPushState.call(history, data, unused, url);
+    };
+
+    const originalReplaceState = history.replaceState;
+    history.replaceState = function(data: any, unused: string, url?: string | URL | null) {
+      mLog.info('Web3AuthProvider', 'REPLACESTATE INTERCEPTED', {
+        url: url
+      });
+      return originalReplaceState.call(history, data, unused, url);
+    };
+
+    // Monitor all URL changes via MutationObserver
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.type === 'childList') {
+          mutation.addedNodes.forEach((node) => {
+            if (node.nodeType === Node.ELEMENT_NODE) {
+              const element = node as Element;
+              if (element.tagName === 'A') {
+                const link = element as HTMLAnchorElement;
+                if (link.href && (link.href.startsWith('metamask://') || link.href.includes('metamask'))) {
+                  mLog.info('Web3AuthProvider', 'METAMASK LINK ADDED TO DOM', {
+                    href: link.href,
+                    id: link.id,
+                    className: link.className
+                  });
+                }
+              }
+              // Check for any child links too
+              const links = element.querySelectorAll('a[href*="metamask"]');
+              links.forEach((link) => {
+                mLog.info('Web3AuthProvider', 'METAMASK LINK FOUND IN ADDED ELEMENT', {
+                  href: (link as HTMLAnchorElement).href
+                });
+              });
+            }
+          });
+        }
+      });
+    });
+
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true
     });
   }
 

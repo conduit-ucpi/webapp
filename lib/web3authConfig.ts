@@ -71,6 +71,9 @@ export const createWeb3AuthConfig = (config: {
     privateKeyProvider: undefined, // Will use the default provider
   });
 
+  // WalletConnect V2 should be automatically included in Web3Auth Modal v10
+  // when walletConnectProjectId is provided in web3AuthOptions
+
   // Configure modal to show connectors - modalConfig only controls UI visibility
   // It does NOT configure the actual adapters
   const modalConfig = {
@@ -110,6 +113,10 @@ export const createWeb3AuthConfig = (config: {
     enableLogging: true,
     sessionTime: 86400,
     privateKeyProvider: undefined,
+    // Ensure WalletConnect project ID is available to Web3Auth
+    ...(config.walletConnectProjectId && {
+      walletConnectProjectId: config.walletConnectProjectId
+    }),
   };
 
   mLog.debug('Web3AuthConfig', 'Web3Auth options created', {

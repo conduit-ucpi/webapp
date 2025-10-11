@@ -49,7 +49,7 @@ export class Web3AuthProvider implements UnifiedProvider {
 
         this.web3authInstance = new Web3Auth(web3authConfig.web3AuthOptions);
 
-        // Initialize Web3Auth Modal
+        // Initialize Web3Auth Modal (WalletConnect adapter should be auto-included)
         mLog.info('Web3AuthProvider', 'Initializing Web3Auth');
         await this.web3authInstance.init();
         mLog.info('Web3AuthProvider', 'Web3Auth initialized successfully');
@@ -157,6 +157,7 @@ export class Web3AuthProvider implements UnifiedProvider {
       });
 
       this.web3authInstance = new Web3Auth(web3authConfig.web3AuthOptions);
+
       await this.web3authInstance.init();
     }
 
@@ -360,7 +361,9 @@ export class Web3AuthProvider implements UnifiedProvider {
 
     // Focus on the specific events that matter most for debugging MetaMask connection
 
-    // Try to intercept window.open calls to see deep links
+    // Intercept ALL possible navigation methods
+
+    // Method 1: window.open
     const originalWindowOpen = window.open;
     window.open = function(...args: any[]) {
       mLog.info('Web3AuthProvider', 'WINDOW.OPEN INTERCEPTED', {
@@ -368,9 +371,39 @@ export class Web3AuthProvider implements UnifiedProvider {
         target: args[1],
         features: args[2]
       });
-      mLog.forceFlush(); // Force flush immediately
+      mLog.forceFlush();
       return originalWindowOpen.apply(window, args as any);
     };
+
+    // Method 2: window.location assignment
+    const originalLocationAssign = window.location.assign;
+    window.location.assign = function(url: string) {
+      mLog.info('Web3AuthProvider', 'LOCATION.ASSIGN INTERCEPTED', { url });
+      mLog.forceFlush();
+      return originalLocationAssign.call(window.location, url);
+    };
+
+    // Method 3: window.location.href assignment
+    let originalHref = window.location.href;
+    Object.defineProperty(window.location, 'href', {
+      get: function() { return originalHref; },
+      set: function(url: string) {
+        mLog.info('Web3AuthProvider', 'LOCATION.HREF SET INTERCEPTED', { url });
+        mLog.forceFlush();
+        originalHref = url;
+        window.location.assign(url);
+      }
+    });
+
+    // Method 4: Monitor postMessage events instead of overriding (safer)
+    window.addEventListener('message', (event) => {
+      mLog.info('Web3AuthProvider', 'MESSAGE EVENT INTERCEPTED', {
+        origin: event.origin,
+        dataType: typeof event.data,
+        data: JSON.stringify(event.data).substring(0, 200) // Truncate for safety
+      });
+      mLog.forceFlush();
+    });
 
     // Intercept click events on the entire document to catch deep links
     document.addEventListener('click', (event) => {
@@ -403,32 +436,59 @@ export class Web3AuthProvider implements UnifiedProvider {
       return originalReplaceState.call(history, data, unused, url);
     };
 
-    // Monitor all URL changes via MutationObserver
+    // Monitor all URL changes via MutationObserver - Enhanced for any deep link
     const observer = new MutationObserver((mutations) => {
       mutations.forEach((mutation) => {
         if (mutation.type === 'childList') {
           mutation.addedNodes.forEach((node) => {
             if (node.nodeType === Node.ELEMENT_NODE) {
               const element = node as Element;
+
+              // Log ANY new anchor element being added
               if (element.tagName === 'A') {
                 const link = element as HTMLAnchorElement;
-                if (link.href && (link.href.startsWith('metamask://') || link.href.includes('metamask'))) {
-                  mLog.info('Web3AuthProvider', 'METAMASK LINK ADDED TO DOM', {
+                mLog.info('Web3AuthProvider', 'ANY LINK ADDED TO DOM', {
+                  href: link.href,
+                  id: link.id,
+                  className: link.className,
+                  text: link.textContent?.trim()
+                });
+                mLog.forceFlush();
+
+                // Special logging for MetaMask or deep links
+                if (link.href && (link.href.startsWith('metamask://') ||
+                                 link.href.includes('metamask') ||
+                                 link.href.includes('://') && !link.href.startsWith('http'))) {
+                  mLog.info('Web3AuthProvider', 'POTENTIAL DEEP LINK ADDED TO DOM', {
                     href: link.href,
                     id: link.id,
                     className: link.className
                   });
+                  mLog.forceFlush();
                 }
               }
+
               // Check for any child links too
-              const links = element.querySelectorAll('a[href*="metamask"]');
-              links.forEach((link) => {
-                mLog.info('Web3AuthProvider', 'METAMASK LINK FOUND IN ADDED ELEMENT', {
-                  href: (link as HTMLAnchorElement).href
+              const allLinks = element.querySelectorAll('a');
+              allLinks.forEach((link) => {
+                mLog.info('Web3AuthProvider', 'CHILD LINK FOUND IN ADDED ELEMENT', {
+                  href: (link as HTMLAnchorElement).href,
+                  text: link.textContent?.trim()
                 });
+                mLog.forceFlush();
               });
             }
           });
+        }
+
+        // Also monitor attribute changes that might set href
+        if (mutation.type === 'attributes' && mutation.attributeName === 'href') {
+          const element = mutation.target as HTMLAnchorElement;
+          mLog.info('Web3AuthProvider', 'HREF ATTRIBUTE CHANGED', {
+            href: element.href,
+            element: element.tagName
+          });
+          mLog.forceFlush();
         }
       });
     });

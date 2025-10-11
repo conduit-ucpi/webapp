@@ -40,11 +40,11 @@ export const createWeb3AuthConfig = (config: {
     chainId: toHexString(config.chainId), // Convert to hex
     rpcTarget: config.rpcUrl,
     displayName: networkInfo.name,
-    blockExplorerUrl: config.explorerBaseUrl,
+    blockExplorerUrl: config.explorerBaseUrl || 'https://basescan.org',
     ticker: networkInfo.ticker,
     tickerName: networkInfo.tickerName,
     logo: networkInfo.logo,
-  };
+  } as CustomChainConfig;
 
   mLog.debug('Web3AuthConfig', 'Chain config created', {
     inputChainId: config.chainId,
@@ -71,7 +71,30 @@ export const createWeb3AuthConfig = (config: {
     privateKeyProvider: undefined, // Will use the default provider
   });
 
-  // Base Web3Auth options with auto-detection disabled
+  // Configure WalletConnect for mobile wallets if project ID is available
+  const modalConfig = config.walletConnectProjectId ? {
+    connectors: {
+      [WALLET_CONNECTORS.WALLET_CONNECT_V2]: {
+        label: "wallet-connect-v2",
+        showOnModal: true,
+        showOnMobile: true,
+        showOnDesktop: false, // Only show on mobile for WalletConnect
+        adapterSettings: {
+          walletConnectInitOptions: {
+            projectId: config.walletConnectProjectId,
+            metadata: {
+              name: "Conduit UCPI",
+              description: "Secure escrow payments on Base",
+              url: typeof window !== 'undefined' ? window.location.origin : 'https://conduit-ucpi.com',
+              icons: ['https://conduit-ucpi.com/logo.png']
+            }
+          }
+        }
+      }
+    }
+  } : undefined;
+
+  // Base Web3Auth options with external wallet configuration
   const web3AuthOptions: Web3AuthOptions = {
     clientId: config.web3AuthClientId,
     web3AuthNetwork: config.web3AuthNetwork as any,
@@ -80,8 +103,11 @@ export const createWeb3AuthConfig = (config: {
       mode: "auto" as any,
       modalZIndex: "99999",
     },
+    modalConfig,
     enableLogging: true,
     sessionTime: 86400,
+    // Configure external wallet connections
+    privateKeyProvider: undefined, // Let Web3Auth handle this
   };
 
   mLog.debug('Web3AuthConfig', 'Web3Auth options created', {
@@ -89,12 +115,20 @@ export const createWeb3AuthConfig = (config: {
     network: web3AuthOptions.web3AuthNetwork,
     enableLogging: web3AuthOptions.enableLogging,
     sessionTime: web3AuthOptions.sessionTime,
-    modalZIndex: web3AuthOptions.uiConfig?.modalZIndex
+    modalZIndex: web3AuthOptions.uiConfig?.modalZIndex,
+    hasModalConfig: !!modalConfig,
+    hasWalletConnectConfig: !!(modalConfig?.connectors?.[WALLET_CONNECTORS.WALLET_CONNECT_V2])
   });
+
+  if (config.walletConnectProjectId) {
+    mLog.info('Web3AuthConfig', 'WalletConnect V2 configured for mobile wallet connections via modalConfig');
+  } else {
+    mLog.warn('Web3AuthConfig', 'No WalletConnect project ID provided, mobile wallet connections may not work');
+  }
 
   mLog.info('Web3AuthConfig', 'Web3Auth configuration completed successfully');
 
-  // Return config with adapter
+  // Return config with openlogin adapter
   return {
     web3AuthOptions,
     chainConfig,

@@ -18,9 +18,7 @@ export const createDynamicConfig = (config: {
   const dynamicSettings = {
     environmentId: config.dynamicEnvironmentId,
     walletConnectors: [EthereumWalletConnectors],
-    // Reduce SDK logging
-    logLevel: 'error', // Only show errors, not debug info
-    debugMode: false,
+    // Remove invalid logger config that was causing errors
     eventsCallbacks: {
       onAuthSuccess: (user: any) => {
         mLog.info('DynamicConfig', 'Auth success', {

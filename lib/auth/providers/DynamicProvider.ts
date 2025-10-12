@@ -41,33 +41,51 @@ export class DynamicProvider implements UnifiedProvider {
       // Dynamic SDK is handled through React hooks, so we need to trigger the modal
       // This will be coordinated with the React component
       if (typeof window !== 'undefined' && (window as any).dynamicLogin) {
+        mLog.info('DynamicProvider', 'Calling dynamicLogin function...');
         const result = await (window as any).dynamicLogin();
-        
+
+        mLog.info('DynamicProvider', 'Dynamic login result received', {
+          hasResult: !!result,
+          hasAddress: !!(result?.address),
+          hasProvider: !!(result?.provider)
+        });
+
         if (result && result.address) {
           this.currentAddress = result.address;
-          
+
           // Create ethers provider from Dynamic's provider
           if (result.provider) {
             this.cachedEthersProvider = new ethers.BrowserProvider(result.provider);
+            mLog.info('DynamicProvider', 'Ethers provider created successfully');
+          } else {
+            mLog.warn('DynamicProvider', 'No provider in result, using fallback');
           }
-          
-          return {
+
+          const connectionResult = {
             success: true,
             address: result.address,
             capabilities: this.getCapabilities()
           };
+
+          mLog.info('DynamicProvider', 'Connection successful', connectionResult);
+          return connectionResult;
+        } else {
+          mLog.error('DynamicProvider', 'Invalid result from dynamicLogin', { result });
         }
+      } else {
+        mLog.error('DynamicProvider', 'dynamicLogin function not available on window');
       }
 
       return {
         success: false,
-        error: 'Dynamic login not available',
+        error: 'Dynamic login not available or failed',
         capabilities: this.getCapabilities()
       };
 
     } catch (error) {
       mLog.error('DynamicProvider', 'Connection failed', {
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
       });
       return {
         success: false,

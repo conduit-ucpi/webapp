@@ -30,7 +30,21 @@ export class ProviderRegistry {
         // Check if Dynamic is configured, otherwise fall back to Web3Auth
         if (config.dynamicEnvironmentId) {
           mLog.info('ProviderRegistry', 'Dynamic environment ID found, registering Dynamic provider');
-          await this.registerDynamicProvider(config);
+          try {
+            await this.registerDynamicProvider(config);
+
+            // If Dynamic registration succeeded, don't register Web3Auth
+            if (this.providers.has('dynamic')) {
+              mLog.info('ProviderRegistry', 'Dynamic provider registered successfully');
+            } else {
+              throw new Error('Dynamic provider registration returned without error but provider not found');
+            }
+          } catch (error) {
+            mLog.warn('ProviderRegistry', 'Dynamic provider failed, falling back to Web3Auth', {
+              error: error instanceof Error ? error.message : String(error)
+            });
+            await this.registerWeb3AuthProvider(config);
+          }
         } else {
           mLog.info('ProviderRegistry', 'No Dynamic config, falling back to Web3Auth provider');
           await this.registerWeb3AuthProvider(config);
@@ -109,20 +123,14 @@ export class ProviderRegistry {
   }
 
   private async registerDynamicProvider(config: AuthConfig): Promise<void> {
-    try {
-      mLog.info('ProviderRegistry', 'Registering Dynamic provider');
-      // Dynamic import to avoid bundle size
-      const { DynamicProvider } = await import('../providers/DynamicProvider');
-      const provider = new DynamicProvider(config);
-      await provider.initialize();
-      this.providers.set('dynamic', provider);
-      mLog.info('ProviderRegistry', 'Registered Dynamic provider successfully');
-    } catch (error) {
-      mLog.error('ProviderRegistry', 'Failed to register Dynamic provider', {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined
-      });
-    }
+    mLog.info('ProviderRegistry', 'Registering Dynamic provider');
+
+    // Dynamic import to avoid bundle size
+    const { DynamicProvider } = await import('../providers/DynamicProvider');
+    const provider = new DynamicProvider(config);
+    await provider.initialize();
+    this.providers.set('dynamic', provider);
+    mLog.info('ProviderRegistry', 'Registered Dynamic provider successfully');
   }
 
   private async registerFarcasterProvider(config: AuthConfig): Promise<void> {

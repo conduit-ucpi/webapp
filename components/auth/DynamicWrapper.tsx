@@ -17,7 +17,15 @@ interface DynamicWrapperProps {
 
 // Bridge component that connects Dynamic to our global window methods
 function DynamicBridge() {
-  const { setShowAuthFlow, primaryWallet, user, handleLogOut } = useDynamicContext();
+  const dynamicContext = useDynamicContext();
+
+  // Handle potential initialization errors
+  if (!dynamicContext) {
+    mLog.error('DynamicBridge', 'Dynamic context not available');
+    return null;
+  }
+
+  const { setShowAuthFlow, primaryWallet, user, handleLogOut } = dynamicContext;
 
   useEffect(() => {
     // Expose Dynamic methods to our unified provider system
@@ -25,26 +33,35 @@ function DynamicBridge() {
       (window as any).dynamicLogin = async () => {
         mLog.info('DynamicBridge', 'Opening Dynamic auth flow');
         setShowAuthFlow(true);
-        
+
         // Return a promise that resolves when wallet is connected
-        return new Promise((resolve) => {
+        return new Promise((resolve, reject) => {
+          let attempts = 0;
+          const maxAttempts = 300; // 30 seconds with 100ms intervals
+
           const checkConnection = () => {
+            attempts++;
+
             if (primaryWallet && user) {
               mLog.info('DynamicBridge', 'Dynamic connection successful', {
                 address: primaryWallet.address,
-                walletName: primaryWallet.connector?.name
+                walletName: primaryWallet.connector?.name,
+                attempts
               });
               resolve({
                 address: primaryWallet.address,
                 provider: primaryWallet.connector,
                 user: user
               });
+            } else if (attempts >= maxAttempts) {
+              mLog.error('DynamicBridge', 'Connection timeout after 30 seconds');
+              reject(new Error('Dynamic connection timeout'));
             } else {
               // Keep checking until connected
               setTimeout(checkConnection, 100);
             }
           };
-          
+
           checkConnection();
         });
       };
@@ -67,25 +84,46 @@ export function DynamicWrapper({ children, config }: DynamicWrapperProps) {
     return <>{children}</>;
   }
 
-  const dynamicSettings = createDynamicConfig({
-    dynamicEnvironmentId: config.dynamicEnvironmentId,
-    chainId: config.chainId,
-    rpcUrl: config.rpcUrl,
-    explorerBaseUrl: config.explorerBaseUrl || ''
-  });
+  // Validate environment ID format
+  if (!config.dynamicEnvironmentId.includes('-')) {
+    mLog.error('DynamicWrapper', 'Invalid Dynamic environment ID format', {
+      environmentId: config.dynamicEnvironmentId
+    });
+    return <>{children}</>;
+  }
 
-  // Dynamic wrapper initialized (reduced logging)
+  try {
+    const dynamicSettings = createDynamicConfig({
+      dynamicEnvironmentId: config.dynamicEnvironmentId,
+      chainId: config.chainId,
+      rpcUrl: config.rpcUrl,
+      explorerBaseUrl: config.explorerBaseUrl || ''
+    });
 
-  return (
-    <DynamicContextProvider
-      settings={dynamicSettings as any}
-      theme="auto"
-      children={
-        <>
-          <DynamicBridge />
-          {children}
-        </>
-      }
-    />
-  );
+    mLog.info('DynamicWrapper', 'Initializing Dynamic with environment', {
+      environmentId: config.dynamicEnvironmentId.substring(0, 10) + '...',
+      chainId: config.chainId
+    });
+
+    return (
+      <DynamicContextProvider
+        settings={dynamicSettings as any}
+        theme="auto"
+        children={
+          <>
+            <DynamicBridge />
+            {children}
+          </>
+        }
+      />
+    );
+  } catch (error) {
+    mLog.error('DynamicWrapper', 'Failed to initialize Dynamic provider', {
+      error: error instanceof Error ? error.message : String(error),
+      environmentId: config.dynamicEnvironmentId
+    });
+
+    // Fall back to rendering children without Dynamic
+    return <>{children}</>;
+  }
 }

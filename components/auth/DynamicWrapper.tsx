@@ -25,7 +25,16 @@ function DynamicBridge() {
     return null;
   }
 
-  const { setShowAuthFlow, primaryWallet, user, handleLogOut } = dynamicContext;
+  const { setShowAuthFlow, primaryWallet, user, handleLogOut, getAuthToken } = dynamicContext;
+
+  mLog.info('DynamicBridge', 'Dynamic context properties', {
+    hasSetShowAuthFlow: !!setShowAuthFlow,
+    hasPrimaryWallet: !!primaryWallet,
+    hasUser: !!user,
+    hasHandleLogOut: !!handleLogOut,
+    hasGetAuthToken: !!getAuthToken,
+    contextKeys: Object.keys(dynamicContext || {})
+  });
 
   useEffect(() => {
     // Expose Dynamic methods to our unified provider system
@@ -39,7 +48,7 @@ function DynamicBridge() {
           let attempts = 0;
           const maxAttempts = 300; // 30 seconds with 100ms intervals
 
-          const checkConnection = () => {
+          const checkConnection = async () => {
             attempts++;
 
             if (primaryWallet && user) {
@@ -48,9 +57,40 @@ function DynamicBridge() {
                 walletName: primaryWallet.connector?.name,
                 attempts
               });
+
+              // Try to get the actual EIP-1193 provider from the wallet
+              let provider = null;
+              try {
+                // Check for different ways Dynamic exposes the provider
+                if (primaryWallet.connector?.getWalletClient) {
+                  const walletClient = await primaryWallet.connector.getWalletClient();
+                  provider = walletClient?.transport || walletClient;
+                } else if (primaryWallet.connector?.getProvider) {
+                  provider = await primaryWallet.connector.getProvider();
+                } else if (primaryWallet.connector?.provider) {
+                  provider = primaryWallet.connector.provider;
+                } else {
+                  // Fallback to the connector itself
+                  provider = primaryWallet.connector;
+                }
+
+                mLog.info('DynamicBridge', 'Provider details', {
+                  hasProvider: !!provider,
+                  providerType: typeof provider,
+                  hasRequest: !!(provider?.request),
+                  isProvider: !!(provider?._isProvider),
+                  methods: provider ? Object.getOwnPropertyNames(provider) : []
+                });
+              } catch (providerError) {
+                mLog.warn('DynamicBridge', 'Failed to get provider from wallet', {
+                  error: providerError instanceof Error ? providerError.message : String(providerError)
+                });
+                provider = primaryWallet.connector; // Fallback
+              }
+
               resolve({
                 address: primaryWallet.address,
-                provider: primaryWallet.connector,
+                provider: provider,
                 user: user
               });
             } else if (attempts >= maxAttempts) {
@@ -72,8 +112,13 @@ function DynamicBridge() {
       };
 
       (window as any).dynamicUser = user;
+
+      // Also expose getAuthToken function from Dynamic
+      if (getAuthToken) {
+        (window as any).dynamicGetAuthToken = getAuthToken;
+      }
     }
-  }, [setShowAuthFlow, primaryWallet, user, handleLogOut]);
+  }, [setShowAuthFlow, primaryWallet, user, handleLogOut, getAuthToken]);
 
   return null; // This component doesn't render anything
 }

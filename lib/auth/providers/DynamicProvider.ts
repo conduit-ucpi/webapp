@@ -55,8 +55,41 @@ export class DynamicProvider implements UnifiedProvider {
 
           // Create ethers provider from Dynamic's provider
           if (result.provider) {
-            this.cachedEthersProvider = new ethers.BrowserProvider(result.provider);
-            mLog.info('DynamicProvider', 'Ethers provider created successfully');
+            try {
+              // Dynamic provider might need special handling
+              // Check if it's already an ethers provider or needs wrapping
+              if (result.provider.request) {
+                // It's an EIP-1193 provider, wrap it with ethers
+                this.cachedEthersProvider = new ethers.BrowserProvider(result.provider);
+                mLog.info('DynamicProvider', 'Ethers provider created from EIP-1193 provider');
+              } else if (result.provider._isProvider) {
+                // It might already be an ethers provider
+                this.cachedEthersProvider = result.provider;
+                mLog.info('DynamicProvider', 'Using existing ethers provider');
+              } else {
+                // Try to use the connector's provider instead
+                const connector = result.provider;
+                if (connector && connector.getWalletClient) {
+                  // Try to get the wallet client from the connector
+                  const walletClient = await connector.getWalletClient();
+                  if (walletClient && walletClient.transport) {
+                    this.cachedEthersProvider = new ethers.BrowserProvider(walletClient.transport);
+                    mLog.info('DynamicProvider', 'Ethers provider created from wallet client');
+                  }
+                } else {
+                  mLog.warn('DynamicProvider', 'Cannot create ethers provider - unknown provider type', {
+                    providerType: typeof result.provider,
+                    hasRequest: !!result.provider.request,
+                    isProvider: !!result.provider._isProvider
+                  });
+                }
+              }
+            } catch (providerError) {
+              mLog.error('DynamicProvider', 'Failed to create ethers provider', {
+                error: providerError instanceof Error ? providerError.message : String(providerError)
+              });
+              // Continue without ethers provider - we can still return success
+            }
           } else {
             mLog.warn('DynamicProvider', 'No provider in result, using fallback');
           }
@@ -121,8 +154,33 @@ export class DynamicProvider implements UnifiedProvider {
       throw new Error('No ethers provider available for signing');
     }
 
-    const signer = await this.cachedEthersProvider.getSigner();
-    return await signer.signMessage(message);
+    try {
+      const signer = await this.cachedEthersProvider.getSigner();
+
+      mLog.info('DynamicProvider', 'Attempting to sign message with Dynamic embedded wallet', {
+        message: message.substring(0, 50) + '...',
+        signerAddress: await signer.getAddress()
+      });
+
+      const signature = await signer.signMessage(message);
+
+      mLog.info('DynamicProvider', 'Message signed successfully with Dynamic embedded wallet');
+      return signature;
+
+    } catch (signingError) {
+      mLog.error('DynamicProvider', 'Dynamic embedded wallet signing failed', {
+        error: signingError instanceof Error ? signingError.message : String(signingError),
+        errorCode: (signingError as any)?.code,
+        stack: signingError instanceof Error ? signingError.stack : undefined
+      });
+
+      // Check if this is a passkey/MFA issue
+      if ((signingError as any)?.code === -32603) {
+        throw new Error('Dynamic embedded wallet signing failed. Please ensure passkey is set up after social login.');
+      }
+
+      throw signingError;
+    }
   }
 
   async signTransaction(params: TransactionRequest): Promise<string> {
@@ -171,7 +229,96 @@ export class DynamicProvider implements UnifiedProvider {
   getUserInfo(): { email?: string; idToken?: string; name?: string } | null {
     // Dynamic provides user info through its React context
     if (typeof window !== 'undefined' && (window as any).dynamicUser) {
-      return (window as any).dynamicUser;
+      const user = (window as any).dynamicUser;
+
+      mLog.info('DynamicProvider', 'Retrieved Dynamic user info', {
+        hasUser: !!user,
+        hasEmail: !!(user?.email),
+        hasVerifiedCredentials: !!(user?.verifiedCredentials),
+        credentialCount: user?.verifiedCredentials?.length || 0,
+        userKeys: Object.keys(user || {}),
+        accessToken: user?.accessToken ? 'present' : 'missing',
+        authToken: user?.authToken ? 'present' : 'missing',
+        token: user?.token ? 'present' : 'missing',
+        jwt: user?.jwt ? 'present' : 'missing',
+        // Log all properties to find the JWT token
+        allUserProps: user ? Object.keys(user).reduce((acc, key) => {
+          acc[key] = typeof user[key] === 'string' && user[key].length > 100 ? `${user[key].substring(0, 50)}...` : user[key];
+          return acc;
+        }, {} as any) : null
+      });
+
+      // Get JWT token using Dynamic's getAuthToken function
+      let idToken = null;
+
+      mLog.info('DynamicProvider', 'Checking for getAuthToken function', {
+        hasGetAuthToken: !!(typeof window !== 'undefined' && (window as any).dynamicGetAuthToken),
+        windowKeys: typeof window !== 'undefined' ? Object.keys(window).filter(k => k.includes('dynamic')) : [],
+        allDynamicWindowKeys: typeof window !== 'undefined' ? Object.keys(window).filter(k => k.includes('dynamic')).map(k => ({ key: k, type: typeof (window as any)[k] })) : []
+      });
+
+      if (typeof window !== 'undefined' && (window as any).dynamicGetAuthToken) {
+        try {
+          idToken = (window as any).dynamicGetAuthToken();
+          mLog.info('DynamicProvider', 'Retrieved JWT token using getAuthToken', {
+            hasToken: !!idToken,
+            tokenLength: idToken ? idToken.length : 0
+          });
+        } catch (tokenError) {
+          mLog.warn('DynamicProvider', 'Failed to get auth token', {
+            error: tokenError instanceof Error ? tokenError.message : String(tokenError)
+          });
+        }
+      } else {
+        mLog.warn('DynamicProvider', 'getAuthToken function not available, trying localStorage');
+
+        // Try getting JWT from localStorage as per Dynamic docs
+        try {
+          // Check all possible Dynamic token keys
+          const allStorageKeys = Object.keys(localStorage);
+          const dynamicKeys = allStorageKeys.filter(key => key.includes('dynamic'));
+
+          mLog.info('DynamicProvider', 'localStorage Dynamic keys', {
+            allDynamicKeys: dynamicKeys,
+            values: dynamicKeys.reduce((acc, key) => {
+              const value = localStorage.getItem(key);
+              acc[key] = value ? `${value.substring(0, 50)}...` : null;
+              return acc;
+            }, {} as any)
+          });
+
+          const tokenFromStorage = localStorage.getItem('dynamic_authentication_token') ||
+                                   localStorage.getItem('dynamic_min_authentication_token') ||
+                                   localStorage.getItem('dynamic-token') ||
+                                   localStorage.getItem('dynamic_token');
+
+          if (tokenFromStorage) {
+            idToken = tokenFromStorage;
+            mLog.info('DynamicProvider', 'Retrieved JWT token from localStorage', {
+              hasToken: !!idToken,
+              tokenLength: idToken ? idToken.length : 0
+            });
+          } else {
+            mLog.warn('DynamicProvider', 'No token found in localStorage under any Dynamic key');
+          }
+        } catch (storageError) {
+          mLog.warn('DynamicProvider', 'Failed to access localStorage', {
+            error: storageError instanceof Error ? storageError.message : String(storageError)
+          });
+        }
+      }
+
+      // Log all user properties to find JWT token
+      mLog.info('DynamicProvider', 'All user properties', user || {});
+
+      // Extract email and other info from Dynamic user
+      return {
+        email: user?.email,
+        name: user?.firstName || user?.lastName ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : undefined,
+        idToken: idToken, // Dynamic's JWT token from localStorage
+        dynamicUserId: user?.id,
+        verifiedCredentials: user?.verifiedCredentials
+      };
     }
     return null;
   }

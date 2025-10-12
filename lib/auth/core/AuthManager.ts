@@ -247,6 +247,50 @@ export class AuthManager {
       mLog.error('AuthManager', 'Failed to sign message for auth', {
         error: error instanceof Error ? error.message : String(error)
       });
+
+      // Fallback: Try using Dynamic's JWT token for social login users
+      if (this.state.providerName === 'dynamic') {
+        mLog.info('AuthManager', 'Attempting Dynamic JWT fallback authentication');
+
+        try {
+          const userInfo = this.currentProvider?.getUserInfo();
+          if (userInfo?.idToken) {
+            mLog.info('AuthManager', 'Using Dynamic JWT token for authentication');
+
+            // Create auth token using Dynamic's JWT instead of signature
+            const authToken = btoa(JSON.stringify({
+              type: 'dynamic_jwt_auth',
+              walletAddress: this.state.address,
+              dynamicJwt: userInfo.idToken,
+              email: userInfo.email,
+              name: userInfo.name,
+              dynamicUserId: (userInfo as any).dynamicUserId,
+              timestamp: Date.now(),
+              issuer: 'dynamic_social_login',
+              header: {
+                alg: 'JWT',
+                typ: 'DYNAMIC'
+              },
+              payload: {
+                sub: this.state.address,
+                iat: Math.floor(Date.now() / 1000),
+                iss: 'dynamic_social_login',
+                wallet_type: 'dynamic_embedded'
+              }
+            }));
+
+            mLog.info('AuthManager', '✅ Dynamic JWT fallback authentication successful');
+            return authToken;
+          } else {
+            mLog.warn('AuthManager', 'No Dynamic JWT token available for fallback');
+          }
+        } catch (fallbackError) {
+          mLog.error('AuthManager', 'Dynamic JWT fallback failed', {
+            error: fallbackError instanceof Error ? fallbackError.message : String(fallbackError)
+          });
+        }
+      }
+
       throw error;
     }
   }

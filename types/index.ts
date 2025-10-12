@@ -3,6 +3,7 @@ import { Web3Auth } from "@web3auth/modal";
 export interface Config {
   web3AuthClientId: string;
   web3AuthNetwork: string;
+  dynamicEnvironmentId?: string; // Dynamic.xyz environment ID
   chainId: number;
   rpcUrl: string;
   usdcContractAddress: string;

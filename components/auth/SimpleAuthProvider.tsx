@@ -253,6 +253,7 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
   const authConfig = {
     web3AuthClientId: config.web3AuthClientId,
     web3AuthNetwork: config.web3AuthNetwork,
+    dynamicEnvironmentId: config.dynamicEnvironmentId, // Pass through Dynamic environment ID
     chainId: config.chainId,
     rpcUrl: config.rpcUrl,
     explorerBaseUrl: config.explorerBaseUrl,

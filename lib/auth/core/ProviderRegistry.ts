@@ -19,11 +19,7 @@ export class ProviderRegistry {
     mLog.info('ProviderRegistry', 'Initializing providers');
 
     const isInFarcaster = this.isInFarcaster();
-    mLog.debug('ProviderRegistry', 'Environment detection', {
-      isInFarcaster,
-      userAgent: typeof window !== 'undefined' ? window.navigator.userAgent : 'server',
-      isInFrame: typeof window !== 'undefined' ? window.parent !== window : false
-    });
+    // Reduced environment detection logging
 
     try {
       // Detect environment and register appropriate providers
@@ -56,13 +52,7 @@ export class ProviderRegistry {
   }
 
   getProvider(type: ProviderType): UnifiedProvider | null {
-    const provider = this.providers.get(type) || null;
-    mLog.debug('ProviderRegistry', 'Getting provider', {
-      requestedType: type,
-      found: !!provider,
-      availableTypes: Array.from(this.providers.keys())
-    });
-    return provider;
+    return this.providers.get(type) || null;
   }
 
   getBestProvider(): UnifiedProvider | null {
@@ -82,22 +72,13 @@ export class ProviderRegistry {
       selectedType = 'web3auth';
     }
 
-    mLog.debug('ProviderRegistry', 'Getting best provider', {
-      selectedType,
-      hasProvider: !!bestProvider,
-      availableProviders: Array.from(this.providers.keys())
-    });
+    // Provider selection completed
 
     return bestProvider;
   }
 
   getAllProviders(): UnifiedProvider[] {
-    const providers = Array.from(this.providers.values());
-    mLog.debug('ProviderRegistry', 'Getting all providers', {
-      count: providers.length,
-      types: Array.from(this.providers.keys())
-    });
-    return providers;
+    return Array.from(this.providers.values());
   }
 
   hasProvider(type: ProviderType): boolean {
@@ -132,14 +113,8 @@ export class ProviderRegistry {
       mLog.info('ProviderRegistry', 'Registering Dynamic provider');
       // Dynamic import to avoid bundle size
       const { DynamicProvider } = await import('../providers/DynamicProvider');
-      mLog.debug('ProviderRegistry', 'DynamicProvider imported successfully');
-
       const provider = new DynamicProvider(config);
-      mLog.debug('ProviderRegistry', 'DynamicProvider instance created');
-
       await provider.initialize();
-      mLog.debug('ProviderRegistry', 'DynamicProvider initialized');
-
       this.providers.set('dynamic', provider);
       mLog.info('ProviderRegistry', 'Registered Dynamic provider successfully');
     } catch (error) {

@@ -18,10 +18,13 @@ export const createDynamicConfig = (config: {
   const dynamicSettings = {
     environmentId: config.dynamicEnvironmentId,
     walletConnectors: [EthereumWalletConnectors],
+    // Reduce SDK logging
+    logLevel: 'error', // Only show errors, not debug info
+    debugMode: false,
     eventsCallbacks: {
       onAuthSuccess: (user: any) => {
-        mLog.info('DynamicConfig', 'Auth success', { 
-          address: user.verifiedCredentials?.[0]?.address 
+        mLog.info('DynamicConfig', 'Auth success', {
+          address: user.verifiedCredentials?.[0]?.address
         });
       },
       onLogout: () => {
@@ -49,11 +52,7 @@ export const createDynamicConfig = (config: {
     }
   };
 
-  mLog.debug('DynamicConfig', 'Configuration created', {
-    chainId: config.chainId,
-    network: networkInfo.name,
-    hasEnvironmentId: !!config.dynamicEnvironmentId
-  });
+  // Reduced logging to minimize console output
 
   return dynamicSettings;
 };

@@ -74,10 +74,7 @@ export function DynamicWrapper({ children, config }: DynamicWrapperProps) {
     explorerBaseUrl: config.explorerBaseUrl || ''
   });
 
-  mLog.info('DynamicWrapper', 'Wrapping app with Dynamic provider', {
-    environmentId: config.dynamicEnvironmentId.substring(0, 10) + '...',
-    chainId: config.chainId
-  });
+  // Dynamic wrapper initialized (reduced logging)
 
   return (
     <DynamicContextProvider

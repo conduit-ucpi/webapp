@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect } from 'react';
-import { DynamicContextProvider, useDynamicContext } from '@dynamic-labs/sdk-react-core';
+import { DynamicContextProvider, useDynamicContext, useDynamicEvents } from '@dynamic-labs/sdk-react-core';
 import { EthereumWalletConnectors } from '@dynamic-labs/ethereum';
 import { createDynamicConfig } from '@/lib/dynamicConfig';
 import { AuthConfig } from '@/lib/auth/types';
@@ -18,104 +18,239 @@ interface DynamicWrapperProps {
 // Bridge component that connects Dynamic to our global window methods
 function DynamicBridge() {
   const dynamicContext = useDynamicContext();
+  const { setShowAuthFlow, primaryWallet, user, handleLogOut } = dynamicContext || {};
+  const getAuthToken = (dynamicContext as any)?.getAuthToken;
 
-  // Handle potential initialization errors
-  if (!dynamicContext) {
-    mLog.error('DynamicBridge', 'Dynamic context not available');
-    return null;
-  }
+  // Store active login promise
+  const activeLoginPromise = React.useRef<{
+    resolve: (value: any) => void;
+    reject: (error: Error) => void;
+  } | null>(null);
 
-  const { setShowAuthFlow, primaryWallet, user, handleLogOut, getAuthToken } = dynamicContext;
+  // Use Dynamic's event system for connection detection
+  useDynamicEvents('walletAdded', (wallet, userWallets) => {
+    mLog.info('DynamicBridge', 'walletAdded event received', {
+      wallet: !!wallet,
+      address: wallet?.address,
+      walletKey: wallet?.key,
+      userWalletsCount: userWallets?.length || 0,
+      hasActivePromise: !!activeLoginPromise.current
+    });
 
-  mLog.info('DynamicBridge', 'Dynamic context properties', {
-    hasSetShowAuthFlow: !!setShowAuthFlow,
-    hasPrimaryWallet: !!primaryWallet,
-    hasUser: !!user,
-    hasHandleLogOut: !!handleLogOut,
-    hasGetAuthToken: !!getAuthToken,
-    contextKeys: Object.keys(dynamicContext || {})
+    // If we have an active login promise, resolve it
+    if (activeLoginPromise.current && wallet && wallet.address) {
+      // Get the provider
+      let provider = wallet.connector;
+      if ((wallet.connector as any)?.provider) {
+        provider = (wallet.connector as any).provider;
+      }
+
+      const finalUser = user || {
+        email: null,
+        walletAddress: wallet.address
+      };
+
+      mLog.info('DynamicBridge', '✅ Resolving login promise with walletAdded event', {
+        address: wallet.address,
+        walletName: wallet.connector?.name,
+        hasUser: !!user
+      });
+
+      activeLoginPromise.current.resolve({
+        address: wallet.address,
+        provider: provider,
+        user: finalUser
+      });
+
+      activeLoginPromise.current = null;
+    } else if (!activeLoginPromise.current) {
+      mLog.warn('DynamicBridge', 'walletAdded fired but no active promise to resolve');
+    }
+  });
+
+  useDynamicEvents('primaryWalletChanged', (newPrimaryWallet) => {
+    mLog.info('DynamicBridge', 'primaryWalletChanged event received', {
+      wallet: !!newPrimaryWallet,
+      address: newPrimaryWallet?.address,
+      walletKey: newPrimaryWallet?.key,
+      hasActivePromise: !!activeLoginPromise.current
+    });
+
+    // If we have an active login promise, resolve it
+    if (activeLoginPromise.current && newPrimaryWallet && newPrimaryWallet.address) {
+      // Get the provider
+      let provider = newPrimaryWallet.connector;
+      if ((newPrimaryWallet.connector as any)?.provider) {
+        provider = (newPrimaryWallet.connector as any).provider;
+      }
+
+      const finalUser = user || {
+        email: null,
+        walletAddress: newPrimaryWallet.address
+      };
+
+      mLog.info('DynamicBridge', '✅ Resolving login promise with primaryWalletChanged event', {
+        address: newPrimaryWallet.address,
+        walletName: newPrimaryWallet.connector?.name,
+        hasUser: !!user
+      });
+
+      activeLoginPromise.current.resolve({
+        address: newPrimaryWallet.address,
+        provider: provider,
+        user: finalUser
+      });
+
+      activeLoginPromise.current = null;
+    } else if (!activeLoginPromise.current) {
+      mLog.warn('DynamicBridge', 'primaryWalletChanged fired but no active promise to resolve');
+    }
+  });
+
+  useDynamicEvents('authInit', () => {
+    mLog.info('DynamicBridge', 'authInit event received - authentication process started');
+  });
+
+  useDynamicEvents('authFlowOpen', () => {
+    mLog.info('DynamicBridge', 'authFlowOpen event received - auth modal opened');
+  });
+
+  useDynamicEvents('authFlowClose', () => {
+    mLog.info('DynamicBridge', 'authFlowClose event received');
+
+    // In connect-only mode, the flow closes immediately after wallet selection
+    // but the wallet events fire slightly later. Don't reject the promise here.
+    // The promise will either:
+    // 1. Resolve when walletAdded/primaryWalletChanged fires
+    // 2. Timeout after 60 seconds (set in dynamicLogin)
+    // 3. Get cancelled by user calling logout
+
+    // Only log for debugging - don't reject
+    if (activeLoginPromise.current) {
+      mLog.info('DynamicBridge', 'Auth flow closed, waiting for wallet events...', {
+        hasActivePromise: true
+      });
+    }
+  });
+
+  useDynamicEvents('authFlowCancelled', () => {
+    mLog.info('DynamicBridge', 'authFlowCancelled event received - user cancelled');
+
+    // This event specifically means the user cancelled the auth flow
+    if (activeLoginPromise.current) {
+      mLog.warn('DynamicBridge', 'Auth flow was cancelled by user');
+      activeLoginPromise.current.reject(new Error('Authentication cancelled by user'));
+      activeLoginPromise.current = null;
+    }
   });
 
   useEffect(() => {
+    if (!dynamicContext) {
+      mLog.error('DynamicBridge', 'Dynamic context not available');
+      return;
+    }
+
+    mLog.info('DynamicBridge', 'Dynamic context properties', {
+      hasSetShowAuthFlow: !!setShowAuthFlow,
+      hasPrimaryWallet: !!primaryWallet,
+      hasUser: !!user,
+      hasHandleLogOut: !!handleLogOut,
+      hasGetAuthToken: !!getAuthToken,
+      contextKeys: Object.keys(dynamicContext || {})
+    });
+
     // Expose Dynamic methods to our unified provider system
     if (typeof window !== 'undefined') {
       (window as any).dynamicLogin = async () => {
         mLog.info('DynamicBridge', 'Opening Dynamic auth flow');
-        setShowAuthFlow(true);
 
-        // Return a promise that resolves when wallet is connected
-        return new Promise((resolve, reject) => {
-          let attempts = 0;
-          const maxAttempts = 300; // 30 seconds with 100ms intervals
+        // Check if user is already connected
+        if (primaryWallet && primaryWallet.address) {
+          mLog.info('DynamicBridge', 'User already connected, returning existing connection', {
+            address: primaryWallet.address,
+            connector: primaryWallet.connector?.name
+          });
 
-          const checkConnection = async () => {
-            attempts++;
+          let provider = primaryWallet.connector;
+          if ((primaryWallet.connector as any)?.provider) {
+            provider = (primaryWallet.connector as any).provider;
+          }
 
-            if (primaryWallet && user) {
-              mLog.info('DynamicBridge', 'Dynamic connection successful', {
-                address: primaryWallet.address,
-                walletName: primaryWallet.connector?.name,
-                attempts
-              });
-
-              // Try to get the actual EIP-1193 provider from the wallet
-              let provider = null;
-              try {
-                // Check for different ways Dynamic exposes the provider
-                if (primaryWallet.connector?.getWalletClient) {
-                  const walletClient = await primaryWallet.connector.getWalletClient();
-                  provider = walletClient?.transport || walletClient;
-                } else if (primaryWallet.connector?.getProvider) {
-                  provider = await primaryWallet.connector.getProvider();
-                } else if (primaryWallet.connector?.provider) {
-                  provider = primaryWallet.connector.provider;
-                } else {
-                  // Fallback to the connector itself
-                  provider = primaryWallet.connector;
-                }
-
-                mLog.info('DynamicBridge', 'Provider details', {
-                  hasProvider: !!provider,
-                  providerType: typeof provider,
-                  hasRequest: !!(provider?.request),
-                  isProvider: !!(provider?._isProvider),
-                  methods: provider ? Object.getOwnPropertyNames(provider) : []
-                });
-              } catch (providerError) {
-                mLog.warn('DynamicBridge', 'Failed to get provider from wallet', {
-                  error: providerError instanceof Error ? providerError.message : String(providerError)
-                });
-                provider = primaryWallet.connector; // Fallback
-              }
-
-              resolve({
-                address: primaryWallet.address,
-                provider: provider,
-                user: user
-              });
-            } else if (attempts >= maxAttempts) {
-              mLog.error('DynamicBridge', 'Connection timeout after 30 seconds');
-              reject(new Error('Dynamic connection timeout'));
-            } else {
-              // Keep checking until connected
-              setTimeout(checkConnection, 100);
-            }
+          const finalUser = user || {
+            email: null,
+            walletAddress: primaryWallet.address
           };
 
-          checkConnection();
+          return {
+            address: primaryWallet.address,
+            provider: provider,
+            user: finalUser
+          };
+        }
+
+        // Open the auth flow
+        setShowAuthFlow(true);
+
+        // Return a promise that will be resolved by the authSuccess event
+        return new Promise((resolve, reject) => {
+          // Store the promise for the event handler
+          activeLoginPromise.current = { resolve, reject };
+
+          // Set up a timeout in case events don't fire
+          const timeoutId = setTimeout(() => {
+            if (activeLoginPromise.current) {
+              mLog.error('DynamicBridge', 'Authentication timeout - no events received');
+              activeLoginPromise.current.reject(new Error('Authentication timeout'));
+              activeLoginPromise.current = null;
+            }
+          }, 60000); // 60 second timeout
+
+          // Store the timeout so we can clear it on success
+          const originalResolve = resolve;
+          const originalReject = reject;
+
+          activeLoginPromise.current.resolve = (value) => {
+            clearTimeout(timeoutId);
+            originalResolve(value);
+          };
+
+          activeLoginPromise.current.reject = (error) => {
+            clearTimeout(timeoutId);
+            originalReject(error);
+          };
         });
       };
 
       (window as any).dynamicLogout = async () => {
         mLog.info('DynamicBridge', 'Dynamic logout called');
+
+        // Clear any pending login promise
+        if (activeLoginPromise.current) {
+          activeLoginPromise.current.reject(new Error('Logout called'));
+          activeLoginPromise.current = null;
+        }
+
         await handleLogOut();
       };
 
       (window as any).dynamicUser = user;
 
-      // Also expose getAuthToken function from Dynamic
+      // Expose getAuthToken function from Dynamic
       if (getAuthToken) {
         (window as any).dynamicGetAuthToken = getAuthToken;
+      }
+
+      // Expose auth token directly if available
+      try {
+        if (user && (user as any).authToken) {
+          (window as any).dynamicAuthToken = (user as any).authToken;
+        } else if (user && (user as any).accessToken) {
+          (window as any).dynamicAuthToken = (user as any).accessToken;
+        }
+      } catch (error) {
+        mLog.debug('DynamicBridge', 'Could not access auth token from user', {
+          error: error instanceof Error ? error.message : String(error)
+        });
       }
     }
   }, [setShowAuthFlow, primaryWallet, user, handleLogOut, getAuthToken]);

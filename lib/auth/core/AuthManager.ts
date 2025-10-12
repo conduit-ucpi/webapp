@@ -253,8 +253,8 @@ export class AuthManager {
         mLog.info('AuthManager', 'Attempting Dynamic JWT fallback authentication');
 
         try {
-          const userInfo = this.currentProvider?.getUserInfo();
-          if (userInfo?.idToken) {
+          const userInfo = this.currentProvider?.getUserInfo?.();
+          if (userInfo && userInfo.idToken) {
             mLog.info('AuthManager', 'Using Dynamic JWT token for authentication');
 
             // Create auth token using Dynamic's JWT instead of signature

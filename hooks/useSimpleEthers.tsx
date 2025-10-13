@@ -28,10 +28,9 @@ export function useSimpleEthers() {
     const web3Service = Web3Service.getInstance(config);
 
     // Initialize Web3Service with the ethers provider from auth system
-    if (!web3Service.isServiceInitialized()) {
-      console.log('🔧 useSimpleEthers: Initializing Web3Service with ethers provider');
-      await web3Service.initialize(ethersProvider);
-    }
+    // ALWAYS re-initialize to ensure we're using the current provider (not cached from previous session)
+    console.log('🔧 useSimpleEthers: Re-initializing Web3Service with current ethers provider');
+    await web3Service.initialize(ethersProvider);
 
     return web3Service;
   }, [config, getEthersProvider]);

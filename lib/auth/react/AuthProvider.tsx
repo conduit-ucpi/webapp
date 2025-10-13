@@ -214,6 +214,11 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
       // Then disconnect auth manager
       await authManager.disconnect();
 
+      // CRITICAL: Completely obliterate Web3Service singleton to remove ALL traces of previous session
+      const { Web3Service } = await import('@/lib/web3');
+      Web3Service.clearInstance();
+      console.log('🔧 AuthProvider: Web3Service singleton cleared - no trace of previous session');
+
       // Clear local state
       setUser(null);
 

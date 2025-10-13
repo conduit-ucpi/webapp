@@ -409,7 +409,7 @@ export class DynamicProvider implements UnifiedProvider {
 
   async getAddress(): Promise<string> {
     if (this.currentAddress) {
-      return this.currentAddress;
+      return this.currentAddress as string;
     }
 
     // Check for OAuth result or Dynamic user state

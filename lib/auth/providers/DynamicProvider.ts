@@ -276,14 +276,22 @@ export class DynamicProvider implements UnifiedProvider {
 
 
   async disconnect(): Promise<void> {
-    mLog.info('DynamicProvider', 'Disconnecting');
+    mLog.info('DynamicProvider', 'Disconnecting and clearing all cached state');
 
     if (typeof window !== 'undefined' && (window as any).dynamicLogout) {
       await (window as any).dynamicLogout();
     }
 
+    // Clear all cached state
     this.cachedEthersProvider = null;
     this.currentAddress = null;
+
+    // Also clear any OAuth results that might be cached
+    if (typeof window !== 'undefined') {
+      delete (window as any).dynamicOAuthResult;
+    }
+
+    mLog.info('DynamicProvider', 'All cached state cleared');
   }
 
   async switchWallet(): Promise<ConnectionResult> {
@@ -398,6 +406,13 @@ export class DynamicProvider implements UnifiedProvider {
       if (dynamicUser && dynamicUser.walletAddress) {
         this.currentAddress = dynamicUser.walletAddress;
         return dynamicUser.walletAddress;
+      }
+
+      // Check for primaryWallet address
+      const primaryWallet = (window as any).dynamicPrimaryWallet;
+      if (primaryWallet && primaryWallet.address) {
+        this.currentAddress = primaryWallet.address;
+        return primaryWallet.address;
       }
     }
 

@@ -349,7 +349,7 @@ function DynamicBridge() {
       };
 
       (window as any).dynamicLogout = async () => {
-        mLog.info('DynamicBridge', 'Dynamic logout called');
+        mLog.info('DynamicBridge', 'Dynamic logout called - clearing ALL global state');
 
         // Clear any pending login promise
         if (activeLoginPromise.current) {
@@ -357,7 +357,19 @@ function DynamicBridge() {
           activeLoginPromise.current = null;
         }
 
+        // Clear ALL Dynamic-related window globals
+        delete (window as any).dynamicUser;
+        delete (window as any).dynamicPrimaryWallet;
+        delete (window as any).dynamicGetAuthToken;
+        delete (window as any).dynamicAuthToken;
+        delete (window as any).dynamicOAuthResult;
+        delete (window as any).dynamicOAuthRedirectHandler;
+
+        mLog.info('DynamicBridge', 'All Dynamic globals cleared before handleLogOut');
+
         await handleLogOut();
+
+        mLog.info('DynamicBridge', 'Logout complete - all state cleared');
       };
 
       (window as any).dynamicUser = user;

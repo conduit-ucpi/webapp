@@ -25,6 +25,10 @@ export const createDynamicConfig = (config: {
       (props: any) => EthereumWalletConnectors({
         ...props,
         useMetamaskSdk: true, // Enable MetaMask SDK for better compatibility
+        // Configure mobile experience for better Android MetaMask compatibility
+        // Default 'in-app-browser' can cause redirect issues on Android
+        // 'redirect' uses WalletConnect for more reliable mobile flows
+        mobileExperience: 'redirect',
       })
     ],
     overrides: {

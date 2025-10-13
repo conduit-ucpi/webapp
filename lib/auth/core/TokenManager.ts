@@ -7,6 +7,9 @@ import { mLog } from '../../../utils/mobileLogger';
 export class TokenManager {
   private static instance: TokenManager;
   private currentToken: string | null = null;
+  private lastLoggedTokenState: boolean = false;
+  private tokenAccessCount: number = 0;
+  private lastTokenLogTime: number = 0;
 
   constructor() {
     // Load token from storage on initialization
@@ -38,13 +41,30 @@ export class TokenManager {
   }
 
   /**
-   * Get current token
+   * Get current token (with reduced logging)
    */
   getToken(): string | null {
-    mLog.debug('TokenManager', 'Getting token', {
-      hasToken: !!this.currentToken,
-      tokenLength: this.currentToken?.length
-    });
+    const currentTokenState = !!this.currentToken;
+    const now = Date.now();
+    this.tokenAccessCount++;
+
+    // Only log if token state changed or every 10 seconds with high access count
+    const shouldLog =
+      this.lastLoggedTokenState !== currentTokenState ||
+      (this.tokenAccessCount > 50 && now - this.lastTokenLogTime > 10000);
+
+    if (shouldLog) {
+      mLog.debug('TokenManager', 'Getting token', {
+        hasToken: currentTokenState,
+        accessCount: this.tokenAccessCount,
+        timeSinceLastLog: now - this.lastTokenLogTime
+      });
+
+      this.lastLoggedTokenState = currentTokenState;
+      this.lastTokenLogTime = now;
+      this.tokenAccessCount = 0; // Reset counter after logging
+    }
+
     return this.currentToken;
   }
 
@@ -54,6 +74,9 @@ export class TokenManager {
   clearToken(): void {
     mLog.info('TokenManager', 'Clearing token');
     this.currentToken = null;
+    this.lastLoggedTokenState = false;
+    this.tokenAccessCount = 0;
+    this.lastTokenLogTime = 0;
     this.clearStorage();
   }
 

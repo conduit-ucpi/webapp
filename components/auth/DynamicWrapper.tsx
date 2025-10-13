@@ -3,7 +3,7 @@
  * Provides the Dynamic context and bridges to our unified provider system
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useCallback, useRef, useMemo } from 'react';
 import { DynamicContextProvider, useDynamicContext, useDynamicEvents } from '@dynamic-labs/sdk-react-core';
 import { EthereumWalletConnectors } from '@dynamic-labs/ethereum';
 import { createDynamicConfig } from '@/lib/dynamicConfig';
@@ -22,17 +22,37 @@ function DynamicBridge() {
   const getAuthToken = (dynamicContext as any)?.getAuthToken;
 
   // Store active login promise
-  const activeLoginPromise = React.useRef<{
+  const activeLoginPromise = useRef<{
     resolve: (value: any) => void;
     reject: (error: Error) => void;
   } | null>(null);
 
-  // Log when this effect runs
-  mLog.info('DynamicBridge', 'DynamicBridge useEffect running', {
-    hasUser: !!user,
-    hasPrimaryWallet: !!primaryWallet,
-    hasGetAuthToken: !!getAuthToken
-  });
+  // Track if we've already set up window methods to avoid duplicate logging
+  const windowMethodsSetup = useRef(false);
+  const lastUserRef = useRef(user);
+  const lastPrimaryWalletRef = useRef(primaryWallet);
+
+  // Only log when actual state changes
+  const hasStateChanged = useMemo(() => {
+    const userChanged = lastUserRef.current !== user;
+    const walletChanged = lastPrimaryWalletRef.current !== primaryWallet;
+
+    if (userChanged || walletChanged) {
+      lastUserRef.current = user;
+      lastPrimaryWalletRef.current = primaryWallet;
+      return true;
+    }
+    return false;
+  }, [user, primaryWallet]);
+
+  // Only log when state actually changes
+  if (hasStateChanged) {
+    mLog.info('DynamicBridge', 'DynamicBridge useEffect running', {
+      hasUser: !!user,
+      hasPrimaryWallet: !!primaryWallet,
+      hasGetAuthToken: !!getAuthToken
+    });
+  }
 
   // Use Dynamic's event system for connection detection
   useDynamicEvents('walletAdded', (wallet, userWallets) => {
@@ -183,22 +203,8 @@ function DynamicBridge() {
     }
   });
 
-  useEffect(() => {
-    if (!dynamicContext) {
-      mLog.error('DynamicBridge', 'Dynamic context not available');
-      return;
-    }
-
-    mLog.info('DynamicBridge', 'Dynamic context properties', {
-      hasSetShowAuthFlow: !!setShowAuthFlow,
-      hasPrimaryWallet: !!primaryWallet,
-      hasUser: !!user,
-      hasHandleLogOut: !!handleLogOut,
-      hasGetAuthToken: !!getAuthToken,
-      contextKeys: Object.keys(dynamicContext || {})
-    });
-
-    // Check if this is an OAuth redirect (user came back from Google login)
+  // Memoized OAuth redirect handler to prevent recreation
+  const handleOAuthRedirect = useCallback(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const isOAuthRedirect = urlParams.has('dynamicOauthCode') || urlParams.has('dynamicOauthState');
 
@@ -214,220 +220,151 @@ function DynamicBridge() {
         (window as any).dynamicOAuthResult = {
           address: primaryWallet.address,
           provider: primaryWallet.connector,
-          wallet: primaryWallet, // Pass the Dynamic wallet object for V3 ethers integration
+          wallet: primaryWallet,
           user: user || { email: null, walletAddress: primaryWallet.address }
         };
 
-        mLog.info('DynamicBridge', 'OAuth result stored for provider pickup', {
-          address: primaryWallet.address
-        });
-
-        // Try to resolve any pending promises (immediate and delayed)
-        const resolveHandlers = () => {
-          // Call the OAuth redirect handler if it exists
-          if ((window as any).dynamicOAuthRedirectHandler) {
-            mLog.info('DynamicBridge', 'Calling OAuth redirect handler');
-            (window as any).dynamicOAuthRedirectHandler((window as any).dynamicOAuthResult);
+        // Clean up OAuth parameters from URL
+        setTimeout(() => {
+          if (window.history && window.history.replaceState) {
+            const cleanUrl = window.location.origin + window.location.pathname;
+            window.history.replaceState({}, document.title, cleanUrl);
+            mLog.info('DynamicBridge', 'OAuth parameters cleaned from URL');
           }
-
-          // Also try to resolve any waiting login promise
-          if (activeLoginPromise.current) {
-            mLog.info('DynamicBridge', 'Resolving pending login promise with OAuth result');
-            activeLoginPromise.current.resolve({
-              address: primaryWallet.address,
-              provider: primaryWallet.connector,
-              wallet: primaryWallet, // Pass the Dynamic wallet object for V3 ethers integration
-              user: user || { email: null, walletAddress: primaryWallet.address }
-            });
-            activeLoginPromise.current = null;
-          }
-
-          // Clean up OAuth parameters from URL after successful authentication
-          setTimeout(() => {
-            if (window.history && window.history.replaceState) {
-              const cleanUrl = window.location.origin + window.location.pathname;
-              window.history.replaceState({}, document.title, cleanUrl);
-              mLog.info('DynamicBridge', 'OAuth parameters cleaned from URL');
-            }
-          }, 500);
-        };
-
-        // Try immediately and also with a small delay
-        resolveHandlers();
-        setTimeout(resolveHandlers, 100);
+        }, 500);
       }
     }
+  }, [primaryWallet, user]);
 
-    // Expose Dynamic methods to our unified provider system
+  // Memoized window methods setup to prevent recreation on every render
+  const setupWindowMethods = useCallback(() => {
+    if (typeof window === 'undefined' || windowMethodsSetup.current) return;
+
+    windowMethodsSetup.current = true;
+
+    (window as any).dynamicLogin = async () => {
+      mLog.info('DynamicBridge', 'Opening Dynamic auth flow');
+
+      // Check if user is already connected
+      if (primaryWallet && primaryWallet.address) {
+        return {
+          address: primaryWallet.address,
+          provider: primaryWallet.connector,
+          wallet: primaryWallet,
+          user: user || { email: null, walletAddress: primaryWallet.address }
+        };
+      }
+
+      // Clear any existing promise
+      if (activeLoginPromise.current) {
+        activeLoginPromise.current.reject(new Error('New auth flow started'));
+        activeLoginPromise.current = null;
+      }
+
+      // Open auth flow
+      setShowAuthFlow(true);
+
+      return new Promise((resolve, reject) => {
+        activeLoginPromise.current = { resolve, reject };
+
+        const timeoutId = setTimeout(() => {
+          if (activeLoginPromise.current) {
+            mLog.error('DynamicBridge', 'Authentication timeout');
+            activeLoginPromise.current.reject(new Error('Authentication timeout'));
+            activeLoginPromise.current = null;
+          }
+        }, 60000);
+
+        const originalResolve = resolve;
+        const originalReject = reject;
+
+        activeLoginPromise.current.resolve = (value) => {
+          clearTimeout(timeoutId);
+          originalResolve(value);
+        };
+
+        activeLoginPromise.current.reject = (error) => {
+          clearTimeout(timeoutId);
+          originalReject(error);
+        };
+      });
+    };
+
+    (window as any).dynamicLogout = async () => {
+      mLog.info('DynamicBridge', 'Dynamic logout called');
+
+      if (activeLoginPromise.current) {
+        activeLoginPromise.current.reject(new Error('Logout called'));
+        activeLoginPromise.current = null;
+      }
+
+      // Clear globals
+      delete (window as any).dynamicUser;
+      delete (window as any).dynamicPrimaryWallet;
+      delete (window as any).dynamicGetAuthToken;
+      delete (window as any).dynamicAuthToken;
+      delete (window as any).dynamicOAuthResult;
+
+      windowMethodsSetup.current = false; // Allow re-setup after logout
+
+      await handleLogOut();
+    };
+  }, [setShowAuthFlow, primaryWallet, user, handleLogOut]);
+
+  // Handle OAuth redirect - only run once when needed
+  useEffect(() => {
+    handleOAuthRedirect();
+  }, [handleOAuthRedirect]);
+
+  // Set up window methods - only once when context is available
+  useEffect(() => {
+    if (!dynamicContext) {
+      mLog.error('DynamicBridge', 'Dynamic context not available');
+      return;
+    }
+
+    if (hasStateChanged) {
+      mLog.info('DynamicBridge', 'Dynamic context properties', {
+        hasSetShowAuthFlow: !!setShowAuthFlow,
+        hasPrimaryWallet: !!primaryWallet,
+        hasUser: !!user,
+        hasHandleLogOut: !!handleLogOut,
+        hasGetAuthToken: !!getAuthToken
+      });
+    }
+
+    setupWindowMethods();
+  }, [dynamicContext, setupWindowMethods, hasStateChanged, setShowAuthFlow, primaryWallet, user, handleLogOut, getAuthToken]);
+
+  // Update window globals when state changes
+  useEffect(() => {
     if (typeof window !== 'undefined') {
-      (window as any).dynamicLogin = async () => {
-        mLog.info('DynamicBridge', 'Opening Dynamic auth flow');
-
-        // Check if user is already connected (including OAuth redirects)
-        if (primaryWallet && primaryWallet.address) {
-          mLog.info('DynamicBridge', 'User already connected, returning existing connection', {
-            address: primaryWallet.address,
-            connector: primaryWallet.connector?.name,
-            walletKey: primaryWallet.key
-          });
-
-          let provider = primaryWallet.connector;
-          if ((primaryWallet.connector as any)?.provider) {
-            provider = (primaryWallet.connector as any).provider;
-          }
-
-          const finalUser = user || {
-            email: null,
-            walletAddress: primaryWallet.address
-          };
-
-          const result = {
-            address: primaryWallet.address,
-            provider: provider,
-            wallet: primaryWallet, // Pass the Dynamic wallet object for V3 ethers integration
-            user: finalUser
-          };
-
-          // Check if this was from an OAuth redirect and clean up URL
-          const urlParams = new URLSearchParams(window.location.search);
-          const isOAuthRedirect = urlParams.has('dynamicOauthCode') || urlParams.has('dynamicOauthState');
-
-          if (isOAuthRedirect) {
-            mLog.info('DynamicBridge', 'OAuth redirect detected in already-connected path, cleaning up URL');
-
-            // Clean up OAuth parameters from URL
-            setTimeout(() => {
-              if (typeof window !== 'undefined' && window.history && window.history.replaceState) {
-                const cleanUrl = window.location.origin + window.location.pathname;
-                window.history.replaceState({}, document.title, cleanUrl);
-                mLog.info('DynamicBridge', 'OAuth parameters cleaned from URL in shortcut path');
-              }
-            }, 100);
-          }
-
-          return result;
-        }
-
-        // Clear any existing promise before starting new auth flow
-        if (activeLoginPromise.current) {
-          mLog.warn('DynamicBridge', 'Clearing existing login promise before starting new auth flow');
-          activeLoginPromise.current.reject(new Error('New auth flow started'));
-          activeLoginPromise.current = null;
-        }
-
-        // Open the auth flow
-        setShowAuthFlow(true);
-
-        // Return a promise that will be resolved by the wallet events
-        return new Promise((resolve, reject) => {
-          // Store the promise for the event handler
-          activeLoginPromise.current = { resolve, reject };
-
-          // Set up a timeout in case events don't fire
-          const timeoutId = setTimeout(() => {
-            if (activeLoginPromise.current) {
-              mLog.error('DynamicBridge', 'Authentication timeout - no events received');
-              activeLoginPromise.current.reject(new Error('Authentication timeout'));
-              activeLoginPromise.current = null;
-            }
-          }, 60000); // 60 second timeout
-
-          // Store the timeout so we can clear it on success
-          const originalResolve = resolve;
-          const originalReject = reject;
-
-          activeLoginPromise.current.resolve = (value) => {
-            clearTimeout(timeoutId);
-            originalResolve(value);
-          };
-
-          activeLoginPromise.current.reject = (error) => {
-            clearTimeout(timeoutId);
-            originalReject(error);
-          };
-        });
-      };
-
-      (window as any).dynamicLogout = async () => {
-        mLog.info('DynamicBridge', 'Dynamic logout called - clearing ALL global state');
-
-        // Clear any pending login promise
-        if (activeLoginPromise.current) {
-          activeLoginPromise.current.reject(new Error('Logout called'));
-          activeLoginPromise.current = null;
-        }
-
-        // Clear ALL Dynamic-related window globals
-        delete (window as any).dynamicUser;
-        delete (window as any).dynamicPrimaryWallet;
-        delete (window as any).dynamicGetAuthToken;
-        delete (window as any).dynamicAuthToken;
-        delete (window as any).dynamicOAuthResult;
-        delete (window as any).dynamicOAuthRedirectHandler;
-
-        mLog.info('DynamicBridge', 'All Dynamic globals cleared before handleLogOut');
-
-        await handleLogOut();
-
-        mLog.info('DynamicBridge', 'Logout complete - all state cleared');
-      };
-
       (window as any).dynamicUser = user;
-
-      // Expose primaryWallet for signing operations
       (window as any).dynamicPrimaryWallet = primaryWallet;
 
-      // Expose getAuthToken function from Dynamic
       if (getAuthToken) {
         (window as any).dynamicGetAuthToken = getAuthToken;
       }
 
-      // Expose auth token directly if available
-      try {
-        // Log all user properties to find the JWT token
-        if (user) {
-          mLog.info('DynamicBridge', 'Analyzing user object for JWT tokens', {
-            userKeys: Object.keys(user),
-            hasAuthToken: !!(user as any).authToken,
-            hasAccessToken: !!(user as any).accessToken,
-            hasToken: !!(user as any).token,
-            hasJwt: !!(user as any).jwt,
-            hasIdToken: !!(user as any).idToken
-          });
+      // Handle auth token
+      if (user && hasStateChanged) {
+        const tokenFields = ['authToken', 'accessToken', 'token', 'jwt', 'idToken'];
+        let foundToken = null;
 
-          // Try various possible JWT token locations
-          let foundToken = null;
-          const tokenFields = ['authToken', 'accessToken', 'token', 'jwt', 'idToken'];
-
-          for (const field of tokenFields) {
-            const tokenValue = (user as any)[field];
-            if (tokenValue && typeof tokenValue === 'string' && tokenValue.split('.').length === 3) {
-              foundToken = tokenValue;
-              mLog.info('DynamicBridge', `Found JWT token in user.${field}`, {
-                field,
-                tokenLength: tokenValue.length,
-                tokenPreview: `${tokenValue.substring(0, 20)}...`
-              });
-              break;
-            }
-          }
-
-          if (foundToken) {
-            (window as any).dynamicAuthToken = foundToken;
-          } else {
-            mLog.warn('DynamicBridge', 'No JWT token found in user object', {
-              userKeys: Object.keys(user),
-              tokenFieldsChecked: tokenFields
-            });
+        for (const field of tokenFields) {
+          const tokenValue = (user as any)[field];
+          if (tokenValue && typeof tokenValue === 'string' && tokenValue.split('.').length === 3) {
+            foundToken = tokenValue;
+            break;
           }
         }
-      } catch (error) {
-        mLog.debug('DynamicBridge', 'Could not access auth token from user', {
-          error: error instanceof Error ? error.message : String(error)
-        });
+
+        if (foundToken) {
+          (window as any).dynamicAuthToken = foundToken;
+        }
       }
     }
-  }, [setShowAuthFlow, primaryWallet, user, handleLogOut, getAuthToken]);
+  }, [user, primaryWallet, getAuthToken, hasStateChanged]);
 
   return null; // This component doesn't render anything
 }

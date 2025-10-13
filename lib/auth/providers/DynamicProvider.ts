@@ -248,30 +248,91 @@ export class DynamicProvider implements UnifiedProvider {
         });
 
         // Use Dynamic's V3 ethers integration to create the provider
-        // This handles all the complexity internally and works with eth_requestAccounts
         const web3Provider = await getWeb3Provider(dynamicWallet);
 
         if (web3Provider) {
-          // Store the provider directly (it's already a BrowserProvider)
           this.cachedEthersProvider = web3Provider;
           mLog.info('DynamicProvider', '✅ Ethers provider created using Dynamic V3 ethers integration');
           return;
         }
 
-        mLog.warn('DynamicProvider', '❌ Unable to get web3 provider from Dynamic wallet', {
-          walletName: dynamicWallet?.connector?.name,
-          hasWallet: !!dynamicWallet
-        });
+        // If Dynamic V3 approach fails, try fallback methods
+        mLog.warn('DynamicProvider', 'Dynamic V3 getWeb3Provider failed, trying fallbacks');
+        await this.tryEthersProviderFallbacks(dynamicWallet);
 
       } catch (providerError) {
         mLog.error('DynamicProvider', 'Exception while setting up ethers provider', {
           error: providerError instanceof Error ? providerError.message : String(providerError),
           stack: providerError instanceof Error ? providerError.stack : undefined
         });
+
+        // Try fallback methods even if Dynamic V3 throws
+        try {
+          await this.tryEthersProviderFallbacks(dynamicWallet);
+        } catch (fallbackError) {
+          mLog.error('DynamicProvider', 'All ethers provider fallbacks failed', {
+            error: fallbackError instanceof Error ? fallbackError.message : String(fallbackError)
+          });
+        }
       }
     } else {
       mLog.warn('DynamicProvider', 'No Dynamic wallet passed to setupEthersProvider');
     }
+  }
+
+  private async tryEthersProviderFallbacks(dynamicWallet: any) {
+    mLog.info('DynamicProvider', 'Trying ethers provider fallback methods');
+
+    // Fallback 1: Try to use connector provider directly
+    if (dynamicWallet?.connector?.provider) {
+      try {
+        mLog.debug('DynamicProvider', 'Fallback 1: Using connector provider directly');
+        const provider = new ethers.BrowserProvider(dynamicWallet.connector.provider);
+        this.cachedEthersProvider = provider;
+        mLog.info('DynamicProvider', '✅ Fallback 1 successful: Created ethers provider from connector');
+        return;
+      } catch (connectorError) {
+        mLog.warn('DynamicProvider', 'Fallback 1 failed', {
+          error: connectorError instanceof Error ? connectorError.message : String(connectorError)
+        });
+      }
+    }
+
+    // Fallback 2: Try accessing embedded provider
+    if (dynamicWallet?.connector?.getProvider) {
+      try {
+        mLog.debug('DynamicProvider', 'Fallback 2: Using getProvider method');
+        const providerResult = await dynamicWallet.connector.getProvider();
+        if (providerResult) {
+          const provider = new ethers.BrowserProvider(providerResult);
+          this.cachedEthersProvider = provider;
+          mLog.info('DynamicProvider', '✅ Fallback 2 successful: Created ethers provider from getProvider');
+          return;
+        }
+      } catch (getProviderError) {
+        mLog.warn('DynamicProvider', 'Fallback 2 failed', {
+          error: getProviderError instanceof Error ? getProviderError.message : String(getProviderError)
+        });
+      }
+    }
+
+    // Fallback 3: Check for window.ethereum as a last resort
+    if (typeof window !== 'undefined' && (window as any).ethereum) {
+      try {
+        mLog.debug('DynamicProvider', 'Fallback 3: Using window.ethereum');
+        const provider = new ethers.BrowserProvider((window as any).ethereum);
+        this.cachedEthersProvider = provider;
+        mLog.info('DynamicProvider', '✅ Fallback 3 successful: Created ethers provider from window.ethereum');
+        return;
+      } catch (windowEthereumError) {
+        mLog.warn('DynamicProvider', 'Fallback 3 failed', {
+          error: windowEthereumError instanceof Error ? windowEthereumError.message : String(windowEthereumError)
+        });
+      }
+    }
+
+    mLog.error('DynamicProvider', 'All fallback methods exhausted - no ethers provider available');
+    throw new Error('Unable to create ethers provider - all methods failed');
   }
 
 

@@ -3,6 +3,11 @@ import { useAuth } from '@/components/auth';
 import Button from '@/components/ui/Button';
 import { mLog } from '@/utils/mobileLogger';
 
+// Shared state to prevent duplicate OAuth processing across multiple instances
+let globalOAuthProcessing = false;
+let globalOAuthProcessed = false;
+const globalInstanceId = Math.random().toString(36).substr(2, 9);
+
 interface ConnectWalletEmbeddedProps {
   buttonText?: string;
   useSmartRouting?: boolean;
@@ -22,28 +27,32 @@ export default function ConnectWalletEmbedded({
 }: ConnectWalletEmbeddedProps) {
   const { user, isLoading, connect, authenticateBackend, isConnected, address } = useAuth();
   const [isConnecting, setIsConnecting] = useState(false);
-  const [hasProcessedOAuth, setHasProcessedOAuth] = useState(false);
   const timeoutsRef = useRef<NodeJS.Timeout[]>([]);
+  const instanceId = useRef(Math.random().toString(36).substr(2, 9));
 
-  // Memoized OAuth handler to prevent recreating on every render
+  // Memoized OAuth handler to prevent recreating on every render and prevent duplicate processing across instances
   const handleOAuthRedirect = useCallback(async () => {
-    // Skip if already processed or currently processing
-    if (hasProcessedOAuth || isConnecting) return;
+    // Skip if globally processed or processing, or if this instance is connecting
+    if (globalOAuthProcessed || globalOAuthProcessing || isConnecting) return;
 
     const urlParams = new URLSearchParams(window.location.search);
     const isOAuthRedirect = urlParams.has('dynamicOauthCode') || urlParams.has('dynamicOauthState');
 
-    mLog.info('ConnectWalletEmbedded', 'OAuth redirect check in useEffect', {
-      isOAuthRedirect,
-      isConnected,
-      address,
-      hasUser: !!user,
-      hasProcessedOAuth,
-      willTriggerAuth: isOAuthRedirect && isConnected && address && !user && !hasProcessedOAuth
-    });
+    // Only log from the first instance to avoid spam
+    if (instanceId.current === globalInstanceId) {
+      mLog.info('ConnectWalletEmbedded', 'OAuth redirect check in useEffect', {
+        isOAuthRedirect,
+        isConnected,
+        address,
+        hasUser: !!user,
+        globalOAuthProcessed,
+        instanceId: instanceId.current,
+        willTriggerAuth: isOAuthRedirect && isConnected && address && !user && !globalOAuthProcessed
+      });
+    }
 
-    if (isOAuthRedirect && isConnected && address && !user && !hasProcessedOAuth) {
-      setHasProcessedOAuth(true); // Mark as processed immediately to prevent duplicate attempts
+    if (isOAuthRedirect && isConnected && address && !user && !globalOAuthProcessed) {
+      globalOAuthProcessing = true; // Mark as processing globally
 
       mLog.info('ConnectWalletEmbedded', 'Auto-authenticating OAuth redirect', {
         isConnected,
@@ -65,6 +74,7 @@ export default function ConnectWalletEmbedded({
 
         if (authSuccess) {
           mLog.info('ConnectWalletEmbedded', 'OAuth auto-authentication successful');
+          globalOAuthProcessed = true; // Mark as successfully processed globally
           onSuccess?.();
 
           // Clean up OAuth parameters from URL
@@ -75,16 +85,18 @@ export default function ConnectWalletEmbedded({
           }
         } else {
           mLog.error('ConnectWalletEmbedded', 'OAuth auto-authentication failed');
-          setHasProcessedOAuth(false); // Reset on failure to allow retry
+          globalOAuthProcessing = false; // Reset on failure to allow retry
         }
       } catch (error) {
         mLog.error('ConnectWalletEmbedded', 'OAuth auto-authentication error', {
           error: error instanceof Error ? error.message : String(error)
         });
-        setHasProcessedOAuth(false); // Reset on error to allow retry
+        globalOAuthProcessing = false; // Reset on error to allow retry
+      } finally {
+        globalOAuthProcessing = false; // Always reset processing flag
       }
     }
-  }, [isConnected, address, user, authenticateBackend, onSuccess, hasProcessedOAuth, isConnecting]);
+  }, [isConnected, address, user, authenticateBackend, onSuccess, isConnecting]);
 
   // Memoized connect handler to prevent recreating on every render
   const handleConnect = useCallback(async () => {
@@ -179,7 +191,7 @@ export default function ConnectWalletEmbedded({
     }
   }, [connect, authenticateBackend, onSuccess, isConnected, address, isConnecting]);
 
-  // Auto-authenticate on OAuth redirect with proper debouncing
+  // Auto-authenticate on OAuth redirect with proper debouncing and global coordination
   useEffect(() => {
     // Clear any existing timeouts
     timeoutsRef.current.forEach(clearTimeout);
@@ -188,8 +200,9 @@ export default function ConnectWalletEmbedded({
     // Run immediately
     handleOAuthRedirect();
 
-    // Only set up retry timeouts if we haven't processed OAuth yet and conditions might change
-    if (!hasProcessedOAuth && !user) {
+    // Only set up retry timeouts if we haven't processed OAuth globally yet and conditions might change
+    // Only the primary instance should set up retries to avoid duplicate timeouts
+    if (!globalOAuthProcessed && !user && instanceId.current === globalInstanceId) {
       // Reduced retry attempts and shorter delays
       [500, 1500].forEach(delay => {
         const timeoutId = setTimeout(handleOAuthRedirect, delay);
@@ -201,7 +214,7 @@ export default function ConnectWalletEmbedded({
       timeoutsRef.current.forEach(clearTimeout);
       timeoutsRef.current = [];
     };
-  }, [handleOAuthRedirect, hasProcessedOAuth, user]);
+  }, [handleOAuthRedirect, user]);
 
   if (isLoading) {
     return (

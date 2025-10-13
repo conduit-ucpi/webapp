@@ -26,7 +26,7 @@ export class AuthManager {
 
   private constructor() {
     this.providerRegistry = new ProviderRegistry();
-    this.tokenManager = new TokenManager();
+    this.tokenManager = TokenManager.getInstance();
     this.state = {
       isConnected: false,
       isLoading: false,

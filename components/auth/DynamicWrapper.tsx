@@ -10,6 +10,10 @@ import { createDynamicConfig } from '@/lib/dynamicConfig';
 import { AuthConfig } from '@/lib/auth/types';
 import { mLog } from '@/utils/mobileLogger';
 
+// Global coordination to prevent duplicate logging across bridge instances
+let globalBridgeSetup = false;
+const globalBridgeId = Math.random().toString(36).substr(2, 9);
+
 interface DynamicWrapperProps {
   children: React.ReactNode;
   config: AuthConfig;
@@ -31,8 +35,9 @@ function DynamicBridge() {
   const windowMethodsSetup = useRef(false);
   const lastUserRef = useRef(user);
   const lastPrimaryWalletRef = useRef(primaryWallet);
+  const bridgeInstanceId = useRef(Math.random().toString(36).substr(2, 9));
 
-  // Only log when actual state changes
+  // Only log when actual state changes and only from the primary bridge instance
   const hasStateChanged = useMemo(() => {
     const userChanged = lastUserRef.current !== user;
     const walletChanged = lastPrimaryWalletRef.current !== primaryWallet;
@@ -45,12 +50,13 @@ function DynamicBridge() {
     return false;
   }, [user, primaryWallet]);
 
-  // Only log when state actually changes
-  if (hasStateChanged) {
+  // Only log when state actually changes and only from the primary instance
+  if (hasStateChanged && bridgeInstanceId.current === globalBridgeId) {
     mLog.info('DynamicBridge', 'DynamicBridge useEffect running', {
       hasUser: !!user,
       hasPrimaryWallet: !!primaryWallet,
-      hasGetAuthToken: !!getAuthToken
+      hasGetAuthToken: !!getAuthToken,
+      bridgeId: bridgeInstanceId.current
     });
   }
 
@@ -316,29 +322,35 @@ function DynamicBridge() {
     handleOAuthRedirect();
   }, [handleOAuthRedirect]);
 
-  // Set up window methods - only once when context is available
+  // Set up window methods - only once when context is available and only from primary instance
   useEffect(() => {
     if (!dynamicContext) {
-      mLog.error('DynamicBridge', 'Dynamic context not available');
+      if (bridgeInstanceId.current === globalBridgeId) {
+        mLog.error('DynamicBridge', 'Dynamic context not available');
+      }
       return;
     }
 
-    if (hasStateChanged) {
+    if (hasStateChanged && bridgeInstanceId.current === globalBridgeId) {
       mLog.info('DynamicBridge', 'Dynamic context properties', {
         hasSetShowAuthFlow: !!setShowAuthFlow,
         hasPrimaryWallet: !!primaryWallet,
         hasUser: !!user,
         hasHandleLogOut: !!handleLogOut,
-        hasGetAuthToken: !!getAuthToken
+        hasGetAuthToken: !!getAuthToken,
+        bridgeId: bridgeInstanceId.current
       });
     }
 
-    setupWindowMethods();
+    // Only the primary instance should set up window methods to prevent conflicts
+    if (bridgeInstanceId.current === globalBridgeId) {
+      setupWindowMethods();
+    }
   }, [dynamicContext, setupWindowMethods, hasStateChanged, setShowAuthFlow, primaryWallet, user, handleLogOut, getAuthToken]);
 
-  // Update window globals when state changes
+  // Update window globals when state changes - only from primary instance
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && bridgeInstanceId.current === globalBridgeId) {
       (window as any).dynamicUser = user;
       (window as any).dynamicPrimaryWallet = primaryWallet;
 

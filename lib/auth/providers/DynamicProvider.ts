@@ -276,8 +276,8 @@ export class DynamicProvider implements UnifiedProvider {
             // It's a Promise
             walletClientResult.then((walletClient: any) => {
               if (walletClient && walletClient.transport && walletClient.transport.request) {
-                this.cachedEthersProvider = this.createEnhancedProvider(new ethers.BrowserProvider(walletClient.transport));
-                mLog.info('DynamicProvider', '✅ Enhanced ethers provider created from async wallet client');
+                this.cachedEthersProvider = new ethers.BrowserProvider(walletClient.transport);
+                mLog.info('DynamicProvider', '✅ Ethers provider created from async wallet client');
               } else {
                 mLog.warn('DynamicProvider', 'Wallet client missing transport or request method', {
                   hasWalletClient: !!walletClient,
@@ -299,9 +299,9 @@ export class DynamicProvider implements UnifiedProvider {
         }
 
         if (baseProvider) {
-          // Wrap the provider with our enhanced version that handles mobile signing
-          this.cachedEthersProvider = this.createEnhancedProvider(baseProvider);
-          mLog.info('DynamicProvider', '✅ Enhanced ethers provider with mobile signing support created');
+          // Use the base provider directly - no proxying to avoid breaking ethers internals
+          this.cachedEthersProvider = baseProvider;
+          mLog.info('DynamicProvider', '✅ Ethers provider created successfully');
           return;
         }
 
@@ -327,77 +327,6 @@ export class DynamicProvider implements UnifiedProvider {
     }
   }
 
-  /**
-   * Creates an enhanced ethers provider that routes mobile signing through Dynamic's primaryWallet
-   * This provides a clean abstraction - the rest of the app just uses ethers.getSigner().signMessage()
-   * but we handle the mobile redirect issues internally.
-   */
-  private createEnhancedProvider(baseProvider: ethers.BrowserProvider): ethers.BrowserProvider {
-    // Create a proxy that intercepts getSigner() calls
-    return new Proxy(baseProvider, {
-      get: (target, prop) => {
-        if (prop === 'getSigner') {
-          return (...args: any[]) => {
-            const baseSigner = target.getSigner(...args);
-            return this.createEnhancedSigner(baseSigner);
-          };
-        }
-        return (target as any)[prop];
-      }
-    });
-  }
-
-  /**
-   * Creates an enhanced signer that uses Dynamic's primaryWallet.signMessage() on mobile
-   */
-  private createEnhancedSigner(baseSigner: Promise<ethers.JsonRpcSigner>) {
-    return baseSigner.then(signer => {
-      return new Proxy(signer, {
-        get: (target, prop) => {
-          if (prop === 'signMessage') {
-            return (message: string) => this.enhancedSignMessage(target, message);
-          }
-          return (target as any)[prop];
-        }
-      });
-    });
-  }
-
-  /**
-   * Enhanced signMessage that routes through Dynamic's primaryWallet on mobile for better redirect handling
-   */
-  private async enhancedSignMessage(signer: ethers.JsonRpcSigner, message: string): Promise<string> {
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-
-    mLog.info('DynamicProvider', 'Enhanced signMessage called', {
-      message: message.substring(0, 50) + '...',
-      isMobile,
-      userAgent: navigator.userAgent.substring(0, 100)
-    });
-
-    // On mobile, try Dynamic's primaryWallet.signMessage() first for better redirect handling
-    if (isMobile && typeof window !== 'undefined' && (window as any).dynamicPrimaryWallet) {
-      const primaryWallet = (window as any).dynamicPrimaryWallet;
-
-      if (primaryWallet && primaryWallet.signMessage) {
-        try {
-          mLog.info('DynamicProvider', 'Using Dynamic primaryWallet.signMessage for mobile redirect handling');
-          const signature = await primaryWallet.signMessage(message);
-          mLog.info('DynamicProvider', 'Mobile signing successful via primaryWallet');
-          return signature;
-        } catch (primaryWalletError) {
-          mLog.warn('DynamicProvider', 'primaryWallet.signMessage failed, falling back to ethers', {
-            error: primaryWalletError instanceof Error ? primaryWalletError.message : String(primaryWalletError)
-          });
-          // Fall through to ethers approach
-        }
-      }
-    }
-
-    // Use standard ethers signing (desktop or mobile fallback)
-    mLog.info('DynamicProvider', 'Using standard ethers signMessage');
-    return signer.signMessage(message);
-  }
 
   async disconnect(): Promise<void> {
     mLog.info('DynamicProvider', 'Disconnecting');
@@ -421,16 +350,44 @@ export class DynamicProvider implements UnifiedProvider {
   }
 
   async signMessage(message: string): Promise<string> {
-    if (!this.cachedEthersProvider) {
-      throw new Error('No ethers provider available for signing');
-    }
-
     try {
-      // The enhanced provider automatically handles mobile/primaryWallet routing
+      // Check if we're on mobile and have primaryWallet available
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      const primaryWallet = typeof window !== 'undefined' ? (window as any).dynamicPrimaryWallet : null;
+
+      mLog.info('DynamicProvider', 'Starting message signing process', {
+        message: message.substring(0, 50) + '...',
+        isMobile,
+        hasPrimaryWallet: !!primaryWallet,
+        hasCachedProvider: !!this.cachedEthersProvider
+      });
+
+      // On mobile with external wallets (like MetaMask), use Dynamic's primaryWallet.signMessage()
+      // for proper mobile redirect handling
+      if (isMobile && primaryWallet && primaryWallet.signMessage) {
+        try {
+          mLog.info('DynamicProvider', 'Using Dynamic primaryWallet for mobile signing');
+          const signature = await primaryWallet.signMessage(message);
+          mLog.info('DynamicProvider', '✅ Mobile signing successful via primaryWallet');
+          return signature;
+        } catch (primaryWalletError) {
+          mLog.warn('DynamicProvider', 'primaryWallet signing failed, falling back to ethers', {
+            error: primaryWalletError instanceof Error ? primaryWalletError.message : String(primaryWalletError)
+          });
+          // Continue to ethers fallback
+        }
+      }
+
+      // Desktop or mobile fallback: use standard ethers signing
+      if (!this.cachedEthersProvider) {
+        throw new Error('No ethers provider available for signing');
+      }
+
+      mLog.info('DynamicProvider', 'Using ethers provider for signing');
       const signer = await this.cachedEthersProvider.getSigner();
       const signature = await signer.signMessage(message);
 
-      mLog.info('DynamicProvider', 'Message signed successfully');
+      mLog.info('DynamicProvider', '✅ Message signed successfully via ethers');
       return signature;
 
     } catch (signingError) {

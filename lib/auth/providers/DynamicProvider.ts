@@ -417,13 +417,13 @@ export class DynamicProvider implements UnifiedProvider {
       const oAuthResult = (window as any).dynamicOAuthResult;
       if (oAuthResult && oAuthResult.address) {
         this.currentAddress = oAuthResult.address;
-        return this.currentAddress;
+        return oAuthResult.address;
       }
 
       const dynamicUser = (window as any).dynamicUser;
       if (dynamicUser && dynamicUser.walletAddress) {
         this.currentAddress = dynamicUser.walletAddress;
-        return this.currentAddress;
+        return dynamicUser.walletAddress;
       }
     }
 
@@ -432,8 +432,9 @@ export class DynamicProvider implements UnifiedProvider {
     }
 
     const signer = await this.cachedEthersProvider.getSigner();
-    this.currentAddress = await signer.getAddress();
-    return this.currentAddress;
+    const address = await signer.getAddress();
+    this.currentAddress = address;
+    return address;
   }
 
   isConnected(): boolean {

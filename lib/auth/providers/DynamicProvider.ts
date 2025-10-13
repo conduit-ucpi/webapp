@@ -505,41 +505,55 @@ export class DynamicProvider implements UnifiedProvider {
         }, {} as any) : null
       });
 
-      // Try multiple approaches to get JWT token
+      // Get JWT token using official Dynamic.xyz methods
       let idToken = null;
 
-      // Method 1: Try Dynamic's getAuthToken function
-      mLog.info('DynamicProvider', 'Checking for getAuthToken function', {
-        hasGetAuthToken: !!(typeof window !== 'undefined' && (window as any).dynamicGetAuthToken),
-        windowKeys: typeof window !== 'undefined' ? Object.keys(window).filter(k => k.includes('dynamic')) : [],
-        allDynamicWindowKeys: typeof window !== 'undefined' ? Object.keys(window).filter(k => k.includes('dynamic')).map(k => ({ key: k, type: typeof (window as any)[k] })) : []
-      });
-
+      // Method 1: Try to access getAuthToken from window (set by DynamicWrapper)
       if (typeof window !== 'undefined' && (window as any).dynamicGetAuthToken) {
         try {
-          // Try synchronous call first
           idToken = (window as any).dynamicGetAuthToken();
 
-          // If it returns a promise, we can't await it here but log for debugging
-          if (idToken && typeof idToken.then === 'function') {
-            mLog.info('DynamicProvider', 'getAuthToken returned promise - cannot await in synchronous context');
-            idToken = null; // Reset and try other methods
-          } else if (idToken) {
-            mLog.info('DynamicProvider', 'Retrieved JWT token using getAuthToken', {
-              hasToken: !!idToken,
-              tokenLength: idToken ? idToken.length : 0
+          if (idToken) {
+            mLog.info('DynamicProvider', 'Retrieved JWT token using getAuthToken from window', {
+              hasToken: true,
+              tokenLength: idToken.length
             });
+          } else {
+            mLog.info('DynamicProvider', 'getAuthToken returned undefined - user may not be logged in');
           }
         } catch (tokenError) {
-          mLog.warn('DynamicProvider', 'Failed to get auth token via getAuthToken', {
+          mLog.warn('DynamicProvider', 'Failed to call getAuthToken from window', {
             error: tokenError instanceof Error ? tokenError.message : String(tokenError)
           });
         }
       }
 
-      // Method 2: Try localStorage with more comprehensive key search
+      // Method 2: Try official localStorage keys from documentation
+      if (!idToken && typeof window !== 'undefined') {
+        // Check primary token location
+        const primaryToken = localStorage.getItem('dynamic_authentication_token');
+        if (primaryToken) {
+          mLog.info('DynamicProvider', 'Found token in primary localStorage location', {
+            hasToken: true,
+            tokenLength: primaryToken.length
+          });
+          idToken = primaryToken;
+        } else {
+          // Check minified token location
+          const minifiedToken = localStorage.getItem('dynamic_min_authentication_token');
+          if (minifiedToken) {
+            mLog.info('DynamicProvider', 'Found token in minified localStorage location', {
+              hasToken: true,
+              tokenLength: minifiedToken.length
+            });
+            idToken = minifiedToken;
+          }
+        }
+      }
+
+      // Method 3: Fallback to legacy approaches
       if (!idToken) {
-        mLog.info('DynamicProvider', 'getAuthToken failed or not available, trying localStorage');
+        mLog.info('DynamicProvider', 'Official methods failed, trying legacy approaches');
 
         try {
           // Get all localStorage keys

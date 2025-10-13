@@ -66,6 +66,7 @@ function DynamicBridge() {
       activeLoginPromise.current.resolve({
         address: wallet.address,
         provider: provider,
+        wallet: wallet, // Pass the Dynamic wallet object for V3 ethers integration
         user: finalUser
       });
 
@@ -105,6 +106,7 @@ function DynamicBridge() {
       activeLoginPromise.current.resolve({
         address: newPrimaryWallet.address,
         provider: provider,
+        wallet: newPrimaryWallet, // Pass the Dynamic wallet object for V3 ethers integration
         user: finalUser
       });
 
@@ -160,6 +162,7 @@ function DynamicBridge() {
           activeLoginPromise.current.resolve({
             address: primaryWallet.address,
             provider: provider,
+            wallet: primaryWallet, // Pass the Dynamic wallet object for V3 ethers integration
             user: finalUser
           });
 
@@ -211,6 +214,7 @@ function DynamicBridge() {
         (window as any).dynamicOAuthResult = {
           address: primaryWallet.address,
           provider: primaryWallet.connector,
+          wallet: primaryWallet, // Pass the Dynamic wallet object for V3 ethers integration
           user: user || { email: null, walletAddress: primaryWallet.address }
         };
 
@@ -232,6 +236,7 @@ function DynamicBridge() {
             activeLoginPromise.current.resolve({
               address: primaryWallet.address,
               provider: primaryWallet.connector,
+              wallet: primaryWallet, // Pass the Dynamic wallet object for V3 ethers integration
               user: user || { email: null, walletAddress: primaryWallet.address }
             });
             activeLoginPromise.current = null;
@@ -279,6 +284,7 @@ function DynamicBridge() {
           const result = {
             address: primaryWallet.address,
             provider: provider,
+            wallet: primaryWallet, // Pass the Dynamic wallet object for V3 ethers integration
             user: finalUser
           };
 

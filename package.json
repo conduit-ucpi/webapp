@@ -21,6 +21,7 @@
   "dependencies": {
     "@conduit-ucpi/sdk": "^0.1.0",
     "@dynamic-labs/ethereum": "^4.37.1",
+    "@dynamic-labs/ethers-v6": "^4.37.2",
     "@dynamic-labs/sdk-react-core": "^4.37.1",
     "@farcaster/miniapp-sdk": "^0.1.9",
     "@farcaster/miniapp-wagmi-connector": "^1.0.0",

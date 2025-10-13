@@ -248,53 +248,109 @@ export class AuthManager {
         error: error instanceof Error ? error.message : String(error)
       });
 
-      // Fallback: Try using Dynamic's JWT token for social login users
+      // Fallback: Try using Dynamic's embedded wallet authentication for social login users
       if (this.state.providerName === 'dynamic') {
-        mLog.info('AuthManager', 'Attempting Dynamic JWT fallback authentication');
+        mLog.info('AuthManager', 'Attempting Dynamic embedded wallet authentication');
 
         try {
           const userInfo = this.currentProvider?.getUserInfo?.();
-          if (userInfo && userInfo.idToken) {
-            mLog.info('AuthManager', 'Using Dynamic JWT token for authentication');
+          mLog.info('AuthManager', 'Dynamic user info analysis', {
+            hasUserInfo: !!userInfo,
+            userInfoKeys: userInfo ? Object.keys(userInfo) : [],
+            hasEmail: !!(userInfo?.email),
+            hasName: !!(userInfo?.name),
+            hasIdToken: !!(userInfo?.idToken),
+            idTokenType: userInfo?.idToken ? typeof userInfo.idToken : 'undefined',
+            idTokenLength: userInfo?.idToken && typeof userInfo.idToken === 'string' ? userInfo.idToken.length : 0,
+            idTokenPreview: userInfo?.idToken && typeof userInfo.idToken === 'string' ? `${userInfo.idToken.substring(0, 30)}...` : null
+          });
 
-            // Create auth token using Dynamic's JWT instead of signature
-            const idToken = userInfo.idToken as string;
-            mLog.info('AuthManager', 'Creating Dynamic JWT auth token', {
-              hasIdToken: !!idToken,
-              idTokenLength: idToken ? idToken.length : 0,
-              idTokenPreview: idToken ? `${idToken.substring(0, 30)}...` : null,
-              walletAddress: this.state.address,
-              hasEmail: !!userInfo.email
+          if (userInfo) {
+            // Check if we have a proper JWT token (3 parts separated by dots)
+            const potentialJwt = userInfo.idToken as string;
+            const isValidJwt = potentialJwt &&
+                              typeof potentialJwt === 'string' &&
+                              potentialJwt.split('.').length === 3 &&
+                              potentialJwt.length > 200 &&
+                              !potentialJwt.startsWith('http'); // Ensure it's not a URL
+
+            mLog.info('AuthManager', 'JWT validation results', {
+              tokenValue: potentialJwt && typeof potentialJwt === 'string' ? `${potentialJwt.substring(0, 50)}...` : null,
+              tokenLength: potentialJwt ? potentialJwt.length : 0,
+              isString: typeof potentialJwt === 'string',
+              hasDots: potentialJwt ? potentialJwt.split('.').length : 0,
+              isValidLength: potentialJwt ? potentialJwt.length > 200 : false,
+              isNotUrl: potentialJwt ? !potentialJwt.startsWith('http') : false,
+              isValidJwt
             });
 
-            const authToken = btoa(JSON.stringify({
-              type: 'dynamic_jwt_auth',
-              walletAddress: this.state.address,
-              dynamicJwt: idToken,
-              email: userInfo.email,
-              name: userInfo.name,
-              dynamicUserId: (userInfo as any).dynamicUserId,
-              timestamp: Date.now(),
-              issuer: 'dynamic_social_login',
-              header: {
-                alg: 'JWT',
-                typ: 'DYNAMIC'
-              },
-              payload: {
-                sub: this.state.address,
-                iat: Math.floor(Date.now() / 1000),
-                iss: 'dynamic_social_login',
-                wallet_type: 'dynamic_embedded'
-              }
-            }));
+            if (isValidJwt) {
+              mLog.info('AuthManager', 'Found valid JWT token, creating Dynamic JWT auth');
 
-            mLog.info('AuthManager', '✅ Dynamic JWT fallback authentication successful');
-            return authToken;
+              const authToken = btoa(JSON.stringify({
+                type: 'dynamic_jwt_auth',
+                walletAddress: this.state.address,
+                dynamicJwt: potentialJwt,
+                email: userInfo.email,
+                name: userInfo.name,
+                dynamicUserId: (userInfo as any).dynamicUserId,
+                timestamp: Date.now(),
+                issuer: 'dynamic_social_login',
+                header: {
+                  alg: 'JWT',
+                  typ: 'DYNAMIC'
+                },
+                payload: {
+                  sub: this.state.address,
+                  iat: Math.floor(Date.now() / 1000),
+                  iss: 'dynamic_social_login',
+                  wallet_type: 'dynamic_embedded'
+                }
+              }));
+
+              mLog.info('AuthManager', '✅ Dynamic JWT authentication successful');
+              return authToken;
+            } else {
+              mLog.warn('AuthManager', 'userInfo.idToken is not a valid JWT token, using embedded wallet auth', {
+                tokenValue: potentialJwt && typeof potentialJwt === 'string' ? `${potentialJwt.substring(0, 50)}...` : null,
+                tokenLength: potentialJwt ? potentialJwt.length : 0,
+                isString: typeof potentialJwt === 'string',
+                hasDots: potentialJwt ? potentialJwt.split('.').length : 0
+              });
+
+              // For embedded wallets without JWT, create a different auth token
+              mLog.info('AuthManager', 'Creating embedded wallet auth token without JWT');
+
+              const authToken = btoa(JSON.stringify({
+                type: 'dynamic_embedded_auth',
+                walletAddress: this.state.address,
+                email: userInfo.email,
+                name: userInfo.name,
+                dynamicUserId: (userInfo as any).dynamicUserId || 'embedded_user',
+                timestamp: Date.now(),
+                issuer: 'dynamic_embedded_wallet',
+                header: {
+                  alg: 'EMBEDDED',
+                  typ: 'DYNAMIC'
+                },
+                payload: {
+                  sub: this.state.address,
+                  iat: Math.floor(Date.now() / 1000),
+                  iss: 'dynamic_embedded_wallet',
+                  wallet_type: 'dynamic_embedded',
+                  email: userInfo.email,
+                  name: userInfo.name
+                }
+              }));
+
+              mLog.info('AuthManager', '✅ Dynamic embedded wallet authentication successful');
+              return authToken;
+            }
           } else {
-            mLog.warn('AuthManager', 'No Dynamic JWT token available for fallback');
+            mLog.warn('AuthManager', 'No Dynamic user info available for authentication');
           }
         } catch (fallbackError) {
-          mLog.error('AuthManager', 'Dynamic JWT fallback failed', {
+          mLog.error('AuthManager', 'Dynamic embedded wallet authentication failed', {
             error: fallbackError instanceof Error ? fallbackError.message : String(fallbackError)
           });
         }

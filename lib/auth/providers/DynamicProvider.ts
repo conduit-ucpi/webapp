@@ -557,9 +557,28 @@ export class DynamicProvider implements UnifiedProvider {
         }
       }
 
-      // Method 3: Fallback to legacy approaches
+      // Method 3: Check for directly exposed auth token from DynamicWrapper
+      if (!idToken && typeof window !== 'undefined') {
+        const directAuthToken = (window as any).dynamicAuthToken;
+        if (directAuthToken && typeof directAuthToken === 'string' && directAuthToken.split('.').length === 3) {
+          mLog.info('DynamicProvider', 'Found directly exposed JWT token from DynamicWrapper', {
+            hasToken: true,
+            tokenLength: directAuthToken.length,
+            tokenPreview: `${directAuthToken.substring(0, 20)}...`
+          });
+          idToken = directAuthToken;
+        } else {
+          mLog.info('DynamicProvider', 'Direct auth token not valid JWT', {
+            hasToken: !!directAuthToken,
+            tokenType: typeof directAuthToken,
+            isJWT: !!(directAuthToken && typeof directAuthToken === 'string' && directAuthToken.split('.').length === 3)
+          });
+        }
+      }
+
+      // Method 4: Fallback to legacy localStorage scanning (if still needed)
       if (!idToken) {
-        mLog.info('DynamicProvider', 'Official methods failed, trying legacy approaches');
+        mLog.info('DynamicProvider', 'All methods failed, trying legacy localStorage scanning');
 
         try {
           // Get all localStorage keys

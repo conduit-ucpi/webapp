@@ -27,6 +27,13 @@ function DynamicBridge() {
     reject: (error: Error) => void;
   } | null>(null);
 
+  // Log when this effect runs
+  mLog.info('DynamicBridge', 'DynamicBridge useEffect running', {
+    hasUser: !!user,
+    hasPrimaryWallet: !!primaryWallet,
+    hasGetAuthToken: !!getAuthToken
+  });
+
   // Use Dynamic's event system for connection detection
   useDynamicEvents('walletAdded', (wallet, userWallets) => {
     mLog.info('DynamicBridge', 'walletAdded event received', {
@@ -356,10 +363,42 @@ function DynamicBridge() {
 
       // Expose auth token directly if available
       try {
-        if (user && (user as any).authToken) {
-          (window as any).dynamicAuthToken = (user as any).authToken;
-        } else if (user && (user as any).accessToken) {
-          (window as any).dynamicAuthToken = (user as any).accessToken;
+        // Log all user properties to find the JWT token
+        if (user) {
+          mLog.info('DynamicBridge', 'Analyzing user object for JWT tokens', {
+            userKeys: Object.keys(user),
+            hasAuthToken: !!(user as any).authToken,
+            hasAccessToken: !!(user as any).accessToken,
+            hasToken: !!(user as any).token,
+            hasJwt: !!(user as any).jwt,
+            hasIdToken: !!(user as any).idToken
+          });
+
+          // Try various possible JWT token locations
+          let foundToken = null;
+          const tokenFields = ['authToken', 'accessToken', 'token', 'jwt', 'idToken'];
+
+          for (const field of tokenFields) {
+            const tokenValue = (user as any)[field];
+            if (tokenValue && typeof tokenValue === 'string' && tokenValue.split('.').length === 3) {
+              foundToken = tokenValue;
+              mLog.info('DynamicBridge', `Found JWT token in user.${field}`, {
+                field,
+                tokenLength: tokenValue.length,
+                tokenPreview: `${tokenValue.substring(0, 20)}...`
+              });
+              break;
+            }
+          }
+
+          if (foundToken) {
+            (window as any).dynamicAuthToken = foundToken;
+          } else {
+            mLog.warn('DynamicBridge', 'No JWT token found in user object', {
+              userKeys: Object.keys(user),
+              tokenFieldsChecked: tokenFields
+            });
+          }
         }
       } catch (error) {
         mLog.debug('DynamicBridge', 'Could not access auth token from user', {

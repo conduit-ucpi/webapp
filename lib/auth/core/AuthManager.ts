@@ -258,10 +258,19 @@ export class AuthManager {
             mLog.info('AuthManager', 'Using Dynamic JWT token for authentication');
 
             // Create auth token using Dynamic's JWT instead of signature
+            const idToken = userInfo.idToken as string;
+            mLog.info('AuthManager', 'Creating Dynamic JWT auth token', {
+              hasIdToken: !!idToken,
+              idTokenLength: idToken ? idToken.length : 0,
+              idTokenPreview: idToken ? `${idToken.substring(0, 30)}...` : null,
+              walletAddress: this.state.address,
+              hasEmail: !!userInfo.email
+            });
+
             const authToken = btoa(JSON.stringify({
               type: 'dynamic_jwt_auth',
               walletAddress: this.state.address,
-              dynamicJwt: userInfo.idToken,
+              dynamicJwt: idToken,
               email: userInfo.email,
               name: userInfo.name,
               dynamicUserId: (userInfo as any).dynamicUserId,

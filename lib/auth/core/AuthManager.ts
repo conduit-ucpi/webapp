@@ -459,6 +459,90 @@ export class AuthManager {
   private async restoreSession(): Promise<void> {
     mLog.info('AuthManager', 'Starting restoreSession...');
 
+    // Check for Dynamic OAuth redirect parameters
+    const isDynamicOAuthRedirect = typeof window !== 'undefined' &&
+      (window.location.search.includes('dynamicOauthCode=') ||
+       window.location.search.includes('dynamicOauthState='));
+
+    mLog.debug('AuthManager', 'Dynamic OAuth redirect check', {
+      isDynamicOAuthRedirect,
+      urlParams: typeof window !== 'undefined' ? window.location.search : ''
+    });
+
+    if (isDynamicOAuthRedirect) {
+      mLog.info('AuthManager', 'Dynamic OAuth redirect detected - attempting to complete authentication');
+
+      // Try to connect with Dynamic provider to complete the OAuth flow
+      const providers = this.providerRegistry.getAllProviders();
+      const dynamicProvider = providers.find(p => p.getProviderName() === 'dynamic');
+
+      if (dynamicProvider) {
+        try {
+          mLog.info('AuthManager', 'Attempting Dynamic OAuth completion');
+          this.setState({ isLoading: true });
+
+          // Check if Dynamic is already connected (it should be after OAuth redirect)
+          if (dynamicProvider.isConnected()) {
+            mLog.info('AuthManager', 'Dynamic is already connected, updating AuthManager state');
+
+            const address = await dynamicProvider.getAddress();
+
+            this.currentProvider = dynamicProvider;
+            this.setState({
+              isConnected: true,
+              isLoading: false,
+              address: address || null,
+              providerName: dynamicProvider.getProviderName(),
+              capabilities: dynamicProvider.getCapabilities(),
+              error: null
+            });
+
+            mLog.info('AuthManager', '✅ Dynamic OAuth authentication state updated', {
+              address,
+              providerName: dynamicProvider.getProviderName()
+            });
+
+            // Force flush logs immediately on success
+            await mLog.forceFlush();
+            return;
+          } else {
+            mLog.warn('AuthManager', 'Dynamic provider not connected despite OAuth redirect');
+
+            // Try to connect explicitly
+            const result = await dynamicProvider.connect();
+            if (result.success) {
+              this.currentProvider = dynamicProvider;
+              this.setState({
+                isConnected: true,
+                isLoading: false,
+                address: result.address || null,
+                providerName: dynamicProvider.getProviderName(),
+                capabilities: result.capabilities,
+                error: null
+              });
+              mLog.info('AuthManager', '✅ Dynamic OAuth connection completed successfully');
+              await mLog.forceFlush();
+              return;
+            } else {
+              mLog.error('AuthManager', 'Dynamic provider connect failed after OAuth', { error: result.error });
+            }
+          }
+        } catch (error) {
+          mLog.error('AuthManager', 'Dynamic OAuth completion failed', {
+            error: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined
+          });
+        } finally {
+          this.setState({ isLoading: false });
+        }
+      } else {
+        mLog.error('AuthManager', 'No Dynamic provider found for OAuth redirect completion');
+      }
+
+      // Force flush logs on Dynamic OAuth redirect attempts
+      await mLog.forceFlush();
+    }
+
     // MOBILE ENHANCEMENT: Check for redirect parameters indicating completed auth (even without stored token)
     const isMobile = typeof window !== 'undefined' && /Mobile|Android|iPhone|iPad/.test(navigator.userAgent);
     const currentUrl = typeof window !== 'undefined' ? window.location.href : '';

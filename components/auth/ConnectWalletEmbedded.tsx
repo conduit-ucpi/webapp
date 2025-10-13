@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useAuth } from '@/components/auth';
 import Button from '@/components/ui/Button';
 import { mLog } from '@/utils/mobileLogger';
@@ -20,8 +20,77 @@ export default function ConnectWalletEmbedded({
   compact = false,
   onSuccess
 }: ConnectWalletEmbeddedProps) {
-  const { user, isLoading, connect, authenticateBackend } = useAuth();
+  const { user, isLoading, connect, authenticateBackend, isConnected, address } = useAuth();
 
+  // Auto-authenticate on OAuth redirect
+  useEffect(() => {
+    const handleOAuthRedirect = async () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const isOAuthRedirect = urlParams.has('dynamicOauthCode') || urlParams.has('dynamicOauthState');
+
+      mLog.info('ConnectWalletEmbedded', 'OAuth redirect check in useEffect', {
+        isOAuthRedirect,
+        isConnected,
+        address,
+        hasUser: !!user,
+        willTriggerAuth: isOAuthRedirect && isConnected && address && !user
+      });
+
+      if (isOAuthRedirect && isConnected && address && !user) {
+        mLog.info('ConnectWalletEmbedded', 'Auto-authenticating OAuth redirect', {
+          isConnected,
+          address,
+          hasUser: !!user
+        });
+
+        try {
+          const authSuccess = await authenticateBackend({
+            success: true,
+            address: address,
+            capabilities: {
+              canSign: true,
+              canTransact: true,
+              canSwitchWallets: true,
+              isAuthOnly: false
+            }
+          });
+
+          if (authSuccess) {
+            mLog.info('ConnectWalletEmbedded', 'OAuth auto-authentication successful');
+            onSuccess?.();
+
+            // Clean up OAuth parameters from URL
+            if (window.history && window.history.replaceState) {
+              const cleanUrl = window.location.origin + window.location.pathname;
+              window.history.replaceState({}, document.title, cleanUrl);
+              mLog.info('ConnectWalletEmbedded', 'OAuth parameters auto-cleaned from URL');
+            }
+          } else {
+            mLog.error('ConnectWalletEmbedded', 'OAuth auto-authentication failed');
+          }
+        } catch (error) {
+          mLog.error('ConnectWalletEmbedded', 'OAuth auto-authentication error', {
+            error: error instanceof Error ? error.message : String(error)
+          });
+        }
+      }
+    };
+
+    // Run immediately and then with increasing delays to catch Dynamic's async connection
+    handleOAuthRedirect();
+
+    const timeouts: NodeJS.Timeout[] = [];
+
+    // Try multiple times with increasing delays
+    [100, 300, 500, 1000, 2000].forEach(delay => {
+      const timeoutId = setTimeout(handleOAuthRedirect, delay);
+      timeouts.push(timeoutId);
+    });
+
+    return () => {
+      timeouts.forEach(clearTimeout);
+    };
+  }, [isConnected, address, user, authenticateBackend, onSuccess]);
 
   if (isLoading) {
     return (
@@ -42,6 +111,51 @@ export default function ConnectWalletEmbedded({
 
   const handleConnect = async () => {
     mLog.info('ConnectWalletEmbedded', 'Get Started button clicked');
+
+    // Check if this is an OAuth redirect - if so, skip the connect flow
+    const urlParams = new URLSearchParams(window.location.search);
+    const isOAuthRedirect = urlParams.has('dynamicOauthCode') || urlParams.has('dynamicOauthState');
+
+    if (isOAuthRedirect) {
+      mLog.info('ConnectWalletEmbedded', 'OAuth redirect detected, checking for auto-connection');
+
+      // Check if we're already connected (Dynamic auto-connects after OAuth)
+      if (isConnected && address) {
+        mLog.info('ConnectWalletEmbedded', 'Already connected after OAuth, proceeding to backend auth');
+
+        // Directly authenticate with backend
+        const authSuccess = await authenticateBackend({
+          success: true,
+          address: address,
+          capabilities: {
+            canSign: true,
+            canTransact: true,
+            canSwitchWallets: true,
+            isAuthOnly: false
+          }
+        });
+
+        if (authSuccess) {
+          mLog.info('ConnectWalletEmbedded', 'OAuth backend authentication successful');
+          onSuccess?.();
+
+          // Clean up OAuth parameters from URL
+          if (window.history && window.history.replaceState) {
+            const cleanUrl = window.location.origin + window.location.pathname;
+            window.history.replaceState({}, document.title, cleanUrl);
+            mLog.info('ConnectWalletEmbedded', 'OAuth parameters cleaned from URL');
+          }
+        } else {
+          mLog.error('ConnectWalletEmbedded', 'OAuth backend authentication failed');
+        }
+
+        return;
+      } else {
+        mLog.warn('ConnectWalletEmbedded', 'OAuth redirect detected but not connected yet');
+      }
+    }
+
+    // Normal connection flow
     mLog.debug('ConnectWalletEmbedded', 'Connect function availability', { hasConnect: !!connect });
 
     if (connect) {

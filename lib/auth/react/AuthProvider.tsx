@@ -18,6 +18,7 @@ interface AuthContextValue {
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
+  address: string | null;
 
   // Actions
   connect: () => Promise<ConnectionResult>;
@@ -264,6 +265,7 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
     isAuthenticated: state.isAuthenticated,
     isLoading: state.isLoading,
     error: state.error,
+    address: state.address,
 
     // Actions
     connect,

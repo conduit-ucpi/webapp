@@ -130,6 +130,35 @@ function DynamicBridge() {
       mLog.info('DynamicBridge', 'Auth flow closed, waiting for wallet events...', {
         hasActivePromise: true
       });
+
+      // Give wallet events more time to fire after auth flow closes
+      // Check if we already have a connected wallet
+      setTimeout(() => {
+        if (activeLoginPromise.current && primaryWallet && primaryWallet.address) {
+          mLog.info('DynamicBridge', 'Auth flow closed but wallet already connected, resolving immediately', {
+            address: primaryWallet.address,
+            walletKey: primaryWallet.key
+          });
+
+          let provider = primaryWallet.connector;
+          if ((primaryWallet.connector as any)?.provider) {
+            provider = (primaryWallet.connector as any).provider;
+          }
+
+          const finalUser = user || {
+            email: null,
+            walletAddress: primaryWallet.address
+          };
+
+          activeLoginPromise.current.resolve({
+            address: primaryWallet.address,
+            provider: provider,
+            user: finalUser
+          });
+
+          activeLoginPromise.current = null;
+        }
+      }, 100); // Small delay to let React state updates propagate
     }
   });
 
@@ -159,16 +188,75 @@ function DynamicBridge() {
       contextKeys: Object.keys(dynamicContext || {})
     });
 
+    // Check if this is an OAuth redirect (user came back from Google login)
+    const urlParams = new URLSearchParams(window.location.search);
+    const isOAuthRedirect = urlParams.has('dynamicOauthCode') || urlParams.has('dynamicOauthState');
+
+    if (isOAuthRedirect && primaryWallet && primaryWallet.address) {
+      mLog.info('DynamicBridge', 'OAuth redirect detected with connected wallet, handling auto-resolution', {
+        address: primaryWallet.address,
+        walletKey: primaryWallet.key,
+        hasOAuthCode: urlParams.has('dynamicOauthCode')
+      });
+
+      // Store the OAuth result for when the provider requests it
+      if (typeof window !== 'undefined') {
+        (window as any).dynamicOAuthResult = {
+          address: primaryWallet.address,
+          provider: primaryWallet.connector,
+          user: user || { email: null, walletAddress: primaryWallet.address }
+        };
+
+        mLog.info('DynamicBridge', 'OAuth result stored for provider pickup', {
+          address: primaryWallet.address
+        });
+
+        // Try to resolve any pending promises (immediate and delayed)
+        const resolveHandlers = () => {
+          // Call the OAuth redirect handler if it exists
+          if ((window as any).dynamicOAuthRedirectHandler) {
+            mLog.info('DynamicBridge', 'Calling OAuth redirect handler');
+            (window as any).dynamicOAuthRedirectHandler((window as any).dynamicOAuthResult);
+          }
+
+          // Also try to resolve any waiting login promise
+          if (activeLoginPromise.current) {
+            mLog.info('DynamicBridge', 'Resolving pending login promise with OAuth result');
+            activeLoginPromise.current.resolve({
+              address: primaryWallet.address,
+              provider: primaryWallet.connector,
+              user: user || { email: null, walletAddress: primaryWallet.address }
+            });
+            activeLoginPromise.current = null;
+          }
+
+          // Clean up OAuth parameters from URL after successful authentication
+          setTimeout(() => {
+            if (window.history && window.history.replaceState) {
+              const cleanUrl = window.location.origin + window.location.pathname;
+              window.history.replaceState({}, document.title, cleanUrl);
+              mLog.info('DynamicBridge', 'OAuth parameters cleaned from URL');
+            }
+          }, 500);
+        };
+
+        // Try immediately and also with a small delay
+        resolveHandlers();
+        setTimeout(resolveHandlers, 100);
+      }
+    }
+
     // Expose Dynamic methods to our unified provider system
     if (typeof window !== 'undefined') {
       (window as any).dynamicLogin = async () => {
         mLog.info('DynamicBridge', 'Opening Dynamic auth flow');
 
-        // Check if user is already connected
+        // Check if user is already connected (including OAuth redirects)
         if (primaryWallet && primaryWallet.address) {
           mLog.info('DynamicBridge', 'User already connected, returning existing connection', {
             address: primaryWallet.address,
-            connector: primaryWallet.connector?.name
+            connector: primaryWallet.connector?.name,
+            walletKey: primaryWallet.key
           });
 
           let provider = primaryWallet.connector;
@@ -181,17 +269,43 @@ function DynamicBridge() {
             walletAddress: primaryWallet.address
           };
 
-          return {
+          const result = {
             address: primaryWallet.address,
             provider: provider,
             user: finalUser
           };
+
+          // Check if this was from an OAuth redirect and clean up URL
+          const urlParams = new URLSearchParams(window.location.search);
+          const isOAuthRedirect = urlParams.has('dynamicOauthCode') || urlParams.has('dynamicOauthState');
+
+          if (isOAuthRedirect) {
+            mLog.info('DynamicBridge', 'OAuth redirect detected in already-connected path, cleaning up URL');
+
+            // Clean up OAuth parameters from URL
+            setTimeout(() => {
+              if (typeof window !== 'undefined' && window.history && window.history.replaceState) {
+                const cleanUrl = window.location.origin + window.location.pathname;
+                window.history.replaceState({}, document.title, cleanUrl);
+                mLog.info('DynamicBridge', 'OAuth parameters cleaned from URL in shortcut path');
+              }
+            }, 100);
+          }
+
+          return result;
+        }
+
+        // Clear any existing promise before starting new auth flow
+        if (activeLoginPromise.current) {
+          mLog.warn('DynamicBridge', 'Clearing existing login promise before starting new auth flow');
+          activeLoginPromise.current.reject(new Error('New auth flow started'));
+          activeLoginPromise.current = null;
         }
 
         // Open the auth flow
         setShowAuthFlow(true);
 
-        // Return a promise that will be resolved by the authSuccess event
+        // Return a promise that will be resolved by the wallet events
         return new Promise((resolve, reject) => {
           // Store the promise for the event handler
           activeLoginPromise.current = { resolve, reject };

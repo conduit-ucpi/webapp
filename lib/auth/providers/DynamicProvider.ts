@@ -38,6 +38,155 @@ export class DynamicProvider implements UnifiedProvider {
     mLog.info('DynamicProvider', 'Connect called - opening Dynamic modal');
 
     try {
+      // Check if this is an OAuth redirect first
+      const urlParams = new URLSearchParams(window.location.search);
+      const isOAuthRedirect = urlParams.has('dynamicOauthCode') || urlParams.has('dynamicOauthState');
+
+      mLog.info('DynamicProvider', 'OAuth redirect check', {
+        currentUrl: window.location.href,
+        hasOAuthCode: urlParams.has('dynamicOauthCode'),
+        hasOAuthState: urlParams.has('dynamicOauthState'),
+        isOAuthRedirect,
+        hasStoredResult: !!(typeof window !== 'undefined' && (window as any).dynamicOAuthResult)
+      });
+
+      // Check for stored OAuth result first (simpler approach)
+      if (typeof window !== 'undefined' && (window as any).dynamicOAuthResult) {
+        const result = (window as any).dynamicOAuthResult;
+        mLog.info('DynamicProvider', 'Found stored OAuth result, using immediately', {
+          hasResult: !!result,
+          hasAddress: !!(result?.address),
+          hasProvider: !!(result?.provider)
+        });
+
+        if (result && result.address) {
+          this.currentAddress = result.address;
+          this.setupEthersProvider(result.provider);
+
+          // Clear the stored result
+          delete (window as any).dynamicOAuthResult;
+
+          const connectionResult = {
+            success: true,
+            address: result.address,
+            capabilities: this.getCapabilities()
+          };
+
+          mLog.info('DynamicProvider', 'OAuth stored result connection successful', connectionResult);
+          return connectionResult;
+        }
+      }
+
+      if (isOAuthRedirect) {
+        mLog.info('DynamicProvider', 'OAuth redirect detected, checking for stored result');
+
+        // Check if the result is already available
+        if (typeof window !== 'undefined' && (window as any).dynamicOAuthResult) {
+          const result = (window as any).dynamicOAuthResult;
+          mLog.info('DynamicProvider', 'Found stored OAuth result, using immediately', {
+            hasResult: !!result,
+            hasAddress: !!(result?.address),
+            hasProvider: !!(result?.provider)
+          });
+
+          if (result && result.address) {
+            this.currentAddress = result.address;
+            this.setupEthersProvider(result.provider);
+
+            // Clear the stored result
+            delete (window as any).dynamicOAuthResult;
+
+            const connectionResult = {
+              success: true,
+              address: result.address,
+              capabilities: this.getCapabilities()
+            };
+
+            mLog.info('DynamicProvider', 'OAuth redirect connection successful (immediate)', connectionResult);
+            return connectionResult;
+          }
+        }
+
+        // If result is not available yet, wait for it
+        mLog.info('DynamicProvider', 'OAuth result not ready, waiting for wallet connection');
+
+        // Return a promise that will be resolved by the OAuth redirect handler
+        return new Promise((resolve, reject) => {
+          // Set up OAuth redirect handler
+          if (typeof window !== 'undefined') {
+            (window as any).dynamicOAuthRedirectHandler = (result: any) => {
+              mLog.info('DynamicProvider', 'OAuth redirect handler called', {
+                hasResult: !!result,
+                hasAddress: !!(result?.address),
+                hasProvider: !!(result?.provider)
+              });
+
+              if (result && result.address) {
+                this.currentAddress = result.address;
+                this.setupEthersProvider(result.provider);
+
+                const connectionResult = {
+                  success: true,
+                  address: result.address,
+                  capabilities: this.getCapabilities()
+                };
+
+                mLog.info('DynamicProvider', 'OAuth redirect connection successful', connectionResult);
+                resolve(connectionResult);
+              } else {
+                resolve({
+                  success: false,
+                  error: 'OAuth redirect failed - no address',
+                  capabilities: this.getCapabilities()
+                });
+              }
+            };
+
+            // Also check periodically if the result becomes available
+            let checkCount = 0;
+            const checkInterval = setInterval(() => {
+              checkCount++;
+              if ((window as any).dynamicOAuthResult) {
+                clearInterval(checkInterval);
+                const result = (window as any).dynamicOAuthResult;
+                delete (window as any).dynamicOAuthResult;
+
+                mLog.info('DynamicProvider', 'Found OAuth result via polling', {
+                  checkCount,
+                  hasAddress: !!(result?.address)
+                });
+
+                if (result && result.address) {
+                  this.currentAddress = result.address;
+                  this.setupEthersProvider(result.provider);
+
+                  resolve({
+                    success: true,
+                    address: result.address,
+                    capabilities: this.getCapabilities()
+                  });
+                } else {
+                  resolve({
+                    success: false,
+                    error: 'OAuth result found but invalid',
+                    capabilities: this.getCapabilities()
+                  });
+                }
+              } else if (checkCount >= 50) { // 5 seconds max
+                clearInterval(checkInterval);
+                reject(new Error('OAuth redirect timeout - no result found'));
+              }
+            }, 100);
+          }
+
+          // Set up timeout
+          setTimeout(() => {
+            reject(new Error('OAuth redirect timeout'));
+          }, 10000); // 10 second timeout for OAuth redirect
+        });
+      }
+
+      // Normal login flow
       // Dynamic SDK is handled through React hooks, so we need to trigger the modal
       // This will be coordinated with the React component
       if (typeof window !== 'undefined' && (window as any).dynamicLogin) {
@@ -52,47 +201,7 @@ export class DynamicProvider implements UnifiedProvider {
 
         if (result && result.address) {
           this.currentAddress = result.address;
-
-          // Create ethers provider from Dynamic's provider
-          if (result.provider) {
-            try {
-              // Dynamic provider might need special handling
-              // Check if it's already an ethers provider or needs wrapping
-              if (result.provider.request) {
-                // It's an EIP-1193 provider, wrap it with ethers
-                this.cachedEthersProvider = new ethers.BrowserProvider(result.provider);
-                mLog.info('DynamicProvider', 'Ethers provider created from EIP-1193 provider');
-              } else if (result.provider._isProvider) {
-                // It might already be an ethers provider
-                this.cachedEthersProvider = result.provider;
-                mLog.info('DynamicProvider', 'Using existing ethers provider');
-              } else {
-                // Try to use the connector's provider instead
-                const connector = result.provider;
-                if (connector && connector.getWalletClient) {
-                  // Try to get the wallet client from the connector
-                  const walletClient = await connector.getWalletClient();
-                  if (walletClient && walletClient.transport) {
-                    this.cachedEthersProvider = new ethers.BrowserProvider(walletClient.transport);
-                    mLog.info('DynamicProvider', 'Ethers provider created from wallet client');
-                  }
-                } else {
-                  mLog.warn('DynamicProvider', 'Cannot create ethers provider - unknown provider type', {
-                    providerType: typeof result.provider,
-                    hasRequest: !!result.provider.request,
-                    isProvider: !!result.provider._isProvider
-                  });
-                }
-              }
-            } catch (providerError) {
-              mLog.error('DynamicProvider', 'Failed to create ethers provider', {
-                error: providerError instanceof Error ? providerError.message : String(providerError)
-              });
-              // Continue without ethers provider - we can still return success
-            }
-          } else {
-            mLog.warn('DynamicProvider', 'No provider in result, using fallback');
-          }
+          this.setupEthersProvider(result.provider);
 
           const connectionResult = {
             success: true,
@@ -125,6 +234,93 @@ export class DynamicProvider implements UnifiedProvider {
         error: error instanceof Error ? error.message : 'Connection failed',
         capabilities: this.getCapabilities()
       };
+    }
+  }
+
+  private setupEthersProvider(provider: any) {
+    if (provider) {
+      try {
+        mLog.debug('DynamicProvider', 'Setting up ethers provider', {
+          providerType: typeof provider,
+          hasRequest: !!provider.request,
+          isProvider: !!provider._isProvider,
+          hasProvider: !!(provider as any).provider,
+          constructorName: provider.constructor?.name
+        });
+
+        // Method 1: Check if it's already an EIP-1193 provider
+        if (provider.request && typeof provider.request === 'function') {
+          this.cachedEthersProvider = new ethers.BrowserProvider(provider);
+          mLog.info('DynamicProvider', '✅ Ethers provider created from direct EIP-1193 provider');
+          return;
+        }
+
+        // Method 2: Check if it has a nested provider property (common with connectors)
+        if ((provider as any).provider && (provider as any).provider.request) {
+          this.cachedEthersProvider = new ethers.BrowserProvider((provider as any).provider);
+          mLog.info('DynamicProvider', '✅ Ethers provider created from nested provider');
+          return;
+        }
+
+        // Method 3: Check if it's already an ethers provider
+        if (provider._isProvider) {
+          this.cachedEthersProvider = provider;
+          mLog.info('DynamicProvider', '✅ Using existing ethers provider');
+          return;
+        }
+
+        // Method 4: Try to get wallet client asynchronously (for embedded wallets)
+        if (provider.getWalletClient && typeof provider.getWalletClient === 'function') {
+          mLog.debug('DynamicProvider', 'Attempting wallet client approach');
+
+          // Handle both sync and async getWalletClient
+          const walletClientResult = provider.getWalletClient();
+
+          if (walletClientResult && typeof walletClientResult.then === 'function') {
+            // It's a Promise
+            walletClientResult.then((walletClient: any) => {
+              if (walletClient && walletClient.transport && walletClient.transport.request) {
+                this.cachedEthersProvider = new ethers.BrowserProvider(walletClient.transport);
+                mLog.info('DynamicProvider', '✅ Ethers provider created from async wallet client');
+              } else {
+                mLog.warn('DynamicProvider', 'Wallet client missing transport or request method', {
+                  hasWalletClient: !!walletClient,
+                  hasTransport: !!(walletClient?.transport),
+                  hasRequest: !!(walletClient?.transport?.request)
+                });
+              }
+            }).catch((error: any) => {
+              mLog.warn('DynamicProvider', 'Failed to get async wallet client', {
+                error: error?.message || String(error)
+              });
+            });
+          } else if (walletClientResult && walletClientResult.transport) {
+            // It's a direct wallet client
+            this.cachedEthersProvider = new ethers.BrowserProvider(walletClientResult.transport);
+            mLog.info('DynamicProvider', '✅ Ethers provider created from sync wallet client');
+            return;
+          }
+        }
+
+        // If we haven't returned yet, log what we found but couldn't use
+        mLog.warn('DynamicProvider', '❌ Unable to create ethers provider from any method', {
+          providerType: typeof provider,
+          hasRequest: !!provider.request,
+          isProvider: !!provider._isProvider,
+          hasNestedProvider: !!(provider as any).provider,
+          hasGetWalletClient: !!(provider.getWalletClient),
+          constructorName: provider.constructor?.name,
+          availableKeys: Object.keys(provider || {})
+        });
+
+      } catch (providerError) {
+        mLog.error('DynamicProvider', 'Exception while setting up ethers provider', {
+          error: providerError instanceof Error ? providerError.message : String(providerError),
+          stack: providerError instanceof Error ? providerError.stack : undefined
+        });
+      }
+    } else {
+      mLog.warn('DynamicProvider', 'No provider passed to setupEthersProvider');
     }
   }
 
@@ -216,6 +412,21 @@ export class DynamicProvider implements UnifiedProvider {
       return this.currentAddress;
     }
 
+    // Check for OAuth result or Dynamic user state
+    if (typeof window !== 'undefined') {
+      const oAuthResult = (window as any).dynamicOAuthResult;
+      if (oAuthResult && oAuthResult.address) {
+        this.currentAddress = oAuthResult.address;
+        return this.currentAddress;
+      }
+
+      const dynamicUser = (window as any).dynamicUser;
+      if (dynamicUser && dynamicUser.walletAddress) {
+        this.currentAddress = dynamicUser.walletAddress;
+        return this.currentAddress;
+      }
+    }
+
     if (!this.cachedEthersProvider) {
       throw new Error('No provider connected');
     }
@@ -226,7 +437,49 @@ export class DynamicProvider implements UnifiedProvider {
   }
 
   isConnected(): boolean {
-    return !!this.cachedEthersProvider && !!this.currentAddress;
+    // First check internal cache
+    if (this.cachedEthersProvider && this.currentAddress) {
+      return true;
+    }
+
+    // Check if Dynamic is actually connected via the global window state
+    if (typeof window !== 'undefined') {
+      // Check if there's a stored OAuth result (for OAuth redirects)
+      const oAuthResult = (window as any).dynamicOAuthResult;
+      if (oAuthResult && oAuthResult.address) {
+        mLog.debug('DynamicProvider', 'Found OAuth result with address', {
+          address: oAuthResult.address
+        });
+
+        // Update internal state if we found a valid OAuth result
+        this.currentAddress = oAuthResult.address;
+        if (oAuthResult.provider) {
+          this.setupEthersProvider(oAuthResult.provider);
+        }
+        return true;
+      }
+
+      // Check if Dynamic has a connected wallet via the bridge
+      // The DynamicWrapper component stores user info and auth tokens
+      const dynamicUser = (window as any).dynamicUser;
+      const dynamicAuthToken = (window as any).dynamicAuthToken;
+
+      if (dynamicUser && (dynamicUser.walletAddress || dynamicAuthToken)) {
+        mLog.debug('DynamicProvider', 'Found Dynamic user with wallet', {
+          hasUser: !!dynamicUser,
+          hasWalletAddress: !!dynamicUser.walletAddress,
+          hasAuthToken: !!dynamicAuthToken
+        });
+
+        // Update internal state
+        if (dynamicUser.walletAddress && !this.currentAddress) {
+          this.currentAddress = dynamicUser.walletAddress;
+        }
+        return true;
+      }
+    }
+
+    return false;
   }
 
   getUserInfo(): { email?: string; idToken?: string; name?: string } | null {

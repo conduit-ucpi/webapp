@@ -356,6 +356,9 @@ function DynamicBridge() {
 
       (window as any).dynamicUser = user;
 
+      // Expose primaryWallet for signing operations
+      (window as any).dynamicPrimaryWallet = primaryWallet;
+
       // Expose getAuthToken function from Dynamic
       if (getAuthToken) {
         (window as any).dynamicGetAuthToken = getAuthToken;

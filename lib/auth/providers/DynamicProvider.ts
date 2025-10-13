@@ -248,29 +248,25 @@ export class DynamicProvider implements UnifiedProvider {
           constructorName: provider.constructor?.name
         });
 
+        let baseProvider: ethers.BrowserProvider | null = null;
+
         // Method 1: Check if it's already an EIP-1193 provider
         if (provider.request && typeof provider.request === 'function') {
-          this.cachedEthersProvider = new ethers.BrowserProvider(provider);
+          baseProvider = new ethers.BrowserProvider(provider);
           mLog.info('DynamicProvider', '✅ Ethers provider created from direct EIP-1193 provider');
-          return;
         }
-
         // Method 2: Check if it has a nested provider property (common with connectors)
-        if ((provider as any).provider && (provider as any).provider.request) {
-          this.cachedEthersProvider = new ethers.BrowserProvider((provider as any).provider);
+        else if ((provider as any).provider && (provider as any).provider.request) {
+          baseProvider = new ethers.BrowserProvider((provider as any).provider);
           mLog.info('DynamicProvider', '✅ Ethers provider created from nested provider');
-          return;
         }
-
         // Method 3: Check if it's already an ethers provider
-        if (provider._isProvider) {
-          this.cachedEthersProvider = provider;
+        else if (provider._isProvider) {
+          baseProvider = provider;
           mLog.info('DynamicProvider', '✅ Using existing ethers provider');
-          return;
         }
-
         // Method 4: Try to get wallet client asynchronously (for embedded wallets)
-        if (provider.getWalletClient && typeof provider.getWalletClient === 'function') {
+        else if (provider.getWalletClient && typeof provider.getWalletClient === 'function') {
           mLog.debug('DynamicProvider', 'Attempting wallet client approach');
 
           // Handle both sync and async getWalletClient
@@ -280,8 +276,8 @@ export class DynamicProvider implements UnifiedProvider {
             // It's a Promise
             walletClientResult.then((walletClient: any) => {
               if (walletClient && walletClient.transport && walletClient.transport.request) {
-                this.cachedEthersProvider = new ethers.BrowserProvider(walletClient.transport);
-                mLog.info('DynamicProvider', '✅ Ethers provider created from async wallet client');
+                this.cachedEthersProvider = this.createEnhancedProvider(new ethers.BrowserProvider(walletClient.transport));
+                mLog.info('DynamicProvider', '✅ Enhanced ethers provider created from async wallet client');
               } else {
                 mLog.warn('DynamicProvider', 'Wallet client missing transport or request method', {
                   hasWalletClient: !!walletClient,
@@ -294,12 +290,19 @@ export class DynamicProvider implements UnifiedProvider {
                 error: error?.message || String(error)
               });
             });
+            return; // Don't set cachedEthersProvider yet, wait for async
           } else if (walletClientResult && walletClientResult.transport) {
             // It's a direct wallet client
-            this.cachedEthersProvider = new ethers.BrowserProvider(walletClientResult.transport);
+            baseProvider = new ethers.BrowserProvider(walletClientResult.transport);
             mLog.info('DynamicProvider', '✅ Ethers provider created from sync wallet client');
-            return;
           }
+        }
+
+        if (baseProvider) {
+          // Wrap the provider with our enhanced version that handles mobile signing
+          this.cachedEthersProvider = this.createEnhancedProvider(baseProvider);
+          mLog.info('DynamicProvider', '✅ Enhanced ethers provider with mobile signing support created');
+          return;
         }
 
         // If we haven't returned yet, log what we found but couldn't use
@@ -322,6 +325,78 @@ export class DynamicProvider implements UnifiedProvider {
     } else {
       mLog.warn('DynamicProvider', 'No provider passed to setupEthersProvider');
     }
+  }
+
+  /**
+   * Creates an enhanced ethers provider that routes mobile signing through Dynamic's primaryWallet
+   * This provides a clean abstraction - the rest of the app just uses ethers.getSigner().signMessage()
+   * but we handle the mobile redirect issues internally.
+   */
+  private createEnhancedProvider(baseProvider: ethers.BrowserProvider): ethers.BrowserProvider {
+    // Create a proxy that intercepts getSigner() calls
+    return new Proxy(baseProvider, {
+      get: (target, prop) => {
+        if (prop === 'getSigner') {
+          return (...args: any[]) => {
+            const baseSigner = target.getSigner(...args);
+            return this.createEnhancedSigner(baseSigner);
+          };
+        }
+        return (target as any)[prop];
+      }
+    });
+  }
+
+  /**
+   * Creates an enhanced signer that uses Dynamic's primaryWallet.signMessage() on mobile
+   */
+  private createEnhancedSigner(baseSigner: Promise<ethers.JsonRpcSigner>) {
+    return baseSigner.then(signer => {
+      return new Proxy(signer, {
+        get: (target, prop) => {
+          if (prop === 'signMessage') {
+            return (message: string) => this.enhancedSignMessage(target, message);
+          }
+          return (target as any)[prop];
+        }
+      });
+    });
+  }
+
+  /**
+   * Enhanced signMessage that routes through Dynamic's primaryWallet on mobile for better redirect handling
+   */
+  private async enhancedSignMessage(signer: ethers.JsonRpcSigner, message: string): Promise<string> {
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+    mLog.info('DynamicProvider', 'Enhanced signMessage called', {
+      message: message.substring(0, 50) + '...',
+      isMobile,
+      userAgent: navigator.userAgent.substring(0, 100)
+    });
+
+    // On mobile, try Dynamic's primaryWallet.signMessage() first for better redirect handling
+    if (isMobile && typeof window !== 'undefined' && (window as any).dynamicPrimaryWallet) {
+      const primaryWallet = (window as any).dynamicPrimaryWallet;
+
+      if (primaryWallet && primaryWallet.signMessage) {
+        try {
+          mLog.info('DynamicProvider', 'Using Dynamic primaryWallet.signMessage for mobile redirect handling');
+          const signature = await primaryWallet.signMessage(message);
+          mLog.info('DynamicProvider', 'Mobile signing successful via primaryWallet');
+          return signature;
+        } catch (primaryWalletError) {
+          mLog.warn('DynamicProvider', 'primaryWallet.signMessage failed, falling back to ethers', {
+            error: primaryWalletError instanceof Error ? primaryWalletError.message : String(primaryWalletError)
+          });
+          // Fall through to ethers approach
+        }
+      }
+    }
+
+    // Use standard ethers signing (desktop or mobile fallback)
+    mLog.info('DynamicProvider', 'Using standard ethers signMessage');
+    return signer.signMessage(message);
   }
 
   async disconnect(): Promise<void> {
@@ -351,20 +426,15 @@ export class DynamicProvider implements UnifiedProvider {
     }
 
     try {
+      // The enhanced provider automatically handles mobile/primaryWallet routing
       const signer = await this.cachedEthersProvider.getSigner();
-
-      mLog.info('DynamicProvider', 'Attempting to sign message with Dynamic embedded wallet', {
-        message: message.substring(0, 50) + '...',
-        signerAddress: await signer.getAddress()
-      });
-
       const signature = await signer.signMessage(message);
 
-      mLog.info('DynamicProvider', 'Message signed successfully with Dynamic embedded wallet');
+      mLog.info('DynamicProvider', 'Message signed successfully');
       return signature;
 
     } catch (signingError) {
-      mLog.error('DynamicProvider', 'Dynamic embedded wallet signing failed', {
+      mLog.error('DynamicProvider', 'Message signing failed', {
         error: signingError instanceof Error ? signingError.message : String(signingError),
         errorCode: (signingError as any)?.code,
         stack: signingError instanceof Error ? signingError.stack : undefined

@@ -244,9 +244,12 @@ function DynamicBridge() {
 
   // Memoized window methods setup to prevent recreation on every render
   const setupWindowMethods = useCallback(() => {
-    if (typeof window === 'undefined' || windowMethodsSetup.current) return;
+    if (typeof window === 'undefined') return;
 
-    windowMethodsSetup.current = true;
+    // Only set up once globally, but allow any instance to do it if not set up yet
+    if ((window as any).dynamicLogin && (window as any).dynamicLogout) {
+      return; // Already set up
+    }
 
     (window as any).dynamicLogin = async () => {
       mLog.info('DynamicBridge', 'Opening Dynamic auth flow');
@@ -322,7 +325,7 @@ function DynamicBridge() {
     handleOAuthRedirect();
   }, [handleOAuthRedirect]);
 
-  // Set up window methods - only once when context is available and only from primary instance
+  // Set up window methods - any instance can set them up if not available
   useEffect(() => {
     if (!dynamicContext) {
       if (bridgeInstanceId.current === globalBridgeId) {
@@ -342,10 +345,9 @@ function DynamicBridge() {
       });
     }
 
-    // Only the primary instance should set up window methods to prevent conflicts
-    if (bridgeInstanceId.current === globalBridgeId) {
-      setupWindowMethods();
-    }
+    // Any instance can set up window methods if they're not available
+    // This ensures authentication always works even if primary instance fails
+    setupWindowMethods();
   }, [dynamicContext, setupWindowMethods, hasStateChanged, setShowAuthFlow, primaryWallet, user, handleLogOut, getAuthToken]);
 
   // Update window globals when state changes - only from primary instance

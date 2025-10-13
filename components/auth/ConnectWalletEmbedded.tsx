@@ -86,47 +86,7 @@ export default function ConnectWalletEmbedded({
     }
   }, [isConnected, address, user, authenticateBackend, onSuccess, hasProcessedOAuth, isConnecting]);
 
-  // Auto-authenticate on OAuth redirect with proper debouncing
-  useEffect(() => {
-    // Clear any existing timeouts
-    timeoutsRef.current.forEach(clearTimeout);
-    timeoutsRef.current = [];
-
-    // Run immediately
-    handleOAuthRedirect();
-
-    // Only set up retry timeouts if we haven't processed OAuth yet and conditions might change
-    if (!hasProcessedOAuth && !user) {
-      // Reduced retry attempts and shorter delays
-      [500, 1500].forEach(delay => {
-        const timeoutId = setTimeout(handleOAuthRedirect, delay);
-        timeoutsRef.current.push(timeoutId);
-      });
-    }
-
-    return () => {
-      timeoutsRef.current.forEach(clearTimeout);
-      timeoutsRef.current = [];
-    };
-  }, [handleOAuthRedirect, hasProcessedOAuth, user]);
-
-  if (isLoading) {
-    return (
-      <div className="p-4 text-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-        <p className="mt-2 text-gray-600">Loading...</p>
-      </div>
-    );
-  }
-
-  if (user) {
-    return (
-      <div className="p-4 text-center">
-        <p className="text-green-600">✓ Wallet connected: {user.email || user.walletAddress}</p>
-      </div>
-    );
-  }
-
+  // Memoized connect handler to prevent recreating on every render
   const handleConnect = useCallback(async () => {
     // Prevent duplicate clicks
     if (isConnecting) {
@@ -218,6 +178,47 @@ export default function ConnectWalletEmbedded({
       setIsConnecting(false);
     }
   }, [connect, authenticateBackend, onSuccess, isConnected, address, isConnecting]);
+
+  // Auto-authenticate on OAuth redirect with proper debouncing
+  useEffect(() => {
+    // Clear any existing timeouts
+    timeoutsRef.current.forEach(clearTimeout);
+    timeoutsRef.current = [];
+
+    // Run immediately
+    handleOAuthRedirect();
+
+    // Only set up retry timeouts if we haven't processed OAuth yet and conditions might change
+    if (!hasProcessedOAuth && !user) {
+      // Reduced retry attempts and shorter delays
+      [500, 1500].forEach(delay => {
+        const timeoutId = setTimeout(handleOAuthRedirect, delay);
+        timeoutsRef.current.push(timeoutId);
+      });
+    }
+
+    return () => {
+      timeoutsRef.current.forEach(clearTimeout);
+      timeoutsRef.current = [];
+    };
+  }, [handleOAuthRedirect, hasProcessedOAuth, user]);
+
+  if (isLoading) {
+    return (
+      <div className="p-4 text-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+        <p className="mt-2 text-gray-600">Loading...</p>
+      </div>
+    );
+  }
+
+  if (user) {
+    return (
+      <div className="p-4 text-center">
+        <p className="text-green-600">✓ Wallet connected: {user.email || user.walletAddress}</p>
+      </div>
+    );
+  }
 
   const containerClass = compact
     ? `${className} text-center`

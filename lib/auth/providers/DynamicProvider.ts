@@ -526,28 +526,34 @@ export class DynamicProvider implements UnifiedProvider {
             error: tokenError instanceof Error ? tokenError.message : String(tokenError)
           });
         }
+      } else {
+        mLog.info('DynamicProvider', 'getAuthToken not available on window', {
+          hasFunction: !!(typeof window !== 'undefined' && (window as any).dynamicGetAuthToken),
+          dynamicWindowKeys: typeof window !== 'undefined' ? Object.keys(window).filter(k => k.includes('dynamic')) : []
+        });
       }
 
       // Method 2: Try official localStorage keys from documentation
       if (!idToken && typeof window !== 'undefined') {
         // Check primary token location
         const primaryToken = localStorage.getItem('dynamic_authentication_token');
+        const minifiedToken = localStorage.getItem('dynamic_min_authentication_token');
+
+        mLog.info('DynamicProvider', 'Checking official localStorage keys', {
+          hasPrimaryToken: !!primaryToken,
+          hasMinifiedToken: !!minifiedToken,
+          primaryTokenLength: primaryToken ? primaryToken.length : 0,
+          minifiedTokenLength: minifiedToken ? minifiedToken.length : 0,
+          primaryTokenPreview: primaryToken ? `${primaryToken.substring(0, 20)}...` : null,
+          minifiedTokenPreview: minifiedToken ? `${minifiedToken.substring(0, 20)}...` : null
+        });
+
         if (primaryToken) {
-          mLog.info('DynamicProvider', 'Found token in primary localStorage location', {
-            hasToken: true,
-            tokenLength: primaryToken.length
-          });
+          mLog.info('DynamicProvider', 'Using primary token from localStorage');
           idToken = primaryToken;
-        } else {
-          // Check minified token location
-          const minifiedToken = localStorage.getItem('dynamic_min_authentication_token');
-          if (minifiedToken) {
-            mLog.info('DynamicProvider', 'Found token in minified localStorage location', {
-              hasToken: true,
-              tokenLength: minifiedToken.length
-            });
-            idToken = minifiedToken;
-          }
+        } else if (minifiedToken) {
+          mLog.info('DynamicProvider', 'Using minified token from localStorage');
+          idToken = minifiedToken;
         }
       }
 

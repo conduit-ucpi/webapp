@@ -179,7 +179,10 @@ export default function ConnectWalletEmbedded({
           dynamicConnected: dynamicWalletState?.isConnected,
           dynamicAddress: dynamicWalletState?.address,
           effectiveAddress,
-          hasAuthenticateBackend: !!authenticateBackend
+          hasAuthenticateBackend: !!authenticateBackend,
+          hasProvider: !!dynamicWalletState?.provider,
+          hasWallet: !!dynamicWalletState?.wallet,
+          providerType: typeof dynamicWalletState?.provider
         });
 
         try {

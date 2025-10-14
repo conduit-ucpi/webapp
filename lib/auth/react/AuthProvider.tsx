@@ -166,8 +166,10 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
         address
       });
 
-      // Sign message for authentication
-      const authToken = await authManager.signMessageForAuth();
+      // Sign message for authentication - use provider from connection result if available
+      const authToken = connectionResult?.provider
+        ? await authManager.signMessageWithProvider(connectionResult.provider, address)
+        : await authManager.signMessageForAuth();
 
       mLog.info('AuthProvider', 'Message signed successfully, sending to backend', {
         address,

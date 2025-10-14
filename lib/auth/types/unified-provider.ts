@@ -37,6 +37,8 @@ export interface ConnectionResult {
   address?: string;
   error?: string;
   capabilities: ProviderCapabilities;
+  provider?: any; // Raw provider for signing (ethers provider, Dynamic connector, etc.)
+  wallet?: any;   // Wallet object (Dynamic wallet, Web3Auth wallet, etc.)
 }
 
 /**

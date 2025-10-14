@@ -193,6 +193,39 @@ export class AuthManager {
   }
 
   /**
+   * Sign a message for backend authentication using a specific provider
+   * Used when we have a provider from connection result but haven't set currentProvider yet
+   */
+  async signMessageWithProvider(provider: any, address: string): Promise<string> {
+    try {
+      mLog.info('AuthManager', 'Signing message with provided Dynamic provider', {
+        hasProvider: !!provider,
+        address
+      });
+
+      // Create message to sign
+      const message = `Sign in to Conduit UCPI at ${Date.now()}`;
+
+      // Use Dynamic provider to sign
+      if (provider && typeof provider.request === 'function') {
+        const signature = await provider.request({
+          method: 'personal_sign',
+          params: [message, address]
+        });
+
+        return signature;
+      } else {
+        throw new Error('Provider does not support signing');
+      }
+    } catch (error) {
+      mLog.error('AuthManager', 'Failed to sign message with provider', {
+        error: error instanceof Error ? error.message : String(error)
+      });
+      throw error;
+    }
+  }
+
+  /**
    * Sign a message for backend authentication
    * This is called AFTER successful connection to authenticate with backend
    */

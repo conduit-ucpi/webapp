@@ -68,18 +68,11 @@ export class Web3AuthProvider implements AuthProvider {
 
         this.web3authInstance = new Web3Auth(web3authConfig.web3AuthOptions);
 
-        // Add adapters manually to prevent auto-connection (using v10 API)
-        mLog.info('Web3AuthProvider', 'Adding social login adapter');
-        (this.web3authInstance as any).addAdapter(web3authConfig.openloginAdapter);
+        // v10 API: Adapters are configured automatically, no manual configuration needed
+        mLog.info('Web3AuthProvider', 'Web3Auth v10 handles adapters automatically via dashboard config');
 
-        // On mobile, prioritize WalletConnect over MetaMask
-        if (deviceInfo.isMobile && web3authConfig.walletConnectV2Adapter) {
-          mLog.info('Web3AuthProvider', 'Adding WalletConnect adapter for mobile');
-          (this.web3authInstance as any).addAdapter(web3authConfig.walletConnectV2Adapter);
-        }
-
-        // Initialize Web3Auth Modal with manually configured adapters
-        mLog.info('Web3AuthProvider', 'Initializing Web3Auth with manual adapter control');
+        // Initialize Web3Auth Modal - v10 handles all adapter setup internally
+        mLog.info('Web3AuthProvider', 'Initializing Web3Auth v10 with automatic adapter management');
         await this.web3authInstance.init();
         mLog.info('Web3AuthProvider', 'Web3Auth initialized successfully');
 
@@ -328,12 +321,7 @@ export class Web3AuthProvider implements AuthProvider {
 
       this.web3authInstance = new Web3Auth(web3authConfig.web3AuthOptions);
 
-      // Add adapters manually (using v10 API)
-      (this.web3authInstance as any).addAdapter(web3authConfig.openloginAdapter);
-      if (web3authConfig.walletConnectV2Adapter) {
-        (this.web3authInstance as any).addAdapter(web3authConfig.walletConnectV2Adapter);
-      }
-
+      // v10 API: Adapters are configured automatically
       await this.web3authInstance.init();
     }
 

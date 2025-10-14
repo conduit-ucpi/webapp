@@ -109,12 +109,19 @@ export default function ConnectWalletEmbedded({
     setIsConnecting(true);
     mLog.info('ConnectWalletEmbedded', 'Get Started button clicked');
 
+    // Check for Dynamic wallet connection state
+    const dynamicWalletState = typeof window !== 'undefined' ? (window as any).dynamicWalletConnected : null;
+
     // Debug auth state
-    mLog.debug('ConnectWalletEmbedded', 'Current auth state', {
+    mLog.info('ConnectWalletEmbedded', 'Current auth state before connection attempt', {
       isConnected,
       address,
       hasUser: !!user,
-      isLoading
+      isLoading,
+      addressType: typeof address,
+      isConnectedType: typeof isConnected,
+      dynamicWalletConnected: !!dynamicWalletState,
+      dynamicAddress: dynamicWalletState?.address
     });
 
     try {
@@ -161,11 +168,17 @@ export default function ConnectWalletEmbedded({
         }
       }
 
-      // Check if already connected first (bypassing modal)
-      if (isConnected && address) {
+      // Check if already connected first (bypassing modal) - use Dynamic state if auth state not synced
+      const effectivelyConnected = (isConnected && address) || (dynamicWalletState?.isConnected && dynamicWalletState?.address);
+      const effectiveAddress = address || dynamicWalletState?.address;
+
+      if (effectivelyConnected && effectiveAddress) {
         mLog.info('ConnectWalletEmbedded', 'Already connected, proceeding directly to backend auth', {
           isConnected,
           address,
+          dynamicConnected: dynamicWalletState?.isConnected,
+          dynamicAddress: dynamicWalletState?.address,
+          effectiveAddress,
           hasAuthenticateBackend: !!authenticateBackend
         });
 
@@ -173,7 +186,7 @@ export default function ConnectWalletEmbedded({
           // Directly authenticate with backend using current connection
           const authSuccess = await authenticateBackend({
             success: true,
-            address: address,
+            address: effectiveAddress,
             capabilities: {
               canSign: true,
               canTransact: true,

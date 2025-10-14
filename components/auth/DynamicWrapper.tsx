@@ -110,6 +110,15 @@ function DynamicBridge() {
       hasActivePromise: !!activeLoginPromise.current
     });
 
+    // Update auth system with wallet connection state
+    if (newPrimaryWallet && newPrimaryWallet.address && typeof window !== 'undefined') {
+      (window as any).dynamicWalletConnected = {
+        address: newPrimaryWallet.address,
+        isConnected: true,
+        wallet: newPrimaryWallet
+      };
+    }
+
     // If we have an active login promise, resolve it
     if (activeLoginPromise.current && newPrimaryWallet && newPrimaryWallet.address) {
       // Get the provider

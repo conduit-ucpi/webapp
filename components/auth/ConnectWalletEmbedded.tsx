@@ -199,13 +199,37 @@ export default function ConnectWalletEmbedded({
       const dynamicOnlyConnected = !isConnected && dynamicWalletState?.isConnected && dynamicWalletState?.address;
 
       if (dynamicOnlyConnected) {
-        mLog.warn('ConnectWalletEmbedded', 'Dynamic shows connected but React auth state not synced - forcing normal connection flow', {
+        mLog.info('ConnectWalletEmbedded', 'Dynamic shows connected but React auth state not synced - creating connection result from Dynamic state', {
           isConnected,
           address,
           dynamicConnected: dynamicWalletState?.isConnected,
           dynamicAddress: dynamicWalletState?.address
         });
-        // Don't try to authenticate yet - force a proper connection flow
+
+        // Create a connection result from the Dynamic state to sync React auth state
+        const connectionResult = {
+          success: true,
+          address: dynamicWalletState.address,
+          provider: dynamicWalletState.provider,
+          wallet: dynamicWalletState.wallet,
+          capabilities: {
+            canSign: true,
+            canTransact: true,
+            canSwitchWallets: true,
+            isAuthOnly: false
+          }
+        };
+
+        mLog.info('ConnectWalletEmbedded', 'Attempting to authenticate with Dynamic state...');
+        const authSuccess = await authenticateBackend(connectionResult);
+
+        if (authSuccess) {
+          mLog.info('ConnectWalletEmbedded', 'Dynamic state authentication successful');
+          onSuccess?.();
+          return;
+        } else {
+          mLog.error('ConnectWalletEmbedded', 'Dynamic state authentication failed - falling back to normal connection');
+        }
       }
 
       // Normal connection flow

@@ -241,16 +241,26 @@ export class DynamicProvider implements UnifiedProvider {
   private async setupEthersProvider(dynamicWallet: any) {
     if (dynamicWallet) {
       try {
-        mLog.debug('DynamicProvider', 'Setting up ethers provider with comprehensive approach', {
+        mLog.debug('DynamicProvider', 'Setting up ethers provider using official Dynamic methods', {
           walletType: typeof dynamicWallet,
           walletName: dynamicWallet?.connector?.name,
-          hasWalletConnector: !!dynamicWallet?.connector,
-          connectorType: typeof dynamicWallet?.connector,
-          hasConnectorProvider: !!(dynamicWallet?.connector as any)?.provider,
-          hasConnectorEthersProvider: !!(dynamicWallet?.connector as any)?.ethersProvider
+          hasWalletConnector: !!dynamicWallet?.connector
         });
 
-        // Try comprehensive provider extraction matching DynamicWrapper logic
+        // PRIMARY: Use official Dynamic V3 ethers integration
+        mLog.info('DynamicProvider', 'Using official Dynamic getWeb3Provider method');
+        const web3Provider = await getWeb3Provider(dynamicWallet);
+
+        if (web3Provider) {
+          this.cachedEthersProvider = web3Provider;
+          mLog.info('DynamicProvider', '✅ Ethers provider created using official Dynamic V3 method');
+          return;
+        } else {
+          mLog.warn('DynamicProvider', 'Official Dynamic getWeb3Provider returned null/undefined');
+        }
+
+        // FALLBACK: Manual extraction for edge cases where official method fails
+        mLog.info('DynamicProvider', 'Official method failed, trying manual provider extraction');
         let extractedProvider = await this.extractProviderFromDynamicWallet(dynamicWallet);
 
         if (extractedProvider) {
@@ -258,7 +268,7 @@ export class DynamicProvider implements UnifiedProvider {
           try {
             const ethersProvider = new ethers.BrowserProvider(extractedProvider);
             this.cachedEthersProvider = ethersProvider;
-            mLog.info('DynamicProvider', '✅ Ethers provider created from extracted provider', {
+            mLog.info('DynamicProvider', '✅ Ethers provider created from manually extracted provider', {
               providerType: typeof extractedProvider,
               providerConstructor: extractedProvider.constructor?.name
             });
@@ -271,17 +281,7 @@ export class DynamicProvider implements UnifiedProvider {
           }
         }
 
-        // Fallback: Try Dynamic's V3 ethers integration
-        mLog.debug('DynamicProvider', 'Trying Dynamic V3 getWeb3Provider as fallback');
-        const web3Provider = await getWeb3Provider(dynamicWallet);
-
-        if (web3Provider) {
-          this.cachedEthersProvider = web3Provider;
-          mLog.info('DynamicProvider', '✅ Ethers provider created using Dynamic V3 ethers integration');
-          return;
-        }
-
-        // Final fallback: Try legacy extraction methods
+        // FINAL FALLBACK: Legacy extraction methods
         mLog.warn('DynamicProvider', 'All primary methods failed, trying legacy fallbacks');
         await this.tryEthersProviderFallbacks(dynamicWallet);
 
@@ -319,24 +319,64 @@ export class DynamicProvider implements UnifiedProvider {
     }
 
     try {
-      // Match the logic from DynamicWrapper (lines 120-126)
-      // Try to get ethers provider first
-      if ((dynamicWallet.connector as any)?.ethersProvider) {
+      const connector = dynamicWallet.connector;
+
+      // CRITICAL: For MetaMask mobile, we need to extract the actual EIP-1193 provider
+      // from Dynamic's complex wrapper structure
+
+      // Method 1: Try _ethProviderHelper.provider (most reliable for MetaMask mobile)
+      if (connector._ethProviderHelper?.provider) {
+        const provider = connector._ethProviderHelper.provider;
+        mLog.info('DynamicProvider', 'Found provider via _ethProviderHelper.provider', {
+          hasRequest: !!provider.request,
+          hasOn: !!provider.on,
+          constructorName: provider.constructor?.name
+        });
+        if (provider.request && typeof provider.request === 'function') {
+          return provider;
+        }
+      }
+
+      // Method 2: Try connector.provider (fallback)
+      if (connector.provider) {
+        const provider = connector.provider;
+        mLog.info('DynamicProvider', 'Found provider via connector.provider', {
+          hasRequest: !!provider.request,
+          hasOn: !!provider.on,
+          constructorName: provider.constructor?.name
+        });
+        if (provider.request && typeof provider.request === 'function') {
+          return provider;
+        }
+      }
+
+      // Method 3: Try connector.ethersProvider (for ethers-wrapped providers)
+      if (connector.ethersProvider) {
         mLog.info('DynamicProvider', 'Found ethersProvider on connector');
-        return (dynamicWallet.connector as any).ethersProvider;
+        return connector.ethersProvider;
       }
 
-      if ((dynamicWallet.connector as any)?.provider) {
-        mLog.info('DynamicProvider', 'Found provider on connector');
-        return (dynamicWallet.connector as any).provider;
+      // Method 4: Check if connector itself has EIP-1193 methods (last resort)
+      if (connector.request && typeof connector.request === 'function') {
+        mLog.info('DynamicProvider', 'Using connector itself as EIP-1193 provider');
+        return connector;
       }
 
-      if (dynamicWallet.connector) {
-        mLog.info('DynamicProvider', 'Using connector itself as provider');
-        return dynamicWallet.connector;
+      // Method 5: Mobile fallback - try window.ethereum as MetaMask's global provider
+      if (typeof window !== 'undefined' && (window as any).ethereum) {
+        const windowEthereum = (window as any).ethereum;
+        if (windowEthereum.request && typeof windowEthereum.request === 'function') {
+          mLog.info('DynamicProvider', 'Fallback to window.ethereum for mobile MetaMask');
+          return windowEthereum;
+        }
       }
 
-      mLog.warn('DynamicProvider', 'No suitable provider found on connector');
+      mLog.warn('DynamicProvider', 'No valid EIP-1193 provider found on connector', {
+        connectorKeys: Object.getOwnPropertyNames(connector).slice(0, 20),
+        hasEthProviderHelper: !!connector._ethProviderHelper,
+        hasProvider: !!connector.provider,
+        hasRequest: !!connector.request
+      });
       return null;
 
     } catch (error) {
@@ -446,17 +486,49 @@ export class DynamicProvider implements UnifiedProvider {
         hasCachedProvider: !!this.cachedEthersProvider
       });
 
-      // On mobile with external wallets (like MetaMask), use Dynamic's primaryWallet.signMessage()
-      // for proper mobile redirect handling, but with timeout protection
-      if (isMobile && primaryWallet && primaryWallet.signMessage) {
+      // FIRST: Try official Dynamic getSigner method (recommended approach)
+      if (primaryWallet) {
         try {
-          mLog.info('DynamicProvider', 'Using Dynamic primaryWallet for mobile signing with timeout protection', {
-            walletType: primaryWallet?.connector?.name
+          mLog.info('DynamicProvider', 'Using official Dynamic getSigner method', {
+            walletType: primaryWallet?.connector?.name,
+            isMobile
           });
 
           // Add timeout protection for mobile signing - MetaMask mobile can hang when returning from app
           const MOBILE_SIGNING_TIMEOUT = 45000; // 45 seconds
 
+          const getSignerAndSign = async () => {
+            const signer = await getSigner(primaryWallet);
+            return await signer.signMessage(message);
+          };
+
+          const signingPromise = getSignerAndSign();
+          const timeoutPromise = new Promise<never>((_, reject) => {
+            setTimeout(() => {
+              reject(new Error('Mobile signing timeout after 45 seconds - MetaMask app may not have returned signature'));
+            }, MOBILE_SIGNING_TIMEOUT);
+          });
+
+          mLog.info('DynamicProvider', 'Starting signing with official Dynamic signer (with timeout protection)');
+          const signature = await Promise.race([signingPromise, timeoutPromise]);
+          mLog.info('DynamicProvider', '✅ Message signed successfully via official Dynamic getSigner');
+          return signature;
+        } catch (dynamicSignerError) {
+          mLog.warn('DynamicProvider', 'Official Dynamic getSigner failed, trying primaryWallet.signMessage', {
+            error: dynamicSignerError instanceof Error ? dynamicSignerError.message : String(dynamicSignerError),
+            isTimeout: dynamicSignerError instanceof Error && dynamicSignerError.message.includes('timeout')
+          });
+        }
+      }
+
+      // FALLBACK: Use Dynamic's primaryWallet.signMessage() for mobile compatibility
+      if (isMobile && primaryWallet && primaryWallet.signMessage) {
+        try {
+          mLog.info('DynamicProvider', 'Using Dynamic primaryWallet.signMessage as fallback', {
+            walletType: primaryWallet?.connector?.name
+          });
+
+          const MOBILE_SIGNING_TIMEOUT = 45000; // 45 seconds
           const signingPromise = primaryWallet.signMessage(message);
           const timeoutPromise = new Promise<never>((_, reject) => {
             setTimeout(() => {
@@ -464,7 +536,6 @@ export class DynamicProvider implements UnifiedProvider {
             }, MOBILE_SIGNING_TIMEOUT);
           });
 
-          mLog.info('DynamicProvider', 'Starting mobile signing with race condition against timeout');
           const signature = await Promise.race([signingPromise, timeoutPromise]);
           mLog.info('DynamicProvider', '✅ Mobile signing successful via primaryWallet');
           return signature;
@@ -473,20 +544,19 @@ export class DynamicProvider implements UnifiedProvider {
             error: primaryWalletError instanceof Error ? primaryWalletError.message : String(primaryWalletError),
             isTimeout: primaryWalletError instanceof Error && primaryWalletError.message.includes('timeout')
           });
-          // Continue to ethers fallback
         }
       }
 
-      // Desktop or mobile fallback: use standard ethers signing
+      // FINAL FALLBACK: Use cached ethers provider
       if (!this.cachedEthersProvider) {
         throw new Error('No ethers provider available for signing');
       }
 
-      mLog.info('DynamicProvider', 'Using ethers provider for signing');
+      mLog.info('DynamicProvider', 'Using cached ethers provider for signing (final fallback)');
       const signer = await this.cachedEthersProvider.getSigner();
       const signature = await signer.signMessage(message);
 
-      mLog.info('DynamicProvider', '✅ Message signed successfully via ethers');
+      mLog.info('DynamicProvider', '✅ Message signed successfully via cached ethers provider');
       return signature;
 
     } catch (signingError) {

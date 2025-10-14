@@ -27,27 +27,18 @@ export class ProviderRegistry {
         mLog.info('ProviderRegistry', 'Detected Farcaster environment, registering Farcaster provider');
         await this.registerFarcasterProvider(config);
       } else {
-        // Check if Dynamic is configured, otherwise fall back to Web3Auth
+        // Check if Dynamic is configured
         if (config.dynamicEnvironmentId) {
           mLog.info('ProviderRegistry', 'Dynamic environment ID found, registering Dynamic provider');
-          try {
-            await this.registerDynamicProvider(config);
+          await this.registerDynamicProvider(config);
 
-            // If Dynamic registration succeeded, don't register Web3Auth
-            if (this.providers.has('dynamic')) {
-              mLog.info('ProviderRegistry', 'Dynamic provider registered successfully');
-            } else {
-              throw new Error('Dynamic provider registration returned without error but provider not found');
-            }
-          } catch (error) {
-            mLog.warn('ProviderRegistry', 'Dynamic provider failed, falling back to Web3Auth', {
-              error: error instanceof Error ? error.message : String(error)
-            });
-            await this.registerWeb3AuthProvider(config);
+          if (this.providers.has('dynamic')) {
+            mLog.info('ProviderRegistry', 'Dynamic provider registered successfully');
+          } else {
+            throw new Error('Dynamic provider registration failed');
           }
         } else {
-          mLog.info('ProviderRegistry', 'No Dynamic config, falling back to Web3Auth provider');
-          await this.registerWeb3AuthProvider(config);
+          throw new Error('No Dynamic environment ID configured - Web3Auth fallback removed');
         }
       }
 
@@ -99,28 +90,6 @@ export class ProviderRegistry {
     return this.providers.has(type);
   }
 
-  private async registerWeb3AuthProvider(config: AuthConfig): Promise<void> {
-    try {
-      mLog.info('ProviderRegistry', 'Registering Web3Auth provider');
-      // Dynamic import to avoid bundle size in Farcaster frames
-      const { Web3AuthProvider } = await import('../providers/Web3AuthProvider');
-      mLog.debug('ProviderRegistry', 'Web3AuthProvider imported successfully');
-
-      const provider = new Web3AuthProvider(config);
-      mLog.debug('ProviderRegistry', 'Web3AuthProvider instance created');
-
-      await provider.initialize();
-      mLog.debug('ProviderRegistry', 'Web3AuthProvider initialized');
-
-      this.providers.set('web3auth', provider);
-      mLog.info('ProviderRegistry', 'Registered Web3Auth provider successfully');
-    } catch (error) {
-      mLog.error('ProviderRegistry', 'Failed to register Web3Auth provider', {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined
-      });
-    }
-  }
 
   private async registerDynamicProvider(config: AuthConfig): Promise<void> {
     mLog.info('ProviderRegistry', 'Registering Dynamic provider');

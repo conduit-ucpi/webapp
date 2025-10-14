@@ -169,58 +169,123 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
       // Sign message for authentication - use provider from connection result if available
       let authToken: string;
       if (connectionResult?.provider) {
-        // signMessageWithProvider now returns {signature, message, timestamp} to ensure they match
-        let signResult;
-        try {
-          signResult = await authManager.signMessageWithProvider(connectionResult.provider, address);
-        } catch (signError) {
-          mLog.error('AuthProvider', 'signMessageWithProvider failed', {
-            error: signError instanceof Error ? signError.message : String(signError),
-            stack: signError instanceof Error ? signError.stack : undefined
-          });
-          throw signError; // Re-throw to let the outer catch block handle it
-        }
+        // Check if this is a Dynamic provider by looking for Dynamic-specific properties
+        const isDynamicProvider = !!(
+          connectionResult.provider?.connector?.name ||
+          connectionResult.wallet?.connector?.name ||
+          (typeof window !== 'undefined' && (window as any).dynamicPrimaryWallet)
+        );
 
-        mLog.info('AuthProvider', 'signMessageWithProvider result', {
-          hasSignResult: !!signResult,
-          signResultType: typeof signResult,
-          signResultKeys: signResult ? Object.keys(signResult) : [],
-          hasSignature: !!(signResult?.signature),
-          hasMessage: !!(signResult?.message),
-          hasTimestamp: !!(signResult?.timestamp),
-          signatureType: typeof signResult?.signature,
-          messageType: typeof signResult?.message,
-          timestampType: typeof signResult?.timestamp,
-          signatureValue: signResult?.signature ? `${signResult.signature.substring(0, 10)}...` : null,
-          messageValue: signResult?.message,
-          timestampValue: signResult?.timestamp
+        mLog.info('AuthProvider', 'Provider type detection', {
+          isDynamicProvider,
+          hasProvider: !!connectionResult.provider,
+          hasWallet: !!connectionResult.wallet,
+          connectorName: connectionResult.provider?.connector?.name || connectionResult.wallet?.connector?.name,
+          hasDynamicPrimaryWallet: !!(typeof window !== 'undefined' && (window as any).dynamicPrimaryWallet)
         });
 
-        if (!signResult?.signature || !signResult?.message || !signResult?.timestamp) {
-          throw new Error(`Invalid signResult: missing required fields. Has signature: ${!!signResult?.signature}, message: ${!!signResult?.message}, timestamp: ${!!signResult?.timestamp}`);
-        }
+        if (isDynamicProvider) {
+          // Use Dynamic's official signing methods for better mobile compatibility
+          mLog.info('AuthProvider', 'Using Dynamic official signMessage for authentication');
 
-        const nonce = Math.random().toString(36).substring(2, 15);
+          try {
+            // Create message with timestamp for consistency
+            const timestamp = Date.now();
+            const message = `Sign in to Conduit UCPI at ${timestamp}`;
 
-        authToken = btoa(JSON.stringify({
-          type: 'signature_auth',
-          walletAddress: address,
-          message: signResult.message,
-          signature: signResult.signature,
-          timestamp: signResult.timestamp,
-          nonce,
-          issuer: 'dynamic_external_wallet',
-          header: {
-            alg: 'ECDSA',
-            typ: 'SIG'
-          },
-          payload: {
-            sub: address,
-            iat: Math.floor(signResult.timestamp / 1000),
-            iss: 'dynamic_external_wallet',
-            wallet_type: 'dynamic'
+            // Use AuthManager's unified provider signMessage method
+            // This will handle Dynamic's mobile-specific signing logic
+            const signature = await authManager.signMessage(message);
+
+            const nonce = Math.random().toString(36).substring(2, 15);
+
+            authToken = btoa(JSON.stringify({
+              type: 'signature_auth',
+              walletAddress: address,
+              message: message,
+              signature: signature,
+              timestamp: timestamp,
+              nonce,
+              issuer: 'dynamic_external_wallet',
+              header: {
+                alg: 'ECDSA',
+                typ: 'SIG'
+              },
+              payload: {
+                sub: address,
+                iat: Math.floor(timestamp / 1000),
+                iss: 'dynamic_external_wallet',
+                wallet_type: 'dynamic'
+              }
+            }));
+
+            mLog.info('AuthProvider', '✅ Dynamic official signing successful');
+          } catch (dynamicSignError) {
+            mLog.error('AuthProvider', 'Dynamic official signing failed, falling back to manual provider signing', {
+              error: dynamicSignError instanceof Error ? dynamicSignError.message : String(dynamicSignError)
+            });
+
+            // Fallback to manual provider signing if Dynamic's official method fails
+            const signResult = await authManager.signMessageWithProvider(connectionResult.provider, address);
+
+            if (!signResult?.signature || !signResult?.message || !signResult?.timestamp) {
+              throw new Error(`Invalid signResult: missing required fields. Has signature: ${!!signResult?.signature}, message: ${!!signResult?.message}, timestamp: ${!!signResult?.timestamp}`);
+            }
+
+            const nonce = Math.random().toString(36).substring(2, 15);
+
+            authToken = btoa(JSON.stringify({
+              type: 'signature_auth',
+              walletAddress: address,
+              message: signResult.message,
+              signature: signResult.signature,
+              timestamp: signResult.timestamp,
+              nonce,
+              issuer: 'dynamic_external_wallet',
+              header: {
+                alg: 'ECDSA',
+                typ: 'SIG'
+              },
+              payload: {
+                sub: address,
+                iat: Math.floor(signResult.timestamp / 1000),
+                iss: 'dynamic_external_wallet',
+                wallet_type: 'dynamic'
+              }
+            }));
           }
-        }));
+        } else {
+          // Non-Dynamic provider - use manual signing approach
+          mLog.info('AuthProvider', 'Using manual provider signing for non-Dynamic provider');
+
+          const signResult = await authManager.signMessageWithProvider(connectionResult.provider, address);
+
+          if (!signResult?.signature || !signResult?.message || !signResult?.timestamp) {
+            throw new Error(`Invalid signResult: missing required fields. Has signature: ${!!signResult?.signature}, message: ${!!signResult?.message}, timestamp: ${!!signResult?.timestamp}`);
+          }
+
+          const nonce = Math.random().toString(36).substring(2, 15);
+
+          authToken = btoa(JSON.stringify({
+            type: 'signature_auth',
+            walletAddress: address,
+            message: signResult.message,
+            signature: signResult.signature,
+            timestamp: signResult.timestamp,
+            nonce,
+            issuer: 'external_wallet',
+            header: {
+              alg: 'ECDSA',
+              typ: 'SIG'
+            },
+            payload: {
+              sub: address,
+              iat: Math.floor(signResult.timestamp / 1000),
+              iss: 'external_wallet',
+              wallet_type: 'generic'
+            }
+          }));
+        }
       } else {
         authToken = await authManager.signMessageForAuth();
       }

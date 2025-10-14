@@ -210,13 +210,8 @@ export class Web3AuthProvider implements AuthProvider {
             await this.waitForMetaMaskReady();
           }
 
-          // Add timeout to detect hanging signature requests
-          const signPromise = signer.signMessage(message);
-          const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Signature request timeout after 60 seconds')), 60000)
-          );
-
-          signature = await Promise.race([signPromise, timeoutPromise]) as string;
+          // Mobile-safe signature with polling to survive app switches
+          signature = await this.mobileSignMessage(signer, message);
           mLog.info('Web3AuthProvider', 'Signature received successfully');
 
           // Verify connection state after signing
@@ -387,6 +382,80 @@ export class Web3AuthProvider implements AuthProvider {
 
   getUserInfo(): any {
     return this.web3authInstance?.getUserInfo() || null;
+  }
+
+  /**
+   * Mobile-safe signature method that survives app switches
+   * This fixes the issue where signMessage promises get lost when switching between apps
+   */
+  private async mobileSignMessage(signer: any, message: string): Promise<string> {
+    const deviceInfo = detectDevice();
+
+    if (!deviceInfo.isMobile) {
+      // Desktop: use direct signing
+      mLog.info('Web3AuthProvider', 'Desktop detected - using direct signMessage');
+      return await signer.signMessage(message);
+    }
+
+    mLog.info('Web3AuthProvider', 'Mobile detected - using polling-based signature detection');
+
+    // Mobile: initiate signing but don't await directly
+    // Instead, poll to detect when signature is available
+    let signaturePromise: Promise<string> | null = null;
+
+    try {
+      // Start the signature request (this will trigger MetaMask app switch)
+      mLog.info('Web3AuthProvider', 'Initiating signature request - MetaMask will open');
+      signaturePromise = signer.signMessage(message);
+
+      // Don't await immediately - MetaMask app switch will suspend this promise
+      // Instead, use a combination of polling and promise racing
+
+      let attempts = 0;
+      const maxAttempts = 60; // 2 minutes total
+      const pollInterval = 2000; // Check every 2 seconds
+
+      while (attempts < maxAttempts) {
+        try {
+          // Race between the original promise and a short timeout
+          const result = await Promise.race([
+            signaturePromise,
+            new Promise((_, reject) =>
+              setTimeout(() => reject(new Error('Poll timeout')), pollInterval)
+            )
+          ]);
+
+          // If we get here, signature was successful
+          mLog.info('Web3AuthProvider', 'Signature completed successfully on mobile');
+          return result as string;
+
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+
+          if (errorMessage === 'Poll timeout') {
+            // This is expected - continue polling
+            attempts++;
+            mLog.debug('Web3AuthProvider', `Polling for signature completion ${attempts}/${maxAttempts}`);
+
+            // Brief pause before next poll
+            await new Promise(resolve => setTimeout(resolve, 100));
+            continue;
+          } else {
+            // Real error from signMessage
+            throw error;
+          }
+        }
+      }
+
+      // If we get here, we timed out
+      throw new Error('Signature request timed out after 2 minutes');
+
+    } catch (error) {
+      mLog.error('Web3AuthProvider', 'Mobile signature failed', {
+        error: error instanceof Error ? error.message : String(error)
+      });
+      throw error;
+    }
   }
 
   /**

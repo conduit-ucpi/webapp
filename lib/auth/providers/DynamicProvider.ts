@@ -241,13 +241,38 @@ export class DynamicProvider implements UnifiedProvider {
   private async setupEthersProvider(dynamicWallet: any) {
     if (dynamicWallet) {
       try {
-        mLog.debug('DynamicProvider', 'Setting up ethers provider using Dynamic V3 approach', {
+        mLog.debug('DynamicProvider', 'Setting up ethers provider with comprehensive approach', {
           walletType: typeof dynamicWallet,
           walletName: dynamicWallet?.connector?.name,
-          hasWalletConnector: !!dynamicWallet?.connector
+          hasWalletConnector: !!dynamicWallet?.connector,
+          connectorType: typeof dynamicWallet?.connector,
+          hasConnectorProvider: !!(dynamicWallet?.connector as any)?.provider,
+          hasConnectorEthersProvider: !!(dynamicWallet?.connector as any)?.ethersProvider
         });
 
-        // Use Dynamic's V3 ethers integration to create the provider
+        // Try comprehensive provider extraction matching DynamicWrapper logic
+        let extractedProvider = await this.extractProviderFromDynamicWallet(dynamicWallet);
+
+        if (extractedProvider) {
+          // Try to create ethers provider from extracted provider
+          try {
+            const ethersProvider = new ethers.BrowserProvider(extractedProvider);
+            this.cachedEthersProvider = ethersProvider;
+            mLog.info('DynamicProvider', '✅ Ethers provider created from extracted provider', {
+              providerType: typeof extractedProvider,
+              providerConstructor: extractedProvider.constructor?.name
+            });
+            return;
+          } catch (ethersError) {
+            mLog.warn('DynamicProvider', 'Failed to create ethers provider from extracted provider', {
+              error: ethersError instanceof Error ? ethersError.message : String(ethersError),
+              providerType: typeof extractedProvider
+            });
+          }
+        }
+
+        // Fallback: Try Dynamic's V3 ethers integration
+        mLog.debug('DynamicProvider', 'Trying Dynamic V3 getWeb3Provider as fallback');
         const web3Provider = await getWeb3Provider(dynamicWallet);
 
         if (web3Provider) {
@@ -256,8 +281,8 @@ export class DynamicProvider implements UnifiedProvider {
           return;
         }
 
-        // If Dynamic V3 approach fails, try fallback methods
-        mLog.warn('DynamicProvider', 'Dynamic V3 getWeb3Provider failed, trying fallbacks');
+        // Final fallback: Try legacy extraction methods
+        mLog.warn('DynamicProvider', 'All primary methods failed, trying legacy fallbacks');
         await this.tryEthersProviderFallbacks(dynamicWallet);
 
       } catch (providerError) {
@@ -266,7 +291,7 @@ export class DynamicProvider implements UnifiedProvider {
           stack: providerError instanceof Error ? providerError.stack : undefined
         });
 
-        // Try fallback methods even if Dynamic V3 throws
+        // Try fallback methods even if primary approach throws
         try {
           await this.tryEthersProviderFallbacks(dynamicWallet);
         } catch (fallbackError) {
@@ -277,6 +302,49 @@ export class DynamicProvider implements UnifiedProvider {
       }
     } else {
       mLog.warn('DynamicProvider', 'No Dynamic wallet passed to setupEthersProvider');
+    }
+  }
+
+  private async extractProviderFromDynamicWallet(dynamicWallet: any): Promise<any | null> {
+    mLog.debug('DynamicProvider', 'Extracting provider from Dynamic wallet', {
+      hasWallet: !!dynamicWallet,
+      hasConnector: !!dynamicWallet?.connector,
+      connectorName: dynamicWallet?.connector?.name,
+      connectorType: typeof dynamicWallet?.connector
+    });
+
+    if (!dynamicWallet?.connector) {
+      mLog.warn('DynamicProvider', 'No connector found on Dynamic wallet');
+      return null;
+    }
+
+    try {
+      // Match the logic from DynamicWrapper (lines 120-126)
+      // Try to get ethers provider first
+      if ((dynamicWallet.connector as any)?.ethersProvider) {
+        mLog.info('DynamicProvider', 'Found ethersProvider on connector');
+        return (dynamicWallet.connector as any).ethersProvider;
+      }
+
+      if ((dynamicWallet.connector as any)?.provider) {
+        mLog.info('DynamicProvider', 'Found provider on connector');
+        return (dynamicWallet.connector as any).provider;
+      }
+
+      if (dynamicWallet.connector) {
+        mLog.info('DynamicProvider', 'Using connector itself as provider');
+        return dynamicWallet.connector;
+      }
+
+      mLog.warn('DynamicProvider', 'No suitable provider found on connector');
+      return null;
+
+    } catch (error) {
+      mLog.error('DynamicProvider', 'Error while extracting provider from Dynamic wallet', {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      });
+      return null;
     }
   }
 

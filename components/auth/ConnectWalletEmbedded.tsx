@@ -109,6 +109,14 @@ export default function ConnectWalletEmbedded({
     setIsConnecting(true);
     mLog.info('ConnectWalletEmbedded', 'Get Started button clicked');
 
+    // Debug auth state
+    mLog.debug('ConnectWalletEmbedded', 'Current auth state', {
+      isConnected,
+      address,
+      hasUser: !!user,
+      isLoading
+    });
+
     try {
       // Check if this is an OAuth redirect - if so, skip the connect flow
       const urlParams = new URLSearchParams(window.location.search);

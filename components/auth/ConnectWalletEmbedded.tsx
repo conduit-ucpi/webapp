@@ -157,29 +157,38 @@ export default function ConnectWalletEmbedded({
       if (isConnected && address) {
         mLog.info('ConnectWalletEmbedded', 'Already connected, proceeding directly to backend auth', {
           isConnected,
-          address
+          address,
+          hasAuthenticateBackend: !!authenticateBackend
         });
 
-        // Directly authenticate with backend using current connection
-        const authSuccess = await authenticateBackend({
-          success: true,
-          address: address,
-          capabilities: {
-            canSign: true,
-            canTransact: true,
-            canSwitchWallets: true,
-            isAuthOnly: false
+        try {
+          // Directly authenticate with backend using current connection
+          const authSuccess = await authenticateBackend({
+            success: true,
+            address: address,
+            capabilities: {
+              canSign: true,
+              canTransact: true,
+              canSwitchWallets: true,
+              isAuthOnly: false
+            }
+          });
+
+          if (authSuccess) {
+            mLog.info('ConnectWalletEmbedded', 'Direct backend authentication successful');
+            onSuccess?.();
+          } else {
+            mLog.error('ConnectWalletEmbedded', 'Direct backend authentication failed - trying normal flow');
+            // Fall through to normal flow if direct auth fails
           }
-        });
 
-        if (authSuccess) {
-          mLog.info('ConnectWalletEmbedded', 'Direct backend authentication successful');
-          onSuccess?.();
-        } else {
-          mLog.error('ConnectWalletEmbedded', 'Direct backend authentication failed');
+          return;
+        } catch (error) {
+          mLog.error('ConnectWalletEmbedded', 'Direct backend authentication error', {
+            error: error instanceof Error ? error.message : String(error)
+          });
+          // Fall through to normal flow if direct auth errors
         }
-
-        return;
       }
 
       // Normal connection flow

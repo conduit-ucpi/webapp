@@ -167,9 +167,63 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
       });
 
       // Sign message for authentication - use provider from connection result if available
-      const authToken = connectionResult?.provider
-        ? await authManager.signMessageWithProvider(connectionResult.provider, address)
-        : await authManager.signMessageForAuth();
+      let authToken: string;
+      if (connectionResult?.provider) {
+        // signMessageWithProvider now returns {signature, message, timestamp} to ensure they match
+        let signResult;
+        try {
+          signResult = await authManager.signMessageWithProvider(connectionResult.provider, address);
+        } catch (signError) {
+          mLog.error('AuthProvider', 'signMessageWithProvider failed', {
+            error: signError instanceof Error ? signError.message : String(signError),
+            stack: signError instanceof Error ? signError.stack : undefined
+          });
+          throw signError; // Re-throw to let the outer catch block handle it
+        }
+
+        mLog.info('AuthProvider', 'signMessageWithProvider result', {
+          hasSignResult: !!signResult,
+          signResultType: typeof signResult,
+          signResultKeys: signResult ? Object.keys(signResult) : [],
+          hasSignature: !!(signResult?.signature),
+          hasMessage: !!(signResult?.message),
+          hasTimestamp: !!(signResult?.timestamp),
+          signatureType: typeof signResult?.signature,
+          messageType: typeof signResult?.message,
+          timestampType: typeof signResult?.timestamp,
+          signatureValue: signResult?.signature ? `${signResult.signature.substring(0, 10)}...` : null,
+          messageValue: signResult?.message,
+          timestampValue: signResult?.timestamp
+        });
+
+        if (!signResult?.signature || !signResult?.message || !signResult?.timestamp) {
+          throw new Error(`Invalid signResult: missing required fields. Has signature: ${!!signResult?.signature}, message: ${!!signResult?.message}, timestamp: ${!!signResult?.timestamp}`);
+        }
+
+        const nonce = Math.random().toString(36).substring(2, 15);
+
+        authToken = btoa(JSON.stringify({
+          type: 'signature_auth',
+          walletAddress: address,
+          message: signResult.message,
+          signature: signResult.signature,
+          timestamp: signResult.timestamp,
+          nonce,
+          issuer: 'dynamic_external_wallet',
+          header: {
+            alg: 'ECDSA',
+            typ: 'SIG'
+          },
+          payload: {
+            sub: address,
+            iat: Math.floor(signResult.timestamp / 1000),
+            iss: 'dynamic_external_wallet',
+            wallet_type: 'dynamic'
+          }
+        }));
+      } else {
+        authToken = await authManager.signMessageForAuth();
+      }
 
       mLog.info('AuthProvider', 'Message signed successfully, sending to backend', {
         address,

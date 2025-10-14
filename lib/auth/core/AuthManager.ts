@@ -196,7 +196,7 @@ export class AuthManager {
    * Sign a message for backend authentication using a specific provider
    * Used when we have a provider from connection result but haven't set currentProvider yet
    */
-  async signMessageWithProvider(provider: any, address: string): Promise<string> {
+  async signMessageWithProvider(provider: any, address: string): Promise<{ signature: string; message: string; timestamp: number }> {
     try {
       mLog.info('AuthManager', 'Signing message with provided Dynamic provider', {
         hasProvider: !!provider,
@@ -210,8 +210,9 @@ export class AuthManager {
         isEthersProvider: provider?.constructor?.name === 'BrowserProvider'
       });
 
-      // Create message to sign
-      const message = `Sign in to Conduit UCPI at ${Date.now()}`;
+      // Create message to sign with timestamp
+      const timestamp = Date.now();
+      const message = `Sign in to Conduit UCPI at ${timestamp}`;
 
       // Try different provider interfaces
       if (provider) {
@@ -254,7 +255,20 @@ export class AuthManager {
             const signer = await ethersProvider.getSigner();
             const signature = await signer.signMessage(message);
             mLog.info('AuthManager', '✅ Ethers-wrapped EIP-1193 signing successful');
-            return signature;
+
+            const returnValue = { signature, message, timestamp };
+            mLog.info('AuthManager', 'About to return from signMessageWithProvider', {
+              returnValueType: typeof returnValue,
+              returnValueKeys: Object.keys(returnValue),
+              hasSignature: !!returnValue.signature,
+              hasMessage: !!returnValue.message,
+              hasTimestamp: !!returnValue.timestamp,
+              signatureValue: returnValue.signature ? `${returnValue.signature.substring(0, 10)}...` : null,
+              messageValue: returnValue.message,
+              timestampValue: returnValue.timestamp
+            });
+
+            return returnValue;
           } catch (wrapError) {
             mLog.warn('AuthManager', 'Failed to wrap EIP-1193 provider in ethers', {
               error: wrapError instanceof Error ? wrapError.message : String(wrapError)
@@ -269,7 +283,7 @@ export class AuthManager {
             const signer = await actualProvider.getSigner();
             const signature = await signer.signMessage(message);
             mLog.info('AuthManager', '✅ Ethers provider signing successful');
-            return signature;
+            return { signature, message, timestamp };
           } catch (ethersError) {
             mLog.warn('AuthManager', 'Ethers provider.getSigner failed', {
               error: ethersError instanceof Error ? ethersError.message : String(ethersError)
@@ -286,7 +300,7 @@ export class AuthManager {
               params: [message, address]
             });
             mLog.info('AuthManager', '✅ EIP-1193 signing successful');
-            return signature;
+            return { signature, message, timestamp };
           } catch (requestError) {
             mLog.warn('AuthManager', 'EIP-1193 provider.request failed', {
               error: requestError instanceof Error ? requestError.message : String(requestError)
@@ -300,7 +314,7 @@ export class AuthManager {
             mLog.info('AuthManager', 'Attempting provider.send method');
             const signature = await actualProvider.send('personal_sign', [message, address]);
             mLog.info('AuthManager', '✅ Provider.send signing successful');
-            return signature;
+            return { signature, message, timestamp };
           } catch (sendError) {
             mLog.warn('AuthManager', 'Provider.send failed', {
               error: sendError instanceof Error ? sendError.message : String(sendError)
@@ -317,7 +331,7 @@ export class AuthManager {
               params: [message, address]
             });
             mLog.info('AuthManager', '✅ Window.ethereum signing successful');
-            return signature;
+            return { signature, message, timestamp };
           } catch (windowError) {
             mLog.warn('AuthManager', 'Window.ethereum failed', {
               error: windowError instanceof Error ? windowError.message : String(windowError)

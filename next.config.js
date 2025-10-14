@@ -3,6 +3,23 @@ const nextConfig = {
   reactStrictMode: false,
   swcMinify: true,
   output: 'standalone',
+
+  webpack: (config, { isServer }) => {
+    // Fix for MetaMask SDK React Native dependencies in browser
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        '@react-native-async-storage/async-storage': false,
+      };
+
+      config.resolve.alias = {
+        ...config.resolve.alias,
+        '@react-native-async-storage/async-storage': false,
+      };
+    }
+
+    return config;
+  },
   // No basePath for Farcaster miniapp - needs to be at root domain
   // basePath: process.env.NEXT_PUBLIC_BASE_PATH === 'null' ? undefined : (process.env.NEXT_PUBLIC_BASE_PATH || '/webapp'),
   

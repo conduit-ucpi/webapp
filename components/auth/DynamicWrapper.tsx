@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect, useCallback, useRef, useMemo } from 'react';
-import { DynamicContextProvider, useDynamicContext, useDynamicEvents } from '@dynamic-labs/sdk-react-core';
+import { DynamicContextProvider, DynamicWidget, useDynamicContext, useDynamicEvents } from '@dynamic-labs/sdk-react-core';
 import { EthereumWalletConnectors } from '@dynamic-labs/ethereum';
 import { createDynamicConfig } from '@/lib/dynamicConfig';
 import { AuthConfig } from '@/lib/auth/types';
@@ -148,6 +148,62 @@ function DynamicBridge() {
 
   useDynamicEvents('authFlowOpen', () => {
     mLog.info('DynamicBridge', 'authFlowOpen event received - auth modal opened');
+
+    // Debug: Check for Dynamic modal elements in DOM
+    setTimeout(() => {
+      const modalSelectors = [
+        '[data-dynamic-modal-wrapper]',
+        '[data-dynamic-modal]',
+        '.dynamic-modal',
+        '.dynamic-auth-modal',
+        '[role="dialog"]',
+        '[aria-modal="true"]'
+      ];
+
+      let foundElements: Array<{
+        selector: string;
+        count: number;
+        visible: Array<{
+          display: string;
+          visibility: string;
+          opacity: string;
+          zIndex: string;
+          position: string;
+          top: string;
+          left: string;
+          width: string;
+          height: string;
+        }>;
+      }> = [];
+      modalSelectors.forEach(selector => {
+        const elements = document.querySelectorAll(selector);
+        if (elements.length > 0) {
+          foundElements.push({
+            selector,
+            count: elements.length,
+            visible: Array.from(elements).map(el => {
+              const style = window.getComputedStyle(el);
+              return {
+                display: style.display,
+                visibility: style.visibility,
+                opacity: style.opacity,
+                zIndex: style.zIndex,
+                position: style.position,
+                top: style.top,
+                left: style.left,
+                width: style.width,
+                height: style.height
+              };
+            })
+          });
+        }
+      });
+
+      mLog.info('DynamicBridge', 'Modal DOM elements found after authFlowOpen', {
+        foundElements,
+        totalElements: foundElements.reduce((sum, item) => sum + item.count, 0)
+      });
+    }, 100);
   });
 
   useDynamicEvents('authFlowClose', () => {
@@ -417,6 +473,7 @@ export function DynamicWrapper({ children, config }: DynamicWrapperProps) {
         children={
           <>
             <DynamicBridge />
+            <DynamicWidget />
             {children}
           </>
         }

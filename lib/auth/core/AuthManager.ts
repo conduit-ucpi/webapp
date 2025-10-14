@@ -200,7 +200,14 @@ export class AuthManager {
     try {
       mLog.info('AuthManager', 'Signing message with provided Dynamic provider', {
         hasProvider: !!provider,
-        address
+        address,
+        providerType: typeof provider,
+        providerConstructor: provider?.constructor?.name,
+        providerKeys: provider ? Object.getOwnPropertyNames(provider).slice(0, 10) : [],
+        hasRequest: !!provider?.request,
+        hasSend: !!provider?.send,
+        hasGetSigner: !!provider?.getSigner,
+        isEthersProvider: provider?.constructor?.name === 'BrowserProvider'
       });
 
       // Create message to sign
@@ -208,43 +215,92 @@ export class AuthManager {
 
       // Try different provider interfaces
       if (provider) {
-        // Try EIP-1193 provider (request method)
-        if (typeof provider.request === 'function') {
-          const signature = await provider.request({
-            method: 'personal_sign',
-            params: [message, address]
-          });
-          return signature;
+        // FIRST: Try to create a proper ethers provider if we have a raw EIP-1193 provider
+        if (typeof provider.request === 'function' && !provider.getSigner) {
+          try {
+            mLog.info('AuthManager', 'Detected raw EIP-1193 provider, wrapping in ethers');
+            const ethersProvider = new ethers.BrowserProvider(provider);
+            const signer = await ethersProvider.getSigner();
+            const signature = await signer.signMessage(message);
+            mLog.info('AuthManager', '✅ Ethers-wrapped EIP-1193 signing successful');
+            return signature;
+          } catch (wrapError) {
+            mLog.warn('AuthManager', 'Failed to wrap EIP-1193 provider in ethers', {
+              error: wrapError instanceof Error ? wrapError.message : String(wrapError)
+            });
+          }
         }
 
-        // Try direct send method
-        if (typeof provider.send === 'function') {
-          const signature = await provider.send('personal_sign', [message, address]);
-          return signature;
-        }
-
-        // Try ethers provider
+        // SECOND: Try ethers provider directly if it already is one
         if (provider.getSigner && typeof provider.getSigner === 'function') {
-          const signer = await provider.getSigner();
-          const signature = await signer.signMessage(message);
-          return signature;
+          try {
+            mLog.info('AuthManager', 'Attempting ethers provider.getSigner method');
+            const signer = await provider.getSigner();
+            const signature = await signer.signMessage(message);
+            mLog.info('AuthManager', '✅ Ethers provider signing successful');
+            return signature;
+          } catch (ethersError) {
+            mLog.warn('AuthManager', 'Ethers provider.getSigner failed', {
+              error: ethersError instanceof Error ? ethersError.message : String(ethersError)
+            });
+          }
         }
 
-        // Try window.ethereum if provider might be metamask
+        // THIRD: Try EIP-1193 provider (request method) directly
+        if (typeof provider.request === 'function') {
+          try {
+            mLog.info('AuthManager', 'Attempting EIP-1193 provider.request method');
+            const signature = await provider.request({
+              method: 'personal_sign',
+              params: [message, address]
+            });
+            mLog.info('AuthManager', '✅ EIP-1193 signing successful');
+            return signature;
+          } catch (requestError) {
+            mLog.warn('AuthManager', 'EIP-1193 provider.request failed', {
+              error: requestError instanceof Error ? requestError.message : String(requestError)
+            });
+          }
+        }
+
+        // FOURTH: Try legacy send method
+        if (typeof provider.send === 'function') {
+          try {
+            mLog.info('AuthManager', 'Attempting provider.send method');
+            const signature = await provider.send('personal_sign', [message, address]);
+            mLog.info('AuthManager', '✅ Provider.send signing successful');
+            return signature;
+          } catch (sendError) {
+            mLog.warn('AuthManager', 'Provider.send failed', {
+              error: sendError instanceof Error ? sendError.message : String(sendError)
+            });
+          }
+        }
+
+        // LAST RESORT: Try window.ethereum if available
         if (typeof window !== 'undefined' && (window as any).ethereum) {
-          const signature = await (window as any).ethereum.request({
-            method: 'personal_sign',
-            params: [message, address]
-          });
-          return signature;
+          try {
+            mLog.info('AuthManager', 'Attempting window.ethereum fallback');
+            const signature = await (window as any).ethereum.request({
+              method: 'personal_sign',
+              params: [message, address]
+            });
+            mLog.info('AuthManager', '✅ Window.ethereum signing successful');
+            return signature;
+          } catch (windowError) {
+            mLog.warn('AuthManager', 'Window.ethereum failed', {
+              error: windowError instanceof Error ? windowError.message : String(windowError)
+            });
+          }
         }
 
-        mLog.error('AuthManager', 'Provider format not supported', {
+        mLog.error('AuthManager', 'All provider interfaces failed or not supported', {
           hasRequest: !!provider.request,
           hasSend: !!provider.send,
           hasGetSigner: !!provider.getSigner,
           providerType: typeof provider,
-          providerKeys: Object.keys(provider || {})
+          providerKeys: Object.keys(provider || {}),
+          providerConstructor: provider?.constructor?.name
         });
         throw new Error('Provider does not support any known signing interface');
       } else {

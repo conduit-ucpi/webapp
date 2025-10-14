@@ -31,3 +31,19 @@
   opacity: 0;
   animation-fill-mode: forwards;
 }
+
+/* Ensure Dynamic modal is visible with high z-index */
+[data-dynamic-modal-wrapper],
+[data-dynamic-modal],
+.dynamic-modal,
+.dynamic-auth-modal {
+  z-index: 999999 !important;
+  position: fixed !important;
+}
+
+/* Ensure Dynamic modal backdrop is visible */
+[data-dynamic-modal-wrapper] > div:first-child,
+.dynamic-modal-backdrop {
+  background-color: rgba(0, 0, 0, 0.5) !important;
+  z-index: 999998 !important;
+}

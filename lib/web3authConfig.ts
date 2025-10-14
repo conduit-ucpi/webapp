@@ -80,21 +80,9 @@ export const createWeb3AuthConfig = (config: {
     ...(config.walletConnectProjectId && {
       projectId: config.walletConnectProjectId
     }),
-    // Force modal to show by explicitly controlling adapters
-    modalConfig: isMobile ? {
-      [WALLET_CONNECTORS.METAMASK]: {
-        label: "metamask",
-        showOnModal: false, // Hide on mobile
-      } as any,
-      [WALLET_CONNECTORS.WALLET_CONNECT_V2]: {
-        label: "walletconnect",
-        showOnModal: true,
-      } as any,
-      [WALLET_CONNECTORS.AUTH]: {
-        label: "auth",
-        showOnModal: true,
-      } as any,
-    } as any : undefined
+    // Web3Auth v10: Remove custom modalConfig to prevent empty modal on mobile
+    // v10 handles adapter visibility automatically based on dashboard configuration
+    // Custom modalConfig can cause empty modals on mobile devices
   };
 
   mLog.debug('Web3AuthConfig', 'Web3Auth options created', {

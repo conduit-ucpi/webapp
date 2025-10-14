@@ -74,6 +74,8 @@ jobs:
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
           NEXT_PUBLIC_APP_URL: ${{ vars.NEXT_PUBLIC_APP_URL }}
         run: |
+          # Clear npm cache to avoid EEXIST errors
+          npm cache clean --force
           npm ci --legacy-peer-deps
           
           # Generate Farcaster manifest with correct domain

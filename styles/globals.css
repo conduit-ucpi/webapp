@@ -32,25 +32,27 @@
   animation-fill-mode: forwards;
 }
 
-/* Ensure Dynamic modal is visible with high z-index */
+/* Ensure Dynamic modal is visible with high z-index - be more specific to avoid conflicts */
 [data-dynamic-modal-wrapper],
 [data-dynamic-modal],
-.dynamic-modal,
-.dynamic-auth-modal,
-[role="dialog"],
-[aria-modal="true"] {
+div[class*="dynamic-modal"],
+div[class*="dynamic-auth"] {
   z-index: 999999 !important;
   position: fixed !important;
   display: block !important;
   visibility: visible !important;
   opacity: 1 !important;
+}
+
+/* Only target Dynamic-specific dialog elements, not all role="dialog" */
+[data-dynamic-modal-wrapper] [role="dialog"],
+[data-dynamic-modal] [role="dialog"],
+div[class*="dynamic"] [role="dialog"] {
+  z-index: 999999 !important;
+  position: fixed !important;
   top: 50% !important;
   left: 50% !important;
   transform: translate(-50%, -50%) !important;
-  width: auto !important;
-  height: auto !important;
-  max-width: 90vw !important;
-  max-height: 90vh !important;
   background: white !important;
   border: 2px solid red !important; /* Debug border */
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8) !important;
@@ -58,7 +60,7 @@
 
 /* Ensure Dynamic modal backdrop is visible */
 [data-dynamic-modal-wrapper] > div:first-child,
-.dynamic-modal-backdrop {
+div[class*="dynamic-backdrop"] {
   background-color: rgba(0, 0, 0, 0.8) !important;
   z-index: 999998 !important;
   position: fixed !important;
@@ -66,13 +68,4 @@
   left: 0 !important;
   width: 100vw !important;
   height: 100vh !important;
-  display: block !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-}
-
-/* Force any Dynamic-related divs to be visible */
-div[class*="dynamic"],
-div[id*="dynamic"] {
-  z-index: 999997 !important;
 }

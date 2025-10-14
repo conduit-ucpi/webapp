@@ -215,11 +215,42 @@ export class AuthManager {
 
       // Try different provider interfaces
       if (provider) {
-        // FIRST: Try to create a proper ethers provider if we have a raw EIP-1193 provider
-        if (typeof provider.request === 'function' && !provider.getSigner) {
+        // FIRST: Extract actual provider from Dynamic connector if needed
+        let actualProvider = provider;
+
+        // Check if this is a Dynamic connector (has _ethProviderHelper or similar properties)
+        if (provider.constructor?.name === 'tk1' || provider._ethProviderHelper || provider.walletConnectorEventsEmitter) {
+          mLog.info('AuthManager', 'Detected Dynamic connector, extracting actual provider');
+
+          // Try to extract the real provider from Dynamic connector
+          if (provider._ethProviderHelper && provider._ethProviderHelper.provider) {
+            actualProvider = provider._ethProviderHelper.provider;
+            mLog.info('AuthManager', 'Extracted provider from _ethProviderHelper');
+          } else if (provider.connector && provider.connector.provider) {
+            actualProvider = provider.connector.provider;
+            mLog.info('AuthManager', 'Extracted provider from connector.provider');
+          } else if (provider.provider) {
+            actualProvider = provider.provider;
+            mLog.info('AuthManager', 'Extracted provider from .provider');
+          } else if (typeof window !== 'undefined' && (window as any).ethereum) {
+            // Fallback to window.ethereum for MetaMask on mobile
+            actualProvider = (window as any).ethereum;
+            mLog.info('AuthManager', 'Fallback to window.ethereum');
+          }
+
+          mLog.debug('AuthManager', 'Provider extraction result', {
+            originalType: provider.constructor?.name,
+            extractedType: actualProvider?.constructor?.name,
+            hasRequest: !!actualProvider?.request,
+            hasGetSigner: !!actualProvider?.getSigner
+          });
+        }
+
+        // SECOND: Try to create a proper ethers provider if we have a raw EIP-1193 provider
+        if (typeof actualProvider.request === 'function' && !actualProvider.getSigner) {
           try {
             mLog.info('AuthManager', 'Detected raw EIP-1193 provider, wrapping in ethers');
-            const ethersProvider = new ethers.BrowserProvider(provider);
+            const ethersProvider = new ethers.BrowserProvider(actualProvider);
             const signer = await ethersProvider.getSigner();
             const signature = await signer.signMessage(message);
             mLog.info('AuthManager', '✅ Ethers-wrapped EIP-1193 signing successful');
@@ -231,11 +262,11 @@ export class AuthManager {
           }
         }
 
-        // SECOND: Try ethers provider directly if it already is one
-        if (provider.getSigner && typeof provider.getSigner === 'function') {
+        // THIRD: Try ethers provider directly if it already is one
+        if (actualProvider.getSigner && typeof actualProvider.getSigner === 'function') {
           try {
             mLog.info('AuthManager', 'Attempting ethers provider.getSigner method');
-            const signer = await provider.getSigner();
+            const signer = await actualProvider.getSigner();
             const signature = await signer.signMessage(message);
             mLog.info('AuthManager', '✅ Ethers provider signing successful');
             return signature;
@@ -246,11 +277,11 @@ export class AuthManager {
           }
         }
 
-        // THIRD: Try EIP-1193 provider (request method) directly
-        if (typeof provider.request === 'function') {
+        // FOURTH: Try EIP-1193 provider (request method) directly
+        if (typeof actualProvider.request === 'function') {
           try {
             mLog.info('AuthManager', 'Attempting EIP-1193 provider.request method');
-            const signature = await provider.request({
+            const signature = await actualProvider.request({
               method: 'personal_sign',
               params: [message, address]
             });
@@ -263,11 +294,11 @@ export class AuthManager {
           }
         }
 
-        // FOURTH: Try legacy send method
-        if (typeof provider.send === 'function') {
+        // FIFTH: Try legacy send method
+        if (typeof actualProvider.send === 'function') {
           try {
             mLog.info('AuthManager', 'Attempting provider.send method');
-            const signature = await provider.send('personal_sign', [message, address]);
+            const signature = await actualProvider.send('personal_sign', [message, address]);
             mLog.info('AuthManager', '✅ Provider.send signing successful');
             return signature;
           } catch (sendError) {
@@ -295,12 +326,18 @@ export class AuthManager {
         }
 
         mLog.error('AuthManager', 'All provider interfaces failed or not supported', {
-          hasRequest: !!provider.request,
-          hasSend: !!provider.send,
-          hasGetSigner: !!provider.getSigner,
-          providerType: typeof provider,
+          originalHasRequest: !!provider.request,
+          originalHasSend: !!provider.send,
+          originalHasGetSigner: !!provider.getSigner,
+          originalProviderType: typeof provider,
+          originalProviderConstructor: provider?.constructor?.name,
+          actualHasRequest: !!actualProvider.request,
+          actualHasSend: !!actualProvider.send,
+          actualHasGetSigner: !!actualProvider.getSigner,
+          actualProviderType: typeof actualProvider,
+          actualProviderConstructor: actualProvider?.constructor?.name,
           providerKeys: Object.keys(provider || {}),
-          providerConstructor: provider?.constructor?.name
+          actualProviderKeys: Object.keys(actualProvider || {})
         });
         throw new Error('Provider does not support any known signing interface');
       } else {

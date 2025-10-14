@@ -168,52 +168,38 @@ export default function ConnectWalletEmbedded({
         }
       }
 
-      // Check if already connected first (bypassing modal) - use Dynamic state if auth state not synced
+      // Check if already connected - if so, use the unified provider system instead of bypassing
       const effectivelyConnected = (isConnected && address) || (dynamicWalletState?.isConnected && dynamicWalletState?.address);
       const effectiveAddress = address || dynamicWalletState?.address;
 
       if (effectivelyConnected && effectiveAddress) {
-        mLog.info('ConnectWalletEmbedded', 'Already connected, proceeding directly to backend auth', {
+        mLog.info('ConnectWalletEmbedded', 'Wallet already connected, using unified auth flow', {
           isConnected,
           address,
           dynamicConnected: dynamicWalletState?.isConnected,
           dynamicAddress: dynamicWalletState?.address,
           effectiveAddress,
-          hasAuthenticateBackend: !!authenticateBackend,
-          hasProvider: !!dynamicWalletState?.provider,
-          hasWallet: !!dynamicWalletState?.wallet,
-          providerType: typeof dynamicWalletState?.provider
+          hasAuthenticateBackend: !!authenticateBackend
         });
 
         try {
-          // Directly authenticate with backend using current connection
-          const authSuccess = await authenticateBackend({
-            success: true,
-            address: effectiveAddress,
-            provider: dynamicWalletState?.provider, // Include provider for signing
-            wallet: dynamicWalletState?.wallet, // Include wallet object
-            capabilities: {
-              canSign: true,
-              canTransact: true,
-              canSwitchWallets: true,
-              isAuthOnly: false
-            }
-          });
+          // Use the unified provider system by calling authenticateBackend WITHOUT a provider
+          // This forces it to use the unified signMessageForAuth() instead of signMessageWithProvider()
+          const authSuccess = await authenticateBackend();
 
           if (authSuccess) {
-            mLog.info('ConnectWalletEmbedded', 'Direct backend authentication successful');
+            mLog.info('ConnectWalletEmbedded', 'Unified auth flow successful');
             onSuccess?.();
           } else {
-            mLog.error('ConnectWalletEmbedded', 'Direct backend authentication failed - trying normal flow');
-            // Fall through to normal flow if direct auth fails
+            mLog.error('ConnectWalletEmbedded', 'Unified auth flow failed - trying normal connection flow');
           }
 
           return;
         } catch (error) {
-          mLog.error('ConnectWalletEmbedded', 'Direct backend authentication error', {
+          mLog.error('ConnectWalletEmbedded', 'Unified auth flow error, falling back to connection flow', {
             error: error instanceof Error ? error.message : String(error)
           });
-          // Fall through to normal flow if direct auth errors
+          // Continue to normal connection flow
         }
       }
 

@@ -153,6 +153,35 @@ export default function ConnectWalletEmbedded({
         }
       }
 
+      // Check if already connected first (bypassing modal)
+      if (isConnected && address) {
+        mLog.info('ConnectWalletEmbedded', 'Already connected, proceeding directly to backend auth', {
+          isConnected,
+          address
+        });
+
+        // Directly authenticate with backend using current connection
+        const authSuccess = await authenticateBackend({
+          success: true,
+          address: address,
+          capabilities: {
+            canSign: true,
+            canTransact: true,
+            canSwitchWallets: true,
+            isAuthOnly: false
+          }
+        });
+
+        if (authSuccess) {
+          mLog.info('ConnectWalletEmbedded', 'Direct backend authentication successful');
+          onSuccess?.();
+        } else {
+          mLog.error('ConnectWalletEmbedded', 'Direct backend authentication failed');
+        }
+
+        return;
+      }
+
       // Normal connection flow
       mLog.debug('ConnectWalletEmbedded', 'Connect function availability', { hasConnect: !!connect });
 

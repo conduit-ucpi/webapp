@@ -112,10 +112,17 @@ function DynamicBridge() {
 
     // Update auth system with wallet connection state
     if (newPrimaryWallet && newPrimaryWallet.address && typeof window !== 'undefined') {
+      // Get the provider for signing
+      let provider = newPrimaryWallet.connector;
+      if ((newPrimaryWallet.connector as any)?.provider) {
+        provider = (newPrimaryWallet.connector as any).provider;
+      }
+
       (window as any).dynamicWalletConnected = {
         address: newPrimaryWallet.address,
         isConnected: true,
-        wallet: newPrimaryWallet
+        wallet: newPrimaryWallet,
+        provider: provider
       };
     }
 

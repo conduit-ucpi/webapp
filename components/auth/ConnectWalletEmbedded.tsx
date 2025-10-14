@@ -187,6 +187,8 @@ export default function ConnectWalletEmbedded({
           const authSuccess = await authenticateBackend({
             success: true,
             address: effectiveAddress,
+            provider: dynamicWalletState?.provider, // Include provider for signing
+            wallet: dynamicWalletState?.wallet, // Include wallet object
             capabilities: {
               canSign: true,
               canTransact: true,

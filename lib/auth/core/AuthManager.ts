@@ -206,16 +206,49 @@ export class AuthManager {
       // Create message to sign
       const message = `Sign in to Conduit UCPI at ${Date.now()}`;
 
-      // Use Dynamic provider to sign
-      if (provider && typeof provider.request === 'function') {
-        const signature = await provider.request({
-          method: 'personal_sign',
-          params: [message, address]
-        });
+      // Try different provider interfaces
+      if (provider) {
+        // Try EIP-1193 provider (request method)
+        if (typeof provider.request === 'function') {
+          const signature = await provider.request({
+            method: 'personal_sign',
+            params: [message, address]
+          });
+          return signature;
+        }
 
-        return signature;
+        // Try direct send method
+        if (typeof provider.send === 'function') {
+          const signature = await provider.send('personal_sign', [message, address]);
+          return signature;
+        }
+
+        // Try ethers provider
+        if (provider.getSigner && typeof provider.getSigner === 'function') {
+          const signer = await provider.getSigner();
+          const signature = await signer.signMessage(message);
+          return signature;
+        }
+
+        // Try window.ethereum if provider might be metamask
+        if (typeof window !== 'undefined' && (window as any).ethereum) {
+          const signature = await (window as any).ethereum.request({
+            method: 'personal_sign',
+            params: [message, address]
+          });
+          return signature;
+        }
+
+        mLog.error('AuthManager', 'Provider format not supported', {
+          hasRequest: !!provider.request,
+          hasSend: !!provider.send,
+          hasGetSigner: !!provider.getSigner,
+          providerType: typeof provider,
+          providerKeys: Object.keys(provider || {})
+        });
+        throw new Error('Provider does not support any known signing interface');
       } else {
-        throw new Error('Provider does not support signing');
+        throw new Error('No provider provided');
       }
     } catch (error) {
       mLog.error('AuthManager', 'Failed to sign message with provider', {

@@ -112,10 +112,22 @@ function DynamicBridge() {
 
     // Update auth system with wallet connection state
     if (newPrimaryWallet && newPrimaryWallet.address && typeof window !== 'undefined') {
-      // Get the provider for signing
-      let provider = newPrimaryWallet.connector;
-      if ((newPrimaryWallet.connector as any)?.provider) {
-        provider = (newPrimaryWallet.connector as any).provider;
+      // Get the provider for signing - try multiple approaches
+      let provider = null;
+
+      // Try to get ethers provider first
+      try {
+        if ((newPrimaryWallet.connector as any)?.ethersProvider) {
+          provider = (newPrimaryWallet.connector as any).ethersProvider;
+        } else if ((newPrimaryWallet.connector as any)?.provider) {
+          provider = (newPrimaryWallet.connector as any).provider;
+        } else if (newPrimaryWallet.connector) {
+          provider = newPrimaryWallet.connector;
+        }
+      } catch (error) {
+        mLog.warn('DynamicBridge', 'Failed to extract provider from wallet', {
+          error: error instanceof Error ? error.message : String(error)
+        });
       }
 
       (window as any).dynamicWalletConnected = {
@@ -124,6 +136,13 @@ function DynamicBridge() {
         wallet: newPrimaryWallet,
         provider: provider
       };
+
+      mLog.debug('DynamicBridge', 'Stored wallet connection state', {
+        address: newPrimaryWallet.address,
+        hasProvider: !!provider,
+        providerType: typeof provider,
+        providerMethods: provider ? Object.getOwnPropertyNames(provider) : []
+      });
     }
 
     // If we have an active login promise, resolve it

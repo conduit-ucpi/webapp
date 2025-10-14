@@ -168,39 +168,44 @@ export default function ConnectWalletEmbedded({
         }
       }
 
-      // Check if already connected - if so, use the unified provider system instead of bypassing
-      const effectivelyConnected = (isConnected && address) || (dynamicWalletState?.isConnected && dynamicWalletState?.address);
-      const effectiveAddress = address || dynamicWalletState?.address;
-
-      if (effectivelyConnected && effectiveAddress) {
-        mLog.info('ConnectWalletEmbedded', 'Wallet already connected, using unified auth flow', {
+      // Check if already connected - but ONLY trust the React auth state, not Dynamic state
+      // Dynamic state can be misleading on mobile (shows connected but provider not ready)
+      if (isConnected && address) {
+        mLog.info('ConnectWalletEmbedded', 'React auth state shows connected, using unified auth flow', {
           isConnected,
           address,
-          dynamicConnected: dynamicWalletState?.isConnected,
-          dynamicAddress: dynamicWalletState?.address,
-          effectiveAddress,
           hasAuthenticateBackend: !!authenticateBackend
         });
 
         try {
-          // Use the unified provider system by calling authenticateBackend WITHOUT a provider
-          // This forces it to use the unified signMessageForAuth() instead of signMessageWithProvider()
+          // Use the unified provider system - this should work since React state is connected
           const authSuccess = await authenticateBackend();
 
           if (authSuccess) {
             mLog.info('ConnectWalletEmbedded', 'Unified auth flow successful');
             onSuccess?.();
+            return;
           } else {
-            mLog.error('ConnectWalletEmbedded', 'Unified auth flow failed - trying normal connection flow');
+            mLog.error('ConnectWalletEmbedded', 'Unified auth flow failed despite connected state');
           }
-
-          return;
         } catch (error) {
-          mLog.error('ConnectWalletEmbedded', 'Unified auth flow error, falling back to connection flow', {
+          mLog.error('ConnectWalletEmbedded', 'Unified auth flow error despite connected state', {
             error: error instanceof Error ? error.message : String(error)
           });
-          // Continue to normal connection flow
         }
+      }
+
+      // Check for Dynamic-only connection (React not synced yet)
+      const dynamicOnlyConnected = !isConnected && dynamicWalletState?.isConnected && dynamicWalletState?.address;
+
+      if (dynamicOnlyConnected) {
+        mLog.warn('ConnectWalletEmbedded', 'Dynamic shows connected but React auth state not synced - forcing normal connection flow', {
+          isConnected,
+          address,
+          dynamicConnected: dynamicWalletState?.isConnected,
+          dynamicAddress: dynamicWalletState?.address
+        });
+        // Don't try to authenticate yet - force a proper connection flow
       }
 
       // Normal connection flow

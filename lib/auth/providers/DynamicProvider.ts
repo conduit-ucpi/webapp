@@ -447,16 +447,31 @@ export class DynamicProvider implements UnifiedProvider {
       });
 
       // On mobile with external wallets (like MetaMask), use Dynamic's primaryWallet.signMessage()
-      // for proper mobile redirect handling
+      // for proper mobile redirect handling, but with timeout protection
       if (isMobile && primaryWallet && primaryWallet.signMessage) {
         try {
-          mLog.info('DynamicProvider', 'Using Dynamic primaryWallet for mobile signing');
-          const signature = await primaryWallet.signMessage(message);
+          mLog.info('DynamicProvider', 'Using Dynamic primaryWallet for mobile signing with timeout protection', {
+            walletType: primaryWallet?.connector?.name
+          });
+
+          // Add timeout protection for mobile signing - MetaMask mobile can hang when returning from app
+          const MOBILE_SIGNING_TIMEOUT = 45000; // 45 seconds
+
+          const signingPromise = primaryWallet.signMessage(message);
+          const timeoutPromise = new Promise<never>((_, reject) => {
+            setTimeout(() => {
+              reject(new Error('Mobile signing timeout after 45 seconds - MetaMask app may not have returned signature'));
+            }, MOBILE_SIGNING_TIMEOUT);
+          });
+
+          mLog.info('DynamicProvider', 'Starting mobile signing with race condition against timeout');
+          const signature = await Promise.race([signingPromise, timeoutPromise]);
           mLog.info('DynamicProvider', '✅ Mobile signing successful via primaryWallet');
           return signature;
         } catch (primaryWalletError) {
           mLog.warn('DynamicProvider', 'primaryWallet signing failed, falling back to ethers', {
-            error: primaryWalletError instanceof Error ? primaryWalletError.message : String(primaryWalletError)
+            error: primaryWalletError instanceof Error ? primaryWalletError.message : String(primaryWalletError),
+            isTimeout: primaryWalletError instanceof Error && primaryWalletError.message.includes('timeout')
           });
           // Continue to ethers fallback
         }

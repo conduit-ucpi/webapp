@@ -33,6 +33,30 @@ export class MobileAwareProvider {
       isDesktop: this.isDesktop,
       hasBaseProvider: !!baseProvider
     });
+
+    // Listen for page visibility changes to detect app switches on mobile
+    if (!this.isDesktop && typeof window !== 'undefined') {
+      document.addEventListener('visibilitychange', () => {
+        mLog.info('MobileAwareProvider', `📱 PAGE VISIBILITY CHANGED: ${document.hidden ? 'HIDDEN (app switch)' : 'VISIBLE (returned)'}`, {
+          hidden: document.hidden,
+          visibilityState: document.visibilityState,
+          timestamp: Date.now()
+        });
+      });
+
+      // Also listen for focus/blur events
+      window.addEventListener('blur', () => {
+        mLog.info('MobileAwareProvider', '📱 WINDOW BLUR: App likely switched to MetaMask', {
+          timestamp: Date.now()
+        });
+      });
+
+      window.addEventListener('focus', () => {
+        mLog.info('MobileAwareProvider', '📱 WINDOW FOCUS: App returned from MetaMask', {
+          timestamp: Date.now()
+        });
+      });
+    }
   }
 
   /**
@@ -103,46 +127,72 @@ export class MobileAwareProvider {
       return result;
     }
 
-    // Mobile signing method: Check if this is our backend auth signature that we can serve from cache
+    // Mobile signing method: Skip caching for now, just log and proceed
     if (this.isOurBackendAuthSignature(args)) {
-      mLog.info('MobileAwareProvider', `🔍 CHECKING CACHE [${requestId}]: Backend auth signature detected`);
-
-      const cachedSignature = this.getCachedSignatureForBackendAuth(args);
-      if (cachedSignature) {
-        mLog.info('MobileAwareProvider', `🎯 CACHE HIT [${requestId}]: Using cached Web3Auth signature for backend auth!`, {
-          requestId,
-          cacheSize: this.signatureCache.size,
-          signatureLength: cachedSignature.length,
-          signaturePreview: cachedSignature.substring(0, 20) + '...'
-        });
-        return cachedSignature;
-      } else {
-        mLog.warn('MobileAwareProvider', `❌ CACHE MISS [${requestId}]: No cached signature available, will request from MetaMask`);
-      }
+      mLog.info('MobileAwareProvider', `🔍 BACKEND AUTH DETECTED [${requestId}]: Proceeding directly to MetaMask (caching disabled)`);
     }
 
     // Execute the signing request (will trigger MetaMask app switch)
     mLog.info('MobileAwareProvider', `📱 SENDING SIGNING REQUEST TO METAMASK [${requestId}]: Will trigger app switch`);
 
+    // Add timestamp validation for backend auth signatures
+    if (this.isOurBackendAuthSignature(args)) {
+      mLog.warn('MobileAwareProvider', `⚠️ POTENTIAL METAMASK CACHE ISSUE [${requestId}]: If MetaMask shows different timestamp, it's using stale cache`, {
+        requestId,
+        expectedTimestamp: 'Check logs for current timestamp in signature message',
+        warning: 'MetaMask may show older signature request from previous attempt'
+      });
+    }
+
     try {
-      const result = await this.baseProvider.request(args);
+      mLog.info('MobileAwareProvider', `⏳ WAITING FOR METAMASK RESPONSE [${requestId}]: Promise started, waiting for mobile app response`);
+
+      // Add a race condition to detect if the promise never resolves
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => {
+          reject(new Error(`MetaMask signature request timed out after 60 seconds`));
+        }, 60000); // 60 seconds timeout
+      });
+
+      const responsePromise = this.baseProvider.request(args);
+
+      // Add logging to track promise state
+      responsePromise
+        .then((result: any) => {
+          mLog.info('MobileAwareProvider', `🎯 PROMISE RESOLVED [${requestId}]: MetaMask response received`, {
+            requestId,
+            hasResult: !!result,
+            resultPreview: typeof result === 'string' ? result.substring(0, 20) + '...' : String(result),
+            timestamp: Date.now()
+          });
+        })
+        .catch((error: any) => {
+          mLog.error('MobileAwareProvider', `❌ PROMISE REJECTED [${requestId}]: MetaMask request failed`, {
+            requestId,
+            error: error instanceof Error ? error.message : String(error),
+            timestamp: Date.now()
+          });
+        });
+
+      // Race between the actual response and timeout
+      const result = await Promise.race([responsePromise, timeoutPromise]);
 
       mLog.info('MobileAwareProvider', `✅ METAMASK RESPONSE [${requestId}]: Successfully received response`, {
         requestId,
         hasResult: !!result,
         resultType: typeof result,
-        resultLength: typeof result === 'string' ? result.length : 'N/A'
+        resultLength: typeof result === 'string' ? result.length : 'N/A',
+        responseTime: 'Within 60 seconds'
       });
 
-      // If this was a signing request that succeeded, cache it for potential reuse
+      // Skip caching for now - just log success
       if (this.isSigningMethod(args.method) && result && typeof result === 'string') {
-        mLog.info('MobileAwareProvider', `💾 CACHING RESPONSE [${requestId}]: Storing signature for potential reuse`);
-        await this.cacheSignature(args, result, requestId);
+        mLog.info('MobileAwareProvider', `💾 SIGNATURE SUCCESS [${requestId}]: Received valid signature (caching disabled)`);
       }
 
       return result;
 
-    } catch (error) {
+    } catch (error: any) {
       mLog.error('MobileAwareProvider', `❌ METAMASK ERROR [${requestId}]: Request failed`, {
         requestId,
         error: error instanceof Error ? error.message : String(error),
@@ -171,7 +221,7 @@ export class MobileAwareProvider {
    * Check if this is our backend authentication signature
    */
   private isOurBackendAuthSignature(args: { method: string; params?: any[] }): boolean {
-    if (args.method === 'personal_sign' && args.params?.[0]) {
+    if (args.method === 'personal_sign' && args.params && args.params[0]) {
       const message = args.params[0];
       let decodedMessage = '';
 
@@ -206,9 +256,11 @@ export class MobileAwareProvider {
   }
 
   /**
-   * Cache a signature for potential reuse
+   * Cache a signature for potential reuse (DISABLED)
    */
   private async cacheSignature(args: { method: string; params?: any[] }, signature: string, requestId?: string): Promise<void> {
+    // Caching disabled - just return
+    return;
     const logPrefix = requestId ? `[${requestId}]` : '';
 
     try {
@@ -239,8 +291,8 @@ export class MobileAwareProvider {
       let message = '';
       let messageType = 'unknown';
 
-      if (args.method === 'personal_sign' && args.params?.[0]) {
-        message = args.params[0];
+      if (args.method === 'personal_sign' && Array.isArray(args.params) && args.params!.length > 0) {
+        message = args.params![0];
         messageType = 'raw';
 
         // Handle hex-encoded messages
@@ -257,7 +309,7 @@ export class MobileAwareProvider {
             messageType = 'hex-decoded';
           } catch (e) {
             mLog.warn('MobileAwareProvider', `⚠️ HEX DECODE FAILED ${logPrefix}: Keeping original hex`, {
-              error: e instanceof Error ? e.message : String(e)
+              error: (e as any) instanceof Error ? (e as Error).message : String(e)
             });
             // Keep original if decode fails
           }
@@ -293,7 +345,7 @@ export class MobileAwareProvider {
         mLog.warn('MobileAwareProvider', `❌ CACHE SKIP ${logPrefix}: No message found to use as cache key`);
       }
 
-    } catch (error) {
+    } catch (error: any) {
       mLog.error('MobileAwareProvider', `❌ CACHE ERROR ${logPrefix}: Failed to cache signature`, {
         requestId,
         error: error instanceof Error ? error.message : String(error),
@@ -303,9 +355,11 @@ export class MobileAwareProvider {
   }
 
   /**
-   * Get cached signature for backend auth if available
+   * Get cached signature for backend auth if available (DISABLED)
    */
   private getCachedSignatureForBackendAuth(args: { method: string; params?: any[] }): string | null {
+    // Caching disabled - always return null
+    return null;
     try {
       mLog.info('MobileAwareProvider', '🔍 CACHE LOOKUP: Searching for reusable signature', {
         method: args.method,
@@ -313,8 +367,8 @@ export class MobileAwareProvider {
       });
 
       // Extract the message from backend auth request
-      if (args.method === 'personal_sign' && args.params?.[0]) {
-        let message = args.params[0];
+      if (args.method === 'personal_sign' && Array.isArray(args.params) && args.params!.length > 0) {
+        let message = args.params![0];
         let messageProcessing = 'raw';
 
         // Handle hex-encoded messages
@@ -324,7 +378,7 @@ export class MobileAwareProvider {
             message = Buffer.from(message.slice(2), 'hex').toString('utf8');
             messageProcessing = 'hex-decoded';
             mLog.debug('MobileAwareProvider', '🔤 CACHE LOOKUP: Decoded hex message', {
-              originalLength: args.params[0].length,
+              originalLength: args.params![0].length,
               decodedLength: message.length,
               decodedPreview: message.substring(0, 50) + '...'
             });
@@ -376,7 +430,7 @@ export class MobileAwareProvider {
       }
 
       return null;
-    } catch (error) {
+    } catch (error: any) {
       mLog.error('MobileAwareProvider', '❌ CACHE LOOKUP ERROR: Failed to retrieve cached signature', {
         error: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined

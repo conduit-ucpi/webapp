@@ -152,6 +152,18 @@ export class Web3AuthProvider implements AuthProvider {
             window.localStorage.removeItem('metamask.isUnlocked');
             window.localStorage.removeItem('metamask.state');
             window.sessionStorage.removeItem('metamask.state');
+
+            // Try to clear any pending signature requests by calling eth_accounts
+            // This can sometimes flush stale requests
+            try {
+              await window.ethereum.request({ method: 'eth_accounts' });
+              mLog.debug('Web3AuthProvider', 'Flushed MetaMask state with eth_accounts call');
+            } catch (flushError) {
+              mLog.debug('Web3AuthProvider', 'MetaMask flush attempt failed (normal)', {
+                error: flushError instanceof Error ? flushError.message : String(flushError)
+              });
+            }
+
             mLog.debug('Web3AuthProvider', 'Cleared potential MetaMask state keys');
           }
         } catch (error) {

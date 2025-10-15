@@ -95,8 +95,16 @@ export class MobileAwareProvider {
       return result;
     }
 
-    // Mobile: Check if this is our backend auth signature that we can serve from cache
-    if (this.isSigningMethod(args.method) && this.isOurBackendAuthSignature(args)) {
+    // Mobile: Only handle signing methods specially, everything else goes direct
+    if (!this.isSigningMethod(args.method)) {
+      mLog.debug('MobileAwareProvider', `📋 NON-SIGNING REQUEST [${requestId}]: Using base provider directly (no MetaMask app switch)`);
+      const result = await this.baseProvider.request(args);
+      mLog.debug('MobileAwareProvider', `✅ NON-SIGNING RESPONSE [${requestId}]: Received from base provider`);
+      return result;
+    }
+
+    // Mobile signing method: Check if this is our backend auth signature that we can serve from cache
+    if (this.isOurBackendAuthSignature(args)) {
       mLog.info('MobileAwareProvider', `🔍 CHECKING CACHE [${requestId}]: Backend auth signature detected`);
 
       const cachedSignature = this.getCachedSignatureForBackendAuth(args);
@@ -113,8 +121,8 @@ export class MobileAwareProvider {
       }
     }
 
-    // Execute the request normally
-    mLog.info('MobileAwareProvider', `📱 SENDING TO METAMASK [${requestId}]: Request will trigger app switch`);
+    // Execute the signing request (will trigger MetaMask app switch)
+    mLog.info('MobileAwareProvider', `📱 SENDING SIGNING REQUEST TO METAMASK [${requestId}]: Will trigger app switch`);
 
     try {
       const result = await this.baseProvider.request(args);

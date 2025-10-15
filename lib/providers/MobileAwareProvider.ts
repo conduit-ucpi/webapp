@@ -173,19 +173,34 @@ export class MobileAwareProvider {
   private isOurBackendAuthSignature(args: { method: string; params?: any[] }): boolean {
     if (args.method === 'personal_sign' && args.params?.[0]) {
       const message = args.params[0];
-      // Our backend auth messages start with "Authenticate wallet"
-      if (typeof message === 'string') {
-        return message.startsWith('Authenticate wallet');
+      let decodedMessage = '';
+
+      // Handle direct string messages
+      if (typeof message === 'string' && !message.startsWith('0x')) {
+        decodedMessage = message;
       }
       // Handle hex-encoded messages
-      if (typeof message === 'string' && message.startsWith('0x')) {
+      else if (typeof message === 'string' && message.startsWith('0x')) {
         try {
-          const decoded = Buffer.from(message.slice(2), 'hex').toString('utf8');
-          return decoded.startsWith('Authenticate wallet');
+          decodedMessage = Buffer.from(message.slice(2), 'hex').toString('utf8');
         } catch (e) {
           return false;
         }
       }
+
+      const isBackendAuth = decodedMessage.startsWith('Authenticate wallet');
+
+      // Extra debugging for signature detection
+      if (decodedMessage.includes('Authenticate wallet')) {
+        mLog.info('MobileAwareProvider', '🔍 BACKEND AUTH SIGNATURE DETECTED', {
+          messagePreview: decodedMessage.substring(0, 100) + '...',
+          isBackendAuth,
+          messageLength: decodedMessage.length,
+          currentTimestamp: Date.now()
+        });
+      }
+
+      return isBackendAuth;
     }
     return false;
   }

@@ -153,7 +153,12 @@ export class Web3AuthProvider implements AuthProvider {
         throw new Error('No provider returned from Web3Auth');
       }
 
-      mLog.info('Web3AuthProvider', 'Connected successfully, getting user info');
+      mLog.info('Web3AuthProvider', 'Web3Auth connect() returned, but waiting for actual wallet connection...');
+
+      // Wait for the actual wallet connection to be established
+      await this.waitForActualWalletConnection(provider);
+
+      mLog.info('Web3AuthProvider', 'Actual wallet connection verified, proceeding with setup');
 
       // Get user info and determine auth method
       const user = await this.web3authInstance.getUserInfo();
@@ -382,5 +387,63 @@ export class Web3AuthProvider implements AuthProvider {
     return this.web3authInstance?.getUserInfo() || null;
   }
 
+  /**
+   * Wait for the actual wallet connection to be established
+   * Web3Auth's connect() can return before the user has completed the MetaMask connection flow
+   */
+  private async waitForActualWalletConnection(provider: any): Promise<void> {
+    const maxAttempts = 30; // 15 seconds total
+    const delayMs = 500;
+
+    mLog.info('Web3AuthProvider', 'Starting wallet connection verification', {
+      maxAttempts,
+      delayMs,
+      totalTimeout: maxAttempts * delayMs + 'ms'
+    });
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        mLog.debug('Web3AuthProvider', `Connection verification attempt ${attempt}/${maxAttempts}`);
+
+        // Try to get accounts from the provider
+        const accounts = await provider.request({ method: 'eth_accounts' });
+
+        if (accounts && accounts.length > 0 && accounts[0]) {
+          mLog.info('Web3AuthProvider', 'Wallet connection verified successfully', {
+            attempt,
+            accountCount: accounts.length,
+            firstAccount: accounts[0].substring(0, 10) + '...',
+            totalTime: attempt * delayMs + 'ms'
+          });
+          return;
+        }
+
+        mLog.debug('Web3AuthProvider', 'No accounts available yet', {
+          attempt,
+          hasAccounts: !!accounts,
+          accountCount: accounts?.length || 0
+        });
+
+        // Wait before next attempt
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+
+      } catch (error) {
+        mLog.warn('Web3AuthProvider', `Connection verification attempt ${attempt} failed`, {
+          attempt,
+          error: error instanceof Error ? error.message : String(error),
+          willRetry: attempt < maxAttempts
+        });
+
+        if (attempt === maxAttempts) {
+          throw new Error(`Wallet connection verification failed after ${maxAttempts} attempts: ${error instanceof Error ? error.message : String(error)}`);
+        }
+
+        // Wait before retry
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+      }
+    }
+
+    throw new Error(`Wallet connection verification timed out after ${maxAttempts * delayMs}ms`);
+  }
 
 }

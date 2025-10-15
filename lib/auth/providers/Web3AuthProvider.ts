@@ -10,6 +10,7 @@ import { TokenManager } from '../core/TokenManager';
 import { ethers } from "ethers";
 import { mLog } from '../../../utils/mobileLogger';
 import { detectDevice } from '../../../utils/deviceDetection';
+import { MobileAwareProvider } from '../../providers/MobileAwareProvider';
 
 export class Web3AuthProvider implements AuthProvider {
   private web3authInstance: Web3Auth | null = null;
@@ -162,9 +163,13 @@ export class Web3AuthProvider implements AuthProvider {
         authMethod: user.email ? 'social' : 'wallet'
       });
 
-      // Create and cache the ethers provider (SINGLE INSTANCE)
-      this.cachedEthersProvider = new ethers.BrowserProvider(provider);
-      mLog.info('Web3AuthProvider', 'Created and cached single ethers provider instance');
+      // Wrap Web3Auth provider with mobile-aware provider for app switch handling
+      const mobileAwareProvider = new MobileAwareProvider(provider);
+      mLog.info('Web3AuthProvider', 'Wrapped Web3Auth provider with mobile-aware provider');
+
+      // Create and cache the ethers provider (SINGLE INSTANCE) with mobile-aware provider
+      this.cachedEthersProvider = new ethers.BrowserProvider(mobileAwareProvider);
+      mLog.info('Web3AuthProvider', 'Created and cached single ethers provider instance with mobile app switch support');
 
       const signer = await this.cachedEthersProvider.getSigner();
       const address = await signer.getAddress();
@@ -197,21 +202,14 @@ export class Web3AuthProvider implements AuthProvider {
             throw new Error('Web3Auth connection lost before signing');
           }
 
-          mLog.info('Web3AuthProvider', 'About to call signer.signMessage - this may trigger app switch');
           mLog.debug('Web3AuthProvider', 'Pre-signature connection state', {
             connected: this.web3authInstance.connected,
             hasProvider: !!this.web3authInstance.provider,
             hasEthersProvider: !!this.cachedEthersProvider
           });
 
-          // On mobile, wait for MetaMask to be truly ready for signing
-          if (deviceInfo.isMobile) {
-            mLog.info('Web3AuthProvider', 'Mobile detected - waiting for MetaMask to be ready for signing');
-            await this.waitForMetaMaskReady();
-          }
-
-          // Use ethers signer - let the provider handle mobile deeplinks automatically
-          mLog.info('Web3AuthProvider', 'About to call signer.signMessage - provider handles mobile deeplinks');
+          // Use ethers signer - mobile-aware provider handles app switches transparently
+          mLog.info('Web3AuthProvider', 'Calling signer.signMessage - mobile-aware provider handles app switches');
           signature = await signer.signMessage(message);
           mLog.info('Web3AuthProvider', 'Signature received successfully');
 
@@ -386,56 +384,4 @@ export class Web3AuthProvider implements AuthProvider {
   }
 
 
-  /**
-   * Wait for MetaMask mobile to be truly ready for signing requests
-   * This fixes the Web3Auth bug where CONNECTED event fires too early on mobile
-   */
-  private async waitForMetaMaskReady(): Promise<void> {
-    if (!this.web3authInstance?.provider) {
-      throw new Error('No Web3Auth provider available');
-    }
-
-    mLog.info('Web3AuthProvider', 'Checking MetaMask readiness for mobile signing...');
-
-    // Get the underlying ethereum provider from Web3Auth
-    const ethereumProvider = this.web3authInstance.provider as any;
-
-    let attempts = 0;
-    const maxAttempts = 30; // 30 attempts = ~60 seconds total
-    const checkInterval = 2000; // Check every 2 seconds
-
-    while (attempts < maxAttempts) {
-      try {
-        // Check if MetaMask is responsive by testing a simple RPC call
-        if (ethereumProvider.request) {
-          mLog.debug('Web3AuthProvider', `MetaMask readiness check attempt ${attempts + 1}/${maxAttempts} (waiting for user authentication)`);
-
-          // Test if MetaMask can respond to chainId request (lightweight check)
-          const chainId = await ethereumProvider.request({
-            method: 'eth_chainId'
-          });
-
-          if (chainId) {
-            mLog.info('Web3AuthProvider', `MetaMask is ready for signing (chainId: ${chainId})`);
-            return; // MetaMask is ready
-          }
-        }
-      } catch (error) {
-        mLog.debug('Web3AuthProvider', `MetaMask readiness check failed, attempt ${attempts + 1}`, {
-          error: error instanceof Error ? error.message : String(error)
-        });
-      }
-
-      attempts++;
-
-      if (attempts < maxAttempts) {
-        await new Promise(resolve => setTimeout(resolve, checkInterval));
-      }
-    }
-
-    // If we get here, MetaMask didn't become ready in time
-    mLog.warn('Web3AuthProvider', 'MetaMask readiness timeout - proceeding anyway');
-    // Don't throw error, just log warning and continue
-    // The original timeout logic will catch any actual signing failures
-  }
 }

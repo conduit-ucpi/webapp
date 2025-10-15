@@ -114,8 +114,10 @@ export class Web3AuthProvider implements AuthProvider {
         }
       }
 
-      // On mobile, clear ALL cache to prevent auto-selection
+      // On mobile, clear ALL cache to prevent auto-selection and stale signatures
       if (deviceInfo.isMobile && typeof window !== 'undefined') {
+        mLog.info('Web3AuthProvider', 'Mobile detected - clearing all caches including MetaMask state');
+
         // Clear any Web3Auth session storage that might cause auto-connection
         const keysToRemove = [];
         for (let i = 0; i < window.localStorage.length; i++) {
@@ -141,7 +143,24 @@ export class Web3AuthProvider implements AuthProvider {
         // Clear the specific cached adapter key
         window.localStorage.removeItem('Web3Auth-cachedAdapter');
         window.sessionStorage.removeItem('Web3Auth-cachedAdapter');
-        mLog.info('Web3AuthProvider', 'Cleared all Web3Auth cache on mobile');
+
+        // Clear any MetaMask/wallet state that might have stale signature requests
+        // This helps prevent showing old signature requests in MetaMask
+        try {
+          if (window.ethereum) {
+            // Clear any pending signature state if available
+            window.localStorage.removeItem('metamask.isUnlocked');
+            window.localStorage.removeItem('metamask.state');
+            window.sessionStorage.removeItem('metamask.state');
+            mLog.debug('Web3AuthProvider', 'Cleared potential MetaMask state keys');
+          }
+        } catch (error) {
+          mLog.warn('Web3AuthProvider', 'Error clearing MetaMask state', {
+            error: error instanceof Error ? error.message : String(error)
+          });
+        }
+
+        mLog.info('Web3AuthProvider', 'Cleared all Web3Auth and wallet cache on mobile');
       }
 
       // Connect - this will show the modal with all options

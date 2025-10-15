@@ -210,8 +210,9 @@ export class Web3AuthProvider implements AuthProvider {
             await this.waitForMetaMaskReady();
           }
 
-          // Mobile-safe signature with polling to survive app switches
-          signature = await this.mobileSignMessage(signer, message);
+          // Mobile-safe signing that handles app switch properly
+          mLog.info('Web3AuthProvider', 'About to sign - using mobile-safe method');
+          signature = await this.mobileSafeSign(message, address);
           mLog.info('Web3AuthProvider', 'Signature received successfully');
 
           // Verify connection state after signing
@@ -385,77 +386,129 @@ export class Web3AuthProvider implements AuthProvider {
   }
 
   /**
-   * Mobile-safe signature method that survives app switches
-   * This fixes the issue where signMessage promises get lost when switching between apps
+   * Mobile-safe signing that handles app switches by separating request initiation from result retrieval
    */
-  private async mobileSignMessage(signer: any, message: string): Promise<string> {
+  private async mobileSafeSign(message: string, address: string): Promise<string> {
     const deviceInfo = detectDevice();
 
     if (!deviceInfo.isMobile) {
       // Desktop: use direct signing
-      mLog.info('Web3AuthProvider', 'Desktop detected - using direct signMessage');
-      return await signer.signMessage(message);
+      mLog.info('Web3AuthProvider', 'Desktop - using direct provider.request');
+      if (this.web3authInstance?.provider) {
+        const result = await this.web3authInstance.provider.request({
+          method: 'personal_sign',
+          params: [ethers.hexlify(ethers.toUtf8Bytes(message)), address]
+        });
+        if (!result) {
+          throw new Error('No signature returned from Web3Auth provider');
+        }
+        return result as string;
+      } else {
+        throw new Error('No Web3Auth provider available');
+      }
     }
 
-    mLog.info('Web3AuthProvider', 'Mobile detected - using polling-based signature detection');
+    // Mobile: use state-aware signing that survives app switches
+    mLog.info('Web3AuthProvider', 'Mobile - using state-aware signing');
 
-    // Mobile: initiate signing but don't await directly
-    // Instead, poll to detect when signature is available
-    let signaturePromise: Promise<string> | null = null;
+    const requestId = `sign_${Date.now()}_${Math.random().toString(36).substring(2)}`;
+    const requestData = {
+      id: requestId,
+      message,
+      address,
+      timestamp: Date.now(),
+      status: 'pending'
+    };
 
     try {
-      // Start the signature request (this will trigger MetaMask app switch)
+      // Store signing state before app switch
+      mLog.debug('Web3AuthProvider', 'Storing signing request state', { requestId });
+      localStorage.setItem('web3auth_signing_request', JSON.stringify(requestData));
+
+      // Initiate signing request (this will trigger app switch)
       mLog.info('Web3AuthProvider', 'Initiating signature request - MetaMask will open');
-      signaturePromise = signer.signMessage(message);
 
-      // Don't await immediately - MetaMask app switch will suspend this promise
-      // Instead, use a combination of polling and promise racing
-
-      let attempts = 0;
-      const maxAttempts = 60; // 2 minutes total
-      const pollInterval = 2000; // Check every 2 seconds
-
-      while (attempts < maxAttempts) {
-        try {
-          // Race between the original promise and a short timeout
-          const result = await Promise.race([
-            signaturePromise,
-            new Promise((_, reject) =>
-              setTimeout(() => reject(new Error('Poll timeout')), pollInterval)
-            )
-          ]);
-
-          // If we get here, signature was successful
-          mLog.info('Web3AuthProvider', 'Signature completed successfully on mobile');
-          return result as string;
-
-        } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
-
-          if (errorMessage === 'Poll timeout') {
-            // This is expected - continue polling
-            attempts++;
-            mLog.debug('Web3AuthProvider', `Polling for signature completion ${attempts}/${maxAttempts}`);
-
-            // Brief pause before next poll
-            await new Promise(resolve => setTimeout(resolve, 100));
-            continue;
-          } else {
-            // Real error from signMessage
-            throw error;
-          }
-        }
+      if (!this.web3authInstance?.provider) {
+        throw new Error('No Web3Auth provider available');
       }
 
-      // If we get here, we timed out
-      throw new Error('Signature request timed out after 2 minutes');
+      // Start the request but handle it in a mobile-safe way
+      const signingPromise = this.web3authInstance.provider.request({
+        method: 'personal_sign',
+        params: [ethers.hexlify(ethers.toUtf8Bytes(message)), address]
+      });
+
+      // Poll for completion instead of direct await
+      return await this.pollForSignatureCompletion(requestId, signingPromise);
 
     } catch (error) {
-      mLog.error('Web3AuthProvider', 'Mobile signature failed', {
-        error: error instanceof Error ? error.message : String(error)
-      });
+      // Clean up on error
+      localStorage.removeItem('web3auth_signing_request');
       throw error;
     }
+  }
+
+  /**
+   * Poll for signature completion after app switch
+   */
+  private async pollForSignatureCompletion(requestId: string, signingPromise: Promise<any>): Promise<string> {
+    let attempts = 0;
+    const maxAttempts = 60; // 2 minutes total
+    const pollInterval = 2000; // Check every 2 seconds
+
+    mLog.info('Web3AuthProvider', `Starting signature polling for request ${requestId}`);
+
+    while (attempts < maxAttempts) {
+      try {
+        // Race between the signing promise and a short timeout
+        const result = await Promise.race([
+          signingPromise,
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Poll timeout')), pollInterval)
+          )
+        ]);
+
+        // Success - signature completed
+        mLog.info('Web3AuthProvider', 'Signature completed successfully');
+        localStorage.removeItem('web3auth_signing_request');
+
+        if (!result) {
+          throw new Error('No signature returned from MetaMask');
+        }
+
+        return result as string;
+
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+
+        if (errorMessage === 'Poll timeout') {
+          // Expected timeout - continue polling
+          attempts++;
+          mLog.debug('Web3AuthProvider', `Polling attempt ${attempts}/${maxAttempts} - waiting for signature`);
+
+          // Check if user cancelled or request was abandoned
+          const storedRequest = localStorage.getItem('web3auth_signing_request');
+          if (!storedRequest) {
+            mLog.warn('Web3AuthProvider', 'Signing request was cleared - user may have cancelled');
+            throw new Error('Signing request was cancelled');
+          }
+
+          // Brief pause before next attempt
+          await new Promise(resolve => setTimeout(resolve, 100));
+          continue;
+
+        } else {
+          // Real error from signing
+          mLog.error('Web3AuthProvider', 'Signature request failed', { error: errorMessage });
+          localStorage.removeItem('web3auth_signing_request');
+          throw error;
+        }
+      }
+    }
+
+    // Timeout reached
+    localStorage.removeItem('web3auth_signing_request');
+    throw new Error('Signature request timed out after 2 minutes');
   }
 
   /**

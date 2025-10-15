@@ -163,13 +163,9 @@ export class Web3AuthProvider implements AuthProvider {
         authMethod: user.email ? 'social' : 'wallet'
       });
 
-      // Wrap Web3Auth provider with mobile-aware provider for app switch handling
-      const mobileAwareProvider = new MobileAwareProvider(provider);
-      mLog.info('Web3AuthProvider', 'Wrapped Web3Auth provider with mobile-aware provider');
-
-      // Create and cache the ethers provider (SINGLE INSTANCE) with mobile-aware provider
-      this.cachedEthersProvider = new ethers.BrowserProvider(mobileAwareProvider);
-      mLog.info('Web3AuthProvider', 'Created and cached single ethers provider instance with mobile app switch support');
+      // Create ethers provider directly for authentication - no mobile wrapper needed
+      this.cachedEthersProvider = new ethers.BrowserProvider(provider);
+      mLog.info('Web3AuthProvider', 'Created and cached single ethers provider instance');
 
       const signer = await this.cachedEthersProvider.getSigner();
       const address = await signer.getAddress();
@@ -338,8 +334,34 @@ export class Web3AuthProvider implements AuthProvider {
       throw new Error('No ethers provider available for signing');
     }
 
-    const signer = await this.cachedEthersProvider.getSigner();
+    // Get mobile-aware provider for signing operations
+    const signingProvider = await this.getMobileAwareProvider();
+    const signer = await signingProvider.getSigner();
     return await signer.signMessage(message);
+  }
+
+  /**
+   * Get mobile-aware provider for signing operations only
+   */
+  private async getMobileAwareProvider(): Promise<ethers.BrowserProvider> {
+    if (!this.web3authInstance?.provider) {
+      throw new Error('No Web3Auth provider available');
+    }
+
+    const deviceInfo = detectDevice();
+
+    // On mobile, wrap with mobile-aware provider for signing operations
+    if (deviceInfo.isMobile) {
+      mLog.info('Web3AuthProvider', 'Creating mobile-aware provider for signing operation');
+      const mobileAwareProvider = new MobileAwareProvider(this.web3authInstance.provider);
+      return new ethers.BrowserProvider(mobileAwareProvider);
+    } else {
+      // On desktop, use the cached provider directly
+      if (!this.cachedEthersProvider) {
+        throw new Error('No cached ethers provider available');
+      }
+      return this.cachedEthersProvider;
+    }
   }
 
   async getEthersProvider(): Promise<any> {

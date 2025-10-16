@@ -834,63 +834,58 @@ export class Web3Service {
       }
     }
 
-    // Step 2: Use reliable gas price sources instead of trusting unknown providers
+    // Step 2: Get gas price for funding calculation
+    // CRITICAL: Always use the wallet provider's gas price for funding calculation
+    // The provider (whether injected, embedded, or custom) knows what gas price it will actually use
     let gasPrice = txParams.gasPrice;
+    const isInjectedWallet = this.isInjectedWalletProvider();
+
     if (!gasPrice) {
-      // Use known-good gas prices for specific networks instead of unreliable provider estimates
-      if (this.config.chainId === 8453) {
-        // Base mainnet: Use reliable external API or hardcoded reasonable values
-        gasPrice = await this.getReliableBaseGasPrice();
-      } else if (this.config.chainId === 84532) {
-        // Base testnet: Use configured max gas price
-        gasPrice = this.getMaxGasPriceInWei();
-      } else {
-        // Other networks: try provider but analyze the units it's returning
+      // ALWAYS get gas price from the wallet's provider first
+      // This ensures funding matches what the wallet will actually use
+      console.log('💰 Getting gas price from wallet provider for accurate funding calculation');
+      try {
+        const feeData = await this.provider.getFeeData();
+        console.log('🔍 Wallet provider fee data:', {
+          gasPrice: feeData.gasPrice?.toString(),
+          maxFeePerGas: feeData.maxFeePerGas?.toString(),
+          maxPriorityFeePerGas: feeData.maxPriorityFeePerGas?.toString()
+        });
+
+        // Use maxFeePerGas for EIP-1559 networks, fallback to gasPrice for legacy
+        if (feeData.maxFeePerGas) {
+          gasPrice = feeData.maxFeePerGas;
+          console.log(`✅ Using wallet's maxFeePerGas for funding: ${formatWeiAsEthForLogging(gasPrice)} (${(Number(gasPrice) / 1e9).toFixed(6)} gwei)`);
+        } else if (feeData.gasPrice) {
+          gasPrice = feeData.gasPrice;
+          console.log(`✅ Using wallet's gasPrice for funding: ${formatWeiAsEthForLogging(gasPrice)} (${(Number(gasPrice) / 1e9).toFixed(6)} gwei)`);
+        } else {
+          throw new Error('Wallet provider returned no gas price data');
+        }
+      } catch (error) {
+        console.error('❌ Failed to get gas price from wallet provider:', error);
+        // Fallback to Base RPC if provider fails
+        console.log('⚠️ Falling back to Base RPC for gas price');
         try {
-          const feeData = await this.provider.getFeeData();
-          console.log('🔍 DEBUGGING: Raw fee data from provider:', {
-            gasPrice: feeData.gasPrice?.toString(),
-            maxFeePerGas: feeData.maxFeePerGas?.toString(),
-            maxPriorityFeePerGas: feeData.maxPriorityFeePerGas?.toString()
-          });
-
-          // Analyze if the provider might be returning gwei instead of wei
-          if (feeData.gasPrice) {
-            const gweiValue = Number(feeData.gasPrice) / 1000000000;
-            const weiValue = Number(feeData.gasPrice);
-            console.log('🔍 DEBUGGING: Provider gas price analysis:');
-            console.log(`  If this is wei: ${formatWeiAsEthForLogging(weiValue)} = ${formatGweiAsEthForLogging(gweiValue)}`);
-            console.log(`  If this is gwei: ${formatGweiAsEthForLogging(weiValue)} = ${formatWeiAsEthForLogging(weiValue * 1000000000)}`);
-
-            // If the "wei" value is suspiciously small (like 5-50), it's probably gwei
-            if (feeData.gasPrice < this.getMaxGasPriceInWei() && feeData.gasPrice > BigInt(0)) {
-              console.log('🚨 PROVIDER UNIT MISMATCH: Provider likely returning gwei, converting to wei');
-              gasPrice = feeData.gasPrice * BigInt(1000000000); // Convert gwei to wei
-            } else {
-              gasPrice = feeData.gasPrice;
-            }
-          } else {
-            gasPrice = BigInt(this.config.minGasWei);
-          }
-
-          // Final sanity check
-          const MAX_REASONABLE_GAS_PRICE = BigInt(50000000000); // 50 gwei max
-          if (gasPrice > MAX_REASONABLE_GAS_PRICE) {
-            console.log('🚨 GAS PRICE TOO HIGH: Capping at 50 gwei');
-            gasPrice = MAX_REASONABLE_GAS_PRICE;
-          }
-
-        } catch (error) {
-          gasPrice = BigInt(this.config.minGasWei);
+          gasPrice = await this.getReliableBaseGasPrice();
+          console.log(`✅ Using Base RPC gas price: ${formatWeiAsEthForLogging(gasPrice)} (${(Number(gasPrice) / 1e9).toFixed(6)} gwei)`);
+        } catch (rpcError) {
+          // Final fallback to conservative estimate
+          gasPrice = BigInt(10000000); // 0.01 gwei - conservative estimate for Base
+          console.log(`⚠️ Using conservative fallback gas price: ${formatWeiAsEthForLogging(gasPrice)} (${(Number(gasPrice) / 1e9).toFixed(6)} gwei)`);
         }
       }
 
-      console.log(`Using realistic gas price for network ${this.config.chainId}: ${formatWeiAsEthForLogging(gasPrice)}`);
       console.log(`Expected transaction cost for 100k gas: ${formatWeiAsEthForLogging(gasPrice * BigInt(100000))} ETH`);
     }
 
-    // Step 3: Calculate total gas needed (with 20% buffer for wallet funding)
-    const totalGasNeeded = (gasEstimate * gasPrice * BigInt(120)) / BigInt(100);
+    // Step 3: Calculate total gas needed with buffer from config
+    // Use the configured GAS_PRICE_BUFFER for funding calculation
+    const gasPriceBuffer = parseFloat(this.config.gasPriceBuffer);
+    const fundingBufferPercent = Math.round(gasPriceBuffer * 100);
+    const totalGasNeeded = (gasEstimate * gasPrice * BigInt(fundingBufferPercent)) / BigInt(100);
+
+    console.log(`💰 Using ${gasPriceBuffer}x (${fundingBufferPercent - 100}% extra) funding buffer from GAS_PRICE_BUFFER config`);
 
     const gasPriceEth = Number(gasPrice) / 1e18;
     const baseCostEth = Number(gasEstimate * gasPrice) / 1e18;
@@ -899,10 +894,11 @@ export class Web3Service {
     console.log('');
     console.log('📊 GAS CALCULATION SUMMARY:');
     console.log('─'.repeat(60));
+    console.log(`   Wallet Type: ${isInjectedWallet ? 'Injected (MetaMask/etc.)' : 'Custom Provider'}`);
     console.log(`   Gas Estimate: ${gasEstimate.toString()} gas`);
-    console.log(`   Gas Price: ${gasPriceEth.toExponential(4)} ETH`);
+    console.log(`   Gas Price: ${gasPriceEth.toExponential(4)} ETH (${(Number(gasPrice) / 1e9).toFixed(6)} gwei)`);
     console.log(`   Base Cost: ${baseCostEth.toExponential(4)} ETH`);
-    console.log(`   Funding Buffer: 1.2x (20% extra for wallet funding)`);
+    console.log(`   Funding Buffer: ${gasPriceBuffer}x from GAS_PRICE_BUFFER config`);
     console.log(`   Total Gas Needed: ${totalGasNeededEth.toExponential(4)} ETH`);
     console.log('─'.repeat(60));
     console.log('');
@@ -938,8 +934,7 @@ export class Web3Service {
       // Get the signer from the same ethers provider used for balance reading
       const signer = await this.provider.getSigner();
 
-      // Apply gas buffer for transaction execution (not estimation)
-      const gasPriceBuffer = parseFloat(this.config.gasPriceBuffer);
+      // Apply gas buffer for transaction execution (reuse gasPriceBuffer from earlier)
       const bufferedGasLimit = BigInt(Math.round(Number(gasEstimate) * gasPriceBuffer));
 
       const originalCostEth = Number(gasEstimate * gasPrice) / 1e18;
@@ -964,8 +959,7 @@ export class Web3Service {
         gasLimit: bufferedGasLimit
       };
 
-      // Detect if this is an injected wallet (MetaMask, Coinbase, etc.)
-      const isInjectedWallet = this.isInjectedWalletProvider();
+      // Use the isInjectedWallet flag we detected earlier for gas pricing decisions
 
       if (isInjectedWallet) {
         // For injected wallets (MetaMask, Coinbase, etc.), don't override gas parameters

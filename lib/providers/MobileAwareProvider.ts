@@ -230,11 +230,26 @@ export class MobileAwareProvider {
    * Execute mobile signing request simply without retries
    */
   private async executeMobileSigningRequestSimple(args: { method: string; params?: any[] }, requestId: string): Promise<any> {
-    mLog.info('MobileAwareProvider', `📱 MOBILE SIGNING [${requestId}]: Sending signature request to MetaMask`);
+    mLog.info('MobileAwareProvider', `📱 MOBILE SIGNING [${requestId}]: Preparing signature request for MetaMask`);
 
     try {
+      // Log the original request details
+      mLog.info('MobileAwareProvider', `🔍 ORIGINAL REQUEST [${requestId}]: Detailed request analysis`, {
+        method: args.method,
+        paramsCount: args.params?.length || 0,
+        params: args.params,
+        fullRequest: JSON.stringify(args)
+      });
+
       // Add expiry to signature requests to prevent stale cache issues
-      const requestWithExpiry = this.addExpiryToSignatureRequest(args);
+      const finalRequest = this.addExpiryToSignatureRequest(args);
+
+      mLog.info('MobileAwareProvider', `📤 FINAL REQUEST [${requestId}]: About to send to base provider`, {
+        method: finalRequest.method,
+        paramsCount: finalRequest.params?.length || 0,
+        hasExpiry: 'expiry' in finalRequest,
+        finalRequest: JSON.stringify(finalRequest)
+      });
 
       // Set up timeout
       const timeoutMs = 90000; // 90 seconds
@@ -245,9 +260,28 @@ export class MobileAwareProvider {
         }, timeoutMs);
       });
 
-      mLog.info('MobileAwareProvider', `⏳ WAITING FOR METAMASK [${requestId}]: Request sent, waiting for user response`);
+      mLog.info('MobileAwareProvider', `🚀 CALLING BASE PROVIDER [${requestId}]: this.baseProvider.request() starting now`);
 
-      const responsePromise = this.baseProvider.request(requestWithExpiry);
+      // Try to intercept any universal links or deep links
+      this.interceptUniversalLinks(requestId);
+
+      // Add immediate logging around the base provider call
+      const responsePromise = this.baseProvider.request(finalRequest).then((result: any) => {
+        mLog.info('MobileAwareProvider', `🎯 BASE PROVIDER RESPONSE [${requestId}]: Received response from base provider`, {
+          hasResult: !!result,
+          resultType: typeof result,
+          resultPreview: typeof result === 'string' ? result.substring(0, 20) + '...' : String(result)
+        });
+        return result;
+      }).catch((error: any) => {
+        mLog.error('MobileAwareProvider', `💥 BASE PROVIDER ERROR [${requestId}]: Base provider request failed`, {
+          error: error instanceof Error ? error.message : String(error),
+          errorType: error instanceof Error ? error.constructor.name : typeof error
+        });
+        throw error;
+      });
+
+      mLog.info('MobileAwareProvider', `⏳ WAITING FOR METAMASK [${requestId}]: Base provider call initiated, waiting for response`);
 
       // Race between the actual response and timeout
       const result = await Promise.race([responsePromise, timeoutPromise]);
@@ -267,7 +301,8 @@ export class MobileAwareProvider {
       mLog.error('MobileAwareProvider', `❌ SIGNING FAILED [${requestId}]: MetaMask request failed`, {
         requestId,
         error: errorMessage,
-        errorType: error instanceof Error ? error.constructor.name : typeof error
+        errorType: error instanceof Error ? error.constructor.name : typeof error,
+        stack: error instanceof Error ? error.stack : undefined
       });
 
       throw error;
@@ -345,6 +380,84 @@ export class MobileAwareProvider {
     return isMetaMask;
   }
 
+  /**
+   * Intercept universal links and deep links to see what's being called
+   */
+  private interceptUniversalLinks(requestId: string): void {
+    if (typeof window === 'undefined') return;
+
+    try {
+      // Monitor for window.open calls that might be universal links
+      const originalWindowOpen = window.open;
+      window.open = function(url?: string | URL, target?: string, features?: string) {
+        if (url) {
+          mLog.info('MobileAwareProvider', `🔗 UNIVERSAL LINK DETECTED [${requestId}]: window.open called`, {
+            requestId,
+            url: String(url),
+            target: target || 'default',
+            features: features || 'none',
+            isMetaMaskLink: String(url).includes('metamask') || String(url).includes('https://metamask.app.link')
+          });
+        }
+        return originalWindowOpen.call(this, url, target, features);
+      };
+
+      // Monitor for location changes that might be deep links
+      const originalLocation = window.location;
+      let locationChangeTimeout: NodeJS.Timeout;
+
+      const checkLocationChange = () => {
+        mLog.debug('MobileAwareProvider', `📍 LOCATION CHECK [${requestId}]: Current location`, {
+          requestId,
+          href: window.location.href,
+          protocol: window.location.protocol
+        });
+      };
+
+      locationChangeTimeout = setTimeout(() => {
+        checkLocationChange();
+        // Restore original window.open after a delay
+        window.open = originalWindowOpen;
+      }, 5000);
+
+      // Monitor for any iframe creation (sometimes used for deep links)
+      const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+          mutation.addedNodes.forEach((node) => {
+            if (node.nodeType === Node.ELEMENT_NODE) {
+              const element = node as Element;
+              if (element.tagName === 'IFRAME') {
+                const src = element.getAttribute('src');
+                if (src) {
+                  mLog.info('MobileAwareProvider', `📋 IFRAME CREATED [${requestId}]: Possible deep link iframe`, {
+                    requestId,
+                    src,
+                    isMetaMaskLink: src.includes('metamask')
+                  });
+                }
+              }
+            }
+          });
+        });
+      });
+
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true
+      });
+
+      // Clean up observer after 10 seconds
+      setTimeout(() => {
+        observer.disconnect();
+      }, 10000);
+
+    } catch (error) {
+      mLog.warn('MobileAwareProvider', `⚠️ UNIVERSAL LINK INTERCEPTION FAILED [${requestId}]`, {
+        requestId,
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  }
 
   /**
    * Check if this is a signing method

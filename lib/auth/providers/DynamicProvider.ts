@@ -5,6 +5,7 @@
 
 import { DynamicContextProvider, useDynamicContext } from '@dynamic-labs/sdk-react-core';
 import { EthereumWalletConnectors } from '@dynamic-labs/ethereum';
+import { getWeb3Provider, getSigner } from '@dynamic-labs/ethers-v6';
 import { AuthConfig } from '../types';
 import {
   UnifiedProvider,
@@ -61,7 +62,7 @@ export class DynamicProvider implements UnifiedProvider {
 
         if (result && result.address) {
           this.currentAddress = result.address;
-          this.setupEthersProvider(result.provider);
+          await this.setupEthersProvider(result.wallet);
 
           // Clear the stored result
           delete (window as any).dynamicOAuthResult;
@@ -91,7 +92,7 @@ export class DynamicProvider implements UnifiedProvider {
 
           if (result && result.address) {
             this.currentAddress = result.address;
-            this.setupEthersProvider(result.provider);
+            await this.setupEthersProvider(result.wallet);
 
             // Clear the stored result
             delete (window as any).dynamicOAuthResult;
@@ -123,7 +124,7 @@ export class DynamicProvider implements UnifiedProvider {
 
               if (result && result.address) {
                 this.currentAddress = result.address;
-                this.setupEthersProvider(result.provider);
+                await this.setupEthersProvider(result.wallet);
 
                 const connectionResult = {
                   success: true,
@@ -158,7 +159,7 @@ export class DynamicProvider implements UnifiedProvider {
 
                 if (result && result.address) {
                   this.currentAddress = result.address;
-                  this.setupEthersProvider(result.provider);
+                  await this.setupEthersProvider(result.wallet);
 
                   resolve({
                     success: true,
@@ -201,7 +202,7 @@ export class DynamicProvider implements UnifiedProvider {
 
         if (result && result.address) {
           this.currentAddress = result.address;
-          this.setupEthersProvider(result.provider);
+          await this.setupEthersProvider(result.wallet);
 
           const connectionResult = {
             success: true,
@@ -237,90 +238,34 @@ export class DynamicProvider implements UnifiedProvider {
     }
   }
 
-  private setupEthersProvider(provider: any) {
-    if (provider) {
+  private async setupEthersProvider(dynamicWallet: any) {
+    if (dynamicWallet) {
       try {
-        mLog.debug('DynamicProvider', 'Setting up ethers provider', {
-          providerType: typeof provider,
-          hasRequest: !!provider.request,
-          isProvider: !!provider._isProvider,
-          hasProvider: !!(provider as any).provider,
-          constructorName: provider.constructor?.name
+        mLog.debug('DynamicProvider', 'Setting up ethers provider using Dynamic toolkit', {
+          walletType: dynamicWallet.connector?.name,
+          hasWallet: !!dynamicWallet,
+          walletConnector: dynamicWallet.connector?.constructor?.name
         });
 
-        // Method 1: Check if it's already an EIP-1193 provider
-        if (provider.request && typeof provider.request === 'function') {
-          this.cachedEthersProvider = new ethers.BrowserProvider(provider);
-          mLog.info('DynamicProvider', '✅ Ethers provider created from direct EIP-1193 provider');
-          return;
-        }
+        // Use Dynamic's official ethers toolkit
+        const provider = await getWeb3Provider(dynamicWallet);
 
-        // Method 2: Check if it has a nested provider property (common with connectors)
-        if ((provider as any).provider && (provider as any).provider.request) {
-          this.cachedEthersProvider = new ethers.BrowserProvider((provider as any).provider);
-          mLog.info('DynamicProvider', '✅ Ethers provider created from nested provider');
-          return;
-        }
-
-        // Method 3: Check if it's already an ethers provider
-        if (provider._isProvider) {
+        if (provider) {
           this.cachedEthersProvider = provider;
-          mLog.info('DynamicProvider', '✅ Using existing ethers provider');
+          mLog.info('DynamicProvider', '✅ Ethers provider created using Dynamic toolkit');
           return;
+        } else {
+          mLog.warn('DynamicProvider', '❌ Dynamic toolkit returned null provider');
         }
-
-        // Method 4: Try to get wallet client asynchronously (for embedded wallets)
-        if (provider.getWalletClient && typeof provider.getWalletClient === 'function') {
-          mLog.debug('DynamicProvider', 'Attempting wallet client approach');
-
-          // Handle both sync and async getWalletClient
-          const walletClientResult = provider.getWalletClient();
-
-          if (walletClientResult && typeof walletClientResult.then === 'function') {
-            // It's a Promise
-            walletClientResult.then((walletClient: any) => {
-              if (walletClient && walletClient.transport && walletClient.transport.request) {
-                this.cachedEthersProvider = new ethers.BrowserProvider(walletClient.transport);
-                mLog.info('DynamicProvider', '✅ Ethers provider created from async wallet client');
-              } else {
-                mLog.warn('DynamicProvider', 'Wallet client missing transport or request method', {
-                  hasWalletClient: !!walletClient,
-                  hasTransport: !!(walletClient?.transport),
-                  hasRequest: !!(walletClient?.transport?.request)
-                });
-              }
-            }).catch((error: any) => {
-              mLog.warn('DynamicProvider', 'Failed to get async wallet client', {
-                error: error?.message || String(error)
-              });
-            });
-          } else if (walletClientResult && walletClientResult.transport) {
-            // It's a direct wallet client
-            this.cachedEthersProvider = new ethers.BrowserProvider(walletClientResult.transport);
-            mLog.info('DynamicProvider', '✅ Ethers provider created from sync wallet client');
-            return;
-          }
-        }
-
-        // If we haven't returned yet, log what we found but couldn't use
-        mLog.warn('DynamicProvider', '❌ Unable to create ethers provider from any method', {
-          providerType: typeof provider,
-          hasRequest: !!provider.request,
-          isProvider: !!provider._isProvider,
-          hasNestedProvider: !!(provider as any).provider,
-          hasGetWalletClient: !!(provider.getWalletClient),
-          constructorName: provider.constructor?.name,
-          availableKeys: Object.keys(provider || {})
-        });
 
       } catch (providerError) {
-        mLog.error('DynamicProvider', 'Exception while setting up ethers provider', {
+        mLog.error('DynamicProvider', 'Exception while setting up ethers provider with Dynamic toolkit', {
           error: providerError instanceof Error ? providerError.message : String(providerError),
           stack: providerError instanceof Error ? providerError.stack : undefined
         });
       }
     } else {
-      mLog.warn('DynamicProvider', 'No provider passed to setupEthersProvider');
+      mLog.warn('DynamicProvider', 'No Dynamic wallet passed to setupEthersProvider');
     }
   }
 
@@ -346,25 +291,29 @@ export class DynamicProvider implements UnifiedProvider {
   }
 
   async signMessage(message: string): Promise<string> {
-    if (!this.cachedEthersProvider) {
-      throw new Error('No ethers provider available for signing');
+    // Get the current Dynamic wallet from the window state
+    const dynamicWallet = typeof window !== 'undefined' && (window as any).dynamicWallet;
+
+    if (!dynamicWallet) {
+      throw new Error('No Dynamic wallet available for signing');
     }
 
     try {
-      const signer = await this.cachedEthersProvider.getSigner();
+      // Use Dynamic's official ethers toolkit to get signer
+      const signer = await getSigner(dynamicWallet);
 
-      mLog.info('DynamicProvider', 'Attempting to sign message with Dynamic embedded wallet', {
+      mLog.info('DynamicProvider', 'Attempting to sign message with Dynamic toolkit signer', {
         message: message.substring(0, 50) + '...',
         signerAddress: await signer.getAddress()
       });
 
       const signature = await signer.signMessage(message);
 
-      mLog.info('DynamicProvider', 'Message signed successfully with Dynamic embedded wallet');
+      mLog.info('DynamicProvider', 'Message signed successfully with Dynamic toolkit');
       return signature;
 
     } catch (signingError) {
-      mLog.error('DynamicProvider', 'Dynamic embedded wallet signing failed', {
+      mLog.error('DynamicProvider', 'Dynamic toolkit signing failed', {
         error: signingError instanceof Error ? signingError.message : String(signingError),
         errorCode: (signingError as any)?.code,
         stack: signingError instanceof Error ? signingError.stack : undefined
@@ -383,11 +332,15 @@ export class DynamicProvider implements UnifiedProvider {
   }
 
   async signTransaction(params: TransactionRequest): Promise<string> {
-    if (!this.cachedEthersProvider) {
-      throw new Error('No ethers provider available for signing');
+    // Get the current Dynamic wallet from the window state
+    const dynamicWallet = typeof window !== 'undefined' && (window as any).dynamicWallet;
+
+    if (!dynamicWallet) {
+      throw new Error('No Dynamic wallet available for signing');
     }
 
-    const signer = await this.cachedEthersProvider.getSigner();
+    // Use Dynamic's official ethers toolkit to get signer
+    const signer = await getSigner(dynamicWallet);
 
     const tx = {
       to: params.to,
@@ -454,8 +407,8 @@ export class DynamicProvider implements UnifiedProvider {
 
         // Update internal state if we found a valid OAuth result
         this.currentAddress = oAuthResult.address;
-        if (oAuthResult.provider) {
-          this.setupEthersProvider(oAuthResult.provider);
+        if (oAuthResult.wallet) {
+          this.setupEthersProvider(oAuthResult.wallet);
         }
         return true;
       }
@@ -476,6 +429,13 @@ export class DynamicProvider implements UnifiedProvider {
         if (dynamicUser.walletAddress && !this.currentAddress) {
           this.currentAddress = dynamicUser.walletAddress;
         }
+
+        // Also check if we can get provider from the dynamic wallet
+        const dynamicWallet = (window as any).dynamicWallet;
+        if (dynamicWallet && !this.cachedEthersProvider) {
+          this.setupEthersProvider(dynamicWallet);
+        }
+
         return true;
       }
     }

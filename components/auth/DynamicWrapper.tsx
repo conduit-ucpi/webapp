@@ -59,6 +59,7 @@ function DynamicBridge() {
       activeLoginPromise.current.resolve({
         address: wallet.address,
         provider: provider,
+        wallet: wallet,
         user: finalUser
       });
 
@@ -98,6 +99,7 @@ function DynamicBridge() {
       activeLoginPromise.current.resolve({
         address: newPrimaryWallet.address,
         provider: provider,
+        wallet: newPrimaryWallet,
         user: finalUser
       });
 
@@ -153,6 +155,7 @@ function DynamicBridge() {
           activeLoginPromise.current.resolve({
             address: primaryWallet.address,
             provider: provider,
+            wallet: primaryWallet,
             user: finalUser
           });
 
@@ -204,6 +207,7 @@ function DynamicBridge() {
         (window as any).dynamicOAuthResult = {
           address: primaryWallet.address,
           provider: primaryWallet.connector,
+          wallet: primaryWallet,
           user: user || { email: null, walletAddress: primaryWallet.address }
         };
 
@@ -225,6 +229,7 @@ function DynamicBridge() {
             activeLoginPromise.current.resolve({
               address: primaryWallet.address,
               provider: primaryWallet.connector,
+              wallet: primaryWallet,
               user: user || { email: null, walletAddress: primaryWallet.address }
             });
             activeLoginPromise.current = null;
@@ -272,6 +277,7 @@ function DynamicBridge() {
           const result = {
             address: primaryWallet.address,
             provider: provider,
+            wallet: primaryWallet,
             user: finalUser
           };
 
@@ -348,6 +354,9 @@ function DynamicBridge() {
       };
 
       (window as any).dynamicUser = user;
+
+      // Store the primary wallet for the DynamicProvider to use with ethers toolkit
+      (window as any).dynamicWallet = primaryWallet;
 
       // Expose getAuthToken function from Dynamic
       if (getAuthToken) {

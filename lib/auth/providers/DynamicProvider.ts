@@ -247,19 +247,64 @@ export class DynamicProvider implements UnifiedProvider {
           walletConnector: dynamicWallet.connector?.constructor?.name
         });
 
-        // Use Dynamic's official ethers toolkit
-        const provider = await getWeb3Provider(dynamicWallet);
-
-        if (provider) {
-          this.cachedEthersProvider = provider;
-          mLog.info('DynamicProvider', '✅ Ethers provider created using Dynamic toolkit');
-          return;
-        } else {
-          mLog.warn('DynamicProvider', '❌ Dynamic toolkit returned null provider');
+        // Try Dynamic's official ethers toolkit first
+        try {
+          const provider = await getWeb3Provider(dynamicWallet);
+          if (provider) {
+            this.cachedEthersProvider = provider;
+            mLog.info('DynamicProvider', '✅ Ethers provider created using Dynamic toolkit');
+            return;
+          } else {
+            mLog.warn('DynamicProvider', 'Dynamic toolkit returned null provider, trying fallback');
+          }
+        } catch (toolkitError) {
+          mLog.warn('DynamicProvider', 'Dynamic toolkit failed, trying manual fallback', {
+            error: toolkitError instanceof Error ? toolkitError.message : String(toolkitError)
+          });
         }
 
+        // Fallback: Manual provider extraction for external wallets (MetaMask, etc)
+        mLog.info('DynamicProvider', 'Attempting manual provider extraction fallback');
+
+        // Check if the wallet has a connector with a provider
+        if (dynamicWallet.connector) {
+          const connector = dynamicWallet.connector;
+
+          // Method 1: Direct provider property
+          if (connector.provider && connector.provider.request) {
+            this.cachedEthersProvider = new ethers.BrowserProvider(connector.provider);
+            mLog.info('DynamicProvider', '✅ Ethers provider created from connector.provider (fallback)');
+            return;
+          }
+
+          // Method 2: EIP-1193 provider on connector
+          if (connector.request && typeof connector.request === 'function') {
+            this.cachedEthersProvider = new ethers.BrowserProvider(connector);
+            mLog.info('DynamicProvider', '✅ Ethers provider created from connector directly (fallback)');
+            return;
+          }
+
+          // Method 3: Get wallet client approach
+          if (connector.getWalletClient && typeof connector.getWalletClient === 'function') {
+            try {
+              const walletClient = await connector.getWalletClient();
+              if (walletClient && walletClient.transport && walletClient.transport.request) {
+                this.cachedEthersProvider = new ethers.BrowserProvider(walletClient.transport);
+                mLog.info('DynamicProvider', '✅ Ethers provider created from wallet client (fallback)');
+                return;
+              }
+            } catch (wcError) {
+              mLog.debug('DynamicProvider', 'Wallet client approach failed', {
+                error: wcError instanceof Error ? wcError.message : String(wcError)
+              });
+            }
+          }
+        }
+
+        mLog.error('DynamicProvider', '❌ Failed to create ethers provider with all methods');
+
       } catch (providerError) {
-        mLog.error('DynamicProvider', 'Exception while setting up ethers provider with Dynamic toolkit', {
+        mLog.error('DynamicProvider', 'Exception while setting up ethers provider', {
           error: providerError instanceof Error ? providerError.message : String(providerError),
           stack: providerError instanceof Error ? providerError.stack : undefined
         });
@@ -309,21 +354,60 @@ export class DynamicProvider implements UnifiedProvider {
     }
 
     try {
-      // Use Dynamic's official ethers toolkit to get signer
-      const signer = await getSigner(dynamicWallet);
+      // Try Dynamic's official ethers toolkit first
+      try {
+        const signer = await getSigner(dynamicWallet);
+        mLog.info('DynamicProvider', 'Attempting to sign message with Dynamic toolkit signer', {
+          message: message.substring(0, 50) + '...',
+          signerAddress: await signer.getAddress()
+        });
+        const signature = await signer.signMessage(message);
+        mLog.info('DynamicProvider', 'Message signed successfully with Dynamic toolkit');
+        return signature;
+      } catch (toolkitError) {
+        mLog.warn('DynamicProvider', 'Dynamic toolkit signing failed, trying fallback', {
+          error: toolkitError instanceof Error ? toolkitError.message : String(toolkitError)
+        });
 
-      mLog.info('DynamicProvider', 'Attempting to sign message with Dynamic toolkit signer', {
-        message: message.substring(0, 50) + '...',
-        signerAddress: await signer.getAddress()
-      });
+        // Check for specific errors that shouldn't use fallback
+        const errorMessage = toolkitError instanceof Error ? toolkitError.message : String(toolkitError);
+        if (errorMessage.includes('Social login users') || errorMessage.includes('passkey')) {
+          throw toolkitError;
+        }
+      }
 
-      const signature = await signer.signMessage(message);
+      // Fallback: Use cached provider or manual signing
+      if (this.cachedEthersProvider) {
+        mLog.info('DynamicProvider', 'Using cached ethers provider for signing (fallback)');
+        const signer = await this.cachedEthersProvider.getSigner();
+        const signature = await signer.signMessage(message);
+        mLog.info('DynamicProvider', 'Message signed successfully with cached provider');
+        return signature;
+      }
 
-      mLog.info('DynamicProvider', 'Message signed successfully with Dynamic toolkit');
-      return signature;
+      // Last resort: Try to get provider from connector directly
+      if (dynamicWallet.connector) {
+        mLog.info('DynamicProvider', 'Attempting direct connector signing (last resort)');
+        let provider: ethers.BrowserProvider | null = null;
+
+        if (dynamicWallet.connector.provider && dynamicWallet.connector.provider.request) {
+          provider = new ethers.BrowserProvider(dynamicWallet.connector.provider);
+        } else if (dynamicWallet.connector.request) {
+          provider = new ethers.BrowserProvider(dynamicWallet.connector);
+        }
+
+        if (provider) {
+          const signer = await provider.getSigner();
+          const signature = await signer.signMessage(message);
+          mLog.info('DynamicProvider', 'Message signed successfully with direct connector');
+          return signature;
+        }
+      }
+
+      throw new Error('Unable to sign message: No working provider available');
 
     } catch (signingError) {
-      mLog.error('DynamicProvider', 'Dynamic toolkit signing failed', {
+      mLog.error('DynamicProvider', 'Message signing failed', {
         error: signingError instanceof Error ? signingError.message : String(signingError),
         errorCode: (signingError as any)?.code,
         stack: signingError instanceof Error ? signingError.stack : undefined
@@ -349,8 +433,37 @@ export class DynamicProvider implements UnifiedProvider {
       throw new Error('No Dynamic wallet available for signing');
     }
 
-    // Use Dynamic's official ethers toolkit to get signer
-    const signer = await getSigner(dynamicWallet);
+    let signer: ethers.Signer;
+
+    // Try Dynamic's official ethers toolkit first
+    try {
+      signer = await getSigner(dynamicWallet);
+    } catch (toolkitError) {
+      mLog.warn('DynamicProvider', 'Dynamic toolkit failed for transaction signing, using fallback', {
+        error: toolkitError instanceof Error ? toolkitError.message : String(toolkitError)
+      });
+
+      // Fallback: Use cached provider or create from connector
+      if (this.cachedEthersProvider) {
+        signer = await this.cachedEthersProvider.getSigner();
+      } else if (dynamicWallet.connector) {
+        let provider: ethers.BrowserProvider | null = null;
+
+        if (dynamicWallet.connector.provider && dynamicWallet.connector.provider.request) {
+          provider = new ethers.BrowserProvider(dynamicWallet.connector.provider);
+        } else if (dynamicWallet.connector.request) {
+          provider = new ethers.BrowserProvider(dynamicWallet.connector);
+        }
+
+        if (provider) {
+          signer = await provider.getSigner();
+        } else {
+          throw new Error('Unable to create provider for transaction signing');
+        }
+      } else {
+        throw new Error('No provider available for transaction signing');
+      }
+    }
 
     const tx = {
       to: params.to,

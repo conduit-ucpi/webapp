@@ -275,25 +275,37 @@ export class Web3Service {
         chainId: this.config.chainId
       };
 
-      // Check if we should use EIP-1559 format
-      try {
-        const providerFeeData = await this.provider.getFeeData();
-        if (providerFeeData.maxFeePerGas && providerFeeData.maxPriorityFeePerGas) {
-          // Use EIP-1559 transaction format with our reliable fee data
-          const reliableFees = await this.getReliableEIP1559FeeData();
-          tx.maxFeePerGas = reliableFees.maxFeePerGas;
-          tx.maxPriorityFeePerGas = reliableFees.maxPriorityFeePerGas;
-          console.log('Using EIP-1559 transaction format with reliable Base RPC fees');
-          console.log(`Final EIP-1559 fees: maxFee=${formatWeiAsEthForLogging(tx.maxFeePerGas)}, priority=${formatWeiAsEthForLogging(tx.maxPriorityFeePerGas)}`);
-        } else {
-          // Use legacy transaction format
+      // Detect if this is an injected wallet (MetaMask, Coinbase, etc.)
+      const isInjectedWallet = this.isInjectedWalletProvider();
+
+      if (isInjectedWallet) {
+        // For injected wallets, don't override gas parameters
+        console.log('🦊 Using injected wallet for signing - letting wallet handle gas pricing');
+        // Don't set gasPrice, maxFeePerGas, or maxPriorityFeePerGas - let the wallet decide
+      } else {
+        // For other providers, use our custom gas pricing
+        console.log('🔧 Using custom provider for signing - applying our gas pricing logic');
+
+        // Check if we should use EIP-1559 format
+        try {
+          const providerFeeData = await this.provider.getFeeData();
+          if (providerFeeData.maxFeePerGas && providerFeeData.maxPriorityFeePerGas) {
+            // Use EIP-1559 transaction format with our reliable fee data
+            const reliableFees = await this.getReliableEIP1559FeeData();
+            tx.maxFeePerGas = reliableFees.maxFeePerGas;
+            tx.maxPriorityFeePerGas = reliableFees.maxPriorityFeePerGas;
+            console.log('Using EIP-1559 transaction format with reliable Base RPC fees');
+            console.log(`Final EIP-1559 fees: maxFee=${formatWeiAsEthForLogging(tx.maxFeePerGas)}, priority=${formatWeiAsEthForLogging(tx.maxPriorityFeePerGas)}`);
+          } else {
+            // Use legacy transaction format
+            tx.gasPrice = gasPrice;
+            console.log('Using legacy transaction format for signing');
+          }
+        } catch (error) {
+          // Fallback to legacy format
           tx.gasPrice = gasPrice;
-          console.log('Using legacy transaction format for signing');
+          console.log('Fallback to legacy transaction format for signing');
         }
-      } catch (error) {
-        // Fallback to legacy format
-        tx.gasPrice = gasPrice;
-        console.log('Fallback to legacy transaction format for signing');
       }
 
       console.log('[Web3Service.signTransaction] Signing transaction via unified approach...');
@@ -695,6 +707,44 @@ export class Web3Service {
   }
 
   /**
+   * Check if the current provider is an injected wallet (MetaMask, Coinbase Wallet, etc.)
+   * Injected wallets should handle their own gas pricing
+   */
+  private isInjectedWalletProvider(): boolean {
+    if (!this.provider) return false;
+
+    try {
+      // Check if the provider has an underlying EIP-1193 provider (injected wallet)
+      // @ts-ignore - accessing internal property
+      const internalProvider = this.provider._getConnection?.()?.provider || this.provider.provider;
+
+      // Check for common injected wallet signatures
+      if (internalProvider) {
+        // @ts-ignore
+        const isMetaMask = internalProvider.isMetaMask === true;
+        // @ts-ignore
+        const isCoinbase = internalProvider.isCoinbaseWallet === true;
+        // @ts-ignore
+        const isInjected = internalProvider.isInjected === true;
+        // @ts-ignore
+        const hasEthereum = typeof window !== 'undefined' && window.ethereum === internalProvider;
+
+        const isInjectedWallet = isMetaMask || isCoinbase || isInjected || hasEthereum;
+
+        if (isInjectedWallet) {
+          console.log('[Web3Service] Detected injected wallet provider (MetaMask/Coinbase/etc.) - will let wallet handle gas pricing');
+        }
+
+        return isInjectedWallet;
+      }
+    } catch (error) {
+      console.warn('[Web3Service] Error detecting injected wallet:', error);
+    }
+
+    return false;
+  }
+
+  /**
    * Fund wallet with gas and send transaction
    * FIXED: Now uses the same unified ethers provider approach as balance reading
    * 1. Estimates gas for the transaction using ethers provider
@@ -914,75 +964,102 @@ export class Web3Service {
         gasLimit: bufferedGasLimit
       };
 
-      // Check if we should use EIP-1559 format
-      try {
-        const providerFeeData = await this.provider.getFeeData();
-        if (providerFeeData.maxFeePerGas && providerFeeData.maxPriorityFeePerGas) {
-          // Use EIP-1559 transaction format with our reliable fee data
-          const reliableFees = await this.getReliableEIP1559FeeData();
-          tx.maxFeePerGas = reliableFees.maxFeePerGas;
-          tx.maxPriorityFeePerGas = reliableFees.maxPriorityFeePerGas;
-          console.log('Using EIP-1559 transaction format with reliable Base RPC fees');
-          console.log(`Final EIP-1559 fees: maxFee=${formatWeiAsEthForLogging(tx.maxFeePerGas)}, priority=${formatWeiAsEthForLogging(tx.maxPriorityFeePerGas)}`);
-        } else {
-          // Use legacy transaction format
+      // Detect if this is an injected wallet (MetaMask, Coinbase, etc.)
+      const isInjectedWallet = this.isInjectedWalletProvider();
+
+      if (isInjectedWallet) {
+        // For injected wallets (MetaMask, Coinbase, etc.), don't override gas parameters
+        // Let the wallet handle gas pricing to avoid rejection
+        console.log('🦊 Using injected wallet - letting wallet handle gas pricing automatically');
+        console.log('📝 Transaction will be sent without gas price overrides');
+        // Don't set gasPrice, maxFeePerGas, or maxPriorityFeePerGas - let the wallet decide
+      } else {
+        // For other providers (Web3Auth, etc.), use our custom gas pricing
+        console.log('🔧 Using custom provider - applying our gas pricing logic');
+
+        // Check if we should use EIP-1559 format
+        try {
+          const providerFeeData = await this.provider.getFeeData();
+          if (providerFeeData.maxFeePerGas && providerFeeData.maxPriorityFeePerGas) {
+            // Use EIP-1559 transaction format with our reliable fee data
+            const reliableFees = await this.getReliableEIP1559FeeData();
+            tx.maxFeePerGas = reliableFees.maxFeePerGas;
+            tx.maxPriorityFeePerGas = reliableFees.maxPriorityFeePerGas;
+            console.log('Using EIP-1559 transaction format with reliable Base RPC fees');
+            console.log(`Final EIP-1559 fees: maxFee=${formatWeiAsEthForLogging(tx.maxFeePerGas)}, priority=${formatWeiAsEthForLogging(tx.maxPriorityFeePerGas)}`);
+          } else {
+            // Use legacy transaction format
+            tx.gasPrice = gasPrice;
+            console.log('Using legacy transaction format');
+          }
+        } catch (error) {
+          // Fallback to legacy format
           tx.gasPrice = gasPrice;
-          console.log('Using legacy transaction format');
+          console.log('Fallback to legacy transaction format');
         }
-      } catch (error) {
-        // Fallback to legacy format
-        tx.gasPrice = gasPrice;
-        console.log('Fallback to legacy transaction format');
       }
 
       // Validate transaction cost against MAX_GAS_COST_GWEI limit using buffered gas limit
-      let transactionCostWei: bigint;
-      if (tx.maxFeePerGas) {
-        // EIP-1559 transaction
-        transactionCostWei = tx.maxFeePerGas * bufferedGasLimit;
-      } else if (tx.gasPrice) {
-        // Legacy transaction
-        transactionCostWei = tx.gasPrice * bufferedGasLimit;
-      } else {
-        throw new Error('No gas price set for transaction');
-      }
-
-      const maxAllowedCostWei = this.getMaxGasCostInWei();
-      const gasPriceUsed = tx.maxFeePerGas || tx.gasPrice || BigInt(0);
-
-      // Convert to ETH for display
-      const transactionCostEth = Number(transactionCostWei) / 1e18;
-      const maxAllowedCostEth = Number(maxAllowedCostWei) / 1e18;
-      const gasPriceUsedEth = Number(gasPriceUsed) / 1e18;
-
-      console.log('');
-      console.log('✅ FINAL TRANSACTION COST VALIDATION:');
-      console.log('─'.repeat(60));
-      console.log(`   Buffered Gas Limit: ${bufferedGasLimit.toString()} gas`);
-      console.log(`   Gas Price Used: ${gasPriceUsedEth.toExponential(4)} ETH`);
-      console.log(`   Transaction Cost: ${transactionCostEth.toExponential(4)} ETH`);
-      console.log(`   MAX_GAS_COST_GWEI Limit: ${maxAllowedCostEth.toExponential(4)} ETH`);
-      console.log(`   Headroom: ${((maxAllowedCostEth / transactionCostEth) * 100).toFixed(1)}% available`);
-      console.log('─'.repeat(60));
-
-      if (transactionCostWei > maxAllowedCostWei) {
+      // Skip validation for injected wallets since they handle their own gas pricing
+      if (isInjectedWallet) {
         console.log('');
-        console.log('❌ VALIDATION FAILED:');
-        console.log(`   Transaction cost ${transactionCostEth.toExponential(4)} ETH exceeds limit ${maxAllowedCostEth.toExponential(4)} ETH`);
+        console.log('✅ TRANSACTION VALIDATION (INJECTED WALLET):');
+        console.log('─'.repeat(60));
+        console.log(`   Buffered Gas Limit: ${bufferedGasLimit.toString()} gas`);
+        console.log(`   Gas Price: Managed by wallet (not validated)`);
+        console.log(`   Status: ✅ SKIPPED - Wallet handles gas pricing`);
         console.log('='.repeat(80));
         console.log('');
+      } else {
+        // Validate for non-injected wallets
+        let transactionCostWei: bigint;
+        if (tx.maxFeePerGas) {
+          // EIP-1559 transaction
+          transactionCostWei = tx.maxFeePerGas * bufferedGasLimit;
+        } else if (tx.gasPrice) {
+          // Legacy transaction
+          transactionCostWei = tx.gasPrice * bufferedGasLimit;
+        } else {
+          throw new Error('No gas price set for transaction');
+        }
 
-        throw new Error(
-          `Transaction cost exceeds configured maximum. ` +
-          `Estimated cost: ${transactionCostEth.toExponential(4)} ETH (${bufferedGasLimit.toString()} gas × ${gasPriceUsedEth.toExponential(4)} ETH/gas), ` +
-          `Maximum allowed: ${maxAllowedCostEth.toExponential(4)} ETH. ` +
-          `Please contact support to adjust gas cost limits.`
-        );
+        const maxAllowedCostWei = this.getMaxGasCostInWei();
+        const gasPriceUsed = tx.maxFeePerGas || tx.gasPrice || BigInt(0);
+
+        // Convert to ETH for display
+        const transactionCostEth = Number(transactionCostWei) / 1e18;
+        const maxAllowedCostEth = Number(maxAllowedCostWei) / 1e18;
+        const gasPriceUsedEth = Number(gasPriceUsed) / 1e18;
+
+        console.log('');
+        console.log('✅ FINAL TRANSACTION COST VALIDATION:');
+        console.log('─'.repeat(60));
+        console.log(`   Buffered Gas Limit: ${bufferedGasLimit.toString()} gas`);
+        console.log(`   Gas Price Used: ${gasPriceUsedEth.toExponential(4)} ETH`);
+        console.log(`   Transaction Cost: ${transactionCostEth.toExponential(4)} ETH`);
+        console.log(`   MAX_GAS_COST_GWEI Limit: ${maxAllowedCostEth.toExponential(4)} ETH`);
+        console.log(`   Headroom: ${((maxAllowedCostEth / transactionCostEth) * 100).toFixed(1)}% available`);
+        console.log('─'.repeat(60));
+
+        if (transactionCostWei > maxAllowedCostWei) {
+          console.log('');
+          console.log('❌ VALIDATION FAILED:');
+          console.log(`   Transaction cost ${transactionCostEth.toExponential(4)} ETH exceeds limit ${maxAllowedCostEth.toExponential(4)} ETH`);
+          console.log('='.repeat(80));
+          console.log('');
+
+          throw new Error(
+            `Transaction cost exceeds configured maximum. ` +
+            `Estimated cost: ${transactionCostEth.toExponential(4)} ETH (${bufferedGasLimit.toString()} gas × ${gasPriceUsedEth.toExponential(4)} ETH/gas), ` +
+            `Maximum allowed: ${maxAllowedCostEth.toExponential(4)} ETH. ` +
+            `Please contact support to adjust gas cost limits.`
+          );
+        }
+
+        console.log(`   Status: ✅ PASSED - Transaction within limits`);
+        console.log('='.repeat(80));
+        console.log('');
       }
-
-      console.log(`   Status: ✅ PASSED - Transaction within limits`);
-      console.log('='.repeat(80));
-      console.log('');
 
       // Send transaction directly using signer.sendTransaction
       // This works with all wallet types (MetaMask, Dynamic, WalletConnect, etc.)

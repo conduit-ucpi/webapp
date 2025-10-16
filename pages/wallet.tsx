@@ -298,20 +298,49 @@ export default function Wallet() {
 
   // Check if user is using Dynamic embedded wallet
   const isDynamicEmbeddedWallet = () => {
-    if (!user || user.authProvider !== 'dynamic') return false;
+    console.log('🔧 Dynamic wallet detection check:', {
+      hasUser: !!user,
+      authProvider: user?.authProvider,
+      hasDynamicContext: !!dynamicContext,
+      primaryWallet: dynamicContext?.primaryWallet,
+      allDynamicContextKeys: dynamicContext ? Object.keys(dynamicContext) : null
+    });
+
+    if (!user || user.authProvider !== 'dynamic') {
+      console.log('🔧 Not Dynamic user:', {
+        hasUser: !!user,
+        authProvider: user?.authProvider
+      });
+      return false;
+    }
 
     // Check if they're using an embedded wallet by looking at the Dynamic context
     const primaryWallet = dynamicContext?.primaryWallet;
-    if (!primaryWallet) return false;
+    if (!primaryWallet) {
+      console.log('🔧 No primary wallet found in Dynamic context');
+      return false;
+    }
+
+    // Log all wallet properties to see what we're working with
+    const connector = primaryWallet.connector;
+    console.log('🔧 Dynamic wallet properties:', {
+      walletKey: primaryWallet.key,
+      walletAddress: primaryWallet.address,
+      connectorName: connector?.name,
+      connectorKey: connector?.key,
+      connectorType: typeof connector,
+      connectorConstructorName: connector?.constructor?.name,
+      allWalletKeys: Object.keys(primaryWallet),
+      allConnectorKeys: connector ? Object.keys(connector) : null
+    });
 
     // Dynamic embedded wallets typically have a specific connector type
-    const connector = primaryWallet.connector;
     const isEmbeddedWallet = connector?.name?.toLowerCase().includes('embedded') ||
                            connector?.key?.toLowerCase().includes('embedded') ||
-                           primaryWallet.key?.toLowerCase().includes('embedded');
+                           primaryWallet.key?.toLowerCase().includes('embedded') ||
+                           primaryWallet.key?.toLowerCase().includes('dynamic');
 
-    console.log('Dynamic wallet check:', {
-      authProvider: user.authProvider,
+    console.log('🔧 Embedded wallet detection result:', {
       connectorName: connector?.name,
       connectorKey: connector?.key,
       walletKey: primaryWallet.key,

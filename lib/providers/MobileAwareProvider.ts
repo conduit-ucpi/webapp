@@ -137,8 +137,8 @@ export class MobileAwareProvider {
       mLog.info('MobileAwareProvider', `🔍 NON-METAMASK BACKEND AUTH [${requestId}]: Skipping MetaMask-specific cache busting`);
     }
 
-    // Execute the signing request with cache validation
-    return await this.executeMobileSigningRequest(args, requestId);
+    // Execute the signing request directly (no retries)
+    return await this.executeMobileSigningRequestSimple(args, requestId);
   }
 
   /**
@@ -148,14 +148,21 @@ export class MobileAwareProvider {
     mLog.info('MobileAwareProvider', `🧹 AGGRESSIVE CACHE BUSTING [${requestId}]: Starting comprehensive MetaMask cache clearing`);
 
     try {
-      // Step 1: Multiple rapid-fire requests to flush any pending state
-      const flushMethods = ['eth_accounts', 'eth_chainId', 'net_version', 'eth_blockNumber'];
+      // Step 1: Multiple rapid-fire requests to flush any pending state with timeout
+      const flushMethods = ['eth_accounts', 'eth_chainId', 'net_version'];
 
       for (const method of flushMethods) {
         try {
           mLog.debug('MobileAwareProvider', `🔄 CACHE FLUSH [${requestId}]: Calling ${method}`);
-          await this.baseProvider.request({ method, params: [] });
-          await new Promise(resolve => setTimeout(resolve, 50)); // Small delay between calls
+
+          // Add timeout to prevent hanging
+          const flushPromise = this.baseProvider.request({ method, params: [] });
+          const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => reject(new Error('Cache flush timeout')), 2000);
+          });
+
+          await Promise.race([flushPromise, timeoutPromise]);
+          await new Promise(resolve => setTimeout(resolve, 100)); // Small delay between calls
         } catch (flushError) {
           mLog.debug('MobileAwareProvider', `⚠️ CACHE FLUSH [${requestId}]: ${method} failed (expected)`, {
             error: flushError instanceof Error ? flushError.message : String(flushError)
@@ -163,13 +170,19 @@ export class MobileAwareProvider {
         }
       }
 
-      // Step 2: Try to trigger a wallet_requestPermissions call to reset state
+      // Step 2: Try to trigger a wallet_requestPermissions call to reset state (with timeout)
       try {
         mLog.debug('MobileAwareProvider', `🔐 PERMISSION RESET [${requestId}]: Attempting wallet_requestPermissions`);
-        await this.baseProvider.request({
+
+        const permissionPromise = this.baseProvider.request({
           method: 'wallet_requestPermissions',
           params: [{ eth_accounts: {} }]
         });
+        const permissionTimeout = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Permission reset timeout')), 3000);
+        });
+
+        await Promise.race([permissionPromise, permissionTimeout]);
       } catch (permError) {
         // This is expected to fail on most wallets, but may clear some internal state
         mLog.debug('MobileAwareProvider', `⚠️ PERMISSION RESET [${requestId}]: Failed (expected)`, {
@@ -178,6 +191,7 @@ export class MobileAwareProvider {
       }
 
       // Step 3: Force a small delay to allow MetaMask internal state to settle
+      mLog.debug('MobileAwareProvider', `⏳ SETTLING DELAY [${requestId}]: Waiting for MetaMask state to settle`);
       await new Promise(resolve => setTimeout(resolve, 200));
 
       // Step 4: Clear any browser-side state that might affect MetaMask
@@ -215,135 +229,51 @@ export class MobileAwareProvider {
   }
 
   /**
-   * Execute mobile signing request with stale cache detection and retry logic
+   * Execute mobile signing request simply without retries
    */
-  private async executeMobileSigningRequest(args: { method: string; params?: any[] }, requestId: string): Promise<any> {
-    mLog.info('MobileAwareProvider', `📱 MOBILE SIGNING [${requestId}]: Executing signing request with stale cache detection`);
+  private async executeMobileSigningRequestSimple(args: { method: string; params?: any[] }, requestId: string): Promise<any> {
+    mLog.info('MobileAwareProvider', `📱 MOBILE SIGNING [${requestId}]: Sending signature request to MetaMask`);
 
-    const maxRetries = 2;
-    let attempt = 0;
+    try {
+      // Add expiry to signature requests to prevent stale cache issues
+      const requestWithExpiry = this.addExpiryToSignatureRequest(args);
 
-    while (attempt <= maxRetries) {
-      attempt++;
+      // Set up timeout
+      const timeoutMs = 90000; // 90 seconds
 
-      try {
-        mLog.info('MobileAwareProvider', `⏳ SIGNING ATTEMPT ${attempt}/${maxRetries + 1} [${requestId}]: Sending request to MetaMask`);
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => {
+          reject(new Error(`MetaMask signature request timed out after ${timeoutMs/1000} seconds`));
+        }, timeoutMs);
+      });
 
-        // Extract expected message for validation
-        const expectedMessage = this.extractExpectedMessage(args);
+      mLog.info('MobileAwareProvider', `⏳ WAITING FOR METAMASK [${requestId}]: Request sent, waiting for user response`);
 
-        // Add timestamp validation for backend auth signatures
-        if (this.isOurBackendAuthSignature(args)) {
-          mLog.warn('MobileAwareProvider', `⚠️ CACHE VALIDATION [${requestId}]: If MetaMask shows different timestamp, reject and retry`, {
-            requestId,
-            attempt,
-            expectedMessagePreview: expectedMessage ? expectedMessage.substring(0, 50) + '...' : 'N/A',
-            warning: 'MetaMask may show stale cached signature request'
-          });
-        }
+      const responsePromise = this.baseProvider.request(requestWithExpiry);
 
-        // Set up timeout with longer duration for first attempt, shorter for retries
-        const timeoutMs = attempt === 1 ? 90000 : 45000; // 90s first attempt, 45s retries
+      // Race between the actual response and timeout
+      const result = await Promise.race([responsePromise, timeoutPromise]);
 
-        const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => {
-            reject(new Error(`MetaMask signature request timed out after ${timeoutMs/1000} seconds (attempt ${attempt})`));
-          }, timeoutMs);
-        });
+      mLog.info('MobileAwareProvider', `✅ SIGNING SUCCESS [${requestId}]: Signature received from MetaMask`, {
+        requestId,
+        hasResult: !!result,
+        resultType: typeof result,
+        resultLength: typeof result === 'string' ? result.length : 'N/A'
+      });
 
-        // Add expiry to signature requests to prevent stale cache issues
-        const requestWithExpiry = this.addExpiryToSignatureRequest(args);
-        const responsePromise = this.baseProvider.request(requestWithExpiry);
+      return result;
 
-        // Race between the actual response and timeout
-        const result = await Promise.race([responsePromise, timeoutPromise]);
+    } catch (error: any) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
 
-        // Validate the signature corresponds to our current request
-        if (this.isOurBackendAuthSignature(args) && result && typeof result === 'string') {
-          const isValidSignature = await this.validateSignatureIsNotStale(result, expectedMessage, requestId);
+      mLog.error('MobileAwareProvider', `❌ SIGNING FAILED [${requestId}]: MetaMask request failed`, {
+        requestId,
+        error: errorMessage,
+        errorType: error instanceof Error ? error.constructor.name : typeof error
+      });
 
-          if (!isValidSignature && attempt <= maxRetries) {
-            mLog.error('MobileAwareProvider', `🚨 STALE SIGNATURE DETECTED [${requestId}]: Signature appears to be from cached request, retrying`, {
-              requestId,
-              attempt,
-              willRetry: attempt <= maxRetries,
-              signaturePreview: result.substring(0, 20) + '...'
-            });
-
-            // Clear cache more aggressively before retry
-            await this.aggressiveMetaMaskCacheBusting(`${requestId}_retry_${attempt}`);
-
-            // Wait longer before retry to let MetaMask settle
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            continue;
-          }
-        }
-
-        mLog.info('MobileAwareProvider', `✅ SIGNING SUCCESS [${requestId}]: Valid signature received on attempt ${attempt}`, {
-          requestId,
-          attempt,
-          hasResult: !!result,
-          resultType: typeof result,
-          resultLength: typeof result === 'string' ? result.length : 'N/A'
-        });
-
-        return result;
-
-      } catch (error: any) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-
-        mLog.error('MobileAwareProvider', `❌ SIGNING ATTEMPT ${attempt} FAILED [${requestId}]`, {
-          requestId,
-          attempt,
-          error: errorMessage,
-          errorType: error instanceof Error ? error.constructor.name : typeof error,
-          willRetry: attempt <= maxRetries
-        });
-
-        // Check if this is a "user rejected" error - don't retry these
-        if (errorMessage.toLowerCase().includes('user rejected') ||
-            errorMessage.toLowerCase().includes('user denied') ||
-            errorMessage.toLowerCase().includes('cancelled')) {
-          mLog.info('MobileAwareProvider', `🚫 USER REJECTION [${requestId}]: User rejected signature, not retrying`);
-          throw error;
-        }
-
-        // If this is the last attempt, throw the error
-        if (attempt > maxRetries) {
-          mLog.error('MobileAwareProvider', `💥 ALL ATTEMPTS FAILED [${requestId}]: Exhausted all retry attempts`, {
-            requestId,
-            finalAttempt: attempt,
-            finalError: errorMessage
-          });
-          throw error;
-        }
-
-        // Wait before retry and clear cache again
-        mLog.info('MobileAwareProvider', `🔄 PREPARING RETRY [${requestId}]: Waiting and clearing cache before attempt ${attempt + 1}`);
-        await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
-        await this.aggressiveMetaMaskCacheBusting(`${requestId}_retry_${attempt}`);
-      }
+      throw error;
     }
-
-    throw new Error(`Unexpected end of retry loop for request ${requestId}`);
-  }
-
-  /**
-   * Extract the expected message from the signing request
-   */
-  private extractExpectedMessage(args: { method: string; params?: any[] }): string | null {
-    if (args.method === 'personal_sign' && args.params?.[0]) {
-      let message = args.params[0];
-      if (typeof message === 'string' && message.startsWith('0x')) {
-        try {
-          message = Buffer.from(message.slice(2), 'hex').toString('utf8');
-        } catch (e) {
-          return null;
-        }
-      }
-      return typeof message === 'string' ? message : null;
-    }
-    return null;
   }
 
   /**
@@ -364,16 +294,12 @@ export class MobileAwareProvider {
       expiry: expiryTimestamp
     };
 
-    // Also store the expiry timestamp for our own validation
-    this.storeRequestExpiry(args, expiryTimestamp);
-
-    mLog.info('MobileAwareProvider', `⏰ METAMASK EXPIRY: Added expiry timestamp to MetaMask signature request`, {
+    mLog.info('MobileAwareProvider', `⏰ METAMASK EXPIRY: Added 1-minute expiry to MetaMask signature request`, {
       method: args.method,
       expiryTimestamp,
       expiryDate: new Date(expiryTimestamp * 1000).toISOString(),
       expiryInMinutes: 1,
-      isMetaMask: true,
-      note: 'Expiry only applied to MetaMask requests to prevent cache issues'
+      isMetaMask: true
     });
 
     return requestWithExpiry;
@@ -408,202 +334,6 @@ export class MobileAwareProvider {
     return isMetaMask;
   }
 
-  /**
-   * Store request expiry for internal validation
-   */
-  private storeRequestExpiry(args: { method: string; params?: any[] }, expiryTimestamp: number): void {
-    if (typeof window === 'undefined') return;
-
-    try {
-      // Create a unique identifier for this request
-      const requestHash = this.createRequestHash(args);
-
-      // Store with expiry in sessionStorage (cleared when browser closes)
-      const expiryData = {
-        timestamp: expiryTimestamp,
-        method: args.method,
-        created: Date.now()
-      };
-
-      window.sessionStorage.setItem(`signature_expiry_${requestHash}`, JSON.stringify(expiryData));
-
-      mLog.debug('MobileAwareProvider', 'Stored request expiry for validation', {
-        requestHash: requestHash.substring(0, 8) + '...',
-        expiryTimestamp,
-        method: args.method
-      });
-
-    } catch (error) {
-      mLog.warn('MobileAwareProvider', 'Failed to store request expiry', {
-        error: error instanceof Error ? error.message : String(error)
-      });
-    }
-  }
-
-  /**
-   * Create a hash for request identification
-   */
-  private createRequestHash(args: { method: string; params?: any[] }): string {
-    const requestString = JSON.stringify({
-      method: args.method,
-      params: args.params
-    });
-
-    // Simple hash function for browser compatibility
-    let hash = 0;
-    for (let i = 0; i < requestString.length; i++) {
-      const char = requestString.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash; // Convert to 32-bit integer
-    }
-
-    return Math.abs(hash).toString(36);
-  }
-
-  /**
-   * Clean up expired request entries from storage
-   */
-  private cleanupExpiredRequests(): void {
-    if (typeof window === 'undefined') return;
-
-    try {
-      const currentTime = Math.floor(Date.now() / 1000);
-      const keysToRemove: string[] = [];
-
-      // Check all session storage keys for expired signature requests
-      for (let i = 0; i < window.sessionStorage.length; i++) {
-        const key = window.sessionStorage.key(i);
-        if (key && key.startsWith('signature_expiry_')) {
-          try {
-            const expiryData = JSON.parse(window.sessionStorage.getItem(key) || '{}');
-            if (expiryData.timestamp && currentTime > expiryData.timestamp) {
-              keysToRemove.push(key);
-            }
-          } catch (parseError) {
-            // Invalid data, remove it
-            keysToRemove.push(key);
-          }
-        }
-      }
-
-      keysToRemove.forEach(key => {
-        window.sessionStorage.removeItem(key);
-      });
-
-      if (keysToRemove.length > 0) {
-        mLog.debug('MobileAwareProvider', 'Cleaned up expired signature requests', {
-          removedCount: keysToRemove.length
-        });
-      }
-
-    } catch (error) {
-      mLog.warn('MobileAwareProvider', 'Failed to cleanup expired requests', {
-        error: error instanceof Error ? error.message : String(error)
-      });
-    }
-  }
-
-  /**
-   * Validate that the signature is not from a stale/cached request
-   */
-  private async validateSignatureIsNotStale(signature: string, expectedMessage: string | null, requestId: string): Promise<boolean> {
-    if (!expectedMessage || !signature) {
-      mLog.debug('MobileAwareProvider', `⚠️ SIGNATURE VALIDATION [${requestId}]: Cannot validate - missing message or signature`);
-      return true; // Can't validate, assume it's fine
-    }
-
-    // Clean up expired requests first
-    this.cleanupExpiredRequests();
-
-    try {
-      // Extract timestamp from the expected message
-      const timestampMatch = expectedMessage.match(/at (\d+)/);
-      if (!timestampMatch) {
-        mLog.debug('MobileAwareProvider', `⚠️ SIGNATURE VALIDATION [${requestId}]: No timestamp found in message`);
-        return true; // Can't validate timestamp, assume it's fine
-      }
-
-      const expectedTimestamp = parseInt(timestampMatch[1]);
-      const currentTime = Date.now();
-      const timeDiffMs = currentTime - expectedTimestamp;
-
-      mLog.debug('MobileAwareProvider', `🕐 SIGNATURE VALIDATION [${requestId}]: Checking timestamp freshness`, {
-        requestId,
-        expectedTimestamp,
-        currentTime,
-        timeDiffMs,
-        timeDiffSeconds: Math.round(timeDiffMs / 1000),
-        isRecent: timeDiffMs < 300000 // 5 minutes
-      });
-
-      // Check against our stored expiry data as additional validation
-      const currentTimeSeconds = Math.floor(Date.now() / 1000);
-      let hasValidExpiry = false;
-
-      if (typeof window !== 'undefined') {
-        try {
-          // Look for any stored expiry that matches our current request timeframe
-          for (let i = 0; i < window.sessionStorage.length; i++) {
-            const key = window.sessionStorage.key(i);
-            if (key && key.startsWith('signature_expiry_')) {
-              const expiryData = JSON.parse(window.sessionStorage.getItem(key) || '{}');
-              if (expiryData.timestamp && currentTimeSeconds <= expiryData.timestamp) {
-                // Check if this expiry corresponds to our current request
-                const expectedRequestTime = Math.floor(expectedTimestamp / 1000); // Convert ms to seconds
-                const expiryCreatedTime = Math.floor(expiryData.created / 1000);
-
-                if (Math.abs(expectedRequestTime - expiryCreatedTime) < 10) { // Within 10 seconds
-                  hasValidExpiry = true;
-                  mLog.debug('MobileAwareProvider', `✅ EXPIRY VALIDATION [${requestId}]: Found matching valid expiry`, {
-                    expiryTimestamp: expiryData.timestamp,
-                    currentTime: currentTimeSeconds,
-                    timeDiff: expiryData.timestamp - currentTimeSeconds
-                  });
-                  break;
-                }
-              }
-            }
-          }
-        } catch (storageError) {
-          mLog.debug('MobileAwareProvider', `⚠️ EXPIRY VALIDATION [${requestId}]: Could not check stored expiry data`);
-        }
-      }
-
-      // If the timestamp is more than 5 minutes old, likely stale
-      if (timeDiffMs > 300000) {
-        mLog.warn('MobileAwareProvider', `🚨 STALE SIGNATURE [${requestId}]: Signature timestamp is too old`, {
-          requestId,
-          ageMinutes: Math.round(timeDiffMs / 60000),
-          threshold: '5 minutes',
-          hasValidExpiry
-        });
-        return false;
-      }
-
-      // Additional validation: check if timestamp is in the future (clock skew)
-      if (timeDiffMs < -60000) { // More than 1 minute in the future
-        mLog.warn('MobileAwareProvider', `🚨 FUTURE SIGNATURE [${requestId}]: Signature timestamp is in the future`, {
-          requestId,
-          futureMinutes: Math.round(Math.abs(timeDiffMs) / 60000),
-          hasValidExpiry
-        });
-        return false;
-      }
-
-      mLog.info('MobileAwareProvider', `✅ SIGNATURE VALIDATION [${requestId}]: Signature appears fresh and valid`, {
-        hasValidExpiry,
-        ageSeconds: Math.round(timeDiffMs / 1000)
-      });
-      return true;
-
-    } catch (error) {
-      mLog.warn('MobileAwareProvider', `❌ SIGNATURE VALIDATION [${requestId}]: Validation failed, assuming signature is valid`, {
-        requestId,
-        error: error instanceof Error ? error.message : String(error)
-      });
-      return true; // If validation fails, err on the side of accepting the signature
-    }
-  }
 
   /**
    * Check if this is a signing method

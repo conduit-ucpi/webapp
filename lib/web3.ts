@@ -835,30 +835,31 @@ export class Web3Service {
     }
 
     // Step 2: Get gas price for funding calculation
-    // CRITICAL: Always use the wallet provider's gas price for funding calculation
-    // The provider (whether injected, embedded, or custom) knows what gas price it will actually use
-    let gasPrice = txParams.gasPrice;
+    // CRITICAL: Query gas price ONCE and use for BOTH funding AND transaction execution
+    // This prevents mismatch between funding amount and actual transaction cost
+    let gasPrice: bigint = txParams.gasPrice || BigInt(0);
+    let walletProviderFeeData: any = null; // Store for reuse in transaction execution
     const isInjectedWallet = this.isInjectedWalletProvider();
 
-    if (!gasPrice) {
+    if (!txParams.gasPrice) {
       // ALWAYS get gas price from the wallet's provider first
       // This ensures funding matches what the wallet will actually use
-      console.log('💰 Getting gas price from wallet provider for accurate funding calculation');
+      console.log('💰 Getting gas price from wallet provider for funding calculation AND transaction execution');
       try {
-        const feeData = await this.provider.getFeeData();
+        walletProviderFeeData = await this.provider.getFeeData();
         console.log('🔍 Wallet provider fee data:', {
-          gasPrice: feeData.gasPrice?.toString(),
-          maxFeePerGas: feeData.maxFeePerGas?.toString(),
-          maxPriorityFeePerGas: feeData.maxPriorityFeePerGas?.toString()
+          gasPrice: walletProviderFeeData.gasPrice?.toString(),
+          maxFeePerGas: walletProviderFeeData.maxFeePerGas?.toString(),
+          maxPriorityFeePerGas: walletProviderFeeData.maxPriorityFeePerGas?.toString()
         });
 
         // Use maxFeePerGas for EIP-1559 networks, fallback to gasPrice for legacy
-        if (feeData.maxFeePerGas) {
-          gasPrice = feeData.maxFeePerGas;
-          console.log(`✅ Using wallet's maxFeePerGas for funding: ${formatWeiAsEthForLogging(gasPrice)} (${(Number(gasPrice) / 1e9).toFixed(6)} gwei)`);
-        } else if (feeData.gasPrice) {
-          gasPrice = feeData.gasPrice;
-          console.log(`✅ Using wallet's gasPrice for funding: ${formatWeiAsEthForLogging(gasPrice)} (${(Number(gasPrice) / 1e9).toFixed(6)} gwei)`);
+        if (walletProviderFeeData.maxFeePerGas) {
+          gasPrice = walletProviderFeeData.maxFeePerGas;
+          console.log(`✅ Using wallet's maxFeePerGas for BOTH funding AND execution: ${formatWeiAsEthForLogging(gasPrice)} (${(Number(gasPrice) / 1e9).toFixed(6)} gwei)`);
+        } else if (walletProviderFeeData.gasPrice) {
+          gasPrice = walletProviderFeeData.gasPrice;
+          console.log(`✅ Using wallet's gasPrice for BOTH funding AND execution: ${formatWeiAsEthForLogging(gasPrice)} (${(Number(gasPrice) / 1e9).toFixed(6)} gwei)`);
         } else {
           throw new Error('Wallet provider returned no gas price data');
         }
@@ -968,28 +969,28 @@ export class Web3Service {
         console.log('📝 Transaction will be sent without gas price overrides');
         // Don't set gasPrice, maxFeePerGas, or maxPriorityFeePerGas - let the wallet decide
       } else {
-        // For other providers (Web3Auth, etc.), use our custom gas pricing
-        console.log('🔧 Using custom provider - applying our gas pricing logic');
+        // For other providers (Web3Auth, Dynamic, etc.), use the SAME gas pricing we used for funding
+        console.log('🔧 Using custom provider - applying gas pricing from wallet provider (same as funding calculation)');
 
-        // Check if we should use EIP-1559 format
-        try {
-          const providerFeeData = await this.provider.getFeeData();
-          if (providerFeeData.maxFeePerGas && providerFeeData.maxPriorityFeePerGas) {
-            // Use EIP-1559 transaction format with our reliable fee data
-            const reliableFees = await this.getReliableEIP1559FeeData();
-            tx.maxFeePerGas = reliableFees.maxFeePerGas;
-            tx.maxPriorityFeePerGas = reliableFees.maxPriorityFeePerGas;
-            console.log('Using EIP-1559 transaction format with reliable Base RPC fees');
-            console.log(`Final EIP-1559 fees: maxFee=${formatWeiAsEthForLogging(tx.maxFeePerGas)}, priority=${formatWeiAsEthForLogging(tx.maxPriorityFeePerGas)}`);
-          } else {
-            // Use legacy transaction format
-            tx.gasPrice = gasPrice;
-            console.log('Using legacy transaction format');
-          }
-        } catch (error) {
-          // Fallback to legacy format
+        // CRITICAL: Use the SAME feeData we queried earlier for funding
+        // This ensures funding amount matches actual transaction cost
+        if (walletProviderFeeData && walletProviderFeeData.maxFeePerGas && walletProviderFeeData.maxPriorityFeePerGas) {
+          // Use EIP-1559 transaction format with the SAME fees used for funding
+          tx.maxFeePerGas = walletProviderFeeData.maxFeePerGas;
+          tx.maxPriorityFeePerGas = walletProviderFeeData.maxPriorityFeePerGas;
+          console.log('✅ Using EIP-1559 transaction format with wallet provider fees (same as funding)');
+          console.log(`   maxFeePerGas: ${formatWeiAsEthForLogging(tx.maxFeePerGas)} (${(Number(tx.maxFeePerGas) / 1e9).toFixed(6)} gwei)`);
+          console.log(`   maxPriorityFeePerGas: ${formatWeiAsEthForLogging(tx.maxPriorityFeePerGas)} (${(Number(tx.maxPriorityFeePerGas) / 1e9).toFixed(6)} gwei)`);
+        } else if (walletProviderFeeData && walletProviderFeeData.gasPrice) {
+          // Use legacy transaction format
           tx.gasPrice = gasPrice;
-          console.log('Fallback to legacy transaction format');
+          console.log('✅ Using legacy transaction format with wallet provider gas price (same as funding)');
+          console.log(`   gasPrice: ${formatWeiAsEthForLogging(tx.gasPrice)} (${(Number(tx.gasPrice) / 1e9).toFixed(6)} gwei)`);
+        } else {
+          // Fallback to the gasPrice variable we calculated earlier
+          tx.gasPrice = gasPrice;
+          console.log('✅ Using gas price from funding calculation (fallback)');
+          console.log(`   gasPrice: ${formatWeiAsEthForLogging(tx.gasPrice)} (${(Number(tx.gasPrice) / 1e9).toFixed(6)} gwei)`);
         }
       }
 

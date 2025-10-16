@@ -14,6 +14,7 @@ import { useWalletAddress } from '@/hooks/useWalletAddress';
 import { TransferUSDCRequest } from '@/types';
 import { ensureHexPrefix } from '@/utils/hexUtils';
 import { formatGweiAsEthForLogging } from '@/utils/logging';
+import { DynamicEmbeddedWidget, useDynamicContext } from '@dynamic-labs/sdk-react-core';
 
 interface WalletBalances {
   native: string;
@@ -40,6 +41,7 @@ export default function Wallet() {
   const { isInFarcaster } = useFarcaster();
   const { config } = useConfig();
   const { walletAddress, isLoading: isWalletAddressLoading } = useWalletAddress();
+  const dynamicContext = useDynamicContext();
   // Using ethers directly instead of SDK
   const [balances, setBalances] = useState<WalletBalances>({ native: '0.0000', usdc: '0.0000' });
   const [isLoadingBalances, setIsLoadingBalances] = useState(false);
@@ -294,6 +296,31 @@ export default function Wallet() {
     );
   };
 
+  // Check if user is using Dynamic embedded wallet
+  const isDynamicEmbeddedWallet = () => {
+    if (!user || user.authProvider !== 'dynamic') return false;
+
+    // Check if they're using an embedded wallet by looking at the Dynamic context
+    const primaryWallet = dynamicContext?.primaryWallet;
+    if (!primaryWallet) return false;
+
+    // Dynamic embedded wallets typically have a specific connector type
+    const connector = primaryWallet.connector;
+    const isEmbeddedWallet = connector?.name?.toLowerCase().includes('embedded') ||
+                           connector?.key?.toLowerCase().includes('embedded') ||
+                           primaryWallet.key?.toLowerCase().includes('embedded');
+
+    console.log('Dynamic wallet check:', {
+      authProvider: user.authProvider,
+      connectorName: connector?.name,
+      connectorKey: connector?.key,
+      walletKey: primaryWallet.key,
+      isEmbeddedWallet
+    });
+
+    return isEmbeddedWallet;
+  };
+
   if (authLoading || isWalletAddressLoading) {
     return (
       <div className="flex justify-center items-center min-h-96">
@@ -311,6 +338,27 @@ export default function Wallet() {
           You need to connect your wallet to manage your funds.
         </p>
         <ConnectWalletEmbedded useSmartRouting={true} />
+      </div>
+    );
+  }
+
+  // If user is using Dynamic embedded wallet, show Dynamic's wallet management UI
+  if (isDynamicEmbeddedWallet()) {
+    return (
+      <div className="py-10">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900">Wallet Management</h1>
+            <p className="mt-2 text-gray-600">
+              Manage your wallet with Dynamic's embedded wallet interface
+            </p>
+          </div>
+
+          {/* Dynamic Embedded Wallet UI */}
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <DynamicEmbeddedWidget background="default" />
+          </div>
+        </div>
       </div>
     );
   }

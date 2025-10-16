@@ -148,23 +148,43 @@ export class Web3AuthProvider implements AuthProvider {
         // This helps prevent showing old signature requests in MetaMask
         try {
           if (window.ethereum) {
+            mLog.info('Web3AuthProvider', 'Attempting aggressive MetaMask cache clearing');
+
             // Clear any pending signature state if available
             window.localStorage.removeItem('metamask.isUnlocked');
             window.localStorage.removeItem('metamask.state');
             window.sessionStorage.removeItem('metamask.state');
 
-            // Try to clear any pending signature requests by calling eth_accounts
-            // This can sometimes flush stale requests
+            // Clear ALL MetaMask-related localStorage items
+            const metamaskKeys = [];
+            for (let i = 0; i < window.localStorage.length; i++) {
+              const key = window.localStorage.key(i);
+              if (key && (key.toLowerCase().includes('metamask') || key.toLowerCase().includes('wallet'))) {
+                metamaskKeys.push(key);
+              }
+            }
+            metamaskKeys.forEach(key => {
+              window.localStorage.removeItem(key);
+              mLog.debug('Web3AuthProvider', 'Cleared MetaMask localStorage key', { key });
+            });
+
+            // Try multiple methods to flush pending signature requests
             try {
+              // Method 1: Call eth_accounts to flush state
               await window.ethereum.request({ method: 'eth_accounts' });
               mLog.debug('Web3AuthProvider', 'Flushed MetaMask state with eth_accounts call');
+
+              // Method 2: Call eth_chainId to force provider refresh
+              await window.ethereum.request({ method: 'eth_chainId' });
+              mLog.debug('Web3AuthProvider', 'Refreshed provider with eth_chainId call');
+
             } catch (flushError) {
-              mLog.debug('Web3AuthProvider', 'MetaMask flush attempt failed (normal)', {
+              mLog.debug('Web3AuthProvider', 'MetaMask flush attempts failed (expected)', {
                 error: flushError instanceof Error ? flushError.message : String(flushError)
               });
             }
 
-            mLog.debug('Web3AuthProvider', 'Cleared potential MetaMask state keys');
+            mLog.info('Web3AuthProvider', 'Completed aggressive MetaMask cache clearing');
           }
         } catch (error) {
           mLog.warn('Web3AuthProvider', 'Error clearing MetaMask state', {

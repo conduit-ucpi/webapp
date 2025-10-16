@@ -78,7 +78,21 @@ export class Web3Service {
    */
   static clearInstance(): void {
     console.log('[Web3Service] Clearing singleton instance');
+    if (Web3Service.instance) {
+      Web3Service.instance.clearState();
+    }
     Web3Service.instance = null;
+  }
+
+  /**
+   * Clear the internal state (called on logout)
+   */
+  clearState(): void {
+    console.log('[Web3Service] Clearing internal state - resetting provider and initialization');
+    this.provider = null;
+    this.isInitialized = false;
+    this.isDesktopQRSession = false;
+    this.onMobileActionRequired = undefined;
   }
 
   /**
@@ -105,6 +119,12 @@ export class Web3Service {
     try {
       if (!ethersProvider) {
         throw new Error('No provider provided for initialization');
+      }
+
+      // Clear any existing state before initializing
+      if (this.isInitialized) {
+        console.log('[Web3Service] Clearing existing state before re-initialization');
+        this.clearState();
       }
 
       console.log('[Web3Service] Initializing with unified ethers provider');

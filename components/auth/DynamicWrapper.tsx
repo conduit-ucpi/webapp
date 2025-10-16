@@ -350,13 +350,31 @@ function DynamicBridge() {
           activeLoginPromise.current = null;
         }
 
+        // Clear window state on logout
+        delete (window as any).dynamicUser;
+        delete (window as any).dynamicWallet;
+        delete (window as any).dynamicAuthToken;
+        delete (window as any).dynamicGetAuthToken;
+        delete (window as any).dynamicOAuthResult;
+
         await handleLogOut();
+
+        mLog.info('DynamicBridge', 'Cleared all Dynamic window state on logout');
       };
 
-      (window as any).dynamicUser = user;
+      // Update or clear user and wallet state based on current values
+      if (user) {
+        (window as any).dynamicUser = user;
+      } else {
+        delete (window as any).dynamicUser;
+      }
 
       // Store the primary wallet for the DynamicProvider to use with ethers toolkit
-      (window as any).dynamicWallet = primaryWallet;
+      if (primaryWallet) {
+        (window as any).dynamicWallet = primaryWallet;
+      } else {
+        delete (window as any).dynamicWallet;
+      }
 
       // Expose getAuthToken function from Dynamic
       if (getAuthToken) {
@@ -369,6 +387,9 @@ function DynamicBridge() {
           (window as any).dynamicAuthToken = (user as any).authToken;
         } else if (user && (user as any).accessToken) {
           (window as any).dynamicAuthToken = (user as any).accessToken;
+        } else {
+          // Clear auth token if no user or no token
+          delete (window as any).dynamicAuthToken;
         }
       } catch (error) {
         mLog.debug('DynamicBridge', 'Could not access auth token from user', {

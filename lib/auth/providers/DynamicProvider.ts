@@ -276,8 +276,18 @@ export class DynamicProvider implements UnifiedProvider {
       await (window as any).dynamicLogout();
     }
 
+    // Clear all cached state
     this.cachedEthersProvider = null;
     this.currentAddress = null;
+
+    // Clear window state that might persist
+    if (typeof window !== 'undefined') {
+      delete (window as any).dynamicOAuthResult;
+      delete (window as any).dynamicWallet;
+      // Note: dynamicUser and dynamicAuthToken are managed by DynamicWrapper
+    }
+
+    mLog.info('DynamicProvider', 'Cleared all cached provider state');
   }
 
   async switchWallet(): Promise<ConnectionResult> {

@@ -310,6 +310,19 @@ export class AuthManager {
       // Clear tokens
       this.tokenManager.clearToken();
 
+      // Clear Web3Service state to prevent stale provider data
+      try {
+        const { Web3Service } = await import('../../web3');
+        // Check if instance exists (don't create a new one if it doesn't)
+        if ((Web3Service as any).instance) {
+          const web3Service = (Web3Service as any).instance;
+          web3Service.clearState();
+          console.log('🔧 AuthManager: Cleared Web3Service state');
+        }
+      } catch (error) {
+        console.warn('🔧 AuthManager: Could not clear Web3Service:', error);
+      }
+
       // Reset state
       this.setState({
         isConnected: false,

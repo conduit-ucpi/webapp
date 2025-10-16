@@ -83,7 +83,25 @@ export function useSimpleEthers() {
 
     // High-level contract interaction methods
     approveUSDC: async (contractAddress: string, amount: string) => {
-      console.log('🔧 useSimpleEthers: approveUSDC via fundAndSendTransaction');
+      const maxGasPriceEth = (parseFloat(config?.maxGasPriceGwei || '0') / 1000000000);
+      const maxGasCostEth = (parseFloat(config?.maxGasCostGwei || '0') / 1000000000);
+
+      console.log('');
+      console.log('='.repeat(80));
+      console.log('💰 USDC APPROVAL TRANSACTION');
+      console.log('='.repeat(80));
+      console.log('📋 Approval Details:');
+      console.log(`   USDC Contract: ${config?.usdcContractAddress}`);
+      console.log(`   Spender (Escrow): ${contractAddress}`);
+      console.log(`   Amount (microUSDC): ${amount}`);
+      console.log(`   Amount (USDC): ${(Number(amount) / 1000000).toFixed(6)}`);
+      console.log('');
+      console.log('⚙️  Gas Configuration:');
+      console.log(`   MAX_GAS_PRICE_GWEI: ${config?.maxGasPriceGwei} gwei (${maxGasPriceEth.toExponential(4)} ETH)`);
+      console.log(`   MAX_GAS_COST_GWEI: ${config?.maxGasCostGwei} gwei (${maxGasCostEth.toExponential(4)} ETH)`);
+      console.log(`   USDC_GRANT_FOUNDRY_GAS: ${config?.usdcGrantFoundryGas} gas`);
+      console.log(`   GAS_PRICE_BUFFER: ${config?.gasPriceBuffer}x`);
+      console.log('');
 
       if (!config?.usdcContractAddress) {
         throw new Error('USDC contract address not configured');
@@ -99,6 +117,7 @@ export function useSimpleEthers() {
         amount // amount in microUSDC as string
       ]);
 
+      console.log('🔧 Calling fundAndSendTransaction...');
       const web3Service = await getWeb3Service();
       return await web3Service.fundAndSendTransaction({
         to: config.usdcContractAddress,

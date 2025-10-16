@@ -839,9 +839,23 @@ export class Web3Service {
       console.log(`Expected transaction cost for 100k gas: ${formatWeiAsEthForLogging(gasPrice * BigInt(100000))} ETH`);
     }
 
-    // Step 3: Calculate total gas needed (with 20% buffer)
+    // Step 3: Calculate total gas needed (with 20% buffer for wallet funding)
     const totalGasNeeded = (gasEstimate * gasPrice * BigInt(120)) / BigInt(100);
-    console.log(`Gas calculation - Estimate: ${gasEstimate.toString()} gas, Price: ${formatWeiAsEthForLogging(gasPrice)}, Total needed: ${formatWeiAsEthForLogging(totalGasNeeded)}`);
+
+    const gasPriceEth = Number(gasPrice) / 1e18;
+    const baseCostEth = Number(gasEstimate * gasPrice) / 1e18;
+    const totalGasNeededEth = Number(totalGasNeeded) / 1e18;
+
+    console.log('');
+    console.log('📊 GAS CALCULATION SUMMARY:');
+    console.log('─'.repeat(60));
+    console.log(`   Gas Estimate: ${gasEstimate.toString()} gas`);
+    console.log(`   Gas Price: ${gasPriceEth.toExponential(4)} ETH`);
+    console.log(`   Base Cost: ${baseCostEth.toExponential(4)} ETH`);
+    console.log(`   Funding Buffer: 1.2x (20% extra for wallet funding)`);
+    console.log(`   Total Gas Needed: ${totalGasNeededEth.toExponential(4)} ETH`);
+    console.log('─'.repeat(60));
+    console.log('');
 
     // Step 4: Call chainservice to fund wallet
     console.log('Requesting wallet funding from chainservice...');
@@ -877,7 +891,20 @@ export class Web3Service {
       // Apply gas buffer for transaction execution (not estimation)
       const gasPriceBuffer = parseFloat(this.config.gasPriceBuffer);
       const bufferedGasLimit = BigInt(Math.round(Number(gasEstimate) * gasPriceBuffer));
-      console.log(`Applying gas buffer: ${gasEstimate.toString()} → ${bufferedGasLimit.toString()} (${gasPriceBuffer}x)`);
+
+      const originalCostEth = Number(gasEstimate * gasPrice) / 1e18;
+      const bufferedCostEth = Number(bufferedGasLimit * gasPrice) / 1e18;
+
+      console.log('');
+      console.log('🔧 TRANSACTION EXECUTION GAS BUFFER:');
+      console.log('─'.repeat(60));
+      console.log(`   Original Estimate: ${gasEstimate.toString()} gas`);
+      console.log(`   Original Cost: ${originalCostEth.toExponential(4)} ETH`);
+      console.log(`   Buffer Multiplier (GAS_PRICE_BUFFER): ${gasPriceBuffer}x`);
+      console.log(`   Buffered Gas Limit: ${bufferedGasLimit.toString()} gas`);
+      console.log(`   Buffered Cost: ${bufferedCostEth.toExponential(4)} ETH`);
+      console.log('─'.repeat(60));
+      console.log('');
 
       // Build transaction object for ethers with Web3Auth compatibility
       let tx: any = {
@@ -908,8 +935,6 @@ export class Web3Service {
         console.log('Fallback to legacy transaction format');
       }
 
-      console.log('[Web3Service.fundAndSendTransaction] Transaction params:', tx);
-
       // Validate transaction cost against MAX_GAS_COST_GWEI limit using buffered gas limit
       let transactionCostWei: bigint;
       if (tx.maxFeePerGas) {
@@ -923,21 +948,41 @@ export class Web3Service {
       }
 
       const maxAllowedCostWei = this.getMaxGasCostInWei();
+      const gasPriceUsed = tx.maxFeePerGas || tx.gasPrice || BigInt(0);
+
+      // Convert to ETH for display
+      const transactionCostEth = Number(transactionCostWei) / 1e18;
+      const maxAllowedCostEth = Number(maxAllowedCostWei) / 1e18;
+      const gasPriceUsedEth = Number(gasPriceUsed) / 1e18;
+
+      console.log('');
+      console.log('✅ FINAL TRANSACTION COST VALIDATION:');
+      console.log('─'.repeat(60));
+      console.log(`   Buffered Gas Limit: ${bufferedGasLimit.toString()} gas`);
+      console.log(`   Gas Price Used: ${gasPriceUsedEth.toExponential(4)} ETH`);
+      console.log(`   Transaction Cost: ${transactionCostEth.toExponential(4)} ETH`);
+      console.log(`   MAX_GAS_COST_GWEI Limit: ${maxAllowedCostEth.toExponential(4)} ETH`);
+      console.log(`   Headroom: ${((maxAllowedCostEth / transactionCostEth) * 100).toFixed(1)}% available`);
+      console.log('─'.repeat(60));
 
       if (transactionCostWei > maxAllowedCostWei) {
-        const actualCostGwei = Number(transactionCostWei) / 1000000000;
-        const maxAllowedCostGwei = Number(maxAllowedCostWei) / 1000000000;
-        const gasPriceGwei = tx.maxFeePerGas ? Number(tx.maxFeePerGas) / 1000000000 : Number(tx.gasPrice!) / 1000000000;
+        console.log('');
+        console.log('❌ VALIDATION FAILED:');
+        console.log(`   Transaction cost ${transactionCostEth.toExponential(4)} ETH exceeds limit ${maxAllowedCostEth.toExponential(4)} ETH`);
+        console.log('='.repeat(80));
+        console.log('');
 
         throw new Error(
           `Transaction cost exceeds configured maximum. ` +
-          `Estimated cost: ${actualCostGwei.toFixed(4)} gwei (${Number(gasEstimate).toLocaleString()} gas × ${gasPriceGwei.toFixed(4)} gwei/gas), ` +
-          `Maximum allowed: ${maxAllowedCostGwei.toFixed(4)} gwei. ` +
+          `Estimated cost: ${transactionCostEth.toExponential(4)} ETH (${bufferedGasLimit.toString()} gas × ${gasPriceUsedEth.toExponential(4)} ETH/gas), ` +
+          `Maximum allowed: ${maxAllowedCostEth.toExponential(4)} ETH. ` +
           `Please contact support to adjust gas cost limits.`
         );
       }
 
-      console.log(`✅ Transaction cost validation passed: ${formatWeiAsEthForLogging(transactionCostWei)} (within ${formatWeiAsEthForLogging(maxAllowedCostWei)} limit)`);
+      console.log(`   Status: ✅ PASSED - Transaction within limits`);
+      console.log('='.repeat(80));
+      console.log('');
       console.log('[Web3Service.fundAndSendTransaction] Preparing transaction for Web3Auth workaround...');
 
       // WORKAROUND: Web3Auth's signer.sendTransaction() pre-validates with wrong gas prices

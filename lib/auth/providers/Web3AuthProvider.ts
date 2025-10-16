@@ -144,55 +144,99 @@ export class Web3AuthProvider implements AuthProvider {
         window.localStorage.removeItem('Web3Auth-cachedAdapter');
         window.sessionStorage.removeItem('Web3Auth-cachedAdapter');
 
-        // Clear any MetaMask/wallet state that might have stale signature requests
-        // This helps prevent showing old signature requests in MetaMask
+        // Enhanced MetaMask cache clearing for mobile
         try {
           if (window.ethereum) {
-            mLog.info('Web3AuthProvider', 'Attempting aggressive MetaMask cache clearing');
+            mLog.info('Web3AuthProvider', 'Performing enhanced MetaMask cache clearing for mobile');
 
-            // Clear any pending signature state if available
-            window.localStorage.removeItem('metamask.isUnlocked');
-            window.localStorage.removeItem('metamask.state');
-            window.sessionStorage.removeItem('metamask.state');
+            // Clear comprehensive MetaMask storage keys
+            const metamaskStorageKeys = [
+              'metamask.isUnlocked',
+              'metamask.state',
+              'metamask.pendingRequest',
+              'metamask.signatureRequest',
+              'metamask.lastRequest',
+              'metamask.rpcEngine',
+              'metamask.provider'
+            ];
 
-            // Clear ALL MetaMask-related localStorage items
-            const metamaskKeys = [];
-            for (let i = 0; i < window.localStorage.length; i++) {
-              const key = window.localStorage.key(i);
-              if (key && (key.toLowerCase().includes('metamask') || key.toLowerCase().includes('wallet'))) {
-                metamaskKeys.push(key);
-              }
-            }
-            metamaskKeys.forEach(key => {
+            metamaskStorageKeys.forEach(key => {
               window.localStorage.removeItem(key);
-              mLog.debug('Web3AuthProvider', 'Cleared MetaMask localStorage key', { key });
+              window.sessionStorage.removeItem(key);
             });
 
-            // Try multiple methods to flush pending signature requests
+            // Clear ALL MetaMask-related localStorage items (broader search)
+            const allMetamaskKeys = [];
+            for (let i = 0; i < window.localStorage.length; i++) {
+              const key = window.localStorage.key(i);
+              if (key && (key.toLowerCase().includes('metamask') ||
+                         key.toLowerCase().includes('wallet') ||
+                         key.toLowerCase().includes('ethereum') ||
+                         key.toLowerCase().includes('web3'))) {
+                allMetamaskKeys.push(key);
+              }
+            }
+            allMetamaskKeys.forEach(key => {
+              window.localStorage.removeItem(key);
+              mLog.debug('Web3AuthProvider', 'Cleared wallet-related localStorage key', { key });
+            });
+
+            // Clear any provider internal state if accessible
             try {
-              // Method 1: Call eth_accounts to flush state
-              await window.ethereum.request({ method: 'eth_accounts' });
-              mLog.debug('Web3AuthProvider', 'Flushed MetaMask state with eth_accounts call');
-
-              // Method 2: Call eth_chainId to force provider refresh
-              await window.ethereum.request({ method: 'eth_chainId' });
-              mLog.debug('Web3AuthProvider', 'Refreshed provider with eth_chainId call');
-
-            } catch (flushError) {
-              mLog.debug('Web3AuthProvider', 'MetaMask flush attempts failed (expected)', {
-                error: flushError instanceof Error ? flushError.message : String(flushError)
-              });
+              if ((window.ethereum as any)._state) {
+                delete (window.ethereum as any)._state.pendingRequests;
+                delete (window.ethereum as any)._state.requests;
+                delete (window.ethereum as any)._state.accounts;
+                mLog.debug('Web3AuthProvider', 'Cleared provider internal state');
+              }
+            } catch (stateError) {
+              mLog.debug('Web3AuthProvider', 'Could not access provider internal state');
             }
 
-            mLog.info('Web3AuthProvider', 'Completed aggressive MetaMask cache clearing');
+            // Enhanced flush methods with more comprehensive coverage
+            const flushMethods = [
+              'eth_accounts',
+              'eth_chainId',
+              'net_version',
+              'eth_blockNumber',
+              'web3_clientVersion'
+            ];
+
+            for (const method of flushMethods) {
+              try {
+                await window.ethereum.request({ method, params: [] });
+                mLog.debug('Web3AuthProvider', `Flushed MetaMask state with ${method} call`);
+                await new Promise(resolve => setTimeout(resolve, 50)); // Small delay between calls
+              } catch (flushError) {
+                mLog.debug('Web3AuthProvider', `MetaMask flush ${method} failed (expected)`, {
+                  error: flushError instanceof Error ? flushError.message : String(flushError)
+                });
+              }
+            }
+
+            // Try permission reset to clear internal wallet state
+            try {
+              await window.ethereum.request({
+                method: 'wallet_requestPermissions',
+                params: [{ eth_accounts: {} }]
+              });
+              mLog.debug('Web3AuthProvider', 'Reset wallet permissions to clear state');
+            } catch (permError) {
+              mLog.debug('Web3AuthProvider', 'Permission reset failed (expected)');
+            }
+
+            mLog.info('Web3AuthProvider', 'Completed enhanced MetaMask cache clearing for mobile');
           }
         } catch (error) {
-          mLog.warn('Web3AuthProvider', 'Error clearing MetaMask state', {
+          mLog.warn('Web3AuthProvider', 'Error during enhanced MetaMask cache clearing', {
             error: error instanceof Error ? error.message : String(error)
           });
         }
 
-        mLog.info('Web3AuthProvider', 'Cleared all Web3Auth and wallet cache on mobile');
+        // Force a delay to let the cache clearing settle
+        await new Promise(resolve => setTimeout(resolve, 300));
+
+        mLog.info('Web3AuthProvider', 'Completed comprehensive cache clearing for mobile');
       }
 
       // Connect - this will show the modal with all options

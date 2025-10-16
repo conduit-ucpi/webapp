@@ -127,12 +127,10 @@ export class MobileAwareProvider {
       return result;
     }
 
-    // Mobile signing method: Implement aggressive cache busting specifically for MetaMask
+    // Mobile signing method: DISABLE cache busting to test if it's breaking the signature request
     if (this.isOurBackendAuthSignature(args) && this.isMetaMaskProvider()) {
-      mLog.info('MobileAwareProvider', `🔍 METAMASK BACKEND AUTH DETECTED [${requestId}]: Implementing aggressive MetaMask cache busting`);
-
-      // Perform aggressive cache busting before signature request
-      await this.aggressiveMetaMaskCacheBusting(requestId);
+      mLog.warn('MobileAwareProvider', `🚫 CACHE BUSTING DISABLED [${requestId}]: Testing if aggressive cache busting breaks signature dialog`);
+      // DISABLED: await this.aggressiveMetaMaskCacheBusting(requestId);
     } else if (this.isOurBackendAuthSignature(args)) {
       mLog.info('MobileAwareProvider', `🔍 NON-METAMASK BACKEND AUTH [${requestId}]: Skipping MetaMask-specific cache busting`);
     }
@@ -282,27 +280,40 @@ export class MobileAwareProvider {
   private addExpiryToSignatureRequest(args: { method: string; params?: any[] }): { method: string; params?: any[]; expiry?: number } {
     // Only add expiry to signing methods on mobile for MetaMask
     if (!this.isSigningMethod(args.method) || this.isDesktop || !this.isMetaMaskProvider()) {
+      mLog.debug('MobileAwareProvider', 'Skipping expiry - not MetaMask mobile signing request', {
+        isSigningMethod: this.isSigningMethod(args.method),
+        isDesktop: this.isDesktop,
+        isMetaMask: this.isMetaMaskProvider()
+      });
       return args;
     }
 
-    // Set expiry to 1 minute from now (in seconds since epoch)
-    const expiryTimestamp = Math.floor(Date.now() / 1000) + 60;
-
-    // Add expiry specifically for MetaMask to prevent cache issues
-    const requestWithExpiry = {
-      ...args,
-      expiry: expiryTimestamp
-    };
-
-    mLog.info('MobileAwareProvider', `⏰ METAMASK EXPIRY: Added 1-minute expiry to MetaMask signature request`, {
+    // For now, disable expiry to test if it's causing the issue
+    mLog.warn('MobileAwareProvider', `🚫 EXPIRY DISABLED: Skipping expiry field to test if it causes request to be ignored`, {
       method: args.method,
-      expiryTimestamp,
-      expiryDate: new Date(expiryTimestamp * 1000).toISOString(),
-      expiryInMinutes: 1,
-      isMetaMask: true
+      reason: 'Testing if expiry field causes MetaMask to ignore signature request'
     });
 
-    return requestWithExpiry;
+    return args;
+
+    // DISABLED: Set expiry to 1 minute from now (in seconds since epoch)
+    // const expiryTimestamp = Math.floor(Date.now() / 1000) + 60;
+
+    // // Add expiry specifically for MetaMask to prevent cache issues
+    // const requestWithExpiry = {
+    //   ...args,
+    //   expiry: expiryTimestamp
+    // };
+
+    // mLog.info('MobileAwareProvider', `⏰ METAMASK EXPIRY: Added 1-minute expiry to MetaMask signature request`, {
+    //   method: args.method,
+    //   expiryTimestamp,
+    //   expiryDate: new Date(expiryTimestamp * 1000).toISOString(),
+    //   expiryInMinutes: 1,
+    //   isMetaMask: true
+    // });
+
+    // return requestWithExpiry;
   }
 
   /**

@@ -7,19 +7,19 @@ import { toHexString } from "@/utils/hexUtils";
 import { mLog } from "@/utils/mobileLogger";
 
 // This creates the full Web3Auth config with all adapters
-export const createWeb3AuthConfig = (config: {
+export const createWeb3AuthConfig = async (config: {
   web3AuthClientId: string;
   chainId: number;
   rpcUrl: string;
   explorerBaseUrl: string;
   web3AuthNetwork: string;
   walletConnectProjectId?: string;
-}): {
+}): Promise<{
   web3AuthOptions: Web3AuthOptions;
   chainConfig: CustomChainConfig;
   openloginAdapter: OpenloginAdapter;
   walletConnectV2Adapter: any;
-} => {
+}> => {
   mLog.info('Web3AuthConfig', 'Creating Web3Auth configuration');
   mLog.debug('Web3AuthConfig', 'Input config', {
     chainId: config.chainId,
@@ -108,17 +108,44 @@ export const createWeb3AuthConfig = (config: {
 
   // Create WalletConnect adapter (dynamically imported to avoid test issues)
   let walletConnectV2Adapter: any = null;
-  if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'test') {
+  if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'test' && config.walletConnectProjectId) {
     try {
       // Dynamic import to avoid loading WalletConnect in test environment
-      const { WalletConnectV2Adapter } = require('@web3auth/wallet-connect-v2-adapter');
+      const { WalletConnectModal } = require('@walletconnect/modal');
+      const {
+        getWalletConnectV2Settings,
+        WalletConnectV2Adapter
+      } = require('@web3auth/wallet-connect-v2-adapter');
+
+      mLog.debug('Web3AuthConfig', 'Creating WalletConnect configuration', {
+        projectId: config.walletConnectProjectId,
+        chainId: config.chainId
+      });
+
+      // Get WalletConnect settings for the current chain
+      const defaultWcSettings = await getWalletConnectV2Settings(
+        "eip155",
+        [config.chainId],  // Current chain ID
+        config.walletConnectProjectId
+      );
+
+      // Create WalletConnect modal
+      const walletConnectModal = new WalletConnectModal({
+        projectId: config.walletConnectProjectId,
+      });
+
+      // Create WalletConnect adapter with proper configuration
       walletConnectV2Adapter = new WalletConnectV2Adapter({
         adapterSettings: {
-          walletConnectInitOptions: {
-            projectId: config.walletConnectProjectId || "",
-          },
+          qrcodeModal: walletConnectModal,
+          ...defaultWcSettings.adapterSettings,
+        },
+        loginSettings: {
+          ...defaultWcSettings.loginSettings,
         },
       });
+
+      mLog.info('Web3AuthConfig', 'WalletConnect adapter created successfully');
     } catch (error) {
       mLog.warn('Web3AuthConfig', 'Failed to load WalletConnect adapter', { error });
     }

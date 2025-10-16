@@ -60,7 +60,7 @@ export class Web3AuthProvider implements AuthProvider {
       // Initialize Web3Auth if not already done
       if (!this.web3authInstance) {
         mLog.info('Web3AuthProvider', 'Creating Web3Auth instance');
-        const web3authConfig = createWeb3AuthConfig({
+        const web3authConfig = await createWeb3AuthConfig({
           ...this.config,
           walletConnectProjectId: this.config.walletConnectProjectId || process.env.WALLETCONNECT_PROJECT_ID
         });
@@ -69,11 +69,23 @@ export class Web3AuthProvider implements AuthProvider {
 
         this.web3authInstance = new Web3Auth(web3authConfig.web3AuthOptions);
 
-        // v10 API: Adapters are configured automatically, no manual configuration needed
-        mLog.info('Web3AuthProvider', 'Web3Auth v10 handles adapters automatically via dashboard config');
+        // Configure adapters before init
+        mLog.info('Web3AuthProvider', 'Configuring adapters before initialization');
 
-        // Initialize Web3Auth Modal - v10 handles all adapter setup internally
-        mLog.info('Web3AuthProvider', 'Initializing Web3Auth v10 with automatic adapter management');
+        // Configure OpenLogin adapter
+        (this.web3authInstance as any).configureAdapter(web3authConfig.openloginAdapter);
+        mLog.debug('Web3AuthProvider', 'OpenLogin adapter configured');
+
+        // Configure WalletConnect adapter if available
+        if (web3authConfig.walletConnectV2Adapter) {
+          (this.web3authInstance as any).configureAdapter(web3authConfig.walletConnectV2Adapter);
+          mLog.info('Web3AuthProvider', 'WalletConnect adapter configured successfully');
+        } else {
+          mLog.warn('Web3AuthProvider', 'WalletConnect adapter not available (missing project ID or environment)');
+        }
+
+        // Initialize Web3Auth Modal with configured adapters
+        mLog.info('Web3AuthProvider', 'Initializing Web3Auth with manually configured adapters');
         await this.web3authInstance.init();
         mLog.info('Web3AuthProvider', 'Web3Auth initialized successfully');
 
@@ -405,14 +417,20 @@ export class Web3AuthProvider implements AuthProvider {
     // Initialize Web3Auth if not already done
     if (!this.web3authInstance) {
       console.log('🔧 Web3AuthProvider: Creating Web3Auth instance for wallet switch');
-      const web3authConfig = createWeb3AuthConfig({
+      const web3authConfig = await createWeb3AuthConfig({
         ...this.config,
         walletConnectProjectId: this.config.walletConnectProjectId || process.env.WALLETCONNECT_PROJECT_ID
       });
 
       this.web3authInstance = new Web3Auth(web3authConfig.web3AuthOptions);
 
-      // v10 API: Adapters are configured automatically
+      // Configure adapters before init
+      (this.web3authInstance as any).configureAdapter(web3authConfig.openloginAdapter);
+      if (web3authConfig.walletConnectV2Adapter) {
+        (this.web3authInstance as any).configureAdapter(web3authConfig.walletConnectV2Adapter);
+      }
+
+      // Initialize with configured adapters
       await this.web3authInstance.init();
     }
 

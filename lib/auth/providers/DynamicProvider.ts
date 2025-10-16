@@ -115,7 +115,7 @@ export class DynamicProvider implements UnifiedProvider {
         return new Promise((resolve, reject) => {
           // Set up OAuth redirect handler
           if (typeof window !== 'undefined') {
-            (window as any).dynamicOAuthRedirectHandler = (result: any) => {
+            (window as any).dynamicOAuthRedirectHandler = async (result: any) => {
               mLog.info('DynamicProvider', 'OAuth redirect handler called', {
                 hasResult: !!result,
                 hasAddress: !!(result?.address),
@@ -145,7 +145,7 @@ export class DynamicProvider implements UnifiedProvider {
 
             // Also check periodically if the result becomes available
             let checkCount = 0;
-            const checkInterval = setInterval(() => {
+            const checkInterval = setInterval(async () => {
               checkCount++;
               if ((window as any).dynamicOAuthResult) {
                 clearInterval(checkInterval);

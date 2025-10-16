@@ -265,6 +265,32 @@ export class MobileAwareProvider {
       // Try to intercept any universal links or deep links
       this.interceptUniversalLinks(requestId);
 
+      // Check if we can access window.ethereum directly for mobile MetaMask (MOBILE ONLY)
+      if (!this.isDesktop && typeof window !== 'undefined' && window.ethereum && this.isMetaMaskProvider()) {
+        mLog.info('MobileAwareProvider', `📱 MOBILE DIRECT METAMASK [${requestId}]: Attempting direct window.ethereum call on mobile`, {
+          isMobile: !this.isDesktop,
+          hasWindowEthereum: !!window.ethereum,
+          isMetaMask: !!(window.ethereum as any).isMetaMask,
+          selectedAddress: (window.ethereum as any).selectedAddress
+        });
+
+        // Try calling MetaMask directly instead of through Web3Auth (MOBILE ONLY)
+        try {
+          mLog.info('MobileAwareProvider', `📞 MOBILE DIRECT CALL [${requestId}]: Bypassing Web3Auth provider on mobile`);
+          const directResult = await window.ethereum.request(finalRequest);
+          mLog.info('MobileAwareProvider', `✅ MOBILE DIRECT SUCCESS [${requestId}]: Direct MetaMask call worked on mobile!`, {
+            hasResult: !!directResult,
+            resultType: typeof directResult,
+            resultPreview: typeof directResult === 'string' ? directResult.substring(0, 20) + '...' : String(directResult)
+          });
+          return directResult;
+        } catch (directError) {
+          mLog.warn('MobileAwareProvider', `⚠️ MOBILE DIRECT FAILED [${requestId}]: Direct call failed, falling back to Web3Auth provider`, {
+            error: directError instanceof Error ? directError.message : String(directError)
+          });
+        }
+      }
+
       // Add immediate logging around the base provider call
       const responsePromise = this.baseProvider.request(finalRequest).then((result: any) => {
         mLog.info('MobileAwareProvider', `🎯 BASE PROVIDER RESPONSE [${requestId}]: Received response from base provider`, {

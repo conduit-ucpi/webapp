@@ -1,5 +1,3 @@
-import { Web3Auth } from "@web3auth/modal";
-
 export interface Config {
   web3AuthClientId: string;
   web3AuthNetwork: string;
@@ -189,14 +187,6 @@ export interface AuthContextType {
   logout: () => Promise<void>;
   connect: () => Promise<void>; // Unified connect method that handles wallet connection + login
   authenticatedFetch: (url: string, options?: RequestInit) => Promise<Response>;
-}
-
-export interface Web3AuthInstanceContextType {
-  web3authInstance: Web3Auth | null;
-  web3authProvider: any | null;
-  isLoading: boolean;
-  onLogout: () => Promise<void>;
-  updateProvider?: (provider: any) => void;
 }
 
 export interface ConfigContextType {

@@ -24,8 +24,8 @@ export { ProviderRegistry } from './core/ProviderRegistry';
 export { TokenManager } from './core/TokenManager';
 
 // Providers
-export { Web3AuthProvider } from './providers/Web3AuthProvider';
 export { FarcasterProvider } from './providers/FarcasterProvider';
+export { DynamicProvider } from './providers/DynamicProvider';
 
 // Backend
 export { BackendClient } from './backend/BackendClient';

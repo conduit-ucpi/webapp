@@ -15,64 +15,37 @@ Object.defineProperty(global, 'crypto', {
   }
 })
 
-// Mock Web3Auth modules to prevent crypto issues during testing
-jest.mock('@web3auth/modal', () => ({
-  Web3Auth: jest.fn().mockImplementation(() => ({
-    connected: false,
-    provider: null,
-    initModal: jest.fn(),
-    connect: jest.fn(),
-    logout: jest.fn(),
-    addPlugin: jest.fn()
-  })),
-  WALLET_CONNECTORS: {
-    AUTH: 'auth'
-  },
-  WEB3AUTH_NETWORK: {
-    SAPPHIRE_MAINNET: 'sapphire_mainnet'
-  }
+// Web3Auth has been removed from the codebase, these mocks are no longer needed
+// Kept as comments for reference in case we need to re-add Web3Auth support
+
+// jest.mock('@web3auth/modal', () => ({ ... }))
+// jest.mock('@web3auth/modal/react', () => ({ ... }))
+// jest.mock('@web3auth/base', () => ({ ... }))
+// jest.mock('@web3auth/ethereum-provider', () => ({ ... }))
+// jest.mock('@web3auth/wallet-services-plugin', () => ({ ... }))
+
+// Mock Dynamic Labs modules to prevent import errors during testing
+jest.mock('@dynamic-labs/sdk-react-core', () => ({
+  DynamicContextProvider: ({ children }) => children,
+  useDynamicContext: () => ({
+    primaryWallet: null,
+    user: null,
+    setShowAuthFlow: jest.fn(),
+    handleLogOut: jest.fn()
+  }),
+  DynamicEmbeddedWidget: () => null
 }))
 
-// Mock Web3Auth React hooks
-jest.mock('@web3auth/modal/react', () => ({
-  Web3AuthProvider: ({ children }) => children,
-  useWeb3Auth: () => ({
-    provider: null,
-    web3Auth: null,
-    status: 'ready'
-  }),
-  useWeb3AuthConnect: () => ({
-    connect: jest.fn(),
-    isConnected: false,
-    connectorName: null
-  }),
-  useWeb3AuthUser: () => ({
-    userInfo: null
-  }),
-  useWeb3AuthDisconnect: () => ({
-    disconnect: jest.fn()
-  }),
-  useIdentityToken: () => ({
-    token: null
+jest.mock('@dynamic-labs/ethereum', () => ({
+  EthereumWalletConnectors: {}
+}))
+
+jest.mock('@dynamic-labs/ethers-v6', () => ({
+  getWeb3Provider: jest.fn().mockResolvedValue(null),
+  getSigner: jest.fn().mockResolvedValue({
+    signMessage: jest.fn().mockResolvedValue('0xsignature'),
+    getAddress: jest.fn().mockResolvedValue('0x1234567890123456789012345678901234567890')
   })
-}))
-
-jest.mock('@web3auth/base', () => ({
-  CHAIN_NAMESPACES: {
-    EIP155: 'eip155'
-  },
-  CONNECTOR_STATUS: {
-    READY: 'ready',
-    CONNECTED: 'connected'
-  }
-}))
-
-jest.mock('@web3auth/ethereum-provider', () => ({
-  EthereumPrivateKeyProvider: jest.fn()
-}))
-
-jest.mock('@web3auth/wallet-services-plugin', () => ({
-  WalletServicesPlugin: jest.fn()
 }))
 
 // Mock SDK

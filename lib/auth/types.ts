@@ -72,7 +72,7 @@ export interface AuthConfig {
   walletConnectProjectId?: string;
 }
 
-export type ProviderType = 'web3auth' | 'farcaster' | 'walletconnect' | 'dynamic';
+export type ProviderType = 'farcaster' | 'dynamic';
 
 // React context types
 export interface AuthContextType {

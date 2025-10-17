@@ -300,7 +300,9 @@ export default function Wallet() {
   const isDynamicEmbeddedWallet = () => {
     console.log('🔧 Dynamic wallet detection check:', {
       hasUser: !!user,
+      hasState: !!state,
       providerName: state?.providerName,
+      fullState: state,
       hasDynamicContext: !!dynamicContext,
       primaryWallet: dynamicContext?.primaryWallet,
       allDynamicContextKeys: dynamicContext ? Object.keys(dynamicContext) : null
@@ -310,7 +312,8 @@ export default function Wallet() {
       console.log('🔧 Not Dynamic user:', {
         hasUser: !!user,
         hasState: !!state,
-        providerName: state?.providerName
+        providerName: state?.providerName,
+        fullState: state
       });
       return false;
     }

@@ -36,7 +36,7 @@ interface SendFormData {
 }
 
 export default function Wallet() {
-  const { user, isLoading: authLoading, getEthersProvider, showWalletUI } = useAuth();
+  const { user, state, isLoading: authLoading, getEthersProvider, showWalletUI } = useAuth();
   const { fundAndSendTransaction, getUSDCBalance, getNativeBalance, getUserAddress } = useSimpleEthers();
   const { isInFarcaster } = useFarcaster();
   const { config } = useConfig();
@@ -300,16 +300,17 @@ export default function Wallet() {
   const isDynamicEmbeddedWallet = () => {
     console.log('🔧 Dynamic wallet detection check:', {
       hasUser: !!user,
-      authProvider: user?.authProvider,
+      providerName: state?.providerName,
       hasDynamicContext: !!dynamicContext,
       primaryWallet: dynamicContext?.primaryWallet,
       allDynamicContextKeys: dynamicContext ? Object.keys(dynamicContext) : null
     });
 
-    if (!user || user.authProvider !== 'dynamic') {
+    if (!user || !state || state.providerName !== 'dynamic') {
       console.log('🔧 Not Dynamic user:', {
         hasUser: !!user,
-        authProvider: user?.authProvider
+        hasState: !!state,
+        providerName: state?.providerName
       });
       return false;
     }

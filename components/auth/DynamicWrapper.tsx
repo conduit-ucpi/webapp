@@ -3,10 +3,14 @@
  * Provides the Dynamic context and bridges to our unified provider system
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { DynamicContextProvider, useDynamicContext, useDynamicEvents } from '@dynamic-labs/sdk-react-core';
 import { EthereumWalletConnectors } from '@dynamic-labs/ethereum';
 import { DynamicWagmiConnector } from '@dynamic-labs/wagmi-connector';
+import { WagmiProvider } from 'wagmi';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { createConfig, http } from 'wagmi';
+import { base, baseSepolia } from 'wagmi/chains';
 import { createDynamicConfig } from '@/lib/dynamicConfig';
 import { AuthConfig } from '@/lib/auth/types';
 import { mLog } from '@/utils/mobileLogger';
@@ -420,6 +424,38 @@ function DynamicBridge() {
 }
 
 export function DynamicWrapper({ children, config }: DynamicWrapperProps) {
+  // Create wagmi config and query client FIRST before any early returns
+  const wagmiConfig = useMemo(() => {
+    if (!config.dynamicEnvironmentId) {
+      return null;
+    }
+
+    const chain = config.chainId === 8453 ? base : baseSepolia;
+
+    mLog.info('DynamicWrapper', 'Creating wagmi configuration', {
+      chainId: config.chainId,
+      chainName: chain.name
+    });
+
+    return createConfig({
+      chains: [chain] as const,
+      transports: {
+        [base.id]: http(config.chainId === 8453 ? config.rpcUrl : 'https://mainnet.base.org'),
+        [baseSepolia.id]: http(config.chainId === 84532 ? config.rpcUrl : 'https://sepolia.base.org')
+      }
+    });
+  }, [config.chainId, config.rpcUrl, config.dynamicEnvironmentId]);
+
+  const queryClient = useMemo(() => {
+    return new QueryClient({
+      defaultOptions: {
+        queries: {
+          refetchOnWindowFocus: false,
+        },
+      },
+    });
+  }, []);
+
   // Early return if no Dynamic config
   if (!config.dynamicEnvironmentId) {
     return <>{children}</>;
@@ -433,8 +469,13 @@ export function DynamicWrapper({ children, config }: DynamicWrapperProps) {
     return <>{children}</>;
   }
 
+  if (!wagmiConfig) {
+    mLog.error('DynamicWrapper', 'Failed to create wagmi config');
+    return <>{children}</>;
+  }
+
   try {
-    mLog.info('DynamicWrapper', 'Creating Dynamic settings with DynamicWagmiConnector', {
+    mLog.info('DynamicWrapper', 'Creating Dynamic settings with WagmiProvider + DynamicWagmiConnector', {
       environmentId: config.dynamicEnvironmentId.substring(0, 10) + '...',
       chainId: config.chainId
     });
@@ -446,26 +487,30 @@ export function DynamicWrapper({ children, config }: DynamicWrapperProps) {
       explorerBaseUrl: config.explorerBaseUrl || ''
     });
 
-    mLog.info('DynamicWrapper', 'Dynamic settings created, initializing with DynamicWagmiConnector', {
+    mLog.info('DynamicWrapper', 'Initializing provider stack: WagmiProvider -> DynamicContextProvider -> DynamicWagmiConnector', {
       environmentId: config.dynamicEnvironmentId.substring(0, 10) + '...',
       chainId: config.chainId
     });
 
     return (
-      <DynamicContextProvider
-        settings={dynamicSettings as any}
-        theme="auto"
-        children={
-          <DynamicWagmiConnector
+      <WagmiProvider config={wagmiConfig}>
+        <QueryClientProvider client={queryClient}>
+          <DynamicContextProvider
+            settings={dynamicSettings as any}
+            theme="auto"
             children={
-              <>
-                <DynamicBridge />
-                {children}
-              </>
+              <DynamicWagmiConnector
+                children={
+                  <>
+                    <DynamicBridge />
+                    {children}
+                  </>
+                }
+              />
             }
           />
-        }
-      />
+        </QueryClientProvider>
+      </WagmiProvider>
     );
   } catch (error) {
     mLog.error('DynamicWrapper', 'Failed to initialize Dynamic provider', {

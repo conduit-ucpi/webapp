@@ -406,6 +406,32 @@ function DynamicBridge() {
 }
 
 export function DynamicWrapper({ children, config }: DynamicWrapperProps) {
+  // Create wagmi config and query client FIRST, before any early returns
+  // This is required by React hooks rules - hooks must be called unconditionally
+  const wagmiConfig = useMemo(() => {
+    if (!config.dynamicEnvironmentId) {
+      return null;
+    }
+    mLog.info('DynamicWrapper', 'Creating wagmi configuration');
+    return createWagmiConfig({
+      chainId: config.chainId,
+      rpcUrl: config.rpcUrl,
+      walletConnectProjectId: config.walletConnectProjectId
+    });
+  }, [config.chainId, config.rpcUrl, config.walletConnectProjectId, config.dynamicEnvironmentId]);
+
+  const queryClient = useMemo(() => {
+    mLog.info('DynamicWrapper', 'Creating React Query client');
+    return new QueryClient({
+      defaultOptions: {
+        queries: {
+          refetchOnWindowFocus: false, // Don't refetch on window focus for better mobile experience
+        },
+      },
+    });
+  }, []);
+
+  // Now we can do early returns after all hooks are called
   if (!config.dynamicEnvironmentId) {
     // No Dynamic config, return children without wrapper
     return <>{children}</>;
@@ -419,27 +445,10 @@ export function DynamicWrapper({ children, config }: DynamicWrapperProps) {
     return <>{children}</>;
   }
 
-  // Create wagmi config - memoize to prevent recreation on every render
-  const wagmiConfig = useMemo(() => {
-    mLog.info('DynamicWrapper', 'Creating wagmi configuration');
-    return createWagmiConfig({
-      chainId: config.chainId,
-      rpcUrl: config.rpcUrl,
-      walletConnectProjectId: config.walletConnectProjectId
-    });
-  }, [config.chainId, config.rpcUrl, config.walletConnectProjectId]);
-
-  // Create React Query client - memoize to prevent recreation
-  const queryClient = useMemo(() => {
-    mLog.info('DynamicWrapper', 'Creating React Query client');
-    return new QueryClient({
-      defaultOptions: {
-        queries: {
-          refetchOnWindowFocus: false, // Don't refetch on window focus for better mobile experience
-        },
-      },
-    });
-  }, []);
+  if (!wagmiConfig) {
+    mLog.error('DynamicWrapper', 'Failed to create wagmi config');
+    return <>{children}</>;
+  }
 
   try {
     const dynamicSettings = createDynamicConfig({

@@ -3,15 +3,14 @@ import { EthereumWalletConnectors } from '@dynamic-labs/ethereum';
 import { getNetworkInfo } from "@/utils/networkUtils";
 import { toHexString } from "@/utils/hexUtils";
 import { mLog } from "@/utils/mobileLogger";
-import { Config } from 'wagmi';
 
 // This creates the Dynamic configuration
+// Note: wagmiConfig is provided via WagmiProvider React context, not passed here
 export const createDynamicConfig = (config: {
   dynamicEnvironmentId: string;
   chainId: number;
   rpcUrl: string;
   explorerBaseUrl: string;
-  wagmiConfig: Config;
 }) => {
   mLog.info('DynamicConfig', 'Creating Dynamic configuration');
   
@@ -24,8 +23,8 @@ export const createDynamicConfig = (config: {
     // so we don't need Dynamic to do it during wallet connection
     initialAuthenticationMode: 'connect-only' as const,
 
-    // Provide wagmi config so Dynamic's ethers toolkit can access PublicClient
-    wagmiConfig: config.wagmiConfig,
+    // NOTE: wagmiConfig is provided via WagmiProvider context, not as a direct property
+    // Dynamic's ethers toolkit will read PublicClient from wagmi's React context
 
     walletConnectors: [
       (props: any) => EthereumWalletConnectors({

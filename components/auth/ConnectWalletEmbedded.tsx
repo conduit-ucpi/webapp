@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/components/auth';
 import Button from '@/components/ui/Button';
 import { mLog } from '@/utils/mobileLogger';
@@ -21,6 +21,7 @@ export default function ConnectWalletEmbedded({
   onSuccess
 }: ConnectWalletEmbeddedProps) {
   const { user, isLoading, connect, authenticateBackend, isConnected, address } = useAuth();
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
 
   // Auto-authenticate on OAuth redirect
   useEffect(() => {
@@ -44,6 +45,7 @@ export default function ConnectWalletEmbedded({
         });
 
         try {
+          setIsAuthenticating(true);
           const authSuccess = await authenticateBackend({
             success: true,
             address: address,
@@ -72,6 +74,8 @@ export default function ConnectWalletEmbedded({
           mLog.error('ConnectWalletEmbedded', 'OAuth auto-authentication error', {
             error: error instanceof Error ? error.message : String(error)
           });
+        } finally {
+          setIsAuthenticating(false);
         }
       }
     };
@@ -112,84 +116,90 @@ export default function ConnectWalletEmbedded({
   const handleConnect = async () => {
     mLog.info('ConnectWalletEmbedded', 'Get Started button clicked');
 
-    // Check if this is an OAuth redirect - if so, skip the connect flow
-    const urlParams = new URLSearchParams(window.location.search);
-    const isOAuthRedirect = urlParams.has('dynamicOauthCode') || urlParams.has('dynamicOauthState');
+    try {
+      setIsAuthenticating(true);
 
-    if (isOAuthRedirect) {
-      mLog.info('ConnectWalletEmbedded', 'OAuth redirect detected, checking for auto-connection');
+      // Check if this is an OAuth redirect - if so, skip the connect flow
+      const urlParams = new URLSearchParams(window.location.search);
+      const isOAuthRedirect = urlParams.has('dynamicOauthCode') || urlParams.has('dynamicOauthState');
 
-      // Check if we're already connected (Dynamic auto-connects after OAuth)
-      if (isConnected && address) {
-        mLog.info('ConnectWalletEmbedded', 'Already connected after OAuth, proceeding to backend auth');
+      if (isOAuthRedirect) {
+        mLog.info('ConnectWalletEmbedded', 'OAuth redirect detected, checking for auto-connection');
 
-        // Directly authenticate with backend
-        const authSuccess = await authenticateBackend({
-          success: true,
-          address: address,
-          capabilities: {
-            canSign: true,
-            canTransact: true,
-            canSwitchWallets: true,
-            isAuthOnly: false
-          }
-        });
+        // Check if we're already connected (Dynamic auto-connects after OAuth)
+        if (isConnected && address) {
+          mLog.info('ConnectWalletEmbedded', 'Already connected after OAuth, proceeding to backend auth');
 
-        if (authSuccess) {
-          mLog.info('ConnectWalletEmbedded', 'OAuth backend authentication successful');
-          onSuccess?.();
-
-          // Clean up OAuth parameters from URL
-          if (window.history && window.history.replaceState) {
-            const cleanUrl = window.location.origin + window.location.pathname;
-            window.history.replaceState({}, document.title, cleanUrl);
-            mLog.info('ConnectWalletEmbedded', 'OAuth parameters cleaned from URL');
-          }
-        } else {
-          mLog.error('ConnectWalletEmbedded', 'OAuth backend authentication failed');
-        }
-
-        return;
-      } else {
-        mLog.warn('ConnectWalletEmbedded', 'OAuth redirect detected but not connected yet');
-      }
-    }
-
-    // Normal connection flow
-    mLog.debug('ConnectWalletEmbedded', 'Connect function availability', { hasConnect: !!connect });
-
-    if (connect) {
-      try {
-        mLog.info('ConnectWalletEmbedded', 'Calling connect function...');
-        await mLog.forceFlush(); // Flush before calling connect (in case it hangs)
-
-        const connectionResult = await connect();
-
-        if (connectionResult.success) {
-          mLog.info('ConnectWalletEmbedded', 'Connection successful, authenticating with backend...');
-
-          const authSuccess = await authenticateBackend(connectionResult);
+          // Directly authenticate with backend
+          const authSuccess = await authenticateBackend({
+            success: true,
+            address: address,
+            capabilities: {
+              canSign: true,
+              canTransact: true,
+              canSwitchWallets: true,
+              isAuthOnly: false
+            }
+          });
 
           if (authSuccess) {
-            mLog.info('ConnectWalletEmbedded', 'Backend authentication successful');
+            mLog.info('ConnectWalletEmbedded', 'OAuth backend authentication successful');
             onSuccess?.();
-          } else {
-            mLog.error('ConnectWalletEmbedded', 'Backend authentication failed');
-          }
-        } else {
-          mLog.error('ConnectWalletEmbedded', 'Wallet connection failed', { error: connectionResult.error });
-        }
 
-        await mLog.forceFlush(); // Flush after completion
-      } catch (error) {
-        mLog.error('ConnectWalletEmbedded', 'Connect wallet error', {
-          error: error instanceof Error ? error.message : String(error),
-          stack: error instanceof Error ? error.stack : undefined
-        });
-        await mLog.forceFlush(); // Flush on error
+            // Clean up OAuth parameters from URL
+            if (window.history && window.history.replaceState) {
+              const cleanUrl = window.location.origin + window.location.pathname;
+              window.history.replaceState({}, document.title, cleanUrl);
+              mLog.info('ConnectWalletEmbedded', 'OAuth parameters cleaned from URL');
+            }
+          } else {
+            mLog.error('ConnectWalletEmbedded', 'OAuth backend authentication failed');
+          }
+
+          return;
+        } else {
+          mLog.warn('ConnectWalletEmbedded', 'OAuth redirect detected but not connected yet');
+        }
       }
-    } else {
-      mLog.error('ConnectWalletEmbedded', 'No connect function available');
+
+      // Normal connection flow
+      mLog.debug('ConnectWalletEmbedded', 'Connect function availability', { hasConnect: !!connect });
+
+      if (connect) {
+        try {
+          mLog.info('ConnectWalletEmbedded', 'Calling connect function...');
+          await mLog.forceFlush(); // Flush before calling connect (in case it hangs)
+
+          const connectionResult = await connect();
+
+          if (connectionResult.success) {
+            mLog.info('ConnectWalletEmbedded', 'Connection successful, authenticating with backend...');
+
+            const authSuccess = await authenticateBackend(connectionResult);
+
+            if (authSuccess) {
+              mLog.info('ConnectWalletEmbedded', 'Backend authentication successful');
+              onSuccess?.();
+            } else {
+              mLog.error('ConnectWalletEmbedded', 'Backend authentication failed');
+            }
+          } else {
+            mLog.error('ConnectWalletEmbedded', 'Wallet connection failed', { error: connectionResult.error });
+          }
+
+          await mLog.forceFlush(); // Flush after completion
+        } catch (error) {
+          mLog.error('ConnectWalletEmbedded', 'Connect wallet error', {
+            error: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined
+          });
+          await mLog.forceFlush(); // Flush on error
+        }
+      } else {
+        mLog.error('ConnectWalletEmbedded', 'No connect function available');
+      }
+    } finally {
+      setIsAuthenticating(false);
     }
   };
 
@@ -197,14 +207,16 @@ export default function ConnectWalletEmbedded({
     ? `${className} text-center`
     : `p-4 text-center ${className}`;
 
+  const isBusy = isLoading || isAuthenticating;
+
   return (
     <div className={containerClass}>
       <Button
         onClick={handleConnect}
         className="bg-primary-500 hover:bg-primary-600 text-white px-6 py-2 rounded-lg"
-        disabled={!connect}
+        disabled={!connect || isBusy}
       >
-        {buttonText}
+        {isBusy ? 'Connecting...' : buttonText}
       </Button>
       {!compact && (
         <p className="mt-2 text-sm text-secondary-600 dark:text-secondary-400">

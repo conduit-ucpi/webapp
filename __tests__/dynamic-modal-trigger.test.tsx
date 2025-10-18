@@ -491,8 +491,6 @@ describe('Dynamic Modal Triggering with DYNAMIC_ENVIRONMENT_ID', () => {
     });
 
     test('should skip normal connect flow if OAuth redirect is detected and already connected', async () => {
-      const user = userEvent.setup();
-
       // Mock as already connected from OAuth
       jest.spyOn(require('@/components/auth'), 'useAuth').mockReturnValue({
         user: null,
@@ -507,15 +505,26 @@ describe('Dynamic Modal Triggering with DYNAMIC_ENVIRONMENT_ID', () => {
 
       render(<ConnectWalletEmbedded />);
 
-      const button = screen.getByRole('button', { name: /get started/i });
-
-      await act(async () => {
-        await user.click(button);
+      // The component should auto-authenticate on mount when OAuth params are detected
+      // So we should see "Connecting..." initially, then it completes
+      await waitFor(() => {
+        expect(mockAuthenticateBackend).toHaveBeenCalled();
       });
 
       // Should authenticate directly without calling connect
       expect(mockConnect).not.toHaveBeenCalled();
-      expect(mockAuthenticateBackend).toHaveBeenCalled();
+
+      // Verify it was called with the correct parameters
+      expect(mockAuthenticateBackend).toHaveBeenCalledWith({
+        success: true,
+        address: '0x1234567890123456789012345678901234567890',
+        capabilities: {
+          canSign: true,
+          canTransact: true,
+          canSwitchWallets: true,
+          isAuthOnly: false
+        }
+      });
 
       // Restore the mock
       jest.restoreAllMocks();

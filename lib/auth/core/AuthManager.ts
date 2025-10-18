@@ -132,10 +132,10 @@ export class AuthManager {
         // Store the successful provider
         this.currentProvider = provider;
 
-        // Update state
+        // Update state - keep isLoading true, it will be cleared by authenticateBackend
         this.setState({
           isConnected: true,
-          isLoading: false,
+          // Don't set isLoading: false here - let authenticateBackend control it
           address: result.address || null,
           providerName: provider.getProviderName(),
           capabilities: result.capabilities,

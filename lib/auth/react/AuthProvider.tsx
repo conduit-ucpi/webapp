@@ -162,6 +162,9 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
     }
 
     try {
+      // Set loading state for backend authentication
+      authManager.setState({ isLoading: true });
+
       mLog.info('AuthProvider', 'Starting message signing for authentication', {
         address
       });
@@ -186,10 +189,11 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
       if (backendResult.success && backendResult.user) {
         setUser(backendResult.user);
         // Update auth manager state to reflect successful authentication
-        authManager.setState({ ...authManager.getState(), isAuthenticated: true });
+        authManager.setState({ isAuthenticated: true, isLoading: false });
         mLog.info('AuthProvider', '✅ Backend authentication successful');
         return true;
       } else {
+        authManager.setState({ isLoading: false });
         mLog.error('AuthProvider', 'Backend authentication failed', {
           success: backendResult.success,
           error: backendResult.error,
@@ -198,6 +202,7 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
         return false;
       }
     } catch (error) {
+      authManager.setState({ isLoading: false });
       mLog.error('AuthProvider', 'Authentication error during signing or backend call', {
         error: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined

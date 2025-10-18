@@ -3,10 +3,13 @@
  * Provides the Dynamic context and bridges to our unified provider system
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { DynamicContextProvider, useDynamicContext, useDynamicEvents } from '@dynamic-labs/sdk-react-core';
 import { EthereumWalletConnectors } from '@dynamic-labs/ethereum';
+import { WagmiProvider } from 'wagmi';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createDynamicConfig } from '@/lib/dynamicConfig';
+import { createWagmiConfig } from '@/lib/wagmiConfig';
 import { AuthConfig } from '@/lib/auth/types';
 import { mLog } from '@/utils/mobileLogger';
 
@@ -416,30 +419,58 @@ export function DynamicWrapper({ children, config }: DynamicWrapperProps) {
     return <>{children}</>;
   }
 
+  // Create wagmi config - memoize to prevent recreation on every render
+  const wagmiConfig = useMemo(() => {
+    mLog.info('DynamicWrapper', 'Creating wagmi configuration');
+    return createWagmiConfig({
+      chainId: config.chainId,
+      rpcUrl: config.rpcUrl,
+      walletConnectProjectId: config.walletConnectProjectId
+    });
+  }, [config.chainId, config.rpcUrl, config.walletConnectProjectId]);
+
+  // Create React Query client - memoize to prevent recreation
+  const queryClient = useMemo(() => {
+    mLog.info('DynamicWrapper', 'Creating React Query client');
+    return new QueryClient({
+      defaultOptions: {
+        queries: {
+          refetchOnWindowFocus: false, // Don't refetch on window focus for better mobile experience
+        },
+      },
+    });
+  }, []);
+
   try {
     const dynamicSettings = createDynamicConfig({
       dynamicEnvironmentId: config.dynamicEnvironmentId,
       chainId: config.chainId,
       rpcUrl: config.rpcUrl,
-      explorerBaseUrl: config.explorerBaseUrl || ''
+      explorerBaseUrl: config.explorerBaseUrl || '',
+      wagmiConfig // Pass wagmi config to Dynamic
     });
 
     mLog.info('DynamicWrapper', 'Initializing Dynamic with environment', {
       environmentId: config.dynamicEnvironmentId.substring(0, 10) + '...',
-      chainId: config.chainId
+      chainId: config.chainId,
+      hasWagmiConfig: !!wagmiConfig
     });
 
     return (
-      <DynamicContextProvider
-        settings={dynamicSettings as any}
-        theme="auto"
-        children={
-          <>
-            <DynamicBridge />
-            {children}
-          </>
-        }
-      />
+      <WagmiProvider config={wagmiConfig}>
+        <QueryClientProvider client={queryClient}>
+          <DynamicContextProvider
+            settings={dynamicSettings as any}
+            theme="auto"
+            children={
+              <>
+                <DynamicBridge />
+                {children}
+              </>
+            }
+          />
+        </QueryClientProvider>
+      </WagmiProvider>
     );
   } catch (error) {
     mLog.error('DynamicWrapper', 'Failed to initialize Dynamic provider', {

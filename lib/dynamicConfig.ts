@@ -3,6 +3,7 @@ import { EthereumWalletConnectors } from '@dynamic-labs/ethereum';
 import { getNetworkInfo } from "@/utils/networkUtils";
 import { toHexString } from "@/utils/hexUtils";
 import { mLog } from "@/utils/mobileLogger";
+import { Config } from 'wagmi';
 
 // This creates the Dynamic configuration
 export const createDynamicConfig = (config: {
@@ -10,6 +11,7 @@ export const createDynamicConfig = (config: {
   chainId: number;
   rpcUrl: string;
   explorerBaseUrl: string;
+  wagmiConfig: Config;
 }) => {
   mLog.info('DynamicConfig', 'Creating Dynamic configuration');
   
@@ -21,6 +23,10 @@ export const createDynamicConfig = (config: {
     // We handle authentication via our backend with message signing there,
     // so we don't need Dynamic to do it during wallet connection
     initialAuthenticationMode: 'connect-only' as const,
+
+    // Provide wagmi config so Dynamic's ethers toolkit can access PublicClient
+    wagmiConfig: config.wagmiConfig,
+
     walletConnectors: [
       (props: any) => EthereumWalletConnectors({
         ...props,

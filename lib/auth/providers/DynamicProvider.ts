@@ -15,7 +15,7 @@ import {
 } from '../types/unified-provider';
 import { ethers } from "ethers";
 import { mLog } from '../../../utils/mobileLogger';
-import { getPublicClient } from '@wagmi/core';
+import { getPublicClient, getConnectorClient } from '@wagmi/core';
 
 export class DynamicProvider implements UnifiedProvider {
   private config: AuthConfig;
@@ -380,48 +380,38 @@ export class DynamicProvider implements UnifiedProvider {
     }
 
     try {
-      // Get signer directly from wallet connector's provider to bypass Dynamic's broken getSigner()
-      mLog.info('DynamicProvider', 'Creating signer directly from wallet connector');
+      // Get the connector client from wagmi - this has signing capabilities
+      mLog.info('DynamicProvider', 'Getting connector client from wagmi for signing');
 
-      // Dynamic's wallet.connector returns limited public interface
-      // We need to access the protected _connector property for the real wagmi connector
-      const internalConnector = (this.dynamicWallet as any)._connector;
-      if (!internalConnector) {
-        throw new Error('No internal connector available on Dynamic wallet');
+      const wagmiConfig = (window as any).__wagmiConfig;
+      if (!wagmiConfig) {
+        throw new Error('Wagmi config not found on window');
       }
 
-      mLog.info('DynamicProvider', 'Accessing internal wagmi connector', {
-        connectorType: internalConnector?.constructor?.name || 'unknown',
-        hasGetProvider: typeof internalConnector?.getProvider === 'function'
+      // Get the connector client with signing capabilities
+      // This internally calls connector.getProvider() and wraps it in a viem client
+      const connectorClient = await getConnectorClient(wagmiConfig);
+
+      if (!connectorClient) {
+        throw new Error('No connector client available from wagmi');
+      }
+
+      mLog.info('DynamicProvider', 'Got wagmi connector client', {
+        hasAccount: !!connectorClient.account,
+        accountAddress: connectorClient.account?.address,
+        hasRequest: typeof connectorClient.request === 'function'
       });
 
-      // Get the raw EIP-1193 provider with WalletConnect deep linking from wagmi connector
-      const getProviderFn = internalConnector.getProvider;
-      if (!getProviderFn || typeof getProviderFn !== 'function') {
-        throw new Error('Internal connector does not have getProvider() method');
-      }
-
-      const eip1193Provider = await getProviderFn.call(internalConnector);
-
-      if (!eip1193Provider) {
-        throw new Error('No provider available from wagmi connector');
-      }
-
-      mLog.info('DynamicProvider', 'Got raw WalletConnect EIP-1193 provider via wagmi getProvider()', {
-        hasRequest: typeof eip1193Provider?.request === 'function',
-        providerType: eip1193Provider?.constructor?.name || 'unknown',
-        hasWalletConnect: !!(eip1193Provider as any)?.connector || !!(eip1193Provider as any)?.walletConnectProvider
-      });
-
-      // Create ethers provider and signer
-      const browserProvider = new ethers.BrowserProvider(eip1193Provider);
+      // The viem client is EIP-1193 compliant and can be used directly with ethers
+      // For WalletConnect, this will use the EthereumProvider with deep linking
+      const browserProvider = new ethers.BrowserProvider(connectorClient as any);
       const signer = await browserProvider.getSigner();
 
       if (!signer) {
-        throw new Error('Failed to get signer from wallet provider');
+        throw new Error('Failed to get signer from connector client provider');
       }
 
-      mLog.info('DynamicProvider', 'Signing message with direct signer', {
+      mLog.info('DynamicProvider', 'Signing message with wagmi connector client signer', {
         message: message.substring(0, 50) + '...',
         signerAddress: await signer.getAddress()
       });
@@ -455,34 +445,28 @@ export class DynamicProvider implements UnifiedProvider {
     }
 
     try {
-      // Get signer directly from wallet connector's provider to bypass Dynamic's broken getSigner()
-      mLog.info('DynamicProvider', 'Creating signer directly from wallet connector');
+      // Get the connector client from wagmi - this has signing capabilities
+      mLog.info('DynamicProvider', 'Getting connector client from wagmi for transaction signing');
 
-      // Dynamic's wallet.connector returns limited public interface
-      // We need to access the protected _connector property for the real wagmi connector
-      const internalConnector = (this.dynamicWallet as any)._connector;
-      if (!internalConnector) {
-        throw new Error('No internal connector available on Dynamic wallet');
+      const wagmiConfig = (window as any).__wagmiConfig;
+      if (!wagmiConfig) {
+        throw new Error('Wagmi config not found on window');
       }
 
-      // Get the raw EIP-1193 provider with WalletConnect deep linking from wagmi connector
-      const getProviderFn = internalConnector.getProvider;
-      if (!getProviderFn || typeof getProviderFn !== 'function') {
-        throw new Error('Internal connector does not have getProvider() method');
+      // Get the connector client with signing capabilities
+      // This internally calls connector.getProvider() and wraps it in a viem client
+      const connectorClient = await getConnectorClient(wagmiConfig);
+
+      if (!connectorClient) {
+        throw new Error('No connector client available from wagmi');
       }
 
-      const eip1193Provider = await getProviderFn.call(internalConnector);
-
-      if (!eip1193Provider) {
-        throw new Error('No provider available from wagmi connector');
-      }
-
-      // Create ethers provider and signer
-      const browserProvider = new ethers.BrowserProvider(eip1193Provider);
+      // The viem client is EIP-1193 compliant and can be used directly with ethers
+      const browserProvider = new ethers.BrowserProvider(connectorClient as any);
       const signer = await browserProvider.getSigner();
 
       if (!signer) {
-        throw new Error('Failed to get signer from wallet provider');
+        throw new Error('Failed to get signer from connector client provider');
       }
 
       const tx = {
@@ -495,7 +479,7 @@ export class DynamicProvider implements UnifiedProvider {
         chainId: params.chainId
       };
 
-      mLog.info('DynamicProvider', 'Signing transaction with direct signer');
+      mLog.info('DynamicProvider', 'Signing transaction with wagmi connector client signer');
       const signedTx = await signer.signTransaction(tx);
       mLog.info('DynamicProvider', '✅ Transaction signed successfully');
       return signedTx;

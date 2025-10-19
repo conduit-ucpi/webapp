@@ -21,6 +21,8 @@ export class DynamicProvider implements UnifiedProvider {
   private cachedEthersProvider: ethers.BrowserProvider | null = null;
   private currentAddress: string | null = null;
   private dynamicInstance: any = null;
+  private isEmbeddedWallet: boolean = false;
+  private dynamicWallet: any = null; // Store Dynamic wallet for getSigner()
 
   constructor(config: AuthConfig) {
     this.config = config;
@@ -254,20 +256,23 @@ export class DynamicProvider implements UnifiedProvider {
       const connectorName = connector?.name?.toLowerCase() || '';
 
       // Check if this is a Dynamic embedded wallet (WaaS)
-      const isEmbeddedWallet = walletKey.includes('dynamicwaas') ||
+      this.isEmbeddedWallet = walletKey.includes('dynamicwaas') ||
                               walletKey.includes('turnkey') ||
                               connectorName.includes('waas') ||
                               connectorName.includes('turnkey') ||
                               connectorName.includes('dynamic');
 
+      // Store Dynamic wallet reference for signing operations
+      this.dynamicWallet = dynamicWallet;
+
       mLog.info('DynamicProvider', 'Setting up provider for wallet', {
         walletType: dynamicWallet.connector?.name,
         walletKey: dynamicWallet.key,
-        isEmbeddedWallet,
-        willUseDynamicToolkit: isEmbeddedWallet
+        isEmbeddedWallet: this.isEmbeddedWallet,
+        willUseDynamicToolkit: this.isEmbeddedWallet
       });
 
-      if (isEmbeddedWallet) {
+      if (this.isEmbeddedWallet) {
         // For Dynamic's embedded wallets, use their toolkit
         // These wallets are managed by Dynamic's infrastructure and don't expose standard EIP-1193 providers
         mLog.info('DynamicProvider', 'Using Dynamic toolkit for embedded wallet');

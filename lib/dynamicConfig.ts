@@ -29,7 +29,7 @@ export const createDynamicConfig = (config: {
     walletConnectors: [
       (props: any) => EthereumWalletConnectors({
         ...props,
-        useMetamaskSdk: true, // Enable MetaMask SDK for better compatibility
+        useMetamaskSdk: false, // Disable MetaMask SDK - force WalletConnect for MetaMask
       })
     ],
     overrides: {

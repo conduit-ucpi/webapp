@@ -1,11 +1,10 @@
 /**
- * Dynamic.xyz provider implementation
- * A modern, reliable wallet connection solution that handles mobile properly
+ * Dynamic.xyz provider implementation with DynamicWagmiConnector
+ * Uses wagmi to bridge Dynamic wallets and get providers
  */
 
 import { DynamicContextProvider, useDynamicContext } from '@dynamic-labs/sdk-react-core';
 import { EthereumWalletConnectors } from '@dynamic-labs/ethereum';
-import { getWeb3Provider, getSigner } from '@dynamic-labs/ethers-v6';
 import { AuthConfig } from '../types';
 import {
   UnifiedProvider,
@@ -245,28 +244,54 @@ export class DynamicProvider implements UnifiedProvider {
     }
 
     try {
-      mLog.info('DynamicProvider', 'Getting ethers provider from Dynamic toolkit', {
+      mLog.info('DynamicProvider', 'Creating ethers provider from Dynamic wallet connector', {
         walletType: dynamicWallet.connector?.name,
-        walletConnector: dynamicWallet.connector?.constructor?.name
+        walletConnector: dynamicWallet.connector?.constructor?.name,
+        hasConnector: !!dynamicWallet.connector
       });
 
-      // Use Dynamic's official toolkit - should work now with wagmi config
-      const provider = await getWeb3Provider(dynamicWallet);
-
-      if (provider) {
-        this.cachedEthersProvider = provider;
-        mLog.info('DynamicProvider', '✅ Ethers provider created successfully via Dynamic toolkit');
-        return;
-      } else {
-        throw new Error('getWeb3Provider returned null - wagmi config may not be properly initialized');
+      // DynamicWagmiConnector bridges the wallet into wagmi
+      // We can get the EIP-1193 provider directly from the connector
+      const connector = dynamicWallet.connector;
+      if (!connector) {
+        throw new Error('No connector found on Dynamic wallet');
       }
+
+      // Get the underlying EIP-1193 provider from the connector
+      // MetaMask SDK and other connectors expose this
+      let eip1193Provider = null;
+
+      // Try multiple ways to get the provider
+      if (connector.provider) {
+        eip1193Provider = connector.provider;
+      } else if (connector.getProvider && typeof connector.getProvider === 'function') {
+        eip1193Provider = await connector.getProvider();
+      } else if (typeof connector === 'function') {
+        // Sometimes the connector itself is a provider factory
+        eip1193Provider = connector;
+      }
+
+      if (!eip1193Provider) {
+        throw new Error('Could not extract EIP-1193 provider from connector');
+      }
+
+      mLog.info('DynamicProvider', 'Found EIP-1193 provider, creating ethers BrowserProvider', {
+        providerType: eip1193Provider.constructor?.name,
+        hasRequest: !!eip1193Provider.request
+      });
+
+      // Create ethers BrowserProvider from the EIP-1193 provider
+      this.cachedEthersProvider = new ethers.BrowserProvider(eip1193Provider);
+
+      mLog.info('DynamicProvider', '✅ Ethers provider created successfully from wallet connector');
+      return;
+
     } catch (error) {
       mLog.error('DynamicProvider', 'Failed to create ethers provider', {
         error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-        suggestion: 'Verify that wagmi config is properly initialized in DynamicWrapper'
+        stack: error instanceof Error ? error.stack : undefined
       });
-      throw error; // Don't fall back - fail clearly so we can fix the root cause
+      throw error;
     }
   }
 
@@ -302,18 +327,14 @@ export class DynamicProvider implements UnifiedProvider {
   }
 
   async signMessage(message: string): Promise<string> {
-    // Get the current Dynamic wallet from the window state
-    const dynamicWallet = typeof window !== 'undefined' && (window as any).dynamicWallet;
-
-    if (!dynamicWallet) {
-      throw new Error('No Dynamic wallet available for signing');
+    if (!this.cachedEthersProvider) {
+      throw new Error('No ethers provider available for signing');
     }
 
     try {
-      // Use Dynamic's official toolkit (should handle mobile properly with wagmi)
-      const signer = await getSigner(dynamicWallet);
+      const signer = await this.cachedEthersProvider.getSigner();
 
-      mLog.info('DynamicProvider', 'Signing message with Dynamic toolkit signer', {
+      mLog.info('DynamicProvider', 'Signing message with ethers signer', {
         message: message.substring(0, 50) + '...',
         signerAddress: await signer.getAddress()
       });
@@ -337,22 +358,17 @@ export class DynamicProvider implements UnifiedProvider {
         throw new Error('Dynamic embedded wallet signing failed: Social login users need to set up a passkey for message signing. This will fall back to JWT authentication.');
       }
 
-      // Re-throw without fallback - let the error bubble up clearly
       throw signingError;
     }
   }
 
   async signTransaction(params: TransactionRequest): Promise<string> {
-    // Get the current Dynamic wallet from the window state
-    const dynamicWallet = typeof window !== 'undefined' && (window as any).dynamicWallet;
-
-    if (!dynamicWallet) {
-      throw new Error('No Dynamic wallet available for signing');
+    if (!this.cachedEthersProvider) {
+      throw new Error('No ethers provider available for signing');
     }
 
     try {
-      // Use Dynamic's official toolkit
-      const signer = await getSigner(dynamicWallet);
+      const signer = await this.cachedEthersProvider.getSigner();
 
       const tx = {
         to: params.to,
@@ -364,7 +380,7 @@ export class DynamicProvider implements UnifiedProvider {
         chainId: params.chainId
       };
 
-      mLog.info('DynamicProvider', 'Signing transaction with Dynamic toolkit signer');
+      mLog.info('DynamicProvider', 'Signing transaction with ethers signer');
       const signedTx = await signer.signTransaction(tx);
       mLog.info('DynamicProvider', '✅ Transaction signed successfully');
       return signedTx;

@@ -196,22 +196,6 @@ function DynamicBridge() {
       contextKeys: Object.keys(dynamicContext || {})
     });
 
-    // TEMPORARY: Clear stale wallet state on initialization if no valid session
-    if (primaryWallet && !user) {
-      mLog.warn('DynamicBridge', 'Found stale wallet connection without user - disconnecting', {
-        address: primaryWallet.address,
-        walletKey: primaryWallet.key
-      });
-      // Clear the stale connection
-      if (handleLogOut) {
-        handleLogOut().catch((err: any) => {
-          mLog.error('DynamicBridge', 'Failed to clear stale connection', {
-            error: err instanceof Error ? err.message : String(err)
-          });
-        });
-      }
-    }
-
     // Check if this is an OAuth redirect (user came back from Google login)
     const urlParams = new URLSearchParams(window.location.search);
     const isOAuthRedirect = urlParams.has('dynamicOauthCode') || urlParams.has('dynamicOauthState');

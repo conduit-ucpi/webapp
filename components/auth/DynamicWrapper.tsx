@@ -263,47 +263,92 @@ function DynamicBridge() {
 
         // Check if user is already connected (including OAuth redirects)
         if (primaryWallet && primaryWallet.address) {
-          mLog.info('DynamicBridge', 'User already connected, returning existing connection', {
+          mLog.info('DynamicBridge', 'User already connected, checking connection validity', {
             address: primaryWallet.address,
             connector: primaryWallet.connector?.name,
             walletKey: primaryWallet.key
           });
 
-          let provider = primaryWallet.connector;
-          if ((primaryWallet.connector as any)?.provider) {
-            provider = (primaryWallet.connector as any).provider;
+          // Check if this connection has a valid provider
+          const connector = primaryWallet.connector;
+          const walletKey = primaryWallet.key?.toLowerCase() || '';
+          const connectorName = connector?.name?.toLowerCase() || '';
+
+          // Check if embedded wallet (these always work with Dynamic toolkit)
+          const isEmbeddedWallet = walletKey.includes('dynamicwaas') ||
+                                  walletKey.includes('turnkey') ||
+                                  connectorName.includes('waas') ||
+                                  connectorName.includes('turnkey') ||
+                                  connectorName.includes('dynamic');
+
+          // For external wallets, check if we can extract a provider
+          let hasValidProvider = isEmbeddedWallet; // Embedded wallets are always valid
+
+          if (!isEmbeddedWallet && connector) {
+            // Check if provider can be extracted (cast to any for dynamic property access)
+            const connectorAny = connector as any;
+            hasValidProvider = !!(
+              connectorAny.provider ||
+              (connectorAny.getProvider && typeof connectorAny.getProvider === 'function') ||
+              (connectorAny.request && typeof connectorAny.request === 'function')
+            );
           }
 
-          const finalUser = user || {
-            email: null,
-            walletAddress: primaryWallet.address
-          };
+          if (!hasValidProvider) {
+            const connectorAny = connector as any;
+            mLog.warn('DynamicBridge', 'Stale connection detected - cannot extract provider, forcing logout', {
+              walletKey: primaryWallet.key,
+              connectorName: connector?.name,
+              hasProvider: !!connectorAny?.provider,
+              hasGetProvider: !!(connectorAny?.getProvider && typeof connectorAny.getProvider === 'function'),
+              hasRequest: !!(connectorAny?.request && typeof connectorAny.request === 'function')
+            });
 
-          const result = {
-            address: primaryWallet.address,
-            provider: provider,
-            wallet: primaryWallet,
-            user: finalUser
-          };
+            // Force disconnect the stale connection
+            if (handleLogOut) {
+              await handleLogOut();
+              mLog.info('DynamicBridge', 'Stale connection cleared, will show modal');
+            }
 
-          // Check if this was from an OAuth redirect and clean up URL
-          const urlParams = new URLSearchParams(window.location.search);
-          const isOAuthRedirect = urlParams.has('dynamicOauthCode') || urlParams.has('dynamicOauthState');
+            // Fall through to show modal
+          } else {
+            // Valid connection, return it
+            let provider = primaryWallet.connector;
+            if ((primaryWallet.connector as any)?.provider) {
+              provider = (primaryWallet.connector as any).provider;
+            }
 
-          if (isOAuthRedirect) {
-            mLog.info('DynamicBridge', 'OAuth redirect detected in already-connected path, cleaning up URL');
+            const finalUser = user || {
+              email: null,
+              walletAddress: primaryWallet.address
+            };
 
-            // Clean up OAuth parameters from URL
-            setTimeout(() => {
-              if (typeof window !== 'undefined' && window.history && window.history.replaceState) {
-                const cleanUrl = window.location.origin + window.location.pathname;
-                window.history.replaceState({}, document.title, cleanUrl);
-                mLog.info('DynamicBridge', 'OAuth parameters cleaned from URL in shortcut path');
-              }
-            }, 100);
+            const result = {
+              address: primaryWallet.address,
+              provider: provider,
+              wallet: primaryWallet,
+              user: finalUser
+            };
+
+            // Check if this was from an OAuth redirect and clean up URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const isOAuthRedirect = urlParams.has('dynamicOauthCode') || urlParams.has('dynamicOauthState');
+
+            if (isOAuthRedirect) {
+              mLog.info('DynamicBridge', 'OAuth redirect detected in already-connected path, cleaning up URL');
+
+              // Clean up OAuth parameters from URL
+              setTimeout(() => {
+                if (typeof window !== 'undefined' && window.history && window.history.replaceState) {
+                  const cleanUrl = window.location.origin + window.location.pathname;
+                  window.history.replaceState({}, document.title, cleanUrl);
+                  mLog.info('DynamicBridge', 'OAuth parameters cleaned from URL in shortcut path');
+                }
+              }, 100);
+            }
+
+            return result;
           }
-
-          return result;
         }
 
         // Clear any existing promise before starting new auth flow

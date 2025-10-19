@@ -257,7 +257,10 @@ export class DynamicProvider implements UnifiedProvider {
       // Use Dynamic's toolkit for ALL wallet types (embedded, WalletConnect, MetaMask, etc.)
       // This is necessary because WalletConnect connectors managed by Dynamic don't expose
       // direct EIP-1193 providers - they must go through Dynamic's infrastructure
-      const web3Provider = await getWeb3Provider(dynamicWallet);
+
+      // Retry logic: wagmi may not have synced the connector yet after wallet connection
+      // Dynamic's getWeb3Provider() needs wagmi's PublicClient to be available
+      const web3Provider = await this.retryGetWeb3Provider(dynamicWallet);
       if (!web3Provider) {
         throw new Error('Failed to get Web3Provider from Dynamic toolkit');
       }
@@ -272,6 +275,42 @@ export class DynamicProvider implements UnifiedProvider {
       });
       throw error;
     }
+  }
+
+  private async retryGetWeb3Provider(dynamicWallet: any, maxRetries: number = 5): Promise<any> {
+    const delays = [100, 200, 400, 800, 1600]; // Exponential backoff in ms
+
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        mLog.info('DynamicProvider', `Attempting to get Web3Provider (attempt ${attempt + 1}/${maxRetries})`);
+        const provider = await getWeb3Provider(dynamicWallet);
+
+        if (provider) {
+          mLog.info('DynamicProvider', `✅ Successfully got Web3Provider on attempt ${attempt + 1}`);
+          return provider;
+        }
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+
+        // Check if this is the "Unable to retrieve PublicClient" error
+        if (errorMsg.includes('Unable to retrieve PublicClient')) {
+          if (attempt < maxRetries - 1) {
+            const delay = delays[attempt];
+            mLog.warn('DynamicProvider', `PublicClient not ready yet, waiting ${delay}ms before retry ${attempt + 2}/${maxRetries}`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+            continue;
+          } else {
+            mLog.error('DynamicProvider', `Failed to get PublicClient after ${maxRetries} attempts`);
+            throw error;
+          }
+        }
+
+        // For other errors, throw immediately
+        throw error;
+      }
+    }
+
+    throw new Error(`Failed to get Web3Provider after ${maxRetries} attempts`);
   }
 
   async disconnect(): Promise<void> {

@@ -5,7 +5,7 @@
 
 import { DynamicContextProvider, useDynamicContext } from '@dynamic-labs/sdk-react-core';
 import { EthereumWalletConnectors } from '@dynamic-labs/ethereum';
-import { getWeb3Provider, getSigner } from '@dynamic-labs/ethers-v6';
+import { getWeb3Provider } from '@dynamic-labs/ethers-v6';
 import { AuthConfig } from '../types';
 import {
   UnifiedProvider,
@@ -380,14 +380,30 @@ export class DynamicProvider implements UnifiedProvider {
     }
 
     try {
-      // Use Dynamic's getSigner to get a signer connected to the wallet
-      const signer = await getSigner(this.dynamicWallet);
+      // Get signer directly from wallet connector's provider to bypass Dynamic's broken getSigner()
+      mLog.info('DynamicProvider', 'Creating signer directly from wallet connector');
 
-      if (!signer) {
-        throw new Error('Failed to get signer from Dynamic wallet');
+      const connector = this.dynamicWallet.connector;
+      if (!connector) {
+        throw new Error('No connector available on Dynamic wallet');
       }
 
-      mLog.info('DynamicProvider', 'Signing message with Dynamic signer', {
+      // Get the EIP-1193 provider from the connector
+      const eip1193Provider = await connector.getWalletClient?.() || connector.provider;
+
+      if (!eip1193Provider) {
+        throw new Error('No provider available from wallet connector');
+      }
+
+      // Create ethers provider and signer
+      const browserProvider = new ethers.BrowserProvider(eip1193Provider);
+      const signer = await browserProvider.getSigner();
+
+      if (!signer) {
+        throw new Error('Failed to get signer from wallet provider');
+      }
+
+      mLog.info('DynamicProvider', 'Signing message with direct signer', {
         message: message.substring(0, 50) + '...',
         signerAddress: await signer.getAddress()
       });
@@ -421,11 +437,27 @@ export class DynamicProvider implements UnifiedProvider {
     }
 
     try {
-      // Use Dynamic's getSigner to get a signer connected to the wallet
-      const signer = await getSigner(this.dynamicWallet);
+      // Get signer directly from wallet connector's provider to bypass Dynamic's broken getSigner()
+      mLog.info('DynamicProvider', 'Creating signer directly from wallet connector');
+
+      const connector = this.dynamicWallet.connector;
+      if (!connector) {
+        throw new Error('No connector available on Dynamic wallet');
+      }
+
+      // Get the EIP-1193 provider from the connector
+      const eip1193Provider = await connector.getWalletClient?.() || connector.provider;
+
+      if (!eip1193Provider) {
+        throw new Error('No provider available from wallet connector');
+      }
+
+      // Create ethers provider and signer
+      const browserProvider = new ethers.BrowserProvider(eip1193Provider);
+      const signer = await browserProvider.getSigner();
 
       if (!signer) {
-        throw new Error('Failed to get signer from Dynamic wallet');
+        throw new Error('Failed to get signer from wallet provider');
       }
 
       const tx = {
@@ -438,7 +470,7 @@ export class DynamicProvider implements UnifiedProvider {
         chainId: params.chainId
       };
 
-      mLog.info('DynamicProvider', 'Signing transaction with Dynamic signer');
+      mLog.info('DynamicProvider', 'Signing transaction with direct signer');
       const signedTx = await signer.signTransaction(tx);
       mLog.info('DynamicProvider', '✅ Transaction signed successfully');
       return signedTx;

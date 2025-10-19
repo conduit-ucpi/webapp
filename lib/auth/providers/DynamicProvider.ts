@@ -388,12 +388,23 @@ export class DynamicProvider implements UnifiedProvider {
         throw new Error('No connector available on Dynamic wallet');
       }
 
-      // Get the EIP-1193 provider from the connector
-      const eip1193Provider = await connector.getWalletClient?.() || connector.provider;
+      // Get the raw EIP-1193 provider with WalletConnect deep linking
+      // Use getProvider() which returns the raw provider, not getWalletClient() which is a wagmi wrapper
+      const getProviderFn = (connector as any).getProvider;
+      if (!getProviderFn || typeof getProviderFn !== 'function') {
+        throw new Error('Connector does not have getProvider() method');
+      }
+
+      const eip1193Provider = await getProviderFn.call(connector);
 
       if (!eip1193Provider) {
         throw new Error('No provider available from wallet connector');
       }
+
+      mLog.info('DynamicProvider', 'Got raw EIP-1193 provider from connector', {
+        hasRequest: typeof eip1193Provider?.request === 'function',
+        providerType: eip1193Provider?.constructor?.name || 'unknown'
+      });
 
       // Create ethers provider and signer
       const browserProvider = new ethers.BrowserProvider(eip1193Provider);
@@ -445,8 +456,14 @@ export class DynamicProvider implements UnifiedProvider {
         throw new Error('No connector available on Dynamic wallet');
       }
 
-      // Get the EIP-1193 provider from the connector
-      const eip1193Provider = await connector.getWalletClient?.() || connector.provider;
+      // Get the raw EIP-1193 provider with WalletConnect deep linking
+      // Use getProvider() which returns the raw provider, not getWalletClient() which is a wagmi wrapper
+      const getProviderFn = (connector as any).getProvider;
+      if (!getProviderFn || typeof getProviderFn !== 'function') {
+        throw new Error('Connector does not have getProvider() method');
+      }
+
+      const eip1193Provider = await getProviderFn.call(connector);
 
       if (!eip1193Provider) {
         throw new Error('No provider available from wallet connector');

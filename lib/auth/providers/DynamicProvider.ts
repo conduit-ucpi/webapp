@@ -5,6 +5,7 @@
 
 import { DynamicContextProvider, useDynamicContext } from '@dynamic-labs/sdk-react-core';
 import { EthereumWalletConnectors } from '@dynamic-labs/ethereum';
+import { getWeb3Provider, getSigner } from '@dynamic-labs/ethers-v6';
 import { AuthConfig } from '../types';
 import {
   UnifiedProvider,
@@ -244,46 +245,78 @@ export class DynamicProvider implements UnifiedProvider {
     }
 
     try {
-      mLog.info('DynamicProvider', 'Creating ethers provider from Dynamic wallet connector', {
-        walletType: dynamicWallet.connector?.name,
-        walletConnector: dynamicWallet.connector?.constructor?.name,
-        hasConnector: !!dynamicWallet.connector
-      });
-
-      // DynamicWagmiConnector bridges the wallet into wagmi
-      // We can get the EIP-1193 provider directly from the connector
       const connector = dynamicWallet.connector;
       if (!connector) {
         throw new Error('No connector found on Dynamic wallet');
       }
 
-      // Get the underlying EIP-1193 provider from the connector
-      // MetaMask SDK and other connectors expose this
+      const walletKey = dynamicWallet.key?.toLowerCase() || '';
+      const connectorName = connector?.name?.toLowerCase() || '';
+
+      // Check if this is a Dynamic embedded wallet (WaaS)
+      const isEmbeddedWallet = walletKey.includes('dynamicwaas') ||
+                              walletKey.includes('turnkey') ||
+                              connectorName.includes('waas') ||
+                              connectorName.includes('turnkey') ||
+                              connectorName.includes('dynamic');
+
+      mLog.info('DynamicProvider', 'Setting up provider for wallet', {
+        walletType: dynamicWallet.connector?.name,
+        walletKey: dynamicWallet.key,
+        isEmbeddedWallet,
+        willUseDynamicToolkit: isEmbeddedWallet
+      });
+
+      if (isEmbeddedWallet) {
+        // For Dynamic's embedded wallets, use their toolkit
+        // These wallets are managed by Dynamic's infrastructure and don't expose standard EIP-1193 providers
+        mLog.info('DynamicProvider', 'Using Dynamic toolkit for embedded wallet');
+
+        const web3Provider = await getWeb3Provider(dynamicWallet);
+        if (!web3Provider) {
+          throw new Error('Failed to get Web3Provider from Dynamic toolkit');
+        }
+
+        this.cachedEthersProvider = web3Provider as ethers.BrowserProvider;
+        mLog.info('DynamicProvider', '✅ Ethers provider created successfully via Dynamic toolkit');
+        return;
+      }
+
+      // For external wallets (MetaMask, WalletConnect, etc.), extract provider directly
+      mLog.info('DynamicProvider', 'Extracting provider directly for external wallet', {
+        connectorName: connector?.name,
+        hasProvider: !!connector.provider
+      });
+
       let eip1193Provider = null;
 
-      // Try multiple ways to get the provider
+      // Method 1: Direct provider property (most external wallets)
       if (connector.provider) {
+        mLog.info('DynamicProvider', 'Found provider via connector.provider');
         eip1193Provider = connector.provider;
-      } else if (connector.getProvider && typeof connector.getProvider === 'function') {
+      }
+      // Method 2: getProvider() method
+      else if (connector.getProvider && typeof connector.getProvider === 'function') {
+        mLog.info('DynamicProvider', 'Trying connector.getProvider()');
         eip1193Provider = await connector.getProvider();
-      } else if (typeof connector === 'function') {
-        // Sometimes the connector itself is a provider factory
+      }
+      // Method 3: Connector itself might be a provider
+      else if (connector.request && typeof connector.request === 'function') {
+        mLog.info('DynamicProvider', 'Connector itself appears to be an EIP-1193 provider');
         eip1193Provider = connector;
       }
 
       if (!eip1193Provider) {
-        throw new Error('Could not extract EIP-1193 provider from connector');
+        mLog.error('DynamicProvider', 'Could not extract provider from external wallet connector', {
+          walletKey: dynamicWallet.key,
+          connectorKeys: Object.keys(connector)
+        });
+        throw new Error(`Could not extract EIP-1193 provider from ${dynamicWallet.key} connector`);
       }
-
-      mLog.info('DynamicProvider', 'Found EIP-1193 provider, creating ethers BrowserProvider', {
-        providerType: eip1193Provider.constructor?.name,
-        hasRequest: !!eip1193Provider.request
-      });
 
       // Create ethers BrowserProvider from the EIP-1193 provider
       this.cachedEthersProvider = new ethers.BrowserProvider(eip1193Provider);
-
-      mLog.info('DynamicProvider', '✅ Ethers provider created successfully from wallet connector');
+      mLog.info('DynamicProvider', '✅ Ethers provider created successfully from external wallet connector');
       return;
 
     } catch (error) {

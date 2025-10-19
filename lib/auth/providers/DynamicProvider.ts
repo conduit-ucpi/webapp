@@ -383,25 +383,31 @@ export class DynamicProvider implements UnifiedProvider {
       // Get signer directly from wallet connector's provider to bypass Dynamic's broken getSigner()
       mLog.info('DynamicProvider', 'Creating signer directly from wallet connector');
 
-      const connector = this.dynamicWallet.connector;
-      if (!connector) {
-        throw new Error('No connector available on Dynamic wallet');
+      // Dynamic's wallet.connector returns limited public interface
+      // We need to access the protected _connector property for the real wagmi connector
+      const internalConnector = (this.dynamicWallet as any)._connector;
+      if (!internalConnector) {
+        throw new Error('No internal connector available on Dynamic wallet');
       }
 
-      // Get the raw EIP-1193 provider with WalletConnect deep linking
-      // Must call getProvider() async method - provider is not exposed as a property
-      const getProviderFn = (connector as any).getProvider;
+      mLog.info('DynamicProvider', 'Accessing internal wagmi connector', {
+        connectorType: internalConnector?.constructor?.name || 'unknown',
+        hasGetProvider: typeof internalConnector?.getProvider === 'function'
+      });
+
+      // Get the raw EIP-1193 provider with WalletConnect deep linking from wagmi connector
+      const getProviderFn = internalConnector.getProvider;
       if (!getProviderFn || typeof getProviderFn !== 'function') {
-        throw new Error('Connector does not have getProvider() method');
+        throw new Error('Internal connector does not have getProvider() method');
       }
 
-      const eip1193Provider = await getProviderFn.call(connector);
+      const eip1193Provider = await getProviderFn.call(internalConnector);
 
       if (!eip1193Provider) {
-        throw new Error('No provider available from wallet connector');
+        throw new Error('No provider available from wagmi connector');
       }
 
-      mLog.info('DynamicProvider', 'Got raw WalletConnect EIP-1193 provider via getProvider()', {
+      mLog.info('DynamicProvider', 'Got raw WalletConnect EIP-1193 provider via wagmi getProvider()', {
         hasRequest: typeof eip1193Provider?.request === 'function',
         providerType: eip1193Provider?.constructor?.name || 'unknown',
         hasWalletConnect: !!(eip1193Provider as any)?.connector || !!(eip1193Provider as any)?.walletConnectProvider
@@ -452,22 +458,23 @@ export class DynamicProvider implements UnifiedProvider {
       // Get signer directly from wallet connector's provider to bypass Dynamic's broken getSigner()
       mLog.info('DynamicProvider', 'Creating signer directly from wallet connector');
 
-      const connector = this.dynamicWallet.connector;
-      if (!connector) {
-        throw new Error('No connector available on Dynamic wallet');
+      // Dynamic's wallet.connector returns limited public interface
+      // We need to access the protected _connector property for the real wagmi connector
+      const internalConnector = (this.dynamicWallet as any)._connector;
+      if (!internalConnector) {
+        throw new Error('No internal connector available on Dynamic wallet');
       }
 
-      // Get the raw EIP-1193 provider with WalletConnect deep linking
-      // Must call getProvider() async method - provider is not exposed as a property
-      const getProviderFn = (connector as any).getProvider;
+      // Get the raw EIP-1193 provider with WalletConnect deep linking from wagmi connector
+      const getProviderFn = internalConnector.getProvider;
       if (!getProviderFn || typeof getProviderFn !== 'function') {
-        throw new Error('Connector does not have getProvider() method');
+        throw new Error('Internal connector does not have getProvider() method');
       }
 
-      const eip1193Provider = await getProviderFn.call(connector);
+      const eip1193Provider = await getProviderFn.call(internalConnector);
 
       if (!eip1193Provider) {
-        throw new Error('No provider available from wallet connector');
+        throw new Error('No provider available from wagmi connector');
       }
 
       // Create ethers provider and signer

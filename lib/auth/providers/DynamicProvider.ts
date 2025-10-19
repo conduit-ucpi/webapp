@@ -389,7 +389,7 @@ export class DynamicProvider implements UnifiedProvider {
       }
 
       // Get the raw EIP-1193 provider with WalletConnect deep linking
-      // Use getProvider() which returns the raw provider, not getWalletClient() which is a wagmi wrapper
+      // Must call getProvider() async method - provider is not exposed as a property
       const getProviderFn = (connector as any).getProvider;
       if (!getProviderFn || typeof getProviderFn !== 'function') {
         throw new Error('Connector does not have getProvider() method');
@@ -401,9 +401,10 @@ export class DynamicProvider implements UnifiedProvider {
         throw new Error('No provider available from wallet connector');
       }
 
-      mLog.info('DynamicProvider', 'Got raw EIP-1193 provider from connector', {
+      mLog.info('DynamicProvider', 'Got raw WalletConnect EIP-1193 provider via getProvider()', {
         hasRequest: typeof eip1193Provider?.request === 'function',
-        providerType: eip1193Provider?.constructor?.name || 'unknown'
+        providerType: eip1193Provider?.constructor?.name || 'unknown',
+        hasWalletConnect: !!(eip1193Provider as any)?.connector || !!(eip1193Provider as any)?.walletConnectProvider
       });
 
       // Create ethers provider and signer
@@ -457,7 +458,7 @@ export class DynamicProvider implements UnifiedProvider {
       }
 
       // Get the raw EIP-1193 provider with WalletConnect deep linking
-      // Use getProvider() which returns the raw provider, not getWalletClient() which is a wagmi wrapper
+      // Must call getProvider() async method - provider is not exposed as a property
       const getProviderFn = (connector as any).getProvider;
       if (!getProviderFn || typeof getProviderFn !== 'function') {
         throw new Error('Connector does not have getProvider() method');

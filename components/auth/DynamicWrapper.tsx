@@ -466,13 +466,20 @@ export function DynamicWrapper({ children, config }: DynamicWrapperProps) {
       chainName: chain.name
     });
 
-    return createConfig({
+    const wagmiCfg = createConfig({
       chains: [chain] as const,
       transports: {
         [base.id]: http(config.chainId === 8453 ? config.rpcUrl : 'https://mainnet.base.org'),
         [baseSepolia.id]: http(config.chainId === 84532 ? config.rpcUrl : 'https://sepolia.base.org')
       }
     });
+
+    // Store wagmi config on window for direct access by DynamicProvider
+    if (typeof window !== 'undefined') {
+      (window as any).__wagmiConfig = wagmiCfg;
+    }
+
+    return wagmiCfg;
   }, [config.chainId, config.rpcUrl, config.dynamicEnvironmentId]);
 
   const queryClient = useMemo(() => {

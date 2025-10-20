@@ -2,7 +2,7 @@
    - Local:        http://localhost:3000
    - Network:      http://0.0.0.0:3000
 
- ✓ Ready in 197ms
+ ✓ Ready in 194ms
 Environment variables check:
 NEXT_PUBLIC_BASE_PATH: null
 WEB3AUTH_CLIENT_ID: Present
@@ -70,8 +70,8 @@ Config being sent: {
   walletServicesButtonPosition: undefined,
   walletServicesEnableKeyExport: undefined,
   walletServicesHideTopup: undefined,
-  gitTag: 'farcaster-test-v37.2.22',
-  gitSha: 'e4e87c1',
+  gitTag: 'farcaster-test-v37.2.23',
+  gitSha: '0090428',
   buildVersion: 'unknown'
 }
 Environment variables check:
@@ -141,46 +141,46 @@ Config being sent: {
   walletServicesButtonPosition: undefined,
   walletServicesEnableKeyExport: undefined,
   walletServicesHideTopup: undefined,
-  gitTag: 'farcaster-test-v37.2.22',
-  gitSha: 'e4e87c1',
+  gitTag: 'farcaster-test-v37.2.23',
+  gitSha: '0090428',
   buildVersion: 'unknown'
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.380Z] [INFO] [DynamicWrapper] Creating wagmi configuration {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:48.755Z] [INFO] [DynamicWrapper] Creating wagmi configuration {
   "chainId": 8453,
   "chainName": "Base"
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.380Z] [DATA] {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:48.755Z] [DATA] {
   "chainId": 8453,
   "chainName": "Base"
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.380Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.385Z] [INFO] [DynamicWrapper] Creating Dynamic settings with WagmiProvider + DynamicWagmiConnector {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:48.755Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:48.758Z] [INFO] [DynamicWrapper] Creating Dynamic settings with WagmiProvider + DynamicWagmiConnector {
   "environmentId": "ac6e291d-c...",
   "chainId": 8453
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.385Z] [DATA] {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:48.758Z] [DATA] {
   "environmentId": "ac6e291d-c...",
   "chainId": 8453
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.385Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.385Z] [INFO] [DynamicConfig] Creating Dynamic configuration 
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.385Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.385Z] [INFO] [DynamicConfig] Dynamic settings created {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:48.758Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:48.759Z] [INFO] [DynamicConfig] Creating Dynamic configuration 
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:48.759Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:48.760Z] [INFO] [DynamicConfig] Dynamic settings created {
   "environmentId": "ac6e291d-c...",
   "chainId": 8453,
   "networkName": "Base Mainnet",
   "hasWalletConnectors": true,
   "connectorCount": 1
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.385Z] [DATA] {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:48.760Z] [DATA] {
   "environmentId": "ac6e291d-c...",
   "chainId": 8453,
   "networkName": "Base Mainnet",
   "hasWalletConnectors": true,
   "connectorCount": 1
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.385Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.387Z] [INFO] [DynamicConfig] Available wallet connectors {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:48.760Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:48.761Z] [INFO] [DynamicConfig] Available wallet connectors {
   "connectorNames": [
     "vD",
     "vq",
@@ -192,7 +192,7 @@ Config being sent: {
   ],
   "connectorCount": 7
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.387Z] [DATA] {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:48.761Z] [DATA] {
   "connectorNames": [
     "vD",
     "vq",
@@ -204,17 +204,17 @@ Config being sent: {
   ],
   "connectorCount": 7
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.387Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.387Z] [INFO] [DynamicWrapper] Initializing provider stack: WagmiProvider -> DynamicContextProvider -> DynamicWagmiConnector {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:48.761Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:48.761Z] [INFO] [DynamicWrapper] Initializing provider stack: WagmiProvider -> DynamicContextProvider -> DynamicWagmiConnector {
   "environmentId": "ac6e291d-c...",
   "chainId": 8453
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.387Z] [DATA] {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:48.761Z] [DATA] {
   "environmentId": "ac6e291d-c...",
   "chainId": 8453
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.387Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.468Z] [INFO] [DynamicBridge] Dynamic context properties {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:48.761Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:48.812Z] [INFO] [DynamicBridge] Dynamic context properties {
   "hasSetShowAuthFlow": true,
   "hasPrimaryWallet": false,
   "hasUser": false,
@@ -258,7 +258,7 @@ Config being sent: {
     "userWithMissingInfo"
   ]
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.468Z] [DATA] {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:48.812Z] [DATA] {
   "hasSetShowAuthFlow": true,
   "hasPrimaryWallet": false,
   "hasUser": false,
@@ -302,327 +302,296 @@ Config being sent: {
     "userWithMissingInfo"
   ]
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.468Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.541Z] [DEBUG] [TokenManager] Loading token from storage {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:48.812Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:48.853Z] [DEBUG] [TokenManager] Loading token from storage {
   "hasToken": false,
   "storageSource": "sessionStorage",
   "isValid": false
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.541Z] [DATA] {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:48.853Z] [DATA] {
   "hasToken": false,
   "storageSource": "sessionStorage",
   "isValid": false
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.541Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.541Z] [DEBUG] [TokenManager] Loading token from storage {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:48.853Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:48.853Z] [DEBUG] [TokenManager] Loading token from storage {
   "hasToken": false,
   "storageSource": "sessionStorage",
   "isValid": false
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.541Z] [DATA] {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:48.853Z] [DATA] {
   "hasToken": false,
   "storageSource": "sessionStorage",
   "isValid": false
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.541Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.591Z] [INFO] [ConnectWalletEmbedded] OAuth redirect check in useEffect {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:48.853Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:48.872Z] [INFO] [ConnectWalletEmbedded] OAuth redirect check in useEffect {
   "isOAuthRedirect": false,
   "isConnected": false,
   "address": null,
   "hasUser": false,
   "willTriggerAuth": false
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.591Z] [DATA] {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:48.872Z] [DATA] {
   "isOAuthRedirect": false,
   "isConnected": false,
   "address": null,
   "hasUser": false,
   "willTriggerAuth": false
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.591Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.594Z] [INFO] [ConnectWalletEmbedded] OAuth redirect check in useEffect {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:48.872Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:48.874Z] [INFO] [ConnectWalletEmbedded] OAuth redirect check in useEffect {
   "isOAuthRedirect": false,
   "isConnected": false,
   "address": null,
   "hasUser": false,
   "willTriggerAuth": false
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.594Z] [DATA] {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:48.874Z] [DATA] {
   "isOAuthRedirect": false,
   "isConnected": false,
   "address": null,
   "hasUser": false,
   "willTriggerAuth": false
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.594Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.594Z] [INFO] [ProviderRegistry] Initializing providers 
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.594Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.595Z] [INFO] [ProviderRegistry] Dynamic environment ID found, registering Dynamic provider 
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.595Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.595Z] [INFO] [ProviderRegistry] Registering Dynamic provider 
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.595Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.605Z] [INFO] [DynamicProvider] Initialize called 
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.605Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.605Z] [INFO] [ProviderRegistry] Registered Dynamic provider successfully 
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.605Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.605Z] [INFO] [ProviderRegistry] Dynamic provider registered successfully 
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.605Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.605Z] [INFO] [ProviderRegistry] ✅ Providers initialized {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:48.874Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:48.875Z] [INFO] [ProviderRegistry] Initializing providers 
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:48.875Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:48.875Z] [INFO] [ProviderRegistry] Dynamic environment ID found, registering Dynamic provider 
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:48.875Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:48.875Z] [INFO] [ProviderRegistry] Registering Dynamic provider 
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:48.875Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:48.884Z] [INFO] [DynamicProvider] Initialize called 
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:48.884Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:48.884Z] [INFO] [ProviderRegistry] Registered Dynamic provider successfully 
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:48.884Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:48.884Z] [INFO] [ProviderRegistry] Dynamic provider registered successfully 
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:48.884Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:48.885Z] [INFO] [ProviderRegistry] ✅ Providers initialized {
   "providerCount": 1,
   "providerTypes": [
     "dynamic"
   ]
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.605Z] [DATA] {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:48.885Z] [DATA] {
   "providerCount": 1,
   "providerTypes": [
     "dynamic"
   ]
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.605Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.605Z] [INFO] [AuthManager] Starting restoreSession... 
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.605Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.606Z] [DEBUG] [AuthManager] Dynamic OAuth redirect check {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:48.885Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:48.885Z] [INFO] [AuthManager] Starting restoreSession... 
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:48.885Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:48.885Z] [DEBUG] [AuthManager] Dynamic OAuth redirect check {
   "isDynamicOAuthRedirect": false,
   "urlParams": ""
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.606Z] [DATA] {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:48.885Z] [DATA] {
   "isDynamicOAuthRedirect": false,
   "urlParams": ""
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.606Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.606Z] [DEBUG] [AuthManager] Mobile check {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:48.885Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:48.885Z] [DEBUG] [AuthManager] Mobile check {
   "isMobile": true,
   "currentUrl": "https://test.conduit-ucpi.com/",
   "urlParams": ""
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.606Z] [DATA] {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:48.885Z] [DATA] {
   "isMobile": true,
   "currentUrl": "https://test.conduit-ucpi.com/",
   "urlParams": ""
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.606Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.606Z] [DEBUG] [AuthManager] Redirect params check {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:48.885Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:48.885Z] [DEBUG] [AuthManager] Redirect params check {
   "hasRedirectParams": false,
   "urlParams": ""
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.606Z] [DATA] {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:48.885Z] [DATA] {
   "hasRedirectParams": false,
   "urlParams": ""
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.606Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.606Z] [DEBUG] [TokenManager] Getting token {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:48.885Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:48.885Z] [DEBUG] [TokenManager] Getting token {
   "hasToken": false
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.606Z] [DATA] {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:48.885Z] [DATA] {
   "hasToken": false
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.606Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.606Z] [DEBUG] [TokenManager] Getting token {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:48.885Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:48.886Z] [DEBUG] [TokenManager] Getting token {
   "hasToken": false
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.606Z] [DATA] {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:48.886Z] [DATA] {
   "hasToken": false
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.606Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.691Z] [INFO] [ConnectWalletEmbedded] OAuth redirect check in useEffect {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:48.886Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:48.972Z] [INFO] [ConnectWalletEmbedded] OAuth redirect check in useEffect {
   "isOAuthRedirect": false,
   "isConnected": false,
   "address": null,
   "hasUser": false,
   "willTriggerAuth": false
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.691Z] [DATA] {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:48.972Z] [DATA] {
   "isOAuthRedirect": false,
   "isConnected": false,
   "address": null,
   "hasUser": false,
   "willTriggerAuth": false
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.691Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.694Z] [INFO] [ConnectWalletEmbedded] OAuth redirect check in useEffect {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:48.972Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:48.975Z] [INFO] [ConnectWalletEmbedded] OAuth redirect check in useEffect {
   "isOAuthRedirect": false,
   "isConnected": false,
   "address": null,
   "hasUser": false,
   "willTriggerAuth": false
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.694Z] [DATA] {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:48.975Z] [DATA] {
   "isOAuthRedirect": false,
   "isConnected": false,
   "address": null,
   "hasUser": false,
   "willTriggerAuth": false
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.694Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.892Z] [INFO] [ConnectWalletEmbedded] OAuth redirect check in useEffect {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:48.975Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:49.172Z] [INFO] [ConnectWalletEmbedded] OAuth redirect check in useEffect {
   "isOAuthRedirect": false,
   "isConnected": false,
   "address": null,
   "hasUser": false,
   "willTriggerAuth": false
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.892Z] [DATA] {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:49.172Z] [DATA] {
   "isOAuthRedirect": false,
   "isConnected": false,
   "address": null,
   "hasUser": false,
   "willTriggerAuth": false
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.892Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.894Z] [INFO] [ConnectWalletEmbedded] OAuth redirect check in useEffect {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:49.172Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:49.175Z] [INFO] [ConnectWalletEmbedded] OAuth redirect check in useEffect {
   "isOAuthRedirect": false,
   "isConnected": false,
   "address": null,
   "hasUser": false,
   "willTriggerAuth": false
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.894Z] [DATA] {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:49.175Z] [DATA] {
   "isOAuthRedirect": false,
   "isConnected": false,
   "address": null,
   "hasUser": false,
   "willTriggerAuth": false
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:21.894Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:22.092Z] [INFO] [ConnectWalletEmbedded] OAuth redirect check in useEffect {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:49.175Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:49.372Z] [INFO] [ConnectWalletEmbedded] OAuth redirect check in useEffect {
   "isOAuthRedirect": false,
   "isConnected": false,
   "address": null,
   "hasUser": false,
   "willTriggerAuth": false
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:22.092Z] [DATA] {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:49.372Z] [DATA] {
   "isOAuthRedirect": false,
   "isConnected": false,
   "address": null,
   "hasUser": false,
   "willTriggerAuth": false
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:22.092Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:22.098Z] [INFO] [ConnectWalletEmbedded] OAuth redirect check in useEffect {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:49.372Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:49.375Z] [INFO] [ConnectWalletEmbedded] OAuth redirect check in useEffect {
   "isOAuthRedirect": false,
   "isConnected": false,
   "address": null,
   "hasUser": false,
   "willTriggerAuth": false
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:22.098Z] [DATA] {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:49.375Z] [DATA] {
   "isOAuthRedirect": false,
   "isConnected": false,
   "address": null,
   "hasUser": false,
   "willTriggerAuth": false
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:22.098Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:22.701Z] [INFO] [ConnectWalletEmbedded] OAuth redirect check in useEffect {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:49.375Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:49.873Z] [INFO] [ConnectWalletEmbedded] OAuth redirect check in useEffect {
   "isOAuthRedirect": false,
   "isConnected": false,
   "address": null,
   "hasUser": false,
   "willTriggerAuth": false
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:22.701Z] [DATA] {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:49.873Z] [DATA] {
   "isOAuthRedirect": false,
   "isConnected": false,
   "address": null,
   "hasUser": false,
   "willTriggerAuth": false
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:22.701Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:22.701Z] [INFO] [ConnectWalletEmbedded] OAuth redirect check in useEffect {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:49.873Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:49.875Z] [INFO] [ConnectWalletEmbedded] OAuth redirect check in useEffect {
   "isOAuthRedirect": false,
   "isConnected": false,
   "address": null,
   "hasUser": false,
   "willTriggerAuth": false
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:22.701Z] [DATA] {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:49.875Z] [DATA] {
   "isOAuthRedirect": false,
   "isConnected": false,
   "address": null,
   "hasUser": false,
   "willTriggerAuth": false
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:22.701Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] Received 32 log entries
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:23.594Z] [INFO] [ConnectWalletEmbedded] OAuth redirect check in useEffect {
-  "isOAuthRedirect": false,
-  "isConnected": false,
-  "address": null,
-  "hasUser": false,
-  "willTriggerAuth": false
-}
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:23.594Z] [DATA] {
-  "isOAuthRedirect": false,
-  "isConnected": false,
-  "address": null,
-  "hasUser": false,
-  "willTriggerAuth": false
-}
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:23.594Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:23.595Z] [INFO] [ConnectWalletEmbedded] OAuth redirect check in useEffect {
-  "isOAuthRedirect": false,
-  "isConnected": false,
-  "address": null,
-  "hasUser": false,
-  "willTriggerAuth": false
-}
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:23.595Z] [DATA] {
-  "isOAuthRedirect": false,
-  "isConnected": false,
-  "address": null,
-  "hasUser": false,
-  "willTriggerAuth": false
-}
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:23.595Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:23.929Z] [INFO] [ConnectWalletEmbedded] Get Started button clicked 
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:23.929Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:23.929Z] [DEBUG] [ConnectWalletEmbedded] Connect function availability {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:49.875Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:50.219Z] [INFO] [ConnectWalletEmbedded] Get Started button clicked 
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:50.219Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:50.219Z] [DEBUG] [ConnectWalletEmbedded] Connect function availability {
   "hasConnect": true
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:23.929Z] [DATA] {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:50.219Z] [DATA] {
   "hasConnect": true
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:23.929Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:23.929Z] [INFO] [ConnectWalletEmbedded] Calling connect function... 
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:23.929Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] Received 5 log entries
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:24.147Z] [INFO] [AuthManager] Starting connection process {}
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:24.147Z] [DATA] {}
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:24.147Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:24.147Z] [INFO] [AuthManager] Using provider {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:50.219Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:50.219Z] [INFO] [ConnectWalletEmbedded] Calling connect function... 
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:50.219Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] Received 35 log entries
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:50.508Z] [INFO] [AuthManager] Starting connection process {}
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:50.508Z] [DATA] {}
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:50.508Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:50.508Z] [INFO] [AuthManager] Using provider {
   "providerName": "dynamic"
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:24.147Z] [DATA] {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:50.508Z] [DATA] {
   "providerName": "dynamic"
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:24.147Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:50.508Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
 [MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] Received 2 log entries
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:24.349Z] [INFO] [DynamicProvider] Connect called - opening Dynamic modal 
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:24.349Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:24.349Z] [INFO] [DynamicProvider] OAuth redirect check {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:50.647Z] [INFO] [DynamicProvider] Connect called - opening Dynamic modal 
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:50.647Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:50.648Z] [INFO] [DynamicProvider] OAuth redirect check {
   "currentUrl": "https://test.conduit-ucpi.com/",
   "hasOAuthCode": false,
   "hasOAuthState": false,
   "isOAuthRedirect": false,
   "hasStoredResult": false
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:24.349Z] [DATA] {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:50.648Z] [DATA] {
   "currentUrl": "https://test.conduit-ucpi.com/",
   "hasOAuthCode": false,
   "hasOAuthState": false,
   "isOAuthRedirect": false,
   "hasStoredResult": false
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:24.349Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:24.349Z] [INFO] [DynamicProvider] Calling dynamicLogin function... 
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:24.349Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:24.350Z] [INFO] [DynamicBridge] Opening Dynamic auth flow 
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:24.350Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:24.350Z] [INFO] [DynamicBridge] authFlowOpen event received - auth modal opened 
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:24.350Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:24.363Z] [INFO] [DynamicBridge] Dynamic context properties {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:50.648Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:50.648Z] [INFO] [DynamicProvider] Calling dynamicLogin function... 
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:50.648Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:50.648Z] [INFO] [DynamicBridge] Opening Dynamic auth flow 
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:50.648Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:50.648Z] [INFO] [DynamicBridge] authFlowOpen event received - auth modal opened 
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:50.648Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:50.653Z] [INFO] [DynamicBridge] Dynamic context properties {
   "hasSetShowAuthFlow": true,
   "hasPrimaryWallet": false,
   "hasUser": false,
@@ -666,7 +635,7 @@ Config being sent: {
     "userWithMissingInfo"
   ]
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:24.363Z] [DATA] {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:50.653Z] [DATA] {
   "hasSetShowAuthFlow": true,
   "hasPrimaryWallet": false,
   "hasUser": false,
@@ -710,18 +679,18 @@ Config being sent: {
     "userWithMissingInfo"
   ]
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:41:24.363Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:28:50.653Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
 [MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] Received 6 log entries
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:09.985Z] [INFO] [DynamicBridge] authFlowClose event received 
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:09.985Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:09.986Z] [INFO] [DynamicBridge] Auth flow closed, waiting for wallet events... {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:19.190Z] [INFO] [DynamicBridge] authFlowClose event received 
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:19.190Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:19.190Z] [INFO] [DynamicBridge] Auth flow closed, waiting for wallet events... {
   "hasActivePromise": true
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:09.986Z] [DATA] {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:19.190Z] [DATA] {
   "hasActivePromise": true
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:09.986Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:09.998Z] [INFO] [DynamicBridge] Dynamic context properties {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:19.190Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:19.202Z] [INFO] [DynamicBridge] Dynamic context properties {
   "hasSetShowAuthFlow": true,
   "hasPrimaryWallet": false,
   "hasUser": false,
@@ -765,7 +734,7 @@ Config being sent: {
     "userWithMissingInfo"
   ]
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:09.998Z] [DATA] {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:19.202Z] [DATA] {
   "hasSetShowAuthFlow": true,
   "hasPrimaryWallet": false,
   "hasUser": false,
@@ -809,8 +778,8 @@ Config being sent: {
     "userWithMissingInfo"
   ]
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:09.998Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:10.292Z] [INFO] [DynamicBridge] Dynamic context properties {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:19.202Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:19.498Z] [INFO] [DynamicBridge] Dynamic context properties {
   "hasSetShowAuthFlow": true,
   "hasPrimaryWallet": true,
   "hasUser": false,
@@ -854,7 +823,7 @@ Config being sent: {
     "userWithMissingInfo"
   ]
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:10.292Z] [DATA] {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:19.498Z] [DATA] {
   "hasSetShowAuthFlow": true,
   "hasPrimaryWallet": true,
   "hasUser": false,
@@ -884,10 +853,10 @@ Config being sent: {
     "sendWagmiSettings",
     "setAuthMode",
     "setLogInWithEmail",
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:19.499Z] [WARN] [DynamicBridge] walletAdded fired but no active promise to resolve 
     "setMultiWalletWidgetState",
     "setSelectedTabIndex",
     "setShowAuthFlow",
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:10.294Z] [WARN] [DynamicBridge] walletAdded fired but no active promise to resolve 
     "setShowBridgeWidget",
     "setShowDynamicUserProfile",
     "setShowQrcodeModal",
@@ -899,102 +868,101 @@ Config being sent: {
     "userWithMissingInfo"
   ]
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:10.292Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:10.294Z] [INFO] [DynamicBridge] primaryWalletChanged event received {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:19.498Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:19.499Z] [INFO] [DynamicBridge] primaryWalletChanged event received {
   "wallet": true,
   "address": "0xc9D0602A87E55116F633b1A1F95D083Eb115f942",
   "walletKey": "metamask",
   "hasActivePromise": true
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:10.294Z] [DATA] {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:19.499Z] [DATA] {
   "wallet": true,
   "address": "0xc9D0602A87E55116F633b1A1F95D083Eb115f942",
   "walletKey": "metamask",
   "hasActivePromise": true
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:10.294Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:10.294Z] [INFO] [DynamicBridge] ✅ Resolving login promise with primaryWalletChanged event {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:19.499Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:19.499Z] [INFO] [DynamicBridge] ✅ Resolving login promise with primaryWalletChanged event {
   "address": "0xc9D0602A87E55116F633b1A1F95D083Eb115f942",
   "walletName": "MetaMask",
   "hasUser": false
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:10.294Z] [DATA] {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:19.499Z] [DATA] {
   "address": "0xc9D0602A87E55116F633b1A1F95D083Eb115f942",
   "walletName": "MetaMask",
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:10.301Z] [WARN] [DynamicProvider] PublicClient not ready yet, waiting 100ms before retry 2/5 
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:10.402Z] [WARN] [DynamicProvider] PublicClient not ready yet, waiting 200ms before retry 3/5 
   "hasUser": false
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:10.294Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:10.294Z] [INFO] [DynamicBridge] walletAdded event received {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:19.499Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:19.499Z] [INFO] [DynamicBridge] walletAdded event received {
   "wallet": true,
   "address": "0xc9D0602A87E55116F633b1A1F95D083Eb115f942",
   "walletKey": "metamask",
   "userWalletsCount": 1,
   "hasActivePromise": false
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:10.294Z] [DATA] {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:19.499Z] [DATA] {
   "wallet": true,
   "address": "0xc9D0602A87E55116F633b1A1F95D083Eb115f942",
   "walletKey": "metamask",
   "userWalletsCount": 1,
   "hasActivePromise": false
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:10.294Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:10.294Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:10.297Z] [INFO] [DynamicProvider] Dynamic login result received {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:19.499Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:19.499Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:19.501Z] [INFO] [DynamicProvider] Dynamic login result received {
+  "hasResult": true,
+  "hasAddress": true,
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:19.506Z] [WARN] [DynamicProvider] PublicClient not ready yet, waiting 100ms before retry 2/5 
+  "hasProvider": true
+}
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:19.501Z] [DATA] {
   "hasResult": true,
   "hasAddress": true,
   "hasProvider": true
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:10.297Z] [DATA] {
-  "hasResult": true,
-  "hasAddress": true,
-  "hasProvider": true
-}
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:10.297Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:10.297Z] [INFO] [DynamicProvider] Setting up provider using Dynamic toolkit {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:19.501Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:19.501Z] [INFO] [DynamicProvider] Setting up provider using Dynamic toolkit {
   "walletType": "MetaMask",
   "walletKey": "metamask"
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:10.297Z] [DATA] {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:19.501Z] [DATA] {
   "walletType": "MetaMask",
   "walletKey": "metamask"
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:10.297Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:10.297Z] [INFO] [DynamicProvider] Attempting to get Web3Provider (attempt 1/5) 
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:10.297Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:10.301Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:10.401Z] [INFO] [DynamicProvider] Attempting to get Web3Provider (attempt 2/5) 
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:10.401Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:10.402Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:10.603Z] [INFO] [DynamicProvider] Attempting to get Web3Provider (attempt 3/5) 
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:10.603Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:10.603Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] Received 16 log entries
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:10.603Z] [WARN] [DynamicProvider] PublicClient not ready yet, waiting 400ms before retry 4/5 
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:11.004Z] [INFO] [DynamicProvider] Attempting to get Web3Provider (attempt 4/5) 
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:11.004Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:11.005Z] [WARN] [DynamicProvider] PublicClient not ready yet, waiting 800ms before retry 5/5 
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:11.005Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:11.805Z] [INFO] [DynamicProvider] Attempting to get Web3Provider (attempt 5/5) 
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:11.805Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:11.806Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:11.806Z] [ERROR] [DynamicProvider] Failed to get PublicClient after 5 attempts 
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:11.806Z] [WARN] [DynamicProvider] Dynamic toolkit failed, trying direct wagmi access {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:19.501Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:19.502Z] [INFO] [DynamicProvider] Attempting to get Web3Provider (attempt 1/5) 
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:19.502Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:19.506Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:19.607Z] [INFO] [DynamicProvider] Attempting to get Web3Provider (attempt 2/5) 
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:19.607Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:19.607Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:19.808Z] [INFO] [DynamicProvider] Attempting to get Web3Provider (attempt 3/5) 
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:19.808Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:19.607Z] [WARN] [DynamicProvider] PublicClient not ready yet, waiting 200ms before retry 3/5 
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:19.809Z] [WARN] [DynamicProvider] PublicClient not ready yet, waiting 400ms before retry 4/5 
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:19.809Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:20.211Z] [INFO] [DynamicProvider] Attempting to get Web3Provider (attempt 4/5) 
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:20.211Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:20.211Z] [WARN] [DynamicProvider] PublicClient not ready yet, waiting 800ms before retry 5/5 
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:20.211Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:21.012Z] [INFO] [DynamicProvider] Attempting to get Web3Provider (attempt 5/5) 
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:21.012Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:21.013Z] [ERROR] [DynamicProvider] Failed to get PublicClient after 5 attempts 
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:21.014Z] [WARN] [DynamicProvider] Dynamic toolkit failed, trying direct wagmi access {
   "error": "Unable to retrieve PublicClient"
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:11.806Z] [DATA] {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:21.013Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:21.014Z] [DATA] {
   "error": "Unable to retrieve PublicClient"
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:11.806Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:11.806Z] [INFO] [DynamicProvider] Attempting to get PublicClient directly from wagmi 
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:11.806Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:11.807Z] [INFO] [DynamicProvider] Got PublicClient from wagmi, creating ethers provider 
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:11.807Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:11.808Z] [INFO] [DynamicProvider] ✅ Ethers provider created successfully via direct wagmi access 
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:11.808Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:11.808Z] [INFO] [DynamicProvider] Connection successful {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:21.014Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:21.014Z] [INFO] [DynamicProvider] Attempting to get PublicClient directly from wagmi 
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:21.014Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:21.015Z] [INFO] [DynamicProvider] Got PublicClient from wagmi, creating ethers provider 
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:21.015Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:21.017Z] [INFO] [DynamicProvider] ✅ Ethers provider created successfully via direct wagmi access 
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:21.017Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:21.017Z] [INFO] [DynamicProvider] Connection successful {
   "success": true,
   "address": "0xc9D0602A87E55116F633b1A1F95D083Eb115f942",
   "capabilities": {
@@ -1004,7 +972,7 @@ Config being sent: {
     "isAuthOnly": false
   }
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:11.808Z] [DATA] {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:21.017Z] [DATA] {
   "success": true,
   "address": "0xc9D0602A87E55116F633b1A1F95D083Eb115f942",
   "capabilities": {
@@ -1014,8 +982,8 @@ Config being sent: {
     "isAuthOnly": false
   }
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:11.808Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:11.808Z] [INFO] [AuthManager] ✅ Connection successful {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:21.017Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:21.018Z] [INFO] [AuthManager] ✅ Connection successful {
   "address": "0xc9D0602A87E55116F633b1A1F95D083Eb115f942",
   "providerName": "dynamic",
   "capabilities": {
@@ -1025,7 +993,7 @@ Config being sent: {
     "isAuthOnly": false
   }
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:11.808Z] [DATA] {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:21.018Z] [DATA] {
   "address": "0xc9D0602A87E55116F633b1A1F95D083Eb115f942",
   "providerName": "dynamic",
   "capabilities": {
@@ -1035,55 +1003,55 @@ Config being sent: {
     "isAuthOnly": false
   }
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:11.808Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] Received 10 log entries
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:11.974Z] [INFO] [ConnectWalletEmbedded] Connection successful, authenticating with backend... 
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:11.974Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:11.975Z] [INFO] [AuthProvider] authenticateBackend called {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:21.018Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] Received 26 log entries
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:21.347Z] [INFO] [ConnectWalletEmbedded] Connection successful, authenticating with backend... 
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:21.347Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:21.348Z] [INFO] [AuthProvider] authenticateBackend called {
   "hasConnectionResult": true,
   "connectionSuccess": true,
   "connectionAddress": "0xc9D0602A87E55116F633b1A1F95D083Eb115f942",
   "reactStateConnected": false,
   "reactStateAddress": null
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:11.975Z] [DATA] {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:21.348Z] [DATA] {
   "hasConnectionResult": true,
   "connectionSuccess": true,
   "connectionAddress": "0xc9D0602A87E55116F633b1A1F95D083Eb115f942",
   "reactStateConnected": false,
   "reactStateAddress": null
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:11.975Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:11.975Z] [DEBUG] [AuthProvider] Authentication state check {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:21.348Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:21.348Z] [DEBUG] [AuthProvider] Authentication state check {
   "isConnected": true,
   "address": "0xc9D0602A87E55116F633b1A1F95D083Eb115f942",
   "usingConnectionResult": true
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:11.975Z] [DATA] {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:21.348Z] [DATA] {
   "isConnected": true,
   "address": "0xc9D0602A87E55116F633b1A1F95D083Eb115f942",
   "usingConnectionResult": true
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:11.975Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:11.975Z] [INFO] [AuthProvider] Starting message signing for authentication {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:21.348Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:21.348Z] [INFO] [AuthProvider] Starting message signing for authentication {
   "address": "0xc9D0602A87E55116F633b1A1F95D083Eb115f942"
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:11.975Z] [DATA] {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:21.348Z] [DATA] {
   "address": "0xc9D0602A87E55116F633b1A1F95D083Eb115f942"
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:11.975Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:11.975Z] [INFO] [AuthManager] Signing message for backend authentication {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:21.348Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:21.348Z] [INFO] [AuthManager] Signing message for backend authentication {
   "address": "0xc9D0602A87E55116F633b1A1F95D083Eb115f942",
   "providerName": "dynamic"
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:11.975Z] [DATA] {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:21.348Z] [DATA] {
   "address": "0xc9D0602A87E55116F633b1A1F95D083Eb115f942",
   "providerName": "dynamic"
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:11.975Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:11.976Z] [INFO] [DynamicProvider] Creating signer directly from wallet connector 
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:11.976Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:11.976Z] [INFO] [DynamicProvider] 🔍 Connector structure: {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:21.348Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:21.348Z] [INFO] [DynamicProvider] Creating signer directly from wallet connector 
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:21.348Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:21.349Z] [INFO] [DynamicProvider] 🔍 Connector structure: {
   "connectorKeys": [
     "_events",
     "_eventsCount",
@@ -1120,7 +1088,7 @@ Config being sent: {
   "hasGetWalletClient": true,
   "providerKeys": []
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:11.976Z] [DATA] {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:21.349Z] [DATA] {
   "connectorKeys": [
     "_events",
     "_eventsCount",
@@ -1157,10 +1125,10 @@ Config being sent: {
   "hasGetWalletClient": true,
   "providerKeys": []
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:11.976Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:11.978Z] [INFO] [MobileDeepLink] ✓ Layer 1 passed: Mobile/tablet device detected 
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:11.978Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:11.978Z] [INFO] [MobileDeepLink] 🔍 Provider structure inspection: {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:21.349Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:21.351Z] [INFO] [MobileDeepLink] ✓ Layer 1 passed: Mobile/tablet device detected 
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:21.351Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:21.351Z] [INFO] [MobileDeepLink] 🔍 Provider structure inspection: {
   "providerType": "object",
   "providerKeys": [
     "account",
@@ -1200,9 +1168,14 @@ Config being sent: {
   "transportValueType": "undefined",
   "transportValueKeys": [],
   "hasConnector": true,
-  "connectorProviderKeys": []
+  "connectorProviderKeys": [],
+  "hasWalletBookInstance": true,
+  "walletBookInstanceType": "object",
+  "walletBookInstanceKeys": [
+    "walletBook"
+  ]
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:11.978Z] [DATA] {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:21.351Z] [DATA] {
   "providerType": "object",
   "providerKeys": [
     "account",
@@ -1242,84 +1215,34 @@ Config being sent: {
   "transportValueType": "undefined",
   "transportValueKeys": [],
   "hasConnector": true,
-  "connectorProviderKeys": []
+  "connectorProviderKeys": [],
+  "hasWalletBookInstance": true,
+  "walletBookInstanceType": "object",
+  "walletBookInstanceKeys": [
+    "walletBook"
+  ]
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:11.978Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:11.978Z] [INFO] [MobileDeepLink] ⏭️  No WalletConnect session found - likely injected wallet, skipping wrapper {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:21.351Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:21.351Z] [INFO] [MobileDeepLink] ⏭️  No WalletConnect session found - likely injected wallet, skipping wrapper {
   "hasProvider": true,
   "hasTransport": true,
   "hasTransportProvider": false,
   "hasProviderProperty": false
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:11.978Z] [DATA] {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:21.351Z] [DATA] {
   "hasProvider": true,
   "hasTransport": true,
   "hasTransportProvider": false,
   "hasProviderProperty": false
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:11.978Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:11.987Z] [INFO] [DynamicProvider] Signing message with direct signer {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:21.351Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:21.359Z] [INFO] [DynamicProvider] Signing message with direct signer {
   "message": "Authenticate wallet 0xc9D0602A87E55116F633b1A1F95D...",
   "signerAddress": "0xc9D0602A87E55116F633b1A1F95D083Eb115f942"
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:11.987Z] [DATA] {
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:21.359Z] [DATA] {
   "message": "Authenticate wallet 0xc9D0602A87E55116F633b1A1F95D...",
   "signerAddress": "0xc9D0602A87E55116F633b1A1F95D083Eb115f942"
 }
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:11.987Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T06:29:21.359Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
 [MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] Received 11 log entries
-Login API called with: {
-  userServiceUrl: 'http://userservice-prod:8977',
-  authorization: 'present',
-  body: { address: '0xc9D0602A87E55116F633b1A1F95D083Eb115f942' }
-}
-UserService response: 200 
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:39.480Z] [INFO] [DynamicProvider] ✅ Message signed successfully 
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:39.480Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:39.485Z] [INFO] [AuthManager] ✅ Message signed successfully for backend auth 
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:39.485Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:39.485Z] [INFO] [AuthProvider] Message signed successfully, sending to backend {
-  "address": "0xc9D0602A87E55116F633b1A1F95D083Eb115f942",
-  "hasToken": true
-}
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:39.485Z] [DATA] {
-  "address": "0xc9D0602A87E55116F633b1A1F95D083Eb115f942",
-  "hasToken": true
-}
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:39.485Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:39.759Z] [DEBUG] [TokenManager] Setting token {
-  "hasToken": true,
-  "tokenLength": 788,
-  "tokenType": "signature_auth"
-}
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:39.759Z] [DATA] {
-  "hasToken": true,
-  "tokenLength": 788,
-  "tokenType": "signature_auth"
-}
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:39.759Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:39.760Z] [DEBUG] [TokenManager] Saving token to storage {
-  "storageType": "sessionStorage",
-  "tokenType": "signature_auth",
-  "tokenLength": 788
-}
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:39.760Z] [DATA] {
-  "storageType": "sessionStorage",
-  "tokenType": "signature_auth",
-  "tokenLength": 788
-}
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:39.760Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:39.760Z] [DEBUG] [AuthProvider] Backend authentication result {
-  "success": true,
-  "hasUser": true
-}
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:39.760Z] [DATA] {
-  "success": true,
-  "hasUser": true
-}
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:39.760Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:39.761Z] [INFO] [AuthProvider] ✅ Backend authentication successful 
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:39.761Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:39.761Z] [INFO] [ConnectWalletEmbedded] Backend authentication successful 
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] [2025-10-20T03:42:39.761Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
-[MOBILE-DEBUG:mobile-1760930356446-zikont3k8ji] Received 8 log entries

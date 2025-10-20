@@ -46,6 +46,9 @@ export function wrapProviderWithMobileDeepLinks(provider: any, connector?: any):
   let wcProvider = provider
 
   // Deep inspection: Log the actual structure of the provider to find where session lives
+  const walletBookInstance = (connector as any)?._walletBookInstance
+  const walletBook = walletBookInstance?.walletBook
+
   mLog.info('MobileDeepLink', '🔍 Provider structure inspection:', {
     providerType: typeof provider,
     providerKeys: provider ? Object.keys(provider).slice(0, 20) : [],
@@ -57,16 +60,23 @@ export function wrapProviderWithMobileDeepLinks(provider: any, connector?: any):
     transportValueKeys: provider?.transport?.value ? Object.keys(provider.transport.value).slice(0, 20) : [],
     hasConnector: !!connector,
     connectorProviderKeys: connector?.provider ? Object.keys(connector.provider).slice(0, 20) : [],
-    hasWalletBookInstance: !!(connector as any)?._walletBookInstance,
-    walletBookInstanceType: typeof (connector as any)?._walletBookInstance,
-    walletBookInstanceKeys: (connector as any)?._walletBookInstance ? Object.keys((connector as any)._walletBookInstance).slice(0, 20) : [],
+    hasWalletBookInstance: !!walletBookInstance,
+    walletBookInstanceType: typeof walletBookInstance,
+    walletBookInstanceKeys: walletBookInstance ? Object.keys(walletBookInstance).slice(0, 20) : [],
+    hasWalletBook: !!walletBook,
+    walletBookType: typeof walletBook,
+    walletBookKeys: walletBook ? Object.keys(walletBook).slice(0, 20) : [],
   })
 
   // Try to find the WalletConnect provider by searching common nested paths
   const searchPaths = [
     provider,                              // Direct provider
-    (connector as any)?._walletBookInstance,  // Dynamic's internal WalletConnect instance
-    (connector as any)?._walletBookInstance?.provider,  // WalletConnect provider in wallet book
+    walletBook,                            // Dynamic's walletBook object (priority search)
+    walletBook?.provider,                  // WalletConnect provider in walletBook
+    walletBook?.connector,                 // Some wallets store connector in walletBook
+    walletBook?.walletProvider,            // Alternative naming in walletBook
+    walletBookInstance,                    // Dynamic's internal WalletConnect instance
+    walletBookInstance?.provider,          // WalletConnect provider in wallet book instance
     connector?.provider,                   // Dynamic connector's raw provider
     provider?.transport?.provider,         // Viem transport wrapper
     provider?.provider,                    // Common wrapper pattern

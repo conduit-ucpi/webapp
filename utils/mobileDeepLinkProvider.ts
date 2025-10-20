@@ -1,4 +1,5 @@
 import { detectDevice } from './deviceDetection'
+import { mLog } from './mobileLogger'
 
 /**
  * Wraps a WalletConnect provider to automatically trigger mobile deep links
@@ -28,11 +29,11 @@ export function wrapProviderWithMobileDeepLinks(provider: any): any {
   const deviceInfo = detectDevice()
 
   if (!deviceInfo.isMobile && !deviceInfo.isTablet) {
-    console.log('[MobileDeepLink] ⏭️  Desktop device detected - skipping wrapper')
+    mLog.info('MobileDeepLink', '⏭️  Desktop device detected - skipping wrapper')
     return provider
   }
 
-  console.log('[MobileDeepLink] ✓ Layer 1 passed: Mobile/tablet device detected')
+  mLog.info('MobileDeepLink', '✓ Layer 1 passed: Mobile/tablet device detected')
 
   // ============================================================================
   // LAYER 2: WalletConnect Session Verification
@@ -41,11 +42,11 @@ export function wrapProviderWithMobileDeepLinks(provider: any): any {
   // Injected wallets (MetaMask extension, etc.) don't have WalletConnect sessions
 
   if (!provider?.session) {
-    console.log('[MobileDeepLink] ⏭️  No WalletConnect session - likely injected wallet, skipping wrapper')
+    mLog.info('MobileDeepLink', '⏭️  No WalletConnect session - likely injected wallet, skipping wrapper')
     return provider
   }
 
-  console.log('[MobileDeepLink] ✓ Layer 2 passed: WalletConnect session exists')
+  mLog.info('MobileDeepLink', '✓ Layer 2 passed: WalletConnect session exists')
 
   // ============================================================================
   // LAYER 3: Peer Metadata Verification
@@ -54,11 +55,11 @@ export function wrapProviderWithMobileDeepLinks(provider: any): any {
   // Incomplete or invalid sessions won't have peer metadata
 
   if (!provider.session?.peer?.metadata) {
-    console.log('[MobileDeepLink] ⏭️  No peer metadata - incomplete session, skipping wrapper')
+    mLog.info('MobileDeepLink', '⏭️  No peer metadata - incomplete session, skipping wrapper')
     return provider
   }
 
-  console.log('[MobileDeepLink] ✓ Layer 3 passed: Peer metadata exists')
+  mLog.info('MobileDeepLink', '✓ Layer 3 passed: Peer metadata exists')
 
   // ============================================================================
   // LAYER 4: Redirect Capability Verification
@@ -69,12 +70,11 @@ export function wrapProviderWithMobileDeepLinks(provider: any): any {
   const { redirect } = provider.session.peer.metadata
 
   if (!redirect?.native && !redirect?.universal) {
-    console.log('[MobileDeepLink] ⏭️  No redirect URLs available - wallet does not support deep linking, skipping wrapper')
+    mLog.info('MobileDeepLink', '⏭️  No redirect URLs available - wallet does not support deep linking, skipping wrapper')
     return provider
   }
 
-  console.log('[MobileDeepLink] ✓ Layer 4 passed: Redirect URLs available')
-  console.log('[MobileDeepLink] Available redirects:', {
+  mLog.info('MobileDeepLink', '✓ Layer 4 passed: Redirect URLs available', {
     native: redirect.native || 'none',
     universal: redirect.universal || 'none'
   })
@@ -83,7 +83,7 @@ export function wrapProviderWithMobileDeepLinks(provider: any): any {
   // ALL LAYERS PASSED - APPLY WRAPPER
   // ============================================================================
 
-  console.log('[MobileDeepLink] ✅ All protection layers passed - applying mobile deep link wrapper')
+  mLog.info('MobileDeepLink', '✅ All protection layers passed - applying mobile deep link wrapper')
 
   // Store the original request method
   const originalRequest = provider.request.bind(provider)
@@ -92,7 +92,7 @@ export function wrapProviderWithMobileDeepLinks(provider: any): any {
   provider.request = async function(args: { method: string; params?: any[] }) {
     const { method } = args
 
-    console.log(`[MobileDeepLink] Request intercepted: ${method}`)
+    mLog.info('MobileDeepLink', `Request intercepted: ${method}`)
 
     // ============================================================================
     // USER-ACTION METHODS
@@ -114,7 +114,7 @@ export function wrapProviderWithMobileDeepLinks(provider: any): any {
     ]
 
     if (userActionMethods.includes(method)) {
-      console.log(`[MobileDeepLink] 🔔 User action required - triggering deep link`)
+      mLog.info('MobileDeepLink', '🔔 User action required - triggering deep link')
 
       try {
         // Get the deep link from session metadata
@@ -123,7 +123,7 @@ export function wrapProviderWithMobileDeepLinks(provider: any): any {
         const deepLink = redirect.native || redirect.universal
 
         if (deepLink) {
-          console.log(`[MobileDeepLink] 🔗 Opening wallet app via: ${deepLink}`)
+          mLog.info('MobileDeepLink', `🔗 Opening wallet app via: ${deepLink}`)
 
           // Trigger the deep link - this should open the wallet app
           window.location.href = deepLink
@@ -133,17 +133,17 @@ export function wrapProviderWithMobileDeepLinks(provider: any): any {
           // 300ms is usually enough for the OS to handle the redirect
           await new Promise(resolve => setTimeout(resolve, 300))
 
-          console.log('[MobileDeepLink] ✅ Deep link triggered, proceeding with request')
+          mLog.info('MobileDeepLink', '✅ Deep link triggered, proceeding with request')
         } else {
-          console.warn('[MobileDeepLink] ⚠️  No deep link available (should not happen - Layer 4 should have caught this)')
+          mLog.warn('MobileDeepLink', '⚠️  No deep link available (should not happen - Layer 4 should have caught this)')
         }
       } catch (error) {
-        console.warn('[MobileDeepLink] ⚠️  Failed to trigger deep link:', error)
+        mLog.warn('MobileDeepLink', '⚠️  Failed to trigger deep link', { error: error instanceof Error ? error.message : String(error) })
         // Continue anyway - request will still work if user manually opens wallet
         // This is a graceful fallback - same behavior as before the wrapper
       }
     } else {
-      console.log(`[MobileDeepLink] ℹ️  Method "${method}" does not require user action - no deep link needed`)
+      mLog.info('MobileDeepLink', `ℹ️  Method "${method}" does not require user action - no deep link needed`)
     }
 
     // ============================================================================
@@ -155,7 +155,7 @@ export function wrapProviderWithMobileDeepLinks(provider: any): any {
     return originalRequest(args)
   }
 
-  console.log('[MobileDeepLink] ✅ Provider wrapped successfully - deep links will trigger for user actions')
+  mLog.info('MobileDeepLink', '✅ Provider wrapped successfully - deep links will trigger for user actions')
 
   return provider
 }

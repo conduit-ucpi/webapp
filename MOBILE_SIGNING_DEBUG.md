@@ -650,3 +650,47 @@ This time the fix should work because:
 **Status**: Corrected implementation ready to deploy
 **Confidence**: High - wrapper is now in the actual code path that executes
 **Next**: Deploy and test on mobile with Dynamic + WalletConnect + MetaMask
+
+---
+
+# LOGGING FIX - 2025-10-20
+
+## Problem Discovered
+
+After deploying commit 4a4f380, the wrapper appeared not to be executing because ZERO logs from `[MobileDeepLink]` appeared in the mobile debug output.
+
+## Root Cause
+
+The wrapper WAS executing, but we couldn't see it because:
+- **Wrapper used `console.log()`** - Only visible in browser console (not accessible on mobile)
+- **Mobile logger uses `mLog`** - Sends logs to backend API for remote viewing
+- **Solution**: Replace all `console.log()` calls in wrapper with `mLog.*()` calls
+
+## Changes Made
+
+**File**: `utils/mobileDeepLinkProvider.ts`
+
+1. Added import: `import { mLog } from './mobileLogger'`
+2. Replaced all `console.log()` → `mLog.info()`
+3. Replaced all `console.warn()` → `mLog.warn()`
+4. Ensured all wrapper execution is now visible in mobile debug logs
+
+## Expected Result
+
+After redeployment, we should see detailed logs showing:
+- Layer 1-4 protection checks
+- Whether wrapper is applied or skipped
+- Every request interception
+- Deep link triggering for user actions
+- Success/failure of deep link redirects
+
+This will allow us to definitively confirm:
+1. Is the wrapper being executed?
+2. Are the protection layers working correctly?
+3. Is the deep link actually being triggered?
+4. Is the redirect URL correct?
+
+---
+
+**Status**: Logging fix ready for deployment
+**Next**: Deploy and analyze mobile logs to see wrapper execution

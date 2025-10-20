@@ -1,0 +1,161 @@
+import { detectDevice } from './deviceDetection'
+
+/**
+ * Wraps a WalletConnect provider to automatically trigger mobile deep links
+ * before user-action requests (signing, transactions, etc.).
+ *
+ * This ensures the wallet app is brought to the foreground on mobile devices,
+ * fixing the issue where users must manually open the wallet to see pending requests.
+ *
+ * The wrapper is transparent - it implements the same EIP-1193 interface,
+ * so it can be passed to ethers.BrowserProvider without any changes to the rest of the app.
+ *
+ * Multi-layer protection ensures this ONLY affects:
+ * - Mobile/tablet devices (Layer 1)
+ * - WalletConnect sessions (Layer 2)
+ * - External wallets with peer metadata (Layer 3)
+ * - Wallets that provide redirect URLs (Layer 4)
+ *
+ * Desktop, injected wallets, and other scenarios are unaffected.
+ */
+export function wrapProviderWithMobileDeepLinks(provider: any): any {
+  // ============================================================================
+  // LAYER 1: Device Detection
+  // ============================================================================
+  // Only apply wrapper on mobile/tablet devices
+  // Desktop users don't need deep linking (wallet extensions are already in browser)
+
+  const deviceInfo = detectDevice()
+
+  if (!deviceInfo.isMobile && !deviceInfo.isTablet) {
+    console.log('[MobileDeepLink] ⏭️  Desktop device detected - skipping wrapper')
+    return provider
+  }
+
+  console.log('[MobileDeepLink] ✓ Layer 1 passed: Mobile/tablet device detected')
+
+  // ============================================================================
+  // LAYER 2: WalletConnect Session Verification
+  // ============================================================================
+  // Only apply wrapper to WalletConnect providers (have active session)
+  // Injected wallets (MetaMask extension, etc.) don't have WalletConnect sessions
+
+  if (!provider?.session) {
+    console.log('[MobileDeepLink] ⏭️  No WalletConnect session - likely injected wallet, skipping wrapper')
+    return provider
+  }
+
+  console.log('[MobileDeepLink] ✓ Layer 2 passed: WalletConnect session exists')
+
+  // ============================================================================
+  // LAYER 3: Peer Metadata Verification
+  // ============================================================================
+  // Only apply wrapper if peer metadata exists (external wallet connected)
+  // Incomplete or invalid sessions won't have peer metadata
+
+  if (!provider.session?.peer?.metadata) {
+    console.log('[MobileDeepLink] ⏭️  No peer metadata - incomplete session, skipping wrapper')
+    return provider
+  }
+
+  console.log('[MobileDeepLink] ✓ Layer 3 passed: Peer metadata exists')
+
+  // ============================================================================
+  // LAYER 4: Redirect Capability Verification
+  // ============================================================================
+  // Only apply wrapper if wallet provides redirect URLs (can actually deep link)
+  // Some wallets might not support deep linking
+
+  const { redirect } = provider.session.peer.metadata
+
+  if (!redirect?.native && !redirect?.universal) {
+    console.log('[MobileDeepLink] ⏭️  No redirect URLs available - wallet does not support deep linking, skipping wrapper')
+    return provider
+  }
+
+  console.log('[MobileDeepLink] ✓ Layer 4 passed: Redirect URLs available')
+  console.log('[MobileDeepLink] Available redirects:', {
+    native: redirect.native || 'none',
+    universal: redirect.universal || 'none'
+  })
+
+  // ============================================================================
+  // ALL LAYERS PASSED - APPLY WRAPPER
+  // ============================================================================
+
+  console.log('[MobileDeepLink] ✅ All protection layers passed - applying mobile deep link wrapper')
+
+  // Store the original request method
+  const originalRequest = provider.request.bind(provider)
+
+  // Override the request method to intercept and trigger deep links
+  provider.request = async function(args: { method: string; params?: any[] }) {
+    const { method } = args
+
+    console.log(`[MobileDeepLink] Request intercepted: ${method}`)
+
+    // ============================================================================
+    // USER-ACTION METHODS
+    // ============================================================================
+    // These methods require user interaction in the wallet app
+    // We need to trigger a deep link to bring the wallet to the foreground
+
+    const userActionMethods = [
+      'personal_sign',              // Standard message signing
+      'eth_sign',                   // Raw signing (deprecated but still used)
+      'eth_signTypedData',          // Structured data signing (v1)
+      'eth_signTypedData_v1',       // Structured data signing (v1)
+      'eth_signTypedData_v3',       // Structured data signing (v3)
+      'eth_signTypedData_v4',       // Structured data signing (v4) - most common
+      'eth_sendTransaction',        // Send transaction
+      'eth_signTransaction',        // Sign transaction without sending
+      'wallet_switchEthereumChain', // Switch network
+      'wallet_addEthereumChain'     // Add new network
+    ]
+
+    if (userActionMethods.includes(method)) {
+      console.log(`[MobileDeepLink] 🔔 User action required - triggering deep link`)
+
+      try {
+        // Get the deep link from session metadata
+        // Prefer native deep link (e.g., "metamask://") over universal link
+        // Native deep links are more direct and reliable
+        const deepLink = redirect.native || redirect.universal
+
+        if (deepLink) {
+          console.log(`[MobileDeepLink] 🔗 Opening wallet app via: ${deepLink}`)
+
+          // Trigger the deep link - this should open the wallet app
+          window.location.href = deepLink
+
+          // Small delay to allow the deep link to process
+          // The wallet app should open and the request will be waiting there
+          // 300ms is usually enough for the OS to handle the redirect
+          await new Promise(resolve => setTimeout(resolve, 300))
+
+          console.log('[MobileDeepLink] ✅ Deep link triggered, proceeding with request')
+        } else {
+          console.warn('[MobileDeepLink] ⚠️  No deep link available (should not happen - Layer 4 should have caught this)')
+        }
+      } catch (error) {
+        console.warn('[MobileDeepLink] ⚠️  Failed to trigger deep link:', error)
+        // Continue anyway - request will still work if user manually opens wallet
+        // This is a graceful fallback - same behavior as before the wrapper
+      }
+    } else {
+      console.log(`[MobileDeepLink] ℹ️  Method "${method}" does not require user action - no deep link needed`)
+    }
+
+    // ============================================================================
+    // EXECUTE ORIGINAL REQUEST
+    // ============================================================================
+    // Always call the original request method, whether we triggered a deep link or not
+    // The deep link just brings the wallet to foreground - the request still goes through WalletConnect
+
+    return originalRequest(args)
+  }
+
+  console.log('[MobileDeepLink] ✅ Provider wrapped successfully - deep links will trigger for user actions')
+
+  return provider
+}

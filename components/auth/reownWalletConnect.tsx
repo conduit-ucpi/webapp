@@ -4,6 +4,7 @@ import { mainnet, base, sepolia, baseSepolia } from '@reown/appkit/networks'
 import { ethers } from 'ethers'
 import { toHex } from '@/utils/hexUtils'
 import { detectDevice } from '@/utils/deviceDetection'
+import { wrapProviderWithMobileDeepLinks } from '@/utils/mobileDeepLinkProvider'
 
 export class ReownWalletConnectProvider {
   private appKit: any = null
@@ -576,10 +577,14 @@ export class ReownWalletConnectProvider {
 
     console.log('🔧 ReownWalletConnect: Creating EIP-1193 provider from AppKit')
 
-    // Wrap the provider with disconnect capability
+    // CRITICAL: Wrap provider with mobile deep link support BEFORE adding disconnect
+    // This ensures all wallet interactions trigger deep links on mobile
+    const mobileAwareProvider = wrapProviderWithMobileDeepLinks(walletProvider)
+
+    // Wrap the mobile-aware provider with disconnect capability
     const provider = {
-      ...walletProvider,
-      request: walletProvider.request.bind(walletProvider),
+      ...mobileAwareProvider,
+      request: mobileAwareProvider.request.bind(mobileAwareProvider),
       // Add disconnect method that cleans up the AppKit session
       disconnect: async () => {
         console.log('🔧 ReownWalletConnect: EIP-1193 provider disconnect called')

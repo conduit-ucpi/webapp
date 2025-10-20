@@ -181,14 +181,18 @@ describe('wrapProviderWithMobileDeepLinks', () => {
     });
 
     /**
-     * CRITICAL TEST - Based on v37.2.25 production logs
+     * ROOT CAUSE DISCOVERED AND FIXED! - v37.2.27
      *
-     * This replicates the EXACT structure we see in production:
-     * connector._walletBookInstance.walletBook.wallets[0].session
+     * From Dynamic SDK type definitions:
+     * wallets: z.ZodMiniRecord<z.ZodMiniString<string>, ...>
      *
-     * The session is NOT on walletBook directly, but inside the wallets array!
+     * wallets is a RECORD (object/dictionary), NOT an array!
+     * Structure: { "metamask": {...}, "rainbow": {...} }
+     *
+     * Our code incorrectly treats it as an array with .length and [index].
+     * This test reproduces the ACTUAL production structure.
      */
-    it('should find WalletConnect session in walletBook.wallets array (v37.2.25 discovery)', async () => {
+    it('should find wallet deep link URLs in walletBook.wallets RECORD using connector.name', async () => {
       const mockSession = {
         peer: {
           metadata: {
@@ -202,10 +206,8 @@ describe('wrapProviderWithMobileDeepLinks', () => {
 
       const originalRequest = jest.fn().mockResolvedValue('0xsignature');
 
-      // This is the EXACT structure from v37.2.25 logs
       const mockProvider = {
         request: originalRequest,
-        // Viem WalletClient properties (doesn't have session)
         account: '0xc9D0602A87E55116F633b1A1F95D083Eb115f942',
         transport: {
           key: 'custom',
@@ -215,76 +217,36 @@ describe('wrapProviderWithMobileDeepLinks', () => {
       };
 
       const mockConnector = {
+        name: "metamask",  // CRITICAL: connector.name is used to look up wallet in walletBook
         isWalletConnect: true,
         _walletBookInstance: {
           walletBook: {
-            groups: [],
-            wallets: [
-              {
-                // THIS is where the session actually lives!
-                session: mockSession,
+            groups: {},  // Also a Record, not array
+            wallets: {   // RECORD, not array!
+              "metamask": {
+                name: "MetaMask",
+                mobile: {
+                  native: "metamask://",
+                  universal: "https://metamask.app.link/"
+                },
+                // We don't need session here - mobile deep links are enough!
               }
-            ]
+            }
           }
         }
       };
 
       const wrappedProvider = wrapProviderWithMobileDeepLinks(mockProvider, mockConnector);
 
-      // Should wrap the provider (found the session in wallets array)
+      // Should wrap the provider (found the session in wallets record)
       expect(wrappedProvider.request).not.toBe(originalRequest);
 
       // Call a user action method to trigger deep link
       await wrappedProvider.request({ method: 'personal_sign', params: ['0xdata', '0xaddress'] });
 
-      // Should have triggered deep link from the session found in wallets[0]
+      // Should have triggered deep link from the session found in wallets["metamask"]
       expect(capturedHref).toBe('metamask://');
       expect(originalRequest).toHaveBeenCalledWith({ method: 'personal_sign', params: ['0xdata', '0xaddress'] });
-    });
-
-    it('should find WalletConnect session in walletBook.groups[].wallets array', async () => {
-      const mockSession = {
-        peer: {
-          metadata: {
-            redirect: {
-              native: 'rainbow://',
-              universal: 'https://rainbow.me/',
-            },
-          },
-        },
-      };
-
-      const originalRequest = jest.fn().mockResolvedValue('0xsignature');
-      const mockProvider = {
-        request: originalRequest,
-      };
-
-      const mockConnector = {
-        _walletBookInstance: {
-          walletBook: {
-            wallets: [], // Empty wallets array
-            groups: [
-              {
-                wallets: [
-                  {
-                    // Session in groups[0].wallets[0]
-                    session: mockSession,
-                  }
-                ]
-              }
-            ]
-          }
-        }
-      };
-
-      const wrappedProvider = wrapProviderWithMobileDeepLinks(mockProvider, mockConnector);
-
-      // Should wrap the provider
-      expect(wrappedProvider.request).not.toBe(originalRequest);
-
-      await wrappedProvider.request({ method: 'eth_sendTransaction', params: [] });
-
-      expect(capturedHref).toBe('rainbow://');
     });
   });
 

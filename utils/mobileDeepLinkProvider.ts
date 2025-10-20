@@ -88,15 +88,12 @@ export function wrapProviderWithMobileDeepLinks(provider: any, connector?: any):
       hasClient: !!walletBook.client,
       hasWalletClient: !!walletBook.walletClient,
       allKeys: Object.keys(walletBook).slice(0, 30),
-      // CRITICAL: Check what's IN the wallets array
-      hasWalletsArray: !!walletBook.wallets,
+      // CRITICAL: Check what's IN the wallets Record
+      hasWalletsRecord: !!walletBook.wallets,
+      walletsType: typeof walletBook.wallets,
       walletsIsArray: Array.isArray(walletBook.wallets),
-      walletsLength: walletBook.wallets ? walletBook.wallets.length : 0,
-      walletsArrayContent: walletBook.wallets ? walletBook.wallets.map((w: any, i: number) => ({
-        index: i,
-        hasSession: !!w?.session,
-        keys: w ? Object.keys(w).slice(0, 10) : []
-      })) : []
+      walletsKeys: walletBook.wallets ? Object.keys(walletBook.wallets).slice(0, 10) : [],
+      walletsCount: walletBook.wallets ? Object.keys(walletBook.wallets).length : 0
     })
   }
 
@@ -124,75 +121,83 @@ export function wrapProviderWithMobileDeepLinks(provider: any, connector?: any):
     }
   }
 
-  // CRITICAL FIX (v37.2.25): Search inside walletBook.wallets array
-  // The session is NOT on walletBook directly, but inside wallet objects in the wallets array
-  if (!wcProvider?.session && walletBook?.wallets && Array.isArray(walletBook.wallets)) {
-    mLog.info('MobileDeepLink', `🔍 Searching in walletBook.wallets array (${walletBook.wallets.length} wallets)`)
+  // CRITICAL FIX (v37.2.27): walletBook.wallets is a RECORD, not array!
+  // wallets is Record<string, WalletConfig> - use connector.name to look up the connected wallet
+  if (!wcProvider?.session && connector && walletBook?.wallets) {
+    const connectorName = (connector as any).name || (connector as any).overrideKey
+    mLog.info('MobileDeepLink', `🔍 Looking up connected wallet in walletBook`, {
+      connectorName,
+      hasWallets: !!walletBook.wallets,
+      walletsType: typeof walletBook.wallets,
+      walletsKeys: Object.keys(walletBook.wallets || {}).slice(0, 10)
+    })
 
-    for (let i = 0; i < walletBook.wallets.length; i++) {
-      const wallet = walletBook.wallets[i]
-      if (wallet?.session) {
-        wcProvider = wallet
-        mLog.info('MobileDeepLink', `✓ Found WalletConnect session in walletBook.wallets[${i}]`)
-        break
+    if (connectorName && walletBook.wallets[connectorName]) {
+      const walletConfig = walletBook.wallets[connectorName]
+      mLog.info('MobileDeepLink', `✓ Found wallet config for "${connectorName}"`, {
+        hasWalletConfig: !!walletConfig,
+        hasMobile: !!walletConfig.mobile,
+        mobileKeys: walletConfig.mobile ? Object.keys(walletConfig.mobile) : []
+      })
+
+      // Use the wallet config as our "wcProvider" - it has mobile.native and mobile.universal
+      // which are exactly what we need for deep linking
+      if (walletConfig.mobile?.native || walletConfig.mobile?.universal) {
+        wcProvider = walletConfig
+        mLog.info('MobileDeepLink', `✓ Found deep link URLs in walletBook.wallets["${connectorName}"].mobile`)
       }
     }
   }
 
-  // CRITICAL FIX (v37.2.25): Search inside walletBook.groups[].wallets arrays
-  // Some configurations might have wallets nested in groups
-  if (!wcProvider?.session && walletBook?.groups && Array.isArray(walletBook.groups)) {
-    mLog.info('MobileDeepLink', `🔍 Searching in walletBook.groups (${walletBook.groups.length} groups)`)
+  // Check if we have either a WalletConnect session OR a wallet config with mobile deep links
+  const hasWalletConnectSession = !!wcProvider?.session
+  const hasWalletConfig = !!(wcProvider as any)?.mobile
 
-    for (let i = 0; i < walletBook.groups.length; i++) {
-      const group = walletBook.groups[i]
-      if (group?.wallets && Array.isArray(group.wallets)) {
-        for (let j = 0; j < group.wallets.length; j++) {
-          const wallet = group.wallets[j]
-          if (wallet?.session) {
-            wcProvider = wallet
-            mLog.info('MobileDeepLink', `✓ Found WalletConnect session in walletBook.groups[${i}].wallets[${j}]`)
-            break
-          }
-        }
-        if (wcProvider?.session) break
-      }
-    }
-  }
-
-  if (!wcProvider?.session) {
-    mLog.info('MobileDeepLink', '⏭️  No WalletConnect session found - likely injected wallet, skipping wrapper', {
+  if (!hasWalletConnectSession && !hasWalletConfig) {
+    mLog.info('MobileDeepLink', '⏭️  No WalletConnect session or wallet config found - likely injected wallet, skipping wrapper', {
       hasProvider: !!provider,
       hasTransport: !!provider?.transport,
-      hasTransportProvider: !!provider?.transport?.provider,
-      hasProviderProperty: !!provider?.provider,
+      hasWcProvider: !!wcProvider,
     })
     return provider
   }
 
-  mLog.info('MobileDeepLink', '✓ Layer 2 passed: WalletConnect session exists')
+  mLog.info('MobileDeepLink', '✓ Layer 2 passed: Found wallet connection info', {
+    hasWalletConnectSession,
+    hasWalletConfig
+  })
 
-  // ============================================================================
-  // LAYER 3: Peer Metadata Verification
-  // ============================================================================
-  // Only apply wrapper if peer metadata exists (external wallet connected)
-  // Incomplete or invalid sessions won't have peer metadata
+  // Extract redirect URLs from either source
+  let redirect: { native?: string; universal?: string } | undefined
 
-  if (!wcProvider.session?.peer?.metadata) {
-    mLog.info('MobileDeepLink', '⏭️  No peer metadata - incomplete session, skipping wrapper')
-    return provider
+  if (hasWalletConnectSession) {
+    // ============================================================================
+    // LAYER 3: Peer Metadata Verification (WalletConnect session path)
+    // ============================================================================
+    if (!wcProvider.session?.peer?.metadata) {
+      mLog.info('MobileDeepLink', '⏭️  No peer metadata - incomplete session, skipping wrapper')
+      return provider
+    }
+
+    mLog.info('MobileDeepLink', '✓ Layer 3 passed: Peer metadata exists')
+    redirect = wcProvider.session.peer.metadata.redirect
+  } else if (hasWalletConfig) {
+    // ============================================================================
+    // LAYER 3: Wallet Config Verification (walletBook config path)
+    // ============================================================================
+    const walletConfig = wcProvider as any
+    if (!walletConfig.mobile) {
+      mLog.info('MobileDeepLink', '⏭️  Wallet config has no mobile configuration, skipping wrapper')
+      return provider
+    }
+
+    mLog.info('MobileDeepLink', '✓ Layer 3 passed: Wallet mobile config exists')
+    redirect = walletConfig.mobile
   }
-
-  mLog.info('MobileDeepLink', '✓ Layer 3 passed: Peer metadata exists')
 
   // ============================================================================
   // LAYER 4: Redirect Capability Verification
   // ============================================================================
-  // Only apply wrapper if wallet provides redirect URLs (can actually deep link)
-  // Some wallets might not support deep linking
-
-  const { redirect } = wcProvider.session.peer.metadata
-
   if (!redirect?.native && !redirect?.universal) {
     mLog.info('MobileDeepLink', '⏭️  No redirect URLs available - wallet does not support deep linking, skipping wrapper')
     return provider
@@ -244,7 +249,7 @@ export function wrapProviderWithMobileDeepLinks(provider: any, connector?: any):
         // Get the deep link from session metadata
         // Prefer native deep link (e.g., "metamask://") over universal link
         // Native deep links are more direct and reliable
-        const deepLink = redirect.native || redirect.universal
+        const deepLink = redirect?.native || redirect?.universal
 
         if (deepLink) {
           mLog.info('MobileDeepLink', `🔗 Opening wallet app via: ${deepLink}`)

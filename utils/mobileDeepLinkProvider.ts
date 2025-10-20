@@ -19,7 +19,7 @@ import { mLog } from './mobileLogger'
  *
  * Desktop, injected wallets, and other scenarios are unaffected.
  */
-export function wrapProviderWithMobileDeepLinks(provider: any): any {
+export function wrapProviderWithMobileDeepLinks(provider: any, connector?: any): any {
   // ============================================================================
   // LAYER 1: Device Detection
   // ============================================================================
@@ -55,11 +55,14 @@ export function wrapProviderWithMobileDeepLinks(provider: any): any {
     hasTransportValue: !!provider?.transport?.value,
     transportValueType: typeof provider?.transport?.value,
     transportValueKeys: provider?.transport?.value ? Object.keys(provider.transport.value).slice(0, 20) : [],
+    hasConnector: !!connector,
+    connectorProviderKeys: connector?.provider ? Object.keys(connector.provider).slice(0, 20) : [],
   })
 
   // Try to find the WalletConnect provider by searching common nested paths
   const searchPaths = [
     provider,                              // Direct provider
+    connector?.provider,                   // Dynamic connector's raw provider
     provider?.transport?.provider,         // Viem transport wrapper
     provider?.provider,                    // Common wrapper pattern
     provider?.walletProvider,              // Some connectors use this

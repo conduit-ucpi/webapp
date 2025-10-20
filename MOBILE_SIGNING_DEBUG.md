@@ -749,3 +749,68 @@ This should allow the wrapper to find the WalletConnect session regardless of ho
 
 **Status**: Provider chain search implemented
 **Next**: Deploy and test - should pass Layer 2 now and find WalletConnect session
+
+## Iteration 3: Provider Chain Search Failed (v37.2.20)
+
+**Deployed**: farcaster-test-v37.2.20 (commit e21b205)
+
+**Test Result**: ❌ Still failing - Layer 2 continues to fail
+
+**Log Analysis**:
+```
+[MobileDeepLink] ✓ Layer 1 passed: Mobile/tablet device detected
+[MobileDeepLink] ⏭️  No WalletConnect session found - likely injected wallet, skipping wrapper {
+  "hasProvider": true,
+  "hasTransport": true,
+  "hasTransportProvider": false,
+  "hasProviderProperty": false
+}
+```
+
+**Key Discovery**:
+The diagnostic data reveals that the search paths are ALL returning undefined:
+- `hasProvider: true` ✓ - The provider object exists
+- `hasTransport: true` ✓ - The transport property exists
+- `hasTransportProvider: false` ✗ - `provider.transport.provider` is undefined
+- `hasProviderProperty: false` ✗ - `provider.provider` is undefined
+
+This means:
+1. The provider chain search paths are incorrect
+2. The WalletConnect session is NOT at any of the paths we're checking
+3. We need to inspect the actual object structure to find the correct path
+
+**Next Step**: Add deep structural inspection logging to see the actual property names on the provider object and its nested objects. This will reveal where the session property actually lives.
+
+## Iteration 4: Deep Provider Inspection (v37.2.21)
+
+**Deployed**: farcaster-test-v37.2.21 (commit 8673089)
+
+**Changes**:
+Added extensive structural inspection logging to reveal the actual provider structure:
+
+**File**: `utils/mobileDeepLinkProvider.ts`
+
+```typescript
+// Deep inspection: Log the actual structure of the provider to find where session lives
+mLog.info('MobileDeepLink', '🔍 Provider structure inspection:', {
+  providerType: typeof provider,
+  providerKeys: provider ? Object.keys(provider).slice(0, 20) : [],
+  hasTransport: !!provider?.transport,
+  transportType: typeof provider?.transport,
+  transportKeys: provider?.transport ? Object.keys(provider.transport).slice(0, 20) : [],
+  hasTransportValue: !!provider?.transport?.value,
+  transportValueType: typeof provider?.transport?.value,
+  transportValueKeys: provider?.transport?.value ? Object.keys(provider.transport.value).slice(0, 20) : [],
+})
+```
+
+This will show us:
+- All property names on the provider object
+- All property names on provider.transport
+- All property names on provider.transport.value
+- The actual structure so we can find where the session is
+
+**Status**: Deploying diagnostic version (build takes 8-9 minutes)
+**Next**: Test on mobile, analyze structure logs, identify correct path to WalletConnect session
+
+---

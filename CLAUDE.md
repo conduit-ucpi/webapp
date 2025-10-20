@@ -227,20 +227,73 @@ No test framework configured yet. When adding tests:
 - **Required fields must be required** - use proper validation annotations
 
 ### MOBILE DEVELOPMENT PROCESS
-when you've made changes, you can go through the following cycle:
-0. Understand the requirements from the user (me) - make sure you ask the right questions to get a full understanding
-  once you understand, you'll be able to choose the right place in the cycle to start the process
-1. npm test 
-2. commit your changes to git (use extensive comments)
-3. look at the lastest git tag that starts farcaster-test-v.... and add the next one using my git shortcut (git tag-push farcaster-text-vXX.X.X) 
-  this will run the build and deploy on CI/CD
-4. ask the user (me) to run the test in the UI
-5. ssh onto the dev server (ssh -l gituser api.conduit-ucpi.com)
-6. in the ssh session run this: docker logs webapp-test > /tmp/autolog.log 2>&1
-8. copy the logs to the local machine (scp gituser@api.conduit-ucpi.com:/tmp/autolog.log .
-9. analyse the log, make changes to fix what you see, as the user (me) any questions about what they saw in the UI etc...
-  NB during your analysis use all your intelligence, your access to the internet, your access to the whole codebase and
-    all the libraries used to make good decisions. Make extensive notes in the MOBILE_SIGNING_DEBUG.md file
-    so that you don't re-invent the wheel and you don't go over the same ground again
-  NB2 - you want to look at the end of the logfile rather than beginning, so that you're looking at the latest events rather than the oldest ones
-10. repeat the whole cycle until the problem is fixed
+
+**⚠️ CRITICAL: Build times are 8-9 minutes. MINIMIZE ITERATION CYCLES. ⚠️**
+
+**🔄 AFTER CONTEXT COMPACTION:**
+If you experience a context compaction (auto-compact), you MUST:
+1. **Re-read this CLAUDE.md file** to understand the project structure and process
+2. **Re-read MOBILE_SIGNING_DEBUG.md** to understand the current debugging state and what's been tried
+3. **Continue iterating** from where you left off - don't restart from scratch
+4. **Review the conversation history** to understand what step you were on
+5. **Keep the development cycle going** - context compaction should not stop progress
+
+**Before making ANY code changes, you MUST:**
+- ✅ **Read all available documentation** (MOBILE_SIGNING_DEBUG.md, library docs, READMEs, etc.)
+- ✅ **Search the internet** for similar issues, solutions, and best practices
+- ✅ **Read relevant parts of the codebase** to understand the architecture deeply
+- ✅ **Review previous attempts** in MOBILE_SIGNING_DEBUG.md to avoid repeating mistakes
+- ✅ **Use all your intelligence** to analyze the root cause thoroughly - don't guess
+- ✅ **Think through the solution completely** before implementing - consider edge cases
+- ✅ **Verify your understanding** by checking multiple sources
+- ❌ **NEVER make hasty changes** that require multiple iterations to fix
+- ❌ **NEVER skip research** because you think you know the answer
+
+**The goal is to get it RIGHT the FIRST time, not iterate quickly.**
+Each build cycle costs 8-9 minutes. Make every iteration count.
+
+When you've made changes, you can go through the following cycle:
+
+0. **Understand the requirements** from the user (me) - make sure you ask the right questions to get a full understanding
+   Once you understand, you'll be able to choose the right place in the cycle to start the process
+
+1. **npm test** - Run tests to ensure your changes don't break existing functionality
+
+2. **Commit your changes to git** (use extensive, descriptive comments explaining WHAT and WHY)
+
+3. **Tag and deploy**: Look at the latest git tag that starts `farcaster-test-v....` and add the next one using my git shortcut:
+   ```bash
+   git tag-push farcaster-test-vXX.X.X
+   ```
+   This will run the build and deploy on CI/CD (takes 8-9 minutes)
+
+4. **Ask the user (me) to run the test in the UI** - Wait for user to complete testing
+
+5. **SSH onto the dev server**:
+   ```bash
+   ssh -l gituser api.conduit-ucpi.com
+   ```
+
+6. **Capture docker logs**:
+   ```bash
+   docker logs webapp-test > /tmp/autolog.log 2>&1
+   ```
+
+8. **Copy the logs to the local machine**:
+   ```bash
+   scp gituser@api.conduit-ucpi.com:/tmp/autolog.log .
+   ```
+
+9. **Analyze the log** - Make changes to fix what you see, ask the user (me) any questions about what they saw in the UI, etc.
+
+   **CRITICAL ANALYSIS REQUIREMENTS:**
+   - Use ALL your intelligence to understand the root cause
+   - Access the internet to research solutions and similar issues
+   - Read the whole codebase if needed to understand the architecture
+   - Study all libraries and frameworks being used - read their documentation
+   - **Make extensive notes in MOBILE_SIGNING_DEBUG.md** so you don't re-invent the wheel and don't go over the same ground again
+   - **Look at the END of the logfile** rather than beginning, so you're looking at the latest events rather than the oldest ones
+   - **Think deeply before making changes** - 8-9 minute builds mean we can't afford trial-and-error
+   - **Verify your hypothesis** by cross-referencing multiple sources before coding
+
+10. **Repeat the whole cycle until the problem is fixed** - But minimize iterations through thorough analysis

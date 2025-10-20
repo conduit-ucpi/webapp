@@ -389,6 +389,14 @@ export class DynamicProvider implements UnifiedProvider {
         throw new Error('No connector available on Dynamic wallet');
       }
 
+      // Log connector structure to find WalletConnect session
+      mLog.info('DynamicProvider', '🔍 Connector structure:', {
+        connectorKeys: Object.keys(connector).slice(0, 30),
+        hasProvider: !!connector.provider,
+        hasGetWalletClient: !!connector.getWalletClient,
+        providerKeys: connector.provider ? Object.keys(connector.provider).slice(0, 20) : []
+      });
+
       // Get the EIP-1193 provider from the connector
       const eip1193Provider = await connector.getWalletClient?.() || connector.provider;
 
@@ -398,7 +406,8 @@ export class DynamicProvider implements UnifiedProvider {
 
       // Wrap provider with mobile deep link support BEFORE creating ethers provider
       // This ensures mobile wallets automatically open when signing is requested
-      const wrappedProvider = wrapProviderWithMobileDeepLinks(eip1193Provider);
+      // Pass connector as well so wrapper can check connector.provider
+      const wrappedProvider = wrapProviderWithMobileDeepLinks(eip1193Provider, connector);
 
       // Create ethers provider and signer
       const browserProvider = new ethers.BrowserProvider(wrappedProvider);
@@ -450,6 +459,14 @@ export class DynamicProvider implements UnifiedProvider {
         throw new Error('No connector available on Dynamic wallet');
       }
 
+      // Log connector structure to find WalletConnect session
+      mLog.info('DynamicProvider', '🔍 Connector structure:', {
+        connectorKeys: Object.keys(connector).slice(0, 30),
+        hasProvider: !!connector.provider,
+        hasGetWalletClient: !!connector.getWalletClient,
+        providerKeys: connector.provider ? Object.keys(connector.provider).slice(0, 20) : []
+      });
+
       // Get the EIP-1193 provider from the connector
       const eip1193Provider = await connector.getWalletClient?.() || connector.provider;
 
@@ -459,7 +476,8 @@ export class DynamicProvider implements UnifiedProvider {
 
       // Wrap provider with mobile deep link support BEFORE creating ethers provider
       // This ensures mobile wallets automatically open when signing is requested
-      const wrappedProvider = wrapProviderWithMobileDeepLinks(eip1193Provider);
+      // Pass connector as well so wrapper can check connector.provider
+      const wrappedProvider = wrapProviderWithMobileDeepLinks(eip1193Provider, connector);
 
       // Create ethers provider and signer
       const browserProvider = new ethers.BrowserProvider(wrappedProvider);

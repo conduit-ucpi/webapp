@@ -45,6 +45,18 @@ export function wrapProviderWithMobileDeepLinks(provider: any): any {
   // Common paths: provider.transport.provider, provider.provider, provider.walletProvider
   let wcProvider = provider
 
+  // Deep inspection: Log the actual structure of the provider to find where session lives
+  mLog.info('MobileDeepLink', '🔍 Provider structure inspection:', {
+    providerType: typeof provider,
+    providerKeys: provider ? Object.keys(provider).slice(0, 20) : [],
+    hasTransport: !!provider?.transport,
+    transportType: typeof provider?.transport,
+    transportKeys: provider?.transport ? Object.keys(provider.transport).slice(0, 20) : [],
+    hasTransportValue: !!provider?.transport?.value,
+    transportValueType: typeof provider?.transport?.value,
+    transportValueKeys: provider?.transport?.value ? Object.keys(provider.transport.value).slice(0, 20) : [],
+  })
+
   // Try to find the WalletConnect provider by searching common nested paths
   const searchPaths = [
     provider,                              // Direct provider

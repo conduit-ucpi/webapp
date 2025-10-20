@@ -16,6 +16,7 @@ import {
 import { ethers } from "ethers";
 import { mLog } from '../../../utils/mobileLogger';
 import { getPublicClient } from '@wagmi/core';
+import { wrapProviderWithMobileDeepLinks } from '../../../utils/mobileDeepLinkProvider';
 
 export class DynamicProvider implements UnifiedProvider {
   private config: AuthConfig;
@@ -395,8 +396,12 @@ export class DynamicProvider implements UnifiedProvider {
         throw new Error('No provider available from wallet connector');
       }
 
+      // Wrap provider with mobile deep link support BEFORE creating ethers provider
+      // This ensures mobile wallets automatically open when signing is requested
+      const wrappedProvider = wrapProviderWithMobileDeepLinks(eip1193Provider);
+
       // Create ethers provider and signer
-      const browserProvider = new ethers.BrowserProvider(eip1193Provider);
+      const browserProvider = new ethers.BrowserProvider(wrappedProvider);
       const signer = await browserProvider.getSigner();
 
       if (!signer) {
@@ -452,8 +457,12 @@ export class DynamicProvider implements UnifiedProvider {
         throw new Error('No provider available from wallet connector');
       }
 
+      // Wrap provider with mobile deep link support BEFORE creating ethers provider
+      // This ensures mobile wallets automatically open when signing is requested
+      const wrappedProvider = wrapProviderWithMobileDeepLinks(eip1193Provider);
+
       // Create ethers provider and signer
-      const browserProvider = new ethers.BrowserProvider(eip1193Provider);
+      const browserProvider = new ethers.BrowserProvider(wrappedProvider);
       const signer = await browserProvider.getSigner();
 
       if (!signer) {

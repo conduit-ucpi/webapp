@@ -1,4 +1,5 @@
 import { wrapProviderWithMobileDeepLinks } from '../../utils/mobileDeepLinkProvider';
+import * as mobileDeepLinkProvider from '../../utils/mobileDeepLinkProvider';
 
 // Mock device detection
 jest.mock('../../utils/deviceDetection', () => ({
@@ -22,22 +23,19 @@ jest.mock('../../utils/mobileLogger', () => ({
 describe('wrapProviderWithMobileDeepLinks', () => {
   let capturedHref: string | null;
   let mockSetTimeout: jest.SpyInstance | undefined;
-  let hrefSetterSpy: jest.SpyInstance;
+  let originalTriggerDeepLink: (url: string) => void;
+
+  beforeAll(() => {
+    // Save the original function
+    originalTriggerDeepLink = mobileDeepLinkProvider.config.triggerDeepLink;
+  });
 
   beforeEach(() => {
     capturedHref = null;
 
-    // Mock window.location.href setter to capture deep link assignments
-    // JSDOM doesn't support navigation - when wrapper tries to set href, we capture it
-    delete (window as any).location;
-    (window as any).location = {
-      set href(value: string) {
-        capturedHref = value;
-      },
-      get href() {
-        return capturedHref || 'http://localhost/';
-      },
-      toString: () => 'http://localhost/',
+    // Replace config.triggerDeepLink with our mock that captures URLs
+    mobileDeepLinkProvider.config.triggerDeepLink = (url: string) => {
+      capturedHref = url;
     };
 
     // Mock setTimeout to execute immediately (no delay)
@@ -52,9 +50,9 @@ describe('wrapProviderWithMobileDeepLinks', () => {
   });
 
   afterEach(() => {
-    if (hrefSetterSpy) {
-      hrefSetterSpy.mockRestore();
-    }
+    // Restore original function
+    mobileDeepLinkProvider.config.triggerDeepLink = originalTriggerDeepLink;
+
     if (mockSetTimeout) {
       mockSetTimeout.mockRestore();
     }
@@ -124,12 +122,12 @@ describe('wrapProviderWithMobileDeepLinks', () => {
       };
 
       const mockWcProvider = {
-        request: jest.fn().mockResolvedValue('0xsignature'),
         session: mockSession,
       };
 
+      const originalRequest = jest.fn().mockResolvedValue('0xsignature');
       const mockProvider = {
-        request: jest.fn().mockResolvedValue('0xsignature'),
+        request: originalRequest,
         transport: {
           provider: mockWcProvider,
         },
@@ -138,14 +136,14 @@ describe('wrapProviderWithMobileDeepLinks', () => {
       const wrappedProvider = wrapProviderWithMobileDeepLinks(mockProvider);
 
       // Should wrap the provider
-      expect(wrappedProvider.request).not.toBe(mockProvider.request);
+      expect(wrappedProvider.request).not.toBe(originalRequest);
 
       // Call a user action method
       await wrappedProvider.request({ method: 'personal_sign', params: ['0xdata', '0xaddress'] });
 
       // Should have triggered deep link
       expect(capturedHref).toBe('metamask://');
-      expect(mockProvider.request).toHaveBeenCalled();
+      expect(originalRequest).toHaveBeenCalled();
     });
 
     it('should find WalletConnect session in provider.provider', async () => {
@@ -164,15 +162,16 @@ describe('wrapProviderWithMobileDeepLinks', () => {
         session: mockSession,
       };
 
+      const originalRequest = jest.fn().mockResolvedValue('0xsignature');
       const mockProvider = {
-        request: jest.fn().mockResolvedValue('0xsignature'),
+        request: originalRequest,
         provider: mockWcProvider,
       };
 
       const wrappedProvider = wrapProviderWithMobileDeepLinks(mockProvider);
 
       // Should wrap the provider
-      expect(wrappedProvider.request).not.toBe(mockProvider.request);
+      expect(wrappedProvider.request).not.toBe(originalRequest);
 
       // Call a user action method
       await wrappedProvider.request({ method: 'eth_signTypedData_v4', params: ['0xaddress', '{}'] });

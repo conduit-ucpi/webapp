@@ -2,6 +2,16 @@ import { detectDevice } from './deviceDetection'
 import { mLog } from './mobileLogger'
 
 /**
+ * Configuration for mobile deep link provider.
+ * Can be modified for testing.
+ */
+export const config = {
+  triggerDeepLink: (url: string): void => {
+    window.location.href = url
+  },
+}
+
+/**
  * Wraps a WalletConnect provider to automatically trigger mobile deep links
  * before user-action requests (signing, transactions, etc.).
  *
@@ -182,7 +192,7 @@ export function wrapProviderWithMobileDeepLinks(provider: any, connector?: any):
           mLog.info('MobileDeepLink', `🔗 Opening wallet app via: ${deepLink}`)
 
           // Trigger the deep link - this should open the wallet app
-          window.location.href = deepLink
+          config.triggerDeepLink(deepLink)
 
           // Small delay to allow the deep link to process
           // The wallet app should open and the request will be waiting there

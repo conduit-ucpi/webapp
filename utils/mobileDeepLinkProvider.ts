@@ -88,6 +88,15 @@ export function wrapProviderWithMobileDeepLinks(provider: any, connector?: any):
       hasClient: !!walletBook.client,
       hasWalletClient: !!walletBook.walletClient,
       allKeys: Object.keys(walletBook).slice(0, 30),
+      // CRITICAL: Check what's IN the wallets array
+      hasWalletsArray: !!walletBook.wallets,
+      walletsIsArray: Array.isArray(walletBook.wallets),
+      walletsLength: walletBook.wallets ? walletBook.wallets.length : 0,
+      walletsArrayContent: walletBook.wallets ? walletBook.wallets.map((w: any, i: number) => ({
+        index: i,
+        hasSession: !!w?.session,
+        keys: w ? Object.keys(w).slice(0, 10) : []
+      })) : []
     })
   }
 

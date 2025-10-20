@@ -1,0 +1,1320 @@
+   ▲ Next.js 14.0.3
+   - Local:        http://localhost:3000
+   - Network:      http://0.0.0.0:3000
+
+ ✓ Ready in 219ms
+Environment variables check:
+NEXT_PUBLIC_BASE_PATH: null
+WEB3AUTH_CLIENT_ID: Present
+CHAIN_ID: 8453
+RPC_URL: https://rpc.ankr.com/base/ece739aa8645bab439684917a8b43160d6dd77699386bb20d502cb1266410c1e
+RPC_URL raw bytes: [
+  104, 116, 116, 112, 115,  58,  47,  47, 114, 112,  99,  46,
+   97, 110, 107, 114,  46,  99, 111, 109,  47,  98,  97, 115,
+  101,  47, 101,  99, 101,  55,  51,  57,  97,  97,  56,  54,
+   52,  53,  98,  97,  98,  52,  51,  57,  54,  56,  52,  57,
+   49,  55,  97,  56,  98,  52,  51,  49,  54,  48, 100,  54,
+  100, 100,  55,  55,  54,  57,  57,  51,  56,  54,  98,  98,
+   50,  48, 100,  53,  48,  50,  99,  98,  49,  50,  54,  54,
+   52,  49,  48,  99,  49, 101
+]
+RPC_URL trimmed: https://rpc.ankr.com/base/ece739aa8645bab439684917a8b43160d6dd77699386bb20d502cb1266410c1e
+RPC_URL trimmed bytes: [
+  104, 116, 116, 112, 115,  58,  47,  47, 114, 112,  99,  46,
+   97, 110, 107, 114,  46,  99, 111, 109,  47,  98,  97, 115,
+  101,  47, 101,  99, 101,  55,  51,  57,  97,  97,  56,  54,
+   52,  53,  98,  97,  98,  52,  51,  57,  54,  56,  52,  57,
+   49,  55,  97,  56,  98,  52,  51,  49,  54,  48, 100,  54,
+  100, 100,  55,  55,  54,  57,  57,  51,  56,  54,  98,  98,
+   50,  48, 100,  53,  48,  50,  99,  98,  49,  50,  54,  54,
+   52,  49,  48,  99,  49, 101
+]
+USDC_CONTRACT_ADDRESS: 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913
+MOONPAY_API_KEY: Missing
+MIN_GAS_WEI: 5
+MAX_GAS_PRICE_GWEI: 0.03
+MAX_GAS_COST_GWEI: 14800
+USDC_GRANT_FOUNDRY_GAS: 65000
+DEPOSIT_FUNDS_FOUNDRY_GAS: 86500
+GAS_PRICE_BUFFER: 1.2
+EXPLORER_BASE_URL: https://base.blockscout.com
+SERVICE_LINK: https://test.conduit-ucpi.com
+CONTRACT_ADDRESS: 0x9De07D0838dE00edd14cF491C5CfEB226C28A9b4
+WALLETCONNECT_PROJECT_ID: Present
+DYNAMIC_ENVIRONMENT_ID: Present
+Config being sent: {
+  web3AuthClientId: 'BPDapDap0_WU7NXzbzcEQT6Hc2MDceD2zPnuYCRKBZOz5BJOPkgO0gjajNwBhBYNaJEOd7DBKjtnSyLUY6dSMR4',
+  web3AuthNetwork: 'sapphire_mainnet',
+  dynamicEnvironmentId: 'ac6e291d-cf43-4e6a-9d1d-b213fb345b61',
+  chainId: 8453,
+  rpcUrl: 'https://rpc.ankr.com/base/ece739aa8645bab439684917a8b43160d6dd77699386bb20d502cb1266410c1e',
+  usdcContractAddress: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+  contractAddress: '0x9De07D0838dE00edd14cF491C5CfEB226C28A9b4',
+  contractFactoryAddress: '0x5D2EfBfFa33026b95acAD4A21bC1C925f39A93CD',
+  userServiceUrl: 'http://userservice-prod:8977',
+  chainServiceUrl: 'http://chainservice-prod:8978',
+  contractServiceUrl: 'http://contractservice-prod:8080',
+  moonPayApiKey: '',
+  minGasWei: '5',
+  maxGasPriceGwei: '0.03',
+  maxGasCostGwei: '14800',
+  usdcGrantFoundryGas: '65000',
+  depositFundsFoundryGas: '86500',
+  gasPriceBuffer: '1.2',
+  basePath: '',
+  explorerBaseUrl: 'https://base.blockscout.com',
+  serviceLink: 'https://test.conduit-ucpi.com',
+  neynarApiKey: 'C0C78521-33DC-426E-AF4F-9D7A191B90A1',
+  walletConnectProjectId: '79363b85e333179e8dffa5da8e3c776a',
+  walletServicesShowWidget: undefined,
+  walletServicesButtonPosition: undefined,
+  walletServicesEnableKeyExport: undefined,
+  walletServicesHideTopup: undefined,
+  gitTag: 'farcaster-test-v37.2.18',
+  gitSha: 'b2e9477',
+  buildVersion: 'unknown'
+}
+Environment variables check:
+NEXT_PUBLIC_BASE_PATH: null
+WEB3AUTH_CLIENT_ID: Present
+CHAIN_ID: 8453
+RPC_URL: https://rpc.ankr.com/base/ece739aa8645bab439684917a8b43160d6dd77699386bb20d502cb1266410c1e
+RPC_URL raw bytes: [
+  104, 116, 116, 112, 115,  58,  47,  47, 114, 112,  99,  46,
+   97, 110, 107, 114,  46,  99, 111, 109,  47,  98,  97, 115,
+  101,  47, 101,  99, 101,  55,  51,  57,  97,  97,  56,  54,
+   52,  53,  98,  97,  98,  52,  51,  57,  54,  56,  52,  57,
+   49,  55,  97,  56,  98,  52,  51,  49,  54,  48, 100,  54,
+  100, 100,  55,  55,  54,  57,  57,  51,  56,  54,  98,  98,
+   50,  48, 100,  53,  48,  50,  99,  98,  49,  50,  54,  54,
+   52,  49,  48,  99,  49, 101
+]
+RPC_URL trimmed: https://rpc.ankr.com/base/ece739aa8645bab439684917a8b43160d6dd77699386bb20d502cb1266410c1e
+RPC_URL trimmed bytes: [
+  104, 116, 116, 112, 115,  58,  47,  47, 114, 112,  99,  46,
+   97, 110, 107, 114,  46,  99, 111, 109,  47,  98,  97, 115,
+  101,  47, 101,  99, 101,  55,  51,  57,  97,  97,  56,  54,
+   52,  53,  98,  97,  98,  52,  51,  57,  54,  56,  52,  57,
+   49,  55,  97,  56,  98,  52,  51,  49,  54,  48, 100,  54,
+  100, 100,  55,  55,  54,  57,  57,  51,  56,  54,  98,  98,
+   50,  48, 100,  53,  48,  50,  99,  98,  49,  50,  54,  54,
+   52,  49,  48,  99,  49, 101
+]
+USDC_CONTRACT_ADDRESS: 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913
+MOONPAY_API_KEY: Missing
+MIN_GAS_WEI: 5
+MAX_GAS_PRICE_GWEI: 0.03
+MAX_GAS_COST_GWEI: 14800
+USDC_GRANT_FOUNDRY_GAS: 65000
+DEPOSIT_FUNDS_FOUNDRY_GAS: 86500
+GAS_PRICE_BUFFER: 1.2
+EXPLORER_BASE_URL: https://base.blockscout.com
+SERVICE_LINK: https://test.conduit-ucpi.com
+CONTRACT_ADDRESS: 0x9De07D0838dE00edd14cF491C5CfEB226C28A9b4
+WALLETCONNECT_PROJECT_ID: Present
+DYNAMIC_ENVIRONMENT_ID: Present
+Config being sent: {
+  web3AuthClientId: 'BPDapDap0_WU7NXzbzcEQT6Hc2MDceD2zPnuYCRKBZOz5BJOPkgO0gjajNwBhBYNaJEOd7DBKjtnSyLUY6dSMR4',
+  web3AuthNetwork: 'sapphire_mainnet',
+  dynamicEnvironmentId: 'ac6e291d-cf43-4e6a-9d1d-b213fb345b61',
+  chainId: 8453,
+  rpcUrl: 'https://rpc.ankr.com/base/ece739aa8645bab439684917a8b43160d6dd77699386bb20d502cb1266410c1e',
+  usdcContractAddress: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+  contractAddress: '0x9De07D0838dE00edd14cF491C5CfEB226C28A9b4',
+  contractFactoryAddress: '0x5D2EfBfFa33026b95acAD4A21bC1C925f39A93CD',
+  userServiceUrl: 'http://userservice-prod:8977',
+  chainServiceUrl: 'http://chainservice-prod:8978',
+  contractServiceUrl: 'http://contractservice-prod:8080',
+  moonPayApiKey: '',
+  minGasWei: '5',
+  maxGasPriceGwei: '0.03',
+  maxGasCostGwei: '14800',
+  usdcGrantFoundryGas: '65000',
+  depositFundsFoundryGas: '86500',
+  gasPriceBuffer: '1.2',
+  basePath: '',
+  explorerBaseUrl: 'https://base.blockscout.com',
+  serviceLink: 'https://test.conduit-ucpi.com',
+  neynarApiKey: 'C0C78521-33DC-426E-AF4F-9D7A191B90A1',
+  walletConnectProjectId: '79363b85e333179e8dffa5da8e3c776a',
+  walletServicesShowWidget: undefined,
+  walletServicesButtonPosition: undefined,
+  walletServicesEnableKeyExport: undefined,
+  walletServicesHideTopup: undefined,
+  gitTag: 'farcaster-test-v37.2.18',
+  gitSha: 'b2e9477',
+  buildVersion: 'unknown'
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.514Z] [INFO] [DynamicWrapper] Creating wagmi configuration {
+  "chainId": 8453,
+  "chainName": "Base"
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.514Z] [DATA] {
+  "chainId": 8453,
+  "chainName": "Base"
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.514Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.518Z] [INFO] [DynamicWrapper] Creating Dynamic settings with WagmiProvider + DynamicWagmiConnector {
+  "environmentId": "ac6e291d-c...",
+  "chainId": 8453
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.518Z] [DATA] {
+  "environmentId": "ac6e291d-c...",
+  "chainId": 8453
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.518Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.518Z] [INFO] [DynamicConfig] Creating Dynamic configuration 
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.518Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.520Z] [INFO] [DynamicConfig] Dynamic settings created {
+  "environmentId": "ac6e291d-c...",
+  "chainId": 8453,
+  "networkName": "Base Mainnet",
+  "hasWalletConnectors": true,
+  "connectorCount": 1
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.520Z] [DATA] {
+  "environmentId": "ac6e291d-c...",
+  "chainId": 8453,
+  "networkName": "Base Mainnet",
+  "hasWalletConnectors": true,
+  "connectorCount": 1
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.520Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.521Z] [INFO] [DynamicConfig] Available wallet connectors {
+  "connectorNames": [
+    "vD",
+    "vq",
+    "SJ",
+    "PO",
+    "Function",
+    "vB",
+    "Function"
+  ],
+  "connectorCount": 7
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.521Z] [DATA] {
+  "connectorNames": [
+    "vD",
+    "vq",
+    "SJ",
+    "PO",
+    "Function",
+    "vB",
+    "Function"
+  ],
+  "connectorCount": 7
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.521Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.521Z] [INFO] [DynamicWrapper] Initializing provider stack: WagmiProvider -> DynamicContextProvider -> DynamicWagmiConnector {
+  "environmentId": "ac6e291d-c...",
+  "chainId": 8453
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.521Z] [DATA] {
+  "environmentId": "ac6e291d-c...",
+  "chainId": 8453
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.521Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.574Z] [INFO] [DynamicBridge] Dynamic context properties {
+  "hasSetShowAuthFlow": true,
+  "hasPrimaryWallet": false,
+  "hasUser": false,
+  "hasHandleLogOut": true,
+  "hasGetAuthToken": false,
+  "contextKeys": [
+    "accountSwitchState",
+    "authMode",
+    "awaitingSignatureState",
+    "bridgeChains",
+    "bridgeChainsToConnect",
+    "getNameService",
+    "handleLogOut",
+    "handleUnlinkWallet",
+    "loadingNetwork",
+    "locale",
+    "loginWithEmail",
+    "multiWalletWidgetState",
+    "network",
+    "networkConfigurations",
+    "primaryWallet",
+    "qrcodeUri",
+    "refetchProjectSettings",
+    "removeWallet",
+    "sdkHasLoaded",
+    "selectedTabIndex",
+    "sendWagmiSettings",
+    "setAuthMode",
+    "setLogInWithEmail",
+    "setMultiWalletWidgetState",
+    "setSelectedTabIndex",
+    "setShowAuthFlow",
+    "setShowBridgeWidget",
+    "setShowDynamicUserProfile",
+    "setShowQrcodeModal",
+    "shadowDOMEnabled",
+    "showAuthFlow",
+    "showDynamicUserProfile",
+    "showQrcodeModal",
+    "user",
+    "userWithMissingInfo"
+  ]
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.574Z] [DATA] {
+  "hasSetShowAuthFlow": true,
+  "hasPrimaryWallet": false,
+  "hasUser": false,
+  "hasHandleLogOut": true,
+  "hasGetAuthToken": false,
+  "contextKeys": [
+    "accountSwitchState",
+    "authMode",
+    "awaitingSignatureState",
+    "bridgeChains",
+    "bridgeChainsToConnect",
+    "getNameService",
+    "handleLogOut",
+    "handleUnlinkWallet",
+    "loadingNetwork",
+    "locale",
+    "loginWithEmail",
+    "multiWalletWidgetState",
+    "network",
+    "networkConfigurations",
+    "primaryWallet",
+    "qrcodeUri",
+    "refetchProjectSettings",
+    "removeWallet",
+    "sdkHasLoaded",
+    "selectedTabIndex",
+    "sendWagmiSettings",
+    "setAuthMode",
+    "setLogInWithEmail",
+    "setMultiWalletWidgetState",
+    "setSelectedTabIndex",
+    "setShowAuthFlow",
+    "setShowBridgeWidget",
+    "setShowDynamicUserProfile",
+    "setShowQrcodeModal",
+    "shadowDOMEnabled",
+    "showAuthFlow",
+    "showDynamicUserProfile",
+    "showQrcodeModal",
+    "user",
+    "userWithMissingInfo"
+  ]
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.574Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.623Z] [DEBUG] [TokenManager] Loading token from storage {
+  "hasToken": false,
+  "storageSource": "sessionStorage",
+  "isValid": false
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.623Z] [DATA] {
+  "hasToken": false,
+  "storageSource": "sessionStorage",
+  "isValid": false
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.623Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.623Z] [DEBUG] [TokenManager] Loading token from storage {
+  "hasToken": false,
+  "storageSource": "sessionStorage",
+  "isValid": false
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.623Z] [DATA] {
+  "hasToken": false,
+  "storageSource": "sessionStorage",
+  "isValid": false
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.623Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.644Z] [INFO] [ConnectWalletEmbedded] OAuth redirect check in useEffect {
+  "isOAuthRedirect": false,
+  "isConnected": false,
+  "address": null,
+  "hasUser": false,
+  "willTriggerAuth": false
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.644Z] [DATA] {
+  "isOAuthRedirect": false,
+  "isConnected": false,
+  "address": null,
+  "hasUser": false,
+  "willTriggerAuth": false
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.644Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.647Z] [INFO] [ConnectWalletEmbedded] OAuth redirect check in useEffect {
+  "isOAuthRedirect": false,
+  "isConnected": false,
+  "address": null,
+  "hasUser": false,
+  "willTriggerAuth": false
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.647Z] [DATA] {
+  "isOAuthRedirect": false,
+  "isConnected": false,
+  "address": null,
+  "hasUser": false,
+  "willTriggerAuth": false
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.647Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.647Z] [INFO] [ProviderRegistry] Initializing providers 
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.647Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.647Z] [INFO] [ProviderRegistry] Dynamic environment ID found, registering Dynamic provider 
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.647Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.647Z] [INFO] [ProviderRegistry] Registering Dynamic provider 
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.647Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.656Z] [INFO] [DynamicProvider] Initialize called 
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.656Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.656Z] [INFO] [ProviderRegistry] Registered Dynamic provider successfully 
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.656Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.656Z] [INFO] [ProviderRegistry] Dynamic provider registered successfully 
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.656Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.656Z] [INFO] [ProviderRegistry] ✅ Providers initialized {
+  "providerCount": 1,
+  "providerTypes": [
+    "dynamic"
+  ]
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.656Z] [DATA] {
+  "providerCount": 1,
+  "providerTypes": [
+    "dynamic"
+  ]
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.656Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.657Z] [INFO] [AuthManager] Starting restoreSession... 
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.657Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.657Z] [DEBUG] [AuthManager] Dynamic OAuth redirect check {
+  "isDynamicOAuthRedirect": false,
+  "urlParams": ""
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.657Z] [DATA] {
+  "isDynamicOAuthRedirect": false,
+  "urlParams": ""
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.657Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.657Z] [DEBUG] [AuthManager] Mobile check {
+  "isMobile": true,
+  "currentUrl": "https://test.conduit-ucpi.com/",
+  "urlParams": ""
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.657Z] [DATA] {
+  "isMobile": true,
+  "currentUrl": "https://test.conduit-ucpi.com/",
+  "urlParams": ""
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.657Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.657Z] [DEBUG] [AuthManager] Redirect params check {
+  "hasRedirectParams": false,
+  "urlParams": ""
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.657Z] [DATA] {
+  "hasRedirectParams": false,
+  "urlParams": ""
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.657Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.657Z] [DEBUG] [TokenManager] Getting token {
+  "hasToken": false
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.657Z] [DATA] {
+  "hasToken": false
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.657Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.657Z] [DEBUG] [TokenManager] Getting token {
+  "hasToken": false
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.657Z] [DATA] {
+  "hasToken": false
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.657Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.751Z] [INFO] [ConnectWalletEmbedded] OAuth redirect check in useEffect {
+  "isOAuthRedirect": false,
+  "isConnected": false,
+  "address": null,
+  "hasUser": false,
+  "willTriggerAuth": false
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.751Z] [DATA] {
+  "isOAuthRedirect": false,
+  "isConnected": false,
+  "address": null,
+  "hasUser": false,
+  "willTriggerAuth": false
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.751Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.751Z] [INFO] [ConnectWalletEmbedded] OAuth redirect check in useEffect {
+  "isOAuthRedirect": false,
+  "isConnected": false,
+  "address": null,
+  "hasUser": false,
+  "willTriggerAuth": false
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.751Z] [DATA] {
+  "isOAuthRedirect": false,
+  "isConnected": false,
+  "address": null,
+  "hasUser": false,
+  "willTriggerAuth": false
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.751Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.945Z] [INFO] [ConnectWalletEmbedded] OAuth redirect check in useEffect {
+  "isOAuthRedirect": false,
+  "isConnected": false,
+  "address": null,
+  "hasUser": false,
+  "willTriggerAuth": false
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.945Z] [DATA] {
+  "isOAuthRedirect": false,
+  "isConnected": false,
+  "address": null,
+  "hasUser": false,
+  "willTriggerAuth": false
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.945Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.947Z] [INFO] [ConnectWalletEmbedded] OAuth redirect check in useEffect {
+  "isOAuthRedirect": false,
+  "isConnected": false,
+  "address": null,
+  "hasUser": false,
+  "willTriggerAuth": false
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.947Z] [DATA] {
+  "isOAuthRedirect": false,
+  "isConnected": false,
+  "address": null,
+  "hasUser": false,
+  "willTriggerAuth": false
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:21.947Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:22.145Z] [INFO] [ConnectWalletEmbedded] OAuth redirect check in useEffect {
+  "isOAuthRedirect": false,
+  "isConnected": false,
+  "address": null,
+  "hasUser": false,
+  "willTriggerAuth": false
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:22.145Z] [DATA] {
+  "isOAuthRedirect": false,
+  "isConnected": false,
+  "address": null,
+  "hasUser": false,
+  "willTriggerAuth": false
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:22.145Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:22.147Z] [INFO] [ConnectWalletEmbedded] OAuth redirect check in useEffect {
+  "isOAuthRedirect": false,
+  "isConnected": false,
+  "address": null,
+  "hasUser": false,
+  "willTriggerAuth": false
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:22.147Z] [DATA] {
+  "isOAuthRedirect": false,
+  "isConnected": false,
+  "address": null,
+  "hasUser": false,
+  "willTriggerAuth": false
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:22.147Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:22.645Z] [INFO] [ConnectWalletEmbedded] OAuth redirect check in useEffect {
+  "isOAuthRedirect": false,
+  "isConnected": false,
+  "address": null,
+  "hasUser": false,
+  "willTriggerAuth": false
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:22.645Z] [DATA] {
+  "isOAuthRedirect": false,
+  "isConnected": false,
+  "address": null,
+  "hasUser": false,
+  "willTriggerAuth": false
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:22.645Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:22.647Z] [INFO] [ConnectWalletEmbedded] OAuth redirect check in useEffect {
+  "isOAuthRedirect": false,
+  "isConnected": false,
+  "address": null,
+  "hasUser": false,
+  "willTriggerAuth": false
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:22.647Z] [DATA] {
+  "isOAuthRedirect": false,
+  "isConnected": false,
+  "address": null,
+  "hasUser": false,
+  "willTriggerAuth": false
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:22.647Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:22.692Z] [INFO] [DynamicBridge] Dynamic context properties {
+  "hasSetShowAuthFlow": true,
+  "hasPrimaryWallet": true,
+  "hasUser": false,
+  "hasHandleLogOut": true,
+  "hasGetAuthToken": false,
+  "contextKeys": [
+    "accountSwitchState",
+    "authMode",
+    "awaitingSignatureState",
+    "bridgeChains",
+    "bridgeChainsToConnect",
+    "getNameService",
+    "handleLogOut",
+    "handleUnlinkWallet",
+    "loadingNetwork",
+    "locale",
+    "loginWithEmail",
+    "multiWalletWidgetState",
+    "network",
+    "networkConfigurations",
+    "primaryWallet",
+    "qrcodeUri",
+    "refetchProjectSettings",
+    "removeWallet",
+    "sdkHasLoaded",
+    "selectedTabIndex",
+    "sendWagmiSettings",
+    "setAuthMode",
+    "setLogInWithEmail",
+    "setMultiWalletWidgetState",
+    "setSelectedTabIndex",
+    "setShowAuthFlow",
+    "setShowBridgeWidget",
+    "setShowDynamicUserProfile",
+    "setShowQrcodeModal",
+    "shadowDOMEnabled",
+    "showAuthFlow",
+    "showDynamicUserProfile",
+    "showQrcodeModal",
+    "user",
+    "userWithMissingInfo"
+  ]
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:22.692Z] [DATA] {
+  "hasSetShowAuthFlow": true,
+  "hasPrimaryWallet": true,
+  "hasUser": false,
+  "hasHandleLogOut": true,
+  "hasGetAuthToken": false,
+  "contextKeys": [
+    "accountSwitchState",
+    "authMode",
+    "awaitingSignatureState",
+    "bridgeChains",
+    "bridgeChainsToConnect",
+    "getNameService",
+    "handleLogOut",
+    "handleUnlinkWallet",
+    "loadingNetwork",
+    "locale",
+    "loginWithEmail",
+    "multiWalletWidgetState",
+    "network",
+    "networkConfigurations",
+    "primaryWallet",
+    "qrcodeUri",
+    "refetchProjectSettings",
+    "removeWallet",
+    "sdkHasLoaded",
+    "selectedTabIndex",
+    "sendWagmiSettings",
+    "setAuthMode",
+    "setLogInWithEmail",
+    "setMultiWalletWidgetState",
+    "setSelectedTabIndex",
+    "setShowAuthFlow",
+    "setShowBridgeWidget",
+    "setShowDynamicUserProfile",
+    "setShowQrcodeModal",
+    "shadowDOMEnabled",
+    "showAuthFlow",
+    "showDynamicUserProfile",
+    "showQrcodeModal",
+    "user",
+    "userWithMissingInfo"
+  ]
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:22.692Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:22.693Z] [INFO] [DynamicBridge] primaryWalletChanged event received {
+  "wallet": true,
+  "address": "0xc9D0602A87E55116F633b1A1F95D083Eb115f942",
+  "walletKey": "metamask",
+  "hasActivePromise": false
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:22.693Z] [DATA] {
+  "wallet": true,
+  "address": "0xc9D0602A87E55116F633b1A1F95D083Eb115f942",
+  "walletKey": "metamask",
+  "hasActivePromise": false
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:22.693Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:22.693Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] Received 35 log entries
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:22.693Z] [WARN] [DynamicBridge] primaryWalletChanged fired but no active promise to resolve 
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:23.645Z] [INFO] [ConnectWalletEmbedded] OAuth redirect check in useEffect {
+  "isOAuthRedirect": false,
+  "isConnected": false,
+  "address": null,
+  "hasUser": false,
+  "willTriggerAuth": false
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:23.645Z] [DATA] {
+  "isOAuthRedirect": false,
+  "isConnected": false,
+  "address": null,
+  "hasUser": false,
+  "willTriggerAuth": false
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:23.645Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:23.647Z] [INFO] [ConnectWalletEmbedded] OAuth redirect check in useEffect {
+  "isOAuthRedirect": false,
+  "isConnected": false,
+  "address": null,
+  "hasUser": false,
+  "willTriggerAuth": false
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:23.647Z] [DATA] {
+  "isOAuthRedirect": false,
+  "isConnected": false,
+  "address": null,
+  "hasUser": false,
+  "willTriggerAuth": false
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:23.647Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] Received 2 log entries
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:27.549Z] [INFO] [ConnectWalletEmbedded] Get Started button clicked 
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:27.549Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:27.549Z] [DEBUG] [ConnectWalletEmbedded] Connect function availability {
+  "hasConnect": true
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:27.549Z] [DATA] {
+  "hasConnect": true
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:27.549Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:27.550Z] [INFO] [ConnectWalletEmbedded] Calling connect function... 
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:27.550Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] Received 3 log entries
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:27.705Z] [INFO] [AuthManager] Starting connection process {}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:27.705Z] [DATA] {}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:27.705Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:27.706Z] [INFO] [AuthManager] Using provider {
+  "providerName": "dynamic"
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:27.706Z] [DATA] {
+  "providerName": "dynamic"
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:27.706Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] Received 2 log entries
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:27.846Z] [INFO] [DynamicProvider] Connect called - opening Dynamic modal 
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:27.846Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:27.847Z] [INFO] [DynamicProvider] OAuth redirect check {
+  "currentUrl": "https://test.conduit-ucpi.com/",
+  "hasOAuthCode": false,
+  "hasOAuthState": false,
+  "isOAuthRedirect": false,
+  "hasStoredResult": false
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:27.847Z] [DATA] {
+  "currentUrl": "https://test.conduit-ucpi.com/",
+  "hasOAuthCode": false,
+  "hasOAuthState": false,
+  "isOAuthRedirect": false,
+  "hasStoredResult": false
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:27.847Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:27.847Z] [INFO] [DynamicProvider] Calling dynamicLogin function... 
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:27.847Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:27.847Z] [INFO] [DynamicBridge] Opening Dynamic auth flow 
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:27.847Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:27.847Z] [INFO] [DynamicBridge] User already connected, checking connection validity {
+  "address": "0xc9D0602A87E55116F633b1A1F95D083Eb115f942",
+  "connector": "MetaMask",
+  "walletKey": "metamask"
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:27.847Z] [DATA] {
+  "address": "0xc9D0602A87E55116F633b1A1F95D083Eb115f942",
+  "connector": "MetaMask",
+  "walletKey": "metamask"
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:27.847Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:27.847Z] [DATA] {
+  "walletKey": "metamask",
+  "connectorName": "MetaMask",
+  "hasProvider": false,
+  "hasGetProvider": false,
+  "hasRequest": false
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:27.847Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:27.847Z] [WARN] [DynamicBridge] Stale connection detected - cannot extract provider, forcing logout {
+  "walletKey": "metamask",
+  "connectorName": "MetaMask",
+  "hasProvider": false,
+  "hasGetProvider": false,
+  "hasRequest": false
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:27.867Z] [INFO] [DynamicBridge] Dynamic context properties {
+  "hasSetShowAuthFlow": true,
+  "hasPrimaryWallet": false,
+  "hasUser": false,
+  "hasHandleLogOut": true,
+  "hasGetAuthToken": false,
+  "contextKeys": [
+    "accountSwitchState",
+    "authMode",
+    "awaitingSignatureState",
+    "bridgeChains",
+    "bridgeChainsToConnect",
+    "getNameService",
+    "handleLogOut",
+    "handleUnlinkWallet",
+    "loadingNetwork",
+    "locale",
+    "loginWithEmail",
+    "multiWalletWidgetState",
+    "network",
+    "networkConfigurations",
+    "primaryWallet",
+    "qrcodeUri",
+    "refetchProjectSettings",
+    "removeWallet",
+    "sdkHasLoaded",
+    "selectedTabIndex",
+    "sendWagmiSettings",
+    "setAuthMode",
+    "setLogInWithEmail",
+    "setMultiWalletWidgetState",
+    "setSelectedTabIndex",
+    "setShowAuthFlow",
+    "setShowBridgeWidget",
+    "setShowDynamicUserProfile",
+    "setShowQrcodeModal",
+    "shadowDOMEnabled",
+    "showAuthFlow",
+    "showDynamicUserProfile",
+    "showQrcodeModal",
+    "user",
+    "userWithMissingInfo"
+  ]
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:27.867Z] [DATA] {
+  "hasSetShowAuthFlow": true,
+  "hasPrimaryWallet": false,
+  "hasUser": false,
+  "hasHandleLogOut": true,
+  "hasGetAuthToken": false,
+  "contextKeys": [
+    "accountSwitchState",
+    "authMode",
+    "awaitingSignatureState",
+    "bridgeChains",
+    "bridgeChainsToConnect",
+    "getNameService",
+    "handleLogOut",
+    "handleUnlinkWallet",
+    "loadingNetwork",
+    "locale",
+    "loginWithEmail",
+    "multiWalletWidgetState",
+    "network",
+    "networkConfigurations",
+    "primaryWallet",
+    "qrcodeUri",
+    "refetchProjectSettings",
+    "removeWallet",
+    "sdkHasLoaded",
+    "selectedTabIndex",
+    "sendWagmiSettings",
+    "setAuthMode",
+    "setLogInWithEmail",
+    "setMultiWalletWidgetState",
+    "setSelectedTabIndex",
+    "setShowAuthFlow",
+    "setShowBridgeWidget",
+    "setShowDynamicUserProfile",
+    "setShowQrcodeModal",
+    "shadowDOMEnabled",
+    "showAuthFlow",
+    "showDynamicUserProfile",
+    "showQrcodeModal",
+    "user",
+    "userWithMissingInfo"
+  ]
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:27.867Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:28.719Z] [INFO] [DynamicBridge] Stale connection cleared, will show modal 
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:28.719Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:28.719Z] [INFO] [DynamicBridge] authFlowOpen event received - auth modal opened 
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:28.719Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:28.725Z] [INFO] [DynamicBridge] Dynamic context properties {
+  "hasSetShowAuthFlow": true,
+  "hasPrimaryWallet": false,
+  "hasUser": false,
+  "hasHandleLogOut": true,
+  "hasGetAuthToken": false,
+  "contextKeys": [
+    "accountSwitchState",
+    "authMode",
+    "awaitingSignatureState",
+    "bridgeChains",
+    "bridgeChainsToConnect",
+    "getNameService",
+    "handleLogOut",
+    "handleUnlinkWallet",
+    "loadingNetwork",
+    "locale",
+    "loginWithEmail",
+    "multiWalletWidgetState",
+    "network",
+    "networkConfigurations",
+    "primaryWallet",
+    "qrcodeUri",
+    "refetchProjectSettings",
+    "removeWallet",
+    "sdkHasLoaded",
+    "selectedTabIndex",
+    "sendWagmiSettings",
+    "setAuthMode",
+    "setLogInWithEmail",
+    "setMultiWalletWidgetState",
+    "setSelectedTabIndex",
+    "setShowAuthFlow",
+    "setShowBridgeWidget",
+    "setShowDynamicUserProfile",
+    "setShowQrcodeModal",
+    "shadowDOMEnabled",
+    "showAuthFlow",
+    "showDynamicUserProfile",
+    "showQrcodeModal",
+    "user",
+    "userWithMissingInfo"
+  ]
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:28.725Z] [DATA] {
+  "hasSetShowAuthFlow": true,
+  "hasPrimaryWallet": false,
+  "hasUser": false,
+  "hasHandleLogOut": true,
+  "hasGetAuthToken": false,
+  "contextKeys": [
+    "accountSwitchState",
+    "authMode",
+    "awaitingSignatureState",
+    "bridgeChains",
+    "bridgeChainsToConnect",
+    "getNameService",
+    "handleLogOut",
+    "handleUnlinkWallet",
+    "loadingNetwork",
+    "locale",
+    "loginWithEmail",
+    "multiWalletWidgetState",
+    "network",
+    "networkConfigurations",
+    "primaryWallet",
+    "qrcodeUri",
+    "refetchProjectSettings",
+    "removeWallet",
+    "sdkHasLoaded",
+    "selectedTabIndex",
+    "sendWagmiSettings",
+    "setAuthMode",
+    "setLogInWithEmail",
+    "setMultiWalletWidgetState",
+    "setSelectedTabIndex",
+    "setShowAuthFlow",
+    "setShowBridgeWidget",
+    "setShowDynamicUserProfile",
+    "setShowQrcodeModal",
+    "shadowDOMEnabled",
+    "showAuthFlow",
+    "showDynamicUserProfile",
+    "showQrcodeModal",
+    "user",
+    "userWithMissingInfo"
+  ]
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:28.725Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] Received 10 log entries
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:58.452Z] [INFO] [DynamicBridge] authFlowClose event received 
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:58.452Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:58.452Z] [INFO] [DynamicBridge] Auth flow closed, waiting for wallet events... {
+  "hasActivePromise": true
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:58.452Z] [DATA] {
+  "hasActivePromise": true
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:58.452Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:58.459Z] [INFO] [DynamicBridge] Dynamic context properties {
+  "hasSetShowAuthFlow": true,
+  "hasPrimaryWallet": false,
+  "hasUser": false,
+  "hasHandleLogOut": true,
+  "hasGetAuthToken": false,
+  "contextKeys": [
+    "accountSwitchState",
+    "authMode",
+    "awaitingSignatureState",
+    "bridgeChains",
+    "bridgeChainsToConnect",
+    "getNameService",
+    "handleLogOut",
+    "handleUnlinkWallet",
+    "loadingNetwork",
+    "locale",
+    "loginWithEmail",
+    "multiWalletWidgetState",
+    "network",
+    "networkConfigurations",
+    "primaryWallet",
+    "qrcodeUri",
+    "refetchProjectSettings",
+    "removeWallet",
+    "sdkHasLoaded",
+    "selectedTabIndex",
+    "sendWagmiSettings",
+    "setAuthMode",
+    "setLogInWithEmail",
+    "setMultiWalletWidgetState",
+    "setSelectedTabIndex",
+    "setShowAuthFlow",
+    "setShowBridgeWidget",
+    "setShowDynamicUserProfile",
+    "setShowQrcodeModal",
+    "shadowDOMEnabled",
+    "showAuthFlow",
+    "showDynamicUserProfile",
+    "showQrcodeModal",
+    "user",
+    "userWithMissingInfo"
+  ]
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:58.459Z] [DATA] {
+  "hasSetShowAuthFlow": true,
+  "hasPrimaryWallet": false,
+  "hasUser": false,
+  "hasHandleLogOut": true,
+  "hasGetAuthToken": false,
+  "contextKeys": [
+    "accountSwitchState",
+    "authMode",
+    "awaitingSignatureState",
+    "bridgeChains",
+    "bridgeChainsToConnect",
+    "getNameService",
+    "handleLogOut",
+    "handleUnlinkWallet",
+    "loadingNetwork",
+    "locale",
+    "loginWithEmail",
+    "multiWalletWidgetState",
+    "network",
+    "networkConfigurations",
+    "primaryWallet",
+    "qrcodeUri",
+    "refetchProjectSettings",
+    "removeWallet",
+    "sdkHasLoaded",
+    "selectedTabIndex",
+    "sendWagmiSettings",
+    "setAuthMode",
+    "setLogInWithEmail",
+    "setMultiWalletWidgetState",
+    "setSelectedTabIndex",
+    "setShowAuthFlow",
+    "setShowBridgeWidget",
+    "setShowDynamicUserProfile",
+    "setShowQrcodeModal",
+    "shadowDOMEnabled",
+    "showAuthFlow",
+    "showDynamicUserProfile",
+    "showQrcodeModal",
+    "user",
+    "userWithMissingInfo"
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:58.761Z] [WARN] [DynamicBridge] walletAdded fired but no active promise to resolve 
+  ]
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:58.459Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:58.760Z] [INFO] [DynamicBridge] Dynamic context properties {
+  "hasSetShowAuthFlow": true,
+  "hasPrimaryWallet": true,
+  "hasUser": false,
+  "hasHandleLogOut": true,
+  "hasGetAuthToken": false,
+  "contextKeys": [
+    "accountSwitchState",
+    "authMode",
+    "awaitingSignatureState",
+    "bridgeChains",
+    "bridgeChainsToConnect",
+    "getNameService",
+    "handleLogOut",
+    "handleUnlinkWallet",
+    "loadingNetwork",
+    "locale",
+    "loginWithEmail",
+    "multiWalletWidgetState",
+    "network",
+    "networkConfigurations",
+    "primaryWallet",
+    "qrcodeUri",
+    "refetchProjectSettings",
+    "removeWallet",
+    "sdkHasLoaded",
+    "selectedTabIndex",
+    "sendWagmiSettings",
+    "setAuthMode",
+    "setLogInWithEmail",
+    "setMultiWalletWidgetState",
+    "setSelectedTabIndex",
+    "setShowAuthFlow",
+    "setShowBridgeWidget",
+    "setShowDynamicUserProfile",
+    "setShowQrcodeModal",
+    "shadowDOMEnabled",
+    "showAuthFlow",
+    "showDynamicUserProfile",
+    "showQrcodeModal",
+    "user",
+    "userWithMissingInfo"
+  ]
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:58.760Z] [DATA] {
+  "hasSetShowAuthFlow": true,
+  "hasPrimaryWallet": true,
+  "hasUser": false,
+  "hasHandleLogOut": true,
+  "hasGetAuthToken": false,
+  "contextKeys": [
+    "accountSwitchState",
+    "authMode",
+    "awaitingSignatureState",
+    "bridgeChains",
+    "bridgeChainsToConnect",
+    "getNameService",
+    "handleLogOut",
+    "handleUnlinkWallet",
+    "loadingNetwork",
+    "locale",
+    "loginWithEmail",
+    "multiWalletWidgetState",
+    "network",
+    "networkConfigurations",
+    "primaryWallet",
+    "qrcodeUri",
+    "refetchProjectSettings",
+    "removeWallet",
+    "sdkHasLoaded",
+    "selectedTabIndex",
+    "sendWagmiSettings",
+    "setAuthMode",
+    "setLogInWithEmail",
+    "setMultiWalletWidgetState",
+    "setSelectedTabIndex",
+    "setShowAuthFlow",
+    "setShowBridgeWidget",
+    "setShowDynamicUserProfile",
+    "setShowQrcodeModal",
+    "shadowDOMEnabled",
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:58.769Z] [WARN] [DynamicProvider] PublicClient not ready yet, waiting 100ms before retry 2/5 
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:58.870Z] [WARN] [DynamicProvider] PublicClient not ready yet, waiting 200ms before retry 3/5 
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:59.071Z] [WARN] [DynamicProvider] PublicClient not ready yet, waiting 400ms before retry 4/5 
+    "showAuthFlow",
+    "showDynamicUserProfile",
+    "showQrcodeModal",
+    "user",
+    "userWithMissingInfo"
+  ]
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:58.760Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:58.761Z] [INFO] [DynamicBridge] primaryWalletChanged event received {
+  "wallet": true,
+  "address": "0xc9D0602A87E55116F633b1A1F95D083Eb115f942",
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:59.473Z] [WARN] [DynamicProvider] PublicClient not ready yet, waiting 800ms before retry 5/5 
+  "walletKey": "metamask",
+  "hasActivePromise": true
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:58.761Z] [DATA] {
+  "wallet": true,
+  "address": "0xc9D0602A87E55116F633b1A1F95D083Eb115f942",
+  "walletKey": "metamask",
+  "hasActivePromise": true
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:58.761Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:58.761Z] [INFO] [DynamicBridge] ✅ Resolving login promise with primaryWalletChanged event {
+  "address": "0xc9D0602A87E55116F633b1A1F95D083Eb115f942",
+  "walletName": "MetaMask",
+  "hasUser": false
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:58.761Z] [DATA] {
+  "address": "0xc9D0602A87E55116F633b1A1F95D083Eb115f942",
+  "walletName": "MetaMask",
+  "hasUser": false
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:58.761Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:58.761Z] [INFO] [DynamicBridge] walletAdded event received {
+  "wallet": true,
+  "address": "0xc9D0602A87E55116F633b1A1F95D083Eb115f942",
+  "walletKey": "metamask",
+  "userWalletsCount": 1,
+  "hasActivePromise": false
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:58.761Z] [DATA] {
+  "wallet": true,
+  "address": "0xc9D0602A87E55116F633b1A1F95D083Eb115f942",
+  "walletKey": "metamask",
+  "userWalletsCount": 1,
+  "hasActivePromise": false
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:58.761Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:58.761Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:58.765Z] [INFO] [DynamicProvider] Dynamic login result received {
+  "hasResult": true,
+  "hasAddress": true,
+  "hasProvider": true
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:58.765Z] [DATA] {
+  "hasResult": true,
+  "hasAddress": true,
+  "hasProvider": true
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:58.765Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:58.765Z] [INFO] [DynamicProvider] Setting up provider using Dynamic toolkit {
+  "walletType": "MetaMask",
+  "walletKey": "metamask"
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:58.765Z] [DATA] {
+  "walletType": "MetaMask",
+  "walletKey": "metamask"
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:58.765Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:58.766Z] [INFO] [DynamicProvider] Attempting to get Web3Provider (attempt 1/5) 
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:58.766Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:58.769Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:58.869Z] [INFO] [DynamicProvider] Attempting to get Web3Provider (attempt 2/5) 
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:58.869Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:58.870Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:59.070Z] [INFO] [DynamicProvider] Attempting to get Web3Provider (attempt 3/5) 
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:59.070Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:59.071Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:59.472Z] [INFO] [DynamicProvider] Attempting to get Web3Provider (attempt 4/5) 
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:59.472Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:54:00.275Z] [ERROR] [DynamicProvider] Failed to get PublicClient after 5 attempts 
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:54:00.275Z] [WARN] [DynamicProvider] Dynamic toolkit failed, trying direct wagmi access {
+  "error": "Unable to retrieve PublicClient"
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:53:59.473Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:54:00.273Z] [INFO] [DynamicProvider] Attempting to get Web3Provider (attempt 5/5) 
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:54:00.273Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:54:00.275Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:54:00.275Z] [DATA] {
+  "error": "Unable to retrieve PublicClient"
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:54:00.275Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:54:00.275Z] [INFO] [DynamicProvider] Attempting to get PublicClient directly from wagmi 
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:54:00.275Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:54:00.276Z] [INFO] [DynamicProvider] Got PublicClient from wagmi, creating ethers provider 
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:54:00.276Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:54:00.277Z] [INFO] [DynamicProvider] ✅ Ethers provider created successfully via direct wagmi access 
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:54:00.277Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:54:00.277Z] [INFO] [DynamicProvider] Connection successful {
+  "success": true,
+  "address": "0xc9D0602A87E55116F633b1A1F95D083Eb115f942",
+  "capabilities": {
+    "canSign": true,
+    "canTransact": true,
+    "canSwitchWallets": true,
+    "isAuthOnly": false
+  }
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:54:00.277Z] [DATA] {
+  "success": true,
+  "address": "0xc9D0602A87E55116F633b1A1F95D083Eb115f942",
+  "capabilities": {
+    "canSign": true,
+    "canTransact": true,
+    "canSwitchWallets": true,
+    "isAuthOnly": false
+  }
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:54:00.277Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:54:00.277Z] [INFO] [AuthManager] ✅ Connection successful {
+  "address": "0xc9D0602A87E55116F633b1A1F95D083Eb115f942",
+  "providerName": "dynamic",
+  "capabilities": {
+    "canSign": true,
+    "canTransact": true,
+    "canSwitchWallets": true,
+    "isAuthOnly": false
+  }
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:54:00.277Z] [DATA] {
+  "address": "0xc9D0602A87E55116F633b1A1F95D083Eb115f942",
+  "providerName": "dynamic",
+  "capabilities": {
+    "canSign": true,
+    "canTransact": true,
+    "canSwitchWallets": true,
+    "isAuthOnly": false
+  }
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:54:00.277Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] Received 26 log entries
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:54:00.556Z] [INFO] [ConnectWalletEmbedded] Connection successful, authenticating with backend... 
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:54:00.556Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:54:00.557Z] [INFO] [AuthProvider] authenticateBackend called {
+  "hasConnectionResult": true,
+  "connectionSuccess": true,
+  "connectionAddress": "0xc9D0602A87E55116F633b1A1F95D083Eb115f942",
+  "reactStateConnected": false,
+  "reactStateAddress": null
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:54:00.557Z] [DATA] {
+  "hasConnectionResult": true,
+  "connectionSuccess": true,
+  "connectionAddress": "0xc9D0602A87E55116F633b1A1F95D083Eb115f942",
+  "reactStateConnected": false,
+  "reactStateAddress": null
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:54:00.557Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:54:00.557Z] [DEBUG] [AuthProvider] Authentication state check {
+  "isConnected": true,
+  "address": "0xc9D0602A87E55116F633b1A1F95D083Eb115f942",
+  "usingConnectionResult": true
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:54:00.557Z] [DATA] {
+  "isConnected": true,
+  "address": "0xc9D0602A87E55116F633b1A1F95D083Eb115f942",
+  "usingConnectionResult": true
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:54:00.557Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:54:00.557Z] [INFO] [AuthProvider] Starting message signing for authentication {
+  "address": "0xc9D0602A87E55116F633b1A1F95D083Eb115f942"
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:54:00.557Z] [DATA] {
+  "address": "0xc9D0602A87E55116F633b1A1F95D083Eb115f942"
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:54:00.557Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:54:00.557Z] [INFO] [AuthManager] Signing message for backend authentication {
+  "address": "0xc9D0602A87E55116F633b1A1F95D083Eb115f942",
+  "providerName": "dynamic"
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:54:00.557Z] [DATA] {
+  "address": "0xc9D0602A87E55116F633b1A1F95D083Eb115f942",
+  "providerName": "dynamic"
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:54:00.557Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:54:00.557Z] [INFO] [DynamicProvider] Creating signer directly from wallet connector 
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:54:00.557Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:54:00.560Z] [INFO] [MobileDeepLink] ✓ Layer 1 passed: Mobile/tablet device detected 
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:54:00.560Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:54:00.560Z] [INFO] [MobileDeepLink] ⏭️  No WalletConnect session - likely injected wallet, skipping wrapper 
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:54:00.560Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:54:00.567Z] [INFO] [DynamicProvider] Signing message with direct signer {
+  "message": "Authenticate wallet 0xc9D0602A87E55116F633b1A1F95D...",
+  "signerAddress": "0xc9D0602A87E55116F633b1A1F95D083Eb115f942"
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:54:00.567Z] [DATA] {
+  "message": "Authenticate wallet 0xc9D0602A87E55116F633b1A1F95D...",
+  "signerAddress": "0xc9D0602A87E55116F633b1A1F95D083Eb115f942"
+}
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] [2025-10-20T01:54:00.567Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760590601483-lhlz6hma85] Received 9 log entries

@@ -694,3 +694,58 @@ This will allow us to definitively confirm:
 
 **Status**: Logging fix ready for deployment
 **Next**: Deploy and analyze mobile logs to see wrapper execution
+
+---
+
+# LAYER 2 FAILURE - PROVIDER WRAPPING ISSUE - 2025-10-20
+
+## Problem Discovered (farcaster-test-v37.2.19)
+
+After deploying the logging fix, we can now see the wrapper executing! But logs show:
+```
+[MobileDeepLink] ✓ Layer 1 passed: Mobile/tablet device detected
+[MobileDeepLink] ⏭️  No WalletConnect session - likely injected wallet, skipping wrapper
+```
+
+**Layer 2 is FAILING** - The wrapper can't find the WalletConnect session.
+
+## Root Cause Analysis
+
+The provider from `connector.getWalletClient?.() || connector.provider` is NOT the raw WalletConnect provider - it's been wrapped by viem/wagmi.
+
+**Provider Chain:**
+```
+connector.getWalletClient()
+  → Returns viem WalletClient (wrapper)
+    → Contains transport property
+      → Contains the actual WalletConnect UniversalProvider
+        → Has .session property with deep link URLs
+```
+
+The WalletConnect `session` property is buried several layers deep, so our direct check `provider?.session` returns `undefined`.
+
+## Solution
+
+Modified the wrapper to search through the provider chain for the WalletConnect session:
+
+**File**: `utils/mobileDeepLinkProvider.ts`
+
+**Changes:**
+1. Added provider chain search logic
+2. Check multiple common paths: `provider.transport.provider`, `provider.provider`, `provider.transport.value`, etc.
+3. Use the found WalletConnect provider (`wcProvider`) for session metadata
+4. Added debug logging to show which paths were checked
+
+**Search paths checked:**
+- `provider` (direct)
+- `provider.transport.provider` (viem transport wrapper)
+- `provider.provider` (common wrapper pattern)
+- `provider.walletProvider` (some connectors use this)
+- `provider.transport.value` (alternative viem path)
+
+This should allow the wrapper to find the WalletConnect session regardless of how deeply it's nested in the provider chain.
+
+---
+
+**Status**: Provider chain search implemented
+**Next**: Deploy and test - should pass Layer 2 now and find WalletConnect session

@@ -41,8 +41,34 @@ export function wrapProviderWithMobileDeepLinks(provider: any): any {
   // Only apply wrapper to WalletConnect providers (have active session)
   // Injected wallets (MetaMask extension, etc.) don't have WalletConnect sessions
 
-  if (!provider?.session) {
-    mLog.info('MobileDeepLink', '⏭️  No WalletConnect session - likely injected wallet, skipping wrapper')
+  // The provider might be wrapped by viem/wagmi, so we need to search for the WalletConnect provider
+  // Common paths: provider.transport.provider, provider.provider, provider.walletProvider
+  let wcProvider = provider
+
+  // Try to find the WalletConnect provider by searching common nested paths
+  const searchPaths = [
+    provider,                              // Direct provider
+    provider?.transport?.provider,         // Viem transport wrapper
+    provider?.provider,                    // Common wrapper pattern
+    provider?.walletProvider,              // Some connectors use this
+    provider?.transport?.value,            // Alternative viem path
+  ]
+
+  for (const candidate of searchPaths) {
+    if (candidate?.session) {
+      wcProvider = candidate
+      mLog.info('MobileDeepLink', '✓ Found WalletConnect session in provider chain')
+      break
+    }
+  }
+
+  if (!wcProvider?.session) {
+    mLog.info('MobileDeepLink', '⏭️  No WalletConnect session found - likely injected wallet, skipping wrapper', {
+      hasProvider: !!provider,
+      hasTransport: !!provider?.transport,
+      hasTransportProvider: !!provider?.transport?.provider,
+      hasProviderProperty: !!provider?.provider,
+    })
     return provider
   }
 
@@ -54,7 +80,7 @@ export function wrapProviderWithMobileDeepLinks(provider: any): any {
   // Only apply wrapper if peer metadata exists (external wallet connected)
   // Incomplete or invalid sessions won't have peer metadata
 
-  if (!provider.session?.peer?.metadata) {
+  if (!wcProvider.session?.peer?.metadata) {
     mLog.info('MobileDeepLink', '⏭️  No peer metadata - incomplete session, skipping wrapper')
     return provider
   }
@@ -67,7 +93,7 @@ export function wrapProviderWithMobileDeepLinks(provider: any): any {
   // Only apply wrapper if wallet provides redirect URLs (can actually deep link)
   // Some wallets might not support deep linking
 
-  const { redirect } = provider.session.peer.metadata
+  const { redirect } = wcProvider.session.peer.metadata
 
   if (!redirect?.native && !redirect?.universal) {
     mLog.info('MobileDeepLink', '⏭️  No redirect URLs available - wallet does not support deep linking, skipping wrapper')

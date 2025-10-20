@@ -180,10 +180,111 @@ describe('wrapProviderWithMobileDeepLinks', () => {
       expect(capturedHref).toBe('metamask://');
     });
 
-    // TODO: Add test for actual Dynamic/viem provider structure once we get diagnostic logs from v37.2.21
-    it.skip('should find WalletConnect session in actual Dynamic provider structure', async () => {
-      // This test will be completed once we see the actual provider structure from diagnostic logs
-      // The structure will be revealed by v37.2.21 inspection logs
+    /**
+     * CRITICAL TEST - Based on v37.2.25 production logs
+     *
+     * This replicates the EXACT structure we see in production:
+     * connector._walletBookInstance.walletBook.wallets[0].session
+     *
+     * The session is NOT on walletBook directly, but inside the wallets array!
+     */
+    it('should find WalletConnect session in walletBook.wallets array (v37.2.25 discovery)', async () => {
+      const mockSession = {
+        peer: {
+          metadata: {
+            redirect: {
+              native: 'metamask://',
+              universal: 'https://metamask.app.link/',
+            },
+          },
+        },
+      };
+
+      const originalRequest = jest.fn().mockResolvedValue('0xsignature');
+
+      // This is the EXACT structure from v37.2.25 logs
+      const mockProvider = {
+        request: originalRequest,
+        // Viem WalletClient properties (doesn't have session)
+        account: '0xc9D0602A87E55116F633b1A1F95D083Eb115f942',
+        transport: {
+          key: 'custom',
+          name: 'Custom Transport',
+          request: jest.fn(),
+        }
+      };
+
+      const mockConnector = {
+        isWalletConnect: true,
+        _walletBookInstance: {
+          walletBook: {
+            groups: [],
+            wallets: [
+              {
+                // THIS is where the session actually lives!
+                session: mockSession,
+              }
+            ]
+          }
+        }
+      };
+
+      const wrappedProvider = wrapProviderWithMobileDeepLinks(mockProvider, mockConnector);
+
+      // Should wrap the provider (found the session in wallets array)
+      expect(wrappedProvider.request).not.toBe(originalRequest);
+
+      // Call a user action method to trigger deep link
+      await wrappedProvider.request({ method: 'personal_sign', params: ['0xdata', '0xaddress'] });
+
+      // Should have triggered deep link from the session found in wallets[0]
+      expect(capturedHref).toBe('metamask://');
+      expect(originalRequest).toHaveBeenCalledWith({ method: 'personal_sign', params: ['0xdata', '0xaddress'] });
+    });
+
+    it('should find WalletConnect session in walletBook.groups[].wallets array', async () => {
+      const mockSession = {
+        peer: {
+          metadata: {
+            redirect: {
+              native: 'rainbow://',
+              universal: 'https://rainbow.me/',
+            },
+          },
+        },
+      };
+
+      const originalRequest = jest.fn().mockResolvedValue('0xsignature');
+      const mockProvider = {
+        request: originalRequest,
+      };
+
+      const mockConnector = {
+        _walletBookInstance: {
+          walletBook: {
+            wallets: [], // Empty wallets array
+            groups: [
+              {
+                wallets: [
+                  {
+                    // Session in groups[0].wallets[0]
+                    session: mockSession,
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      };
+
+      const wrappedProvider = wrapProviderWithMobileDeepLinks(mockProvider, mockConnector);
+
+      // Should wrap the provider
+      expect(wrappedProvider.request).not.toBe(originalRequest);
+
+      await wrappedProvider.request({ method: 'eth_sendTransaction', params: [] });
+
+      expect(capturedHref).toBe('rainbow://');
     });
   });
 

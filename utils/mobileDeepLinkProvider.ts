@@ -115,6 +115,42 @@ export function wrapProviderWithMobileDeepLinks(provider: any, connector?: any):
     }
   }
 
+  // CRITICAL FIX (v37.2.25): Search inside walletBook.wallets array
+  // The session is NOT on walletBook directly, but inside wallet objects in the wallets array
+  if (!wcProvider?.session && walletBook?.wallets && Array.isArray(walletBook.wallets)) {
+    mLog.info('MobileDeepLink', `🔍 Searching in walletBook.wallets array (${walletBook.wallets.length} wallets)`)
+
+    for (let i = 0; i < walletBook.wallets.length; i++) {
+      const wallet = walletBook.wallets[i]
+      if (wallet?.session) {
+        wcProvider = wallet
+        mLog.info('MobileDeepLink', `✓ Found WalletConnect session in walletBook.wallets[${i}]`)
+        break
+      }
+    }
+  }
+
+  // CRITICAL FIX (v37.2.25): Search inside walletBook.groups[].wallets arrays
+  // Some configurations might have wallets nested in groups
+  if (!wcProvider?.session && walletBook?.groups && Array.isArray(walletBook.groups)) {
+    mLog.info('MobileDeepLink', `🔍 Searching in walletBook.groups (${walletBook.groups.length} groups)`)
+
+    for (let i = 0; i < walletBook.groups.length; i++) {
+      const group = walletBook.groups[i]
+      if (group?.wallets && Array.isArray(group.wallets)) {
+        for (let j = 0; j < group.wallets.length; j++) {
+          const wallet = group.wallets[j]
+          if (wallet?.session) {
+            wcProvider = wallet
+            mLog.info('MobileDeepLink', `✓ Found WalletConnect session in walletBook.groups[${i}].wallets[${j}]`)
+            break
+          }
+        }
+        if (wcProvider?.session) break
+      }
+    }
+  }
+
   if (!wcProvider?.session) {
     mLog.info('MobileDeepLink', '⏭️  No WalletConnect session found - likely injected wallet, skipping wrapper', {
       hasProvider: !!provider,

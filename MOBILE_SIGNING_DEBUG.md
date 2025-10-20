@@ -813,4 +813,107 @@ This will show us:
 **Status**: Deploying diagnostic version (build takes 8-9 minutes)
 **Next**: Test on mobile, analyze structure logs, identify correct path to WalletConnect session
 
+## Iteration 5: Connector Structure Analysis (v37.2.22)
+
+**Deployed**: farcaster-test-v37.2.22 (commit e4e87c1)
+
+**Test Result from v37.2.21**: ❌ Still failing but with new insights
+
+**User Feedback from v37.2.21**:
+> "in the metamask app, I got a prompt to sign a message before I got a prompt to 'connect'"
+
+This suggests the deep link MAY be working, but the timing is off.
+
+**Log Analysis from v37.2.21**:
+```json
+{
+  "providerKeys": ["account", "batch", "cacheTime", "ccipRead", "chain", "key", "name", "pollingInterval", "request", "transport", "type", "uid", "extend", ...],
+  "transportKeys": ["key", "methods", "name", "request", "retryCount", "retryDelay", "timeout", "type"],
+  "hasTransportValue": false
+}
+```
+
+**Key Discovery**:
+The provider is a viem WalletClient that completely abstracts the WalletConnect session. The transport doesn't have a `value` property or nested `provider` property with the session.
+
+**Changes Made (v37.2.22)**:
+Added connector structure inspection and search paths:
+
+**File**: `utils/mobileDeepLinkProvider.ts`
+- Added `connector` parameter to function signature
+- Added connector structure logging in DynamicProvider
+- Added `connector?.provider` to search paths (priority #2)
+
+**Hypothesis**: Dynamic's connector object might have direct access to WalletConnect provider that the viem WalletClient hides.
+
+**Status**: v37.2.22 deployed
+**Next**: Test and analyze connector structure logs
+
+## Test Results from v37.2.22
+
+**User's Description of Flow**:
+> "ok, I ran the test. As usual the first auth went fine and returned me to the app. The app just greyed out but never opened the metamask a second time. When I opened metamask myself, the sign request appeared, I signed it and metamask minimized, leaving me on the desktop. I returned myself to the webapp and it finished authentication correctly."
+
+**Log Analysis from v37.2.22**:
+```json
+{
+  "connectorKeys": ["_events", "_eventsCount", "chainRpcProviders", "isGlobalTransaction", "didSetup", "requiresNonDynamicEmailOtp", "canConnectViaCustodialService", "canConnectViaQrCode", "canConnectViaSocial", "canHandleMultipleConnections", "isAvailable", "isEmbeddedWallet", "isWalletConnect", "overrideKey", "providerResources", "switchNetworkOnlyFromWallet", "isInitialized", "constructorProps", "_walletBookInstance", "_metadata", "walletConnectorEventsEmitter", ...],
+  "hasProvider": false,
+  "hasGetWalletClient": true,
+  "providerKeys": []
+}
+```
+
+**Critical Findings**:
+1. `hasProvider: false` - connector.provider doesn't exist
+2. `isWalletConnect: true` - confirms this IS a WalletConnect session
+3. `_walletBookInstance` exists - likely holds the underlying WalletConnect instance
+
+**Provider structure**:
+```json
+{
+  "providerType": "object",
+  "providerKeys": ["account", "batch", ...],
+  "transportKeys": ["key", "methods", "name", "request", "retryCount", "retryDelay", "timeout", "type"],
+  "hasTransportValue": false,
+  "hasConnector": true,
+  "connectorProviderKeys": []
+}
+```
+
+**Conclusion**: The WalletConnect session is likely inside `connector._walletBookInstance`, not in the viem WalletClient.
+
+## Iteration 6: WalletBook Instance Search (v37.2.23)
+
+**Deployed**: farcaster-test-v37.2.23 (commit 0090428)
+
+**Changes Made**:
+
+**File**: `utils/mobileDeepLinkProvider.ts`
+1. Added diagnostic logging for `_walletBookInstance` structure:
+   ```typescript
+   hasWalletBookInstance: !!(connector as any)?._walletBookInstance,
+   walletBookInstanceType: typeof (connector as any)?._walletBookInstance,
+   walletBookInstanceKeys: (connector as any)?._walletBookInstance ? Object.keys(...).slice(0, 20) : [],
+   ```
+
+2. Added `connector._walletBookInstance` to search paths (priority #2):
+   ```typescript
+   const searchPaths = [
+     provider,                                            // Direct provider
+     (connector as any)?._walletBookInstance,             // Dynamic's internal WalletConnect instance ← NEW
+     (connector as any)?._walletBookInstance?.provider,   // WalletConnect provider in wallet book ← NEW
+     connector?.provider,                                 // Dynamic connector's raw provider
+     provider?.transport?.provider,                       // Viem transport wrapper
+     provider?.provider,                                  // Common wrapper pattern
+     provider?.walletProvider,                            // Some connectors use this
+     provider?.transport?.value,                          // Alternative viem path
+   ]
+   ```
+
+**Hypothesis**: `connector._walletBookInstance` is Dynamic's internal WalletConnect wallet instance and should contain the `session` property with redirect URLs.
+
+**Status**: ✅ v37.2.23 deployed successfully
+**Next**: User testing to see if _walletBookInstance contains the WalletConnect session
+
 ---

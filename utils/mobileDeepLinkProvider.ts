@@ -78,6 +78,19 @@ export function wrapProviderWithMobileDeepLinks(provider: any, connector?: any):
     walletBookKeys: walletBook ? Object.keys(walletBook).slice(0, 20) : [],
   })
 
+  // Deep dive into walletBook structure if it exists
+  if (walletBook) {
+    mLog.info('MobileDeepLink', '🔍 Deep dive into walletBook:', {
+      hasSession: !!walletBook.session,
+      hasProvider: !!walletBook.provider,
+      hasConnector: !!walletBook.connector,
+      hasWalletProvider: !!walletBook.walletProvider,
+      hasClient: !!walletBook.client,
+      hasWalletClient: !!walletBook.walletClient,
+      allKeys: Object.keys(walletBook).slice(0, 30),
+    })
+  }
+
   // Try to find the WalletConnect provider by searching common nested paths
   const searchPaths = [
     provider,                              // Direct provider

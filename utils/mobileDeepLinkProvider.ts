@@ -57,11 +57,16 @@ export function wrapProviderWithMobileDeepLinks(provider: any, connector?: any):
     transportValueKeys: provider?.transport?.value ? Object.keys(provider.transport.value).slice(0, 20) : [],
     hasConnector: !!connector,
     connectorProviderKeys: connector?.provider ? Object.keys(connector.provider).slice(0, 20) : [],
+    hasWalletBookInstance: !!(connector as any)?._walletBookInstance,
+    walletBookInstanceType: typeof (connector as any)?._walletBookInstance,
+    walletBookInstanceKeys: (connector as any)?._walletBookInstance ? Object.keys((connector as any)._walletBookInstance).slice(0, 20) : [],
   })
 
   // Try to find the WalletConnect provider by searching common nested paths
   const searchPaths = [
     provider,                              // Direct provider
+    (connector as any)?._walletBookInstance,  // Dynamic's internal WalletConnect instance
+    (connector as any)?._walletBookInstance?.provider,  // WalletConnect provider in wallet book
     connector?.provider,                   // Dynamic connector's raw provider
     provider?.transport?.provider,         // Viem transport wrapper
     provider?.provider,                    // Common wrapper pattern

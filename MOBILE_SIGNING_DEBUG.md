@@ -1190,3 +1190,135 @@ if (connectorName && walletBook.wallets[connectorName]) {
 **Status**: ✅ DEPLOYED - v37.2.28  
 **Next**: User testing on mobile device
 
+
+---
+
+# 🎉 WORKING SOLUTION - v37.2.29 (2025-10-20)
+
+## The Actual Problem
+
+**Case mismatch between connector name and walletBook keys**
+
+From production logs:
+```json
+{
+  "connectorName": "MetaMask",           // ← Capital M
+  "walletsKeys": ["metamask", ...]       // ← lowercase m
+}
+```
+
+Lookup: `walletBook.wallets["MetaMask"]` returned `undefined`
+
+## Complete TDD Process
+
+### Step 1: RED - Failing Test ❌
+
+```typescript
+it('should find wallet with case-insensitive lookup (MetaMask vs metamask)', async () => {
+  const mockConnector = {
+    name: "MetaMask",  // Capital M - from production logs
+    _walletBookInstance: {
+      walletBook: {
+        wallets: {
+          "metamask": {  // lowercase m - actual key
+            mobile: { native: "metamask://", ... }
+          }
+        }
+      }
+    }
+  };
+  // Test expects wrapper to work
+});
+```
+
+**Result**: ✕ Test FAILED (1 failed, 15 passed)
+
+### Step 2: GREEN - Fix Implementation ✅
+
+```typescript
+if (connectorName) {
+  // Try exact match first (fast path)
+  let walletConfig = walletBook.wallets[connectorName]
+
+  // If no exact match, try case-insensitive search
+  if (!walletConfig) {
+    const lowerConnectorName = connectorName.toLowerCase()
+    const matchingKey = Object.keys(walletBook.wallets)
+      .find(key => key.toLowerCase() === lowerConnectorName)
+
+    if (matchingKey) {
+      walletConfig = walletBook.wallets[matchingKey]
+      mLog.info('✓ Found wallet via case-insensitive match', {
+        connectorName,
+        matchingKey
+      })
+    }
+  }
+
+  // Use wallet config for deep linking
+  if (walletConfig?.mobile?.native || walletConfig?.mobile?.universal) {
+    wcProvider = walletConfig
+  }
+}
+```
+
+**Result**: ✅ ALL 16 TESTS PASS
+
+### Step 3: Deploy and Test 🚀
+
+**Version**: farcaster-test-v37.2.29  
+**Commit**: ee63727
+
+**Mobile Test Result**: ✅ **IT WORKS!**
+
+## What Changed
+
+**Before**:
+- Direct lookup: `walletBook.wallets["MetaMask"]` → `undefined`
+- No wallet config found
+- Wrapper skipped
+- No deep link triggered
+- User stuck on grey screen
+
+**After**:
+- Exact match attempt: `walletBook.wallets["MetaMask"]` → `undefined`
+- Case-insensitive fallback: Find key where `key.toLowerCase() === "metamask"`
+- Found: `walletBook.wallets["metamask"]` ✅
+- Extract: `mobile.native = "metamask://"`
+- Wrapper applied ✅
+- Deep link triggers ✅
+- **MetaMask opens automatically** ✅
+
+## Solution Summary
+
+**Root Causes Fixed**:
+1. ✅ Understood `walletBook.wallets` is a Record, not array (v37.2.28)
+2. ✅ Implemented case-insensitive lookup (v37.2.29)
+
+**The Fix**:
+- Look up connected wallet by `connector.name` in `walletBook.wallets` Record
+- Use case-insensitive matching to handle "MetaMask" → "metamask"
+- Extract deep link URLs from wallet config: `mobile.native` or `mobile.universal`
+- Trigger deep link before signing request
+
+**Tests**: 16/16 passing ✅  
+**Status**: ✅ **WORKING IN PRODUCTION**
+
+---
+
+## Timeline
+
+- **Weeks 1-2**: Multiple failed attempts searching for WalletConnect session
+- **v37.2.26-27**: False path - tried treating wallets as array
+- **v37.2.28**: Discovered Record structure, but missed case mismatch
+- **v37.2.29**: Found case mismatch in logs, implemented case-insensitive lookup
+- **Result**: ✅ **WORKING!**
+
+## Lessons Learned
+
+1. **TDD Works**: Write failing test from production logs → Fix code → Verify test passes
+2. **Read the Logs**: The exact problem was visible in production logs
+3. **SDK Types Matter**: Understanding Dynamic's data structures was critical
+4. **Case Sensitivity**: Never assume string matching - always consider case mismatches
+5. **Iterate Quickly**: 8-9 minute build cycles - make each iteration count
+

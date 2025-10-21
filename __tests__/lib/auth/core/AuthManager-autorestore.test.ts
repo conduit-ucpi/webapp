@@ -105,6 +105,7 @@ describe('AuthManager - Session Auto-Restore Timing Bug', () => {
     const mockDynamicWallet = {
       connector: mockConnector,
       key: 'metamask',
+      address: '0xc9D0602A87E55116F633b1A1F95D083Eb115f942', // Real primaryWallet has address
     };
 
     // Set up window state
@@ -136,10 +137,8 @@ describe('AuthManager - Session Auto-Restore Timing Bug', () => {
     // Step 2: Simulate Dynamic finishing auto-restore
     // This is what happens AFTER restoreSession() completes
     // In production, this would be when primaryWalletChanged event fires
-    (global.window as any).dynamicUser = {
-      walletAddress: '0xc9D0602A87E55116F633b1A1F95D083Eb115f942',
-    };
-    (global.window as any).dynamicAuthToken = 'fake-dynamic-auth-token';
+    // IMPORTANT: For MetaMask, there is NO dynamicUser! Only dynamicWallet exists
+    // This test accurately reproduces the production scenario
 
     // Step 2: Simulate time passing - Dynamic finishes auto-restore
     // In production, primaryWalletChanged event fires but there's no active login promise

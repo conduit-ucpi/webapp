@@ -689,6 +689,30 @@ export class DynamicProvider implements UnifiedProvider {
 
         return true;
       }
+
+      // CRITICAL FIX: Check for wallet connection even without user info
+      // MetaMask and other external wallets don't provide user object
+      // but they DO set window.dynamicWallet when connected
+      const dynamicWallet = (window as any).dynamicWallet;
+      if (dynamicWallet && dynamicWallet.address) {
+        mLog.debug('DynamicProvider', 'Found Dynamic wallet without user info (external wallet)', {
+          hasWallet: !!dynamicWallet,
+          address: dynamicWallet.address,
+          walletKey: dynamicWallet.key
+        });
+
+        // Update internal state
+        if (dynamicWallet.address && !this.currentAddress) {
+          this.currentAddress = dynamicWallet.address;
+        }
+
+        // Set up provider if not cached
+        if (!this.cachedEthersProvider) {
+          this.setupEthersProvider(dynamicWallet);
+        }
+
+        return true;
+      }
     }
 
     return false;

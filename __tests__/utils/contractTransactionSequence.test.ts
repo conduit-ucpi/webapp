@@ -67,11 +67,11 @@ describe('executeContractTransactionSequence', () => {
 
       // Verify the sequence of calls (1 for contract creation + 1 for deposit notification)
       expect(mockAuthenticatedFetch).toHaveBeenCalledTimes(2);
-      expect(mockWaitForTransaction).toHaveBeenNthCalledWith(1, '0xContractCreationTxHash', 120000);
+      expect(mockWaitForTransaction).toHaveBeenNthCalledWith(1, '0xContractCreationTxHash', 120000, 'test-contract-id');
       expect(mockApproveUSDC).toHaveBeenCalledTimes(1);
-      expect(mockWaitForTransaction).toHaveBeenNthCalledWith(2, '0xApprovalTxHash', 120000);
+      expect(mockWaitForTransaction).toHaveBeenNthCalledWith(2, '0xApprovalTxHash', 120000, 'test-contract-id');
       expect(mockDepositToContract).toHaveBeenCalledTimes(1);
-      expect(mockWaitForTransaction).toHaveBeenNthCalledWith(3, '0xDepositTxHash', 120000);
+      expect(mockWaitForTransaction).toHaveBeenNthCalledWith(3, '0xDepositTxHash', 120000, 'test-contract-id');
 
       // Verify that approval wasn't called until after contract creation wait
       const authenticatedFetchCallOrder = mockAuthenticatedFetch.mock.invocationCallOrder[0];
@@ -131,10 +131,10 @@ describe('executeContractTransactionSequence', () => {
 
       await executeContractTransactionSequence(defaultParams, defaultOptions);
 
-      // Verify each waitForTransaction call uses 120000ms (2 minute) timeout
-      expect(mockWaitForTransaction).toHaveBeenNthCalledWith(1, '0xContractCreationTxHash', 120000);
-      expect(mockWaitForTransaction).toHaveBeenNthCalledWith(2, '0xApprovalTxHash', 120000);
-      expect(mockWaitForTransaction).toHaveBeenNthCalledWith(3, '0xDepositTxHash', 120000);
+      // Verify each waitForTransaction call uses 120000ms (2 minute) timeout and includes contractId
+      expect(mockWaitForTransaction).toHaveBeenNthCalledWith(1, '0xContractCreationTxHash', 120000, 'test-contract-id');
+      expect(mockWaitForTransaction).toHaveBeenNthCalledWith(2, '0xApprovalTxHash', 120000, 'test-contract-id');
+      expect(mockWaitForTransaction).toHaveBeenNthCalledWith(3, '0xDepositTxHash', 120000, 'test-contract-id');
     });
 
     it('should proceed if contract creation transaction hash is missing', async () => {
@@ -154,8 +154,8 @@ describe('executeContractTransactionSequence', () => {
 
       // Should only wait for approval and deposit confirmations
       expect(mockWaitForTransaction).toHaveBeenCalledTimes(2);
-      expect(mockWaitForTransaction).toHaveBeenNthCalledWith(1, '0xApprovalTxHash', 120000);
-      expect(mockWaitForTransaction).toHaveBeenNthCalledWith(2, '0xDepositTxHash', 120000);
+      expect(mockWaitForTransaction).toHaveBeenNthCalledWith(1, '0xApprovalTxHash', 120000, 'test-contract-id');
+      expect(mockWaitForTransaction).toHaveBeenNthCalledWith(2, '0xDepositTxHash', 120000, 'test-contract-id');
 
       expect(result.contractCreationTxHash).toBeUndefined();
     });
@@ -216,6 +216,7 @@ describe('executeContractTransactionSequence', () => {
       // But deposit should NOT be called due to approval confirmation failure
       expect(mockDepositToContract).not.toHaveBeenCalled();
     });
+
   });
 
   describe('Error Handling', () => {

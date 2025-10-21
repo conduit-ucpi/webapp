@@ -2,6 +2,7 @@ import { ethers } from 'ethers';
 import { Config } from '@/types';
 // WalletProvider removed - using ethers.BrowserProvider directly
 import { toHex, toHexString, ensureHexPrefix } from '@/utils/hexUtils';
+import { mLog } from '@/utils/mobileLogger';
 
 // ERC20 ABI for USDC interactions
 export const ERC20_ABI = [
@@ -1295,44 +1296,127 @@ export class Web3Service {
    * @param maxWaitTime Maximum wait time in milliseconds (default: 30 seconds)
    * @returns Transaction receipt if confirmed, null if timeout/failed
    */
-  async waitForTransaction(transactionHash: string, maxWaitTime: number = 30000): Promise<any | null> {
+  async waitForTransaction(transactionHash: string, maxWaitTime: number = 30000, contractId?: string): Promise<any | null> {
     if (!this.provider) {
       throw new Error('Provider not initialized');
     }
 
     console.log(`[Web3Service.waitForTransaction] Waiting for transaction confirmation: ${transactionHash}`);
+    mLog.info('TransactionWait', '⏳ Starting manual polling for transaction confirmation', {
+      txHash: transactionHash,
+      timeoutMs: maxWaitTime,
+      contractId: contractId || 'unknown'
+    });
+
+    // MOBILE FIX: Manual polling instead of provider.waitForTransaction()
+    // The ethers provider.waitForTransaction() relies on WebSocket events/polling
+    // which breaks on mobile after switching apps (MetaMask → Browser).
+    // We manually poll eth_getTransactionReceipt via the HybridProvider,
+    // which routes to the read provider (reliable RPC, not wallet provider).
+
+    const startTime = Date.now();
+    const pollInterval = 2000; // Poll every 2 seconds
+    let pollCount = 0;
 
     try {
-      // Wait for the transaction to be mined with a timeout
-      const receipt = await Promise.race([
-        this.provider.waitForTransaction(transactionHash, 1), // Wait for 1 confirmation
-        new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error('Transaction confirmation timeout')), maxWaitTime)
-        )
-      ]);
+      while (true) {
+        pollCount++;
+        const elapsedTime = Date.now() - startTime;
 
-      if (receipt?.status === 1) {
-        console.log(`[Web3Service.waitForTransaction] Transaction confirmed: ${transactionHash}`);
-        return receipt;
-      } else if (receipt?.status === 0) {
-        console.warn(`[Web3Service.waitForTransaction] Transaction failed: ${transactionHash}`);
-        throw new Error('Transaction failed');
-      } else {
-        console.warn(`[Web3Service.waitForTransaction] Transaction status unknown: ${transactionHash}`);
-        throw new Error('Transaction failed');
+        // Check if we've exceeded the timeout
+        if (elapsedTime >= maxWaitTime) {
+          const errorMessage = contractId
+            ? `Transaction confirmation timed out after ${Math.floor(maxWaitTime / 1000)} seconds. ` +
+              `Your transaction may still be processing. Please contact support with:\n` +
+              `• Contract ID: ${contractId}\n` +
+              `• Transaction: ${transactionHash}`
+            : `Transaction confirmation timed out after ${Math.floor(maxWaitTime / 1000)} seconds for ${transactionHash}`;
+
+          mLog.error('TransactionWait', '❌ Transaction confirmation TIMEOUT', {
+            txHash: transactionHash,
+            contractId: contractId || 'unknown',
+            elapsedSeconds: Math.floor(elapsedTime / 1000),
+            pollAttempts: pollCount,
+            message: 'Transaction did not confirm within timeout period. User should contact support.'
+          });
+
+          console.warn(`[Web3Service.waitForTransaction] TIMEOUT after ${pollCount} polls:`, errorMessage);
+          throw new Error(errorMessage);
+        }
+
+        console.log(`[Web3Service.waitForTransaction] Poll #${pollCount} (${Math.floor(elapsedTime / 1000)}s elapsed)...`);
+
+        try {
+          // Manual RPC call for eth_getTransactionReceipt
+          // The HybridProvider routes this to the read provider (not wallet provider)
+          const receipt = await this.provider.send('eth_getTransactionReceipt', [transactionHash]);
+
+          if (receipt) {
+            // Transaction has been mined
+            if (receipt.status === '0x1' || receipt.status === 1) {
+              console.log(`[Web3Service.waitForTransaction] ✅ Transaction confirmed in block ${receipt.blockNumber}`);
+              mLog.info('TransactionWait', '✅ Transaction confirmed successfully', {
+                txHash: transactionHash,
+                blockNumber: receipt.blockNumber,
+                pollAttempts: pollCount,
+                elapsedSeconds: Math.floor(elapsedTime / 1000)
+              });
+              return receipt;
+            } else if (receipt.status === '0x0' || receipt.status === 0) {
+              console.warn(`[Web3Service.waitForTransaction] ❌ Transaction FAILED (reverted)`);
+              mLog.error('TransactionWait', '❌ Transaction failed (reverted)', {
+                txHash: transactionHash,
+                blockNumber: receipt.blockNumber,
+                contractId: contractId || 'unknown'
+              });
+              throw new Error('Transaction failed');
+            } else {
+              console.warn(`[Web3Service.waitForTransaction] ⚠️ Unknown transaction status:`, receipt.status);
+              mLog.warn('TransactionWait', 'Unknown transaction status', {
+                txHash: transactionHash,
+                status: receipt.status
+              });
+              throw new Error('Transaction status unknown');
+            }
+          }
+
+          // Receipt is null - transaction not yet mined
+          console.log(`[Web3Service.waitForTransaction] Transaction not yet mined, waiting ${pollInterval}ms...`);
+
+        } catch (rpcError) {
+          // RPC call failed - log but continue polling (might be temporary network issue)
+          const errorMsg = rpcError instanceof Error ? rpcError.message : 'Unknown RPC error';
+          console.warn(`[Web3Service.waitForTransaction] RPC error during poll #${pollCount}:`, errorMsg);
+          mLog.warn('TransactionWait', 'RPC error during polling (will retry)', {
+            txHash: transactionHash,
+            pollNumber: pollCount,
+            error: errorMsg
+          });
+
+          // Don't throw - continue polling unless we hit timeout
+        }
+
+        // Wait before next poll
+        await new Promise(resolve => setTimeout(resolve, pollInterval));
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
-      if (errorMessage.includes('Transaction confirmation timeout')) {
-        console.warn(`[Web3Service.waitForTransaction] Transaction confirmation timed out: ${transactionHash}`);
-        return null; // Timeout - return null
-      } else if (errorMessage.includes('Transaction failed')) {
+      // Re-throw with context
+      if (errorMessage.includes('Transaction failed')) {
         console.warn(`[Web3Service.waitForTransaction] Transaction failed: ${transactionHash}`);
-        throw error; // Failed transaction - re-throw the error
+        throw error;
+      } else if (errorMessage.includes('timed out')) {
+        // Timeout error already has user-friendly message
+        throw error;
       } else {
-        console.warn(`[Web3Service.waitForTransaction] Transaction confirmation failed: ${errorMessage}`);
-        return null; // Other errors (network issues, etc.) - treat as timeout
+        console.warn(`[Web3Service.waitForTransaction] Unexpected error: ${errorMessage}`);
+        mLog.error('TransactionWait', 'Unexpected error during transaction wait', {
+          txHash: transactionHash,
+          contractId: contractId || 'unknown',
+          error: errorMessage
+        });
+        return null; // Treat unexpected errors as timeout
       }
     }
   }

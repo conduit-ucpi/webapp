@@ -75,7 +75,7 @@ export async function executeContractTransactionSequence(
 
     try {
       const web3Service = await getWeb3Service();
-      const receipt = await web3Service.waitForTransaction(contractCreationTxHash, 120000); // 2 minute timeout
+      const receipt = await web3Service.waitForTransaction(contractCreationTxHash, 120000, params.contractserviceId); // 2 minute timeout
 
       if (receipt) {
         console.log('🔧 ContractSequence: ✅ Contract creation confirmed. Block:', receipt.blockNumber);
@@ -115,7 +115,7 @@ export async function executeContractTransactionSequence(
 
     try {
       const web3Service = await getWeb3Service();
-      const receipt = await web3Service.waitForTransaction(approvalTxHash, 120000); // 2 minute timeout
+      const receipt = await web3Service.waitForTransaction(approvalTxHash, 120000, params.contractserviceId); // 2 minute timeout
 
       if (receipt) {
         console.log('🔧 ContractSequence: ✅ USDC approval confirmed. Block:', receipt.blockNumber);
@@ -148,7 +148,7 @@ export async function executeContractTransactionSequence(
 
     try {
       const web3Service = await getWeb3Service();
-      const receipt = await web3Service.waitForTransaction(depositTxHash, 120000); // 2 minute timeout
+      const receipt = await web3Service.waitForTransaction(depositTxHash, 120000, params.contractserviceId); // 2 minute timeout
 
       if (receipt) {
         console.log('🔧 ContractSequence: ✅ Deposit confirmed. Block:', receipt.blockNumber);

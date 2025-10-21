@@ -77,6 +77,14 @@ describe('Universal Hybrid Provider - All Wallets Use Base RPC', () => {
         maxPriorityFeePerGas: BigInt(100000)
       }),
 
+      // Add send() method for eth_sendTransaction RPC call
+      send: jest.fn().mockImplementation((method: string, params: any[]) => {
+        if (method === 'eth_sendTransaction') {
+          return Promise.resolve('0xTxHash123');
+        }
+        return Promise.reject(new Error(`Unexpected method: ${method}`));
+      }),
+
       // Internal provider detection (MetaMask)
       provider: {
         isMetaMask: true,
@@ -189,6 +197,14 @@ describe('Universal Hybrid Provider - All Wallets Use Base RPC', () => {
         gasPrice: BigInt(1000000),
         maxFeePerGas: BigInt(2000000),
         maxPriorityFeePerGas: BigInt(500000)
+      }),
+
+      // Override send() method to return different tx hash for this test
+      send: jest.fn().mockImplementation((method: string, params: any[]) => {
+        if (method === 'eth_sendTransaction') {
+          return Promise.resolve('0xTxHash456');
+        }
+        return Promise.reject(new Error(`Unexpected method: ${method}`));
       })
     };
 

@@ -197,5 +197,77 @@ describe('DynamicProvider - Mobile MetaMask Balance Reading', () => {
       expect(ethersProvider).not.toBeNull();
       expect(ethersProvider).toBeInstanceOf(ethers.BrowserProvider);
     });
+
+    it('should NOT use JsonRpcProvider from wagmi PublicClient (broken second fallback)', async () => {
+      // BUG REPRODUCTION TEST: This test demonstrates the actual bug in production!
+      //
+      // Current behavior (v37.2.31):
+      // 1. Dynamic's getWeb3Provider() fails ❌
+      // 2. Wagmi's getPublicClient() returns PublicClient with transport.url ✅
+      // 3. Code creates JsonRpcProvider from the RPC URL ⚠️
+      // 4. JsonRpcProvider has NO wallet connection - can't access accounts! ❌
+      // 5. Balance reading fails because provider isn't connected to wallet ❌
+      //
+      // Expected behavior (after fix):
+      // - Should skip JsonRpcProvider creation and use connector.getWalletClient() instead
+
+      // Mock Dynamic's getWeb3Provider to fail (first fallback)
+      mockGetWeb3Provider.mockRejectedValue(new Error('Unable to retrieve PublicClient'));
+
+      // Mock wagmi's getPublicClient to return a PublicClient with transport.url (second fallback)
+      const mockPublicClient = {
+        transport: {
+          url: 'https://mainnet.base.org',
+          type: 'http',
+        },
+        chain: { id: 8453 },
+      };
+      mockGetPublicClient.mockReturnValue(mockPublicClient as any);
+
+      // Create mock connector with getWalletClient (third fallback should be used)
+      const mockEIP1193Provider = {
+        request: jest.fn().mockImplementation(async ({ method }: any) => {
+          if (method === 'eth_chainId') return '0x2105';
+          if (method === 'eth_accounts') return ['0xc9D0602A87E55116F633b1A1F95D083Eb115f942'];
+          return null;
+        }),
+      };
+
+      const mockConnector = {
+        name: 'MetaMask',
+        getWalletClient: jest.fn().mockResolvedValue(mockEIP1193Provider),
+        provider: null,
+      };
+
+      const mockDynamicWallet = {
+        connector: mockConnector,
+        key: 'metamask',
+      };
+
+      // Set up window.__wagmiConfig
+      (global.window as any).__wagmiConfig = {};
+
+      // Call setupEthersProvider
+      await (provider as any).setupEthersProvider(mockDynamicWallet);
+
+      const ethersProvider = provider.getEthersProvider();
+
+      // CURRENT BUG: This creates a JsonRpcProvider (not BrowserProvider)
+      // The JsonRpcProvider is NOT connected to the wallet, so:
+      // - It can't get accounts
+      // - It can't read balances for the connected wallet
+      // - It can't sign transactions
+      //
+      // AFTER FIX: Should use connector.getWalletClient() (third fallback) instead
+      // and connector.getWalletClient() SHOULD have been called
+      expect(mockConnector.getWalletClient).toHaveBeenCalled();
+
+      // Should be a proper BrowserProvider with wallet connection
+      expect(ethersProvider).toBeInstanceOf(ethers.BrowserProvider);
+
+      // Should be able to get a signer (proves wallet connection)
+      const signer = await ethersProvider?.getSigner();
+      expect(signer).toBeDefined();
+    });
   });
 });

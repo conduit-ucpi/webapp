@@ -1518,3 +1518,284 @@ This fix demonstrates the power of the unified provider architecture:
 **Status:** ✅ Fix implemented and tested locally
 **Next:** Deploy and test on mobile device
 
+---
+
+# 🔧 ITERATION 2: JSONRPCPROVIDER BUG - 2025-10-21
+
+## The Problem After v37.2.31 Deployment
+
+**Deployed v37.2.31 with third fallback, but balance reading STILL FAILED on mobile!** 😱
+
+User tested and reported: "the problem still exists"
+
+## 🔍 Root Cause Analysis (Second Iteration)
+
+### Initial Hypothesis
+"Third fallback must not be working"
+
+### What the Logs Showed
+
+Pulled logs from production (farcaster-test-v37.2.31):
+
+```
+[ERROR] [DynamicProvider] Failed to get PublicClient after 5 attempts
+[WARN] [DynamicProvider] Dynamic toolkit failed, trying direct wagmi access
+[INFO] [DynamicProvider] Attempting to get PublicClient directly from wagmi
+[INFO] [DynamicProvider] Got PublicClient from wagmi, creating ethers provider ⚠️
+[INFO] [DynamicProvider] ✅ Ethers provider created successfully via direct wagmi access
+[INFO] [DynamicProvider] Connection successful
+```
+
+### 💡 The Critical Discovery
+
+**The third fallback was NEVER REACHED!**
+
+Why? Because the **second fallback "succeeded"** - but created a **broken provider**!
+
+### The Bug in the Second Fallback
+
+From `DynamicProvider.ts` lines 273-301 (v37.2.31):
+
+```typescript
+// Fallback 2: Try to get PublicClient directly from wagmi
+const publicClient = getPublicClient(wagmiConfig);
+
+if (publicClient) {
+  // Create ethers provider from wagmi's PublicClient
+  const transport = (publicClient as any).transport;
+  if (transport && transport.url) {
+    // ⚠️ BUG: Creating JsonRpcProvider with NO wallet connection!
+    const jsonRpcProvider = new ethers.JsonRpcProvider(transport.url);
+    this.cachedEthersProvider = jsonRpcProvider as any as ethers.BrowserProvider;
+
+    mLog.info('DynamicProvider', '✅ Ethers provider created successfully via direct wagmi access');
+    return; // Early return prevents third fallback from running!
+  }
+}
+```
+
+### Why This Is Broken
+
+1. **JsonRpcProvider is read-only**: It's just an RPC connection to the blockchain
+2. **No wallet connection**: Can't access user's accounts
+3. **Can't get signer**: `getSigner()` would fail
+4. **Can't read balances**: Needs account address from wallet
+5. **Can't sign transactions**: No private key access
+
+**But the logs said "✅ provider created successfully"** 🤦
+
+The provider WAS created, it just didn't WORK for anything wallet-related!
+
+### The Flow of Failure
+
+```
+setupEthersProvider() called
+  ↓
+Fallback 1: Dynamic's getWeb3Provider() → FAIL ❌
+  ↓
+Fallback 2: wagmi's getPublicClient() → "SUCCESS" ✅
+  ↓
+Creates JsonRpcProvider from RPC URL
+  ↓
+Returns early (third fallback never runs) ⚠️
+  ↓
+cachedEthersProvider = JsonRpcProvider (broken!)
+  ↓
+Balance reading tries to use it
+  ↓
+Fails because no wallet connection ❌
+```
+
+## 🔴 RED Phase: Write Failing Test
+
+Added new test to `__tests__/lib/auth/providers/DynamicProvider.test.ts`:
+
+```typescript
+it('should NOT use JsonRpcProvider from wagmi PublicClient (broken second fallback)', async () => {
+  // BUG REPRODUCTION TEST: This test demonstrates the actual bug in production!
+  //
+  // Current behavior (v37.2.31):
+  // 1. Dynamic's getWeb3Provider() fails ❌
+  // 2. Wagmi's getPublicClient() returns PublicClient with transport.url ✅
+  // 3. Code creates JsonRpcProvider from the RPC URL ⚠️
+  // 4. JsonRpcProvider has NO wallet connection - can't access accounts! ❌
+  // 5. Balance reading fails because provider isn't connected to wallet ❌
+
+  // Mock wagmi's getPublicClient to return a PublicClient with transport.url
+  const mockPublicClient = {
+    transport: {
+      url: 'https://mainnet.base.org',
+      type: 'http',
+    },
+    chain: { id: 8453 },
+  };
+  mockGetPublicClient.mockReturnValue(mockPublicClient as any);
+
+  // ... setup connector with getWalletClient() ...
+
+  await (provider as any).setupEthersProvider(mockDynamicWallet);
+
+  const ethersProvider = provider.getEthersProvider();
+
+  // AFTER FIX: Should use connector.getWalletClient() instead
+  expect(mockConnector.getWalletClient).toHaveBeenCalled();
+  expect(ethersProvider).toBeInstanceOf(ethers.BrowserProvider);
+
+  // Should be able to get a signer (proves wallet connection)
+  const signer = await ethersProvider?.getSigner();
+  expect(signer).toBeDefined();
+});
+```
+
+**Ran test:** ❌ TEST FAILS (as expected!)
+
+```
+✕ should NOT use JsonRpcProvider from wagmi PublicClient (broken second fallback)
+
+expect(jest.fn()).toHaveBeenCalled()
+Expected number of calls: >= 1
+Received number of calls:    0
+
+expect(mockConnector.getWalletClient).toHaveBeenCalled();
+```
+
+This proves the bug: wagmi fallback creates JsonRpcProvider and returns early, so `getWalletClient()` is never called!
+
+## 🟢 GREEN Phase: Fix the Code
+
+### The Fix: Remove Broken Fallback
+
+Removed the entire JsonRpcProvider fallback from `DynamicProvider.ts`:
+
+```typescript
+// Before (3 fallbacks, but fallback 2 was broken):
+// 1. Dynamic's getWeb3Provider()
+// 2. wagmi's getPublicClient() → creates JsonRpcProvider ❌
+// 3. connector.getWalletClient() → never reached!
+
+// After (2 fallbacks, both working):
+// 1. Dynamic's getWeb3Provider()
+// 2. connector.getWalletClient() → creates BrowserProvider ✅
+```
+
+**Changed lines 267-301 from:**
+
+```typescript
+} catch (toolkitError) {
+  mLog.warn('DynamicProvider', 'Dynamic toolkit failed, trying direct wagmi access', {
+    error: toolkitError instanceof Error ? toolkitError.message : String(toolkitError)
+  });
+}
+
+// Fallback 2: Try to get PublicClient directly from wagmi
+mLog.info('DynamicProvider', 'Attempting to get PublicClient directly from wagmi');
+const wagmiConfig = (window as any).__wagmiConfig;
+
+if (!wagmiConfig) {
+  mLog.warn('DynamicProvider', 'Wagmi config not found on window, trying connector fallback');
+} else {
+  const publicClient = getPublicClient(wagmiConfig);
+  if (publicClient) {
+    // ... JsonRpcProvider creation code ...
+    return; // Early return prevented third fallback!
+  }
+}
+
+// Fallback 3: Use connector.getWalletClient()
+```
+
+**To:**
+
+```typescript
+} catch (toolkitError) {
+  mLog.warn('DynamicProvider', 'Dynamic toolkit failed, using connector.getWalletClient() fallback', {
+    error: toolkitError instanceof Error ? toolkitError.message : String(toolkitError)
+  });
+}
+
+// Fallback 2: Use connector.getWalletClient() directly (same approach that works for signing!)
+// NOTE: We used to try wagmi's getPublicClient() here, but it created a JsonRpcProvider
+// with NO wallet connection, which failed for balance reading and transactions.
+// This direct connector approach works for BOTH signing AND balance reading.
+mLog.info('DynamicProvider', '🔧 Using connector.getWalletClient() fallback (unified approach for signing + balance reading)');
+
+const connector = dynamicWallet.connector;
+// ... connector.getWalletClient() code ...
+```
+
+**Ran tests:** ✅ ALL 4 TESTS PASS
+
+```
+PASS __tests__/lib/auth/providers/DynamicProvider.test.ts
+  ✓ should succeed even when Dynamic toolkit and wagmi fallbacks fail (third fallback saves the day!)
+  ✓ should succeed when connector.getWalletClient() is used as third fallback (the fix)
+  ✓ should use connector.provider if getWalletClient is not available
+  ✓ should NOT use JsonRpcProvider from wagmi PublicClient (broken second fallback)
+
+Test Suites: 1 passed, 1 total
+Tests:       4 passed, 4 total
+```
+
+## What Changed
+
+### Before v37.2.32 (Broken)
+1. Dynamic's getWeb3Provider() → FAIL
+2. wagmi's getPublicClient() → "SUCCESS" (creates JsonRpcProvider)
+3. JsonRpcProvider has NO wallet connection
+4. Balance reading fails ❌
+5. Transactions would fail ❌
+
+### After v37.2.32 (Fixed)
+1. Dynamic's getWeb3Provider() → FAIL
+2. connector.getWalletClient() → SUCCESS ✅
+3. BrowserProvider WITH wallet connection
+4. Balance reading works ✅
+5. Transactions work ✅
+
+## Lessons Learned
+
+### 1. **Success Logs Can Lie**
+Just because the log says "✅ provider created successfully" doesn't mean the provider WORKS for your use case!
+
+### 2. **Test the Failure Path**
+The first fix (v37.2.31) added a third fallback but didn't test that it would actually be REACHED when the second fallback created a broken provider.
+
+### 3. **TDD Saves the Day**
+Writing a test that reproduces the ACTUAL production scenario (wagmi returning a PublicClient) caught the bug before deployment.
+
+### 4. **Provider Types Matter**
+- `JsonRpcProvider` = read-only blockchain connection (no wallet)
+- `BrowserProvider` = wallet-connected provider (can sign + read)
+- Casting one as the other doesn't magically add wallet functionality!
+
+### 5. **Simplicity Wins**
+Removing the broken fallback made the code simpler AND fixed the bug. Sometimes less is more.
+
+## Files Changed (v37.2.32)
+
+1. **lib/auth/providers/DynamicProvider.ts**
+   - Removed broken wagmi/JsonRpcProvider fallback (lines 273-301)
+   - Now has 2 fallbacks instead of 3 (both work!)
+   - Updated log messages to reflect "unified approach"
+
+2. **__tests__/lib/auth/providers/DynamicProvider.test.ts**
+   - Added 4th test that reproduces the JsonRpcProvider bug
+   - All 4 tests pass after fix
+
+3. **MOBILE_SIGNING_DEBUG.md** - This documentation
+
+## Deployment
+
+**Version:** farcaster-test-v37.2.32 (next tag)
+
+**Expected result:**
+- Mobile MetaMask balance reading works ✅
+- Purchase request acceptance works ✅
+- All blockchain operations work ✅
+- Simpler, more maintainable code ✅
+
+---
+
+**Status:** ✅ Fix implemented and tested locally (all 4 tests pass)
+**Next:** Deploy v37.2.32 and test on mobile device
+

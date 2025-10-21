@@ -262,6 +262,16 @@ Once you understand, you'll be able to choose the right place in the cycle to st
 
 **This is the CORE of the development process. NEVER skip these steps.**
 
+**Quick TDD Summary (6 Steps):**
+1. **Read the logs** - Review deployment logs and all debugging notes from previous attempts
+2. **Write a failing test** - Create a test that fails because of what's broken in the logs
+3. **Fix the code** - **⚠️ DO NOT CHANGE THE TEST** - Only modify production code
+4. **Verify test passes** - Run the specific test, then ALL tests to ensure no regressions
+5. **Update debugging notes** - Document findings so we don't repeat failed approaches
+6. **Commit and deploy** - Comprehensive commit message, push tags to trigger CI/CD build
+
+**Detailed Steps:**
+
 #### 1a. 🔴 **RED - Analyze and Reproduce**
    - **Analyze logs from previous deployment** (if applicable)
    - **Research the problem** - read docs, search internet, read codebase
@@ -282,14 +292,16 @@ Once you understand, you'll be able to choose the right place in the cycle to st
    - **Don't over-engineer** - just fix the specific problem
    - **Follow existing patterns** in the codebase
    - **Add logging** if needed for future debugging
+   - **⚠️ CRITICAL: DO NOT CHANGE THE TEST** - Only fix the production code
 
 #### 1d. 🟢 **GREEN - Confirm Success**
    ```bash
-   npm test
+   npm test -- path/to/specific.test.ts  # Verify the failing test now passes
+   npm test                               # Verify ALL tests still pass
    ```
    - **Verify the test now passes** ✅
    - **Verify ALL tests still pass** - no regressions
-   - If tests fail, fix the code until all tests pass
+   - If tests fail, fix the code (NOT the test) until all tests pass
 
 #### 1e. 📝 **Document Your Findings**
    - **Update MOBILE_SIGNING_DEBUG.md** with:

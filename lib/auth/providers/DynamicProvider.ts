@@ -17,6 +17,7 @@ import { ethers } from "ethers";
 import { mLog } from '../../../utils/mobileLogger';
 import { getPublicClient } from '@wagmi/core';
 import { wrapProviderWithMobileDeepLinks } from '../../../utils/mobileDeepLinkProvider';
+import { createHybridProvider } from './hybrid-provider-factory';
 
 export class DynamicProvider implements UnifiedProvider {
   private static instance: DynamicProvider | null = null;
@@ -345,11 +346,46 @@ export class DynamicProvider implements UnifiedProvider {
           hasTransportValue: !!transport?.value,
         });
 
-        // Use the transport as the EIP-1193 provider
-        // The transport has the raw .request() method that works for all RPC calls
-        eip1193Provider = transport;
+        // CRITICAL FIX (v37.2.41): WalletConnect custom transport does NOT support read operations
+        // From Viem docs: "Wallet providers may not provide 'node'/'public' RPC methods
+        // like eth_call, eth_getBalance, etc."
+        //
+        // Solution: Create hybrid provider that routes intelligently:
+        // - READ operations (eth_getBalance, eth_call) → HTTP RPC provider
+        // - WRITE operations (personal_sign, eth_sendTransaction) → WalletConnect provider
+        //
+        // This maintains the unified provider pattern while fixing mobile MetaMask.
 
-        mLog.info('DynamicProvider', '📋 Extracted transport details', {
+        if (transport.type === 'custom') {
+          mLog.info('DynamicProvider', '🔀 Creating hybrid provider for WalletConnect', {
+            transportType: transport.type,
+            rpcUrl: this.config.rpcUrl,
+            chainId: this.config.chainId,
+          });
+
+          // Create HTTP provider for read operations
+          const httpProvider = new ethers.JsonRpcProvider(this.config.rpcUrl, {
+            chainId: this.config.chainId,
+            name: 'Base',
+          });
+
+          // Create hybrid provider that routes requests appropriately
+          eip1193Provider = createHybridProvider({
+            readProvider: httpProvider,
+            walletProvider: transport,
+            chainId: this.config.chainId,
+          });
+
+          mLog.info('DynamicProvider', '✅ Hybrid provider created - reads via HTTP, writes via WalletConnect');
+        } else {
+          // For non-WalletConnect transports, use the transport directly
+          eip1193Provider = transport;
+          mLog.info('DynamicProvider', '📋 Using transport directly (not WalletConnect)', {
+            transportType: transport.type,
+          });
+        }
+
+        mLog.info('DynamicProvider', '📋 Final provider details', {
           eip1193ProviderType: typeof eip1193Provider,
           eip1193ProviderKeys: eip1193Provider ? Object.keys(eip1193Provider).slice(0, 20) : [],
           hasRequest: !!(eip1193Provider as any)?.request,

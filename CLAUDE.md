@@ -254,46 +254,145 @@ Each build cycle costs 8-9 minutes. Make every iteration count.
 
 When you've made changes, you can go through the following cycle:
 
-0. **Understand the requirements** from the user (me) - make sure you ask the right questions to get a full understanding
-   Once you understand, you'll be able to choose the right place in the cycle to start the process
+### 0. **Understand the requirements**
+From the user (me) - make sure you ask the right questions to get a full understanding.
+Once you understand, you'll be able to choose the right place in the cycle to start the process.
 
-1. **npm test** - Run tests to ensure your changes don't break existing functionality
+### 1. **TDD Cycle (RED-GREEN-REFACTOR)** 🔴🟢♻️
 
-2. **Commit your changes to git** (use extensive, descriptive comments explaining WHAT and WHY)
+**This is the CORE of the development process. NEVER skip these steps.**
 
-3. **Tag and deploy**: Look at the latest git tag that starts `farcaster-test-v....` and add the next one using my git shortcut:
+#### 1a. 🔴 **RED - Analyze and Reproduce**
+   - **Analyze logs from previous deployment** (if applicable)
+   - **Research the problem** - read docs, search internet, read codebase
+   - **Identify root cause** - understand WHY it's broken, not just WHAT is broken
+   - **Write a failing test** that reproduces the exact problem you found
+   - **The test MUST fail** - this proves you've reproduced the issue
+
+#### 1b. 🔴 **RED - Confirm Failure**
    ```bash
-   git tag-push farcaster-test-vXX.X.X
+   npm test
    ```
-   This will run the build and deploy on CI/CD (takes 8-9 minutes)
+   - **Verify the test fails** with the expected error
+   - If test passes when it should fail, your test is wrong - fix the test first
+   - Document the failure in MOBILE_SIGNING_DEBUG.md
 
-4. **Ask the user (me) to run the test in the UI** - Wait for user to complete testing
+#### 1c. 🟢 **GREEN - Fix the Code**
+   - **Implement the minimal fix** to make the test pass
+   - **Don't over-engineer** - just fix the specific problem
+   - **Follow existing patterns** in the codebase
+   - **Add logging** if needed for future debugging
 
-5. **SSH onto the dev server**:
+#### 1d. 🟢 **GREEN - Confirm Success**
    ```bash
-   ssh -l gituser api.conduit-ucpi.com
+   npm test
    ```
+   - **Verify the test now passes** ✅
+   - **Verify ALL tests still pass** - no regressions
+   - If tests fail, fix the code until all tests pass
 
-6. **Capture docker logs**:
-   ```bash
-   docker logs webapp-test > /tmp/autolog.log 2>&1
-   ```
+#### 1e. 📝 **Document Your Findings**
+   - **Update MOBILE_SIGNING_DEBUG.md** with:
+     - What you discovered (the root cause)
+     - What you tried (the hypothesis)
+     - What worked (the solution)
+     - What didn't work (failed approaches - to avoid repeating)
+   - **This creates a knowledge base** for future iterations
 
-8. **Copy the logs to the local machine**:
-   ```bash
-   scp gituser@api.conduit-ucpi.com:/tmp/autolog.log .
-   ```
+### 2. **Run all tests** - Ensure no regressions
+```bash
+npm test
+```
+All tests must pass before proceeding.
 
-9. **Analyze the log** - Make changes to fix what you see, ask the user (me) any questions about what they saw in the UI, etc.
+### 3. **Commit your changes to git**
+Use extensive, descriptive comments explaining WHAT and WHY:
+```bash
+git add .
+git commit -m "Descriptive message explaining the fix and root cause"
+```
 
-   **CRITICAL ANALYSIS REQUIREMENTS:**
-   - Use ALL your intelligence to understand the root cause
-   - Access the internet to research solutions and similar issues
-   - Read the whole codebase if needed to understand the architecture
-   - Study all libraries and frameworks being used - read their documentation
-   - **Make extensive notes in MOBILE_SIGNING_DEBUG.md** so you don't re-invent the wheel and don't go over the same ground again
-   - **Look at the END of the logfile** rather than beginning, so you're looking at the latest events rather than the oldest ones
-   - **Think deeply before making changes** - 8-9 minute builds mean we can't afford trial-and-error
-   - **Verify your hypothesis** by cross-referencing multiple sources before coding
+### 4. **Tag and deploy**
+Look at the latest git tag that starts `farcaster-test-v....` and add the next one:
+```bash
+git tag-push farcaster-test-vXX.X.X
+```
+This will run the build and deploy on CI/CD (takes 8-9 minutes)
 
-10. **Repeat the whole cycle until the problem is fixed** - But minimize iterations through thorough analysis
+### 5. **Ask the user (me) to run the test in the UI**
+Wait for user to complete testing and provide feedback.
+
+### 6. **SSH onto the dev server**
+```bash
+ssh -l gituser api.conduit-ucpi.com
+```
+
+### 7. **Capture docker logs**
+```bash
+docker logs webapp-test > /tmp/autolog.log 2>&1
+```
+
+### 8. **Copy the logs to the local machine**
+```bash
+scp gituser@api.conduit-ucpi.com:/tmp/autolog.log .
+```
+
+### 9. **Analyze the logs and UI feedback**
+
+**CRITICAL ANALYSIS REQUIREMENTS:**
+- **Look at the END of the logfile** rather than beginning (latest events, not oldest)
+- Use ALL your intelligence to understand the root cause
+- Access the internet to research solutions and similar issues
+- Read the whole codebase if needed to understand the architecture
+- Study all libraries and frameworks being used - read their documentation
+- **Make extensive notes in MOBILE_SIGNING_DEBUG.md** so you don't re-invent the wheel
+- **Think deeply before making changes** - 8-9 minute builds mean we can't afford trial-and-error
+- **Verify your hypothesis** by cross-referencing multiple sources before coding
+- Ask the user (me) questions about what they saw in the UI
+
+### 10. **Repeat the whole cycle until the problem is fixed**
+
+**If still broken:** Go back to step 1 (TDD Cycle) with your new findings.
+**If working:** Success! Document the final solution in MOBILE_SIGNING_DEBUG.md.
+
+## TDD Cycle Visualization
+
+```
+┌─────────────────────────────────────┐
+│  Analyze Problem (logs/research)    │
+└──────────────┬──────────────────────┘
+               ▼
+┌─────────────────────────────────────┐
+│  🔴 Write Failing Test               │
+└──────────────┬──────────────────────┘
+               ▼
+┌─────────────────────────────────────┐
+│  🔴 Run Test - Confirm FAILURE ❌    │
+└──────────────┬──────────────────────┘
+               ▼
+┌─────────────────────────────────────┐
+│  🟢 Fix the Code                     │
+└──────────────┬──────────────────────┘
+               ▼
+┌─────────────────────────────────────┐
+│  🟢 Run Test - Confirm PASS ✅       │
+└──────────────┬──────────────────────┘
+               ▼
+┌─────────────────────────────────────┐
+│  📝 Document in DEBUG.md             │
+└──────────────┬──────────────────────┘
+               ▼
+┌─────────────────────────────────────┐
+│  Deploy & Test in UI (8-9 min)      │
+└──────────────┬──────────────────────┘
+               │
+          ┌────┴────┐
+          │ Works?  │
+          └────┬────┘
+               │
+        ┌──────┴──────┐
+       YES           NO
+        │             │
+        ▼             └──► Back to step 1
+    SUCCESS!
+```

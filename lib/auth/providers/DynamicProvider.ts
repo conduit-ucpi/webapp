@@ -270,34 +270,68 @@ export class DynamicProvider implements UnifiedProvider {
         });
       }
 
-      // Fallback: Try to get PublicClient directly from wagmi
+      // Fallback 2: Try to get PublicClient directly from wagmi
       mLog.info('DynamicProvider', 'Attempting to get PublicClient directly from wagmi');
       const wagmiConfig = (window as any).__wagmiConfig;
 
       if (!wagmiConfig) {
-        throw new Error('Wagmi config not found on window');
+        mLog.warn('DynamicProvider', 'Wagmi config not found on window, trying connector fallback');
+      } else {
+        const publicClient = getPublicClient(wagmiConfig);
+
+        if (publicClient) {
+          mLog.info('DynamicProvider', 'Got PublicClient from wagmi, creating ethers provider');
+
+          // Create ethers provider from wagmi's PublicClient
+          // PublicClient has a transport property that we can wrap
+          const transport = (publicClient as any).transport;
+          if (transport && transport.url) {
+            // Create a simple JSON-RPC provider using the RPC URL from wagmi's transport
+            const jsonRpcProvider = new ethers.JsonRpcProvider(transport.url);
+            this.cachedEthersProvider = jsonRpcProvider as any as ethers.BrowserProvider;
+
+            mLog.info('DynamicProvider', '✅ Ethers provider created successfully via direct wagmi access');
+            return;
+          } else {
+            mLog.warn('DynamicProvider', 'PublicClient transport not available');
+          }
+        } else {
+          mLog.warn('DynamicProvider', 'No PublicClient available from wagmi, trying connector fallback');
+        }
       }
 
-      const publicClient = getPublicClient(wagmiConfig);
+      // Fallback 3: Use connector.getWalletClient() directly (same approach that works for signing!)
+      mLog.info('DynamicProvider', '🔧 Attempting third fallback: connector.getWalletClient()');
 
-      if (!publicClient) {
-        throw new Error('No PublicClient available from wagmi');
+      const connector = dynamicWallet.connector;
+      if (!connector) {
+        throw new Error('No connector available on Dynamic wallet');
       }
 
-      mLog.info('DynamicProvider', 'Got PublicClient from wagmi, creating ethers provider');
+      mLog.info('DynamicProvider', '🔍 Connector details for third fallback', {
+        hasConnector: !!connector,
+        connectorName: connector.name,
+        hasGetWalletClient: !!connector.getWalletClient,
+        hasProvider: !!connector.provider,
+      });
 
-      // Create ethers provider from wagmi's PublicClient
-      // PublicClient has a transport property that we can wrap
-      const transport = (publicClient as any).transport;
-      if (!transport || !transport.url) {
-        throw new Error('PublicClient transport not available');
+      // Get the EIP-1193 provider from the connector (same as signing method)
+      const eip1193Provider = await connector.getWalletClient?.() || connector.provider;
+
+      if (!eip1193Provider) {
+        throw new Error('No EIP-1193 provider available from connector (all fallbacks exhausted)');
       }
 
-      // Create a simple JSON-RPC provider using the RPC URL from wagmi's transport
-      const jsonRpcProvider = new ethers.JsonRpcProvider(transport.url);
-      this.cachedEthersProvider = jsonRpcProvider as any as ethers.BrowserProvider;
+      mLog.info('DynamicProvider', '✅ Got EIP-1193 provider from connector, wrapping for mobile deep links');
 
-      mLog.info('DynamicProvider', '✅ Ethers provider created successfully via direct wagmi access');
+      // Wrap provider with mobile deep link support (same as signing)
+      const wrappedProvider = wrapProviderWithMobileDeepLinks(eip1193Provider, connector);
+
+      // Create ethers BrowserProvider (same as signing)
+      this.cachedEthersProvider = new ethers.BrowserProvider(wrappedProvider);
+
+      mLog.info('DynamicProvider', '✅ Ethers provider created successfully via connector.getWalletClient() fallback');
+      mLog.info('DynamicProvider', '📝 This is the SAME approach that works for signing - now it works for balance reading too!');
 
     } catch (error) {
       mLog.error('DynamicProvider', 'Failed to create ethers provider', {

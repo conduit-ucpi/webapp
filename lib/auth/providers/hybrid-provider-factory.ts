@@ -155,3 +155,44 @@ export function createHybridProvider(config: HybridProviderConfig): any {
 
   return hybridProvider;
 }
+
+/**
+ * Universal wrapper that creates a hybrid provider for ANY wallet connection
+ *
+ * This ensures ALL wallets (MetaMask, Web3Auth, Dynamic, WalletConnect, etc.)
+ * route READ operations through our reliable Base RPC instead of using the
+ * wallet's potentially flaky or unsupported RPC methods.
+ *
+ * Benefits:
+ * - Consistent gas pricing from our Base RPC
+ * - Avoids wallet-specific RPC quirks (like MetaMask's missing eth_maxPriorityFeePerGas)
+ * - Single source of truth for blockchain state
+ * - Wallets only handle what they're good at: signing and transactions
+ *
+ * @param walletProvider - Any wallet provider (MetaMask, Web3Auth, Dynamic, etc.)
+ * @param config - Auth config containing RPC URL and chain ID
+ * @returns Hybrid provider that routes reads to Base RPC and writes to wallet
+ */
+export function wrapWithHybridProvider(walletProvider: any, config: { rpcUrl: string; chainId: number }): any {
+  const { JsonRpcProvider } = require('ethers');
+
+  mLog.info('HybridProviderFactory', '🔧 Creating universal hybrid provider wrapper', {
+    chainId: config.chainId,
+    rpcUrl: config.rpcUrl,
+    walletProvider: typeof walletProvider
+  });
+
+  // Create read provider from our reliable RPC
+  const readProvider = new JsonRpcProvider(config.rpcUrl, config.chainId);
+
+  // Create hybrid provider
+  const hybridProvider = createHybridProvider({
+    readProvider,
+    walletProvider,
+    chainId: config.chainId
+  });
+
+  mLog.info('HybridProviderFactory', '✅ Universal hybrid provider created - all wallets now use Base RPC for reads');
+
+  return hybridProvider;
+}

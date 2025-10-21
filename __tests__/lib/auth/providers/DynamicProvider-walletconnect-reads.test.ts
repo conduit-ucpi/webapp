@@ -53,32 +53,65 @@ let mockHybridProvider: any = null;
 
 jest.mock('@/lib/auth/providers/hybrid-provider-factory', () => {
   const original = jest.requireActual('@/lib/auth/providers/hybrid-provider-factory');
-  return {
-    ...original,
-    createHybridProvider: jest.fn((config) => {
-      // Create a simple mock that routes correctly
-      mockHybridProvider = {
-        request: jest.fn(async ({ method, params }: any) => {
-          // Simulate routing: read methods succeed, write methods use wallet
-          const readMethods = ['eth_getBalance', 'eth_call', 'eth_blockNumber'];
-          const walletMethods = ['eth_chainId', 'eth_accounts', 'personal_sign'];
 
-          if (readMethods.includes(method)) {
-            // Simulated HTTP RPC response
-            if (method === 'eth_getBalance') return '0x0';
-            if (method === 'eth_call') return '0x';
-            return null;
-          } else if (walletMethods.includes(method)) {
-            // Route to wallet provider
-            return config.walletProvider.request({ method, params });
+  // Create mock hybrid provider for createHybridProvider (old API)
+  const createMockHybridProviderOld = (config: any) => {
+    mockHybridProvider = {
+      request: jest.fn(async ({ method, params }: any) => {
+        // Simulate routing: read methods succeed, write methods use wallet
+        const readMethods = ['eth_getBalance', 'eth_call', 'eth_blockNumber'];
+        const walletMethods = ['eth_chainId', 'eth_accounts', 'personal_sign'];
+
+        if (readMethods.includes(method)) {
+          // Simulated HTTP RPC response
+          if (method === 'eth_getBalance') return '0x0';
+          if (method === 'eth_call') return '0x';
+          return null;
+        } else if (walletMethods.includes(method)) {
+          // Route to wallet provider
+          return config.walletProvider.request({ method, params });
+        }
+        return null;
+      }),
+      on: jest.fn(),
+      removeListener: jest.fn(),
+    };
+    return mockHybridProvider;
+  };
+
+  // Create mock hybrid provider for wrapWithHybridProvider (new API)
+  // wrapWithHybridProvider(walletProvider, config) - walletProvider is first param
+  const createMockHybridProviderNew = (walletProvider: any, config: any) => {
+    mockHybridProvider = {
+      request: jest.fn(async ({ method, params }: any) => {
+        // Simulate routing: read methods succeed, write methods use wallet
+        const readMethods = ['eth_getBalance', 'eth_call', 'eth_blockNumber'];
+        const walletMethods = ['eth_chainId', 'eth_accounts', 'personal_sign'];
+
+        if (readMethods.includes(method)) {
+          // Simulated HTTP RPC response
+          if (method === 'eth_getBalance') return '0x0';
+          if (method === 'eth_call') return '0x';
+          return null;
+        } else if (walletMethods.includes(method)) {
+          // Route to wallet provider (first parameter)
+          if (walletProvider && walletProvider.request) {
+            return walletProvider.request({ method, params });
           }
           return null;
-        }),
-        on: jest.fn(),
-        removeListener: jest.fn(),
-      };
-      return mockHybridProvider;
-    }),
+        }
+        return null;
+      }),
+      on: jest.fn(),
+      removeListener: jest.fn(),
+    };
+    return mockHybridProvider;
+  };
+
+  return {
+    ...original,
+    createHybridProvider: jest.fn(createMockHybridProviderOld),
+    wrapWithHybridProvider: jest.fn(createMockHybridProviderNew),
   };
 });
 

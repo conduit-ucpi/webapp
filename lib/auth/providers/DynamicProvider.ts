@@ -17,7 +17,7 @@ import { ethers } from "ethers";
 import { mLog } from '../../../utils/mobileLogger';
 import { getPublicClient } from '@wagmi/core';
 import { wrapProviderWithMobileDeepLinks } from '../../../utils/mobileDeepLinkProvider';
-import { createHybridProvider } from './hybrid-provider-factory';
+import { wrapWithHybridProvider } from './hybrid-provider-factory';
 
 export class DynamicProvider implements UnifiedProvider {
   private static instance: DynamicProvider | null = null;
@@ -346,44 +346,31 @@ export class DynamicProvider implements UnifiedProvider {
           hasTransportValue: !!transport?.value,
         });
 
-        // CRITICAL FIX (v37.2.41): WalletConnect custom transport does NOT support read operations
-        // From Viem docs: "Wallet providers may not provide 'node'/'public' RPC methods
-        // like eth_call, eth_getBalance, etc."
+        // UNIVERSAL HYBRID PROVIDER APPROACH:
+        // ALL wallets (MetaMask, Web3Auth, WalletConnect, Coinbase, etc.) now use
+        // the hybrid provider pattern:
+        // - READ operations (eth_getBalance, eth_gasPrice, etc.) → Our Base RPC
+        // - WRITE operations (personal_sign, eth_sendTransaction) → Wallet provider
         //
-        // Solution: Create hybrid provider that routes intelligently:
-        // - READ operations (eth_getBalance, eth_call) → HTTP RPC provider
-        // - WRITE operations (personal_sign, eth_sendTransaction) → WalletConnect provider
-        //
-        // This maintains the unified provider pattern while fixing mobile MetaMask.
+        // Benefits:
+        // - Fixes MetaMask desktop "eth_maxPriorityFeePerGas not supported" error
+        // - Consistent gas pricing across all wallets
+        // - Single source of truth for blockchain state
+        // - Wallets only handle signing/transactions
 
-        if (transport.type === 'custom') {
-          mLog.info('DynamicProvider', '🔀 Creating hybrid provider for WalletConnect', {
-            transportType: transport.type,
-            rpcUrl: this.config.rpcUrl,
-            chainId: this.config.chainId,
-          });
+        mLog.info('DynamicProvider', '🔀 Creating universal hybrid provider for ALL wallet types', {
+          transportType: transport.type,
+          rpcUrl: this.config.rpcUrl,
+          chainId: this.config.chainId,
+        });
 
-          // Create HTTP provider for read operations
-          const httpProvider = new ethers.JsonRpcProvider(this.config.rpcUrl, {
-            chainId: this.config.chainId,
-            name: 'Base',
-          });
+        // Wrap ANY wallet provider with the universal hybrid provider
+        eip1193Provider = wrapWithHybridProvider(transport, {
+          rpcUrl: this.config.rpcUrl,
+          chainId: this.config.chainId
+        });
 
-          // Create hybrid provider that routes requests appropriately
-          eip1193Provider = createHybridProvider({
-            readProvider: httpProvider,
-            walletProvider: transport,
-            chainId: this.config.chainId,
-          });
-
-          mLog.info('DynamicProvider', '✅ Hybrid provider created - reads via HTTP, writes via WalletConnect');
-        } else {
-          // For non-WalletConnect transports, use the transport directly
-          eip1193Provider = transport;
-          mLog.info('DynamicProvider', '📋 Using transport directly (not WalletConnect)', {
-            transportType: transport.type,
-          });
-        }
+        mLog.info('DynamicProvider', '✅ Universal hybrid provider created - reads via Base RPC, writes via wallet');
 
         mLog.info('DynamicProvider', '📋 Final provider details', {
           eip1193ProviderType: typeof eip1193Provider,
@@ -395,7 +382,13 @@ export class DynamicProvider implements UnifiedProvider {
       mLog.info('DynamicProvider', '✅ Got EIP-1193 provider from connector, wrapping for mobile deep links');
 
       // Wrap provider with mobile deep link support (same as signing)
-      const wrappedProvider = wrapProviderWithMobileDeepLinks(eip1193Provider, connector);
+      let wrappedProvider = wrapProviderWithMobileDeepLinks(eip1193Provider, connector);
+
+      // Wrap with universal hybrid provider (all wallets use Base RPC for reads)
+      wrappedProvider = wrapWithHybridProvider(wrappedProvider, {
+        rpcUrl: this.config.rpcUrl,
+        chainId: this.config.chainId
+      });
 
       // Create ethers BrowserProvider (same as signing)
       this.cachedEthersProvider = new ethers.BrowserProvider(wrappedProvider);
@@ -511,7 +504,13 @@ export class DynamicProvider implements UnifiedProvider {
       // Wrap provider with mobile deep link support BEFORE creating ethers provider
       // This ensures mobile wallets automatically open when signing is requested
       // Pass connector as well so wrapper can check connector.provider
-      const wrappedProvider = wrapProviderWithMobileDeepLinks(eip1193Provider, connector);
+      let wrappedProvider = wrapProviderWithMobileDeepLinks(eip1193Provider, connector);
+
+      // Wrap with universal hybrid provider for consistency
+      wrappedProvider = wrapWithHybridProvider(wrappedProvider, {
+        rpcUrl: this.config.rpcUrl,
+        chainId: this.config.chainId
+      });
 
       // Create ethers provider and signer
       const browserProvider = new ethers.BrowserProvider(wrappedProvider);
@@ -581,7 +580,13 @@ export class DynamicProvider implements UnifiedProvider {
       // Wrap provider with mobile deep link support BEFORE creating ethers provider
       // This ensures mobile wallets automatically open when signing is requested
       // Pass connector as well so wrapper can check connector.provider
-      const wrappedProvider = wrapProviderWithMobileDeepLinks(eip1193Provider, connector);
+      let wrappedProvider = wrapProviderWithMobileDeepLinks(eip1193Provider, connector);
+
+      // Wrap with universal hybrid provider for consistency
+      wrappedProvider = wrapWithHybridProvider(wrappedProvider, {
+        rpcUrl: this.config.rpcUrl,
+        chainId: this.config.chainId
+      });
 
       // Create ethers provider and signer
       const browserProvider = new ethers.BrowserProvider(wrappedProvider);

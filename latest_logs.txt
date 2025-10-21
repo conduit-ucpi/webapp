@@ -1,0 +1,300 @@
+  "providerCount": 1,
+  "providerTypes": [
+    "dynamic"
+  ]
+}
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:39.121Z] [DATA] {
+  "providerCount": 1,
+  "providerTypes": [
+    "dynamic"
+  ]
+}
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:39.121Z] [CONTEXT] URL: https://test.conduit-ucpi.com/wallet, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:39.121Z] [INFO] [AuthManager] Starting restoreSession... 
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:39.121Z] [CONTEXT] URL: https://test.conduit-ucpi.com/wallet, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:39.121Z] [DEBUG] [AuthManager] Dynamic OAuth redirect check {
+  "isDynamicOAuthRedirect": false,
+  "urlParams": ""
+}
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:39.121Z] [DATA] {
+  "isDynamicOAuthRedirect": false,
+  "urlParams": ""
+}
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:39.121Z] [CONTEXT] URL: https://test.conduit-ucpi.com/wallet, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:39.121Z] [DEBUG] [AuthManager] Mobile check {
+  "isMobile": true,
+  "currentUrl": "https://test.conduit-ucpi.com/wallet",
+  "urlParams": ""
+}
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:39.121Z] [DATA] {
+  "isMobile": true,
+  "currentUrl": "https://test.conduit-ucpi.com/wallet",
+  "urlParams": ""
+}
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:39.121Z] [CONTEXT] URL: https://test.conduit-ucpi.com/wallet, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:39.121Z] [DEBUG] [AuthManager] Redirect params check {
+  "hasRedirectParams": false,
+  "urlParams": ""
+}
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:39.121Z] [DATA] {
+  "hasRedirectParams": false,
+  "urlParams": ""
+}
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:39.121Z] [CONTEXT] URL: https://test.conduit-ucpi.com/wallet, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:39.121Z] [DEBUG] [TokenManager] Getting token {
+  "hasToken": true,
+  "tokenLength": 788
+}
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:39.121Z] [DATA] {
+  "hasToken": true,
+  "tokenLength": 788
+}
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:39.121Z] [CONTEXT] URL: https://test.conduit-ucpi.com/wallet, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:39.121Z] [DEBUG] [TokenManager] Getting token {
+  "hasToken": true,
+  "tokenLength": 788
+}
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:39.121Z] [DATA] {
+  "hasToken": true,
+  "tokenLength": 788
+}
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:39.121Z] [CONTEXT] URL: https://test.conduit-ucpi.com/wallet, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:39.609Z] [WARN] [DynamicBridge] primaryWalletChanged fired but no active promise to resolve 
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:39.305Z] [INFO] [ConnectWalletEmbedded] OAuth redirect check in useEffect {
+  "isOAuthRedirect": false,
+  "isConnected": false,
+  "address": null,
+  "hasUser": false,
+  "willTriggerAuth": false
+}
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:39.305Z] [DATA] {
+  "isOAuthRedirect": false,
+  "isConnected": false,
+  "address": null,
+  "hasUser": false,
+  "willTriggerAuth": false
+}
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:39.305Z] [CONTEXT] URL: https://test.conduit-ucpi.com/wallet, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:39.609Z] [INFO] [DynamicBridge] Dynamic context properties {
+  "hasSetShowAuthFlow": true,
+  "hasPrimaryWallet": true,
+  "hasUser": false,
+  "hasHandleLogOut": true,
+  "hasGetAuthToken": false,
+  "contextKeys": [
+    "accountSwitchState",
+    "authMode",
+    "awaitingSignatureState",
+    "bridgeChains",
+    "bridgeChainsToConnect",
+    "getNameService",
+    "handleLogOut",
+    "handleUnlinkWallet",
+    "loadingNetwork",
+    "locale",
+    "loginWithEmail",
+    "multiWalletWidgetState",
+    "network",
+    "networkConfigurations",
+    "primaryWallet",
+    "qrcodeUri",
+    "refetchProjectSettings",
+    "removeWallet",
+    "sdkHasLoaded",
+    "selectedTabIndex",
+    "sendWagmiSettings",
+    "setAuthMode",
+    "setLogInWithEmail",
+    "setMultiWalletWidgetState",
+    "setSelectedTabIndex",
+    "setShowAuthFlow",
+    "setShowBridgeWidget",
+    "setShowDynamicUserProfile",
+    "setShowQrcodeModal",
+    "shadowDOMEnabled",
+    "showAuthFlow",
+    "showDynamicUserProfile",
+    "showQrcodeModal",
+    "user",
+    "userWithMissingInfo"
+  ]
+}
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:39.609Z] [DATA] {
+  "hasSetShowAuthFlow": true,
+  "hasPrimaryWallet": true,
+  "hasUser": false,
+  "hasHandleLogOut": true,
+  "hasGetAuthToken": false,
+  "contextKeys": [
+    "accountSwitchState",
+    "authMode",
+    "awaitingSignatureState",
+    "bridgeChains",
+    "bridgeChainsToConnect",
+    "getNameService",
+    "handleLogOut",
+    "handleUnlinkWallet",
+    "loadingNetwork",
+    "locale",
+    "loginWithEmail",
+    "multiWalletWidgetState",
+    "network",
+    "networkConfigurations",
+    "primaryWallet",
+    "qrcodeUri",
+    "refetchProjectSettings",
+    "removeWallet",
+    "sdkHasLoaded",
+    "selectedTabIndex",
+    "sendWagmiSettings",
+    "setAuthMode",
+    "setLogInWithEmail",
+    "setMultiWalletWidgetState",
+    "setSelectedTabIndex",
+    "setShowAuthFlow",
+    "setShowBridgeWidget",
+    "setShowDynamicUserProfile",
+    "setShowQrcodeModal",
+    "shadowDOMEnabled",
+    "showAuthFlow",
+    "showDynamicUserProfile",
+    "showQrcodeModal",
+    "user",
+    "userWithMissingInfo"
+  ]
+}
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:39.609Z] [CONTEXT] URL: https://test.conduit-ucpi.com/wallet, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:39.609Z] [INFO] [DynamicBridge] primaryWalletChanged event received {
+  "wallet": true,
+  "address": "0xc9D0602A87E55116F633b1A1F95D083Eb115f942",
+  "walletKey": "metamask",
+  "hasActivePromise": false
+}
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:39.609Z] [DATA] {
+  "wallet": true,
+  "address": "0xc9D0602A87E55116F633b1A1F95D083Eb115f942",
+  "walletKey": "metamask",
+  "hasActivePromise": false
+}
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:39.609Z] [CONTEXT] URL: https://test.conduit-ucpi.com/wallet, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:39.609Z] [CONTEXT] URL: https://test.conduit-ucpi.com/wallet, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] Received 30 log entries
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.197Z] [INFO] [MobileDeepLink] Request intercepted: eth_chainId 
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.197Z] [CONTEXT] URL: https://test.conduit-ucpi.com/wallet, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.197Z] [INFO] [MobileDeepLink] ℹ️  Method "eth_chainId" does not require user action - no deep link needed 
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.197Z] [CONTEXT] URL: https://test.conduit-ucpi.com/wallet, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.198Z] [INFO] [MobileDeepLink] Request intercepted: eth_chainId 
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.198Z] [CONTEXT] URL: https://test.conduit-ucpi.com/wallet, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.198Z] [INFO] [MobileDeepLink] ℹ️  Method "eth_chainId" does not require user action - no deep link needed 
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.198Z] [CONTEXT] URL: https://test.conduit-ucpi.com/wallet, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.198Z] [INFO] [MobileDeepLink] Request intercepted: eth_accounts 
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.198Z] [CONTEXT] URL: https://test.conduit-ucpi.com/wallet, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.198Z] [INFO] [MobileDeepLink] ℹ️  Method "eth_accounts" does not require user action - no deep link needed 
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.198Z] [CONTEXT] URL: https://test.conduit-ucpi.com/wallet, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.198Z] [INFO] [MobileDeepLink] Request intercepted: eth_accounts 
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.198Z] [CONTEXT] URL: https://test.conduit-ucpi.com/wallet, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.199Z] [INFO] [MobileDeepLink] ℹ️  Method "eth_accounts" does not require user action - no deep link needed 
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.199Z] [CONTEXT] URL: https://test.conduit-ucpi.com/wallet, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.199Z] [INFO] [MobileDeepLink] Request intercepted: eth_accounts 
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.199Z] [CONTEXT] URL: https://test.conduit-ucpi.com/wallet, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.199Z] [INFO] [MobileDeepLink] ℹ️  Method "eth_accounts" does not require user action - no deep link needed 
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.199Z] [CONTEXT] URL: https://test.conduit-ucpi.com/wallet, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.199Z] [INFO] [MobileDeepLink] Request intercepted: eth_accounts 
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.199Z] [CONTEXT] URL: https://test.conduit-ucpi.com/wallet, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.199Z] [INFO] [MobileDeepLink] ℹ️  Method "eth_accounts" does not require user action - no deep link needed 
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.199Z] [CONTEXT] URL: https://test.conduit-ucpi.com/wallet, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.199Z] [INFO] [MobileDeepLink] Request intercepted: eth_accounts 
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.199Z] [CONTEXT] URL: https://test.conduit-ucpi.com/wallet, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.199Z] [INFO] [MobileDeepLink] ℹ️  Method "eth_accounts" does not require user action - no deep link needed 
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.199Z] [CONTEXT] URL: https://test.conduit-ucpi.com/wallet, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.199Z] [INFO] [MobileDeepLink] Request intercepted: eth_accounts 
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.199Z] [CONTEXT] URL: https://test.conduit-ucpi.com/wallet, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.199Z] [INFO] [MobileDeepLink] ℹ️  Method "eth_accounts" does not require user action - no deep link needed 
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.199Z] [CONTEXT] URL: https://test.conduit-ucpi.com/wallet, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.199Z] [INFO] [MobileDeepLink] Request intercepted: eth_accounts 
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.199Z] [CONTEXT] URL: https://test.conduit-ucpi.com/wallet, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.199Z] [INFO] [MobileDeepLink] ℹ️  Method "eth_accounts" does not require user action - no deep link needed 
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.199Z] [CONTEXT] URL: https://test.conduit-ucpi.com/wallet, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.200Z] [INFO] [MobileDeepLink] Request intercepted: eth_accounts 
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.200Z] [CONTEXT] URL: https://test.conduit-ucpi.com/wallet, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.200Z] [INFO] [MobileDeepLink] ℹ️  Method "eth_accounts" does not require user action - no deep link needed 
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.200Z] [CONTEXT] URL: https://test.conduit-ucpi.com/wallet, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.205Z] [INFO] [MobileDeepLink] Request intercepted: eth_accounts 
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.205Z] [CONTEXT] URL: https://test.conduit-ucpi.com/wallet, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.205Z] [INFO] [MobileDeepLink] ℹ️  Method "eth_accounts" does not require user action - no deep link needed 
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.205Z] [CONTEXT] URL: https://test.conduit-ucpi.com/wallet, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.205Z] [INFO] [MobileDeepLink] Request intercepted: eth_accounts 
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.205Z] [CONTEXT] URL: https://test.conduit-ucpi.com/wallet, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.205Z] [INFO] [MobileDeepLink] ℹ️  Method "eth_accounts" does not require user action - no deep link needed 
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.205Z] [CONTEXT] URL: https://test.conduit-ucpi.com/wallet, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.205Z] [INFO] [MobileDeepLink] Request intercepted: eth_accounts 
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.205Z] [CONTEXT] URL: https://test.conduit-ucpi.com/wallet, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.205Z] [INFO] [MobileDeepLink] ℹ️  Method "eth_accounts" does not require user action - no deep link needed 
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.205Z] [CONTEXT] URL: https://test.conduit-ucpi.com/wallet, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.205Z] [INFO] [MobileDeepLink] Request intercepted: eth_accounts 
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.205Z] [CONTEXT] URL: https://test.conduit-ucpi.com/wallet, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.205Z] [INFO] [MobileDeepLink] ℹ️  Method "eth_accounts" does not require user action - no deep link needed 
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.205Z] [CONTEXT] URL: https://test.conduit-ucpi.com/wallet, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.205Z] [INFO] [MobileDeepLink] Request intercepted: eth_accounts 
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.205Z] [CONTEXT] URL: https://test.conduit-ucpi.com/wallet, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.205Z] [INFO] [MobileDeepLink] ℹ️  Method "eth_accounts" does not require user action - no deep link needed 
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.205Z] [CONTEXT] URL: https://test.conduit-ucpi.com/wallet, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.206Z] [INFO] [MobileDeepLink] Request intercepted: eth_accounts 
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.206Z] [CONTEXT] URL: https://test.conduit-ucpi.com/wallet, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.206Z] [INFO] [MobileDeepLink] ℹ️  Method "eth_accounts" does not require user action - no deep link needed 
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.206Z] [CONTEXT] URL: https://test.conduit-ucpi.com/wallet, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.206Z] [INFO] [MobileDeepLink] Request intercepted: eth_accounts 
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.206Z] [CONTEXT] URL: https://test.conduit-ucpi.com/wallet, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.206Z] [INFO] [MobileDeepLink] ℹ️  Method "eth_accounts" does not require user action - no deep link needed 
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.206Z] [CONTEXT] URL: https://test.conduit-ucpi.com/wallet, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.206Z] [INFO] [MobileDeepLink] Request intercepted: eth_accounts 
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.206Z] [CONTEXT] URL: https://test.conduit-ucpi.com/wallet, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.206Z] [INFO] [MobileDeepLink] ℹ️  Method "eth_accounts" does not require user action - no deep link needed 
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.206Z] [CONTEXT] URL: https://test.conduit-ucpi.com/wallet, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.209Z] [INFO] [DynamicProvider] getEthersProviderAsync() called {
+  "hasCachedProvider": true,
+  "hasDynamicWallet": true,
+  "currentAddress": "0xc9D0602A87E55116F633b1A1F95D083Eb115f942"
+}
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.209Z] [DATA] {
+  "hasCachedProvider": true,
+  "hasDynamicWallet": true,
+  "currentAddress": "0xc9D0602A87E55116F633b1A1F95D083Eb115f942"
+}
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.209Z] [CONTEXT] URL: https://test.conduit-ucpi.com/wallet, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.210Z] [INFO] [DynamicProvider] ✅ Returning cached ethers provider 
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.210Z] [CONTEXT] URL: https://test.conduit-ucpi.com/wallet, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.210Z] [INFO] [DynamicProvider] getEthersProviderAsync() called {
+  "hasCachedProvider": true,
+  "hasDynamicWallet": true,
+  "currentAddress": "0xc9D0602A87E55116F633b1A1F95D083Eb115f942"
+}
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.210Z] [DATA] {
+  "hasCachedProvider": true,
+  "hasDynamicWallet": true,
+  "currentAddress": "0xc9D0602A87E55116F633b1A1F95D083Eb115f942"
+}
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.210Z] [CONTEXT] URL: https://test.conduit-ucpi.com/wallet, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.210Z] [INFO] [DynamicProvider] ✅ Returning cached ethers provider 
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.210Z] [CONTEXT] URL: https://test.conduit-ucpi.com/wallet, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.213Z] [INFO] [MobileDeepLink] Request intercepted: eth_getBalance 
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.213Z] [CONTEXT] URL: https://test.conduit-ucpi.com/wallet, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.213Z] [INFO] [MobileDeepLink] ℹ️  Method "eth_getBalance" does not require user action - no deep link needed 
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.213Z] [CONTEXT] URL: https://test.conduit-ucpi.com/wallet, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.213Z] [INFO] [MobileDeepLink] Request intercepted: eth_chainId 
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.213Z] [CONTEXT] URL: https://test.conduit-ucpi.com/wallet, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.213Z] [INFO] [MobileDeepLink] ℹ️  Method "eth_chainId" does not require user action - no deep link needed 
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.213Z] [CONTEXT] URL: https://test.conduit-ucpi.com/wallet, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.216Z] [INFO] [MobileDeepLink] Request intercepted: eth_call 
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.216Z] [CONTEXT] URL: https://test.conduit-ucpi.com/wallet, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.217Z] [INFO] [MobileDeepLink] ℹ️  Method "eth_call" does not require user action - no deep link needed 
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.217Z] [CONTEXT] URL: https://test.conduit-ucpi.com/wallet, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.217Z] [INFO] [MobileDeepLink] Request intercepted: eth_chainId 
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.217Z] [CONTEXT] URL: https://test.conduit-ucpi.com/wallet, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.217Z] [INFO] [MobileDeepLink] ℹ️  Method "eth_chainId" does not require user action - no deep link needed 
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.217Z] [CONTEXT] URL: https://test.conduit-ucpi.com/wallet, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.217Z] [INFO] [MobileDeepLink] Request intercepted: eth_call 
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.217Z] [CONTEXT] URL: https://test.conduit-ucpi.com/wallet, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.217Z] [INFO] [MobileDeepLink] ℹ️  Method "eth_call" does not require user action - no deep link needed 
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] [2025-10-21T08:54:44.217Z] [CONTEXT] URL: https://test.conduit-ucpi.com/wallet, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1760946381896-tu42i20b07i] Received 50 log entries

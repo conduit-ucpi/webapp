@@ -315,11 +315,35 @@ export class DynamicProvider implements UnifiedProvider {
         hasProvider: !!connector.provider,
       });
 
-      // Get the EIP-1193 provider from the connector (same as signing method)
-      const eip1193Provider = await connector.getWalletClient?.() || connector.provider;
+      // Get the wallet client from the connector
+      let walletClient = await connector.getWalletClient?.() || connector.provider;
 
-      if (!eip1193Provider) {
+      if (!walletClient) {
         throw new Error('No EIP-1193 provider available from connector (all fallbacks exhausted)');
+      }
+
+      // CRITICAL FIX (v37.2.39): Extract the actual EIP-1193 provider from Viem WalletClient
+      // On mobile MetaMask, connector.getWalletClient() returns a Viem WalletClient object.
+      // The WalletClient is designed for signing operations, NOT for read operations.
+      // Its .request() method hangs on mobile when used for eth_getBalance, eth_call, etc.
+      //
+      // We need to extract the underlying transport provider, which has the actual
+      // EIP-1193 interface that works for BOTH signing AND reading.
+      //
+      // Viem WalletClient structure:
+      // - walletClient.transport.request() - the actual EIP-1193 provider
+      // - walletClient.request() - high-level wrapper (hangs on mobile for read calls)
+      let eip1193Provider = walletClient;
+
+      if ((walletClient as any).transport) {
+        mLog.info('DynamicProvider', '🔧 Detected Viem WalletClient, extracting transport provider', {
+          hasTransport: !!(walletClient as any).transport,
+          hasTransportRequest: !!(walletClient as any).transport?.request,
+        });
+
+        // Use the transport as the EIP-1193 provider
+        // The transport has the raw .request() method that works for all RPC calls
+        eip1193Provider = (walletClient as any).transport;
       }
 
       mLog.info('DynamicProvider', '✅ Got EIP-1193 provider from connector, wrapping for mobile deep links');

@@ -311,6 +311,41 @@ Once you understand, you'll be able to choose the right place in the cycle to st
      - What didn't work (failed approaches - to avoid repeating)
    - **This creates a knowledge base** for future iterations
 
+#### ⚠️ **Common TDD Pitfalls - AVOID THESE:**
+
+1. **❌ Not writing a FAILING test before attempting a fix**
+   - **This is the most common mistake!**
+   - You MUST see the test fail BEFORE fixing the code
+   - A test that never failed doesn't prove you fixed the bug
+   - Always run the test first to confirm it fails with the expected error
+   - If the test passes immediately, either:
+     - Your test doesn't reproduce the bug (fix the test)
+     - The bug doesn't exist (investigate further)
+
+2. **❌ Changing the test after writing it**
+   - Once you write a failing test, **DO NOT MODIFY IT**
+   - Only fix the production code to make the test pass
+   - If you find yourself changing the test, you're doing it wrong
+   - The test is the specification - it defines what "fixed" means
+
+3. **❌ Not running ALL tests before deploying**
+   - Running only the specific test is not enough
+   - You MUST run the full test suite: `npm test`
+   - Regressions in other parts of the code are common
+   - All 611+ tests must pass before you deploy
+
+4. **❌ Skipping the documentation step**
+   - Future you (or future Claude) will repeat the same mistakes
+   - Document what didn't work so you don't try it again
+   - Update MOBILE_SIGNING_DEBUG.md or similar notes file
+   - Each iteration should build on previous knowledge
+
+5. **❌ Writing tests that don't actually reproduce the bug**
+   - Your test must fail for the EXACT reason the bug occurs
+   - Use the production logs to understand the failure mode
+   - Mock the exact conditions from production
+   - If your test doesn't match reality, it won't catch the bug
+
 ### 2. **Run all tests** - Ensure no regressions
 ```bash
 npm test

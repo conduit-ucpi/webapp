@@ -21,8 +21,10 @@ import { wrapWithHybridProvider } from './hybrid-provider-factory';
 
 export class DynamicProvider implements UnifiedProvider {
   private static instance: DynamicProvider | null = null;
+  private static readonly PROVIDER_VERSION = 'v2_hybrid'; // Increment to invalidate cached providers
   private config!: AuthConfig; // Definite assignment assertion - set in constructor or returned instance
   private cachedEthersProvider: ethers.BrowserProvider | null = null;
+  private cachedProviderVersion: string | null = null;
   private currentAddress: string | null = null;
   private dynamicInstance: any = null;
   private dynamicWallet: any = null; // Store Dynamic wallet for signing operations
@@ -68,6 +70,14 @@ export class DynamicProvider implements UnifiedProvider {
 
   async connect(): Promise<ConnectionResult> {
     mLog.info('DynamicProvider', 'Connect called - opening Dynamic modal');
+
+    // CRITICAL: Clear cached provider to ensure fresh connection with latest code
+    // This prevents old cached providers (without hybrid wrapping) from persisting
+    if (this.cachedEthersProvider) {
+      mLog.info('DynamicProvider', '🔄 Clearing cached provider for fresh connection');
+      this.cachedEthersProvider = null;
+      this.cachedProviderVersion = null;
+    }
 
     try {
       // Check if this is an OAuth redirect first
@@ -392,8 +402,11 @@ export class DynamicProvider implements UnifiedProvider {
 
       // Create ethers BrowserProvider (same as signing)
       this.cachedEthersProvider = new ethers.BrowserProvider(wrappedProvider);
+      this.cachedProviderVersion = DynamicProvider.PROVIDER_VERSION;
 
-      mLog.info('DynamicProvider', '✅ Ethers provider created successfully via connector.getWalletClient()');
+      mLog.info('DynamicProvider', '✅ Ethers provider created successfully via connector.getWalletClient()', {
+        version: this.cachedProviderVersion
+      });
       mLog.info('DynamicProvider', '📝 Unified provider approach: signing + balance reading + transactions all use the same wallet connection');
 
     } catch (error) {
@@ -628,8 +641,20 @@ export class DynamicProvider implements UnifiedProvider {
     mLog.info('DynamicProvider', 'getEthersProviderAsync() called', {
       hasCachedProvider: !!this.cachedEthersProvider,
       hasDynamicWallet: !!this.dynamicWallet,
-      currentAddress: this.currentAddress
+      currentAddress: this.currentAddress,
+      cachedVersion: this.cachedProviderVersion,
+      currentVersion: DynamicProvider.PROVIDER_VERSION
     });
+
+    // Check if cached provider version matches current version
+    if (this.cachedEthersProvider && this.cachedProviderVersion !== DynamicProvider.PROVIDER_VERSION) {
+      mLog.warn('DynamicProvider', '🔄 Cached provider version mismatch, invalidating cache', {
+        cachedVersion: this.cachedProviderVersion,
+        currentVersion: DynamicProvider.PROVIDER_VERSION
+      });
+      this.cachedEthersProvider = null;
+      this.cachedProviderVersion = null;
+    }
 
     // If we already have a cached provider, return it
     if (this.cachedEthersProvider) {
@@ -669,8 +694,20 @@ export class DynamicProvider implements UnifiedProvider {
       hasCachedProvider: !!this.cachedEthersProvider,
       cachedProviderType: this.cachedEthersProvider ? this.cachedEthersProvider.constructor.name : 'null',
       hasDynamicWallet: !!this.dynamicWallet,
-      currentAddress: this.currentAddress
+      currentAddress: this.currentAddress,
+      cachedVersion: this.cachedProviderVersion,
+      currentVersion: DynamicProvider.PROVIDER_VERSION
     });
+
+    // Check if cached provider version matches current version
+    if (this.cachedEthersProvider && this.cachedProviderVersion !== DynamicProvider.PROVIDER_VERSION) {
+      mLog.warn('DynamicProvider', '🔄 Cached provider version mismatch, invalidating cache', {
+        cachedVersion: this.cachedProviderVersion,
+        currentVersion: DynamicProvider.PROVIDER_VERSION
+      });
+      this.cachedEthersProvider = null;
+      this.cachedProviderVersion = null;
+    }
 
     if (!this.cachedEthersProvider) {
       mLog.warn('DynamicProvider', '⚠️ getEthersProvider() returning null - provider not initialized!', {

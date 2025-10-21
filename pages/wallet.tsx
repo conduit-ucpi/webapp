@@ -187,11 +187,13 @@ export default function Wallet() {
   }, [user, config, getNativeBalance, getUSDCBalance]);
 
   useEffect(() => {
-    if (user && config) {
+    // Only load balances when user is authenticated AND wallet is connected
+    // This prevents "Wallet not connected" errors when user exists but wallet setup is still in progress
+    if (user && config && state?.isConnected) {
       loadBalances();
       loadChainInfo();
     }
-  }, [user, config, loadBalances]);
+  }, [user, config, state?.isConnected, loadBalances]);
 
   const handleShowWalletServices = async () => {
     console.log('🔧 Wallet Services Debug:', {

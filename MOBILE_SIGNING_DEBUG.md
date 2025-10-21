@@ -1075,3 +1075,118 @@ After deploying v37.2.26:
 **Next**: Commit, tag, deploy, test on mobile device
 
 ---
+
+# ✅ ACTUAL SOLUTION FOUND - 2025-10-20 (v37.2.28)
+
+## The Real Problem
+
+v37.2.26 was based on a false assumption: that `walletBook.wallets` was an array.
+
+**Actual Discovery**: Analyzed Dynamic SDK types → `wallets` is a **Record<string, WalletConfig>**, not an array!
+
+## Complete TDD Cycle
+
+### RED Phase: Wrote Failing Test ❌
+
+```typescript
+it('should find wallet deep link URLs in walletBook.wallets RECORD using connector.name', async () => {
+  const mockConnector = {
+    name: "metamask",  // Key to look up wallet in Record
+    _walletBookInstance: {
+      walletBook: {
+        wallets: {   // RECORD { "metamask": {...}, "rainbow": {...} }
+          "metamask": {
+            mobile: {
+              native: "metamask://",
+              universal: "https://metamask.app.link/"
+            }
+          }
+        }
+      }
+    }
+  };
+  // Test expects wrapper to apply and trigger deep link
+});
+```
+
+**Result**: ❌ Test FAILED - wrapper not applied
+
+### Analysis: SDK Investigation
+
+From `@dynamic-labs/wallet-book/src/schemas/walletBookSchema.d.ts`:
+```typescript
+wallets: z.ZodMiniRecord<z.ZodMiniString<string>, ...>
+```
+
+**walletBook.wallets is Record<string, WalletConfig>**
+
+Structure:
+```
+{
+  "metamask": { name: "MetaMask", mobile: { native: "metamask://", ... } },
+  "rainbow": { name: "Rainbow", mobile: { native: "rainbow://", ... } }
+}
+```
+
+### GREEN Phase: Fixed Implementation ✅
+
+**Solution**: Look up wallet by `connector.name` in walletBook Record
+
+```typescript
+// Get connected wallet identifier
+const connectorName = connector.name || connector.overrideKey
+
+// Look up in Record (not array!)
+if (connectorName && walletBook.wallets[connectorName]) {
+  const walletConfig = walletBook.wallets[connectorName]
+  
+  // Use wallet config mobile deep links
+  if (walletConfig.mobile?.native || walletConfig.mobile?.universal) {
+    wcProvider = walletConfig
+  }
+}
+
+// Support both paths:
+// 1. WalletConnect session.peer.metadata.redirect (old path)
+// 2. Wallet config mobile.native/universal (new path - THIS IS THE FIX!)
+```
+
+**Result**: ✅ ALL 15 TESTS PASS
+
+## Why This Is The Real Solution
+
+1. **Correct Data Structure**: walletBook.wallets is a config registry (Record), not runtime state
+2. **Simple Lookup**: Use connector.name as key → O(1) lookup
+3. **Mobile Deep Links**: Wallet configs contain deep link URLs for triggering wallet apps
+4. **No WalletConnect Session Needed**: Deep links come from wallet metadata, not session
+
+## Deployment
+
+**Version**: v37.2.28  
+**Commit**: 840f334  
+**Tests**: 15/15 passing ✅
+
+## Expected Mobile Behavior
+
+**Before**:
+- Wrapper skipped (couldn't find session/deep links)
+- User stuck on grey screen
+- Must manually open MetaMask
+
+**After**:
+- Looks up wallet by connector.name in walletBook.wallets
+- Finds mobile.native = "metamask://"
+- Triggers deep link automatically
+- MetaMask opens for signing ✅
+
+## Timeline
+
+- **Weeks 1-2**: Multiple attempts searching for WalletConnect session
+- **v37.2.26-27**: False path - tried treating wallets as array
+- **v37.2.28**: Analyzed SDK types → discovered Record structure → fixed with TDD
+
+---
+
+**Status**: ✅ DEPLOYED - v37.2.28  
+**Next**: User testing on mobile device
+

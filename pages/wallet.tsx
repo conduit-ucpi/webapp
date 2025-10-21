@@ -15,6 +15,7 @@ import { TransferUSDCRequest } from '@/types';
 import { ensureHexPrefix } from '@/utils/hexUtils';
 import { formatGweiAsEthForLogging } from '@/utils/logging';
 import { DynamicEmbeddedWidget, useDynamicContext } from '@dynamic-labs/sdk-react-core';
+import { mLog } from '@/utils/mobileLogger';
 
 interface WalletBalances {
   native: string;
@@ -138,12 +139,18 @@ export default function Wallet() {
 
   const loadBalances = useCallback(async () => {
     if (!user || !config) {
+      mLog.info('WalletPage', 'Skipping balance load - missing requirements', {
+        hasUser: !!user,
+        hasConfig: !!config
+      });
       console.log('Skipping balance load:', { user: !!user, config: !!config });
       return;
     }
 
+    mLog.info('WalletPage', 'Starting balance load');
     setIsLoadingBalances(true);
     try {
+      mLog.info('WalletPage', '🔧 Loading balances via Web3Service');
       console.log('🔧 Wallet: Loading balances via Web3Service');
 
       // Use Web3Service for all balance operations
@@ -152,6 +159,10 @@ export default function Wallet() {
         getUSDCBalance()
       ]);
 
+      mLog.info('WalletPage', '✅ Balances loaded successfully', {
+        native: nativeBalance,
+        usdc: usdcBalance
+      });
       console.log('Balances loaded via Web3Service:', {
         native: nativeBalance,
         usdc: usdcBalance
@@ -162,10 +173,16 @@ export default function Wallet() {
         usdc: usdcBalance
       });
     } catch (error) {
+      mLog.error('WalletPage', '❌ Error loading balances', {
+        errorMessage: error instanceof Error ? error.message : String(error),
+        errorStack: error instanceof Error ? error.stack : undefined,
+        errorType: error ? error.constructor.name : 'unknown'
+      });
       console.error('Error loading balances:', error);
       setBalances({ native: 'Error', usdc: 'Error' });
     } finally {
       setIsLoadingBalances(false);
+      mLog.info('WalletPage', 'Balance loading complete');
     }
   }, [user, config, getNativeBalance, getUSDCBalance]);
 

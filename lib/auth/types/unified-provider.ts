@@ -55,6 +55,10 @@ export interface UnifiedProvider {
   // Ethereum provider access (returns cached instance)
   getEthersProvider(): ethers.BrowserProvider | null;
 
+  // Ethereum provider access - async version that ensures provider is ready
+  // Use this when you need to guarantee the provider is initialized (e.g., after page refresh)
+  getEthersProviderAsync(): Promise<ethers.BrowserProvider | null>;
+
   // Wallet operations (may throw if not supported)
   getAddress(): Promise<string>;
   signMessage(message: string): Promise<string>;

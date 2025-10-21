@@ -518,7 +518,69 @@ export class DynamicProvider implements UnifiedProvider {
     }
   }
 
+  /**
+   * Get the ethers provider, setting it up if needed
+   * This is the async version that ensures the provider is ready
+   */
+  async getEthersProviderAsync(): Promise<ethers.BrowserProvider | null> {
+    mLog.info('DynamicProvider', 'getEthersProviderAsync() called', {
+      hasCachedProvider: !!this.cachedEthersProvider,
+      hasDynamicWallet: !!this.dynamicWallet,
+      currentAddress: this.currentAddress
+    });
+
+    // If we already have a cached provider, return it
+    if (this.cachedEthersProvider) {
+      mLog.info('DynamicProvider', '✅ Returning cached ethers provider');
+      return this.cachedEthersProvider;
+    }
+
+    // Provider not cached - try to set it up from Dynamic wallet
+    mLog.warn('DynamicProvider', '⚠️ Provider not cached, attempting to restore from Dynamic wallet');
+
+    // Check if Dynamic has a connected wallet
+    const dynamicWallet = (window as any).dynamicWallet;
+    if (dynamicWallet) {
+      mLog.info('DynamicProvider', '🔧 Found Dynamic wallet, setting up ethers provider');
+      try {
+        await this.setupEthersProvider(dynamicWallet);
+        mLog.info('DynamicProvider', '✅ Provider setup complete after page refresh');
+        return this.cachedEthersProvider;
+      } catch (error) {
+        mLog.error('DynamicProvider', '❌ Failed to setup provider from Dynamic wallet', {
+          error: error instanceof Error ? error.message : String(error)
+        });
+      }
+    } else {
+      mLog.warn('DynamicProvider', '⚠️ No Dynamic wallet found - provider cannot be initialized');
+    }
+
+    return null;
+  }
+
+  /**
+   * Get the ethers provider (sync version for backwards compatibility)
+   * @deprecated Use getEthersProviderAsync() instead to ensure provider is set up
+   */
   getEthersProvider(): ethers.BrowserProvider | null {
+    mLog.info('DynamicProvider', 'getEthersProvider() called (sync)', {
+      hasCachedProvider: !!this.cachedEthersProvider,
+      cachedProviderType: this.cachedEthersProvider ? this.cachedEthersProvider.constructor.name : 'null',
+      hasDynamicWallet: !!this.dynamicWallet,
+      currentAddress: this.currentAddress
+    });
+
+    if (!this.cachedEthersProvider) {
+      mLog.warn('DynamicProvider', '⚠️ getEthersProvider() returning null - provider not initialized!', {
+        possibleReasons: [
+          'Page was refreshed and provider cache was lost',
+          'Use getEthersProviderAsync() instead to auto-restore provider',
+          'connect() was never called',
+          'setupEthersProvider() failed during login'
+        ]
+      });
+    }
+
     return this.cachedEthersProvider;
   }
 

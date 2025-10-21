@@ -90,6 +90,11 @@ export class FarcasterProvider implements UnifiedProvider {
     return null;
   }
 
+  async getEthersProviderAsync(): Promise<ethers.BrowserProvider | null> {
+    // Farcaster frames don't provide direct ethers access
+    return null;
+  }
+
   async getAddress(): Promise<string> {
     // Return mock address for Farcaster
     return '0x1234567890123456789012345678901234567890';

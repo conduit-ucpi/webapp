@@ -60,6 +60,116 @@ describe('DynamicProvider - Mobile MetaMask Balance Reading', () => {
     provider = new DynamicProvider(mockConfig);
   });
 
+  describe('Page Refresh Race Condition', () => {
+    it('🔴 SHOULD FAIL - demonstrates the page refresh bug where provider is not awaited', async () => {
+      // This test demonstrates the BUG that happens on page refresh:
+      // 1. Page refreshes, Dynamic SDK auto-restores wallet session
+      // 2. window.dynamicWallet exists (persisted session)
+      // 3. getEthersProvider() is called (sync) before setupEthersProvider() completes
+      // 4. cachedEthersProvider is still null
+      // 5. Balance reading fails with "Cannot read property 'getBalance' of null"
+
+      // Mock Dynamic's getWeb3Provider to fail (simulates mobile MetaMask via WalletConnect)
+      mockGetWeb3Provider.mockRejectedValue(new Error('Unable to retrieve PublicClient'));
+      mockGetPublicClient.mockReturnValue(null);
+
+      const mockEIP1193Provider = {
+        request: jest.fn().mockImplementation(async ({ method }: any) => {
+          if (method === 'eth_chainId') return '0x2105';
+          if (method === 'eth_accounts') return ['0xc9D0602A87E55116F633b1A1F95D083Eb115f942'];
+          return null;
+        }),
+      };
+
+      const mockConnector = {
+        name: 'MetaMask',
+        getWalletClient: jest.fn().mockResolvedValue(mockEIP1193Provider),
+        provider: null,
+      };
+
+      const mockDynamicWallet = {
+        connector: mockConnector,
+        key: 'metamask',
+      };
+
+      // Set up window.__wagmiConfig and window.dynamicWallet (simulates page refresh)
+      (global.window as any).__wagmiConfig = {};
+      (global.window as any).dynamicWallet = mockDynamicWallet;
+
+      // DON'T call setupEthersProvider - simulating the race condition
+      // where balance reading happens before setup completes
+
+      // Try to get the provider immediately (what happens on page refresh)
+      const ethersProviderSync = provider.getEthersProvider();
+
+      // BUG: Provider is null because setup hasn't completed yet
+      expect(ethersProviderSync).toBeNull();
+
+      // This would cause: TypeError: Cannot read property 'getBalance' of null
+      // when balance reading tries to use the provider
+    });
+
+    it('🟢 SHOULD PASS - async version properly awaits provider setup on page refresh', async () => {
+      // This test demonstrates the FIX for the page refresh bug:
+      // 1. Page refreshes, Dynamic SDK auto-restores wallet session
+      // 2. window.dynamicWallet exists (persisted session)
+      // 3. getEthersProviderAsync() is called (async)
+      // 4. It detects no cached provider, finds window.dynamicWallet
+      // 5. It awaits setupEthersProvider() to complete
+      // 6. Returns fully initialized provider
+      // 7. Balance reading succeeds!
+
+      // Mock Dynamic's getWeb3Provider to fail (simulates mobile MetaMask via WalletConnect)
+      mockGetWeb3Provider.mockRejectedValue(new Error('Unable to retrieve PublicClient'));
+      mockGetPublicClient.mockReturnValue(null);
+
+      const mockEIP1193Provider = {
+        request: jest.fn().mockImplementation(async ({ method }: any) => {
+          if (method === 'eth_chainId') return '0x2105';
+          if (method === 'eth_accounts') return ['0xc9D0602A87E55116F633b1A1F95D083Eb115f942'];
+          return null;
+        }),
+      };
+
+      const mockConnector = {
+        name: 'MetaMask',
+        getWalletClient: jest.fn().mockResolvedValue(mockEIP1193Provider),
+        provider: null,
+      };
+
+      const mockDynamicWallet = {
+        connector: mockConnector,
+        key: 'metamask',
+      };
+
+      // Set up window.__wagmiConfig and window.dynamicWallet (simulates page refresh)
+      (global.window as any).__wagmiConfig = {};
+      (global.window as any).dynamicWallet = mockDynamicWallet;
+
+      // DON'T call setupEthersProvider first - simulating page refresh state
+      // where provider needs to be set up from persisted Dynamic wallet
+
+      // Use async version - it should detect missing provider and set it up
+      const ethersProviderAsync = await provider.getEthersProviderAsync();
+
+      // FIX: Async version waits for setup to complete
+      expect(ethersProviderAsync).not.toBeNull();
+      expect(ethersProviderAsync).toBeInstanceOf(ethers.BrowserProvider);
+
+      // Verify getWalletClient was called during setup
+      expect(mockConnector.getWalletClient).toHaveBeenCalled();
+
+      // Verify we can get a signer (proves full wallet connection)
+      const signer = await ethersProviderAsync?.getSigner();
+      expect(signer).toBeDefined();
+
+      // Now verify that cached provider is available for subsequent sync calls
+      const cachedProvider = provider.getEthersProvider();
+      expect(cachedProvider).not.toBeNull();
+      expect(cachedProvider).toBe(ethersProviderAsync); // Same instance
+    });
+  });
+
   describe('setupEthersProvider with mobile MetaMask wallet', () => {
     it('should succeed even when Dynamic toolkit and wagmi fallbacks fail (third fallback saves the day!)', async () => {
       // This test demonstrates that even when first two fallbacks fail:

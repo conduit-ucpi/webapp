@@ -2,6 +2,7 @@ import { useAuth } from '@/components/auth';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { ethers } from 'ethers';
 import { useCallback } from 'react';
+import { mLog } from '@/utils/mobileLogger';
 
 /**
  * Simple hook that provides Web3Service for ALL blockchain operations

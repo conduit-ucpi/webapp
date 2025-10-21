@@ -433,12 +433,14 @@ export class AuthManager {
 
   /**
    * Get ethers provider from current provider (single instance)
+   * This awaits provider setup to avoid race conditions on page load/refresh
    */
   async getEthersProvider(): Promise<ethers.BrowserProvider | null> {
     if (!this.currentProvider) {
       return null;
     }
-    return this.currentProvider.getEthersProvider();
+    // Use async version to ensure provider is ready (fixes page load race condition)
+    return await this.currentProvider.getEthersProviderAsync();
   }
 
   /**

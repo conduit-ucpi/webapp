@@ -434,11 +434,58 @@ export class AuthManager {
   /**
    * Get ethers provider from current provider (single instance)
    * This awaits provider setup to avoid race conditions on page load/refresh
+   *
+   * CRITICAL FIX: Lazy-initialize currentProvider if null but a provider is connected
+   * This fixes the session auto-restore timing bug where:
+   * 1. restoreSession() runs before Dynamic finishes auto-restore
+   * 2. provider.isConnected() = false, so currentProvider is not set
+   * 3. Later, Dynamic finishes auto-restore (primaryWalletChanged fires)
+   * 4. Balance loading calls getEthersProvider() but currentProvider is still null
+   * 5. Without this fix: returns null → "Wallet not connected" error
+   * 6. With this fix: finds the connected provider and initializes it
    */
   async getEthersProvider(): Promise<ethers.BrowserProvider | null> {
+    // If currentProvider not set, try to find a connected provider (lazy init)
     if (!this.currentProvider) {
-      return null;
+      mLog.info('AuthManager', 'currentProvider is null, checking for connected providers (lazy init)');
+
+      const providers = this.providerRegistry.getAllProviders();
+      for (const provider of providers) {
+        if (provider.isConnected()) {
+          this.currentProvider = provider;
+
+          // Update state to reflect the connection
+          let address: string | null = null;
+          try {
+            address = await provider.getAddress();
+          } catch (error) {
+            mLog.warn('AuthManager', 'Could not get address during lazy init', {
+              error: error instanceof Error ? error.message : String(error)
+            });
+          }
+
+          this.setState({
+            isConnected: true,
+            address,
+            providerName: provider.getProviderName(),
+            capabilities: provider.getCapabilities()
+          });
+
+          mLog.info('AuthManager', '✅ Lazy-initialized currentProvider from connected provider', {
+            providerName: provider.getProviderName(),
+            address
+          });
+          break;
+        }
+      }
+
+      // Still no provider? Return null
+      if (!this.currentProvider) {
+        mLog.warn('AuthManager', 'No connected provider found for lazy init');
+        return null;
+      }
     }
+
     // Use async version to ensure provider is ready (fixes page load race condition)
     return await this.currentProvider.getEthersProviderAsync();
   }

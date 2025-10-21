@@ -303,7 +303,26 @@ export function wrapProviderWithMobileDeepLinks(provider: any, connector?: any):
     // Always call the original request method, whether we triggered a deep link or not
     // The deep link just brings the wallet to foreground - the request still goes through WalletConnect
 
-    return originalRequest(args)
+    mLog.info('MobileDeepLink', `🔄 Calling originalRequest for ${method}`, {
+      hasOriginalRequest: !!originalRequest,
+      argsMethod: args.method,
+      argsParamsLength: args.params?.length || 0,
+    })
+
+    try {
+      const result = await originalRequest(args)
+      mLog.info('MobileDeepLink', `✅ originalRequest completed for ${method}`, {
+        hasResult: !!result,
+        resultType: typeof result,
+      })
+      return result
+    } catch (error) {
+      mLog.error('MobileDeepLink', `❌ originalRequest failed for ${method}`, {
+        error: error instanceof Error ? error.message : String(error),
+        errorType: typeof error,
+      })
+      throw error
+    }
   }
 
   mLog.info('MobileDeepLink', '✅ Provider wrapped successfully - deep links will trigger for user actions')

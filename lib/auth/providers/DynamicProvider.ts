@@ -336,14 +336,24 @@ export class DynamicProvider implements UnifiedProvider {
       let eip1193Provider = walletClient;
 
       if ((walletClient as any).transport) {
+        const transport = (walletClient as any).transport;
         mLog.info('DynamicProvider', '🔧 Detected Viem WalletClient, extracting transport provider', {
-          hasTransport: !!(walletClient as any).transport,
-          hasTransportRequest: !!(walletClient as any).transport?.request,
+          hasTransport: !!transport,
+          hasTransportRequest: !!transport?.request,
+          transportType: transport?.type,
+          transportKeys: transport ? Object.keys(transport).slice(0, 20) : [],
+          hasTransportValue: !!transport?.value,
         });
 
         // Use the transport as the EIP-1193 provider
         // The transport has the raw .request() method that works for all RPC calls
-        eip1193Provider = (walletClient as any).transport;
+        eip1193Provider = transport;
+
+        mLog.info('DynamicProvider', '📋 Extracted transport details', {
+          eip1193ProviderType: typeof eip1193Provider,
+          eip1193ProviderKeys: eip1193Provider ? Object.keys(eip1193Provider).slice(0, 20) : [],
+          hasRequest: !!(eip1193Provider as any)?.request,
+        });
       }
 
       mLog.info('DynamicProvider', '✅ Got EIP-1193 provider from connector, wrapping for mobile deep links');

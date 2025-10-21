@@ -657,6 +657,23 @@ export class AuthManager {
             address = await provider.getAddress();
           } catch {}
 
+          // CRITICAL FIX: Ensure ethers provider is initialized during session restore
+          // This prevents "Wallet not connected" errors when:
+          // - User navigates to a page after auth
+          // - Dynamic SDK auto-restores wallet session
+          // - isConnected becomes true
+          // - BUT setupEthersProvider() was never called (provider cache empty)
+          // - Any code using getEthersProvider() fails
+          mLog.info('AuthManager', 'Ensuring ethers provider is initialized during session restore');
+          try {
+            await provider.getEthersProviderAsync();
+            mLog.info('AuthManager', '✅ Ethers provider initialized successfully');
+          } catch (error) {
+            mLog.error('AuthManager', '❌ Failed to initialize ethers provider during restore', {
+              error: error instanceof Error ? error.message : String(error)
+            });
+          }
+
           this.setState({
             isConnected: true,
             isAuthenticated: true, // If we have a token, we were authenticated

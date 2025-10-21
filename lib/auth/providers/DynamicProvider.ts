@@ -295,59 +295,55 @@ export class DynamicProvider implements UnifiedProvider {
       });
 
       // Try Dynamic's toolkit first (works for embedded wallets)
+      // CRITICAL: Do NOT return early - we need to apply hybrid wrapping below!
+      let rawProvider: any = null;
+
       try {
         const web3Provider = await this.retryGetWeb3Provider(dynamicWallet);
         if (web3Provider) {
-          this.cachedEthersProvider = web3Provider as ethers.BrowserProvider;
-          mLog.info('DynamicProvider', '✅ Ethers provider created successfully via Dynamic toolkit');
-          return;
+          mLog.info('DynamicProvider', '✅ Got provider from Dynamic toolkit');
+          // Extract the underlying EIP-1193 provider from BrowserProvider
+          // BrowserProvider wraps an EIP-1193 provider - we need to unwrap it to apply hybrid wrapping
+          rawProvider = (web3Provider as any)._getConnection?.()?.provider || web3Provider;
         }
       } catch (toolkitError) {
-        mLog.warn('DynamicProvider', 'Dynamic toolkit failed, using connector.getWalletClient() fallback', {
+        mLog.warn('DynamicProvider', 'Dynamic toolkit failed, will use connector.getWalletClient() fallback', {
           error: toolkitError instanceof Error ? toolkitError.message : String(toolkitError)
         });
       }
 
-      // Fallback 2: Use connector.getWalletClient() directly (same approach that works for signing!)
-      // NOTE: We used to try wagmi's getPublicClient() here, but it created a JsonRpcProvider
-      // with NO wallet connection, which failed for balance reading and transactions.
-      // This direct connector approach works for BOTH signing AND balance reading.
-      mLog.info('DynamicProvider', '🔧 Using connector.getWalletClient() fallback (unified approach for signing + balance reading)');
+      // If Dynamic toolkit didn't work, fall back to connector.getWalletClient()
+      if (!rawProvider) {
+        mLog.info('DynamicProvider', '🔧 Using connector.getWalletClient() fallback (unified approach for signing + balance reading)');
 
-      const connector = dynamicWallet.connector;
-      if (!connector) {
-        throw new Error('No connector available on Dynamic wallet');
+        const connector = dynamicWallet.connector;
+        if (!connector) {
+          throw new Error('No connector available on Dynamic wallet');
+        }
+
+        mLog.info('DynamicProvider', '🔍 Connector details', {
+          hasConnector: !!connector,
+          connectorName: connector.name,
+          hasGetWalletClient: !!connector.getWalletClient,
+          hasProvider: !!connector.provider,
+        });
+
+        // Get the wallet client from the connector
+        rawProvider = await connector.getWalletClient?.() || connector.provider;
+
+        if (!rawProvider) {
+          throw new Error('No EIP-1193 provider available from connector (all fallbacks exhausted)');
+        }
       }
 
-      mLog.info('DynamicProvider', '🔍 Connector details', {
-        hasConnector: !!connector,
-        connectorName: connector.name,
-        hasGetWalletClient: !!connector.getWalletClient,
-        hasProvider: !!connector.provider,
-      });
-
-      // Get the wallet client from the connector
-      let walletClient = await connector.getWalletClient?.() || connector.provider;
-
-      if (!walletClient) {
-        throw new Error('No EIP-1193 provider available from connector (all fallbacks exhausted)');
-      }
-
-      // CRITICAL FIX (v37.2.39): Extract the actual EIP-1193 provider from Viem WalletClient
-      // On mobile MetaMask, connector.getWalletClient() returns a Viem WalletClient object.
-      // The WalletClient is designed for signing operations, NOT for read operations.
-      // Its .request() method hangs on mobile when used for eth_getBalance, eth_call, etc.
-      //
-      // We need to extract the underlying transport provider, which has the actual
-      // EIP-1193 interface that works for BOTH signing AND reading.
-      //
+      // CRITICAL FIX: Extract the actual EIP-1193 provider from Viem WalletClient if needed
       // Viem WalletClient structure:
-      // - walletClient.transport.request() - the actual EIP-1193 provider
-      // - walletClient.request() - high-level wrapper (hangs on mobile for read calls)
-      let eip1193Provider = walletClient;
+      // - walletClient.transport - the actual EIP-1193 provider
+      // - walletClient.request() - high-level wrapper (may not support all methods)
+      let eip1193Provider = rawProvider;
 
-      if ((walletClient as any).transport) {
-        const transport = (walletClient as any).transport;
+      if ((rawProvider as any).transport) {
+        const transport = (rawProvider as any).transport;
         mLog.info('DynamicProvider', '🔧 Detected Viem WalletClient, extracting transport provider', {
           hasTransport: !!transport,
           hasTransportRequest: !!transport?.request,
@@ -389,25 +385,30 @@ export class DynamicProvider implements UnifiedProvider {
         });
       }
 
-      mLog.info('DynamicProvider', '✅ Got EIP-1193 provider from connector, wrapping for mobile deep links');
+      mLog.info('DynamicProvider', '✅ Got EIP-1193 provider, wrapping with hybrid provider for universal compatibility');
 
-      // Wrap provider with mobile deep link support (same as signing)
-      let wrappedProvider = wrapProviderWithMobileDeepLinks(eip1193Provider, connector);
+      // Wrap provider with mobile deep link support (if we have a connector)
+      const connector = dynamicWallet.connector;
+      let wrappedProvider = connector
+        ? wrapProviderWithMobileDeepLinks(eip1193Provider, connector)
+        : eip1193Provider;
 
-      // Wrap with universal hybrid provider (all wallets use Base RPC for reads)
+      // CRITICAL: Always wrap with universal hybrid provider (all wallets use Base RPC for reads)
+      // This ensures MetaMask desktop, mobile, Web3Auth, Dynamic, etc. all work consistently
       wrappedProvider = wrapWithHybridProvider(wrappedProvider, {
         rpcUrl: this.config.rpcUrl,
         chainId: this.config.chainId
       });
 
-      // Create ethers BrowserProvider (same as signing)
+      // Create ethers BrowserProvider
       this.cachedEthersProvider = new ethers.BrowserProvider(wrappedProvider);
       this.cachedProviderVersion = DynamicProvider.PROVIDER_VERSION;
 
-      mLog.info('DynamicProvider', '✅ Ethers provider created successfully via connector.getWalletClient()', {
-        version: this.cachedProviderVersion
+      mLog.info('DynamicProvider', '✅ Ethers provider created successfully with universal hybrid wrapping', {
+        version: this.cachedProviderVersion,
+        hasConnector: !!connector
       });
-      mLog.info('DynamicProvider', '📝 Unified provider approach: signing + balance reading + transactions all use the same wallet connection');
+      mLog.info('DynamicProvider', '📝 Universal approach: ALL wallets use hybrid provider (reads via Base RPC, writes via wallet)');
 
     } catch (error) {
       mLog.error('DynamicProvider', 'Failed to create ethers provider', {

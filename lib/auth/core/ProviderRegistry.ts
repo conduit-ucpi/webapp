@@ -92,7 +92,7 @@ export class ProviderRegistry {
 
     // Dynamic import to avoid bundle size
     const { DynamicProvider } = await import('../providers/DynamicProvider');
-    const provider = new DynamicProvider(config);
+    const provider = DynamicProvider.getInstance(config);
     await provider.initialize();
     this.providers.set('dynamic', provider);
     mLog.info('ProviderRegistry', 'Registered Dynamic provider successfully');

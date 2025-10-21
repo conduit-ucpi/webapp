@@ -19,14 +19,41 @@ import { getPublicClient } from '@wagmi/core';
 import { wrapProviderWithMobileDeepLinks } from '../../../utils/mobileDeepLinkProvider';
 
 export class DynamicProvider implements UnifiedProvider {
-  private config: AuthConfig;
+  private static instance: DynamicProvider | null = null;
+  private config!: AuthConfig; // Definite assignment assertion - set in constructor or returned instance
   private cachedEthersProvider: ethers.BrowserProvider | null = null;
   private currentAddress: string | null = null;
   private dynamicInstance: any = null;
   private dynamicWallet: any = null; // Store Dynamic wallet for signing operations
 
   constructor(config: AuthConfig) {
+    // Singleton pattern: return existing instance if available
+    if (DynamicProvider.instance) {
+      mLog.info('DynamicProvider', 'Returning existing singleton instance from constructor');
+      // Update config in case it changed
+      DynamicProvider.instance.config = config;
+      return DynamicProvider.instance;
+    }
+
+    mLog.info('DynamicProvider', 'Creating new singleton instance in constructor');
     this.config = config;
+    DynamicProvider.instance = this;
+  }
+
+  /**
+   * Get the singleton instance of DynamicProvider
+   * This ensures the provider cache persists across React re-mounts
+   */
+  static getInstance(config: AuthConfig): DynamicProvider {
+    return new DynamicProvider(config);
+  }
+
+  /**
+   * Clear the singleton instance (primarily for testing)
+   */
+  static clearInstance(): void {
+    mLog.info('DynamicProvider', 'Clearing singleton instance');
+    DynamicProvider.instance = null;
   }
 
   getProviderName(): string {

@@ -121,8 +121,9 @@ export function wrapProviderWithMobileDeepLinks(provider: any, connector?: any):
     }
   }
 
-  // CRITICAL FIX (v37.2.27): walletBook.wallets is a RECORD, not array!
+  // CRITICAL FIX (v37.2.29): walletBook.wallets is a RECORD, not array!
   // wallets is Record<string, WalletConfig> - use connector.name to look up the connected wallet
+  // CASE INSENSITIVE: connector.name might be "MetaMask" but key is "metamask"
   if (!wcProvider?.session && connector && walletBook?.wallets) {
     const connectorName = (connector as any).name || (connector as any).overrideKey
     mLog.info('MobileDeepLink', `🔍 Looking up connected wallet in walletBook`, {
@@ -132,19 +133,40 @@ export function wrapProviderWithMobileDeepLinks(provider: any, connector?: any):
       walletsKeys: Object.keys(walletBook.wallets || {}).slice(0, 10)
     })
 
-    if (connectorName && walletBook.wallets[connectorName]) {
-      const walletConfig = walletBook.wallets[connectorName]
-      mLog.info('MobileDeepLink', `✓ Found wallet config for "${connectorName}"`, {
-        hasWalletConfig: !!walletConfig,
-        hasMobile: !!walletConfig.mobile,
-        mobileKeys: walletConfig.mobile ? Object.keys(walletConfig.mobile) : []
-      })
+    if (connectorName) {
+      // Try exact match first
+      let walletConfig = walletBook.wallets[connectorName]
 
-      // Use the wallet config as our "wcProvider" - it has mobile.native and mobile.universal
-      // which are exactly what we need for deep linking
-      if (walletConfig.mobile?.native || walletConfig.mobile?.universal) {
-        wcProvider = walletConfig
-        mLog.info('MobileDeepLink', `✓ Found deep link URLs in walletBook.wallets["${connectorName}"].mobile`)
+      // If no exact match, try case-insensitive search
+      if (!walletConfig) {
+        const lowerConnectorName = connectorName.toLowerCase()
+        const walletKeys = Object.keys(walletBook.wallets)
+        const matchingKey = walletKeys.find(key => key.toLowerCase() === lowerConnectorName)
+
+        if (matchingKey) {
+          walletConfig = walletBook.wallets[matchingKey]
+          mLog.info('MobileDeepLink', `✓ Found wallet via case-insensitive match`, {
+            connectorName,
+            matchingKey
+          })
+        }
+      }
+
+      if (walletConfig) {
+        mLog.info('MobileDeepLink', `✓ Found wallet config for "${connectorName}"`, {
+          hasWalletConfig: !!walletConfig,
+          hasMobile: !!walletConfig.mobile,
+          mobileKeys: walletConfig.mobile ? Object.keys(walletConfig.mobile) : []
+        })
+
+        // Use the wallet config as our "wcProvider" - it has mobile.native and mobile.universal
+        // which are exactly what we need for deep linking
+        if (walletConfig.mobile?.native || walletConfig.mobile?.universal) {
+          wcProvider = walletConfig
+          mLog.info('MobileDeepLink', `✓ Found deep link URLs in wallet config mobile property`)
+        }
+      } else {
+        mLog.info('MobileDeepLink', `⚠️  No wallet config found for "${connectorName}"`)
       }
     }
   }

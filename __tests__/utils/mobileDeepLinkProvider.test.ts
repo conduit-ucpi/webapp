@@ -192,6 +192,60 @@ describe('wrapProviderWithMobileDeepLinks', () => {
      * Our code incorrectly treats it as an array with .length and [index].
      * This test reproduces the ACTUAL production structure.
      */
+    /**
+     * FAILING TEST - v37.2.28 Production Issue
+     *
+     * From logs: connector.name = "MetaMask" (capital M)
+     *           walletBook.wallets = { "metamask": {...} } (lowercase m)
+     *
+     * Lookup fails: walletBook.wallets["MetaMask"] = undefined
+     * Need case-insensitive lookup!
+     */
+    it('should find wallet with case-insensitive lookup (MetaMask vs metamask)', async () => {
+      const originalRequest = jest.fn().mockResolvedValue('0xsignature');
+
+      const mockProvider = {
+        request: originalRequest,
+        account: '0xc9D0602A87E55116F633b1A1F95D083Eb115f942',
+        transport: {
+          key: 'custom',
+          name: 'Custom Transport',
+          request: jest.fn(),
+        }
+      };
+
+      const mockConnector = {
+        name: "MetaMask",  // CAPITAL M - from production logs!
+        isWalletConnect: true,
+        _walletBookInstance: {
+          walletBook: {
+            groups: {},
+            wallets: {
+              "metamask": {  // lowercase m - the actual key in the Record
+                name: "MetaMask",
+                mobile: {
+                  native: "metamask://",
+                  universal: "https://metamask.app.link/"
+                }
+              }
+            }
+          }
+        }
+      };
+
+      const wrappedProvider = wrapProviderWithMobileDeepLinks(mockProvider, mockConnector);
+
+      // Should wrap the provider (found wallet via case-insensitive match)
+      expect(wrappedProvider.request).not.toBe(originalRequest);
+
+      // Call a user action method to trigger deep link
+      await wrappedProvider.request({ method: 'personal_sign', params: ['0xdata', '0xaddress'] });
+
+      // Should have triggered deep link
+      expect(capturedHref).toBe('metamask://');
+      expect(originalRequest).toHaveBeenCalledWith({ method: 'personal_sign', params: ['0xdata', '0xaddress'] });
+    });
+
     it('should find wallet deep link URLs in walletBook.wallets RECORD using connector.name', async () => {
       const mockSession = {
         peer: {

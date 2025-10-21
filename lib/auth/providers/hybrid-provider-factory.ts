@@ -51,13 +51,15 @@ export function createHybridProvider(config: HybridProviderConfig): any {
     // Account operations (wallet knows the connected accounts)
     'eth_accounts',
     'eth_requestAccounts',
-
-    // Chain ID (wallet knows which chain it's connected to)
-    'eth_chainId',
   ]);
 
   // Methods that should be routed to the read provider (public RPC)
   const READ_METHODS = new Set([
+    // Chain ID (read-only network info - doesn't require wallet)
+    // MOBILE FIX: After app-switching, wallet provider breaks and eth_chainId hangs
+    // Route to reliable Base RPC instead
+    'eth_chainId',
+
     // Balance and state queries
     'eth_getBalance',
     'eth_getCode',

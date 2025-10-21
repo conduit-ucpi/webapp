@@ -954,6 +954,9 @@ export class Web3Service {
       console.log('');
 
       // Build transaction object for ethers with Web3Auth compatibility
+      // Note: We don't need to manually fetch nonce/chainId anymore!
+      // The HybridProvider automatically routes eth_getTransactionCount and eth_chainId
+      // to the Base RPC instead of the wallet provider, so they work even after app-switching.
       let tx: any = {
         to: txParams.to,
         data: txParams.data,

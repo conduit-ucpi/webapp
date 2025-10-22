@@ -341,9 +341,11 @@ export class DynamicProvider implements UnifiedProvider {
       // - walletClient.transport - the actual EIP-1193 provider
       // - walletClient.request() - high-level wrapper (may not support all methods)
       let eip1193Provider = rawProvider;
+      let rawTransportForNetworkSwitch = null; // Save reference for network switching
 
       if ((rawProvider as any).transport) {
         const transport = (rawProvider as any).transport;
+        rawTransportForNetworkSwitch = transport; // Save for later use
         mLog.info('DynamicProvider', '🔧 Detected Viem WalletClient, extracting transport provider', {
           hasTransport: !!transport,
           hasTransportRequest: !!transport?.request,
@@ -387,8 +389,93 @@ export class DynamicProvider implements UnifiedProvider {
 
       mLog.info('DynamicProvider', '✅ Got EIP-1193 provider, wrapping with hybrid provider for universal compatibility');
 
-      // Wrap provider with mobile deep link support (if we have a connector)
+      // CRITICAL: Validate network BEFORE creating hybrid provider
+      // This prevents "signature on Ethereum Mainnet" during mobile auth
+      // We must check the wallet's ACTUAL network before the hybrid provider routes calls to Base RPC
       const connector = dynamicWallet.connector;
+
+      if (this.config.chainId && rawTransportForNetworkSwitch) {
+        mLog.info('DynamicProvider', '🔍 Validating wallet network BEFORE wrapping (critical for mobile auth)', {
+          expectedChainId: this.config.chainId
+        });
+
+        try {
+          // Query the wallet's ACTUAL chainId (not through hybrid provider)
+          const chainIdHex = await (rawTransportForNetworkSwitch as any).request({
+            method: 'eth_chainId',
+            params: []
+          });
+          const currentChainId = parseInt(chainIdHex, 16);
+          const expectedChainId = this.config.chainId;
+
+          if (currentChainId !== expectedChainId) {
+            mLog.warn('DynamicProvider', '⚠️  Wallet on wrong network!', {
+              currentChainId,
+              currentNetwork: this.getNetworkName(currentChainId),
+              expectedChainId,
+              expectedNetwork: this.getNetworkName(expectedChainId)
+            });
+
+            // Attempt to switch network
+            try {
+              mLog.info('DynamicProvider', '🔄 Attempting to switch wallet to correct network', {
+                targetChainId: expectedChainId
+              });
+
+              const chainIdHex = `0x${expectedChainId.toString(16)}`;
+              await (rawTransportForNetworkSwitch as any).request({
+                method: 'wallet_switchEthereumChain',
+                params: [{ chainId: chainIdHex }]
+              });
+
+              mLog.info('DynamicProvider', '✅ Network switched successfully', {
+                newChainId: expectedChainId
+              });
+
+              // Verify the switch worked
+              const newChainIdHex = await (rawTransportForNetworkSwitch as any).request({
+                method: 'eth_chainId',
+                params: []
+              });
+              const newChainId = parseInt(newChainIdHex, 16);
+
+              if (newChainId !== expectedChainId) {
+                throw new Error(`Network switch appeared to succeed but wallet is still on chain ${newChainId}`);
+              }
+
+            } catch (switchError: any) {
+              mLog.error('DynamicProvider', '❌ Failed to switch network', {
+                error: switchError instanceof Error ? switchError.message : String(switchError),
+                errorCode: switchError?.code
+              });
+
+              // Throw a clear error for the user
+              const errorMessage =
+                `Wallet is on wrong network (chain ${currentChainId} - ${this.getNetworkName(currentChainId)}). ` +
+                `Please switch to ${this.getNetworkName(expectedChainId)} (chain ${expectedChainId}) and try again.`;
+
+              throw new Error(errorMessage);
+            }
+          } else {
+            mLog.info('DynamicProvider', '✅ Wallet already on correct network', {
+              chainId: currentChainId
+            });
+          }
+        } catch (validationError) {
+          // If this is our custom error, re-throw it
+          if (validationError instanceof Error && validationError.message.includes('Wallet is on wrong network')) {
+            throw validationError;
+          }
+
+          // Otherwise log and continue (network validation is important but shouldn't break the connection)
+          mLog.warn('DynamicProvider', 'Network validation failed but continuing with connection', {
+            error: validationError instanceof Error ? validationError.message : String(validationError)
+          });
+        }
+      }
+
+      // Now wrap the provider with mobile deep links and hybrid provider
+      // Network is now correct, so hybrid provider can safely route to Base RPC
       let wrappedProvider = connector
         ? wrapProviderWithMobileDeepLinks(eip1193Provider, connector)
         : eip1193Provider;
@@ -1110,5 +1197,21 @@ export class DynamicProvider implements UnifiedProvider {
       canSwitchWallets: true,
       isAuthOnly: false
     };
+  }
+
+  /**
+   * Get human-readable network name from chainId
+   */
+  private getNetworkName(chainId: number): string {
+    switch (chainId) {
+      case 1: return 'Ethereum Mainnet';
+      case 8453: return 'Base Mainnet';
+      case 84532: return 'Base Sepolia';
+      case 43113: return 'Avalanche Fuji';
+      case 43114: return 'Avalanche Mainnet';
+      case 137: return 'Polygon Mainnet';
+      case 80001: return 'Polygon Mumbai';
+      default: return `Chain ${chainId}`;
+    }
   }
 }

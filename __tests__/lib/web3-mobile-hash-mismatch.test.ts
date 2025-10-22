@@ -42,27 +42,28 @@ describe('Mobile Transaction Hash Mismatch', () => {
       removeListener: jest.fn(),
     };
 
-    // Create mock signer that returns WRONG hash (simulates bug)
+    // Create mock signer
     mockSigner = {
       getAddress: jest.fn().mockResolvedValue(USER_ADDRESS),
-      sendTransaction: jest.fn().mockResolvedValue({
-        hash: WRONG_HASH, // BUG: Returns hash for different transaction!
-        nonce: TRANSACTION_NONCE, // Include nonce in response
-        wait: jest.fn().mockImplementation(() => {
-          // Never resolves because wrong hash doesn't exist for this user
-          return new Promise(() => {});
-        }),
-      }),
       estimateGas: jest.fn().mockResolvedValue(BigInt(67474)),
     };
 
     // Mock provider.getSigner to return our mock signer
     mockProvider.getSigner = jest.fn().mockResolvedValue(mockSigner);
 
-    // Mock eth_getTransactionCount to return nonce
+    // Mock provider methods
+    mockProvider.request = jest.fn().mockImplementation(async (args: { method: string; params?: any[] }) => {
+      if (args.method === 'eth_sendTransaction') {
+        // BUG: Returns WRONG hash (simulates mobile bug)
+        return WRONG_HASH;
+      }
+      return null;
+    });
+
     mockProvider.send.mockImplementation((method: string, params: any[]) => {
       if (method === 'eth_getTransactionCount') {
-        return Promise.resolve(`0x${TRANSACTION_NONCE.toString(16)}`);
+        // Return nonce AFTER transaction (pending nonce)
+        return Promise.resolve(`0x${(TRANSACTION_NONCE + 1).toString(16)}`);
       }
       if (method === 'eth_getBlockByNumber') {
         // Return recent block with transactions
@@ -172,12 +173,27 @@ describe('Mobile Transaction Hash Mismatch', () => {
 
   it('should fall back to returned hash if verification fails', async () => {
     // If we can't verify the hash (RPC errors, no matching transaction, etc.),
-    // fall back to the hash returned by sendTransaction
+    // fall back to the hash returned by eth_sendTransaction
     //
     // This ensures the fix doesn't break existing working cases
 
-    // Mock RPC to fail
-    mockProvider.send.mockRejectedValue(new Error('RPC error'));
+    // Mock eth_sendTransaction to return wrong hash
+    mockProvider.request = jest.fn().mockImplementation(async (args: { method: string; params?: any[] }) => {
+      if (args.method === 'eth_sendTransaction') {
+        return WRONG_HASH;
+      }
+      return null;
+    });
+
+    // Mock nonce query to succeed, but verification queries to fail
+    mockProvider.send.mockImplementation((method: string, params: any[]) => {
+      if (method === 'eth_getTransactionCount') {
+        // Allow nonce query to succeed
+        return Promise.resolve(`0x${(TRANSACTION_NONCE + 1).toString(16)}`);
+      }
+      // All other queries fail (verification will fail)
+      return Promise.reject(new Error('RPC error'));
+    });
 
     const tx = {
       to: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',

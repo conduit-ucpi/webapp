@@ -1060,35 +1060,101 @@ export class Web3Service {
         console.log('');
       }
 
-      // Use signer.sendTransaction() which handles nonces correctly
-      // It returns TransactionResponse with the correct hash
-      // Note: This may wait for mining internally, but we have manual polling as backup
-      console.log('[Web3Service.fundAndSendTransaction] Sending transaction via signer.sendTransaction()...');
-      mLog.info('Web3Service', '📤 Using signer.sendTransaction() for proper nonce handling...');
+      // MOBILE FIX: Call eth_sendTransaction directly to avoid hanging
+      // signer.sendTransaction() hangs on mobile waiting for mining (broken events)
+      // Solution: Call eth_sendTransaction via provider.request() for immediate hash
+      console.log('[Web3Service.fundAndSendTransaction] Sending transaction via direct eth_sendTransaction...');
+      mLog.info('Web3Service', '📤 Calling eth_sendTransaction directly (bypasses hanging on mobile)...');
 
-      const txResponse = await signer.sendTransaction(tx);
+      // Get user address and nonce for verification
+      const fromAddress = await signer.getAddress();
 
-      mLog.info('Web3Service', `✅ Transaction sent with hash: ${txResponse.hash}`);
-      console.log('✅ Transaction sent successfully:', txResponse.hash);
+      // Format transaction for eth_sendTransaction RPC call
+      const rpcTxParams: any = {
+        from: fromAddress,
+        to: tx.to,
+        data: tx.data,
+        value: tx.value ? `0x${tx.value.toString(16)}` : '0x0'
+      };
+
+      // Add gas parameters if available
+      if (tx.gasLimit) {
+        rpcTxParams.gas = `0x${tx.gasLimit.toString(16)}`;
+      }
+      if (tx.maxFeePerGas) {
+        rpcTxParams.maxFeePerGas = `0x${tx.maxFeePerGas.toString(16)}`;
+      }
+      if (tx.maxPriorityFeePerGas) {
+        rpcTxParams.maxPriorityFeePerGas = `0x${tx.maxPriorityFeePerGas.toString(16)}`;
+      }
+
+      mLog.info('Web3Service', '📋 Transaction params:', {
+        from: rpcTxParams.from,
+        to: rpcTxParams.to,
+        value: rpcTxParams.value,
+        gas: rpcTxParams.gas,
+        maxFeePerGas: rpcTxParams.maxFeePerGas,
+        maxPriorityFeePerGas: rpcTxParams.maxPriorityFeePerGas,
+        dataLength: tx.data?.length || 0
+      });
+
+      // Call eth_sendTransaction directly via provider
+      const provider = this.provider as any;
+      let returnedHash: string;
+
+      if (provider.request && typeof provider.request === 'function') {
+        // EIP-1193 interface
+        mLog.info('Web3Service', '🔄 Calling provider.request({ method: eth_sendTransaction })...');
+        returnedHash = await provider.request({
+          method: 'eth_sendTransaction',
+          params: [rpcTxParams]
+        });
+      } else if (provider.send && typeof provider.send === 'function') {
+        // ethers JsonRpcProvider interface
+        mLog.info('Web3Service', '🔄 Calling provider.send(eth_sendTransaction)...');
+        returnedHash = await provider.send('eth_sendTransaction', [rpcTxParams]);
+      } else {
+        throw new Error('Provider does not support request() or send() methods');
+      }
+
+      mLog.info('Web3Service', `✅ Transaction hash returned: ${returnedHash}`);
+      console.log('✅ Transaction hash obtained:', returnedHash);
 
       // MOBILE FIX: Verify the transaction hash by querying blockchain
-      // On mobile, signer.sendTransaction() sometimes returns wrong hash
+      // On mobile, eth_sendTransaction returns wrong hash (someone else's transaction!)
+      // Solution: Query blockchain for transaction by address + nonce
       // See: MOBILE_SENDTRANSACTION_FIX.md for details
+
+      // Query nonce that was actually used (from wallet provider for consistency)
+      const nonceHex = await provider.send('eth_getTransactionCount', [fromAddress, 'pending']);
+      const actualNonce = parseInt(nonceHex, 16) - 1; // Subtract 1 because transaction just incremented it
+
+      mLog.info('Web3Service', '🔍 Nonce for verification', {
+        pendingNonce: parseInt(nonceHex, 16),
+        transactionNonce: actualNonce
+      });
+
       const verifiedHash = await this.verifyTransactionHash(
-        txResponse.hash,
-        await signer.getAddress(),
-        txResponse.nonce
+        returnedHash,
+        fromAddress,
+        actualNonce
       );
 
-      if (verifiedHash !== txResponse.hash) {
-        mLog.warn('Web3Service', '⚠️ Hash mismatch detected and corrected', {
-          returnedHash: txResponse.hash,
+      if (verifiedHash !== returnedHash) {
+        mLog.warn('Web3Service', '⚠️ Hash mismatch detected and corrected!', {
+          returnedHash: returnedHash,
           verifiedHash: verifiedHash,
-          nonce: txResponse.nonce
+          nonce: actualNonce
         });
         console.warn('[Web3Service] ⚠️  Hash mismatch corrected:', {
-          returned: txResponse.hash,
-          verified: verifiedHash
+          returned: returnedHash,
+          verified: verifiedHash,
+          nonce: actualNonce
+        });
+      } else {
+        mLog.info('Web3Service', '✅ Hash verified - matches returned hash', {
+          hash: verifiedHash,
+          nonce: actualNonce
         });
       }
 

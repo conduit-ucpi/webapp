@@ -1063,9 +1063,21 @@ export class Web3Service {
       // Send transaction directly using signer.sendTransaction
       // This works with all wallet types (MetaMask, Dynamic, WalletConnect, etc.)
       console.log('[Web3Service.fundAndSendTransaction] Sending transaction via signer.sendTransaction...');
+      mLog.info('Web3Service', '📤 Calling signer.sendTransaction()...');
 
       const txResponse = await signer.sendTransaction(tx);
+
       console.log('✅ Transaction sent successfully:', txResponse.hash);
+      mLog.info('Web3Service', `✅ signer.sendTransaction() returned hash: ${txResponse.hash}`);
+      mLog.info('Web3Service', `📋 Full txResponse: ${JSON.stringify({
+        hash: txResponse.hash,
+        nonce: txResponse.nonce,
+        gasLimit: txResponse.gasLimit?.toString(),
+        to: txResponse.to,
+        from: txResponse.from,
+        chainId: txResponse.chainId
+      })}`);
+
       return txResponse.hash;
 
     } catch (error) {

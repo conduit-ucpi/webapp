@@ -1234,42 +1234,61 @@ export class Web3Service {
       mLog.info('Web3Service', `📥 eth_sendTransaction returned: ${returnedHash}`);
       console.log('📥 eth_sendTransaction returned hash:', returnedHash);
 
-      // MOBILE FIX: IGNORE the returned hash completely!
-      // On mobile, eth_sendTransaction returns WRONG hash (someone else's transaction!)
-      // Solution: Search blockchain for transaction by (address, nonce) with retries
-      // We NEVER use the returned hash - we always find the correct hash by searching
-      // See: MOBILE_SENDTRANSACTION_FIX.md for details
+      // NETWORK VALIDATION FIX (v38.2.4): Hash is now reliable because wallet is on correct network
+      // Previous issue: Wallet on Ethereum (chain 1) → wrong hash returned
+      // Now: Network validation ensures wallet on Base (chain 8453) → correct hash returned
 
-      mLog.info('Web3Service', '🔍 Ignoring returned hash - searching for correct transaction by nonce...');
-      console.log('🔍 Searching for transaction by (address, nonce)...');
+      // Wait for transaction confirmation (lightweight check)
+      // On Base, blocks are ~2 seconds, so a few quick checks should catch it
+      // If network is broken (post app-switch), we'll fail fast and return hash anyway
+      mLog.info('Web3Service', '⏳ Waiting for transaction confirmation...');
 
-      const correctHash = await this.findTransactionByNonce(
-        fromAddress,
-        nonce,
-        30,    // maxAttempts: Try for up to 60 seconds
-        2000,  // delayMs: Wait 2 seconds between attempts
-        20     // maxBlocksToSearch: Search last 20 blocks
-      );
+      try {
+        // Quick confirmation check: 3 attempts over 6 seconds
+        for (let i = 0; i < 3; i++) {
+          await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
 
-      if (correctHash !== returnedHash) {
-        mLog.warn('Web3Service', '⚠️ Hash mismatch detected! Returned hash was WRONG.', {
-          wrongHash: returnedHash,
-          correctHash: correctHash,
-          nonce: nonce
+          try {
+            const receipt = await this.provider.getTransactionReceipt(returnedHash);
+            if (receipt && receipt.blockNumber) {
+              mLog.info('Web3Service', '✅ Transaction confirmed!', {
+                hash: returnedHash,
+                blockNumber: receipt.blockNumber,
+                status: receipt.status
+              });
+              console.log('✅ Transaction confirmed in block:', receipt.blockNumber);
+
+              if (receipt.status === 0) {
+                throw new Error('Transaction failed on blockchain (status: 0)');
+              }
+
+              return returnedHash;
+            }
+          } catch (receiptError) {
+            // Ignore individual receipt check failures, keep trying
+            mLog.debug('Web3Service', `Receipt check ${i + 1} failed, retrying...`);
+          }
+        }
+
+        // Receipt not found after 3 attempts - transaction still pending
+        // Return hash anyway, it's been submitted and will mine eventually
+        mLog.warn('Web3Service', '⚠️ Transaction confirmation timeout - returning hash (transaction will mine eventually)', {
+          hash: returnedHash
         });
-        console.warn('[Web3Service] ⚠️ Returned hash was WRONG - using correct hash from blockchain:', {
-          wrong: returnedHash,
-          correct: correctHash,
-          nonce: nonce
+        console.log('⚠️ Transaction submitted but not yet confirmed:', returnedHash);
+
+        return returnedHash;
+
+      } catch (confirmError) {
+        // Network broken - return hash anyway, transaction was submitted
+        mLog.warn('Web3Service', '⚠️ Confirmation check failed (network issue) - returning hash', {
+          hash: returnedHash,
+          error: confirmError instanceof Error ? confirmError.message : String(confirmError)
         });
-      } else {
-        mLog.info('Web3Service', '✅ Returned hash was correct (desktop wallet or lucky)', {
-          hash: correctHash,
-          nonce: nonce
-        });
+        console.log('⚠️ Could not verify confirmation, but transaction was submitted:', returnedHash);
+
+        return returnedHash;
       }
-
-      return correctHash;
 
     } catch (error) {
       console.error('[Web3Service.fundAndSendTransaction] Failed to send via ethers, error:', error);

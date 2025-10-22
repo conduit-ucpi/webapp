@@ -1060,63 +1060,13 @@ export class Web3Service {
         console.log('');
       }
 
-      // MOBILE FIX: Send transaction directly via provider RPC call
-      // signer.sendTransaction() hangs on mobile because it waits for mining internally
-      // The wallet provider's event system breaks after app-switching (browser → MetaMask → browser)
-      // Solution: Call eth_sendTransaction directly to get hash, then return immediately
-      // Separate waitForTransaction() method handles polling for confirmation
-      console.log('[Web3Service.fundAndSendTransaction] Sending transaction via direct eth_sendTransaction RPC call...');
+      // Send transaction directly using signer.sendTransaction
+      // This works with all wallet types (MetaMask, Dynamic, WalletConnect, etc.)
+      console.log('[Web3Service.fundAndSendTransaction] Sending transaction via signer.sendTransaction...');
 
-      // Get user address for the transaction
-      const fromAddress = await signer.getAddress();
-
-      // Format transaction for eth_sendTransaction RPC call
-      const rpcTxParams: any = {
-        from: fromAddress,
-        to: tx.to,
-        data: tx.data,
-        value: tx.value || '0x0'
-      };
-
-      // Add gas parameters if available
-      if (tx.gasLimit) {
-        rpcTxParams.gas = `0x${tx.gasLimit.toString(16)}`;
-      }
-      if (tx.maxFeePerGas) {
-        rpcTxParams.maxFeePerGas = `0x${tx.maxFeePerGas.toString(16)}`;
-      }
-      if (tx.maxPriorityFeePerGas) {
-        rpcTxParams.maxPriorityFeePerGas = `0x${tx.maxPriorityFeePerGas.toString(16)}`;
-      }
-
-      console.log('[Web3Service.fundAndSendTransaction] RPC transaction params:', JSON.stringify(rpcTxParams, null, 2));
-
-      // Call eth_sendTransaction directly via provider
-      // This returns the transaction hash immediately without waiting for mining
-      let txHash: string;
-
-      // Cast provider as any to access runtime methods (request/send)
-      const provider = this.provider as any;
-
-      // Check if provider has request() method (EIP-1193)
-      if (provider.request && typeof provider.request === 'function') {
-        console.log('[Web3Service.fundAndSendTransaction] Using provider.request() (EIP-1193)');
-        txHash = await provider.request({
-          method: 'eth_sendTransaction',
-          params: [rpcTxParams]
-        });
-      }
-      // Check if provider has send() method (ethers JsonRpcProvider)
-      else if (provider.send && typeof provider.send === 'function') {
-        console.log('[Web3Service.fundAndSendTransaction] Using provider.send() (ethers)');
-        txHash = await provider.send('eth_sendTransaction', [rpcTxParams]);
-      }
-      else {
-        throw new Error('Provider does not support request() or send() methods');
-      }
-
-      console.log('✅ Transaction sent successfully:', txHash);
-      return txHash;
+      const txResponse = await signer.sendTransaction(tx);
+      console.log('✅ Transaction sent successfully:', txResponse.hash);
+      return txResponse.hash;
 
     } catch (error) {
       console.error('[Web3Service.fundAndSendTransaction] Failed to send via ethers, error:', error);

@@ -1,8 +1,9 @@
-# Mobile MetaMask sendTransaction() Hang Bug - FIXED
+# Mobile MetaMask sendTransaction() Hang Bug - REVERTED
 
-**Status**: ✅ FIXED (v37.2.25+)
+**Status**: ❌ REVERTED - Root cause was incorrect
 **Date**: 2025-10-22
 **Severity**: Critical - Users unable to complete USDC approval transactions on mobile
+**Current Status**: Investigating why transactions don't get mined on mobile
 
 ## Problem Summary
 
@@ -203,8 +204,52 @@ After deployment, verify:
 - ✅ Works with all wallet types
 - ✅ Easy to understand and maintain
 
-## Future Considerations
+## Why The Fix Was Reverted
 
-This fix resolves the mobile app-switching issue permanently. The EIP-1193 interface is more robust than ethers' event-based waiting mechanism and should work reliably across all mobile wallets.
+After deploying v38.1.0, we discovered:
+- The waiting mechanism was NOT broken
+- `signer.sendTransaction()` was correctly waiting for transactions to be mined
+- **The real problem**: Transactions were NOT getting mined on the blockchain
+- The "fix" only returned the transaction hash immediately, but polling would still hang forever waiting for a transaction that never gets mined
 
-**No known issues** - Ready for production deployment.
+### Evidence
+
+1. **Transaction hash mismatch**: Logs showed polling for `0xc3a9bac...` but MetaMask showed `0x552d...`
+2. **Two different transactions**: Our code submitted one transaction, MetaMask showed a different one
+3. **Original behavior was correct**: Waiting for mining completion is the right thing to do
+
+### Real Issue To Investigate
+
+**Why are transactions not getting mined on mobile?**
+
+Possible causes:
+- Gas price too low / gas estimation issues
+- Nonce collision / sequencing problems
+- Transaction malformed or rejected by RPC
+- Hybrid provider routing causing issues
+- Something in the transaction parameters incompatible with mobile MetaMask
+
+### Next Steps
+
+1. Add comprehensive logging to capture:
+   - Exact transaction parameters being sent
+   - Transaction hash returned by MetaMask
+   - Gas prices and nonces
+   - RPC responses
+
+2. Test on mobile to see what transaction hash MetaMask actually approves
+
+3. Check blockchain to see if either transaction appears
+
+4. Investigate hybrid provider - is it modifying transactions?
+
+## Revert Details
+
+**Reverted commit**: `91d9df4` (v38.1.0)
+**Reverted files**:
+- `lib/web3.ts` - Restored `signer.sendTransaction()`
+- `__tests__/lib/web3-metamask-getFeeData-error.test.ts` - Removed `send()` mocks
+- `MOBILE_SENDTRANSACTION_FIX.md` - Updated documentation
+
+**Kept**:
+- `__tests__/lib/web3-sendTransaction-hang.test.ts` - Documents the symptom (even if root cause was wrong)

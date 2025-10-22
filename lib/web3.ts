@@ -1060,85 +1060,18 @@ export class Web3Service {
         console.log('');
       }
 
-      // MOBILE FIX: Send transaction directly via provider RPC call
-      // signer.sendTransaction() hangs on mobile because it waits for mining internally
-      // The wallet provider's event system breaks after app-switching
-      // Solution: Call eth_sendTransaction directly to get hash, then return immediately
-      console.log('[Web3Service.fundAndSendTransaction] Sending transaction via direct eth_sendTransaction...');
-      mLog.info('Web3Service', '📤 Calling eth_sendTransaction directly (bypassing signer.sendTransaction)...');
+      // Use signer.sendTransaction() which handles nonces correctly
+      // It returns TransactionResponse with the correct hash
+      // Note: This may wait for mining internally, but we have manual polling as backup
+      console.log('[Web3Service.fundAndSendTransaction] Sending transaction via signer.sendTransaction()...');
+      mLog.info('Web3Service', '📤 Using signer.sendTransaction() for proper nonce handling...');
 
-      // Get user address
-      const fromAddress = await signer.getAddress();
+      const txResponse = await signer.sendTransaction(tx);
 
-      // CRITICAL: Query nonce BEFORE sending transaction to ensure hash consistency
-      // Without this, MetaMask calculates nonce, returns hash with one nonce,
-      // but may submit with different nonce (race condition), causing hash mismatch
-      // HybridProvider routes this to Base RPC (not wallet), so it's reliable
-      const provider = this.provider as any;
-      mLog.info('Web3Service', '🔢 Querying nonce for consistent hash calculation...');
+      mLog.info('Web3Service', `✅ Transaction sent with hash: ${txResponse.hash}`);
+      console.log('✅ Transaction sent successfully:', txResponse.hash);
 
-      const nonceHex = await provider.send('eth_getTransactionCount', [fromAddress, 'pending']);
-      const nonce = parseInt(nonceHex, 16);
-
-      mLog.info('Web3Service', `✅ Got nonce: ${nonce} (0x${nonce.toString(16)})`);
-
-      // Format transaction for eth_sendTransaction RPC call
-      const rpcTxParams: any = {
-        from: fromAddress,
-        to: tx.to,
-        data: tx.data,
-        value: tx.value || '0x0',
-        nonce: `0x${nonce.toString(16)}` // Include nonce for hash consistency
-      };
-
-      // Add gas parameters if available
-      if (tx.gasLimit) {
-        rpcTxParams.gas = `0x${tx.gasLimit.toString(16)}`;
-      }
-      if (tx.maxFeePerGas) {
-        rpcTxParams.maxFeePerGas = `0x${tx.maxFeePerGas.toString(16)}`;
-      }
-      if (tx.maxPriorityFeePerGas) {
-        rpcTxParams.maxPriorityFeePerGas = `0x${tx.maxPriorityFeePerGas.toString(16)}`;
-      }
-
-      mLog.info('Web3Service', `📋 Transaction params: ${JSON.stringify({
-        from: rpcTxParams.from,
-        to: rpcTxParams.to,
-        value: rpcTxParams.value,
-        gas: rpcTxParams.gas,
-        maxFeePerGas: rpcTxParams.maxFeePerGas,
-        maxPriorityFeePerGas: rpcTxParams.maxPriorityFeePerGas,
-        nonce: rpcTxParams.nonce,
-        dataLength: rpcTxParams.data?.length
-      })}`);
-
-      // Call eth_sendTransaction directly via provider
-      let txHash: string;
-
-      mLog.info('Web3Service', '🔄 Calling provider.request({ method: eth_sendTransaction })...');
-
-      if (provider.request && typeof provider.request === 'function') {
-        // EIP-1193 interface
-        txHash = await provider.request({
-          method: 'eth_sendTransaction',
-          params: [rpcTxParams]
-        });
-        mLog.info('Web3Service', `✅ provider.request() returned hash: ${txHash}`);
-      } else if (provider.send && typeof provider.send === 'function') {
-        // ethers JsonRpcProvider interface
-        txHash = await provider.send('eth_sendTransaction', [rpcTxParams]);
-        mLog.info('Web3Service', `✅ provider.send() returned hash: ${txHash}`);
-      } else {
-        const error = 'Provider does not support request() or send() methods';
-        mLog.error('Web3Service', `❌ ${error}`);
-        throw new Error(error);
-      }
-
-      console.log('✅ Transaction sent successfully:', txHash);
-      mLog.info('Web3Service', `✅ Transaction hash obtained: ${txHash}`);
-
-      return txHash;
+      return txResponse.hash;
 
     } catch (error) {
       console.error('[Web3Service.fundAndSendTransaction] Failed to send via ethers, error:', error);

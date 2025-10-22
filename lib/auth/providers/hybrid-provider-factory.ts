@@ -51,6 +51,12 @@ export function createHybridProvider(config: HybridProviderConfig): any {
     // Account operations (wallet knows the connected accounts)
     'eth_accounts',
     'eth_requestAccounts',
+
+    // NONCE FIX: Query nonce from wallet provider for hash consistency
+    // When signer.sendTransaction() queries nonce BEFORE app-switch, wallet provider works fine.
+    // This ensures nonce comes from same source that validates it (the wallet).
+    // After app-switch, we only poll eth_getTransactionReceipt (routed to Base RPC), never nonce.
+    'eth_getTransactionCount',
   ]);
 
   // Methods that should be routed to the read provider (public RPC)
@@ -68,7 +74,7 @@ export function createHybridProvider(config: HybridProviderConfig): any {
     // Transaction info
     'eth_getTransactionByHash',
     'eth_getTransactionReceipt',
-    'eth_getTransactionCount',
+    // NOTE: eth_getTransactionCount moved to WALLET_METHODS for nonce hash consistency
 
     // Block info
     'eth_blockNumber',

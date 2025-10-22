@@ -1,11 +1,14 @@
 /**
  * Tests for HybridProvider routing logic
  *
- * CRITICAL: These tests verify that read operations (like eth_chainId and eth_getTransactionCount)
- * are routed to the read provider (Base RPC) instead of the wallet provider.
+ * CRITICAL: These tests verify correct routing of RPC methods:
+ * - READ operations (eth_chainId, eth_getTransactionReceipt, etc.) → Base RPC
+ * - WRITE operations (eth_sendTransaction, personal_sign, etc.) → Wallet provider
+ * - NONCE queries (eth_getTransactionCount) → Wallet provider (for hash consistency)
  *
- * On mobile, after app-switching, the wallet provider breaks and hangs. If we route read operations
- * to the wallet provider, transactions fail. They MUST go to the read provider.
+ * NOTE: eth_getTransactionCount routes to wallet provider (not Base RPC) to ensure
+ * the nonce comes from the same source that validates it. This happens BEFORE app-switch
+ * when the wallet provider still works. After app-switch, we only poll receipts.
  */
 
 import { createHybridProvider } from '@/lib/auth/providers/hybrid-provider-factory';
@@ -54,21 +57,26 @@ describe('HybridProvider - Routing Logic', () => {
   });
 
   describe('eth_getTransactionCount routing', () => {
-    it('should route eth_getTransactionCount to READ provider, NOT wallet provider', async () => {
-      // Mock wallet provider that would hang/fail
-      const mockWalletProvider = {
-        request: jest.fn(() => {
-          throw new Error('Wallet provider is broken - should not be called for eth_getTransactionCount!');
+    it('should route eth_getTransactionCount to WALLET provider for nonce hash consistency', async () => {
+      // NONCE FIX: eth_getTransactionCount now routes to WALLET provider (not read provider)
+      // This ensures nonce comes from same source that validates it (the wallet).
+      // Query happens BEFORE app-switch when wallet provider works fine.
+      // After app-switch, we only poll eth_getTransactionReceipt (routed to Base RPC), never nonce.
+
+      // Mock read provider - should NOT be called for nonce queries
+      const mockReadProvider = {
+        send: jest.fn(() => {
+          throw new Error('Read provider should not be called for eth_getTransactionCount!');
         })
       };
 
-      // Mock read provider that works reliably
-      const mockReadProvider = {
-        send: jest.fn((method: string, params: any[]) => {
-          if (method === 'eth_getTransactionCount') {
-            return Promise.resolve('0x5'); // nonce = 5
+      // Mock wallet provider - SHOULD handle nonce queries (before app-switch)
+      const mockWalletProvider = {
+        request: jest.fn((args: any) => {
+          if (args.method === 'eth_getTransactionCount') {
+            return Promise.resolve('0x5'); // nonce = 5 from wallet's perspective
           }
-          return Promise.reject(new Error(`Unexpected method: ${method}`));
+          return Promise.reject(new Error(`Unexpected method: ${args.method}`));
         })
       };
 
@@ -79,22 +87,25 @@ describe('HybridProvider - Routing Logic', () => {
         chainId: 84532
       });
 
-      // Call eth_getTransactionCount - should route to READ provider
+      // Call eth_getTransactionCount - should route to WALLET provider
       const result = await hybrid.request({
         method: 'eth_getTransactionCount',
         params: ['0xUserAddress', 'latest']
       });
 
-      // Verify it used the read provider
-      expect(mockReadProvider.send).toHaveBeenCalledWith('eth_getTransactionCount', ['0xUserAddress', 'latest']);
+      // Verify it used the wallet provider (for nonce consistency)
+      expect(mockWalletProvider.request).toHaveBeenCalledWith({
+        method: 'eth_getTransactionCount',
+        params: ['0xUserAddress', 'latest']
+      });
 
-      // Verify it did NOT use the wallet provider
-      expect(mockWalletProvider.request).not.toHaveBeenCalled();
+      // Verify it did NOT use the read provider
+      expect(mockReadProvider.send).not.toHaveBeenCalled();
 
-      // Verify we got the correct result
+      // Verify we got the correct result (from wallet's nonce view)
       expect(result).toBe('0x5');
 
-      console.log('✅ eth_getTransactionCount correctly routed to read provider');
+      console.log('✅ eth_getTransactionCount correctly routed to wallet provider (nonce hash fix)');
     });
   });
 

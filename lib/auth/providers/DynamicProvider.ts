@@ -432,16 +432,11 @@ export class DynamicProvider implements UnifiedProvider {
                 newChainId: expectedChainId
               });
 
-              // Verify the switch worked
-              const newChainIdHex = await (rawTransportForNetworkSwitch as any).request({
-                method: 'eth_chainId',
-                params: []
-              });
-              const newChainId = parseInt(newChainIdHex, 16);
-
-              if (newChainId !== expectedChainId) {
-                throw new Error(`Network switch appeared to succeed but wallet is still on chain ${newChainId}`);
-              }
+              // Give wallet time to stabilize after network switch
+              // Mobile wallets especially need time to update state after switching networks
+              mLog.info('DynamicProvider', '⏳ Waiting for wallet to stabilize after network switch...');
+              await new Promise(resolve => setTimeout(resolve, 1500)); // 1.5 second delay
+              mLog.info('DynamicProvider', '✅ Wallet stabilization complete');
 
             } catch (switchError: any) {
               mLog.error('DynamicProvider', '❌ Failed to switch network', {

@@ -65,10 +65,14 @@ describe('Mobile Transaction Hash Mismatch', () => {
         // Return nonce AFTER transaction (pending nonce)
         return Promise.resolve(`0x${(TRANSACTION_NONCE + 1).toString(16)}`);
       }
+      if (method === 'eth_blockNumber') {
+        // Return current block number
+        return Promise.resolve('0x236cc00');
+      }
       if (method === 'eth_getBlockByNumber') {
         // Return recent block with transactions
         return Promise.resolve({
-          number: '0x236cc00',
+          number: params[0], // Block number from params
           transactions: [CORRECT_HASH], // User's actual transaction
         });
       }
@@ -167,7 +171,7 @@ describe('Mobile Transaction Hash Mismatch', () => {
     expect(returnedHash).toBe(CORRECT_HASH); // ✅ Correct hash, polling will succeed
 
     // Verify that blockchain was queried to find real transaction
-    expect(mockProvider.send).toHaveBeenCalledWith('eth_getBlockByNumber', ['latest', false]);
+    expect(mockProvider.send).toHaveBeenCalledWith('eth_blockNumber', []);
     expect(mockProvider.send).toHaveBeenCalledWith('eth_getTransactionByHash', [CORRECT_HASH]);
   });
 
@@ -190,6 +194,10 @@ describe('Mobile Transaction Hash Mismatch', () => {
       if (method === 'eth_getTransactionCount') {
         // Allow nonce query to succeed
         return Promise.resolve(`0x${(TRANSACTION_NONCE + 1).toString(16)}`);
+      }
+      if (method === 'eth_blockNumber') {
+        // Allow block number query to succeed
+        return Promise.resolve('0x236cc00');
       }
       // All other queries fail (verification will fail)
       return Promise.reject(new Error('RPC error'));

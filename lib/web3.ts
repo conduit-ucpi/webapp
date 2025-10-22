@@ -1197,40 +1197,64 @@ export class Web3Service {
         return returnedHash;
       }
 
-      // Get latest block to search for recent transactions
-      const latestBlockData = await provider.send('eth_getBlockByNumber', ['latest', false]);
+      // Get latest block number
+      const latestBlockHex = await provider.send('eth_blockNumber', []);
+      const latestBlockNum = parseInt(latestBlockHex, 16);
 
-      if (!latestBlockData || !latestBlockData.transactions) {
-        mLog.warn('Web3Service', 'Could not fetch latest block, using returned hash');
-        return returnedHash;
-      }
+      mLog.info('Web3Service', `🔍 Starting search from block ${latestBlockNum}`);
 
-      mLog.info('Web3Service', `🔍 Searching ${latestBlockData.transactions.length} transactions in latest block...`);
+      // Search last 10 blocks for the transaction
+      // Transaction might be in earlier block by the time we search
+      const BLOCKS_TO_SEARCH = 10;
+      let totalTransactionsSearched = 0;
 
-      // Search transactions for one matching our address and nonce
-      for (const txHash of latestBlockData.transactions) {
-        const txData = await provider.send('eth_getTransactionByHash', [txHash]);
+      for (let i = 0; i < BLOCKS_TO_SEARCH; i++) {
+        const blockNum = latestBlockNum - i;
+        if (blockNum < 0) break;
 
-        if (!txData) continue;
+        const blockHex = `0x${blockNum.toString(16)}`;
+        const blockData = await provider.send('eth_getBlockByNumber', [blockHex, false]);
 
-        // Check if this transaction matches our criteria
-        const txFrom = txData.from?.toLowerCase();
-        const expectedFrom = fromAddress.toLowerCase();
-        const txNonce = typeof txData.nonce === 'string' ? parseInt(txData.nonce, 16) : txData.nonce;
+        if (!blockData || !blockData.transactions) {
+          continue;
+        }
 
-        if (txFrom === expectedFrom && txNonce === nonce) {
-          mLog.info('Web3Service', '✅ Found matching transaction by address + nonce', {
-            verifiedHash: txData.hash,
-            returnedHash: returnedHash,
-            matched: txData.hash === returnedHash
-          });
-          return txData.hash;
+        totalTransactionsSearched += blockData.transactions.length;
+
+        mLog.info('Web3Service', `🔍 Searching block ${blockNum} (${blockData.transactions.length} txs)...`);
+
+        // Search transactions in this block
+        for (const txHash of blockData.transactions) {
+          const txData = await provider.send('eth_getTransactionByHash', [txHash]);
+
+          if (!txData) continue;
+
+          // Check if this transaction matches our criteria
+          const txFrom = txData.from?.toLowerCase();
+          const expectedFrom = fromAddress.toLowerCase();
+          const txNonce = typeof txData.nonce === 'string' ? parseInt(txData.nonce, 16) : txData.nonce;
+
+          if (txFrom === expectedFrom && txNonce === nonce) {
+            mLog.info('Web3Service', '✅ Found matching transaction by address + nonce!', {
+              verifiedHash: txData.hash,
+              returnedHash: returnedHash,
+              nonce: txNonce,
+              block: blockNum,
+              matched: txData.hash === returnedHash
+            });
+            return txData.hash;
+          }
         }
       }
 
-      // Transaction not found in latest block - might be in mempool or next block
+      // Transaction not found in last 10 blocks - might be in mempool or older
       // Fall back to returned hash
-      mLog.info('Web3Service', 'Transaction not found in latest block, using returned hash (may be in mempool)');
+      mLog.warn('Web3Service', `⚠️ Transaction not found after searching ${BLOCKS_TO_SEARCH} blocks (${totalTransactionsSearched} txs)`, {
+        returnedHash,
+        fromAddress,
+        nonce,
+        blocksSearched: BLOCKS_TO_SEARCH
+      });
       return returnedHash;
 
     } catch (error) {

@@ -1,0 +1,200 @@
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:30.817Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:30.977Z] [DEBUG] [HybridProvider] 📖 Routing eth_getTransactionByHash to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:30.977Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:31.145Z] [DEBUG] [HybridProvider] 📖 Routing eth_getTransactionByHash to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:31.145Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:31.303Z] [DEBUG] [HybridProvider] 📖 Routing eth_getTransactionByHash to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:31.303Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] Received 4 log entries
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:31.461Z] [DEBUG] [HybridProvider] 📖 Routing eth_getTransactionByHash to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:31.461Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:31.624Z] [DEBUG] [HybridProvider] 📖 Routing eth_getTransactionByHash to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:31.624Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] Received 2 log entries
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:31.789Z] [DEBUG] [HybridProvider] 📖 Routing eth_getTransactionByHash to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:31.789Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:31.950Z] [DEBUG] [HybridProvider] 📖 Routing eth_getTransactionByHash to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:31.950Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:32.111Z] [DEBUG] [HybridProvider] 📖 Routing eth_getTransactionByHash to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:32.111Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:32.274Z] [DEBUG] [HybridProvider] 📖 Routing eth_getTransactionByHash to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:32.274Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:32.439Z] [DEBUG] [HybridProvider] 📖 Routing eth_getTransactionByHash to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:32.439Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:32.604Z] [DEBUG] [HybridProvider] 📖 Routing eth_getTransactionByHash to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:32.604Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:32.768Z] [DEBUG] [HybridProvider] 📖 Routing eth_getTransactionByHash to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:32.768Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] Received 7 log entries
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:32.933Z] [DEBUG] [HybridProvider] 📖 Routing eth_getTransactionByHash to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:32.933Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:33.096Z] [DEBUG] [HybridProvider] 📖 Routing eth_getTransactionByHash to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:33.096Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:33.260Z] [DEBUG] [HybridProvider] 📖 Routing eth_getTransactionByHash to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:33.260Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:33.418Z] [DEBUG] [HybridProvider] 📖 Routing eth_getTransactionByHash to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:33.418Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] Received 4 log entries
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:33.596Z] [DEBUG] [HybridProvider] 📖 Routing eth_getTransactionByHash to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:33.596Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:33.765Z] [DEBUG] [HybridProvider] 📖 Routing eth_getTransactionByHash to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:33.765Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] Received 2 log entries
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:33.937Z] [DEBUG] [HybridProvider] 📖 Routing eth_getTransactionByHash to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:33.937Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:34.103Z] [DEBUG] [HybridProvider] 📖 Routing eth_getTransactionByHash to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:34.103Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:34.274Z] [DEBUG] [HybridProvider] 📖 Routing eth_getTransactionByHash to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:34.274Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:34.432Z] [DEBUG] [HybridProvider] 📖 Routing eth_getTransactionByHash to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:34.432Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:34.599Z] [DEBUG] [HybridProvider] 📖 Routing eth_getTransactionByHash to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:34.599Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:34.764Z] [DEBUG] [HybridProvider] 📖 Routing eth_getTransactionByHash to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:34.764Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] Received 6 log entries
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:34.934Z] [DEBUG] [HybridProvider] 📖 Routing eth_getTransactionByHash to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:34.934Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] Received 1 log entries
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:35.100Z] [DEBUG] [HybridProvider] 📖 Routing eth_getTransactionByHash to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:35.100Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:35.262Z] [DEBUG] [HybridProvider] 📖 Routing eth_getTransactionByHash to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:35.262Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:35.423Z] [INFO] [Web3Service] Transaction not found in latest block, using returned hash (may be in mempool) 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:35.423Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:35.425Z] [INFO] [Web3Service] ✅ Hash verified - matches returned hash {
+  "hash": "0xd4a670711f3f0508a0495c81a1154441e173e098387a29712b23e223c83de6c1",
+  "nonce": 13
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:35.425Z] [DATA] {
+  "hash": "0xd4a670711f3f0508a0495c81a1154441e173e098387a29712b23e223c83de6c1",
+  "nonce": 13
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:35.425Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:35.426Z] [INFO] [DynamicProvider] getEthersProviderAsync() called {
+  "hasCachedProvider": true,
+  "hasDynamicWallet": true,
+  "currentAddress": "0xc9D0602A87E55116F633b1A1F95D083Eb115f942",
+  "cachedVersion": "v2_hybrid",
+  "currentVersion": "v2_hybrid"
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:35.426Z] [DATA] {
+  "hasCachedProvider": true,
+  "hasDynamicWallet": true,
+  "currentAddress": "0xc9D0602A87E55116F633b1A1F95D083Eb115f942",
+  "cachedVersion": "v2_hybrid",
+  "currentVersion": "v2_hybrid"
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:35.426Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:35.427Z] [INFO] [DynamicProvider] ✅ Returning cached ethers provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:35.427Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:35.429Z] [INFO] [TransactionWait] ⏳ Starting manual polling for transaction confirmation {
+  "txHash": "0xd4a670711f3f0508a0495c81a1154441e173e098387a29712b23e223c83de6c1",
+  "timeoutMs": 120000,
+  "contractId": "68f7f5e0ad622b14966df78e"
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:35.429Z] [DATA] {
+  "txHash": "0xd4a670711f3f0508a0495c81a1154441e173e098387a29712b23e223c83de6c1",
+  "timeoutMs": 120000,
+  "contractId": "68f7f5e0ad622b14966df78e"
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:35.429Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:35.432Z] [DEBUG] [HybridProvider] 📖 Routing eth_getTransactionReceipt to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:35.432Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] Received 8 log entries
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:37.997Z] [DEBUG] [HybridProvider] 📖 Routing eth_getTransactionReceipt to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:37.997Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] Received 1 log entries
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:40.653Z] [DEBUG] [HybridProvider] 📖 Routing eth_getTransactionReceipt to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:40.653Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] Received 1 log entries
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:43.156Z] [DEBUG] [HybridProvider] 📖 Routing eth_getTransactionReceipt to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:43.156Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] Received 1 log entries
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:45.771Z] [DEBUG] [HybridProvider] 📖 Routing eth_getTransactionReceipt to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:45.771Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] Received 1 log entries
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:48.337Z] [DEBUG] [HybridProvider] 📖 Routing eth_getTransactionReceipt to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:48.337Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] Received 1 log entries
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:50.895Z] [DEBUG] [HybridProvider] 📖 Routing eth_getTransactionReceipt to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:50.895Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] Received 1 log entries
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:53.661Z] [DEBUG] [HybridProvider] 📖 Routing eth_getTransactionReceipt to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:53.661Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] Received 1 log entries
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:56.221Z] [DEBUG] [HybridProvider] 📖 Routing eth_getTransactionReceipt to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:56.221Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] Received 1 log entries
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:58.745Z] [DEBUG] [HybridProvider] 📖 Routing eth_getTransactionReceipt to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:32:58.745Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] Received 1 log entries
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:33:01.850Z] [DEBUG] [HybridProvider] 📖 Routing eth_getTransactionReceipt to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:33:01.850Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] Received 1 log entries
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:33:04.412Z] [DEBUG] [HybridProvider] 📖 Routing eth_getTransactionReceipt to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:33:04.412Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] Received 1 log entries
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:33:06.941Z] [DEBUG] [HybridProvider] 📖 Routing eth_getTransactionReceipt to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:33:06.941Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] Received 1 log entries
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:33:09.626Z] [DEBUG] [HybridProvider] 📖 Routing eth_getTransactionReceipt to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:33:09.626Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] Received 1 log entries
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:33:12.368Z] [DEBUG] [HybridProvider] 📖 Routing eth_getTransactionReceipt to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:33:12.368Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] Received 1 log entries
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:33:16.397Z] [DEBUG] [HybridProvider] 📖 Routing eth_getTransactionReceipt to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:33:16.397Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] Received 1 log entries
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:33:27.656Z] [DEBUG] [HybridProvider] 📖 Routing eth_getTransactionReceipt to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:33:27.656Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] Received 1 log entries
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:33:30.213Z] [DEBUG] [HybridProvider] 📖 Routing eth_getTransactionReceipt to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:33:30.213Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] Received 1 log entries
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:33:32.774Z] [DEBUG] [HybridProvider] 📖 Routing eth_getTransactionReceipt to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:33:32.774Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] Received 1 log entries
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:33:35.471Z] [DEBUG] [HybridProvider] 📖 Routing eth_getTransactionReceipt to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:33:35.471Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] Received 1 log entries
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:33:38.100Z] [DEBUG] [HybridProvider] 📖 Routing eth_getTransactionReceipt to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:33:38.100Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] Received 1 log entries
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:33:40.657Z] [DEBUG] [HybridProvider] 📖 Routing eth_getTransactionReceipt to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:33:40.657Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] Received 1 log entries
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:33:43.421Z] [DEBUG] [HybridProvider] 📖 Routing eth_getTransactionReceipt to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:33:43.421Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] Received 1 log entries
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:33:45.980Z] [DEBUG] [HybridProvider] 📖 Routing eth_getTransactionReceipt to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:33:45.980Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] Received 1 log entries
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:33:48.749Z] [DEBUG] [HybridProvider] 📖 Routing eth_getTransactionReceipt to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:33:48.749Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] Received 1 log entries
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:33:51.870Z] [DEBUG] [HybridProvider] 📖 Routing eth_getTransactionReceipt to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:33:51.870Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] Received 1 log entries
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:33:54.485Z] [DEBUG] [HybridProvider] 📖 Routing eth_getTransactionReceipt to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:33:54.485Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] Received 1 log entries
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:33:57.017Z] [DEBUG] [HybridProvider] 📖 Routing eth_getTransactionReceipt to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:33:57.017Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] Received 1 log entries
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:33:59.603Z] [DEBUG] [HybridProvider] 📖 Routing eth_getTransactionReceipt to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:33:59.603Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] Received 1 log entries
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:34:02.167Z] [DEBUG] [HybridProvider] 📖 Routing eth_getTransactionReceipt to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:34:02.167Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] Received 1 log entries
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:34:04.726Z] [DEBUG] [HybridProvider] 📖 Routing eth_getTransactionReceipt to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:34:04.726Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] Received 1 log entries
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:34:07.898Z] [DEBUG] [HybridProvider] 📖 Routing eth_getTransactionReceipt to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:34:07.898Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] Received 1 log entries
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:34:10.457Z] [DEBUG] [HybridProvider] 📖 Routing eth_getTransactionReceipt to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T09:34:10.457Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] Received 1 log entries

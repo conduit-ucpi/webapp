@@ -822,6 +822,51 @@ export class Web3Service {
 
     console.log('[Web3Service.fundAndSendTransaction] Using unified ethers provider approach (same as balance reading)');
 
+    // CRITICAL: Verify network BEFORE sending transaction
+    if (this.config.chainId) {
+      const network = await this.provider.getNetwork();
+      const expectedChainId = BigInt(this.config.chainId);
+
+      if (network.chainId !== expectedChainId) {
+        console.warn('[Web3Service] ⚠️ WRONG NETWORK detected before transaction!', {
+          currentChain: network.chainId.toString(),
+          currentName: network.name,
+          expectedChain: expectedChainId.toString(),
+          expectedName: this.getNetworkName(this.config.chainId)
+        });
+
+        // Attempt to switch network automatically
+        try {
+          const provider = this.provider as any;
+          const rawProvider = provider._getProvider?.() || provider.provider;
+
+          if (rawProvider?.request) {
+            console.log('[Web3Service] 🔄 Automatically switching network before transaction...');
+
+            const chainIdHex = `0x${expectedChainId.toString(16)}`;
+            await rawProvider.request({
+              method: 'wallet_switchEthereumChain',
+              params: [{ chainId: chainIdHex }]
+            });
+
+            console.log('[Web3Service] ✅ Network switched successfully!');
+          } else {
+            throw new Error('Provider does not support network switching');
+          }
+        } catch (switchError: any) {
+          console.error('[Web3Service] ❌ Failed to switch network:', switchError);
+
+          throw new Error(
+            `Cannot send transaction: Wallet is on ${network.name} (chain ${network.chainId.toString()}) ` +
+            `but expected ${this.getNetworkName(this.config.chainId)} (chain ${expectedChainId.toString()}). ` +
+            `Please switch your wallet to the correct network manually.`
+          );
+        }
+      } else {
+        console.log('[Web3Service] ✅ Network verified - on correct chain:', network.chainId.toString());
+      }
+    }
+
     const userAddress = await this.getUserAddress();
 
     // Step 1: Estimate gas using our RPC directly to avoid Web3Auth pre-validation issues

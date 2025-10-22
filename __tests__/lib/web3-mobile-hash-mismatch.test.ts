@@ -40,6 +40,10 @@ describe('Mobile Transaction Hash Mismatch', () => {
       send: jest.fn(),
       on: jest.fn(),
       removeListener: jest.fn(),
+      getNetwork: jest.fn().mockResolvedValue({
+        chainId: BigInt(8453), // Base Mainnet - matches config
+        name: 'base'
+      }),
     };
 
     // Create mock signer

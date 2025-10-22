@@ -140,6 +140,46 @@ export class Web3Service {
         name: network.name
       });
 
+      // CRITICAL: Verify wallet is on correct network (if chainId is configured)
+      if (this.config.chainId) {
+        const expectedChainId = BigInt(this.config.chainId);
+        if (network.chainId !== expectedChainId) {
+        console.warn('[Web3Service] ⚠️  Wrong network! Wallet is on chain', network.chainId.toString(), 'but expected', expectedChainId.toString());
+
+        // Attempt to switch network
+        try {
+          const provider = this.provider as any;
+          const rawProvider = provider._getProvider?.() || provider.provider;
+
+          if (rawProvider?.request) {
+            console.log('[Web3Service] 🔄 Attempting to switch network to chain', expectedChainId.toString());
+
+            const chainIdHex = `0x${expectedChainId.toString(16)}`;
+            await rawProvider.request({
+              method: 'wallet_switchEthereumChain',
+              params: [{ chainId: chainIdHex }]
+            });
+
+            console.log('[Web3Service] ✅ Successfully switched to chain', expectedChainId.toString());
+          } else {
+            throw new Error('Provider does not support network switching');
+          }
+        } catch (switchError: any) {
+          console.error('[Web3Service] ❌ Failed to switch network:', switchError);
+
+          // If error code 4902, the chain is not added to wallet - need to add it first
+          if (switchError.code === 4902) {
+            console.error('[Web3Service] Chain not added to wallet - need to add Base network manually');
+          }
+
+          throw new Error(
+            `Wallet is on wrong network (chain ${network.chainId.toString()}). ` +
+            `Please switch to ${this.getNetworkName(this.config.chainId)} (chain ${expectedChainId.toString()}) manually.`
+          );
+        }
+        }
+      }
+
       // Get the connected address to verify authentication
       const signer = await this.provider.getSigner();
       const address = await signer.getAddress();
@@ -152,6 +192,20 @@ export class Web3Service {
       console.error('[Web3Service] ❌ Failed to initialize provider:', error);
       this.isInitialized = false;
       throw new Error('Provider initialization failed: ' + (error as Error).message);
+    }
+  }
+
+  /**
+   * Get human-readable network name from chain ID
+   */
+  private getNetworkName(chainId: number): string {
+    switch (chainId) {
+      case 1: return 'Ethereum Mainnet';
+      case 8453: return 'Base Mainnet';
+      case 84532: return 'Base Sepolia';
+      case 43113: return 'Avalanche Fuji';
+      case 43114: return 'Avalanche Mainnet';
+      default: return `Chain ${chainId}`;
     }
   }
 

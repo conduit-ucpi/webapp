@@ -1,0 +1,275 @@
+/**
+ * Network Validation Tests
+ *
+ * CRITICAL: These tests prevent the "wrong network" bug where users see
+ * signature requests on Ethereum Mainnet instead of Base Mainnet.
+ *
+ * Bug History:
+ * - User connected wallet on Ethereum Mainnet (chainId 1)
+ * - App didn't check or switch network
+ * - MetaMask showed signature requests on Ethereum instead of Base
+ *
+ * Prevention:
+ * - Web3Service MUST validate network on initialization
+ * - Web3Service MUST attempt to switch to correct network
+ * - If switch fails, MUST throw clear error
+ */
+
+import { Web3Service } from '@/lib/web3';
+
+describe('Network Validation - Critical Bug Prevention', () => {
+  let mockProvider: any;
+  let mockSigner: any;
+  let mockConfig: any;
+
+  beforeEach(() => {
+    Web3Service.clearInstance();
+    jest.clearAllMocks();
+
+    // Mock fetch for fund-wallet API
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ success: true }),
+    } as Response);
+
+    mockSigner = {
+      getAddress: jest.fn().mockResolvedValue('0xUserAddress123'),
+    };
+
+    mockConfig = {
+      chainId: 8453, // Base Mainnet
+      rpcUrl: 'https://mainnet.base.org',
+      usdcContractAddress: '0xUSDC',
+      contractFactoryAddress: '0xFactory',
+      minGasWei: '5',
+      maxGasPriceGwei: '0.001',
+      maxGasCostGwei: '0.15',
+      gasPriceBuffer: '1.1',
+      basePath: '/',
+      explorerBaseUrl: 'https://basescan.org',
+      serviceLink: 'https://test.conduit-ucpi.com',
+    };
+  });
+
+  afterEach(() => {
+    Web3Service.clearInstance();
+    delete (global as any).fetch;
+  });
+
+  it('✅ should accept wallet already on correct network (Base Mainnet)', async () => {
+    // User's wallet is already on Base (chainId 8453)
+    mockProvider = {
+      getSigner: jest.fn().mockResolvedValue(mockSigner),
+      getNetwork: jest.fn().mockResolvedValue({
+        chainId: BigInt(8453), // Correct network!
+        name: 'base'
+      }),
+    };
+
+    const web3Service = Web3Service.getInstance(mockConfig);
+
+    // Should initialize successfully without switching
+    await expect(web3Service.initialize(mockProvider)).resolves.not.toThrow();
+
+    // Should NOT attempt to switch network
+    expect(mockProvider._getProvider).toBeUndefined();
+  });
+
+  it('❌ should REJECT wallet on Ethereum Mainnet and attempt switch', async () => {
+    // CRITICAL TEST: User's wallet is on Ethereum (chainId 1) instead of Base
+    let switchCalled = false;
+
+    mockProvider = {
+      getSigner: jest.fn().mockResolvedValue(mockSigner),
+      getNetwork: jest.fn().mockResolvedValue({
+        chainId: BigInt(1), // ❌ Wrong network! Ethereum instead of Base
+        name: 'homestead'
+      }),
+      _getProvider: jest.fn().mockReturnValue({
+        request: jest.fn().mockImplementation(async (req: { method: string; params: any[] }) => {
+          if (req.method === 'wallet_switchEthereumChain') {
+            switchCalled = true;
+            // Simulate successful switch
+            mockProvider.getNetwork = jest.fn().mockResolvedValue({
+              chainId: BigInt(8453), // Now on Base
+              name: 'base'
+            });
+            return null;
+          }
+          throw new Error(`Unexpected method: ${req.method}`);
+        })
+      })
+    };
+
+    const web3Service = Web3Service.getInstance(mockConfig);
+
+    // Should attempt to switch network automatically
+    await expect(web3Service.initialize(mockProvider)).resolves.not.toThrow();
+
+    // CRITICAL: Must have attempted network switch
+    expect(switchCalled).toBe(true);
+  });
+
+  it('❌ should THROW if wallet on Ethereum and switch FAILS', async () => {
+    // User's wallet is on Ethereum and refuses to switch
+    mockProvider = {
+      getSigner: jest.fn().mockResolvedValue(mockSigner),
+      getNetwork: jest.fn().mockResolvedValue({
+        chainId: BigInt(1), // ❌ Ethereum Mainnet
+        name: 'homestead'
+      }),
+      _getProvider: jest.fn().mockReturnValue({
+        request: jest.fn().mockRejectedValue(new Error('User rejected'))
+      })
+    };
+
+    const web3Service = Web3Service.getInstance(mockConfig);
+
+    // Should throw clear error about wrong network
+    await expect(web3Service.initialize(mockProvider)).rejects.toThrow(/wrong network/i);
+    await expect(web3Service.initialize(mockProvider)).rejects.toThrow(/chain 1/i); // Ethereum
+    await expect(web3Service.initialize(mockProvider)).rejects.toThrow(/Base Mainnet/i);
+  });
+
+  it('❌ should handle wallet on wrong network without request() method', async () => {
+    // Wallet provider doesn't support network switching
+    mockProvider = {
+      getSigner: jest.fn().mockResolvedValue(mockSigner),
+      getNetwork: jest.fn().mockResolvedValue({
+        chainId: BigInt(43114), // ❌ Avalanche Mainnet
+        name: 'avalanche'
+      }),
+      // No _getProvider or request method
+    };
+
+    const web3Service = Web3Service.getInstance(mockConfig);
+
+    // Should throw error because can't switch
+    await expect(web3Service.initialize(mockProvider)).rejects.toThrow(/wrong network/i);
+    await expect(web3Service.initialize(mockProvider)).rejects.toThrow(/chain 43114/i);
+  });
+
+  it('✅ should accept Base Sepolia testnet when configured', async () => {
+    // Config set to Base Sepolia testnet
+    const testnetConfig = { ...mockConfig, chainId: 84532 };
+
+    mockProvider = {
+      getSigner: jest.fn().mockResolvedValue(mockSigner),
+      getNetwork: jest.fn().mockResolvedValue({
+        chainId: BigInt(84532), // Base Sepolia
+        name: 'base-sepolia'
+      }),
+    };
+
+    const web3Service = Web3Service.getInstance(testnetConfig);
+
+    await expect(web3Service.initialize(mockProvider)).resolves.not.toThrow();
+  });
+
+  it('❌ should REJECT Base Sepolia when Base Mainnet is configured', async () => {
+    // Config expects Base Mainnet but wallet is on Base Sepolia
+    let switchCalled = false;
+
+    mockProvider = {
+      getSigner: jest.fn().mockResolvedValue(mockSigner),
+      getNetwork: jest.fn().mockResolvedValue({
+        chainId: BigInt(84532), // ❌ Base Sepolia instead of Base Mainnet
+        name: 'base-sepolia'
+      }),
+      _getProvider: jest.fn().mockReturnValue({
+        request: jest.fn().mockImplementation(async (req: { method: string; params: any[] }) => {
+          if (req.method === 'wallet_switchEthereumChain') {
+            switchCalled = true;
+            // Simulate successful switch to mainnet
+            mockProvider.getNetwork = jest.fn().mockResolvedValue({
+              chainId: BigInt(8453),
+              name: 'base'
+            });
+            return null;
+          }
+        })
+      })
+    };
+
+    const web3Service = Web3Service.getInstance(mockConfig);
+
+    await expect(web3Service.initialize(mockProvider)).resolves.not.toThrow();
+    expect(switchCalled).toBe(true);
+  });
+
+  it('✅ should handle missing chainId config gracefully (legacy compatibility)', async () => {
+    // Some tests pass empty config - should not crash
+    const emptyConfig = {} as any;
+
+    mockProvider = {
+      getSigner: jest.fn().mockResolvedValue(mockSigner),
+      getNetwork: jest.fn().mockResolvedValue({
+        chainId: BigInt(1), // Any network
+        name: 'homestead'
+      }),
+    };
+
+    const web3Service = Web3Service.getInstance(emptyConfig);
+
+    // Should not throw even though network is wrong (no chainId to validate against)
+    await expect(web3Service.initialize(mockProvider)).resolves.not.toThrow();
+  });
+
+  it('🔧 should handle error code 4902 (chain not added to wallet)', async () => {
+    // Chain not added to wallet - should get clear error message
+    mockProvider = {
+      getSigner: jest.fn().mockResolvedValue(mockSigner),
+      getNetwork: jest.fn().mockResolvedValue({
+        chainId: BigInt(1), // Ethereum
+        name: 'homestead'
+      }),
+      _getProvider: jest.fn().mockReturnValue({
+        request: jest.fn().mockRejectedValue({
+          code: 4902,
+          message: 'Unrecognized chain ID'
+        })
+      })
+    };
+
+    const web3Service = Web3Service.getInstance(mockConfig);
+
+    await expect(web3Service.initialize(mockProvider)).rejects.toThrow(/wrong network/i);
+  });
+
+  it('✅ network name helper returns correct names', async () => {
+    // This test validates the getNetworkName() helper function
+    const testCases = [
+      { chainId: 1, network: 'Ethereum Mainnet' },
+      { chainId: 8453, network: 'Base Mainnet' },
+      { chainId: 84532, network: 'Base Sepolia' },
+      { chainId: 43113, network: 'Avalanche Fuji' },
+      { chainId: 43114, network: 'Avalanche Mainnet' },
+    ];
+
+    for (const { chainId, network } of testCases) {
+      const config = { ...mockConfig, chainId };
+
+      mockProvider = {
+        getSigner: jest.fn().mockResolvedValue(mockSigner),
+        getNetwork: jest.fn().mockResolvedValue({
+          chainId: BigInt(999), // Wrong network
+          name: 'unknown'
+        }),
+        _getProvider: jest.fn().mockReturnValue({
+          request: jest.fn().mockRejectedValue(new Error('User rejected'))
+        })
+      };
+
+      const web3Service = Web3Service.getInstance(config);
+
+      try {
+        await web3Service.initialize(mockProvider);
+      } catch (error: any) {
+        // Error message should contain the correct network name
+        expect(error.message).toContain(network);
+      }
+
+      Web3Service.clearInstance(); // Reset for next test case
+    }
+  });
+});

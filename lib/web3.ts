@@ -1066,15 +1066,31 @@ export class Web3Service {
       console.log('[Web3Service.fundAndSendTransaction] Sending transaction via direct eth_sendTransaction...');
       mLog.info('Web3Service', '📤 Calling eth_sendTransaction directly (bypasses hanging on mobile)...');
 
-      // Get user address and nonce for verification
+      // Get user address
       const fromAddress = await signer.getAddress();
 
+      // Call eth_sendTransaction directly via provider
+      const provider = this.provider as any;
+
+      // CRITICAL: Query nonce BEFORE sending transaction
+      // We MUST know the exact nonce to verify the transaction later
+      mLog.info('Web3Service', '🔢 Querying nonce before transaction...');
+      const nonceHex = await provider.send('eth_getTransactionCount', [fromAddress, 'pending']);
+      const nonce = parseInt(nonceHex, 16);
+
+      mLog.info('Web3Service', `✅ Got nonce: ${nonce} (0x${nonce.toString(16)}) - will use for transaction`, {
+        fromAddress,
+        nonce
+      });
+
       // Format transaction for eth_sendTransaction RPC call
+      // IMPORTANT: Include the nonce we just queried so we know exactly what nonce is used
       const rpcTxParams: any = {
         from: fromAddress,
         to: tx.to,
         data: tx.data,
-        value: tx.value ? `0x${tx.value.toString(16)}` : '0x0'
+        value: tx.value ? `0x${tx.value.toString(16)}` : '0x0',
+        nonce: `0x${nonce.toString(16)}` // ✅ Include nonce for hash consistency
       };
 
       // Add gas parameters if available
@@ -1092,14 +1108,13 @@ export class Web3Service {
         from: rpcTxParams.from,
         to: rpcTxParams.to,
         value: rpcTxParams.value,
+        nonce: rpcTxParams.nonce,
         gas: rpcTxParams.gas,
         maxFeePerGas: rpcTxParams.maxFeePerGas,
         maxPriorityFeePerGas: rpcTxParams.maxPriorityFeePerGas,
         dataLength: tx.data?.length || 0
       });
 
-      // Call eth_sendTransaction directly via provider
-      const provider = this.provider as any;
       let returnedHash: string;
 
       if (provider.request && typeof provider.request === 'function') {
@@ -1123,38 +1138,30 @@ export class Web3Service {
       // MOBILE FIX: Verify the transaction hash by querying blockchain
       // On mobile, eth_sendTransaction returns wrong hash (someone else's transaction!)
       // Solution: Query blockchain for transaction by address + nonce
+      // We use the EXACT nonce we included in the transaction (no guessing!)
       // See: MOBILE_SENDTRANSACTION_FIX.md for details
-
-      // Query nonce that was actually used (from wallet provider for consistency)
-      const nonceHex = await provider.send('eth_getTransactionCount', [fromAddress, 'pending']);
-      const actualNonce = parseInt(nonceHex, 16) - 1; // Subtract 1 because transaction just incremented it
-
-      mLog.info('Web3Service', '🔍 Nonce for verification', {
-        pendingNonce: parseInt(nonceHex, 16),
-        transactionNonce: actualNonce
-      });
 
       const verifiedHash = await this.verifyTransactionHash(
         returnedHash,
         fromAddress,
-        actualNonce
+        nonce
       );
 
       if (verifiedHash !== returnedHash) {
         mLog.warn('Web3Service', '⚠️ Hash mismatch detected and corrected!', {
           returnedHash: returnedHash,
           verifiedHash: verifiedHash,
-          nonce: actualNonce
+          nonce: nonce
         });
         console.warn('[Web3Service] ⚠️  Hash mismatch corrected:', {
           returned: returnedHash,
           verified: verifiedHash,
-          nonce: actualNonce
+          nonce: nonce
         });
       } else {
         mLog.info('Web3Service', '✅ Hash verified - matches returned hash', {
           hash: verifiedHash,
-          nonce: actualNonce
+          nonce: nonce
         });
       }
 

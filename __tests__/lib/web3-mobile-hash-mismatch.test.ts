@@ -62,8 +62,9 @@ describe('Mobile Transaction Hash Mismatch', () => {
 
     mockProvider.send.mockImplementation((method: string, params: any[]) => {
       if (method === 'eth_getTransactionCount') {
-        // Return nonce AFTER transaction (pending nonce)
-        return Promise.resolve(`0x${(TRANSACTION_NONCE + 1).toString(16)}`);
+        // Return the nonce that will be used for THIS transaction
+        // eth_getTransactionCount with "pending" returns the NEXT nonce to use
+        return Promise.resolve(`0x${TRANSACTION_NONCE.toString(16)}`);
       }
       if (method === 'eth_blockNumber') {
         // Return current block number
@@ -192,8 +193,8 @@ describe('Mobile Transaction Hash Mismatch', () => {
     // Mock nonce query to succeed, but verification queries to fail
     mockProvider.send.mockImplementation((method: string, params: any[]) => {
       if (method === 'eth_getTransactionCount') {
-        // Allow nonce query to succeed
-        return Promise.resolve(`0x${(TRANSACTION_NONCE + 1).toString(16)}`);
+        // Allow nonce query to succeed - return the nonce to use for this transaction
+        return Promise.resolve(`0x${TRANSACTION_NONCE.toString(16)}`);
       }
       if (method === 'eth_blockNumber') {
         // Allow block number query to succeed

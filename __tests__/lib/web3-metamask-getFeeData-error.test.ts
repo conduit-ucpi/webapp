@@ -77,10 +77,13 @@ describe('Universal Hybrid Provider - All Wallets Use Base RPC', () => {
         maxPriorityFeePerGas: BigInt(100000)
       }),
 
-      // Direct RPC call support (for mobile fix)
+      // Direct RPC call support (for mobile fix + nonce querying)
       send: jest.fn().mockImplementation((method: string, params: any[]) => {
         if (method === 'eth_sendTransaction') {
           return Promise.resolve('0xTxHash123');
+        }
+        if (method === 'eth_getTransactionCount') {
+          return Promise.resolve('0x23'); // Nonce 35 (matching production)
         }
         return Promise.reject(new Error(`Unexpected method: ${method}`));
       }),
@@ -199,17 +202,20 @@ describe('Universal Hybrid Provider - All Wallets Use Base RPC', () => {
         maxPriorityFeePerGas: BigInt(500000)
       }),
 
-      // Direct RPC call support (for mobile fix)
+      // Direct RPC call support (for mobile fix + nonce querying)
       send: jest.fn().mockImplementation((method: string, params: any[]) => {
         if (method === 'eth_sendTransaction') {
           return Promise.resolve('0xTxHash456');
+        }
+        if (method === 'eth_getTransactionCount') {
+          return Promise.resolve('0x24'); // Nonce 36 (different from MetaMask mock)
         }
         return Promise.reject(new Error(`Unexpected method: ${method}`));
       })
     };
 
     const nonInjectedSigner = {
-      getAddress: jest.fn().mockResolvedValue('0xUser456'),
+      getAddress: jest.fn().mockResolvedValue('0xc9D0602A87E55116F633b1A1F95D083Eb115f943'),
       signTransaction: jest.fn().mockResolvedValue('0xSignedTx2'),
       sendTransaction: jest.fn().mockResolvedValue({ hash: '0xTxHash456' })
     };

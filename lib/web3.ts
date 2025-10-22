@@ -1070,12 +1070,25 @@ export class Web3Service {
       // Get user address
       const fromAddress = await signer.getAddress();
 
+      // CRITICAL: Query nonce BEFORE sending transaction to ensure hash consistency
+      // Without this, MetaMask calculates nonce, returns hash with one nonce,
+      // but may submit with different nonce (race condition), causing hash mismatch
+      // HybridProvider routes this to Base RPC (not wallet), so it's reliable
+      const provider = this.provider as any;
+      mLog.info('Web3Service', '🔢 Querying nonce for consistent hash calculation...');
+
+      const nonceHex = await provider.send('eth_getTransactionCount', [fromAddress, 'pending']);
+      const nonce = parseInt(nonceHex, 16);
+
+      mLog.info('Web3Service', `✅ Got nonce: ${nonce} (0x${nonce.toString(16)})`);
+
       // Format transaction for eth_sendTransaction RPC call
       const rpcTxParams: any = {
         from: fromAddress,
         to: tx.to,
         data: tx.data,
-        value: tx.value || '0x0'
+        value: tx.value || '0x0',
+        nonce: `0x${nonce.toString(16)}` // Include nonce for hash consistency
       };
 
       // Add gas parameters if available
@@ -1096,11 +1109,11 @@ export class Web3Service {
         gas: rpcTxParams.gas,
         maxFeePerGas: rpcTxParams.maxFeePerGas,
         maxPriorityFeePerGas: rpcTxParams.maxPriorityFeePerGas,
+        nonce: rpcTxParams.nonce,
         dataLength: rpcTxParams.data?.length
       })}`);
 
       // Call eth_sendTransaction directly via provider
-      const provider = this.provider as any;
       let txHash: string;
 
       mLog.info('Web3Service', '🔄 Calling provider.request({ method: eth_sendTransaction })...');

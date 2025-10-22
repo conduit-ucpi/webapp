@@ -1060,25 +1060,72 @@ export class Web3Service {
         console.log('');
       }
 
-      // Send transaction directly using signer.sendTransaction
-      // This works with all wallet types (MetaMask, Dynamic, WalletConnect, etc.)
-      console.log('[Web3Service.fundAndSendTransaction] Sending transaction via signer.sendTransaction...');
-      mLog.info('Web3Service', '📤 Calling signer.sendTransaction()...');
+      // MOBILE FIX: Send transaction directly via provider RPC call
+      // signer.sendTransaction() hangs on mobile because it waits for mining internally
+      // The wallet provider's event system breaks after app-switching
+      // Solution: Call eth_sendTransaction directly to get hash, then return immediately
+      console.log('[Web3Service.fundAndSendTransaction] Sending transaction via direct eth_sendTransaction...');
+      mLog.info('Web3Service', '📤 Calling eth_sendTransaction directly (bypassing signer.sendTransaction)...');
 
-      const txResponse = await signer.sendTransaction(tx);
+      // Get user address
+      const fromAddress = await signer.getAddress();
 
-      console.log('✅ Transaction sent successfully:', txResponse.hash);
-      mLog.info('Web3Service', `✅ signer.sendTransaction() returned hash: ${txResponse.hash}`);
-      mLog.info('Web3Service', `📋 Full txResponse: ${JSON.stringify({
-        hash: txResponse.hash,
-        nonce: txResponse.nonce,
-        gasLimit: txResponse.gasLimit?.toString(),
-        to: txResponse.to,
-        from: txResponse.from,
-        chainId: txResponse.chainId
+      // Format transaction for eth_sendTransaction RPC call
+      const rpcTxParams: any = {
+        from: fromAddress,
+        to: tx.to,
+        data: tx.data,
+        value: tx.value || '0x0'
+      };
+
+      // Add gas parameters if available
+      if (tx.gasLimit) {
+        rpcTxParams.gas = `0x${tx.gasLimit.toString(16)}`;
+      }
+      if (tx.maxFeePerGas) {
+        rpcTxParams.maxFeePerGas = `0x${tx.maxFeePerGas.toString(16)}`;
+      }
+      if (tx.maxPriorityFeePerGas) {
+        rpcTxParams.maxPriorityFeePerGas = `0x${tx.maxPriorityFeePerGas.toString(16)}`;
+      }
+
+      mLog.info('Web3Service', `📋 Transaction params: ${JSON.stringify({
+        from: rpcTxParams.from,
+        to: rpcTxParams.to,
+        value: rpcTxParams.value,
+        gas: rpcTxParams.gas,
+        maxFeePerGas: rpcTxParams.maxFeePerGas,
+        maxPriorityFeePerGas: rpcTxParams.maxPriorityFeePerGas,
+        dataLength: rpcTxParams.data?.length
       })}`);
 
-      return txResponse.hash;
+      // Call eth_sendTransaction directly via provider
+      const provider = this.provider as any;
+      let txHash: string;
+
+      mLog.info('Web3Service', '🔄 Calling provider.request({ method: eth_sendTransaction })...');
+
+      if (provider.request && typeof provider.request === 'function') {
+        // EIP-1193 interface
+        txHash = await provider.request({
+          method: 'eth_sendTransaction',
+          params: [rpcTxParams]
+        });
+        mLog.info('Web3Service', `✅ provider.request() returned hash: ${txHash}`);
+      } else if (provider.send && typeof provider.send === 'function') {
+        // ethers JsonRpcProvider interface
+        txHash = await provider.send('eth_sendTransaction', [rpcTxParams]);
+        mLog.info('Web3Service', `✅ provider.send() returned hash: ${txHash}`);
+      } else {
+        const error = 'Provider does not support request() or send() methods';
+        mLog.error('Web3Service', `❌ ${error}`);
+        throw new Error(error);
+      }
+
+      console.log('✅ Transaction sent successfully:', txHash);
+      mLog.info('Web3Service', `✅ Transaction hash obtained: ${txHash}`);
+
+      return txHash;
 
     } catch (error) {
       console.error('[Web3Service.fundAndSendTransaction] Failed to send via ethers, error:', error);

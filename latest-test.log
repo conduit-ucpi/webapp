@@ -1,0 +1,1000 @@
+  "native": "metamask://wc",
+  "universal": "https://metamask.app.link/wc"
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:40.376Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:40.376Z] [INFO] [MobileDeepLink] ✅ All protection layers passed - applying mobile deep link wrapper 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:40.376Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:40.376Z] [INFO] [MobileDeepLink] ✅ Provider wrapped successfully - deep links will trigger for user actions 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:40.376Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:40.377Z] [INFO] [HybridProviderFactory] 🔧 Creating universal hybrid provider wrapper {
+  "chainId": 8453,
+  "rpcUrl": "https://rpc.ankr.com/base/ece739aa8645bab439684917a8b43160d6dd77699386bb20d502cb1266410c1e",
+  "walletProvider": "object"
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:40.377Z] [DATA] {
+  "chainId": 8453,
+  "rpcUrl": "https://rpc.ankr.com/base/ece739aa8645bab439684917a8b43160d6dd77699386bb20d502cb1266410c1e",
+  "walletProvider": "object"
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:40.377Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:40.377Z] [INFO] [HybridProvider] ✅ Created hybrid provider {
+  "chainId": 8453,
+  "hasReadProvider": true,
+  "hasWalletProvider": true,
+  "readMethods": 18,
+  "walletMethods": 13
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:40.377Z] [DATA] {
+  "chainId": 8453,
+  "hasReadProvider": true,
+  "hasWalletProvider": true,
+  "readMethods": 18,
+  "walletMethods": 13
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:40.377Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:40.377Z] [INFO] [HybridProviderFactory] ✅ Universal hybrid provider created - all wallets now use Base RPC for reads 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:40.377Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:40.380Z] [DEBUG] [HybridProvider] 📖 Routing eth_chainId to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:40.380Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:40.381Z] [DEBUG] [HybridProvider] 📝 Routing eth_accounts to wallet provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:40.381Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:40.381Z] [INFO] [MobileDeepLink] Request intercepted: eth_accounts 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:40.381Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:40.381Z] [INFO] [MobileDeepLink] ℹ️  Method "eth_accounts" does not require user action - no deep link needed 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:40.381Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:40.381Z] [INFO] [MobileDeepLink] 🔄 Calling originalRequest for eth_accounts {
+  "hasOriginalRequest": true,
+  "argsMethod": "eth_accounts",
+  "argsParamsLength": 0
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:40.381Z] [DATA] {
+  "hasOriginalRequest": true,
+  "argsMethod": "eth_accounts",
+  "argsParamsLength": 0
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:40.381Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:40.383Z] [INFO] [MobileDeepLink] ✅ originalRequest completed for eth_accounts {
+  "hasResult": true,
+  "resultType": "object"
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:40.383Z] [DATA] {
+  "hasResult": true,
+  "resultType": "object"
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:40.383Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:40.383Z] [DEBUG] [HybridProvider] 📝 Routing eth_accounts to wallet provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:40.383Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:40.383Z] [INFO] [MobileDeepLink] Request intercepted: eth_accounts 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:40.383Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:40.383Z] [INFO] [MobileDeepLink] ℹ️  Method "eth_accounts" does not require user action - no deep link needed 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:40.383Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:40.383Z] [INFO] [MobileDeepLink] 🔄 Calling originalRequest for eth_accounts {
+  "hasOriginalRequest": true,
+  "argsMethod": "eth_accounts",
+  "argsParamsLength": 0
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:40.383Z] [DATA] {
+  "hasOriginalRequest": true,
+  "argsMethod": "eth_accounts",
+  "argsParamsLength": 0
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:40.383Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:40.383Z] [INFO] [MobileDeepLink] ✅ originalRequest completed for eth_accounts {
+  "hasResult": true,
+  "resultType": "object"
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:40.383Z] [DATA] {
+  "hasResult": true,
+  "resultType": "object"
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:40.383Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:40.387Z] [INFO] [DynamicProvider] Signing message with direct signer {
+  "message": "Authenticate wallet 0xc9D0602A87E55116F633b1A1F95D...",
+  "signerAddress": "0xc9D0602A87E55116F633b1A1F95D083Eb115f942"
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:40.387Z] [DATA] {
+  "message": "Authenticate wallet 0xc9D0602A87E55116F633b1A1F95D...",
+  "signerAddress": "0xc9D0602A87E55116F633b1A1F95D083Eb115f942"
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:40.387Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:40.388Z] [DEBUG] [HybridProvider] 📝 Routing personal_sign to wallet provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:40.388Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:40.388Z] [INFO] [MobileDeepLink] Request intercepted: personal_sign 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:40.388Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:40.388Z] [INFO] [MobileDeepLink] 🔔 User action required - triggering deep link 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:40.388Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:40.388Z] [INFO] [MobileDeepLink] 🔗 Opening wallet app via: metamask://wc 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:40.388Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] Received 38 log entries
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:40.691Z] [INFO] [MobileDeepLink] ✅ Deep link triggered, proceeding with request 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:40.691Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:40.691Z] [INFO] [MobileDeepLink] 🔄 Calling originalRequest for personal_sign {
+  "hasOriginalRequest": true,
+  "argsMethod": "personal_sign",
+  "argsParamsLength": 2
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:40.691Z] [DATA] {
+  "hasOriginalRequest": true,
+  "argsMethod": "personal_sign",
+  "argsParamsLength": 2
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:40.691Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] Received 2 log entries
+Login API called with: {
+  userServiceUrl: 'http://userservice-prod:8977',
+  authorization: 'present',
+  body: { address: '0xc9D0602A87E55116F633b1A1F95D083Eb115f942' }
+}
+UserService response: 200 
+Login API called with: {
+  userServiceUrl: 'http://userservice-prod:8977',
+  authorization: 'present',
+  body: { address: '0xc9D0602A87E55116F633b1A1F95D083Eb115f942' }
+}
+UserService response: 200 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:49.326Z] [INFO] [MobileDeepLink] ✅ originalRequest completed for personal_sign {
+  "hasResult": true,
+  "resultType": "string"
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:49.326Z] [DATA] {
+  "hasResult": true,
+  "resultType": "string"
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:49.326Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:49.327Z] [INFO] [DynamicProvider] ✅ Message signed successfully 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:49.327Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:49.328Z] [INFO] [AuthManager] ✅ Message signed successfully for backend auth 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:49.328Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:49.328Z] [INFO] [AuthProvider] Message signed successfully, sending to backend {
+  "address": "0xc9D0602A87E55116F633b1A1F95D083Eb115f942",
+  "hasToken": true
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:49.328Z] [DATA] {
+  "address": "0xc9D0602A87E55116F633b1A1F95D083Eb115f942",
+  "hasToken": true
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:49.328Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:50.887Z] [DEBUG] [TokenManager] Setting token {
+  "hasToken": true,
+  "tokenLength": 792,
+  "tokenType": "signature_auth"
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:50.887Z] [DATA] {
+  "hasToken": true,
+  "tokenLength": 792,
+  "tokenType": "signature_auth"
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:50.887Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:50.887Z] [DEBUG] [TokenManager] Saving token to storage {
+  "storageType": "sessionStorage",
+  "tokenType": "signature_auth",
+  "tokenLength": 792
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:50.887Z] [DATA] {
+  "storageType": "sessionStorage",
+  "tokenType": "signature_auth",
+  "tokenLength": 792
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:50.887Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:50.887Z] [DEBUG] [AuthProvider] Backend authentication result {
+  "success": true,
+  "hasUser": true
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:50.887Z] [DATA] {
+  "success": true,
+  "hasUser": true
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:50.887Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:50.888Z] [INFO] [AuthProvider] ✅ Backend authentication successful 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:50.888Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:50.888Z] [INFO] [ConnectWalletEmbedded] Backend authentication successful 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:50.888Z] [CONTEXT] URL: https://test.conduit-ucpi.com/, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] Received 9 log entries
+Get combined contracts request
+Headers: {
+  "host": "webapp-test:3000",
+  "user-agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36",
+  "accept": "*/*",
+  "accept-encoding": "gzip, deflate, br, zstd",
+  "accept-language": "en-GB,en-US;q=0.9,en;q=0.8",
+  "authorization": "Bearer eyJ0eXBlIjoic2lnbmF0dXJlX2F1dGgiLCJ3YWxsZXRBZGRyZXNzIjoiMHhjOUQwNjAyQTg3RTU1MTE2RjYzM2IxQTFGOTVEMDgzRWIxMTVmOTQyIiwibWVzc2FnZSI6IkF1dGhlbnRpY2F0ZSB3YWxsZXQgMHhjOUQwNjAyQTg3RTU1MTE2RjYzM2IxQTFGOTVEMDgzRWIxMTVmOTQyIGF0IDE3NjExNjI4MjAzNzQgd2l0aCBub25jZSAwOWRocDZibmNyNHEiLCJzaWduYXR1cmUiOiIweGIwZDFmNDNjODM2YWVmYTc2YjA4NDhjNDg2ZDQ3OGVlMDc3Y2I3MGI4NmExOTkwNDg5OGRlNDFkYWRmOGU5YzU0OGYzMTkzNmZkYTZiZDgxY2JjYWQyYzQyY2U0MzFhZTRhNTJhOWFlM2YwNjZhN2RhYTFhYTFlZjhjMDhhZWVhMWIiLCJ0aW1lc3RhbXAiOjE3NjExNjI4MjAzNzQsIm5vbmNlIjoiMDlkaHA2Ym5jcjRxIiwiaXNzdWVyIjoid2ViM2F1dGhfdW5pZmllZCIsImhlYWRlciI6eyJhbGciOiJFQ0RTQSIsInR5cCI6IlNJRyJ9LCJwYXlsb2FkIjp7InN1YiI6IjB4YzlEMDYwMkE4N0U1NTExNkY2MzNiMUExRjk1RDA4M0ViMTE1Zjk0MiIsImlhdCI6MTc2MTE2MjgyMCwiaXNzIjoid2ViM2F1dGhfdW5pZmllZCIsIndhbGxldF90eXBlIjoiZHluYW1pYyJ9fQ==",
+  "content-type": "application/json",
+  "cookie": "web3auth_ajs_user_id=BPDapDap0_WU7NXzbzcEQT6Hc2MDceD2zPnuYCRKBZOz5BJOPkgO0gjajNwBhBYNaJEOd7DBKjtnSyLUY6dSMR4; ajs_anonymous_id=757888a4-7823-48a5-8a3d-36a7d90b6811; AUTH-TOKEN=eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiI2OGM2NzJhYzA5ZmU1NzAzYjE0MGNlZjQiLCJpYXQiOjE3NjExNjI4MjgsImV4cCI6MTc2MTE2NjQyOH0.dtdYynuJ_PkIPwVFQv2nT9LK8VYZakRnqRIY-CITPLBIu0pxLOdy9GO34o9U-f7PtLy4AwmzAlFgKaVIjRKW9Q",
+  "dnt": "1",
+  "if-none-match": "\"4gkkkr8oty13qp\"",
+  "priority": "u=1, i",
+  "referer": "https://test.conduit-ucpi.com/dashboard",
+  "sec-ch-ua": "\"Google Chrome\";v=\"141\", \"Not?A_Brand\";v=\"8\", \"Chromium\";v=\"141\"",
+  "sec-ch-ua-mobile": "?1",
+  "sec-ch-ua-platform": "\"Android\"",
+  "sec-fetch-dest": "empty",
+  "sec-fetch-mode": "cors",
+  "sec-fetch-site": "same-origin",
+  "via": "2.0 Caddy",
+  "x-forwarded-for": "161.65.97.210",
+  "x-forwarded-host": "test.conduit-ucpi.com",
+  "x-forwarded-proto": "https",
+  "x-real-ip": "161.65.97.210",
+  "x-middleware-invoke": "",
+  "x-invoke-path": "/api/combined-contracts",
+  "x-invoke-query": "%7B%7D",
+  "x-invoke-output": "/api/combined-contracts",
+  "x-forwarded-port": "3000"
+}
+Cookie header: web3auth_ajs_user_id=BPDapDap0_WU7NXzbzcEQT6Hc2MDceD2zPnuYCRKBZOz5BJOPkgO0gjajNwBhBYNaJEOd7DBKjtnSyLUY6dSMR4; ajs_anonymous_id=757888a4-7823-48a5-8a3d-36a7d90b6811; AUTH-TOKEN=eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiI2OGM2NzJhYzA5ZmU1NzAzYjE0MGNlZjQiLCJpYXQiOjE3NjExNjI4MjgsImV4cCI6MTc2MTE2NjQyOH0.dtdYynuJ_PkIPwVFQv2nT9LK8VYZakRnqRIY-CITPLBIu0pxLOdy9GO34o9U-f7PtLy4AwmzAlFgKaVIjRKW9Q
+Authorization header: Bearer eyJ0eXBlIjoic2lnbmF0dXJlX2F1dGgiLCJ3YWxsZXRBZGRyZXNzIjoiMHhjOUQwNjAyQTg3RTU1MTE2RjYzM2IxQTFGOTVEMDgzRWIxMTVmOTQyIiwibWVzc2FnZSI6IkF1dGhlbnRpY2F0ZSB3YWxsZXQgMHhjOUQwNjAyQTg3RTU1MTE2RjYzM2IxQTFGOTVEMDgzRWIxMTVmOTQyIGF0IDE3NjExNjI4MjAzNzQgd2l0aCBub25jZSAwOWRocDZibmNyNHEiLCJzaWduYXR1cmUiOiIweGIwZDFmNDNjODM2YWVmYTc2YjA4NDhjNDg2ZDQ3OGVlMDc3Y2I3MGI4NmExOTkwNDg5OGRlNDFkYWRmOGU5YzU0OGYzMTkzNmZkYTZiZDgxY2JjYWQyYzQyY2U0MzFhZTRhNTJhOWFlM2YwNjZhN2RhYTFhYTFlZjhjMDhhZWVhMWIiLCJ0aW1lc3RhbXAiOjE3NjExNjI4MjAzNzQsIm5vbmNlIjoiMDlkaHA2Ym5jcjRxIiwiaXNzdWVyIjoid2ViM2F1dGhfdW5pZmllZCIsImhlYWRlciI6eyJhbGciOiJFQ0RTQSIsInR5cCI6IlNJRyJ9LCJwYXlsb2FkIjp7InN1YiI6IjB4YzlEMDYwMkE4N0U1NTExNkY2MzNiMUExRjk1RDA4M0ViMTE1Zjk0MiIsImlhdCI6MTc2MTE2MjgyMCwiaXNzIjoid2ViM2F1dGhfdW5pZmllZCIsIndhbGxldF90eXBlIjoiZHluYW1pYyJ9fQ==
+Auth token: Present
+About to make request to CONTRACT_SERVICE_URL: http://contractservice-prod:8080
+X_API_KEY environment variable: Present
+Added X-API-Key header to request
+Headers being sent to contract service: {
+  "Content-Type": "application/json",
+  "Authorization": "Bearer eyJ0eXBlIjoic2lnbmF0dXJlX2F1dGgiLCJ3YWxsZXRBZGRyZXNzIjoiMHhjOUQwNjAyQTg3RTU1MTE2RjYzM2IxQTFGOTVEMDgzRWIxMTVmOTQyIiwibWVzc2FnZSI6IkF1dGhlbnRpY2F0ZSB3YWxsZXQgMHhjOUQwNjAyQTg3RTU1MTE2RjYzM2IxQTFGOTVEMDgzRWIxMTVmOTQyIGF0IDE3NjExNjI4MjAzNzQgd2l0aCBub25jZSAwOWRocDZibmNyNHEiLCJzaWduYXR1cmUiOiIweGIwZDFmNDNjODM2YWVmYTc2YjA4NDhjNDg2ZDQ3OGVlMDc3Y2I3MGI4NmExOTkwNDg5OGRlNDFkYWRmOGU5YzU0OGYzMTkzNmZkYTZiZDgxY2JjYWQyYzQyY2U0MzFhZTRhNTJhOWFlM2YwNjZhN2RhYTFhYTFlZjhjMDhhZWVhMWIiLCJ0aW1lc3RhbXAiOjE3NjExNjI4MjAzNzQsIm5vbmNlIjoiMDlkaHA2Ym5jcjRxIiwiaXNzdWVyIjoid2ViM2F1dGhfdW5pZmllZCIsImhlYWRlciI6eyJhbGciOiJFQ0RTQSIsInR5cCI6IlNJRyJ9LCJwYXlsb2FkIjp7InN1YiI6IjB4YzlEMDYwMkE4N0U1NTExNkY2MzNiMUExRjk1RDA4M0ViMTE1Zjk0MiIsImlhdCI6MTc2MTE2MjgyMCwiaXNzIjoid2ViM2F1dGhfdW5pZmllZCIsIndhbGxldF90eXBlIjoiZHluYW1pYyJ9fQ==",
+  "Cookie": "web3auth_ajs_user_id=BPDapDap0_WU7NXzbzcEQT6Hc2MDceD2zPnuYCRKBZOz5BJOPkgO0gjajNwBhBYNaJEOd7DBKjtnSyLUY6dSMR4; ajs_anonymous_id=757888a4-7823-48a5-8a3d-36a7d90b6811; AUTH-TOKEN=eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiI2OGM2NzJhYzA5ZmU1NzAzYjE0MGNlZjQiLCJpYXQiOjE3NjExNjI4MjgsImV4cCI6MTc2MTE2NjQyOH0.dtdYynuJ_PkIPwVFQv2nT9LK8VYZakRnqRIY-CITPLBIu0pxLOdy9GO34o9U-f7PtLy4AwmzAlFgKaVIjRKW9Q",
+  "X-API-Key": "api_key_7f3a8c2d9b1e5f4a6c8e9d2b5a7f1c3e8a4b6d9e2f5a8c7b1e4d6f9a2c5e8b1f4a7c"
+}
+All contracts from service: 42
+Returning contracts directly from contract service (no enrichment/deduplication needed)
+Get combined contracts request
+Headers: {
+  "host": "webapp-test:3000",
+  "user-agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36",
+  "accept": "*/*",
+  "accept-encoding": "gzip, deflate, br, zstd",
+  "accept-language": "en-GB,en-US;q=0.9,en;q=0.8",
+  "cookie": "web3auth_ajs_user_id=BPDapDap0_WU7NXzbzcEQT6Hc2MDceD2zPnuYCRKBZOz5BJOPkgO0gjajNwBhBYNaJEOd7DBKjtnSyLUY6dSMR4; ajs_anonymous_id=757888a4-7823-48a5-8a3d-36a7d90b6811; AUTH-TOKEN=eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiI2OGM2NzJhYzA5ZmU1NzAzYjE0MGNlZjQiLCJpYXQiOjE3NjExNjI4MjgsImV4cCI6MTc2MTE2NjQyOH0.dtdYynuJ_PkIPwVFQv2nT9LK8VYZakRnqRIY-CITPLBIu0pxLOdy9GO34o9U-f7PtLy4AwmzAlFgKaVIjRKW9Q",
+  "dnt": "1",
+  "if-none-match": "\"k1xciagg9213vl\"",
+  "priority": "u=1, i",
+  "referer": "https://test.conduit-ucpi.com/dashboard",
+  "sec-ch-ua": "\"Google Chrome\";v=\"141\", \"Not?A_Brand\";v=\"8\", \"Chromium\";v=\"141\"",
+  "sec-ch-ua-mobile": "?1",
+  "sec-ch-ua-platform": "\"Android\"",
+  "sec-fetch-dest": "empty",
+  "sec-fetch-mode": "cors",
+  "sec-fetch-site": "same-origin",
+  "via": "2.0 Caddy",
+  "x-forwarded-for": "161.65.97.210",
+  "x-forwarded-host": "test.conduit-ucpi.com",
+  "x-forwarded-proto": "https",
+  "x-real-ip": "161.65.97.210",
+  "x-middleware-invoke": "",
+  "x-invoke-path": "/api/combined-contracts",
+  "x-invoke-query": "%7B%7D",
+  "x-invoke-output": "/api/combined-contracts",
+  "x-forwarded-port": "3000"
+}
+Cookie header: web3auth_ajs_user_id=BPDapDap0_WU7NXzbzcEQT6Hc2MDceD2zPnuYCRKBZOz5BJOPkgO0gjajNwBhBYNaJEOd7DBKjtnSyLUY6dSMR4; ajs_anonymous_id=757888a4-7823-48a5-8a3d-36a7d90b6811; AUTH-TOKEN=eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiI2OGM2NzJhYzA5ZmU1NzAzYjE0MGNlZjQiLCJpYXQiOjE3NjExNjI4MjgsImV4cCI6MTc2MTE2NjQyOH0.dtdYynuJ_PkIPwVFQv2nT9LK8VYZakRnqRIY-CITPLBIu0pxLOdy9GO34o9U-f7PtLy4AwmzAlFgKaVIjRKW9Q
+Authorization header: undefined
+Auth token: Present
+About to make request to CONTRACT_SERVICE_URL: http://contractservice-prod:8080
+X_API_KEY environment variable: Present
+Added X-API-Key header to request
+Headers being sent to contract service: {
+  "Content-Type": "application/json",
+  "Authorization": "Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiI2OGM2NzJhYzA5ZmU1NzAzYjE0MGNlZjQiLCJpYXQiOjE3NjExNjI4MjgsImV4cCI6MTc2MTE2NjQyOH0.dtdYynuJ_PkIPwVFQv2nT9LK8VYZakRnqRIY-CITPLBIu0pxLOdy9GO34o9U-f7PtLy4AwmzAlFgKaVIjRKW9Q",
+  "Cookie": "web3auth_ajs_user_id=BPDapDap0_WU7NXzbzcEQT6Hc2MDceD2zPnuYCRKBZOz5BJOPkgO0gjajNwBhBYNaJEOd7DBKjtnSyLUY6dSMR4; ajs_anonymous_id=757888a4-7823-48a5-8a3d-36a7d90b6811; AUTH-TOKEN=eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiI2OGM2NzJhYzA5ZmU1NzAzYjE0MGNlZjQiLCJpYXQiOjE3NjExNjI4MjgsImV4cCI6MTc2MTE2NjQyOH0.dtdYynuJ_PkIPwVFQv2nT9LK8VYZakRnqRIY-CITPLBIu0pxLOdy9GO34o9U-f7PtLy4AwmzAlFgKaVIjRKW9Q",
+  "X-API-Key": "api_key_7f3a8c2d9b1e5f4a6c8e9d2b5a7f1c3e8a4b6d9e2f5a8c7b1e4d6f9a2c5e8b1f4a7c"
+}
+All contracts from service: 42
+Returning contracts directly from contract service (no enrichment/deduplication needed)
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:52.265Z] [INFO] [DynamicWrapper] Creating Dynamic settings with WagmiProvider + DynamicWagmiConnector {
+  "environmentId": "ac6e291d-c...",
+  "chainId": 8453
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:52.265Z] [DATA] {
+  "environmentId": "ac6e291d-c...",
+  "chainId": 8453
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:52.265Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:52.265Z] [INFO] [DynamicConfig] Creating Dynamic configuration 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:52.265Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:52.265Z] [INFO] [DynamicConfig] Dynamic settings created {
+  "environmentId": "ac6e291d-c...",
+  "chainId": 8453,
+  "networkName": "Base Mainnet",
+  "hasWalletConnectors": true,
+  "connectorCount": 1
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:52.265Z] [DATA] {
+  "environmentId": "ac6e291d-c...",
+  "chainId": 8453,
+  "networkName": "Base Mainnet",
+  "hasWalletConnectors": true,
+  "connectorCount": 1
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:52.265Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:52.266Z] [INFO] [DynamicConfig] Available wallet connectors {
+  "connectorNames": [
+    "vD",
+    "vB",
+    "AZ",
+    "PO",
+    "Function",
+    "vq",
+    "Function"
+  ],
+  "connectorCount": 7
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:52.266Z] [DATA] {
+  "connectorNames": [
+    "vD",
+    "vB",
+    "AZ",
+    "PO",
+    "Function",
+    "vq",
+    "Function"
+  ],
+  "connectorCount": 7
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:52.266Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:52.266Z] [INFO] [DynamicWrapper] Initializing provider stack: WagmiProvider -> DynamicContextProvider -> DynamicWagmiConnector {
+  "environmentId": "ac6e291d-c...",
+  "chainId": 8453
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:52.266Z] [DATA] {
+  "environmentId": "ac6e291d-c...",
+  "chainId": 8453
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:52.266Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:52.271Z] [INFO] [DynamicWrapper] Creating Dynamic settings with WagmiProvider + DynamicWagmiConnector {
+  "environmentId": "ac6e291d-c...",
+  "chainId": 8453
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:52.271Z] [DATA] {
+  "environmentId": "ac6e291d-c...",
+  "chainId": 8453
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:52.271Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:52.271Z] [INFO] [DynamicConfig] Creating Dynamic configuration 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:52.271Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:52.271Z] [INFO] [DynamicConfig] Dynamic settings created {
+  "environmentId": "ac6e291d-c...",
+  "chainId": 8453,
+  "networkName": "Base Mainnet",
+  "hasWalletConnectors": true,
+  "connectorCount": 1
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:52.271Z] [DATA] {
+  "environmentId": "ac6e291d-c...",
+  "chainId": 8453,
+  "networkName": "Base Mainnet",
+  "hasWalletConnectors": true,
+  "connectorCount": 1
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:52.271Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:52.272Z] [INFO] [DynamicConfig] Available wallet connectors {
+  "connectorNames": [
+    "vD",
+    "vB",
+    "AZ",
+    "PO",
+    "Function",
+    "vq",
+    "Function"
+  ],
+  "connectorCount": 7
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:52.272Z] [DATA] {
+  "connectorNames": [
+    "vD",
+    "vB",
+    "AZ",
+    "PO",
+    "Function",
+    "vq",
+    "Function"
+  ],
+  "connectorCount": 7
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:52.272Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:52.272Z] [INFO] [DynamicWrapper] Initializing provider stack: WagmiProvider -> DynamicContextProvider -> DynamicWagmiConnector {
+  "environmentId": "ac6e291d-c...",
+  "chainId": 8453
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:52.272Z] [DATA] {
+  "environmentId": "ac6e291d-c...",
+  "chainId": 8453
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:52.272Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:52.416Z] [DEBUG] [TokenManager] Getting token {
+  "hasToken": true,
+  "tokenLength": 792
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:52.416Z] [DATA] {
+  "hasToken": true,
+  "tokenLength": 792
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:52.416Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:52.416Z] [DEBUG] [ProviderRegistry] Already initialized, skipping 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:52.416Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:52.425Z] [INFO] [AuthManager] Starting restoreSession... 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:52.425Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:52.425Z] [DEBUG] [AuthManager] Dynamic OAuth redirect check {
+  "isDynamicOAuthRedirect": false,
+  "urlParams": ""
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:52.425Z] [DATA] {
+  "isDynamicOAuthRedirect": false,
+  "urlParams": ""
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:52.425Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:52.426Z] [DEBUG] [AuthManager] Mobile check {
+  "isMobile": true,
+  "currentUrl": "https://test.conduit-ucpi.com/dashboard",
+  "urlParams": ""
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:52.426Z] [DATA] {
+  "isMobile": true,
+  "currentUrl": "https://test.conduit-ucpi.com/dashboard",
+  "urlParams": ""
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:52.426Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:52.426Z] [DEBUG] [AuthManager] Redirect params check {
+  "hasRedirectParams": false,
+  "urlParams": ""
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:52.426Z] [DATA] {
+  "hasRedirectParams": false,
+  "urlParams": ""
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:52.426Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:52.426Z] [DEBUG] [TokenManager] Getting token {
+  "hasToken": false
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:52.426Z] [DATA] {
+  "hasToken": false
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:52.426Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:52.426Z] [DEBUG] [TokenManager] Getting token {
+  "hasToken": true,
+  "tokenLength": 792
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:52.426Z] [DATA] {
+  "hasToken": true,
+  "tokenLength": 792
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:52.426Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:52.767Z] [INFO] [DynamicBridge] Dynamic context properties {
+  "hasSetShowAuthFlow": true,
+  "hasPrimaryWallet": true,
+  "hasUser": false,
+  "hasHandleLogOut": true,
+  "hasGetAuthToken": false,
+  "contextKeys": [
+    "accountSwitchState",
+    "authMode",
+    "awaitingSignatureState",
+    "bridgeChains",
+    "bridgeChainsToConnect",
+    "getNameService",
+    "handleLogOut",
+    "handleUnlinkWallet",
+    "loadingNetwork",
+    "locale",
+    "loginWithEmail",
+    "multiWalletWidgetState",
+    "network",
+    "networkConfigurations",
+    "primaryWallet",
+    "qrcodeUri",
+    "refetchProjectSettings",
+    "removeWallet",
+    "sdkHasLoaded",
+    "selectedTabIndex",
+    "sendWagmiSettings",
+    "setAuthMode",
+    "setLogInWithEmail",
+    "setMultiWalletWidgetState",
+    "setSelectedTabIndex",
+    "setShowAuthFlow",
+    "setShowBridgeWidget",
+    "setShowDynamicUserProfile",
+    "setShowQrcodeModal",
+    "shadowDOMEnabled",
+    "showAuthFlow",
+    "showDynamicUserProfile",
+    "showQrcodeModal",
+    "user",
+    "userWithMissingInfo"
+  ]
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:52.767Z] [DATA] {
+  "hasSetShowAuthFlow": true,
+  "hasPrimaryWallet": true,
+  "hasUser": false,
+  "hasHandleLogOut": true,
+  "hasGetAuthToken": false,
+  "contextKeys": [
+    "accountSwitchState",
+    "authMode",
+    "awaitingSignatureState",
+    "bridgeChains",
+    "bridgeChainsToConnect",
+    "getNameService",
+    "handleLogOut",
+    "handleUnlinkWallet",
+    "loadingNetwork",
+    "locale",
+    "loginWithEmail",
+    "multiWalletWidgetState",
+    "network",
+    "networkConfigurations",
+    "primaryWallet",
+    "qrcodeUri",
+    "refetchProjectSettings",
+    "removeWallet",
+    "sdkHasLoaded",
+    "selectedTabIndex",
+    "sendWagmiSettings",
+    "setAuthMode",
+    "setLogInWithEmail",
+    "setMultiWalletWidgetState",
+    "setSelectedTabIndex",
+    "setShowAuthFlow",
+    "setShowBridgeWidget",
+    "setShowDynamicUserProfile",
+    "setShowQrcodeModal",
+    "shadowDOMEnabled",
+    "showAuthFlow",
+    "showDynamicUserProfile",
+    "showQrcodeModal",
+    "user",
+    "userWithMissingInfo"
+  ]
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:53:52.767Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] Received 19 log entries
+Get combined contracts request
+Headers: {
+  "host": "webapp-test:3000",
+  "user-agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36",
+  "accept": "*/*",
+  "accept-encoding": "gzip, deflate, br, zstd",
+  "accept-language": "en-GB,en-US;q=0.9,en;q=0.8",
+  "authorization": "Bearer eyJ0eXBlIjoic2lnbmF0dXJlX2F1dGgiLCJ3YWxsZXRBZGRyZXNzIjoiMHhjOUQwNjAyQTg3RTU1MTE2RjYzM2IxQTFGOTVEMDgzRWIxMTVmOTQyIiwibWVzc2FnZSI6IkF1dGhlbnRpY2F0ZSB3YWxsZXQgMHhjOUQwNjAyQTg3RTU1MTE2RjYzM2IxQTFGOTVEMDgzRWIxMTVmOTQyIGF0IDE3NjExNjI4MjAzNzQgd2l0aCBub25jZSAwOWRocDZibmNyNHEiLCJzaWduYXR1cmUiOiIweGIwZDFmNDNjODM2YWVmYTc2YjA4NDhjNDg2ZDQ3OGVlMDc3Y2I3MGI4NmExOTkwNDg5OGRlNDFkYWRmOGU5YzU0OGYzMTkzNmZkYTZiZDgxY2JjYWQyYzQyY2U0MzFhZTRhNTJhOWFlM2YwNjZhN2RhYTFhYTFlZjhjMDhhZWVhMWIiLCJ0aW1lc3RhbXAiOjE3NjExNjI4MjAzNzQsIm5vbmNlIjoiMDlkaHA2Ym5jcjRxIiwiaXNzdWVyIjoid2ViM2F1dGhfdW5pZmllZCIsImhlYWRlciI6eyJhbGciOiJFQ0RTQSIsInR5cCI6IlNJRyJ9LCJwYXlsb2FkIjp7InN1YiI6IjB4YzlEMDYwMkE4N0U1NTExNkY2MzNiMUExRjk1RDA4M0ViMTE1Zjk0MiIsImlhdCI6MTc2MTE2MjgyMCwiaXNzIjoid2ViM2F1dGhfdW5pZmllZCIsIndhbGxldF90eXBlIjoiZHluYW1pYyJ9fQ==",
+  "content-type": "application/json",
+  "cookie": "web3auth_ajs_user_id=BPDapDap0_WU7NXzbzcEQT6Hc2MDceD2zPnuYCRKBZOz5BJOPkgO0gjajNwBhBYNaJEOd7DBKjtnSyLUY6dSMR4; ajs_anonymous_id=757888a4-7823-48a5-8a3d-36a7d90b6811; AUTH-TOKEN=eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiI2OGM2NzJhYzA5ZmU1NzAzYjE0MGNlZjQiLCJpYXQiOjE3NjExNjI4MjgsImV4cCI6MTc2MTE2NjQyOH0.dtdYynuJ_PkIPwVFQv2nT9LK8VYZakRnqRIY-CITPLBIu0pxLOdy9GO34o9U-f7PtLy4AwmzAlFgKaVIjRKW9Q",
+  "dnt": "1",
+  "if-none-match": "\"k1xciagg9213vl\"",
+  "priority": "u=1, i",
+  "referer": "https://test.conduit-ucpi.com/dashboard",
+  "sec-ch-ua": "\"Google Chrome\";v=\"141\", \"Not?A_Brand\";v=\"8\", \"Chromium\";v=\"141\"",
+  "sec-ch-ua-mobile": "?1",
+  "sec-ch-ua-platform": "\"Android\"",
+  "sec-fetch-dest": "empty",
+  "sec-fetch-mode": "cors",
+  "sec-fetch-site": "same-origin",
+  "via": "2.0 Caddy",
+  "x-forwarded-for": "161.65.97.210",
+  "x-forwarded-host": "test.conduit-ucpi.com",
+  "x-forwarded-proto": "https",
+  "x-real-ip": "161.65.97.210",
+  "x-middleware-invoke": "",
+  "x-invoke-path": "/api/combined-contracts",
+  "x-invoke-query": "%7B%7D",
+  "x-invoke-output": "/api/combined-contracts",
+  "x-forwarded-port": "3000"
+}
+Cookie header: web3auth_ajs_user_id=BPDapDap0_WU7NXzbzcEQT6Hc2MDceD2zPnuYCRKBZOz5BJOPkgO0gjajNwBhBYNaJEOd7DBKjtnSyLUY6dSMR4; ajs_anonymous_id=757888a4-7823-48a5-8a3d-36a7d90b6811; AUTH-TOKEN=eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiI2OGM2NzJhYzA5ZmU1NzAzYjE0MGNlZjQiLCJpYXQiOjE3NjExNjI4MjgsImV4cCI6MTc2MTE2NjQyOH0.dtdYynuJ_PkIPwVFQv2nT9LK8VYZakRnqRIY-CITPLBIu0pxLOdy9GO34o9U-f7PtLy4AwmzAlFgKaVIjRKW9Q
+Authorization header: Bearer eyJ0eXBlIjoic2lnbmF0dXJlX2F1dGgiLCJ3YWxsZXRBZGRyZXNzIjoiMHhjOUQwNjAyQTg3RTU1MTE2RjYzM2IxQTFGOTVEMDgzRWIxMTVmOTQyIiwibWVzc2FnZSI6IkF1dGhlbnRpY2F0ZSB3YWxsZXQgMHhjOUQwNjAyQTg3RTU1MTE2RjYzM2IxQTFGOTVEMDgzRWIxMTVmOTQyIGF0IDE3NjExNjI4MjAzNzQgd2l0aCBub25jZSAwOWRocDZibmNyNHEiLCJzaWduYXR1cmUiOiIweGIwZDFmNDNjODM2YWVmYTc2YjA4NDhjNDg2ZDQ3OGVlMDc3Y2I3MGI4NmExOTkwNDg5OGRlNDFkYWRmOGU5YzU0OGYzMTkzNmZkYTZiZDgxY2JjYWQyYzQyY2U0MzFhZTRhNTJhOWFlM2YwNjZhN2RhYTFhYTFlZjhjMDhhZWVhMWIiLCJ0aW1lc3RhbXAiOjE3NjExNjI4MjAzNzQsIm5vbmNlIjoiMDlkaHA2Ym5jcjRxIiwiaXNzdWVyIjoid2ViM2F1dGhfdW5pZmllZCIsImhlYWRlciI6eyJhbGciOiJFQ0RTQSIsInR5cCI6IlNJRyJ9LCJwYXlsb2FkIjp7InN1YiI6IjB4YzlEMDYwMkE4N0U1NTExNkY2MzNiMUExRjk1RDA4M0ViMTE1Zjk0MiIsImlhdCI6MTc2MTE2MjgyMCwiaXNzIjoid2ViM2F1dGhfdW5pZmllZCIsIndhbGxldF90eXBlIjoiZHluYW1pYyJ9fQ==
+Auth token: Present
+About to make request to CONTRACT_SERVICE_URL: http://contractservice-prod:8080
+X_API_KEY environment variable: Present
+Added X-API-Key header to request
+Headers being sent to contract service: {
+  "Content-Type": "application/json",
+  "Authorization": "Bearer eyJ0eXBlIjoic2lnbmF0dXJlX2F1dGgiLCJ3YWxsZXRBZGRyZXNzIjoiMHhjOUQwNjAyQTg3RTU1MTE2RjYzM2IxQTFGOTVEMDgzRWIxMTVmOTQyIiwibWVzc2FnZSI6IkF1dGhlbnRpY2F0ZSB3YWxsZXQgMHhjOUQwNjAyQTg3RTU1MTE2RjYzM2IxQTFGOTVEMDgzRWIxMTVmOTQyIGF0IDE3NjExNjI4MjAzNzQgd2l0aCBub25jZSAwOWRocDZibmNyNHEiLCJzaWduYXR1cmUiOiIweGIwZDFmNDNjODM2YWVmYTc2YjA4NDhjNDg2ZDQ3OGVlMDc3Y2I3MGI4NmExOTkwNDg5OGRlNDFkYWRmOGU5YzU0OGYzMTkzNmZkYTZiZDgxY2JjYWQyYzQyY2U0MzFhZTRhNTJhOWFlM2YwNjZhN2RhYTFhYTFlZjhjMDhhZWVhMWIiLCJ0aW1lc3RhbXAiOjE3NjExNjI4MjAzNzQsIm5vbmNlIjoiMDlkaHA2Ym5jcjRxIiwiaXNzdWVyIjoid2ViM2F1dGhfdW5pZmllZCIsImhlYWRlciI6eyJhbGciOiJFQ0RTQSIsInR5cCI6IlNJRyJ9LCJwYXlsb2FkIjp7InN1YiI6IjB4YzlEMDYwMkE4N0U1NTExNkY2MzNiMUExRjk1RDA4M0ViMTE1Zjk0MiIsImlhdCI6MTc2MTE2MjgyMCwiaXNzIjoid2ViM2F1dGhfdW5pZmllZCIsIndhbGxldF90eXBlIjoiZHluYW1pYyJ9fQ==",
+  "Cookie": "web3auth_ajs_user_id=BPDapDap0_WU7NXzbzcEQT6Hc2MDceD2zPnuYCRKBZOz5BJOPkgO0gjajNwBhBYNaJEOd7DBKjtnSyLUY6dSMR4; ajs_anonymous_id=757888a4-7823-48a5-8a3d-36a7d90b6811; AUTH-TOKEN=eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiI2OGM2NzJhYzA5ZmU1NzAzYjE0MGNlZjQiLCJpYXQiOjE3NjExNjI4MjgsImV4cCI6MTc2MTE2NjQyOH0.dtdYynuJ_PkIPwVFQv2nT9LK8VYZakRnqRIY-CITPLBIu0pxLOdy9GO34o9U-f7PtLy4AwmzAlFgKaVIjRKW9Q",
+  "X-API-Key": "api_key_7f3a8c2d9b1e5f4a6c8e9d2b5a7f1c3e8a4b6d9e2f5a8c7b1e4d6f9a2c5e8b1f4a7c"
+}
+All contracts from service: 42
+Returning contracts directly from contract service (no enrichment/deduplication needed)
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:12.587Z] [DEBUG] [TokenManager] Getting token {
+  "hasToken": true,
+  "tokenLength": 792
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:12.587Z] [DATA] {
+  "hasToken": true,
+  "tokenLength": 792
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:12.587Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] Received 1 log entries
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.163Z] [INFO] [DynamicProvider] getEthersProviderAsync() called {
+  "hasCachedProvider": true,
+  "hasDynamicWallet": true,
+  "currentAddress": "0xc9D0602A87E55116F633b1A1F95D083Eb115f942",
+  "cachedVersion": "v2_hybrid",
+  "currentVersion": "v2_hybrid"
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.163Z] [DATA] {
+  "hasCachedProvider": true,
+  "hasDynamicWallet": true,
+  "currentAddress": "0xc9D0602A87E55116F633b1A1F95D083Eb115f942",
+  "cachedVersion": "v2_hybrid",
+  "currentVersion": "v2_hybrid"
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.163Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.163Z] [INFO] [DynamicProvider] ✅ Returning cached ethers provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.163Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.164Z] [DEBUG] [HybridProvider] 📖 Routing eth_chainId to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.164Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.602Z] [DEBUG] [HybridProvider] 📖 Routing eth_chainId to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.602Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.602Z] [DEBUG] [HybridProvider] 📝 Routing eth_accounts to wallet provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.602Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.602Z] [INFO] [MobileDeepLink] Request intercepted: eth_accounts 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.602Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.602Z] [INFO] [MobileDeepLink] ℹ️  Method "eth_accounts" does not require user action - no deep link needed 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.602Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.602Z] [INFO] [MobileDeepLink] 🔄 Calling originalRequest for eth_accounts {
+  "hasOriginalRequest": true,
+  "argsMethod": "eth_accounts",
+  "argsParamsLength": 0
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.602Z] [DATA] {
+  "hasOriginalRequest": true,
+  "argsMethod": "eth_accounts",
+  "argsParamsLength": 0
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.602Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.602Z] [DEBUG] [HybridProvider] 📝 Routing eth_accounts to wallet provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.602Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.602Z] [INFO] [MobileDeepLink] ✅ originalRequest completed for eth_accounts {
+  "hasResult": true,
+  "resultType": "object"
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.602Z] [DATA] {
+  "hasResult": true,
+  "resultType": "object"
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.602Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.603Z] [DEBUG] [HybridProvider] 📝 Routing eth_accounts to wallet provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.603Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.603Z] [INFO] [MobileDeepLink] Request intercepted: eth_accounts 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.603Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.603Z] [INFO] [MobileDeepLink] ℹ️  Method "eth_accounts" does not require user action - no deep link needed 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.603Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.603Z] [INFO] [MobileDeepLink] 🔄 Calling originalRequest for eth_accounts {
+  "hasOriginalRequest": true,
+  "argsMethod": "eth_accounts",
+  "argsParamsLength": 0
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.603Z] [DATA] {
+  "hasOriginalRequest": true,
+  "argsMethod": "eth_accounts",
+  "argsParamsLength": 0
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.603Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.603Z] [DEBUG] [HybridProvider] 📝 Routing eth_accounts to wallet provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.603Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.603Z] [INFO] [MobileDeepLink] ✅ originalRequest completed for eth_accounts {
+  "hasResult": true,
+  "resultType": "object"
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.603Z] [DATA] {
+  "hasResult": true,
+  "resultType": "object"
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.603Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.605Z] [DEBUG] [HybridProvider] 📝 Routing eth_accounts to wallet provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.605Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.605Z] [INFO] [MobileDeepLink] Request intercepted: eth_accounts 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.605Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.605Z] [INFO] [MobileDeepLink] ℹ️  Method "eth_accounts" does not require user action - no deep link needed 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.605Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.605Z] [INFO] [MobileDeepLink] 🔄 Calling originalRequest for eth_accounts {
+  "hasOriginalRequest": true,
+  "argsMethod": "eth_accounts",
+  "argsParamsLength": 0
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.605Z] [DATA] {
+  "hasOriginalRequest": true,
+  "argsMethod": "eth_accounts",
+  "argsParamsLength": 0
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.605Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.605Z] [DEBUG] [HybridProvider] 📝 Routing eth_accounts to wallet provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.605Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.605Z] [INFO] [MobileDeepLink] ✅ originalRequest completed for eth_accounts {
+  "hasResult": true,
+  "resultType": "object"
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.605Z] [DATA] {
+  "hasResult": true,
+  "resultType": "object"
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.605Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.605Z] [DEBUG] [HybridProvider] 📝 Routing eth_accounts to wallet provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.605Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.606Z] [INFO] [MobileDeepLink] Request intercepted: eth_accounts 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.606Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.606Z] [INFO] [MobileDeepLink] ℹ️  Method "eth_accounts" does not require user action - no deep link needed 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.606Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.606Z] [INFO] [MobileDeepLink] 🔄 Calling originalRequest for eth_accounts {
+  "hasOriginalRequest": true,
+  "argsMethod": "eth_accounts",
+  "argsParamsLength": 0
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.606Z] [DATA] {
+  "hasOriginalRequest": true,
+  "argsMethod": "eth_accounts",
+  "argsParamsLength": 0
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.606Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.606Z] [DEBUG] [HybridProvider] 📝 Routing eth_accounts to wallet provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.606Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.606Z] [INFO] [MobileDeepLink] ✅ originalRequest completed for eth_accounts {
+  "hasResult": true,
+  "resultType": "object"
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.606Z] [DATA] {
+  "hasResult": true,
+  "resultType": "object"
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.606Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.619Z] [DEBUG] [HybridProvider] 📖 Routing eth_call to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.619Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.774Z] [DEBUG] [HybridProvider] 📖 Routing eth_call to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.774Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.774Z] [DEBUG] [HybridProvider] 📖 Routing eth_chainId to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:15.774Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] Received 31 log entries
+Get contract by ID request: 68f7f5e0ad622b14966df78e
+Auth token: Present
+Calling Contract Service: http://contractservice-prod:8080/api/contracts/68f7f5e0ad622b14966df78e
+Contract Service response: {
+  id: '68f7f5e0ad622b14966df78e',
+  sellerEmail: 'charliepank@gmail.com',
+  buyerEmail: 'charlieMetamask@pank.org.uk',
+  amount: 1000,
+  currency: 'microUSDC',
+  sellerAddress: '0x3f2b518f78db2ef66c7ca70b8e4bc2254d86bfd2',
+  expiryTimestamp: 1761167168,
+  chainId: '84532',
+  chainAddress: '',
+  buyerAddress: null,
+  description: 'cabbages again',
+  productName: 's-crow',
+  createdAt: 1761080800,
+  createdBy: '68ed5ae91d114070bce9cf81',
+  adminNotes: [],
+  disputes: [],
+  state: 'OK'
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:17.534Z] [DEBUG] [TokenManager] Getting token {
+  "hasToken": true,
+  "tokenLength": 792
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:17.534Z] [DATA] {
+  "hasToken": true,
+  "tokenLength": 792
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:17.534Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:17.730Z] [DEBUG] [TokenManager] Getting token {
+  "hasToken": true,
+  "tokenLength": 792
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:17.730Z] [DATA] {
+  "hasToken": true,
+  "tokenLength": 792
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:17.730Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] Received 2 log entries
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:21.662Z] [INFO] [DynamicProvider] getEthersProviderAsync() called {
+  "hasCachedProvider": true,
+  "hasDynamicWallet": true,
+  "currentAddress": "0xc9D0602A87E55116F633b1A1F95D083Eb115f942",
+  "cachedVersion": "v2_hybrid",
+  "currentVersion": "v2_hybrid"
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:21.662Z] [DATA] {
+  "hasCachedProvider": true,
+  "hasDynamicWallet": true,
+  "currentAddress": "0xc9D0602A87E55116F633b1A1F95D083Eb115f942",
+  "cachedVersion": "v2_hybrid",
+  "currentVersion": "v2_hybrid"
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:21.662Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:21.662Z] [INFO] [DynamicProvider] ✅ Returning cached ethers provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:21.662Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:21.663Z] [INFO] [TransactionWait] ⏳ Starting manual polling for transaction confirmation {
+  "txHash": "0x9ee8a9514936d0b0d85a8ebd33dd00c56e5d604481cced26b714ab3b52db20e9",
+  "timeoutMs": 120000,
+  "contractId": "68f7f5e0ad622b14966df78e"
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:21.663Z] [DATA] {
+  "txHash": "0x9ee8a9514936d0b0d85a8ebd33dd00c56e5d604481cced26b714ab3b52db20e9",
+  "timeoutMs": 120000,
+  "contractId": "68f7f5e0ad622b14966df78e"
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:21.663Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:21.664Z] [DEBUG] [HybridProvider] 📖 Routing eth_getTransactionReceipt to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:21.664Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:21.827Z] [INFO] [TransactionWait] ✅ Transaction confirmed successfully {
+  "txHash": "0x9ee8a9514936d0b0d85a8ebd33dd00c56e5d604481cced26b714ab3b52db20e9",
+  "blockNumber": "0x2376cc4",
+  "pollAttempts": 1,
+  "elapsedSeconds": 0
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:21.827Z] [DATA] {
+  "txHash": "0x9ee8a9514936d0b0d85a8ebd33dd00c56e5d604481cced26b714ab3b52db20e9",
+  "blockNumber": "0x2376cc4",
+  "pollAttempts": 1,
+  "elapsedSeconds": 0
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:21.827Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] Received 5 log entries
+Fund wallet request:
+Cookies received: web3auth_ajs_user_id=BPDapDap0_WU7NXzbzcEQT6Hc2MDceD2zPnuYCRKBZOz5BJOPkgO0gjajNwBhBYNaJEOd7DBKjtnSyLUY6dSMR4; ajs_anonymous_id=757888a4-7823-48a5-8a3d-36a7d90b6811; AUTH-TOKEN=eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiI2OGM2NzJhYzA5ZmU1NzAzYjE0MGNlZjQiLCJpYXQiOjE3NjExNjI4MjgsImV4cCI6MTc2MTE2NjQyOH0.dtdYynuJ_PkIPwVFQv2nT9LK8VYZakRnqRIY-CITPLBIu0pxLOdy9GO34o9U-f7PtLy4AwmzAlFgKaVIjRKW9Q
+Auth token extracted: Present
+Calling Chain Service with headers: {
+  'Content-Type': 'application/json',
+  Authorization: 'Bearer [REDACTED]',
+  Cookie: 'web3auth_ajs_user_id=BPDapDap0_WU7NXzbzcEQT6Hc2MDceD2zPnuYCRKBZOz5BJOPkgO0gjajNwBhBYNaJEOd7DBKjtnSyLUY6dSMR4; ajs_anonymous_id=757888a4-7823-48a5-8a3d-36a7d90b6811; AUTH-TOKEN=eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiI2OGM2NzJhYzA5ZmU1NzAzYjE0MGNlZjQiLCJpYXQiOjE3NjExNjI4MjgsImV4cCI6MTc2MTE2NjQyOH0.dtdYynuJ_PkIPwVFQv2nT9LK8VYZakRnqRIY-CITPLBIu0pxLOdy9GO34o9U-f7PtLy4AwmzAlFgKaVIjRKW9Q',
+  'X-API-Key': 'api_key_7f3a8c2d9b1e5f4a6c8e9d2b5a7f1c3e8a4b6d9e2f5a8c7b1e4d6f9a2c5e8b1f4a7c'
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:23.836Z] [INFO] [DynamicProvider] getEthersProviderAsync() called {
+  "hasCachedProvider": true,
+  "hasDynamicWallet": true,
+  "currentAddress": "0xc9D0602A87E55116F633b1A1F95D083Eb115f942",
+  "cachedVersion": "v2_hybrid",
+  "currentVersion": "v2_hybrid"
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:23.836Z] [DATA] {
+  "hasCachedProvider": true,
+  "hasDynamicWallet": true,
+  "currentAddress": "0xc9D0602A87E55116F633b1A1F95D083Eb115f942",
+  "cachedVersion": "v2_hybrid",
+  "currentVersion": "v2_hybrid"
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:23.836Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:23.836Z] [INFO] [DynamicProvider] ✅ Returning cached ethers provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:23.836Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:23.844Z] [DEBUG] [HybridProvider] 📖 Routing eth_chainId to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:23.844Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.004Z] [DEBUG] [HybridProvider] 📝 Routing eth_accounts to wallet provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.004Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.004Z] [INFO] [MobileDeepLink] Request intercepted: eth_accounts 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.004Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.004Z] [INFO] [MobileDeepLink] ℹ️  Method "eth_accounts" does not require user action - no deep link needed 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.004Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.004Z] [INFO] [MobileDeepLink] 🔄 Calling originalRequest for eth_accounts {
+  "hasOriginalRequest": true,
+  "argsMethod": "eth_accounts",
+  "argsParamsLength": 0
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.004Z] [DATA] {
+  "hasOriginalRequest": true,
+  "argsMethod": "eth_accounts",
+  "argsParamsLength": 0
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.004Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.004Z] [DEBUG] [HybridProvider] 📝 Routing eth_accounts to wallet provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.004Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.005Z] [INFO] [MobileDeepLink] ✅ originalRequest completed for eth_accounts {
+  "hasResult": true,
+  "resultType": "object"
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.005Z] [DATA] {
+  "hasResult": true,
+  "resultType": "object"
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.005Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.005Z] [DEBUG] [HybridProvider] 📝 Routing eth_accounts to wallet provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.005Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.005Z] [INFO] [MobileDeepLink] Request intercepted: eth_accounts 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.005Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.006Z] [INFO] [MobileDeepLink] ℹ️  Method "eth_accounts" does not require user action - no deep link needed 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.006Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.006Z] [INFO] [MobileDeepLink] 🔄 Calling originalRequest for eth_accounts {
+  "hasOriginalRequest": true,
+  "argsMethod": "eth_accounts",
+  "argsParamsLength": 0
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.006Z] [DATA] {
+  "hasOriginalRequest": true,
+  "argsMethod": "eth_accounts",
+  "argsParamsLength": 0
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.006Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.006Z] [DEBUG] [HybridProvider] 📝 Routing eth_accounts to wallet provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.006Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.006Z] [INFO] [MobileDeepLink] ✅ originalRequest completed for eth_accounts {
+  "hasResult": true,
+  "resultType": "object"
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.006Z] [DATA] {
+  "hasResult": true,
+  "resultType": "object"
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.006Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.156Z] [DEBUG] [HybridProvider] 📖 Routing eth_chainId to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.156Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.317Z] [DEBUG] [HybridProvider] 📖 Routing eth_getBlockByNumber to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.317Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.317Z] [DEBUG] [HybridProvider] 📖 Routing eth_gasPrice to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.317Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.317Z] [DEBUG] [HybridProvider] 📖 Routing eth_maxPriorityFeePerGas to read provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.317Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.984Z] [DEBUG] [HybridProvider] 📝 Routing eth_accounts to wallet provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.984Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.984Z] [INFO] [MobileDeepLink] Request intercepted: eth_accounts 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.984Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.984Z] [INFO] [MobileDeepLink] ℹ️  Method "eth_accounts" does not require user action - no deep link needed 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.984Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.984Z] [INFO] [MobileDeepLink] 🔄 Calling originalRequest for eth_accounts {
+  "hasOriginalRequest": true,
+  "argsMethod": "eth_accounts",
+  "argsParamsLength": 0
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.984Z] [DATA] {
+  "hasOriginalRequest": true,
+  "argsMethod": "eth_accounts",
+  "argsParamsLength": 0
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.984Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.984Z] [DEBUG] [HybridProvider] 📝 Routing eth_accounts to wallet provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.984Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.985Z] [INFO] [MobileDeepLink] ✅ originalRequest completed for eth_accounts {
+  "hasResult": true,
+  "resultType": "object"
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.985Z] [DATA] {
+  "hasResult": true,
+  "resultType": "object"
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.985Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.985Z] [DEBUG] [HybridProvider] 📝 Routing eth_accounts to wallet provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.985Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.985Z] [INFO] [MobileDeepLink] Request intercepted: eth_accounts 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.985Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.986Z] [INFO] [MobileDeepLink] ℹ️  Method "eth_accounts" does not require user action - no deep link needed 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.986Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.986Z] [INFO] [MobileDeepLink] 🔄 Calling originalRequest for eth_accounts {
+  "hasOriginalRequest": true,
+  "argsMethod": "eth_accounts",
+  "argsParamsLength": 0
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.986Z] [DATA] {
+  "hasOriginalRequest": true,
+  "argsMethod": "eth_accounts",
+  "argsParamsLength": 0
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.986Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.986Z] [DEBUG] [HybridProvider] 📝 Routing eth_accounts to wallet provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.986Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.986Z] [INFO] [MobileDeepLink] ✅ originalRequest completed for eth_accounts {
+  "hasResult": true,
+  "resultType": "object"
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.986Z] [DATA] {
+  "hasResult": true,
+  "resultType": "object"
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.986Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.988Z] [INFO] [Web3Service] 📤 Calling eth_sendTransaction directly (bypasses hanging on mobile)... 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.988Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.988Z] [INFO] [Web3Service] 🔢 Querying nonce before transaction... 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.988Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.988Z] [DEBUG] [HybridProvider] 📝 Routing eth_getTransactionCount to wallet provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.988Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.988Z] [INFO] [MobileDeepLink] Request intercepted: eth_getTransactionCount 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.988Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.988Z] [INFO] [MobileDeepLink] ℹ️  Method "eth_getTransactionCount" does not require user action - no deep link needed 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.988Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.988Z] [INFO] [MobileDeepLink] 🔄 Calling originalRequest for eth_getTransactionCount {
+  "hasOriginalRequest": true,
+  "argsMethod": "eth_getTransactionCount",
+  "argsParamsLength": 2
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.988Z] [DATA] {
+  "hasOriginalRequest": true,
+  "argsMethod": "eth_getTransactionCount",
+  "argsParamsLength": 2
+}
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.988Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.988Z] [DEBUG] [HybridProvider] 📝 Routing eth_getTransactionCount to wallet provider 
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] [2025-10-22T19:54:24.988Z] [CONTEXT] URL: https://test.conduit-ucpi.com/dashboard, UserAgent: Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+[MOBILE-DEBUG:mobile-1761036990133-u8eyneqdqyp] Received 38 log entries

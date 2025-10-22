@@ -57,24 +57,26 @@ describe('HybridProvider - Routing Logic', () => {
   });
 
   describe('eth_getTransactionCount routing', () => {
-    it('should route eth_getTransactionCount to WALLET provider for nonce hash consistency', async () => {
-      // NONCE FIX: eth_getTransactionCount now routes to WALLET provider (not read provider)
-      // This ensures nonce comes from same source that validates it (the wallet).
-      // Query happens BEFORE app-switch when wallet provider works fine.
-      // After app-switch, we only poll eth_getTransactionReceipt (routed to Base RPC), never nonce.
+    it('should route eth_getTransactionCount to READ provider to prevent mobile deep link blocking', async () => {
+      // MOBILE FIX: eth_getTransactionCount now routes to READ provider (not wallet provider)
+      // Querying nonce from wallet triggers interaction that blocks eth_sendTransaction deep link.
+      // Routing to Base RPC prevents any wallet interaction before the transaction.
 
-      // Mock read provider - should NOT be called for nonce queries
+      // Mock read provider - SHOULD handle nonce queries
       const mockReadProvider = {
-        send: jest.fn(() => {
-          throw new Error('Read provider should not be called for eth_getTransactionCount!');
+        send: jest.fn((method: string, params: any[]) => {
+          if (method === 'eth_getTransactionCount') {
+            return Promise.resolve('0x5'); // nonce = 5 from Base blockchain
+          }
+          return Promise.reject(new Error(`Unexpected method: ${method}`));
         })
       };
 
-      // Mock wallet provider - SHOULD handle nonce queries (before app-switch)
+      // Mock wallet provider - should NOT be called for nonce queries
       const mockWalletProvider = {
         request: jest.fn((args: any) => {
           if (args.method === 'eth_getTransactionCount') {
-            return Promise.resolve('0x5'); // nonce = 5 from wallet's perspective
+            throw new Error('Wallet provider should not be called for eth_getTransactionCount!');
           }
           return Promise.reject(new Error(`Unexpected method: ${args.method}`));
         })
@@ -87,25 +89,22 @@ describe('HybridProvider - Routing Logic', () => {
         chainId: 84532
       });
 
-      // Call eth_getTransactionCount - should route to WALLET provider
+      // Call eth_getTransactionCount - should route to READ provider
       const result = await hybrid.request({
         method: 'eth_getTransactionCount',
         params: ['0xUserAddress', 'latest']
       });
 
-      // Verify it used the wallet provider (for nonce consistency)
-      expect(mockWalletProvider.request).toHaveBeenCalledWith({
-        method: 'eth_getTransactionCount',
-        params: ['0xUserAddress', 'latest']
-      });
+      // Verify it used the read provider (prevents wallet interaction)
+      expect(mockReadProvider.send).toHaveBeenCalledWith('eth_getTransactionCount', ['0xUserAddress', 'latest']);
 
-      // Verify it did NOT use the read provider
-      expect(mockReadProvider.send).not.toHaveBeenCalled();
+      // Verify it did NOT use the wallet provider (critical for mobile deep links)
+      expect(mockWalletProvider.request).not.toHaveBeenCalled();
 
-      // Verify we got the correct result (from wallet's nonce view)
+      // Verify we got the correct result (from Base blockchain)
       expect(result).toBe('0x5');
 
-      console.log('✅ eth_getTransactionCount correctly routed to wallet provider (nonce hash fix)');
+      console.log('✅ eth_getTransactionCount correctly routed to read provider (mobile deep link fix)');
     });
   });
 

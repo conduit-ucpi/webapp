@@ -77,13 +77,34 @@ describe('Universal Hybrid Provider - All Wallets Use Base RPC', () => {
         maxPriorityFeePerGas: BigInt(100000)
       }),
 
-      // Direct RPC call support (for mobile fix + nonce querying)
+      // Direct RPC call support (for mobile fix + nonce querying + hash verification)
       send: jest.fn().mockImplementation((method: string, params: any[]) => {
         if (method === 'eth_sendTransaction') {
           return Promise.resolve('0xTxHash123');
         }
         if (method === 'eth_getTransactionCount') {
           return Promise.resolve('0x23'); // Nonce 35 (matching production)
+        }
+        // Support for findTransactionByNonce()
+        if (method === 'eth_blockNumber') {
+          return Promise.resolve('0x100'); // Block 256
+        }
+        if (method === 'eth_getBlockByNumber') {
+          return Promise.resolve({
+            number: params[0],
+            transactions: ['0xTxHash123'] // Transaction is in latest block
+          });
+        }
+        if (method === 'eth_getTransactionByHash') {
+          if (params[0] === '0xTxHash123') {
+            return Promise.resolve({
+              hash: '0xTxHash123',
+              from: '0xuser123', // lowercase to match comparison
+              to: '0xrecipient123',
+              nonce: '0x23', // Nonce 35
+              blockNumber: '0x100'
+            });
+          }
         }
         return Promise.reject(new Error(`Unexpected method: ${method}`));
       }),
@@ -202,13 +223,34 @@ describe('Universal Hybrid Provider - All Wallets Use Base RPC', () => {
         maxPriorityFeePerGas: BigInt(500000)
       }),
 
-      // Direct RPC call support (for mobile fix + nonce querying)
+      // Direct RPC call support (for mobile fix + nonce querying + hash verification)
       send: jest.fn().mockImplementation((method: string, params: any[]) => {
         if (method === 'eth_sendTransaction') {
           return Promise.resolve('0xTxHash456');
         }
         if (method === 'eth_getTransactionCount') {
           return Promise.resolve('0x24'); // Nonce 36 (different from MetaMask mock)
+        }
+        // Support for findTransactionByNonce()
+        if (method === 'eth_blockNumber') {
+          return Promise.resolve('0x200'); // Block 512
+        }
+        if (method === 'eth_getBlockByNumber') {
+          return Promise.resolve({
+            number: params[0],
+            transactions: ['0xTxHash456'] // Transaction is in latest block
+          });
+        }
+        if (method === 'eth_getTransactionByHash') {
+          if (params[0] === '0xTxHash456') {
+            return Promise.resolve({
+              hash: '0xTxHash456',
+              from: '0xc9d0602a87e55116f633b1a1f95d083eb115f943', // lowercase to match comparison
+              to: '0xrecipient456',
+              nonce: '0x24', // Nonce 36
+              blockNumber: '0x200'
+            });
+          }
         }
         return Promise.reject(new Error(`Unexpected method: ${method}`));
       })

@@ -135,23 +135,22 @@ describe('Mobile Transaction Hash Mismatch', () => {
     delete (global as any).fetch;
   });
 
-  it('should detect and correct hash mismatch by querying blockchain for actual transaction', async () => {
+  it('should ignore returned hash and find correct transaction by nonce', async () => {
     // This test demonstrates the bug and the fix
     //
     // Bug behavior:
     // 1. User sends USDC approval transaction on mobile MetaMask
-    // 2. signer.sendTransaction() returns hash 0xd676b... (WRONG)
+    // 2. eth_sendTransaction() returns hash 0xd676b... (WRONG - someone else's transaction!)
     // 3. MetaMask actually submits transaction with hash 0x6b7c... (CORRECT)
     // 4. App polls for 0xd676b... forever
     // 5. Real transaction 0x6b7c... is already confirmed but app doesn't know
     //
     // Fix behavior:
-    // 1. After sendTransaction returns (potentially wrong) hash
-    // 2. Query blockchain for recent transactions from user's address
-    // 3. Filter by the nonce we used for this transaction
-    // 4. Find the transaction matching our address + nonce
-    // 5. Extract the REAL hash from that transaction
-    // 6. Use REAL hash for polling (will find transaction immediately)
+    // 1. Send transaction with explicit nonce
+    // 2. eth_sendTransaction returns (potentially wrong) hash - IGNORE IT!
+    // 3. Search blockchain for transaction matching (userAddress, nonce)
+    // 4. Find the REAL transaction in the blockchain
+    // 5. Return CORRECT hash (never the wrong one)
 
     const tx = {
       to: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
@@ -162,25 +161,23 @@ describe('Mobile Transaction Hash Mismatch', () => {
       maxPriorityFeePerGas: BigInt(1000000),
     };
 
-    // Send transaction - will return WRONG hash
+    // Send transaction - eth_sendTransaction will return WRONG hash
+    // But our code will IGNORE it and find the correct hash by searching blockchain
     const returnedHash = await (web3Service as any).fundAndSendTransaction(tx);
 
-    // BEFORE FIX: This would return the wrong hash
-    // expect(returnedHash).toBe(WRONG_HASH); // ❌ Wrong hash, will poll forever
-
-    // AFTER FIX: Should verify and correct the hash
+    // AFTER FIX: Should return CORRECT hash (found by searching blockchain)
     expect(returnedHash).toBe(CORRECT_HASH); // ✅ Correct hash, polling will succeed
 
-    // Verify that blockchain was queried to find real transaction
+    // Verify that blockchain was searched to find real transaction
     expect(mockProvider.send).toHaveBeenCalledWith('eth_blockNumber', []);
     expect(mockProvider.send).toHaveBeenCalledWith('eth_getTransactionByHash', [CORRECT_HASH]);
   });
 
-  it('should fall back to returned hash if verification fails', async () => {
-    // If we can't verify the hash (RPC errors, no matching transaction, etc.),
-    // fall back to the hash returned by eth_sendTransaction
-    //
-    // This ensures the fix doesn't break existing working cases
+  it('should retry until transaction is found (simulates mining delay)', async () => {
+    // Real-world scenario: Transaction is sent but not immediately mined
+    // The search should retry until the transaction appears in a block
+
+    let searchAttempt = 0;
 
     // Mock eth_sendTransaction to return wrong hash
     mockProvider.request = jest.fn().mockImplementation(async (args: { method: string; params?: any[] }) => {
@@ -190,18 +187,40 @@ describe('Mobile Transaction Hash Mismatch', () => {
       return null;
     });
 
-    // Mock nonce query to succeed, but verification queries to fail
+    // Mock: Transaction appears in blockchain after 2 search attempts (simulates mining delay)
     mockProvider.send.mockImplementation((method: string, params: any[]) => {
       if (method === 'eth_getTransactionCount') {
-        // Allow nonce query to succeed - return the nonce to use for this transaction
         return Promise.resolve(`0x${TRANSACTION_NONCE.toString(16)}`);
       }
       if (method === 'eth_blockNumber') {
-        // Allow block number query to succeed
+        searchAttempt++;
         return Promise.resolve('0x236cc00');
       }
-      // All other queries fail (verification will fail)
-      return Promise.reject(new Error('RPC error'));
+      if (method === 'eth_getBlockByNumber') {
+        // Transaction appears in block only after 2nd attempt (simulates mining delay)
+        if (searchAttempt >= 2) {
+          return Promise.resolve({
+            number: params[0],
+            transactions: [CORRECT_HASH],
+          });
+        } else {
+          // First attempt: block exists but transaction not in it yet
+          return Promise.resolve({
+            number: params[0],
+            transactions: [],
+          });
+        }
+      }
+      if (method === 'eth_getTransactionByHash' && params[0] === CORRECT_HASH) {
+        return Promise.resolve({
+          hash: CORRECT_HASH,
+          from: USER_ADDRESS,
+          to: '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913',
+          nonce: `0x${TRANSACTION_NONCE.toString(16)}`,
+          blockNumber: '0x236cc00',
+        });
+      }
+      return Promise.resolve(null);
     });
 
     const tx = {
@@ -213,7 +232,10 @@ describe('Mobile Transaction Hash Mismatch', () => {
 
     const returnedHash = await (web3Service as any).fundAndSendTransaction(tx);
 
-    // Should return the hash from sendTransaction (even if wrong) as fallback
-    expect(returnedHash).toBe(WRONG_HASH);
+    // Should eventually find and return correct hash after retries
+    expect(returnedHash).toBe(CORRECT_HASH);
+
+    // Verify that multiple search attempts were made
+    expect(searchAttempt).toBeGreaterThanOrEqual(2);
   });
 });

@@ -1132,40 +1132,45 @@ export class Web3Service {
         throw new Error('Provider does not support request() or send() methods');
       }
 
-      mLog.info('Web3Service', `✅ Transaction hash returned: ${returnedHash}`);
-      console.log('✅ Transaction hash obtained:', returnedHash);
+      mLog.info('Web3Service', `📥 eth_sendTransaction returned: ${returnedHash}`);
+      console.log('📥 eth_sendTransaction returned hash:', returnedHash);
 
-      // MOBILE FIX: Verify the transaction hash by querying blockchain
-      // On mobile, eth_sendTransaction returns wrong hash (someone else's transaction!)
-      // Solution: Query blockchain for transaction by address + nonce
-      // We use the EXACT nonce we included in the transaction (no guessing!)
+      // MOBILE FIX: IGNORE the returned hash completely!
+      // On mobile, eth_sendTransaction returns WRONG hash (someone else's transaction!)
+      // Solution: Search blockchain for transaction by (address, nonce) with retries
+      // We NEVER use the returned hash - we always find the correct hash by searching
       // See: MOBILE_SENDTRANSACTION_FIX.md for details
 
-      const verifiedHash = await this.verifyTransactionHash(
-        returnedHash,
+      mLog.info('Web3Service', '🔍 Ignoring returned hash - searching for correct transaction by nonce...');
+      console.log('🔍 Searching for transaction by (address, nonce)...');
+
+      const correctHash = await this.findTransactionByNonce(
         fromAddress,
-        nonce
+        nonce,
+        30,    // maxAttempts: Try for up to 60 seconds
+        2000,  // delayMs: Wait 2 seconds between attempts
+        20     // maxBlocksToSearch: Search last 20 blocks
       );
 
-      if (verifiedHash !== returnedHash) {
-        mLog.warn('Web3Service', '⚠️ Hash mismatch detected and corrected!', {
-          returnedHash: returnedHash,
-          verifiedHash: verifiedHash,
+      if (correctHash !== returnedHash) {
+        mLog.warn('Web3Service', '⚠️ Hash mismatch detected! Returned hash was WRONG.', {
+          wrongHash: returnedHash,
+          correctHash: correctHash,
           nonce: nonce
         });
-        console.warn('[Web3Service] ⚠️  Hash mismatch corrected:', {
-          returned: returnedHash,
-          verified: verifiedHash,
+        console.warn('[Web3Service] ⚠️ Returned hash was WRONG - using correct hash from blockchain:', {
+          wrong: returnedHash,
+          correct: correctHash,
           nonce: nonce
         });
       } else {
-        mLog.info('Web3Service', '✅ Hash verified - matches returned hash', {
-          hash: verifiedHash,
+        mLog.info('Web3Service', '✅ Returned hash was correct (desktop wallet or lucky)', {
+          hash: correctHash,
           nonce: nonce
         });
       }
 
-      return verifiedHash;
+      return correctHash;
 
     } catch (error) {
       console.error('[Web3Service.fundAndSendTransaction] Failed to send via ethers, error:', error);
@@ -1174,103 +1179,108 @@ export class Web3Service {
   }
 
   /**
-   * Verify transaction hash by querying blockchain for actual transaction
+   * Find transaction hash by searching blockchain for (address, nonce) match
    *
-   * Problem: On mobile, signer.sendTransaction() sometimes returns wrong hash
-   * Solution: Query blockchain for recent transactions from user's address,
-   *           filter by nonce to find the actual transaction
+   * Problem: On mobile, eth_sendTransaction() returns WRONG hash (someone else's transaction!)
+   * Solution: IGNORE returned hash completely. Search blockchain for transaction matching
+   *           (userAddress, nonce) and retry until found.
    *
-   * @param returnedHash - Hash returned by signer.sendTransaction()
    * @param fromAddress - User's wallet address
-   * @param nonce - Transaction nonce
-   * @returns Verified hash (from blockchain) or fallback to returned hash
+   * @param nonce - Transaction nonce that was used
+   * @param maxAttempts - Maximum number of search attempts (default: 30)
+   * @param delayMs - Delay between attempts in milliseconds (default: 2000)
+   * @param maxBlocksToSearch - How many recent blocks to search (default: 20)
+   * @returns Correct transaction hash found on blockchain
+   * @throws Error if transaction not found after all attempts
    */
-  private async verifyTransactionHash(
-    returnedHash: string,
+  private async findTransactionByNonce(
     fromAddress: string,
-    nonce: number
+    nonce: number,
+    maxAttempts: number = 30,
+    delayMs: number = 2000,
+    maxBlocksToSearch: number = 20
   ): Promise<string> {
-    try {
-      mLog.info('Web3Service', '🔍 Verifying transaction hash...', {
-        returnedHash,
-        fromAddress,
-        nonce
-      });
 
-      // Get the provider for blockchain queries
-      const provider = this.provider as any;
-      if (!provider || !provider.send) {
-        mLog.warn('Web3Service', 'No provider available for hash verification, using returned hash');
-        return returnedHash;
-      }
+    mLog.info('Web3Service', '🔍 Searching for transaction by address + nonce...', {
+      fromAddress,
+      nonce,
+      maxAttempts,
+      delayMs,
+      maxBlocksToSearch
+    });
 
-      // Get latest block number
-      const latestBlockHex = await provider.send('eth_blockNumber', []);
-      const latestBlockNum = parseInt(latestBlockHex, 16);
+    const provider = this.provider as any;
+    if (!provider || !provider.send) {
+      throw new Error('No provider available for transaction search');
+    }
 
-      mLog.info('Web3Service', `🔍 Starting search from block ${latestBlockNum}`);
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        // Get latest block number
+        const latestBlockHex = await provider.send('eth_blockNumber', []);
+        const latestBlockNum = parseInt(latestBlockHex, 16);
 
-      // Search last 10 blocks for the transaction
-      // Transaction might be in earlier block by the time we search
-      const BLOCKS_TO_SEARCH = 10;
-      let totalTransactionsSearched = 0;
+        mLog.info('Web3Service', `🔍 Search attempt ${attempt}/${maxAttempts} - Latest block: ${latestBlockNum}`);
 
-      for (let i = 0; i < BLOCKS_TO_SEARCH; i++) {
-        const blockNum = latestBlockNum - i;
-        if (blockNum < 0) break;
+        // Search recent blocks for the transaction
+        for (let i = 0; i < maxBlocksToSearch; i++) {
+          const blockNum = latestBlockNum - i;
+          if (blockNum < 0) break;
 
-        const blockHex = `0x${blockNum.toString(16)}`;
-        const blockData = await provider.send('eth_getBlockByNumber', [blockHex, false]);
+          const blockHex = `0x${blockNum.toString(16)}`;
+          const blockData = await provider.send('eth_getBlockByNumber', [blockHex, false]);
 
-        if (!blockData || !blockData.transactions) {
-          continue;
-        }
+          if (!blockData || !blockData.transactions) {
+            continue;
+          }
 
-        totalTransactionsSearched += blockData.transactions.length;
+          // Search transactions in this block
+          for (const txHash of blockData.transactions) {
+            const txData = await provider.send('eth_getTransactionByHash', [txHash]);
 
-        mLog.info('Web3Service', `🔍 Searching block ${blockNum} (${blockData.transactions.length} txs)...`);
+            if (!txData) continue;
 
-        // Search transactions in this block
-        for (const txHash of blockData.transactions) {
-          const txData = await provider.send('eth_getTransactionByHash', [txHash]);
+            // Check if this transaction matches our criteria
+            const txFrom = txData.from?.toLowerCase();
+            const expectedFrom = fromAddress.toLowerCase();
+            const txNonce = typeof txData.nonce === 'string' ? parseInt(txData.nonce, 16) : txData.nonce;
 
-          if (!txData) continue;
-
-          // Check if this transaction matches our criteria
-          const txFrom = txData.from?.toLowerCase();
-          const expectedFrom = fromAddress.toLowerCase();
-          const txNonce = typeof txData.nonce === 'string' ? parseInt(txData.nonce, 16) : txData.nonce;
-
-          if (txFrom === expectedFrom && txNonce === nonce) {
-            mLog.info('Web3Service', '✅ Found matching transaction by address + nonce!', {
-              verifiedHash: txData.hash,
-              returnedHash: returnedHash,
-              nonce: txNonce,
-              block: blockNum,
-              matched: txData.hash === returnedHash
-            });
-            return txData.hash;
+            if (txFrom === expectedFrom && txNonce === nonce) {
+              mLog.info('Web3Service', '✅ Found transaction by address + nonce!', {
+                hash: txData.hash,
+                nonce: txNonce,
+                block: blockNum,
+                attempt: attempt,
+                fromAddress: txFrom
+              });
+              return txData.hash;
+            }
           }
         }
+
+        // Not found yet - wait before retrying
+        if (attempt < maxAttempts) {
+          mLog.info('Web3Service', `⏳ Transaction not found yet, waiting ${delayMs}ms before retry...`);
+          await new Promise(resolve => setTimeout(resolve, delayMs));
+        }
+
+      } catch (error) {
+        mLog.warn('Web3Service', `Search attempt ${attempt} failed:`, {
+          error: error instanceof Error ? error.message : String(error)
+        });
+
+        // If not the last attempt, wait and retry
+        if (attempt < maxAttempts) {
+          await new Promise(resolve => setTimeout(resolve, delayMs));
+        }
       }
-
-      // Transaction not found in last 10 blocks - might be in mempool or older
-      // Fall back to returned hash
-      mLog.warn('Web3Service', `⚠️ Transaction not found after searching ${BLOCKS_TO_SEARCH} blocks (${totalTransactionsSearched} txs)`, {
-        returnedHash,
-        fromAddress,
-        nonce,
-        blocksSearched: BLOCKS_TO_SEARCH
-      });
-      return returnedHash;
-
-    } catch (error) {
-      // If verification fails for any reason, fall back to returned hash
-      mLog.warn('Web3Service', 'Hash verification failed, using returned hash', {
-        error: error instanceof Error ? error.message : String(error)
-      });
-      return returnedHash;
     }
+
+    // Transaction not found after all attempts
+    throw new Error(
+      `Transaction not found after ${maxAttempts} attempts (${maxAttempts * delayMs / 1000}s). ` +
+      `Searched for transaction from ${fromAddress} with nonce ${nonce}.`
+    );
   }
 
   /**

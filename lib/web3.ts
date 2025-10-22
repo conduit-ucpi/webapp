@@ -1071,11 +1071,108 @@ export class Web3Service {
       mLog.info('Web3Service', `✅ Transaction sent with hash: ${txResponse.hash}`);
       console.log('✅ Transaction sent successfully:', txResponse.hash);
 
-      return txResponse.hash;
+      // MOBILE FIX: Verify the transaction hash by querying blockchain
+      // On mobile, signer.sendTransaction() sometimes returns wrong hash
+      // See: MOBILE_SENDTRANSACTION_FIX.md for details
+      const verifiedHash = await this.verifyTransactionHash(
+        txResponse.hash,
+        await signer.getAddress(),
+        txResponse.nonce
+      );
+
+      if (verifiedHash !== txResponse.hash) {
+        mLog.warn('Web3Service', '⚠️ Hash mismatch detected and corrected', {
+          returnedHash: txResponse.hash,
+          verifiedHash: verifiedHash,
+          nonce: txResponse.nonce
+        });
+        console.warn('[Web3Service] ⚠️  Hash mismatch corrected:', {
+          returned: txResponse.hash,
+          verified: verifiedHash
+        });
+      }
+
+      return verifiedHash;
 
     } catch (error) {
       console.error('[Web3Service.fundAndSendTransaction] Failed to send via ethers, error:', error);
       throw new Error(`Transaction failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  /**
+   * Verify transaction hash by querying blockchain for actual transaction
+   *
+   * Problem: On mobile, signer.sendTransaction() sometimes returns wrong hash
+   * Solution: Query blockchain for recent transactions from user's address,
+   *           filter by nonce to find the actual transaction
+   *
+   * @param returnedHash - Hash returned by signer.sendTransaction()
+   * @param fromAddress - User's wallet address
+   * @param nonce - Transaction nonce
+   * @returns Verified hash (from blockchain) or fallback to returned hash
+   */
+  private async verifyTransactionHash(
+    returnedHash: string,
+    fromAddress: string,
+    nonce: number
+  ): Promise<string> {
+    try {
+      mLog.info('Web3Service', '🔍 Verifying transaction hash...', {
+        returnedHash,
+        fromAddress,
+        nonce
+      });
+
+      // Get the provider for blockchain queries
+      const provider = this.provider as any;
+      if (!provider || !provider.send) {
+        mLog.warn('Web3Service', 'No provider available for hash verification, using returned hash');
+        return returnedHash;
+      }
+
+      // Get latest block to search for recent transactions
+      const latestBlockData = await provider.send('eth_getBlockByNumber', ['latest', false]);
+
+      if (!latestBlockData || !latestBlockData.transactions) {
+        mLog.warn('Web3Service', 'Could not fetch latest block, using returned hash');
+        return returnedHash;
+      }
+
+      mLog.info('Web3Service', `🔍 Searching ${latestBlockData.transactions.length} transactions in latest block...`);
+
+      // Search transactions for one matching our address and nonce
+      for (const txHash of latestBlockData.transactions) {
+        const txData = await provider.send('eth_getTransactionByHash', [txHash]);
+
+        if (!txData) continue;
+
+        // Check if this transaction matches our criteria
+        const txFrom = txData.from?.toLowerCase();
+        const expectedFrom = fromAddress.toLowerCase();
+        const txNonce = typeof txData.nonce === 'string' ? parseInt(txData.nonce, 16) : txData.nonce;
+
+        if (txFrom === expectedFrom && txNonce === nonce) {
+          mLog.info('Web3Service', '✅ Found matching transaction by address + nonce', {
+            verifiedHash: txData.hash,
+            returnedHash: returnedHash,
+            matched: txData.hash === returnedHash
+          });
+          return txData.hash;
+        }
+      }
+
+      // Transaction not found in latest block - might be in mempool or next block
+      // Fall back to returned hash
+      mLog.info('Web3Service', 'Transaction not found in latest block, using returned hash (may be in mempool)');
+      return returnedHash;
+
+    } catch (error) {
+      // If verification fails for any reason, fall back to returned hash
+      mLog.warn('Web3Service', 'Hash verification failed, using returned hash', {
+        error: error instanceof Error ? error.message : String(error)
+      });
+      return returnedHash;
     }
   }
 

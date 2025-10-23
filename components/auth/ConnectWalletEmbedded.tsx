@@ -10,6 +10,7 @@ interface ConnectWalletEmbeddedProps {
   className?: string;
   compact?: boolean;
   onSuccess?: () => void;
+  autoConnect?: boolean;
 }
 
 export default function ConnectWalletEmbedded({
@@ -18,7 +19,8 @@ export default function ConnectWalletEmbedded({
   showTwoOptionLayout = false,
   className = "",
   compact = false,
-  onSuccess
+  onSuccess,
+  autoConnect = false
 }: ConnectWalletEmbeddedProps) {
   const { user, isLoading, connect, authenticateBackend, isConnected, address } = useAuth();
   const [isAuthenticating, setIsAuthenticating] = useState(false);
@@ -95,6 +97,15 @@ export default function ConnectWalletEmbedded({
       timeouts.forEach(clearTimeout);
     };
   }, [isConnected, address, user, authenticateBackend, onSuccess]);
+
+  // Auto-connect when autoConnect prop is true (e.g., from Shopify flow)
+  useEffect(() => {
+    if (autoConnect && !user && !isLoading && !isAuthenticating && connect) {
+      mLog.info('ConnectWalletEmbedded', 'Auto-connect triggered');
+      handleConnect();
+    }
+  }, [autoConnect]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Intentionally limited deps - we only want to trigger on mount when autoConnect is true
 
   if (isLoading) {
     return (

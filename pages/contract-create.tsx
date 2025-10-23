@@ -618,6 +618,7 @@ export default function ContractCreate() {
             compact={true}
             useSmartRouting={false}
             showTwoOptionLayout={true}
+            autoConnect={!!shop}
             onSuccess={() => {
               // Force a re-render by triggering auth context refresh
               // The user state should update automatically but this ensures it

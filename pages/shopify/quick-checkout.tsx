@@ -90,27 +90,34 @@ export default function QuickCheckout({
           🔒 Your payment is protected by {escrowDays}-day escrow
         </div>
 
-        {/* Payment iframe */}
-        <div style={{ background: 'white', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 2px 10px rgba(0,0,0,0.1)', height: '600px' }}>
-          <iframe
-            src={paymentUrl}
-            style={{ width: '100%', height: '100%', border: 'none' }}
-            allow="clipboard-write"
-          />
-        </div>
-
-        {/* Backup link */}
-        <p style={{ textAlign: 'center', marginTop: '20px', color: '#666' }}>
-          Having issues?{' '}
+        {/* Connect Account Prompt */}
+        <div style={{ background: 'white', borderRadius: '8px', padding: '40px 20px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)', textAlign: 'center' }}>
+          <h2 style={{ color: '#333', margin: '0 0 15px', fontSize: '24px' }}>Connect Your Account</h2>
+          <p style={{ color: '#666', margin: '0 0 30px', fontSize: '16px' }}>
+            To complete your purchase with USDC, you'll need to connect your wallet or sign in.
+          </p>
           <a
             href={paymentUrl}
             target="_blank"
             rel="noopener noreferrer"
-            style={{ background: '#008060', color: 'white', padding: '8px 16px', borderRadius: '6px', textDecoration: 'none', display: 'inline-block' }}
+            style={{
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              color: 'white',
+              padding: '16px 32px',
+              borderRadius: '8px',
+              textDecoration: 'none',
+              display: 'inline-block',
+              fontSize: '18px',
+              fontWeight: 'bold',
+              boxShadow: '0 4px 15px rgba(102, 126, 234, 0.4)',
+              transition: 'transform 0.2s'
+            }}
+            onMouseOver={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+            onMouseOut={(e) => e.currentTarget.style.transform = 'translateY(0)'}
           >
-            Open in New Window
+            Get Started
           </a>
-        </p>
+        </div>
       </div>
     </div>
   );

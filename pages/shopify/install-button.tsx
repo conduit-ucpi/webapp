@@ -24,8 +24,12 @@ export default function InstallButton() {
       return;
     }
 
+    // Remove http:// or https:// prefix if present
+    let cleanedDomain = shopDomain.trim();
+    cleanedDomain = cleanedDomain.replace(/^https?:\/\//i, '');
+
     // Ensure proper format
-    const domain = shopDomain.includes('.') ? shopDomain : `${shopDomain}.myshopify.com`;
+    const domain = cleanedDomain.includes('.') ? cleanedDomain : `${cleanedDomain}.myshopify.com`;
 
     // Redirect to OAuth flow
     window.location.href = `/api/shopify/auth?shop=${encodeURIComponent(domain)}`;

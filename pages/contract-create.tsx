@@ -103,6 +103,21 @@ export default function ContractCreate() {
     willShowForm: !authLoading && !!user
   });
 
+  // Clear auth cache on mount to force fresh authentication
+  useEffect(() => {
+    const clearAuthCache = async () => {
+      console.log('🔧 ContractCreate: Clearing any cached authentication on mount');
+      await disconnect();
+    };
+
+    // Only disconnect if there's a user or if auth is not loading
+    // This ensures we clear any cached session
+    if (!authLoading) {
+      clearAuthCache();
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // Intentionally empty deps - we want this to run ONCE on mount only
+
   // Initialize form from query parameters
   useEffect(() => {
     if (seller && amount && description) {

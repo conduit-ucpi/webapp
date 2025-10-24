@@ -49,6 +49,22 @@ export default function InstallButton() {
         <h1 style={{ color: '#202223', margin: '0 0 8px' }}>🚀 Install Universal "Buy with USDC" Button</h1>
         <p style={{ color: '#6d7175', marginBottom: '24px' }}>Add instant USDC checkout to ANY Shopify store in 2 minutes - <strong>FREE to install, only 1% transaction fee!</strong></p>
 
+        {/* Important first step */}
+        <div style={{ background: '#fff3cd', border: '2px solid #ffc107', padding: '20px', borderRadius: '8px', margin: '20px 0' }}>
+          <h2 style={{ color: '#856404', margin: '0 0 12px' }}>⚠️ Important: Register Your Wallet First</h2>
+          <p style={{ color: '#856404', marginBottom: '12px' }}>
+            Before installing the plugin, you need to register your wallet address in our system:
+          </p>
+          <ol style={{ color: '#856404', paddingLeft: '20px', marginBottom: '12px' }}>
+            <li>Visit <a href="https://app.instantescrow.nz" target="_blank" rel="noopener noreferrer" style={{ color: '#667eea', fontWeight: 'bold' }}>app.instantescrow.nz</a></li>
+            <li>Connect your wallet (this registers your wallet ID)</li>
+            <li>Then come back here to complete the Shopify setup</li>
+          </ol>
+          <p style={{ color: '#856404', fontSize: '14px', marginBottom: '0' }}>
+            This only needs to be done once. The plugin uses your wallet address to route USDC payments.
+          </p>
+        </div>
+
         {/* Show setup form if not configured */}
         {!isConfigured && !shop && (
           <div style={{ background: '#f0f8ff', border: '2px solid #667eea', padding: '24px', borderRadius: '8px', margin: '20px 0' }}>

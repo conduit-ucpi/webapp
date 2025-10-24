@@ -106,8 +106,16 @@ export default function Plugins() {
           </div>
 
           <div className="mb-6">
-            <div className="aspect-video bg-secondary-100 rounded-lg flex items-center justify-center">
-              <p className="text-secondary-500">Video demo coming soon</p>
+            <div className="aspect-video bg-secondary-100 rounded-lg overflow-hidden">
+              <iframe
+                width="100%"
+                height="100%"
+                src="https://www.youtube.com/embed/gwdWiErYq6o"
+                title="Shopify Integration Demo"
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              ></iframe>
             </div>
           </div>
 

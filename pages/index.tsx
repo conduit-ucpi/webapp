@@ -103,6 +103,49 @@ export default function Home() {
           </div>
         </div>
 
+        {/* Scroll Indicator */}
+        <div className="mt-12 flex flex-col items-center animate-bounce">
+          <p className="text-sm text-secondary-500 mb-2">Explore more</p>
+          <svg
+            className="w-6 h-6 text-primary-500"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M19 14l-7 7m0 0l-7-7m7 7V3"
+            />
+          </svg>
+        </div>
+
+        {/* E-commerce Plugin Callout */}
+        <div className="mt-12">
+          <Link href="/plugins">
+            <div className="bg-gradient-to-r from-green-50 to-blue-50 border-2 border-green-200 rounded-xl p-8 hover:border-green-300 hover:shadow-lg transition-all cursor-pointer">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="text-center sm:text-left">
+                  <h3 className="text-xl sm:text-2xl font-bold text-secondary-900 mb-2">
+                    E-commerce merchants: Add cryptocurrency checkout in 5 minutes
+                  </h3>
+                  <p className="text-base sm:text-lg text-secondary-700">
+                    WordPress & Shopify plugins with built-in buyer protection • 1% transaction fee • No monthly costs
+                  </p>
+                </div>
+                <div className="flex-shrink-0">
+                  <div className="bg-green-500 text-white px-6 py-3 rounded-lg font-semibold flex items-center gap-2 hover:bg-green-600 transition-colors">
+                    View Plugins
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Link>
+        </div>
 
         {/* Interactive Demo Section */}
         <div className="mt-32" id="how-it-works">

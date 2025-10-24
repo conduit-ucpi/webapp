@@ -99,13 +99,16 @@ export default function Plugins() {
             </p>
           </header>
 
-          {/* The Problem */}
+          {/* The Market Opportunity */}
           <section className="mb-12 sm:mb-16 border-l-4 border-secondary-300 pl-4 sm:pl-6 py-2" aria-label="Market opportunity">
           <p className="text-base sm:text-lg text-secondary-700 mb-3">
-            The cryptocurrency market processes over $9.7 trillion in monthly transactions, yet only $300 million reaches e-commerce merchants.
+            <strong>The cryptocurrency market processes $9.7 trillion in monthly transactions.</strong> Yet only 0.003% of that volume is spent on goods and services. In traditional finance, commerce represents 0.4% of transaction volume—over 100x higher.
+          </p>
+          <p className="text-base sm:text-lg text-secondary-700 mb-3">
+            This gap represents a massive untapped market for merchants. What's preventing cryptocurrency holders from spending? <strong>The absence of buyer protection.</strong> Without purchase guarantees equivalent to credit card chargebacks, rational consumers won't use crypto for e-commerce.
           </p>
           <p className="text-base sm:text-lg text-secondary-700">
-            The barrier is trust. Cryptocurrency holders need the same purchase protection they expect from traditional payment processors—secured by technology, not intermediaries.
+            Our smart contract escrow system solves both sides of the equation: it provides buyers with time-locked purchase protection—removing their barrier to spending—while simultaneously <strong>eliminating chargeback fraud for merchants</strong> through blockchain-enforced settlements.
           </p>
           </section>
 

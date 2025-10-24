@@ -1,3 +1,4 @@
+import React from 'react';
 import Link from 'next/link';
 import Head from 'next/head';
 import Button from '@/components/ui/Button';
@@ -46,7 +47,8 @@ export default function Plugins() {
   };
 
   return (
-    <>
+    <React.Fragment>
+      {/* @ts-expect-error - Next.js Head component types issue */}
       <Head>
         {/* Primary Meta Tags */}
         <title>{pageTitle}</title>
@@ -274,6 +276,6 @@ export default function Plugins() {
 
         </article>
       </div>
-    </>
+    </React.Fragment>
   );
 }

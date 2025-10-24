@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
+import Head from 'next/head';
 import toast from 'react-hot-toast';
 
 export default function InstallButton() {
@@ -8,6 +9,41 @@ export default function InstallButton() {
   const [activeTab, setActiveTab] = useState('simple');
   const [shopDomain, setShopDomain] = useState('');
   const [isConfigured, setIsConfigured] = useState(false);
+
+  const pageTitle = "Install USDC Checkout Button for Shopify | 2-Minute Setup";
+  const pageDescription = "Install the universal 'Buy with USDC' cryptocurrency payment button on your Shopify store in 2 minutes. Free to install, 1% transaction fee, automatic escrow protection, works on any Shopify theme.";
+  const pageUrl = "https://conduit-ucpi.com/shopify/install-button";
+  const imageUrl = "https://conduit-ucpi.com/og-shopify-install.png";
+
+  // Structured data for HowTo
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "HowTo",
+    "name": "How to Install USDC Payment Button on Shopify",
+    "description": pageDescription,
+    "totalTime": "PT2M",
+    "step": [
+      {
+        "@type": "HowToStep",
+        "name": "Copy the JavaScript code",
+        "text": "Copy the single line of JavaScript code provided for your Shopify store"
+      },
+      {
+        "@type": "HowToStep",
+        "name": "Open theme editor",
+        "text": "Go to Online Store → Themes, click the three dots, and select 'Edit code'"
+      },
+      {
+        "@type": "HowToStep",
+        "name": "Add code to theme.liquid",
+        "text": "Open Layout → theme.liquid, find </head>, paste the code just before it, and save"
+      }
+    ],
+    "tool": [{
+      "@type": "HowToTool",
+      "name": "Shopify Admin Access"
+    }]
+  };
 
   useEffect(() => {
     if (configured === 'true' && shop) {
@@ -44,89 +80,115 @@ export default function InstallButton() {
   };
 
   return (
-    <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', margin: 0, padding: '20px', background: '#fafbfb', minHeight: '100vh' }}>
-      <div style={{ maxWidth: '900px', margin: '0 auto', background: 'white', borderRadius: '8px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-        <h1 style={{ color: '#202223', margin: '0 0 8px' }}>🚀 Install Universal "Buy with USDC" Button</h1>
-        <p style={{ color: '#6d7175', marginBottom: '24px' }}>Add instant USDC checkout to ANY Shopify store in 2 minutes - <strong>FREE to install, only 1% transaction fee!</strong></p>
+    <React.Fragment>
+      {/* @ts-expect-error - Next.js Head component types issue */}
+      <Head>
+        {/* Primary Meta Tags */}
+        <title>{pageTitle}</title>
+        <meta name="title" content={pageTitle} />
+        <meta name="description" content={pageDescription} />
+        <meta name="keywords" content="install USDC button Shopify, Shopify cryptocurrency integration, add crypto payments Shopify, USDC checkout setup, Shopify Web3 payments, blockchain Shopify plugin, stablecoin payments Shopify" />
+
+        {/* Canonical URL */}
+        <link rel="canonical" href={pageUrl} />
+
+        {/* Open Graph / Facebook */}
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content={pageUrl} />
+        <meta property="og:title" content={pageTitle} />
+        <meta property="og:description" content={pageDescription} />
+        <meta property="og:image" content={imageUrl} />
+        <meta property="og:site_name" content="Conduit UCPI" />
+
+        {/* Twitter */}
+        <meta property="twitter:card" content="summary_large_image" />
+        <meta property="twitter:url" content={pageUrl} />
+        <meta property="twitter:title" content={pageTitle} />
+        <meta property="twitter:description" content={pageDescription} />
+        <meta property="twitter:image" content={imageUrl} />
+
+        {/* Additional SEO Meta Tags */}
+        <meta name="robots" content="index, follow" />
+        <meta name="language" content="English" />
+        <meta name="author" content="Conduit UCPI" />
+
+        {/* Structured Data */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+        />
+      </Head>
+
+      <div className="bg-gray-50 min-h-screen py-4 sm:py-6 lg:py-8 px-4 sm:px-6">
+        <article className="max-w-5xl mx-auto bg-white rounded-lg p-4 sm:p-6 lg:p-8 shadow-sm">
+          <header className="mb-6">
+            <h1 className="text-secondary-900 m-0 mb-2 text-2xl sm:text-3xl lg:text-4xl font-bold">Shopify USDC Payment Integration</h1>
+            <p className="text-secondary-600 mb-4 sm:mb-6 text-sm sm:text-base">Deploy cryptocurrency payment processing to your Shopify store. <strong>No monthly fees • 1% transaction rate • Enterprise-grade security</strong></p>
+          </header>
 
         {/* Important first step */}
-        <div style={{ background: '#fff3cd', border: '2px solid #ffc107', padding: '20px', borderRadius: '8px', margin: '20px 0' }}>
-          <h2 style={{ color: '#856404', margin: '0 0 12px' }}>⚠️ Important: Register Your Wallet First</h2>
-          <p style={{ color: '#856404', marginBottom: '12px' }}>
-            Before installing the plugin, you need to register your wallet address in our system:
+        <section className="bg-yellow-50 border-2 border-yellow-400 p-4 sm:p-5 rounded-lg my-4 sm:my-5" aria-label="Required wallet configuration">
+          <h2 className="text-yellow-800 m-0 mb-3 text-lg sm:text-xl font-bold">Prerequisites: Wallet Registration</h2>
+          <p className="text-yellow-800 mb-3 text-sm sm:text-base">
+            Before deploying the payment integration, you must register your settlement wallet address:
           </p>
-          <ol style={{ color: '#856404', paddingLeft: '20px', marginBottom: '12px' }}>
-            <li>Visit <a href="https://app.instantescrow.nz" target="_blank" rel="noopener noreferrer" style={{ color: '#667eea', fontWeight: 'bold' }}>app.instantescrow.nz</a></li>
-            <li>Connect your wallet (this registers your wallet ID)</li>
-            <li>Then come back here to complete the Shopify setup</li>
+          <ol className="text-yellow-800 pl-5 mb-3 space-y-1 text-sm sm:text-base">
+            <li>Access the platform at <a href="https://app.instantescrow.nz" target="_blank" rel="noopener noreferrer" className="text-primary-500 font-bold hover:text-primary-600">app.instantescrow.nz</a></li>
+            <li>Authenticate with your Web3 wallet to register your merchant ID</li>
+            <li>Return here to complete Shopify theme integration</li>
           </ol>
-          <p style={{ color: '#856404', fontSize: '14px', marginBottom: '0' }}>
-            This only needs to be done once. The plugin uses your wallet address to route USDC payments.
+          <p className="text-yellow-800 text-xs sm:text-sm mb-0">
+            One-time setup. Your wallet address establishes the settlement endpoint for all USDC transactions.
           </p>
-        </div>
+        </section>
 
         {/* Show setup form if not configured */}
         {!isConfigured && !shop && (
-          <div style={{ background: '#f0f8ff', border: '2px solid #667eea', padding: '24px', borderRadius: '8px', margin: '20px 0' }}>
-            <h2 style={{ color: '#667eea', margin: '0 0 16px' }}>🔐 Step 1: Connect Your Shopify Store</h2>
-            <p style={{ color: '#6d7175', marginBottom: '20px' }}>
-              First, connect your Shopify store and configure your wallet address to receive USDC payments.
+          <section className="bg-blue-50 border-2 border-primary-500 p-4 sm:p-6 rounded-lg my-4 sm:my-5" aria-label="Shopify store authorization">
+            <h2 className="text-primary-500 m-0 mb-3 sm:mb-4 text-lg sm:text-xl font-bold">Step 1: Authorize Store Access</h2>
+            <p className="text-secondary-600 mb-4 sm:mb-5 text-sm sm:text-base">
+              Link your Shopify store to configure payment routing and settlement parameters.
             </p>
-            <form onSubmit={handleShopifyConnect} style={{ display: 'flex', gap: '12px' }}>
+            <form onSubmit={handleShopifyConnect} className="flex flex-col sm:flex-row gap-3 sm:gap-4">
               <input
                 type="text"
                 value={shopDomain}
                 onChange={(e) => setShopDomain(e.target.value)}
                 placeholder="your-store.myshopify.com"
                 required
-                style={{
-                  flex: 1,
-                  padding: '12px',
-                  border: '2px solid #dfe3e8',
-                  borderRadius: '6px',
-                  fontSize: '16px'
-                }}
+                className="flex-1 p-3 border-2 border-gray-300 rounded-md text-base focus:border-primary-500 focus:outline-none"
               />
               <button
                 type="submit"
-                style={{
-                  background: '#667eea',
-                  color: 'white',
-                  padding: '12px 24px',
-                  border: 'none',
-                  borderRadius: '6px',
-                  fontSize: '16px',
-                  fontWeight: 'bold',
-                  cursor: 'pointer'
-                }}
+                className="bg-primary-500 text-white py-3 px-5 sm:px-6 border-none rounded-md text-base font-bold cursor-pointer hover:bg-primary-600 transition-colors"
               >
                 Connect Store
               </button>
             </form>
-            <p style={{ fontSize: '14px', color: '#6d7175', marginTop: '12px' }}>
-              You'll be redirected to Shopify to authorize the connection.
+            <p className="text-sm text-secondary-600 mt-3">
+              You will be redirected to Shopify's OAuth flow to authorize secure API access.
             </p>
-          </div>
+          </section>
         )}
 
         {/* Show success message if configured */}
         {isConfigured && shop && (
-          <div style={{ background: '#d1e7dd', border: '1px solid #badbcc', color: '#0f5132', padding: '12px', borderRadius: '6px', margin: '16px 0' }}>
-            ✅ <strong>Store configured!</strong> Shop: {shop}<br />
-            ✅ Now add the button code to your theme below
+          <div className="bg-green-50 border border-green-300 text-green-900 p-3 sm:p-4 rounded-md my-4 text-sm sm:text-base">
+            ✓ <strong>Store Authorization Complete</strong> | Domain: {shop}<br />
+            ✓ Proceed to theme integration below
           </div>
         )}
 
         {/* Show default message if viewing page directly */}
         {!isConfigured && shop === undefined && (
-          <div style={{ background: '#d1e7dd', border: '1px solid #badbcc', color: '#0f5132', padding: '12px', borderRadius: '6px', margin: '16px 0' }}>
-            ✅ <strong>Ready to use!</strong><br />
-            ✅ Escrow protection: <strong>14 days</strong>
+          <div className="bg-green-50 border border-green-300 text-green-900 p-3 sm:p-4 rounded-md my-4 text-sm sm:text-base">
+            ✓ <strong>Platform Status: Operational</strong><br />
+            ✓ Escrow protection period: <strong>14 days</strong> | Settlement: <strong>Automated</strong>
           </div>
         )}
 
-        <h2 style={{ color: '#202223', marginTop: '30px' }}>
-          {isConfigured || shop ? 'Step 2: ' : ''}Installation Methods
+        <h2 className="text-secondary-900 mt-6 sm:mt-8 text-xl sm:text-2xl font-bold">
+          {isConfigured || shop ? 'Step 2: ' : ''}Theme Integration Methods
         </h2>
 
         <div style={{ display: 'flex', gap: '10px', margin: '20px 0', borderBottom: '2px solid #eee' }}>
@@ -295,10 +357,11 @@ export default function InstallButton() {
           <li><strong>Automatic payout</strong> → Direct to merchant wallet</li>
         </ol>
 
-        <div style={{ background: '#fff3cd', border: '1px solid #ffecb5', color: '#664d03', padding: '12px', borderRadius: '6px', margin: '16px 0' }}>
-          <strong>⚠️ Testing:</strong> Visit your store in incognito mode to test the button as a customer would see it.
+        <div className="bg-blue-50 border border-blue-200 text-blue-900 p-3 sm:p-4 rounded-md my-4 text-sm sm:text-base">
+          <strong>Integration Testing:</strong> Verify payment flow in an incognito browser session to simulate customer experience without cached authentication state.
         </div>
+        </article>
       </div>
-    </div>
+    </React.Fragment>
   );
 }

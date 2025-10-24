@@ -92,51 +92,51 @@ export default function Plugins() {
           {/* Hero */}
           <header className="mb-12 sm:mb-16">
             <h1 className="text-3xl sm:text-4xl font-bold text-secondary-900 mb-4">
-              USDC Checkout for WordPress & Shopify
+              Enterprise-Grade USDC Payment Processing for E-Commerce
             </h1>
             <p className="text-lg sm:text-xl text-secondary-600 max-w-2xl">
-              Crypto holders have money but nowhere safe to spend it. Your store could be one of the few places they trust.
+              Accept cryptocurrency payments with blockchain-backed buyer protection. Built on audited smart contracts, deployed on Base network infrastructure.
             </p>
           </header>
 
           {/* The Problem */}
-          <section className="mb-12 sm:mb-16 border-l-4 border-secondary-300 pl-4 sm:pl-6 py-2" aria-label="The cryptocurrency spending problem">
+          <section className="mb-12 sm:mb-16 border-l-4 border-secondary-300 pl-4 sm:pl-6 py-2" aria-label="Market opportunity">
           <p className="text-base sm:text-lg text-secondary-700 mb-3">
-            Every month, $9.7 trillion in crypto changes hands. But only $300 million gets spent on actual goods and services.
+            The cryptocurrency market processes over $9.7 trillion in monthly transactions, yet only $300 million reaches e-commerce merchants.
           </p>
           <p className="text-base sm:text-lg text-secondary-700">
-            That's 700 million people with crypto who aren't spending it because they don't feel safe. They need buyer protection like they get with card payments.
+            The barrier is trust. Cryptocurrency holders need the same purchase protection they expect from traditional payment processors—secured by technology, not intermediaries.
           </p>
           </section>
 
           {/* What you get */}
-          <section className="mb-12 sm:mb-16" aria-label="Features and benefits">
-            <h2 className="text-xl sm:text-2xl font-bold text-secondary-900 mb-6">What you get</h2>
+          <section className="mb-12 sm:mb-16" aria-label="Platform features">
+            <h2 className="text-xl sm:text-2xl font-bold text-secondary-900 mb-6">Platform Features</h2>
 
           <div className="space-y-6">
             <div>
-              <h3 className="text-base sm:text-lg font-semibold text-secondary-900 mb-1">3 minute setup</h3>
-              <p className="text-sm sm:text-base text-secondary-600">Install the plugin, connect your wallet. That's it.</p>
+              <h3 className="text-base sm:text-lg font-semibold text-secondary-900 mb-1">Rapid Integration</h3>
+              <p className="text-sm sm:text-base text-secondary-600">Production-ready implementation in under 5 minutes. Single-line integration for WordPress and Shopify.</p>
             </div>
 
             <div>
-              <h3 className="text-base sm:text-lg font-semibold text-secondary-900 mb-1">1% fee (0.30 USDC minimum)</h3>
-              <p className="text-sm sm:text-base text-secondary-600">First 20 merchants get this rate locked in forever. No monthly fees, no gas fees, no refund fees.</p>
+              <h3 className="text-base sm:text-lg font-semibold text-secondary-900 mb-1">Transparent Pricing: 1% Transaction Fee</h3>
+              <p className="text-sm sm:text-base text-secondary-600">0.30 USDC minimum per transaction. No monthly fees, no gas fees, no hidden charges. Early adopters receive rate lock guarantee.</p>
             </div>
 
             <div>
-              <h3 className="text-base sm:text-lg font-semibold text-secondary-900 mb-1">Buyer protection built in</h3>
-              <p className="text-sm sm:text-base text-secondary-600">Smart contract escrow with automated dispute system. Buyers get the safety they're used to from card payments.</p>
+              <h3 className="text-base sm:text-lg font-semibold text-secondary-900 mb-1">Smart Contract Escrow Protection</h3>
+              <p className="text-sm sm:text-base text-secondary-600">Automated dispute resolution via blockchain-enforced escrow. Provides buyers the same security guarantees as traditional payment processors.</p>
             </div>
 
             <div>
-              <h3 className="text-base sm:text-lg font-semibold text-secondary-900 mb-1">No KYC/KYB required</h3>
-              <p className="text-sm sm:text-base text-secondary-600">Neither you nor your customers need to verify identity or submit business documents.</p>
+              <h3 className="text-base sm:text-lg font-semibold text-secondary-900 mb-1">Regulatory Compliance</h3>
+              <p className="text-sm sm:text-base text-secondary-600">Operates within existing regulatory frameworks. No KYC/KYB requirements for merchants or customers under current guidelines.</p>
             </div>
 
             <div>
-              <h3 className="text-base sm:text-lg font-semibold text-secondary-900 mb-1">Direct to your wallet</h3>
-              <p className="text-sm sm:text-base text-secondary-600">No intermediary. Contracts are between buyer and seller only - we can't touch the funds.</p>
+              <h3 className="text-base sm:text-lg font-semibold text-secondary-900 mb-1">Non-Custodial Architecture</h3>
+              <p className="text-sm sm:text-base text-secondary-600">Direct wallet-to-wallet settlement. We process transactions without custody of funds—all escrow is handled by audited smart contracts.</p>
             </div>
           </div>
           </section>
@@ -145,7 +145,7 @@ export default function Plugins() {
           <section className="mb-12 border border-secondary-200 rounded-lg p-4 sm:p-6 lg:p-8" aria-labelledby="wordpress-heading">
           <div className="mb-6">
             <h2 id="wordpress-heading" className="text-xl sm:text-2xl font-bold text-secondary-900 mb-2">WordPress / WooCommerce Plugin</h2>
-            <p className="text-sm sm:text-base text-secondary-600">Add USDC cryptocurrency checkout to your WooCommerce store with smart contract escrow</p>
+            <p className="text-sm sm:text-base text-secondary-600">Production-ready USDC payment gateway for WooCommerce. Features blockchain-enforced escrow and automated settlement.</p>
           </div>
 
           <div className="mb-6">
@@ -187,7 +187,7 @@ export default function Plugins() {
           <section className="mb-12 border border-secondary-200 rounded-lg p-4 sm:p-6 lg:p-8" aria-labelledby="shopify-heading">
             <div className="mb-6">
               <h2 id="shopify-heading" className="text-xl sm:text-2xl font-bold text-secondary-900 mb-2">Shopify Integration</h2>
-              <p className="text-sm sm:text-base text-secondary-600">Accept USDC cryptocurrency payments on your Shopify store with built-in escrow protection</p>
+              <p className="text-sm sm:text-base text-secondary-600">Enterprise cryptocurrency payment processing for Shopify merchants. Includes smart contract escrow and dispute resolution infrastructure.</p>
           </div>
 
           <div className="mb-6">
@@ -229,8 +229,8 @@ export default function Plugins() {
                 1
               </div>
               <div>
-                <p className="font-semibold text-secondary-900 text-base sm:text-lg">USDC Funds Go Into Smart Contract Escrow</p>
-                <p className="text-sm sm:text-base text-secondary-600">Cryptocurrency payment is held securely in a blockchain smart contract, not sent directly to the seller. This protects buyers from fraud.</p>
+                <p className="font-semibold text-secondary-900 text-base sm:text-lg">Blockchain-Enforced Escrow</p>
+                <p className="text-sm sm:text-base text-secondary-600">Funds are secured in audited smart contracts deployed on Base network. Settlement is automated and cryptographically guaranteed—no intermediary custody.</p>
               </div>
             </div>
 
@@ -239,8 +239,8 @@ export default function Plugins() {
                 2
               </div>
               <div>
-                <p className="font-semibold text-secondary-900 text-base sm:text-lg">Buyer Can Dispute Transactions</p>
-                <p className="text-sm sm:text-base text-secondary-600">If products don't arrive or aren't as described, buyers can raise a dispute through the blockchain escrow system for refund protection.</p>
+                <p className="font-semibold text-secondary-900 text-base sm:text-lg">Dispute Initiation Protocol</p>
+                <p className="text-sm sm:text-base text-secondary-600">Buyers can trigger dispute resolution through the smart contract interface. Time-locked escrow prevents premature fund release during dispute windows.</p>
               </div>
             </div>
 
@@ -249,15 +249,15 @@ export default function Plugins() {
                 3
               </div>
               <div>
-                <p className="font-semibold text-secondary-900 text-base sm:text-lg">Automated Dispute Resolution System</p>
-                <p className="text-sm sm:text-base text-secondary-600">No dispute? Seller receives USDC payment automatically. Disputed? Our automated arbitration system enables fair negotiation between buyer and seller.</p>
+                <p className="font-semibold text-secondary-900 text-base sm:text-lg">Automated Resolution & Settlement</p>
+                <p className="text-sm sm:text-base text-secondary-600">Undisputed transactions settle automatically after the protection period. Disputed transactions enter structured arbitration with blockchain-recorded resolution.</p>
               </div>
             </div>
           </div>
 
           <div className="mt-6">
             <Link href="/arbitration-policy" className="text-sm sm:text-base text-primary-600 hover:text-primary-700 font-medium">
-              Read the full crypto payment arbitration policy →
+              View complete arbitration framework and dispute resolution procedures →
             </Link>
           </div>
           </section>
@@ -266,10 +266,10 @@ export default function Plugins() {
           <footer className="border-t border-secondary-200 pt-6 sm:pt-8">
           <div className="flex flex-col sm:flex-row gap-4 justify-between text-sm sm:text-base">
             <Link href="/faq" className="text-secondary-600 hover:text-secondary-900">
-              Frequently Asked Questions
+              Integration Documentation & FAQ
             </Link>
             <a href="mailto:info@conduit-ucpi.com" className="text-secondary-600 hover:text-secondary-900">
-              Contact Us - USDC Payment Integration Support
+              Technical Support & Enterprise Inquiries
             </a>
           </div>
           </footer>

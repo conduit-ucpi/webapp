@@ -6,8 +6,8 @@ import { initRedditPixel, trackConversion } from '@/lib/tracking';
 import { useScrollTracking, useTimeTracking, useVideoTracking } from '@/hooks/usePageTracking';
 
 export default function Plugins() {
-  const pageTitle = "USDC Checkout Plugins for WordPress & Shopify | Crypto Payment Gateway";
-  const pageDescription = "Accept USDC cryptocurrency payments on your WordPress or Shopify store with built-in buyer protection. 1% fee, 3-minute setup, no KYC required. Smart contract escrow with automated dispute resolution.";
+  const pageTitle = "Smart Contract Escrow SDK for WordPress & Shopify | Non-Custodial Developer Tools";
+  const pageDescription = "Non-custodial blockchain escrow infrastructure for e-commerce. Open-source developer tools for WordPress and Shopify integration. Smart contract-based buyer protection without custody of funds. Educational resources for implementing blockchain escrow.";
   const pageUrl = "https://conduit-ucpi.com/plugins";
   const imageUrl = "https://conduit-ucpi.com/og-plugins.png";
 
@@ -15,14 +15,14 @@ export default function Plugins() {
   const structuredData = {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
-    "name": "USDC Checkout for WordPress & Shopify",
-    "applicationCategory": "BusinessApplication",
+    "name": "Conduit UCPI - Smart Contract Escrow SDK",
+    "applicationCategory": "DeveloperApplication",
     "operatingSystem": "Web",
     "offers": {
       "@type": "Offer",
       "price": "0",
       "priceCurrency": "USD",
-      "description": "1% transaction fee (0.30 USDC minimum), no monthly fees"
+      "description": "Open-source infrastructure with 1% transaction fee (0.30 USDC minimum), no monthly fees"
     },
     "aggregateRating": {
       "@type": "AggregateRating",
@@ -30,14 +30,14 @@ export default function Plugins() {
       "ratingCount": "1"
     },
     "featureList": [
-      "USDC cryptocurrency payment processing",
-      "Smart contract escrow with buyer protection",
-      "3-minute setup time",
-      "1% transaction fee",
-      "No KYC/KYB requirements",
-      "Direct wallet-to-wallet payments",
-      "Automated dispute resolution",
-      "WordPress and Shopify integration"
+      "Non-custodial smart contract infrastructure",
+      "Open-source blockchain escrow SDK",
+      "WordPress and Shopify developer integration tools",
+      "Audited smart contracts on Base network",
+      "Direct wallet-to-wallet settlement (no custody)",
+      "Automated dispute resolution logic",
+      "Educational resources for blockchain escrow",
+      "3-minute integration time"
     ],
     "description": pageDescription,
     "url": pageUrl,
@@ -89,7 +89,7 @@ export default function Plugins() {
         <title>{pageTitle}</title>
         <meta name="title" content={pageTitle} />
         <meta name="description" content={pageDescription} />
-        <meta name="keywords" content="USDC payments, cryptocurrency checkout, WordPress payment plugin, Shopify crypto payments, Web3 payments, blockchain escrow, buyer protection, smart contract payments, WooCommerce crypto, Base network payments" />
+        <meta name="keywords" content="blockchain escrow SDK, smart contract developer tools, non-custodial infrastructure, WordPress blockchain integration, Shopify Web3 tools, escrow smart contracts, decentralized buyer protection, WooCommerce blockchain plugin, Base network SDK, open-source escrow infrastructure" />
 
         {/* Canonical URL */}
         <link rel="canonical" href={pageUrl} />
@@ -124,13 +124,30 @@ export default function Plugins() {
       <div className="bg-white min-h-screen">
         <article className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 lg:py-20">
 
+          {/* Important Disclaimer - For Regulatory Clarity */}
+          <aside className="mb-8 sm:mb-12 bg-blue-50 border-l-4 border-blue-500 p-4 sm:p-6" role="note" aria-label="Product classification and regulatory information">
+            <h2 className="text-lg sm:text-xl font-bold text-secondary-900 mb-3">Non-Custodial Developer Infrastructure</h2>
+            <div className="space-y-2 text-sm sm:text-base text-secondary-700">
+              <p><strong>What this is:</strong> Open-source smart contract infrastructure for implementing escrow functionality in e-commerce applications. Similar to how Stripe provides payment infrastructure, we provide blockchain-based escrow infrastructure.</p>
+              <p><strong>What this is NOT:</strong></p>
+              <ul className="list-disc ml-5 space-y-1">
+                <li>Not a cryptocurrency exchange or trading platform</li>
+                <li>Not selling, issuing, or trading any digital assets, tokens, or cryptocurrencies</li>
+                <li>Not a custodial service - we never hold, control, or have access to user funds</li>
+                <li>Not a financial services provider - we provide technical infrastructure only</li>
+              </ul>
+              <p className="mt-3"><strong>Technical Architecture:</strong> All funds remain under user control through non-custodial wallet connections. Escrow logic is executed by audited smart contracts deployed on the Base blockchain network. We provide the integration layer and user interface - settlement occurs directly between buyer and seller wallets via smart contracts.</p>
+              <p className="mt-3 text-xs sm:text-sm italic">This is developer tooling and educational resources for blockchain-based escrow implementation, not a regulated financial product or cryptocurrency service.</p>
+            </div>
+          </aside>
+
           {/* Hero */}
           <header className="mb-12 sm:mb-16">
             <h1 className="text-3xl sm:text-4xl font-bold text-secondary-900 mb-4">
-              Enterprise-Grade USDC Payment Processing for E-Commerce
+              Smart Contract Escrow Integration for E-Commerce Platforms
             </h1>
             <p className="text-lg sm:text-xl text-secondary-600 max-w-2xl">
-              Accept cryptocurrency payments with blockchain-backed buyer protection. Built on audited smart contracts, deployed on Base network infrastructure.
+              Developer tools for integrating blockchain-based buyer protection into WordPress and Shopify stores. Built on audited smart contracts, deployed on Base network infrastructure.
             </p>
           </header>
 
@@ -149,32 +166,32 @@ export default function Plugins() {
 
           {/* What you get */}
           <section className="mb-12 sm:mb-16" aria-label="Platform features">
-            <h2 className="text-xl sm:text-2xl font-bold text-secondary-900 mb-6">Platform Features</h2>
+            <h2 className="text-xl sm:text-2xl font-bold text-secondary-900 mb-6">Developer SDK Features</h2>
 
           <div className="space-y-6">
             <div>
-              <h3 className="text-base sm:text-lg font-semibold text-secondary-900 mb-1">Rapid Integration</h3>
-              <p className="text-sm sm:text-base text-secondary-600">Production-ready implementation in under 5 minutes. Single-line integration for WordPress and Shopify.</p>
+              <h3 className="text-base sm:text-lg font-semibold text-secondary-900 mb-1">Rapid Integration SDK</h3>
+              <p className="text-sm sm:text-base text-secondary-600">Production-ready developer tools with under 5 minutes integration time. Single-line SDK integration for WordPress and Shopify platforms.</p>
             </div>
 
             <div>
-              <h3 className="text-base sm:text-lg font-semibold text-secondary-900 mb-1">Transparent Pricing: 1% Transaction Fee</h3>
-              <p className="text-sm sm:text-base text-secondary-600">0.30 USDC minimum per transaction. No monthly fees, no gas fees, no hidden charges. Early adopters receive rate lock guarantee.</p>
+              <h3 className="text-base sm:text-lg font-semibold text-secondary-900 mb-1">Transparent Infrastructure Pricing</h3>
+              <p className="text-sm sm:text-base text-secondary-600">Open-source codebase with 1% infrastructure fee (0.30 USDC minimum) for network operations. No monthly fees, no custody fees, no hidden charges. Early adopters receive rate lock guarantee.</p>
             </div>
 
             <div>
-              <h3 className="text-base sm:text-lg font-semibold text-secondary-900 mb-1">Smart Contract Escrow Protection</h3>
-              <p className="text-sm sm:text-base text-secondary-600">Automated dispute resolution via blockchain-enforced escrow. Provides buyers the same security guarantees as traditional payment processors.</p>
+              <h3 className="text-base sm:text-lg font-semibold text-secondary-900 mb-1">Audited Smart Contract Infrastructure</h3>
+              <p className="text-sm sm:text-base text-secondary-600">Automated dispute resolution via blockchain-enforced escrow logic. All escrow operations executed by audited smart contracts—no intermediary custody or control.</p>
             </div>
 
             <div>
-              <h3 className="text-base sm:text-lg font-semibold text-secondary-900 mb-1">Regulatory Compliance</h3>
-              <p className="text-sm sm:text-base text-secondary-600">Operates within existing regulatory frameworks. No KYC/KYB requirements for merchants or customers under current guidelines.</p>
+              <h3 className="text-base sm:text-lg font-semibold text-secondary-900 mb-1">Technical Infrastructure (Not Financial Services)</h3>
+              <p className="text-sm sm:text-base text-secondary-600">We provide technical infrastructure only—no financial services, no custody, no exchange functionality. Developers integrate our SDK to enable buyer-seller escrow logic. End users maintain full control of their wallets and funds.</p>
             </div>
 
             <div>
-              <h3 className="text-base sm:text-lg font-semibold text-secondary-900 mb-1">Non-Custodial Architecture</h3>
-              <p className="text-sm sm:text-base text-secondary-600">Direct wallet-to-wallet settlement. We process transactions without custody of funds—all escrow is handled by audited smart contracts.</p>
+              <h3 className="text-base sm:text-lg font-semibold text-secondary-900 mb-1">100% Non-Custodial Architecture</h3>
+              <p className="text-sm sm:text-base text-secondary-600">Direct wallet-to-wallet settlement through smart contracts. We never hold, control, or have access to user funds. All escrow logic is executed on-chain by audited smart contracts that users interact with directly.</p>
             </div>
           </div>
           </section>
@@ -182,8 +199,8 @@ export default function Plugins() {
           {/* WordPress */}
           <section className="mb-12 border border-secondary-200 rounded-lg p-4 sm:p-6 lg:p-8" aria-labelledby="wordpress-heading">
           <div className="mb-6">
-            <h2 id="wordpress-heading" className="text-xl sm:text-2xl font-bold text-secondary-900 mb-2">WordPress / WooCommerce Plugin</h2>
-            <p className="text-sm sm:text-base text-secondary-600">Production-ready USDC payment gateway for WooCommerce. Features blockchain-enforced escrow and automated settlement.</p>
+            <h2 id="wordpress-heading" className="text-xl sm:text-2xl font-bold text-secondary-900 mb-2">WordPress / WooCommerce Integration SDK</h2>
+            <p className="text-sm sm:text-base text-secondary-600">Open-source developer plugin for integrating smart contract escrow functionality into WooCommerce stores. Non-custodial infrastructure with blockchain-enforced settlement logic.</p>
           </div>
 
           <div className="mb-6" ref={wordpressVideoRef}>
@@ -225,8 +242,8 @@ export default function Plugins() {
           {/* Shopify */}
           <section className="mb-12 border border-secondary-200 rounded-lg p-4 sm:p-6 lg:p-8" aria-labelledby="shopify-heading">
             <div className="mb-6">
-              <h2 id="shopify-heading" className="text-xl sm:text-2xl font-bold text-secondary-900 mb-2">Shopify Integration</h2>
-              <p className="text-sm sm:text-base text-secondary-600">Enterprise cryptocurrency payment processing for Shopify merchants. Includes smart contract escrow and dispute resolution infrastructure.</p>
+              <h2 id="shopify-heading" className="text-xl sm:text-2xl font-bold text-secondary-900 mb-2">Shopify Integration SDK</h2>
+              <p className="text-sm sm:text-base text-secondary-600">Developer tools for integrating blockchain escrow infrastructure into Shopify stores. Open-source smart contract integration with non-custodial dispute resolution logic.</p>
           </div>
 
           <div className="mb-6" ref={shopifyVideoRef}>

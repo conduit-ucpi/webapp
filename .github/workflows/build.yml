@@ -73,6 +73,7 @@ jobs:
           SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
           NEXT_PUBLIC_APP_URL: ${{ vars.NEXT_PUBLIC_APP_URL }}
+          NEXT_PUBLIC_REDDIT_PIXEL_ID: ${{ vars.NEXT_PUBLIC_REDDIT_PIXEL_ID }}
         run: |
           npm ci --legacy-peer-deps
           
@@ -194,6 +195,7 @@ jobs:
             -e SESSION_SECRET="${{ secrets.SESSION_SECRET }}" \\
             -e MONGODB_URI="${{ secrets.MONGODB_URI }}" \\
             -e NEXT_PUBLIC_APP_URL="${{ vars.NEXT_PUBLIC_APP_URL }}" \\
+            -e NEXT_PUBLIC_REDDIT_PIXEL_ID="${{ vars.NEXT_PUBLIC_REDDIT_PIXEL_ID }}" \\
             ghcr.io/${{ env.REPO_LOWER }}:${{ env.SHA_TAG }}
           EOF
           

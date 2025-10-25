@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import Link from 'next/link';
 import Head from 'next/head';
 import Button from '@/components/ui/Button';
+import { initRedditPixel, trackConversion } from '@/lib/tracking';
+import { useScrollTracking, useTimeTracking, useVideoTracking } from '@/hooks/usePageTracking';
 
 export default function Plugins() {
   const pageTitle = "USDC Checkout Plugins for WordPress & Shopify | Crypto Payment Gateway";
@@ -44,6 +46,39 @@ export default function Plugins() {
       "name": "Conduit UCPI",
       "url": "https://conduit-ucpi.com"
     }
+  };
+
+  // Initialize tracking hooks
+  useScrollTracking(); // Track scroll depth (25%, 50%, 75%, 100%)
+  useTimeTracking();   // Track time on page (30s, 60s, 120s, 300s)
+
+  // Video tracking refs
+  const wordpressVideoRef = useVideoTracking('aYXG0hC7dFg', 'WordPress WooCommerce USDC Payment Plugin Demo');
+  const shopifyVideoRef = useVideoTracking('gwdWiErYq6o', 'Shopify USDC Payment Integration Demo');
+
+  // Initialize Reddit Pixel on component mount
+  useEffect(() => {
+    const redditPixelId = process.env.NEXT_PUBLIC_REDDIT_PIXEL_ID;
+    if (redditPixelId && redditPixelId !== 'your_reddit_pixel_id_here') {
+      initRedditPixel(redditPixelId);
+    }
+  }, []);
+
+  // Conversion tracking handlers
+  const handleWordPressClick = () => {
+    trackConversion({
+      conversionType: 'wordpress_plugin',
+      buttonText: 'Get WordPress Plugin',
+      targetUrl: 'https://wordpress.org/plugins/usdc-payments-with-buyer-protection/',
+    });
+  };
+
+  const handleShopifyClick = () => {
+    trackConversion({
+      conversionType: 'shopify_integration',
+      buttonText: 'Install Shopify Integration',
+      targetUrl: '/shopify/install-button',
+    });
   };
 
   return (
@@ -151,12 +186,12 @@ export default function Plugins() {
             <p className="text-sm sm:text-base text-secondary-600">Production-ready USDC payment gateway for WooCommerce. Features blockchain-enforced escrow and automated settlement.</p>
           </div>
 
-          <div className="mb-6">
+          <div className="mb-6" ref={wordpressVideoRef}>
             <div className="aspect-video bg-secondary-100 rounded-lg overflow-hidden">
               <iframe
                 width="100%"
                 height="100%"
-                src="https://www.youtube.com/embed/aYXG0hC7dFg"
+                src="https://www.youtube.com/embed/aYXG0hC7dFg?enablejsapi=1"
                 title="WordPress WooCommerce USDC Payment Plugin Demo - Crypto Checkout with Buyer Protection"
                 aria-label="Video demonstration of USDC payment plugin for WordPress and WooCommerce"
                 frameBorder="0"
@@ -173,6 +208,7 @@ export default function Plugins() {
               target="_blank"
               rel="noopener noreferrer"
               className="flex-1"
+              onClick={handleWordPressClick}
             >
               <Button size="lg" className="w-full">
                 Get WordPress Plugin
@@ -193,12 +229,12 @@ export default function Plugins() {
               <p className="text-sm sm:text-base text-secondary-600">Enterprise cryptocurrency payment processing for Shopify merchants. Includes smart contract escrow and dispute resolution infrastructure.</p>
           </div>
 
-          <div className="mb-6">
+          <div className="mb-6" ref={shopifyVideoRef}>
             <div className="aspect-video bg-secondary-100 rounded-lg overflow-hidden">
               <iframe
                 width="100%"
                 height="100%"
-                src="https://www.youtube.com/embed/gwdWiErYq6o"
+                src="https://www.youtube.com/embed/gwdWiErYq6o?enablejsapi=1"
                 title="Shopify USDC Payment Integration Demo - Cryptocurrency Checkout with Smart Contract Escrow"
                 aria-label="Video demonstration of USDC payment integration for Shopify stores"
                 frameBorder="0"
@@ -210,7 +246,7 @@ export default function Plugins() {
           </div>
 
           <nav className="flex flex-col sm:flex-row gap-3 sm:gap-4" aria-label="Shopify integration actions">
-            <Link href="/shopify/install-button" className="flex-1">
+            <Link href="/shopify/install-button" className="flex-1" onClick={handleShopifyClick}>
               <Button size="lg" className="w-full">
                 Install Shopify Integration
               </Button>

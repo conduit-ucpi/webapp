@@ -124,23 +124,6 @@ export default function Plugins() {
       <div className="bg-white min-h-screen">
         <article className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 lg:py-20">
 
-          {/* Important Disclaimer - For Regulatory Clarity */}
-          <aside className="mb-8 sm:mb-12 bg-blue-50 border-l-4 border-blue-500 p-4 sm:p-6" role="note" aria-label="Product classification and regulatory information">
-            <h2 className="text-lg sm:text-xl font-bold text-secondary-900 mb-3">Non-Custodial Developer Infrastructure</h2>
-            <div className="space-y-2 text-sm sm:text-base text-secondary-700">
-              <p><strong>What this is:</strong> Open-source smart contract infrastructure for implementing escrow functionality in e-commerce applications. Similar to how Stripe provides payment infrastructure, we provide blockchain-based escrow infrastructure.</p>
-              <p><strong>What this is NOT:</strong></p>
-              <ul className="list-disc ml-5 space-y-1">
-                <li>Not a cryptocurrency exchange or trading platform</li>
-                <li>Not selling, issuing, or trading any digital assets, tokens, or cryptocurrencies</li>
-                <li>Not a custodial service - we never hold, control, or have access to user funds</li>
-                <li>Not a financial services provider - we provide technical infrastructure only</li>
-              </ul>
-              <p className="mt-3"><strong>Technical Architecture:</strong> All funds remain under user control through non-custodial wallet connections. Escrow logic is executed by audited smart contracts deployed on the Base blockchain network. We provide the integration layer and user interface - settlement occurs directly between buyer and seller wallets via smart contracts.</p>
-              <p className="mt-3 text-xs sm:text-sm italic">This is developer tooling and educational resources for blockchain-based escrow implementation, not a regulated financial product or cryptocurrency service.</p>
-            </div>
-          </aside>
-
           {/* Hero */}
           <header className="mb-12 sm:mb-16">
             <h1 className="text-3xl sm:text-4xl font-bold text-secondary-900 mb-4">
@@ -329,6 +312,23 @@ export default function Plugins() {
             </a>
           </div>
           </footer>
+
+          {/* Important Disclaimer - For Regulatory Clarity */}
+          <aside className="mt-12 sm:mt-16 bg-blue-50 border-l-4 border-blue-500 p-4 sm:p-6" role="note" aria-label="Product classification and regulatory information">
+            <h2 className="text-lg sm:text-xl font-bold text-secondary-900 mb-3">Non-Custodial Developer Infrastructure</h2>
+            <div className="space-y-2 text-sm sm:text-base text-secondary-700">
+              <p><strong>What this is:</strong> Open-source smart contract infrastructure for implementing escrow functionality in e-commerce applications. Similar to how Stripe provides payment infrastructure, we provide blockchain-based escrow infrastructure.</p>
+              <p><strong>What this is NOT:</strong></p>
+              <ul className="list-disc ml-5 space-y-1">
+                <li>Not a cryptocurrency exchange or trading platform</li>
+                <li>Not selling, issuing, or trading any digital assets, tokens, or cryptocurrencies</li>
+                <li>Not a custodial service - we never hold, control, or have access to user funds</li>
+                <li>Not a financial services provider - we provide technical infrastructure only</li>
+              </ul>
+              <p className="mt-3"><strong>Technical Architecture:</strong> All funds remain under user control through non-custodial wallet connections. Escrow logic is executed by audited smart contracts deployed on the Base blockchain network. We provide the integration layer and user interface - settlement occurs directly between buyer and seller wallets via smart contracts.</p>
+              <p className="mt-3 text-xs sm:text-sm italic">This is developer tooling and educational resources for blockchain-based escrow implementation, not a regulated financial product or cryptocurrency service.</p>
+            </div>
+          </aside>
 
         </article>
       </div>

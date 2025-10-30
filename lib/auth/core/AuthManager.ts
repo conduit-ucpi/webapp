@@ -219,6 +219,22 @@ export class AuthManager {
       // Use the provider's signMessage method (which handles mobile MetaMask workaround internally)
       const signature = await this.currentProvider.signMessage(message);
 
+      // Try to get user info (email, name) from provider if available
+      let userInfo = null;
+      try {
+        userInfo = this.currentProvider?.getUserInfo?.();
+        if (userInfo) {
+          mLog.info('AuthManager', 'Including user info from provider in signature_auth token', {
+            hasEmail: !!userInfo.email,
+            hasName: !!userInfo.name
+          });
+        }
+      } catch (userInfoError) {
+        mLog.debug('AuthManager', 'Could not get user info from provider', {
+          error: userInfoError instanceof Error ? userInfoError.message : String(userInfoError)
+        });
+      }
+
       // Create the auth token in the standard format
       const authToken = btoa(JSON.stringify({
         type: 'signature_auth',
@@ -228,6 +244,9 @@ export class AuthManager {
         timestamp,
         nonce,
         issuer: 'web3auth_unified',
+        // Include email and name if available from provider (e.g., Dynamic passwordless)
+        email: userInfo?.email,
+        name: userInfo?.name,
         header: {
           alg: 'ECDSA',
           typ: 'SIG'

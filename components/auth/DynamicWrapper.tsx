@@ -39,7 +39,12 @@ function DynamicBridge() {
       address: wallet?.address,
       walletKey: wallet?.key,
       userWalletsCount: userWallets?.length || 0,
-      hasActivePromise: !!activeLoginPromise.current
+      hasActivePromise: !!activeLoginPromise.current,
+      // DEBUG: Log user object details
+      hasUser: !!user,
+      userEmail: user?.email || 'NO_EMAIL',
+      userVerifiedCredentials: user?.verifiedCredentials?.length || 0,
+      userKeys: user ? Object.keys(user) : []
     });
 
     // If we have an active login promise, resolve it
@@ -58,7 +63,10 @@ function DynamicBridge() {
       mLog.info('DynamicBridge', '✅ Resolving login promise with walletAdded event', {
         address: wallet.address,
         walletName: wallet.connector?.name,
-        hasUser: !!user
+        hasUser: !!user,
+        // DEBUG: Log what email is being sent
+        finalUserEmail: finalUser.email || 'NO_EMAIL',
+        usedFallback: !user
       });
 
       activeLoginPromise.current.resolve({
@@ -79,7 +87,11 @@ function DynamicBridge() {
       wallet: !!newPrimaryWallet,
       address: newPrimaryWallet?.address,
       walletKey: newPrimaryWallet?.key,
-      hasActivePromise: !!activeLoginPromise.current
+      hasActivePromise: !!activeLoginPromise.current,
+      // DEBUG: Log user object details
+      hasUser: !!user,
+      userEmail: user?.email || 'NO_EMAIL',
+      userVerifiedCredentials: user?.verifiedCredentials?.length || 0
     });
 
     // If we have an active login promise, resolve it
@@ -98,7 +110,10 @@ function DynamicBridge() {
       mLog.info('DynamicBridge', '✅ Resolving login promise with primaryWalletChanged event', {
         address: newPrimaryWallet.address,
         walletName: newPrimaryWallet.connector?.name,
-        hasUser: !!user
+        hasUser: !!user,
+        // DEBUG: Log what email is being sent
+        finalUserEmail: finalUser.email || 'NO_EMAIL',
+        usedFallback: !user
       });
 
       activeLoginPromise.current.resolve({
@@ -415,8 +430,17 @@ function DynamicBridge() {
       // Update or clear user and wallet state based on current values
       if (user) {
         (window as any).dynamicUser = user;
+        // DEBUG: Log what's being stored in window.dynamicUser
+        mLog.info('DynamicBridge', 'Setting window.dynamicUser', {
+          hasUser: true,
+          email: user.email || 'NO_EMAIL',
+          hasVerifiedCredentials: !!user.verifiedCredentials,
+          verifiedCredentialsCount: user.verifiedCredentials?.length || 0,
+          userKeys: Object.keys(user)
+        });
       } else {
         delete (window as any).dynamicUser;
+        mLog.info('DynamicBridge', 'Clearing window.dynamicUser - no user available');
       }
 
       // Store the primary wallet for the DynamicProvider to use with ethers toolkit

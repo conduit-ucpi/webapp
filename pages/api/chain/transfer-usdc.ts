@@ -27,7 +27,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     console.log('Calling Chain Service with headers:', { ...headers, Authorization: 'Bearer [REDACTED]' });
 
-    const response = await fetch(`${process.env.CHAIN_SERVICE_URL}/api/chain/transfer-usdc`, {
+    const response = await fetch(`${process.env.CHAIN_SERVICE_URL}/api/chain/transfer-token`, {
       method: 'POST',
       headers,
       body: JSON.stringify(req.body)

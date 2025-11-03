@@ -83,19 +83,26 @@ export function useSimpleEthers() {
     },
 
     // High-level contract interaction methods
-    approveUSDC: async (contractAddress: string, amount: string) => {
+    approveUSDC: async (contractAddress: string, amount: string, tokenAddress?: string) => {
+      // Use provided tokenAddress or fall back to USDC contract address for backward compatibility
+      const targetTokenAddress = tokenAddress || config?.usdcContractAddress;
+
+      if (!targetTokenAddress) {
+        throw new Error('Token contract address not provided');
+      }
+
       const maxGasPriceEth = (parseFloat(config?.maxGasPriceGwei || '0') / 1000000000);
       const maxGasCostEth = (parseFloat(config?.maxGasCostGwei || '0') / 1000000000);
 
       console.log('');
       console.log('='.repeat(80));
-      console.log('💰 USDC APPROVAL TRANSACTION');
+      console.log('💰 TOKEN APPROVAL TRANSACTION');
       console.log('='.repeat(80));
       console.log('📋 Approval Details:');
-      console.log(`   USDC Contract: ${config?.usdcContractAddress}`);
+      console.log(`   Token Contract: ${targetTokenAddress}`);
       console.log(`   Spender (Escrow): ${contractAddress}`);
-      console.log(`   Amount (microUSDC): ${amount}`);
-      console.log(`   Amount (USDC): ${(Number(amount) / 1000000).toFixed(6)}`);
+      console.log(`   Amount (micro units): ${amount}`);
+      console.log(`   Amount (tokens): ${(Number(amount) / 1000000).toFixed(6)}`);
       console.log('');
       console.log('⚙️  Gas Configuration:');
       console.log(`   MAX_GAS_PRICE_GWEI: ${config?.maxGasPriceGwei} gwei (${maxGasPriceEth.toExponential(4)} ETH)`);
@@ -104,24 +111,20 @@ export function useSimpleEthers() {
       console.log(`   GAS_PRICE_BUFFER: ${config?.gasPriceBuffer}x`);
       console.log('');
 
-      if (!config?.usdcContractAddress) {
-        throw new Error('USDC contract address not configured');
-      }
-
-      // Encode USDC approve function call
-      const usdcAbi = [
+      // Encode token approve function call (standard ERC20 interface)
+      const tokenAbi = [
         "function approve(address spender, uint256 amount) external returns (bool)"
       ];
-      const usdcInterface = new ethers.Interface(usdcAbi);
-      const data = usdcInterface.encodeFunctionData('approve', [
+      const tokenInterface = new ethers.Interface(tokenAbi);
+      const data = tokenInterface.encodeFunctionData('approve', [
         contractAddress, // spender (the escrow contract)
-        amount // amount in microUSDC as string
+        amount // amount in micro units as string
       ]);
 
       console.log('🔧 Calling fundAndSendTransaction...');
       const web3Service = await getWeb3Service();
       return await web3Service.fundAndSendTransaction({
-        to: config.usdcContractAddress,
+        to: targetTokenAddress, // Use the correct token address (USDC or USDT)
         data,
         value: '0' // No ETH value needed for approval
       });

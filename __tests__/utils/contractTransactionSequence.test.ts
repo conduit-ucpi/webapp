@@ -324,7 +324,7 @@ describe('executeContractTransactionSequence', () => {
       });
     });
 
-    it('should pass correct parameters to USDC approval', async () => {
+    it('should pass correct parameters to token approval (including tokenAddress)', async () => {
       // Mock successful confirmations for all transactions
       mockWaitForTransaction.mockResolvedValue({ blockNumber: 12345, status: 1 });
 
@@ -332,7 +332,8 @@ describe('executeContractTransactionSequence', () => {
 
       expect(mockApproveUSDC).toHaveBeenCalledWith(
         '0xContractAddress',
-        '1500000' // amount in microUSDC as string
+        '1500000', // amount in micro units as string
+        '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913' // tokenAddress from params
       );
     });
 

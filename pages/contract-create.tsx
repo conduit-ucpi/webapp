@@ -854,17 +854,8 @@ export default function ContractCreate() {
                 </Button>
                 <Button
                   onClick={handleCreateContract}
-                  disabled={
-                    isLoading ||
-                    isLoadingBalance ||
-                    Boolean(form.amount && parseFloat(form.amount) > 0 && parseFloat(tokenBalance) < parseFloat(form.amount))
-                  }
+                  disabled={isLoading}
                   className="flex-1 bg-primary-500 hover:bg-primary-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                  title={
-                    parseFloat(tokenBalance) < parseFloat(form.amount || '0')
-                      ? `Insufficient balance: need ${form.amount} ${selectedTokenSymbol}, have ${parseFloat(tokenBalance).toFixed(4)} ${selectedTokenSymbol}`
-                      : ''
-                  }
                 >
                   {isLoading ? (
                     <>

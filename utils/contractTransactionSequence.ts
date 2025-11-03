@@ -29,7 +29,7 @@ interface TransactionSequenceResult {
 
 interface TransactionSequenceOptions {
   authenticatedFetch: (url: string, options?: RequestInit) => Promise<Response>;
-  approveUSDC: (contractAddress: string, amount: string) => Promise<string>;
+  approveUSDC: (contractAddress: string, amount: string, tokenAddress?: string) => Promise<string>;
   depositToContract: (contractAddress: string) => Promise<string>;
   getWeb3Service: () => Promise<any>;
   onProgress?: (step: string, message: string, contractAddress?: string) => void;
@@ -98,12 +98,13 @@ export async function executeContractTransactionSequence(
     console.log('🔧 ContractSequence: No transaction hash returned, proceeding to approval immediately');
   }
 
-  // Step 2: Approve USDC spending
-  onProgress?.('usdc_approval', 'Approving USDC transfer...');
+  // Step 2: Approve token spending (USDC or USDT based on params.tokenAddress)
+  onProgress?.('usdc_approval', 'Approving token transfer...');
 
   const approvalTxHash = await approveUSDC(
     contractAddress,
-    params.amount.toString() // amount is already in microUSDC
+    params.amount.toString(), // amount is already in micro units
+    params.tokenAddress // Pass the selected token address (USDC or USDT)
   );
 
   console.log('🔧 ContractSequence: USDC approval transaction:', approvalTxHash);

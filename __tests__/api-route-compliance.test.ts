@@ -25,11 +25,12 @@ const FRONTEND_PATHS = [
   'utils/',
 ];
 
-// These are server-side files that are allowed to call backend services directly
+// These are server-side files and test files that are allowed to reference backend services
 const SERVER_SIDE_EXCEPTIONS = [
   'pages/api/',
   'lib/server',
   'middleware.ts',
+  '__tests__/', // Test files can have mock configs with backend service URLs
 ];
 
 function getAllFiles(dir: string, extension: string): string[] {

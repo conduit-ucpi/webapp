@@ -35,6 +35,16 @@ export default function WalletInfo({
   const displayTokenSymbol = tokenSymbol || config?.tokenSymbol || 'USDC';
   const effectiveTokenAddress = tokenAddress || config?.usdcContractAddress;
 
+  // Debug logging
+  console.log('🔧 WalletInfo: Token selection', {
+    propTokenSymbol: tokenSymbol,
+    propTokenAddress: tokenAddress,
+    displayTokenSymbol,
+    effectiveTokenAddress,
+    configUsdcDetails: config?.usdcDetails,
+    configUsdtDetails: config?.usdtDetails
+  });
+
   // Fetch token balance using ethers directly
   useEffect(() => {
     if (user?.walletAddress && effectiveTokenAddress && config?.rpcUrl) {

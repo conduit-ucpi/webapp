@@ -71,6 +71,18 @@ export default function ContractCreate() {
     ? config?.usdtDetails
     : config?.usdcDetails;
   const selectedTokenAddress = selectedToken?.address || config?.usdcContractAddress || '';
+
+  // Debug logging for token selection
+  console.log('🔧 ContractCreate: Token selection details', {
+    queryTokenSymbol,
+    configDefaultTokenSymbol: config?.defaultTokenSymbol,
+    selectedTokenSymbol,
+    configUsdcDetails: config?.usdcDetails,
+    configUsdtDetails: config?.usdtDetails,
+    selectedToken,
+    selectedTokenAddress,
+    fallbackAddress: config?.usdcContractAddress
+  });
   
   // Check if we're in an iframe or popup
   const [isInIframe, setIsInIframe] = useState(false);
@@ -87,6 +99,8 @@ export default function ContractCreate() {
   const [loadingMessage, setLoadingMessage] = useState('');
   const [contractId, setContractId] = useState<string | null>(null);
   const [step, setStep] = useState<'create' | 'payment'>('create');
+  const [tokenBalance, setTokenBalance] = useState<string>('0');
+  const [isLoadingBalance, setIsLoadingBalance] = useState(false);
   const [paymentSteps, setPaymentSteps] = useState<PaymentStep[]>([
     { id: 'verify', label: 'Verifying wallet connection', status: 'pending' },
     { id: 'approve', label: `Approving ${selectedTokenSymbol} payment`, status: 'pending' },
@@ -139,6 +153,40 @@ export default function ContractCreate() {
       });
     }
   }, [seller, amount, description]);
+
+  // Fetch token balance immediately when user connects (not just on payment step)
+  useEffect(() => {
+    const fetchTokenBalance = async () => {
+      if (user?.walletAddress && selectedTokenAddress && config?.rpcUrl) {
+        setIsLoadingBalance(true);
+        try {
+          const { ethers } = await import('ethers');
+          const provider = new ethers.JsonRpcProvider(config.rpcUrl);
+          const tokenContract = new ethers.Contract(
+            selectedTokenAddress,
+            ['function balanceOf(address) view returns (uint256)', 'function decimals() view returns (uint8)'],
+            provider
+          );
+
+          const [balance, decimals] = await Promise.all([
+            tokenContract.balanceOf(user.walletAddress),
+            tokenContract.decimals()
+          ]);
+
+          const formattedBalance = ethers.formatUnits(balance, decimals);
+          setTokenBalance(formattedBalance);
+          console.log(`🔧 ContractCreate: ${selectedTokenSymbol} balance:`, formattedBalance);
+        } catch (error) {
+          console.error(`Failed to fetch ${selectedTokenSymbol} balance:`, error);
+          setTokenBalance('0');
+        } finally {
+          setIsLoadingBalance(false);
+        }
+      }
+    };
+
+    fetchTokenBalance();
+  }, [user?.walletAddress, selectedTokenAddress, selectedTokenSymbol, config?.rpcUrl]);
 
   // Detect iframe and popup environment
   useEffect(() => {
@@ -367,8 +415,20 @@ export default function ContractCreate() {
       console.log('🔧 ContractCreate: Payment using token:', {
         selectedTokenSymbol,
         selectedTokenAddress,
-        amount: form.amount
+        amount: form.amount,
+        balance: tokenBalance
       });
+
+      // Check if user has sufficient balance
+      const requestedAmount = parseFloat(form.amount.trim());
+      const availableBalance = parseFloat(tokenBalance);
+
+      if (availableBalance < requestedAmount) {
+        const shortfall = requestedAmount - availableBalance;
+        throw new Error(
+          `Insufficient ${selectedTokenSymbol} balance. You need ${requestedAmount.toFixed(4)} ${selectedTokenSymbol} but only have ${availableBalance.toFixed(4)} ${selectedTokenSymbol}. You are short ${shortfall.toFixed(4)} ${selectedTokenSymbol}.`
+        );
+      }
 
       // Step 1: Verify wallet connection
       updatePaymentStep('verify', 'active');
@@ -770,6 +830,19 @@ export default function ContractCreate() {
                 </div>
               )}
 
+              {/* Balance warning on create step */}
+              {form.amount && parseFloat(form.amount) > 0 && !isLoadingBalance && parseFloat(tokenBalance) < parseFloat(form.amount) && (
+                <div className="bg-red-50 border border-red-200 rounded-md p-3 mb-4">
+                  <p className="text-sm text-red-800 font-medium">
+                    ⚠️ Insufficient {selectedTokenSymbol} Balance
+                  </p>
+                  <p className="text-xs text-red-700 mt-1">
+                    You need {parseFloat(form.amount).toFixed(4)} {selectedTokenSymbol} but only have {parseFloat(tokenBalance).toFixed(4)} {selectedTokenSymbol}.
+                    Please add {(parseFloat(form.amount) - parseFloat(tokenBalance)).toFixed(4)} {selectedTokenSymbol} to your wallet.
+                  </p>
+                </div>
+              )}
+
               <div className="flex space-x-3 pt-4">
                 <Button
                   onClick={handleCancel}
@@ -781,8 +854,17 @@ export default function ContractCreate() {
                 </Button>
                 <Button
                   onClick={handleCreateContract}
-                  disabled={isLoading}
-                  className="flex-1 bg-primary-500 hover:bg-primary-600"
+                  disabled={
+                    isLoading ||
+                    isLoadingBalance ||
+                    Boolean(form.amount && parseFloat(form.amount) > 0 && parseFloat(tokenBalance) < parseFloat(form.amount))
+                  }
+                  className="flex-1 bg-primary-500 hover:bg-primary-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                  title={
+                    parseFloat(tokenBalance) < parseFloat(form.amount || '0')
+                      ? `Insufficient balance: need ${form.amount} ${selectedTokenSymbol}, have ${parseFloat(tokenBalance).toFixed(4)} ${selectedTokenSymbol}`
+                      : ''
+                  }
                 >
                   {isLoading ? (
                     <>
@@ -805,6 +887,16 @@ export default function ContractCreate() {
               <div className="flex justify-between">
                 <span className="text-gray-600">Amount:</span>
                 <span className="font-medium">${form.amount} {selectedTokenSymbol}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Your Balance:</span>
+                <span className={`font-medium ${parseFloat(tokenBalance) < parseFloat(form.amount) ? 'text-red-600' : 'text-green-600'}`}>
+                  {isLoadingBalance ? (
+                    <span className="animate-pulse">Loading...</span>
+                  ) : (
+                    `${parseFloat(tokenBalance).toFixed(4)} ${selectedTokenSymbol}`
+                  )}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Seller:</span>
@@ -885,11 +977,23 @@ export default function ContractCreate() {
               </div>
             )}
 
-            <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4 mb-6">
-              <p className="text-sm text-yellow-800">
-                Your ${form.amount} {selectedTokenSymbol} will be held securely in escrow and released to the seller on the payout date unless you raise a dispute (see email for instructions).
-              </p>
-            </div>
+            {parseFloat(tokenBalance) < parseFloat(form.amount) ? (
+              <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-6">
+                <p className="text-sm text-red-800 font-medium">
+                  ⚠️ Insufficient Balance
+                </p>
+                <p className="text-sm text-red-700 mt-1">
+                  You need {parseFloat(form.amount).toFixed(4)} {selectedTokenSymbol} but only have {parseFloat(tokenBalance).toFixed(4)} {selectedTokenSymbol}.
+                  Please add {(parseFloat(form.amount) - parseFloat(tokenBalance)).toFixed(4)} {selectedTokenSymbol} to your wallet before proceeding.
+                </p>
+              </div>
+            ) : (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4 mb-6">
+                <p className="text-sm text-yellow-800">
+                  Your ${form.amount} {selectedTokenSymbol} will be held securely in escrow and released to the seller on the payout date unless you raise a dispute (see email for instructions).
+                </p>
+              </div>
+            )}
 
             <div className="flex space-x-3">
               <Button
@@ -902,8 +1006,13 @@ export default function ContractCreate() {
               </Button>
               <Button
                 onClick={handlePayment}
-                disabled={isLoading}
-                className="flex-1 bg-primary-500 hover:bg-primary-600"
+                disabled={isLoading || isLoadingBalance || parseFloat(tokenBalance) < parseFloat(form.amount)}
+                className="flex-1 bg-primary-500 hover:bg-primary-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                title={
+                  parseFloat(tokenBalance) < parseFloat(form.amount)
+                    ? `Insufficient balance: need ${form.amount} ${selectedTokenSymbol}, have ${parseFloat(tokenBalance).toFixed(4)} ${selectedTokenSymbol}`
+                    : ''
+                }
               >
                 {isLoading ? (
                   <>

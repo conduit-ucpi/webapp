@@ -5,12 +5,25 @@ import { getNetworkName } from '@/utils/networkUtils';
 import { formatWalletAddress } from '@/utils/validation';
 import { useSimpleEthers } from '@/hooks/useSimpleEthers';
 import Button from '@/components/ui/Button';
+import { ethers } from 'ethers';
+
+// ERC20 ABI for token balance
+const ERC20_ABI = [
+  'function balanceOf(address owner) view returns (uint256)',
+  'function decimals() view returns (uint8)'
+];
 
 interface WalletInfoProps {
   className?: string;
+  tokenSymbol?: string; // Optional: Override token symbol (defaults to config.tokenSymbol or 'USDC')
+  tokenAddress?: string; // Optional: Override token contract address (defaults to config.usdcContractAddress)
 }
 
-export default function WalletInfo({ className = '' }: WalletInfoProps) {
+export default function WalletInfo({
+  className = '',
+  tokenSymbol,
+  tokenAddress
+}: WalletInfoProps) {
   const { user } = useAuth();
   const { config } = useConfig();
   const { getUSDCBalance } = useSimpleEthers();
@@ -18,30 +31,46 @@ export default function WalletInfo({ className = '' }: WalletInfoProps) {
   const [isLoadingBalance, setIsLoadingBalance] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  // Fetch USDC balance using ethers directly
+  // Use provided token symbol/address or fall back to config
+  const displayTokenSymbol = tokenSymbol || config?.tokenSymbol || 'USDC';
+  const effectiveTokenAddress = tokenAddress || config?.usdcContractAddress;
+
+  // Fetch token balance using ethers directly
   useEffect(() => {
-    if (user?.walletAddress && config?.usdcContractAddress) {
+    if (user?.walletAddress && effectiveTokenAddress && config?.rpcUrl) {
       setIsLoadingBalance(true);
-      
+
       const fetchBalance = async () => {
         try {
-          const formattedBalance = await getUSDCBalance(user.walletAddress);
+          // Create provider and token contract
+          const provider = new ethers.JsonRpcProvider(config.rpcUrl);
+          const tokenContract = new ethers.Contract(
+            effectiveTokenAddress,
+            ERC20_ABI,
+            provider
+          );
 
-          // The getUSDCBalance method already returns properly formatted USDC
-          // Just ensure 4 decimal places for display consistency
+          // Fetch balance and decimals
+          const [balance, decimals] = await Promise.all([
+            tokenContract.balanceOf(user.walletAddress),
+            tokenContract.decimals()
+          ]);
+
+          // Format balance with proper decimals
+          const formattedBalance = ethers.formatUnits(balance, decimals);
           const balanceNumber = parseFloat(formattedBalance);
           setBalance(balanceNumber.toFixed(4));
         } catch (error) {
-          console.error('Failed to fetch USDC balance:', error);
+          console.error(`Failed to fetch ${displayTokenSymbol} balance:`, error);
           setBalance('Error');
         } finally {
           setIsLoadingBalance(false);
         }
       };
-      
+
       fetchBalance();
     }
-  }, [user?.walletAddress, config?.usdcContractAddress, getUSDCBalance]);
+  }, [user?.walletAddress, effectiveTokenAddress, config?.rpcUrl, displayTokenSymbol]);
 
   const copyToClipboard = async () => {
     if (!user?.walletAddress) return;
@@ -116,15 +145,15 @@ export default function WalletInfo({ className = '' }: WalletInfoProps) {
           </div>
         </div>
 
-        {/* USDC Balance */}
+        {/* Token Balance */}
         <div>
           <div className="flex items-center justify-between">
-            <span className="text-xs text-secondary-600">USDC Balance:</span>
+            <span className="text-xs text-secondary-600">{displayTokenSymbol} Balance:</span>
             <span className="text-xs font-medium text-secondary-900">
               {isLoadingBalance ? (
                 <span className="animate-pulse">Loading...</span>
               ) : (
-                `${balance} USDC`
+                `${balance} ${displayTokenSymbol}`
               )}
             </span>
           </div>

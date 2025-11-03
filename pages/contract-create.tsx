@@ -665,7 +665,11 @@ export default function ContractCreate() {
         {step === 'create' ? (
           <>
             {/* Wallet Info Section */}
-            <WalletInfo className="mb-4" />
+            <WalletInfo
+              className="mb-4"
+              tokenSymbol={selectedTokenSymbol}
+              tokenAddress={selectedTokenAddress}
+            />
 
             {/* Logout Button */}
             <div className="flex justify-end mb-4">

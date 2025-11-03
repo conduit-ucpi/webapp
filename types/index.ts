@@ -1,3 +1,13 @@
+/**
+ * Token details fetched from blockchain
+ */
+export interface TokenDetails {
+  address: string;
+  symbol: string;
+  decimals: number;
+  name: string;
+}
+
 export interface Config {
   web3AuthClientId: string;
   web3AuthNetwork: string;
@@ -5,6 +15,7 @@ export interface Config {
   chainId: number;
   rpcUrl: string;
   usdcContractAddress: string;
+  usdtContractAddress?: string;
   contractAddress?: string;
   contractFactoryAddress?: string;
   userServiceUrl?: string;
@@ -23,6 +34,11 @@ export interface Config {
   neynarApiKey?: string;
   walletConnectProjectId?: string;
   tokenSymbol?: string; // Token symbol (e.g., "USDC", "USDT", "DAI")
+  defaultTokenSymbol?: string; // Default token symbol to use
+  // Token details from blockchain
+  usdcDetails?: TokenDetails | null;
+  usdtDetails?: TokenDetails | null;
+  primaryToken?: TokenDetails | null;
   // Optional wallet services configuration
   walletServicesShowWidget?: string;
   walletServicesButtonPosition?: string;

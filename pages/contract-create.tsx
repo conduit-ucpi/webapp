@@ -45,7 +45,7 @@ export default function ContractCreate() {
   const { user, authenticatedFetch, disconnect, isLoading: authLoading } = useAuth();
   const { approveUSDC, depositToContract, getWeb3Service } = useSimpleEthers();
   const { errors, validateForm, clearErrors } = useContractCreateValidation();
-  
+
   // Query parameters
   const {
     seller,
@@ -61,8 +61,16 @@ export default function ContractCreate() {
     title,
     quantity,
     webhook_url,
-    wordpress_source
+    wordpress_source,
+    tokenSymbol: queryTokenSymbol
   } = router.query;
+
+  // Determine which token to use based on URL parameter or default
+  const selectedTokenSymbol = (queryTokenSymbol as string) || config?.defaultTokenSymbol || 'USDC';
+  const selectedToken = selectedTokenSymbol === 'USDT'
+    ? config?.usdtDetails
+    : config?.usdcDetails;
+  const selectedTokenAddress = selectedToken?.address || config?.usdcContractAddress || '';
   
   // Check if we're in an iframe or popup
   const [isInIframe, setIsInIframe] = useState(false);
@@ -81,7 +89,7 @@ export default function ContractCreate() {
   const [step, setStep] = useState<'create' | 'payment'>('create');
   const [paymentSteps, setPaymentSteps] = useState<PaymentStep[]>([
     { id: 'verify', label: 'Verifying wallet connection', status: 'pending' },
-    { id: 'approve', label: 'Approving USDC payment', status: 'pending' },
+    { id: 'approve', label: `Approving ${selectedTokenSymbol} payment`, status: 'pending' },
     { id: 'escrow', label: 'Securing funds in escrow', status: 'pending' },
     { id: 'confirm', label: 'Confirming transaction on blockchain', status: 'pending' },
     { id: 'complete', label: 'Payment complete', status: 'pending' }
@@ -94,7 +102,10 @@ export default function ContractCreate() {
     userEmail: user?.email,
     hasAuthenticatedFetch: !!authenticatedFetch,
     userWallet: user?.walletAddress,
-    queryParams: { seller, amount, description, returnUrl, order_id, epoch_expiry }
+    queryParams: { seller, amount, description, returnUrl, order_id, epoch_expiry },
+    selectedTokenSymbol,
+    selectedTokenAddress,
+    queryTokenSymbol
   });
 
   console.log('🔧 ContractCreate: Auth state decision', {
@@ -224,12 +235,17 @@ export default function ContractCreate() {
     }
 
     console.log('🔧 ContractCreate: Starting contract creation process');
+    console.log('🔧 ContractCreate: Using token:', {
+      selectedTokenSymbol,
+      selectedTokenAddress,
+      selectedToken
+    });
     setIsLoading(true);
-    
+
     try {
       // Validate config before proceeding
-      if (!config.usdcContractAddress) {
-        throw new Error('USDC contract address not configured. Please check server configuration.');
+      if (!selectedTokenAddress) {
+        throw new Error(`${selectedTokenSymbol} contract address not configured. Please check server configuration.`);
       }
       
       // Check if user is authenticated and has wallet address
@@ -260,8 +276,8 @@ export default function ContractCreate() {
         buyerEmail: user?.email || (queryEmail as string) || 'noemail@notsupplied.com', // Prefer authenticated user's email
         sellerAddress: form.seller, // Backend will handle email lookup from wallet address
         amount: toMicroUSDC(parseFloat(form.amount.trim())), // Convert to microUSDC format
-        currency: `micro${config.tokenSymbol || 'USDC'}`,
-        currencySymbol: config.tokenSymbol || 'USDC',
+        currency: `micro${selectedTokenSymbol}`,
+        currencySymbol: selectedTokenSymbol,
         description: form.description,
         expiryTimestamp: expiryTimestamp,
         chainId: config.chainId?.toString() || "8453",
@@ -340,7 +356,7 @@ export default function ContractCreate() {
     // Reset payment steps to initial state
     setPaymentSteps([
       { id: 'verify', label: 'Verifying wallet connection', status: 'pending' },
-      { id: 'approve', label: 'Approving USDC payment', status: 'pending' },
+      { id: 'approve', label: `Approving ${selectedTokenSymbol} payment`, status: 'pending' },
       { id: 'escrow', label: 'Securing funds in escrow', status: 'pending' },
       { id: 'confirm', label: 'Confirming transaction on blockchain', status: 'pending' },
       { id: 'complete', label: 'Payment complete', status: 'pending' }
@@ -348,7 +364,12 @@ export default function ContractCreate() {
 
     try {
       console.log('🔧 ContractCreate: Starting payment process');
-      
+      console.log('🔧 ContractCreate: Payment using token:', {
+        selectedTokenSymbol,
+        selectedTokenAddress,
+        amount: form.amount
+      });
+
       // Step 1: Verify wallet connection
       updatePaymentStep('verify', 'active');
       setLoadingMessage('Verifying wallet connection...');
@@ -370,7 +391,7 @@ export default function ContractCreate() {
       const result = await executeContractTransactionSequence(
         {
           contractserviceId: contractId,
-          tokenAddress: config.usdcContractAddress,
+          tokenAddress: selectedTokenAddress,
           buyer: user?.walletAddress || '',
           seller: form.seller,
           amount: toMicroUSDC(parseFloat(form.amount.trim())),
@@ -396,7 +417,7 @@ export default function ContractCreate() {
       // Add debugging for transaction verification
       if (result.depositTxHash) {
         console.log('🔧 ContractCreate: Deposit transaction hash received:', result.depositTxHash);
-        console.log('🔧 ContractCreate: Contract address should receive USDC:', result.contractAddress);
+        console.log(`🔧 ContractCreate: Contract address should receive ${selectedTokenSymbol}:`, result.contractAddress);
 
         // If webhook_url is provided (WordPress integration), verify payment and send webhook
         if (webhook_url && wordpress_source === 'true' && authenticatedFetch) {
@@ -684,7 +705,7 @@ export default function ContractCreate() {
 
               <div>
                 <Input
-                  label={`Amount (${config.tokenSymbol || 'USDC'})`}
+                  label={`Amount (${selectedTokenSymbol})`}
                   type="number"
                   step="0.001"
                   min="0"
@@ -779,7 +800,7 @@ export default function ContractCreate() {
             <div className="space-y-3 mb-6">
               <div className="flex justify-between">
                 <span className="text-gray-600">Amount:</span>
-                <span className="font-medium">${form.amount} {config.tokenSymbol || 'USDC'}</span>
+                <span className="font-medium">${form.amount} {selectedTokenSymbol}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Seller:</span>
@@ -862,7 +883,7 @@ export default function ContractCreate() {
 
             <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4 mb-6">
               <p className="text-sm text-yellow-800">
-                Your ${form.amount} {config.tokenSymbol || 'USDC'} will be held securely in escrow and released to the seller on the payout date unless you raise a dispute (see email for instructions).
+                Your ${form.amount} {selectedTokenSymbol} will be held securely in escrow and released to the seller on the payout date unless you raise a dispute (see email for instructions).
               </p>
             </div>
 
@@ -886,7 +907,7 @@ export default function ContractCreate() {
                     {loadingMessage || 'Processing...'}
                   </>
                 ) : (
-                  `Pay $${form.amount} ${config.tokenSymbol || 'USDC'}`
+                  `Pay $${form.amount} ${selectedTokenSymbol}`
                 )}
               </Button>
             </div>

@@ -41,6 +41,8 @@ jobs:
           CHAIN_ID: ${{ vars.CHAIN_ID }}
           RPC_URL: ${{ vars.RPC_URL }}
           USDC_CONTRACT_ADDRESS: ${{ vars.USDC_CONTRACT_ADDRESS }}
+          USDT_CONTRACT_ADDRESS: ${{ vars.USDT_CONTRACT_ADDRESS }}
+          DEFAULT_TOKEN_SYMBOL: ${{ vars.DEFAULT_TOKEN_SYMBOL }}
           CONTRACT_FACTORY_ADDRESS: ${{ vars.CONTRACT_FACTORY_ADDRESS }}
           USER_SERVICE_URL: ${{ vars.USER_SERVICE_URL }}
           CHAIN_SERVICE_URL: ${{ vars.CHAIN_SERVICE_URL }}
@@ -173,6 +175,8 @@ jobs:
             -e CONTRACT_FACTORY_ADDRESS="${{ vars.CONTRACT_FACTORY_ADDRESS }}" \\
             -e CONTRACT_ADDRESS="${{ vars.CONTRACT_ADDRESS }}" \\
             -e USDC_CONTRACT_ADDRESS="${{ vars.USDC_CONTRACT_ADDRESS }}" \\
+            -e USDT_CONTRACT_ADDRESS="${{ vars.USDT_CONTRACT_ADDRESS }}" \\
+            -e DEFAULT_TOKEN_SYMBOL="${{ vars.DEFAULT_TOKEN_SYMBOL }}" \\
             -e MIN_GAS_WEI="${{ vars.MIN_GAS_WEI }}" \\
             -e MAX_GAS_PRICE_GWEI="${{ vars.MAX_GAS_PRICE_GWEI }}" \\
             -e MAX_GAS_COST_GWEI="${{ vars.MAX_GAS_COST_GWEI }}" \\

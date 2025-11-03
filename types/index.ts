@@ -22,6 +22,7 @@ export interface Config {
   serviceLink: string;
   neynarApiKey?: string;
   walletConnectProjectId?: string;
+  tokenSymbol?: string; // Token symbol (e.g., "USDC", "USDT", "DAI")
   // Optional wallet services configuration
   walletServicesShowWidget?: string;
   walletServicesButtonPosition?: string;

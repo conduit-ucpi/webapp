@@ -1,4 +1,29 @@
 import { NextApiRequest, NextApiResponse } from 'next';
+import { ethers } from 'ethers';
+
+// ERC20 ABI for fetching token symbol
+const ERC20_ABI = [
+  'function symbol() view returns (string)'
+];
+
+/**
+ * Fetch token symbol from the blockchain
+ * @param rpcUrl RPC endpoint URL
+ * @param tokenAddress Token contract address
+ * @returns Token symbol (e.g., "USDC", "USDT", "DAI")
+ */
+async function getTokenSymbol(rpcUrl: string, tokenAddress: string): Promise<string> {
+  try {
+    const provider = new ethers.JsonRpcProvider(rpcUrl);
+    const contract = new ethers.Contract(tokenAddress, ERC20_ABI, provider);
+    const symbol = await contract.symbol();
+    console.log(`✅ Fetched token symbol from blockchain: ${symbol}`);
+    return symbol;
+  } catch (error) {
+    console.error('Failed to fetch token symbol, defaulting to USDC:', error);
+    return 'USDC';
+  }
+}
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
@@ -30,7 +55,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log('DYNAMIC_ENVIRONMENT_ID:', process.env.DYNAMIC_ENVIRONMENT_ID ? 'Present' : 'Missing');
 
     const basePath = process.env.NEXT_PUBLIC_BASE_PATH === 'null' ? '' : (process.env.NEXT_PUBLIC_BASE_PATH || '/webapp');
-    
+
     // Validate critical configuration
     if (!process.env.RPC_URL) {
       throw new Error('RPC_URL environment variable is required but not set');
@@ -38,7 +63,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!process.env.WEB3AUTH_CLIENT_ID) {
       throw new Error('WEB3AUTH_CLIENT_ID environment variable is required but not set');
     }
-    
+    if (!process.env.USDC_CONTRACT_ADDRESS) {
+      console.error('USDC_CONTRACT_ADDRESS is missing or null');
+      return res.status(500).json({ error: 'USDC contract address not configured' });
+    }
+
+    // Fetch token symbol from blockchain
+    const tokenSymbol = await getTokenSymbol(
+      process.env.RPC_URL.trim(),
+      process.env.USDC_CONTRACT_ADDRESS
+    );
+
     const config = {
       web3AuthClientId: process.env.WEB3AUTH_CLIENT_ID,
       web3AuthNetwork: process.env.WEB3AUTH_NETWORK || 'sapphire_devnet',
@@ -63,6 +98,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       serviceLink: process.env.SERVICE_LINK || 'http://localhost:3000',
       neynarApiKey: process.env.NEYNAR_API_KEY,
       walletConnectProjectId: process.env.WALLETCONNECT_PROJECT_ID,
+      tokenSymbol: tokenSymbol, // Dynamic token symbol from blockchain
       // Optional wallet services configuration
       walletServicesShowWidget: process.env.WALLET_SERVICES_SHOW_WIDGET,
       walletServicesButtonPosition: process.env.WALLET_SERVICES_BUTTON_POSITION,
@@ -73,11 +109,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       gitSha: process.env.GIT_SHA || 'unknown',
       buildVersion: process.env.BUILD_VERSION || 'unknown'
     };
-
-    if (!config.usdcContractAddress) {
-      console.error('USDC_CONTRACT_ADDRESS is missing or null');
-      return res.status(500).json({ error: 'USDC contract address not configured' });
-    }
 
     console.log('Config being sent:', config);
     res.status(200).json(config);

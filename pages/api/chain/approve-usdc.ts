@@ -9,7 +9,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     const authToken = requireAuth(req);
 
-    console.log('Approve USDC request:');
+    console.log('Approve token request:');
     console.log('Cookies received:', req.headers.cookie || '');
     console.log('Auth token extracted:', authToken ? 'Present' : 'Missing');
     console.log('Request body:', req.body);
@@ -35,10 +35,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const responseData = await response.json();
     console.log('Chain Service response:', responseData);
-    
+
     res.status(response.status).json(responseData);
   } catch (error) {
-    console.error('Approve USDC API error:', error);
+    console.error('Approve token API error:', error);
     if (error instanceof Error && error.message === 'Authentication required') {
       res.status(401).json({ error: 'Authentication required' });
     } else {

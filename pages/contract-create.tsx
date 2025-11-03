@@ -260,7 +260,8 @@ export default function ContractCreate() {
         buyerEmail: user?.email || (queryEmail as string) || 'noemail@notsupplied.com', // Prefer authenticated user's email
         sellerAddress: form.seller, // Backend will handle email lookup from wallet address
         amount: toMicroUSDC(parseFloat(form.amount.trim())), // Convert to microUSDC format
-        currency: 'microUSDC',
+        currency: `micro${config.tokenSymbol || 'USDC'}`,
+        currencySymbol: config.tokenSymbol || 'USDC',
         description: form.description,
         expiryTimestamp: expiryTimestamp,
         chainId: config.chainId?.toString() || "8453",
@@ -683,7 +684,7 @@ export default function ContractCreate() {
 
               <div>
                 <Input
-                  label="Amount (USDC)"
+                  label={`Amount (${config.tokenSymbol || 'USDC'})`}
                   type="number"
                   step="0.001"
                   min="0"
@@ -778,7 +779,7 @@ export default function ContractCreate() {
             <div className="space-y-3 mb-6">
               <div className="flex justify-between">
                 <span className="text-gray-600">Amount:</span>
-                <span className="font-medium">${form.amount} USDC</span>
+                <span className="font-medium">${form.amount} {config.tokenSymbol || 'USDC'}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Seller:</span>
@@ -861,7 +862,7 @@ export default function ContractCreate() {
 
             <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4 mb-6">
               <p className="text-sm text-yellow-800">
-                Your ${form.amount} USDC will be held securely in escrow and released to the seller on the payout date unless you raise a dispute (see email for instructions).
+                Your ${form.amount} {config.tokenSymbol || 'USDC'} will be held securely in escrow and released to the seller on the payout date unless you raise a dispute (see email for instructions).
               </p>
             </div>
 
@@ -885,7 +886,7 @@ export default function ContractCreate() {
                     {loadingMessage || 'Processing...'}
                   </>
                 ) : (
-                  `Pay $${form.amount} USDC`
+                  `Pay $${form.amount} ${config.tokenSymbol || 'USDC'}`
                 )}
               </Button>
             </div>

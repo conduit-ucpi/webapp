@@ -7,7 +7,7 @@ import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import ExpandableHash from '@/components/ui/ExpandableHash';
-import USDCGuide from '@/components/ui/USDCGuide';
+import TokenGuide from '@/components/ui/TokenGuide';
 import { ethers } from 'ethers';
 import { useFarcaster } from '@/components/farcaster/FarcasterDetectionProvider';
 import { useWalletAddress } from '@/hooks/useWalletAddress';
@@ -509,7 +509,7 @@ export default function Wallet() {
 
         {/* Funding Guide */}
         <div className="mb-8">
-          <USDCGuide />
+          <TokenGuide />
         </div>
 
         {/* Send Funds */}

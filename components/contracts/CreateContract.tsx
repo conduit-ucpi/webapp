@@ -3,8 +3,10 @@ import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import BuyerInput from '@/components/ui/BuyerInput';
 import { useCreateContract } from '@/hooks/useCreateContract';
+import { useConfig } from '@/components/auth/ConfigProvider';
 
 export default function CreateContract() {
+  const { config } = useConfig();
   const {
     // Form state
     form,
@@ -48,7 +50,7 @@ export default function CreateContract() {
 
         <div>
           <Input
-            label="Amount (USDC)"
+            label={`Amount (${config?.tokenSymbol || 'USDC'})`}
             type="number"
             step="0.001"
             min="0"

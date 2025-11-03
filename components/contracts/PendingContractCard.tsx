@@ -2,6 +2,7 @@ import { PendingContract } from '@/types';
 import { displayCurrency, formatDateTimeWithTZ } from '@/utils/validation';
 import Button from '@/components/ui/Button';
 import ExpandableHash from '@/components/ui/ExpandableHash';
+import { useConfig } from '@/components/auth/ConfigProvider';
 
 interface PendingContractCardProps {
   contract: PendingContract;
@@ -9,11 +10,12 @@ interface PendingContractCardProps {
   onAccept?: (contractId: string) => void;
 }
 
-export default function PendingContractCard({ 
-  contract, 
-  currentUserEmail, 
-  onAccept 
+export default function PendingContractCard({
+  contract,
+  currentUserEmail,
+  onAccept
 }: PendingContractCardProps) {
+  const { config } = useConfig();
   const isExpired = Date.now() / 1000 > contract.expiryTimestamp;
   const isBuyer = contract.buyerEmail === currentUserEmail;
   const isSeller = contract.sellerEmail === currentUserEmail;
@@ -47,7 +49,7 @@ export default function PendingContractCard({
           <div className="text-2xl font-bold text-gray-900">
             {displayCurrency(contract.amount, 'microUSDC')}
           </div>
-          <div className="text-sm text-gray-600">USDC</div>
+          <div className="text-sm text-gray-600">{config?.tokenSymbol || 'USDC'}</div>
         </div>
       </div>
 

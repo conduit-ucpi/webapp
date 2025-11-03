@@ -1,7 +1,7 @@
 import { render } from '@testing-library/react';
 import { screen } from '@testing-library/dom';
 import { useRouter } from 'next/router';
-import BuyUSDC from '@/pages/buy-usdc';
+import BuyToken from '@/pages/buy-token';
 
 // Mock Next.js router
 jest.mock('next/router', () => ({
@@ -32,6 +32,8 @@ jest.mock('@/components/auth/ConfigProvider', () => ({
       rpcUrl: 'https://api.avax-test.network/ext/bc/C/rpc',
       usdcContractAddress: '0x5425890298aed601595a70ab815c96711a31bc65',
       moonPayApiKey: 'test-api-key',
+      tokenSymbol: 'USDC',
+      serviceLink: 'conduit-ucpi',
     },
     isLoading: false,
   }),
@@ -63,7 +65,7 @@ jest.mock('@/components/auth/SimpleAuthProvider', () => ({
 const mockRouterPush = jest.fn();
 const mockRouterBack = jest.fn();
 
-describe('BuyUSDC Page', () => {
+describe('BuyToken Page', () => {
   beforeEach(() => {
     (useRouter as jest.Mock).mockReturnValue({
       query: {},
@@ -91,14 +93,15 @@ describe('BuyUSDC Page', () => {
 
   describe('When user is authenticated', () => {
     it('renders the main heading and description', () => {
-      render(<BuyUSDC />);
+      render(<BuyToken />);
 
-      expect(screen.getByRole('heading', { level: 1, name: 'Buy or Sell USDC' })).toBeInTheDocument();
-      expect(screen.getByText('Manual instructions for adding USDC to your wallet or converting to fiat')).toBeInTheDocument();
+      // The heading shows the token symbol from config (USDC in this test)
+      expect(screen.getByRole('heading', { level: 1, name: /Buy or Sell (USDC|Tokens)/ })).toBeInTheDocument();
+      expect(screen.getByText(/Manual instructions for adding (USDC|tokens) to your wallet or converting to fiat/)).toBeInTheDocument();
     });
 
     it('renders USDC guide information', () => {
-      render(<BuyUSDC />);
+      render(<BuyToken />);
 
       expect(screen.getByText('How to Add USDC to Your Wallet/How to get cash from your Wallet')).toBeInTheDocument();
       expect(screen.getByText(/Check your network:/)).toBeInTheDocument();
@@ -106,7 +109,7 @@ describe('BuyUSDC Page', () => {
     });
 
     it('displays wallet information', () => {
-      render(<BuyUSDC />);
+      render(<BuyToken />);
 
       expect(screen.getByText('Connected Wallet:')).toBeInTheDocument();
       expect(screen.getAllByText('0x1234567890abcdef1234567890abcdef12345678').length).toBeGreaterThan(0);
@@ -115,7 +118,7 @@ describe('BuyUSDC Page', () => {
     });
 
     it('shows Web3Auth wallet services', () => {
-      render(<BuyUSDC />);
+      render(<BuyToken />);
 
       expect(screen.getByText('Web3Auth Wallet Services')).toBeInTheDocument();
       expect(screen.getByText(/Use the integrated wallet widget to buy, sell, swap, and manage your crypto/)).toBeInTheDocument();
@@ -123,21 +126,21 @@ describe('BuyUSDC Page', () => {
     });
 
     it('shows active status notice', () => {
-      render(<BuyUSDC />);
+      render(<BuyToken />);
 
       expect(screen.getByText('Active:')).toBeInTheDocument();
       expect(screen.getByText(/Web3Auth Wallet Services are now integrated and available through the wallet widget/)).toBeInTheDocument();
     });
 
     it('displays informational footer', () => {
-      render(<BuyUSDC />);
+      render(<BuyToken />);
 
       expect(screen.getByText(/Powered by Web3Auth Wallet Services/)).toBeInTheDocument();
       expect(screen.getByText(/fiat on-ramp providers and DeFi services/)).toBeInTheDocument();
     });
 
     it('shows navigation buttons', () => {
-      render(<BuyUSDC />);
+      render(<BuyToken />);
 
       const dashboardButton = screen.getByRole('button', { name: 'Go to Dashboard' });
       expect(dashboardButton).toBeInTheDocument();
@@ -148,7 +151,7 @@ describe('BuyUSDC Page', () => {
     });
 
     it('navigates to dashboard when dashboard button is clicked', () => {
-      render(<BuyUSDC />);
+      render(<BuyToken />);
 
       const dashboardButton = screen.getByRole('button', { name: 'Go to Dashboard' });
       dashboardButton.click();
@@ -157,7 +160,7 @@ describe('BuyUSDC Page', () => {
     });
 
     it('navigates back when back button is clicked', () => {
-      render(<BuyUSDC />);
+      render(<BuyToken />);
 
       const backButton = screen.getByRole('button', { name: 'Go Back' });
       backButton.click();
@@ -166,7 +169,7 @@ describe('BuyUSDC Page', () => {
     });
 
     it('shows expandable manual instructions', () => {
-      render(<BuyUSDC />);
+      render(<BuyToken />);
 
       expect(screen.getByText(/Alternative: Manual Instructions/)).toBeInTheDocument();
       expect(screen.getByText(/click to expand/)).toBeInTheDocument();
@@ -183,10 +186,11 @@ describe('BuyUSDC Page', () => {
         logout: jest.fn(),
       });
 
-      render(<BuyUSDC />);
+      render(<BuyToken />);
 
       expect(screen.getByRole('heading', { level: 1, name: 'Connect Your Wallet' })).toBeInTheDocument();
-      expect(screen.getByText('You need to connect your wallet to buy or sell USDC.')).toBeInTheDocument();
+      // The component shows either the token symbol from config or 'tokens' as fallback
+      expect(screen.getByText(/You need to connect your wallet to buy or sell (USDC|tokens)\./)).toBeInTheDocument();
     });
   });
 
@@ -200,7 +204,7 @@ describe('BuyUSDC Page', () => {
         logout: jest.fn(),
       });
 
-      render(<BuyUSDC />);
+      render(<BuyToken />);
 
       expect(screen.getByTestId('loading-spinner')).toBeInTheDocument();
     });

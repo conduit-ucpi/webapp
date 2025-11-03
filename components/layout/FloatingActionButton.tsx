@@ -50,8 +50,8 @@ export default function FloatingActionButton() {
       requiresAuth: true,
     },
     {
-      label: 'Buy USDC',
-      href: '/buy-usdc',
+      label: 'Buy Tokens',
+      href: '/buy-token',
       icon: CreditCardIcon,
     },
     {

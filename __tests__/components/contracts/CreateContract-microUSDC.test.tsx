@@ -310,6 +310,7 @@ describe('CreateContract - microUSDC Amount Handling', () => {
           sellerAddress: '0xSellerAddress',
           amount: 250000, // microUSDC format
           currency: 'microUSDC',
+          currencySymbol: 'USDC', // Added for token-agnostic refactor
           description: 'Test contract description',
           expiryTimestamp: expect.any(Number),
           serviceLink: 'http://localhost:3000'

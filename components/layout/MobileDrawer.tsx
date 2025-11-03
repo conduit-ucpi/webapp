@@ -79,8 +79,8 @@ export default function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
       title: 'Resources',
       items: [
         {
-          href: '/buy-usdc',
-          label: 'Buy USDC',
+          href: '/buy-token',
+          label: 'Buy Tokens',
           icon: CreditCardIcon,
         },
         {

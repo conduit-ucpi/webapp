@@ -92,7 +92,8 @@ export function useCreateContract() {
         sellerEmail: user?.email || '',
         sellerAddress: userAddress,
         amount: toMicroUSDC(parseFloat(form.amount.trim())),
-        currency: 'microUSDC',
+        currency: `micro${config.tokenSymbol || 'USDC'}`,
+        currencySymbol: config.tokenSymbol || 'USDC',
         description: form.description,
         expiryTimestamp: form.payoutTimestamp,
         serviceLink: config.serviceLink

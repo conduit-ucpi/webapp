@@ -55,10 +55,10 @@ export default function ProgressChecklist({ onClose }: ProgressChecklistProps) {
     },
     {
       id: 'understand-usdc',
-      title: 'Learn About USDC',
-      description: 'Understand how to get and use USDC for your transactions',
+      title: 'Learn About Payment Tokens',
+      description: 'Understand how to get and use tokens for your transactions',
       action: 'Learn More',
-      actionLink: '/buy-usdc',
+      actionLink: '/buy-token',
       checkCondition: () => localStorage.getItem('onboarding-usdc-learned') === 'true',
     },
     {

@@ -10,6 +10,18 @@ jest.mock('../../../utils/validation', () => ({
   formatExpiryDate: jest.fn().mockReturnValue('01 Jan 2025, 12:00 GMT'),
 }));
 
+// Mock ConfigProvider
+jest.mock('../../../components/auth/ConfigProvider', () => ({
+  useConfig: jest.fn(() => ({
+    config: {
+      tokenSymbol: 'USDC',
+      chainId: 8453,
+      usdcContractAddress: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+      serviceLink: 'conduit-ucpi',
+    }
+  }))
+}));
+
 import { displayCurrency } from '../../../utils/validation';
 const mockDisplayCurrency = displayCurrency as jest.MockedFunction<typeof displayCurrency>;
 

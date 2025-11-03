@@ -4,6 +4,7 @@ import { useRouter } from 'next/router';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import { useAuth } from '@/components/auth';
+import { useConfig } from '@/components/auth/ConfigProvider';
 
 interface WalkthroughStep {
   id: string;
@@ -21,6 +22,7 @@ interface TransactionWalkthroughProps {
 
 export default function TransactionWalkthrough({ isOpen, onClose, onComplete }: TransactionWalkthroughProps) {
   const { user } = useAuth();
+  const { config } = useConfig();
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(0);
   const [sampleData, setSampleData] = useState({
@@ -136,7 +138,7 @@ export default function TransactionWalkthrough({ isOpen, onClose, onComplete }: 
               />
             </div>
             <p className="text-xs text-gray-500 mt-1">
-              Payment will be made in USDC (a stable cryptocurrency)
+              Payment will be made in {config?.tokenSymbol || 'USDC'} (a stable cryptocurrency)
             </p>
           </div>
 
@@ -231,7 +233,7 @@ export default function TransactionWalkthrough({ isOpen, onClose, onComplete }: 
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Amount:</span>
-                <span className="font-medium text-lg">${sampleData.amount} USDC</span>
+                <span className="font-medium text-lg">${sampleData.amount} {config?.tokenSymbol || 'USDC'}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Delivery Window:</span>
@@ -246,8 +248,8 @@ export default function TransactionWalkthrough({ isOpen, onClose, onComplete }: 
 
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
             <p className="text-sm text-yellow-800">
-              📧 <strong>Next step:</strong> The buyer will receive an email with secure payment 
-              instructions. They'll connect their wallet and pay with USDC.
+              📧 <strong>Next step:</strong> The buyer will receive an email with secure payment
+              instructions. They'll connect their wallet and pay with {config?.tokenSymbol || 'USDC'}.
             </p>
           </div>
         </div>

@@ -4,6 +4,7 @@ import { formatTimestamp, displayCurrency, formatCurrency } from '@/utils/valida
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import FarcasterNameDisplay from '@/components/ui/FarcasterNameDisplay';
+import { useConfig } from '@/components/auth/ConfigProvider';
 
 interface DisputeManagementModalProps {
   isOpen: boolean;
@@ -13,6 +14,7 @@ interface DisputeManagementModalProps {
 }
 
 export default function DisputeManagementModal({ isOpen, onClose, contract, onRefresh }: DisputeManagementModalProps) {
+  const { config } = useConfig();
   const [reason, setReason] = useState('');
   const [refundPercent, setRefundPercent] = useState<number>(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -96,7 +98,7 @@ export default function DisputeManagementModal({ isOpen, onClose, contract, onRe
               {contract.productName && (
                 <div><span className="font-medium">Product:</span> {contract.productName}</div>
               )}
-              <div><span className="font-medium">Amount:</span> {displayCurrency(contract.amount, 'microUSDC')} USDC</div>
+              <div><span className="font-medium">Amount:</span> {displayCurrency(contract.amount, 'microUSDC')} {config?.tokenSymbol || 'USDC'}</div>
               <div><span className="font-medium">Buyer:</span> <FarcasterNameDisplay identifier={contract.buyerEmail} fallbackToAddress={true} walletAddress={contract.buyerAddress} /></div>
               <div><span className="font-medium">Seller:</span> <FarcasterNameDisplay identifier={contract.sellerEmail} fallbackToAddress={true} walletAddress={contract.sellerAddress} /></div>
             </div>
@@ -202,8 +204,8 @@ export default function DisputeManagementModal({ isOpen, onClose, contract, onRe
                   </div>
                 </div>
                 <div className="text-xs text-gray-500 mt-1">
-                  Buyer gets: {displayCurrency((contract.amount * refundPercent) / 100, 'microUSDC')} USDC, 
-                  Seller gets: {displayCurrency((contract.amount * (100 - refundPercent)) / 100, 'microUSDC')} USDC
+                  Buyer gets: {displayCurrency((contract.amount * refundPercent) / 100, 'microUSDC')} {config?.tokenSymbol || 'USDC'},
+                  Seller gets: {displayCurrency((contract.amount * (100 - refundPercent)) / 100, 'microUSDC')} {config?.tokenSymbol || 'USDC'}
                 </div>
               </div>
 

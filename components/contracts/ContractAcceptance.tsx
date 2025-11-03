@@ -19,6 +19,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
   const router = useRouter();
   const { config } = useConfig();
   const { user, authenticatedFetch } = useAuth();
+  const tokenSymbol = config?.tokenSymbol || 'USDC';
   const { fundAndSendTransaction, getUSDCBalance, approveUSDC, depositToContract, getWeb3Service } = useSimpleEthers();
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
@@ -236,7 +237,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
         <div className="space-y-3 mb-6">
           <div className="flex justify-between">
             <span className="text-gray-600">Amount:</span>
-            <span className="font-medium">${formatCurrency(contract.amount, 'microUSDC').amount} USDC</span>
+            <span className="font-medium">${formatCurrency(contract.amount, 'microUSDC').amount} {tokenSymbol}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-600">Seller:</span>
@@ -274,7 +275,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
       <div className="space-y-3 mb-6">
         <div className="flex justify-between">
           <span className="text-gray-600">Amount:</span>
-          <span className="font-medium">${formatCurrency(contract.amount, 'microUSDC').amount} USDC</span>
+          <span className="font-medium">${formatCurrency(contract.amount, 'microUSDC').amount} {tokenSymbol}</span>
         </div>
         <div className="flex justify-between">
           <span className="text-gray-600">Your Balance:</span>
@@ -282,7 +283,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
             {isLoadingBalance ? (
               <LoadingSpinner className="w-4 h-4" />
             ) : userBalance !== null ? (
-              `$${parseFloat(userBalance).toFixed(4)} USDC`
+              `$${parseFloat(userBalance).toFixed(4)} ${tokenSymbol}`
             ) : (
               'Unable to load'
             )}
@@ -301,16 +302,16 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
       {hasInsufficientBalance() ? (
         <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-6">
           <p className="text-sm text-red-800">
-            <strong>Insufficient balance:</strong> You need ${formatCurrency(contract.amount, 'microUSDC').amount} USDC but only have ${userBalance !== null ? parseFloat(userBalance).toFixed(4) : '0'} USDC in your wallet.
+            <strong>Insufficient balance:</strong> You need ${formatCurrency(contract.amount, 'microUSDC').amount} {tokenSymbol} but only have ${userBalance !== null ? parseFloat(userBalance).toFixed(4) : '0'} {tokenSymbol} in your wallet.
           </p>
           <p className="text-sm text-red-800 mt-2">
-            Please add USDC to your wallet before proceeding.
+            Please add {tokenSymbol} to your wallet before proceeding.
           </p>
         </div>
       ) : (
         <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4 mb-6">
           <p className="text-sm text-yellow-800">
-            When you make this payment, the ${formatCurrency(contract.amount, 'microUSDC').amount} USDC will be held securely in escrow until {formatDateTimeWithTZ(contract.expiryTimestamp)}.
+            When you make this payment, the ${formatCurrency(contract.amount, 'microUSDC').amount} {tokenSymbol} will be held securely in escrow until {formatDateTimeWithTZ(contract.expiryTimestamp)}.
           </p>
         </div>
       )}
@@ -320,11 +321,11 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
         disabled={isLoading || isSuccess || hasInsufficientBalance() || isLoadingBalance}
         className={`w-full ${hasInsufficientBalance() ? 'bg-gray-400' : 'bg-primary-500 hover:bg-primary-600'} ${(isLoading || isSuccess || hasInsufficientBalance() || isLoadingBalance) ? 'opacity-50 cursor-not-allowed' : ''}`}
       >
-        {hasInsufficientBalance() 
-          ? 'Insufficient Balance' 
-          : isLoadingBalance 
+        {hasInsufficientBalance()
+          ? 'Insufficient Balance'
+          : isLoadingBalance
           ? 'Checking balance...'
-          : `Make Payment of $${formatCurrency(contract.amount, 'microUSDC').amount} USDC`
+          : `Make Payment of $${formatCurrency(contract.amount, 'microUSDC').amount} ${tokenSymbol}`
         }
       </Button>
     </div>

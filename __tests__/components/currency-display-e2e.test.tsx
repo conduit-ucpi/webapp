@@ -7,6 +7,18 @@ import { render, screen } from '@testing-library/react';
 import PendingContractCard from '@/components/contracts/PendingContractCard';
 import { PendingContract } from '@/types';
 
+// Mock ConfigProvider
+jest.mock('@/components/auth/ConfigProvider', () => ({
+  useConfig: jest.fn(() => ({
+    config: {
+      tokenSymbol: 'USDC',
+      chainId: 8453,
+      usdcContractAddress: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+      serviceLink: 'conduit-ucpi',
+    }
+  }))
+}));
+
 // Import the REAL functions (not mocked) to test actual behavior
 import { displayCurrency, formatDateTimeWithTZ } from '@/utils/validation';
 

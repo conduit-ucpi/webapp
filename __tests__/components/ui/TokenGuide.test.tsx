@@ -1,6 +1,6 @@
 import { render } from '@testing-library/react';
 import { screen } from '@testing-library/dom';
-import USDCGuide from '@/components/ui/USDCGuide';
+import TokenGuide from '@/components/ui/TokenGuide';
 import { useAuth } from '@/components/auth';
 import { useConfig } from '@/components/auth/ConfigProvider';
 // import { useWeb3AuthInstance } from '@/components/auth/Web3AuthContextProvider'; // Not needed
@@ -26,7 +26,7 @@ const mockUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
 const mockUseConfig = useConfig as jest.MockedFunction<typeof useConfig>;
 // const mockUseWeb3AuthInstance = useWeb3AuthInstance as jest.MockedFunction<typeof useWeb3AuthInstance>; // Not needed
 const mockUseWalletAddress = useWalletAddress as jest.MockedFunction<typeof useWalletAddress>;
-describe('USDCGuide', () => {
+describe('TokenGuide', () => {
   const mockUser = {
     userId: 'test-user',
     walletAddress: '0x1234567890abcdef1234567890abcdef12345678',
@@ -87,12 +87,12 @@ describe('USDCGuide', () => {
   });
 
   it('renders the guide with correct title', () => {
-    render(<USDCGuide />);
+    render(<TokenGuide />);
     expect(screen.getByText('How to Add USDC to Your Wallet/How to get cash from your Wallet')).toBeInTheDocument();
   });
 
   it('displays the correct network for Avalanche mainnet', () => {
-    render(<USDCGuide />);
+    render(<TokenGuide />);
     expect(screen.getByText(/You're currently on Avalanche C-Chain/)).toBeInTheDocument();
   });
 
@@ -102,7 +102,7 @@ describe('USDCGuide', () => {
       isLoading: false,
     });
 
-    render(<USDCGuide />);
+    render(<TokenGuide />);
     expect(screen.getByText(/You're currently on Avalanche Fuji Testnet/)).toBeInTheDocument();
   });
 
@@ -112,7 +112,7 @@ describe('USDCGuide', () => {
       isLoading: false,
     });
 
-    render(<USDCGuide />);
+    render(<TokenGuide />);
     expect(screen.getByText(/You're currently on Ethereum Mainnet/)).toBeInTheDocument();
   });
 
@@ -122,17 +122,17 @@ describe('USDCGuide', () => {
       isLoading: false,
     });
 
-    render(<USDCGuide />);
+    render(<TokenGuide />);
     expect(screen.getByText(/You're currently on Chain 999999/)).toBeInTheDocument();
   });
 
   it('displays the user wallet address', () => {
-    render(<USDCGuide />);
+    render(<TokenGuide />);
     expect(screen.getByText(mockUser.walletAddress)).toBeInTheDocument();
   });
 
   it('shows all exchange links', () => {
-    render(<USDCGuide />);
+    render(<TokenGuide />);
 
     // Check that all exchange links are present
     expect(screen.getByText(/Web3Auth Wallet Widget:/)).toBeInTheDocument();
@@ -144,21 +144,21 @@ describe('USDCGuide', () => {
   });
 
   it('shows links with correct security attributes', () => {
-    render(<USDCGuide />);
+    render(<TokenGuide />);
 
     // Web3Auth wallet widget doesn't use external links, it's integrated in the page
     expect(screen.getByText(/Click the wallet button.*to buy\/sell USDC/)).toBeInTheDocument();
   });
 
   it('shows Web3Auth wallet widget as funding option', () => {
-    render(<USDCGuide />);
+    render(<TokenGuide />);
     expect(screen.getByText(/Web3Auth Wallet Widget:/)).toBeInTheDocument();
     expect(screen.getByText(/Click the wallet button.*to buy\/sell USDC/)).toBeInTheDocument();
   });
 
 
   it('displays important warning about network deposits', () => {
-    render(<USDCGuide />);
+    render(<TokenGuide />);
     expect(screen.getByText(/Important:/)).toBeInTheDocument();
     expect(screen.getByText(/Ensure you're depositing USDC.*on the Avalanche C-Chain network/)).toBeInTheDocument();
   });
@@ -169,7 +169,7 @@ describe('USDCGuide', () => {
       isLoading: false,
     });
 
-    render(<USDCGuide />);
+    render(<TokenGuide />);
     expect(screen.getByText(/on the Avalanche Fuji Testnet network/)).toBeInTheDocument();
   });
 
@@ -197,7 +197,7 @@ describe('USDCGuide', () => {
       isLoading: false,
     });
 
-    const { container } = render(<USDCGuide />);
+    const { container } = render(<TokenGuide />);
     expect(container.firstChild).toBeNull();
   });
 
@@ -207,12 +207,12 @@ describe('USDCGuide', () => {
       isLoading: false,
     });
 
-    const { container } = render(<USDCGuide />);
+    const { container } = render(<TokenGuide />);
     expect(container.firstChild).toBeNull();
   });
 
   it('includes all funding methods', () => {
-    render(<USDCGuide />);
+    render(<TokenGuide />);
 
     expect(screen.getByText(/Web3Auth Wallet Widget:/)).toBeInTheDocument();
     expect(screen.getByText(/MetaMask\/Coinbase:/)).toBeInTheDocument();
@@ -221,14 +221,14 @@ describe('USDCGuide', () => {
   });
 
   it('has proper styling classes', () => {
-    render(<USDCGuide />);
+    render(<TokenGuide />);
 
     const container = screen.getByText('How to Add USDC to Your Wallet/How to get cash from your Wallet').closest('div');
     expect(container).toHaveClass('bg-blue-50', 'border', 'border-blue-200', 'rounded-lg', 'p-6');
   });
 
   it('displays numbered steps correctly', () => {
-    render(<USDCGuide />);
+    render(<TokenGuide />);
 
     expect(screen.getByText('1.')).toBeInTheDocument();
     expect(screen.getByText('2.')).toBeInTheDocument();

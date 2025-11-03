@@ -88,7 +88,7 @@ export default function ContractCard({ contract, onAction, onAccept, isClaimingI
           <div className="text-2xl font-bold text-gray-900">
             {displayCurrency(contract.amount, 'microUSDC')}
           </div>
-          <div className="text-sm text-gray-600">USDC</div>
+          <div className="text-sm text-gray-600">{config?.tokenSymbol || 'USDC'}</div>
         </div>
       </div>
 

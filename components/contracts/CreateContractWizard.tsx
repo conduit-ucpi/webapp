@@ -281,7 +281,7 @@ export default function CreateContractWizard() {
               <div className="space-y-6">
                 <div>
                   <Input
-                    label="Amount (USDC)"
+                    label={`Amount (${config?.tokenSymbol || 'USDC'})`}
                     type="number"
                     step="0.001"
                     min="0"
@@ -360,7 +360,7 @@ export default function CreateContractWizard() {
                     <div className="flex justify-between">
                       <span className="text-secondary-600">Amount:</span>
                       <span className="font-medium text-lg">
-                        {formatUSDC(toMicroUSDC(parseFloat(form.amount || '0')))} USDC
+                        {formatUSDC(toMicroUSDC(parseFloat(form.amount || '0')))} {config?.tokenSymbol || 'USDC'}
                       </span>
                     </div>
                     <div className="flex justify-between">
@@ -388,7 +388,7 @@ export default function CreateContractWizard() {
                     </li>
                     <li className="flex items-start">
                       <span className="font-medium mr-2">2.</span>
-                      <span>They pay {formatUSDC(toMicroUSDC(parseFloat(form.amount || '0')))} USDC to our secure escrow</span>
+                      <span>They pay {formatUSDC(toMicroUSDC(parseFloat(form.amount || '0')))} {config?.tokenSymbol || 'USDC'} to our secure escrow</span>
                     </li>
                     <li className="flex items-start">
                       <span className="font-medium mr-2">3.</span>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '@/components/auth';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { useSimpleEthers } from '@/hooks/useSimpleEthers';
@@ -319,8 +319,8 @@ export default function Wallet() {
     );
   };
 
-  // Check if user is using Dynamic embedded wallet
-  const isDynamicEmbeddedWallet = () => {
+  // Memoize the Dynamic embedded wallet detection to prevent expensive checks on every render
+  const isDynamicEmbeddedWallet = useMemo(() => {
     console.log('🔧 Dynamic wallet detection check:', {
       hasUser: !!user,
       hasState: !!state,
@@ -375,7 +375,7 @@ export default function Wallet() {
     });
 
     return isEmbeddedWallet;
-  };
+  }, [user, state, state?.providerName, dynamicContext?.primaryWallet]);
 
   if (authLoading || isWalletAddressLoading) {
     return (
@@ -399,7 +399,7 @@ export default function Wallet() {
   }
 
   // If user is using Dynamic embedded wallet, show Dynamic's wallet management UI
-  if (isDynamicEmbeddedWallet()) {
+  if (isDynamicEmbeddedWallet) {
     return (
       <div className="py-10">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">

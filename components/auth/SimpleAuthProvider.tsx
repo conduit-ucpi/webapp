@@ -50,8 +50,9 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
   const backendClient = BackendClient.getInstance();
   const { config } = useConfig();
 
-  // Expose the new auth with the old interface
-  const authValue = {
+  // Memoize the auth value to prevent unnecessary re-renders
+  // Only recreate when the actual auth state changes, not on every render
+  const authValue = React.useMemo(() => ({
     user: newAuth.user,
     isLoading: newAuth.isLoading,
     isConnected: newAuth.isConnected,
@@ -213,7 +214,23 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
 
       return txHash;
     }
-  };
+  }), [
+    newAuth.user,
+    newAuth.isLoading,
+    newAuth.isConnected,
+    newAuth.isAuthenticated,
+    newAuth.error,
+    newAuth.address,
+    newAuth.state,
+    newAuth.connect,
+    newAuth.authenticateBackend,
+    newAuth.disconnect,
+    newAuth.switchWallet,
+    newAuth.getEthersProvider,
+    newAuth.showWalletUI,
+    config,
+    backendClient
+  ]);
 
   return (
     <AuthContext.Provider value={authValue}>

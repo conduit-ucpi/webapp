@@ -35,6 +35,8 @@ export const createDynamicConfig = (config: {
       })
     ],
     overrides: {
+      // Enable multi-asset to show ERC20 token balances in the widget
+      multiAsset: true,
       evmNetworks: [
         {
           blockExplorerUrls: [config.explorerBaseUrl],
@@ -77,6 +79,7 @@ export const createDynamicConfig = (config: {
     environmentId: config.dynamicEnvironmentId.substring(0, 10) + '...',
     chainId: config.chainId,
     networkName: networkInfo.name,
+    multiAsset: dynamicSettings.overrides.multiAsset,
     hasWalletConnectors: !!dynamicSettings.walletConnectors,
     connectorCount: dynamicSettings.walletConnectors?.length || 0,
     ercTokenCount: dynamicSettings.overrides.evmNetworks[0].ercTokens?.length || 0,

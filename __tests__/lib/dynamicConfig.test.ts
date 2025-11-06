@@ -16,6 +16,21 @@ describe('Dynamic Configuration - Token Display', () => {
   const USDC_ADDRESS = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
   const USDT_ADDRESS = '0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2';
 
+  test('CRITICAL: multiAsset flag must be enabled for tokens to display in widget', () => {
+    const config = createDynamicConfig({
+      ...baseConfig,
+      usdcContractAddress: USDC_ADDRESS,
+      usdtContractAddress: USDT_ADDRESS
+    });
+
+    // This is the CRITICAL check that was missing!
+    // Without multiAsset: true, tokens won't display even if ercTokens is configured
+    expect(config.overrides.multiAsset).toBe(true);
+
+    console.log('✅ CRITICAL: multiAsset flag is enabled - tokens WILL display in widget');
+    console.log('   Without this flag, tokens would be configured but hidden!');
+  });
+
   test('Dynamic widget configuration includes USDC when address is provided', () => {
     const config = createDynamicConfig({
       ...baseConfig,
@@ -26,6 +41,9 @@ describe('Dynamic Configuration - Token Display', () => {
     expect(config.overrides).toBeDefined();
     expect(config.overrides.evmNetworks).toBeDefined();
     expect(config.overrides.evmNetworks.length).toBe(1);
+
+    // CRITICAL: Check multiAsset is enabled
+    expect(config.overrides.multiAsset).toBe(true);
 
     const network = config.overrides.evmNetworks[0];
 

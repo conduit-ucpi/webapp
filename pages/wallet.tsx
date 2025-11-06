@@ -193,7 +193,11 @@ export default function Wallet() {
       loadBalances();
       loadChainInfo();
     }
-  }, [user, config, state?.isConnected, loadBalances]);
+    // Note: loadBalances and loadChainInfo are omitted from deps because they're memoized with useCallback
+    // Including them would cause a render loop as their dependencies (getNativeBalance, getUSDCBalance, etc.)
+    // may change identity on each render even though they're functionally stable
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, config, state?.isConnected]);
 
   const handleShowWalletServices = async () => {
     console.log('🔧 Wallet Services Debug:', {

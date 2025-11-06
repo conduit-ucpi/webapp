@@ -41,7 +41,7 @@ describe('Wallet Page - Render Loop Detection', () => {
     userId: 'test-user',
     email: 'test@example.com',
     walletAddress: '0x1234567890123456789012345678901234567890',
-    authProvider: 'dynamic'
+    authProvider: 'metamask'
   };
 
   const mockConfig = {
@@ -65,21 +65,16 @@ describe('Wallet Page - Render Loop Detection', () => {
     serviceLink: 'https://test.conduit-ucpi.com'
   };
 
+  // Mock a NON-Dynamic wallet (MetaMask) so balance loading actually occurs
+  // This allows us to test for render loops properly
   const mockDynamicContext = {
-    primaryWallet: {
-      address: mockUser.walletAddress,
-      key: 'dynamic-embedded-wallet',
-      connector: {
-        name: 'Embedded Wallet',
-        key: 'embedded'
-      }
-    },
-    user: mockUser
+    primaryWallet: null, // No Dynamic wallet connected
+    user: null
   };
 
   const mockState = {
     isConnected: true,
-    providerName: 'dynamic'
+    providerName: 'metamask' // Use MetaMask instead of Dynamic
   };
 
   let getNativeBalanceMock: jest.Mock;

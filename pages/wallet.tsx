@@ -57,6 +57,65 @@ export default function Wallet() {
   const [chainInfo, setChainInfo] = useState<ChainInfo | null>(null);
   const [isLoadingChainInfo, setIsLoadingChainInfo] = useState(false);
 
+  // Memoize the Dynamic embedded wallet detection to prevent expensive checks on every render
+  // This must be defined early so it can be used in useEffect hooks below
+  const isDynamicEmbeddedWallet = useMemo(() => {
+    console.log('🔧 Dynamic wallet detection check:', {
+      hasUser: !!user,
+      hasState: !!state,
+      providerName: state?.providerName,
+      fullState: state,
+      hasDynamicContext: !!dynamicContext,
+      primaryWallet: dynamicContext?.primaryWallet,
+      allDynamicContextKeys: dynamicContext ? Object.keys(dynamicContext) : null
+    });
+
+    if (!user || !state || state.providerName !== 'dynamic') {
+      console.log('🔧 Not Dynamic user:', {
+        hasUser: !!user,
+        hasState: !!state,
+        providerName: state?.providerName,
+        fullState: state
+      });
+      return false;
+    }
+
+    // Check if they're using an embedded wallet by looking at the Dynamic context
+    const primaryWallet = dynamicContext?.primaryWallet;
+    if (!primaryWallet) {
+      console.log('🔧 No primary wallet found in Dynamic context');
+      return false;
+    }
+
+    // Log all wallet properties to see what we're working with
+    const connector = primaryWallet.connector;
+    console.log('🔧 Dynamic wallet properties:', {
+      walletKey: primaryWallet.key,
+      walletAddress: primaryWallet.address,
+      connectorName: connector?.name,
+      connectorKey: connector?.key,
+      connectorType: typeof connector,
+      connectorConstructorName: connector?.constructor?.name,
+      allWalletKeys: Object.keys(primaryWallet),
+      allConnectorKeys: connector ? Object.keys(connector) : null
+    });
+
+    // Dynamic embedded wallets typically have a specific connector type
+    const isEmbeddedWallet = connector?.name?.toLowerCase().includes('embedded') ||
+                           connector?.key?.toLowerCase().includes('embedded') ||
+                           primaryWallet.key?.toLowerCase().includes('embedded') ||
+                           primaryWallet.key?.toLowerCase().includes('dynamic');
+
+    console.log('🔧 Embedded wallet detection result:', {
+      connectorName: connector?.name,
+      connectorKey: connector?.key,
+      walletKey: primaryWallet.key,
+      isEmbeddedWallet
+    });
+
+    return isEmbeddedWallet;
+  }, [user, state, state?.providerName, dynamicContext?.primaryWallet]);
+
   const loadChainInfo = async () => {
     if (!user) return;
 
@@ -188,16 +247,18 @@ export default function Wallet() {
 
   useEffect(() => {
     // Only load balances when user is authenticated AND wallet is connected
+    // AND we're NOT using Dynamic's embedded wallet UI (which handles its own balance display)
     // This prevents "Wallet not connected" errors when user exists but wallet setup is still in progress
-    if (user && config && state?.isConnected) {
+    if (user && config && state?.isConnected && !isDynamicEmbeddedWallet) {
       loadBalances();
       loadChainInfo();
     }
     // Note: loadBalances and loadChainInfo are omitted from deps because they're memoized with useCallback
     // Including them would cause a render loop as their dependencies (getNativeBalance, getUSDCBalance, etc.)
     // may change identity on each render even though they're functionally stable
+    // isDynamicEmbeddedWallet is a memoized value so it's safe to include in the condition
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, config, state?.isConnected]);
+  }, [user, config, state?.isConnected, isDynamicEmbeddedWallet]);
 
   const handleShowWalletServices = async () => {
     console.log('🔧 Wallet Services Debug:', {
@@ -318,64 +379,6 @@ export default function Wallet() {
       !isSending
     );
   };
-
-  // Memoize the Dynamic embedded wallet detection to prevent expensive checks on every render
-  const isDynamicEmbeddedWallet = useMemo(() => {
-    console.log('🔧 Dynamic wallet detection check:', {
-      hasUser: !!user,
-      hasState: !!state,
-      providerName: state?.providerName,
-      fullState: state,
-      hasDynamicContext: !!dynamicContext,
-      primaryWallet: dynamicContext?.primaryWallet,
-      allDynamicContextKeys: dynamicContext ? Object.keys(dynamicContext) : null
-    });
-
-    if (!user || !state || state.providerName !== 'dynamic') {
-      console.log('🔧 Not Dynamic user:', {
-        hasUser: !!user,
-        hasState: !!state,
-        providerName: state?.providerName,
-        fullState: state
-      });
-      return false;
-    }
-
-    // Check if they're using an embedded wallet by looking at the Dynamic context
-    const primaryWallet = dynamicContext?.primaryWallet;
-    if (!primaryWallet) {
-      console.log('🔧 No primary wallet found in Dynamic context');
-      return false;
-    }
-
-    // Log all wallet properties to see what we're working with
-    const connector = primaryWallet.connector;
-    console.log('🔧 Dynamic wallet properties:', {
-      walletKey: primaryWallet.key,
-      walletAddress: primaryWallet.address,
-      connectorName: connector?.name,
-      connectorKey: connector?.key,
-      connectorType: typeof connector,
-      connectorConstructorName: connector?.constructor?.name,
-      allWalletKeys: Object.keys(primaryWallet),
-      allConnectorKeys: connector ? Object.keys(connector) : null
-    });
-
-    // Dynamic embedded wallets typically have a specific connector type
-    const isEmbeddedWallet = connector?.name?.toLowerCase().includes('embedded') ||
-                           connector?.key?.toLowerCase().includes('embedded') ||
-                           primaryWallet.key?.toLowerCase().includes('embedded') ||
-                           primaryWallet.key?.toLowerCase().includes('dynamic');
-
-    console.log('🔧 Embedded wallet detection result:', {
-      connectorName: connector?.name,
-      connectorKey: connector?.key,
-      walletKey: primaryWallet.key,
-      isEmbeddedWallet
-    });
-
-    return isEmbeddedWallet;
-  }, [user, state, state?.providerName, dynamicContext?.primaryWallet]);
 
   if (authLoading || isWalletAddressLoading) {
     return (

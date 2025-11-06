@@ -11,6 +11,8 @@ export const createDynamicConfig = (config: {
   chainId: number;
   rpcUrl: string;
   explorerBaseUrl: string;
+  usdcContractAddress?: string;
+  usdtContractAddress?: string;
 }) => {
   mLog.info('DynamicConfig', 'Creating Dynamic configuration');
   
@@ -47,7 +49,24 @@ export const createDynamicConfig = (config: {
           },
           networkId: config.chainId,
           rpcUrls: [config.rpcUrl],
-          vanityName: networkInfo.name
+          vanityName: networkInfo.name,
+          // Add ERC20 tokens to display in the Dynamic embedded wallet widget
+          ercTokens: [
+            ...(config.usdcContractAddress ? [{
+              address: config.usdcContractAddress,
+              decimals: 6,
+              name: 'USD Coin',
+              symbol: 'USDC',
+              chainId: config.chainId
+            }] : []),
+            ...(config.usdtContractAddress ? [{
+              address: config.usdtContractAddress,
+              decimals: 6,
+              name: 'Tether USD',
+              symbol: 'USDT',
+              chainId: config.chainId
+            }] : [])
+          ]
         }
       ]
     }
@@ -59,7 +78,9 @@ export const createDynamicConfig = (config: {
     chainId: config.chainId,
     networkName: networkInfo.name,
     hasWalletConnectors: !!dynamicSettings.walletConnectors,
-    connectorCount: dynamicSettings.walletConnectors?.length || 0
+    connectorCount: dynamicSettings.walletConnectors?.length || 0,
+    ercTokenCount: dynamicSettings.overrides.evmNetworks[0].ercTokens?.length || 0,
+    tokens: dynamicSettings.overrides.evmNetworks[0].ercTokens?.map((t: any) => t.symbol)
   });
 
   // Log which connectors are actually available

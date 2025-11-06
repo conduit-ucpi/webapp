@@ -544,7 +544,9 @@ export function DynamicWrapper({ children, config }: DynamicWrapperProps) {
       dynamicEnvironmentId: config.dynamicEnvironmentId,
       chainId: config.chainId,
       rpcUrl: config.rpcUrl,
-      explorerBaseUrl: config.explorerBaseUrl || ''
+      explorerBaseUrl: config.explorerBaseUrl || '',
+      usdcContractAddress: config.usdcContractAddress,
+      usdtContractAddress: config.usdtContractAddress
     });
 
     mLog.info('DynamicWrapper', 'Initializing provider stack: WagmiProvider -> DynamicContextProvider -> DynamicWagmiConnector', {

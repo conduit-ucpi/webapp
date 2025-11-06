@@ -70,6 +70,8 @@ export interface AuthConfig {
   explorerBaseUrl: string;
   web3AuthNetwork: string;
   walletConnectProjectId?: string;
+  usdcContractAddress?: string;
+  usdtContractAddress?: string;
 }
 
 export type ProviderType = 'farcaster' | 'dynamic';

@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Conduit Checkout Integration Example</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 40px 20px;
+      line-height: 1.6;
+      color: #333;
+    }
+    h1 {
+      color: #2563eb;
+      border-bottom: 2px solid #2563eb;
+      padding-bottom: 10px;
+    }
+    h2 {
+      color: #1e40af;
+      margin-top: 40px;
+    }
+    .button {
+      display: inline-block;
+      padding: 12px 24px;
+      margin: 10px 10px 10px 0;
+      background: #2563eb;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      font-weight: 500;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.2s;
+    }
+    .button:hover {
+      background: #1d4ed8;
+    }
+    .button-outline {
+      background: white;
+      color: #2563eb;
+      border: 2px solid #2563eb;
+    }
+    .button-outline:hover {
+      background: #eff6ff;
+    }
+    .code-block {
+      background: #1e293b;
+      color: #e2e8f0;
+      padding: 20px;
+      border-radius: 6px;
+      overflow-x: auto;
+      margin: 20px 0;
+    }
+    .code-block code {
+      font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+      font-size: 14px;
+    }
+    .success {
+      background: #dcfce7;
+      border: 1px solid #22c55e;
+      color: #166534;
+      padding: 12px;
+      border-radius: 6px;
+      margin: 10px 0;
+    }
+    .error {
+      background: #fee2e2;
+      border: 1px solid #ef4444;
+      color: #991b1b;
+      padding: 12px;
+      border-radius: 6px;
+      margin: 10px 0;
+    }
+    .info {
+      background: #dbeafe;
+      border: 1px solid #3b82f6;
+      color: #1e40af;
+      padding: 12px;
+      border-radius: 6px;
+      margin: 10px 0;
+    }
+    .product-card {
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 20px 0;
+      background: #f9fafb;
+    }
+    .product-card h3 {
+      margin-top: 0;
+    }
+    #status {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <h1>🚀 Conduit Checkout Integration Example</h1>
+
+  <p>This page demonstrates how to integrate Conduit's secure escrow payment system into your website. Click the buttons below to see different integration modes.</p>
+
+  <div id="status"></div>
+
+  <h2>Live Examples</h2>
+
+  <div class="product-card">
+    <h3>Basic Product - $10.00</h3>
+    <p>Simple one-time payment with popup checkout</p>
+    <button class="button" onclick="openBasicCheckout()">
+      Pay $10 with USDC (Popup)
+    </button>
+  </div>
+
+  <div class="product-card">
+    <h3>Premium Plan - $50.00</h3>
+    <p>Subscription plan with modal overlay checkout</p>
+    <button class="button" onclick="openModalCheckout()">
+      Pay $50 with USDC (Modal)
+    </button>
+  </div>
+
+  <div class="product-card">
+    <h3>Enterprise Plan - $200.00</h3>
+    <p>Full page redirect checkout with USDT option</p>
+    <button class="button button-outline" onclick="openRedirectCheckout()">
+      Pay $200 with USDT (Redirect)
+    </button>
+  </div>
+
+  <div class="product-card">
+    <h3>Custom Amount</h3>
+    <p>Let users choose their own amount</p>
+    <input type="number" id="customAmount" placeholder="Enter amount" value="25" step="0.01" min="1.001" style="padding: 8px; border: 1px solid #d1d5db; border-radius: 4px; margin-right: 10px;">
+    <button class="button" onclick="openCustomAmountCheckout()">
+      Pay Custom Amount (Modal)
+    </button>
+  </div>
+
+  <h2>Integration Code</h2>
+
+  <h3>1. Include the Script</h3>
+  <div class="code-block"><code>&lt;script src="https://pay.conduit-ucpi.com/conduit-checkout.js"&gt;&lt;/script&gt;</code></div>
+
+  <h3>2. Initialize with Your Config</h3>
+  <div class="code-block"><code>&lt;script&gt;
+  ConduitCheckout.init({
+    // Your wallet address to receive payments
+    sellerAddress: '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb',
+
+    // Base URL of Conduit checkout page
+    baseUrl: 'https://pay.conduit-ucpi.com',
+
+    // Default token (USDC or USDT)
+    tokenSymbol: 'USDC',
+
+    // Days until auto-release to seller (default: 7)
+    expiryDays: 7,
+
+    // Display mode: 'popup', 'modal', or 'redirect'
+    mode: 'popup',
+
+    // Success callback
+    onSuccess: function(data) {
+      console.log('Payment completed!', data);
+      alert('Payment successful! Transaction: ' + data.transactionHash);
+    },
+
+    // Error callback
+    onError: function(error) {
+      console.error('Payment failed:', error);
+      alert('Payment failed: ' + error);
+    },
+
+    // Cancel callback
+    onCancel: function() {
+      console.log('Payment cancelled');
+      alert('Payment cancelled');
+    }
+  });
+&lt;/script&gt;</code></div>
+
+  <h3>3. Add Payment Buttons</h3>
+  <div class="code-block"><code>&lt;!-- Simple button --&gt;
+&lt;button onclick="ConduitCheckout.open({
+  amount: '50.00',
+  description: 'Premium Plan - Monthly Subscription'
+})"&gt;
+  Pay $50 with USDC
+&lt;/button&gt;
+
+&lt;!-- Button with more options --&gt;
+&lt;button onclick="ConduitCheckout.open({
+  amount: '100.00',
+  description: 'Order #1234 - Widget Bundle',
+  orderId: '1234',
+  email: 'customer@example.com',
+  tokenSymbol: 'USDT',
+  expiryDays: 14,
+  webhookUrl: 'https://yoursite.com/webhook',
+  metadata: { sku: 'WIDGET-001', quantity: 2 }
+})"&gt;
+  Pay $100 with USDT
+&lt;/button&gt;</code></div>
+
+  <h2>API Reference</h2>
+
+  <h3>ConduitCheckout.init(options)</h3>
+  <p>Initialize the checkout widget with your configuration:</p>
+  <ul>
+    <li><code>sellerAddress</code> (required) - Your wallet address to receive payments</li>
+    <li><code>baseUrl</code> (required) - Base URL of the Conduit checkout page</li>
+    <li><code>tokenSymbol</code> (optional) - Default token: 'USDC' or 'USDT' (default: 'USDC')</li>
+    <li><code>expiryDays</code> (optional) - Days until auto-release (default: 7)</li>
+    <li><code>mode</code> (optional) - Display mode: 'popup', 'modal', or 'redirect' (default: 'popup')</li>
+    <li><code>onSuccess</code> (optional) - Success callback function</li>
+    <li><code>onError</code> (optional) - Error callback function</li>
+    <li><code>onCancel</code> (optional) - Cancel callback function</li>
+  </ul>
+
+  <h3>ConduitCheckout.open(params)</h3>
+  <p>Open a checkout for a specific payment:</p>
+  <ul>
+    <li><code>amount</code> (required) - Payment amount (e.g., '50.00')</li>
+    <li><code>description</code> (required) - Payment description</li>
+    <li><code>orderId</code> (optional) - Your order/transaction ID</li>
+    <li><code>email</code> (optional) - Customer email address</li>
+    <li><code>tokenSymbol</code> (optional) - Override default token for this payment</li>
+    <li><code>expiryDays</code> (optional) - Override default expiry for this payment</li>
+    <li><code>expiryTimestamp</code> (optional) - Custom expiry Unix timestamp</li>
+    <li><code>webhookUrl</code> (optional) - Webhook URL for payment verification</li>
+    <li><code>metadata</code> (optional) - Custom metadata object</li>
+  </ul>
+
+  <h3>ConduitCheckout.close()</h3>
+  <p>Programmatically close any open checkout.</p>
+
+  <h2>Webhook Integration</h2>
+  <p>If you provide a <code>webhookUrl</code>, Conduit will POST payment verification data to your endpoint:</p>
+  <div class="code-block"><code>{
+  "transaction_hash": "0x...",
+  "contract_address": "0x...",
+  "contract_id": "abc123",
+  "order_id": 1234,
+  "expected_amount": 50.00,
+  "expected_recipient": "0x...",
+  "merchant_wallet": "0x..."
+}</code></div>
+
+  <!-- Load the Conduit Checkout library -->
+  <script src="/conduit-checkout.js"></script>
+
+  <!-- Initialize for this demo -->
+  <script>
+    // Initialize with demo configuration
+    ConduitCheckout.init({
+      sellerAddress: '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb', // Replace with your address
+      baseUrl: window.location.origin, // Use same origin for demo
+      tokenSymbol: 'USDC',
+      expiryDays: 7,
+      mode: 'popup', // Will be overridden per button
+
+      onSuccess: function(data) {
+        console.log('✅ Payment successful!', data);
+        showStatus('success', 'Payment completed! Transaction: ' + (data.transactionHash || 'pending'));
+      },
+
+      onError: function(error) {
+        console.error('❌ Payment failed:', error);
+        showStatus('error', 'Payment failed: ' + error);
+      },
+
+      onCancel: function() {
+        console.log('🚫 Payment cancelled');
+        showStatus('info', 'Payment cancelled by user');
+      }
+    });
+
+    function openBasicCheckout() {
+      ConduitCheckout.config.mode = 'popup';
+      ConduitCheckout.open({
+        amount: '10.00',
+        description: 'Basic Product - One-time Payment',
+        orderId: 'BASIC-' + Date.now(),
+        tokenSymbol: 'USDC'
+      });
+    }
+
+    function openModalCheckout() {
+      ConduitCheckout.config.mode = 'modal';
+      ConduitCheckout.open({
+        amount: '50.00',
+        description: 'Premium Plan - Monthly Subscription',
+        orderId: 'PREMIUM-' + Date.now(),
+        expiryDays: 30,
+        tokenSymbol: 'USDC'
+      });
+    }
+
+    function openRedirectCheckout() {
+      ConduitCheckout.config.mode = 'redirect';
+      ConduitCheckout.open({
+        amount: '200.00',
+        description: 'Enterprise Plan - Annual License',
+        orderId: 'ENTERPRISE-' + Date.now(),
+        expiryDays: 14,
+        tokenSymbol: 'USDT'
+      });
+    }
+
+    function openCustomAmountCheckout() {
+      const amount = document.getElementById('customAmount').value;
+      if (!amount || parseFloat(amount) < 1.001) {
+        alert('Please enter an amount of at least $1.001');
+        return;
+      }
+
+      ConduitCheckout.config.mode = 'modal';
+      ConduitCheckout.open({
+        amount: amount,
+        description: 'Custom Amount Payment',
+        orderId: 'CUSTOM-' + Date.now(),
+        tokenSymbol: 'USDC'
+      });
+    }
+
+    function showStatus(type, message) {
+      const statusDiv = document.getElementById('status');
+      statusDiv.className = type;
+      statusDiv.textContent = message;
+      statusDiv.style.display = 'block';
+
+      setTimeout(() => {
+        statusDiv.style.display = 'none';
+      }, 5000);
+    }
+  </script>
+</body>
+</html>

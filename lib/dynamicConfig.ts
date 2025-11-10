@@ -75,6 +75,7 @@ export const createDynamicConfig = (config: {
   };
 
   // Log the configuration for debugging
+  const ercTokens = dynamicSettings.overrides.evmNetworks[0].ercTokens || [];
   mLog.info('DynamicConfig', 'Dynamic settings created', {
     environmentId: config.dynamicEnvironmentId.substring(0, 10) + '...',
     chainId: config.chainId,
@@ -82,9 +83,21 @@ export const createDynamicConfig = (config: {
     multiAsset: dynamicSettings.overrides.multiAsset,
     hasWalletConnectors: !!dynamicSettings.walletConnectors,
     connectorCount: dynamicSettings.walletConnectors?.length || 0,
-    ercTokenCount: dynamicSettings.overrides.evmNetworks[0].ercTokens?.length || 0,
-    tokens: dynamicSettings.overrides.evmNetworks[0].ercTokens?.map((t: any) => t.symbol)
+    ercTokenCount: ercTokens.length,
+    tokens: ercTokens.map((t: any) => `${t.symbol} (${t.address.substring(0, 8)}...)`)
   });
+
+  // Log full token details for verification
+  if (ercTokens.length > 0) {
+    mLog.info('DynamicConfig', 'ERC20 tokens configured for Dynamic widget:', ercTokens);
+  } else {
+    mLog.warn('DynamicConfig', 'No ERC20 tokens configured!', {
+      hasUsdcAddress: !!config.usdcContractAddress,
+      hasUsdtAddress: !!config.usdtContractAddress,
+      usdcAddress: config.usdcContractAddress || 'NOT_PROVIDED',
+      usdtAddress: config.usdtContractAddress || 'NOT_PROVIDED'
+    });
+  }
 
   // Log which connectors are actually available
   try {

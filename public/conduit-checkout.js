@@ -28,14 +28,12 @@
       baseUrl: null,
       tokenSymbol: 'USDC', // 'USDC' or 'USDT'
       expiryDays: 7, // Default expiry in days
-      mode: 'popup', // 'popup', 'modal', or 'redirect'
+      mode: 'popup', // 'popup' or 'redirect'
       onSuccess: function(data) { console.log('Payment success:', data); },
       onError: function(error) { console.error('Payment error:', error); },
       onCancel: function() { console.log('Payment cancelled'); }
     },
 
-    modal: null,
-    iframe: null,
     popup: null,
     messageListener: null,
 
@@ -46,7 +44,7 @@
      * @param {string} options.baseUrl - Base URL of the checkout page (required)
      * @param {string} [options.tokenSymbol='USDC'] - Token to use ('USDC' or 'USDT')
      * @param {number} [options.expiryDays=7] - Days until auto-release to seller
-     * @param {string} [options.mode='popup'] - Display mode: 'popup', 'modal', or 'redirect'
+     * @param {string} [options.mode='popup'] - Display mode: 'popup' or 'redirect'
      * @param {Function} [options.onSuccess] - Success callback
      * @param {Function} [options.onError] - Error callback
      * @param {Function} [options.onCancel] - Cancel callback
@@ -97,10 +95,8 @@
         window.location.href = checkoutUrl;
       } else if (this.config.mode === 'popup') {
         this.openPopup(checkoutUrl);
-      } else if (this.config.mode === 'modal') {
-        this.openModal(checkoutUrl);
       } else {
-        throw new Error('ConduitCheckout: Invalid mode. Use "popup", "modal", or "redirect"');
+        throw new Error('ConduitCheckout: Invalid mode. Use "popup" or "redirect"');
       }
     },
 
@@ -182,102 +178,6 @@
     },
 
     /**
-     * Open checkout in a modal iframe overlay
-     * @private
-     */
-    openModal: function(url) {
-      // Create modal overlay
-      this.modal = document.createElement('div');
-      this.modal.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.5);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 999999;
-      `;
-
-      // Create iframe container
-      const container = document.createElement('div');
-      container.style.cssText = `
-        position: relative;
-        width: 90%;
-        max-width: 500px;
-        height: 90%;
-        max-height: 700px;
-        background: white;
-        border-radius: 8px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        overflow: hidden;
-      `;
-
-      // Create close button
-      const closeButton = document.createElement('button');
-      closeButton.innerHTML = '&times;';
-      closeButton.style.cssText = `
-        position: absolute;
-        top: 10px;
-        right: 10px;
-        width: 32px;
-        height: 32px;
-        border: none;
-        background: rgba(0, 0, 0, 0.5);
-        color: white;
-        font-size: 24px;
-        line-height: 1;
-        cursor: pointer;
-        border-radius: 4px;
-        z-index: 1;
-      `;
-      closeButton.onclick = () => {
-        this.config.onCancel();
-        this.closeModal();
-      };
-
-      // Create iframe
-      this.iframe = document.createElement('iframe');
-      this.iframe.src = url;
-      this.iframe.style.cssText = `
-        width: 100%;
-        height: 100%;
-        border: none;
-      `;
-
-      container.appendChild(closeButton);
-      container.appendChild(this.iframe);
-      this.modal.appendChild(container);
-      document.body.appendChild(this.modal);
-
-      // Setup message listener for iframe communication
-      this.setupMessageListener();
-
-      // Close modal on overlay click
-      this.modal.addEventListener('click', (e) => {
-        if (e.target === this.modal) {
-          this.config.onCancel();
-          this.closeModal();
-        }
-      });
-    },
-
-    /**
-     * Close the modal
-     * @private
-     */
-    closeModal: function() {
-      if (this.modal && this.modal.parentNode) {
-        this.modal.parentNode.removeChild(this.modal);
-      }
-      this.modal = null;
-      this.iframe = null;
-      this.cleanup();
-    },
-
-    /**
      * Setup postMessage listener for iframe/popup communication
      * @private
      */
@@ -303,9 +203,6 @@
 
           case 'payment_completed':
             this.config.onSuccess(message.data);
-            if (this.config.mode === 'modal') {
-              setTimeout(() => this.closeModal(), 2000);
-            }
             this.cleanup();
             break;
 
@@ -315,16 +212,7 @@
 
           case 'payment_cancelled':
             this.config.onCancel();
-            if (this.config.mode === 'modal') {
-              this.closeModal();
-            }
             this.cleanup();
-            break;
-
-          case 'close_modal':
-            if (this.config.mode === 'modal') {
-              this.closeModal();
-            }
             break;
         }
       };
@@ -349,9 +237,6 @@
     close: function() {
       if (this.popup && !this.popup.closed) {
         this.popup.close();
-      }
-      if (this.modal) {
-        this.closeModal();
       }
       this.cleanup();
     }

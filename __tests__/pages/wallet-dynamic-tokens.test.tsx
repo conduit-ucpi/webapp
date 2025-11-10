@@ -160,9 +160,13 @@ describe('Wallet Page - Dynamic Token Display', () => {
 
     // Check for the wallet management heading
     expect(screen.getByText('Wallet Management')).toBeInTheDocument();
-    expect(screen.getByText(/Manage your embedded wallet settings/i)).toBeInTheDocument();
+    // Dynamic embedded users now see the same full wallet UI as everyone else
+    expect(screen.getByText(/View your balances and send funds to other wallets/i)).toBeInTheDocument();
 
-    console.log('✅ Correct UI is shown for Dynamic embedded wallet users');
+    // Plus they should have an "Open Wallet Settings" button
+    expect(screen.getByRole('button', { name: /Open Wallet Settings/i })).toBeInTheDocument();
+
+    console.log('✅ Correct unified UI is shown for Dynamic embedded wallet users');
   });
 
   test('Dynamic widget is NOT shown for non-Dynamic users', () => {

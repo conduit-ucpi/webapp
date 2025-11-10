@@ -247,26 +247,21 @@ export default function Wallet() {
   }, [user, config, getNativeBalance, getUSDCBalance]);
 
   useEffect(() => {
-    // Only load balances when user is authenticated AND wallet is connected
-    // AND we're NOT using Dynamic's embedded wallet UI (which handles its own balance display)
-    // This prevents "Wallet not connected" errors when user exists but wallet setup is still in progress
-    if (user && config && state?.isConnected && !isDynamicEmbeddedWallet) {
+    // Load balances when user is authenticated AND wallet is connected
+    // This applies to ALL users (including Dynamic embedded wallet users)
+    // Dynamic embedded wallet users get the same balance display as everyone else
+    if (user && config && state?.isConnected) {
       loadBalances();
       loadChainInfo();
     }
     // Note: loadBalances and loadChainInfo are omitted from deps because they're memoized with useCallback
     // Including them would cause a render loop as their dependencies (getNativeBalance, getUSDCBalance, etc.)
     // may change identity on each render even though they're functionally stable
-    // isDynamicEmbeddedWallet is a memoized value so it's safe to include in the condition
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, config, state?.isConnected, isDynamicEmbeddedWallet]);
+  }, [user, config, state?.isConnected]);
 
-  // Auto-open Dynamic user profile modal for embedded wallet users
-  useEffect(() => {
-    if (isDynamicEmbeddedWallet && setShowDynamicUserProfile) {
-      setShowDynamicUserProfile(true);
-    }
-  }, [isDynamicEmbeddedWallet, setShowDynamicUserProfile]);
+  // Note: We used to auto-popup the Dynamic modal for embedded wallet users,
+  // but now we show the full wallet UI to all users and provide a button to manually open the modal
 
   const handleShowWalletServices = async () => {
     console.log('🔧 Wallet Services Debug:', {
@@ -409,34 +404,9 @@ export default function Wallet() {
     );
   }
 
-  // If user is using Dynamic embedded wallet, show Dynamic's wallet management UI
-  if (isDynamicEmbeddedWallet) {
-    return (
-      <div className="py-10">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">Wallet Management</h1>
-            <p className="mt-2 text-gray-600">
-              Manage your embedded wallet settings
-            </p>
-          </div>
-
-          {/* Button to open wallet settings */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <Button
-              onClick={() => setShowDynamicUserProfile(true)}
-              className="w-full"
-            >
-              Open Wallet Settings
-            </Button>
-          </div>
-
-          {/* Dynamic User Profile Modal */}
-          <DynamicUserProfile />
-        </div>
-      </div>
-    );
-  }
+  // Note: We no longer have a special UI for embedded wallets
+  // All users see the same full wallet interface below
+  // Embedded wallet users get an additional button to open the Dynamic modal
 
   return (
     <div className="py-10">
@@ -485,6 +455,16 @@ export default function Wallet() {
               >
                 Wallet Services
               </Button>
+              {isDynamicEmbeddedWallet && (
+                <Button
+                  onClick={() => setShowDynamicUserProfile(true)}
+                  variant="outline"
+                  size="sm"
+                  title="Open Dynamic wallet settings"
+                >
+                  Open Wallet Settings
+                </Button>
+              )}
             </div>
           </div>
 
@@ -636,6 +616,9 @@ export default function Wallet() {
             </Button>
           </form>
         </div>
+
+        {/* Dynamic User Profile Modal (for embedded wallet users) */}
+        {isDynamicEmbeddedWallet && <DynamicUserProfile />}
       </div>
     </div>
   );

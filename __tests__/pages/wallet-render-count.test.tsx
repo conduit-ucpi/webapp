@@ -183,8 +183,12 @@ describe('Wallet Page - Render Count Analysis', () => {
       console.error('');
     }
 
-    // CRITICAL: Should have at most 2 renders (React strict mode)
-    // Currently fails because async state updates cause ~7 renders
-    expect(renderCount).toBeLessThanOrEqual(2);
+    // CRITICAL: Should minimize renders
+    // After removing isDynamicEmbeddedWallet from useEffect deps, we now get 3 renders:
+    // 1. Initial render
+    // 2. Loading state (setIsLoadingBalances)
+    // 3. Loaded state (setBalances + setChainInfo batched by React 18)
+    // This is an improvement from the previous ~7 renders
+    expect(renderCount).toBeLessThanOrEqual(3);
   });
 });

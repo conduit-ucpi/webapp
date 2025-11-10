@@ -89,7 +89,7 @@ export default function IntegratePage() {
     // Base URL of checkout page
     baseUrl: '${typeof window !== 'undefined' ? window.location.origin : 'https://pay.conduit-ucpi.com'}',
 
-    // Display mode: 'popup', 'modal', or 'redirect'
+    // Display mode: 'popup' or 'redirect'
     mode: 'popup',
 
     // Success callback
@@ -126,7 +126,7 @@ export default function IntegratePage() {
                 language="html"
                 code={`<button onclick="ConduitCheckout.open({
   amount: '50.00',
-  description: 'Premium Plan - Monthly Subscription'
+  description: 'Premium Product'
 })">
   Pay $50 with USDC
 </button>`}
@@ -157,7 +157,7 @@ export default function IntegratePage() {
         <section className="mb-16">
           <h2 className="text-3xl font-bold text-gray-900 mb-6">🎨 Display Modes</h2>
 
-          <div className="grid md:grid-cols-3 gap-6">
+          <div className="grid md:grid-cols-2 gap-6">
             <div className="border border-gray-200 rounded-lg p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-2">Popup Window</h3>
               <p className="text-sm text-gray-600 mb-4">
@@ -166,17 +166,6 @@ export default function IntegratePage() {
               <CodeBlock
                 section="popup"
                 code={`mode: 'popup'`}
-              />
-            </div>
-
-            <div className="border border-gray-200 rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Modal Overlay</h3>
-              <p className="text-sm text-gray-600 mb-4">
-                Opens in an iframe overlay. Keeps users on your site.
-              </p>
-              <CodeBlock
-                section="modal"
-                code={`mode: 'modal'`}
               />
             </div>
 
@@ -214,20 +203,20 @@ export default function IntegratePage() {
               />
             </div>
 
-            {/* Subscription */}
+            {/* Extended Protection */}
             <div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-3">Subscription with Extended Protection</h3>
+              <h3 className="text-xl font-semibold text-gray-900 mb-3">Product with Extended Protection</h3>
               <CodeBlock
-                section="subscription"
+                section="extended"
                 language="html"
                 code={`<button onclick="ConduitCheckout.open({
   amount: '99.00',
-  description: 'Annual Pro Subscription',
-  orderId: 'SUB-' + Date.now(),
+  description: 'Professional Service Package',
+  orderId: 'SERVICE-' + Date.now(),
   expiryDays: 30,  // 30-day buyer protection
   email: 'customer@example.com'
 })">
-  Subscribe - $99/year
+  Purchase - $99
 </button>`}
               />
             </div>
@@ -324,7 +313,7 @@ export default function IntegratePage() {
                     <td className="px-4 py-3 text-sm text-gray-600">string</td>
                     <td className="px-4 py-3 text-sm text-gray-600">No</td>
                     <td className="px-4 py-3 text-sm text-gray-600">'popup'</td>
-                    <td className="px-4 py-3 text-sm text-gray-600">'popup', 'modal', or 'redirect'</td>
+                    <td className="px-4 py-3 text-sm text-gray-600">'popup' or 'redirect'</td>
                   </tr>
                   <tr className="bg-gray-50">
                     <td className="px-4 py-3 text-sm font-mono text-gray-900">onSuccess</td>

@@ -31,9 +31,9 @@ let renderCount = 0;
 // Mock Dynamic SDK with render tracking
 jest.mock('@dynamic-labs/sdk-react-core', () => ({
   ...jest.requireActual('@dynamic-labs/sdk-react-core'),
-  DynamicEmbeddedWidget: jest.fn(() => {
+  DynamicUserProfile: jest.fn(() => {
     renderCount++;
-    return <div data-testid="dynamic-embedded-widget">Dynamic Widget (Render #{renderCount})</div>;
+    return <div data-testid="dynamic-user-profile">Dynamic User Profile (Render #{renderCount})</div>;
   }),
   useDynamicContext: jest.fn(),
 }));
@@ -79,7 +79,8 @@ describe('Wallet Page - Render Count Analysis', () => {
         key: 'embedded'
       }
     },
-    user: mockUser
+    user: mockUser,
+    setShowDynamicUserProfile: jest.fn()
   };
 
   const mockState = {

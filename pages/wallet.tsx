@@ -14,7 +14,7 @@ import { useWalletAddress } from '@/hooks/useWalletAddress';
 import { TransferUSDCRequest } from '@/types';
 import { ensureHexPrefix } from '@/utils/hexUtils';
 import { formatGweiAsEthForLogging } from '@/utils/logging';
-import { DynamicEmbeddedWidget, useDynamicContext } from '@dynamic-labs/sdk-react-core';
+import { DynamicUserProfile, useDynamicContext } from '@dynamic-labs/sdk-react-core';
 import { mLog } from '@/utils/mobileLogger';
 
 interface WalletBalances {
@@ -43,6 +43,7 @@ export default function Wallet() {
   const { config } = useConfig();
   const { walletAddress, isLoading: isWalletAddressLoading } = useWalletAddress();
   const dynamicContext = useDynamicContext();
+  const { setShowDynamicUserProfile } = dynamicContext;
   // Using ethers directly instead of SDK
   const [balances, setBalances] = useState<WalletBalances>({ native: '0.0000', usdc: '0.0000' });
   const [isLoadingBalances, setIsLoadingBalances] = useState(false);
@@ -260,6 +261,13 @@ export default function Wallet() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, config, state?.isConnected, isDynamicEmbeddedWallet]);
 
+  // Auto-open Dynamic user profile modal for embedded wallet users
+  useEffect(() => {
+    if (isDynamicEmbeddedWallet && setShowDynamicUserProfile) {
+      setShowDynamicUserProfile(true);
+    }
+  }, [isDynamicEmbeddedWallet, setShowDynamicUserProfile]);
+
   const handleShowWalletServices = async () => {
     console.log('🔧 Wallet Services Debug:', {
       user: user ? {
@@ -409,14 +417,22 @@ export default function Wallet() {
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900">Wallet Management</h1>
             <p className="mt-2 text-gray-600">
-              Manage your wallet with Dynamic's embedded wallet interface
+              Manage your embedded wallet settings
             </p>
           </div>
 
-          {/* Dynamic Embedded Wallet UI */}
+          {/* Button to open wallet settings */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <DynamicEmbeddedWidget background="default" />
+            <Button
+              onClick={() => setShowDynamicUserProfile(true)}
+              className="w-full"
+            >
+              Open Wallet Settings
+            </Button>
           </div>
+
+          {/* Dynamic User Profile Modal */}
+          <DynamicUserProfile />
         </div>
       </div>
     );

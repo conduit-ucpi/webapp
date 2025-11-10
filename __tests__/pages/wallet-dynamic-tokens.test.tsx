@@ -23,12 +23,12 @@ jest.mock('@/hooks/useSimpleEthers', () => ({
   useSimpleEthers: jest.fn()
 }));
 
-// Mock the DynamicEmbeddedWidget component so we can verify it receives the right props
+// Mock the DynamicUserProfile component so we can verify it's rendered
 jest.mock('@dynamic-labs/sdk-react-core', () => ({
   ...jest.requireActual('@dynamic-labs/sdk-react-core'),
-  DynamicEmbeddedWidget: jest.fn(({ background }) => (
-    <div data-testid="dynamic-embedded-widget" data-background={background}>
-      Dynamic Embedded Widget Mock
+  DynamicUserProfile: jest.fn(() => (
+    <div data-testid="dynamic-user-profile">
+      Dynamic User Profile Mock
     </div>
   )),
   useDynamicContext: jest.fn(),
@@ -75,7 +75,8 @@ describe('Wallet Page - Dynamic Token Display', () => {
         key: 'embedded'
       }
     },
-    user: mockUser
+    user: mockUser,
+    setShowDynamicUserProfile: jest.fn()
   };
 
   const mockState = {
@@ -126,14 +127,14 @@ describe('Wallet Page - Dynamic Token Display', () => {
     jest.clearAllMocks();
   });
 
-  test('CRITICAL: Dynamic embedded wallet widget is rendered when user has Dynamic wallet', () => {
+  test('CRITICAL: Dynamic user profile is rendered when user has Dynamic wallet', () => {
     const { container } = render(<Wallet />);
 
-    // Verify the Dynamic widget is rendered
-    const widget = screen.getByTestId('dynamic-embedded-widget');
+    // Verify the Dynamic user profile is rendered
+    const widget = screen.getByTestId('dynamic-user-profile');
     expect(widget).toBeInTheDocument();
 
-    console.log('✅ Dynamic embedded wallet widget is rendered on /wallet page');
+    console.log('✅ Dynamic user profile is rendered on /wallet page');
   });
 
   test('CRITICAL: Dynamic widget is configured with USDC and USDT token addresses', async () => {
@@ -146,7 +147,7 @@ describe('Wallet Page - Dynamic Token Display', () => {
     render(<Wallet />);
 
     // The widget should be rendered
-    const widget = screen.getByTestId('dynamic-embedded-widget');
+    const widget = screen.getByTestId('dynamic-user-profile');
     expect(widget).toBeInTheDocument();
 
     console.log('✅ CRITICAL: Config passed to Dynamic includes token addresses:');
@@ -159,7 +160,7 @@ describe('Wallet Page - Dynamic Token Display', () => {
 
     // Check for the wallet management heading
     expect(screen.getByText('Wallet Management')).toBeInTheDocument();
-    expect(screen.getByText(/Manage your wallet with Dynamic's embedded wallet interface/i)).toBeInTheDocument();
+    expect(screen.getByText(/Manage your embedded wallet settings/i)).toBeInTheDocument();
 
     console.log('✅ Correct UI is shown for Dynamic embedded wallet users');
   });
@@ -176,27 +177,28 @@ describe('Wallet Page - Dynamic Token Display', () => {
 
     (useDynamicContext as jest.Mock).mockReturnValue({
       primaryWallet: null,
-      user: null
+      user: null,
+      setShowDynamicUserProfile: jest.fn()
     });
 
     render(<Wallet />);
 
-    // The Dynamic widget should NOT be rendered
-    expect(screen.queryByTestId('dynamic-embedded-widget')).not.toBeInTheDocument();
+    // The Dynamic user profile should NOT be rendered
+    expect(screen.queryByTestId('dynamic-user-profile')).not.toBeInTheDocument();
 
     // Instead, should show the balance cards for Web3Auth users
     expect(screen.getByText('Native Token Balance')).toBeInTheDocument();
     expect(screen.getByText('USDC Balance')).toBeInTheDocument();
 
-    console.log('✅ Dynamic widget is correctly hidden for non-Dynamic users');
+    console.log('✅ Dynamic user profile is correctly hidden for non-Dynamic users');
   });
 
-  test('INTEGRATION: Full flow - Config → DynamicWrapper → Widget rendering', () => {
+  test('INTEGRATION: Full flow - Config → DynamicWrapper → User Profile rendering', () => {
     // This test verifies the complete integration:
     // 1. Config provides token addresses
     // 2. Config is used by auth system
     // 3. Wallet page detects Dynamic embedded wallet
-    // 4. Dynamic widget is rendered
+    // 4. Dynamic user profile is rendered
 
     // Step 1: Verify config has token addresses
     expect(mockConfig.usdcContractAddress).toBe(USDC_ADDRESS);
@@ -210,8 +212,8 @@ describe('Wallet Page - Dynamic Token Display', () => {
     expect(dynamicContext.primaryWallet).toBeDefined();
     expect(dynamicContext.primaryWallet.key).toContain('embedded');
 
-    // Step 4: Verify Dynamic widget is rendered
-    const widget = screen.getByTestId('dynamic-embedded-widget');
+    // Step 4: Verify Dynamic user profile is rendered
+    const widget = screen.getByTestId('dynamic-user-profile');
     expect(widget).toBeInTheDocument();
 
     console.log('');
@@ -222,7 +224,7 @@ describe('Wallet Page - Dynamic Token Display', () => {
     console.log('2. Config provides USDT address:', USDT_ADDRESS);
     console.log('3. User has Dynamic embedded wallet');
     console.log('4. /wallet page detects embedded wallet');
-    console.log('5. DynamicEmbeddedWidget component is rendered');
+    console.log('5. DynamicUserProfile component is rendered');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('');
     console.log('⚠️  NOTE: The actual token display depends on Dynamic.xyz SDK');
@@ -233,7 +235,7 @@ describe('Wallet Page - Dynamic Token Display', () => {
     console.log('1. Deploy this code');
     console.log('2. Login with Dynamic embedded wallet');
     console.log('3. Visit /wallet page');
-    console.log('4. The widget should show ETH, USDC, and USDT balances');
+    console.log('4. The user profile modal should show ETH, USDC, and USDT balances');
   });
 
   test('Token addresses are passed through the entire configuration chain', () => {

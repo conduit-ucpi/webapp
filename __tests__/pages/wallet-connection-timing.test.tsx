@@ -32,7 +32,7 @@ jest.mock('@/hooks/useWalletAddress', () => ({
 
 jest.mock('@dynamic-labs/sdk-react-core', () => ({
   useDynamicContext: jest.fn(),
-  DynamicEmbeddedWidget: () => null,
+  DynamicUserProfile: () => null,
 }));
 
 jest.mock('@/utils/mobileLogger', () => ({
@@ -49,6 +49,7 @@ import { useConfig } from '@/components/auth/ConfigProvider';
 import { useSimpleEthers } from '@/hooks/useSimpleEthers';
 import { useFarcaster } from '@/components/farcaster/FarcasterDetectionProvider';
 import { useWalletAddress } from '@/hooks/useWalletAddress';
+import { useDynamicContext } from '@dynamic-labs/sdk-react-core';
 
 describe('Wallet Page - Connection Timing Bug', () => {
   const mockGetNativeBalance = jest.fn();
@@ -56,6 +57,13 @@ describe('Wallet Page - Connection Timing Bug', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+
+    // Mock useDynamicContext to return a minimal object
+    (useDynamicContext as jest.Mock).mockReturnValue({
+      primaryWallet: null,
+      user: null,
+      setShowDynamicUserProfile: jest.fn()
+    });
 
     // Mock farcaster
     (useFarcaster as jest.Mock).mockReturnValue({

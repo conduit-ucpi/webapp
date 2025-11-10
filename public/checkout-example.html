@@ -111,15 +111,7 @@
     <h3>Basic Product - $10.00</h3>
     <p>Simple one-time payment with popup checkout</p>
     <button class="button" onclick="openBasicCheckout()">
-      Pay $10 with USDC (Popup)
-    </button>
-  </div>
-
-  <div class="product-card">
-    <h3>Premium Plan - $50.00</h3>
-    <p>Subscription plan with modal overlay checkout</p>
-    <button class="button" onclick="openModalCheckout()">
-      Pay $50 with USDC (Modal)
+      Pay $10 with USDC
     </button>
   </div>
 
@@ -127,7 +119,7 @@
     <h3>Enterprise Plan - $200.00</h3>
     <p>Full page redirect checkout with USDT option</p>
     <button class="button button-outline" onclick="openRedirectCheckout()">
-      Pay $200 with USDT (Redirect)
+      Pay $200 with USDT
     </button>
   </div>
 
@@ -136,7 +128,7 @@
     <p>Let users choose their own amount</p>
     <input type="number" id="customAmount" placeholder="Enter amount" value="25" step="0.01" min="1.001" style="padding: 8px; border: 1px solid #d1d5db; border-radius: 4px; margin-right: 10px;">
     <button class="button" onclick="openCustomAmountCheckout()">
-      Pay Custom Amount (Modal)
+      Pay Custom Amount
     </button>
   </div>
 
@@ -149,7 +141,7 @@
   <div class="code-block"><code>&lt;script&gt;
   ConduitCheckout.init({
     // Your wallet address to receive payments
-    sellerAddress: '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb',
+    sellerAddress: '0x4f118f99a4e8bb384061bcfe081e3bbdec28482d',
 
     // Base URL of Conduit checkout page
     baseUrl: 'https://pay.conduit-ucpi.com',
@@ -160,7 +152,7 @@
     // Days until auto-release to seller (default: 7)
     expiryDays: 7,
 
-    // Display mode: 'popup', 'modal', or 'redirect'
+    // Display mode: 'popup' or 'redirect'
     mode: 'popup',
 
     // Success callback
@@ -187,7 +179,7 @@
   <div class="code-block"><code>&lt;!-- Simple button --&gt;
 &lt;button onclick="ConduitCheckout.open({
   amount: '50.00',
-  description: 'Premium Plan - Monthly Subscription'
+  description: 'Premium Product'
 })"&gt;
   Pay $50 with USDC
 &lt;/button&gt;
@@ -215,7 +207,7 @@
     <li><code>baseUrl</code> (required) - Base URL of the Conduit checkout page</li>
     <li><code>tokenSymbol</code> (optional) - Default token: 'USDC' or 'USDT' (default: 'USDC')</li>
     <li><code>expiryDays</code> (optional) - Days until auto-release (default: 7)</li>
-    <li><code>mode</code> (optional) - Display mode: 'popup', 'modal', or 'redirect' (default: 'popup')</li>
+    <li><code>mode</code> (optional) - Display mode: 'popup' or 'redirect' (default: 'popup')</li>
     <li><code>onSuccess</code> (optional) - Success callback function</li>
     <li><code>onError</code> (optional) - Error callback function</li>
     <li><code>onCancel</code> (optional) - Cancel callback function</li>
@@ -257,7 +249,7 @@
   <script>
     // Initialize with demo configuration
     ConduitCheckout.init({
-      sellerAddress: '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb', // Replace with your address
+      sellerAddress: '0x4f118f99a4e8bb384061bcfe081e3bbdec28482d', // Replace with your address
       baseUrl: window.location.origin, // Use same origin for demo
       tokenSymbol: 'USDC',
       expiryDays: 7,
@@ -289,17 +281,6 @@
       });
     }
 
-    function openModalCheckout() {
-      ConduitCheckout.config.mode = 'modal';
-      ConduitCheckout.open({
-        amount: '50.00',
-        description: 'Premium Plan - Monthly Subscription',
-        orderId: 'PREMIUM-' + Date.now(),
-        expiryDays: 30,
-        tokenSymbol: 'USDC'
-      });
-    }
-
     function openRedirectCheckout() {
       ConduitCheckout.config.mode = 'redirect';
       ConduitCheckout.open({
@@ -318,7 +299,7 @@
         return;
       }
 
-      ConduitCheckout.config.mode = 'modal';
+      ConduitCheckout.config.mode = 'popup';
       ConduitCheckout.open({
         amount: amount,
         description: 'Custom Amount Payment',

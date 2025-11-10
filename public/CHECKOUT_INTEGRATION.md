@@ -21,7 +21,7 @@ Configure the checkout with your merchant wallet address:
   ConduitCheckout.init({
     sellerAddress: '0xYourWalletAddress',
     baseUrl: 'https://pay.conduit-ucpi.com',
-    mode: 'popup', // or 'modal' or 'redirect'
+    mode: 'popup', // or 'redirect'
     onSuccess: function(data) {
       console.log('Payment completed!', data);
       // Handle successful payment
@@ -61,16 +61,6 @@ ConduitCheckout.init({
 });
 ```
 
-### Modal Overlay
-Opens checkout in an iframe modal overlay on your page. Best for keeping users on your site.
-
-```javascript
-ConduitCheckout.init({
-  mode: 'modal',
-  // ... other options
-});
-```
-
 ### Full Page Redirect
 Redirects to checkout page. Best for mobile or when popups are blocked.
 
@@ -91,7 +81,7 @@ ConduitCheckout.init({
 | `baseUrl` | string | **Yes** | - | Base URL of checkout page (e.g., `https://pay.conduit-ucpi.com`) |
 | `tokenSymbol` | string | No | `'USDC'` | Default token: `'USDC'` or `'USDT'` |
 | `expiryDays` | number | No | `7` | Days until funds auto-release to seller |
-| `mode` | string | No | `'popup'` | Display mode: `'popup'`, `'modal'`, or `'redirect'` |
+| `mode` | string | No | `'popup'` | Display mode: `'popup'` or `'redirect'` |
 | `onSuccess` | function | No | - | Callback when payment completes successfully |
 | `onError` | function | No | - | Callback when payment fails |
 | `onCancel` | function | No | - | Callback when user cancels payment |
@@ -124,17 +114,17 @@ ConduitCheckout.init({
 </button>
 ```
 
-### Subscription with Custom Expiry
+### Product with Custom Expiry
 
 ```html
 <button onclick="ConduitCheckout.open({
   amount: '99.00',
-  description: 'Annual Pro Subscription',
-  orderId: 'SUB-' + Date.now(),
+  description: 'Professional Service Package',
+  orderId: 'SERVICE-' + Date.now(),
   expiryDays: 30, // 30-day buyer protection
   email: 'customer@example.com'
 })">
-  Subscribe - $99/year
+  Purchase - $99
 </button>
 ```
 
@@ -225,7 +215,6 @@ app.post('/api/payment-webhook', express.json(), async (req, res) => {
 
 The checkout automatically adapts to mobile devices:
 - **Popup mode**: Opens in a new tab on mobile (popup restrictions)
-- **Modal mode**: Full-screen overlay on mobile
 - **Redirect mode**: Recommended for best mobile experience
 
 ## 🔒 Security Features
@@ -253,7 +242,7 @@ ConduitCheckout.close();
 
 ```javascript
 // Change mode dynamically
-ConduitCheckout.config.mode = 'modal';
+ConduitCheckout.config.mode = 'redirect';
 
 // Update callbacks
 ConduitCheckout.config.onSuccess = function(data) {

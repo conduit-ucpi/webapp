@@ -27,8 +27,8 @@ jest.mock('@/hooks/useSimpleEthers', () => ({
 // Mock Dynamic SDK
 jest.mock('@dynamic-labs/sdk-react-core', () => ({
   ...jest.requireActual('@dynamic-labs/sdk-react-core'),
-  DynamicEmbeddedWidget: jest.fn(() => (
-    <div data-testid="dynamic-embedded-widget">Dynamic Embedded Widget Mock</div>
+  DynamicUserProfile: jest.fn(() => (
+    <div data-testid="dynamic-user-profile">Dynamic User Profile Mock</div>
   )),
   useDynamicContext: jest.fn(),
 }));
@@ -74,7 +74,8 @@ describe('Wallet Page - Excessive Detection Prevention', () => {
         key: 'embedded'
       }
     },
-    user: mockUser
+    user: mockUser,
+    setShowDynamicUserProfile: jest.fn()
   };
 
   const mockState = {

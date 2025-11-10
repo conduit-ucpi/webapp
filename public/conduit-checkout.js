@@ -5,7 +5,7 @@
  * <script src="https://yoursite.com/conduit-checkout.js"></script>
  * <script>
  *   ConduitCheckout.init({
- *     sellerAddress: '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb',
+ *     sellerAddress: '0x4f118f99a4e8bb384061bcfe081e3bbdec28482d',
  *     baseUrl: 'https://yoursite.com', // Your webapp deployment URL
  *     onSuccess: function(data) { console.log('Payment completed!', data); },
  *     onError: function(error) { console.log('Payment failed:', error); },

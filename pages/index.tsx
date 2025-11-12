@@ -4,7 +4,6 @@ import ConnectWalletEmbedded from '@/components/auth/ConnectWalletEmbedded';
 import Button from '@/components/ui/Button';
 import InteractiveDemo from '@/components/landing/InteractiveDemo';
 import SEO from '@/components/SEO';
-import { motion } from 'framer-motion';
 import { GetStaticProps } from 'next';
 
 export default function Home() {
@@ -199,70 +198,31 @@ export default function Home() {
         <h2 className="text-3xl font-bold text-secondary-900 dark:text-white text-center mb-12">
           Simple 3-Step Escrow Process
         </h2>
-        <motion.div
-          className="grid grid-cols-1 md:grid-cols-3 gap-8"
-          initial={{ opacity: 0, y: 50 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6, staggerChildren: 0.2 }}
-        >
-          <motion.div 
-            className="bg-white border border-secondary-200 rounded-lg p-8 hover:border-primary-300 hover:shadow-lg transition-all"
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.1, duration: 0.6 }}
-            whileHover={{ y: -5, transition: { duration: 0.2 } }}
-          >
-            <motion.div 
-              className="w-16 h-16 bg-primary-500 text-white rounded-full flex items-center justify-center mb-6 text-2xl font-bold"
-              whileHover={{ scale: 1.1, rotate: 5 }}
-              transition={{ duration: 0.2 }}
-            >
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="bg-white border border-secondary-200 rounded-lg p-8 hover:border-primary-300 hover:shadow-lg transition-all">
+            <div className="w-16 h-16 bg-primary-500 text-white rounded-full flex items-center justify-center mb-6 text-2xl font-bold">
               1
-            </motion.div>
+            </div>
             <h3 className="text-xl font-semibold text-secondary-900 mb-3">Seller creates payment request</h3>
             <p className="text-secondary-600 leading-relaxed">with delivery timeframe</p>
-          </motion.div>
+          </div>
 
-          <motion.div 
-            className="bg-white border border-secondary-200 rounded-lg p-8 hover:border-primary-300 hover:shadow-lg transition-all"
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.3, duration: 0.6 }}
-            whileHover={{ y: -5, transition: { duration: 0.2 } }}
-          >
-            <motion.div 
-              className="w-16 h-16 bg-primary-500 text-white rounded-full flex items-center justify-center mb-6 text-2xl font-bold"
-              whileHover={{ scale: 1.1, rotate: 5 }}
-              transition={{ duration: 0.2 }}
-            >
+          <div className="bg-white border border-secondary-200 rounded-lg p-8 hover:border-primary-300 hover:shadow-lg transition-all">
+            <div className="w-16 h-16 bg-primary-500 text-white rounded-full flex items-center justify-center mb-6 text-2xl font-bold">
               2
-            </motion.div>
+            </div>
             <h3 className="text-xl font-semibold text-secondary-900 mb-3">Buyer puts funds in secure trust</h3>
             <p className="text-secondary-600 leading-relaxed">Money goes into secure trust, not directly to seller</p>
-          </motion.div>
+          </div>
 
-          <motion.div 
-            className="bg-white border border-secondary-200 rounded-lg p-8 hover:border-primary-300 hover:shadow-lg transition-all"
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.5, duration: 0.6 }}
-            whileHover={{ y: -5, transition: { duration: 0.2 } }}
-          >
-            <motion.div 
-              className="w-16 h-16 bg-primary-500 text-white rounded-full flex items-center justify-center mb-6 text-2xl font-bold"
-              whileHover={{ scale: 1.1, rotate: 5 }}
-              transition={{ duration: 0.2 }}
-            >
+          <div className="bg-white border border-secondary-200 rounded-lg p-8 hover:border-primary-300 hover:shadow-lg transition-all">
+            <div className="w-16 h-16 bg-primary-500 text-white rounded-full flex items-center justify-center mb-6 text-2xl font-bold">
               3
-            </motion.div>
+            </div>
             <h3 className="text-xl font-semibold text-secondary-900 mb-3">Automatic payout to seller</h3>
             <p className="text-secondary-600 leading-relaxed">Seller receives payment at pre-agreed date & time. Disputed transactions held in trust until resolution.</p>
-          </motion.div>
-        </motion.div>
+          </div>
+        </div>
         </section>
 
         {!isAuthenticated && (

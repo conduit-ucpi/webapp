@@ -12,18 +12,15 @@ interface DemoStep {
 }
 
 const DemoCard = ({ children, isActive }: { children: React.ReactNode; isActive: boolean }) => (
-  <motion.div
+  <div
     className={`relative p-6 rounded-lg border-2 transition-all duration-300 ${
-      isActive 
-        ? 'border-primary-500 bg-primary-50 shadow-lg' 
+      isActive
+        ? 'border-primary-500 bg-primary-50 shadow-lg'
         : 'border-secondary-200 bg-white hover:border-secondary-300'
     }`}
-    initial={{ opacity: 0, y: 20 }}
-    animate={{ opacity: 1, y: 0 }}
-    transition={{ duration: 0.5 }}
   >
     {children}
-  </motion.div>
+  </div>
 );
 
 const MoneyIcon = ({ className = "w-6 h-6" }) => (

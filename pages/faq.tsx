@@ -160,7 +160,7 @@ export default function FAQ() {
                         What does this actually cost me?
                       </h3>
                       <p className="text-gray-600 leading-relaxed">
-                        Our service charges a flat $1 USDC fee. The system works in USDC, and we provide tools to obtain USDC if needed, but we have no control over third-party conversion costs in your location. All blockchain gas fees are covered by us - the service is gasless for users.
+                        Our service charges a 1% transaction fee. The system works in USDC, and we provide tools to obtain USDC if needed, but we have no control over third-party conversion costs in your location. All blockchain gas fees are covered by us - the service is gasless for users.
                       </p>
                     </article>
 
@@ -441,7 +441,7 @@ export default function FAQ() {
                         What's the smallest purchase amount where this makes sense?
                       </h3>
                       <p className="text-gray-600 leading-relaxed">
-                        Consider the exchange fees to get USDC plus our $1 fee. This works well for purchases where you can't meet in person or need extra protection. Also remember: if a seller refuses to use this system for spurious reasons, you probably just avoided a scam.
+                        Consider the exchange fees to get USDC plus our 1% transaction fee. This works well for purchases where you can't meet in person or need extra protection. Also remember: if a seller refuses to use this system for spurious reasons, you probably just avoided a scam.
                       </p>
                     </article>
 

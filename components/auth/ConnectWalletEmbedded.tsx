@@ -210,14 +210,15 @@ export default function ConnectWalletEmbedded({
     ? `${className} text-center`
     : `p-4 text-center ${className}`;
 
-  const isBusy = isLoading || isAuthenticating;
+  // Don't include isLoading in isBusy for SSR/SEO - only show busy state after user interaction
+  const isBusy = isAuthenticating;
 
   return (
     <div className={containerClass}>
       <Button
         onClick={handleConnect}
         className="bg-primary-500 hover:bg-primary-600 text-white px-6 py-2 rounded-lg"
-        disabled={!connect || isBusy}
+        disabled={isBusy}
       >
         {isBusy ? 'Connecting...' : buttonText}
       </Button>

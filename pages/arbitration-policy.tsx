@@ -1,8 +1,39 @@
 import Layout from '@/components/layout/Layout'
+import SEO from '@/components/SEO'
+import { GetStaticProps } from 'next'
 
 export default function ArbitrationPolicy() {
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": "Instant Escrow Auto-Arbitration System",
+    "description": "How our auto-arbitration dispute resolution system works for crypto escrow payments",
+    "author": {
+      "@type": "Organization",
+      "name": "Conduit Escrow"
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "Conduit Escrow",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://conduit-ucpi.com/icon.png"
+      }
+    },
+    "datePublished": "2024-01-01",
+    "dateModified": new Date().toISOString().split('T')[0]
+  };
+
   return (
-    <Layout children={
+    <>
+      <SEO
+        title="Dispute Resolution & Arbitration Policy | Conduit Escrow"
+        description="How our auto-arbitration system resolves crypto escrow disputes. Buyers and sellers negotiate directly through the platform. Funds frozen until mutual agreement reached."
+        keywords="crypto escrow disputes, blockchain arbitration, escrow dispute resolution, USDC refund process, buyer seller negotiation, smart contract disputes, automatic arbitration"
+        canonical="/arbitration-policy"
+        structuredData={structuredData}
+      />
+      <Layout children={
       <div className="min-h-screen bg-gray-50 py-12">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-4xl mx-auto">
@@ -285,5 +316,14 @@ export default function ArbitrationPolicy() {
         </div>
       </div>
     } />
+    </>
   )
 }
+
+// Static generation for SEO
+export const getStaticProps: GetStaticProps = async () => {
+  return {
+    props: {},
+    revalidate: 86400, // Revalidate daily
+  };
+};

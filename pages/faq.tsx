@@ -1,6 +1,8 @@
 import Layout from '@/components/layout/Layout'
 import { useConfig } from '@/components/auth/ConfigProvider'
 import { getChainName } from '@/utils/chainNames'
+import SEO from '@/components/SEO'
+import { GetStaticProps } from 'next'
 
 interface FAQItem {
   question: string
@@ -236,11 +238,37 @@ export default function FAQ() {
   const contractAddress = config?.contractAddress || '0xAa1Be17F1F8A0F96a1308f596740552c4145627d' // fallback to current address
   const chainName = config ? getChainName(config.chainId) : 'blockchain'
   const explorerUrl = config?.explorerBaseUrl || 'https://base.blockscout.com'
-  
+
   const faqSections = getFaqSections(chainName, explorerUrl)
-  
+
+  // Generate FAQ schema for search engines
+  const faqSchema = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": faqSections.flatMap(section =>
+      section.items.map(item => ({
+        "@type": "Question",
+        "name": item.question,
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": typeof item.answer === 'function'
+            ? item.answer(contractAddress, chainName, explorerUrl).replace(/<[^>]*>/g, '') // Strip HTML for schema
+            : item.answer
+        }
+      }))
+    )
+  };
+
   return (
-    <Layout children={
+    <>
+      <SEO
+        title="FAQ - Crypto Escrow Questions Answered | Conduit Escrow"
+        description="Get answers to all your questions about crypto escrow, USDC payments, disputes, security, and how our blockchain escrow system protects buyers and sellers."
+        keywords="crypto escrow faq, blockchain escrow questions, USDC payment help, escrow dispute resolution, smart contract security, crypto payment protection, escrow how it works"
+        canonical="/faq"
+        structuredData={faqSchema}
+      />
+      <Layout children={
       <div className="min-h-screen bg-gray-50 py-12">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-4xl mx-auto">
@@ -280,5 +308,14 @@ export default function FAQ() {
         </div>
       </div>
     } />
+    </>
   )
 }
+
+// Static generation for SEO
+export const getStaticProps: GetStaticProps = async () => {
+  return {
+    props: {},
+    revalidate: 86400, // Revalidate daily
+  };
+};

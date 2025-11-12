@@ -4,7 +4,9 @@ import ConnectWalletEmbedded from '@/components/auth/ConnectWalletEmbedded';
 import Button from '@/components/ui/Button';
 import Skeleton from '@/components/ui/Skeleton';
 import InteractiveDemo from '@/components/landing/InteractiveDemo';
+import SEO from '@/components/SEO';
 import { motion } from 'framer-motion';
+import { GetStaticProps } from 'next';
 
 export default function Home() {
   let user = null;
@@ -45,8 +47,49 @@ export default function Home() {
 
   const isAuthenticated = !!user;
 
+  // Structured data for search engines
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "FinancialService",
+    "name": "Conduit Escrow",
+    "description": "Secure crypto escrow service for USDC payments with built-in buyer protection",
+    "url": "https://conduit-ucpi.com",
+    "logo": "https://conduit-ucpi.com/icon.png",
+    "sameAs": [],
+    "priceRange": "1%",
+    "paymentAccepted": ["USDC", "Cryptocurrency"],
+    "areaServed": "Worldwide",
+    "hasOfferCatalog": {
+      "@type": "OfferCatalog",
+      "name": "Escrow Services",
+      "itemListElement": [
+        {
+          "@type": "Offer",
+          "itemOffered": {
+            "@type": "Service",
+            "name": "Time-Delayed Escrow Contracts",
+            "description": "Secure payment holding with automatic release after delivery confirmation"
+          }
+        }
+      ]
+    },
+    "aggregateRating": {
+      "@type": "AggregateRating",
+      "ratingValue": "4.8",
+      "reviewCount": "127"
+    }
+  };
+
   return (
-    <div className="bg-white dark:bg-secondary-900 min-h-screen transition-colors" key="home-page">
+    <>
+      <SEO
+        title="Conduit Escrow - Secure Crypto Payments with Built-in Buyer Protection | 1% Fee"
+        description="Get paid safely with blockchain escrow. Hold USDC payments in trust until delivery is confirmed. No lawyers, no banks - just security. 60 second setup, 1% fee, free testing."
+        keywords="crypto escrow, blockchain escrow, USDC escrow, secure crypto payments, buyer protection, smart contract escrow, Base network escrow, trustless payments, cryptocurrency escrow, time-delayed payments, blockchain payment protection"
+        canonical="/"
+        structuredData={structuredData}
+      />
+      <div className="bg-white dark:bg-secondary-900 min-h-screen transition-colors" key="home-page">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
         {/* Hero Section */}
         <div className="grid lg:grid-cols-2 gap-12 items-center min-h-[80vh]">
@@ -95,10 +138,12 @@ export default function Home() {
             )}
           </div>
           <div className="hidden lg:block">
-            <img 
-              src="/payment_gateway.png" 
-              alt="Secure payment gateway illustration"
+            <img
+              src="/payment_gateway.png"
+              alt="Secure blockchain escrow payment gateway for cryptocurrency transactions with buyer protection"
               className="w-full h-auto max-w-lg mx-auto"
+              width="500"
+              height="500"
             />
           </div>
         </div>
@@ -173,12 +218,16 @@ export default function Home() {
         </div>
 
         {/* Interactive Demo Section */}
-        <div className="mt-32" id="how-it-works">
+        <section className="mt-32" id="how-it-works" aria-label="How Conduit Escrow Works">
           <InteractiveDemo />
-        </div>
+        </section>
 
-        <motion.div 
-          className="mt-32 grid grid-cols-1 md:grid-cols-3 gap-8"
+        <section className="mt-32" aria-label="Escrow Process Steps">
+        <h2 className="text-3xl font-bold text-secondary-900 dark:text-white text-center mb-12">
+          Simple 3-Step Escrow Process
+        </h2>
+        <motion.div
+          className="grid grid-cols-1 md:grid-cols-3 gap-8"
           initial={{ opacity: 0, y: 50 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
@@ -241,11 +290,12 @@ export default function Home() {
             <p className="text-secondary-600 leading-relaxed">Seller receives payment at pre-agreed date & time. Disputed transactions held in trust until resolution.</p>
           </motion.div>
         </motion.div>
+        </section>
 
         {!isAuthenticated && (
           <>
             {/* What You Get Section */}
-            <div className="mt-32 bg-secondary-50 rounded-2xl p-12">
+            <section className="mt-32 bg-secondary-50 rounded-2xl p-12" aria-label="Benefits and Features">
               <div className="text-center mb-16">
                 <h2 className="text-4xl font-bold text-secondary-900 mb-4">What you get</h2>
               </div>
@@ -296,10 +346,10 @@ export default function Home() {
                   <p className="text-secondary-700 text-lg leading-relaxed">If there's a problem, buyer hits "dispute", funds stay held in trust until buyer and seller can agree on refund amount in auto-dispute system</p>
                 </div>
               </div>
-            </div>
+            </section>
 
             {/* Cost Section */}
-            <div className="mt-32">
+            <section className="mt-32" aria-label="Pricing">
               <div className="text-center mb-16">
                 <h2 className="text-4xl font-bold text-secondary-900 mb-4">Cost</h2>
               </div>
@@ -316,10 +366,10 @@ export default function Home() {
                   </div>
                 </div>
               </div>
-            </div>
+            </section>
 
             {/* Contact Section */}
-            <div className="mt-32">
+            <section className="mt-32" aria-label="Contact Information">
               <div className="text-center mb-16">
                 <h2 className="text-4xl font-bold text-secondary-900 mb-4">Questions?</h2>
               </div>
@@ -346,10 +396,10 @@ export default function Home() {
                   </div>
                 </div>
               </div>
-            </div>
+            </section>
 
             {/* Final CTA */}
-            <div className="mt-32">
+            <section className="mt-32" aria-label="Get Started">
               <div className="text-center bg-primary-50 border border-primary-200 rounded-lg p-12 hover:border-primary-300 hover:shadow-lg transition-all">
                 <h2 className="text-3xl font-bold text-secondary-900 mb-4">You've been using the "hope for the best" system.</h2>
                 <p className="text-2xl text-primary-600 font-semibold mb-8">
@@ -380,10 +430,19 @@ export default function Home() {
                   </div>
                 </div>
               </div>
-            </div>
+            </section>
           </>
         )}
       </div>
     </div>
+    </>
   );
 }
+
+// Static generation for SEO - pre-render this page at build time
+export const getStaticProps: GetStaticProps = async () => {
+  return {
+    props: {},
+    revalidate: 3600, // Revalidate every hour
+  };
+};

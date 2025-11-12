@@ -1,0 +1,14 @@
+# Allow all search engines to crawl the site
+User-agent: *
+Allow: /
+
+# Disallow access to API routes and private pages
+Disallow: /api/
+Disallow: /_next/
+Disallow: /dashboard
+
+# Sitemap location
+Sitemap: https://conduit-ucpi.com/sitemap.xml
+
+# Crawl delay (optional, prevents overloading)
+Crawl-delay: 1

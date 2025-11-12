@@ -2,7 +2,6 @@ import Link from 'next/link';
 import { useAuth } from '@/components/auth';
 import ConnectWalletEmbedded from '@/components/auth/ConnectWalletEmbedded';
 import Button from '@/components/ui/Button';
-import Skeleton from '@/components/ui/Skeleton';
 import InteractiveDemo from '@/components/landing/InteractiveDemo';
 import SEO from '@/components/SEO';
 import { motion } from 'framer-motion';
@@ -10,39 +9,13 @@ import { GetStaticProps } from 'next';
 
 export default function Home() {
   let user = null;
-  let isLoading = false;
-
 
   try {
     const authContext = useAuth();
     user = authContext.user;
-    isLoading = authContext.isLoading;
+    // Don't check isLoading - always render content for SSR/SEO/AI crawlers
   } catch (error) {
     // Auth context not available during SSR or hydration
-  }
-
-  // Show minimal loading on mobile to prevent crashes
-  if (isLoading) {
-    return (
-      <div className="bg-white min-h-screen">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-          <div className="grid lg:grid-cols-2 gap-12 items-center min-h-[80vh]">
-            <div className="space-y-8">
-              <Skeleton className="h-16 w-full" />
-              <Skeleton className="h-6 w-3/4" />
-              <Skeleton className="h-4 w-2/3" />
-              <div className="flex gap-4 pt-6">
-                <Skeleton className="h-12 w-40" />
-                <Skeleton className="h-12 w-32" />
-              </div>
-            </div>
-            <div className="hidden lg:block">
-              <Skeleton className="h-96 w-full" />
-            </div>
-          </div>
-        </div>
-      </div>
-    );
   }
 
   const isAuthenticated = !!user;

@@ -4,6 +4,7 @@
  */
 
 import React from 'react';
+import { useRouter } from 'next/router';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { DynamicWrapper } from '@/components/auth/DynamicWrapper';
 import { SimpleAuthProvider as AuthProvider } from '@/components/auth/SimpleAuthProvider';
@@ -12,8 +13,20 @@ interface DynamicAuthWrapperProps {
   children: React.ReactNode;
 }
 
+// Public pages that should render without waiting for config (for SEO)
+const PUBLIC_PAGES = ['/', '/faq', '/arbitration-policy', '/integrate', '/plugins'];
+
 export function DynamicAuthWrapper({ children }: DynamicAuthWrapperProps) {
   const { config, isLoading } = useConfig();
+  const router = useRouter();
+
+  // Allow public pages to render immediately for SEO (no loading spinner)
+  const isPublicPage = PUBLIC_PAGES.includes(router.pathname);
+
+  if (isPublicPage && (isLoading || !config)) {
+    // Render public pages immediately without auth wrapper during SSG
+    return <>{children}</>;
+  }
 
   if (isLoading || !config) {
     return (

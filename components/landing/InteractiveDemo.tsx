@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import Button from '@/components/ui/Button';
 
 interface DemoStep {
@@ -178,13 +178,7 @@ export default function InteractiveDemo() {
 
   return (
     <div className="bg-secondary-50 rounded-2xl p-8 lg:p-12">
-      <motion.div
-        className="text-center mb-8"
-        initial={{ opacity: 0, y: 20 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true }}
-        transition={{ duration: 0.6 }}
-      >
+      <div className="text-center mb-8">
         <h2 className="text-3xl lg:text-4xl font-bold text-secondary-900 mb-4">
           See How It Works
         </h2>
@@ -198,17 +192,11 @@ export default function InteractiveDemo() {
         >
           {isPlaying ? 'Playing Demo...' : 'Play Interactive Demo'}
         </Button>
-      </motion.div>
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {steps.map((step, index) => (
-          <motion.div
-            key={step.id}
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: index * 0.1, duration: 0.6 }}
-          >
+          <div key={step.id}>
             <DemoCard isActive={activeStep === index} children={
               <div className="flex items-start space-x-4">
                 <motion.div
@@ -227,38 +215,24 @@ export default function InteractiveDemo() {
                 <div className="flex-1">
                   <h3 className="font-semibold text-secondary-900 mb-2">{step.title}</h3>
                   <p className="text-sm text-secondary-600 mb-4">{step.description}</p>
-                  <AnimatePresence mode="wait">
-                    <motion.div
-                      key={activeStep === index ? 'active' : 'inactive'}
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      transition={{ duration: 0.3 }}
-                    >
-                      {step.visual}
-                    </motion.div>
-                  </AnimatePresence>
+                  <div>
+                    {step.visual}
+                  </div>
                 </div>
               </div>
             } />
-          </motion.div>
+          </div>
         ))}
       </div>
 
-      <motion.div
-        className="mt-8 text-center"
-        initial={{ opacity: 0 }}
-        whileInView={{ opacity: 1 }}
-        viewport={{ once: true }}
-        transition={{ delay: 0.5, duration: 0.6 }}
-      >
+      <div className="mt-8 text-center">
         <p className="text-sm text-secondary-600 mb-4">
           Want to try it yourself? Create a test payment with just $0.001
         </p>
         <Button variant="outline" className="border-primary-500 text-primary-600 hover:bg-primary-500 hover:text-white">
           Start Free Test
         </Button>
-      </motion.div>
+      </div>
     </div>
   );
 }

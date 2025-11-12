@@ -107,15 +107,7 @@ export default function ConnectWalletEmbedded({
   }, [autoConnect]); // eslint-disable-line react-hooks/exhaustive-deps
   // Intentionally limited deps - we only want to trigger on mount when autoConnect is true
 
-  if (isLoading) {
-    return (
-      <div className="p-4 text-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-        <p className="mt-2 text-gray-600">Loading...</p>
-      </div>
-    );
-  }
-
+  // Don't show loading spinner during SSR - always render actual content for SEO/crawlers
   if (user) {
     return (
       <div className="p-4 text-center">

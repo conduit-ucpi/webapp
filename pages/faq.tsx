@@ -1,5 +1,6 @@
 import Layout from '@/components/layout/Layout'
 import SEO from '@/components/SEO'
+import Link from 'next/link'
 import { GetStaticProps } from 'next'
 
 export default function FAQ() {
@@ -78,7 +79,7 @@ export default function FAQ() {
                         Who exactly makes dispute decisions and what are their qualifications?
                       </h3>
                       <p className="text-gray-600 leading-relaxed">
-                        Disputes use our auto-arbitration system. When you raise a dispute, you suggest a refund amount and explain your position. The other party can respond with their suggestion. You can both see the history of comments and suggestions in your dashboard. When you both enter the same refund amount, the dispute automatically resolves and distributes the funds accordingly. Full details at <a href="/arbitration-policy" className="text-blue-600 hover:text-blue-800 underline">our arbitration policy page</a>.
+                        Disputes use our auto-arbitration system. When you raise a dispute, you suggest a refund amount and explain your position. The other party can respond with their suggestion. You can both see the history of comments and suggestions in your dashboard. When you both enter the same refund amount, the dispute automatically resolves and distributes the funds accordingly. Full details at <Link href="/arbitration-policy" className="text-blue-600 hover:text-blue-800 underline">our arbitration policy page</Link>.
                       </p>
                     </article>
                   </div>
@@ -267,7 +268,7 @@ export default function FAQ() {
                         What information do you store about me?
                       </h3>
                       <p className="text-gray-600 leading-relaxed">
-                        Our privacy policy is at <a href="/privacy-policy" className="text-blue-600 hover:text-blue-800 underline">our privacy policy page</a>. On the public blockchain: amount, buyer wallet ID, seller wallet ID, expiry date, and description. We store email addresses on secured servers as they're necessary to provide the service, but this data is not part of any public interface.
+                        Our privacy policy is at <Link href="/privacy-policy" className="text-blue-600 hover:text-blue-800 underline">our privacy policy page</Link>. On the public blockchain: amount, buyer wallet ID, seller wallet ID, expiry date, and description. We store email addresses on secured servers as they're necessary to provide the service, but this data is not part of any public interface.
                       </p>
                     </article>
 

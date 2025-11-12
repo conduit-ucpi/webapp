@@ -446,15 +446,6 @@ export default function Wallet() {
               >
                 {(isLoadingBalances || isLoadingChainInfo) ? 'Refreshing...' : 'Refresh'}
               </Button>
-              <Button
-                onClick={handleShowWalletServices}
-                disabled={!user}
-                variant="outline"
-                size="sm"
-                title={!user ? 'Please connect your wallet first' : 'Open wallet management interface'}
-              >
-                Wallet Services
-              </Button>
               {isDynamicEmbeddedWallet && (
                 <Button
                   onClick={() => setShowDynamicUserProfile(true)}

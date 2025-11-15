@@ -1,6 +1,6 @@
 # Conduit UCPI Web3 SDK - Frontend
 
-A Next.js web application for creating and managing time-delayed escrow contracts on Avalanche blockchain.
+A Next.js web application for creating and managing time-delayed escrow contracts on Base blockchain.
 
 ## Features
 
@@ -357,6 +357,16 @@ __tests__/
 - All authentication via secure JWT tokens and HTTP-only cookies
 - Input validation on all user-provided data
 - Environment variables for sensitive configuration
+
+For security concerns, please see our [Security Policy](SECURITY.md).
+
+## Contributing
+
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+## License
+
+MIT License - see [LICENSE](LICENSE) file for details
 
 ---
 

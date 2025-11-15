@@ -83,7 +83,6 @@ export default function Plugins() {
 
   return (
     <React.Fragment>
-      {/* @ts-expect-error - Next.js Head component types issue */}
       <Head>
         {/* Primary Meta Tags */}
         <title>{pageTitle}</title>

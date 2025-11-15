@@ -39,3 +39,9 @@ certificates
 
 # Claude AI files
 .claude/
+
+# Log files and text dumps (may contain sensitive data like bearer tokens)
+*.log
+*.txt
+!CLAUDE.md
+!*.md

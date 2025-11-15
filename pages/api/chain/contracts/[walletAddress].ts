@@ -24,7 +24,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     console.log('Chain service response status:', response.status);
-    console.log('Chain service response headers:', Object.fromEntries(response.headers.entries()));
+    // SECURITY: Don't log response headers - they may contain set-cookie with auth tokens
 
     if (!response.ok) {
       const errorText = await response.text();

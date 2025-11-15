@@ -8,10 +8,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     console.log('Get combined contracts request');
-    console.log('Headers:', JSON.stringify(req.headers, null, 2));
-    console.log('Cookie header:', req.headers.cookie);
-    console.log('Authorization header:', req.headers.authorization);
-    
+    // SECURITY: Never log headers/cookies/tokens - they contain sensitive auth data
+
     const authToken = requireAuth(req);
 
     console.log('Auth token:', authToken ? 'Present' : 'Missing');
@@ -24,15 +22,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     };
 
     // Add X-API-Key header if available
-    console.log('X_API_KEY environment variable:', process.env.X_API_KEY ? 'Present' : 'Missing');
     if (process.env.X_API_KEY) {
       headers['X-API-Key'] = process.env.X_API_KEY;
-      console.log('Added X-API-Key header to request');
-    } else {
-      console.log('X_API_KEY environment variable not found - header will not be added');
     }
 
-    console.log('Headers being sent to contract service:', JSON.stringify(headers, null, 2));
+    // SECURITY: Never log headers - they contain bearer tokens and API keys
 
     // Fetch all contracts from the unified contracts endpoint
     const contractsResponse = await fetch(`${process.env.CONTRACT_SERVICE_URL}/api/contracts/combined-contracts`, {

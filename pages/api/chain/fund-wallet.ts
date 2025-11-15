@@ -10,7 +10,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const authToken = requireAuth(req);
 
     console.log('Fund wallet request:');
-    console.log('Cookies received:', req.headers.cookie || '');
+    // SECURITY: Never log cookies - they contain auth tokens
     console.log('Auth token extracted:', authToken ? 'Present' : 'Missing');
 
     const headers: Record<string, string> = {

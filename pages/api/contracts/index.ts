@@ -67,15 +67,11 @@ async function handleCreateContract(req: NextApiRequest, res: NextApiResponse) {
     };
 
     // Add X-API-Key header if available
-    console.log('X_API_KEY environment variable:', process.env.X_API_KEY ? 'Present' : 'Missing');
     if (process.env.X_API_KEY) {
       headers['X-API-Key'] = process.env.X_API_KEY;
-      console.log('Added X-API-Key header to request');
-    } else {
-      console.log('X_API_KEY environment variable not found - header will not be added');
     }
 
-    console.log('Headers being sent to contract service:', JSON.stringify(headers, null, 2));
+    // SECURITY: Never log headers - they contain bearer tokens and API keys
     console.log('Calling Contract Service:', `${process.env.CONTRACT_SERVICE_URL}/api/contracts`);
     console.log('REQUEST_BODY being sent:', JSON.stringify(req.body, null, 2));
 
@@ -86,7 +82,7 @@ async function handleCreateContract(req: NextApiRequest, res: NextApiResponse) {
     });
 
     console.log('Contract Service response status:', response.status);
-    console.log('Contract Service response headers:', Object.fromEntries(response.headers.entries()));
+    // SECURITY: Don't log response headers - they may contain set-cookie with auth tokens
 
     if (!response.ok) {
       console.error('Contract Service returned error status:', response.status);

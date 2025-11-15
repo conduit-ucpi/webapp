@@ -278,7 +278,8 @@ export class BackendAuth {
     
     // Always include auth token if available
     if (this.authToken) {
-      console.log('🔧 BackendAuth: Sending auth token:', this.authToken.substring(0, 20) + '...');
+      // SECURITY: Never log tokens, even partial tokens
+      console.log('🔧 BackendAuth: Auth token present, sending as Bearer token');
       headers['Authorization'] = `Bearer ${this.authToken}`;
     } else {
       console.log('🔧 BackendAuth: No auth token available, using cookies only');

@@ -32,6 +32,14 @@ export default function FAQ() {
           "@type": "Answer",
           "text": "Disputes use our auto-arbitration system. When you raise a dispute, you suggest a refund amount and explain your position. The other party can respond with their suggestion. You can both see the history of comments and suggestions in your dashboard. When you both enter the same refund amount, the dispute automatically resolves and distributes the funds accordingly."
         }
+      },
+      {
+        "@type": "Question",
+        "name": "Is your code open source so I can review it myself?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Yes! The entire Conduit UCPI platform is open source and available at github.com/conduit-ucpi. This includes our smart contracts, backend services, and frontend applications. You can review every line of code, see our development history, and verify that the deployed contracts match the published source code. This transparency is core to our commitment to trustless, secure transactions."
+        }
       }
     ]
   };
@@ -289,6 +297,15 @@ export default function FAQ() {
                         Want to verify our code yourself? Copy the verified contract from the blockchain explorer and paste it into tools like MythX, ask ChatGPT "can the admin steal funds from this contract?", or have any Solidity developer review it. The code is extensively commented to make admin limitations clear.
                         <br /><br />
                         We've used <a href="https://solidityscan.com/quickscan" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 underline">SolidityScan</a> to audit our contracts - you can too. It'll ask you to select a blockchain (we are on Base) and then paste in a contract address (you can get one by making a test transaction of $0.001 on our system for free). It'll give you a full audit report with a score of 94%: 'Great'.
+                      </p>
+                    </article>
+
+                    <article className="bg-white rounded-lg shadow-sm p-6">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                        Is your code open source so I can review it myself?
+                      </h3>
+                      <p className="text-gray-600 leading-relaxed">
+                        Yes! The entire Conduit UCPI platform is open source and available at <a href="https://github.com/conduit-ucpi" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 underline">github.com/conduit-ucpi</a>. This includes our smart contracts, backend services, and frontend applications. You can review every line of code, see our development history, and verify that the deployed contracts match the published source code. This transparency is core to our commitment to trustless, secure transactions.
                       </p>
                     </article>
 

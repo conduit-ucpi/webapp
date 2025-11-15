@@ -112,11 +112,22 @@ export default function Home() {
               </div>
             ) : (
               <div className="space-y-4 pt-6">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 mb-4">
+                  <p className="text-sm text-blue-800 font-medium">
+                    💡 No crypto wallet? No problem! Sign up with email or social login.
+                  </p>
+                </div>
                 <ConnectWalletEmbedded
                   useSmartRouting={false}
                   showTwoOptionLayout={true}
                 />
                 <div className="flex flex-wrap items-center gap-4 text-sm text-secondary-600 dark:text-secondary-400">
+                  <div className="flex items-center">
+                    <svg className="w-4 h-4 mr-2 text-primary-500" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                    No wallet needed
+                  </div>
                   <div className="flex items-center">
                     <svg className="w-4 h-4 mr-2 text-primary-500" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
@@ -438,8 +449,11 @@ export default function Home() {
             <section className="mt-32" aria-label="Get Started">
               <div className="text-center bg-primary-50 border border-primary-200 rounded-lg p-12 hover:border-primary-300 hover:shadow-lg transition-all">
                 <h2 className="text-3xl font-bold text-secondary-900 mb-4">You've been using the "hope for the best" system.</h2>
-                <p className="text-2xl text-primary-600 font-semibold mb-8">
+                <p className="text-2xl text-primary-600 font-semibold mb-4">
                   Time to upgrade.
+                </p>
+                <p className="text-lg text-secondary-700 mb-8">
+                  Start with just your email - no crypto wallet required
                 </p>
                 <ConnectWalletEmbedded
                   useSmartRouting={false}
@@ -450,7 +464,13 @@ export default function Home() {
                     <svg className="w-4 h-4 mr-2 text-primary-500" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                     </svg>
-                    60 second setup
+                    No wallet needed
+                  </div>
+                  <div className="flex items-center">
+                    <svg className="w-4 h-4 mr-2 text-primary-500" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                    Email or social login
                   </div>
                   <div className="flex items-center">
                     <svg className="w-4 h-4 mr-2 text-primary-500" fill="currentColor" viewBox="0 0 20 20">

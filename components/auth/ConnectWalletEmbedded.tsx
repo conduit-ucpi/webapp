@@ -224,7 +224,7 @@ export default function ConnectWalletEmbedded({
       </Button>
       {!compact && (
         <p className="mt-2 text-sm text-secondary-600 dark:text-secondary-400">
-          Connect your wallet to get started
+          Sign up with email or use your existing wallet
         </p>
       )}
     </div>

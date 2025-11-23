@@ -34,7 +34,12 @@ export default class CustomDocument extends Document<DocumentProps> {
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
         <meta httpEquiv="Content-Language" content="en" />
         <meta name="google" content="notranslate" />
-        
+
+        {/* Favicons */}
+        <link rel="icon" type="image/png" href="/favicon.png" />
+        <link rel="shortcut icon" href="/favicon.ico" />
+        <link rel="apple-touch-icon" href="/favicon.png" />
+
         {/* Farcaster mini-app configuration */}
         <meta name="fc:miniapp" content={`{"version": "next", "imageUrl": "${farcasterBaseUrl}/preview.png", "button": {"title": "🚩 Start", "action": {"type": "launch_frame", "name": "Instant Escrow", "url": "${farcasterBaseUrl}"}}}`} />
         {/* For backward compatibility */}

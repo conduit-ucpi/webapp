@@ -267,7 +267,8 @@ describe('Dynamic Modal Triggering with DYNAMIC_ENVIRONMENT_ID', () => {
 
     test('should disable button when connect function is not available', () => {
       // Override the mock temporarily
-      jest.spyOn(require('@/components/auth'), 'useAuth').mockReturnValue({
+      const mockUseAuth = jest.spyOn(require('@/components/auth'), 'useAuth');
+      mockUseAuth.mockReturnValue({
         user: null,
         isLoading: false,
         isConnected: false,
@@ -281,8 +282,8 @@ describe('Dynamic Modal Triggering with DYNAMIC_ENVIRONMENT_ID', () => {
       const button = screen.getByRole('button', { name: /get started/i });
       expect(button).toBeDisabled();
 
-      // Restore the mock
-      jest.restoreAllMocks();
+      // Restore only this specific mock
+      mockUseAuth.mockRestore();
     });
   });
 

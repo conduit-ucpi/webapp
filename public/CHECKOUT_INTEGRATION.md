@@ -9,7 +9,7 @@ Integrate secure stablecoin escrow payments into any website with just a few lin
 Add this to your website's HTML:
 
 ```html
-<script src="https://pay.conduit-ucpi.com/conduit-checkout.js"></script>
+<script src="https://app.instantescrow.nz/conduit-checkout.js"></script>
 ```
 
 ### 2. Initialize
@@ -20,7 +20,9 @@ Configure the checkout with your merchant wallet address:
 <script>
   ConduitCheckout.init({
     sellerAddress: '0xYourWalletAddress',
-    baseUrl: 'https://pay.conduit-ucpi.com',
+    baseUrl: 'https://app.instantescrow.nz',
+    tokenSymbol: 'USDC', // 'USDC' or 'USDT' (default: 'USDC')
+    expiryDays: 7, // Days until auto-release (default: 7)
     mode: 'popup', // or 'redirect'
     onSuccess: function(data) {
       console.log('Payment completed!', data);
@@ -78,7 +80,7 @@ ConduitCheckout.init({
 | Option | Type | Required | Default | Description |
 |--------|------|----------|---------|-------------|
 | `sellerAddress` | string | **Yes** | - | Your wallet address to receive payments |
-| `baseUrl` | string | **Yes** | - | Base URL of checkout page (e.g., `https://pay.conduit-ucpi.com`) |
+| `baseUrl` | string | **Yes** | - | Base URL of checkout page (e.g., `https://app.instantescrow.nz`) |
 | `tokenSymbol` | string | No | `'USDC'` | Default token: `'USDC'` or `'USDT'` |
 | `expiryDays` | number | No | `7` | Days until funds auto-release to seller |
 | `mode` | string | No | `'popup'` | Display mode: `'popup'` or `'redirect'` |
@@ -287,7 +289,7 @@ Track checkout events in your analytics:
 ```javascript
 ConduitCheckout.init({
   sellerAddress: '0x...',
-  baseUrl: 'https://pay.conduit-ucpi.com',
+  baseUrl: 'https://app.instantescrow.nz',
 
   onSuccess: function(data) {
     // Track successful payment

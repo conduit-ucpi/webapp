@@ -67,7 +67,7 @@ export default function IntegratePage() {
               <CodeBlock
                 section="step1"
                 language="html"
-                code={`<script src="${typeof window !== 'undefined' ? window.location.origin : 'https://pay.conduit-ucpi.com'}/conduit-checkout.js"></script>`}
+                code={`<script src="${typeof window !== 'undefined' ? window.location.origin : 'https://app.instantescrow.nz'}/conduit-checkout.js"></script>`}
               />
             </div>
 
@@ -87,7 +87,13 @@ export default function IntegratePage() {
     sellerAddress: '0xYourWalletAddressHere',
 
     // Base URL of checkout page
-    baseUrl: '${typeof window !== 'undefined' ? window.location.origin : 'https://pay.conduit-ucpi.com'}',
+    baseUrl: '${typeof window !== 'undefined' ? window.location.origin : 'https://app.instantescrow.nz'}',
+
+    // Default token: 'USDC' or 'USDT' (default: 'USDC')
+    tokenSymbol: 'USDC',
+
+    // Days until auto-release to seller (default: 7)
+    expiryDays: 7,
 
     // Display mode: 'popup' or 'redirect'
     mode: 'popup',

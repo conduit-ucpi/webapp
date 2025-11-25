@@ -258,6 +258,49 @@ export default function Plugins() {
           </nav>
           </section>
 
+          {/* JavaScript Integration */}
+          <section className="mb-12 border border-secondary-200 rounded-lg p-4 sm:p-6 lg:p-8" aria-labelledby="javascript-heading">
+            <div className="mb-6">
+              <h2 id="javascript-heading" className="text-xl sm:text-2xl font-bold text-secondary-900 mb-2">JavaScript SDK Integration</h2>
+              <p className="text-sm sm:text-base text-secondary-600">Lightweight JavaScript SDK for integrating crypto checkout into any website. Add secure USDC payments with built-in buyer protection using just 3 lines of code.</p>
+            </div>
+
+            <div className="mb-6 bg-secondary-50 border border-secondary-200 rounded-lg p-6">
+              <h3 className="text-base sm:text-lg font-semibold text-secondary-900 mb-4">Quick Integration Example</h3>
+              <pre className="bg-secondary-900 text-green-400 p-4 rounded-lg overflow-x-auto text-xs sm:text-sm">
+                <code>{`<!-- Add script to your HTML -->
+<script src="https://conduit-ucpi.com/sdk/checkout.js"></script>
+
+<!-- Add checkout button -->
+<button id="checkout-btn">Pay with USDC</button>
+
+<!-- Initialize checkout -->
+<script>
+  ConduitCheckout.init({
+    amount: 99.99,
+    description: "Product Name",
+    onSuccess: (txHash) => {
+      console.log("Payment successful:", txHash);
+    }
+  });
+</script>`}</code>
+              </pre>
+            </div>
+
+            <nav className="flex flex-col sm:flex-row gap-3 sm:gap-4" aria-label="JavaScript SDK actions">
+              <Link href="/integrate" className="flex-1">
+                <Button size="lg" className="w-full">
+                  View Complete Integration Guide
+                </Button>
+              </Link>
+              <Link href="/faq" className="flex-1">
+                <Button variant="outline" size="lg" className="w-full">
+                  FAQ
+                </Button>
+              </Link>
+            </nav>
+          </section>
+
           {/* How it works */}
           <section className="mb-12 sm:mb-16" aria-labelledby="how-it-works-heading">
             <h2 id="how-it-works-heading" className="text-xl sm:text-2xl font-bold text-secondary-900 mb-6">How Smart Contract Buyer Protection Works</h2>

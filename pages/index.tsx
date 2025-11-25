@@ -179,51 +179,23 @@ export default function Home() {
           </svg>
         </div>
 
-        {/* Integration Callouts */}
-        <div className="mt-12 grid md:grid-cols-2 gap-6">
-          {/* E-commerce Plugin */}
+        {/* Integration Callout */}
+        <div className="mt-12">
+          {/* E-commerce Integration */}
           <Link href="/plugins">
-            <div className="bg-gradient-to-r from-green-50 to-blue-50 border-2 border-green-200 rounded-xl p-6 hover:border-green-300 hover:shadow-lg transition-all cursor-pointer h-full">
-              <div className="flex flex-col h-full">
-                <div className="flex-1">
-                  <h3 className="text-lg sm:text-xl font-bold text-secondary-900 mb-2">
-                    E-commerce: WordPress & Shopify Plugins
-                  </h3>
-                  <p className="text-sm sm:text-base text-secondary-700">
-                    Add crypto checkout in 5 minutes • Built-in buyer protection • 1% fee
-                  </p>
-                </div>
-                <div className="mt-4">
-                  <div className="bg-green-500 text-white px-4 py-2 rounded-lg font-semibold flex items-center justify-center gap-2 hover:bg-green-600 transition-colors text-sm sm:text-base">
-                    View Plugins
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </Link>
-
-          {/* Developers Integration */}
-          <Link href="/integrate">
-            <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-200 rounded-xl p-6 hover:border-purple-300 hover:shadow-lg transition-all cursor-pointer h-full">
-              <div className="flex flex-col h-full">
-                <div className="flex-1">
-                  <h3 className="text-lg sm:text-xl font-bold text-secondary-900 mb-2">
-                    Developers: JavaScript Integration
-                  </h3>
-                  <p className="text-sm sm:text-base text-secondary-700">
-                    Add to any website with 3 lines of code • Full API docs • Live examples
-                  </p>
-                </div>
-                <div className="mt-4">
-                  <div className="bg-purple-500 text-white px-4 py-2 rounded-lg font-semibold flex items-center justify-center gap-2 hover:bg-purple-600 transition-colors text-sm sm:text-base">
-                    View Integration Guide
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </div>
+            <div className="bg-gradient-to-r from-green-50 to-blue-50 border-2 border-green-200 rounded-xl p-8 hover:border-green-300 hover:shadow-lg transition-all cursor-pointer">
+              <div className="text-center">
+                <h3 className="text-2xl sm:text-3xl font-bold text-secondary-900 mb-3">
+                  E-commerce Integration
+                </h3>
+                <p className="text-base sm:text-lg text-secondary-700 mb-6">
+                  WordPress & Shopify plugins • JavaScript SDK for any website • Built-in buyer protection • 1% fee
+                </p>
+                <div className="inline-flex bg-green-500 text-white px-6 py-3 rounded-lg font-semibold items-center gap-2 hover:bg-green-600 transition-colors text-base sm:text-lg">
+                  View Integration Options
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
                 </div>
               </div>
             </div>

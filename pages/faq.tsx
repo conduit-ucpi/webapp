@@ -2,8 +2,10 @@ import Layout from '@/components/layout/Layout'
 import SEO from '@/components/SEO'
 import Link from 'next/link'
 import { GetStaticProps } from 'next'
+import { useConfig } from '@/components/auth'
 
 export default function FAQ() {
+  const { config } = useConfig();
   // FAQ schema for search engines
   const faqSchema = {
     "@context": "https://schema.org",
@@ -296,7 +298,21 @@ export default function FAQ() {
                       <p className="text-gray-600 leading-relaxed">
                         Want to verify our code yourself? Copy the verified contract from the blockchain explorer and paste it into tools like MythX, ask ChatGPT "can the admin steal funds from this contract?", or have any Solidity developer review it. The code is extensively commented to make admin limitations clear.
                         <br /><br />
-                        We've used <a href="https://solidityscan.com/quickscan" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 underline">SolidityScan</a> to audit our contracts - you can too. It'll ask you to select a blockchain (we are on Base) and then paste in a contract address (you can get one by making a test transaction of $0.001 on our system for free). It'll give you a full audit report with a score of 94%: 'Great'.
+                        We've used <a href="https://solidityscan.com/quickscan" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 underline">SolidityScan</a> to audit our contracts - you can too. It'll ask you to select a blockchain (we are on Base) and then paste in a contract address. It'll give you a full audit report with a score of 94%: 'Great'.
+                        {config?.contractAddress && (
+                          <>
+                            <br /><br />
+                            <strong>Contract Implementation Address:</strong>
+                            <br />
+                            <code className="bg-gray-100 px-2 py-1 rounded text-sm break-all">
+                              {config.contractAddress}
+                            </code>
+                            <br />
+                            <span className="text-sm text-gray-500">
+                              You can use this address to verify our smart contract code on SolidityScan or any blockchain explorer.
+                            </span>
+                          </>
+                        )}
                       </p>
                     </article>
 

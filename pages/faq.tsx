@@ -2,7 +2,7 @@ import Layout from '@/components/layout/Layout'
 import SEO from '@/components/SEO'
 import Link from 'next/link'
 import { GetStaticProps } from 'next'
-import { useConfig } from '@/components/auth'
+import { useConfig } from '@/components/auth/ConfigProvider'
 
 export default function FAQ() {
   const { config } = useConfig();

@@ -221,10 +221,12 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
                   <div>
                     <p className="text-sm font-medium text-secondary-700">Funding Status</p>
                     <p className="text-secondary-900">
-                      {contract.funded ? (
+                      {contract.funded || status === 'CLAIMED' ? (
                         <span className="text-success-600 font-medium">✓ Funded</span>
-                      ) : (
+                      ) : contract.funded === false ? (
                         <span className="text-warning-600 font-medium">⚠️ Not Funded</span>
+                      ) : (
+                        <span className="text-secondary-500 font-medium">— Status Unknown</span>
                       )}
                     </p>
                   </div>

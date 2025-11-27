@@ -96,14 +96,19 @@ export default function EnhancedContractCard({
     };
   }, [contract]);
 
+  // Extract status for use in multiple places
+  const status = useMemo(() => {
+    return 'status' in contract ? contract.status : 'PENDING';
+  }, [contract]);
+
   // Use backend-provided status display only
   const statusDisplay = useMemo(() => {
     // For regular contracts, use the status field from the backend
-    let status = 'status' in contract ? contract.status : 'PENDING';
-    
+    let displayStatus = status;
+
     // For pending contracts without a status field, show PENDING
-    if (isPending && !status) {
-      status = 'PENDING';
+    if (isPending && !displayStatus) {
+      displayStatus = 'PENDING';
     }
     
     // Map status to appropriate colors
@@ -124,12 +129,12 @@ export default function EnhancedContractCard({
           return 'bg-secondary-50 text-secondary-600 border-secondary-200';
       }
     };
-    
+
     return {
-      label: status || 'Unknown',
-      color: getStatusColor(status || 'UNKNOWN')
+      label: displayStatus || 'Unknown',
+      color: getStatusColor(displayStatus || 'UNKNOWN')
     };
-  }, [contract, isPending]);
+  }, [status, isPending]);
   
   return (
     <div 
@@ -208,11 +213,11 @@ export default function EnhancedContractCard({
             {statusDisplay.label}
           </p>
         </div>
-        {!isPending && contract.funded !== undefined && (
+        {!isPending && (contract.funded !== undefined || status === 'CLAIMED') && (
           <div>
             <p className="text-secondary-500">Funded</p>
             <p className="font-medium text-secondary-900">
-              {contract.funded ? 'Yes ✓' : 'No ✗'}
+              {contract.funded || status === 'CLAIMED' ? 'Yes ✓' : 'No ✗'}
             </p>
           </div>
         )}

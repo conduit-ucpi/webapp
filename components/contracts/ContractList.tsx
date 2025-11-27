@@ -45,10 +45,12 @@ export default function ContractList() {
         }
         
         const contract = item.contract;
-        
-        // Check if this is a pending contract (no blockchain data)
-        if (!contract.chainAddress || !item.blockchainQuerySuccessful) {
-          // This is a pending contract
+
+        // Check if this is a pending contract (not yet deployed to blockchain)
+        // A contract is only pending if it has NO chainAddress in MongoDB
+        // Blockchain query failures don't make a deployed contract "pending"
+        if (!contract.chainAddress) {
+          // This is a pending contract (not yet deployed)
           const pendingContract: PendingContract = {
             id: contract.id,
             sellerEmail: contract.sellerEmail || '',

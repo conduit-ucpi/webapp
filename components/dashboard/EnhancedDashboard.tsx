@@ -149,9 +149,11 @@ export default function EnhancedDashboard() {
         }
         
         const contract = item.contract;
-        
-        if (!contract.chainAddress || !item.blockchainQuerySuccessful) {
-          // Pending contract
+
+        // A contract is only pending if it has NO chainAddress in MongoDB
+        // Blockchain query failures don't make a deployed contract "pending"
+        if (!contract.chainAddress) {
+          // Pending contract (not yet deployed)
           const pendingContract: PendingContract = {
             id: contract.id,
             sellerEmail: contract.sellerEmail || '',
@@ -262,9 +264,11 @@ export default function EnhancedDashboard() {
         }
         
         const contract = item.contract;
-        
-        if (!contract.chainAddress || !item.blockchainQuerySuccessful) {
-          // Pending contract
+
+        // A contract is only pending if it has NO chainAddress in MongoDB
+        // Blockchain query failures don't make a deployed contract "pending"
+        if (!contract.chainAddress) {
+          // Pending contract (not yet deployed)
           const pendingContract: PendingContract = {
             id: contract.id,
             sellerEmail: contract.sellerEmail || '',

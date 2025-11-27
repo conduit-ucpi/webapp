@@ -78,6 +78,7 @@ export default function CreateContractWizard() {
   });
   const [errors, setErrors] = useState<FormErrors>({});
   const [showQRModal, setShowQRModal] = useState(false);
+  const [isInstantPayment, setIsInstantPayment] = useState(false);
 
   // Utility functions (same as original)
   const getUserTimezone = () => {
@@ -136,20 +137,23 @@ export default function CreateContractWizard() {
       case 1: // Payment Terms
         // Use SDK utils if available, otherwise fall back to local validation
         const amountValidator = isValidAmount;
-        
+
         if (!amountValidator(form.amount)) {
           newErrors.amount = 'Please enter a valid amount';
         }
-        
-        const now = Math.floor(Date.now() / 1000);
-        const oneYearFromNow = now + (365 * 24 * 60 * 60);
-        
-        if (!form.payoutTimestamp || form.payoutTimestamp <= 0) {
-          newErrors.expiry = 'Please select a valid date and time';
-        } else if (form.payoutTimestamp <= now) {
-          newErrors.expiry = 'Payout time must be in the future';
-        } else if (form.payoutTimestamp > oneYearFromNow) {
-          newErrors.expiry = 'Payout time must be within 1 year';
+
+        // Only validate timestamp if not instant payment
+        if (!isInstantPayment) {
+          const now = Math.floor(Date.now() / 1000);
+          const oneYearFromNow = now + (365 * 24 * 60 * 60);
+
+          if (!form.payoutTimestamp || form.payoutTimestamp <= 0) {
+            newErrors.expiry = 'Please select a valid date and time';
+          } else if (form.payoutTimestamp <= now) {
+            newErrors.expiry = 'Payout time must be in the future';
+          } else if (form.payoutTimestamp > oneYearFromNow) {
+            newErrors.expiry = 'Payout time must be within 1 year';
+          }
         }
         break;
         
@@ -301,7 +305,7 @@ export default function CreateContractWizard() {
               <p className="text-secondary-600 mb-6">
                 Set the amount and when funds should be released.
               </p>
-              
+
               <div className="space-y-6">
                 <div>
                   <Input
@@ -317,45 +321,75 @@ export default function CreateContractWizard() {
                   />
                   <div className="mt-2 p-3 bg-info-50 border border-info-200 rounded-md">
                     <p className="text-sm text-info-800">
-                      💡 <strong>How it works:</strong> The buyer pays this amount upfront. 
-                      Funds are held securely until the release date, then automatically 
+                      💡 <strong>How it works:</strong> The buyer pays this amount upfront.
+                      Funds are held securely until the release date, then automatically
                       transferred to you.
                     </p>
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-secondary-700 mb-2">
-                    When should funds be released?
-                    <span className="ml-2 text-xs font-normal text-secondary-500">
-                      (Your timezone: {getUserTimezone()})
-                    </span>
-                  </label>
+                {/* Instant Payment Checkbox */}
+                <div className="flex items-start">
                   <input
-                    type="datetime-local"
-                    className="w-full border border-secondary-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                    value={timestampToDatetimeLocal(form.payoutTimestamp)}
-                    onChange={(e) => setForm(prev => ({ 
-                      ...prev, 
-                      payoutTimestamp: datetimeLocalToTimestamp(e.target.value) 
-                    }))}
-                    min={getCurrentLocalDatetime()}
-                    max={getMaxLocalDatetime()}
+                    type="checkbox"
+                    id="instantPayment"
+                    checked={isInstantPayment}
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      setIsInstantPayment(checked);
+                      if (checked) {
+                        // Set timestamp to 0 for instant payment
+                        setForm(prev => ({ ...prev, payoutTimestamp: 0 }));
+                      } else {
+                        // Reset to default timestamp when unchecked
+                        setForm(prev => ({ ...prev, payoutTimestamp: getDefaultTimestamp() }));
+                      }
+                    }}
+                    className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-secondary-300 rounded mt-0.5"
                   />
-                  {errors.expiry && (
-                    <p className="text-sm text-error-600 mt-1">{errors.expiry}</p>
-                  )}
-                  <div className="flex justify-between items-center mt-2">
-                    <p className="text-xs text-secondary-500">
-                      Funds will be released automatically at this time
+                  <label htmlFor="instantPayment" className="ml-3 block text-sm text-secondary-700">
+                    <span className="font-medium">Instant QR code payment</span>
+                    <p className="text-secondary-500 mt-1">
+                      Funds are released immediately after payment (no time delay)
                     </p>
-                    {form.payoutTimestamp && !errors.expiry && (
-                      <p className="text-xs font-medium text-primary-600">
-                        {getRelativeTime(form.payoutTimestamp)}
-                      </p>
-                    )}
-                  </div>
+                  </label>
                 </div>
+
+                {/* Conditional datetime input - only show if NOT instant payment */}
+                {!isInstantPayment && (
+                  <div>
+                    <label className="block text-sm font-medium text-secondary-700 mb-2">
+                      When should funds be released?
+                      <span className="ml-2 text-xs font-normal text-secondary-500">
+                        (Your timezone: {getUserTimezone()})
+                      </span>
+                    </label>
+                    <input
+                      type="datetime-local"
+                      className="w-full border border-secondary-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                      value={timestampToDatetimeLocal(form.payoutTimestamp)}
+                      onChange={(e) => setForm(prev => ({
+                        ...prev,
+                        payoutTimestamp: datetimeLocalToTimestamp(e.target.value)
+                      }))}
+                      min={getCurrentLocalDatetime()}
+                      max={getMaxLocalDatetime()}
+                    />
+                    {errors.expiry && (
+                      <p className="text-sm text-error-600 mt-1">{errors.expiry}</p>
+                    )}
+                    <div className="flex justify-between items-center mt-2">
+                      <p className="text-xs text-secondary-500">
+                        Funds will be released automatically at this time
+                      </p>
+                      {form.payoutTimestamp && !errors.expiry && (
+                        <p className="text-xs font-medium text-primary-600">
+                          {getRelativeTime(form.payoutTimestamp)}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             </>
           } />
@@ -390,7 +424,7 @@ export default function CreateContractWizard() {
                     <div className="flex justify-between">
                       <span className="text-secondary-600">Release date:</span>
                       <span className="font-medium">
-                        {formatDateTimeWithTZ(form.payoutTimestamp)}
+                        {isInstantPayment ? 'Instant (no delay)' : formatDateTimeWithTZ(form.payoutTimestamp)}
                       </span>
                     </div>
                     <div className="flex justify-between">
@@ -416,12 +450,19 @@ export default function CreateContractWizard() {
                     </li>
                     <li className="flex items-start">
                       <span className="font-medium mr-2">3.</span>
-                      <span>Funds are automatically released to you on {formatDateTimeWithTZ(form.payoutTimestamp)}</span>
+                      <span>
+                        {isInstantPayment
+                          ? 'Funds are released to you immediately after payment'
+                          : `Funds are automatically released to you on ${formatDateTimeWithTZ(form.payoutTimestamp)}`
+                        }
+                      </span>
                     </li>
-                    <li className="flex items-start">
-                      <span className="font-medium mr-2">4.</span>
-                      <span>Both parties can raise disputes if needed before the release date</span>
-                    </li>
+                    {!isInstantPayment && (
+                      <li className="flex items-start">
+                        <span className="font-medium mr-2">4.</span>
+                        <span>Both parties can raise disputes if needed before the release date</span>
+                      </li>
+                    )}
                   </ol>
                 </div>
 
@@ -458,7 +499,8 @@ export default function CreateContractWizard() {
       case 0:
         return form.buyerEmail && form.description;
       case 1:
-        return form.amount && form.payoutTimestamp;
+        // For instant payment, timestamp can be 0; for delayed payment, it must be set
+        return form.amount && (isInstantPayment || form.payoutTimestamp > 0);
       case 2:
         return user && user.walletAddress; // Only allow final submission when user is authenticated
       default:
@@ -487,7 +529,7 @@ export default function CreateContractWizard() {
             
             <div className="mt-8">
               {currentStep === steps.length - 1 ? (
-                // Final step: Show both buttons
+                // Final step: Single action button
                 <div className="space-y-4">
                   {/* Previous button */}
                   {currentStep > 0 && (
@@ -502,31 +544,31 @@ export default function CreateContractWizard() {
                     </div>
                   )}
 
-                  {/* Action buttons */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Single action button - behavior depends on payment type */}
+                  <div className="flex flex-col items-center gap-3">
                     <Button
-                      onClick={handleNext}
+                      onClick={() => {
+                        if (isInstantPayment) {
+                          // Instant payment: Open QR modal
+                          handleGenerateQR();
+                        } else {
+                          // Normal payment: Submit and send email
+                          handleNext();
+                        }
+                      }}
                       disabled={!canProceed() || isLoading}
-                      className="w-full bg-primary-500 hover:bg-primary-600"
+                      className="w-full sm:w-auto px-8 bg-primary-500 hover:bg-primary-600"
                     >
                       {isLoading ? 'Creating...' : 'Create Payment Request'}
                     </Button>
-                    <Button
-                      onClick={handleGenerateQR}
-                      disabled={!canProceed()}
-                      variant="outline"
-                      className="w-full border-2 border-primary-500 text-primary-600 hover:bg-primary-50"
-                    >
-                      <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
-                      </svg>
-                      Create in-person QR
-                    </Button>
-                  </div>
 
-                  <p className="text-sm text-secondary-500 text-center">
-                    Choose to send an email notification or generate a QR code for in-person payments
-                  </p>
+                    <p className="text-sm text-secondary-500 text-center">
+                      {isInstantPayment
+                        ? 'A QR code will be generated for instant in-person payment'
+                        : 'An email notification will be sent to the buyer'
+                      }
+                    </p>
+                  </div>
                 </div>
               ) : (
                 // Other steps: Show standard navigation

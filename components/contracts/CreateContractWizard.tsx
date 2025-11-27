@@ -7,6 +7,7 @@ import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 import BuyerInput from '@/components/ui/BuyerInput';
 import WalletInfo from '@/components/ui/WalletInfo';
+import PaymentQRModal from '@/components/ui/PaymentQRModal';
 import { Wizard, WizardStep, WizardNavigation, WizardStep as Step } from '@/components/ui/Wizard';
 import {
   isValidEmail,
@@ -76,18 +77,41 @@ export default function CreateContractWizard() {
     description: ''
   });
   const [errors, setErrors] = useState<FormErrors>({});
+  const [showQRModal, setShowQRModal] = useState(false);
 
   // Utility functions (same as original)
   const getUserTimezone = () => {
     const date = new Date();
-    const timeString = date.toLocaleTimeString('en-US', { 
-      timeZoneName: 'short' 
+    const timeString = date.toLocaleTimeString('en-US', {
+      timeZoneName: 'short'
     });
     const parts = timeString.split(' ');
     return parts[parts.length - 1];
   };
 
+  // Generate payment URL for in-person QR code
+  const generatePaymentUrl = (): string => {
+    if (!user || !config) return '';
 
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+    const params = new URLSearchParams({
+      seller: user.walletAddress || '',
+      amount: form.amount,
+      description: form.description,
+      epoch_expiry: form.payoutTimestamp.toString(),
+      tokenSymbol: config.tokenSymbol || 'USDC'
+    });
+
+    return `${baseUrl}/contract-create?${params.toString()}`;
+  };
+
+  // Handle in-person QR code generation
+  const handleGenerateQR = () => {
+    if (!validateStep(2)) {
+      return;
+    }
+    setShowQRModal(true);
+  };
 
   // Validation for each step
   const validateStep = (step: number): boolean => {
@@ -462,23 +486,76 @@ export default function CreateContractWizard() {
             {renderStepContent()}
             
             <div className="mt-8">
-              <WizardNavigation
-                currentStep={currentStep}
-                totalSteps={steps.length}
-                onNext={handleNext}
-                onPrevious={currentStep > 0 ? handlePrevious : undefined}
-                isNextDisabled={!canProceed()}
-                isNextLoading={isLoading}
-                nextLabel={
-                  currentStep === steps.length - 1 
-                    ? 'Create Payment Request'
-                    : 'Continue'
-                }
-              />
+              {currentStep === steps.length - 1 ? (
+                // Final step: Show both buttons
+                <div className="space-y-4">
+                  {/* Previous button */}
+                  {currentStep > 0 && (
+                    <div className="flex justify-start">
+                      <Button
+                        onClick={handlePrevious}
+                        variant="outline"
+                        disabled={isLoading}
+                      >
+                        Previous
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* Action buttons */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <Button
+                      onClick={handleNext}
+                      disabled={!canProceed() || isLoading}
+                      className="w-full bg-primary-500 hover:bg-primary-600"
+                    >
+                      {isLoading ? 'Creating...' : 'Create Payment Request'}
+                    </Button>
+                    <Button
+                      onClick={handleGenerateQR}
+                      disabled={!canProceed()}
+                      variant="outline"
+                      className="w-full border-2 border-primary-500 text-primary-600 hover:bg-primary-50"
+                    >
+                      <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                      </svg>
+                      Create in-person QR
+                    </Button>
+                  </div>
+
+                  <p className="text-sm text-secondary-500 text-center">
+                    Choose to send an email notification or generate a QR code for in-person payments
+                  </p>
+                </div>
+              ) : (
+                // Other steps: Show standard navigation
+                <WizardNavigation
+                  currentStep={currentStep}
+                  totalSteps={steps.length}
+                  onNext={handleNext}
+                  onPrevious={currentStep > 0 ? handlePrevious : undefined}
+                  isNextDisabled={!canProceed()}
+                  isNextLoading={isLoading}
+                  nextLabel="Continue"
+                />
+              )}
             </div>
           </>
         }
       />
+
+      {/* Payment QR Modal */}
+      {showQRModal && (
+        <PaymentQRModal
+          isOpen={showQRModal}
+          onClose={() => setShowQRModal(false)}
+          url={generatePaymentUrl()}
+          amount={form.amount}
+          description={form.description}
+          tokenSymbol={config?.tokenSymbol || 'USDC'}
+        />
+      )}
     </div>
   );
 }

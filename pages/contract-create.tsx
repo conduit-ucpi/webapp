@@ -310,10 +310,11 @@ export default function ContractCreate() {
       
       // Parse epoch_expiry from query params if provided and valid
       let expiryTimestamp = Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60); // Default to 7 days
-      
-      if (epoch_expiry) {
+
+      if (epoch_expiry !== undefined) {
         const parsedExpiry = parseInt(epoch_expiry as string, 10);
-        if (!isNaN(parsedExpiry) && parsedExpiry > Math.floor(Date.now() / 1000)) {
+        // Allow 0 for instant payments, or any future timestamp
+        if (!isNaN(parsedExpiry) && (parsedExpiry === 0 || parsedExpiry > Math.floor(Date.now() / 1000))) {
           expiryTimestamp = parsedExpiry;
         } else {
           console.warn('Invalid or past epoch_expiry provided:', epoch_expiry);
@@ -438,9 +439,10 @@ export default function ContractCreate() {
       
       // Parse expiry timestamp same way as in contract creation
       let expiryTimestamp = Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60); // Default to 7 days
-      if (epoch_expiry) {
+      if (epoch_expiry !== undefined) {
         const parsedExpiry = parseInt(epoch_expiry as string, 10);
-        if (!isNaN(parsedExpiry) && parsedExpiry > Math.floor(Date.now() / 1000)) {
+        // Allow 0 for instant payments, or any future timestamp
+        if (!isNaN(parsedExpiry) && (parsedExpiry === 0 || parsedExpiry > Math.floor(Date.now() / 1000))) {
           expiryTimestamp = parsedExpiry;
         }
       }
@@ -751,7 +753,7 @@ export default function ContractCreate() {
 
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <h2 className="text-xl font-semibold text-gray-900 mb-4">
-                {isInIframe || isInPopup ? 'Stablecoin payment protected by escrow, no gas fees' : 'Create Escrow Contract'}
+                {isInIframe || isInPopup ? 'Stablecoin payment protected by escrow, no gas fees' : 'Payment Agreement'}
               </h2>
               
               <div className="space-y-4">
@@ -808,17 +810,21 @@ export default function ContractCreate() {
                   {(() => {
                     // Calculate expiry timestamp (same logic as in handleCreateContract)
                     let expiryTimestamp = Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60); // Default to 7 days
-                    if (epoch_expiry) {
+                    if (epoch_expiry !== undefined) {
                       const parsedExpiry = parseInt(epoch_expiry as string, 10);
-                      if (!isNaN(parsedExpiry) && parsedExpiry > Math.floor(Date.now() / 1000)) {
+                      // Allow 0 for instant payments, or any future timestamp
+                      if (!isNaN(parsedExpiry) && (parsedExpiry === 0 || parsedExpiry > Math.floor(Date.now() / 1000))) {
                         expiryTimestamp = parsedExpiry;
                       }
                     }
-                    return formatDateTimeWithTZ(expiryTimestamp);
+                    return expiryTimestamp === 0 ? 'Instant' : formatDateTimeWithTZ(expiryTimestamp);
                   })()}
                 </p>
                 <p className="text-xs text-gray-500 mt-1">
-                  Funds will be released to the seller after this date if not disputed
+                  {epoch_expiry === '0' || parseInt(epoch_expiry as string || '') === 0
+                    ? 'Funds will be released immediately after payment'
+                    : 'Funds will be released to the seller after this date if not disputed'
+                  }
                 </p>
               </div>
 
@@ -863,7 +869,7 @@ export default function ContractCreate() {
                       {loadingMessage || 'Creating...'}
                     </>
                   ) : (
-                    isInIframe || isInPopup ? 'Create Payment' : 'Create Contract'
+                    isInIframe || isInPopup ? 'Create Payment' : 'Pay'
                   )}
                 </Button>
               </div>
@@ -899,13 +905,14 @@ export default function ContractCreate() {
                   {(() => {
                     // Calculate expiry timestamp (same logic as in handleCreateContract)
                     let expiryTimestamp = Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60); // Default to 7 days
-                    if (epoch_expiry) {
+                    if (epoch_expiry !== undefined) {
                       const parsedExpiry = parseInt(epoch_expiry as string, 10);
-                      if (!isNaN(parsedExpiry) && parsedExpiry > Math.floor(Date.now() / 1000)) {
+                      // Allow 0 for instant payments, or any future timestamp
+                      if (!isNaN(parsedExpiry) && (parsedExpiry === 0 || parsedExpiry > Math.floor(Date.now() / 1000))) {
                         expiryTimestamp = parsedExpiry;
                       }
                     }
-                    return formatDateTimeWithTZ(expiryTimestamp);
+                    return expiryTimestamp === 0 ? 'Instant' : formatDateTimeWithTZ(expiryTimestamp);
                   })()}
                 </span>
               </div>
@@ -981,7 +988,17 @@ export default function ContractCreate() {
             ) : (
               <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4 mb-6">
                 <p className="text-sm text-yellow-800">
-                  Your ${form.amount} {selectedTokenSymbol} will be held securely in escrow and released to the seller on the payout date unless you raise a dispute (see email for instructions).
+                  {(() => {
+                    // Check if this is an instant payment
+                    const parsedExpiry = epoch_expiry !== undefined ? parseInt(epoch_expiry as string, 10) : -1;
+                    const isInstant = parsedExpiry === 0;
+
+                    if (isInstant) {
+                      return `Your $${form.amount} ${selectedTokenSymbol} will be released to the seller immediately after payment confirmation.`;
+                    } else {
+                      return `Your $${form.amount} ${selectedTokenSymbol} will be held securely in escrow and released to the seller on the payout date unless you raise a dispute (see email for instructions).`;
+                    }
+                  })()}
                 </p>
               </div>
             )}

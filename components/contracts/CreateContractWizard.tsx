@@ -122,13 +122,16 @@ export default function CreateContractWizard() {
       case 0: // Basic Details
         // Use SDK utils if available, otherwise fall back to local validation
         const descriptionValidator = isValidDescription;
-        
-        // Validate buyer identifier (email or Farcaster handle)
-        const buyerValidation = isValidBuyerIdentifier(form.buyerEmail);
-        if (!buyerValidation.isValid) {
-          newErrors.buyerEmail = buyerValidation.error || 'Invalid buyer identifier';
+
+        // Only validate buyer email if NOT instant payment (email not needed for QR payments)
+        if (!isInstantPayment) {
+          // Validate buyer identifier (email or Farcaster handle)
+          const buyerValidation = isValidBuyerIdentifier(form.buyerEmail);
+          if (!buyerValidation.isValid) {
+            newErrors.buyerEmail = buyerValidation.error || 'Invalid buyer identifier';
+          }
         }
-        
+
         if (!descriptionValidator(form.description)) {
           newErrors.description = 'Description must be 1-160 characters';
         }
@@ -250,26 +253,65 @@ export default function CreateContractWizard() {
           <WizardStep children={
             <>
               <h2 className="text-xl font-semibold text-secondary-900 mb-2">
-                Who's the buyer?
+                {isInstantPayment ? 'Payment details' : "Who's the buyer?"}
               </h2>
               <p className="text-secondary-600 mb-6">
-                Tell us who will be making the payment and what this request is for.
+                {isInstantPayment
+                  ? 'Set up an instant QR code payment for in-person transactions.'
+                  : 'Tell us who will be making the payment and what this request is for.'
+                }
               </p>
-              
+
               <div className="space-y-6">
-                <BuyerInput
-                  label="Buyer's email address"
-                  value={form.buyerEmail}
-                  onChange={(value, type, fid) => setForm(prev => ({ 
-                    ...prev, 
-                    buyerEmail: value,
-                    buyerType: type,
-                    buyerFid: fid
-                  }))}
-                  error={errors.buyerEmail}
-                  placeholder="Search Farcaster user or enter email"
-                  helpText="They'll receive an email with payment instructions"
-                />
+                {/* Instant Payment Checkbox */}
+                <div className="flex items-start">
+                  <input
+                    type="checkbox"
+                    id="instantPayment"
+                    checked={isInstantPayment}
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      setIsInstantPayment(checked);
+                      if (checked) {
+                        // Set timestamp to 0 for instant payment and clear buyer email
+                        setForm(prev => ({
+                          ...prev,
+                          payoutTimestamp: 0,
+                          buyerEmail: '',
+                          buyerType: 'email',
+                          buyerFid: undefined
+                        }));
+                      } else {
+                        // Reset to default timestamp when unchecked
+                        setForm(prev => ({ ...prev, payoutTimestamp: getDefaultTimestamp() }));
+                      }
+                    }}
+                    className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-secondary-300 rounded mt-0.5"
+                  />
+                  <label htmlFor="instantPayment" className="ml-3 block text-sm text-secondary-700">
+                    <span className="font-medium">Instant QR code payment</span>
+                    <p className="text-secondary-500 mt-1">
+                      For in-person transactions - funds are released immediately after payment (no email needed)
+                    </p>
+                  </label>
+                </div>
+
+                {/* Buyer email - only show if NOT instant payment */}
+                {!isInstantPayment && (
+                  <BuyerInput
+                    label="Buyer's email address"
+                    value={form.buyerEmail}
+                    onChange={(value, type, fid) => setForm(prev => ({
+                      ...prev,
+                      buyerEmail: value,
+                      buyerType: type,
+                      buyerFid: fid
+                    }))}
+                    error={errors.buyerEmail}
+                    placeholder="Search Farcaster user or enter email"
+                    helpText="They'll receive an email with payment instructions"
+                  />
+                )}
 
                 <div>
                   <label className="block text-sm font-medium text-secondary-700 mb-2">
@@ -287,7 +329,10 @@ export default function CreateContractWizard() {
                     <p className="text-sm text-error-600 mt-1">{errors.description}</p>
                   )}
                   <p className="text-xs text-secondary-500 mt-2">
-                    This will appear in the payment request email to the buyer.
+                    {isInstantPayment
+                      ? 'This will appear on the QR code payment screen.'
+                      : 'This will appear in the payment request email to the buyer.'
+                    }
                   </p>
                 </div>
               </div>
@@ -303,7 +348,10 @@ export default function CreateContractWizard() {
                 Payment terms
               </h2>
               <p className="text-secondary-600 mb-6">
-                Set the amount and when funds should be released.
+                {isInstantPayment
+                  ? 'Set the amount for this instant payment.'
+                  : 'Set the amount and when funds should be released.'
+                }
               </p>
 
               <div className="space-y-6">
@@ -322,37 +370,12 @@ export default function CreateContractWizard() {
                   <div className="mt-2 p-3 bg-info-50 border border-info-200 rounded-md">
                     <p className="text-sm text-info-800">
                       💡 <strong>How it works:</strong> The buyer pays this amount upfront.
-                      Funds are held securely until the release date, then automatically
-                      transferred to you.
+                      {isInstantPayment
+                        ? ' Funds are released to you immediately after payment.'
+                        : ' Funds are held securely until the release date, then automatically transferred to you.'
+                      }
                     </p>
                   </div>
-                </div>
-
-                {/* Instant Payment Checkbox */}
-                <div className="flex items-start">
-                  <input
-                    type="checkbox"
-                    id="instantPayment"
-                    checked={isInstantPayment}
-                    onChange={(e) => {
-                      const checked = e.target.checked;
-                      setIsInstantPayment(checked);
-                      if (checked) {
-                        // Set timestamp to 0 for instant payment
-                        setForm(prev => ({ ...prev, payoutTimestamp: 0 }));
-                      } else {
-                        // Reset to default timestamp when unchecked
-                        setForm(prev => ({ ...prev, payoutTimestamp: getDefaultTimestamp() }));
-                      }
-                    }}
-                    className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-secondary-300 rounded mt-0.5"
-                  />
-                  <label htmlFor="instantPayment" className="ml-3 block text-sm text-secondary-700">
-                    <span className="font-medium">Instant QR code payment</span>
-                    <p className="text-secondary-500 mt-1">
-                      Funds are released immediately after payment (no time delay)
-                    </p>
-                  </label>
                 </div>
 
                 {/* Conditional datetime input - only show if NOT instant payment */}
@@ -409,12 +432,16 @@ export default function CreateContractWizard() {
               <div className="space-y-6">
                 {/* Contract Summary */}
                 <div className="bg-secondary-50 rounded-lg p-4">
-                  <h3 className="font-medium text-secondary-900 mb-4">Payment Request Summary</h3>
+                  <h3 className="font-medium text-secondary-900 mb-4">
+                    {isInstantPayment ? 'QR Code Payment Summary' : 'Payment Request Summary'}
+                  </h3>
                   <div className="space-y-3">
-                    <div className="flex justify-between">
-                      <span className="text-secondary-600">Buyer:</span>
-                      <span className="font-medium">{form.buyerEmail}</span>
-                    </div>
+                    {!isInstantPayment && (
+                      <div className="flex justify-between">
+                        <span className="text-secondary-600">Buyer:</span>
+                        <span className="font-medium">{form.buyerEmail}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between">
                       <span className="text-secondary-600">Amount:</span>
                       <span className="font-medium text-lg">
@@ -439,31 +466,41 @@ export default function CreateContractWizard() {
                 {/* What happens next */}
                 <div className="bg-primary-50 rounded-lg p-4">
                   <h3 className="font-medium text-primary-900 mb-3">What happens next?</h3>
-                  <ol className="space-y-2 text-sm text-primary-800">
-                    <li className="flex items-start">
-                      <span className="font-medium mr-2">1.</span>
-                      <span>{form.buyerEmail} receives an email with payment instructions</span>
-                    </li>
-                    <li className="flex items-start">
-                      <span className="font-medium mr-2">2.</span>
-                      <span>They pay {formatUSDC(toMicroUSDC(parseFloat(form.amount || '0')))} {config?.tokenSymbol || 'USDC'} to our secure escrow</span>
-                    </li>
-                    <li className="flex items-start">
-                      <span className="font-medium mr-2">3.</span>
-                      <span>
-                        {isInstantPayment
-                          ? 'Funds are released to you immediately after payment'
-                          : `Funds are automatically released to you on ${formatDateTimeWithTZ(form.payoutTimestamp)}`
-                        }
-                      </span>
-                    </li>
-                    {!isInstantPayment && (
+                  {isInstantPayment ? (
+                    <ol className="space-y-2 text-sm text-primary-800">
+                      <li className="flex items-start">
+                        <span className="font-medium mr-2">1.</span>
+                        <span>A QR code will be generated for in-person payment</span>
+                      </li>
+                      <li className="flex items-start">
+                        <span className="font-medium mr-2">2.</span>
+                        <span>The buyer scans the QR code and pays {formatUSDC(toMicroUSDC(parseFloat(form.amount || '0')))} {config?.tokenSymbol || 'USDC'}</span>
+                      </li>
+                      <li className="flex items-start">
+                        <span className="font-medium mr-2">3.</span>
+                        <span>Funds are released to you immediately after payment confirmation</span>
+                      </li>
+                    </ol>
+                  ) : (
+                    <ol className="space-y-2 text-sm text-primary-800">
+                      <li className="flex items-start">
+                        <span className="font-medium mr-2">1.</span>
+                        <span>{form.buyerEmail} receives an email with payment instructions</span>
+                      </li>
+                      <li className="flex items-start">
+                        <span className="font-medium mr-2">2.</span>
+                        <span>They pay {formatUSDC(toMicroUSDC(parseFloat(form.amount || '0')))} {config?.tokenSymbol || 'USDC'} to our secure escrow</span>
+                      </li>
+                      <li className="flex items-start">
+                        <span className="font-medium mr-2">3.</span>
+                        <span>Funds are automatically released to you on {formatDateTimeWithTZ(form.payoutTimestamp)}</span>
+                      </li>
                       <li className="flex items-start">
                         <span className="font-medium mr-2">4.</span>
                         <span>Both parties can raise disputes if needed before the release date</span>
                       </li>
-                    )}
-                  </ol>
+                    </ol>
+                  )}
                 </div>
 
 
@@ -497,7 +534,8 @@ export default function CreateContractWizard() {
   const canProceed = () => {
     switch (currentStep) {
       case 0:
-        return form.buyerEmail && form.description;
+        // For instant payment, only description is needed; for normal payment, email + description
+        return isInstantPayment ? !!form.description : !!(form.buyerEmail && form.description);
       case 1:
         // For instant payment, timestamp can be 0; for delayed payment, it must be set
         return form.amount && (isInstantPayment || form.payoutTimestamp > 0);

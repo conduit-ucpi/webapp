@@ -217,7 +217,7 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
                       </a>
                     )}
                   </div>
-                  
+
                   <div>
                     <p className="text-sm font-medium text-secondary-700">Funding Status</p>
                     <p className="text-secondary-900">
@@ -229,6 +229,23 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
                     </p>
                   </div>
                 </>
+              )}
+
+              {isPending && (contract as PendingContract).chainAddress && (
+                <div>
+                  <p className="text-sm font-medium text-secondary-700">Contract Address</p>
+                  <ExpandableHash hash={(contract as PendingContract).chainAddress || ''} />
+                  {config?.explorerBaseUrl && (contract as PendingContract).chainAddress && (
+                    <a
+                      href={`${config.explorerBaseUrl}/address/${(contract as PendingContract).chainAddress}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-primary-600 hover:text-primary-700 mt-1 inline-block"
+                    >
+                      View on Explorer ↗
+                    </a>
+                  )}
+                </div>
               )}
               
               {isPending && (

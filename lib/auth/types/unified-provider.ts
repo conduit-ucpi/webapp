@@ -72,6 +72,10 @@ export interface UnifiedProvider {
 
   // Optional: User info (for social logins)
   getUserInfo?(): Record<string, unknown> | null;
+
+  // Optional: Get auth token (JWT) for backend authentication
+  // Dynamic provider uses this to get JWT tokens for API authentication
+  getAuthToken?(): string | null;
 }
 
 /**

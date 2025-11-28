@@ -195,6 +195,9 @@ export class AuthManager {
   /**
    * Sign a message for backend authentication
    * This is called AFTER successful connection to authenticate with backend
+   *
+   * For Dynamic provider: Uses JWT token directly (no signature prompt)
+   * For other providers: Uses signature-based authentication
    */
   async signMessageForAuth(): Promise<string> {
     if (!this.currentProvider) {
@@ -205,15 +208,67 @@ export class AuthManager {
       throw new Error('No wallet address available');
     }
 
+    // OPTIMIZED FLOW: For Dynamic, use JWT directly (no signature prompt!)
+    if (this.state.providerName === 'dynamic') {
+      mLog.info('AuthManager', 'Using Dynamic JWT authentication (no signature required)', {
+        address: this.state.address,
+        providerName: this.state.providerName
+      });
+
+      try {
+        const userInfo = this.currentProvider?.getUserInfo?.();
+        if (userInfo && userInfo.idToken) {
+          mLog.info('AuthManager', 'Dynamic JWT token available, creating auth token', {
+            hasEmail: !!userInfo.email,
+            hasName: !!userInfo.name
+          });
+
+          // Create auth token using Dynamic's JWT (no signature needed!)
+          const authToken = btoa(JSON.stringify({
+            type: 'dynamic_jwt_auth',
+            walletAddress: this.state.address,
+            dynamicJwt: userInfo.idToken,
+            email: userInfo.email,
+            name: userInfo.name,
+            dynamicUserId: (userInfo as any).dynamicUserId,
+            timestamp: Date.now(),
+            issuer: 'dynamic_jwt_auth',
+            header: {
+              alg: 'JWT',
+              typ: 'DYNAMIC'
+            },
+            payload: {
+              sub: this.state.address,
+              iat: Math.floor(Date.now() / 1000),
+              iss: 'dynamic_jwt_auth',
+              wallet_type: 'dynamic'
+            }
+          }));
+
+          mLog.info('AuthManager', '✅ Dynamic JWT authentication successful (no user prompt needed)');
+          return authToken;
+        } else {
+          mLog.warn('AuthManager', 'No Dynamic JWT available, falling back to signature auth');
+          // Fall through to signature-based auth below
+        }
+      } catch (dynamicError) {
+        mLog.warn('AuthManager', 'Failed to get Dynamic JWT, falling back to signature auth', {
+          error: dynamicError instanceof Error ? dynamicError.message : String(dynamicError)
+        });
+        // Fall through to signature-based auth below
+      }
+    }
+
+    // SIGNATURE-BASED AUTH: For non-Dynamic providers or Dynamic without JWT
+    mLog.info('AuthManager', 'Using signature-based authentication', {
+      address: this.state.address,
+      providerName: this.state.providerName
+    });
+
     // Generate authentication message with timestamp and nonce
     const timestamp = Date.now();
     const nonce = Math.random().toString(36).substring(2, 15);
     const message = `Authenticate wallet ${this.state.address} at ${timestamp} with nonce ${nonce}`;
-
-    mLog.info('AuthManager', 'Signing message for backend authentication', {
-      address: this.state.address,
-      providerName: this.state.providerName
-    });
 
     try {
       // Use the provider's signMessage method (which handles mobile MetaMask workaround internally)
@@ -259,56 +314,14 @@ export class AuthManager {
         }
       }));
 
-      mLog.info('AuthManager', '✅ Message signed successfully for backend auth');
+      mLog.info('AuthManager', '✅ Signature-based authentication successful');
       return authToken;
 
     } catch (error) {
-      mLog.error('AuthManager', 'Failed to sign message for auth', {
-        error: error instanceof Error ? error.message : String(error)
+      mLog.error('AuthManager', 'Signature-based authentication failed', {
+        error: error instanceof Error ? error.message : String(error),
+        providerName: this.state.providerName
       });
-
-      // Fallback: Try using Dynamic's JWT token for social login users
-      if (this.state.providerName === 'dynamic') {
-        mLog.info('AuthManager', 'Attempting Dynamic JWT fallback authentication');
-
-        try {
-          const userInfo = this.currentProvider?.getUserInfo?.();
-          if (userInfo && userInfo.idToken) {
-            mLog.info('AuthManager', 'Using Dynamic JWT token for authentication');
-
-            // Create auth token using Dynamic's JWT instead of signature
-            const authToken = btoa(JSON.stringify({
-              type: 'dynamic_jwt_auth',
-              walletAddress: this.state.address,
-              dynamicJwt: userInfo.idToken,
-              email: userInfo.email,
-              name: userInfo.name,
-              dynamicUserId: (userInfo as any).dynamicUserId,
-              timestamp: Date.now(),
-              issuer: 'dynamic_social_login',
-              header: {
-                alg: 'JWT',
-                typ: 'DYNAMIC'
-              },
-              payload: {
-                sub: this.state.address,
-                iat: Math.floor(Date.now() / 1000),
-                iss: 'dynamic_social_login',
-                wallet_type: 'dynamic_embedded'
-              }
-            }));
-
-            mLog.info('AuthManager', '✅ Dynamic JWT fallback authentication successful');
-            return authToken;
-          } else {
-            mLog.warn('AuthManager', 'No Dynamic JWT token available for fallback');
-          }
-        } catch (fallbackError) {
-          mLog.error('AuthManager', 'Dynamic JWT fallback failed', {
-            error: fallbackError instanceof Error ? fallbackError.message : String(fallbackError)
-          });
-        }
-      }
 
       throw error;
     }

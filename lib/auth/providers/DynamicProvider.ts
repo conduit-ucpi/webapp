@@ -1185,6 +1185,58 @@ export class DynamicProvider implements UnifiedProvider {
     return null;
   }
 
+  /**
+   * Get Dynamic's JWT auth token for backend authentication
+   * This is a simplified method that ONLY returns valid JWTs, not URLs or other data
+   */
+  getAuthToken(): string | null {
+    // Try window.dynamicGetAuthToken first (official Dynamic SDK method)
+    if (typeof window !== 'undefined' && (window as any).dynamicGetAuthToken) {
+      try {
+        const token = (window as any).dynamicGetAuthToken();
+        if (token && typeof token === 'string' && token.split('.').length === 3) {
+          return token;
+        }
+      } catch (err) {
+        // Ignore errors, try next method
+      }
+    }
+
+    // Try official localStorage keys
+    if (typeof window !== 'undefined') {
+      const tokenKeys = [
+        'dynamic_authentication_token',
+        'dynamic_min_authentication_token'
+      ];
+
+      for (const key of tokenKeys) {
+        try {
+          const token = localStorage.getItem(key);
+          if (token && token.split('.').length === 3) {
+            return token;
+          }
+        } catch (err) {
+          // Ignore storage errors
+        }
+      }
+    }
+
+    // Try user object fields
+    if (typeof window !== 'undefined' && (window as any).dynamicUser) {
+      const user = (window as any).dynamicUser;
+      const userTokenFields = ['accessToken', 'authToken', 'token', 'jwt'];
+
+      for (const field of userTokenFields) {
+        if (user[field] && typeof user[field] === 'string' && user[field].split('.').length === 3) {
+          return user[field];
+        }
+      }
+    }
+
+    // No valid JWT found - return null to fall back to signature auth
+    return null;
+  }
+
   getCapabilities(): ProviderCapabilities {
     return {
       canSign: true,

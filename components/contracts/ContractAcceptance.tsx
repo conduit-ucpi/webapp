@@ -20,7 +20,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
   const { config } = useConfig();
   const { user, authenticatedFetch } = useAuth();
   const tokenSymbol = config?.tokenSymbol || 'USDC';
-  const { fundAndSendTransaction, getUSDCBalance, approveUSDC, depositToContract, getWeb3Service } = useSimpleEthers();
+  const { fundAndSendTransaction, getUSDCBalance, approveUSDC, depositToContract, depositFundsAsProxy, getWeb3Service } = useSimpleEthers();
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
   const [hasError, setHasError] = useState(false);
@@ -164,11 +164,13 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
             authenticatedFetch,
             approveUSDC,
             depositToContract,
+            depositFundsAsProxy,
             getWeb3Service,
             onProgress: createContractProgressHandler({
               setLoadingMessage,
               setContractAddress
-            }, 'Step')
+            }, 'Step'),
+            useProxyDeposit: true
           }
         );
 

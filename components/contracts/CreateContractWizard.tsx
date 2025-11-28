@@ -79,6 +79,19 @@ export default function CreateContractWizard() {
   const [errors, setErrors] = useState<FormErrors>({});
   const [showQRModal, setShowQRModal] = useState(false);
   const [isInstantPayment, setIsInstantPayment] = useState(false);
+  const [selectedTokenSymbol, setSelectedTokenSymbol] = useState<string>(
+    config?.defaultTokenSymbol || config?.tokenSymbol || 'USDC'
+  );
+
+  // Determine available tokens based on config
+  const availableTokens: Array<{ symbol: string; details: any }> = [];
+  if (config?.usdcDetails || config?.usdcContractAddress) {
+    availableTokens.push({ symbol: 'USDC', details: config?.usdcDetails });
+  }
+  if (config?.usdtDetails) {
+    availableTokens.push({ symbol: 'USDT', details: config?.usdtDetails });
+  }
+  const hasMultipleTokens = availableTokens.length > 1;
 
   // Utility functions (same as original)
   const getUserTimezone = () => {
@@ -100,7 +113,7 @@ export default function CreateContractWizard() {
       amount: form.amount,
       description: form.description,
       epoch_expiry: form.payoutTimestamp.toString(),
-      tokenSymbol: config.tokenSymbol || 'USDC'
+      tokenSymbol: selectedTokenSymbol
     });
 
     return `${baseUrl}/contract-create?${params.toString()}`;
@@ -206,7 +219,8 @@ export default function CreateContractWizard() {
         sellerEmail: user.email,
         sellerAddress: user.walletAddress,
         amount: toMicroUSDC(parseFloat(form.amount.trim())),
-        currency: 'microUSDC',
+        currency: `micro${selectedTokenSymbol}`,
+        currencySymbol: selectedTokenSymbol,
         description: form.description,
         expiryTimestamp: form.payoutTimestamp,
         serviceLink: config.serviceLink
@@ -355,9 +369,32 @@ export default function CreateContractWizard() {
               </p>
 
               <div className="space-y-6">
+                {/* Token Selector - only show if multiple tokens available */}
+                {hasMultipleTokens && (
+                  <div>
+                    <label className="block text-sm font-medium text-secondary-700 mb-2">
+                      Payment Token
+                    </label>
+                    <select
+                      className="w-full border border-secondary-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                      value={selectedTokenSymbol}
+                      onChange={(e) => setSelectedTokenSymbol(e.target.value)}
+                    >
+                      {availableTokens.map((token) => (
+                        <option key={token.symbol} value={token.symbol}>
+                          {token.symbol}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-secondary-500 mt-2">
+                      Select which stablecoin the buyer will use for payment
+                    </p>
+                  </div>
+                )}
+
                 <div>
                   <Input
-                    label={`Amount (${config?.tokenSymbol || 'USDC'})`}
+                    label={`Amount (${selectedTokenSymbol})`}
                     type="number"
                     step="0.001"
                     min="0"
@@ -445,7 +482,7 @@ export default function CreateContractWizard() {
                     <div className="flex justify-between">
                       <span className="text-secondary-600">Amount:</span>
                       <span className="font-medium text-lg">
-                        {formatUSDC(toMicroUSDC(parseFloat(form.amount || '0')))} {config?.tokenSymbol || 'USDC'}
+                        {formatUSDC(toMicroUSDC(parseFloat(form.amount || '0')))} {selectedTokenSymbol}
                       </span>
                     </div>
                     <div className="flex justify-between">
@@ -474,7 +511,7 @@ export default function CreateContractWizard() {
                       </li>
                       <li className="flex items-start">
                         <span className="font-medium mr-2">2.</span>
-                        <span>The buyer scans the QR code and pays {formatUSDC(toMicroUSDC(parseFloat(form.amount || '0')))} {config?.tokenSymbol || 'USDC'}</span>
+                        <span>The buyer scans the QR code and pays {formatUSDC(toMicroUSDC(parseFloat(form.amount || '0')))} {selectedTokenSymbol}</span>
                       </li>
                       <li className="flex items-start">
                         <span className="font-medium mr-2">3.</span>
@@ -489,7 +526,7 @@ export default function CreateContractWizard() {
                       </li>
                       <li className="flex items-start">
                         <span className="font-medium mr-2">2.</span>
-                        <span>They pay {formatUSDC(toMicroUSDC(parseFloat(form.amount || '0')))} {config?.tokenSymbol || 'USDC'} to our secure escrow</span>
+                        <span>They pay {formatUSDC(toMicroUSDC(parseFloat(form.amount || '0')))} {selectedTokenSymbol} to our secure escrow</span>
                       </li>
                       <li className="flex items-start">
                         <span className="font-medium mr-2">3.</span>
@@ -633,7 +670,7 @@ export default function CreateContractWizard() {
           url={generatePaymentUrl()}
           amount={form.amount}
           description={form.description}
-          tokenSymbol={config?.tokenSymbol || 'USDC'}
+          tokenSymbol={selectedTokenSymbol}
         />
       )}
     </div>

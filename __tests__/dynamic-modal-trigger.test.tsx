@@ -191,10 +191,25 @@ describe('Dynamic Modal Triggering with DYNAMIC_ENVIRONMENT_ID', () => {
         }
       };
 
-      mockConnect.mockResolvedValue(connectionResult);
+      // Set up mock to simulate connection state change
+      let connected = false;
+      mockConnect.mockImplementation(async () => {
+        connected = true;
+        return connectionResult;
+      });
       mockAuthenticateBackend.mockResolvedValue(true);
 
-      render(<ConnectWalletEmbedded />);
+      // Mock useAuth to return updated state after connection
+      jest.spyOn(require('@/components/auth'), 'useAuth').mockImplementation(() => ({
+        user: null,
+        isLoading: false,
+        isConnected: connected,
+        address: connected ? connectionResult.address : null,
+        connect: mockConnect,
+        authenticateBackend: mockAuthenticateBackend
+      }));
+
+      const { rerender } = render(<ConnectWalletEmbedded />);
 
       const button = screen.getByRole('button', { name: /get started/i });
 
@@ -202,16 +217,22 @@ describe('Dynamic Modal Triggering with DYNAMIC_ENVIRONMENT_ID', () => {
         await user.click(button);
       });
 
+      // Re-render to trigger useEffect with new isConnected state
+      rerender(<ConnectWalletEmbedded />);
+
       await waitFor(() => {
         expect(mockAuthenticateBackend).toHaveBeenCalledWith(connectionResult);
       });
+
+      // Restore the mock
+      jest.restoreAllMocks();
     });
 
     test('should call onSuccess callback after successful authentication', async () => {
       const user = userEvent.setup();
       const onSuccess = jest.fn();
 
-      mockConnect.mockResolvedValue({
+      const connectionResult = {
         success: true,
         address: '0x1234567890123456789012345678901234567890',
         capabilities: {
@@ -220,10 +241,27 @@ describe('Dynamic Modal Triggering with DYNAMIC_ENVIRONMENT_ID', () => {
           canSwitchWallets: true,
           isAuthOnly: false
         }
+      };
+
+      // Set up mock to simulate connection state change
+      let connected = false;
+      mockConnect.mockImplementation(async () => {
+        connected = true;
+        return connectionResult;
       });
       mockAuthenticateBackend.mockResolvedValue(true);
 
-      render(<ConnectWalletEmbedded onSuccess={onSuccess} />);
+      // Mock useAuth to return updated state after connection
+      jest.spyOn(require('@/components/auth'), 'useAuth').mockImplementation(() => ({
+        user: null,
+        isLoading: false,
+        isConnected: connected,
+        address: connected ? connectionResult.address : null,
+        connect: mockConnect,
+        authenticateBackend: mockAuthenticateBackend
+      }));
+
+      const { rerender } = render(<ConnectWalletEmbedded onSuccess={onSuccess} />);
 
       const button = screen.getByRole('button', { name: /get started/i });
 
@@ -231,9 +269,15 @@ describe('Dynamic Modal Triggering with DYNAMIC_ENVIRONMENT_ID', () => {
         await user.click(button);
       });
 
+      // Re-render to trigger useEffect with new isConnected state
+      rerender(<ConnectWalletEmbedded onSuccess={onSuccess} />);
+
       await waitFor(() => {
         expect(onSuccess).toHaveBeenCalled();
       });
+
+      // Restore the mock
+      jest.restoreAllMocks();
     });
 
     test('should not call authenticateBackend if connection fails', async () => {

@@ -24,7 +24,7 @@
     "@dynamic-labs/ethers-v6": "4.45.1",
     "@dynamic-labs/sdk-react-core": "4.45.1",
     "@dynamic-labs/wagmi-connector": "4.45.1",
-    "@farcaster/miniapp-sdk": "^0.1.9",
+    "@farcaster/miniapp-sdk": "^0.2.0",
     "@farcaster/miniapp-wagmi-connector": "^1.0.0",
     "@headlessui/react": "^1.7.19",
     "@heroicons/react": "^2.2.0",

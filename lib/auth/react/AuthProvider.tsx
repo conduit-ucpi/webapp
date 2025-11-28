@@ -2,7 +2,7 @@
  * React Auth Provider - Main context provider for the reorganized auth system
  */
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { AuthConfig } from '../types';
 import { AuthState, AuthUser, ConnectionResult } from '../types/unified-provider';
 import { AuthManager } from '../core/AuthManager';
@@ -125,17 +125,20 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
   }, [authManager, isConnecting]);
 
   const authenticateBackend = useCallback(async (connectionResult?: ConnectionResult): Promise<boolean> => {
+    // Get latest state from authManager instead of closure to avoid stale state
+    const currentState = authManager.getState();
+
     mLog.info('AuthProvider', 'authenticateBackend called', {
       hasConnectionResult: !!connectionResult,
       connectionSuccess: connectionResult?.success,
       connectionAddress: connectionResult?.address,
-      reactStateConnected: state.isConnected,
-      reactStateAddress: state.address
+      reactStateConnected: currentState.isConnected,
+      reactStateAddress: currentState.address
     });
 
-    // Use connection result if provided, otherwise fall back to React state
-    const isConnected = connectionResult?.success ?? state.isConnected;
-    const address = connectionResult?.address ?? state.address;
+    // Use connection result if provided, otherwise fall back to current state
+    const isConnected = connectionResult?.success ?? currentState.isConnected;
+    const address = connectionResult?.address ?? currentState.address;
 
     mLog.debug('AuthProvider', 'Authentication state check', {
       isConnected,
@@ -146,7 +149,7 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
     if (!isConnected) {
       mLog.error('AuthProvider', 'Cannot authenticate - no wallet connected', {
         connectionResultSuccess: connectionResult?.success,
-        reactStateConnected: state.isConnected,
+        reactStateConnected: currentState.isConnected,
         usingConnectionResult: !!connectionResult
       });
       return false;
@@ -155,7 +158,7 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
     if (!address) {
       mLog.error('AuthProvider', 'Cannot authenticate - no address available', {
         connectionResultAddress: connectionResult?.address,
-        reactStateAddress: state.address,
+        reactStateAddress: currentState.address,
         usingConnectionResult: !!connectionResult
       });
       return false;
@@ -209,7 +212,7 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
       });
       return false;
     }
-  }, [authManager, authService, state.isConnected, state.address]);
+  }, [authManager, authService]); // Removed state dependencies - now reads directly from authManager
 
   const disconnect = useCallback(async (): Promise<void> => {
     try {
@@ -262,7 +265,8 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
     return await authManager.getEthersProvider();
   }, [authManager]);
 
-  const contextValue: AuthContextValue = {
+  // Memoize context value to prevent unnecessary re-renders
+  const contextValue: AuthContextValue = useMemo(() => ({
     // State
     state,
     user,
@@ -281,7 +285,16 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
 
     // Blockchain
     getEthersProvider
-  };
+  }), [
+    state,
+    user,
+    connect,
+    authenticateBackend,
+    disconnect,
+    switchWallet,
+    signMessage,
+    getEthersProvider
+  ]);
 
   return (
     <AuthContext.Provider value={contextValue}>

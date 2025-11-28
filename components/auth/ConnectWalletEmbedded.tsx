@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useAuth } from '@/components/auth';
 import Button from '@/components/ui/Button';
 import { mLog } from '@/utils/mobileLogger';
@@ -25,78 +25,123 @@ export default function ConnectWalletEmbedded({
   const { user, isLoading, connect, authenticateBackend, isConnected, address } = useAuth();
   const [isAuthenticating, setIsAuthenticating] = useState(false);
 
-  // Auto-authenticate on OAuth redirect
-  useEffect(() => {
-    const handleOAuthRedirect = async () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      const isOAuthRedirect = urlParams.has('dynamicOauthCode') || urlParams.has('dynamicOauthState');
+  // Track if OAuth redirect has already been processed to prevent re-runs
+  const oauthProcessedRef = useRef(false);
+  const oauthAttemptsRef = useRef(0);
 
-      mLog.info('ConnectWalletEmbedded', 'OAuth redirect check in useEffect', {
-        isOAuthRedirect,
+  // Store latest callbacks in refs to avoid dependency issues
+  const authenticateBackendRef = useRef(authenticateBackend);
+  const onSuccessRef = useRef(onSuccess);
+
+  useEffect(() => {
+    authenticateBackendRef.current = authenticateBackend;
+  }, [authenticateBackend]);
+
+  useEffect(() => {
+    onSuccessRef.current = onSuccess;
+  }, [onSuccess]);
+
+  // Auto-authenticate on OAuth redirect - ONLY run when connection state changes
+  useEffect(() => {
+    // Check if this is an OAuth redirect
+    const urlParams = new URLSearchParams(window.location.search);
+    const isOAuthRedirect = urlParams.has('dynamicOauthCode') || urlParams.has('dynamicOauthState');
+
+    // Early exit conditions - prevent spam
+    if (!isOAuthRedirect) {
+      return; // Not an OAuth redirect, nothing to do
+    }
+
+    if (oauthProcessedRef.current) {
+      return; // Already processed, don't run again
+    }
+
+    if (!isConnected || !address) {
+      // OAuth redirect detected but not connected yet - schedule retries
+      const maxAttempts = 5;
+
+      if (oauthAttemptsRef.current >= maxAttempts) {
+        mLog.warn('ConnectWalletEmbedded', 'Max OAuth retry attempts reached', {
+          attempts: oauthAttemptsRef.current,
+          isConnected,
+          hasAddress: !!address
+        });
+        return;
+      }
+
+      oauthAttemptsRef.current++;
+
+      mLog.debug('ConnectWalletEmbedded', 'OAuth redirect detected, waiting for connection', {
+        attempt: oauthAttemptsRef.current,
+        maxAttempts,
+        isConnected,
+        hasAddress: !!address
+      });
+
+      return; // Will retry when isConnected or address changes
+    }
+
+    if (user) {
+      // Already authenticated, just clean up URL
+      if (window.history && window.history.replaceState) {
+        const cleanUrl = window.location.origin + window.location.pathname;
+        window.history.replaceState({}, document.title, cleanUrl);
+        mLog.info('ConnectWalletEmbedded', 'OAuth params cleaned - user already authenticated');
+      }
+      oauthProcessedRef.current = true;
+      return;
+    }
+
+    // All conditions met: isOAuthRedirect && isConnected && address && !user && !processed
+    const handleOAuthAuth = async () => {
+      mLog.info('ConnectWalletEmbedded', 'Processing OAuth redirect authentication', {
         isConnected,
         address,
         hasUser: !!user,
-        willTriggerAuth: isOAuthRedirect && isConnected && address && !user
+        attempt: oauthAttemptsRef.current
       });
 
-      if (isOAuthRedirect && isConnected && address && !user) {
-        mLog.info('ConnectWalletEmbedded', 'Auto-authenticating OAuth redirect', {
-          isConnected,
-          address,
-          hasUser: !!user
+      try {
+        setIsAuthenticating(true);
+        oauthProcessedRef.current = true; // Mark as processed immediately to prevent duplicates
+
+        const authSuccess = await authenticateBackendRef.current({
+          success: true,
+          address: address,
+          capabilities: {
+            canSign: true,
+            canTransact: true,
+            canSwitchWallets: true,
+            isAuthOnly: false
+          }
         });
 
-        try {
-          setIsAuthenticating(true);
-          const authSuccess = await authenticateBackend({
-            success: true,
-            address: address,
-            capabilities: {
-              canSign: true,
-              canTransact: true,
-              canSwitchWallets: true,
-              isAuthOnly: false
-            }
-          });
+        if (authSuccess) {
+          mLog.info('ConnectWalletEmbedded', '✅ OAuth auto-authentication successful');
+          onSuccessRef.current?.();
 
-          if (authSuccess) {
-            mLog.info('ConnectWalletEmbedded', 'OAuth auto-authentication successful');
-            onSuccess?.();
-
-            // Clean up OAuth parameters from URL
-            if (window.history && window.history.replaceState) {
-              const cleanUrl = window.location.origin + window.location.pathname;
-              window.history.replaceState({}, document.title, cleanUrl);
-              mLog.info('ConnectWalletEmbedded', 'OAuth parameters auto-cleaned from URL');
-            }
-          } else {
-            mLog.error('ConnectWalletEmbedded', 'OAuth auto-authentication failed');
+          // Clean up OAuth parameters from URL
+          if (window.history && window.history.replaceState) {
+            const cleanUrl = window.location.origin + window.location.pathname;
+            window.history.replaceState({}, document.title, cleanUrl);
+            mLog.info('ConnectWalletEmbedded', 'OAuth parameters cleaned from URL');
           }
-        } catch (error) {
-          mLog.error('ConnectWalletEmbedded', 'OAuth auto-authentication error', {
-            error: error instanceof Error ? error.message : String(error)
-          });
-        } finally {
-          setIsAuthenticating(false);
+        } else {
+          mLog.error('ConnectWalletEmbedded', 'OAuth auto-authentication failed');
+          oauthProcessedRef.current = false; // Allow retry on failure
         }
+      } catch (error) {
+        mLog.error('ConnectWalletEmbedded', 'OAuth auto-authentication error', {
+          error: error instanceof Error ? error.message : String(error)
+        });
+        oauthProcessedRef.current = false; // Allow retry on error
+      } finally {
+        setIsAuthenticating(false);
       }
     };
 
-    // Run immediately and then with increasing delays to catch Dynamic's async connection
-    handleOAuthRedirect();
-
-    const timeouts: NodeJS.Timeout[] = [];
-
-    // Try multiple times with increasing delays
-    [100, 300, 500, 1000, 2000].forEach(delay => {
-      const timeoutId = setTimeout(handleOAuthRedirect, delay);
-      timeouts.push(timeoutId);
-    });
-
-    return () => {
-      timeouts.forEach(clearTimeout);
-    };
-  }, [isConnected, address, user, authenticateBackend, onSuccess]);
+    handleOAuthAuth();
+  }, [isConnected, address, user]); // Only depend on connection state, not callbacks
 
   // Auto-connect when autoConnect prop is true (e.g., from Shopify flow)
   useEffect(() => {

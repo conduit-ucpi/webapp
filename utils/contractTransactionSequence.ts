@@ -4,10 +4,14 @@
  * This handles the critical sequencing of:
  * 1. Contract creation (via chainservice)
  * 2. USDC approval (wait for confirmation)
- * 3. Deposit funds (wait for confirmation)
+ * 3. Deposit funds (wait for confirmation) + notify contractservice
  *
  * This prevents nonce collisions by ensuring each transaction is confirmed
  * before proceeding to the next one.
+ *
+ * Two deposit methods are supported:
+ * - Direct: User signs deposit transaction, then webapp notifies contractservice (steps 3 + 4)
+ * - Proxy: Chainservice deposits and notifies in one call (step 3 only)
  */
 
 interface ContractCreationParams {
@@ -31,8 +35,10 @@ interface TransactionSequenceOptions {
   authenticatedFetch: (url: string, options?: RequestInit) => Promise<Response>;
   approveUSDC: (contractAddress: string, amount: string, tokenAddress?: string) => Promise<string>;
   depositToContract: (contractAddress: string) => Promise<string>;
+  depositFundsAsProxy?: (contractAddress: string) => Promise<string>;
   getWeb3Service: () => Promise<any>;
   onProgress?: (step: string, message: string, contractAddress?: string) => void;
+  useProxyDeposit?: boolean; // If true, use depositFundsAsProxy instead of depositToContract
 }
 
 /**
@@ -43,7 +49,15 @@ export async function executeContractTransactionSequence(
   params: ContractCreationParams,
   options: TransactionSequenceOptions
 ): Promise<TransactionSequenceResult> {
-  const { authenticatedFetch, approveUSDC, depositToContract, getWeb3Service, onProgress } = options;
+  const {
+    authenticatedFetch,
+    approveUSDC,
+    depositToContract,
+    depositFundsAsProxy,
+    getWeb3Service,
+    onProgress,
+    useProxyDeposit = false // Default to direct deposit (old behavior)
+  } = options;
 
   // Step 1: Create the contract on the blockchain
   onProgress?.('contract_creation', 'Creating secure escrow contract...');
@@ -135,60 +149,84 @@ export async function executeContractTransactionSequence(
     console.log('🔧 ContractSequence: No approval transaction hash returned, proceeding to deposit immediately');
   }
 
-  // Step 3: Deposit funds into the contract
-  onProgress?.('deposit', 'Depositing funds into escrow...');
+  // Step 3: Deposit funds into the contract (and notify contractservice)
+  // Two methods available:
+  // - Direct: User signs deposit tx, then we notify contractservice (2 separate steps)
+  // - Proxy: Chainservice deposits and notifies in one call (1 combined step)
 
-  const depositTxHash = await depositToContract(contractAddress);
+  let depositTxHash: string;
 
-  console.log('🔧 ContractSequence: Deposit transaction:', depositTxHash);
-
-  // Step 3.5: Wait for deposit transaction to be confirmed (optional, but good practice)
-  if (depositTxHash) {
-    console.log('🔧 ContractSequence: Waiting for deposit transaction to be confirmed:', depositTxHash);
-    onProgress?.('deposit_confirmation', 'Waiting for deposit to be confirmed...');
-
-    try {
-      const web3Service = await getWeb3Service();
-      const receipt = await web3Service.waitForTransaction(depositTxHash, 120000, params.contractserviceId); // 2 minute timeout
-
-      if (receipt) {
-        console.log('🔧 ContractSequence: ✅ Deposit confirmed. Block:', receipt.blockNumber);
-      } else {
-        // Timeout - transaction may still be pending, this is acceptable
-        console.warn('🔧 ContractSequence: ⚠️ Deposit confirmation timed out - transaction may still be pending');
-        // Don't fail here - deposit transactions are more tolerant of confirmation delays
-      }
-    } catch (waitError) {
-      // Transaction failed - this should cause the sequence to fail
-      console.error('🔧 ContractSequence: ❌ Deposit transaction failed:', waitError);
-      throw new Error(`Deposit transaction failed: ${waitError instanceof Error ? waitError.message : 'Unknown error'}`);
+  if (useProxyDeposit) {
+    // Proxy method: chainservice handles both deposit AND notification
+    if (!depositFundsAsProxy) {
+      throw new Error('depositFundsAsProxy function not provided but useProxyDeposit is true');
     }
 
-    // Step 4: Notify contractservice about the deposit
-    console.log('🔧 ContractSequence: Notifying contractservice about deposit...');
+    onProgress?.('deposit', 'Depositing funds into escrow via platform...');
+    console.log('🔧 ContractSequence: Using proxy deposit method (chainservice handles deposit + notification)');
 
-    try {
-      const depositNotification = {
-        contractHash: contractAddress // The on-chain contract address
-      };
+    depositTxHash = await depositFundsAsProxy(contractAddress);
+    console.log('🔧 ContractSequence: Proxy deposit transaction:', depositTxHash);
 
-      const response = await authenticatedFetch('/api/contracts/deposit-notification', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(depositNotification)
-      });
+    // Note: Notification to contractservice happens automatically in the chainservice endpoint
+    console.log('🔧 ContractSequence: ✅ Deposit and notification completed via proxy');
 
-      if (!response.ok) {
-        console.error('Contract service deposit notification failed:', await response.text());
-        // Don't throw - the blockchain transaction succeeded
-      } else {
-        console.log('✅ Contract service notified about deposit');
+  } else {
+    // Direct method: user signs deposit, then we notify contractservice separately
+    onProgress?.('deposit', 'Depositing funds into escrow...');
+    console.log('🔧 ContractSequence: Using direct deposit method (user signs transaction)');
+
+    depositTxHash = await depositToContract(contractAddress);
+    console.log('🔧 ContractSequence: Deposit transaction:', depositTxHash);
+
+    // Step 3.5: Wait for deposit transaction to be confirmed
+    if (depositTxHash) {
+      console.log('🔧 ContractSequence: Waiting for deposit transaction to be confirmed:', depositTxHash);
+      onProgress?.('deposit_confirmation', 'Waiting for deposit to be confirmed...');
+
+      try {
+        const web3Service = await getWeb3Service();
+        const receipt = await web3Service.waitForTransaction(depositTxHash, 120000, params.contractserviceId); // 2 minute timeout
+
+        if (receipt) {
+          console.log('🔧 ContractSequence: ✅ Deposit confirmed. Block:', receipt.blockNumber);
+        } else {
+          // Timeout - transaction may still be pending, this is acceptable
+          console.warn('🔧 ContractSequence: ⚠️ Deposit confirmation timed out - transaction may still be pending');
+          // Don't fail here - deposit transactions are more tolerant of confirmation delays
+        }
+      } catch (waitError) {
+        // Transaction failed - this should cause the sequence to fail
+        console.error('🔧 ContractSequence: ❌ Deposit transaction failed:', waitError);
+        throw new Error(`Deposit transaction failed: ${waitError instanceof Error ? waitError.message : 'Unknown error'}`);
       }
-    } catch (error) {
-      console.error('Failed to notify contract service about deposit:', error);
-      // Don't throw - the blockchain transaction succeeded
+
+      // Step 4: Notify contractservice about the deposit (only for direct method)
+      console.log('🔧 ContractSequence: Notifying contractservice about deposit...');
+
+      try {
+        const depositNotification = {
+          contractHash: contractAddress // The on-chain contract address
+        };
+
+        const response = await authenticatedFetch('/api/contracts/deposit-notification', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(depositNotification)
+        });
+
+        if (!response.ok) {
+          console.error('Contract service deposit notification failed:', await response.text());
+          // Don't throw - the blockchain transaction succeeded
+        } else {
+          console.log('✅ Contract service notified about deposit');
+        }
+      } catch (error) {
+        console.error('Failed to notify contract service about deposit:', error);
+        // Don't throw - the blockchain transaction succeeded
+      }
     }
   }
 

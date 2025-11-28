@@ -9,7 +9,7 @@ import { mLog } from '@/utils/mobileLogger';
  * This is the ONLY way components should access blockchain functionality
  */
 export function useSimpleEthers() {
-  const { isConnected, getEthersProvider } = useAuth();
+  const { isConnected, getEthersProvider, authenticatedFetch } = useAuth();
   const { config } = useConfig();
 
   const getWeb3Service = useCallback(async () => {
@@ -146,6 +146,37 @@ export function useSimpleEthers() {
         data,
         value: '0' // No ETH value needed for deposit
       });
+    },
+
+    depositFundsAsProxy: async (contractAddress: string) => {
+      console.log('🔧 useSimpleEthers: depositFundsAsProxy via chainservice');
+
+      if (!authenticatedFetch) {
+        throw new Error('authenticatedFetch is not available');
+      }
+
+      // Call chainservice to deposit funds as gas payer
+      const response = await authenticatedFetch('/api/chain/fund-approved-contract', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contractHash: contractAddress
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to deposit funds via proxy');
+      }
+
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.error || 'Deposit failed');
+      }
+
+      // Return transaction hash in same format as depositToContract
+      return result.transactionHash;
     }
   };
 }

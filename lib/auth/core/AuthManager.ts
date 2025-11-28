@@ -208,33 +208,32 @@ export class AuthManager {
       throw new Error('No wallet address available');
     }
 
-    // OPTIMIZED FLOW: For Dynamic, use JWT directly (no signature prompt!)
+    // DYNAMIC AUTH: Try to get JWT first, fall back to signature if not available
     if (this.state.providerName === 'dynamic') {
-      mLog.info('AuthManager', 'Using Dynamic JWT authentication (no signature required)', {
-        address: this.state.address,
-        providerName: this.state.providerName
+      mLog.info('AuthManager', 'Dynamic provider detected - attempting JWT authentication first', {
+        address: this.state.address
       });
 
       try {
-        const userInfo = this.currentProvider?.getUserInfo?.();
-        if (userInfo && userInfo.idToken) {
-          const dynamicJwt = String(userInfo.idToken);
+        // Try to get auth token from Dynamic's official methods
+        const authToken = this.currentProvider?.getAuthToken?.();
 
-          mLog.info('AuthManager', 'Dynamic JWT token available, using directly', {
-            hasEmail: !!userInfo.email,
-            hasName: !!userInfo.name,
-            tokenLength: dynamicJwt.length
+        if (authToken && typeof authToken === 'string' && authToken.split('.').length === 3) {
+          // Looks like a valid JWT (header.payload.signature)
+          mLog.info('AuthManager', '✅ Using Dynamic JWT authentication (no signature required)', {
+            tokenLength: authToken.length
           });
-
-          // Return Dynamic's JWT directly - backend expects the actual JWT, not a wrapped version
-          mLog.info('AuthManager', '✅ Dynamic JWT authentication successful (no user prompt needed)');
-          return dynamicJwt;
+          return authToken;
         } else {
-          mLog.warn('AuthManager', 'No Dynamic JWT available, falling back to signature auth');
-          // Fall through to signature-based auth below
+          mLog.warn('AuthManager', 'Dynamic JWT not available or invalid, using signature auth instead', {
+            hasAuthToken: !!authToken,
+            tokenType: typeof authToken,
+            looksLikeJWT: authToken ? authToken.split('.').length === 3 : false
+          });
+          // Fall through to signature-based auth
         }
       } catch (dynamicError) {
-        mLog.warn('AuthManager', 'Failed to get Dynamic JWT, falling back to signature auth', {
+        mLog.warn('AuthManager', 'Failed to get Dynamic JWT, using signature auth instead', {
           error: dynamicError instanceof Error ? dynamicError.message : String(dynamicError)
         });
         // Fall through to signature-based auth below

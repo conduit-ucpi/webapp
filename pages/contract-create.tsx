@@ -43,7 +43,7 @@ export default function ContractCreate() {
   const router = useRouter();
   const { config } = useConfig();
   const { user, authenticatedFetch, disconnect, isLoading: authLoading } = useAuth();
-  const { approveUSDC, depositToContract, getWeb3Service } = useSimpleEthers();
+  const { approveUSDC, depositToContract, depositFundsAsProxy, getWeb3Service } = useSimpleEthers();
   const { errors, validateForm, clearErrors } = useContractCreateValidation();
 
   // Query parameters
@@ -464,11 +464,13 @@ export default function ContractCreate() {
           authenticatedFetch,
           approveUSDC,
           depositToContract,
+          depositFundsAsProxy,
           getWeb3Service,
           onProgress: createContractProgressHandler({
             setLoadingMessage,
             updatePaymentStep
-          }, 'Step')
+          }, 'Step'),
+          useProxyDeposit: true
         }
       );
 

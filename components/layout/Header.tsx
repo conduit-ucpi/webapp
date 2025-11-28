@@ -2,6 +2,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useNavigation } from '@/components/navigation/NavigationProvider';
+import { getSiteNameFromDomain } from '@/utils/siteName';
 import MobileDrawer from './MobileDrawer';
 import {
   Bars3Icon,
@@ -9,6 +10,7 @@ import {
 } from '@heroicons/react/24/outline';
 export default function Header() {
   const router = useRouter();
+  const siteName = getSiteNameFromDomain();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { canGoBack, goBack } = useNavigation();
 
@@ -48,7 +50,7 @@ export default function Header() {
               
               <Link href="/" className="flex flex-col">
                 <span className="text-lg font-bold italic text-secondary-900 dark:text-white">
-                  Instant Escrow
+                  {siteName}
                 </span>
                 <span className="text-xs text-primary-600 dark:text-primary-400 -mt-1">
                   Conduit UCPI

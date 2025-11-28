@@ -35,6 +35,7 @@ export interface Config {
   walletConnectProjectId?: string;
   tokenSymbol?: string; // Token symbol (e.g., "USDC", "USDT", "DAI")
   defaultTokenSymbol?: string; // Default token symbol to use
+  siteName?: string; // Site branding name (e.g., "Instant Escrow", "USDCBAY")
   // Token details from blockchain
   usdcDetails?: TokenDetails | null;
   usdtDetails?: TokenDetails | null;

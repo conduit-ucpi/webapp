@@ -19,6 +19,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { useAuth } from '@/components/auth';
 import { useConfig } from '@/components/auth/ConfigProvider';
+import { getSiteNameFromDomain } from '@/utils/siteName';
 import ThemeToggle from '@/components/theme/ThemeToggle';
 
 interface MobileDrawerProps {
@@ -43,6 +44,7 @@ export default function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
   const router = useRouter();
   const { user, disconnect, switchWallet, isConnected, state } = useAuth();
   const { config } = useConfig();
+  const siteName = getSiteNameFromDomain();
   const isAuthenticated = !!user || !!isConnected;
   const isAdmin = (user as any)?.isAdmin;
   const canSwitchWallet = state?.providerName === 'web3auth';
@@ -201,7 +203,7 @@ export default function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
               <div className="flex items-center justify-between px-4 py-4 border-b border-secondary-200 dark:border-secondary-700">
                 <div>
                   <div className="text-lg font-bold italic text-secondary-900 dark:text-white">
-                    Instant Escrow
+                    {siteName}
                   </div>
                   <div className="text-xs text-primary-600 dark:text-primary-400">
                     Conduit UCPI

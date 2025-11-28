@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/components/auth';
 import { useRouter } from 'next/router';
+import { getSiteNameFromDomain } from '@/utils/siteName';
 import Button from '@/components/ui/Button';
 import TransactionWalkthrough from './TransactionWalkthrough';
 
@@ -21,6 +22,7 @@ interface ProgressChecklistProps {
 export default function ProgressChecklist({ onClose }: ProgressChecklistProps) {
   const { user } = useAuth();
   const router = useRouter();
+  const siteName = getSiteNameFromDomain();
   const [isVisible, setIsVisible] = useState(false);
   const [isExpanded, setIsExpanded] = useState(true);
   const [completedItems, setCompletedItems] = useState<string[]>([]);
@@ -180,7 +182,7 @@ export default function ProgressChecklist({ onClose }: ProgressChecklistProps) {
             </div>
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-gray-900">Welcome to Instant Escrow!</h3>
+            <h3 className="text-lg font-semibold text-gray-900">Welcome to {siteName}!</h3>
             <p className="text-sm text-gray-600">Complete these steps to get the most out of your escrow platform</p>
           </div>
         </div>

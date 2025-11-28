@@ -151,50 +151,10 @@ export default function ConnectWalletEmbedded({
     try {
       setIsAuthenticating(true);
 
-      // Check if this is an OAuth redirect - if so, skip the connect flow
-      const urlParams = new URLSearchParams(window.location.search);
-      const isOAuthRedirect = urlParams.has('dynamicOauthCode') || urlParams.has('dynamicOauthState');
+      // Note: OAuth redirect handling is now done automatically via useEffect
+      // which detects when wallet connects and triggers backend authentication
 
-      if (isOAuthRedirect) {
-        mLog.info('ConnectWalletEmbedded', 'OAuth redirect detected, checking for auto-connection');
-
-        // Check if we're already connected (Dynamic auto-connects after OAuth)
-        if (isConnected && address) {
-          mLog.info('ConnectWalletEmbedded', 'Already connected after OAuth, proceeding to backend auth');
-
-          // Directly authenticate with backend
-          const authSuccess = await authenticateBackend({
-            success: true,
-            address: address,
-            capabilities: {
-              canSign: true,
-              canTransact: true,
-              canSwitchWallets: true,
-              isAuthOnly: false
-            }
-          });
-
-          if (authSuccess) {
-            mLog.info('ConnectWalletEmbedded', 'OAuth backend authentication successful');
-            onSuccess?.();
-
-            // Clean up OAuth parameters from URL
-            if (window.history && window.history.replaceState) {
-              const cleanUrl = window.location.origin + window.location.pathname;
-              window.history.replaceState({}, document.title, cleanUrl);
-              mLog.info('ConnectWalletEmbedded', 'OAuth parameters cleaned from URL');
-            }
-          } else {
-            mLog.error('ConnectWalletEmbedded', 'OAuth backend authentication failed');
-          }
-
-          return;
-        } else {
-          mLog.warn('ConnectWalletEmbedded', 'OAuth redirect detected but not connected yet');
-        }
-      }
-
-      // Normal connection flow
+      // Connection flow
       mLog.debug('ConnectWalletEmbedded', 'Connect function availability', { hasConnect: !!connect });
 
       if (connect) {
@@ -205,16 +165,9 @@ export default function ConnectWalletEmbedded({
           const connectionResult = await connect();
 
           if (connectionResult.success) {
-            mLog.info('ConnectWalletEmbedded', 'Connection successful, authenticating with backend...');
-
-            const authSuccess = await authenticateBackend(connectionResult);
-
-            if (authSuccess) {
-              mLog.info('ConnectWalletEmbedded', 'Backend authentication successful');
-              onSuccess?.();
-            } else {
-              mLog.error('ConnectWalletEmbedded', 'Backend authentication failed');
-            }
+            mLog.info('ConnectWalletEmbedded', 'Connection successful - auto-auth will handle backend authentication');
+            // Note: Backend authentication now happens automatically via the useEffect
+            // when it detects the connection state change. No need to call authenticateBackend here.
           } else {
             mLog.error('ConnectWalletEmbedded', 'Wallet connection failed', { error: connectionResult.error });
           }

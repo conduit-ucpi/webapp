@@ -218,35 +218,17 @@ export class AuthManager {
       try {
         const userInfo = this.currentProvider?.getUserInfo?.();
         if (userInfo && userInfo.idToken) {
-          mLog.info('AuthManager', 'Dynamic JWT token available, creating auth token', {
+          const dynamicJwt = String(userInfo.idToken);
+
+          mLog.info('AuthManager', 'Dynamic JWT token available, using directly', {
             hasEmail: !!userInfo.email,
-            hasName: !!userInfo.name
+            hasName: !!userInfo.name,
+            tokenLength: dynamicJwt.length
           });
 
-          // Create auth token using Dynamic's JWT (no signature needed!)
-          const authToken = btoa(JSON.stringify({
-            type: 'dynamic_jwt_auth',
-            walletAddress: this.state.address,
-            dynamicJwt: userInfo.idToken,
-            email: userInfo.email,
-            name: userInfo.name,
-            dynamicUserId: (userInfo as any).dynamicUserId,
-            timestamp: Date.now(),
-            issuer: 'dynamic_jwt_auth',
-            header: {
-              alg: 'JWT',
-              typ: 'DYNAMIC'
-            },
-            payload: {
-              sub: this.state.address,
-              iat: Math.floor(Date.now() / 1000),
-              iss: 'dynamic_jwt_auth',
-              wallet_type: 'dynamic'
-            }
-          }));
-
+          // Return Dynamic's JWT directly - backend expects the actual JWT, not a wrapped version
           mLog.info('AuthManager', '✅ Dynamic JWT authentication successful (no user prompt needed)');
-          return authToken;
+          return dynamicJwt;
         } else {
           mLog.warn('AuthManager', 'No Dynamic JWT available, falling back to signature auth');
           // Fall through to signature-based auth below

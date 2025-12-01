@@ -5,6 +5,7 @@ import Button from '@/components/ui/Button';
 import InteractiveDemo from '@/components/landing/InteractiveDemo';
 import SEO from '@/components/SEO';
 import { GetStaticProps } from 'next';
+import { getSiteNameFromDomain } from '@/utils/siteName';
 
 export default function Home() {
   let user = null;
@@ -18,6 +19,7 @@ export default function Home() {
   }
 
   const isAuthenticated = !!user;
+  const siteName = getSiteNameFromDomain();
 
   // Structured data for search engines
   const structuredData = {
@@ -79,6 +81,11 @@ export default function Home() {
             <h1 className="text-5xl lg:text-6xl font-bold text-secondary-900 dark:text-white leading-tight">
               Get Paid Safely, <span className="text-primary-500">Automatically</span>
             </h1>
+            <div className="bg-gradient-to-r from-primary-50 to-blue-50 border-2 border-primary-200 rounded-xl p-6">
+              <p className="text-lg lg:text-xl font-semibold text-secondary-900 dark:text-white leading-relaxed">
+                <span className="text-primary-600">{siteName}</span> gives stablecoin payments a familiar checkout experience and buyer protections, opening stores up to new customers with just one line of code.
+              </p>
+            </div>
             <p className="text-xl text-secondary-600 dark:text-secondary-300 leading-relaxed">
               Escrow protection made simple - no lawyers, no banks, just security.
               Hold payments in trust until delivery is confirmed.

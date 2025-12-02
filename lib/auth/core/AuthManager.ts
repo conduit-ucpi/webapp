@@ -527,6 +527,23 @@ export class AuthManager {
   setState(newState: Partial<AuthState>): void {
     this.state = { ...this.state, ...newState };
 
+    // CRITICAL FIX: Expose wallet address on window for Web3Service
+    // This prevents Web3Service from querying the provider which might have a stale cached address
+    // from Dynamic SDK's WalletClient caching issue
+    if (typeof window !== 'undefined') {
+      if (this.state.address) {
+        (window as any).authUser = {
+          walletAddress: this.state.address,
+          providerName: this.state.providerName,
+          isConnected: this.state.isConnected,
+          isAuthenticated: this.state.isAuthenticated
+        };
+      } else {
+        // Clear authUser when disconnected
+        delete (window as any).authUser;
+      }
+    }
+
     // Notify all listeners
     this.listeners.forEach(listener => {
       try {

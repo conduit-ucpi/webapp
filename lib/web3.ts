@@ -385,18 +385,36 @@ export class Web3Service {
   }
 
   async getUserAddress(): Promise<string> {
-    // Use the unified ethers provider approach for all wallet types
+    // CRITICAL FIX: Check if auth system has a known address first
+    // This avoids querying the wallet provider which might have stale cached address
+    // from a previous session (especially with Dynamic SDK's WalletClient caching)
+    if (typeof window !== 'undefined') {
+      // Try to get address from auth context (most reliable source)
+      const authUser = (window as any).authUser;
+      if (authUser && authUser.walletAddress) {
+        console.log('[Web3Service.getUserAddress] Using address from auth context:', authUser.walletAddress);
+        return authUser.walletAddress;
+      }
+
+      // Try Dynamic user as fallback
+      const dynamicUser = (window as any).dynamicUser;
+      if (dynamicUser && dynamicUser.walletAddress) {
+        console.log('[Web3Service.getUserAddress] Using address from Dynamic user:', dynamicUser.walletAddress);
+        return dynamicUser.walletAddress;
+      }
+    }
+
+    // Fall back to querying the provider (may have stale address from cached WalletClient)
     if (this.provider) {
-      console.log('[Web3Service.getUserAddress] Using unified ethers provider');
+      console.log('[Web3Service.getUserAddress] Querying provider for address (auth context not available)');
       const signer = await this.provider.getSigner();
       const address = await signer.getAddress();
-      console.log('[Web3Service.getUserAddress] Got address:', address);
+      console.log('[Web3Service.getUserAddress] Got address from provider:', address);
       return address;
     }
 
-    // No legacy fallback needed - provider should always be available
-
-    throw new Error('No provider initialized');
+    // No provider available
+    throw new Error('No provider initialized and no address in auth context');
   }
   
   /**

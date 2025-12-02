@@ -546,7 +546,9 @@ export class DynamicProvider implements UnifiedProvider {
 
     // Clear all cached state
     this.cachedEthersProvider = null;
+    this.cachedProviderVersion = null;
     this.currentAddress = null;
+    this.dynamicWallet = null; // CRITICAL: Clear the cached wallet reference
 
     // Clear window state that might persist
     if (typeof window !== 'undefined') {
@@ -555,7 +557,7 @@ export class DynamicProvider implements UnifiedProvider {
       // Note: dynamicUser and dynamicAuthToken are managed by DynamicWrapper
     }
 
-    mLog.info('DynamicProvider', 'Cleared all cached provider state');
+    mLog.info('DynamicProvider', 'Cleared all cached provider state including dynamicWallet');
   }
 
   async switchWallet(): Promise<ConnectionResult> {

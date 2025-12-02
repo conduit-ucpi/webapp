@@ -1207,7 +1207,7 @@ export class Web3Service {
         from: fromAddress,
         to: tx.to,
         data: tx.data,
-        value: tx.value ? `0x${tx.value.toString(16)}` : '0x0',
+        value: this.formatValueForRpc(tx.value || '0x0'),
         nonce: `0x${nonce.toString(16)}` // ✅ Include nonce for hash consistency
       };
 
@@ -1418,6 +1418,30 @@ export class Web3Service {
       `Transaction not found after ${maxAttempts} attempts (${maxAttempts * delayMs / 1000}s). ` +
       `Searched for transaction from ${fromAddress} with nonce ${nonce}.`
     );
+  }
+
+  /**
+   * Format value for RPC transaction call
+   * Handles string values that could be:
+   * - Already hex format: "0x0" or "0xABC..."
+   * - Decimal string: "1000000000000000000"
+   * - BigInt or number
+   */
+  private formatValueForRpc(value: string | bigint | number): string {
+    // If it's a string that starts with "0x", it's already hex - return as-is
+    if (typeof value === 'string' && value.startsWith('0x')) {
+      return value;
+    }
+
+    // If it's a decimal string or number, convert to BigInt then to hex
+    try {
+      const bigIntValue = BigInt(value);
+      return `0x${bigIntValue.toString(16)}`;
+    } catch (error) {
+      console.error('[Web3Service.formatValueForRpc] Failed to convert value to hex:', value, error);
+      // Fallback to '0x0' if conversion fails
+      return '0x0';
+    }
   }
 
   /**

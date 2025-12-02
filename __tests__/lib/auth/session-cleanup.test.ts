@@ -94,10 +94,10 @@ describe('Session Cleanup', () => {
     });
 
     it('should clear window.dynamicUser on logout', async () => {
-      // Setup: Initialize auth manager first
-      await authManager.initialize(mockAuthConfig);
+      // Setup: Create and register the provider
+      const provider = DynamicProvider.getInstance(mockAuthConfig);
 
-      // Set up window state after initialization
+      // Set up window state
       (window as any).dynamicUser = {
         email: 'old@example.com',
         walletAddress: '0xOldAddress'
@@ -109,6 +109,10 @@ describe('Session Cleanup', () => {
         delete (window as any).dynamicWallet;
       });
 
+      // Initialize and manually set the provider
+      await authManager.initialize(mockAuthConfig);
+      (authManager as any).currentProvider = provider;
+
       // Act
       await authManager.disconnect();
 
@@ -118,10 +122,10 @@ describe('Session Cleanup', () => {
     });
 
     it('should clear window.dynamicWallet on logout', async () => {
-      // Setup: Initialize first
-      await authManager.initialize(mockAuthConfig);
+      // Setup: Create and register the provider
+      const provider = DynamicProvider.getInstance(mockAuthConfig);
 
-      // Set up window state after initialization
+      // Set up window state
       (window as any).dynamicWallet = {
         address: '0xOldAddress',
         connector: {}
@@ -133,6 +137,10 @@ describe('Session Cleanup', () => {
         delete (window as any).dynamicWallet;
       });
 
+      // Initialize and manually set the provider
+      await authManager.initialize(mockAuthConfig);
+      (authManager as any).currentProvider = provider;
+
       // Act
       await authManager.disconnect();
 
@@ -142,10 +150,10 @@ describe('Session Cleanup', () => {
     });
 
     it('should clear window.dynamicOAuthResult on logout', async () => {
-      // Setup: Initialize first
-      await authManager.initialize(mockAuthConfig);
+      // Setup: Create and register the provider
+      const provider = DynamicProvider.getInstance(mockAuthConfig);
 
-      // Set up window state after initialization
+      // Set up window state
       (window as any).dynamicOAuthResult = {
         address: '0xOldAddress',
         wallet: {}
@@ -157,10 +165,14 @@ describe('Session Cleanup', () => {
         delete (window as any).dynamicWallet;
       });
 
+      // Initialize and manually set the provider
+      await authManager.initialize(mockAuthConfig);
+      (authManager as any).currentProvider = provider;
+
       // Act: Disconnect will call DynamicProvider.disconnect() which clears dynamicOAuthResult
       await authManager.disconnect();
 
-      // Assert: DynamicProvider.disconnect() clears window.dynamicOAuthResult
+      // Assert: DynamicProvider.disconnect() clears window.dynamicOAuthResult (line 553 in DynamicProvider)
       expect((window as any).dynamicOAuthResult).toBeUndefined();
       expect((window as any).dynamicLogout).toHaveBeenCalled();
     });
@@ -169,7 +181,9 @@ describe('Session Cleanup', () => {
       // Setup: Create a Web3Service instance with state
       const web3Service = Web3Service.getInstance(mockWeb3Config);
       const mockProvider = {
-        getSigner: jest.fn(),
+        getSigner: jest.fn(async () => ({
+          getAddress: jest.fn(async () => '0xTestAddress')
+        })),
         getNetwork: jest.fn(async () => ({ chainId: BigInt(8453), name: 'base' })),
         getBalance: jest.fn(),
         getFeeData: jest.fn(),
@@ -224,14 +238,17 @@ describe('Session Cleanup', () => {
       (window as any).dynamicLogout = jest.fn(async () => {});
       await authManager.initialize(mockAuthConfig);
 
-      localStorage.setItem('AUTH-TOKEN', 'old-token');
-      expect(localStorage.getItem('AUTH-TOKEN')).toBe('old-token');
+      // TokenManager uses 'auth_token' key (lowercase)
+      localStorage.setItem('auth_token', 'old-token');
+      sessionStorage.setItem('auth_token', 'old-token');
+      expect(localStorage.getItem('auth_token')).toBe('old-token');
 
       // Act
       await authManager.disconnect();
 
-      // Assert: TokenManager.clearToken() should clear localStorage
-      expect(localStorage.getItem('AUTH-TOKEN')).toBeNull();
+      // Assert: TokenManager.clearToken() should clear both localStorage and sessionStorage
+      expect(localStorage.getItem('auth_token')).toBeNull();
+      expect(sessionStorage.getItem('auth_token')).toBeNull();
     });
 
     it('should clear DynamicProvider cached state on logout', async () => {

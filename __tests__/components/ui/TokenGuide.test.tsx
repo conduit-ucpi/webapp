@@ -131,6 +131,13 @@ describe('TokenGuide', () => {
     expect(screen.getByText(mockUser.walletAddress)).toBeInTheDocument();
   });
 
+  it('has a copy button for the wallet address', () => {
+    render(<TokenGuide />);
+    const copyButton = screen.getByLabelText('Copy wallet address');
+    expect(copyButton).toBeInTheDocument();
+    expect(copyButton.tagName).toBe('BUTTON');
+  });
+
   it('shows all exchange links', () => {
     render(<TokenGuide />);
 

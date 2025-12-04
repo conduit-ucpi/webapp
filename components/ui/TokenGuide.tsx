@@ -71,19 +71,26 @@ export default function TokenGuide() {
         <div className="flex items-start">
           <span className="font-semibold mr-2">2.</span>
           <div className="flex-1">
-            <div className="mb-1">
+            <div className="flex items-center gap-1">
               <span className="font-semibold">Your wallet address:</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <code className="bg-blue-100 px-3 py-1.5 rounded text-xs overflow-x-auto whitespace-nowrap flex-1">{walletAddress}</code>
               <button
                 onClick={copyToClipboard}
-                className="text-xs px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors whitespace-nowrap"
+                className="p-1 hover:bg-blue-100 rounded transition-colors flex-shrink-0"
                 title={copied ? 'Address copied!' : 'Click to copy wallet address'}
+                aria-label={copied ? 'Address copied' : 'Copy wallet address'}
               >
-                {copied ? '✓ Copied' : 'Copy'}
+                {copied ? (
+                  <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                ) : (
+                  <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                )}
               </button>
             </div>
+            <code className="bg-blue-100 px-2 py-1 rounded text-xs whitespace-nowrap block mt-1">{walletAddress}</code>
           </div>
         </div>
         <div className="flex items-start">

@@ -135,25 +135,28 @@ describe('TokenGuide', () => {
     render(<TokenGuide />);
 
     // Check that all exchange links are present
-    expect(screen.getByText(/Web3Auth Wallet Widget:/)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Coinbase' })).toHaveAttribute('href', 'https://www.coinbase.com/price/usdc');
+    expect(screen.getByRole('link', { name: 'Binance' })).toHaveAttribute('href', 'https://www.binance.com');
     expect(screen.getByRole('link', { name: 'Kraken' })).toHaveAttribute('href', 'https://www.kraken.com');
     expect(screen.getByRole('link', { name: 'Crypto.com' })).toHaveAttribute('href', 'https://crypto.com');
-    // Easy Crypto is commented out
-    expect(screen.queryByRole('link', { name: 'Easy Crypto' })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'EasyCrypto' })).toHaveAttribute('href', 'https://easycrypto.com');
   });
 
   it('shows links with correct security attributes', () => {
     render(<TokenGuide />);
 
-    // Web3Auth wallet widget doesn't use external links, it's integrated in the page
-    expect(screen.getByText(/Click the wallet button.*to buy\/sell USDC/)).toBeInTheDocument();
+    // Check that external links have proper security attributes
+    const links = screen.getAllByRole('link');
+    links.forEach(link => {
+      expect(link).toHaveAttribute('target', '_blank');
+      expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+    });
   });
 
-  it('shows Web3Auth wallet widget as funding option', () => {
+  it('shows MetaMask/Coinbase as funding option', () => {
     render(<TokenGuide />);
-    expect(screen.getByText(/Web3Auth Wallet Widget:/)).toBeInTheDocument();
-    expect(screen.getByText(/Click the wallet button.*to buy\/sell USDC/)).toBeInTheDocument();
+    expect(screen.getByText(/MetaMask\/Coinbase:/)).toBeInTheDocument();
+    expect(screen.getByText(/Transfer USDC to\/from another wallet/)).toBeInTheDocument();
   });
 
 
@@ -214,7 +217,6 @@ describe('TokenGuide', () => {
   it('includes all funding methods', () => {
     render(<TokenGuide />);
 
-    expect(screen.getByText(/Web3Auth Wallet Widget:/)).toBeInTheDocument();
     expect(screen.getByText(/MetaMask\/Coinbase:/)).toBeInTheDocument();
     expect(screen.getByText(/Major Exchanges:/)).toBeInTheDocument();
     expect(screen.getByText(/Cash Conversion:/)).toBeInTheDocument();

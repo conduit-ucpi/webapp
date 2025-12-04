@@ -71,12 +71,14 @@ export default function TokenGuide() {
         <div className="flex items-start">
           <span className="font-semibold mr-2">2.</span>
           <div className="flex-1">
-            <div className="flex items-center flex-wrap gap-2">
+            <div className="mb-1">
               <span className="font-semibold">Your wallet address:</span>
-              <code className="bg-blue-100 px-2 py-1 rounded text-xs break-all flex-1 min-w-0">{walletAddress}</code>
+            </div>
+            <div className="flex items-center gap-2">
+              <code className="bg-blue-100 px-3 py-1.5 rounded text-xs overflow-x-auto whitespace-nowrap flex-1">{walletAddress}</code>
               <button
                 onClick={copyToClipboard}
-                className="text-xs px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
+                className="text-xs px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors whitespace-nowrap"
                 title={copied ? 'Address copied!' : 'Click to copy wallet address'}
               >
                 {copied ? '✓ Copied' : 'Copy'}
@@ -86,15 +88,15 @@ export default function TokenGuide() {
         </div>
         <div className="flex items-start">
           <span className="font-semibold mr-2">3.</span>
-          <div>
+          <div className="flex-1 min-w-0">
             <span className="font-semibold">Fund your wallet using:</span>
-            <ul className="mt-2 ml-4 space-y-1">
+            <ul className="mt-2 ml-4 space-y-1 break-words">
               <li>• <strong>MetaMask/Coinbase:</strong> Transfer {tokenSymbol} to/from another wallet</li>
-              <li>• <strong>Major Exchanges:</strong>
-                <a href="https://www.coinbase.com/price/usdc" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-500 underline mx-1">Coinbase</a>,
-                <a href="https://www.binance.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-500 underline mx-1">Binance</a>,
-                <a href="https://www.kraken.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-500 underline mx-1">Kraken</a>,
-                <a href="https://crypto.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-500 underline mx-1">Crypto.com</a>,
+              <li>• <strong>Major Exchanges:</strong>{' '}
+                <a href="https://www.coinbase.com/price/usdc" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-500 underline mx-1">Coinbase</a>,{' '}
+                <a href="https://www.binance.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-500 underline mx-1">Binance</a>,{' '}
+                <a href="https://www.kraken.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-500 underline mx-1">Kraken</a>,{' '}
+                <a href="https://crypto.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-500 underline mx-1">Crypto.com</a>,{' '}
                 <a href="https://easycrypto.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-500 underline mx-1">EasyCrypto</a>
               </li>
               <li>• <strong>Cash Conversion:</strong> Use the exchanges above to convert {tokenSymbol} to fiat currency</li>

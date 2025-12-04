@@ -9,6 +9,7 @@ import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import ConnectWalletEmbedded from '@/components/auth/ConnectWalletEmbedded';
 import WalletInfo from '@/components/ui/WalletInfo';
+import TokenGuide from '@/components/ui/TokenGuide';
 import { isValidWalletAddress, toMicroUSDC, toUSDCForWeb3, formatDateTimeWithTZ } from '@/utils/validation';
 import { useContractCreateValidation } from '@/hooks/useContractValidation';
 import { executeContractTransactionSequence } from '@/utils/contractTransactionSequence';
@@ -840,14 +841,26 @@ export default function ContractCreate() {
 
               {/* Balance warning on create step */}
               {form.amount && parseFloat(form.amount) > 0 && !isLoadingBalance && parseFloat(tokenBalance) < parseFloat(form.amount) && (
-                <div className="bg-red-50 border border-red-200 rounded-md p-3 mb-4">
-                  <p className="text-sm text-red-800 font-medium">
-                    ⚠️ Insufficient {selectedTokenSymbol} Balance
-                  </p>
-                  <p className="text-xs text-red-700 mt-1">
-                    You need {parseFloat(form.amount).toFixed(4)} {selectedTokenSymbol} but only have {parseFloat(tokenBalance).toFixed(4)} {selectedTokenSymbol}.
-                    Please add {(parseFloat(form.amount) - parseFloat(tokenBalance)).toFixed(4)} {selectedTokenSymbol} to your wallet.
-                  </p>
+                <div className="bg-red-50 border border-red-200 rounded-md mb-4">
+                  <div className="p-3">
+                    <p className="text-sm text-red-800 font-medium">
+                      ⚠️ Insufficient {selectedTokenSymbol} Balance
+                    </p>
+                    <p className="text-xs text-red-700 mt-1">
+                      You need {parseFloat(form.amount).toFixed(4)} {selectedTokenSymbol} but only have {parseFloat(tokenBalance).toFixed(4)} {selectedTokenSymbol}.
+                      Please add {(parseFloat(form.amount) - parseFloat(tokenBalance)).toFixed(4)} {selectedTokenSymbol} to your wallet.
+                    </p>
+                  </div>
+
+                  {/* Expandable guide section */}
+                  <details className="border-t border-red-200">
+                    <summary className="cursor-pointer p-3 text-sm font-medium text-red-800 hover:bg-red-100">
+                      💡 How to add {selectedTokenSymbol} to your wallet
+                    </summary>
+                    <div className="p-3 pt-0">
+                      <TokenGuide />
+                    </div>
+                  </details>
                 </div>
               )}
 
@@ -978,14 +991,26 @@ export default function ContractCreate() {
             )}
 
             {parseFloat(tokenBalance) < parseFloat(form.amount) ? (
-              <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-6">
-                <p className="text-sm text-red-800 font-medium">
-                  ⚠️ Insufficient Balance
-                </p>
-                <p className="text-sm text-red-700 mt-1">
-                  You need {parseFloat(form.amount).toFixed(4)} {selectedTokenSymbol} but only have {parseFloat(tokenBalance).toFixed(4)} {selectedTokenSymbol}.
-                  Please add {(parseFloat(form.amount) - parseFloat(tokenBalance)).toFixed(4)} {selectedTokenSymbol} to your wallet before proceeding.
-                </p>
+              <div className="bg-red-50 border border-red-200 rounded-md mb-6">
+                <div className="p-4">
+                  <p className="text-sm text-red-800 font-medium">
+                    ⚠️ Insufficient Balance
+                  </p>
+                  <p className="text-sm text-red-700 mt-1">
+                    You need {parseFloat(form.amount).toFixed(4)} {selectedTokenSymbol} but only have {parseFloat(tokenBalance).toFixed(4)} {selectedTokenSymbol}.
+                    Please add {(parseFloat(form.amount) - parseFloat(tokenBalance)).toFixed(4)} {selectedTokenSymbol} to your wallet before proceeding.
+                  </p>
+                </div>
+
+                {/* Expandable guide section */}
+                <details className="border-t border-red-200">
+                  <summary className="cursor-pointer p-3 text-sm font-medium text-red-800 hover:bg-red-100">
+                    💡 How to add {selectedTokenSymbol} to your wallet
+                  </summary>
+                  <div className="p-3 pt-0">
+                    <TokenGuide />
+                  </div>
+                </details>
               </div>
             ) : (
               <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4 mb-6">

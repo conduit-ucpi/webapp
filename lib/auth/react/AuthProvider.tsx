@@ -2,7 +2,7 @@
  * React Auth Provider - Main context provider for the reorganized auth system
  */
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { AuthConfig } from '../types';
 import { AuthState, AuthUser, ConnectionResult } from '../types/unified-provider';
 import { AuthManager } from '../core/AuthManager';
@@ -124,7 +124,16 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
     }
   }, [authManager, isConnecting]);
 
+  // Track if authentication is in progress to prevent duplicate calls from multiple component instances
+  const isAuthenticatingRef = useRef(false);
+
   const authenticateBackend = useCallback(async (connectionResult?: ConnectionResult): Promise<boolean> => {
+    // Prevent duplicate authentication attempts (e.g., from multiple ConnectWalletEmbedded instances)
+    if (isAuthenticatingRef.current) {
+      mLog.warn('AuthProvider', 'Authentication already in progress, skipping duplicate call');
+      return false;
+    }
+
     mLog.info('AuthProvider', 'authenticateBackend called', {
       hasConnectionResult: !!connectionResult,
       connectionSuccess: connectionResult?.success,
@@ -162,6 +171,9 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
     }
 
     try {
+      // Mark authentication as in progress
+      isAuthenticatingRef.current = true;
+
       // Set loading state for backend authentication
       authManager.setState({ isLoading: true });
 
@@ -208,6 +220,9 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
         stack: error instanceof Error ? error.stack : undefined
       });
       return false;
+    } finally {
+      // Clear authentication in progress flag
+      isAuthenticatingRef.current = false;
     }
   }, [authManager, authService, state.isConnected, state.address]);
 

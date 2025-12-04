@@ -31,13 +31,20 @@ export default function ConnectWalletEmbedded({
 
   // Auto-authenticate on OAuth redirect
   useEffect(() => {
-    // Early exit if we've already handled OAuth or are currently handling it
-    if (oauthHandledRef.current || isHandlingOAuthRef.current) {
-      return;
-    }
-
     const handleOAuthRedirect = async () => {
-      // Double-check in case multiple calls happen simultaneously
+      // Use sessionStorage to prevent duplicate OAuth handling across ALL component instances
+      const oauthHandlingKey = 'oauth_redirect_handling';
+      const oauthHandledKey = 'oauth_redirect_handled';
+
+      // Check if OAuth is already being handled or has been handled
+      const isHandling = typeof window !== 'undefined' && sessionStorage.getItem(oauthHandlingKey);
+      const wasHandled = typeof window !== 'undefined' && sessionStorage.getItem(oauthHandledKey);
+
+      if (isHandling || wasHandled) {
+        return; // Another component instance is handling or has handled this
+      }
+
+      // Early exit if already handled locally
       if (oauthHandledRef.current || isHandlingOAuthRef.current) {
         return;
       }
@@ -63,7 +70,10 @@ export default function ConnectWalletEmbedded({
       }
 
       if (isOAuthRedirect && isConnected && address && !user) {
-        // Mark as being handled
+        // Mark as being handled globally AND locally
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem(oauthHandlingKey, 'true');
+        }
         isHandlingOAuthRef.current = true;
 
         mLog.info('ConnectWalletEmbedded', 'Auto-authenticating OAuth redirect', {
@@ -87,7 +97,14 @@ export default function ConnectWalletEmbedded({
 
           if (authSuccess) {
             mLog.info('ConnectWalletEmbedded', 'OAuth auto-authentication successful');
-            oauthHandledRef.current = true; // Mark as successfully handled
+
+            // Mark as successfully handled globally AND locally
+            oauthHandledRef.current = true;
+            if (typeof window !== 'undefined') {
+              sessionStorage.setItem(oauthHandledKey, 'true');
+              sessionStorage.removeItem(oauthHandlingKey); // Clear handling flag
+            }
+
             onSuccess?.();
 
             // Clean up OAuth parameters from URL
@@ -98,13 +115,23 @@ export default function ConnectWalletEmbedded({
             }
           } else {
             mLog.error('ConnectWalletEmbedded', 'OAuth auto-authentication failed');
-            isHandlingOAuthRef.current = false; // Allow retry on failure
+
+            // Clear handling flag to allow retry
+            isHandlingOAuthRef.current = false;
+            if (typeof window !== 'undefined') {
+              sessionStorage.removeItem(oauthHandlingKey);
+            }
           }
         } catch (error) {
           mLog.error('ConnectWalletEmbedded', 'OAuth auto-authentication error', {
             error: error instanceof Error ? error.message : String(error)
           });
-          isHandlingOAuthRef.current = false; // Allow retry on error
+
+          // Clear handling flag to allow retry
+          isHandlingOAuthRef.current = false;
+          if (typeof window !== 'undefined') {
+            sessionStorage.removeItem(oauthHandlingKey);
+          }
         } finally {
           setIsAuthenticating(false);
         }

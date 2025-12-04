@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useAuth } from '@/components/auth';
 import Button from '@/components/ui/Button';
 import { mLog } from '@/utils/mobileLogger';
@@ -25,21 +25,47 @@ export default function ConnectWalletEmbedded({
   const { user, isLoading, connect, authenticateBackend, isConnected, address } = useAuth();
   const [isAuthenticating, setIsAuthenticating] = useState(false);
 
+  // Track if we've already handled OAuth redirect to prevent duplicate attempts
+  const oauthHandledRef = useRef(false);
+  const isHandlingOAuthRef = useRef(false);
+
   // Auto-authenticate on OAuth redirect
   useEffect(() => {
+    // Early exit if we've already handled OAuth or are currently handling it
+    if (oauthHandledRef.current || isHandlingOAuthRef.current) {
+      return;
+    }
+
     const handleOAuthRedirect = async () => {
+      // Double-check in case multiple calls happen simultaneously
+      if (oauthHandledRef.current || isHandlingOAuthRef.current) {
+        return;
+      }
+
       const urlParams = new URLSearchParams(window.location.search);
       const isOAuthRedirect = urlParams.has('dynamicOauthCode') || urlParams.has('dynamicOauthState');
 
-      mLog.info('ConnectWalletEmbedded', 'OAuth redirect check in useEffect', {
-        isOAuthRedirect,
-        isConnected,
-        address,
-        hasUser: !!user,
-        willTriggerAuth: isOAuthRedirect && isConnected && address && !user
-      });
+      // Only log if OAuth redirect is detected AND we haven't logged yet this session
+      // Use sessionStorage to persist across component remounts
+      const hasLoggedKey = 'oauth_redirect_logged';
+      const hasLoggedThisSession = typeof window !== 'undefined' && sessionStorage.getItem(hasLoggedKey);
+
+      if (isOAuthRedirect && !hasLoggedThisSession) {
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem(hasLoggedKey, 'true');
+        }
+        mLog.info('ConnectWalletEmbedded', 'OAuth redirect detected', {
+          isConnected,
+          address,
+          hasUser: !!user,
+          willTriggerAuth: isConnected && address && !user
+        });
+      }
 
       if (isOAuthRedirect && isConnected && address && !user) {
+        // Mark as being handled
+        isHandlingOAuthRef.current = true;
+
         mLog.info('ConnectWalletEmbedded', 'Auto-authenticating OAuth redirect', {
           isConnected,
           address,
@@ -61,6 +87,7 @@ export default function ConnectWalletEmbedded({
 
           if (authSuccess) {
             mLog.info('ConnectWalletEmbedded', 'OAuth auto-authentication successful');
+            oauthHandledRef.current = true; // Mark as successfully handled
             onSuccess?.();
 
             // Clean up OAuth parameters from URL
@@ -71,30 +98,37 @@ export default function ConnectWalletEmbedded({
             }
           } else {
             mLog.error('ConnectWalletEmbedded', 'OAuth auto-authentication failed');
+            isHandlingOAuthRef.current = false; // Allow retry on failure
           }
         } catch (error) {
           mLog.error('ConnectWalletEmbedded', 'OAuth auto-authentication error', {
             error: error instanceof Error ? error.message : String(error)
           });
+          isHandlingOAuthRef.current = false; // Allow retry on error
         } finally {
           setIsAuthenticating(false);
         }
       }
     };
 
-    // Run immediately and then with increasing delays to catch Dynamic's async connection
+    // Check immediately when conditions are met
     handleOAuthRedirect();
 
-    const timeouts: NodeJS.Timeout[] = [];
+    // Only set up retry timeout if OAuth redirect is detected but conditions aren't met yet
+    const urlParams = new URLSearchParams(window.location.search);
+    const isOAuthRedirect = urlParams.has('dynamicOauthCode') || urlParams.has('dynamicOauthState');
 
-    // Try multiple times with increasing delays
-    [100, 300, 500, 1000, 2000].forEach(delay => {
-      const timeoutId = setTimeout(handleOAuthRedirect, delay);
-      timeouts.push(timeoutId);
-    });
+    let retryTimeout: NodeJS.Timeout | null = null;
+
+    if (isOAuthRedirect && (!isConnected || !address) && !oauthHandledRef.current) {
+      // Wait for Dynamic to establish connection, but only retry once after 2 seconds
+      retryTimeout = setTimeout(handleOAuthRedirect, 2000);
+    }
 
     return () => {
-      timeouts.forEach(clearTimeout);
+      if (retryTimeout) {
+        clearTimeout(retryTimeout);
+      }
     };
   }, [isConnected, address, user, authenticateBackend, onSuccess]);
 

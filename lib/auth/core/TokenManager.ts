@@ -6,11 +6,15 @@ import { mLog } from '../../../utils/mobileLogger';
 
 export class TokenManager {
   private static instance: TokenManager;
+  private static hasLoadedFromStorage: boolean = false;
   private currentToken: string | null = null;
 
   constructor() {
-    // Load token from storage on initialization
-    this.loadFromStorage();
+    // Load token from storage on initialization (only once per session)
+    if (!TokenManager.hasLoadedFromStorage) {
+      this.loadFromStorage();
+      TokenManager.hasLoadedFromStorage = true;
+    }
   }
 
   static getInstance(): TokenManager {

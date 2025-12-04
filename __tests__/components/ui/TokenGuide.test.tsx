@@ -240,7 +240,7 @@ describe('TokenGuide', () => {
     render(<TokenGuide />);
 
     expect(screen.getByText('1.')).toBeInTheDocument();
-    expect(screen.getByText('2.')).toBeInTheDocument();
+    expect(screen.getByText(/2\. Your wallet address:/)).toBeInTheDocument();
     expect(screen.getByText('3.')).toBeInTheDocument();
   });
 });

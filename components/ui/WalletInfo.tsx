@@ -129,7 +129,7 @@ export default function WalletInfo({
 
   return (
     <div className={`bg-secondary-50 rounded-lg p-4 border border-secondary-200 ${className}`}>
-      <h3 className="text-sm font-medium text-secondary-900 mb-3">Wallet Information</h3>
+      <h3 className="text-sm font-medium text-secondary-900 mb-3">YOUR wallet information</h3>
       
       <div className="space-y-3">
         {/* Wallet Address */}

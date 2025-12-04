@@ -483,9 +483,9 @@ export default function ContractCreate() {
         console.log('🔧 ContractCreate: Deposit transaction hash received:', result.depositTxHash);
         console.log(`🔧 ContractCreate: Contract address should receive ${selectedTokenSymbol}:`, result.contractAddress);
 
-        // If webhook_url is provided (WordPress integration), verify payment and send webhook
-        if (webhook_url && wordpress_source === 'true' && authenticatedFetch) {
-          console.log('🔧 ContractCreate: WordPress integration detected, sending verification webhook');
+        // If webhook_url is provided, verify payment and send webhook
+        if (webhook_url && authenticatedFetch) {
+          console.log('🔧 ContractCreate: Webhook URL provided, sending verification webhook');
           try {
             const verifyResponse = await authenticatedFetch('/api/payment/verify-and-webhook', {
               method: 'POST',

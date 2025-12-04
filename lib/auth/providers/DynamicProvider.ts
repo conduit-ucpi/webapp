@@ -155,8 +155,23 @@ export class DynamicProvider implements UnifiedProvider {
         // Return a promise that will be resolved by the OAuth redirect handler
         return new Promise((resolve, reject) => {
           // Set up OAuth redirect handler
+          let checkInterval: NodeJS.Timeout | null = null;
+          let handlerCalled = false;
+
           if (typeof window !== 'undefined') {
             (window as any).dynamicOAuthRedirectHandler = async (result: any) => {
+              // Prevent duplicate handling
+              if (handlerCalled) {
+                mLog.warn('DynamicProvider', 'OAuth redirect handler called multiple times, ignoring duplicate');
+                return;
+              }
+              handlerCalled = true;
+
+              // Stop polling since handler was called
+              if (checkInterval) {
+                clearInterval(checkInterval);
+              }
+
               mLog.info('DynamicProvider', 'OAuth redirect handler called', {
                 hasResult: !!result,
                 hasAddress: !!(result?.address),
@@ -184,16 +199,25 @@ export class DynamicProvider implements UnifiedProvider {
               }
             };
 
-            // Also check periodically if the result becomes available
+            // Also check periodically if the result becomes available (fallback if handler isn't called)
             let checkCount = 0;
-            const checkInterval = setInterval(async () => {
+            checkInterval = setInterval(async () => {
+              // Don't process polling result if handler was already called
+              if (handlerCalled) {
+                clearInterval(checkInterval!);
+                return;
+              }
+
+
               checkCount++;
               if ((window as any).dynamicOAuthResult) {
-                clearInterval(checkInterval);
+                clearInterval(checkInterval!);
+                handlerCalled = true; // Mark as handled to prevent handler from also processing
+
                 const result = (window as any).dynamicOAuthResult;
                 delete (window as any).dynamicOAuthResult;
 
-                mLog.info('DynamicProvider', 'Found OAuth result via polling', {
+                mLog.info('DynamicProvider', 'Found OAuth result via polling (fallback mechanism)', {
                   checkCount,
                   hasAddress: !!(result?.address)
                 });
@@ -215,7 +239,7 @@ export class DynamicProvider implements UnifiedProvider {
                   });
                 }
               } else if (checkCount >= 50) { // 5 seconds max
-                clearInterval(checkInterval);
+                clearInterval(checkInterval!);
                 reject(new Error('OAuth redirect timeout - no result found'));
               }
             }, 100);

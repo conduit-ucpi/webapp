@@ -90,7 +90,7 @@ export default function TokenGuide() {
                 )}
               </button>
             </div>
-            <code className="bg-blue-100 px-2 py-1 rounded text-xs whitespace-nowrap block mt-1">{walletAddress}</code>
+            <code className="bg-blue-100 px-2 py-1 rounded text-xs whitespace-nowrap block mt-1 overflow-x-auto">{walletAddress}</code>
           </div>
         </div>
         <div className="flex items-start">

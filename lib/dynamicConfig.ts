@@ -39,6 +39,14 @@ export const createDynamicConfig = (config: {
         useMetamaskSdk: false, // Disable MetaMask SDK - force WalletConnect for MetaMask
       })
     ],
+
+    // Only show MetaMask and WalletConnect in the wallet list
+    // Social logins (Google, etc.) are always shown and controlled in Dynamic dashboard
+    // WalletConnect allows users to connect any wallet they want (Trust, Coinbase, etc.)
+    walletsFilter: (wallets: any[]) => {
+      const allowedWallets = ['metamask', 'walletconnect'];
+      return wallets.filter((wallet: any) => allowedWallets.includes(wallet.key));
+    },
     overrides: {
       // Enable multi-asset to show ERC20 token balances in the widget
       multiAsset: true,
@@ -90,6 +98,7 @@ export const createDynamicConfig = (config: {
     deepLinkPreference: dynamicSettings.deepLinkPreference,
     hasWalletConnectors: !!dynamicSettings.walletConnectors,
     connectorCount: dynamicSettings.walletConnectors?.length || 0,
+    walletsFilter: 'metamask, walletconnect only',
     ercTokenCount: ercTokens.length,
     tokens: ercTokens.map((t: any) => `${t.symbol} (${t.address.substring(0, 8)}...)`)
   });

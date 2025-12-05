@@ -27,18 +27,18 @@ export class ProviderRegistry {
         mLog.info('ProviderRegistry', 'Detected Farcaster environment, registering Farcaster provider');
         await this.registerFarcasterProvider(config);
       } else {
-        // Register Dynamic provider (required)
-        if (config.dynamicEnvironmentId) {
-          mLog.info('ProviderRegistry', 'Dynamic environment ID found, registering Dynamic provider');
-          await this.registerDynamicProvider(config);
+        // Register WalletConnect provider (handles ALL auth: social, email, wallets)
+        if (config.walletConnectProjectId) {
+          mLog.info('ProviderRegistry', 'WalletConnect project ID found, registering WalletConnect provider');
+          await this.registerWalletConnectProvider(config);
 
-          if (this.providers.has('dynamic')) {
-            mLog.info('ProviderRegistry', 'Dynamic provider registered successfully');
+          if (this.providers.has('walletconnect')) {
+            mLog.info('ProviderRegistry', 'WalletConnect provider registered successfully');
           } else {
-            throw new Error('Dynamic provider registration failed');
+            throw new Error('WalletConnect provider registration failed');
           }
         } else {
-          throw new Error('Dynamic environment ID is required - Web3Auth is no longer supported');
+          throw new Error('WalletConnect project ID is required');
         }
       }
 
@@ -62,16 +62,16 @@ export class ProviderRegistry {
 
   getBestProvider(): UnifiedProvider | null {
     // Return the first available provider
-    // Priority: farcaster (if in frame) -> dynamic
+    // Priority: farcaster (if in frame) -> walletconnect
     let bestProvider: UnifiedProvider | null = null;
     let selectedType: string = 'none';
 
     if (this.providers.has('farcaster')) {
       bestProvider = this.providers.get('farcaster')!;
       selectedType = 'farcaster';
-    } else if (this.providers.has('dynamic')) {
-      bestProvider = this.providers.get('dynamic')!;
-      selectedType = 'dynamic';
+    } else if (this.providers.has('walletconnect')) {
+      bestProvider = this.providers.get('walletconnect')!;
+      selectedType = 'walletconnect';
     }
 
     // Provider selection completed
@@ -96,6 +96,29 @@ export class ProviderRegistry {
     await provider.initialize();
     this.providers.set('dynamic', provider);
     mLog.info('ProviderRegistry', 'Registered Dynamic provider successfully');
+  }
+
+  private async registerWalletConnectProvider(config: AuthConfig): Promise<void> {
+    try {
+      mLog.info('ProviderRegistry', 'Registering WalletConnect provider');
+      // Dynamic import to avoid bundle size
+      const { WalletConnectProvider } = await import('../providers/WalletConnectProvider');
+      mLog.debug('ProviderRegistry', 'WalletConnectProvider imported successfully');
+
+      const provider = new WalletConnectProvider(config);
+      mLog.debug('ProviderRegistry', 'WalletConnectProvider instance created');
+
+      await provider.initialize();
+      mLog.debug('ProviderRegistry', 'WalletConnectProvider initialized');
+
+      this.providers.set('walletconnect', provider);
+      mLog.info('ProviderRegistry', 'Registered WalletConnect provider successfully');
+    } catch (error) {
+      mLog.error('ProviderRegistry', 'Failed to register WalletConnect provider', {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      });
+    }
   }
 
   private async registerFarcasterProvider(config: AuthConfig): Promise<void> {

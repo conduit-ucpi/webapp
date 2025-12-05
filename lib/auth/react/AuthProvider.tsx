@@ -84,7 +84,7 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
 
   // No need to manage provider separately - it's cached in AuthManager
 
-  const connect = useCallback(async (): Promise<ConnectionResult> => {
+  const connect = useCallback(async (preferredProvider?: 'dynamic' | 'walletconnect' | 'farcaster'): Promise<ConnectionResult> => {
     // Prevent multiple simultaneous connection attempts
     if (isConnecting) {
       console.log('🔧 AuthProvider: Connection already in progress, ignoring duplicate request');
@@ -104,7 +104,7 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
 
     try {
       // Connect with auth manager (handles provider selection - NO auth)
-      const result = await authManager.connect();
+      const result = await authManager.connect(preferredProvider);
       return result; // Return the ConnectionResult whether success or failure
 
     } catch (error) {

@@ -236,6 +236,18 @@ export function wrapProviderWithMobileDeepLinks(provider: any, connector?: any):
 
   mLog.info('MobileDeepLink', '✅ All protection layers passed - applying mobile deep link wrapper')
 
+  // Check if provider has a request method
+  if (!provider.request || typeof provider.request !== 'function') {
+    mLog.warn('MobileDeepLink', '⚠️ Provider does not have a request method - cannot intercept for deep links', {
+      providerType: typeof provider,
+      hasRequest: !!provider.request,
+      requestType: typeof provider.request,
+      walletName: connector?.name || 'unknown'
+    })
+    // Return provider unchanged - signing will work but won't trigger deep links
+    return provider
+  }
+
   // Store the original request method
   const originalRequest = provider.request.bind(provider)
 

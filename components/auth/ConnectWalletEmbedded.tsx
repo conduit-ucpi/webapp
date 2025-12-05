@@ -11,6 +11,7 @@ interface ConnectWalletEmbeddedProps {
   compact?: boolean;
   onSuccess?: () => void;
   autoConnect?: boolean;
+  preferredProvider?: 'dynamic' | 'walletconnect'; // Choose which provider to use
 }
 
 export default function ConnectWalletEmbedded({
@@ -20,7 +21,8 @@ export default function ConnectWalletEmbedded({
   className = "",
   compact = false,
   onSuccess,
-  autoConnect = false
+  autoConnect = false,
+  preferredProvider
 }: ConnectWalletEmbeddedProps) {
   const { user, isLoading, connect, authenticateBackend, isConnected, address } = useAuth();
   const [isAuthenticating, setIsAuthenticating] = useState(false);
@@ -231,10 +233,11 @@ export default function ConnectWalletEmbedded({
 
       if (connect) {
         try {
-          mLog.info('ConnectWalletEmbedded', 'Calling connect function...');
-          await mLog.forceFlush(); // Flush before calling connect (in case it hangs)
+          // Always use WalletConnect (handles social, email, and all wallets)
+          mLog.info('ConnectWalletEmbedded', 'Calling connect function with WalletConnect');
+          await mLog.forceFlush(); // Flush before calling (in case it hangs)
 
-          const connectionResult = await connect();
+          const connectionResult = await connect('walletconnect');
 
           if (connectionResult.success) {
             mLog.info('ConnectWalletEmbedded', 'Connection successful, authenticating with backend...');

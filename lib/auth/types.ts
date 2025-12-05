@@ -74,7 +74,7 @@ export interface AuthConfig {
   usdtContractAddress?: string;
 }
 
-export type ProviderType = 'farcaster' | 'dynamic';
+export type ProviderType = 'farcaster' | 'dynamic' | 'walletconnect';
 
 // React context types
 export interface AuthContextType {

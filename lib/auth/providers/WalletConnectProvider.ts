@@ -100,8 +100,30 @@ export class WalletConnectProvider implements UnifiedProvider {
       throw new Error('No provider available - not connected');
     }
 
-    const signer = await this.cachedEthersProvider.getSigner();
-    return signer.signMessage(message);
+    // For embedded wallets (social login), we can't use getSigner() as it calls eth_requestAccounts
+    // Instead, use personal_sign directly via the provider
+    try {
+      const walletProvider = this.reownProvider.getProvider();
+      const address = await this.getAddress();
+
+      mLog.info('WalletConnectProvider', 'Signing with personal_sign (works with embedded wallets)', {
+        address,
+        messageLength: message.length
+      });
+
+      // Use personal_sign directly - works with both regular wallets and embedded wallets
+      const signature = await walletProvider.request({
+        method: 'personal_sign',
+        params: [message, address]
+      });
+
+      return signature;
+    } catch (error) {
+      mLog.error('WalletConnectProvider', 'Failed to sign message', {
+        error: error instanceof Error ? error.message : String(error)
+      });
+      throw error;
+    }
   }
 
   async signTransaction(params: TransactionRequest): Promise<string> {

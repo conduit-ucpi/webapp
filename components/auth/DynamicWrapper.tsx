@@ -381,12 +381,93 @@ function DynamicBridge() {
           // Store the promise for the event handler
           activeLoginPromise.current = { resolve, reject };
 
+          // Mobile detection: Check if primaryWallet exists when app becomes visible
+          let mobilePollingInterval: NodeJS.Timeout | null = null;
+
+          const checkForConnection = () => {
+            if (!activeLoginPromise.current) return; // Already resolved
+
+            if (primaryWallet && primaryWallet.address) {
+              mLog.info('DynamicBridge', '✅ Mobile visibility check found connected wallet', {
+                address: primaryWallet.address,
+                walletKey: primaryWallet.key
+              });
+
+              // Get the provider
+              let provider = primaryWallet.connector;
+              if ((primaryWallet.connector as any)?.provider) {
+                provider = (primaryWallet.connector as any).provider;
+              }
+
+              const finalUser = user || {
+                email: null,
+                walletAddress: primaryWallet.address
+              };
+
+              activeLoginPromise.current.resolve({
+                address: primaryWallet.address,
+                provider: provider,
+                wallet: primaryWallet,
+                user: finalUser
+              });
+
+              activeLoginPromise.current = null;
+
+              // Clean up mobile polling
+              if (mobilePollingInterval) {
+                clearInterval(mobilePollingInterval);
+                mobilePollingInterval = null;
+              }
+            }
+          };
+
+          // Visibility change listener for mobile (when user returns from wallet app)
+          const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+              mLog.info('DynamicBridge', '📱 App became visible, checking for wallet connection...');
+              checkForConnection();
+            }
+          };
+
+          document.addEventListener('visibilitychange', handleVisibilityChange);
+
+          // Focus event as backup for iOS
+          const handleFocus = () => {
+            mLog.info('DynamicBridge', '📱 Window focused, checking for wallet connection...');
+            checkForConnection();
+          };
+
+          window.addEventListener('focus', handleFocus);
+
+          // Mobile polling: Check every 2 seconds for connection
+          // This catches cases where events don't fire properly
+          mobilePollingInterval = setInterval(() => {
+            if (activeLoginPromise.current) {
+              mLog.debug('DynamicBridge', '🔄 Mobile polling check for wallet connection...');
+              checkForConnection();
+            } else {
+              // Clean up if promise was resolved
+              if (mobilePollingInterval) {
+                clearInterval(mobilePollingInterval);
+                mobilePollingInterval = null;
+              }
+            }
+          }, 2000);
+
           // Set up a timeout in case events don't fire
           const timeoutId = setTimeout(() => {
             if (activeLoginPromise.current) {
               mLog.error('DynamicBridge', 'Authentication timeout - no events received');
               activeLoginPromise.current.reject(new Error('Authentication timeout'));
               activeLoginPromise.current = null;
+            }
+
+            // Clean up listeners
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+            window.removeEventListener('focus', handleFocus);
+            if (mobilePollingInterval) {
+              clearInterval(mobilePollingInterval);
+              mobilePollingInterval = null;
             }
           }, 60000); // 60 second timeout
 
@@ -396,11 +477,23 @@ function DynamicBridge() {
 
           activeLoginPromise.current.resolve = (value) => {
             clearTimeout(timeoutId);
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+            window.removeEventListener('focus', handleFocus);
+            if (mobilePollingInterval) {
+              clearInterval(mobilePollingInterval);
+              mobilePollingInterval = null;
+            }
             originalResolve(value);
           };
 
           activeLoginPromise.current.reject = (error) => {
             clearTimeout(timeoutId);
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+            window.removeEventListener('focus', handleFocus);
+            if (mobilePollingInterval) {
+              clearInterval(mobilePollingInterval);
+              mobilePollingInterval = null;
+            }
             originalReject(error);
           };
         });

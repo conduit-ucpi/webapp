@@ -28,6 +28,11 @@ export const createDynamicConfig = (config: {
     // NOTE: wagmiConfig is provided via WagmiProvider context, not as a direct property
     // Dynamic's ethers toolkit will read PublicClient from wagmi's React context
 
+    // Mobile wallet redirect configuration
+    // This tells mobile wallets (Trust Wallet, MetaMask, etc.) to redirect back after connection
+    mobileExperience: 'redirect' as const, // Use redirect mode instead of in-app browser
+    deepLinkPreference: 'universal' as const, // Use universal links (HTTPS) for redirects
+
     walletConnectors: [
       (props: any) => EthereumWalletConnectors({
         ...props,
@@ -81,6 +86,8 @@ export const createDynamicConfig = (config: {
     chainId: config.chainId,
     networkName: networkInfo.name,
     multiAsset: dynamicSettings.overrides.multiAsset,
+    mobileExperience: dynamicSettings.mobileExperience,
+    deepLinkPreference: dynamicSettings.deepLinkPreference,
     hasWalletConnectors: !!dynamicSettings.walletConnectors,
     connectorCount: dynamicSettings.walletConnectors?.length || 0,
     ercTokenCount: ercTokens.length,

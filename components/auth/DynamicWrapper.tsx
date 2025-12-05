@@ -495,7 +495,8 @@ export function DynamicWrapper({ children, config }: DynamicWrapperProps) {
       transports: {
         [base.id]: http(config.chainId === 8453 ? config.rpcUrl : 'https://mainnet.base.org'),
         [baseSepolia.id]: http(config.chainId === 84532 ? config.rpcUrl : 'https://sepolia.base.org')
-      }
+      },
+      multiInjectedProviderDiscovery: false, // Disable to prevent conflicts with Dynamic
     });
 
     // Store wagmi config on window for direct access by DynamicProvider

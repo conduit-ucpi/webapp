@@ -43,29 +43,12 @@ jest.mock('./components/auth/reownWalletConnect', () => ({
   })),
 }))
 
-// Mock Dynamic Labs modules to prevent import errors during testing
-jest.mock('@dynamic-labs/sdk-react-core', () => ({
-  DynamicContextProvider: ({ children }) => children,
-  useDynamicContext: () => ({
-    primaryWallet: null,
-    user: null,
-    setShowAuthFlow: jest.fn(),
-    handleLogOut: jest.fn()
-  }),
-  DynamicEmbeddedWidget: () => null
-}))
+// Dynamic Labs has been removed from the codebase, these mocks are no longer needed
+// Kept as comments for reference in case we need to re-add Dynamic Labs support
 
-jest.mock('@dynamic-labs/ethereum', () => ({
-  EthereumWalletConnectors: {}
-}))
-
-jest.mock('@dynamic-labs/ethers-v6', () => ({
-  getWeb3Provider: jest.fn().mockResolvedValue(null),
-  getSigner: jest.fn().mockResolvedValue({
-    signMessage: jest.fn().mockResolvedValue('0xsignature'),
-    getAddress: jest.fn().mockResolvedValue('0x1234567890123456789012345678901234567890')
-  })
-}))
+// jest.mock('@dynamic-labs/sdk-react-core', () => ({ ... }))
+// jest.mock('@dynamic-labs/ethereum', () => ({ ... }))
+// jest.mock('@dynamic-labs/ethers-v6', () => ({ ... }))
 
 // Mock SDK
 jest.mock('@conduit-ucpi/sdk', () => ({

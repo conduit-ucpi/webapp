@@ -55,10 +55,38 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
         await authManager.initialize(config);
 
         if (isMounted) {
-          // Check for existing backend session
-          const backendStatus = await authService.checkAuthentication();
-          if (backendStatus.success && backendStatus.user) {
-            setUser(backendStatus.user);
+          // Check for existing SIWE session on startup
+          try {
+            const sessionResponse = await fetch('/api/auth/siwe/session');
+
+            if (sessionResponse.ok) {
+              const sessionData = await sessionResponse.json();
+
+              if (sessionData.address) {
+                mLog.info('AuthProvider', 'Found existing SIWE session on startup', {
+                  address: sessionData.address
+                });
+
+                // Fetch full user data from backend
+                const backendStatus = await authService.checkAuthentication();
+
+                if (backendStatus.success && backendStatus.user) {
+                  setUser(backendStatus.user);
+                  authManager.setState({
+                    isAuthenticated: true,
+                    isConnected: true,
+                    address: sessionData.address
+                  });
+                  mLog.info('AuthProvider', '✅ Session restored from SIWE cookie');
+                }
+              }
+            } else {
+              mLog.debug('AuthProvider', 'No existing SIWE session found on startup');
+            }
+          } catch (sessionError) {
+            mLog.debug('AuthProvider', 'Error checking SIWE session on startup:', {
+              error: sessionError instanceof Error ? sessionError.message : String(sessionError)
+            });
           }
         }
       } catch (error) {
@@ -103,8 +131,46 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
     setIsConnecting(true);
 
     try {
-      // Connect with auth manager (handles provider selection - NO auth)
+      // Connect with auth manager (handles provider selection + SIWE auto-auth)
       const result = await authManager.connect(preferredProvider);
+
+      if (result.success && result.address) {
+        mLog.info('AuthProvider', 'Connection successful, checking SIWE session...', {
+          address: result.address
+        });
+
+        // SIWE handles authentication during connection via verifyMessage callback
+        // Check if we have an active SIWE session now
+        try {
+          const sessionResponse = await fetch('/api/auth/siwe/session');
+
+          if (sessionResponse.ok) {
+            const sessionData = await sessionResponse.json();
+
+            if (sessionData.address) {
+              mLog.info('AuthProvider', '✅ SIWE session found - user authenticated', {
+                address: sessionData.address
+              });
+
+              // Fetch full user data from backend
+              const backendStatus = await authService.checkAuthentication();
+
+              if (backendStatus.success && backendStatus.user) {
+                setUser(backendStatus.user);
+                authManager.setState({ isAuthenticated: true });
+                mLog.info('AuthProvider', '✅ User data loaded from backend');
+              }
+            }
+          } else {
+            mLog.warn('AuthProvider', 'No SIWE session found after connection - this may indicate SIWE auth failed');
+          }
+        } catch (sessionError) {
+          mLog.error('AuthProvider', 'Error checking SIWE session:', {
+            error: sessionError instanceof Error ? sessionError.message : String(sessionError)
+          });
+        }
+      }
+
       return result; // Return the ConnectionResult whether success or failure
 
     } catch (error) {
@@ -122,7 +188,7 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
     } finally {
       setIsConnecting(false);
     }
-  }, [authManager, isConnecting]);
+  }, [authManager, authService, isConnecting]);
 
   // Track if authentication is in progress to prevent duplicate calls from multiple component instances
   const isAuthenticatingRef = useRef(false);
@@ -134,7 +200,7 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
       return false;
     }
 
-    mLog.info('AuthProvider', 'authenticateBackend called', {
+    mLog.info('AuthProvider', 'authenticateBackend called (SIWE mode - checking session)', {
       hasConnectionResult: !!connectionResult,
       connectionSuccess: connectionResult?.success,
       connectionAddress: connectionResult?.address,
@@ -177,45 +243,50 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
       // Set loading state for backend authentication
       authManager.setState({ isLoading: true });
 
-      mLog.info('AuthProvider', 'Starting message signing for authentication', {
+      mLog.info('AuthProvider', 'Checking SIWE session (no manual signing required)', {
         address
       });
 
-      // Sign message for authentication
-      const authToken = await authManager.signMessageForAuth();
+      // SIWE handles authentication automatically during connection
+      // Check if we have an active SIWE session
+      const sessionResponse = await fetch('/api/auth/siwe/session');
 
-      mLog.info('AuthProvider', 'Message signed successfully, sending to backend', {
-        address,
-        hasToken: !!authToken
-      });
+      if (sessionResponse.ok) {
+        const sessionData = await sessionResponse.json();
 
-      // Send to backend
-      const backendResult = await authService.authenticateWithBackend(authToken, address);
+        if (sessionData.address) {
+          mLog.info('AuthProvider', '✅ SIWE session found - user authenticated', {
+            address: sessionData.address
+          });
 
-      mLog.debug('AuthProvider', 'Backend authentication result', {
-        success: backendResult.success,
-        hasUser: !!backendResult.user,
-        error: backendResult.error
-      });
+          // Fetch full user data from backend
+          const backendStatus = await authService.checkAuthentication();
 
-      if (backendResult.success && backendResult.user) {
-        setUser(backendResult.user);
-        // Update auth manager state to reflect successful authentication
-        authManager.setState({ isAuthenticated: true, isLoading: false });
-        mLog.info('AuthProvider', '✅ Backend authentication successful');
-        return true;
+          if (backendStatus.success && backendStatus.user) {
+            setUser(backendStatus.user);
+            authManager.setState({ isAuthenticated: true, isLoading: false });
+            mLog.info('AuthProvider', '✅ Backend authentication successful (SIWE)');
+            return true;
+          } else {
+            authManager.setState({ isLoading: false });
+            mLog.error('AuthProvider', 'Failed to fetch user data despite valid SIWE session');
+            return false;
+          }
+        } else {
+          authManager.setState({ isLoading: false });
+          mLog.error('AuthProvider', 'SIWE session response missing address');
+          return false;
+        }
       } else {
         authManager.setState({ isLoading: false });
-        mLog.error('AuthProvider', 'Backend authentication failed', {
-          success: backendResult.success,
-          error: backendResult.error,
-          hasUser: !!backendResult.user
+        mLog.error('AuthProvider', 'No SIWE session found - authentication failed', {
+          status: sessionResponse.status
         });
         return false;
       }
     } catch (error) {
       authManager.setState({ isLoading: false });
-      mLog.error('AuthProvider', 'Authentication error during signing or backend call', {
+      mLog.error('AuthProvider', 'Authentication error during SIWE session check', {
         error: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined
       });
@@ -228,8 +299,8 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
 
   const disconnect = useCallback(async (): Promise<void> => {
     try {
-      // Logout from backend first
-      await authService.logout();
+      // Sign out from SIWE session (clears AUTH-TOKEN cookie)
+      await fetch('/api/auth/siwe/signout', { method: 'POST' });
 
       // Then disconnect auth manager
       await authManager.disconnect();
@@ -237,10 +308,15 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
       // Clear local state
       setUser(null);
 
+      mLog.info('AuthProvider', '✅ Disconnected and signed out successfully');
+
     } catch (error) {
       console.error('🔧 AuthProvider: Disconnect failed:', error);
+      mLog.error('AuthProvider', 'Disconnect error', {
+        error: error instanceof Error ? error.message : String(error)
+      });
     }
-  }, [authManager, authService]);
+  }, [authManager]);
 
   const switchWallet = useCallback(async (): Promise<ConnectionResult> => {
     try {

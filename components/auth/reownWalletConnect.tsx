@@ -5,6 +5,7 @@ import { ethers } from 'ethers'
 import { toHex } from '@/utils/hexUtils'
 import { detectDevice } from '@/utils/deviceDetection'
 import { wrapProviderWithMobileDeepLinks } from '@/utils/mobileDeepLinkProvider'
+import { createAppKitSIWEConfig } from '@/lib/auth/siwe-config'
 
 export class ReownWalletConnectProvider {
   private appKit: any = null
@@ -56,11 +57,16 @@ export class ReownWalletConnectProvider {
       // Create ethers adapter
       const ethersAdapter = new EthersAdapter()
 
-      // Create AppKit instance  
+      // Create SIWE config for one-click authentication
+      const siweConfig = createAppKitSIWEConfig()
+      console.log('🔧 ReownWalletConnect: SIWE config created - one-click auth enabled')
+
+      // Create AppKit instance
       this.appKit = createAppKit({
         adapters: [ethersAdapter],
         networks: networks as [any, ...any[]], // Type assertion to fix tuple requirement
         projectId,
+        siweConfig, // Enable SIWE for one-click authentication
         metadata: {
           name: 'Conduit UCPI',
           description: 'Time-delayed escrow contracts on Base',

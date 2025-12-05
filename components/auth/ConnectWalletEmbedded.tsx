@@ -24,7 +24,7 @@ export default function ConnectWalletEmbedded({
   autoConnect = false,
   preferredProvider
 }: ConnectWalletEmbeddedProps) {
-  const { user, isLoading, connect, authenticateBackend, isConnected, address } = useAuth();
+  const { user, isLoading, connect, isConnected, address } = useAuth();
   const [isAuthenticating, setIsAuthenticating] = useState(false);
 
   // Track if we've already handled OAuth redirect to prevent duplicate attempts
@@ -78,54 +78,39 @@ export default function ConnectWalletEmbedded({
         }
         isHandlingOAuthRef.current = true;
 
-        mLog.info('ConnectWalletEmbedded', 'Auto-authenticating OAuth redirect', {
+        mLog.info('ConnectWalletEmbedded', 'OAuth redirect detected - SIWE should have authenticated automatically', {
           isConnected,
           address,
           hasUser: !!user
         });
 
+        // SIWE handles authentication automatically during connection
+        // Just wait a moment for the auth state to propagate, then call onSuccess
         try {
           setIsAuthenticating(true);
-          const authSuccess = await authenticateBackend({
-            success: true,
-            address: address,
-            capabilities: {
-              canSign: true,
-              canTransact: true,
-              canSwitchWallets: true,
-              isAuthOnly: false
-            }
-          });
 
-          if (authSuccess) {
-            mLog.info('ConnectWalletEmbedded', 'OAuth auto-authentication successful');
+          // Give a brief moment for SIWE session check to complete
+          await new Promise(resolve => setTimeout(resolve, 500));
 
-            // Mark as successfully handled globally AND locally
-            oauthHandledRef.current = true;
-            if (typeof window !== 'undefined') {
-              sessionStorage.setItem(oauthHandledKey, 'true');
-              sessionStorage.removeItem(oauthHandlingKey); // Clear handling flag
-            }
+          mLog.info('ConnectWalletEmbedded', 'OAuth auto-authentication should be complete via SIWE');
 
-            onSuccess?.();
+          // Mark as successfully handled globally AND locally
+          oauthHandledRef.current = true;
+          if (typeof window !== 'undefined') {
+            sessionStorage.setItem(oauthHandledKey, 'true');
+            sessionStorage.removeItem(oauthHandlingKey); // Clear handling flag
+          }
 
-            // Clean up OAuth parameters from URL
-            if (window.history && window.history.replaceState) {
-              const cleanUrl = window.location.origin + window.location.pathname;
-              window.history.replaceState({}, document.title, cleanUrl);
-              mLog.info('ConnectWalletEmbedded', 'OAuth parameters auto-cleaned from URL');
-            }
-          } else {
-            mLog.error('ConnectWalletEmbedded', 'OAuth auto-authentication failed');
+          onSuccess?.();
 
-            // Clear handling flag to allow retry
-            isHandlingOAuthRef.current = false;
-            if (typeof window !== 'undefined') {
-              sessionStorage.removeItem(oauthHandlingKey);
-            }
+          // Clean up OAuth parameters from URL
+          if (window.history && window.history.replaceState) {
+            const cleanUrl = window.location.origin + window.location.pathname;
+            window.history.replaceState({}, document.title, cleanUrl);
+            mLog.info('ConnectWalletEmbedded', 'OAuth parameters auto-cleaned from URL');
           }
         } catch (error) {
-          mLog.error('ConnectWalletEmbedded', 'OAuth auto-authentication error', {
+          mLog.error('ConnectWalletEmbedded', 'OAuth handling error', {
             error: error instanceof Error ? error.message : String(error)
           });
 
@@ -159,7 +144,7 @@ export default function ConnectWalletEmbedded({
         clearTimeout(retryTimeout);
       }
     };
-  }, [isConnected, address, user, authenticateBackend, onSuccess]);
+  }, [isConnected, address, user, onSuccess]);
 
   // Auto-connect when autoConnect prop is true (e.g., from Shopify flow)
   useEffect(() => {
@@ -194,32 +179,20 @@ export default function ConnectWalletEmbedded({
 
         // Check if we're already connected (Dynamic auto-connects after OAuth)
         if (isConnected && address) {
-          mLog.info('ConnectWalletEmbedded', 'Already connected after OAuth, proceeding to backend auth');
+          mLog.info('ConnectWalletEmbedded', 'Already connected after OAuth - SIWE should have authenticated automatically');
 
-          // Directly authenticate with backend
-          const authSuccess = await authenticateBackend({
-            success: true,
-            address: address,
-            capabilities: {
-              canSign: true,
-              canTransact: true,
-              canSwitchWallets: true,
-              isAuthOnly: false
-            }
-          });
+          // SIWE handles authentication automatically
+          // Just wait a moment for auth state to propagate
+          await new Promise(resolve => setTimeout(resolve, 500));
 
-          if (authSuccess) {
-            mLog.info('ConnectWalletEmbedded', 'OAuth backend authentication successful');
-            onSuccess?.();
+          mLog.info('ConnectWalletEmbedded', 'OAuth authentication should be complete via SIWE');
+          onSuccess?.();
 
-            // Clean up OAuth parameters from URL
-            if (window.history && window.history.replaceState) {
-              const cleanUrl = window.location.origin + window.location.pathname;
-              window.history.replaceState({}, document.title, cleanUrl);
-              mLog.info('ConnectWalletEmbedded', 'OAuth parameters cleaned from URL');
-            }
-          } else {
-            mLog.error('ConnectWalletEmbedded', 'OAuth backend authentication failed');
+          // Clean up OAuth parameters from URL
+          if (window.history && window.history.replaceState) {
+            const cleanUrl = window.location.origin + window.location.pathname;
+            window.history.replaceState({}, document.title, cleanUrl);
+            mLog.info('ConnectWalletEmbedded', 'OAuth parameters cleaned from URL');
           }
 
           return;
@@ -235,21 +208,16 @@ export default function ConnectWalletEmbedded({
         try {
           // Always use WalletConnect (handles social, email, and all wallets)
           mLog.info('ConnectWalletEmbedded', 'Calling connect function with WalletConnect');
+          mLog.info('ConnectWalletEmbedded', 'SIWE enabled - authentication will happen automatically during connection');
           await mLog.forceFlush(); // Flush before calling (in case it hangs)
 
           const connectionResult = await connect('walletconnect');
 
           if (connectionResult.success) {
-            mLog.info('ConnectWalletEmbedded', 'Connection successful, authenticating with backend...');
-
-            const authSuccess = await authenticateBackend(connectionResult);
-
-            if (authSuccess) {
-              mLog.info('ConnectWalletEmbedded', 'Backend authentication successful');
-              onSuccess?.();
-            } else {
-              mLog.error('ConnectWalletEmbedded', 'Backend authentication failed');
-            }
+            // SIWE handles authentication automatically during connection via verifyMessage callback
+            // No manual authenticateBackend call needed!
+            mLog.info('ConnectWalletEmbedded', '✅ Connection + authentication successful (SIWE one-click)');
+            onSuccess?.();
           } else {
             mLog.error('ConnectWalletEmbedded', 'Wallet connection failed', { error: connectionResult.error });
           }

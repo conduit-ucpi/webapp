@@ -191,7 +191,7 @@ export class ReownWalletConnectProvider {
       return new Promise((resolve) => {
         let isResolved = false
         let checkAttempts = 0
-        const maxAttempts = 120 // 60 seconds with 500ms intervals
+        const maxAttempts = 90 // MOBILE FIX: 90 seconds with 1000ms intervals (was 60s with 500ms)
         let hasInitiatedConnection = false
 
         // Track cleanup functions
@@ -224,21 +224,33 @@ export class ReownWalletConnectProvider {
         }
 
         // Add visibility change listener to detect when user returns from wallet app
-        // Only trigger if we've actually initiated a connection
+        // MOBILE FIX: Always check when user returns, give WalletConnect time to sync
         const handleVisibilityChange = () => {
-          if (document.visibilityState === 'visible' && !isResolved && hasInitiatedConnection) {
-            console.log('🔧 ReownWalletConnect: App became visible after wallet interaction, checking connection status...')
-            // Force a check when the page becomes visible again
-            checkConnection()
+          if (document.visibilityState === 'visible' && !isResolved) {
+            console.log('🔧 ReownWalletConnect: App became visible, giving WalletConnect time to sync session...')
+            // Give WalletConnect a moment to sync the session before checking
+            setTimeout(() => {
+              if (!isResolved) {
+                console.log('🔧 ReownWalletConnect: Checking connection after visibility change...')
+                checkConnection()
+              }
+            }, 300) // Small delay to let WalletConnect sync
           }
         }
         document.addEventListener('visibilitychange', handleVisibilityChange)
 
         // On mobile, also use focus event as backup for detection
+        // MOBILE FIX: Always check when window gets focus, give WalletConnect time to sync
         const handleFocus = () => {
-          if (!isResolved && hasInitiatedConnection) {
-            console.log('🔧 ReownWalletConnect: Window focused after wallet interaction, checking connection status...')
-            checkConnection()
+          if (!isResolved) {
+            console.log('🔧 ReownWalletConnect: Window focused, giving WalletConnect time to sync session...')
+            // Give WalletConnect a moment to sync the session before checking
+            setTimeout(() => {
+              if (!isResolved) {
+                console.log('🔧 ReownWalletConnect: Checking connection after focus...')
+                checkConnection()
+              }
+            }, 300) // Small delay to let WalletConnect sync
           }
         }
         if (isMobile) {
@@ -267,10 +279,13 @@ export class ReownWalletConnectProvider {
             // The AppKit modal state is managed internally
             const caipAddress = this.appKit.getCaipAddress()
 
-            // Also check if modal is still open - if it's closed but no connection, user cancelled
+            // MOBILE FIX: Don't treat modal close as cancellation too early on mobile
+            // On mobile, the modal might close when user switches to wallet app
+            // Give more time before treating it as cancellation
             const modalState = this.appKit.getState()
-            if (modalState?.open === false && !caipAddress && checkAttempts > 4) {
-              console.log('🔧 ReownWalletConnect: Modal closed without connection')
+            if (modalState?.open === false && !caipAddress && checkAttempts > 20 && !isMobile) {
+              // Only on desktop - on mobile, user might return via visibility/focus events
+              console.log('🔧 ReownWalletConnect: Modal closed without connection (desktop)')
               resolveOnce({
                 success: false,
                 error: 'User cancelled connection'
@@ -278,27 +293,8 @@ export class ReownWalletConnectProvider {
               return
             }
 
-            // Mobile-specific: If on mobile and we've been checking for a while, try to refresh the modal state
-            if (isMobile && checkAttempts > 10 && checkAttempts % 10 === 0) {
-              console.log('🔧 ReownWalletConnect: Mobile refresh attempt - closing and reopening modal...')
-              try {
-                // Close the modal briefly then reopen to refresh state
-                await this.appKit.close()
-                await new Promise(resolve => setTimeout(resolve, 100))
-
-                // Check if connection was established while modal was closed
-                const refreshedCaip = this.appKit.getCaipAddress()
-                if (refreshedCaip) {
-                  console.log('🔧 ReownWalletConnect: Connection found after refresh!')
-                  // Continue to normal connection handling
-                } else {
-                  // Reopen modal for user to continue
-                  await this.appKit.open()
-                }
-              } catch (refreshError) {
-                console.log('🔧 ReownWalletConnect: Could not refresh modal:', refreshError)
-              }
-            }
+            // REMOVED: Modal close/reopen logic that interfered with WalletConnect session sync
+            // Let WalletConnect handle session restoration naturally
 
             // Check if we detect any wallet provider activity indicating connection attempt
             const walletProvider = this.appKit.getWalletProvider()
@@ -315,7 +311,7 @@ export class ReownWalletConnectProvider {
                   } else if (mobilePollingInterval) {
                     clearInterval(mobilePollingInterval)
                   }
-                }, 1000) // Check every 1000ms on mobile
+                }, 2000) // MOBILE FIX: Check every 2000ms to let WalletConnect sync naturally
               }
             }
 
@@ -403,12 +399,13 @@ export class ReownWalletConnectProvider {
                 provider: walletProvider
               })
             } else {
-              // Check again in 500ms
-              setTimeout(checkConnection, 500)
+              // MOBILE FIX: Slower polling to let WalletConnect sync naturally
+              // Check again in 1000ms instead of 500ms to reduce interference
+              setTimeout(checkConnection, 1000)
             }
           } catch (error) {
             console.log('🔧 ReownWalletConnect: Waiting for connection...', error)
-            setTimeout(checkConnection, 500)
+            setTimeout(checkConnection, 1000)
           }
         }
 
@@ -439,7 +436,7 @@ export class ReownWalletConnectProvider {
                         } else if (mobilePollingInterval) {
                           clearInterval(mobilePollingInterval)
                         }
-                      }, 1000)
+                      }, 2000) // MOBILE FIX: Check every 2000ms to let WalletConnect sync naturally
                     }
                   }
                 }
@@ -480,7 +477,7 @@ export class ReownWalletConnectProvider {
                       } else if (mobilePollingInterval) {
                         clearInterval(mobilePollingInterval)
                       }
-                    }, 1000)
+                    }, 2000) // MOBILE FIX: Check every 2000ms to let WalletConnect sync naturally
                   }
                 }
                 checkConnection()

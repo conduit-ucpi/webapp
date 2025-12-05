@@ -3,7 +3,7 @@
  */
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import { AuthConfig } from '../types';
+import { AuthConfig, ProviderType } from '../types';
 import { AuthState, AuthUser, ConnectionResult } from '../types/unified-provider';
 import { AuthManager } from '../core/AuthManager';
 import { AuthService } from '../backend/AuthService';
@@ -84,7 +84,7 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
 
   // No need to manage provider separately - it's cached in AuthManager
 
-  const connect = useCallback(async (preferredProvider?: 'dynamic' | 'walletconnect' | 'farcaster'): Promise<ConnectionResult> => {
+  const connect = useCallback(async (preferredProvider?: ProviderType): Promise<ConnectionResult> => {
     // Prevent multiple simultaneous connection attempts
     if (isConnecting) {
       console.log('🔧 AuthProvider: Connection already in progress, ignoring duplicate request');

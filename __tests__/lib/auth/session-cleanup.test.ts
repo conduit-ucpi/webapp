@@ -6,26 +6,6 @@
  * across sessions.
  */
 
-// Mock Reown AppKit BEFORE any imports
-jest.mock('@reown/appkit/react', () => ({
-  createAppKit: jest.fn(),
-  useAppKitAccount: jest.fn(),
-  useAppKitProvider: jest.fn(),
-}));
-
-jest.mock('@reown/appkit/networks', () => ({
-  base: {},
-}));
-
-// Mock the ReownWalletConnectProvider
-jest.mock('@/components/auth/reownWalletConnect', () => ({
-  ReownWalletConnectProvider: jest.fn().mockImplementation(() => ({
-    initialize: jest.fn().mockResolvedValue(undefined),
-    connect: jest.fn().mockResolvedValue({ success: true }),
-    disconnect: jest.fn().mockResolvedValue(undefined),
-  })),
-}));
-
 import { AuthManager } from '@/lib/auth/core/AuthManager';
 import { Web3Service } from '@/lib/web3';
 

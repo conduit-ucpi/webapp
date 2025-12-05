@@ -79,7 +79,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log('SERVICE_LINK:', process.env.SERVICE_LINK);
     console.log('CONTRACT_ADDRESS:', process.env.CONTRACT_ADDRESS);
     console.log('WALLETCONNECT_PROJECT_ID:', process.env.WALLETCONNECT_PROJECT_ID ? 'Present' : 'Missing');
-    console.log('DYNAMIC_ENVIRONMENT_ID:', process.env.DYNAMIC_ENVIRONMENT_ID ? 'Present' : 'Missing');
 
     const basePath = process.env.NEXT_PUBLIC_BASE_PATH === 'null' ? '' : (process.env.NEXT_PUBLIC_BASE_PATH || '/webapp');
 
@@ -118,7 +117,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const config = {
       web3AuthClientId: process.env.WEB3AUTH_CLIENT_ID,
       web3AuthNetwork: process.env.WEB3AUTH_NETWORK || 'sapphire_devnet',
-      dynamicEnvironmentId: process.env.DYNAMIC_ENVIRONMENT_ID, // New: Dynamic.xyz environment ID
       chainId: parseInt(process.env.CHAIN_ID || '8453'), // Default: Base Mainnet
       rpcUrl: process.env.RPC_URL?.trim(),
       usdcContractAddress: process.env.USDC_CONTRACT_ADDRESS,

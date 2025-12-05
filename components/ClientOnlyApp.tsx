@@ -1,6 +1,6 @@
 import React from 'react';
 import { ConfigProvider } from '@/components/auth/ConfigProvider';
-import { DynamicAuthWrapper } from '@/components/auth/DynamicAuthWrapper';
+import { SimpleAuthProvider } from '@/components/auth/SimpleAuthProvider';
 import Layout from '@/components/layout/Layout';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { ToastProvider } from '@/components/ui/Toast';
@@ -34,7 +34,7 @@ export default function ClientOnlyApp({ Component, pageProps }: ClientOnlyAppPro
           <FarcasterDetectionProvider children={
             <ConfigProvider children={
               <EthersProvider children={
-                <DynamicAuthWrapper children={
+                <SimpleAuthProvider children={
                     <NavigationProvider children={
                       <ToastProvider children={
                         <TourProvider children={

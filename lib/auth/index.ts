@@ -25,7 +25,7 @@ export { TokenManager } from './core/TokenManager';
 
 // Providers
 export { FarcasterProvider } from './providers/FarcasterProvider';
-export { DynamicProvider } from './providers/DynamicProvider';
+export { WalletConnectProvider } from './providers/WalletConnectProvider';
 
 // Backend
 export { BackendClient } from './backend/BackendClient';

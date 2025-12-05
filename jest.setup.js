@@ -24,6 +24,25 @@ Object.defineProperty(global, 'crypto', {
 // jest.mock('@web3auth/ethereum-provider', () => ({ ... }))
 // jest.mock('@web3auth/wallet-services-plugin', () => ({ ... }))
 
+// Mock Reown AppKit (WalletConnect) modules to prevent import errors during testing
+jest.mock('@reown/appkit/react', () => ({
+  createAppKit: jest.fn(),
+  useAppKitAccount: jest.fn(),
+  useAppKitProvider: jest.fn(),
+}))
+
+jest.mock('@reown/appkit/networks', () => ({
+  base: {},
+}))
+
+jest.mock('./components/auth/reownWalletConnect', () => ({
+  ReownWalletConnectProvider: jest.fn().mockImplementation(() => ({
+    initialize: jest.fn().mockResolvedValue(undefined),
+    connect: jest.fn().mockResolvedValue({ success: true }),
+    disconnect: jest.fn().mockResolvedValue(undefined),
+  })),
+}))
+
 // Mock Dynamic Labs modules to prevent import errors during testing
 jest.mock('@dynamic-labs/sdk-react-core', () => ({
   DynamicContextProvider: ({ children }) => children,

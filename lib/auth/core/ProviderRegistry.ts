@@ -87,17 +87,6 @@ export class ProviderRegistry {
     return this.providers.has(type);
   }
 
-  private async registerDynamicProvider(config: AuthConfig): Promise<void> {
-    mLog.info('ProviderRegistry', 'Registering Dynamic provider');
-
-    // Dynamic import to avoid bundle size
-    const { DynamicProvider } = await import('../providers/DynamicProvider');
-    const provider = DynamicProvider.getInstance(config);
-    await provider.initialize();
-    this.providers.set('dynamic', provider);
-    mLog.info('ProviderRegistry', 'Registered Dynamic provider successfully');
-  }
-
   private async registerWalletConnectProvider(config: AuthConfig): Promise<void> {
     try {
       mLog.info('ProviderRegistry', 'Registering WalletConnect provider');

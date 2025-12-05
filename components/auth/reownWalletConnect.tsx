@@ -191,7 +191,7 @@ export class ReownWalletConnectProvider {
       return new Promise((resolve) => {
         let isResolved = false
         let checkAttempts = 0
-        const maxAttempts = 90 // MOBILE FIX: 90 seconds with 1000ms intervals (was 60s with 500ms)
+        const maxAttempts = 300 // SOCIAL LOGIN FIX: 5 minutes to allow for slow OAuth flows
         let hasInitiatedConnection = false
 
         // Track cleanup functions
@@ -224,33 +224,33 @@ export class ReownWalletConnectProvider {
         }
 
         // Add visibility change listener to detect when user returns from wallet app
-        // MOBILE FIX: Always check when user returns, give WalletConnect time to sync
+        // SOCIAL LOGIN FIX: Give WalletConnect plenty of time to process OAuth callbacks
         const handleVisibilityChange = () => {
           if (document.visibilityState === 'visible' && !isResolved) {
-            console.log('🔧 ReownWalletConnect: App became visible, giving WalletConnect time to sync session...')
-            // Give WalletConnect a moment to sync the session before checking
+            console.log('🔧 ReownWalletConnect: App became visible, giving WalletConnect time to process OAuth...')
+            // Give WalletConnect time to exchange OAuth tokens and establish session
             setTimeout(() => {
               if (!isResolved) {
                 console.log('🔧 ReownWalletConnect: Checking connection after visibility change...')
                 checkConnection()
               }
-            }, 300) // Small delay to let WalletConnect sync
+            }, 2000) // Increased from 300ms to 2000ms for social login OAuth processing
           }
         }
         document.addEventListener('visibilitychange', handleVisibilityChange)
 
         // On mobile, also use focus event as backup for detection
-        // MOBILE FIX: Always check when window gets focus, give WalletConnect time to sync
+        // SOCIAL LOGIN FIX: Give WalletConnect plenty of time to process OAuth callbacks
         const handleFocus = () => {
           if (!isResolved) {
-            console.log('🔧 ReownWalletConnect: Window focused, giving WalletConnect time to sync session...')
-            // Give WalletConnect a moment to sync the session before checking
+            console.log('🔧 ReownWalletConnect: Window focused, giving WalletConnect time to process OAuth...')
+            // Give WalletConnect time to exchange OAuth tokens and establish session
             setTimeout(() => {
               if (!isResolved) {
                 console.log('🔧 ReownWalletConnect: Checking connection after focus...')
                 checkConnection()
               }
-            }, 300) // Small delay to let WalletConnect sync
+            }, 2000) // Increased from 300ms to 2000ms for social login OAuth processing
           }
         }
         if (isMobile) {
@@ -279,22 +279,11 @@ export class ReownWalletConnectProvider {
             // The AppKit modal state is managed internally
             const caipAddress = this.appKit.getCaipAddress()
 
-            // MOBILE FIX: Don't treat modal close as cancellation too early on mobile
-            // On mobile, the modal might close when user switches to wallet app
-            // Give more time before treating it as cancellation
-            const modalState = this.appKit.getState()
-            if (modalState?.open === false && !caipAddress && checkAttempts > 20 && !isMobile) {
-              // Only on desktop - on mobile, user might return via visibility/focus events
-              console.log('🔧 ReownWalletConnect: Modal closed without connection (desktop)')
-              resolveOnce({
-                success: false,
-                error: 'User cancelled connection'
-              })
-              return
-            }
-
-            // REMOVED: Modal close/reopen logic that interfered with WalletConnect session sync
-            // Let WalletConnect handle session restoration naturally
+            // TRUST WALLETCONNECT: Removed modal close detection logic
+            // For social login (Google, etc), the modal closes during OAuth flow
+            // WalletConnect/Reown will handle session restoration when user returns
+            // We should NOT treat modal close as cancellation - just wait for caipAddress
+            // Let WalletConnect handle all the OAuth complexity internally
 
             // Check if we detect any wallet provider activity indicating connection attempt
             const walletProvider = this.appKit.getWalletProvider()
@@ -381,6 +370,10 @@ export class ReownWalletConnectProvider {
                 console.warn('🔧 ReownWalletConnect: Could not verify network:', chainError)
                 // Continue anyway
               }
+
+              // Close the modal before returning success so it doesn't stay open
+              console.log('🔧 ReownWalletConnect: Closing modal after successful connection')
+              await this.appKit.close()
 
               resolveOnce({
                 success: true,

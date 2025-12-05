@@ -16,7 +16,6 @@ import {
 import { ethers } from "ethers";
 import { mLog } from '../../../utils/mobileLogger';
 import { getPublicClient } from '@wagmi/core';
-import { wrapProviderWithMobileDeepLinks } from '../../../utils/mobileDeepLinkProvider';
 import { wrapWithHybridProvider } from './hybrid-provider-factory';
 
 export class DynamicProvider implements UnifiedProvider {
@@ -493,11 +492,10 @@ export class DynamicProvider implements UnifiedProvider {
         }
       }
 
-      // Now wrap the provider with mobile deep links and hybrid provider
+      // Now wrap the provider with hybrid provider for universal compatibility
       // Network is now correct, so hybrid provider can safely route to Base RPC
-      let wrappedProvider = connector
-        ? wrapProviderWithMobileDeepLinks(eip1193Provider, connector)
-        : eip1193Provider;
+      // NOTE: Skipping mobile deep link wrapper - Dynamic's mobileExperience:'redirect' handles this
+      let wrappedProvider = eip1193Provider;
 
       // CRITICAL: Always wrap with universal hybrid provider (all wallets use Base RPC for reads)
       // This ensures MetaMask desktop, mobile, Web3Auth, Dynamic, etc. all work consistently
@@ -623,10 +621,9 @@ export class DynamicProvider implements UnifiedProvider {
         throw new Error('No provider available from wallet connector');
       }
 
-      // Wrap provider with mobile deep link support BEFORE creating ethers provider
-      // This ensures mobile wallets automatically open when signing is requested
-      // Pass connector as well so wrapper can check connector.provider
-      let wrappedProvider = wrapProviderWithMobileDeepLinks(eip1193Provider, connector);
+      // Wrap provider with hybrid provider for universal compatibility
+      // NOTE: Skipping mobile deep link wrapper - Dynamic's mobileExperience:'redirect' handles this
+      let wrappedProvider = eip1193Provider;
 
       // Wrap with universal hybrid provider for consistency
       wrappedProvider = wrapWithHybridProvider(wrappedProvider, {
@@ -699,10 +696,9 @@ export class DynamicProvider implements UnifiedProvider {
         throw new Error('No provider available from wallet connector');
       }
 
-      // Wrap provider with mobile deep link support BEFORE creating ethers provider
-      // This ensures mobile wallets automatically open when signing is requested
-      // Pass connector as well so wrapper can check connector.provider
-      let wrappedProvider = wrapProviderWithMobileDeepLinks(eip1193Provider, connector);
+      // Wrap provider with hybrid provider for universal compatibility
+      // NOTE: Skipping mobile deep link wrapper - Dynamic's mobileExperience:'redirect' handles this
+      let wrappedProvider = eip1193Provider;
 
       // Wrap with universal hybrid provider for consistency
       wrappedProvider = wrapWithHybridProvider(wrappedProvider, {

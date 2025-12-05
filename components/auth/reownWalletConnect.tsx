@@ -13,6 +13,7 @@ export class ReownWalletConnectProvider {
   private isDesktopQRSession: boolean = false
   private onMobileActionRequired?: (actionType: 'sign' | 'transaction') => void
   private isConnecting: boolean = false
+  private userInfo: any = null // Store social login user info (email, username, authProvider)
 
   constructor(config: any, onMobileActionRequired?: (actionType: 'sign' | 'transaction') => void) {
     this.config = config
@@ -375,9 +376,36 @@ export class ReownWalletConnectProvider {
               console.log('🔧 ReownWalletConnect: Closing modal after successful connection')
               await this.appKit.close()
 
+              // SOCIAL LOGIN: Check if this is an embedded wallet (social login) and get email
+              this.userInfo = null // Reset before checking
+              try {
+                // Try to get account info which includes embeddedWalletInfo for social logins
+                const accountState: any = await new Promise((resolve) => {
+                  const unsubscribe = this.appKit.subscribeAccount((state: any) => {
+                    unsubscribe()
+                    resolve(state)
+                  })
+                })
+
+                if (accountState?.embeddedWalletInfo) {
+                  console.log('🔧 ReownWalletConnect: Social login detected via embedded wallet')
+                  this.userInfo = {
+                    email: accountState.embeddedWalletInfo.user?.email,
+                    username: accountState.embeddedWalletInfo.user?.username,
+                    authProvider: accountState.embeddedWalletInfo.authProvider
+                  }
+                  console.log('🔧 ReownWalletConnect: User info from social login:', this.userInfo)
+                }
+              } catch (error) {
+                console.log('🔧 ReownWalletConnect: Could not get embedded wallet info (probably not social login):', error)
+              }
+
               resolveOnce({
                 success: true,
-                user: { walletAddress: address },
+                user: {
+                  walletAddress: address,
+                  ...this.userInfo // Include email, username, authProvider if social login
+                },
                 provider: walletProvider
               })
             } else {
@@ -516,9 +544,20 @@ export class ReownWalletConnectProvider {
         await this.appKit.disconnect()
         console.log('🔧 ReownWalletConnect: ✅ Disconnected successfully')
       }
+
+      // Clear user info on disconnect
+      this.userInfo = null
     } catch (error) {
       console.error('🔧 ReownWalletConnect: ❌ Disconnect failed:', error)
     }
+  }
+
+  /**
+   * Get user info from social login (email, username, authProvider)
+   * Returns null if not a social login or info not available
+   */
+  getUserInfo(): any {
+    return this.userInfo
   }
 
   getProvider() {

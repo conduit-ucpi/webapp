@@ -205,6 +205,42 @@ export class AuthManager {
       throw new Error('No wallet address available');
     }
 
+    // SOCIAL LOGIN: Check if this is a social login (has email) - use email-based auth instead of signature
+    const userInfo = this.currentProvider?.getUserInfo?.();
+    if (userInfo && userInfo.email) {
+      mLog.info('AuthManager', 'Social login detected (has email), using email-based auth instead of signature', {
+        email: userInfo.email,
+        authProvider: userInfo.authProvider
+      });
+
+      const timestamp = Date.now();
+      const authToken = btoa(JSON.stringify({
+        type: 'social_login_auth',
+        walletAddress: this.state.address,
+        email: userInfo.email,
+        username: userInfo.username,
+        authProvider: userInfo.authProvider,
+        timestamp,
+        issuer: 'reown_social_login',
+        header: {
+          alg: 'EMAIL',
+          typ: 'SOCIAL'
+        },
+        payload: {
+          sub: this.state.address,
+          email: userInfo.email,
+          iat: Math.floor(timestamp / 1000),
+          iss: 'reown_social_login',
+          wallet_type: 'embedded_wallet',
+          auth_provider: userInfo.authProvider
+        }
+      }));
+
+      mLog.info('AuthManager', '✅ Social login auth token created (no signature required)');
+      return authToken;
+    }
+
+    // Regular wallet authentication (signature-based)
     // Generate authentication message with timestamp and nonce
     const timestamp = Date.now();
     const nonce = Math.random().toString(36).substring(2, 15);

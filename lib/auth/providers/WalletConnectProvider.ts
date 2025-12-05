@@ -177,4 +177,12 @@ export class WalletConnectProvider implements UnifiedProvider {
     const network = await this.cachedEthersProvider.getNetwork();
     return Number(network.chainId);
   }
+
+  /**
+   * Get user info from social login (email, username, authProvider)
+   * Returns null if not a social login or info not available
+   */
+  getUserInfo(): any {
+    return this.reownProvider.getUserInfo();
+  }
 }

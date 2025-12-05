@@ -111,10 +111,19 @@ export class WalletConnectProvider implements UnifiedProvider {
         messageLength: message.length
       });
 
+      // personal_sign expects hex-encoded message
+      // Convert string to hex: "Hello" -> "0x48656c6c6f"
+      const hexMessage = '0x' + Buffer.from(message, 'utf8').toString('hex');
+
+      mLog.info('WalletConnectProvider', 'Message hex-encoded for personal_sign', {
+        originalLength: message.length,
+        hexLength: hexMessage.length
+      });
+
       // Use personal_sign directly - works with both regular wallets and embedded wallets
       const signature = await walletProvider.request({
         method: 'personal_sign',
-        params: [message, address]
+        params: [hexMessage, address]
       });
 
       return signature;

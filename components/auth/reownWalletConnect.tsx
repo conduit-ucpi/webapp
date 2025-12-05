@@ -331,20 +331,9 @@ export class ReownWalletConnectProvider {
                 throw new Error('No wallet provider available from AppKit')
               }
 
-              // Ensure the provider is ready by testing it can get accounts
-              try {
-                const accounts = await walletProvider.request({ method: 'eth_accounts' })
-                if (!accounts || accounts.length === 0) {
-                  console.log('🔧 ReownWalletConnect: Provider not ready yet, retrying...')
-                  setTimeout(checkConnection, 500)
-                  return
-                }
-                console.log('🔧 ReownWalletConnect: Provider ready with accounts:', accounts)
-              } catch (providerError) {
-                console.log('🔧 ReownWalletConnect: Provider test failed, retrying...', providerError)
-                setTimeout(checkConnection, 500)
-                return
-              }
+              // TRUST WALLETCONNECT: If we have a CAIP address, the connection is established
+              // Don't do extra verification that causes infinite retry loops on desktop social login
+              console.log('🔧 ReownWalletConnect: Provider ready - trusting WalletConnect connection')
 
               // Clean up visibility listener
               document.removeEventListener('visibilitychange', handleVisibilityChange)

@@ -9,6 +9,7 @@ import { AuthManager } from '../core/AuthManager';
 import { AuthService } from '../backend/AuthService';
 import { ethers } from 'ethers';
 import { mLog } from '../../../utils/mobileLogger';
+import { SIWXUtil } from '@reown/appkit-controllers';
 
 interface AuthContextValue {
   // State
@@ -135,20 +136,25 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
       const result = await authManager.connect(preferredProvider);
 
       if (result.success && result.address) {
-        mLog.info('AuthProvider', 'Connection successful, checking SIWE session...', {
+        mLog.info('AuthProvider', 'Connection successful, triggering SIWX authentication...', {
           address: result.address
         });
 
-        // SIWE handles authentication during connection via verifyMessage callback
-        // Check if we have an active SIWE session now
+        // Trigger SIWX sign message flow
         try {
+          mLog.info('AuthProvider', 'Calling SIWXUtil.requestSignMessage()...');
+          await SIWXUtil.requestSignMessage();
+
+          mLog.info('AuthProvider', 'SIWX sign message completed, checking session...');
+
+          // Check if we have an active SIWX session now
           const sessionResponse = await fetch('/api/auth/siwe/session');
 
           if (sessionResponse.ok) {
             const sessionData = await sessionResponse.json();
 
             if (sessionData.address) {
-              mLog.info('AuthProvider', '✅ SIWE session found - user authenticated', {
+              mLog.info('AuthProvider', '✅ SIWX session found - user authenticated', {
                 address: sessionData.address
               });
 
@@ -162,11 +168,11 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
               }
             }
           } else {
-            mLog.warn('AuthProvider', 'No SIWE session found after connection - this may indicate SIWE auth failed');
+            mLog.warn('AuthProvider', 'No SIWX session found after sign message - authentication may have failed');
           }
-        } catch (sessionError) {
-          mLog.error('AuthProvider', 'Error checking SIWE session:', {
-            error: sessionError instanceof Error ? sessionError.message : String(sessionError)
+        } catch (siwxError) {
+          mLog.error('AuthProvider', 'SIWX authentication error:', {
+            error: siwxError instanceof Error ? siwxError.message : String(siwxError)
           });
         }
       }

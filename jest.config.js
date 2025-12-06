@@ -19,6 +19,8 @@ const customJestConfig = {
     '^viem$': '<rootDir>/__mocks__/viem.js',
     '^viem/(.*)$': '<rootDir>/__mocks__/viem.js',
     '^@tanstack/react-query$': '<rootDir>/__mocks__/tanstack-react-query.js',
+    // Mock Reown AppKit controllers for Jest
+    '^@reown/appkit-controllers$': '<rootDir>/__mocks__/reown-appkit-controllers.js',
   },
   // Increase timeout for Web3Auth crypto operations
   testTimeout: 30000,

@@ -81,7 +81,11 @@ export class ReownWalletConnectProvider {
           icons: ['https://conduit-ucpi.com/favicon.ico']
         },
         features: {
-          analytics: false // Disable analytics for privacy
+          analytics: false, // Disable analytics for privacy
+          swaps: false,
+          onramp: false,
+          email: false,
+          socials: []
         }
       })
 

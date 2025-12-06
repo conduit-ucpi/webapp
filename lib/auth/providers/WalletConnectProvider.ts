@@ -55,6 +55,14 @@ export class WalletConnectProvider implements UnifiedProvider {
           address: this.currentAddress
         });
 
+        // SIWX Automatic + Manual Fallback Strategy:
+        // 1. Give SIWX a moment to complete automatically (it should with required:true)
+        // 2. Check if backend session was created
+        // 3. If not, manually trigger SIWE signing as fallback
+        if (this.currentAddress) {
+          await this.ensureBackendAuthentication(this.currentAddress);
+        }
+
         return {
           success: true,
           address: this.currentAddress || undefined,
@@ -216,5 +224,105 @@ export class WalletConnectProvider implements UnifiedProvider {
   async requestAuthentication(): Promise<boolean> {
     mLog.info('WalletConnectProvider', 'Requesting manual SIWX authentication');
     return await this.reownProvider.requestAuthentication();
+  }
+
+  /**
+   * Ensure backend SIWE session exists after wallet connection
+   *
+   * Strategy:
+   * 1. Wait briefly for SIWX automatic flow to complete
+   * 2. Check if backend session was created
+   * 3. If not, manually trigger SIWE signing
+   */
+  private async ensureBackendAuthentication(address: string): Promise<void> {
+    mLog.info('WalletConnectProvider', '🔐 Checking backend SIWE authentication...');
+
+    // Step 1: Wait for SIWX automatic flow to potentially complete
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    // Step 2: Check if SIWX created a backend session
+    try {
+      const sessionCheck = await fetch('/api/auth/siwe/session', {
+        credentials: 'include'
+      });
+
+      if (sessionCheck.ok) {
+        const sessionData = await sessionCheck.json();
+        if (sessionData.address) {
+          mLog.info('WalletConnectProvider', '✅ SIWX automatic authentication succeeded!', {
+            address: sessionData.address
+          });
+          return; // Success! SIWX worked automatically
+        }
+      }
+    } catch (error) {
+      mLog.warn('WalletConnectProvider', 'Session check failed, will attempt manual auth', {
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+
+    // Step 3: SIWX automatic flow failed - manually trigger SIWE signing
+    mLog.warn('WalletConnectProvider', '⚠️ SIWX automatic auth failed, triggering manual SIWE signing...');
+
+    try {
+      // Fetch nonce from backend
+      const nonceResponse = await fetch('/api/auth/siwe/nonce', {
+        method: 'POST',
+        credentials: 'include'
+      });
+
+      if (!nonceResponse.ok) {
+        throw new Error('Failed to fetch nonce');
+      }
+
+      const { nonce } = await nonceResponse.json();
+      mLog.info('WalletConnectProvider', '✅ Nonce fetched from backend', { nonceLength: nonce?.length });
+
+      // Create SIWE message
+      const domain = window.location.host;
+      const origin = window.location.origin;
+      const chainId = 8453; // Base mainnet
+      const issuedAt = new Date().toISOString();
+
+      const message = `${domain} wants you to sign in with your Ethereum account:
+${address}
+
+Sign in to Conduit UCPI
+
+URI: ${origin}
+Version: 1
+Chain ID: ${chainId}
+Nonce: ${nonce}
+Issued At: ${issuedAt}`;
+
+      mLog.info('WalletConnectProvider', '📝 SIWE message created', {
+        messageLength: message.length
+      });
+
+      // Sign the message
+      const signature = await this.signMessage(message);
+      mLog.info('WalletConnectProvider', '✅ Message signed', {
+        signatureLength: signature.length
+      });
+
+      // Verify with backend
+      const verifyResponse = await fetch('/api/auth/siwe/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ message, signature })
+      });
+
+      if (!verifyResponse.ok) {
+        throw new Error(`Verification failed: ${verifyResponse.status}`);
+      }
+
+      mLog.info('WalletConnectProvider', '✅ Manual SIWE authentication successful!');
+    } catch (error) {
+      mLog.error('WalletConnectProvider', '❌ Manual SIWE authentication failed', {
+        error: error instanceof Error ? error.message : String(error)
+      });
+      // Don't throw - let the app handle missing auth via session checks
+    }
   }
 }

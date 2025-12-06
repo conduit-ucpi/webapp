@@ -27,6 +27,7 @@ const defaultAuthValue = {
   },
   connect: () => Promise.resolve(),
   authenticateBackend: () => Promise.resolve(false),
+  requestAuthentication: () => Promise.resolve(false), // Manual SIWX authentication trigger
   disconnect: () => Promise.resolve(),
   switchWallet: () => Promise.resolve(),
   getEthersProvider: () => null,
@@ -62,6 +63,7 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
     state: newAuth.state, // Expose state object which includes providerName
     connect: newAuth.connect,
     authenticateBackend: newAuth.authenticateBackend,
+    requestAuthentication: newAuth.requestAuthentication, // Manually trigger SIWX authentication
     disconnect: newAuth.disconnect,
     switchWallet: newAuth.switchWallet,
     getEthersProvider: newAuth.getEthersProvider,

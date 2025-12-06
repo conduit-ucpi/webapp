@@ -265,7 +265,7 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
 
                 if (backendStatus.success && backendStatus.user) {
                   setUser(backendStatus.user);
-                  authManager.setState({ isAuthenticated: true });
+                  authManager.setState({ isAuthenticated: true, isLoading: false });
                   mLog.info('AuthProvider', '✅ User data loaded from backend');
                   sessionFound = true;
                   break;

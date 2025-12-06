@@ -265,9 +265,8 @@ export class WalletConnectProvider implements UnifiedProvider {
     mLog.warn('WalletConnectProvider', '⚠️ SIWX automatic auth failed, triggering manual SIWE signing...');
 
     try {
-      // Fetch nonce from backend
+      // Fetch nonce from backend (GET request, same as SIWX messenger)
       const nonceResponse = await fetch('/api/auth/siwe/nonce', {
-        method: 'POST',
         credentials: 'include'
       });
 

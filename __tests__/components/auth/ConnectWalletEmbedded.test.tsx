@@ -237,4 +237,78 @@ describe('ConnectWalletEmbedded - Excessive Re-render Bug', () => {
 
     expect(oauthCheckCalls.length).toBe(0);
   });
+
+  /**
+   * BUG: ConnectWalletEmbedded calls onSuccess() when wallet connects
+   * but backend SIWX authentication fails
+   *
+   * Reproduction from production logs:
+   * 1. Wallet connects successfully (WalletConnect provider returns success)
+   * 2. SIWX session check fails 5 times (backend returns 401)
+   * 3. user is null (no backend authentication)
+   * 4. BUT: ConnectWalletEmbedded logs "✅ Connection + authentication successful"
+   *         and calls onSuccess() callback
+   *
+   * Expected: onSuccess() should ONLY be called when user is authenticated (user !== null)
+   */
+  it('should NOT call onSuccess() when wallet connects but backend authentication fails', async () => {
+    // GIVEN: A mock connect function that returns success but user remains null
+    const mockSuccessfulConnect = jest.fn().mockResolvedValue({
+      success: true,
+      address: '0xc9D0602A87E55116F633b1A1F95D083Eb115f942',
+      capabilities: {
+        canSign: true,
+        canTransact: true,
+        canSwitchWallets: false,
+        isAuthOnly: false
+      }
+    });
+
+    const mockOnSuccess = jest.fn();
+
+    // Mock useAuth to return connected but NOT authenticated state
+    const mockUseAuth = require('@/components/auth').useAuth;
+    mockUseAuth.mockReturnValue({
+      user: null, // ❌ No user - backend auth failed
+      isLoading: false,
+      connect: mockSuccessfulConnect,
+      authenticateBackend: mockAuthenticateBackend,
+      isConnected: true, // ✅ Wallet connected
+      address: '0xc9D0602A87E55116F633b1A1F95D083Eb115f942',
+    });
+
+    // Mock fetch to simulate backend SIWX session check failing (401)
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+      json: async () => ({ error: 'Unauthorized' })
+    });
+
+    // Clear sessionStorage to ensure clean test
+    sessionStorage.clear();
+
+    // WHEN: User clicks the button and wallet connects successfully
+    const { getByText } = render(
+      <ConnectWalletEmbedded onSuccess={mockOnSuccess} />
+    );
+
+    const button = getByText('Get Started');
+    button.click();
+
+    // Wait for connect to complete
+    await waitFor(() => {
+      expect(mockSuccessfulConnect).toHaveBeenCalled();
+    });
+
+    // Fast-forward through all pending timers (includes retry delays)
+    jest.runAllTimers();
+
+    // Allow time for all async operations and retry attempts to complete
+    await waitFor(() => {
+      return new Promise(resolve => setTimeout(resolve, 100));
+    }, { timeout: 6000 }); // Longer timeout to allow for all retry attempts
+
+    // THEN: onSuccess() should NOT be called because backend auth failed
+    expect(mockOnSuccess).not.toHaveBeenCalled();
+  });
 });

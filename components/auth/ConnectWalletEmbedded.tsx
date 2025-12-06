@@ -214,10 +214,53 @@ export default function ConnectWalletEmbedded({
           const connectionResult = await connect('walletconnect');
 
           if (connectionResult.success) {
+            mLog.info('ConnectWalletEmbedded', '✅ Wallet connected, waiting for backend authentication...');
+
             // SIWE handles authentication automatically during connection via verifyMessage callback
-            // No manual authenticateBackend call needed!
-            mLog.info('ConnectWalletEmbedded', '✅ Connection + authentication successful (SIWE one-click)');
-            onSuccess?.();
+            // Poll for backend SIWX session to verify authentication completed
+            const maxRetries = 10;
+            const retryDelay = 500; // ms
+            let authenticationSucceeded = false;
+
+            for (let attempt = 1; attempt <= maxRetries; attempt++) {
+              try {
+                // Check backend SIWX session directly
+                const sessionResponse = await fetch('/api/auth/siwe/session');
+
+                if (sessionResponse.ok) {
+                  const sessionData = await sessionResponse.json();
+
+                  if (sessionData.address) {
+                    mLog.info('ConnectWalletEmbedded', `✅ Backend authentication succeeded on attempt ${attempt}`, {
+                      address: sessionData.address
+                    });
+                    authenticationSucceeded = true;
+                    break;
+                  }
+                }
+              } catch (error) {
+                mLog.debug('ConnectWalletEmbedded', 'Session check error', {
+                  error: error instanceof Error ? error.message : String(error)
+                });
+              }
+
+              // If not authenticated yet and not last attempt, wait before retry
+              if (!authenticationSucceeded && attempt < maxRetries) {
+                mLog.debug('ConnectWalletEmbedded', `Backend authentication not complete yet, retrying (${attempt}/${maxRetries})...`);
+                await new Promise(resolve => setTimeout(resolve, retryDelay));
+              }
+            }
+
+            if (authenticationSucceeded) {
+              mLog.info('ConnectWalletEmbedded', '✅ Connection + authentication successful (SIWE one-click)');
+              onSuccess?.();
+            } else {
+              mLog.error('ConnectWalletEmbedded', '❌ Wallet connected but backend authentication failed after all retries', {
+                address: connectionResult.address,
+                retriesAttempted: maxRetries
+              });
+              // Do NOT call onSuccess() - authentication failed
+            }
           } else {
             mLog.error('ConnectWalletEmbedded', 'Wallet connection failed', { error: connectionResult.error });
           }

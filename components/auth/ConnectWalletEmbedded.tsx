@@ -24,7 +24,7 @@ export default function ConnectWalletEmbedded({
   autoConnect = false,
   preferredProvider
 }: ConnectWalletEmbeddedProps) {
-  const { user, isLoading, connect, isConnected, address } = useAuth();
+  const { user, isLoading, connect, isConnected, address, requestAuthentication } = useAuth();
   const [isAuthenticating, setIsAuthenticating] = useState(false);
 
   // Track if we've already handled OAuth redirect to prevent duplicate attempts
@@ -255,11 +255,28 @@ export default function ConnectWalletEmbedded({
               mLog.info('ConnectWalletEmbedded', '✅ Connection + authentication successful (SIWE one-click)');
               onSuccess?.();
             } else {
-              mLog.error('ConnectWalletEmbedded', '❌ Wallet connected but backend authentication failed after all retries', {
+              mLog.warn('ConnectWalletEmbedded', '⚠️ SIWX automatic authentication failed, triggering manual SIWX fallback', {
                 address: connectionResult.address,
                 retriesAttempted: maxRetries
               });
-              // Do NOT call onSuccess() - authentication failed
+
+              // SIWX automatic authentication failed - trigger manual authentication as fallback
+              if (requestAuthentication) {
+                mLog.info('ConnectWalletEmbedded', '🔧 Calling requestAuthentication() to manually trigger SIWX...');
+
+                const manualAuthSuccess = await requestAuthentication();
+
+                if (manualAuthSuccess) {
+                  mLog.info('ConnectWalletEmbedded', '✅ Manual SIWX authentication successful!');
+                  onSuccess?.();
+                } else {
+                  mLog.error('ConnectWalletEmbedded', '❌ Manual SIWX authentication also failed - user may have denied signature');
+                  // Do NOT call onSuccess() - authentication completely failed
+                }
+              } else {
+                mLog.error('ConnectWalletEmbedded', '❌ No requestAuthentication method available - cannot trigger manual auth');
+                // Do NOT call onSuccess() - authentication failed
+              }
             }
           } else {
             mLog.error('ConnectWalletEmbedded', 'Wallet connection failed', { error: connectionResult.error });

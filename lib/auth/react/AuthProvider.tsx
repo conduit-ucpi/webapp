@@ -23,6 +23,7 @@ interface AuthContextValue {
   // Actions
   connect: () => Promise<ConnectionResult>;
   authenticateBackend: (connectionResult?: ConnectionResult) => Promise<boolean>;
+  requestAuthentication: () => Promise<boolean>; // Manually trigger SIWX authentication
   disconnect: () => Promise<void>;
   switchWallet: () => Promise<ConnectionResult>;
   signMessage: (message: string) => Promise<string>;
@@ -471,6 +472,49 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
     return await authManager.getEthersProvider();
   }, [authManager]);
 
+  const requestAuthentication = useCallback(async (): Promise<boolean> => {
+    mLog.info('AuthProvider', '🔧 Manually requesting authentication from provider');
+
+    try {
+      const success = await authManager.requestAuthentication();
+
+      if (success) {
+        mLog.info('AuthProvider', '✅ Manual authentication request triggered successfully');
+
+        // Wait a moment for authentication to complete
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+        // Check if session was created
+        const sessionResponse = await fetch('/api/auth/siwe/session');
+        if (sessionResponse.ok) {
+          const sessionData = await sessionResponse.json();
+          if (sessionData.address) {
+            mLog.info('AuthProvider', '✅ SIWX session created successfully after manual trigger');
+
+            // Fetch user data
+            const backendStatus = await authService.checkAuthentication();
+            if (backendStatus.success && backendStatus.user) {
+              setUser(backendStatus.user);
+              authManager.setState({ isAuthenticated: true });
+              return true;
+            }
+          }
+        }
+
+        mLog.warn('AuthProvider', '⚠️ Manual authentication triggered but session not created yet');
+        return false;
+      } else {
+        mLog.error('AuthProvider', '❌ Failed to trigger manual authentication');
+        return false;
+      }
+    } catch (error) {
+      mLog.error('AuthProvider', 'Error during manual authentication request:', {
+        error: error instanceof Error ? error.message : String(error)
+      });
+      return false;
+    }
+  }, [authManager, authService]);
+
   const contextValue: AuthContextValue = {
     // State
     state,
@@ -484,6 +528,7 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
     // Actions
     connect,
     authenticateBackend,
+    requestAuthentication,
     disconnect,
     switchWallet,
     signMessage,

@@ -139,48 +139,58 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
           address: result.address
         });
 
-        // SIWX handles authentication automatically during connection (required: true in config)
-        // Poll for session with retries to allow time for SIWX to complete (especially for embedded wallets)
+        // Check if session already exists (SIWX required:true may have created it during connection)
         try {
-          // Poll for SIWX session (may take a moment to complete after connection)
-          const maxRetries = 5;
-          const retryDelay = 500; // ms
-          let sessionFound = false;
+          const sessionResponse = await fetch('/api/auth/siwe/session');
 
-          for (let attempt = 1; attempt <= maxRetries; attempt++) {
-            const sessionResponse = await fetch('/api/auth/siwe/session');
+          if (sessionResponse.ok) {
+            const sessionData = await sessionResponse.json();
 
-            if (sessionResponse.ok) {
-              const sessionData = await sessionResponse.json();
+            if (sessionData.address) {
+              mLog.info('AuthProvider', '✅ SIWX session already exists from connection flow', {
+                address: sessionData.address
+              });
 
-              if (sessionData.address) {
-                mLog.info('AuthProvider', `✅ SIWX session found on attempt ${attempt} - user authenticated automatically`, {
-                  address: sessionData.address
-                });
+              // Fetch full user data from backend
+              const backendStatus = await authService.checkAuthentication();
 
-                // Fetch full user data from backend
-                const backendStatus = await authService.checkAuthentication();
-
-                if (backendStatus.success && backendStatus.user) {
-                  setUser(backendStatus.user);
-                  authManager.setState({ isAuthenticated: true });
-                  mLog.info('AuthProvider', '✅ User data loaded from backend');
-                  sessionFound = true;
-                  break;
-                }
+              if (backendStatus.success && backendStatus.user) {
+                setUser(backendStatus.user);
+                authManager.setState({ isAuthenticated: true });
+                mLog.info('AuthProvider', '✅ User data loaded from backend');
               }
-            }
 
-            // If not found and not last attempt, wait before retry
-            if (!sessionFound && attempt < maxRetries) {
-              mLog.debug('AuthProvider', `SIWX session not found yet, retrying (${attempt}/${maxRetries})...`);
-              await new Promise(resolve => setTimeout(resolve, retryDelay));
+              // Session exists, we're done
+              return result;
             }
           }
 
-          if (!sessionFound) {
-            mLog.warn('AuthProvider', 'No SIWX session found after all retries - authentication may have failed or user denied signature');
+          // No session exists yet - this is normal for embedded wallets
+          // They don't get prompted during connection, so session won't exist
+          mLog.info('AuthProvider', 'No session from connection flow, will check after brief delay for embedded wallet auto-sign');
+
+          // Brief wait for embedded wallet auto-sign to complete
+          await new Promise(resolve => setTimeout(resolve, 1000));
+
+          // Check one more time
+          const retrySessionResponse = await fetch('/api/auth/siwe/session');
+          if (retrySessionResponse.ok) {
+            const retrySessionData = await retrySessionResponse.json();
+            if (retrySessionData.address) {
+              mLog.info('AuthProvider', '✅ SIWX session found after brief wait (embedded wallet auto-signed)');
+
+              const backendStatus = await authService.checkAuthentication();
+              if (backendStatus.success && backendStatus.user) {
+                setUser(backendStatus.user);
+                authManager.setState({ isAuthenticated: true });
+                mLog.info('AuthProvider', '✅ User data loaded from backend');
+              }
+              return result;
+            }
           }
+
+          mLog.warn('AuthProvider', 'No SIWX session found - embedded wallet may not have auto-signed, or SIWX is not triggering');
+
         } catch (siwxError) {
           mLog.error('AuthProvider', 'SIWX session check error:', {
             error: siwxError instanceof Error ? siwxError.message : String(siwxError)

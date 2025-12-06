@@ -101,7 +101,7 @@ export function createAppKitSIWXConfig() {
     messenger: customMessenger, // Custom messenger for backend nonces
     verifiers: [customVerifier], // Custom verifier for backend verification
     storage: customStorage,      // Custom storage for backend sessions
-    required: true               // Force authentication - disconnect if user denies signature
+    required: false              // Don't force authentication - allows embedded wallets to auto-sign seamlessly
   })
 
   console.log('🔐 SIWX: ✅ SIWX config created successfully with full backend integration')

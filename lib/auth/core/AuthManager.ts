@@ -61,12 +61,13 @@ export class AuthManager {
       // Check for existing session
       await this.restoreSession();
 
+      // Set initialized flag but keep loading state (will be cleared by AuthProvider after SIWE check)
       this.setState({
-        isInitialized: true,
-        isLoading: false
+        isInitialized: true
+        // Don't set isLoading: false here - let AuthProvider control loading state
       });
 
-      console.log('🔧 AuthManager: ✅ Initialized successfully');
+      console.log('🔧 AuthManager: ✅ Initialized successfully (loading state controlled by AuthProvider)');
     } catch (error) {
       console.error('🔧 AuthManager: ❌ Initialization failed:', error);
       this.setState({

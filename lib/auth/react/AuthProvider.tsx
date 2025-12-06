@@ -52,6 +52,9 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
 
     const initializeAuth = async () => {
       try {
+        // Keep loading state true during entire initialization including SIWE session check
+        authManager.setState({ isLoading: true });
+
         await authManager.initialize(config);
 
         if (isMounted) {
@@ -75,22 +78,38 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
                   authManager.setState({
                     isAuthenticated: true,
                     isConnected: true,
-                    address: sessionData.address
+                    address: sessionData.address,
+                    isLoading: false  // Clear loading only after user data is loaded
                   });
                   mLog.info('AuthProvider', '✅ Session restored from SIWE cookie');
+                } else {
+                  // Session exists but user data fetch failed - clear loading
+                  authManager.setState({ isLoading: false });
                 }
+              } else {
+                // Session response OK but no address - clear loading
+                authManager.setState({ isLoading: false });
               }
             } else {
+              // No session found - clear loading
+              authManager.setState({ isLoading: false });
               mLog.debug('AuthProvider', 'No existing SIWE session found on startup');
             }
           } catch (sessionError) {
+            // Session check error - clear loading
+            authManager.setState({ isLoading: false });
             mLog.debug('AuthProvider', 'Error checking SIWE session on startup:', {
               error: sessionError instanceof Error ? sessionError.message : String(sessionError)
             });
           }
+        } else {
+          // Component unmounted during initialization - clear loading
+          authManager.setState({ isLoading: false });
         }
       } catch (error) {
         console.error('🔧 AuthProvider: Initialization failed:', error);
+        // Initialization error - clear loading
+        authManager.setState({ isLoading: false });
       }
     };
 
@@ -264,7 +283,10 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
 
                 if (backendStatus.success && backendStatus.user) {
                   setUser(backendStatus.user);
-                  authManager.setState({ isAuthenticated: true });
+                  authManager.setState({
+                    isAuthenticated: true,
+                    isLoading: false  // Clear loading after successful authentication
+                  });
                   mLog.info('AuthProvider', '✅ User data loaded from backend');
                   sessionFound = true;
                   break;
@@ -279,20 +301,29 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
             }
           }
 
+          // After polling completes, clear loading state if session wasn't found
           if (!sessionFound) {
             mLog.warn('AuthProvider', 'No SIWX session found after all retries - authentication may have failed or user denied signature');
+            authManager.setState({ isLoading: false });
           }
         } catch (siwxError) {
           mLog.error('AuthProvider', 'SIWX session check error:', {
             error: siwxError instanceof Error ? siwxError.message : String(siwxError)
           });
+          // Clear loading on error
+          authManager.setState({ isLoading: false });
         }
+      } else {
+        // Connection failed, clear loading
+        authManager.setState({ isLoading: false });
       }
 
       return result; // Return the ConnectionResult whether success or failure
 
     } catch (error) {
       console.error('🔧 AuthProvider: Connect failed:', error);
+      // Clear loading on error
+      authManager.setState({ isLoading: false });
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Connection failed',

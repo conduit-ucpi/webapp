@@ -960,59 +960,83 @@ export class Web3Service {
     const isInjectedWallet = this.isInjectedWalletProvider();
 
     if (!txParams.gasPrice) {
-      // CRITICAL FIX: For Base network, ALWAYS use Base RPC for gas price
-      // Wallet providers (especially after switching to Reown) return inflated fallback values
-      // (e.g., 1 gwei instead of actual 0.0003 gwei) when eth_maxPriorityFeePerGas isn't supported
       const chainId = await this.provider.getNetwork().then(n => n.chainId);
       const isBaseNetwork = chainId === BigInt(8453) || chainId === BigInt(84532); // Base mainnet or testnet
 
-      if (isBaseNetwork) {
-        console.log('💰 Base network detected - fetching accurate gas price from Base RPC (NOT wallet provider)');
-        try {
-          // For Base, use EIP-1559 fees directly from Base RPC
-          const reliableFees = await this.getReliableEIP1559FeeData();
-          gasPrice = reliableFees.maxFeePerGas;
-          walletProviderFeeData = {
-            gasPrice: null,
-            maxFeePerGas: reliableFees.maxFeePerGas,
-            maxPriorityFeePerGas: reliableFees.maxPriorityFeePerGas
-          };
-          console.log(`✅ Using Base RPC EIP-1559 fees for funding AND execution:`);
-          console.log(`   maxFeePerGas: ${formatWeiAsEthForLogging(reliableFees.maxFeePerGas)} (${(Number(reliableFees.maxFeePerGas) / 1e9).toFixed(6)} gwei)`);
-          console.log(`   maxPriorityFeePerGas: ${formatWeiAsEthForLogging(reliableFees.maxPriorityFeePerGas)} (${(Number(reliableFees.maxPriorityFeePerGas) / 1e9).toFixed(6)} gwei)`);
-        } catch (error) {
-          console.error('❌ Failed to get gas price from Base RPC:', error);
-          // Last resort fallback for Base
-          gasPrice = BigInt(10000000); // 0.01 gwei - conservative estimate for Base
-          console.log(`⚠️ Using conservative fallback gas price: ${formatWeiAsEthForLogging(gasPrice)} (${(Number(gasPrice) / 1e9).toFixed(6)} gwei)`);
-        }
-      } else {
-        // For other networks, use wallet provider gas price
-        console.log('💰 Getting gas price from wallet provider for funding calculation AND transaction execution');
-        try {
-          walletProviderFeeData = await this.provider.getFeeData();
-          console.log('🔍 Wallet provider fee data:', {
-            gasPrice: walletProviderFeeData.gasPrice?.toString(),
-            maxFeePerGas: walletProviderFeeData.maxFeePerGas?.toString(),
-            maxPriorityFeePerGas: walletProviderFeeData.maxPriorityFeePerGas?.toString()
-          });
+      // DIAGNOSTIC: Fetch gas prices from BOTH sources to compare
+      console.log('\n🔍 GAS PRICE DIAGNOSTIC - COMPARING BOTH SOURCES:\n' + '='.repeat(80));
 
-          // Use maxFeePerGas for EIP-1559 networks, fallback to gasPrice for legacy
-          if (walletProviderFeeData.maxFeePerGas) {
-            gasPrice = walletProviderFeeData.maxFeePerGas;
-            console.log(`✅ Using wallet's maxFeePerGas for BOTH funding AND execution: ${formatWeiAsEthForLogging(gasPrice)} (${(Number(gasPrice) / 1e9).toFixed(6)} gwei)`);
-          } else if (walletProviderFeeData.gasPrice) {
-            gasPrice = walletProviderFeeData.gasPrice;
-            console.log(`✅ Using wallet's gasPrice for BOTH funding AND execution: ${formatWeiAsEthForLogging(gasPrice)} (${(Number(gasPrice) / 1e9).toFixed(6)} gwei)`);
-          } else {
-            throw new Error('Wallet provider returned no gas price data');
-          }
+      let rpcFees: { maxFeePerGas: bigint; maxPriorityFeePerGas: bigint } | null = null;
+      let providerFees: any = null;
+
+      // 1. Get gas from Base RPC
+      if (isBaseNetwork) {
+        try {
+          console.log('📡 Fetching gas price from Base RPC...');
+          rpcFees = await this.getReliableEIP1559FeeData();
+          console.log('✅ Base RPC returned:');
+          console.log(`   RAW maxFeePerGas: ${rpcFees.maxFeePerGas.toString()} wei`);
+          console.log(`   RAW maxPriorityFeePerGas: ${rpcFees.maxPriorityFeePerGas.toString()} wei`);
+          console.log(`   CONVERTED maxFeePerGas: ${formatWeiAsEthForLogging(rpcFees.maxFeePerGas)} ETH = ${(Number(rpcFees.maxFeePerGas) / 1e9).toFixed(9)} gwei`);
+          console.log(`   CONVERTED maxPriorityFeePerGas: ${formatWeiAsEthForLogging(rpcFees.maxPriorityFeePerGas)} ETH = ${(Number(rpcFees.maxPriorityFeePerGas) / 1e9).toFixed(9)} gwei`);
         } catch (error) {
-          console.error('❌ Failed to get gas price from wallet provider:', error);
-          // Fallback to conservative estimate
-          gasPrice = BigInt(10000000); // 0.01 gwei - conservative estimate
-          console.log(`⚠️ Using conservative fallback gas price: ${formatWeiAsEthForLogging(gasPrice)} (${(Number(gasPrice) / 1e9).toFixed(6)} gwei)`);
+          console.error('❌ Base RPC fetch failed:', error);
         }
+      }
+
+      // 2. Get gas from wallet provider
+      try {
+        console.log('📡 Fetching gas price from wallet provider...');
+        providerFees = await this.provider.getFeeData();
+        console.log('✅ Wallet provider returned:');
+        console.log(`   RAW gasPrice: ${providerFees.gasPrice?.toString() || 'null'} wei`);
+        console.log(`   RAW maxFeePerGas: ${providerFees.maxFeePerGas?.toString() || 'null'} wei`);
+        console.log(`   RAW maxPriorityFeePerGas: ${providerFees.maxPriorityFeePerGas?.toString() || 'null'} wei`);
+        if (providerFees.maxFeePerGas) {
+          console.log(`   CONVERTED maxFeePerGas: ${formatWeiAsEthForLogging(providerFees.maxFeePerGas)} ETH = ${(Number(providerFees.maxFeePerGas) / 1e9).toFixed(9)} gwei`);
+        }
+        if (providerFees.maxPriorityFeePerGas) {
+          console.log(`   CONVERTED maxPriorityFeePerGas: ${formatWeiAsEthForLogging(providerFees.maxPriorityFeePerGas)} ETH = ${(Number(providerFees.maxPriorityFeePerGas) / 1e9).toFixed(9)} gwei`);
+        }
+      } catch (error) {
+        console.error('❌ Wallet provider fetch failed:', error);
+      }
+
+      // 3. Compare and choose
+      console.log('\n📊 COMPARISON:');
+      if (rpcFees && providerFees?.maxFeePerGas) {
+        const ratio = Number(providerFees.maxFeePerGas) / Number(rpcFees.maxFeePerGas);
+        console.log(`   Provider vs RPC ratio: ${ratio.toFixed(2)}x`);
+        if (ratio > 100) {
+          console.warn('   ⚠️  POSSIBLE UNIT MISMATCH: Provider is 100x+ higher than RPC!');
+        } else if (ratio < 0.01) {
+          console.warn('   ⚠️  POSSIBLE UNIT MISMATCH: Provider is 100x+ lower than RPC!');
+        }
+      }
+      console.log('='.repeat(80) + '\n');
+
+      // 4. Select gas price to use
+      if (isBaseNetwork && rpcFees) {
+        console.log('💰 Using Base RPC fees (Base network detected)');
+        gasPrice = rpcFees.maxFeePerGas;
+        walletProviderFeeData = {
+          gasPrice: null,
+          maxFeePerGas: rpcFees.maxFeePerGas,
+          maxPriorityFeePerGas: rpcFees.maxPriorityFeePerGas
+        };
+      } else if (providerFees) {
+        console.log('💰 Using wallet provider fees');
+        if (providerFees.maxFeePerGas) {
+          gasPrice = providerFees.maxFeePerGas;
+        } else if (providerFees.gasPrice) {
+          gasPrice = providerFees.gasPrice;
+        } else {
+          gasPrice = BigInt(10000000); // 0.01 gwei fallback
+        }
+        walletProviderFeeData = providerFees;
+      } else {
+        console.warn('⚠️  Using fallback gas price');
+        gasPrice = BigInt(10000000); // 0.01 gwei - conservative estimate
       }
 
       console.log(`Expected transaction cost for 100k gas: ${formatWeiAsEthForLogging(gasPrice * BigInt(100000))} ETH`);

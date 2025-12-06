@@ -5,7 +5,7 @@ import { ethers } from 'ethers'
 import { toHex } from '@/utils/hexUtils'
 import { detectDevice } from '@/utils/deviceDetection'
 import { wrapProviderWithMobileDeepLinks } from '@/utils/mobileDeepLinkProvider'
-import { createAppKitSIWEConfig } from '@/lib/auth/siwe-config'
+import { createAppKitSIWXConfig } from '@/lib/auth/siwx-config'
 
 export class ReownWalletConnectProvider {
   private appKit: any = null
@@ -61,19 +61,19 @@ export class ReownWalletConnectProvider {
       // Create ethers adapter
       const ethersAdapter = new EthersAdapter()
 
-      // Create SIWE config for one-click authentication
-      console.log('🔧 ReownWalletConnect: About to call createAppKitSIWEConfig()...')
-      const siweConfig = createAppKitSIWEConfig()
-      console.log('🔧 ReownWalletConnect: ✅ SIWE config created successfully:', siweConfig ? 'Config object exists' : 'ERROR: Config is null!')
-      console.log('🔧 ReownWalletConnect: SIWE one-click auth ENABLED')
+      // Create SIWX config for one-click authentication (modern replacement for SIWE)
+      console.log('🔧 ReownWalletConnect: About to call createAppKitSIWXConfig()...')
+      const siwxConfig = createAppKitSIWXConfig()
+      console.log('🔧 ReownWalletConnect: ✅ SIWX config created successfully:', siwxConfig ? 'Config object exists' : 'ERROR: Config is null!')
+      console.log('🔧 ReownWalletConnect: SIWX one-click auth ENABLED (AppKit 1.8.14+ multichain auth)')
 
       // Create AppKit instance
-      console.log('🔧 ReownWalletConnect: Creating AppKit with SIWE config...')
+      console.log('🔧 ReownWalletConnect: Creating AppKit with SIWX config...')
       this.appKit = createAppKit({
         adapters: [ethersAdapter],
         networks: networks as [any, ...any[]], // Type assertion to fix tuple requirement
         projectId,
-        siweConfig, // Enable SIWE for one-click authentication
+        siwx: siwxConfig, // Enable SIWX for one-click authentication (modern replacement for SIWE)
         metadata: {
           name: 'Conduit UCPI',
           description: 'Time-delayed escrow contracts on Base',

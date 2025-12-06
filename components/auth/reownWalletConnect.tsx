@@ -538,6 +538,69 @@ export class ReownWalletConnectProvider {
     }
   }
 
+  /**
+   * Manually request SIWX authentication
+   * Used as fallback when auto-authentication during connection doesn't complete
+   */
+  async requestAuthentication(): Promise<boolean> {
+    try {
+      console.log('🔧 ReownWalletConnect: Manually requesting SIWX authentication...')
+
+      if (!this.appKit) {
+        console.error('🔧 ReownWalletConnect: AppKit not initialized')
+        return false
+      }
+
+      if (!this.isConnected()) {
+        console.error('🔧 ReownWalletConnect: Not connected - cannot request authentication')
+        return false
+      }
+
+      // Access the SIWX controller from AppKit and request authentication
+      // The AppKit instance should have the SIWX controller attached
+      const appKitAny = this.appKit as any
+
+      // Try to access the SIWX controller methods
+      if (appKitAny.siweClient || appKitAny.siwxClient) {
+        console.log('🔧 ReownWalletConnect: SIWX client found, requesting sign-in...')
+
+        // Try to trigger SIWX sign-in
+        try {
+          // Open the AppKit modal which should trigger SIWX if required:true is set
+          await this.appKit.open({ view: 'Account' })
+          console.log('🔧 ReownWalletConnect: Opened account view to trigger SIWX')
+
+          // Wait a moment for the SIWX flow to potentially trigger
+          await new Promise(resolve => setTimeout(resolve, 1000))
+
+          // Close the modal
+          await this.appKit.close()
+
+          return true
+        } catch (error) {
+          console.error('🔧 ReownWalletConnect: Failed to trigger SIWX via modal:', error)
+        }
+      }
+
+      // Fallback: Try to access and call SIWX methods directly
+      console.log('🔧 ReownWalletConnect: Attempting direct SIWX trigger...')
+
+      // The AppKit might expose SIWX methods we can call
+      if (typeof appKitAny.requestAuthentication === 'function') {
+        await appKitAny.requestAuthentication()
+        console.log('🔧 ReownWalletConnect: ✅ SIWX authentication requested via requestAuthentication()')
+        return true
+      }
+
+      console.warn('🔧 ReownWalletConnect: Could not find method to manually trigger SIWX')
+      return false
+
+    } catch (error) {
+      console.error('🔧 ReownWalletConnect: Error requesting authentication:', error)
+      return false
+    }
+  }
+
   getProvider() {
     if (!this.appKit) {
       throw new Error('AppKit not initialized')

@@ -208,4 +208,13 @@ export class WalletConnectProvider implements UnifiedProvider {
     const network = await this.cachedEthersProvider.getNetwork();
     return Number(network.chainId);
   }
+
+  /**
+   * Manually request SIWX authentication
+   * Used as fallback when auto-authentication during connection doesn't complete
+   */
+  async requestAuthentication(): Promise<boolean> {
+    mLog.info('WalletConnectProvider', 'Requesting manual SIWX authentication');
+    return await this.reownProvider.requestAuthentication();
+  }
 }

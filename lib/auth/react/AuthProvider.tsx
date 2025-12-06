@@ -165,14 +165,43 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
             }
           }
 
-          // If we still don't have a session, log it prominently for debugging
-          mLog.warn('AuthProvider', '⚠️ Fallback auth: No SIWX session found - user is connected but not authenticated', {
-            address: state.address,
-            note: 'SIWX auto-authentication may have failed or been denied by user'
+          // If we still don't have a session, try to manually trigger SIWX authentication
+          mLog.warn('AuthProvider', '⚠️ Fallback auth: No SIWX session found after delay - attempting manual authentication request', {
+            address: state.address
           });
 
+          // Try to manually request authentication from the provider
+          const authRequested = await authManager.requestAuthentication();
+
+          if (authRequested) {
+            mLog.info('AuthProvider', 'Fallback auth: Manual authentication request sent, waiting for completion...');
+
+            // Wait for manual auth to complete
+            await new Promise(resolve => setTimeout(resolve, 3000));
+
+            // Check one final time for a session
+            const finalSessionResponse = await fetch('/api/auth/siwe/session');
+            if (finalSessionResponse.ok) {
+              const finalSessionData = await finalSessionResponse.json();
+              if (finalSessionData.address) {
+                mLog.info('AuthProvider', '✅ Fallback auth: Manual authentication completed successfully');
+
+                const backendStatus = await authService.checkAuthentication();
+                if (backendStatus.success && backendStatus.user) {
+                  setUser(backendStatus.user);
+                  authManager.setState({ isAuthenticated: true });
+                  return;
+                }
+              }
+            }
+
+            mLog.warn('AuthProvider', '⚠️ Fallback auth: Manual authentication did not complete');
+          } else {
+            mLog.warn('AuthProvider', '⚠️ Fallback auth: Provider does not support manual authentication or failed to trigger');
+          }
+
         } catch (error) {
-          mLog.error('AuthProvider', 'Fallback auth: Error checking session', {
+          mLog.error('AuthProvider', 'Fallback auth: Error during fallback authentication', {
             error: error instanceof Error ? error.message : String(error)
           });
         }

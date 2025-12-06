@@ -399,6 +399,25 @@ export class AuthManager {
   }
 
   /**
+   * Manually request authentication from the provider
+   * Used as fallback when auto-authentication doesn't complete
+   */
+  async requestAuthentication(): Promise<boolean> {
+    if (!this.currentProvider) {
+      console.error('[AuthManager] Cannot request authentication - no provider connected');
+      return false;
+    }
+
+    if (!this.currentProvider.requestAuthentication) {
+      console.warn('[AuthManager] Current provider does not support manual authentication request');
+      return false;
+    }
+
+    console.log('[AuthManager] Requesting manual authentication from provider');
+    return await this.currentProvider.requestAuthentication();
+  }
+
+  /**
    * Get current auth state
    */
   getState(): AuthState {

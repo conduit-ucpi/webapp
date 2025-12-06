@@ -70,6 +70,9 @@ export interface UnifiedProvider {
   // Optional: Wallet switching (not all providers support this)
   switchWallet?(): Promise<ConnectionResult>;
 
+  // Optional: Manual authentication request (fallback for when auto-auth fails)
+  requestAuthentication?(): Promise<boolean>;
+
   // Optional: User info (for social logins)
   getUserInfo?(): Record<string, unknown> | null;
 }

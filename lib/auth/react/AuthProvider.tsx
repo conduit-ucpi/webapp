@@ -110,6 +110,78 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
     return unsubscribe;
   }, [authManager]);
 
+  // Fallback authentication check
+  // If user is connected (frontend) but not authenticated (backend), and no auth is in progress,
+  // attempt to complete the authentication silently
+  const hasAttemptedFallbackRef = useRef(false);
+
+  useEffect(() => {
+    const attemptFallbackAuth = async () => {
+      // Only attempt once per session to avoid loops
+      if (hasAttemptedFallbackRef.current) {
+        return;
+      }
+
+      // Check if we're in the state where fallback is needed:
+      // - Connected to wallet (frontend)
+      // - NOT authenticated with backend
+      // - NOT currently loading/authenticating
+      // - No user data loaded
+      if (state.isConnected && !state.isAuthenticated && !state.isLoading && !user) {
+        mLog.info('AuthProvider', 'Fallback auth: Detected connected but not authenticated state, attempting silent completion', {
+          address: state.address,
+          isConnected: state.isConnected,
+          isAuthenticated: state.isAuthenticated,
+          hasUser: !!user
+        });
+
+        // Mark as attempted to prevent loops
+        hasAttemptedFallbackRef.current = true;
+
+        // Wait a brief moment for any in-flight SIWX requests to complete
+        await new Promise(resolve => setTimeout(resolve, 1500));
+
+        // Check one more time for a SIWX session (might have completed during wait)
+        try {
+          const sessionResponse = await fetch('/api/auth/siwe/session');
+
+          if (sessionResponse.ok) {
+            const sessionData = await sessionResponse.json();
+
+            if (sessionData.address) {
+              mLog.info('AuthProvider', '✅ Fallback auth: Found SIWX session after delay', {
+                address: sessionData.address
+              });
+
+              // Fetch full user data
+              const backendStatus = await authService.checkAuthentication();
+
+              if (backendStatus.success && backendStatus.user) {
+                setUser(backendStatus.user);
+                authManager.setState({ isAuthenticated: true });
+                mLog.info('AuthProvider', '✅ Fallback auth: Authentication completed successfully');
+                return;
+              }
+            }
+          }
+
+          // If we still don't have a session, log it prominently for debugging
+          mLog.warn('AuthProvider', '⚠️ Fallback auth: No SIWX session found - user is connected but not authenticated', {
+            address: state.address,
+            note: 'SIWX auto-authentication may have failed or been denied by user'
+          });
+
+        } catch (error) {
+          mLog.error('AuthProvider', 'Fallback auth: Error checking session', {
+            error: error instanceof Error ? error.message : String(error)
+          });
+        }
+      }
+    };
+
+    attemptFallbackAuth();
+  }, [state.isConnected, state.isAuthenticated, state.isLoading, state.address, user, authManager, authService]);
+
   // No need to manage provider separately - it's cached in AuthManager
 
   const connect = useCallback(async (preferredProvider?: ProviderType): Promise<ConnectionResult> => {

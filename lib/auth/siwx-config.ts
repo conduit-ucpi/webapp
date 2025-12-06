@@ -90,9 +90,11 @@ export function createAppKitSIWXConfig() {
   console.log('🔐 SIWX: Custom backend storage created - sessions will be stored in backend')
 
   // Use DefaultSIWX but with our custom verifier AND custom storage
+  // IMPORTANT: required: true forces SIWX to trigger sign message flow
   const siwxConfig = new DefaultSIWX({
     verifiers: [customVerifier],
-    storage: customStorage
+    storage: customStorage,
+    required: true // Force authentication flow - disconnect wallet if user denies signature
   })
 
   console.log('🔐 SIWX: ✅ SIWX config created successfully with backend integration')

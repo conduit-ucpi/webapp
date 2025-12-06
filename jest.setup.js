@@ -25,8 +25,11 @@ Object.defineProperty(global, 'crypto', {
 // jest.mock('@web3auth/wallet-services-plugin', () => ({ ... }))
 
 // Mock Reown AppKit (WalletConnect) modules to prevent import errors during testing
-jest.mock('@reown/appkit/react', () => ({
+jest.mock('@reown/appkit', () => ({
   createAppKit: jest.fn(),
+}))
+
+jest.mock('@reown/appkit/react', () => ({
   useAppKitAccount: jest.fn(),
   useAppKitProvider: jest.fn(),
 }))

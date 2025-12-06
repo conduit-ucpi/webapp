@@ -1,4 +1,4 @@
-import { createAppKit } from '@reown/appkit/react'
+import { createAppKit } from '@reown/appkit'
 import { EthersAdapter } from '@reown/appkit-adapter-ethers'
 import { mainnet, base, sepolia, baseSepolia } from '@reown/appkit/networks'
 import { ethers } from 'ethers'

@@ -1135,15 +1135,16 @@ export class Web3Service {
         // Don't set gasPrice, maxFeePerGas, or maxPriorityFeePerGas - let the wallet decide
       } else {
         // For other providers (Web3Auth, Dynamic, etc.), use the SAME gas pricing we used for funding
-        console.log('🔧 Using custom provider - applying gas pricing from wallet provider (same as funding calculation)');
+        console.log('🔧 Using custom provider - applying gas pricing from earlier calculation (same as funding)');
 
-        // CRITICAL: Use the SAME feeData we queried earlier for funding
+        // CRITICAL: Use the SAME feeData we selected earlier for funding
         // This ensures funding amount matches actual transaction cost
+        // NOTE: walletProviderFeeData contains whichever source we chose (RPC or provider)
         if (walletProviderFeeData && walletProviderFeeData.maxFeePerGas && walletProviderFeeData.maxPriorityFeePerGas) {
           // Use EIP-1559 transaction format with the SAME fees used for funding
           tx.maxFeePerGas = walletProviderFeeData.maxFeePerGas;
           tx.maxPriorityFeePerGas = walletProviderFeeData.maxPriorityFeePerGas;
-          console.log('✅ Using EIP-1559 transaction format with wallet provider fees (same as funding)');
+          console.log('✅ Using EIP-1559 transaction format with selected fees (same as funding)');
           console.log(`   maxFeePerGas: ${formatWeiAsEthForLogging(tx.maxFeePerGas)} (${(Number(tx.maxFeePerGas) / 1e9).toFixed(6)} gwei)`);
           console.log(`   maxPriorityFeePerGas: ${formatWeiAsEthForLogging(tx.maxPriorityFeePerGas)} (${(Number(tx.maxPriorityFeePerGas) / 1e9).toFixed(6)} gwei)`);
         } else if (walletProviderFeeData && walletProviderFeeData.gasPrice) {

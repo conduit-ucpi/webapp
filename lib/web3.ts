@@ -1237,12 +1237,58 @@ export class Web3Service {
       // CRITICAL: Query nonce BEFORE sending transaction
       // We MUST know the exact nonce to verify the transaction later
       mLog.info('Web3Service', '🔢 Querying nonce before transaction...');
-      const nonceHex = await provider.send('eth_getTransactionCount', [fromAddress, 'pending']);
-      const nonce = parseInt(nonceHex, 16);
 
-      mLog.info('Web3Service', `✅ Got nonce: ${nonce} (0x${nonce.toString(16)}) - will use for transaction`, {
+      // DIAGNOSTIC: Compare provider nonce vs RPC nonce to detect stale cache
+      console.log('\n🔍 NONCE DIAGNOSTIC - COMPARING PROVIDER VS RPC:\n' + '='.repeat(80));
+      console.log('📡 Querying nonce from wallet provider...');
+      const providerNonceHex = await provider.send('eth_getTransactionCount', [fromAddress, 'pending']);
+      const providerNonce = parseInt(providerNonceHex, 16);
+      console.log(`   Provider returned: ${providerNonce} (0x${providerNonce.toString(16)})`);
+
+      console.log('📡 Querying nonce from Base RPC directly...');
+      let rpcNonce = providerNonce; // Default to provider if RPC fails
+      try {
+        const rpcResponse = await fetch(this.config.rpcUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            method: 'eth_getTransactionCount',
+            params: [fromAddress, 'pending'],
+            id: 999
+          })
+        });
+        const rpcData = await rpcResponse.json();
+        if (rpcData.result) {
+          rpcNonce = parseInt(rpcData.result, 16);
+          console.log(`   Base RPC returned: ${rpcNonce} (0x${rpcNonce.toString(16)})`);
+        } else {
+          console.warn('   Base RPC failed, using provider nonce');
+        }
+      } catch (error) {
+        console.error('   Base RPC query failed:', error);
+        console.warn('   Falling back to provider nonce');
+      }
+
+      console.log('\n📊 NONCE COMPARISON:');
+      const nonceDiff = providerNonce - rpcNonce;
+      if (nonceDiff !== 0) {
+        console.warn(`   ⚠️  NONCE MISMATCH DETECTED!`);
+        console.warn(`   Provider: ${providerNonce}`);
+        console.warn(`   RPC: ${rpcNonce}`);
+        console.warn(`   Difference: ${nonceDiff} (provider is ${nonceDiff > 0 ? 'ahead' : 'behind'})`);
+        console.warn(`   🔧 USING BASE RPC NONCE (${rpcNonce}) - provider nonce appears stale/cached`);
+      } else {
+        console.log(`   ✅ Nonces match: ${rpcNonce}`);
+      }
+      console.log('='.repeat(80) + '\n');
+
+      const nonce = rpcNonce; // Use RPC nonce (most reliable)
+
+      mLog.info('Web3Service', `✅ Using nonce: ${nonce} (0x${nonce.toString(16)})`, {
         fromAddress,
-        nonce
+        nonce,
+        source: nonceDiff !== 0 ? 'Base RPC (provider was wrong)' : 'Provider & RPC match'
       });
 
       // Format transaction for eth_sendTransaction RPC call

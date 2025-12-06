@@ -10,6 +10,7 @@
 import { SIWXVerifier, DefaultSIWX } from '@reown/appkit-siwx'
 import type { SIWXSession } from '@reown/appkit-controllers'
 import { BackendSIWXStorage } from './BackendSIWXStorage'
+import { BackendSIWXMessenger } from './BackendSIWXMessenger'
 
 /**
  * Custom EIP155 Verifier that uses our backend for signature verification
@@ -75,6 +76,7 @@ class CustomBackendVerifier extends SIWXVerifier {
  * Create SIWX configuration with custom backend integration
  *
  * Uses DefaultSIWX class with our custom components:
+ * - BackendSIWXMessenger: Gets nonces from backend /api/auth/siwe/nonce
  * - CustomBackendVerifier: Calls our backend to verify signatures
  * - BackendSIWXStorage: Stores sessions in backend via HTTP-only cookies
  * - required: true: Forces authentication, disconnects if user denies
@@ -82,22 +84,27 @@ class CustomBackendVerifier extends SIWXVerifier {
 export function createAppKitSIWXConfig() {
   console.log('🔐 SIWX: createAppKitSIWXConfig() called - SIWX configuration is being initialized')
 
-  // Create custom components
+  // Create custom messenger that gets nonces from backend
+  const customMessenger = new BackendSIWXMessenger()
+  console.log('🔐 SIWX: Custom backend messenger created - nonces will come from backend')
+
+  // Create custom verifier
   const customVerifier = new CustomBackendVerifier()
   console.log('🔐 SIWX: Custom backend verifier created for EIP155')
 
+  // Create custom storage
   const customStorage = new BackendSIWXStorage()
   console.log('🔐 SIWX: Custom backend storage created - sessions will be stored in backend')
 
-  // Use DefaultSIWX with our custom verifier and storage
-  // DefaultSIWX handles createMessage, messenger, signer automatically
+  // Use DefaultSIWX with ALL our custom components
   const siwxConfig = new DefaultSIWX({
-    verifiers: [customVerifier],
-    storage: customStorage,
-    required: true // Force authentication - disconnect if user denies signature
+    messenger: customMessenger, // Custom messenger for backend nonces
+    verifiers: [customVerifier], // Custom verifier for backend verification
+    storage: customStorage,      // Custom storage for backend sessions
+    required: true               // Force authentication - disconnect if user denies signature
   })
 
-  console.log('🔐 SIWX: ✅ SIWX config created successfully with backend integration')
+  console.log('🔐 SIWX: ✅ SIWX config created successfully with full backend integration')
   return siwxConfig
 }
 

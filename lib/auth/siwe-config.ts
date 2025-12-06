@@ -13,6 +13,9 @@ export function createAppKitSIWEConfig() {
   console.log('🔐 SIWE: createAppKitSIWEConfig() called - SIWE configuration is being initialized')
 
   return createSIWEConfig({
+    // EXPLICITLY enable SIWE (defaults to true, but being explicit)
+    enabled: true,
+
     // Called when AppKit needs a nonce for SIWE message
     getNonce: async () => {
       try {
@@ -122,7 +125,21 @@ Issued At: ${issuedAt}`
         console.error('🔐 SIWE: ❌ Error during sign out:', error)
         return false
       }
-    }
+    },
+
+    // Optional callbacks
+    onSignIn: (session) => {
+      console.log('🔐 SIWE: onSignIn callback triggered!', session)
+    },
+
+    onSignOut: () => {
+      console.log('🔐 SIWE: onSignOut callback triggered!')
+    },
+
+    // Sign out behaviors (all default to true)
+    signOutOnDisconnect: true,
+    signOutOnAccountChange: true,
+    signOutOnNetworkChange: true
   })
 }
 

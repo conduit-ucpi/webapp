@@ -84,8 +84,8 @@ export class ReownWalletConnectProvider {
           analytics: false, // Disable analytics for privacy
           swaps: false,
           onramp: false,
-          email: false,
-          socials: []
+          email: true, // Enable email login
+          socials: ['google', 'x', 'discord', 'farcaster'] // Enable social login options
         }
       })
 

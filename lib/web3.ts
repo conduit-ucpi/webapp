@@ -181,13 +181,12 @@ export class Web3Service {
         }
       }
 
-      // Get the connected address to verify authentication
-      const signer = await this.provider.getSigner();
-      const address = await signer.getAddress();
-      console.log('[Web3Service] ✅ Connected wallet address:', address);
-
+      // Mark as initialized - we don't need to call getSigner() here
+      // Getting the signer would trigger eth_requestAccounts which is forbidden
+      // on already-connected sessions (Reown/WalletConnect restriction)
+      // We'll get the signer lazily when actually needed for signing
       this.isInitialized = true;
-      console.log('[Web3Service] ✅ Provider initialized successfully');
+      console.log('[Web3Service] ✅ Provider initialized successfully (signer will be obtained lazily when needed)');
       console.log('[Web3Service] 🎯 Using single provider instance from auth system');
     } catch (error) {
       console.error('[Web3Service] ❌ Failed to initialize provider:', error);

@@ -140,30 +140,46 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
         });
 
         // SIWX handles authentication automatically during connection (required: true in config)
-        // We just need to check if the session exists and fetch user data
+        // Poll for session with retries to allow time for SIWX to complete (especially for embedded wallets)
         try {
-          // Check if we have an active SIWX session (should be set by SIWX auto-auth)
-          const sessionResponse = await fetch('/api/auth/siwe/session');
+          // Poll for SIWX session (may take a moment to complete after connection)
+          const maxRetries = 5;
+          const retryDelay = 500; // ms
+          let sessionFound = false;
 
-          if (sessionResponse.ok) {
-            const sessionData = await sessionResponse.json();
+          for (let attempt = 1; attempt <= maxRetries; attempt++) {
+            const sessionResponse = await fetch('/api/auth/siwe/session');
 
-            if (sessionData.address) {
-              mLog.info('AuthProvider', '✅ SIWX session found - user authenticated automatically', {
-                address: sessionData.address
-              });
+            if (sessionResponse.ok) {
+              const sessionData = await sessionResponse.json();
 
-              // Fetch full user data from backend
-              const backendStatus = await authService.checkAuthentication();
+              if (sessionData.address) {
+                mLog.info('AuthProvider', `✅ SIWX session found on attempt ${attempt} - user authenticated automatically`, {
+                  address: sessionData.address
+                });
 
-              if (backendStatus.success && backendStatus.user) {
-                setUser(backendStatus.user);
-                authManager.setState({ isAuthenticated: true });
-                mLog.info('AuthProvider', '✅ User data loaded from backend');
+                // Fetch full user data from backend
+                const backendStatus = await authService.checkAuthentication();
+
+                if (backendStatus.success && backendStatus.user) {
+                  setUser(backendStatus.user);
+                  authManager.setState({ isAuthenticated: true });
+                  mLog.info('AuthProvider', '✅ User data loaded from backend');
+                  sessionFound = true;
+                  break;
+                }
               }
             }
-          } else {
-            mLog.warn('AuthProvider', 'No SIWX session found after connection - authentication may have failed');
+
+            // If not found and not last attempt, wait before retry
+            if (!sessionFound && attempt < maxRetries) {
+              mLog.debug('AuthProvider', `SIWX session not found yet, retrying (${attempt}/${maxRetries})...`);
+              await new Promise(resolve => setTimeout(resolve, retryDelay));
+            }
+          }
+
+          if (!sessionFound) {
+            mLog.warn('AuthProvider', 'No SIWX session found after all retries - authentication may have failed or user denied signature');
           }
         } catch (siwxError) {
           mLog.error('AuthProvider', 'SIWX session check error:', {

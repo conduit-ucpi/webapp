@@ -9,6 +9,7 @@
 
 import { SIWXVerifier, DefaultSIWX } from '@reown/appkit-siwx'
 import type { SIWXSession } from '@reown/appkit-controllers'
+import { BackendSIWXStorage } from './BackendSIWXStorage'
 
 /**
  * Custom EIP155 Verifier that uses our backend for signature verification
@@ -71,10 +72,11 @@ class CustomBackendVerifier extends SIWXVerifier {
 }
 
 /**
- * Create SIWX configuration with custom backend verifier
+ * Create SIWX configuration with custom backend verifier and storage
  *
- * This uses DefaultSIWX configuration but replaces the standard EIP155Verifier
- * with our CustomBackendVerifier that calls our backend for authentication.
+ * This uses DefaultSIWX configuration but replaces:
+ * - Standard EIP155Verifier with our CustomBackendVerifier (calls backend for verification)
+ * - LocalStorage with our BackendSIWXStorage (stores sessions in backend via cookies)
  */
 export function createAppKitSIWXConfig() {
   console.log('🔐 SIWX: createAppKitSIWXConfig() called - SIWX configuration is being initialized')
@@ -83,12 +85,17 @@ export function createAppKitSIWXConfig() {
   const customVerifier = new CustomBackendVerifier()
   console.log('🔐 SIWX: Custom backend verifier created for EIP155')
 
-  // Use DefaultSIWX but with our custom verifier
+  // Create custom backend storage
+  const customStorage = new BackendSIWXStorage()
+  console.log('🔐 SIWX: Custom backend storage created - sessions will be stored in backend')
+
+  // Use DefaultSIWX but with our custom verifier AND custom storage
   const siwxConfig = new DefaultSIWX({
-    verifiers: [customVerifier]
+    verifiers: [customVerifier],
+    storage: customStorage
   })
 
-  console.log('🔐 SIWX: ✅ SIWX config created successfully')
+  console.log('🔐 SIWX: ✅ SIWX config created successfully with backend integration')
   return siwxConfig
 }
 

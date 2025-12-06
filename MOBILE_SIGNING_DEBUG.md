@@ -1,5 +1,42 @@
 # Mobile Signing Issue - Debug Log
 
+## ✅ FIXED: eth_requestAccounts Forbidden Error (2025-12-07)
+
+### Problem
+When approving USDC on mobile/embedded wallets (Farcaster, Dynamic, WalletConnect):
+```
+Error: "Requested RPC call is not allowed {method: 'eth_requestAccounts'}"
+```
+
+### Root Cause
+- `fundAndSendTransaction()` at line 1098 called `const signer = await this.provider.getSigner();`
+- `getSigner()` internally calls `eth_requestAccounts` RPC method
+- For embedded wallets, `eth_requestAccounts` is **FORBIDDEN** after initial connection
+- The signer was only used once (line 1236) to get the address: `const fromAddress = await signer.getAddress();`
+
+### Solution
+**Remove the `getSigner()` call entirely** - we don't need a signer for `eth_sendTransaction`:
+- Line 1098: Removed `const signer = await this.provider.getSigner();`
+- Line 1236: Changed to `const fromAddress = await this.getUserAddress();`
+- `getUserAddress()` gets the address from auth context (no RPC call needed)
+
+### Why This Works
+- We're calling `eth_sendTransaction` directly via `provider.send()` - no signer needed
+- `getUserAddress()` checks `window.authUser` first (already available from login)
+- Only falls back to provider if auth context is missing
+- Avoids `eth_requestAccounts` call entirely for logged-in users
+
+### Tests Added
+- `__tests__/lib/web3-approve-usdc-getSigner-forbidden.test.ts` - Comprehensive test coverage
+- Verifies `getSigner()` is NOT called during transaction flow
+- Confirms address comes from auth context, not wallet provider
+
+### Files Changed
+- `lib/web3.ts:1098` - Removed getSigner() call
+- `lib/web3.ts:1236` - Use getUserAddress() instead of signer.getAddress()
+
+---
+
 ## The Problem
 
 On mobile (Android Chrome), after successfully connecting a wallet via Dynamic.xyz + WalletConnect:

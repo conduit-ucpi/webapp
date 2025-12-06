@@ -1094,8 +1094,12 @@ export class Web3Service {
     console.log('[Web3Service.fundAndSendTransaction] Sending transaction via unified ethers provider...');
 
     try {
-      // Get the signer from the same ethers provider used for balance reading
-      const signer = await this.provider.getSigner();
+      // CRITICAL FIX: Don't call getSigner() here - it triggers eth_requestAccounts which is
+      // forbidden on embedded wallets (Farcaster, Dynamic, WalletConnect) after initial connection.
+      // We only need the user address, which getUserAddress() can provide from auth context.
+      // The signer was only used to get the address via signer.getAddress() at line 1232.
+      console.log('[Web3Service.fundAndSendTransaction] Getting user address from auth context (no getSigner call)');
+      // Note: We removed "const signer = await this.provider.getSigner();" from here
 
       // Apply gas buffer for transaction execution (reuse gasPriceBuffer from earlier)
       const bufferedGasLimit = BigInt(Math.round(Number(gasEstimate) * gasPriceBuffer));
@@ -1228,8 +1232,8 @@ export class Web3Service {
       console.log('[Web3Service.fundAndSendTransaction] Sending transaction via direct eth_sendTransaction...');
       mLog.info('Web3Service', '📤 Calling eth_sendTransaction directly (bypasses hanging on mobile)...');
 
-      // Get user address
-      const fromAddress = await signer.getAddress();
+      // Get user address (using getUserAddress instead of signer.getAddress to avoid getSigner call)
+      const fromAddress = await this.getUserAddress();
 
       // Call eth_sendTransaction directly via provider
       const provider = this.provider as any;

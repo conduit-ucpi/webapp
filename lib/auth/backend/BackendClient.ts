@@ -104,23 +104,25 @@ export class BackendClient {
 
   /**
    * Check current authentication status
+   * Works with both token-based auth (TokenManager) and cookie-based auth (SIWE)
    */
   async checkAuthStatus(): Promise<BackendAuthResult> {
-    const token = this.tokenManager.getToken();
-
-    if (!token) {
-      return {
-        success: false,
-        error: 'No auth token available'
-      };
-    }
-
     try {
+      const token = this.tokenManager.getToken();
+
+      // Build headers - include Authorization if we have a token
+      // But still make the request even without a token, as SIWE uses HTTP-only cookies
+      const headers: any = {
+        'Content-Type': 'application/json'
+      };
+
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const response = await fetch('/api/auth/identity', {
-        credentials: 'include',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        credentials: 'include', // Important: includes cookies (AUTH-TOKEN for SIWE)
+        headers
       });
 
       if (!response.ok) {

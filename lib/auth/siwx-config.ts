@@ -72,29 +72,29 @@ class CustomBackendVerifier extends SIWXVerifier {
 }
 
 /**
- * Create SIWX configuration with custom backend verifier and storage
+ * Create SIWX configuration with custom backend integration
  *
- * This uses DefaultSIWX configuration but replaces:
- * - Standard EIP155Verifier with our CustomBackendVerifier (calls backend for verification)
- * - LocalStorage with our BackendSIWXStorage (stores sessions in backend via cookies)
+ * Uses DefaultSIWX class with our custom components:
+ * - CustomBackendVerifier: Calls our backend to verify signatures
+ * - BackendSIWXStorage: Stores sessions in backend via HTTP-only cookies
+ * - required: true: Forces authentication, disconnects if user denies
  */
 export function createAppKitSIWXConfig() {
   console.log('🔐 SIWX: createAppKitSIWXConfig() called - SIWX configuration is being initialized')
 
-  // Create custom backend verifier
+  // Create custom components
   const customVerifier = new CustomBackendVerifier()
   console.log('🔐 SIWX: Custom backend verifier created for EIP155')
 
-  // Create custom backend storage
   const customStorage = new BackendSIWXStorage()
   console.log('🔐 SIWX: Custom backend storage created - sessions will be stored in backend')
 
-  // Use DefaultSIWX but with our custom verifier AND custom storage
-  // IMPORTANT: required: true forces SIWX to trigger sign message flow
+  // Use DefaultSIWX with our custom verifier and storage
+  // DefaultSIWX handles createMessage, messenger, signer automatically
   const siwxConfig = new DefaultSIWX({
     verifiers: [customVerifier],
     storage: customStorage,
-    required: true // Force authentication flow - disconnect wallet if user denies signature
+    required: true // Force authentication - disconnect if user denies signature
   })
 
   console.log('🔐 SIWX: ✅ SIWX config created successfully with backend integration')

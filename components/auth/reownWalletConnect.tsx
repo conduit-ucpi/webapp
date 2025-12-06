@@ -22,6 +22,10 @@ export class ReownWalletConnectProvider {
 
   async initialize() {
     try {
+      console.log('🔧 ReownWalletConnect: ========================================')
+      console.log('🔧 ReownWalletConnect: INITIALIZING - This should only appear once per session')
+      console.log('🔧 ReownWalletConnect: If you dont see SIWE logs after this, SIWE is broken')
+      console.log('🔧 ReownWalletConnect: ========================================')
       console.log('🔧 ReownWalletConnect: Initializing direct WalletConnect integration...')
 
       // Get project ID from environment
@@ -58,10 +62,13 @@ export class ReownWalletConnectProvider {
       const ethersAdapter = new EthersAdapter()
 
       // Create SIWE config for one-click authentication
+      console.log('🔧 ReownWalletConnect: About to call createAppKitSIWEConfig()...')
       const siweConfig = createAppKitSIWEConfig()
-      console.log('🔧 ReownWalletConnect: SIWE config created - one-click auth enabled')
+      console.log('🔧 ReownWalletConnect: ✅ SIWE config created successfully:', siweConfig ? 'Config object exists' : 'ERROR: Config is null!')
+      console.log('🔧 ReownWalletConnect: SIWE one-click auth ENABLED')
 
       // Create AppKit instance
+      console.log('🔧 ReownWalletConnect: Creating AppKit with SIWE config...')
       this.appKit = createAppKit({
         adapters: [ethersAdapter],
         networks: networks as [any, ...any[]], // Type assertion to fix tuple requirement

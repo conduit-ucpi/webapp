@@ -9,7 +9,6 @@ import { AuthManager } from '../core/AuthManager';
 import { AuthService } from '../backend/AuthService';
 import { ethers } from 'ethers';
 import { mLog } from '../../../utils/mobileLogger';
-import { SIWXUtil } from '@reown/appkit-controllers';
 
 interface AuthContextValue {
   // State
@@ -136,25 +135,21 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
       const result = await authManager.connect(preferredProvider);
 
       if (result.success && result.address) {
-        mLog.info('AuthProvider', 'Connection successful, triggering SIWX authentication...', {
+        mLog.info('AuthProvider', 'Connection successful, checking SIWX authentication status...', {
           address: result.address
         });
 
-        // Trigger SIWX sign message flow
+        // SIWX handles authentication automatically during connection (required: true in config)
+        // We just need to check if the session exists and fetch user data
         try {
-          mLog.info('AuthProvider', 'Calling SIWXUtil.requestSignMessage()...');
-          await SIWXUtil.requestSignMessage();
-
-          mLog.info('AuthProvider', 'SIWX sign message completed, checking session...');
-
-          // Check if we have an active SIWX session now
+          // Check if we have an active SIWX session (should be set by SIWX auto-auth)
           const sessionResponse = await fetch('/api/auth/siwe/session');
 
           if (sessionResponse.ok) {
             const sessionData = await sessionResponse.json();
 
             if (sessionData.address) {
-              mLog.info('AuthProvider', '✅ SIWX session found - user authenticated', {
+              mLog.info('AuthProvider', '✅ SIWX session found - user authenticated automatically', {
                 address: sessionData.address
               });
 
@@ -168,10 +163,10 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
               }
             }
           } else {
-            mLog.warn('AuthProvider', 'No SIWX session found after sign message - authentication may have failed');
+            mLog.warn('AuthProvider', 'No SIWX session found after connection - authentication may have failed');
           }
         } catch (siwxError) {
-          mLog.error('AuthProvider', 'SIWX authentication error:', {
+          mLog.error('AuthProvider', 'SIWX session check error:', {
             error: siwxError instanceof Error ? siwxError.message : String(siwxError)
           });
         }

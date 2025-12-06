@@ -155,6 +155,16 @@ export default function ConnectWalletEmbedded({
   }, [autoConnect]); // eslint-disable-line react-hooks/exhaustive-deps
   // Intentionally limited deps - we only want to trigger on mount when autoConnect is true
 
+  // When user becomes authenticated, call onSuccess to advance the flow
+  const hasCalledSuccessRef = useRef(false);
+  useEffect(() => {
+    if (user && onSuccess && !hasCalledSuccessRef.current) {
+      mLog.info('ConnectWalletEmbedded', 'User authenticated - calling onSuccess to advance flow');
+      hasCalledSuccessRef.current = true;
+      onSuccess();
+    }
+  }, [user, onSuccess]);
+
   // Don't show loading spinner during SSR - always render actual content for SEO/crawlers
   if (user) {
     return (

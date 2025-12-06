@@ -36,7 +36,7 @@ interface SendFormData {
 }
 
 export default function Wallet() {
-  const { user, state, isLoading: authLoading, getEthersProvider, showWalletUI } = useAuth();
+  const { user, state, isLoading: authLoading, getEthersProvider } = useAuth();
   const { fundAndSendTransaction, getUSDCBalance, getNativeBalance, getUserAddress } = useSimpleEthers();
   const { isInFarcaster } = useFarcaster();
   const { config } = useConfig();
@@ -186,8 +186,6 @@ export default function Wallet() {
 
   useEffect(() => {
     // Load balances when user is authenticated AND wallet is connected
-    // This applies to ALL users (including Dynamic embedded wallet users)
-    // Dynamic embedded wallet users get the same balance display as everyone else
     if (user && config && state?.isConnected) {
       loadBalances();
       loadChainInfo();
@@ -197,46 +195,6 @@ export default function Wallet() {
     // may change identity on each render even though they're functionally stable
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, config, state?.isConnected]);
-
-  // Note: We used to auto-popup the Dynamic modal for embedded wallet users,
-  // but now we show the full wallet UI to all users and provide a button to manually open the modal
-
-  const handleShowWalletServices = async () => {
-    console.log('🔧 Wallet Services Debug:', {
-      user: user ? {
-        authProvider: user.authProvider,
-        email: user.email,
-        walletAddress: user.walletAddress
-      } : null,
-      showWalletUI: !!showWalletUI
-    });
-
-    // Try the programmatic approach first
-    if (showWalletUI) {
-      try {
-        console.log('🔧 Trying programmatic showWalletUI...');
-        await showWalletUI();
-        return;
-      } catch (error) {
-        console.error('🔧 Programmatic wallet UI failed:', error);
-        // Fall through to alternative method
-      }
-    }
-
-    // Alternative: Open the Web3Auth wallet management URL directly
-    console.log('🔧 Opening Web3Auth wallet services URL directly...');
-    const walletUrl = 'https://wallet.web3auth.io';
-
-    // Open in a new tab/window
-    try {
-      console.log('🔧 Opening in new tab');
-      window.open(walletUrl, '_blank', 'noopener,noreferrer');
-    } catch (error) {
-      // Fallback: navigate in same window if popup blocked
-      console.log('🔧 Fallback: opening in same window (popup might be blocked)');
-      window.location.href = walletUrl;
-    }
-  };
 
   const handleSendSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -329,7 +287,6 @@ export default function Wallet() {
     );
   }
 
-  // For now, wallet page is only available with Web3Auth
   if (!user || !walletAddress || isInFarcaster) {
     return (
       <div className="max-w-md mx-auto text-center py-20">
@@ -341,10 +298,6 @@ export default function Wallet() {
       </div>
     );
   }
-
-  // Note: We no longer have a special UI for embedded wallets
-  // All users see the same full wallet interface below
-  // Embedded wallet users get an additional button to open the Dynamic modal
 
   return (
     <div className="py-10">

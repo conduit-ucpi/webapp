@@ -123,9 +123,15 @@ export class Web3Service {
         throw new Error('No provider provided for initialization');
       }
 
-      // Clear any existing state before initializing
-      if (this.isInitialized) {
-        console.log('[Web3Service] Clearing existing state before re-initialization');
+      // If already initialized with the same provider, skip re-initialization
+      if (this.isInitialized && this.provider === ethersProvider) {
+        console.log('[Web3Service] Already initialized with same provider, skipping re-initialization');
+        return;
+      }
+
+      // If initialized with a different provider, clear state first
+      if (this.isInitialized && this.provider !== ethersProvider) {
+        console.log('[Web3Service] Different provider detected, clearing state before re-initialization');
         this.clearState();
       }
 

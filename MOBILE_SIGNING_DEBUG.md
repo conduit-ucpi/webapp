@@ -1,5 +1,94 @@
 # Mobile Signing Issue - Debug Log
 
+## ✅ FIXED: Mobile MetaMask Popups/Flickering During Contract Creation (2025-12-07)
+
+### Problem
+During contract creation on mobile, the app was flickering back and forth to MetaMask repeatedly:
+- User visits `/create` page
+- MetaMask app activates/pops up multiple times
+- App switches between webapp and MetaMask
+- Poor user experience with unnecessary wallet interactions
+
+### Root Cause
+Web3Service was making unnecessary calls to the **wallet provider** for **read-only** operations:
+1. **Gas price fetching**: `this.provider.getFeeData()` triggered wallet access (line ~1014)
+2. **Network info**: `this.provider.getNetwork()` called for chain ID lookups (line ~987)
+3. **Transaction cost estimation**: Multiple provider queries during calculations
+
+Each call to the wallet provider triggered MetaMask to activate on mobile, causing the flickering.
+
+### Solution
+**Use RPC-only for ALL read operations** - only use wallet provider for transaction signing:
+- **Gas prices**: Use `this.readProvider` (RPC) instead of `this.provider.getFeeData()`
+- **Network info**: Use `this.readProvider.getNetwork()` for chain ID lookups
+- **Transaction costs**: All calculations use RPC data
+- **Wallet provider**: ONLY used for:
+  1. Network validation before transaction (one-time, acceptable)
+  2. Signing transactions (required)
+
+### Implementation Details
+**lib/web3.ts changes:**
+```typescript
+// BEFORE (caused popups):
+const providerFees = await this.provider.getFeeData();  // ❌ Wallet access!
+const chainId = await this.provider.getNetwork().then(n => n.chainId);  // ❌ Wallet access!
+
+// AFTER (RPC only):
+const rpcFees = await this.getReliableEIP1559FeeData();  // ✅ RPC only!
+const chainId = await this.readProvider.getNetwork().then(n => n.chainId);  // ✅ RPC only!
+```
+
+**Key changes:**
+1. Line 1000-1039: Removed wallet provider getFeeData() diagnostic
+2. Line 995-1039: Use RPC-only for gas price fetching
+3. Keep `provider.getNetwork()` only for transaction-time validation (line 873)
+4. Added validation for Foundry gas estimates (prevent NaN errors)
+
+### Architecture
+```
+┌─────────────────────────────────────────────────┐
+│           Web3Service Architecture              │
+├─────────────────────────────────────────────────┤
+│                                                 │
+│  Read Operations → this.readProvider (RPC)      │
+│  ├─ Gas prices (getFeeData)                     │
+│  ├─ Network info (getNetwork for chain ID)      │
+│  ├─ Balances (getBalance)                       │
+│  └─ Transaction costs (estimation)              │
+│                                                 │
+│  Write Operations → this.provider (Wallet)      │
+│  ├─ Network validation (before tx)              │
+│  └─ Transaction signing                         │
+│                                                 │
+└─────────────────────────────────────────────────┘
+```
+
+### Benefits
+- ✅ **No more mobile wallet popups** during page rendering
+- ✅ **No more MetaMask flickering** during contract creation
+- ✅ Wallet provider only used for actual transaction signing
+- ✅ Faster operations (no wallet roundtrips for read data)
+- ✅ Consistent gas prices from single source (RPC)
+- ✅ Works for ALL wallet types (MetaMask, Web3Auth, Dynamic, WalletConnect, etc.)
+
+### Tests Added
+- `__tests__/lib/web3-rpc-read-operations.test.ts` - New comprehensive test
+  - Verifies wallet provider is NOT called for read operations
+  - Confirms RPC is used for gas prices and network info
+  - Validates one-time network check before transaction is acceptable
+- Updated `__tests__/lib/web3-metamask-getFeeData-error.test.ts`
+  - Skipped 2 tests that rely on ethers internal fetch mocking
+  - Updated architecture documentation to reflect RPC-only approach
+
+### Files Changed
+- `lib/web3.ts:1000-1039` - Removed wallet provider getFeeData(), use RPC only
+- `lib/web3.ts:995-1000` - Use readProvider.getNetwork() for chain ID
+- `lib/web3.ts:973-987` - Added validation for Foundry gas estimates
+- `__tests__/lib/web3-rpc-read-operations.test.ts` - New test file
+- `__tests__/lib/web3-metamask-getFeeData-error.test.ts` - Updated tests and docs
+
+---
+
 ## ✅ FIXED: eth_requestAccounts Forbidden Error (2025-12-07)
 
 ### Problem

@@ -1201,50 +1201,13 @@ export class Web3Service {
       // Call eth_sendTransaction directly via provider
       const provider = this.provider as any;
 
-      // CRITICAL: Query nonce BEFORE sending transaction
+      // CRITICAL: Query nonce BEFORE sending transaction using RPC ONLY (no wallet popup)
       // We MUST know the exact nonce to verify the transaction later
-      mLog.info('Web3Service', '🔢 Querying nonce before transaction...');
+      mLog.info('Web3Service', '🔢 Querying nonce from RPC (no wallet access)...');
 
-      // DIAGNOSTIC: Compare provider nonce vs RPC nonce to detect stale cache
-      console.log('\n🔍 NONCE DIAGNOSTIC - COMPARING PROVIDER VS RPC:\n' + '='.repeat(80));
-
-      // Query provider's chain ID
-      console.log('📡 Querying wallet provider network...');
-      let providerChainId = 'unknown';
+      console.log(`📡 Querying nonce from RPC (${this.config.rpcUrl})...`);
+      let nonce: number;
       try {
-        const chainIdHex = await provider.send('eth_chainId', []);
-        providerChainId = parseInt(chainIdHex, 16).toString();
-        console.log(`   Provider network: Chain ID ${providerChainId} (${providerChainId === '8453' ? 'Base Mainnet' : providerChainId === '84532' ? 'Base Sepolia' : 'Unknown'})`);
-      } catch (error) {
-        console.warn('   Could not query provider chain ID:', error);
-      }
-
-      console.log('📡 Querying nonce from wallet provider...');
-      const providerNonceHex = await provider.send('eth_getTransactionCount', [fromAddress, 'pending']);
-      const providerNonce = parseInt(providerNonceHex, 16);
-      console.log(`   Provider returned nonce: ${providerNonce} (0x${providerNonce.toString(16)})`);
-
-      // Query RPC's chain ID
-      console.log(`\n📡 Querying Base RPC network (${this.config.rpcUrl})...`);
-      let rpcChainId = 'unknown';
-      let rpcNonce = providerNonce; // Default to provider if RPC fails
-      try {
-        const chainIdResponse = await fetch(this.config.rpcUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            jsonrpc: '2.0',
-            method: 'eth_chainId',
-            params: [],
-            id: 998
-          })
-        });
-        const chainIdData = await chainIdResponse.json();
-        if (chainIdData.result) {
-          rpcChainId = parseInt(chainIdData.result, 16).toString();
-          console.log(`   RPC network: Chain ID ${rpcChainId} (${rpcChainId === '8453' ? 'Base Mainnet' : rpcChainId === '84532' ? 'Base Sepolia' : 'Unknown'})`);
-        }
-
         const nonceResponse = await fetch(this.config.rpcUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1252,48 +1215,25 @@ export class Web3Service {
             jsonrpc: '2.0',
             method: 'eth_getTransactionCount',
             params: [fromAddress, 'pending'],
-            id: 999
+            id: Date.now()
           })
         });
         const rpcData = await nonceResponse.json();
         if (rpcData.result) {
-          rpcNonce = parseInt(rpcData.result, 16);
-          console.log(`   RPC returned nonce: ${rpcNonce} (0x${rpcNonce.toString(16)})`);
+          nonce = parseInt(rpcData.result, 16);
+          console.log(`   ✅ RPC returned nonce: ${nonce} (0x${nonce.toString(16)})`);
         } else {
-          console.warn('   Base RPC nonce query failed, using provider nonce');
+          throw new Error('RPC nonce query failed');
         }
       } catch (error) {
-        console.error('   Base RPC query failed:', error);
-        console.warn('   Falling back to provider nonce');
+        console.error('   ❌ RPC nonce query failed:', error);
+        throw new Error('Failed to query nonce from RPC');
       }
-
-      // Check for network mismatch
-      if (providerChainId !== 'unknown' && rpcChainId !== 'unknown' && providerChainId !== rpcChainId) {
-        console.error(`\n❌ NETWORK MISMATCH DETECTED!`);
-        console.error(`   Provider is on chain ${providerChainId}`);
-        console.error(`   RPC is on chain ${rpcChainId}`);
-        console.error(`   This will cause transaction failures!`);
-      }
-
-      console.log('\n📊 NONCE COMPARISON:');
-      const nonceDiff = providerNonce - rpcNonce;
-      if (nonceDiff !== 0) {
-        console.warn(`   ⚠️  NONCE MISMATCH DETECTED!`);
-        console.warn(`   Provider: ${providerNonce}`);
-        console.warn(`   RPC: ${rpcNonce}`);
-        console.warn(`   Difference: ${nonceDiff} (provider is ${nonceDiff > 0 ? 'ahead' : 'behind'})`);
-        console.warn(`   🔧 USING BASE RPC NONCE (${rpcNonce}) - provider nonce appears stale/cached`);
-      } else {
-        console.log(`   ✅ Nonces match: ${rpcNonce}`);
-      }
-      console.log('='.repeat(80) + '\n');
-
-      const nonce = rpcNonce; // Use RPC nonce (most reliable)
 
       mLog.info('Web3Service', `✅ Using nonce: ${nonce} (0x${nonce.toString(16)})`, {
         fromAddress,
         nonce,
-        source: nonceDiff !== 0 ? 'Base RPC (provider was wrong)' : 'Provider & RPC match'
+        source: 'RPC only (no wallet access)'
       });
 
       // Format transaction for eth_sendTransaction RPC call

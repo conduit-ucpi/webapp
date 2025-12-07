@@ -135,59 +135,15 @@ export class Web3Service {
         this.clearState();
       }
 
-      console.log('[Web3Service] Initializing with unified ethers provider');
+      console.log('[Web3Service] Initializing with LAZY provider (no wallet access during init)');
 
       // Store the ethers provider (single instance from auth system)
       this.provider = ethersProvider;
 
-      // Test the connection by getting network info
-      // Note: During initialization (one-time during wallet connection), it's safe to query
-      // the wallet provider. We only use RPC for read operations during page rendering/transactions.
-      const network = await this.provider.getNetwork();
-      console.log('[Web3Service] ✅ Connected to network:', {
-        chainId: network.chainId.toString(),
-        name: network.name
-      });
-
-      // CRITICAL: Verify wallet is on correct network (if chainId is configured)
-      if (this.config.chainId) {
-        const expectedChainId = BigInt(this.config.chainId);
-        if (network.chainId !== expectedChainId) {
-        console.warn('[Web3Service] ⚠️  Wrong network! Wallet is on chain', network.chainId.toString(), 'but expected', expectedChainId.toString());
-
-        // Attempt to switch network
-        try {
-          const provider = this.provider as any;
-          const rawProvider = provider._getProvider?.() || provider.provider;
-
-          if (rawProvider?.request) {
-            console.log('[Web3Service] 🔄 Attempting to switch network to chain', expectedChainId.toString());
-
-            const chainIdHex = `0x${expectedChainId.toString(16)}`;
-            await rawProvider.request({
-              method: 'wallet_switchEthereumChain',
-              params: [{ chainId: chainIdHex }]
-            });
-
-            console.log('[Web3Service] ✅ Successfully switched to chain', expectedChainId.toString());
-          } else {
-            throw new Error('Provider does not support network switching');
-          }
-        } catch (switchError: any) {
-          console.error('[Web3Service] ❌ Failed to switch network:', switchError);
-
-          // If error code 4902, the chain is not added to wallet - need to add it first
-          if (switchError.code === 4902) {
-            console.error('[Web3Service] Chain not added to wallet - need to add Base network manually');
-          }
-
-          throw new Error(
-            `Wallet is on wrong network (chain ${network.chainId.toString()}). ` +
-            `Please switch to ${this.getNetworkName(this.config.chainId)} (chain ${expectedChainId.toString()}) manually.`
-          );
-        }
-        }
-      }
+      // SKIP network validation during initialization to avoid mobile wallet popup
+      // Network will be validated when first transaction is signed (unavoidable popup there anyway)
+      // This eliminates the "unnecessary" popup #1 that happens when user already authenticated
+      console.log('[Web3Service] ✅ Provider stored (network validation deferred until first transaction)');
 
       // Mark as initialized - we don't need to call getSigner() here
       // Getting the signer would trigger eth_requestAccounts which is forbidden

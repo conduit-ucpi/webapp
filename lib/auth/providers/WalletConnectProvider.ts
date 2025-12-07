@@ -324,7 +324,8 @@ export class WalletConnectProvider implements UnifiedProvider {
    * 2. Once complete, check if backend session was established (verificationSucceeded)
    * 3. If succeeded → done! If failed → trigger manual fallback
    *
-   * Mobile users can take 20-30 seconds to switch apps and sign, so we wait up to 60 seconds.
+   * The timeout is a safety net for user cancellation or SIWX failure, not because
+   * mobile users are slow - we wait for the state flags regardless of timing.
    */
   private async ensureBackendAuthentication(address: string): Promise<void> {
     mLog.info('WalletConnectProvider', '🔐 Checking SIWX verification status...');
@@ -334,8 +335,8 @@ export class WalletConnectProvider implements UnifiedProvider {
     const verificationState = SIWXVerificationState.getInstance();
 
     // Step 1: Wait for SIWX process to complete (verificationAttempted becomes true)
-    // Mobile users take time: browser → wallet app → sign → return to browser
-    const maxWaitTime = 60000; // 60 seconds for mobile users (or user cancellation)
+    // Timeout handles: user cancellation, SIWX silent failure, or unexpected errors
+    const maxWaitTime = 60000; // 60 seconds timeout for cancellation/failure detection
     const pollInterval = 200; // Check every 200ms
     const startTime = Date.now();
 

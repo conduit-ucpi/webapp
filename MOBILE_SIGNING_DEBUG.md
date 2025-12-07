@@ -11,9 +11,18 @@ During contract creation on mobile, the app was flickering back and forth to Met
 
 ### Root Cause
 Web3Service was making unnecessary calls to the **wallet provider** for **read-only** operations:
+
+**Initial findings (during page rendering):**
 1. **Gas price fetching**: `this.provider.getFeeData()` triggered wallet access (line ~1014)
 2. **Network info**: `this.provider.getNetwork()` called for chain ID lookups (line ~987)
 3. **Transaction cost estimation**: Multiple provider queries during calculations
+
+**Additional findings (during transaction execution):**
+After user reported "whole bunch" of popups when clicking pay buttons, found these additional calls:
+4. **Nonce fetching**: `this.provider.getTransactionCount()` during transaction building (line 254)
+5. **Fee data for non-Base networks**: `this.provider.getFeeData()` in buildTransaction (line 269)
+6. **EIP-1559 format check**: `this.provider.getFeeData()` when checking transaction format (line 354)
+7. **Gas estimation fallback**: `this.provider.estimateGas()` for AVAX transfers (line 744)
 
 Each call to the wallet provider triggered MetaMask to activate on mobile, causing the flickering.
 
@@ -41,8 +50,13 @@ const chainId = await this.readProvider.getNetwork().then(n => n.chainId);  // â
 **Key changes:**
 1. Line 1000-1039: Removed wallet provider getFeeData() diagnostic
 2. Line 995-1039: Use RPC-only for gas price fetching
-3. Keep `provider.getNetwork()` only for transaction-time validation (line 873)
-4. Added validation for Foundry gas estimates (prevent NaN errors)
+3. Line 254: Nonce fetching uses `readProvider.getTransactionCount()` instead of wallet provider
+4. Line 269: Fee data for non-Base networks uses `readProvider.getFeeData()` instead of wallet provider
+5. Line 354: EIP-1559 format check uses `readProvider.getFeeData()` instead of wallet provider
+6. Line 744: Gas estimation fallback uses `readProvider.estimateGas()` instead of wallet provider
+7. Keep `provider.getNetwork()` only for transaction-time validation (line 873)
+8. Added validation for Foundry gas estimates (prevent NaN errors)
+9. Added null checks for `readProvider` and `provider` to satisfy TypeScript
 
 ### Architecture
 ```

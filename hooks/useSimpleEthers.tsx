@@ -17,21 +17,25 @@ export function useSimpleEthers() {
       throw new Error('Config not available');
     }
 
-    // Get the ethers provider directly from auth
-    const ethersProvider = await getEthersProvider();
-    if (!ethersProvider) {
-      throw new Error('Wallet not connected');
-    }
-
     const { Web3Service } = await import('@/lib/web3');
 
     // Get or create Web3Service instance with current config
     const web3Service = Web3Service.getInstance(config);
 
-    // Initialize Web3Service with the ethers provider from auth system
+    // CRITICAL: Only get ethers provider if Web3Service is NOT initialized
+    // This prevents repeated WalletConnect provider requests on mobile (causes popups)
     if (!web3Service.isServiceInitialized()) {
       console.log('🔧 useSimpleEthers: Initializing Web3Service with ethers provider');
+
+      // Get the ethers provider from auth (only when needed)
+      const ethersProvider = await getEthersProvider();
+      if (!ethersProvider) {
+        throw new Error('Wallet not connected');
+      }
+
       await web3Service.initialize(ethersProvider);
+    } else {
+      console.log('🔧 useSimpleEthers: Web3Service already initialized, reusing existing instance');
     }
 
     return web3Service;

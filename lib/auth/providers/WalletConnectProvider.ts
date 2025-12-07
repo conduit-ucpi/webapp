@@ -320,10 +320,11 @@ export class WalletConnectProvider implements UnifiedProvider {
    * Ensure backend SIWE session exists after wallet connection
    *
    * Strategy:
-   * 1. Check if SIWX verify has been called and what the result was
-   * 2. If verify succeeded, we're done
-   * 3. If verify hasn't been called yet, wait briefly and check again
-   * 4. If verify failed or timed out, do manual sign + verify
+   * 1. Wait for SIWX process to complete (verificationAttempted becomes true)
+   * 2. Once complete, check if backend session was established (verificationSucceeded)
+   * 3. If succeeded → done! If failed → trigger manual fallback
+   *
+   * Mobile users can take 20-30 seconds to switch apps and sign, so we wait up to 60 seconds.
    */
   private async ensureBackendAuthentication(address: string): Promise<void> {
     mLog.info('WalletConnectProvider', '🔐 Checking SIWX verification status...');
@@ -332,34 +333,41 @@ export class WalletConnectProvider implements UnifiedProvider {
     const { SIWXVerificationState } = await import('../siwx-config');
     const verificationState = SIWXVerificationState.getInstance();
 
-    // Step 1: Wait for SIWX verify to be called (with timeout)
-    const maxWaitTime = 5000; // Wait up to 5 seconds for verify to be called
+    // Step 1: Wait for SIWX process to complete (verificationAttempted becomes true)
+    // Mobile users take time: browser → wallet app → sign → return to browser
+    const maxWaitTime = 60000; // 60 seconds for mobile users (or user cancellation)
     const pollInterval = 200; // Check every 200ms
     const startTime = Date.now();
+
+    mLog.info('WalletConnectProvider', '⏳ Waiting for SIWX auto-verify to complete...');
 
     while (!verificationState.verificationAttempted && (Date.now() - startTime) < maxWaitTime) {
       await new Promise(resolve => setTimeout(resolve, pollInterval));
     }
 
-    // Step 2: Check the verification result
+    // Step 2: Check if SIWX process completed
     if (verificationState.verificationAttempted) {
+      // SIWX process finished - check the result
       if (verificationState.verificationSucceeded) {
+        // SUCCESS - backend session established
         mLog.info('WalletConnectProvider', '✅ SIWX auto-verify succeeded!', {
           address,
-          timeTaken: verificationState.verificationTimestamp - startTime
+          timeTaken: Date.now() - startTime
         });
-        return; // Success! SIWX worked automatically
+        return; // Done!
       } else {
-        mLog.warn('WalletConnectProvider', '⚠️ SIWX auto-verify was attempted but failed', {
+        // FAILED - SIWX tried but failed
+        mLog.warn('WalletConnectProvider', '⚠️ SIWX auto-verify failed', {
           address
         });
-        // Fall through to manual signing
+        // Fall through to manual fallback
       }
     } else {
-      mLog.warn('WalletConnectProvider', `⚠️ SIWX auto-verify not attempted within ${maxWaitTime}ms`, {
+      // TIMEOUT - user likely cancelled or SIWX didn't run
+      mLog.warn('WalletConnectProvider', `⚠️ SIWX auto-verify did not complete within ${maxWaitTime}ms`, {
         address
       });
-      // Fall through to manual signing
+      // Fall through to manual fallback
     }
 
     // Step 3: Check if manual signing is already in progress

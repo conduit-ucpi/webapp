@@ -1706,8 +1706,8 @@ export class Web3Service {
    * @returns Transaction receipt if confirmed, null if timeout/failed
    */
   async waitForTransaction(transactionHash: string, maxWaitTime: number = 30000, contractId?: string): Promise<any | null> {
-    if (!this.provider) {
-      throw new Error('Provider not initialized');
+    if (!this.readProvider) {
+      throw new Error('Read provider not initialized');
     }
 
     console.log(`[Web3Service.waitForTransaction] Waiting for transaction confirmation: ${transactionHash}`);
@@ -1757,12 +1757,13 @@ export class Web3Service {
 
         try {
           // Manual RPC call for eth_getTransactionReceipt
-          // The HybridProvider routes this to the read provider (not wallet provider)
-          const receipt = await this.provider.send('eth_getTransactionReceipt', [transactionHash]);
+          // Use read-only RPC provider (no wallet access needed for reading receipts)
+          const receipt = await this.readProvider.getTransactionReceipt(transactionHash);
 
           if (receipt) {
             // Transaction has been mined
-            if (receipt.status === '0x1' || receipt.status === 1) {
+            // Note: readProvider.getTransactionReceipt returns status as number (0 or 1), not hex string
+            if (receipt.status === 1) {
               console.log(`[Web3Service.waitForTransaction] ✅ Transaction confirmed in block ${receipt.blockNumber}`);
               mLog.info('TransactionWait', '✅ Transaction confirmed successfully', {
                 txHash: transactionHash,
@@ -1771,7 +1772,7 @@ export class Web3Service {
                 elapsedSeconds: Math.floor(elapsedTime / 1000)
               });
               return receipt;
-            } else if (receipt.status === '0x0' || receipt.status === 0) {
+            } else if (receipt.status === 0) {
               console.warn(`[Web3Service.waitForTransaction] ❌ Transaction FAILED (reverted)`);
               mLog.error('TransactionWait', '❌ Transaction failed (reverted)', {
                 txHash: transactionHash,

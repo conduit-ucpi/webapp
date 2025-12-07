@@ -56,35 +56,33 @@ export default function Wallet() {
   const [isLoadingChainInfo, setIsLoadingChainInfo] = useState(false);
 
   const loadChainInfo = async () => {
-    if (!user) return;
+    if (!user || !config) return;
 
     setIsLoadingChainInfo(true);
     try {
-      // Get the provider from auth
-      const ethersProvider = await getEthersProvider();
-      if (!ethersProvider) {
-        console.warn('No ethers provider available');
-        return;
-      }
+      console.log('🔧 Loading chain info via READ-ONLY RPC (no wallet access!)');
 
-      // Get network info directly from ethers provider
-      const network = await ethersProvider.getNetwork();
+      // Use READ-ONLY RPC provider (no wallet access needed!)
+      const readProvider = new ethers.JsonRpcProvider(config.rpcUrl);
+
+      // Get network info from RPC provider
+      const network = await readProvider.getNetwork();
       const chainId = Number(network.chainId);
 
       // Get current block number
-      const blockNumber = await ethersProvider.getBlockNumber();
+      const blockNumber = await readProvider.getBlockNumber();
 
-      // Get current gas price using ethers (more reliable than manual RPC calls)
+      // Get current gas price
       let gasPrice: string | null = null;
       try {
-        console.log('Loading chain info - fetching gas price with ethers...');
-        const feeData = await ethersProvider.getFeeData();
+        console.log('Loading chain info - fetching gas price via RPC...');
+        const feeData = await readProvider.getFeeData();
         if (feeData.gasPrice) {
           gasPrice = ethers.formatUnits(feeData.gasPrice, 'gwei');
-          console.log(`Got gas price from ethers: ${formatGweiAsEthForLogging(parseFloat(gasPrice))}`);
+          console.log(`Got gas price from RPC: ${formatGweiAsEthForLogging(parseFloat(gasPrice))}`);
         }
       } catch (error) {
-        console.warn('Failed to get gas price from ethers:', error);
+        console.warn('Failed to get gas price from RPC:', error);
         gasPrice = null;
       }
 

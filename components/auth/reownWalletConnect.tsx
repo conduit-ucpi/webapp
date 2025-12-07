@@ -74,6 +74,9 @@ export class ReownWalletConnectProvider {
         networks: networks as [any, ...any[]], // Type assertion to fix tuple requirement
         projectId,
         siwx: siwxConfig, // Enable SIWX for one-click authentication (modern replacement for SIWE)
+        defaultAccountTypes: {
+          eip155: 'eoa' // Force EOA for standard ECDSA signatures (backend compatibility)
+        },
         metadata: {
           name: 'Conduit UCPI',
           description: 'Time-delayed escrow contracts on Base',

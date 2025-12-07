@@ -32,6 +32,7 @@ const defaultAuthValue = {
   switchWallet: () => Promise.resolve(),
   getEthersProvider: () => null,
   showWalletUI: async () => { throw new Error('Auth not ready'); },
+  getProviderUserInfo: () => null,
   authenticatedFetch: async () => new Response('{}', { status: 200 }),
   hasVisitedBefore: () => false,
   refreshUserData: async () => {},
@@ -68,6 +69,7 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
     switchWallet: newAuth.switchWallet,
     getEthersProvider: newAuth.getEthersProvider,
     showWalletUI: newAuth.showWalletUI || undefined,
+    getProviderUserInfo: newAuth.getProviderUserInfo,
     authenticatedFetch: async (url: string, options?: RequestInit): Promise<Response> => {
       // Use proper backend client with authentication headers
       return backendClient.authenticatedFetch(url, options);

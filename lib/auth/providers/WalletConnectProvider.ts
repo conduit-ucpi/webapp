@@ -254,6 +254,69 @@ export class WalletConnectProvider implements UnifiedProvider {
   }
 
   /**
+   * Get user info from embedded wallet (email, name, etc.)
+   * Only available for social login / embedded wallet users
+   */
+  getUserInfo(): Record<string, unknown> | null {
+    try {
+      // Access the internal appKit instance
+      const appKit = (this.reownProvider as any).appKit;
+
+      if (!appKit) {
+        mLog.debug('WalletConnectProvider', 'AppKit not initialized, cannot get user info');
+        return null;
+      }
+
+      // Try to get the AppKit account state
+      // The appKit instance should have methods to access account info
+      const accountState = appKit.getState?.() || appKit.state;
+
+      if (!accountState) {
+        mLog.debug('WalletConnectProvider', 'No account state available');
+        return null;
+      }
+
+      // Extract embedded wallet info if available
+      const embeddedWalletInfo = accountState.embeddedWalletInfo;
+
+      if (!embeddedWalletInfo || !embeddedWalletInfo.user) {
+        mLog.debug('WalletConnectProvider', 'No embedded wallet info - user likely connected with external wallet');
+        return null;
+      }
+
+      const userInfo: Record<string, unknown> = {};
+
+      if (embeddedWalletInfo.user.email) {
+        userInfo.email = embeddedWalletInfo.user.email;
+      }
+
+      if (embeddedWalletInfo.user.username) {
+        userInfo.name = embeddedWalletInfo.user.username;
+      }
+
+      if (embeddedWalletInfo.authProvider) {
+        userInfo.authProvider = embeddedWalletInfo.authProvider;
+      }
+
+      if (Object.keys(userInfo).length > 0) {
+        mLog.info('WalletConnectProvider', 'Retrieved user info from embedded wallet', {
+          hasEmail: !!userInfo.email,
+          hasName: !!userInfo.name,
+          authProvider: userInfo.authProvider
+        });
+        return userInfo;
+      }
+
+      return null;
+    } catch (error) {
+      mLog.error('WalletConnectProvider', 'Error getting user info', {
+        error: error instanceof Error ? error.message : String(error)
+      });
+      return null;
+    }
+  }
+
+  /**
    * Ensure backend SIWE session exists after wallet connection
    *
    * Strategy:

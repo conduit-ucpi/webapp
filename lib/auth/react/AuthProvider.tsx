@@ -31,6 +31,9 @@ interface AuthContextValue {
   // Blockchain
   getEthersProvider: () => Promise<ethers.BrowserProvider | null>;
   showWalletUI?: () => Promise<void>;
+
+  // Provider info
+  getProviderUserInfo: () => Record<string, unknown> | null;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -529,6 +532,20 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
     }
   }, [authManager]);
 
+  const getProviderUserInfo = useCallback((): Record<string, unknown> | null => {
+    const provider = authManager.getCurrentProvider();
+    if (!provider) {
+      return null;
+    }
+
+    // Call getUserInfo() if available
+    if (typeof provider.getUserInfo === 'function') {
+      return provider.getUserInfo();
+    }
+
+    return null;
+  }, [authManager]);
+
   const contextValue: AuthContextValue = {
     // State
     state,
@@ -549,7 +566,10 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
 
     // Blockchain
     getEthersProvider,
-    showWalletUI
+    showWalletUI,
+
+    // Provider info
+    getProviderUserInfo
   };
 
   return (

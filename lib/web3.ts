@@ -247,11 +247,11 @@ export class Web3Service {
     // Get the actual wallet address using unified approach
     const fromAddress = await this.getUserAddress();
 
-    // Get nonce using unified ethers provider
-    if (!this.provider) {
-      throw new Error('Provider not initialized');
+    // Get nonce using READ-ONLY RPC (prevents mobile wallet popups)
+    if (!this.readProvider) {
+      throw new Error('Read provider not initialized');
     }
-    const nonce = txParams.nonce ?? await this.provider.getTransactionCount(fromAddress);
+    const nonce = txParams.nonce ?? await this.readProvider.getTransactionCount(fromAddress);
 
     // Use reliable gas price sources instead of trusting unknown providers
     let gasPrice = txParams.gasPrice;
@@ -264,10 +264,10 @@ export class Web3Service {
         // Base testnet: Use configured max gas price
         gasPrice = this.getMaxGasPriceInWei();
       } else {
-        // Other networks: try provider but analyze the units it's returning
+        // Other networks: Use READ-ONLY RPC instead of wallet provider (prevents mobile popups)
         try {
-          const feeData = await this.provider.getFeeData();
-          console.log('🔍 DEBUGGING: Raw fee data from provider:', {
+          const feeData = await this.readProvider.getFeeData();
+          console.log('🔍 DEBUGGING: Raw fee data from RPC:', {
             gasPrice: feeData.gasPrice?.toString(),
             maxFeePerGas: feeData.maxFeePerGas?.toString(),
             maxPriorityFeePerGas: feeData.maxPriorityFeePerGas?.toString()
@@ -325,6 +325,9 @@ export class Web3Service {
     try {
       // Use unified ethers signer for all wallet types
       console.log('[Web3Service.signTransaction] Using unified ethers signer');
+      if (!this.provider) {
+        throw new Error('Provider not initialized');
+      }
       const signer = await this.provider.getSigner();
 
       // Build transaction object with Web3Auth compatibility
@@ -349,9 +352,9 @@ export class Web3Service {
         // For other providers, use our custom gas pricing
         console.log('🔧 Using custom provider for signing - applying our gas pricing logic');
 
-        // Check if we should use EIP-1559 format
+        // Check if we should use EIP-1559 format (use RPC to avoid mobile wallet popups)
         try {
-          const providerFeeData = await this.provider.getFeeData();
+          const providerFeeData = await this.readProvider.getFeeData();
           if (providerFeeData.maxFeePerGas && providerFeeData.maxPriorityFeePerGas) {
             // Use EIP-1559 transaction format with our reliable fee data
             const reliableFees = await this.getReliableEIP1559FeeData();
@@ -739,9 +742,12 @@ export class Web3Service {
         throw new Error('RPC call failed');
       }
     } catch (error) {
-      console.warn('Failed to get live gas estimate from RPC for AVAX transfer, falling back to provider:', error);
-      // Fallback to provider's gas estimation if RPC call fails
-      gasEstimate = await this.provider.estimateGas({
+      console.warn('Failed to get live gas estimate from RPC for AVAX transfer, falling back to RPC estimateGas:', error);
+      // Fallback to RPC's gas estimation if direct RPC call fails (avoid wallet provider popups)
+      if (!this.readProvider) {
+        throw new Error('Read provider not initialized');
+      }
+      gasEstimate = await this.readProvider.estimateGas({
         from: userAddress,
         to: to,
         value: value

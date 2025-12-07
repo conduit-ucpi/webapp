@@ -21,6 +21,7 @@ export class SIWXVerificationState {
   verificationAttempted: boolean = false
   verificationSucceeded: boolean = false
   verificationTimestamp: number = 0
+  manualSigningInProgress: boolean = false  // Prevent multiple manual signing attempts
 
   static getInstance(): SIWXVerificationState {
     if (!SIWXVerificationState.instance) {
@@ -33,12 +34,18 @@ export class SIWXVerificationState {
     this.verificationAttempted = false
     this.verificationSucceeded = false
     this.verificationTimestamp = 0
+    this.manualSigningInProgress = false
   }
 
   markAttempted(success: boolean): void {
     this.verificationAttempted = true
     this.verificationSucceeded = success
     this.verificationTimestamp = Date.now()
+    this.manualSigningInProgress = false  // Clear in-progress flag when verification completes
+  }
+
+  setManualSigningInProgress(inProgress: boolean): void {
+    this.manualSigningInProgress = inProgress
   }
 }
 

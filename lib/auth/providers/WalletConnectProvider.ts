@@ -299,8 +299,31 @@ export class WalletConnectProvider implements UnifiedProvider {
       // Fall through to manual signing
     }
 
-    // Step 3: SIWX auto-verify failed or didn't happen - do manual sign + verify
+    // Step 3: Check if manual signing is already in progress
+    if (verificationState.manualSigningInProgress) {
+      mLog.warn('WalletConnectProvider', '⏳ Manual signing already in progress, waiting for it to complete...');
+
+      // Wait for the in-progress manual signing to complete (up to 60 seconds for mobile)
+      const manualSignTimeout = 60000;
+      const manualSignStart = Date.now();
+
+      while (verificationState.manualSigningInProgress && (Date.now() - manualSignStart) < manualSignTimeout) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+
+      // Check if it succeeded
+      if (verificationState.verificationSucceeded) {
+        mLog.info('WalletConnectProvider', '✅ Manual signing completed successfully');
+        return;
+      } else {
+        mLog.error('WalletConnectProvider', '❌ Manual signing failed or timed out');
+        throw new Error('Manual signing failed');
+      }
+    }
+
+    // Step 4: SIWX auto-verify failed or didn't happen - trigger manual sign + verify
     mLog.warn('WalletConnectProvider', '🔄 Triggering manual sign + verify fallback...');
+    verificationState.setManualSigningInProgress(true);
 
     try {
       // Fetch nonce from backend (GET request, same as SIWX messenger)
@@ -351,14 +374,17 @@ Issued At: ${issuedAt}`;
       });
 
       if (!verifyResponse.ok) {
+        verificationState.setManualSigningInProgress(false);
         throw new Error(`Verification failed: ${verifyResponse.status}`);
       }
 
       mLog.info('WalletConnectProvider', '✅ Manual SIWE authentication successful!');
+      verificationState.setManualSigningInProgress(false);
     } catch (error) {
       mLog.error('WalletConnectProvider', '❌ Manual SIWE authentication failed', {
         error: error instanceof Error ? error.message : String(error)
       });
+      verificationState.setManualSigningInProgress(false);
       // Don't throw - let the app handle missing auth via session checks
     }
   }

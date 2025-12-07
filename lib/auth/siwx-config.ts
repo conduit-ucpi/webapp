@@ -13,10 +13,43 @@ import { BackendSIWXStorage } from './BackendSIWXStorage'
 import { BackendSIWXMessenger } from './BackendSIWXMessenger'
 
 /**
+ * Verification state tracker for SIWX auto-authentication
+ */
+export class SIWXVerificationState {
+  private static instance: SIWXVerificationState | null = null
+
+  verificationAttempted: boolean = false
+  verificationSucceeded: boolean = false
+  verificationTimestamp: number = 0
+
+  static getInstance(): SIWXVerificationState {
+    if (!SIWXVerificationState.instance) {
+      SIWXVerificationState.instance = new SIWXVerificationState()
+    }
+    return SIWXVerificationState.instance
+  }
+
+  reset(): void {
+    this.verificationAttempted = false
+    this.verificationSucceeded = false
+    this.verificationTimestamp = 0
+  }
+
+  markAttempted(success: boolean): void {
+    this.verificationAttempted = true
+    this.verificationSucceeded = success
+    this.verificationTimestamp = Date.now()
+  }
+}
+
+/**
  * Custom EIP155 Verifier that uses our backend for signature verification
  *
  * Instead of verifying signatures client-side, this proxies to our backend
  * which validates the SIWE signature and creates a session.
+ *
+ * Also tracks verification state so fallback logic can check actual results
+ * instead of just waiting arbitrary timeouts.
  */
 class CustomBackendVerifier extends SIWXVerifier {
   readonly chainNamespace = 'eip155' as const
@@ -28,6 +61,8 @@ class CustomBackendVerifier extends SIWXVerifier {
    * @returns true if verification succeeds, false otherwise
    */
   async verify(session: SIWXSession): Promise<boolean> {
+    const state = SIWXVerificationState.getInstance()
+
     try {
       console.log('🔐 SIWX: CustomBackendVerifier.verify() called', {
         hasData: !!session.data,
@@ -41,6 +76,7 @@ class CustomBackendVerifier extends SIWXVerifier {
 
       if (!message || !signature) {
         console.error('🔐 SIWX: Missing message or signature')
+        state.markAttempted(false)
         return false
       }
 
@@ -60,13 +96,16 @@ class CustomBackendVerifier extends SIWXVerifier {
 
       if (isValid) {
         console.log('🔐 SIWX: ✅ Backend verification successful - user authenticated')
+        state.markAttempted(true)
       } else {
         console.error('🔐 SIWX: ❌ Backend verification failed:', response.status)
+        state.markAttempted(false)
       }
 
       return isValid
     } catch (error) {
       console.error('🔐 SIWX: Verification error:', error)
+      state.markAttempted(false)
       return false
     }
   }

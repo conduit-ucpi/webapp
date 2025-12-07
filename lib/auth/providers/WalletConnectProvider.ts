@@ -40,6 +40,11 @@ export class WalletConnectProvider implements UnifiedProvider {
   async connect(): Promise<ConnectionResult> {
     mLog.info('WalletConnectProvider', 'Connect called - opening WalletConnect modal');
 
+    // Reset SIWX verification state for new connection attempt
+    const { SIWXVerificationState } = await import('../siwx-config');
+    SIWXVerificationState.getInstance().reset();
+    mLog.info('WalletConnectProvider', 'Reset SIWX verification state for new connection');
+
     try {
       const result = await this.reownProvider.connect();
 
@@ -252,41 +257,50 @@ export class WalletConnectProvider implements UnifiedProvider {
    * Ensure backend SIWE session exists after wallet connection
    *
    * Strategy:
-   * 1. Give SIWX a brief moment to auto-verify (if it hasn't already)
-   * 2. Check once if session exists (verify succeeded)
-   * 3. If not, immediately do manual sign + verify (don't poll - futile if verify hasn't happened)
+   * 1. Check if SIWX verify has been called and what the result was
+   * 2. If verify succeeded, we're done
+   * 3. If verify hasn't been called yet, wait briefly and check again
+   * 4. If verify failed or timed out, do manual sign + verify
    */
   private async ensureBackendAuthentication(address: string): Promise<void> {
-    mLog.info('WalletConnectProvider', '🔐 Checking if SIWX auto-verify completed...');
+    mLog.info('WalletConnectProvider', '🔐 Checking SIWX verification status...');
 
-    // Step 1: Give SIWX a brief moment to complete auto-verify
-    // (for cases where it's still in-flight when connect() returns)
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    // Import the verification state tracker
+    const { SIWXVerificationState } = await import('../siwx-config');
+    const verificationState = SIWXVerificationState.getInstance();
 
-    // Step 2: Check once if SIWX verify succeeded
-    try {
-      const sessionCheck = await fetch('/api/auth/siwe/session', {
-        credentials: 'include'
-      });
+    // Step 1: Wait for SIWX verify to be called (with timeout)
+    const maxWaitTime = 5000; // Wait up to 5 seconds for verify to be called
+    const pollInterval = 200; // Check every 200ms
+    const startTime = Date.now();
 
-      if (sessionCheck.ok) {
-        const sessionData = await sessionCheck.json();
-        if (sessionData.address) {
-          mLog.info('WalletConnectProvider', '✅ SIWX auto-verify succeeded!', {
-            address: sessionData.address
-          });
-          return; // Success! SIWX worked automatically
-        }
-      }
-    } catch (error) {
-      mLog.warn('WalletConnectProvider', 'Session check failed', {
-        error: error instanceof Error ? error.message : String(error)
-      });
+    while (!verificationState.verificationAttempted && (Date.now() - startTime) < maxWaitTime) {
+      await new Promise(resolve => setTimeout(resolve, pollInterval));
     }
 
-    // Step 3: SIWX auto-verify hasn't happened - do manual sign + verify
-    // (Don't poll - if verify hasn't happened, session will never appear)
-    mLog.warn('WalletConnectProvider', '⚠️ SIWX auto-verify not complete, triggering manual sign + verify fallback...');
+    // Step 2: Check the verification result
+    if (verificationState.verificationAttempted) {
+      if (verificationState.verificationSucceeded) {
+        mLog.info('WalletConnectProvider', '✅ SIWX auto-verify succeeded!', {
+          address,
+          timeTaken: verificationState.verificationTimestamp - startTime
+        });
+        return; // Success! SIWX worked automatically
+      } else {
+        mLog.warn('WalletConnectProvider', '⚠️ SIWX auto-verify was attempted but failed', {
+          address
+        });
+        // Fall through to manual signing
+      }
+    } else {
+      mLog.warn('WalletConnectProvider', `⚠️ SIWX auto-verify not attempted within ${maxWaitTime}ms`, {
+        address
+      });
+      // Fall through to manual signing
+    }
+
+    // Step 3: SIWX auto-verify failed or didn't happen - do manual sign + verify
+    mLog.warn('WalletConnectProvider', '🔄 Triggering manual sign + verify fallback...');
 
     try {
       // Fetch nonce from backend (GET request, same as SIWX messenger)

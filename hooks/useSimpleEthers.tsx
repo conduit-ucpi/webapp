@@ -13,6 +13,9 @@ export function useSimpleEthers() {
   const { config } = useConfig();
 
   const getWeb3Service = useCallback(async () => {
+    const callId = Date.now();
+    mLog.info('useSimpleEthers', 'getWeb3Service called', { callId, hasConfig: !!config });
+
     if (!config) {
       throw new Error('Config not available');
     }
@@ -21,10 +24,18 @@ export function useSimpleEthers() {
 
     // Get or create Web3Service instance with current config
     const web3Service = Web3Service.getInstance(config);
+    const isInitialized = web3Service.isServiceInitialized();
+
+    mLog.info('useSimpleEthers', 'Web3Service state check', {
+      callId,
+      isInitialized,
+      willRequestProvider: !isInitialized
+    });
 
     // CRITICAL: Only get ethers provider if Web3Service is NOT initialized
     // This prevents repeated WalletConnect provider requests on mobile (causes popups)
-    if (!web3Service.isServiceInitialized()) {
+    if (!isInitialized) {
+      mLog.warn('useSimpleEthers', '⚠️ REQUESTING PROVIDER from auth (causes mobile popup)', { callId });
       console.log('🔧 useSimpleEthers: Initializing Web3Service with ethers provider');
 
       // Get the ethers provider from auth (only when needed)
@@ -33,8 +44,11 @@ export function useSimpleEthers() {
         throw new Error('Wallet not connected');
       }
 
+      mLog.info('useSimpleEthers', 'Provider received, initializing Web3Service', { callId });
       await web3Service.initialize(ethersProvider);
+      mLog.info('useSimpleEthers', '✅ Initialization complete', { callId });
     } else {
+      mLog.info('useSimpleEthers', '✅ Reusing existing Web3Service (NO PROVIDER REQUEST)', { callId });
       console.log('🔧 useSimpleEthers: Web3Service already initialized, reusing existing instance');
     }
 

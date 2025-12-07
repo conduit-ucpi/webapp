@@ -1407,7 +1407,8 @@ export class Web3Service {
           await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
 
           try {
-            const receipt = await this.provider.getTransactionReceipt(returnedHash);
+            // Use READ-ONLY RPC for transaction receipt (prevents wallet popups)
+            const receipt = await this.readProvider?.getTransactionReceipt(returnedHash);
             if (receipt && receipt.blockNumber) {
               mLog.info('Web3Service', '✅ Transaction confirmed!', {
                 hash: returnedHash,

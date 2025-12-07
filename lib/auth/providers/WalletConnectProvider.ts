@@ -252,17 +252,18 @@ export class WalletConnectProvider implements UnifiedProvider {
    * Ensure backend SIWE session exists after wallet connection
    *
    * Strategy:
-   * 1. Wait briefly for SIWX automatic flow to complete
-   * 2. Check if backend session was created
-   * 3. If not, manually trigger SIWE signing
+   * 1. Give SIWX a brief moment to auto-verify (if it hasn't already)
+   * 2. Check once if session exists (verify succeeded)
+   * 3. If not, immediately do manual sign + verify (don't poll - futile if verify hasn't happened)
    */
   private async ensureBackendAuthentication(address: string): Promise<void> {
-    mLog.info('WalletConnectProvider', '🔐 Checking backend SIWE authentication...');
+    mLog.info('WalletConnectProvider', '🔐 Checking if SIWX auto-verify completed...');
 
-    // Step 1: Wait for SIWX automatic flow to potentially complete
+    // Step 1: Give SIWX a brief moment to complete auto-verify
+    // (for cases where it's still in-flight when connect() returns)
     await new Promise(resolve => setTimeout(resolve, 2000));
 
-    // Step 2: Check if SIWX created a backend session
+    // Step 2: Check once if SIWX verify succeeded
     try {
       const sessionCheck = await fetch('/api/auth/siwe/session', {
         credentials: 'include'
@@ -271,20 +272,21 @@ export class WalletConnectProvider implements UnifiedProvider {
       if (sessionCheck.ok) {
         const sessionData = await sessionCheck.json();
         if (sessionData.address) {
-          mLog.info('WalletConnectProvider', '✅ SIWX automatic authentication succeeded!', {
+          mLog.info('WalletConnectProvider', '✅ SIWX auto-verify succeeded!', {
             address: sessionData.address
           });
           return; // Success! SIWX worked automatically
         }
       }
     } catch (error) {
-      mLog.warn('WalletConnectProvider', 'Session check failed, will attempt manual auth', {
+      mLog.warn('WalletConnectProvider', 'Session check failed', {
         error: error instanceof Error ? error.message : String(error)
       });
     }
 
-    // Step 3: SIWX automatic flow failed - manually trigger SIWE signing
-    mLog.warn('WalletConnectProvider', '⚠️ SIWX automatic auth failed, triggering manual SIWE signing...');
+    // Step 3: SIWX auto-verify hasn't happened - do manual sign + verify
+    // (Don't poll - if verify hasn't happened, session will never appear)
+    mLog.warn('WalletConnectProvider', '⚠️ SIWX auto-verify not complete, triggering manual sign + verify fallback...');
 
     try {
       // Fetch nonce from backend (GET request, same as SIWX messenger)

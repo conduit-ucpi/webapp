@@ -85,15 +85,15 @@ describe('Web3Service - RPC for read-only operations', () => {
   });
 
   describe('Initialization', () => {
-    it('should call wallet provider.getNetwork() ONLY during initialization (one-time is acceptable)', async () => {
-      // Initialization happens once during wallet connection, so one getNetwork() call is acceptable
-      // We only want to avoid repeated calls during page rendering and transaction prep
+    it('should NOT call wallet provider.getNetwork() during lazy initialization', async () => {
+      // Lazy initialization just stores provider, no network access until first transaction
+      // This eliminates mobile wallet popup #1
 
       web3Service = Web3Service.getInstance(mockConfig);
       await web3Service.initialize(mockWalletProvider);
 
-      // Verify wallet provider was called EXACTLY ONCE during initialization
-      expect(getNetworkSpy).toHaveBeenCalledTimes(1);
+      // Verify wallet provider was NOT called during initialization (lazy loading)
+      expect(getNetworkSpy).not.toHaveBeenCalled();
     });
   });
 

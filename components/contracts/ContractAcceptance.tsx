@@ -42,7 +42,8 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
 
     setIsLoadingBalance(true);
     try {
-      const balance = await getUSDCBalanceRef.current();
+      // Pass wallet address explicitly - uses READ-ONLY RPC (no wallet access!)
+      const balance = await getUSDCBalanceRef.current(user.walletAddress);
       setUserBalance(balance);
     } catch (error) {
       console.error('Failed to fetch USDC balance:', error);

@@ -51,22 +51,36 @@ export function useSimpleEthers() {
       return await web3Service.fundAndSendTransaction(txParams);
     },
 
-    // Balance methods
-    getUSDCBalance: useCallback(async (address?: string) => {
-      console.log('🔧 useSimpleEthers: getUSDCBalance via Web3Service');
-      const web3Service = await getWeb3Service();
-      const userAddress = address || await web3Service.getUserAddress();
-      return await web3Service.getUSDCBalance(userAddress);
-    }, [getWeb3Service]),
+    // Balance methods - READ-ONLY operations (NO WALLET ACCESS!)
+    getUSDCBalance: useCallback(async (userAddress: string) => {
+      console.log('🔧 useSimpleEthers: getUSDCBalance via READ-ONLY RPC (no wallet access)');
 
-    getNativeBalance: useCallback(async (address?: string) => {
-      console.log('🔧 useSimpleEthers: getNativeBalance via Web3Service');
-      const web3Service = await getWeb3Service();
-      const userAddress = address || await web3Service.getUserAddress();
-      const provider = await getEthersProvider();
-      const balance = await provider.getBalance(userAddress);
-      return ethers.formatEther(balance);
-    }, [getWeb3Service, getEthersProvider]),
+      if (!config) {
+        throw new Error('Config not available');
+      }
+
+      const { Web3Service } = await import('@/lib/web3');
+      const web3Service = Web3Service.getInstance(config);
+
+      // Balance reading uses READ-ONLY RPC provider
+      // This NEVER touches the wallet, even on mobile!
+      return await web3Service.getUSDCBalance(userAddress);
+    }, [config]),
+
+    getNativeBalance: useCallback(async (userAddress: string) => {
+      console.log('🔧 useSimpleEthers: getNativeBalance via READ-ONLY RPC (no wallet access)');
+
+      if (!config) {
+        throw new Error('Config not available');
+      }
+
+      const { Web3Service } = await import('@/lib/web3');
+      const web3Service = Web3Service.getInstance(config);
+
+      // Balance reading uses READ-ONLY RPC provider
+      // This NEVER touches the wallet, even on mobile!
+      return await web3Service.getNativeBalance(userAddress);
+    }, [config]),
 
     // Contract query methods
     getContractInfo: async (contractAddress: string) => {

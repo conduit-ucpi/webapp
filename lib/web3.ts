@@ -38,6 +38,7 @@ import { formatWeiAsEthForLogging, formatGweiAsEthForLogging, formatMicroUSDCFor
 export class Web3Service {
   private static instance: Web3Service | null = null;
   private provider: ethers.BrowserProvider | null = null;
+  private readProvider: ethers.JsonRpcProvider | null = null; // Read-only RPC provider (no wallet needed)
   private config: Config;
   private onMobileActionRequired?: (actionType: 'sign' | 'transaction') => void;
   private isDesktopQRSession: boolean = false;
@@ -45,6 +46,9 @@ export class Web3Service {
 
   private constructor(config: Config) {
     this.config = config;
+    // Initialize read-only provider immediately (no wallet needed)
+    this.readProvider = new ethers.JsonRpcProvider(config.rpcUrl);
+    console.log('[Web3Service] Read-only RPC provider created (no wallet access)');
   }
 
   /**
@@ -92,6 +96,8 @@ export class Web3Service {
   clearState(): void {
     console.log('[Web3Service] Clearing internal state - resetting provider and initialization');
     this.provider = null;
+    // Note: readProvider is NOT cleared - it's RPC-based and doesn't depend on wallet connection
+    // It will be recreated with new config if needed
     this.isInitialized = false;
     this.isDesktopQRSession = false;
     this.onMobileActionRequired = undefined;
@@ -481,27 +487,45 @@ export class Web3Service {
   }
 
   async getUSDCBalance(userAddress: string): Promise<string> {
-    if (!this.provider) {
-      throw new Error('Provider not initialized');
+    if (!this.readProvider) {
+      throw new Error('Read provider not initialized');
     }
 
     console.log('getUSDCBalance - checking for address:', userAddress);
     console.log('getUSDCBalance - USDC contract:', this.config.usdcContractAddress);
+    console.log('getUSDCBalance - Using READ-ONLY RPC provider (no wallet access)');
 
     const usdcContract = new ethers.Contract(
       this.config.usdcContractAddress,
       ERC20_ABI,
-      this.provider
+      this.readProvider  // ← Use read provider, not wallet provider
     );
 
     const balance = await usdcContract.balanceOf(userAddress);
     const decimals = await usdcContract.decimals();
-    
+
     console.log(`getUSDCBalance - raw balance: ${formatMicroUSDCForLogging(balance)}`);
     console.log('getUSDCBalance - decimals:', decimals);
     const formattedBalance = ethers.formatUnits(balance, decimals);
     console.log('getUSDCBalance - formatted balance:', formattedBalance);
-    
+
+    return formattedBalance;
+  }
+
+  async getNativeBalance(userAddress: string): Promise<string> {
+    if (!this.readProvider) {
+      throw new Error('Read provider not initialized');
+    }
+
+    console.log('getNativeBalance - checking for address:', userAddress);
+    console.log('getNativeBalance - Using READ-ONLY RPC provider (no wallet access)');
+
+    const balance = await this.readProvider.getBalance(userAddress);
+    const formattedBalance = ethers.formatEther(balance);
+
+    console.log('getNativeBalance - raw balance (wei):', balance.toString());
+    console.log('getNativeBalance - formatted balance:', formattedBalance);
+
     return formattedBalance;
   }
 

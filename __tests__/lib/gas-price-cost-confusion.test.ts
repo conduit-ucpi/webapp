@@ -10,24 +10,36 @@
 import { Web3Service } from '@/lib/web3';
 
 // Mock ethers but make signer.sendTransaction throw gas pricing errors
-jest.mock('ethers', () => ({
-  BrowserProvider: jest.fn().mockImplementation(() => ({
-    getSigner: jest.fn().mockResolvedValue({
-      getAddress: jest.fn().mockResolvedValue('0x1234567890abcdef1234567890abcdef12345678'),
-      sendTransaction: jest.fn().mockRejectedValue(new Error('replacement transaction underpriced')),
-      signTransaction: jest.fn().mockResolvedValue('0x123'),
-    }),
+jest.mock('ethers', () => {
+  const mockJsonRpcProvider = jest.fn().mockImplementation(() => ({
+    getBalance: jest.fn().mockResolvedValue(BigInt(0)),
     getNetwork: jest.fn().mockResolvedValue({
       chainId: BigInt(8453),
       name: 'base-mainnet'
     }),
-    send: jest.fn().mockRejectedValue(new Error('gas too low')),
-  })),
-  ethers: {
-    keccak256: jest.fn(),
-    toUtf8Bytes: jest.fn(),
-  },
-}));
+  }));
+
+  return {
+    BrowserProvider: jest.fn().mockImplementation(() => ({
+      getSigner: jest.fn().mockResolvedValue({
+        getAddress: jest.fn().mockResolvedValue('0x1234567890abcdef1234567890abcdef12345678'),
+        sendTransaction: jest.fn().mockRejectedValue(new Error('replacement transaction underpriced')),
+        signTransaction: jest.fn().mockResolvedValue('0x123'),
+      }),
+      getNetwork: jest.fn().mockResolvedValue({
+        chainId: BigInt(8453),
+        name: 'base-mainnet'
+      }),
+      send: jest.fn().mockRejectedValue(new Error('gas too low')),
+    })),
+    JsonRpcProvider: mockJsonRpcProvider,
+    ethers: {
+      JsonRpcProvider: mockJsonRpcProvider,  // Also export in nested structure
+      keccak256: jest.fn(),
+      toUtf8Bytes: jest.fn(),
+    },
+  };
+});
 
 // Mock fetch for wallet funding
 global.fetch = jest.fn().mockResolvedValue({

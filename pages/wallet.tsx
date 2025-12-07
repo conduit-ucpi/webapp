@@ -136,32 +136,33 @@ export default function Wallet() {
   };
 
   const loadBalances = useCallback(async () => {
-    if (!user || !config) {
+    if (!user || !config || !walletAddress) {
       mLog.info('WalletPage', 'Skipping balance load - missing requirements', {
         hasUser: !!user,
-        hasConfig: !!config
+        hasConfig: !!config,
+        hasWalletAddress: !!walletAddress
       });
-      console.log('Skipping balance load:', { user: !!user, config: !!config });
+      console.log('Skipping balance load:', { user: !!user, config: !!config, walletAddress: !!walletAddress });
       return;
     }
 
     mLog.info('WalletPage', 'Starting balance load');
+    mLog.info('WalletPage', '✅ NO WALLET ACCESS NEEDED - using READ-ONLY RPC provider');
     setIsLoadingBalances(true);
     try {
-      mLog.info('WalletPage', '🔧 Loading balances via Web3Service');
-      console.log('🔧 Wallet: Loading balances via Web3Service');
+      console.log('🔧 Wallet: Loading balances via READ-ONLY RPC (no wallet access!)');
 
-      // Use Web3Service for all balance operations
+      // Pass wallet address explicitly - NO wallet access needed for balance reading!
       const [nativeBalance, usdcBalance] = await Promise.all([
-        getNativeBalance(),
-        getUSDCBalance()
+        getNativeBalance(walletAddress),
+        getUSDCBalance(walletAddress)
       ]);
 
-      mLog.info('WalletPage', '✅ Balances loaded successfully', {
+      mLog.info('WalletPage', '✅ Balances loaded successfully (no wallet interaction)', {
         native: nativeBalance,
         usdc: usdcBalance
       });
-      console.log('Balances loaded via Web3Service:', {
+      console.log('✅ Balances loaded via READ-ONLY RPC:', {
         native: nativeBalance,
         usdc: usdcBalance
       });
@@ -182,7 +183,7 @@ export default function Wallet() {
       setIsLoadingBalances(false);
       mLog.info('WalletPage', 'Balance loading complete');
     }
-  }, [user, config, getNativeBalance, getUSDCBalance]);
+  }, [user, config, walletAddress, getNativeBalance, getUSDCBalance]);
 
   useEffect(() => {
     // Load balances when user is authenticated AND wallet is connected

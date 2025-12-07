@@ -9,21 +9,33 @@
 import { Web3Service } from '@/lib/web3';
 
 // Mock ethers to avoid real blockchain calls
-jest.mock('ethers', () => ({
-  BrowserProvider: jest.fn().mockImplementation(() => ({
-    getSigner: jest.fn().mockResolvedValue({
-      getAddress: jest.fn().mockResolvedValue('0x1234567890abcdef1234567890abcdef12345678'),
-    }),
+jest.mock('ethers', () => {
+  const mockJsonRpcProvider = jest.fn().mockImplementation(() => ({
+    getBalance: jest.fn().mockResolvedValue(BigInt(0)),
     getNetwork: jest.fn().mockResolvedValue({
       chainId: BigInt(8453),
       name: 'base-mainnet'
     }),
-  })),
-  ethers: {
-    keccak256: jest.fn(),
-    toUtf8Bytes: jest.fn(),
-  },
-}));
+  }));
+
+  return {
+    BrowserProvider: jest.fn().mockImplementation(() => ({
+      getSigner: jest.fn().mockResolvedValue({
+        getAddress: jest.fn().mockResolvedValue('0x1234567890abcdef1234567890abcdef12345678'),
+      }),
+      getNetwork: jest.fn().mockResolvedValue({
+        chainId: BigInt(8453),
+        name: 'base-mainnet'
+      }),
+    })),
+    JsonRpcProvider: mockJsonRpcProvider,
+    ethers: {
+      JsonRpcProvider: mockJsonRpcProvider,  // Also export in nested structure
+      keccak256: jest.fn(),
+      toUtf8Bytes: jest.fn(),
+    },
+  };
+});
 
 describe('Provider Switching and MicroUSDC Regression Protection', () => {
 

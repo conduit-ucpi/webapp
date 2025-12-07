@@ -806,5 +806,40 @@ export class AuthManager {
         }
       }
     }
+
+    // CRITICAL: Clear backend cookies if no frontend auth exists
+    // This ensures consistency when frontend loses auth but backend still has cookies
+    if (!this.currentProvider && typeof window !== 'undefined') {
+      mLog.info('AuthManager', 'No frontend provider connected - checking for orphaned backend session');
+
+      try {
+        // Check if backend has a session
+        const sessionCheck = await fetch('/api/auth/siwe/session', { credentials: 'include' });
+
+        if (sessionCheck.ok) {
+          const sessionData = await sessionCheck.json();
+
+          if (sessionData.address) {
+            mLog.warn('AuthManager', 'Found backend session without frontend auth - clearing backend cookies', {
+              backendAddress: sessionData.address
+            });
+
+            // Clear backend session
+            await fetch('/api/auth/siwe/signout', {
+              method: 'POST',
+              credentials: 'include'
+            });
+
+            mLog.info('AuthManager', '✅ Backend session cleared to maintain consistency');
+          } else {
+            mLog.debug('AuthManager', 'No backend session found - state is consistent');
+          }
+        }
+      } catch (error) {
+        mLog.error('AuthManager', 'Failed to check/clear backend session', {
+          error: error instanceof Error ? error.message : String(error)
+        });
+      }
+    }
   }
 }

@@ -141,6 +141,8 @@ export class Web3Service {
       this.provider = ethersProvider;
 
       // Test the connection by getting network info
+      // Note: During initialization (one-time during wallet connection), it's safe to query
+      // the wallet provider. We only use RPC for read operations during page rendering/transactions.
       const network = await this.provider.getNetwork();
       console.log('[Web3Service] ✅ Connected to network:', {
         chainId: network.chainId.toString(),
@@ -865,12 +867,14 @@ export class Web3Service {
     console.log('[Web3Service.fundAndSendTransaction] Using unified ethers provider approach (same as balance reading)');
 
     // CRITICAL: Verify network BEFORE sending transaction
+    // We MUST check the wallet's network (not RPC) to ensure wallet can sign on correct chain
+    // This is a one-time check before transaction (acceptable), not during page rendering
     if (this.config.chainId) {
       const network = await this.provider.getNetwork();
       const expectedChainId = BigInt(this.config.chainId);
 
       if (network.chainId !== expectedChainId) {
-        console.warn('[Web3Service] ⚠️ WRONG NETWORK detected before transaction!', {
+        console.warn('[Web3Service] ⚠️ WRONG NETWORK detected before transaction (wallet network)!', {
           currentChain: network.chainId.toString(),
           currentName: network.name,
           expectedChain: expectedChainId.toString(),
@@ -964,12 +968,18 @@ export class Web3Service {
         let foundryGasEstimate: number;
 
         if (transactionType === 'depositFunds') {
-          foundryGasEstimate = parseInt(this.config.depositFundsFoundryGas);
+          foundryGasEstimate = parseInt(this.config.depositFundsFoundryGas || '200000');
           console.log(`Using Foundry fallback for depositFunds (DEPOSIT_FUNDS_FOUNDRY_GAS): ${foundryGasEstimate} gas`);
         } else {
           // Default to USDC operations (approve, transfer, etc.)
-          foundryGasEstimate = parseInt(this.config.usdcGrantFoundryGas);
+          foundryGasEstimate = parseInt(this.config.usdcGrantFoundryGas || '100000');
           console.log(`Using Foundry fallback for USDC operations (USDC_GRANT_FOUNDRY_GAS): ${foundryGasEstimate} gas`);
+        }
+
+        // Validate foundryGasEstimate is a valid number before converting to BigInt
+        if (isNaN(foundryGasEstimate) || foundryGasEstimate <= 0) {
+          console.warn(`Invalid Foundry gas estimate: ${foundryGasEstimate}, using default 100000`);
+          foundryGasEstimate = 100000;
         }
 
         gasEstimate = BigInt(foundryGasEstimate);
@@ -984,62 +994,33 @@ export class Web3Service {
     const isInjectedWallet = this.isInjectedWalletProvider();
 
     if (!txParams.gasPrice) {
-      const chainId = await this.provider.getNetwork().then(n => n.chainId);
+      // Get chain ID using READ-ONLY RPC (no wallet access!)
+      // This prevents MetaMask popups on mobile during gas price fetching
+      if (!this.readProvider) {
+        throw new Error('Read provider not initialized');
+      }
+      const chainId = await this.readProvider.getNetwork().then(n => n.chainId);
       const isBaseNetwork = chainId === BigInt(8453) || chainId === BigInt(84532); // Base mainnet or testnet
 
-      // DIAGNOSTIC: Fetch gas prices from BOTH sources to compare
-      console.log('\n🔍 GAS PRICE DIAGNOSTIC - COMPARING BOTH SOURCES:\n' + '='.repeat(80));
+      // Use RPC-only gas price fetching to avoid wallet provider popups on mobile
+      console.log('🔍 Fetching gas prices from RPC (no wallet access - prevents mobile popups)');
 
       let rpcFees: { maxFeePerGas: bigint; maxPriorityFeePerGas: bigint } | null = null;
-      let providerFees: any = null;
 
-      // 1. Get gas from Base RPC
+      // Get gas from Base RPC (for Base networks) or use fallback
       if (isBaseNetwork) {
         try {
           console.log('📡 Fetching gas price from Base RPC...');
           rpcFees = await this.getReliableEIP1559FeeData();
           console.log('✅ Base RPC returned:');
-          console.log(`   RAW maxFeePerGas: ${rpcFees.maxFeePerGas.toString()} wei`);
-          console.log(`   RAW maxPriorityFeePerGas: ${rpcFees.maxPriorityFeePerGas.toString()} wei`);
-          console.log(`   CONVERTED maxFeePerGas: ${formatWeiAsEthForLogging(rpcFees.maxFeePerGas)} ETH = ${(Number(rpcFees.maxFeePerGas) / 1e9).toFixed(9)} gwei`);
-          console.log(`   CONVERTED maxPriorityFeePerGas: ${formatWeiAsEthForLogging(rpcFees.maxPriorityFeePerGas)} ETH = ${(Number(rpcFees.maxPriorityFeePerGas) / 1e9).toFixed(9)} gwei`);
+          console.log(`   maxFeePerGas: ${formatWeiAsEthForLogging(rpcFees.maxFeePerGas)} = ${(Number(rpcFees.maxFeePerGas) / 1e9).toFixed(4)} gwei`);
+          console.log(`   maxPriorityFeePerGas: ${formatWeiAsEthForLogging(rpcFees.maxPriorityFeePerGas)} = ${(Number(rpcFees.maxPriorityFeePerGas) / 1e9).toFixed(4)} gwei`);
         } catch (error) {
           console.error('❌ Base RPC fetch failed:', error);
         }
       }
 
-      // 2. Get gas from wallet provider
-      try {
-        console.log('📡 Fetching gas price from wallet provider...');
-        providerFees = await this.provider.getFeeData();
-        console.log('✅ Wallet provider returned:');
-        console.log(`   RAW gasPrice: ${providerFees.gasPrice?.toString() || 'null'} wei`);
-        console.log(`   RAW maxFeePerGas: ${providerFees.maxFeePerGas?.toString() || 'null'} wei`);
-        console.log(`   RAW maxPriorityFeePerGas: ${providerFees.maxPriorityFeePerGas?.toString() || 'null'} wei`);
-        if (providerFees.maxFeePerGas) {
-          console.log(`   CONVERTED maxFeePerGas: ${formatWeiAsEthForLogging(providerFees.maxFeePerGas)} ETH = ${(Number(providerFees.maxFeePerGas) / 1e9).toFixed(9)} gwei`);
-        }
-        if (providerFees.maxPriorityFeePerGas) {
-          console.log(`   CONVERTED maxPriorityFeePerGas: ${formatWeiAsEthForLogging(providerFees.maxPriorityFeePerGas)} ETH = ${(Number(providerFees.maxPriorityFeePerGas) / 1e9).toFixed(9)} gwei`);
-        }
-      } catch (error) {
-        console.error('❌ Wallet provider fetch failed:', error);
-      }
-
-      // 3. Compare and choose
-      console.log('\n📊 COMPARISON:');
-      if (rpcFees && providerFees?.maxFeePerGas) {
-        const ratio = Number(providerFees.maxFeePerGas) / Number(rpcFees.maxFeePerGas);
-        console.log(`   Provider vs RPC ratio: ${ratio.toFixed(2)}x`);
-        if (ratio > 100) {
-          console.warn('   ⚠️  POSSIBLE UNIT MISMATCH: Provider is 100x+ higher than RPC!');
-        } else if (ratio < 0.01) {
-          console.warn('   ⚠️  POSSIBLE UNIT MISMATCH: Provider is 100x+ lower than RPC!');
-        }
-      }
-      console.log('='.repeat(80) + '\n');
-
-      // 4. Select gas price to use
+      // Select gas price to use (RPC only - no wallet provider to avoid mobile popups)
       if (isBaseNetwork && rpcFees) {
         console.log('💰 Using Base RPC fees (Base network detected)');
         gasPrice = rpcFees.maxFeePerGas;
@@ -1048,19 +1029,15 @@ export class Web3Service {
           maxFeePerGas: rpcFees.maxFeePerGas,
           maxPriorityFeePerGas: rpcFees.maxPriorityFeePerGas
         };
-      } else if (providerFees) {
-        console.log('💰 Using wallet provider fees');
-        if (providerFees.maxFeePerGas) {
-          gasPrice = providerFees.maxFeePerGas;
-        } else if (providerFees.gasPrice) {
-          gasPrice = providerFees.gasPrice;
-        } else {
-          gasPrice = BigInt(10000000); // 0.01 gwei fallback
-        }
-        walletProviderFeeData = providerFees;
       } else {
-        console.warn('⚠️  Using fallback gas price');
-        gasPrice = BigInt(10000000); // 0.01 gwei - conservative estimate
+        // For non-Base networks, use config fallback
+        console.log('💰 Using fallback gas price from config (non-Base network)');
+        gasPrice = this.getMaxGasPriceInWei();
+        walletProviderFeeData = {
+          gasPrice: gasPrice,
+          maxFeePerGas: null,
+          maxPriorityFeePerGas: null
+        };
       }
 
       console.log(`Expected transaction cost for 100k gas: ${formatWeiAsEthForLogging(gasPrice * BigInt(100000))} ETH`);

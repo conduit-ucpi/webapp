@@ -227,6 +227,28 @@ export class WalletConnectProvider implements UnifiedProvider {
   }
 
   /**
+   * Show the Reown wallet management UI
+   * Opens the AppKit modal with the account view
+   */
+  async showWalletUI(): Promise<void> {
+    mLog.info('WalletConnectProvider', 'Opening Reown wallet management UI');
+
+    if (!this.isConnected()) {
+      throw new Error('Cannot show wallet UI - not connected');
+    }
+
+    // Access the internal reownProvider to get the appKit instance
+    const appKit = (this.reownProvider as any).appKit;
+
+    if (!appKit) {
+      throw new Error('AppKit not initialized');
+    }
+
+    // Open the account view in the AppKit modal
+    await appKit.open({ view: 'Account' });
+  }
+
+  /**
    * Ensure backend SIWE session exists after wallet connection
    *
    * Strategy:

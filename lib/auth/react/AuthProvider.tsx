@@ -515,6 +515,20 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
     }
   }, [authManager, authService]);
 
+  const showWalletUI = useCallback(async (): Promise<void> => {
+    mLog.info('AuthProvider', '🔧 Opening wallet management UI');
+
+    try {
+      await authManager.showWalletUI();
+      mLog.info('AuthProvider', '✅ Wallet management UI opened successfully');
+    } catch (error) {
+      mLog.error('AuthProvider', 'Error opening wallet management UI:', {
+        error: error instanceof Error ? error.message : String(error)
+      });
+      throw error;
+    }
+  }, [authManager]);
+
   const contextValue: AuthContextValue = {
     // State
     state,
@@ -534,7 +548,8 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
     signMessage,
 
     // Blockchain
-    getEthersProvider
+    getEthersProvider,
+    showWalletUI
   };
 
   return (

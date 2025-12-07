@@ -418,6 +418,24 @@ export class AuthManager {
   }
 
   /**
+   * Show wallet management UI
+   * Opens the provider's wallet management interface if supported
+   */
+  async showWalletUI(): Promise<void> {
+    if (!this.currentProvider) {
+      throw new Error('Cannot show wallet UI - no provider connected');
+    }
+
+    // Check if the provider supports showWalletUI
+    if (typeof (this.currentProvider as any).showWalletUI !== 'function') {
+      throw new Error('Current provider does not support wallet UI');
+    }
+
+    console.log('[AuthManager] Opening wallet management UI from provider');
+    await (this.currentProvider as any).showWalletUI();
+  }
+
+  /**
    * Get current auth state
    */
   getState(): AuthState {

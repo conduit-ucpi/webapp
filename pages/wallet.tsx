@@ -375,14 +375,31 @@ export default function Wallet() {
                 </div>
               )}
             </div>
-            <Button
-              onClick={() => { loadBalances(); loadChainInfo(); }}
-              disabled={isLoadingBalances || isLoadingChainInfo}
-              variant="outline"
-              size="sm"
-            >
-              {(isLoadingBalances || isLoadingChainInfo) ? 'Refreshing...' : 'Refresh'}
-            </Button>
+            <div className="flex gap-2">
+              {showWalletUI && (
+                <Button
+                  onClick={async () => {
+                    try {
+                      await showWalletUI();
+                    } catch (error) {
+                      console.error('Failed to open wallet UI:', error);
+                    }
+                  }}
+                  variant="outline"
+                  size="sm"
+                >
+                  Manage Wallet
+                </Button>
+              )}
+              <Button
+                onClick={() => { loadBalances(); loadChainInfo(); }}
+                disabled={isLoadingBalances || isLoadingChainInfo}
+                variant="outline"
+                size="sm"
+              >
+                {(isLoadingBalances || isLoadingChainInfo) ? 'Refreshing...' : 'Refresh'}
+              </Button>
+            </div>
           </div>
 
           {/* Balances */}

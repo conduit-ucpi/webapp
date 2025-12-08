@@ -8,6 +8,7 @@ import Button from '@/components/ui/Button';
 import BuyerInput from '@/components/ui/BuyerInput';
 import WalletInfo from '@/components/ui/WalletInfo';
 import PaymentQRModal from '@/components/ui/PaymentQRModal';
+import CurrencyAmountInput from '@/components/ui/CurrencyAmountInput';
 import { Wizard, WizardStep, WizardNavigation, WizardStep as Step } from '@/components/ui/Wizard';
 import {
   isValidEmail,
@@ -393,14 +394,11 @@ export default function CreateContractWizard() {
                 )}
 
                 <div>
-                  <Input
+                  <CurrencyAmountInput
                     label={`Amount (${selectedTokenSymbol})`}
-                    type="number"
-                    step="0.001"
-                    min="0"
                     value={form.amount}
-                    onChange={(e) => setForm(prev => ({ ...prev, amount: e.target.value }))}
-                    placeholder="100.00"
+                    onChange={(value) => setForm(prev => ({ ...prev, amount: value }))}
+                    tokenSymbol={selectedTokenSymbol as 'USDC' | 'USDT'}
                     error={errors.amount}
                     helpText="Amount must be over $1, or exactly 0.001 for testing"
                   />

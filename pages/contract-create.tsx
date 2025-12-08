@@ -10,6 +10,7 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import ConnectWalletEmbedded from '@/components/auth/ConnectWalletEmbedded';
 import WalletInfo from '@/components/ui/WalletInfo';
 import TokenGuide from '@/components/ui/TokenGuide';
+import CurrencyAmountInput from '@/components/ui/CurrencyAmountInput';
 import { isValidWalletAddress, toMicroUSDC, toUSDCForWeb3, formatDateTimeWithTZ } from '@/utils/validation';
 import { useContractCreateValidation } from '@/hooks/useContractValidation';
 import { executeContractTransactionSequence } from '@/utils/contractTransactionSequence';
@@ -773,20 +774,15 @@ export default function ContractCreate() {
               </div>
 
               <div>
-                <Input
+                <CurrencyAmountInput
                   label={`Amount (${selectedTokenSymbol})`}
-                  type="number"
-                  step="0.001"
-                  min="0"
                   value={form.amount}
-                  onChange={(e) => setForm(prev => ({ ...prev, amount: e.target.value }))}
-                  placeholder="100.00"
+                  onChange={(value) => setForm(prev => ({ ...prev, amount: value }))}
+                  tokenSymbol={selectedTokenSymbol as 'USDC' | 'USDT'}
                   error={errors.amount}
                   disabled={isLoading || !!amount} // Disable if provided via query param
+                  helpText={isInIframe || isInPopup ? 'Secure escrow payment' : 'Amount includes $1 fee, minimum $1.001'}
                 />
-                <p className="text-xs text-gray-500 mt-1">
-                  {isInIframe || isInPopup ? 'Secure escrow payment' : 'Amount includes $1 fee, minimum $1.001'}
-                </p>
               </div>
 
               <div>

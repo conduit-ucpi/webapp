@@ -186,14 +186,16 @@ export class ReownWalletConnectProvider {
               console.log('🔧 ReownWalletConnect: Existing connection network check - current:', currentChainIdNum, 'expected:', expectedChainId)
 
               if (currentChainIdNum === expectedChainId) {
-                console.log('🔧 ReownWalletConnect: Existing connection is ready and on correct network')
+                console.log('🔧 ReownWalletConnect: ✅ Existing connection is ready and on correct network:', this.getNetworkName(currentChainIdNum))
                 return {
                   success: true,
                   user: { walletAddress: address },
                   provider: walletProvider
                 }
               } else {
-                console.log('🔧 ReownWalletConnect: Existing connection on wrong network, will request switch in connection flow')
+                console.log('🔧 ReownWalletConnect: Existing connection on wrong network')
+                console.log('🔧 ReownWalletConnect: Current:', this.getNetworkName(currentChainIdNum), '- Expected:', this.getNetworkName(expectedChainId))
+                console.log('🔧 ReownWalletConnect: Will request network switch during connection flow')
               }
             }
           } catch (error) {
@@ -347,7 +349,7 @@ export class ReownWalletConnectProvider {
               // Clean up visibility listener
               document.removeEventListener('visibilitychange', handleVisibilityChange)
 
-              // Verify the network is correct
+              // Verify and switch network BEFORE closing modal - keeps it as one flow
               try {
                 const currentChainId = await walletProvider.request({ method: 'eth_chainId' })
                 const expectedChainId = this.config.chainId // Use chainId from config (decimal from ENV)
@@ -358,12 +360,16 @@ export class ReownWalletConnectProvider {
                 console.log('🔧 ReownWalletConnect: Network check - current:', currentChainIdNum, 'expected:', expectedChainId)
 
                 if (currentChainIdNum !== expectedChainId) {
-                  console.log('🔧 ReownWalletConnect: Wrong network, requesting switch to:', expectedChainId)
+                  console.log('🔧 ReownWalletConnect: Wrong network detected - switching to correct network as part of connection flow')
+                  console.log('🔧 ReownWalletConnect: Target network - decimal:', expectedChainId, 'name:', this.getNetworkName(expectedChainId))
+
                   try {
                     // Convert decimal chainId to hex for the wallet_switchEthereumChain request
                     const expectedChainIdHex = toHex(expectedChainId)
-                    console.log('🔧 ReownWalletConnect: Switching to network - decimal:', expectedChainId, 'hex:', expectedChainIdHex)
+                    console.log('🔧 ReownWalletConnect: Requesting network switch to hex:', expectedChainIdHex)
 
+                    // Network switch request - wallet will show modal to user
+                    // Keeping AppKit modal open makes this feel like part of the connection flow
                     await walletProvider.request({
                       method: 'wallet_switchEthereumChain',
                       params: [{ chainId: expectedChainIdHex }]
@@ -376,23 +382,27 @@ export class ReownWalletConnectProvider {
                       : newChainId
 
                     if (newChainIdNum !== expectedChainId) {
-                      console.warn('🔧 ReownWalletConnect: Network switch failed - still on:', newChainIdNum)
+                      console.warn('🔧 ReownWalletConnect: Network switch rejected or failed - still on:', newChainIdNum)
+                      console.warn('🔧 ReownWalletConnect: User may need to manually switch to:', this.getNetworkName(expectedChainId))
                       // Continue anyway - some wallets don't support programmatic switching
                     } else {
-                      console.log('🔧 ReownWalletConnect: ✅ Network switched successfully to:', newChainIdNum)
+                      console.log('🔧 ReownWalletConnect: ✅ Network switched successfully to:', this.getNetworkName(newChainIdNum))
                     }
                   } catch (switchError) {
-                    console.warn('🔧 ReownWalletConnect: Network switch failed:', switchError)
-                    // Continue anyway - user might switch manually
+                    console.warn('🔧 ReownWalletConnect: Network switch request failed:', switchError)
+                    console.warn('🔧 ReownWalletConnect: User may need to manually switch to:', this.getNetworkName(expectedChainId))
+                    // Continue anyway - user might switch manually later
                   }
+                } else {
+                  console.log('🔧 ReownWalletConnect: ✅ Already on correct network:', this.getNetworkName(currentChainIdNum))
                 }
               } catch (chainError) {
                 console.warn('🔧 ReownWalletConnect: Could not verify network:', chainError)
                 // Continue anyway
               }
 
-              // Close the modal before returning success so it doesn't stay open
-              console.log('🔧 ReownWalletConnect: Closing modal after successful connection')
+              // Close the modal after network verification/switch completes
+              console.log('🔧 ReownWalletConnect: Closing modal - connection and network setup complete')
               await this.appKit.close()
 
               resolveOnce({
@@ -957,5 +967,18 @@ export class ReownWalletConnectProvider {
       console.error('🔧 ReownWalletConnect: ❌ Failed to generate auth token:', error)
       throw error
     }
+  }
+
+  /**
+   * Get human-readable network name from chain ID
+   */
+  private getNetworkName(chainId: number): string {
+    const networkNames: Record<number, string> = {
+      1: 'Ethereum Mainnet',
+      8453: 'Base Mainnet',
+      11155111: 'Sepolia Testnet',
+      84532: 'Base Sepolia Testnet'
+    }
+    return networkNames[chainId] || `Chain ${chainId}`
   }
 }

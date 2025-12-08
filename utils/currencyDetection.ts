@@ -82,7 +82,13 @@ export function detectUserCurrency(): string {
     // Fallback: Try to detect from timezone
     const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     if (timezone) {
-      // Simple timezone to currency mapping
+      console.log(`💱 Attempting currency detection from timezone: ${timezone}`);
+
+      // Simple timezone to currency mapping (order matters - more specific first)
+      if (timezone.includes('Pacific/Auckland') || timezone.includes('Pacific/Wellington') || timezone.includes('Pacific/Chatham')) {
+        console.log('💱 Detected NZ timezone, returning NZD');
+        return 'NZD';
+      }
       if (timezone.includes('Europe/London')) return 'GBP';
       if (timezone.includes('Europe/')) return 'EUR';
       if (timezone.includes('Asia/Tokyo')) return 'JPY';
@@ -93,6 +99,8 @@ export function detectUserCurrency(): string {
       if (timezone.includes('America/Toronto') || timezone.includes('America/Vancouver')) return 'CAD';
       if (timezone.includes('America/Mexico_City')) return 'MXN';
       if (timezone.includes('America/Sao_Paulo')) return 'BRL';
+
+      console.log(`💱 No specific timezone match found for: ${timezone}`);
     }
   }
 

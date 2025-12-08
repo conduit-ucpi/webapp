@@ -17,6 +17,8 @@ interface CurrencyAmountInputProps {
   label?: string;
   /** Help text below the field */
   helpText?: string;
+  /** Label for the payment amount field (defaults to "Payment amount") */
+  paymentLabel?: string;
 }
 
 export default function CurrencyAmountInput({
@@ -26,7 +28,8 @@ export default function CurrencyAmountInput({
   error,
   disabled = false,
   label = 'Amount',
-  helpText
+  helpText,
+  paymentLabel = "Payment amount"
 }: CurrencyAmountInputProps) {
   // Detect user's currency on mount
   const [localCurrency, setLocalCurrency] = useState<string>('USD');
@@ -132,7 +135,7 @@ export default function CurrencyAmountInput({
             <select
               value={localCurrency}
               onChange={handleCurrencyChange}
-              disabled={disabled || rateLoading}
+              disabled={rateLoading}
               className="
                 flex-shrink-0 w-28 px-2 py-2.5 text-sm font-medium
                 border border-secondary-300 rounded-md
@@ -155,6 +158,7 @@ export default function CurrencyAmountInput({
               onChange={handleLocalAmountChange}
               disabled={disabled || rateLoading}
               placeholder="0.00"
+              readOnly={disabled}
               className={`
                 flex-1 px-3 py-2.5 text-base
                 border border-secondary-300 rounded-md
@@ -200,7 +204,7 @@ export default function CurrencyAmountInput({
         {/* Token Amount Input */}
         <div className="mt-1">
           <label className="block text-xs font-medium text-secondary-600 mb-1.5">
-            You'll pay:
+            {paymentLabel}:
           </label>
           <div className="flex items-center gap-2">
             <input

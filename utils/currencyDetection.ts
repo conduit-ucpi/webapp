@@ -58,54 +58,41 @@ SUPPORTED_CURRENCIES.forEach(currency => {
 });
 
 /**
- * Detect user's currency based on browser locale and timezone
+ * Detect user's currency based on browser locale using locale-currency library
  */
 export function detectUserCurrency(): string {
-  // Try to get country from locale first
-  if (typeof navigator !== 'undefined') {
-    // Get user's locale (e.g., 'en-US', 'en-GB', 'fr-FR')
-    const locale = navigator.language || (navigator as any).userLanguage;
+  if (typeof navigator === 'undefined') {
+    console.log('💱 Navigator not available, defaulting to USD');
+    return 'USD';
+  }
 
-    if (locale) {
-      // Extract country code from locale (last 2 chars usually)
-      const parts = locale.split('-');
-      if (parts.length > 1) {
-        const countryCode = parts[1].toUpperCase();
-        const currency = COUNTRY_TO_CURRENCY[countryCode];
-        if (currency) {
-          console.log(`💱 Detected currency from locale: ${currency} (${countryCode})`);
-          return currency;
-        }
+  try {
+    const localeCurrency = require('locale-currency');
+    const locale = navigator.language || (navigator as any).userLanguage || 'en-US';
+
+    console.log(`💱 Browser locale: ${locale}`);
+
+    // Use locale-currency library to get currency from locale
+    const currency = localeCurrency.getCurrency(locale);
+
+    if (currency) {
+      // Verify the currency is in our supported list
+      const currencyInfo = getCurrencyInfo(currency);
+      if (currencyInfo) {
+        console.log(`💱 ✅ Detected currency: ${currency} from locale: ${locale}`);
+        return currency;
+      } else {
+        console.log(`💱 ⚠️ Currency ${currency} detected but not in supported list, defaulting to USD`);
       }
+    } else {
+      console.log(`💱 ⚠️ Could not detect currency from locale: ${locale}`);
     }
-
-    // Fallback: Try to detect from timezone
-    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    if (timezone) {
-      console.log(`💱 Attempting currency detection from timezone: ${timezone}`);
-
-      // Simple timezone to currency mapping (order matters - more specific first)
-      if (timezone.includes('Pacific/Auckland') || timezone.includes('Pacific/Wellington') || timezone.includes('Pacific/Chatham')) {
-        console.log('💱 Detected NZ timezone, returning NZD');
-        return 'NZD';
-      }
-      if (timezone.includes('Europe/London')) return 'GBP';
-      if (timezone.includes('Europe/')) return 'EUR';
-      if (timezone.includes('Asia/Tokyo')) return 'JPY';
-      if (timezone.includes('Asia/Hong_Kong')) return 'HKD';
-      if (timezone.includes('Asia/Singapore')) return 'SGD';
-      if (timezone.includes('Asia/Shanghai') || timezone.includes('Asia/Beijing')) return 'CNY';
-      if (timezone.includes('Australia/')) return 'AUD';
-      if (timezone.includes('America/Toronto') || timezone.includes('America/Vancouver')) return 'CAD';
-      if (timezone.includes('America/Mexico_City')) return 'MXN';
-      if (timezone.includes('America/Sao_Paulo')) return 'BRL';
-
-      console.log(`💱 No specific timezone match found for: ${timezone}`);
-    }
+  } catch (error) {
+    console.error('💱 ❌ Currency detection error:', error);
   }
 
   // Default to USD if detection fails
-  console.log('💱 Could not detect currency, defaulting to USD');
+  console.log('💱 Defaulting to USD');
   return 'USD';
 }
 

@@ -6,6 +6,20 @@ import {
   SUPPORTED_CURRENCIES
 } from '@/utils/currencyDetection';
 
+// Mock locale-currency
+jest.mock('locale-currency', () => ({
+  getCurrency: jest.fn((locale: string) => {
+    // Simple mock implementation for testing
+    if (locale.includes('FR')) return 'EUR';
+    if (locale.includes('GB')) return 'GBP';
+    if (locale.includes('US')) return 'USD';
+    if (locale.includes('CA')) return 'CAD';
+    if (locale.includes('JP')) return 'JPY';
+    if (locale.includes('NZ')) return 'NZD';
+    return null;
+  })
+}));
+
 describe('currencyDetection', () => {
   describe('detectUserCurrency', () => {
     const originalNavigator = global.navigator;
@@ -17,14 +31,6 @@ describe('currencyDetection', () => {
         writable: true,
         configurable: true
       });
-
-      // Mock Intl.DateTimeFormat
-      jest.spyOn(Intl, 'DateTimeFormat').mockImplementation(
-        () =>
-          ({
-            resolvedOptions: () => ({ timeZone: 'America/New_York' })
-          } as any)
-      );
     });
 
     afterEach(() => {
@@ -86,40 +92,34 @@ describe('currencyDetection', () => {
       expect(currency).toBe('JPY');
     });
 
-    it('should fallback to timezone detection', () => {
+    it('should fallback to USD when locale has no currency mapping', () => {
       Object.defineProperty(global.navigator, 'language', {
-        value: 'en',
+        value: 'xx-XX', // Unknown locale
         writable: true,
         configurable: true
       });
 
-      jest.spyOn(Intl, 'DateTimeFormat').mockImplementation(
-        () =>
-          ({
-            resolvedOptions: () => ({ timeZone: 'Europe/London' })
-          } as any)
-      );
-
       const currency = detectUserCurrency();
-      expect(currency).toBe('GBP');
+      expect(currency).toBe('USD');
     });
 
-    it('should fallback to USD when detection fails', () => {
-      Object.defineProperty(global.navigator, 'language', {
+    it('should fallback to USD when navigator is not available', () => {
+      // Test with no navigator
+      Object.defineProperty(global, 'navigator', {
         value: undefined,
         writable: true,
         configurable: true
       });
 
-      jest.spyOn(Intl, 'DateTimeFormat').mockImplementation(
-        () =>
-          ({
-            resolvedOptions: () => ({ timeZone: 'Unknown/Timezone' })
-          } as any)
-      );
-
       const currency = detectUserCurrency();
       expect(currency).toBe('USD');
+
+      // Restore navigator
+      Object.defineProperty(global, 'navigator', {
+        value: originalNavigator,
+        writable: true,
+        configurable: true
+      });
     });
   });
 

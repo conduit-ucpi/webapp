@@ -169,7 +169,7 @@ describe('CurrencyAmountInput', () => {
     expect(screen.getByText('Amount must be positive')).toBeInTheDocument();
   });
 
-  it('should disable inputs when disabled prop is true', () => {
+  it('should disable amount inputs when disabled prop is true but keep currency selector enabled', () => {
     render(
       <CurrencyAmountInput
         value="100"
@@ -184,8 +184,9 @@ describe('CurrencyAmountInput', () => {
       expect(input).toBeDisabled();
     });
 
+    // Currency selector should remain enabled so users can see different currency conversions
     const select = screen.getByRole('combobox');
-    expect(select).toBeDisabled();
+    expect(select).not.toBeDisabled();
   });
 
   it('should show loading state for exchange rate', () => {

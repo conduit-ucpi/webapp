@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useExchangeRate, convertCurrency, formatCurrencyAmount } from '@/hooks/useExchangeRate';
 import { detectUserCurrency, SUPPORTED_CURRENCIES, getCurrencyInfo } from '@/utils/currencyDetection';
+import { formatDateTimeWithTZ } from '@/utils/validation';
 
 interface CurrencyAmountInputProps {
   /** USDC/USDT amount (source of truth) */
@@ -101,15 +102,6 @@ export default function CurrencyAmountInput({
     setLastEdited('token');
   };
 
-  // Format time ago for last updated
-  const getTimeAgo = (date: Date | undefined): string => {
-    if (!date) return '';
-    const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
-    if (seconds < 60) return 'just now';
-    if (seconds < 3600) return `${Math.floor(seconds / 60)} min ago`;
-    return `${Math.floor(seconds / 3600)}h ago`;
-  };
-
   const currencyInfo = getCurrencyInfo(localCurrency);
   const showRateInfo = rate && rate !== 1.0 && localCurrency !== tokenSymbol;
 
@@ -172,30 +164,25 @@ export default function CurrencyAmountInput({
 
         {/* Conversion Rate */}
         {showRateInfo && (
-          <div className="flex items-center justify-center py-2 px-2">
-            <div className="flex items-center gap-2 text-xs text-secondary-600">
-              <svg className="w-4 h-4 text-secondary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
-              </svg>
-              <span className="font-medium">
-                1 {localCurrency} = {rate.toFixed(6)} {tokenSymbol}
-              </span>
+          <div className="py-2 px-2">
+            <div className="flex flex-col items-center gap-1">
+              {/* Rate */}
+              <div className="flex items-center gap-2 text-xs text-secondary-600">
+                <svg className="w-4 h-4 text-secondary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                </svg>
+                <span className="font-medium">
+                  1 {localCurrency} = {rate.toFixed(6)} {tokenSymbol}
+                </span>
+                {rateLoading && (
+                  <span className="inline-block w-3 h-3 border-2 border-secondary-300 border-t-primary-500 rounded-full animate-spin" />
+                )}
+              </div>
+              {/* Date - Always visible */}
               {!rateLoading && lastUpdated && (
-                <button
-                  type="button"
-                  className="group relative"
-                  title={`Source: ${source}\nLast updated: ${lastUpdated.toLocaleString()}`}
-                >
-                  <svg className="w-3.5 h-3.5 text-secondary-400 hover:text-secondary-600" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                  </svg>
-                  <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 text-xs text-white bg-secondary-900 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                    {source} • {getTimeAgo(lastUpdated)}
-                  </span>
-                </button>
-              )}
-              {rateLoading && (
-                <span className="inline-block w-3 h-3 border-2 border-secondary-300 border-t-primary-500 rounded-full animate-spin" />
+                <div className="text-xs text-secondary-500">
+                  {source} • {formatDateTimeWithTZ(Math.floor(lastUpdated.getTime() / 1000))}
+                </div>
               )}
             </div>
           </div>

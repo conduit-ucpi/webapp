@@ -114,106 +114,14 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
     return unsubscribe;
   }, [authManager]);
 
-  // Fallback authentication check
-  // If user is connected (frontend) but not authenticated (backend), and no auth is in progress,
-  // attempt to complete the authentication silently
-  const hasAttemptedFallbackRef = useRef(false);
-
-  useEffect(() => {
-    const attemptFallbackAuth = async () => {
-      // Only attempt once per session to avoid loops
-      if (hasAttemptedFallbackRef.current) {
-        return;
-      }
-
-      // Check if we're in the state where fallback is needed:
-      // - Connected to wallet (frontend)
-      // - NOT authenticated with backend
-      // - NOT currently loading/authenticating
-      // - No user data loaded
-      if (state.isConnected && !state.isAuthenticated && !state.isLoading && !user) {
-        mLog.info('AuthProvider', 'Fallback auth: Detected connected but not authenticated state, attempting silent completion', {
-          address: state.address,
-          isConnected: state.isConnected,
-          isAuthenticated: state.isAuthenticated,
-          hasUser: !!user
-        });
-
-        // Mark as attempted to prevent loops
-        hasAttemptedFallbackRef.current = true;
-
-        // Wait a brief moment for any in-flight SIWX requests to complete
-        await new Promise(resolve => setTimeout(resolve, 1500));
-
-        // Check one more time for a SIWX session (might have completed during wait)
-        try {
-          const sessionResponse = await fetch('/api/auth/siwe/session');
-
-          if (sessionResponse.ok) {
-            const sessionData = await sessionResponse.json();
-
-            if (sessionData.address) {
-              mLog.info('AuthProvider', '✅ Fallback auth: Found SIWX session after delay', {
-                address: sessionData.address
-              });
-
-              // Fetch full user data
-              const backendStatus = await authService.checkAuthentication();
-
-              if (backendStatus.success && backendStatus.user) {
-                setUser(backendStatus.user);
-                authManager.setState({ isAuthenticated: true });
-                mLog.info('AuthProvider', '✅ Fallback auth: Authentication completed successfully');
-                return;
-              }
-            }
-          }
-
-          // If we still don't have a session, try to manually trigger SIWX authentication
-          mLog.warn('AuthProvider', '⚠️ Fallback auth: No SIWX session found after delay - attempting manual authentication request', {
-            address: state.address
-          });
-
-          // Try to manually request authentication from the provider
-          const authRequested = await authManager.requestAuthentication();
-
-          if (authRequested) {
-            mLog.info('AuthProvider', 'Fallback auth: Manual authentication request sent, waiting for completion...');
-
-            // Wait for manual auth to complete
-            await new Promise(resolve => setTimeout(resolve, 3000));
-
-            // Check one final time for a session
-            const finalSessionResponse = await fetch('/api/auth/siwe/session');
-            if (finalSessionResponse.ok) {
-              const finalSessionData = await finalSessionResponse.json();
-              if (finalSessionData.address) {
-                mLog.info('AuthProvider', '✅ Fallback auth: Manual authentication completed successfully');
-
-                const backendStatus = await authService.checkAuthentication();
-                if (backendStatus.success && backendStatus.user) {
-                  setUser(backendStatus.user);
-                  authManager.setState({ isAuthenticated: true });
-                  return;
-                }
-              }
-            }
-
-            mLog.warn('AuthProvider', '⚠️ Fallback auth: Manual authentication did not complete');
-          } else {
-            mLog.warn('AuthProvider', '⚠️ Fallback auth: Provider does not support manual authentication or failed to trigger');
-          }
-
-        } catch (error) {
-          mLog.error('AuthProvider', 'Fallback auth: Error during fallback authentication', {
-            error: error instanceof Error ? error.message : String(error)
-          });
-        }
-      }
-    };
-
-    attemptFallbackAuth();
-  }, [state.isConnected, state.isAuthenticated, state.isLoading, state.address, user, authManager, authService]);
+  // LAZY AUTHENTICATION:
+  // We don't authenticate with backend immediately after wallet connection.
+  // Instead, the first API call that needs auth will trigger a 401 response,
+  // which our authenticatedFetch handler will catch and automatically:
+  // 1. Request a SIWE signature from the connected wallet
+  // 2. Create a backend JWT (AUTH-TOKEN cookie)
+  // 3. Retry the original request
+  // This provides better UX - users only sign when they actually need backend auth
 
   // No need to manage provider separately - it's cached in AuthManager
 
@@ -236,61 +144,20 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
     setIsConnecting(true);
 
     try {
-      // Connect with auth manager (handles provider selection + SIWE auto-auth)
+      // Connect with auth manager (wallet connection only - no backend auth yet)
       const result = await authManager.connect(preferredProvider);
 
       if (result.success && result.address) {
-        mLog.info('AuthProvider', 'Connection successful, checking SIWX authentication status...', {
+        mLog.info('AuthProvider', '✅ Wallet connected successfully (lazy auth - backend JWT will be created on first API call)', {
           address: result.address
         });
 
-        // SIWX handles authentication automatically during connection (required: true in config)
-        // Poll for session with retries to allow time for SIWX to complete (especially for embedded wallets)
-        try {
-          // Poll for SIWX session (may take a moment to complete after connection)
-          const maxRetries = 5;
-          const retryDelay = 500; // ms
-          let sessionFound = false;
-
-          for (let attempt = 1; attempt <= maxRetries; attempt++) {
-            const sessionResponse = await fetch('/api/auth/siwe/session');
-
-            if (sessionResponse.ok) {
-              const sessionData = await sessionResponse.json();
-
-              if (sessionData.address) {
-                mLog.info('AuthProvider', `✅ SIWX session found on attempt ${attempt} - user authenticated automatically`, {
-                  address: sessionData.address
-                });
-
-                // Fetch full user data from backend
-                const backendStatus = await authService.checkAuthentication();
-
-                if (backendStatus.success && backendStatus.user) {
-                  setUser(backendStatus.user);
-                  authManager.setState({ isAuthenticated: true, isLoading: false });
-                  mLog.info('AuthProvider', '✅ User data loaded from backend');
-                  sessionFound = true;
-                  break;
-                }
-              }
-            }
-
-            // If not found and not last attempt, wait before retry
-            if (!sessionFound && attempt < maxRetries) {
-              mLog.debug('AuthProvider', `SIWX session not found yet, retrying (${attempt}/${maxRetries})...`);
-              await new Promise(resolve => setTimeout(resolve, retryDelay));
-            }
-          }
-
-          if (!sessionFound) {
-            mLog.warn('AuthProvider', 'No SIWX session found after all retries - authentication may have failed or user denied signature');
-          }
-        } catch (siwxError) {
-          mLog.error('AuthProvider', 'SIWX session check error:', {
-            error: siwxError instanceof Error ? siwxError.message : String(siwxError)
-          });
-        }
+        // Don't authenticate with backend immediately
+        // The first API call that needs auth will trigger a 401, which will:
+        // 1. Request a SIWE signature
+        // 2. Create a backend JWT
+        // 3. Retry the original request
+        // This provides better UX - users only sign when they actually need backend auth
       }
 
       return result; // Return the ConnectionResult whether success or failure

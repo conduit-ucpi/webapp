@@ -62,10 +62,10 @@ export class ReownWalletConnectProvider {
       const ethersAdapter = new EthersAdapter()
 
       // Create SIWX config for one-click authentication (modern replacement for SIWE)
-      console.log('🔧 ReownWalletConnect: About to call createAppKitSIWXConfig()...')
-      const siwxConfig = createAppKitSIWXConfig()
+      console.log('🔧 ReownWalletConnect: About to call createAppKitSIWXConfig() with chainId:', chainId)
+      const siwxConfig = createAppKitSIWXConfig(chainId)
       console.log('🔧 ReownWalletConnect: ✅ SIWX config created successfully:', siwxConfig ? 'Config object exists' : 'ERROR: Config is null!')
-      console.log('🔧 ReownWalletConnect: SIWX one-click auth ENABLED (AppKit 1.8.14+ multichain auth)')
+      console.log('🔧 ReownWalletConnect: SIWX one-click auth ENABLED with enforced chain ID:', chainId)
 
       // Create AppKit instance
       console.log('🔧 ReownWalletConnect: Creating AppKit with SIWX config...')

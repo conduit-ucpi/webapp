@@ -126,13 +126,15 @@ class CustomBackendVerifier extends SIWXVerifier {
  * - CustomBackendVerifier: Calls our backend to verify signatures
  * - BackendSIWXStorage: Stores sessions in backend via HTTP-only cookies
  * - required: true: Forces authentication, disconnects if user denies
+ *
+ * @param chainId - The chain ID to use for SIWE messages (from ENV)
  */
-export function createAppKitSIWXConfig() {
-  console.log('🔐 SIWX: createAppKitSIWXConfig() called - SIWX configuration is being initialized')
+export function createAppKitSIWXConfig(chainId: number) {
+  console.log('🔐 SIWX: createAppKitSIWXConfig() called with chainId:', chainId)
 
   // Create custom messenger that gets nonces from backend
-  const customMessenger = new BackendSIWXMessenger()
-  console.log('🔐 SIWX: Custom backend messenger created - nonces will come from backend')
+  const customMessenger = new BackendSIWXMessenger(chainId)
+  console.log('🔐 SIWX: Custom backend messenger created with chain ID:', chainId)
 
   // Create custom verifier
   const customVerifier = new CustomBackendVerifier()

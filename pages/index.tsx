@@ -9,10 +9,12 @@ import { getSiteNameFromDomain } from '@/utils/siteName';
 
 export default function Home() {
   let user = null;
+  let isConnected = false;
 
   try {
     const authContext = useAuth();
     user = authContext.user;
+    isConnected = authContext.isConnected;
     // Don't check isLoading - always render content for SSR/SEO/AI crawlers
   } catch (error) {
     // Auth context not available during SSR or hydration
@@ -100,7 +102,7 @@ export default function Home() {
                 View on GitHub →
               </a>
             </div>
-            {isAuthenticated ? (
+            {isConnected ? (
               <div className="flex gap-4 pt-6">
                 <Link href="/dashboard">
                   <Button size="lg" className="px-8 py-4 text-lg">
@@ -323,7 +325,7 @@ export default function Home() {
         </div>
         </section>
 
-        {!isAuthenticated && (
+        {!isConnected && (
           <>
             {/* What You Get Section */}
             <section className="mt-32 bg-secondary-50 rounded-2xl p-12" aria-label="Benefits and Features">

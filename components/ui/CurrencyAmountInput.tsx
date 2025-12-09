@@ -114,7 +114,7 @@ export default function CurrencyAmountInput({
       )}
 
       <div className={`
-        border-2 rounded-lg p-4 bg-white transition-colors
+        border-2 rounded-lg p-3 sm:p-4 bg-white transition-colors
         ${error ? 'border-error-300' : 'border-secondary-200'}
         ${disabled ? 'opacity-50 cursor-not-allowed bg-secondary-50' : ''}
       `}>
@@ -123,13 +123,13 @@ export default function CurrencyAmountInput({
           <label className="block text-xs font-medium text-secondary-600 mb-1.5">
             Your currency (for reference):
           </label>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             <select
               value={localCurrency}
               onChange={handleCurrencyChange}
               disabled={rateLoading}
               className="
-                flex-shrink-0 w-28 px-2 py-2.5 text-sm font-medium
+                flex-shrink-0 w-20 sm:w-28 px-1 sm:px-2 py-2.5 text-xs sm:text-sm font-medium
                 border border-secondary-300 rounded-md
                 bg-white text-secondary-900
                 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500
@@ -152,7 +152,7 @@ export default function CurrencyAmountInput({
               placeholder="0.00"
               readOnly={disabled}
               className={`
-                flex-1 px-3 py-2.5 text-base
+                flex-1 min-w-0 px-2 sm:px-3 py-2.5 text-base
                 border border-secondary-300 rounded-md
                 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500
                 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-secondary-50
@@ -193,7 +193,7 @@ export default function CurrencyAmountInput({
           <label className="block text-xs font-medium text-secondary-600 mb-1.5">
             {paymentLabel}:
           </label>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             <input
               type="number"
               step="0.0001"
@@ -203,14 +203,14 @@ export default function CurrencyAmountInput({
               disabled={disabled}
               placeholder="0.00"
               className={`
-                flex-1 px-3 py-2.5 text-base font-medium
+                flex-1 min-w-0 px-2 sm:px-3 py-2.5 text-base font-medium
                 border border-secondary-300 rounded-md
                 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500
                 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-secondary-50
                 ${lastEdited === 'token' ? 'ring-2 ring-primary-200 border-primary-300' : ''}
               `}
             />
-            <span className="flex-shrink-0 px-3 py-2.5 text-sm font-semibold text-secondary-700 bg-secondary-100 border border-secondary-300 rounded-md">
+            <span className="flex-shrink-0 px-2 sm:px-3 py-2.5 text-xs sm:text-sm font-semibold text-secondary-700 bg-secondary-100 border border-secondary-300 rounded-md whitespace-nowrap">
               {tokenSymbol}
             </span>
           </div>

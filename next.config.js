@@ -14,7 +14,18 @@ const nextConfig = {
       }
     ]
   },
-  
+
+  // Redirects to external content
+  async redirects() {
+    return [
+      {
+        source: '/whats-wrong-with-payments',
+        destination: 'https://medium.com/@charliepank/whats-wrong-with-payments-e2ea2bbeec87',
+        permanent: true, // 301 permanent redirect
+      }
+    ]
+  },
+
   // Headers configuration for iframe embedding and security
   async headers() {
     // Default frame ancestors for development and basic functionality

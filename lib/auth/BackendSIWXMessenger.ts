@@ -28,13 +28,11 @@ async function getBackendNonce(_input: SIWXMessage.Input): Promise<string> {
 /**
  * Backend SIWX Messenger extending InformalMessenger
  *
- * Fetches nonces from backend and enforces the correct chain ID
- * for SIWE messages regardless of what network the wallet is connected to.
+ * The only difference is that we fetch nonces from our backend
+ * instead of generating random ones.
  */
 export class BackendSIWXMessenger extends InformalMessenger {
-  private readonly enforcedChainId: number
-
-  constructor(chainId: number) {
+  constructor() {
     // This messenger is only used client-side, so window must be available
     if (typeof window === 'undefined') {
       throw new Error('BackendSIWXMessenger can only be used in browser environment')
@@ -50,35 +48,9 @@ export class BackendSIWXMessenger extends InformalMessenger {
       clearChainIdNamespace: false // Keep full chain ID format
     })
 
-    this.enforcedChainId = chainId
-
     console.log('🔐 BackendSIWXMessenger: Initialized with backend nonce fetching', {
       domain,
-      uri,
-      enforcedChainId: chainId
+      uri
     })
-  }
-
-  /**
-   * Override createMessage to enforce the correct chain ID
-   * This ensures the SIWE message uses our configured chain (Base)
-   * regardless of what network the wallet is currently connected to
-   */
-  async createMessage(input: SIWXMessage.Input): Promise<SIWXMessage> {
-    console.log('🔐 BackendSIWXMessenger: createMessage called with input chainId:', input.chainId)
-
-    // Override the chain ID with our enforced chain ID
-    const modifiedInput = {
-      ...input,
-      chainId: `eip155:${this.enforcedChainId}` as any
-    }
-
-    console.log('🔐 BackendSIWXMessenger: Enforcing chain ID:', {
-      original: input.chainId,
-      enforced: modifiedInput.chainId
-    })
-
-    // Call the parent createMessage with the modified input
-    return super.createMessage(modifiedInput)
   }
 }

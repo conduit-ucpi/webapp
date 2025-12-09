@@ -31,6 +31,9 @@ export { WalletConnectProvider } from './providers/WalletConnectProvider';
 export { BackendClient } from './backend/BackendClient';
 export { AuthService } from './backend/AuthService';
 
+// Errors
+export { AuthenticationExpiredError } from './errors/AuthenticationExpiredError';
+
 // Blockchain
 export { TransactionManager } from './blockchain/TransactionManager';
 export type { TransactionOptions, TransactionResult } from './blockchain/TransactionManager';

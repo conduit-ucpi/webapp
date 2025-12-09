@@ -4,6 +4,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { AuthProvider as NewAuthProvider, useAuth as useNewAuth, BackendClient } from '@/lib/auth';
+import { AuthenticationExpiredError } from '@/lib/auth/errors/AuthenticationExpiredError';
 import { useConfig } from './ConfigProvider';
 import { toUSDCForWeb3 } from '@/utils/validation';
 
@@ -72,7 +73,35 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
     getProviderUserInfo: newAuth.getProviderUserInfo,
     authenticatedFetch: async (url: string, options?: RequestInit): Promise<Response> => {
       // Use proper backend client with authentication headers
-      return backendClient.authenticatedFetch(url, options);
+      // Handles 401 by triggering re-authentication automatically
+      try {
+        return await backendClient.authenticatedFetch(url, options);
+      } catch (error) {
+        // If JWT expired, request fresh signature from connected wallet
+        if (error instanceof AuthenticationExpiredError) {
+          console.log('🔐 SimpleAuthProvider: JWT expired - requesting fresh signature (wallet still connected)');
+
+          try {
+            // Trigger SIWX to request a new signature (wallet stays connected)
+            const success = await newAuth.requestAuthentication();
+
+            if (success) {
+              console.log('🔐 SimpleAuthProvider: ✅ Fresh signature obtained - retrying request');
+              // Retry the original request with fresh JWT
+              return await backendClient.authenticatedFetch(url, options);
+            } else {
+              console.error('🔐 SimpleAuthProvider: ❌ Failed to get fresh signature');
+              throw new Error('Failed to re-authenticate - please try again');
+            }
+          } catch (reAuthError) {
+            console.error('🔐 SimpleAuthProvider: Re-authentication error:', reAuthError);
+            throw new Error('Session expired and re-authentication failed');
+          }
+        }
+
+        // Re-throw other errors
+        throw error;
+      }
     },
     hasVisitedBefore: () => false,
     refreshUserData: async () => {

@@ -58,7 +58,7 @@ SUPPORTED_CURRENCIES.forEach(currency => {
 });
 
 /**
- * Detect user's currency based on browser locale using locale-currency library
+ * Detect user's currency based on browser locale
  */
 export function detectUserCurrency(): string {
   if (typeof navigator === 'undefined') {
@@ -67,25 +67,25 @@ export function detectUserCurrency(): string {
   }
 
   try {
-    const localeCurrency = require('locale-currency');
     const locale = navigator.language || (navigator as any).userLanguage || 'en-US';
-
     console.log(`💱 Browser locale: ${locale}`);
 
-    // Use locale-currency library to get currency from locale
-    const currency = localeCurrency.getCurrency(locale);
+    // Extract country code from locale
+    // Locales can be: en-NZ, en_NZ, en-US, fr-FR, etc.
+    const match = locale.match(/[-_]([A-Z]{2})$/i);
 
-    if (currency) {
-      // Verify the currency is in our supported list
-      const currencyInfo = getCurrencyInfo(currency);
-      if (currencyInfo) {
-        console.log(`💱 ✅ Detected currency: ${currency} from locale: ${locale}`);
+    if (match) {
+      const countryCode = match[1].toUpperCase();
+      const currency = COUNTRY_TO_CURRENCY[countryCode];
+
+      if (currency) {
+        console.log(`💱 ✅ Detected currency from locale: ${currency} (country: ${countryCode}, locale: ${locale})`);
         return currency;
       } else {
-        console.log(`💱 ⚠️ Currency ${currency} detected but not in supported list, defaulting to USD`);
+        console.log(`💱 ⚠️ Country code ${countryCode} found but no currency mapping`);
       }
     } else {
-      console.log(`💱 ⚠️ Could not detect currency from locale: ${locale}`);
+      console.log(`💱 ⚠️ Could not extract country code from locale: ${locale}`);
     }
   } catch (error) {
     console.error('💱 ❌ Currency detection error:', error);

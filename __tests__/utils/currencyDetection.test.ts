@@ -6,20 +6,6 @@ import {
   SUPPORTED_CURRENCIES
 } from '@/utils/currencyDetection';
 
-// Mock locale-currency
-jest.mock('locale-currency', () => ({
-  getCurrency: jest.fn((locale: string) => {
-    // Simple mock implementation for testing
-    if (locale.includes('FR')) return 'EUR';
-    if (locale.includes('GB')) return 'GBP';
-    if (locale.includes('US')) return 'USD';
-    if (locale.includes('CA')) return 'CAD';
-    if (locale.includes('JP')) return 'JPY';
-    if (locale.includes('NZ')) return 'NZD';
-    return null;
-  })
-}));
-
 describe('currencyDetection', () => {
   describe('detectUserCurrency', () => {
     const originalNavigator = global.navigator;

@@ -2,60 +2,59 @@
  * Backend SIWX Storage - Stores sessions in backend instead of localStorage
  *
  * This integrates SIWX session management with our backend authentication system.
- * Sessions are stored server-side via HTTP-only cookies instead of in localStorage.
+ * Sessions are stored server-side via HTTP-only cookies (AUTH-TOKEN).
+ * We cache the SIWX session object in sessionStorage so SIWX knows a session exists
+ * without requesting a new signature.
  */
 
 import type { CaipNetworkId } from '@reown/appkit-common'
 import type { SIWXSession } from '@reown/appkit-controllers'
 import type { SIWXStorage } from '@reown/appkit-siwx'
 
+// Storage key for caching SIWX session in sessionStorage
+const SIWX_SESSION_STORAGE_KEY = 'conduit_siwx_session'
+
 export class BackendSIWXStorage implements SIWXStorage {
   /**
-   * Add a session by sending it to our backend
+   * Add a session by storing it in sessionStorage
    *
-   * The backend verifies the signature and creates a server-side session
-   * stored in an HTTP-only cookie (AUTH-TOKEN).
+   * The backend session (AUTH-TOKEN cookie) has already been created by CustomBackendVerifier.
+   * We just need to cache the SIWX session object so we can return it when SIWX calls get().
    */
   async add(session: SIWXSession): Promise<void> {
-    console.log('🔐 BackendSIWXStorage: add() called', {
+    console.log('🔐 BackendSIWXStorage: add() called - storing session in sessionStorage', {
       hasMessage: !!session.message,
       hasSignature: !!session.signature,
-      hasData: !!session.data
+      hasData: !!session.data,
+      address: session.data?.accountAddress
     })
 
     try {
-      // The session has already been verified by our CustomBackendVerifier
-      // At this point we just need to ensure the backend session is established
-
-      // Check if session already exists
-      const checkResponse = await fetch('/api/auth/siwe/session', {
-        credentials: 'include' // Include cookies
-      })
-
-      if (checkResponse.ok) {
-        const existingSession = await checkResponse.json()
-        if (existingSession.address) {
-          console.log('🔐 BackendSIWXStorage: Backend session already exists', {
-            address: existingSession.address
-          })
-          return // Session already exists, no need to create again
-        }
+      // Store the session in sessionStorage so we can return it later
+      if (typeof window !== 'undefined' && window.sessionStorage) {
+        sessionStorage.setItem(SIWX_SESSION_STORAGE_KEY, JSON.stringify(session))
+        console.log('🔐 BackendSIWXStorage: ✅ Session stored in sessionStorage')
       }
-
-      console.log('🔐 BackendSIWXStorage: ✅ Session will be created by verify() - no additional action needed')
     } catch (error) {
-      console.error('🔐 BackendSIWXStorage: Failed to add session', error)
+      console.error('🔐 BackendSIWXStorage: Failed to store session', error)
       throw error
     }
   }
 
   /**
-   * Delete a session by calling our backend signout endpoint
+   * Delete a session by calling our backend signout endpoint and clearing sessionStorage
    */
   async delete(chainId: CaipNetworkId, address: string): Promise<void> {
     console.log('🔐 BackendSIWXStorage: delete() called', { chainId, address })
 
     try {
+      // Clear sessionStorage
+      if (typeof window !== 'undefined' && window.sessionStorage) {
+        sessionStorage.removeItem(SIWX_SESSION_STORAGE_KEY)
+        console.log('🔐 BackendSIWXStorage: Session removed from sessionStorage')
+      }
+
+      // Call backend to clear AUTH-TOKEN cookie
       await fetch('/api/auth/siwe/signout', {
         method: 'POST',
         credentials: 'include'
@@ -69,38 +68,43 @@ export class BackendSIWXStorage implements SIWXStorage {
   }
 
   /**
-   * Get sessions from our backend
+   * Get sessions from sessionStorage
    *
-   * Returns empty array - our backend manages authentication via HTTP-only cookies,
-   * not by reconstructing SIWX sessions. The session check happens at the backend level.
+   * Returns the cached SIWX session if it exists. The AUTH-TOKEN cookie determines
+   * actual validity - it will be validated automatically when API requests are made.
    */
   async get(chainId: CaipNetworkId, address: string): Promise<SIWXSession[]> {
     console.log('🔐 BackendSIWXStorage: get() called', { chainId, address })
 
     try {
-      const response = await fetch('/api/auth/siwe/session', {
-        credentials: 'include'
-      })
-
-      if (!response.ok) {
-        console.log('🔐 BackendSIWXStorage: No active backend session found')
+      // Check sessionStorage for cached session
+      if (typeof window === 'undefined' || !window.sessionStorage) {
+        console.log('🔐 BackendSIWXStorage: sessionStorage not available (SSR)')
         return []
       }
 
-      const sessionData = await response.json()
+      const storedSession = sessionStorage.getItem(SIWX_SESSION_STORAGE_KEY)
 
-      if (!sessionData.address) {
-        console.log('🔐 BackendSIWXStorage: Session response missing address')
+      if (!storedSession) {
+        console.log('🔐 BackendSIWXStorage: No session found in sessionStorage')
         return []
       }
 
-      console.log('🔐 BackendSIWXStorage: ✅ Backend session exists', {
-        address: sessionData.address
-      })
+      const session: SIWXSession = JSON.parse(storedSession)
 
-      // Return empty array - backend manages auth via cookies
-      // SIWX doesn't need the full session object for our use case
-      return []
+      // Verify the session matches the requested address
+      if (session.data?.accountAddress?.toLowerCase() === address.toLowerCase()) {
+        console.log('🔐 BackendSIWXStorage: ✅ Session found in sessionStorage', {
+          address: session.data.accountAddress
+        })
+        return [session]
+      } else {
+        console.log('🔐 BackendSIWXStorage: Session address mismatch', {
+          stored: session.data?.accountAddress,
+          requested: address
+        })
+        return []
+      }
     } catch (error) {
       console.error('🔐 BackendSIWXStorage: Failed to get session', error)
       return []
@@ -110,8 +114,7 @@ export class BackendSIWXStorage implements SIWXStorage {
   /**
    * Set sessions (replace all sessions)
    *
-   * For our backend integration, this is similar to add() since we only
-   * support one session at a time (stored in cookie).
+   * For our backend integration, we only support one session at a time.
    */
   async set(sessions: SIWXSession[]): Promise<void> {
     console.log('🔐 BackendSIWXStorage: set() called', {
@@ -121,6 +124,11 @@ export class BackendSIWXStorage implements SIWXStorage {
     if (sessions.length === 0) {
       // Clear all sessions
       console.log('🔐 BackendSIWXStorage: Clearing all sessions')
+
+      if (typeof window !== 'undefined' && window.sessionStorage) {
+        sessionStorage.removeItem(SIWX_SESSION_STORAGE_KEY)
+      }
+
       await fetch('/api/auth/siwe/signout', {
         method: 'POST',
         credentials: 'include'

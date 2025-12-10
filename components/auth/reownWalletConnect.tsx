@@ -616,7 +616,7 @@ export class ReownWalletConnectProvider {
 
       // Step 2: Create SIWE message
       const { SiweMessage } = await import('siwe')
-      const chainId = this.appKit.getCaipNetwork()?.id || this.chainId
+      const chainId = this.appKit.getCaipNetwork()?.id || this.config.chainId
 
       const siweMessage = new SiweMessage({
         domain: window.location.host,

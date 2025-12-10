@@ -164,16 +164,9 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
           const userData = await response.json();
           console.log('🔧 SimpleAuthProvider: User data refreshed successfully', { email: userData.email, walletAddress: userData.walletAddress });
 
-          // Wait a moment for React state to update in the auth context
-          // The authenticatedFetch wrapper will have triggered requestAuthentication which calls setUser
-          await new Promise(resolve => setTimeout(resolve, 500));
-
-          // Verify user data is now in the auth context
-          if (newAuth.user) {
-            console.log('🔧 SimpleAuthProvider: User data confirmed in auth context', { email: newAuth.user.email });
-          } else {
-            console.warn('🔧 SimpleAuthProvider: User data not yet in auth context - state update may be delayed');
-          }
+          // Update the auth context with the fresh user data
+          newAuth.updateUserData(userData);
+          console.log('🔧 SimpleAuthProvider: ✅ Auth context updated with fresh user data');
         } else {
           console.error('🔧 SimpleAuthProvider: Failed to refresh user data:', response.status);
         }

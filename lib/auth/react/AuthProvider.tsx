@@ -27,6 +27,7 @@ interface AuthContextValue {
   disconnect: () => Promise<void>;
   switchWallet: () => Promise<ConnectionResult>;
   signMessage: (message: string) => Promise<string>;
+  updateUserData: (userData: AuthUser) => void; // Update user data from external source
 
   // Blockchain
   getEthersProvider: () => Promise<ethers.BrowserProvider | null>;
@@ -413,6 +414,12 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
     return null;
   }, [authManager]);
 
+  // Update user data from external source (e.g., after fetching from backend)
+  const updateUserData = useCallback((userData: AuthUser) => {
+    setUser(userData);
+    authManager.setState({ isAuthenticated: true });
+  }, [authManager]);
+
   const contextValue: AuthContextValue = {
     // State
     state,
@@ -430,6 +437,7 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
     disconnect,
     switchWallet,
     signMessage,
+    updateUserData,
 
     // Blockchain
     getEthersProvider,

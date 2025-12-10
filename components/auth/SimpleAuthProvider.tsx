@@ -34,6 +34,7 @@ const defaultAuthValue = {
   getEthersProvider: () => null,
   showWalletUI: async () => { throw new Error('Auth not ready'); },
   getProviderUserInfo: () => null,
+  updateUserData: () => {},
   authenticatedFetch: async () => new Response('{}', { status: 200 }),
   hasVisitedBefore: () => false,
   refreshUserData: async () => {},
@@ -71,6 +72,7 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
     getEthersProvider: newAuth.getEthersProvider,
     showWalletUI: newAuth.showWalletUI || undefined,
     getProviderUserInfo: newAuth.getProviderUserInfo,
+    updateUserData: newAuth.updateUserData,
     authenticatedFetch: async (url: string, options?: RequestInit): Promise<Response> => {
       // Use proper backend client with authentication headers
       // Handles 401 by triggering re-authentication automatically
@@ -112,6 +114,8 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
                       email: userData.email,
                       walletAddress: userData.walletAddress
                     });
+                    // Update the auth context with the fetched user data
+                    newAuth.updateUserData(userData);
                   } else {
                     console.log(`🔐 SimpleAuthProvider: User data not ready yet (attempt ${attempts}/${maxAttempts}), status: ${identityResponse.status}`);
                     if (attempts < maxAttempts) {

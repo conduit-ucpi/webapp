@@ -44,7 +44,7 @@ export default function ContractCreate() {
 
   const router = useRouter();
   const { config } = useConfig();
-  const { user, authenticatedFetch, disconnect, isLoading: authLoading } = useAuth();
+  const { user, authenticatedFetch, disconnect, isLoading: authLoading, isConnected, address } = useAuth();
   const { approveUSDC, depositToContract, depositFundsAsProxy, getWeb3Service } = useSimpleEthers();
   const { errors, validateForm, clearErrors } = useContractCreateValidation();
 
@@ -114,6 +114,8 @@ export default function ContractCreate() {
   console.log('🔧 ContractCreate: Hooks initialized', {
     hasConfig: !!config,
     authLoading,
+    isConnected,
+    address,
     hasUser: !!user,
     userEmail: user?.email,
     hasAuthenticatedFetch: !!authenticatedFetch,
@@ -124,10 +126,10 @@ export default function ContractCreate() {
     queryTokenSymbol
   });
 
-  console.log('🔧 ContractCreate: Auth state decision', {
-    willShowLoading: !config || authLoading,
-    willShowAuth: !authLoading && !user,
-    willShowForm: !authLoading && !!user
+  console.log('🔧 ContractCreate: Auth state decision (with lazy auth support)', {
+    willShowLoading: !config || (authLoading && !isConnected && !address),
+    willShowAuth: !isConnected && !address,
+    willShowForm: isConnected || !!address
   });
 
   // Clear auth cache on mount to force fresh authentication
@@ -156,10 +158,11 @@ export default function ContractCreate() {
     }
   }, [seller, amount, description]);
 
-  // Fetch token balance immediately when user connects (not just on payment step)
+  // Fetch token balance immediately when wallet connects (not just on payment step)
+  // With lazy auth, we use address instead of user?.walletAddress
   useEffect(() => {
     const fetchTokenBalance = async () => {
-      if (user?.walletAddress && selectedTokenAddress && config?.rpcUrl) {
+      if (address && selectedTokenAddress && config?.rpcUrl) {
         setIsLoadingBalance(true);
         try {
           const { ethers } = await import('ethers');
@@ -171,7 +174,7 @@ export default function ContractCreate() {
           );
 
           const [balance, decimals] = await Promise.all([
-            tokenContract.balanceOf(user.walletAddress),
+            tokenContract.balanceOf(address),
             tokenContract.decimals()
           ]);
 
@@ -188,7 +191,7 @@ export default function ContractCreate() {
     };
 
     fetchTokenBalance();
-  }, [user?.walletAddress, selectedTokenAddress, selectedTokenSymbol, config?.rpcUrl]);
+  }, [address, selectedTokenAddress, selectedTokenSymbol, config?.rpcUrl]);
 
   // Detect iframe and popup environment
   useEffect(() => {
@@ -298,12 +301,12 @@ export default function ContractCreate() {
         throw new Error(`${selectedTokenSymbol} contract address not configured. Please check server configuration.`);
       }
       
-      // Check if user is authenticated and has wallet address
+      // Check if wallet is connected and has address
       setLoadingMessage('Initializing...');
-      console.log('🔧 ContractCreate: User object:', user);
-      
-      if (!user?.walletAddress) {
-        console.error('🔧 ContractCreate: No wallet address found in user object');
+      console.log('🔧 ContractCreate: Wallet address:', address);
+
+      if (!address) {
+        console.error('🔧 ContractCreate: No wallet address found');
         throw new Error('Please connect your wallet first.');
       }
       
@@ -456,7 +459,7 @@ export default function ContractCreate() {
         {
           contractserviceId: contractId,
           tokenAddress: selectedTokenAddress,
-          buyer: user?.walletAddress || '',
+          buyer: address || '',
           seller: form.seller,
           amount: toMicroUSDC(parseFloat(form.amount.trim())),
           expiryTimestamp: expiryTimestamp,
@@ -671,8 +674,9 @@ export default function ContractCreate() {
     }
   };
 
-  // Loading screen for initialization - show if config is missing or auth is loading
-  if (!config || authLoading) {
+  // Loading screen for initialization - show if config is missing OR (auth is still initializing AND wallet not connected)
+  // With lazy auth, we only show loading if wallet hasn't connected yet
+  if (!config || (authLoading && !isConnected && !address)) {
     return (
       <div className={`min-h-screen flex items-center justify-center ${isInIframe || isInPopup ? 'bg-gray-50' : 'bg-white'}`}>
         <Head children={
@@ -689,8 +693,9 @@ export default function ContractCreate() {
     );
   }
 
-  // Not authenticated
-  if (!user) {
+  // Wallet not connected - show connection UI
+  // With lazy auth, we check isConnected/address instead of user
+  if (!isConnected && !address) {
     return (
       <div className={`min-h-screen flex items-center justify-center ${isInIframe || isInPopup ? 'bg-gray-50' : 'bg-white'}`}>
         <Head children={

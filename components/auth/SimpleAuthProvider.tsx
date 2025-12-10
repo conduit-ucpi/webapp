@@ -86,7 +86,29 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
             const success = await newAuth.requestAuthentication();
 
             if (success) {
-              console.log('🔐 SimpleAuthProvider: ✅ Fresh signature obtained - retrying request');
+              console.log('🔐 SimpleAuthProvider: ✅ Fresh signature obtained');
+
+              // CRITICAL: Wait for user data to be loaded into context
+              // The requestAuthentication() function calls setUser() asynchronously
+              // We need to wait for that to complete before retrying the request
+              // This prevents buyerEmail being null in contract creation
+              console.log('🔐 SimpleAuthProvider: Waiting for user data to load...');
+
+              let attempts = 0;
+              const maxAttempts = 10; // Wait up to 5 seconds
+
+              while (!newAuth.user && attempts < maxAttempts) {
+                await new Promise(resolve => setTimeout(resolve, 500));
+                attempts++;
+                console.log(`🔐 SimpleAuthProvider: Waiting for user data (attempt ${attempts}/${maxAttempts})...`);
+              }
+
+              if (newAuth.user) {
+                console.log('🔐 SimpleAuthProvider: ✅ User data loaded successfully', { email: newAuth.user.email });
+              } else {
+                console.warn('🔐 SimpleAuthProvider: ⚠️ User data not loaded yet, retrying anyway');
+              }
+
               // Retry the original request with fresh JWT
               return await backendClient.authenticatedFetch(url, options);
             } else {

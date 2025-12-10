@@ -116,6 +116,11 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
                     });
                     // Update the auth context with the fetched user data
                     newAuth.updateUserData(userData);
+
+                    // Wait for React to process the state update
+                    // React setState is asynchronous, so we need to give it time to propagate
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    console.log('🔐 SimpleAuthProvider: ✅ Waited for React state update to propagate');
                   } else {
                     console.log(`🔐 SimpleAuthProvider: User data not ready yet (attempt ${attempts}/${maxAttempts}), status: ${identityResponse.status}`);
                     if (attempts < maxAttempts) {

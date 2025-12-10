@@ -554,6 +554,8 @@ export class ReownWalletConnectProvider {
   /**
    * Manually request SIWX authentication
    * Used as fallback when auto-authentication during connection doesn't complete
+   *
+   * This manually creates and signs a SIWE message, then sends it to the backend
    */
   async requestAuthentication(): Promise<boolean> {
     try {
@@ -569,44 +571,92 @@ export class ReownWalletConnectProvider {
         return false
       }
 
-      // Access the SIWX controller from AppKit and request authentication
-      // The AppKit instance should have the SIWX controller attached
+      const walletProvider = this.getProvider()
+      let address = this.appKit.getAddress()
+
+      if (!address) {
+        console.error('🔧 ReownWalletConnect: No address available')
+        return false
+      }
+
+      // For embedded wallets (social login), we need to use the EOA address for signing,
+      // not the smart account address. The smart account can't sign messages.
       const appKitAny = this.appKit as any
+      const accountState = appKitAny.getState?.() || appKitAny.state
 
-      // Try to access the SIWX controller methods
-      if (appKitAny.siweClient || appKitAny.siwxClient) {
-        console.log('🔧 ReownWalletConnect: SIWX client found, requesting sign-in...')
+      if (accountState?.embeddedWalletInfo?.user) {
+        console.log('🔧 ReownWalletConnect: Embedded wallet detected - using EOA for signing')
 
-        // Try to trigger SIWX sign-in
-        try {
-          // Open the AppKit modal which should trigger SIWX if required:true is set
-          await this.appKit.open({ view: 'Account' })
-          console.log('🔧 ReownWalletConnect: Opened account view to trigger SIWX')
+        // Try to get the EOA address from the embedded wallet info
+        const eoaAddress = accountState.embeddedWalletInfo.eoaAddress ||
+                          accountState.embeddedWalletInfo.user.address ||
+                          accountState.embeddedWalletInfo.walletAddress
 
-          // Wait a moment for the SIWX flow to potentially trigger
-          await new Promise(resolve => setTimeout(resolve, 1000))
-
-          // Close the modal
-          await this.appKit.close()
-
-          return true
-        } catch (error) {
-          console.error('🔧 ReownWalletConnect: Failed to trigger SIWX via modal:', error)
+        if (eoaAddress) {
+          console.log('🔧 ReownWalletConnect: Using EOA address for signature', {
+            smartAccount: address,
+            eoa: eoaAddress
+          })
+          address = eoaAddress
+        } else {
+          console.warn('🔧 ReownWalletConnect: Could not find EOA address, using smart account address')
         }
       }
 
-      // Fallback: Try to access and call SIWX methods directly
-      console.log('🔧 ReownWalletConnect: Attempting direct SIWX trigger...')
+      console.log('🔧 ReownWalletConnect: Creating SIWE message manually', { address })
 
-      // The AppKit might expose SIWX methods we can call
-      if (typeof appKitAny.requestAuthentication === 'function') {
-        await appKitAny.requestAuthentication()
-        console.log('🔧 ReownWalletConnect: ✅ SIWX authentication requested via requestAuthentication()')
-        return true
+      // Step 1: Get a nonce from the backend
+      const nonceResponse = await fetch('/api/auth/siwe/nonce')
+      if (!nonceResponse.ok) {
+        console.error('🔧 ReownWalletConnect: Failed to get nonce')
+        return false
+      }
+      const { nonce } = await nonceResponse.json()
+      console.log('🔧 ReownWalletConnect: Got nonce from backend')
+
+      // Step 2: Create SIWE message
+      const { SiweMessage } = await import('siwe')
+      const chainId = this.appKit.getCaipNetwork()?.id || this.chainId
+
+      const siweMessage = new SiweMessage({
+        domain: window.location.host,
+        address,
+        statement: 'Sign in with Ethereum to the app.',
+        uri: window.location.origin,
+        version: '1',
+        chainId,
+        nonce
+      })
+
+      const message = siweMessage.prepareMessage()
+      console.log('🔧 ReownWalletConnect: SIWE message created')
+
+      // Step 3: Sign the message
+      const hexMessage = '0x' + Buffer.from(message, 'utf8').toString('hex')
+      const signature = await walletProvider.request({
+        method: 'personal_sign',
+        params: [hexMessage, address]
+      }) as string
+
+      console.log('🔧 ReownWalletConnect: Message signed by wallet')
+
+      // Step 4: Send to backend for verification
+      const verifyResponse = await fetch('/api/auth/siwe/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message,
+          signature
+        })
+      })
+
+      if (!verifyResponse.ok) {
+        console.error('🔧 ReownWalletConnect: Backend verification failed')
+        return false
       }
 
-      console.warn('🔧 ReownWalletConnect: Could not find method to manually trigger SIWX')
-      return false
+      console.log('🔧 ReownWalletConnect: ✅ SIWX authentication successful!')
+      return true
 
     } catch (error) {
       console.error('🔧 ReownWalletConnect: Error requesting authentication:', error)

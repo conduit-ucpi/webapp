@@ -154,7 +154,7 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
 
         // Don't authenticate with backend immediately
         // The first API call that needs auth will trigger a 401, which will:
-        // 1. Request a SIWE signature
+        // 1. Request a SIWE signature (via requestAuthentication)
         // 2. Create a backend JWT
         // 3. Retry the original request
         // This provides better UX - users only sign when they actually need backend auth

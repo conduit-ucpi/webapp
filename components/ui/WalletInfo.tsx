@@ -24,7 +24,7 @@ export default function WalletInfo({
   tokenSymbol,
   tokenAddress
 }: WalletInfoProps) {
-  const { user } = useAuth();
+  const { user, address } = useAuth(); // Get address for lazy auth support
   const { config } = useConfig();
   const { getUSDCBalance } = useSimpleEthers();
   const [balance, setBalance] = useState<string>('0.0000');
@@ -46,8 +46,9 @@ export default function WalletInfo({
   });
 
   // Fetch token balance using ethers directly
+  // Use address instead of user?.walletAddress for lazy auth support
   useEffect(() => {
-    if (user?.walletAddress && effectiveTokenAddress && config?.rpcUrl) {
+    if (address && effectiveTokenAddress && config?.rpcUrl) {
       setIsLoadingBalance(true);
 
       const fetchBalance = async () => {
@@ -62,7 +63,7 @@ export default function WalletInfo({
 
           // Fetch balance and decimals
           const [balance, decimals] = await Promise.all([
-            tokenContract.balanceOf(user.walletAddress),
+            tokenContract.balanceOf(address),
             tokenContract.decimals()
           ]);
 
@@ -80,15 +81,15 @@ export default function WalletInfo({
 
       fetchBalance();
     }
-  }, [user?.walletAddress, effectiveTokenAddress, config?.rpcUrl, displayTokenSymbol]);
+  }, [address, effectiveTokenAddress, config?.rpcUrl, displayTokenSymbol]);
 
   const copyToClipboard = async () => {
-    if (!user?.walletAddress) return;
-    
+    if (!address) return;
+
     try {
       // Use fallback method first since clipboard API may be blocked in iframe
       const textArea = document.createElement('textarea');
-      textArea.value = user.walletAddress;
+      textArea.value = address;
       textArea.style.position = 'fixed';
       textArea.style.left = '-999999px';
       textArea.style.top = '-999999px';
@@ -96,32 +97,33 @@ export default function WalletInfo({
       textArea.focus();
       textArea.select();
       textArea.setSelectionRange(0, 99999); // For mobile devices
-      
+
       const successful = document.execCommand('copy');
       document.body.removeChild(textArea);
-      
+
       if (successful) {
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
         return;
       }
-      
+
       // If fallback fails, try modern clipboard API
       if (navigator.clipboard && window.isSecureContext) {
-        await navigator.clipboard.writeText(user.walletAddress);
+        await navigator.clipboard.writeText(address);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
         return;
       }
-      
+
       throw new Error('Both copy methods failed');
     } catch (error) {
       console.error('Failed to copy address:', error);
-      alert('Could not copy address. Please copy manually: ' + user.walletAddress);
+      alert('Could not copy address. Please copy manually: ' + address);
     }
   };
 
-  if (!user?.walletAddress || !config) {
+  // Show component when wallet is connected (address exists), not when backend user exists
+  if (!address || !config) {
     return null;
   }
 
@@ -130,7 +132,7 @@ export default function WalletInfo({
   return (
     <div className={`bg-secondary-50 rounded-lg p-4 border border-secondary-200 ${className}`}>
       <h3 className="text-sm font-medium text-secondary-900 mb-3">YOUR wallet information</h3>
-      
+
       <div className="space-y-3">
         {/* Wallet Address */}
         <div>
@@ -138,7 +140,7 @@ export default function WalletInfo({
             <span className="text-xs text-secondary-600">Wallet Address:</span>
             <div className="flex items-center space-x-2">
               <span className="text-xs font-mono text-secondary-900">
-                {formatWalletAddress(user.walletAddress)}
+                {formatWalletAddress(address)}
               </span>
               <Button
                 variant="outline"

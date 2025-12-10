@@ -22,8 +22,9 @@ interface FABAction {
 export default function FloatingActionButton() {
   const [isOpen, setIsOpen] = useState(false);
   const router = useRouter();
-  const { user } = useAuth();
-  const isAuthenticated = !!user;
+  const { user, isConnected } = useAuth();
+  // Show logged-in UI as soon as wallet is connected (don't wait for backend auth)
+  const isAuthenticated = !!user || !!isConnected;
 
   // Don't show FAB on contract-create page (plugin users)
   if (router.pathname === '/contract-create') {

@@ -60,13 +60,12 @@ export class WalletConnectProvider implements UnifiedProvider {
           address: this.currentAddress
         });
 
-        // SIWX Automatic + Manual Fallback Strategy:
-        // 1. Give SIWX a moment to complete automatically (it should with required:true)
-        // 2. Check if backend session was created
-        // 3. If not, manually trigger SIWE signing as fallback
-        if (this.currentAddress) {
-          await this.ensureBackendAuthentication(this.currentAddress);
-        }
+        // LAZY AUTH: Don't force authentication during connection
+        // SIWX might auto-authenticate (great if it works!)
+        // If not, BackendClient will handle 401 on first API call by:
+        // 1. Throwing AuthenticationExpiredError
+        // 2. SimpleAuthProvider catches it and calls requestAuthentication()
+        // 3. Request is automatically retried with fresh signature
 
         return {
           success: true,
@@ -224,7 +223,8 @@ export class WalletConnectProvider implements UnifiedProvider {
 
   /**
    * Manually request SIWX authentication
-   * Used as fallback when auto-authentication during connection doesn't complete
+   * Triggers a signature request from the connected wallet to establish backend session.
+   * Called by SimpleAuthProvider when a 401 is detected (lazy auth pattern).
    */
   async requestAuthentication(): Promise<boolean> {
     mLog.info('WalletConnectProvider', 'Requesting manual SIWX authentication');
@@ -313,151 +313,6 @@ export class WalletConnectProvider implements UnifiedProvider {
         error: error instanceof Error ? error.message : String(error)
       });
       return null;
-    }
-  }
-
-  /**
-   * Ensure backend SIWE session exists after wallet connection
-   *
-   * Strategy:
-   * 1. Wait for SIWX process to complete (verificationAttempted becomes true)
-   * 2. Once complete, check if backend session was established (verificationSucceeded)
-   * 3. If succeeded → done! If failed → trigger manual fallback
-   *
-   * The timeout is a safety net for user cancellation or SIWX failure, not because
-   * mobile users are slow - we wait for the state flags regardless of timing.
-   */
-  private async ensureBackendAuthentication(address: string): Promise<void> {
-    mLog.info('WalletConnectProvider', '🔐 Checking SIWX verification status...');
-
-    // Import the verification state tracker
-    const { SIWXVerificationState } = await import('../siwx-config');
-    const verificationState = SIWXVerificationState.getInstance();
-
-    // Step 1: Wait for SIWX process to complete (verificationAttempted becomes true)
-    // Timeout handles: user cancellation, SIWX silent failure, or unexpected errors
-    const maxWaitTime = 60000; // 60 seconds timeout for cancellation/failure detection
-    const pollInterval = 200; // Check every 200ms
-    const startTime = Date.now();
-
-    mLog.info('WalletConnectProvider', '⏳ Waiting for SIWX auto-verify to complete...');
-
-    while (!verificationState.verificationAttempted && (Date.now() - startTime) < maxWaitTime) {
-      await new Promise(resolve => setTimeout(resolve, pollInterval));
-    }
-
-    // Step 2: Check if SIWX process completed
-    if (verificationState.verificationAttempted) {
-      // SIWX process finished - check the result
-      if (verificationState.verificationSucceeded) {
-        // SUCCESS - backend session established
-        mLog.info('WalletConnectProvider', '✅ SIWX auto-verify succeeded!', {
-          address,
-          timeTaken: Date.now() - startTime
-        });
-        return; // Done!
-      } else {
-        // FAILED - SIWX tried but failed
-        mLog.warn('WalletConnectProvider', '⚠️ SIWX auto-verify failed', {
-          address
-        });
-        // Fall through to manual fallback
-      }
-    } else {
-      // TIMEOUT - user likely cancelled or SIWX didn't run
-      mLog.warn('WalletConnectProvider', `⚠️ SIWX auto-verify did not complete within ${maxWaitTime}ms`, {
-        address
-      });
-      // Fall through to manual fallback
-    }
-
-    // Step 3: Check if manual signing is already in progress
-    if (verificationState.manualSigningInProgress) {
-      mLog.warn('WalletConnectProvider', '⏳ Manual signing already in progress, waiting for it to complete...');
-
-      // Wait for the in-progress manual signing to complete (up to 60 seconds for mobile)
-      const manualSignTimeout = 60000;
-      const manualSignStart = Date.now();
-
-      while (verificationState.manualSigningInProgress && (Date.now() - manualSignStart) < manualSignTimeout) {
-        await new Promise(resolve => setTimeout(resolve, 500));
-      }
-
-      // Check if it succeeded
-      if (verificationState.verificationSucceeded) {
-        mLog.info('WalletConnectProvider', '✅ Manual signing completed successfully');
-        return;
-      } else {
-        mLog.error('WalletConnectProvider', '❌ Manual signing failed or timed out');
-        throw new Error('Manual signing failed');
-      }
-    }
-
-    // Step 4: SIWX auto-verify failed or didn't happen - trigger manual sign + verify
-    mLog.warn('WalletConnectProvider', '🔄 Triggering manual sign + verify fallback...');
-    verificationState.setManualSigningInProgress(true);
-
-    try {
-      // Fetch nonce from backend (GET request, same as SIWX messenger)
-      const nonceResponse = await fetch('/api/auth/siwe/nonce', {
-        credentials: 'include'
-      });
-
-      if (!nonceResponse.ok) {
-        throw new Error('Failed to fetch nonce');
-      }
-
-      const { nonce } = await nonceResponse.json();
-      mLog.info('WalletConnectProvider', '✅ Nonce fetched from backend', { nonceLength: nonce?.length });
-
-      // Create SIWE message
-      const domain = window.location.host;
-      const origin = window.location.origin;
-      const chainId = 8453; // Base mainnet
-      const issuedAt = new Date().toISOString();
-
-      const message = `${domain} wants you to sign in with your Ethereum account:
-${address}
-
-Sign in to Conduit UCPI
-
-URI: ${origin}
-Version: 1
-Chain ID: ${chainId}
-Nonce: ${nonce}
-Issued At: ${issuedAt}`;
-
-      mLog.info('WalletConnectProvider', '📝 SIWE message created', {
-        messageLength: message.length
-      });
-
-      // Sign the message
-      const signature = await this.signMessage(message);
-      mLog.info('WalletConnectProvider', '✅ Message signed', {
-        signatureLength: signature.length
-      });
-
-      // Verify with backend
-      const verifyResponse = await fetch('/api/auth/siwe/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ message, signature })
-      });
-
-      if (!verifyResponse.ok) {
-        verificationState.setManualSigningInProgress(false);
-        throw new Error(`Verification failed: ${verifyResponse.status}`);
-      }
-
-      mLog.info('WalletConnectProvider', '✅ Manual SIWE authentication successful!');
-      verificationState.setManualSigningInProgress(false);
-    } catch (error) {
-      mLog.error('WalletConnectProvider', '❌ Manual SIWE authentication failed', {
-        error: error instanceof Error ? error.message : String(error)
-      });
-      verificationState.setManualSigningInProgress(false);
-      // Don't throw - let the app handle missing auth via session checks
     }
   }
 }

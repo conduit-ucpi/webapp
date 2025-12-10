@@ -328,7 +328,9 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
       return txHash;
     }
   }), [
-    newAuth.user,
+    // NOTE: newAuth.user is intentionally EXCLUDED from dependencies
+    // The user property uses a getter that reads from latestUserDataRef,
+    // so we don't need to recreate the entire object when user changes
     newAuth.isLoading,
     newAuth.isConnected,
     newAuth.isAuthenticated,

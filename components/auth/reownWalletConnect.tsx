@@ -621,7 +621,8 @@ export class ReownWalletConnectProvider {
       const siweMessage = new SiweMessage({
         domain: window.location.host,
         address,
-        statement: 'Sign in with Ethereum to the app.',
+        // NOTE: statement field removed to keep message under 9-line parser limit
+        // Including statement + auto-generated issuedAt creates 10 lines, which exceeds parser max
         uri: window.location.origin,
         version: '1',
         chainId,

@@ -127,8 +127,8 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
                       if (newAuth.user?.walletAddress?.toLowerCase() === userData.walletAddress?.toLowerCase()) {
                         verified = true;
                         console.log(`🔐 SimpleAuthProvider: ✅ Verified state update propagated (${v * 100}ms)`, {
-                          hasEmail: !!newAuth.user.email,
-                          email: newAuth.user.email
+                          hasEmail: !!newAuth.user?.email,
+                          email: newAuth.user?.email
                         });
                         break;
                       }

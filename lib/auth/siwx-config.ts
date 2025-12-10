@@ -57,9 +57,12 @@ export class SIWXVerificationState {
  *
  * Also tracks verification state so fallback logic can check actual results
  * instead of just waiting arbitrary timeouts.
+ *
+ * DUPLICATE PREVENTION: Caches successful verifications to prevent replay errors
  */
 class CustomBackendVerifier extends SIWXVerifier {
   readonly chainNamespace = 'eip155' as const
+  private verifiedSignatures = new Map<string, boolean>() // Cache verified signatures
 
   /**
    * Verify the SIWE signature by calling our backend
@@ -87,6 +90,15 @@ class CustomBackendVerifier extends SIWXVerifier {
         return false
       }
 
+      // DUPLICATE PREVENTION: Check if we've already verified this exact signature
+      const signatureHash = `${signature.substring(0, 20)}...${signature.substring(signature.length - 20)}`
+      if (this.verifiedSignatures.has(signature)) {
+        console.log('🔐 SIWX: ✅ Signature already verified - returning cached result (preventing duplicate verification)')
+        console.log('🔐 SIWX: Signature hash:', signatureHash)
+        return true
+      }
+
+      console.log('🔐 SIWX: First verification attempt for this signature:', signatureHash)
       console.log('🔐 SIWX: Calling backend /api/auth/siwe/verify', {
         messageLength: message.length,
         signatureLength: signature.length
@@ -103,6 +115,8 @@ class CustomBackendVerifier extends SIWXVerifier {
 
       if (isValid) {
         console.log('🔐 SIWX: ✅ Backend verification successful - user authenticated')
+        console.log('🔐 SIWX: Caching signature to prevent duplicate verification')
+        this.verifiedSignatures.set(signature, true) // Cache successful verification
         state.markAttempted(true)
       } else {
         console.error('🔐 SIWX: ❌ Backend verification failed:', response.status)

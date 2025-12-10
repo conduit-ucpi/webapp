@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { useAuth } from '@/components/auth';
@@ -63,12 +63,12 @@ const steps: Step[] = [
 export default function CreateContractWizard() {
   const router = useRouter();
   const { config } = useConfig();
-  const { user, authenticatedFetch, authenticateBackend, refreshUserData, isConnected, address } = useAuth();
+  const { user, authenticatedFetch, refreshUserData, isConnected, address } = useAuth();
   const { showToast } = useToast();
 
   const [currentStep, setCurrentStep] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
-  const [isLoadingEmail, setIsLoadingEmail] = useState(false);
+  const [hasAttemptedUserFetch, setHasAttemptedUserFetch] = useState(false);
 
   const [form, setForm] = useState<CreateContractForm>({
     buyerEmail: '',
@@ -95,54 +95,39 @@ export default function CreateContractWizard() {
   }
   const hasMultipleTokens = availableTokens.length > 1;
 
-  // Ensure backend authentication completes when wallet connects
-  // This ensures user data (including email if it exists) is loaded before contract creation
+  // Fetch user data when wallet connects (lazy auth will trigger automatically if needed)
   useEffect(() => {
-    const ensureBackendAuth = async () => {
-      // Skip if no wallet is connected yet
+    const fetchUserData = async () => {
+      // Only fetch once per session
+      if (hasAttemptedUserFetch) {
+        return;
+      }
+
+      // Only fetch if wallet is connected
       if (!isConnected && !address) {
-        console.log('🔧 CreateContractWizard: No wallet connected, skipping backend auth');
         return;
       }
 
-      // Skip if we already have user data (backend auth completed)
+      // If we already have user data, no need to fetch
       if (user) {
-        console.log('🔧 CreateContractWizard: User data already loaded', { hasEmail: !!user.email });
         return;
       }
 
-      // Skip if we're already loading
-      if (isLoadingEmail) {
-        console.log('🔧 CreateContractWizard: Already loading user data');
-        return;
-      }
-
-      console.log('🔧 CreateContractWizard: Wallet connected but no user data - triggering backend auth');
-      setIsLoadingEmail(true);
+      console.log('🔧 CreateContractWizard: Fetching user data (lazy auth will trigger if needed)');
+      setHasAttemptedUserFetch(true);
 
       try {
-        // Ensure backend authentication is complete
-        if (authenticateBackend) {
-          console.log('🔧 CreateContractWizard: Triggering backend authentication');
-          await authenticateBackend();
-        }
-
-        // Refresh user data to get email (if it exists in backend)
-        if (refreshUserData) {
-          console.log('🔧 CreateContractWizard: Refreshing user data');
-          await refreshUserData();
-        }
-
-        console.log('🔧 CreateContractWizard: Backend auth completed');
+        // This will trigger lazy auth automatically if no session exists
+        await refreshUserData?.();
+        console.log('🔧 CreateContractWizard: User data loaded successfully');
       } catch (error) {
-        console.error('🔧 CreateContractWizard: Backend auth failed:', error);
-      } finally {
-        setIsLoadingEmail(false);
+        // If it fails, that's OK - we'll proceed without user data
+        console.log('🔧 CreateContractWizard: Could not load user data, proceeding without it');
       }
     };
 
-    ensureBackendAuth();
-  }, [isConnected, address, user, authenticateBackend, refreshUserData, isLoadingEmail]);
+    fetchUserData();
+  }, [isConnected, address, user, hasAttemptedUserFetch, refreshUserData]);
 
   // Utility functions (same as original)
   const getUserTimezone = () => {

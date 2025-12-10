@@ -44,7 +44,7 @@ export default function ContractCreate() {
 
   const router = useRouter();
   const { config } = useConfig();
-  const { user, authenticatedFetch, disconnect, isLoading: authLoading, isConnected, address, authenticateBackend, refreshUserData } = useAuth();
+  const { user, authenticatedFetch, disconnect, isLoading: authLoading, isConnected, address, refreshUserData } = useAuth();
   const { approveUSDC, depositToContract, depositFundsAsProxy, getWeb3Service } = useSimpleEthers();
   const { errors, validateForm, clearErrors } = useContractCreateValidation();
 
@@ -98,8 +98,8 @@ export default function ContractCreate() {
   });
   // errors now provided by useContractCreateValidation hook
   const [isLoading, setIsLoading] = useState(false);
-  const [isLoadingEmail, setIsLoadingEmail] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
+  const [hasAttemptedUserFetch, setHasAttemptedUserFetch] = useState(false);
   const [contractId, setContractId] = useState<string | null>(null);
   const [step, setStep] = useState<'create' | 'payment'>('create');
   const [tokenBalance, setTokenBalance] = useState<string>('0');
@@ -119,7 +119,6 @@ export default function ContractCreate() {
     address,
     hasUser: !!user,
     userEmail: user?.email,
-    isLoadingEmail,
     hasAuthenticatedFetch: !!authenticatedFetch,
     userWallet: user?.walletAddress,
     queryParams: { seller, amount, description, returnUrl, order_id, epoch_expiry },
@@ -129,9 +128,9 @@ export default function ContractCreate() {
   });
 
   console.log('🔧 ContractCreate: Auth state decision (with lazy auth support)', {
-    willShowLoading: !config || (authLoading && !isConnected && !address) || (isConnected && isLoadingEmail),
+    willShowLoading: !config || (authLoading && !isConnected && !address),
     willShowAuth: !isConnected && !address,
-    willShowForm: (isConnected || !!address) && !isLoadingEmail
+    willShowForm: isConnected || !!address
   });
 
   // Clear auth cache on mount to force fresh authentication
@@ -201,54 +200,39 @@ export default function ContractCreate() {
     setIsInPopup(window.opener !== null);
   }, []);
 
-  // Ensure backend authentication completes when wallet connects
-  // This ensures user data (including email if it exists) is loaded before contract creation
+  // Fetch user data when wallet connects (lazy auth will trigger automatically if needed)
   useEffect(() => {
-    const ensureBackendAuth = async () => {
-      // Skip if no wallet is connected yet
+    const fetchUserData = async () => {
+      // Only fetch once per session
+      if (hasAttemptedUserFetch) {
+        return;
+      }
+
+      // Only fetch if wallet is connected
       if (!isConnected && !address) {
-        console.log('🔧 ContractCreate: No wallet connected, skipping backend auth');
         return;
       }
 
-      // Skip if we already have user data (backend auth completed)
+      // If we already have user data, no need to fetch
       if (user) {
-        console.log('🔧 ContractCreate: User data already loaded', { hasEmail: !!user.email });
         return;
       }
 
-      // Skip if we're already loading
-      if (isLoadingEmail) {
-        console.log('🔧 ContractCreate: Already loading user data');
-        return;
-      }
-
-      console.log('🔧 ContractCreate: Wallet connected but no user data - triggering backend auth');
-      setIsLoadingEmail(true);
+      console.log('🔧 ContractCreate: Fetching user data (lazy auth will trigger if needed)');
+      setHasAttemptedUserFetch(true);
 
       try {
-        // Ensure backend authentication is complete
-        if (authenticateBackend) {
-          console.log('🔧 ContractCreate: Triggering backend authentication');
-          await authenticateBackend();
-        }
-
-        // Refresh user data to get email (if it exists in backend)
-        if (refreshUserData) {
-          console.log('🔧 ContractCreate: Refreshing user data');
-          await refreshUserData();
-        }
-
-        console.log('🔧 ContractCreate: Backend auth completed');
+        // This will trigger lazy auth automatically if no session exists
+        await refreshUserData?.();
+        console.log('🔧 ContractCreate: User data loaded successfully');
       } catch (error) {
-        console.error('🔧 ContractCreate: Backend auth failed:', error);
-      } finally {
-        setIsLoadingEmail(false);
+        // If it fails, that's OK - we'll proceed without user data
+        console.log('🔧 ContractCreate: Could not load user data, proceeding without it');
       }
     };
 
-    ensureBackendAuth();
-  }, [isConnected, address, user, authenticateBackend, refreshUserData, isLoadingEmail]);
+    fetchUserData();
+  }, [isConnected, address, user, hasAttemptedUserFetch, refreshUserData]);
 
   // Send postMessage to parent window
   const sendPostMessage = (event: PostMessageEvent) => {
@@ -725,10 +709,9 @@ export default function ContractCreate() {
     }
   };
 
-  // Loading screen for initialization - show if config is missing OR (auth is still initializing AND wallet not connected) OR loading email
+  // Loading screen for initialization - show if config is missing OR (auth is still initializing AND wallet not connected)
   // With lazy auth, we only show loading if wallet hasn't connected yet
-  // Also show loading if wallet is connected but we're still fetching the user's email
-  if (!config || (authLoading && !isConnected && !address) || (isConnected && isLoadingEmail)) {
+  if (!config || (authLoading && !isConnected && !address)) {
     return (
       <div className={`min-h-screen flex items-center justify-center ${isInIframe || isInPopup ? 'bg-gray-50' : 'bg-white'}`}>
         <Head children={
@@ -739,9 +722,7 @@ export default function ContractCreate() {
         } />
         <div className="text-center p-6">
           <LoadingSpinner size="lg" />
-          <p className="mt-4 text-gray-600">
-            {isLoadingEmail ? 'Loading account data...' : 'Initializing secure payment system...'}
-          </p>
+          <p className="mt-4 text-gray-600">Initializing secure payment system...</p>
         </div>
       </div>
     );

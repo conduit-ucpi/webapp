@@ -54,10 +54,23 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
   const backendClient = BackendClient.getInstance();
   const { config } = useConfig();
 
+  // Store latest user data in a ref so it's immediately available without waiting for re-renders
+  const latestUserDataRef = React.useRef<any>(null);
+
+  // Keep ref in sync with context
+  React.useEffect(() => {
+    if (newAuth.user) {
+      latestUserDataRef.current = newAuth.user;
+    }
+  }, [newAuth.user]);
+
   // Memoize the auth value to prevent unnecessary re-renders
   // Only recreate when the actual auth state changes, not on every render
   const authValue = React.useMemo(() => ({
-    user: newAuth.user,
+    // Use ref for immediate access to latest user data (bypasses closure issues)
+    get user() {
+      return latestUserDataRef.current || newAuth.user;
+    },
     isLoading: newAuth.isLoading,
     isConnected: newAuth.isConnected,
     isAuthenticated: newAuth.isAuthenticated,
@@ -116,15 +129,14 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
                     });
                     // Update the auth context with the fetched user data
                     newAuth.updateUserData(userData);
-                    console.log('🔐 SimpleAuthProvider: ✅ Auth context updated with user data', {
+
+                    // ALSO update the ref immediately so it's available without waiting for re-render
+                    latestUserDataRef.current = userData;
+
+                    console.log('🔐 SimpleAuthProvider: ✅ Updated auth context and ref', {
                       email: userData.email,
                       walletAddress: userData.walletAddress
                     });
-
-                    // Wait for React to process the state update and re-render
-                    // We can't verify within this closure due to stale references
-                    await new Promise(resolve => setTimeout(resolve, 300));
-                    console.log('🔐 SimpleAuthProvider: ✅ Waited for React state propagation (300ms)');
                   } else {
                     console.log(`🔐 SimpleAuthProvider: User data not ready yet (attempt ${attempts}/${maxAttempts}), status: ${identityResponse.status}`);
                     if (attempts < maxAttempts) {

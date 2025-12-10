@@ -106,14 +106,33 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
     hasVisitedBefore: () => false,
     refreshUserData: async () => {
       // Refresh user data from the backend
+      // Use authenticatedFetch to trigger authentication if no session exists
       try {
-        const result = await backendClient.checkAuthStatus();
-        if (result.success && result.user) {
-          // The user data will be automatically updated through the auth context
-          console.log('🔧 SimpleAuthProvider: User data refreshed');
+        console.log('🔧 SimpleAuthProvider: Refreshing user data (will trigger auth if needed)...');
+        const response = await backendClient.authenticatedFetch('/api/auth/identity', {
+          method: 'GET'
+        });
+
+        if (response.ok) {
+          const userData = await response.json();
+          console.log('🔧 SimpleAuthProvider: User data refreshed successfully', { email: userData.email, walletAddress: userData.walletAddress });
+
+          // Wait a moment for React state to update in the auth context
+          // The authenticatedFetch wrapper will have triggered requestAuthentication which calls setUser
+          await new Promise(resolve => setTimeout(resolve, 500));
+
+          // Verify user data is now in the auth context
+          if (newAuth.user) {
+            console.log('🔧 SimpleAuthProvider: User data confirmed in auth context', { email: newAuth.user.email });
+          } else {
+            console.warn('🔧 SimpleAuthProvider: User data not yet in auth context - state update may be delayed');
+          }
+        } else {
+          console.error('🔧 SimpleAuthProvider: Failed to refresh user data:', response.status);
         }
       } catch (error) {
         console.error('🔧 SimpleAuthProvider: Failed to refresh user data:', error);
+        throw error; // Re-throw so caller knows it failed
       }
     },
 

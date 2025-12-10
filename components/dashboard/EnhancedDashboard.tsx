@@ -335,14 +335,15 @@ export default function EnhancedDashboard() {
   useEffect(() => {
     console.log('🔧 Dashboard useEffect triggered');
     console.log('🔧 Dashboard auth state:', { hasAuthenticatedFetch: !!authenticatedFetch, hasFetched: hasFetched.current });
-    
-    // Only fetch if we have authentication available AND haven't fetched yet
-    if (user && !hasFetched.current) {
-      console.log('🔧 Calling fetchContracts because authenticatedFetch is available');
+
+    // Only fetch if we have authenticatedFetch available AND haven't fetched yet
+    // With lazy loading, user might be null but authenticatedFetch will trigger auth on first API call
+    if (authenticatedFetch && !hasFetched.current) {
+      console.log('🔧 Calling fetchContracts - will trigger lazy auth if needed');
       hasFetched.current = true;
       fetchContracts();
     } else {
-      console.log('🔧 Skipping fetchContracts - either no auth or already fetched');
+      console.log('🔧 Skipping fetchContracts - either no authenticatedFetch or already fetched');
     }
   }, [authenticatedFetch]); // Only depend on authenticatedFetch
 

@@ -9,7 +9,7 @@ import { useWalletAddress } from '@/hooks/useWalletAddress';
 import DashboardTour from '@/components/onboarding/DashboardTour';
 
 export default function Dashboard() {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, isConnected } = useAuth();
   const { walletAddress, isLoading: isWalletAddressLoading } = useWalletAddress();
 
   if (isLoading || isWalletAddressLoading) {
@@ -34,7 +34,7 @@ export default function Dashboard() {
     );
   }
 
-  if (!user) {
+  if (!isConnected) {
     return (
       <div className="max-w-md mx-auto text-center py-20">
         <h1 className="text-2xl font-bold text-secondary-900 mb-4">Connect Your Wallet</h1>
@@ -76,10 +76,14 @@ export default function Dashboard() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <ExpandableHash hash={walletAddress || ''} className="text-sm" />
-                  <span className="text-xs text-secondary-500 dark:text-secondary-400">•</span>
-                  <span className="text-xs text-secondary-600 dark:text-secondary-400">
-                    {user.username ? `@${user.username}` : user.email}
-                  </span>
+                  {user && (
+                    <>
+                      <span className="text-xs text-secondary-500 dark:text-secondary-400">•</span>
+                      <span className="text-xs text-secondary-600 dark:text-secondary-400">
+                        {user.username ? `@${user.username}` : user.email}
+                      </span>
+                    </>
+                  )}
                 </div>
               </div>
             </div>

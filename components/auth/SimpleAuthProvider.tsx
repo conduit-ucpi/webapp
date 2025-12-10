@@ -88,25 +88,46 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
             if (success) {
               console.log('🔐 SimpleAuthProvider: ✅ Fresh signature obtained');
 
-              // CRITICAL: Wait for user data to be loaded into context
-              // The requestAuthentication() function calls setUser() asynchronously
-              // We need to wait for that to complete before retrying the request
+              // CRITICAL: Wait for user data to be available from backend
+              // The requestAuthentication() creates a session, but we need to ensure
+              // the user data is fetchable before retrying the original request
               // This prevents buyerEmail being null in contract creation
-              console.log('🔐 SimpleAuthProvider: Waiting for user data to load...');
+              console.log('🔐 SimpleAuthProvider: Fetching user data from backend...');
 
+              let userData = null;
               let attempts = 0;
-              const maxAttempts = 10; // Wait up to 5 seconds
+              const maxAttempts = 5; // Try 5 times
 
-              while (!newAuth.user && attempts < maxAttempts) {
-                await new Promise(resolve => setTimeout(resolve, 500));
+              // Poll the identity endpoint to get user data
+              while (!userData && attempts < maxAttempts) {
                 attempts++;
-                console.log(`🔐 SimpleAuthProvider: Waiting for user data (attempt ${attempts}/${maxAttempts})...`);
+                try {
+                  const identityResponse = await fetch('/api/auth/identity', {
+                    credentials: 'include' // Include cookies
+                  });
+
+                  if (identityResponse.ok) {
+                    userData = await identityResponse.json();
+                    console.log(`🔐 SimpleAuthProvider: ✅ User data loaded (attempt ${attempts}/${maxAttempts})`, {
+                      email: userData.email,
+                      walletAddress: userData.walletAddress
+                    });
+                  } else {
+                    console.log(`🔐 SimpleAuthProvider: User data not ready yet (attempt ${attempts}/${maxAttempts}), status: ${identityResponse.status}`);
+                    if (attempts < maxAttempts) {
+                      await new Promise(resolve => setTimeout(resolve, 200)); // Wait 200ms between attempts
+                    }
+                  }
+                } catch (fetchError) {
+                  console.warn(`🔐 SimpleAuthProvider: Failed to fetch user data (attempt ${attempts}/${maxAttempts})`, fetchError);
+                  if (attempts < maxAttempts) {
+                    await new Promise(resolve => setTimeout(resolve, 200));
+                  }
+                }
               }
 
-              if (newAuth.user) {
-                console.log('🔐 SimpleAuthProvider: ✅ User data loaded successfully', { email: newAuth.user.email });
-              } else {
-                console.warn('🔐 SimpleAuthProvider: ⚠️ User data not loaded yet, retrying anyway');
+              if (!userData) {
+                console.warn('🔐 SimpleAuthProvider: ⚠️ Could not fetch user data after authentication, retrying original request anyway');
               }
 
               // Retry the original request with fresh JWT

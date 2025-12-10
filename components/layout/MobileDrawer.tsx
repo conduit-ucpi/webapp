@@ -45,7 +45,8 @@ export default function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
   const { user, disconnect, switchWallet, isConnected, state } = useAuth();
   const { config } = useConfig();
   const siteName = getSiteNameFromDomain();
-  const isAuthenticated = !!user || !!isConnected;
+  // Show logged-in UI based ONLY on wallet connection (ignore backend auth entirely)
+  const isAuthenticated = isConnected;
   const isAdmin = (user as any)?.isAdmin;
   const canSwitchWallet = state?.providerName === 'web3auth';
 

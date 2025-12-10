@@ -143,14 +143,17 @@ export function createAppKitSIWXConfig() {
   console.log('🔐 SIWX: Custom backend storage created - sessions will be stored in backend')
 
   // Use DefaultSIWX with ALL our custom components
+  // HYBRID APPROACH: Headless SIWX for embedded wallets + lazy auth for external wallets
   const siwxConfig = new DefaultSIWX({
-    messenger: customMessenger, // Custom messenger for backend nonces
+    messenger: customMessenger, // Custom messenger that detects wallet type
     verifiers: [customVerifier], // Custom verifier for backend verification
     storage: customStorage,      // Custom storage for backend sessions
-    required: false              // LAZY AUTH: Don't force signature on connect - wait for first API call
+    required: false              // Don't disconnect if auth fails (external wallets use lazy auth instead)
   })
 
-  console.log('🔐 SIWX: ✅ SIWX config created successfully with full backend integration')
+  console.log('🔐 SIWX: ✅ SIWX config created successfully with hybrid auth approach')
+  console.log('🔐 SIWX: - Embedded wallets: Headless auto-signature (no popup)')
+  console.log('🔐 SIWX: - External wallets: Skip SIWX, use lazy auth (signature on first API call)')
   return siwxConfig
 }
 

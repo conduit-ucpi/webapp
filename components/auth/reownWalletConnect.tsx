@@ -614,23 +614,29 @@ export class ReownWalletConnectProvider {
       const { nonce } = await nonceResponse.json()
       console.log('🔧 ReownWalletConnect: Got nonce from backend')
 
-      // Step 2: Create SIWE message
-      const { SiweMessage } = await import('siwe')
+      // Step 2: Create SIWE message manually (avoiding siwe library parser issues)
+      // Construct message string directly following EIP-4361 format
       const chainId = this.appKit.getCaipNetwork()?.id || this.config.chainId
+      const domain = window.location.host
+      const uri = window.location.origin
+      const issuedAt = new Date().toISOString()
 
-      const siweMessage = new SiweMessage({
-        domain: window.location.host,
+      // EIP-4361 SIWE message format (without optional statement field)
+      const message = `${domain} wants you to sign in with your Ethereum account:
+${address}
+
+URI: ${uri}
+Version: 1
+Chain ID: ${chainId}
+Nonce: ${nonce}
+Issued At: ${issuedAt}`
+
+      console.log('🔧 ReownWalletConnect: SIWE message created manually', {
+        domain,
         address,
-        // NOTE: statement field removed to keep message under 9-line parser limit
-        // Including statement + auto-generated issuedAt creates 10 lines, which exceeds parser max
-        uri: window.location.origin,
-        version: '1',
         chainId,
-        nonce
+        messageLength: message.length
       })
-
-      const message = siweMessage.prepareMessage()
-      console.log('🔧 ReownWalletConnect: SIWE message created')
 
       // Step 3: Sign the message
       const hexMessage = '0x' + Buffer.from(message, 'utf8').toString('hex')

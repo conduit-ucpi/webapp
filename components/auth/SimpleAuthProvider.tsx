@@ -117,20 +117,25 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
                     // Update the auth context with the fetched user data
                     newAuth.updateUserData(userData);
 
-                    // Verify the state update has propagated by checking if the email is available
+                    // Verify the state update has propagated by checking if user data is available
+                    // We verify the wallet address matches (not email, since email might be missing)
                     // Poll up to 10 times (1 second total) to confirm React processed the setState
                     let verified = false;
                     for (let v = 0; v < 10; v++) {
                       await new Promise(resolve => setTimeout(resolve, 100));
-                      if (newAuth.user?.email === userData.email) {
+                      // Check if state updated by comparing wallet address (always present)
+                      if (newAuth.user?.walletAddress?.toLowerCase() === userData.walletAddress?.toLowerCase()) {
                         verified = true;
-                        console.log(`🔐 SimpleAuthProvider: ✅ Verified state update propagated (${v * 100}ms)`);
+                        console.log(`🔐 SimpleAuthProvider: ✅ Verified state update propagated (${v * 100}ms)`, {
+                          hasEmail: !!newAuth.user.email,
+                          email: newAuth.user.email
+                        });
                         break;
                       }
                     }
 
                     if (!verified) {
-                      console.warn('🔐 SimpleAuthProvider: ⚠️ State update not verified, but proceeding anyway');
+                      console.warn('🔐 SimpleAuthProvider: ⚠️ State update not verified after 1 second, proceeding anyway');
                     }
                   } else {
                     console.log(`🔐 SimpleAuthProvider: User data not ready yet (attempt ${attempts}/${maxAttempts}), status: ${identityResponse.status}`);

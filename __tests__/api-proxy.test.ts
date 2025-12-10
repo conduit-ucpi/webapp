@@ -16,10 +16,15 @@ describe('/api/auth/identity', () => {
   });
 
   test('should proxy to correct backend endpoint', async () => {
-    const mockResponse = { 
-      ok: true, 
+    const mockResponseBody = { id: '123', userType: 'user' };
+    const mockResponse = {
+      ok: true,
       status: 200,
-      json: jest.fn().mockResolvedValue({ id: '123', userType: 'user' })
+      headers: {
+        get: jest.fn().mockReturnValue('application/json')
+      },
+      text: jest.fn().mockResolvedValue(JSON.stringify(mockResponseBody)),
+      json: jest.fn().mockResolvedValue(mockResponseBody)
     };
     (global.fetch as jest.Mock).mockResolvedValue(mockResponse);
 
@@ -48,10 +53,15 @@ describe('/api/auth/identity', () => {
 
   test('should forward cookies correctly', async () => {
     const testCookie = 'AUTH-TOKEN=abc123; session=xyz789';
-    const mockResponse = { 
-      ok: true, 
+    const mockResponseBody = { id: '123' };
+    const mockResponse = {
+      ok: true,
       status: 200,
-      json: jest.fn().mockResolvedValue({ id: '123' })
+      headers: {
+        get: jest.fn().mockReturnValue('application/json')
+      },
+      text: jest.fn().mockResolvedValue(JSON.stringify(mockResponseBody)),
+      json: jest.fn().mockResolvedValue(mockResponseBody)
     };
     (global.fetch as jest.Mock).mockResolvedValue(mockResponse);
 
@@ -76,10 +86,15 @@ describe('/api/auth/identity', () => {
   });
 
   test('should handle missing cookies', async () => {
-    const mockResponse = { 
-      ok: true, 
+    const mockResponseBody = { id: '123' };
+    const mockResponse = {
+      ok: true,
       status: 200,
-      json: jest.fn().mockResolvedValue({ id: '123' })
+      headers: {
+        get: jest.fn().mockReturnValue('application/json')
+      },
+      text: jest.fn().mockResolvedValue(JSON.stringify(mockResponseBody)),
+      json: jest.fn().mockResolvedValue(mockResponseBody)
     };
     (global.fetch as jest.Mock).mockResolvedValue(mockResponse);
 
@@ -121,6 +136,9 @@ describe('/api/auth/identity', () => {
     await handler(req as any, res as any);
 
     expect(res._getStatusCode()).toBe(500);
-    expect(JSON.parse(res._getData())).toEqual({ error: 'Internal server error' });
+    expect(JSON.parse(res._getData())).toEqual({
+      error: 'Internal server error',
+      details: 'Service unavailable'
+    });
   });
 });

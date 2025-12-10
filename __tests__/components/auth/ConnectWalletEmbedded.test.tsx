@@ -239,20 +239,20 @@ describe('ConnectWalletEmbedded - Excessive Re-render Bug', () => {
   });
 
   /**
-   * BUG: ConnectWalletEmbedded calls onSuccess() when wallet connects
-   * but backend SIWX authentication fails
+   * Test: Verify lazy authentication pattern
    *
-   * Reproduction from production logs:
+   * With lazy auth (new behavior):
    * 1. Wallet connects successfully (WalletConnect provider returns success)
-   * 2. SIWX session check fails 5 times (backend returns 401)
-   * 3. user is null (no backend authentication)
-   * 4. BUT: ConnectWalletEmbedded logs "✅ Connection + authentication successful"
-   *         and calls onSuccess() callback
+   * 2. onSuccess() is called IMMEDIATELY after wallet connection
+   * 3. Backend auth happens LATER on first API call (not during connection)
+   * 4. If backend returns 401 → BackendClient throws AuthenticationExpiredError
+   * 5. SimpleAuthProvider catches it → calls requestAuthentication() → retries request
    *
-   * Expected: onSuccess() should ONLY be called when user is authenticated (user !== null)
+   * Expected: onSuccess() should be called as soon as wallet connects,
+   *          regardless of backend authentication status (lazy auth pattern)
    */
-  it('should NOT call onSuccess() when wallet connects but backend authentication fails', async () => {
-    // GIVEN: A mock connect function that returns success but user remains null
+  it('should call onSuccess() immediately when wallet connects (lazy auth pattern)', async () => {
+    // GIVEN: A mock connect function that returns success
     const mockSuccessfulConnect = jest.fn().mockResolvedValue({
       success: true,
       address: '0xc9D0602A87E55116F633b1A1F95D083Eb115f942',
@@ -266,10 +266,11 @@ describe('ConnectWalletEmbedded - Excessive Re-render Bug', () => {
 
     const mockOnSuccess = jest.fn();
 
-    // Mock useAuth to return connected but NOT authenticated state
+    // Mock useAuth to return connected but NOT yet authenticated state
+    // (backend auth will happen later on first API call)
     const mockUseAuth = require('@/components/auth').useAuth;
     mockUseAuth.mockReturnValue({
-      user: null, // ❌ No user - backend auth failed
+      user: null, // ❌ No user YET - backend auth happens lazily
       isLoading: false,
       connect: mockSuccessfulConnect,
       authenticateBackend: mockAuthenticateBackend,
@@ -277,7 +278,7 @@ describe('ConnectWalletEmbedded - Excessive Re-render Bug', () => {
       address: '0xc9D0602A87E55116F633b1A1F95D083Eb115f942',
     });
 
-    // Mock fetch to simulate backend SIWX session check failing (401)
+    // Mock fetch - backend session check returns 401 (lazy auth - no session yet)
     global.fetch = jest.fn().mockResolvedValue({
       ok: false,
       status: 401,
@@ -300,15 +301,10 @@ describe('ConnectWalletEmbedded - Excessive Re-render Bug', () => {
       expect(mockSuccessfulConnect).toHaveBeenCalled();
     });
 
-    // Fast-forward through all pending timers (includes retry delays)
-    jest.runAllTimers();
-
-    // Allow time for all async operations and retry attempts to complete
+    // THEN: onSuccess() SHOULD be called immediately after wallet connection
+    // Backend authentication will happen automatically on first API call
     await waitFor(() => {
-      return new Promise(resolve => setTimeout(resolve, 100));
-    }, { timeout: 6000 }); // Longer timeout to allow for all retry attempts
-
-    // THEN: onSuccess() should NOT be called because backend auth failed
-    expect(mockOnSuccess).not.toHaveBeenCalled();
+      expect(mockOnSuccess).toHaveBeenCalled();
+    });
   });
 });

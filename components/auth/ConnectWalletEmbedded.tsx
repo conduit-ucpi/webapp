@@ -214,70 +214,17 @@ export default function ConnectWalletEmbedded({
           const connectionResult = await connect('walletconnect');
 
           if (connectionResult.success) {
-            mLog.info('ConnectWalletEmbedded', '✅ Wallet connected, waiting for backend authentication...');
+            // LAZY AUTH: Wallet connected successfully
+            // Backend authentication will happen automatically on first API call via:
+            // - 401 response → BackendClient throws AuthenticationExpiredError
+            // - SimpleAuthProvider catches it → calls requestAuthentication()
+            // - Request automatically retried with fresh signature
+            mLog.info('ConnectWalletEmbedded', '✅ Wallet connected (lazy auth - backend JWT will be created on first API call)', {
+              address: connectionResult.address
+            });
 
-            // SIWE handles authentication automatically during connection via verifyMessage callback
-            // Poll for backend SIWX session to verify authentication completed
-            const maxRetries = 10;
-            const retryDelay = 500; // ms
-            let authenticationSucceeded = false;
-
-            for (let attempt = 1; attempt <= maxRetries; attempt++) {
-              try {
-                // Check backend SIWX session directly
-                const sessionResponse = await fetch('/api/auth/siwe/session');
-
-                if (sessionResponse.ok) {
-                  const sessionData = await sessionResponse.json();
-
-                  if (sessionData.address) {
-                    mLog.info('ConnectWalletEmbedded', `✅ Backend authentication succeeded on attempt ${attempt}`, {
-                      address: sessionData.address
-                    });
-                    authenticationSucceeded = true;
-                    break;
-                  }
-                }
-              } catch (error) {
-                mLog.debug('ConnectWalletEmbedded', 'Session check error', {
-                  error: error instanceof Error ? error.message : String(error)
-                });
-              }
-
-              // If not authenticated yet and not last attempt, wait before retry
-              if (!authenticationSucceeded && attempt < maxRetries) {
-                mLog.debug('ConnectWalletEmbedded', `Backend authentication not complete yet, retrying (${attempt}/${maxRetries})...`);
-                await new Promise(resolve => setTimeout(resolve, retryDelay));
-              }
-            }
-
-            if (authenticationSucceeded) {
-              mLog.info('ConnectWalletEmbedded', '✅ Connection + authentication successful (SIWE one-click)');
-              onSuccess?.();
-            } else {
-              mLog.warn('ConnectWalletEmbedded', '⚠️ SIWX automatic authentication failed, triggering manual SIWX fallback', {
-                address: connectionResult.address,
-                retriesAttempted: maxRetries
-              });
-
-              // SIWX automatic authentication failed - trigger manual authentication as fallback
-              if (requestAuthentication) {
-                mLog.info('ConnectWalletEmbedded', '🔧 Calling requestAuthentication() to manually trigger SIWX...');
-
-                const manualAuthSuccess = await requestAuthentication();
-
-                if (manualAuthSuccess) {
-                  mLog.info('ConnectWalletEmbedded', '✅ Manual SIWX authentication successful!');
-                  onSuccess?.();
-                } else {
-                  mLog.error('ConnectWalletEmbedded', '❌ Manual SIWX authentication also failed - user may have denied signature');
-                  // Do NOT call onSuccess() - authentication completely failed
-                }
-              } else {
-                mLog.error('ConnectWalletEmbedded', '❌ No requestAuthentication method available - cannot trigger manual auth');
-                // Do NOT call onSuccess() - authentication failed
-              }
-            }
+            // Call onSuccess immediately - don't wait for backend auth
+            onSuccess?.();
           } else {
             mLog.error('ConnectWalletEmbedded', 'Wallet connection failed', { error: connectionResult.error });
           }

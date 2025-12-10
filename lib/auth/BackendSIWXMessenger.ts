@@ -12,34 +12,54 @@ import type { SIWXMessage } from '@reown/appkit-controllers'
  * Get nonce from our backend
  *
  * HYBRID APPROACH: Support both headless SIWX (embedded wallets) and lazy auth (external wallets)
- * - Embedded wallets (social login): Headless signing works, so proceed with SIWX
- * - External wallets (WalletConnect, MetaMask): Headless signing NOT supported, throw to skip SIWX
+ * - Embedded wallets (social login): Have smart account + EOA, support headless signing
+ * - External wallets (WalletConnect, MetaMask): Only EOA, require manual signature popup
+ *
+ * IMPORTANT: Embedded wallets use EOA for signatures (backend compatibility) but have
+ * smart account capabilities that enable headless signing without user prompts.
  */
 async function getBackendNonce(input: SIWXMessage.Input): Promise<string> {
-  console.log('🔐 BackendSIWXMessenger: getNonce called', {
+  console.log('🔐 BackendSIWXMessenger: getNonce called - full input inspection:', {
+    input,
     inputKeys: input ? Object.keys(input) : [],
-    accountType: (input as any).accountType,
-    address: (input as any).address,
-    chainNamespace: (input as any).chainNamespace
+    stringified: JSON.stringify(input, null, 2)
   })
 
-  // Detect wallet type from accountType
-  // - EOA (Externally Owned Account) = external wallets like MetaMask, Rainbow, etc.
-  // - Smart accounts = embedded wallets created via social login (Google, Twitter, etc.)
-  const accountType = (input as any).accountType
+  // Log all possible wallet detection properties
+  console.log('🔐 BackendSIWXMessenger: Wallet detection data:', {
+    accountType: (input as any).accountType,
+    address: (input as any).address,
+    chainNamespace: (input as any).chainNamespace,
+    connector: (input as any).connector,
+    walletId: (input as any).walletId,
+    type: (input as any).type,
+    isSmartAccount: (input as any).isSmartAccount,
+    hasSmartAccount: (input as any).hasSmartAccount
+  })
 
-  // Check if this is an EOA (external wallet) - these don't support headless signing
-  if (accountType === 'eoa') {
-    console.log('🔐 BackendSIWXMessenger: EOA detected (external wallet) - skipping SIWX for lazy auth')
-    console.log('🔐 BackendSIWXMessenger: User will be prompted to sign on first API call instead (better UX)')
-
-    // Throw error to abort SIWX flow for external wallets
-    // This is intentional - lazy auth will handle authentication on first API call
-    throw new Error('SIWX_SKIP_EOA: External wallet detected - using lazy auth instead')
+  // Check if we can access AppKit state from window to detect embedded wallets
+  try {
+    const appKitState = (window as any).appKitState || (window as any).__APPKIT_STATE__
+    if (appKitState) {
+      console.log('🔐 BackendSIWXMessenger: AppKit state found:', {
+        stateKeys: Object.keys(appKitState),
+        connectedWallet: appKitState.connectedWallet,
+        connectorType: appKitState.connectorType,
+        isEmail: appKitState.isEmail,
+        isSocial: appKitState.isSocial
+      })
+    }
+  } catch (e) {
+    console.log('🔐 BackendSIWXMessenger: Could not access AppKit state from window')
   }
 
-  // If we get here, it's an embedded wallet (smart account) - proceed with SIWX
-  console.log('🔐 BackendSIWXMessenger: Embedded wallet detected - proceeding with headless SIWX auth')
+  // TODO: Implement proper detection once we see what properties are available
+  // Need to detect: Embedded wallet (smart account + EOA with headless signing) vs External wallet (only EOA)
+  // For now, log everything and proceed with SIWX to see what happens with both wallet types
+  console.log('🔐 BackendSIWXMessenger: ⚠️ DETECTION NOT IMPLEMENTED YET - proceeding with SIWX to gather data')
+  console.log('🔐 BackendSIWXMessenger: This will help us understand the difference between:')
+  console.log('🔐 BackendSIWXMessenger:   - Embedded wallets (smart account + EOA, headless signing works)')
+  console.log('🔐 BackendSIWXMessenger:   - External wallets (only EOA, requires popup)')
   console.log('🔐 BackendSIWXMessenger: Fetching nonce from backend')
 
   const response = await fetch('/api/auth/siwe/nonce')

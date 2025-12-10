@@ -25,41 +25,76 @@ async function getBackendNonce(input: SIWXMessage.Input): Promise<string> {
     stringified: JSON.stringify(input, null, 2)
   })
 
-  // Log all possible wallet detection properties
-  console.log('🔐 BackendSIWXMessenger: Wallet detection data:', {
-    accountType: (input as any).accountType,
-    address: (input as any).address,
-    chainNamespace: (input as any).chainNamespace,
-    connector: (input as any).connector,
-    walletId: (input as any).walletId,
-    type: (input as any).type,
-    isSmartAccount: (input as any).isSmartAccount,
-    hasSmartAccount: (input as any).hasSmartAccount
-  })
+  // DETECTION STRATEGY: Check for embedded wallet indicators in global scope
+  // Since SIWX input doesn't have wallet type info, we check AppKit's iframe/window state
 
-  // Check if we can access AppKit state from window to detect embedded wallets
+  let isEmbeddedWallet = false
+  let detectionMethod = 'unknown'
+
   try {
-    const appKitState = (window as any).appKitState || (window as any).__APPKIT_STATE__
-    if (appKitState) {
-      console.log('🔐 BackendSIWXMessenger: AppKit state found:', {
-        stateKeys: Object.keys(appKitState),
-        connectedWallet: appKitState.connectedWallet,
-        connectorType: appKitState.connectorType,
-        isEmail: appKitState.isEmail,
-        isSocial: appKitState.isSocial
-      })
+    // Method 1: Check for embedded wallet iframe (social/email login creates iframe)
+    const embeddedIframe = document.querySelector('iframe[src*="secure.walletconnect"]')
+    if (embeddedIframe) {
+      isEmbeddedWallet = true
+      detectionMethod = 'iframe detected'
+      console.log('🔐 BackendSIWXMessenger: ✅ Embedded wallet detected via iframe')
     }
+
+    // Method 2: Check for embedded wallet session in localStorage/sessionStorage
+    if (!isEmbeddedWallet) {
+      const storageKeys = Object.keys(localStorage)
+      const hasEmbeddedSession = storageKeys.some(key =>
+        key.includes('wc@2:client') ||
+        key.includes('wc_embedded') ||
+        key.includes('wc@2:core') ||
+        key.includes('wc@2:universal_provider')
+      )
+
+      if (hasEmbeddedSession) {
+        // Check if it's actually an embedded wallet session (not just WalletConnect session)
+        const wcData = storageKeys
+          .filter(k => k.includes('wc@2'))
+          .map(k => {
+            try { return JSON.parse(localStorage.getItem(k) || '{}') } catch { return {} }
+          })
+
+        // Embedded wallets have specific metadata indicating social/email login
+        const hasEmbeddedMetadata = wcData.some((data: any) => {
+          const metadata = data?.metadata || data?.peerMetadata
+          return metadata?.name?.toLowerCase().includes('coinbase') || // Coinbase Wallet embedded
+                 metadata?.name?.toLowerCase().includes('wallet') && metadata?.url?.includes('secure.walletconnect')
+        })
+
+        if (hasEmbeddedMetadata) {
+          isEmbeddedWallet = true
+          detectionMethod = 'storage metadata'
+          console.log('🔐 BackendSIWXMessenger: ✅ Embedded wallet detected via storage metadata')
+        }
+      }
+    }
+
   } catch (e) {
-    console.log('🔐 BackendSIWXMessenger: Could not access AppKit state from window')
+    console.log('🔐 BackendSIWXMessenger: Detection error:', e)
   }
 
-  // TODO: Implement proper detection once we see what properties are available
-  // Need to detect: Embedded wallet (smart account + EOA with headless signing) vs External wallet (only EOA)
-  // For now, log everything and proceed with SIWX to see what happens with both wallet types
-  console.log('🔐 BackendSIWXMessenger: ⚠️ DETECTION NOT IMPLEMENTED YET - proceeding with SIWX to gather data')
-  console.log('🔐 BackendSIWXMessenger: This will help us understand the difference between:')
-  console.log('🔐 BackendSIWXMessenger:   - Embedded wallets (smart account + EOA, headless signing works)')
-  console.log('🔐 BackendSIWXMessenger:   - External wallets (only EOA, requires popup)')
+  console.log('🔐 BackendSIWXMessenger: Detection result:', {
+    isEmbeddedWallet,
+    detectionMethod,
+    willProceedWithSIWX: isEmbeddedWallet,
+    willSkipForLazyAuth: !isEmbeddedWallet
+  })
+
+  // HYBRID AUTH LOGIC:
+  if (!isEmbeddedWallet) {
+    // External wallet detected - skip SIWX, use lazy auth instead
+    console.log('🔐 BackendSIWXMessenger: 🚫 External wallet detected - SKIPPING SIWX')
+    console.log('🔐 BackendSIWXMessenger: User will sign on first API call (lazy auth - better UX)')
+
+    throw new Error('SIWX_SKIP_EXTERNAL: External wallet detected - using lazy auth instead')
+  }
+
+  // Embedded wallet detected - proceed with SIWX headless signing
+  console.log('🔐 BackendSIWXMessenger: ✅ Embedded wallet detected - proceeding with headless SIWX auth')
   console.log('🔐 BackendSIWXMessenger: Fetching nonce from backend')
 
   const response = await fetch('/api/auth/siwe/nonce')

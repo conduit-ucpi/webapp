@@ -2348,3 +2348,126 @@ Tests:       640 passed, 650 total
 **Status:** ✅ Fix implemented, tested (640 tests passing), and documented via TDD
 **Next:** Commit, tag, and deploy to test environment
 
+
+---
+
+## ✅ FIXED: /create Page Requires Wallet Connection Only (Not Backend Auth) (2025-12-11)
+
+### Problem
+After connecting a wallet via WalletConnect (or any provider), the `/create` page was showing "Connect Your Wallet" message instead of loading the CreateContractWizard, even though:
+- Wallet was successfully connected (`isConnected: true`)
+- Valid address was available (`address: '0xc9D0602A87E55116F633b1A1F95D083Eb115f942'`)
+- Backend SIWE session did not exist (`user: null`)
+
+**Console logs showed:**
+```
+[AuthProvider] ✅ Wallet connected successfully (lazy auth - backend JWT will be created on first API call)
+[AuthProvider] No existing SIWE session found on startup
+```
+
+The page was blocking access because it checked for `!user` (backend authentication), when it should only check for wallet connection.
+
+### Requirements Change
+**New requirement:** The `/create` page should load with wallet connection alone. Backend SIWE authentication is NOT required upfront - lazy auth will trigger when the first API call is made.
+
+This aligns with the lazy authentication pattern:
+- User connects wallet → page loads immediately
+- User fills out form → no backend auth needed yet  
+- User submits form → FIRST API call triggers SIWE authentication automatically
+
+### Root Cause
+**pages/create.tsx:32-42** was checking:
+```typescript
+if (!user) {  // ❌ Blocks access if no backend session
+  return (
+    <div>Connect Your Wallet</div>
+  );
+}
+```
+
+This required both:
+1. Wallet connection (`isConnected`)
+2. Backend SIWE session (`user` object from `/api/auth/siwe/session`)
+
+But requirements changed - backend auth is now **lazy** (triggered on first API call, not during wallet connection).
+
+### Solution
+**Check wallet connection state instead of backend user:**
+```typescript
+// OLD (blocked page load):
+const { user, isLoading } = useAuth();
+if (!user) {
+  return <div>Connect Your Wallet</div>;
+}
+
+// NEW (allows page load with wallet only):
+const { isLoading, isConnected, address } = useAuth();
+if (!isConnected || !address) {
+  return <div>Connect Your Wallet</div>;
+}
+```
+
+### Implementation Details
+**pages/create.tsx changes:**
+- Line 7: Changed `const { user, isLoading }` to `const { isLoading, isConnected, address }`
+- Line 34: Changed `if (!user)` to `if (!isConnected || !address)`
+- Added comment explaining lazy auth behavior
+
+### Architecture
+```
+┌─────────────────────────────────────────────────┐
+│         /create Page Access Control             │
+├─────────────────────────────────────────────────┤
+│                                                 │
+│  ❌ OLD: Required backend SIWE session          │
+│     - user !== null                             │
+│     - Blocked page if session missing           │
+│                                                 │
+│  ✅ NEW: Requires wallet connection only        │
+│     - isConnected === true                      │
+│     - address !== null                          │
+│     - Backend auth happens on first API call    │
+│                                                 │
+└─────────────────────────────────────────────────┘
+
+Flow:
+1. User connects wallet (WalletConnect/MetaMask/etc.)
+   → isConnected: true, address: '0x...', user: null
+   
+2. Page loads CreateContractWizard immediately
+   → No SIWE session needed
+   
+3. User fills form and clicks submit
+   → First API call triggers SIWE authentication
+   → Backend creates session automatically
+   → Request succeeds with new session
+```
+
+### Benefits
+- ✅ **Faster page load** - no waiting for backend auth
+- ✅ **Better UX** - users see form immediately after wallet connection
+- ✅ **Lazy authentication** - only sign when actually needed (on first API call)
+- ✅ **Works with all wallet types** - WalletConnect, MetaMask, Web3Auth, etc.
+- ✅ **Consistent with auth architecture** - follows lazy auth pattern
+
+### Tests Added
+- `__tests__/pages/create-wallet-only-access.test.tsx` - Comprehensive test suite
+  - ✅ Shows loading state when auth is loading
+  - ✅ Shows "Connect Your Wallet" when no wallet connected
+  - ✅ Shows CreateContractWizard when wallet connected (NO backend user required)
+  - ✅ Shows CreateContractWizard when wallet connected AND backend user exists
+  
+**Test result:** All 694 tests pass (no regressions)
+
+### Files Changed
+- `pages/create.tsx:7` - Use `isConnected` and `address` instead of `user`
+- `pages/create.tsx:32-44` - Check wallet connection, not backend auth
+- `__tests__/pages/create-wallet-only-access.test.tsx` - New test file
+
+### Related Context
+This fix aligns with the SIWX lazy authentication system documented in CLAUDE.md:
+- Connection happens immediately (wallet only)
+- Backend authentication is deferred until first API call
+- `fetchWithAuth` helper automatically triggers SIWE when 401 received
+- User only signs when they actually need backend access
+

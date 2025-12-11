@@ -4,7 +4,7 @@ import ConnectWalletEmbedded from '@/components/auth/ConnectWalletEmbedded';
 import Skeleton from '@/components/ui/Skeleton';
 
 export default function CreatePage() {
-  const { user, isLoading } = useAuth();
+  const { isLoading, isConnected, address } = useAuth();
 
   if (isLoading) {
     return (
@@ -29,7 +29,9 @@ export default function CreatePage() {
     );
   }
 
-  if (!user) {
+  // Check for wallet connection instead of backend user
+  // Backend auth (SIWE) is not required - lazy auth will trigger on first API call
+  if (!isConnected || !address) {
     return (
       <div className="max-w-md mx-auto text-center py-20">
         <h1 className="text-2xl font-bold text-secondary-900 mb-4">Connect Your Wallet</h1>

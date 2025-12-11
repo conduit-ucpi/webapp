@@ -1,6 +1,6 @@
 /**
- * Test suite for SimpleAuthProvider user data ref behavior
- * This test verifies that user data is immediately available via ref without waiting for re-renders
+ * Test suite for SimpleAuthProvider user data loading behavior
+ * This test verifies that user data loading is tracked with explicit isLoadingUserData state
  */
 
 import React from 'react';
@@ -55,12 +55,12 @@ jest.mock('@/components/auth/ConfigProvider', () => ({
   })
 }));
 
-describe('SimpleAuthProvider User Data Ref', () => {
+describe('SimpleAuthProvider User Data Loading', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('should provide user data immediately via getter without waiting for re-renders', async () => {
+  it('should provide user data with explicit loading state', async () => {
     let capturedAuthContext: any = null;
 
     function TestComponent() {
@@ -69,6 +69,7 @@ describe('SimpleAuthProvider User Data Ref', () => {
       return (
         <div data-testid="test-component">
           User: {auth.user?.email || 'none'}
+          Loading: {auth.isLoadingUserData ? 'yes' : 'no'}
         </div>
       );
     }
@@ -84,15 +85,11 @@ describe('SimpleAuthProvider User Data Ref', () => {
       expect(capturedAuthContext).toBeTruthy();
     });
 
-    // The user property should be a getter on the authValue object (not a plain value)
-    const descriptor = Object.getOwnPropertyDescriptor(capturedAuthContext, 'user');
+    // The auth context should have isLoadingUserData property
+    expect(capturedAuthContext).toHaveProperty('isLoadingUserData');
 
-    // Verify it's a getter function, not a plain value
-    expect(descriptor).toBeDefined();
-    expect(descriptor?.get).toBeDefined();
-
-    // Verify the getter is a function
-    expect(typeof descriptor?.get).toBe('function');
+    // isLoadingUserData should be a boolean
+    expect(typeof capturedAuthContext.isLoadingUserData).toBe('boolean');
   });
 
   it('should sync ref with user data via useEffect', async () => {

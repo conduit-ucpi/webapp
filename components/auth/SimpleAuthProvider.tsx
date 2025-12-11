@@ -12,6 +12,7 @@ import { toUSDCForWeb3 } from '@/utils/validation';
 const defaultAuthValue = {
   user: null,
   isLoading: true,
+  isLoadingUserData: false,
   isConnected: false,
   isAuthenticated: false,
   error: null,
@@ -54,25 +55,24 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
   const backendClient = BackendClient.getInstance();
   const { config } = useConfig();
 
-  // Store latest user data in a ref so it's immediately available without waiting for re-renders
-  const latestUserDataRef = React.useRef<any>(null);
+  // Explicit state for backend user data loading
+  const [isLoadingUserData, setIsLoadingUserData] = useState(false);
+  const [backendUserData, setBackendUserData] = useState<any>(null);
 
-  // Keep ref in sync with context
+  // Keep backend user data in sync with newAuth.user when it changes externally
   React.useEffect(() => {
-    if (newAuth.user) {
-      latestUserDataRef.current = newAuth.user;
+    if (newAuth.user && !backendUserData) {
+      setBackendUserData(newAuth.user);
     }
-  }, [newAuth.user]);
+  }, [newAuth.user, backendUserData]);
 
   // Memoize the auth value to prevent unnecessary re-renders
   // Only recreate when the actual auth state changes, not on every render
   const authValue = React.useMemo(() => ({
-    // Use ref for immediate access to latest user data (bypasses closure issues in callbacks)
-    // Components will still re-render when newAuth.user changes (it's in dependencies)
-    get user() {
-      return latestUserDataRef.current || newAuth.user;
-    },
+    // Simple user data from state - no getter complexity needed
+    user: backendUserData,
     isLoading: newAuth.isLoading,
+    isLoadingUserData, // Explicit loading state for backend user data
     isConnected: newAuth.isConnected,
     isAuthenticated: newAuth.isAuthenticated,
     error: newAuth.error,
@@ -109,47 +109,50 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
               // the user data is fetchable before retrying the original request
               // This prevents buyerEmail being null in contract creation
               console.log('🔐 SimpleAuthProvider: Fetching user data from backend...');
+              setIsLoadingUserData(true);
 
               let userData = null;
               let attempts = 0;
               const maxAttempts = 5; // Try 5 times
 
-              // Poll the identity endpoint to get user data
-              while (!userData && attempts < maxAttempts) {
-                attempts++;
-                try {
-                  const identityResponse = await fetch('/api/auth/identity', {
-                    credentials: 'include' // Include cookies
-                  });
-
-                  if (identityResponse.ok) {
-                    userData = await identityResponse.json();
-                    console.log(`🔐 SimpleAuthProvider: ✅ User data loaded (attempt ${attempts}/${maxAttempts})`, {
-                      email: userData.email,
-                      walletAddress: userData.walletAddress
+              try {
+                // Poll the identity endpoint to get user data
+                while (!userData && attempts < maxAttempts) {
+                  attempts++;
+                  try {
+                    const identityResponse = await fetch('/api/auth/identity', {
+                      credentials: 'include' // Include cookies
                     });
-                    // Update the auth context with the fetched user data
-                    newAuth.updateUserData(userData);
 
-                    // ALSO update the ref immediately so it's available without waiting for re-render
-                    latestUserDataRef.current = userData;
+                    if (identityResponse.ok) {
+                      userData = await identityResponse.json();
+                      console.log(`🔐 SimpleAuthProvider: ✅ User data loaded (attempt ${attempts}/${maxAttempts})`, {
+                        email: userData.email,
+                        walletAddress: userData.walletAddress
+                      });
+                      // Update both the underlying auth and our local state
+                      setBackendUserData(userData);
+                      newAuth.updateUserData(userData);
 
-                    console.log('🔐 SimpleAuthProvider: ✅ Updated auth context and ref', {
-                      email: userData.email,
-                      walletAddress: userData.walletAddress
-                    });
-                  } else {
-                    console.log(`🔐 SimpleAuthProvider: User data not ready yet (attempt ${attempts}/${maxAttempts}), status: ${identityResponse.status}`);
+                      console.log('🔐 SimpleAuthProvider: ✅ Updated backend user data state', {
+                        email: userData.email,
+                        walletAddress: userData.walletAddress
+                      });
+                    } else {
+                      console.log(`🔐 SimpleAuthProvider: User data not ready yet (attempt ${attempts}/${maxAttempts}), status: ${identityResponse.status}`);
+                      if (attempts < maxAttempts) {
+                        await new Promise(resolve => setTimeout(resolve, 200)); // Wait 200ms between attempts
+                      }
+                    }
+                  } catch (fetchError) {
+                    console.warn(`🔐 SimpleAuthProvider: Failed to fetch user data (attempt ${attempts}/${maxAttempts})`, fetchError);
                     if (attempts < maxAttempts) {
-                      await new Promise(resolve => setTimeout(resolve, 200)); // Wait 200ms between attempts
+                      await new Promise(resolve => setTimeout(resolve, 200));
                     }
                   }
-                } catch (fetchError) {
-                  console.warn(`🔐 SimpleAuthProvider: Failed to fetch user data (attempt ${attempts}/${maxAttempts})`, fetchError);
-                  if (attempts < maxAttempts) {
-                    await new Promise(resolve => setTimeout(resolve, 200));
-                  }
                 }
+              } finally {
+                setIsLoadingUserData(false);
               }
 
               if (!userData) {
@@ -176,6 +179,7 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
     refreshUserData: async () => {
       // Refresh user data from the backend
       // Use authenticatedFetch to trigger authentication if no session exists
+      setIsLoadingUserData(true);
       try {
         console.log('🔧 SimpleAuthProvider: Refreshing user data (will trigger auth if needed)...');
         const response = await backendClient.authenticatedFetch('/api/auth/identity', {
@@ -186,15 +190,18 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
           const userData = await response.json();
           console.log('🔧 SimpleAuthProvider: User data refreshed successfully', { email: userData.email, walletAddress: userData.walletAddress });
 
-          // Update the auth context with the fresh user data
+          // Update both the underlying auth and our local state
+          setBackendUserData(userData);
           newAuth.updateUserData(userData);
-          console.log('🔧 SimpleAuthProvider: ✅ Auth context updated with fresh user data');
+          console.log('🔧 SimpleAuthProvider: ✅ Backend user data state updated');
         } else {
           console.error('🔧 SimpleAuthProvider: Failed to refresh user data:', response.status);
         }
       } catch (error) {
         console.error('🔧 SimpleAuthProvider: Failed to refresh user data:', error);
         throw error; // Re-throw so caller knows it failed
+      } finally {
+        setIsLoadingUserData(false);
       }
     },
 
@@ -329,10 +336,9 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
       return txHash;
     }
   }), [
-    // NOTE: newAuth.user MUST be included so components re-render when user changes
-    // The ref + getter pattern provides immediate access in callbacks (no stale closures)
-    // But components still need to re-render to see the new value when destructuring
-    newAuth.user,
+    // Depend on backendUserData and isLoadingUserData for clean re-renders
+    backendUserData,
+    isLoadingUserData,
     newAuth.isLoading,
     newAuth.isConnected,
     newAuth.isAuthenticated,

@@ -44,7 +44,7 @@ export default function ContractCreate() {
 
   const router = useRouter();
   const { config } = useConfig();
-  const { user, authenticatedFetch, disconnect, isLoading: authLoading, isConnected, address, refreshUserData } = useAuth();
+  const { user, authenticatedFetch, disconnect, isLoading: authLoading, isLoadingUserData, isConnected, address, refreshUserData } = useAuth();
   const { approveUSDC, depositToContract, depositFundsAsProxy, getWeb3Service } = useSimpleEthers();
   const { errors, validateForm, clearErrors } = useContractCreateValidation();
 
@@ -911,13 +911,23 @@ export default function ContractCreate() {
                 </Button>
                 <Button
                   onClick={handleCreateContract}
-                  disabled={isLoading}
+                  disabled={isLoading || isLoadingUserData || !user?.email}
                   className="flex-1 bg-primary-500 hover:bg-primary-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                  title={
+                    isLoadingUserData ? 'Loading account data...' :
+                    !user?.email ? 'Account data not available' :
+                    ''
+                  }
                 >
                   {isLoading ? (
                     <>
                       <LoadingSpinner className="w-4 h-4 mr-2" />
                       {loadingMessage || 'Creating...'}
+                    </>
+                  ) : isLoadingUserData ? (
+                    <>
+                      <LoadingSpinner className="w-4 h-4 mr-2" />
+                      Loading account...
                     </>
                   ) : (
                     isInIframe || isInPopup ? 'Create Payment' : 'Pay'

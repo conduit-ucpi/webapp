@@ -118,8 +118,7 @@ export class ReownWalletConnectProvider {
           email: true, // Enable email login
           socials: ['google', 'x', 'discord', 'farcaster'] // Enable social login options
         },
-        allowUnsupportedChain: false, // Only allow the configured chain from env
-        enableNetworkView: false // Disable network switcher UI (only one chain supported)
+        allowUnsupportedChain: false // Only allow the configured chain from env
       })
 
       console.log('🔧 ReownWalletConnect: ✅ AppKit initialized successfully')

@@ -59,6 +59,12 @@ export class ReownWalletConnectProvider {
 
       console.log('🔧 ReownWalletConnect: Supporting networks:', networks.map(n => `${n.name} (${n.id})`))
 
+      mLog.info('ReownWalletConnect', 'Chain configuration from ENV', {
+        chainId,
+        networkName: networks[0].name,
+        networkId: networks[0].id
+      })
+
       // Create ethers adapter
       const ethersAdapter = new EthersAdapter()
 
@@ -87,9 +93,13 @@ export class ReownWalletConnectProvider {
 
       // Create AppKit instance
       console.log('🔧 ReownWalletConnect: Creating AppKit...')
+      console.log('🔧 ReownWalletConnect: Default chain ID:', chainId)
+      console.log('🔧 ReownWalletConnect: Default network:', networks[0].name)
+
       this.appKit = createAppKit({
         adapters: [ethersAdapter],
         networks: networks as [any, ...any[]], // Type assertion to fix tuple requirement
+        defaultNetwork: networks[0], // CRITICAL: Set default network from env variable
         projectId,
         siwx: siwxConfig, // Enable SIWX on desktop only (undefined on mobile = disabled)
         defaultAccountTypes: {

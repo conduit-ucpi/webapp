@@ -7,6 +7,7 @@
 
 import { InformalMessenger } from '@reown/appkit-siwx'
 import type { SIWXMessage } from '@reown/appkit-controllers'
+import { mLog } from '@/utils/mobileLogger'
 
 /**
  * Get nonce from our backend
@@ -22,32 +23,30 @@ import type { SIWXMessage } from '@reown/appkit-controllers'
  * so we skip SIWX entirely on mobile and use lazy auth for all wallet types.
  */
 async function getBackendNonce(input: SIWXMessage.Input): Promise<string> {
-  console.log('🔐 BackendSIWXMessenger: getNonce called - full input inspection:', {
+  mLog.info('BackendSIWXMessenger', '🔐 getNonce() called', {
     input,
-    inputKeys: input ? Object.keys(input) : [],
-    stringified: JSON.stringify(input, null, 2)
+    inputKeys: input ? Object.keys(input) : []
   })
 
   // MOBILE CHECK: Skip SIWX on mobile devices (headless signing doesn't work on mobile browsers)
   const isMobile = /mobile|android|iphone|ipod|ipad|tablet/i.test(navigator.userAgent)
-  console.log('🔐 BackendSIWXMessenger: ========================================')
-  console.log('🔐 BackendSIWXMessenger: MOBILE CHECK', {
+
+  mLog.info('BackendSIWXMessenger', '📱 MOBILE DETECTION CHECK', {
     userAgent: navigator.userAgent,
     isMobile,
     willSkipSIWX: isMobile
   })
-  console.log('🔐 BackendSIWXMessenger: ========================================')
 
   if (isMobile) {
-    console.log('🔐 BackendSIWXMessenger: ========================================')
-    console.log('🔐 BackendSIWXMessenger: 📱📱📱 MOBILE DEVICE DETECTED 📱📱📱')
-    console.log('🔐 BackendSIWXMessenger: ========================================')
-    console.log('🔐 BackendSIWXMessenger: SKIPPING SIWX - headless signing unreliable on mobile')
-    console.log('🔐 BackendSIWXMessenger: User will sign on first API call (lazy auth)')
-    console.log('🔐 BackendSIWXMessenger: Returning SKIP nonce')
-    console.log('🔐 BackendSIWXMessenger: ========================================')
+    mLog.info('BackendSIWXMessenger', '========================================')
+    mLog.info('BackendSIWXMessenger', '📱📱📱 MOBILE DEVICE DETECTED 📱📱📱')
+    mLog.info('BackendSIWXMessenger', 'SKIPPING SIWX on mobile - returning SKIP nonce')
+    mLog.info('BackendSIWXMessenger', 'User will authenticate on first API call (lazy auth)')
+    mLog.info('BackendSIWXMessenger', '========================================')
     return 'SKIP_SIWX_LAZY_AUTH'
   }
+
+  mLog.info('BackendSIWXMessenger', '💻 Desktop detected - proceeding with wallet detection')
 
   // DETECTION STRATEGY: Check for embedded wallet indicators in global scope
   // Since SIWX input doesn't have wallet type info, we check AppKit's iframe/window state
@@ -101,7 +100,7 @@ async function getBackendNonce(input: SIWXMessage.Input): Promise<string> {
     console.log('🔐 BackendSIWXMessenger: Detection error:', e)
   }
 
-  console.log('🔐 BackendSIWXMessenger: Detection result:', {
+  mLog.info('BackendSIWXMessenger', 'Detection result', {
     isEmbeddedWallet,
     detectionMethod,
     willProceedWithSIWX: isEmbeddedWallet,
@@ -111,9 +110,8 @@ async function getBackendNonce(input: SIWXMessage.Input): Promise<string> {
   // HYBRID AUTH LOGIC:
   if (!isEmbeddedWallet) {
     // External wallet detected - skip SIWX, use lazy auth instead
-    console.log('🔐 BackendSIWXMessenger: 🚫 External wallet detected - SKIPPING SIWX')
-    console.log('🔐 BackendSIWXMessenger: User will sign on first API call (lazy auth - better UX)')
-    console.log('🔐 BackendSIWXMessenger: Returning SKIP nonce to allow connection to proceed')
+    mLog.info('BackendSIWXMessenger', '🚫 External wallet detected - SKIPPING SIWX')
+    mLog.info('BackendSIWXMessenger', 'Returning SKIP nonce for lazy auth')
 
     // Return special nonce that the verifier will recognize and skip
     // This allows the wallet connection to proceed without SIWX authentication
@@ -122,8 +120,8 @@ async function getBackendNonce(input: SIWXMessage.Input): Promise<string> {
   }
 
   // Embedded wallet detected - proceed with SIWX headless signing
-  console.log('🔐 BackendSIWXMessenger: ✅ Embedded wallet detected - proceeding with headless SIWX auth')
-  console.log('🔐 BackendSIWXMessenger: Fetching nonce from backend')
+  mLog.info('BackendSIWXMessenger', '✅ Embedded wallet detected - proceeding with headless SIWX auth')
+  mLog.info('BackendSIWXMessenger', 'Fetching nonce from backend')
 
   const response = await fetch('/api/auth/siwe/nonce')
   if (!response.ok) {
@@ -131,7 +129,7 @@ async function getBackendNonce(input: SIWXMessage.Input): Promise<string> {
   }
 
   const { nonce } = await response.json()
-  console.log('🔐 BackendSIWXMessenger: Received nonce from backend', { nonce })
+  mLog.info('BackendSIWXMessenger', 'Received nonce from backend', { nonce })
 
   return nonce
 }

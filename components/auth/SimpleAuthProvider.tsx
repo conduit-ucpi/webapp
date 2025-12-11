@@ -178,13 +178,38 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
     hasVisitedBefore: () => false,
     refreshUserData: async () => {
       // Refresh user data from the backend
-      // Use authenticatedFetch to trigger authentication if no session exists
+      // If no session exists (401), trigger SIWX authentication first
       setIsLoadingUserData(true);
       try {
         console.log('🔧 SimpleAuthProvider: Refreshing user data (will trigger auth if needed)...');
-        const response = await backendClient.authenticatedFetch('/api/auth/identity', {
-          method: 'GET'
-        });
+
+        let response;
+        try {
+          response = await backendClient.authenticatedFetch('/api/auth/identity', {
+            method: 'GET'
+          });
+        } catch (error) {
+          // If we get 401, trigger SIWX authentication
+          if (error instanceof AuthenticationExpiredError) {
+            console.log('🔧 SimpleAuthProvider: No backend session - triggering SIWX authentication...');
+
+            // Request authentication (this will show SIWE popup or auto-sign)
+            const authSuccess = await newAuth.requestAuthentication();
+
+            if (!authSuccess) {
+              throw new Error('Failed to authenticate with backend');
+            }
+
+            console.log('🔧 SimpleAuthProvider: ✅ Authentication successful, retrying user data fetch...');
+
+            // Retry the fetch now that we have a session
+            response = await backendClient.authenticatedFetch('/api/auth/identity', {
+              method: 'GET'
+            });
+          } else {
+            throw error;
+          }
+        }
 
         if (response.ok) {
           const userData = await response.json();

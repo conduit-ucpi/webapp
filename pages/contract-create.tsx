@@ -923,11 +923,10 @@ export default function ContractCreate() {
                 </Button>
                 <Button
                   onClick={handleCreateContract}
-                  disabled={isLoading || isLoadingUserData || !user?.email}
+                  disabled={isLoading || !address}
                   className="flex-1 bg-primary-500 hover:bg-primary-600 disabled:opacity-50 disabled:cursor-not-allowed"
                   title={
-                    isLoadingUserData ? 'Loading account data...' :
-                    !user?.email ? 'Account data not available' :
+                    !address ? 'Please connect your wallet first' :
                     ''
                   }
                 >
@@ -935,11 +934,6 @@ export default function ContractCreate() {
                     <>
                       <LoadingSpinner className="w-4 h-4 mr-2" />
                       {loadingMessage || 'Creating...'}
-                    </>
-                  ) : isLoadingUserData ? (
-                    <>
-                      <LoadingSpinner className="w-4 h-4 mr-2" />
-                      Loading account...
                     </>
                   ) : (
                     isInIframe || isInPopup ? 'Create Payment' : 'Pay'

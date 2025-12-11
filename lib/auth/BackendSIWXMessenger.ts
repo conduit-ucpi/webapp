@@ -110,6 +110,8 @@ async function getBackendNonce(input: SIWXMessage.Input): Promise<string> {
   // HYBRID AUTH LOGIC:
   if (!isEmbeddedWallet) {
     // External wallet detected - skip SIWX, use lazy auth instead
+    // NOTE: This code path should never be reached now that SIWX is disabled universally
+    // But keeping it for backwards compatibility if SIWX is re-enabled in the future
     mLog.info('BackendSIWXMessenger', '🚫 External wallet detected - SKIPPING SIWX')
     mLog.info('BackendSIWXMessenger', 'Returning SKIP nonce for lazy auth')
 

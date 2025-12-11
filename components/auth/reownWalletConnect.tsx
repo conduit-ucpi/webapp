@@ -62,29 +62,28 @@ export class ReownWalletConnectProvider {
       // Create ethers adapter
       const ethersAdapter = new EthersAdapter()
 
-      // MOBILE FIX: Disable SIWX entirely on mobile devices
-      // SIWX headless signing doesn't work on mobile - even with SKIP nonce, AppKit prompts for signature
-      // Solution: Don't enable SIWX at all on mobile, use pure lazy auth instead
-      const isMobile = /mobile|android|iphone|ipod|ipad|tablet/i.test(navigator.userAgent)
+      // UNIVERSAL LAZY AUTH: Disable SIWX entirely for all devices
+      // Problem: SIWX prompts for signature even with SKIP nonce (both mobile and desktop external wallets)
+      // Solution: Disable SIWX universally, use lazy auth for all wallet types
+      //
+      // Benefits:
+      // - No signature prompts immediately after connection (better UX)
+      // - Consistent behavior across all devices and wallet types
+      // - Signature only requested when actually needed (first API call)
+      //
+      // Trade-off:
+      // - Embedded wallets on desktop lose headless signing during connection
+      // - They'll get signature prompt on first API call instead
+      // - But it's clearer to users what they're signing (actual data request, not just connection)
 
-      mLog.info('ReownWalletConnect', '🔧 SIWX Configuration', {
-        userAgent: navigator.userAgent,
-        isMobile,
-        willEnableSIWX: !isMobile
-      })
+      mLog.info('ReownWalletConnect', '========================================')
+      mLog.info('ReownWalletConnect', 'SIWX COMPLETELY DISABLED (universal lazy auth)')
+      mLog.info('ReownWalletConnect', 'All wallets use lazy auth pattern')
+      mLog.info('ReownWalletConnect', 'NO signature prompts after connection')
+      mLog.info('ReownWalletConnect', 'Signature only when needed (first API call)')
+      mLog.info('ReownWalletConnect', '========================================')
 
-      let siwxConfig = undefined
-      if (!isMobile) {
-        // Desktop only - create SIWX config for one-click authentication
-        mLog.info('ReownWalletConnect', '💻 Desktop detected - enabling SIWX one-click auth')
-        siwxConfig = createAppKitSIWXConfig()
-      } else {
-        mLog.info('ReownWalletConnect', '========================================')
-        mLog.info('ReownWalletConnect', '📱📱📱 MOBILE DETECTED 📱📱📱')
-        mLog.info('ReownWalletConnect', 'SIWX COMPLETELY DISABLED on mobile')
-        mLog.info('ReownWalletConnect', 'Pure lazy auth - NO signature prompt after connection')
-        mLog.info('ReownWalletConnect', '========================================')
-      }
+      const siwxConfig = undefined // Disable SIWX for everyone
 
       // Create AppKit instance
       console.log('🔧 ReownWalletConnect: Creating AppKit...')

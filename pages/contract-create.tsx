@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import { useConfig } from '@/components/auth/ConfigProvider';
@@ -68,23 +68,35 @@ export default function ContractCreate() {
   } = router.query;
 
   // Determine which token to use based on URL parameter or default
-  const selectedTokenSymbol = (queryTokenSymbol as string) || config?.defaultTokenSymbol || 'USDC';
-  const selectedToken = selectedTokenSymbol === 'USDT'
-    ? config?.usdtDetails
-    : config?.usdcDetails;
-  const selectedTokenAddress = selectedToken?.address || config?.usdcContractAddress || '';
+  // Memoized to prevent unnecessary re-renders and re-calculations
+  const selectedTokenSymbol = useMemo(
+    () => (queryTokenSymbol as string) || config?.defaultTokenSymbol || 'USDC',
+    [queryTokenSymbol, config?.defaultTokenSymbol]
+  );
 
-  // Debug logging for token selection
-  console.log('🔧 ContractCreate: Token selection details', {
-    queryTokenSymbol,
-    configDefaultTokenSymbol: config?.defaultTokenSymbol,
-    selectedTokenSymbol,
-    configUsdcDetails: config?.usdcDetails,
-    configUsdtDetails: config?.usdtDetails,
-    selectedToken,
-    selectedTokenAddress,
-    fallbackAddress: config?.usdcContractAddress
-  });
+  const selectedToken = useMemo(
+    () => selectedTokenSymbol === 'USDT' ? config?.usdtDetails : config?.usdcDetails,
+    [selectedTokenSymbol, config?.usdtDetails, config?.usdcDetails]
+  );
+
+  const selectedTokenAddress = useMemo(
+    () => selectedToken?.address || config?.usdcContractAddress || '',
+    [selectedToken?.address, config?.usdcContractAddress]
+  );
+
+  // Debug logging for token selection (only on token changes)
+  useEffect(() => {
+    console.log('🔧 ContractCreate: Token selection details', {
+      queryTokenSymbol,
+      configDefaultTokenSymbol: config?.defaultTokenSymbol,
+      selectedTokenSymbol,
+      configUsdcDetails: config?.usdcDetails,
+      configUsdtDetails: config?.usdtDetails,
+      selectedToken,
+      selectedTokenAddress,
+      fallbackAddress: config?.usdcContractAddress
+    });
+  }, [selectedTokenSymbol, selectedToken, selectedTokenAddress, queryTokenSymbol, config?.defaultTokenSymbol, config?.usdcDetails, config?.usdtDetails, config?.usdcContractAddress]);
   
   // Check if we're in an iframe or popup
   const [isInIframe, setIsInIframe] = useState(false);

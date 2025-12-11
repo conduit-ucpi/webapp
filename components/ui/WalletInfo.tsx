@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/components/auth';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { getNetworkName } from '@/utils/networkUtils';
@@ -32,18 +32,28 @@ export default function WalletInfo({
   const [copied, setCopied] = useState(false);
 
   // Use provided token symbol/address or fall back to config
-  const displayTokenSymbol = tokenSymbol || config?.tokenSymbol || 'USDC';
-  const effectiveTokenAddress = tokenAddress || config?.usdcContractAddress;
+  // Memoized to prevent unnecessary re-calculations
+  const displayTokenSymbol = useMemo(
+    () => tokenSymbol || config?.tokenSymbol || 'USDC',
+    [tokenSymbol, config?.tokenSymbol]
+  );
 
-  // Debug logging
-  console.log('🔧 WalletInfo: Token selection', {
-    propTokenSymbol: tokenSymbol,
-    propTokenAddress: tokenAddress,
-    displayTokenSymbol,
-    effectiveTokenAddress,
-    configUsdcDetails: config?.usdcDetails,
-    configUsdtDetails: config?.usdtDetails
-  });
+  const effectiveTokenAddress = useMemo(
+    () => tokenAddress || config?.usdcContractAddress,
+    [tokenAddress, config?.usdcContractAddress]
+  );
+
+  // Debug logging (only when token selection actually changes)
+  useEffect(() => {
+    console.log('🔧 WalletInfo: Token selection', {
+      propTokenSymbol: tokenSymbol,
+      propTokenAddress: tokenAddress,
+      displayTokenSymbol,
+      effectiveTokenAddress,
+      configUsdcDetails: config?.usdcDetails,
+      configUsdtDetails: config?.usdtDetails
+    });
+  }, [tokenSymbol, tokenAddress, displayTokenSymbol, effectiveTokenAddress, config?.usdcDetails, config?.usdtDetails]);
 
   // Fetch token balance using ethers directly
   // Use address instead of user?.walletAddress for lazy auth support

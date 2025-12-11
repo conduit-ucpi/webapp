@@ -67,7 +67,8 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
   // Memoize the auth value to prevent unnecessary re-renders
   // Only recreate when the actual auth state changes, not on every render
   const authValue = React.useMemo(() => ({
-    // Use ref for immediate access to latest user data (bypasses closure issues)
+    // Use ref for immediate access to latest user data (bypasses closure issues in callbacks)
+    // Components will still re-render when newAuth.user changes (it's in dependencies)
     get user() {
       return latestUserDataRef.current || newAuth.user;
     },
@@ -328,9 +329,10 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
       return txHash;
     }
   }), [
-    // NOTE: newAuth.user is intentionally EXCLUDED from dependencies
-    // The user property uses a getter that reads from latestUserDataRef,
-    // so we don't need to recreate the entire object when user changes
+    // NOTE: newAuth.user MUST be included so components re-render when user changes
+    // The ref + getter pattern provides immediate access in callbacks (no stale closures)
+    // But components still need to re-render to see the new value when destructuring
+    newAuth.user,
     newAuth.isLoading,
     newAuth.isConnected,
     newAuth.isAuthenticated,

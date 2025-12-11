@@ -21,6 +21,8 @@ const customJestConfig = {
     '^@tanstack/react-query$': '<rootDir>/__mocks__/tanstack-react-query.js',
     // Mock Reown AppKit controllers for Jest
     '^@reown/appkit-controllers$': '<rootDir>/__mocks__/reown-appkit-controllers.js',
+    // Mock Reown AppKit SIWX for Jest
+    '^@reown/appkit-siwx$': '<rootDir>/__mocks__/reown-appkit-siwx.js',
   },
   // Increase timeout for Web3Auth crypto operations
   testTimeout: 30000,

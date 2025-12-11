@@ -89,8 +89,12 @@ async function getBackendNonce(input: SIWXMessage.Input): Promise<string> {
     // External wallet detected - skip SIWX, use lazy auth instead
     console.log('🔐 BackendSIWXMessenger: 🚫 External wallet detected - SKIPPING SIWX')
     console.log('🔐 BackendSIWXMessenger: User will sign on first API call (lazy auth - better UX)')
+    console.log('🔐 BackendSIWXMessenger: Returning SKIP nonce to allow connection to proceed')
 
-    throw new Error('SIWX_SKIP_EXTERNAL: External wallet detected - using lazy auth instead')
+    // Return special nonce that the verifier will recognize and skip
+    // This allows the wallet connection to proceed without SIWX authentication
+    // The user will authenticate later when they make their first API call (lazy auth)
+    return 'SKIP_SIWX_LAZY_AUTH'
   }
 
   // Embedded wallet detected - proceed with SIWX headless signing

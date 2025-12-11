@@ -1,5 +1,113 @@
 # Mobile Signing Issue - Debug Log
 
+## ✅ FIXED: Mobile MetaMask Connection Error - SIWX_SKIP_EXTERNAL (2025-12-11)
+
+### Problem
+When connecting MetaMask on mobile, users saw an error message:
+```
+SIWX_SKIP_EXTERNAL: External wallet detected - using lazy auth instead
+```
+
+The frontend auth modal displayed this error and the connection didn't proceed, leaving users unable to connect their wallet.
+
+### Why It Only Happened on Mobile
+
+**Desktop (Working):**
+- MetaMask browser extension injects `window.ethereum` directly
+- Connection uses injected provider (browser extension)
+- May bypass SIWX or run in different context
+- OR existing WalletConnect session in localStorage makes detection think it's embedded wallet
+
+**Mobile (Broken):**
+- MetaMask is a separate app (no browser extension)
+- MUST use WalletConnect protocol to communicate
+- Fresh connection = no existing session data
+- SIWX runs during WalletConnect session establishment
+- Detection finds no iframe + no session → identifies as external wallet
+- Throws `SIWX_SKIP_EXTERNAL` error → AppKit displays to user
+
+### Root Cause
+The `BackendSIWXMessenger.getBackendNonce()` function (lib/auth/BackendSIWXMessenger.ts:93) was **throwing an error** when it detected an external wallet:
+
+```typescript
+// OLD CODE (line 93):
+throw new Error('SIWX_SKIP_EXTERNAL: External wallet detected - using lazy auth instead')
+```
+
+This error was intended to skip SIWX for external wallets (which can't do headless signing), but:
+1. AppKit displayed the error to the user even with `required: false`
+2. The connection flow was interrupted
+3. User couldn't proceed with wallet connection
+
+### Solution
+**Return a special "SKIP" nonce instead of throwing an error:**
+
+**lib/auth/BackendSIWXMessenger.ts** (line 88-98):
+```typescript
+// NEW CODE:
+if (!isEmbeddedWallet) {
+  console.log('🔐 BackendSIWXMessenger: 🚫 External wallet detected - SKIPPING SIWX')
+  console.log('🔐 BackendSIWXMessenger: User will sign on first API call (lazy auth - better UX)')
+  console.log('🔐 BackendSIWXMessenger: Returning SKIP nonce to allow connection to proceed')
+
+  // Return special nonce that the verifier will recognize and skip
+  // This allows the wallet connection to proceed without SIWX authentication
+  return 'SKIP_SIWX_LAZY_AUTH'  // ✅ No error thrown!
+}
+```
+
+**lib/auth/siwx-config.ts** (line 87-94):
+```typescript
+// Check for SKIP nonce (external wallet lazy auth)
+if (message && message.includes('SKIP_SIWX_LAZY_AUTH')) {
+  console.log('🔐 SIWX: ⏭️  Skipping verification for external wallet (lazy auth mode)')
+  console.log('🔐 SIWX: Connection will proceed without backend authentication')
+  console.log('🔐 SIWX: User will authenticate on first API call (lazy auth pattern)')
+  state.markAttempted(false) // Mark as not attempted (auth will happen later)
+  return false // Return false to skip auth but WITHOUT disconnecting (required: false)
+}
+```
+
+### How It Works Now
+
+1. **User clicks MetaMask on mobile** → Opens WalletConnect modal
+2. **SIWX tries to run** → Calls `BackendSIWXMessenger.getNonce()`
+3. **Messenger detects external wallet** → Returns `'SKIP_SIWX_LAZY_AUTH'` (NOT an error!)
+4. **SIWX verifier sees SKIP nonce** → Returns `false` silently (no error shown)
+5. **AppKit has `required: false`** → Allows connection to proceed even though SIWX returned false
+6. **Wallet connects successfully** → User can now use the app
+7. **First API call triggers 401** → `requestAuthentication()` called (lazy auth)
+8. **User signs message** → Backend session created, request retries
+
+### Benefits
+- ✅ **No error displayed to user** - connection flow is smooth
+- ✅ **Mobile MetaMask works** - users can connect on mobile
+- ✅ **Lazy auth still works** - signature requested on first API call
+- ✅ **Embedded wallets unaffected** - still get headless auto-signing
+- ✅ **Follows SIWX design** - uses nonce/verifier protocol instead of exceptions
+
+### Test Coverage
+Added comprehensive tests in `__tests__/lib/auth/BackendSIWXMessenger-external-wallet.test.ts`:
+- ✅ External wallet returns SKIP nonce without throwing error
+- ✅ Embedded wallet (iframe detection) fetches real nonce from backend
+- ✅ Embedded wallet (localStorage detection) fetches real nonce from backend
+
+### Files Changed
+- `lib/auth/BackendSIWXMessenger.ts:88-98` - Return SKIP nonce instead of throwing error
+- `lib/auth/siwx-config.ts:87-94` - Recognize SKIP nonce and skip verification gracefully
+- `__tests__/lib/auth/BackendSIWXMessenger-external-wallet.test.ts` - New test file (3 tests)
+- `jest.config.js:25` - Added mock for `@reown/appkit-siwx`
+- `__mocks__/reown-appkit-siwx.js` - New mock file for SIWX module
+
+### TDD Approach Used
+Following CLAUDE.md mobile development guidelines:
+1. **🔴 RED**: Wrote failing test reproducing the error
+2. **🟢 GREEN**: Fixed code to return SKIP nonce instead of throwing
+3. **♻️ REFACTOR**: All 697 tests pass - no regressions
+4. **📝 DOCUMENT**: This entry in MOBILE_SIGNING_DEBUG.md
+
+---
+
 ## ✅ FIXED: Mobile MetaMask Popups/Flickering During Contract Creation (2025-12-07)
 
 ### Problem

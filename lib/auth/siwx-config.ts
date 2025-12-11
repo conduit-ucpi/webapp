@@ -84,6 +84,15 @@ class CustomBackendVerifier extends SIWXVerifier {
       const message = session.message
       const signature = session.signature
 
+      // Check for SKIP nonce (external wallet lazy auth)
+      if (message && message.includes('SKIP_SIWX_LAZY_AUTH')) {
+        console.log('🔐 SIWX: ⏭️  Skipping verification for external wallet (lazy auth mode)')
+        console.log('🔐 SIWX: Connection will proceed without backend authentication')
+        console.log('🔐 SIWX: User will authenticate on first API call (lazy auth pattern)')
+        state.markAttempted(false) // Mark as not attempted (auth will happen later)
+        return false // Return false to skip auth but WITHOUT disconnecting (required: false)
+      }
+
       if (!message || !signature) {
         console.error('🔐 SIWX: Missing message or signature')
         state.markAttempted(false)

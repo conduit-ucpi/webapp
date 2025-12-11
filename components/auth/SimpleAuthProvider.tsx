@@ -66,6 +66,96 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
     }
   }, [newAuth.user, backendUserData]);
 
+  // Helper: Fetch with auto-authentication on 401
+  // This is used by both authenticatedFetch and refreshUserData
+  const fetchWithAuth = React.useCallback(async (url: string, options?: RequestInit): Promise<Response> => {
+    try {
+      return await backendClient.authenticatedFetch(url, options);
+    } catch (error) {
+      // If JWT expired, request fresh signature from connected wallet
+      if (error instanceof AuthenticationExpiredError) {
+        console.log('🔐 SimpleAuthProvider: JWT expired - requesting fresh signature (wallet still connected)');
+
+        try {
+          // Trigger SIWX to request a new signature (wallet stays connected)
+          const success = await newAuth.requestAuthentication();
+
+          if (success) {
+            console.log('🔐 SimpleAuthProvider: ✅ Fresh signature obtained');
+
+            // CRITICAL: Wait for user data to be available from backend
+            // The requestAuthentication() creates a session, but we need to ensure
+            // the user data is fetchable before retrying the original request
+            // This prevents buyerEmail being null in contract creation
+            console.log('🔐 SimpleAuthProvider: Fetching user data from backend...');
+            setIsLoadingUserData(true);
+
+            let userData = null;
+            let attempts = 0;
+            const maxAttempts = 5; // Try 5 times
+
+            try {
+              // Poll the identity endpoint to get user data
+              while (!userData && attempts < maxAttempts) {
+                attempts++;
+                try {
+                  const identityResponse = await fetch('/api/auth/identity', {
+                    credentials: 'include' // Include cookies
+                  });
+
+                  if (identityResponse.ok) {
+                    userData = await identityResponse.json();
+                    console.log(`🔐 SimpleAuthProvider: ✅ User data loaded (attempt ${attempts}/${maxAttempts})`, {
+                      email: userData.email,
+                      walletAddress: userData.walletAddress
+                    });
+                    // Update both the underlying auth and our local state
+                    setBackendUserData(userData);
+                    newAuth.updateUserData(userData);
+
+                    console.log('🔐 SimpleAuthProvider: ✅ Updated backend user data state', {
+                      email: userData.email,
+                      walletAddress: userData.walletAddress
+                    });
+                  } else {
+                    console.log(`🔐 SimpleAuthProvider: User data not ready yet (attempt ${attempts}/${maxAttempts}), status: ${identityResponse.status}`);
+                    if (attempts < maxAttempts) {
+                      await new Promise(resolve => setTimeout(resolve, 200)); // Wait 200ms between attempts
+                    }
+                  }
+                } catch (fetchError) {
+                  console.warn(`🔐 SimpleAuthProvider: Failed to fetch user data (attempt ${attempts}/${maxAttempts})`, fetchError);
+                  if (attempts < maxAttempts) {
+                    await new Promise(resolve => setTimeout(resolve, 200));
+                  }
+                }
+              }
+            } finally {
+              setIsLoadingUserData(false);
+            }
+
+            if (!userData) {
+              console.warn('🔐 SimpleAuthProvider: ⚠️ Could not fetch user data after authentication, retrying original request anyway');
+            }
+
+            // Retry the original request now that we have a fresh token
+            console.log('🔐 SimpleAuthProvider: Retrying original request with fresh token...');
+            return await backendClient.authenticatedFetch(url, options);
+          } else {
+            console.error('🔐 SimpleAuthProvider: Failed to obtain fresh signature');
+            throw new Error('Authentication failed - could not obtain fresh signature');
+          }
+        } catch (authError) {
+          console.error('🔐 SimpleAuthProvider: Authentication error:', authError);
+          throw authError;
+        }
+      }
+
+      // Re-throw other errors
+      throw error;
+    }
+  }, [backendClient, newAuth]);
+
   // Memoize the auth value to prevent unnecessary re-renders
   // Only recreate when the actual auth state changes, not on every render
   const authValue = React.useMemo(() => ({
@@ -87,146 +177,30 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
     showWalletUI: newAuth.showWalletUI || undefined,
     getProviderUserInfo: newAuth.getProviderUserInfo,
     updateUserData: newAuth.updateUserData,
-    authenticatedFetch: async (url: string, options?: RequestInit): Promise<Response> => {
-      // Use proper backend client with authentication headers
-      // Handles 401 by triggering re-authentication automatically
-      try {
-        return await backendClient.authenticatedFetch(url, options);
-      } catch (error) {
-        // If JWT expired, request fresh signature from connected wallet
-        if (error instanceof AuthenticationExpiredError) {
-          console.log('🔐 SimpleAuthProvider: JWT expired - requesting fresh signature (wallet still connected)');
-
-          try {
-            // Trigger SIWX to request a new signature (wallet stays connected)
-            const success = await newAuth.requestAuthentication();
-
-            if (success) {
-              console.log('🔐 SimpleAuthProvider: ✅ Fresh signature obtained');
-
-              // CRITICAL: Wait for user data to be available from backend
-              // The requestAuthentication() creates a session, but we need to ensure
-              // the user data is fetchable before retrying the original request
-              // This prevents buyerEmail being null in contract creation
-              console.log('🔐 SimpleAuthProvider: Fetching user data from backend...');
-              setIsLoadingUserData(true);
-
-              let userData = null;
-              let attempts = 0;
-              const maxAttempts = 5; // Try 5 times
-
-              try {
-                // Poll the identity endpoint to get user data
-                while (!userData && attempts < maxAttempts) {
-                  attempts++;
-                  try {
-                    const identityResponse = await fetch('/api/auth/identity', {
-                      credentials: 'include' // Include cookies
-                    });
-
-                    if (identityResponse.ok) {
-                      userData = await identityResponse.json();
-                      console.log(`🔐 SimpleAuthProvider: ✅ User data loaded (attempt ${attempts}/${maxAttempts})`, {
-                        email: userData.email,
-                        walletAddress: userData.walletAddress
-                      });
-                      // Update both the underlying auth and our local state
-                      setBackendUserData(userData);
-                      newAuth.updateUserData(userData);
-
-                      console.log('🔐 SimpleAuthProvider: ✅ Updated backend user data state', {
-                        email: userData.email,
-                        walletAddress: userData.walletAddress
-                      });
-                    } else {
-                      console.log(`🔐 SimpleAuthProvider: User data not ready yet (attempt ${attempts}/${maxAttempts}), status: ${identityResponse.status}`);
-                      if (attempts < maxAttempts) {
-                        await new Promise(resolve => setTimeout(resolve, 200)); // Wait 200ms between attempts
-                      }
-                    }
-                  } catch (fetchError) {
-                    console.warn(`🔐 SimpleAuthProvider: Failed to fetch user data (attempt ${attempts}/${maxAttempts})`, fetchError);
-                    if (attempts < maxAttempts) {
-                      await new Promise(resolve => setTimeout(resolve, 200));
-                    }
-                  }
-                }
-              } finally {
-                setIsLoadingUserData(false);
-              }
-
-              if (!userData) {
-                console.warn('🔐 SimpleAuthProvider: ⚠️ Could not fetch user data after authentication, retrying original request anyway');
-              }
-
-              // Retry the original request with fresh JWT
-              return await backendClient.authenticatedFetch(url, options);
-            } else {
-              console.error('🔐 SimpleAuthProvider: ❌ Failed to get fresh signature');
-              throw new Error('Failed to re-authenticate - please try again');
-            }
-          } catch (reAuthError) {
-            console.error('🔐 SimpleAuthProvider: Re-authentication error:', reAuthError);
-            throw new Error('Session expired and re-authentication failed');
-          }
-        }
-
-        // Re-throw other errors
-        throw error;
-      }
-    },
+    authenticatedFetch: fetchWithAuth,
     hasVisitedBefore: () => false,
     refreshUserData: async () => {
-      // Refresh user data from the backend
-      // If no session exists (401), trigger SIWX authentication first
-      setIsLoadingUserData(true);
-      try {
-        console.log('🔧 SimpleAuthProvider: Refreshing user data (will trigger auth if needed)...');
+      // Use fetchWithAuth which handles 401 and triggers authentication automatically
+      console.log('🔧 SimpleAuthProvider: Refreshing user data (will trigger auth if needed)...');
 
-        let response;
-        try {
-          response = await backendClient.authenticatedFetch('/api/auth/identity', {
-            method: 'GET'
-          });
-        } catch (error) {
-          // If we get 401, trigger SIWX authentication
-          if (error instanceof AuthenticationExpiredError) {
-            console.log('🔧 SimpleAuthProvider: No backend session - triggering SIWX authentication...');
+      const response = await fetchWithAuth('/api/auth/identity', {
+        method: 'GET'
+      });
 
-            // Request authentication (this will show SIWE popup or auto-sign)
-            const authSuccess = await newAuth.requestAuthentication();
+      if (response.ok) {
+        const userData = await response.json();
+        console.log('🔧 SimpleAuthProvider: User data refreshed successfully', {
+          email: userData.email,
+          walletAddress: userData.walletAddress
+        });
 
-            if (!authSuccess) {
-              throw new Error('Failed to authenticate with backend');
-            }
-
-            console.log('🔧 SimpleAuthProvider: ✅ Authentication successful, retrying user data fetch...');
-
-            // Retry the fetch now that we have a session
-            response = await backendClient.authenticatedFetch('/api/auth/identity', {
-              method: 'GET'
-            });
-          } else {
-            throw error;
-          }
-        }
-
-        if (response.ok) {
-          const userData = await response.json();
-          console.log('🔧 SimpleAuthProvider: User data refreshed successfully', { email: userData.email, walletAddress: userData.walletAddress });
-
-          // Update both the underlying auth and our local state
-          setBackendUserData(userData);
-          newAuth.updateUserData(userData);
-          console.log('🔧 SimpleAuthProvider: ✅ Backend user data state updated');
-        } else {
-          console.error('🔧 SimpleAuthProvider: Failed to refresh user data:', response.status);
-        }
-      } catch (error) {
-        console.error('🔧 SimpleAuthProvider: Failed to refresh user data:', error);
-        throw error; // Re-throw so caller knows it failed
-      } finally {
-        setIsLoadingUserData(false);
+        // Update both the underlying auth and our local state
+        setBackendUserData(userData);
+        newAuth.updateUserData(userData);
+        console.log('🔧 SimpleAuthProvider: ✅ Backend user data state updated');
+      } else {
+        console.error('🔧 SimpleAuthProvider: Failed to refresh user data:', response.status);
+        throw new Error(`Failed to refresh user data: ${response.status}`);
       }
     },
 

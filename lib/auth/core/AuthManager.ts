@@ -760,51 +760,69 @@ export class AuthManager {
       await mLog.forceFlush();
     }
 
-    // Check if we have a stored token and try to restore session
+    // LAZY AUTH FIX: Check for connected providers ALWAYS, not just when token exists
+    // This ensures wallet connections are preserved across page navigation even without backend auth
     const token = this.tokenManager.getToken();
-    if (token) {
-      console.log('🔧 AuthManager: Found stored token, attempting to restore session');
+    const hasBackendAuth = !!token;
 
-      // Standard session restoration
+    if (hasBackendAuth) {
+      console.log('🔧 AuthManager: Found stored token');
+    }
+
+    // ALWAYS check for connected providers (lazy auth means no token until first API call)
+    try {
       const providers = this.providerRegistry.getAllProviders();
       for (const provider of providers) {
-        if (provider.isConnected()) {
-          this.currentProvider = provider;
+        try {
+          if (provider.isConnected()) {
+            this.currentProvider = provider;
 
-          // Get address if possible
-          let address: string | null = null;
-          try {
-            address = await provider.getAddress();
-          } catch {}
+            // Get address if possible
+            let address: string | null = null;
+            try {
+              address = await provider.getAddress();
+            } catch {}
 
-          // CRITICAL FIX: Ensure ethers provider is initialized during session restore
-          // This prevents "Wallet not connected" errors when:
-          // - User navigates to a page after auth
-          // - Dynamic SDK auto-restores wallet session
-          // - isConnected becomes true
-          // - BUT setupEthersProvider() was never called (provider cache empty)
-          // - Any code using getEthersProvider() fails
-          mLog.info('AuthManager', 'Ensuring ethers provider is initialized during session restore');
-          try {
-            await provider.getEthersProviderAsync();
-            mLog.info('AuthManager', '✅ Ethers provider initialized successfully');
-          } catch (error) {
-            mLog.error('AuthManager', '❌ Failed to initialize ethers provider during restore', {
-              error: error instanceof Error ? error.message : String(error)
+            // CRITICAL FIX: Ensure ethers provider is initialized during session restore
+            // This prevents "Wallet not connected" errors when:
+            // - User navigates to a page after auth
+            // - Dynamic SDK auto-restores wallet session
+            // - isConnected becomes true
+            // - BUT setupEthersProvider() was never called (provider cache empty)
+            // - Any code using getEthersProvider() fails
+            mLog.info('AuthManager', 'Ensuring ethers provider is initialized during session restore');
+            try {
+              await provider.getEthersProviderAsync();
+              mLog.info('AuthManager', '✅ Ethers provider initialized successfully');
+            } catch (error) {
+              mLog.error('AuthManager', '❌ Failed to initialize ethers provider during restore', {
+                error: error instanceof Error ? error.message : String(error)
+              });
+            }
+
+            this.setState({
+              isConnected: true,
+              isAuthenticated: hasBackendAuth, // Only authenticated if we have a backend token
+              address,
+              providerName: provider.getProviderName(),
+              capabilities: provider.getCapabilities()
             });
+            console.log(`🔧 AuthManager: Restored ${hasBackendAuth ? 'authenticated session' : 'wallet connection (lazy auth)'} with ${provider.getProviderName()}`);
+            break;
           }
-
-          this.setState({
-            isConnected: true,
-            isAuthenticated: true, // If we have a token, we were authenticated
-            address,
+        } catch (providerError) {
+          // Skip providers that throw errors during connection check
+          mLog.debug('AuthManager', 'Provider connection check failed', {
             providerName: provider.getProviderName(),
-            capabilities: provider.getCapabilities()
+            error: providerError instanceof Error ? providerError.message : String(providerError)
           });
-          console.log(`🔧 AuthManager: Restored session with ${provider.getProviderName()}`);
-          break;
         }
       }
+    } catch (error) {
+      // Don't let provider check errors break initialization
+      mLog.debug('AuthManager', 'Error checking for connected providers during restore', {
+        error: error instanceof Error ? error.message : String(error)
+      });
     }
 
     // CRITICAL: Clear backend cookies if no frontend auth exists

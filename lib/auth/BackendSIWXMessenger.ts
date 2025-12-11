@@ -17,6 +17,9 @@ import type { SIWXMessage } from '@reown/appkit-controllers'
  *
  * IMPORTANT: Embedded wallets use EOA for signatures (backend compatibility) but have
  * smart account capabilities that enable headless signing without user prompts.
+ *
+ * MOBILE FIX: Headless signing doesn't work reliably on mobile browsers (even for embedded wallets),
+ * so we skip SIWX entirely on mobile and use lazy auth for all wallet types.
  */
 async function getBackendNonce(input: SIWXMessage.Input): Promise<string> {
   console.log('🔐 BackendSIWXMessenger: getNonce called - full input inspection:', {
@@ -24,6 +27,15 @@ async function getBackendNonce(input: SIWXMessage.Input): Promise<string> {
     inputKeys: input ? Object.keys(input) : [],
     stringified: JSON.stringify(input, null, 2)
   })
+
+  // MOBILE CHECK: Skip SIWX on mobile devices (headless signing doesn't work on mobile browsers)
+  const isMobile = /mobile|android|iphone|ipod|ipad|tablet/i.test(navigator.userAgent)
+  if (isMobile) {
+    console.log('🔐 BackendSIWXMessenger: 📱 Mobile device detected - SKIPPING SIWX (headless signing unreliable on mobile)')
+    console.log('🔐 BackendSIWXMessenger: User will sign on first API call (lazy auth - better mobile UX)')
+    console.log('🔐 BackendSIWXMessenger: Returning SKIP nonce to allow connection to proceed')
+    return 'SKIP_SIWX_LAZY_AUTH'
+  }
 
   // DETECTION STRATEGY: Check for embedded wallet indicators in global scope
   // Since SIWX input doesn't have wallet type info, we check AppKit's iframe/window state

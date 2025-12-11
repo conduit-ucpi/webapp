@@ -30,10 +30,22 @@ async function getBackendNonce(input: SIWXMessage.Input): Promise<string> {
 
   // MOBILE CHECK: Skip SIWX on mobile devices (headless signing doesn't work on mobile browsers)
   const isMobile = /mobile|android|iphone|ipod|ipad|tablet/i.test(navigator.userAgent)
+  console.log('🔐 BackendSIWXMessenger: ========================================')
+  console.log('🔐 BackendSIWXMessenger: MOBILE CHECK', {
+    userAgent: navigator.userAgent,
+    isMobile,
+    willSkipSIWX: isMobile
+  })
+  console.log('🔐 BackendSIWXMessenger: ========================================')
+
   if (isMobile) {
-    console.log('🔐 BackendSIWXMessenger: 📱 Mobile device detected - SKIPPING SIWX (headless signing unreliable on mobile)')
-    console.log('🔐 BackendSIWXMessenger: User will sign on first API call (lazy auth - better mobile UX)')
-    console.log('🔐 BackendSIWXMessenger: Returning SKIP nonce to allow connection to proceed')
+    console.log('🔐 BackendSIWXMessenger: ========================================')
+    console.log('🔐 BackendSIWXMessenger: 📱📱📱 MOBILE DEVICE DETECTED 📱📱📱')
+    console.log('🔐 BackendSIWXMessenger: ========================================')
+    console.log('🔐 BackendSIWXMessenger: SKIPPING SIWX - headless signing unreliable on mobile')
+    console.log('🔐 BackendSIWXMessenger: User will sign on first API call (lazy auth)')
+    console.log('🔐 BackendSIWXMessenger: Returning SKIP nonce')
+    console.log('🔐 BackendSIWXMessenger: ========================================')
     return 'SKIP_SIWX_LAZY_AUTH'
   }
 

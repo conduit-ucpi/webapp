@@ -317,6 +317,21 @@ export default function MerchantSavingsCalculator() {
               font-size: 0.7rem;
               border-bottom: 1px solid #222;
             }
+
+            /* Hide desktop table on mobile */
+            .desktop-comparison {
+              display: none !important;
+            }
+
+            /* Show mobile cards on mobile */
+            .mobile-comparison {
+              display: block !important;
+            }
+          }
+
+          /* Hide mobile cards on desktop */
+          .mobile-comparison {
+            display: none;
           }
         `}</style>
 
@@ -709,17 +724,14 @@ export default function MerchantSavingsCalculator() {
             </div>
           </div>
 
-          {/* Side-by-side comparison table */}
-          <div className="mobile-scroll" style={{
+          {/* Desktop comparison table */}
+          <div className="desktop-comparison" style={{
             background: '#111',
             borderRadius: '12px',
             border: '1px solid #222',
             overflow: 'hidden',
             marginBottom: '40px'
           }}>
-            <div className="scroll-hint" style={{ display: 'none' }}>
-              ← Scroll to see all costs →
-            </div>
             <div className="comparison-table" style={{ minWidth: '600px' }}>
             {/* Header */}
             <div style={{
@@ -868,6 +880,194 @@ export default function MerchantSavingsCalculator() {
                 </div>
               </div>
             </div>
+            </div>
+          </div>
+
+          {/* Mobile card-based comparison */}
+          <div className="mobile-comparison" style={{ marginBottom: '40px' }}>
+            {/* Header Summary */}
+            <div style={{
+              background: '#1a1a1a',
+              borderRadius: '12px 12px 0 0',
+              border: '1px solid #222',
+              padding: '15px 20px',
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: '15px',
+              marginBottom: '2px'
+            }}>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{
+                  color: '#ff4444',
+                  fontSize: '0.65rem',
+                  textTransform: 'uppercase',
+                  letterSpacing: '1px',
+                  fontWeight: 600,
+                  marginBottom: '5px'
+                }}>
+                  Card Payment
+                </div>
+                <div style={{ fontSize: '1.3rem', fontWeight: 700, color: '#ff4444' }}>
+                  {formatCurrency(calculations.traditionalTotal)}
+                </div>
+                <div style={{ fontSize: '0.7rem', color: '#888', marginTop: '2px' }}>
+                  {formatPercent(calculations.traditionalPercent)} of volume
+                </div>
+              </div>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{
+                  color: '#00ff88',
+                  fontSize: '0.65rem',
+                  textTransform: 'uppercase',
+                  letterSpacing: '1px',
+                  fontWeight: 600,
+                  marginBottom: '5px'
+                }}>
+                  Stablecoin
+                </div>
+                <div style={{ fontSize: '1.3rem', fontWeight: 700, color: '#00ff88' }}>
+                  {formatCurrency(calculations.stablecoinTotal)}
+                </div>
+                <div style={{ fontSize: '0.7rem', color: '#888', marginTop: '2px' }}>
+                  {formatPercent(calculations.stablecoinPercent)} of volume
+                </div>
+              </div>
+            </div>
+
+            {/* Cost breakdown cards */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              {calculations.rows.map((row, i) => (
+                <div
+                  key={row.label}
+                  style={{
+                    background: row.highlight && row.traditional > 0 ? 'rgba(255, 68, 68, 0.05)' : '#111',
+                    border: '1px solid #222',
+                    borderRadius: i === 0 ? '0' : i === calculations.rows.length - 1 ? '0 0 12px 12px' : '0',
+                    padding: '15px 20px'
+                  }}
+                >
+                  {/* Category name */}
+                  <div style={{
+                    fontWeight: 600,
+                    marginBottom: '12px',
+                    fontSize: '0.9rem',
+                    color: '#e8e8e8'
+                  }}>
+                    {row.label}
+                  </div>
+
+                  {/* Card vs Stablecoin comparison */}
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: '15px'
+                  }}>
+                    {/* Card payment */}
+                    <div>
+                      <div style={{
+                        fontSize: '0.65rem',
+                        color: '#ff4444',
+                        textTransform: 'uppercase',
+                        letterSpacing: '1px',
+                        marginBottom: '5px'
+                      }}>
+                        Card
+                      </div>
+                      <div style={{
+                        fontSize: '1.1rem',
+                        fontWeight: 600,
+                        color: row.traditional > 0 ? '#ff4444' : '#444',
+                        marginBottom: '4px'
+                      }}>
+                        {formatCurrency(row.traditional)}
+                      </div>
+                      <div style={{
+                        fontSize: '0.7rem',
+                        color: '#666',
+                        lineHeight: 1.4
+                      }}>
+                        {row.traditionalNote}
+                      </div>
+                    </div>
+
+                    {/* Stablecoin */}
+                    <div>
+                      <div style={{
+                        fontSize: '0.65rem',
+                        color: '#00ff88',
+                        textTransform: 'uppercase',
+                        letterSpacing: '1px',
+                        marginBottom: '5px'
+                      }}>
+                        Stablecoin
+                      </div>
+                      <div style={{
+                        fontSize: '1.1rem',
+                        fontWeight: 600,
+                        color: row.stablecoin > 0 ? '#e8e8e8' : '#00ff88',
+                        marginBottom: '4px'
+                      }}>
+                        {formatCurrency(row.stablecoin)}
+                      </div>
+                      <div style={{
+                        fontSize: '0.7rem',
+                        color: '#666',
+                        lineHeight: 1.4
+                      }}>
+                        {row.stablecoinNote}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Totals footer */}
+            <div style={{
+              background: '#1a1a1a',
+              borderRadius: '0 0 12px 12px',
+              border: '1px solid #222',
+              borderTop: '2px solid #333',
+              padding: '20px',
+              marginTop: '2px'
+            }}>
+              <div style={{
+                fontSize: '0.8rem',
+                fontWeight: 600,
+                marginBottom: '15px',
+                textAlign: 'center',
+                color: '#888'
+              }}>
+                Annual Total on {formatCurrency(calculations.yearlyVolume)} volume
+              </div>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: '15px'
+              }}>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '0.65rem', color: '#666', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                    Card Total
+                  </div>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#ff4444' }}>
+                    {formatCurrency(calculations.traditionalTotal)}
+                  </div>
+                  <div style={{ fontSize: '0.7rem', color: '#888', marginTop: '4px' }}>
+                    {formatPercent(calculations.traditionalPercent)}
+                  </div>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '0.65rem', color: '#666', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                    Stablecoin Total
+                  </div>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#00ff88' }}>
+                    {formatCurrency(calculations.stablecoinTotal)}
+                  </div>
+                  <div style={{ fontSize: '0.7rem', color: '#888', marginTop: '4px' }}>
+                    {formatPercent(calculations.stablecoinPercent)}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 

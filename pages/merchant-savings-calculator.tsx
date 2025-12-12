@@ -340,6 +340,7 @@ export default function MerchantSavingsCalculator() {
                   }}
                   style={{
                     width: '100%',
+                    maxWidth: '250px',
                     padding: '12px 16px',
                     fontSize: '1.5rem',
                     fontWeight: 600,
@@ -384,6 +385,7 @@ export default function MerchantSavingsCalculator() {
                   }}
                   style={{
                     width: '100%',
+                    maxWidth: '140px',
                     padding: '12px 16px',
                     fontSize: '1.5rem',
                     fontWeight: 600,
@@ -428,6 +430,7 @@ export default function MerchantSavingsCalculator() {
                   }}
                   style={{
                     width: '100%',
+                    maxWidth: '100px',
                     padding: '12px 16px',
                     fontSize: '1.5rem',
                     fontWeight: 600,
@@ -472,6 +475,7 @@ export default function MerchantSavingsCalculator() {
                   }}
                   style={{
                     width: '100%',
+                    maxWidth: '120px',
                     padding: '12px 16px',
                     fontSize: '1.5rem',
                     fontWeight: 600,

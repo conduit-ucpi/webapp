@@ -235,6 +235,18 @@ export default function MerchantSavingsCalculator() {
             border: none;
             box-shadow: 0 0 20px rgba(0, 255, 136, 0.5);
           }
+
+          .calculator-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+          }
+
+          @media (max-width: 968px) {
+            .calculator-grid {
+              grid-template-columns: 1fr;
+            }
+          }
         `}</style>
 
         <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
@@ -257,118 +269,331 @@ export default function MerchantSavingsCalculator() {
             </p>
           </header>
 
-          {/* Inputs */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-            gap: '30px',
-            marginBottom: '50px',
-            padding: '30px',
-            background: '#111',
-            borderRadius: '12px',
-            border: '1px solid #222'
+          {/* Inputs and Results Side-by-Side */}
+          <div className="calculator-grid" style={{
+            marginBottom: '50px'
           }}>
-            <div>
-              <label style={{ display: 'block', marginBottom: '15px' }}>
-                <span style={{ color: '#888', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                  Monthly Card Volume
-                </span>
-                <span style={{
-                  display: 'block',
-                  fontSize: '2rem',
-                  fontWeight: 600,
-                  color: '#00ff88',
-                  marginTop: '5px'
-                }}>
-                  {formatCurrency(monthlyVolume)}
-                </span>
-              </label>
-              <input
-                type="range"
-                min="1000"
-                max="500000"
-                step="1000"
-                value={monthlyVolume}
-                onChange={(e) => setMonthlyVolume(Number(e.target.value))}
-              />
+            {/* Left: Inputs */}
+            <div style={{
+              padding: '30px',
+              background: '#111',
+              borderRadius: '12px',
+              border: '1px solid #222',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '30px'
+            }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '10px' }}>
+                  <span style={{ color: '#888', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                    Monthly Card Volume
+                  </span>
+                </label>
+                <input
+                  type="text"
+                  value={monthlyVolume === 0 ? '' : formatCurrency(monthlyVolume)}
+                  placeholder="$0"
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/[^0-9]/g, '');
+                    setMonthlyVolume(val ? Number(val) : 0);
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    fontSize: '1.5rem',
+                    fontWeight: 600,
+                    color: '#00ff88',
+                    background: '#0a0a0a',
+                    border: '1px solid #333',
+                    borderRadius: '8px',
+                    outline: 'none',
+                    fontFamily: "'IBM Plex Mono', monospace",
+                    marginBottom: '10px'
+                  }}
+                  onFocus={(e) => e.target.style.borderColor = '#00ff88'}
+                  onBlur={(e) => e.target.style.borderColor = '#333'}
+                />
+                <input
+                  type="range"
+                  min="1000"
+                  max="50000000"
+                  step="10000"
+                  value={Math.min(monthlyVolume, 50000000)}
+                  onChange={(e) => setMonthlyVolume(Number(e.target.value))}
+                />
+                <div style={{ fontSize: '0.7rem', color: '#666', marginTop: '5px' }}>
+                  Slider: $1k - $50M (type for higher amounts)
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', marginBottom: '10px' }}>
+                  <span style={{ color: '#888', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                    Average Transaction
+                  </span>
+                </label>
+                <input
+                  type="text"
+                  value={avgTransaction === 0 ? '' : formatCurrency(avgTransaction)}
+                  placeholder="$0"
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/[^0-9]/g, '');
+                    setAvgTransaction(val ? Number(val) : 0);
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    fontSize: '1.5rem',
+                    fontWeight: 600,
+                    color: '#00ff88',
+                    background: '#0a0a0a',
+                    border: '1px solid #333',
+                    borderRadius: '8px',
+                    outline: 'none',
+                    fontFamily: "'IBM Plex Mono', monospace",
+                    marginBottom: '10px'
+                  }}
+                  onFocus={(e) => e.target.style.borderColor = '#00ff88'}
+                  onBlur={(e) => e.target.style.borderColor = '#333'}
+                />
+                <input
+                  type="range"
+                  min="10"
+                  max="5000"
+                  step="10"
+                  value={Math.min(avgTransaction, 5000)}
+                  onChange={(e) => setAvgTransaction(Number(e.target.value))}
+                />
+                <div style={{ fontSize: '0.7rem', color: '#666', marginTop: '5px' }}>
+                  Slider: $10 - $5k (type for higher amounts)
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', marginBottom: '10px' }}>
+                  <span style={{ color: '#888', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                    Chargeback Rate
+                  </span>
+                </label>
+                <input
+                  type="text"
+                  value={chargebackRate === 0 ? '' : `${chargebackRate}%`}
+                  placeholder="0%"
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/[^0-9.]/g, '');
+                    setChargebackRate(val ? Number(val) : 0);
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    fontSize: '1.5rem',
+                    fontWeight: 600,
+                    color: '#00ff88',
+                    background: '#0a0a0a',
+                    border: '1px solid #333',
+                    borderRadius: '8px',
+                    outline: 'none',
+                    fontFamily: "'IBM Plex Mono', monospace",
+                    marginBottom: '10px'
+                  }}
+                  onFocus={(e) => e.target.style.borderColor = '#00ff88'}
+                  onBlur={(e) => e.target.style.borderColor = '#333'}
+                />
+                <input
+                  type="range"
+                  min="0"
+                  max="5"
+                  step="0.1"
+                  value={Math.min(chargebackRate, 5)}
+                  onChange={(e) => setChargebackRate(Number(e.target.value))}
+                />
+                <div style={{ fontSize: '0.7rem', color: '#666', marginTop: '5px' }}>
+                  Slider: 0% - 5% (type for higher rates)
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', marginBottom: '10px' }}>
+                  <span style={{ color: '#888', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                    Profit Margin (optional)
+                  </span>
+                </label>
+                <input
+                  type="text"
+                  value={profitMargin ? `${profitMargin}%` : ''}
+                  placeholder="0%"
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/[^0-9.]/g, '');
+                    setProfitMargin(val ? Number(val) : null);
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    fontSize: '1.5rem',
+                    fontWeight: 600,
+                    color: profitMargin ? '#00ff88' : '#666',
+                    background: '#0a0a0a',
+                    border: '1px solid #333',
+                    borderRadius: '8px',
+                    outline: 'none',
+                    fontFamily: "'IBM Plex Mono', monospace",
+                    marginBottom: '10px'
+                  }}
+                  onFocus={(e) => e.target.style.borderColor = '#00ff88'}
+                  onBlur={(e) => e.target.style.borderColor = '#333'}
+                />
+                <input
+                  type="range"
+                  min="0"
+                  max="50"
+                  step="0.5"
+                  value={profitMargin || 0}
+                  onChange={(e) => {
+                    const val = Number(e.target.value);
+                    setProfitMargin(val === 0 ? null : val);
+                  }}
+                />
+                <div style={{ fontSize: '0.7rem', color: '#666', marginTop: '5px' }}>
+                  Slider: 0% - 50% (type for higher margins)
+                </div>
+              </div>
             </div>
 
-            <div>
-              <label style={{ display: 'block', marginBottom: '15px' }}>
-                <span style={{ color: '#888', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                  Average Transaction
-                </span>
-                <span style={{
-                  display: 'block',
-                  fontSize: '2rem',
-                  fontWeight: 600,
+            {/* Right: Key Results */}
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '20px'
+            }}>
+              {/* Annual Savings */}
+              <div style={{
+                background: 'linear-gradient(135deg, #001a0d 0%, #0a0a0a 100%)',
+                borderRadius: '12px',
+                border: '2px solid #00ff88',
+                padding: '30px',
+                textAlign: 'center',
+                boxShadow: '0 0 60px rgba(0, 255, 136, 0.1)',
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center'
+              }}>
+                <div style={{
                   color: '#00ff88',
-                  marginTop: '5px'
+                  fontSize: '0.7rem',
+                  textTransform: 'uppercase',
+                  letterSpacing: '2px',
+                  marginBottom: '10px'
                 }}>
-                  {formatCurrency(avgTransaction)}
-                </span>
-              </label>
-              <input
-                type="range"
-                min="10"
-                max="500"
-                step="5"
-                value={avgTransaction}
-                onChange={(e) => setAvgTransaction(Number(e.target.value))}
-              />
-            </div>
-
-            <div>
-              <label style={{ display: 'block', marginBottom: '15px' }}>
-                <span style={{ color: '#888', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                  Chargeback Rate
-                </span>
-                <span style={{
-                  display: 'block',
-                  fontSize: '2rem',
-                  fontWeight: 600,
+                  Annual Savings
+                </div>
+                <div style={{
+                  fontFamily: "'Space Grotesk', sans-serif",
+                  fontSize: '3rem',
+                  fontWeight: 700,
                   color: '#00ff88',
-                  marginTop: '5px'
+                  textShadow: '0 0 40px rgba(0, 255, 136, 0.5)',
+                  marginBottom: '5px'
                 }}>
-                  {chargebackRate}%
-                </span>
-              </label>
-              <input
-                type="range"
-                min="0"
-                max="3"
-                step="0.1"
-                value={chargebackRate}
-                onChange={(e) => setChargebackRate(Number(e.target.value))}
-              />
-            </div>
+                  {formatCurrency(calculations.annualSavings)}
+                </div>
+                <div style={{
+                  color: '#888',
+                  fontSize: '0.9rem'
+                }}>
+                  {formatPercent(calculations.savingsPercent)} less than cards
+                </div>
 
-            <div>
-              <label style={{ display: 'block', marginBottom: '15px' }}>
-                <span style={{ color: '#888', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                  Profit Margin (optional)
-                </span>
-                <span style={{
-                  display: 'block',
-                  fontSize: '2rem',
-                  fontWeight: 600,
-                  color: profitMargin ? '#00ff88' : '#444',
-                  marginTop: '5px'
-                }}>
-                  {profitMargin ? `${profitMargin}%` : '—'}
-                </span>
-              </label>
-              <input
-                type="range"
-                min="0"
-                max="20"
-                step="0.5"
-                value={profitMargin || 0}
-                onChange={(e) => {
-                  const val = Number(e.target.value);
-                  setProfitMargin(val === 0 ? null : val);
-                }}
-              />
+                {calculations.currentProfit && (
+                  <div style={{
+                    marginTop: '20px',
+                    paddingTop: '20px',
+                    borderTop: '1px solid #1a3d2a'
+                  }}>
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: '1fr 1fr',
+                      gap: '15px',
+                      textAlign: 'center'
+                    }}>
+                      <div>
+                        <div style={{ color: '#666', fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '5px' }}>
+                          Current Profit
+                        </div>
+                        <div style={{ fontSize: '1.1rem', fontWeight: 600, color: '#888' }}>
+                          {formatCurrency(calculations.currentProfit)}
+                        </div>
+                      </div>
+                      <div>
+                        <div style={{ color: '#666', fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '5px' }}>
+                          New Profit
+                        </div>
+                        <div style={{ fontSize: '1.1rem', fontWeight: 600, color: '#00ff88' }}>
+                          {formatCurrency(calculations.newProfit!)}
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{ marginTop: '10px' }}>
+                      <div style={{ color: '#666', fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '5px' }}>
+                        Profit Increase
+                      </div>
+                      <div style={{ fontSize: '1.3rem', fontWeight: 600, color: '#00ff88' }}>
+                        +{formatPercent(calculations.profitIncrease!)}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Quick Stats */}
+              <div style={{
+                background: '#111',
+                borderRadius: '12px',
+                border: '1px solid #222',
+                padding: '20px',
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: '20px'
+              }}>
+                <div>
+                  <div style={{ color: '#666', fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '5px' }}>
+                    Card Processing
+                  </div>
+                  <div style={{ fontSize: '1.3rem', fontWeight: 600, color: '#ff4444' }}>
+                    {formatCurrency(calculations.traditionalTotal)}
+                  </div>
+                  <div style={{ fontSize: '0.7rem', color: '#888', marginTop: '2px' }}>
+                    {formatPercent(calculations.traditionalPercent)} of volume
+                  </div>
+                </div>
+                <div>
+                  <div style={{ color: '#666', fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '5px' }}>
+                    Stablecoin
+                  </div>
+                  <div style={{ fontSize: '1.3rem', fontWeight: 600, color: '#00ff88' }}>
+                    {formatCurrency(calculations.stablecoinTotal)}
+                  </div>
+                  <div style={{ fontSize: '0.7rem', color: '#888', marginTop: '2px' }}>
+                    {formatPercent(calculations.stablecoinPercent)} of volume
+                  </div>
+                </div>
+              </div>
+
+              {/* Partial Adoption */}
+              <div style={{
+                background: '#111',
+                borderRadius: '12px',
+                border: '1px solid #222',
+                padding: '15px 20px',
+                textAlign: 'center'
+              }}>
+                <div style={{ fontSize: '0.75rem', color: '#888', marginBottom: '5px' }}>
+                  Even with just 5% adoption
+                </div>
+                <div style={{ fontSize: '1.2rem', fontWeight: 600, color: '#00ff88' }}>
+                  {formatCurrency(calculations.annualSavings * 0.05)}/year saved
+                </div>
+              </div>
             </div>
           </div>
 
@@ -527,99 +752,6 @@ export default function MerchantSavingsCalculator() {
                 </div>
               </div>
             </div>
-          </div>
-
-          {/* Savings */}
-          <div style={{
-            background: 'linear-gradient(135deg, #001a0d 0%, #0a0a0a 100%)',
-            borderRadius: '12px',
-            border: '2px solid #00ff88',
-            padding: '40px',
-            textAlign: 'center',
-            boxShadow: '0 0 60px rgba(0, 255, 136, 0.1)'
-          }}>
-            <div style={{
-              color: '#00ff88',
-              fontSize: '0.8rem',
-              textTransform: 'uppercase',
-              letterSpacing: '2px',
-              marginBottom: '10px'
-            }}>
-              Annual Savings
-            </div>
-            <div style={{
-              fontFamily: "'Space Grotesk', sans-serif",
-              fontSize: '4rem',
-              fontWeight: 700,
-              color: '#00ff88',
-              textShadow: '0 0 40px rgba(0, 255, 136, 0.5)'
-            }}>
-              {formatCurrency(calculations.annualSavings)}
-            </div>
-            <div style={{
-              color: '#888',
-              fontSize: '1rem',
-              marginTop: '10px'
-            }}>
-              {formatPercent(calculations.savingsPercent)} less than card processing
-            </div>
-
-            {calculations.currentProfit && (
-              <div style={{
-                marginTop: '30px',
-                paddingTop: '30px',
-                borderTop: '1px solid #1a3d2a'
-              }}>
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: '1fr 1fr 1fr',
-                  gap: '20px',
-                  textAlign: 'center'
-                }}>
-                  <div>
-                    <div style={{ color: '#666', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '5px' }}>
-                      Current Profit
-                    </div>
-                    <div style={{ fontSize: '1.5rem', fontWeight: 600, color: '#888' }}>
-                      {formatCurrency(calculations.currentProfit)}
-                    </div>
-                  </div>
-                  <div>
-                    <div style={{ color: '#666', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '5px' }}>
-                      New Profit
-                    </div>
-                    <div style={{ fontSize: '1.5rem', fontWeight: 600, color: '#00ff88' }}>
-                      {formatCurrency(calculations.newProfit!)}
-                    </div>
-                  </div>
-                  <div>
-                    <div style={{ color: '#666', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '5px' }}>
-                      Profit Increase
-                    </div>
-                    <div style={{ fontSize: '1.5rem', fontWeight: 600, color: '#00ff88' }}>
-                      +{formatPercent(calculations.profitIncrease!)}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Adoption callout */}
-          <div style={{
-            marginTop: '20px',
-            padding: '20px 25px',
-            background: '#111',
-            borderRadius: '8px',
-            border: '1px solid #222',
-            fontSize: '0.9rem',
-            color: '#888',
-            lineHeight: 1.6
-          }}>
-            <span style={{ color: '#e8e8e8' }}>These savings assume all card payments switch to stablecoin checkout.</span>
-            {' '}Even if just 5% of your customers use it, you'd save{' '}
-            <span style={{ color: '#00ff88', fontWeight: 600 }}>{formatCurrency(calculations.annualSavings * 0.05)}/year</span>
-            —and it costs nothing to add.
           </div>
 
           <footer style={{

@@ -3,14 +3,18 @@ import SEO from '@/components/SEO'
 import { GetStaticProps } from 'next'
 
 export default function ArbitrationPolicy() {
+  // Comprehensive structured data for SEO and AI bots
   const structuredData = {
     "@context": "https://schema.org",
     "@type": "Article",
-    "headline": "Instant Escrow Auto-Arbitration System",
-    "description": "How our auto-arbitration dispute resolution system works for crypto escrow payments",
+    "headline": "Instant Escrow Auto-Arbitration System - Complete Dispute Resolution Policy",
+    "alternativeHeadline": "How Crypto Escrow Disputes are Resolved Through Direct Buyer-Seller Negotiation",
+    "description": "Comprehensive guide to our auto-arbitration dispute resolution system for cryptocurrency escrow payments. Buyers and sellers negotiate directly through the platform with funds frozen until mutual agreement is reached. No admin decisions required for most disputes.",
+    "articleBody": "Our auto-arbitration system empowers buyers and sellers to resolve disputes directly. Once funds are in dispute, they're frozen until both parties agree on a refund amount. The system automatically executes the agreed resolution without requiring admin intervention. When both parties enter the same refund amount, the dispute automatically resolves and distributes funds accordingly. Disputes can only be raised before the payout date, providing protection without the unfair penalties of traditional chargeback systems. The auto-arbitration process: 1) Buyer raises dispute with comment and refund suggestion, 2) Seller gets notified by email, 3) Both parties negotiate through dashboard comments and refund proposals, 4) When both agree on same refund amount, automatic resolution and payout occurs. Common dispute scenarios include: non-delivery (typical outcome 100% refund if no proof), wrong or damaged items (50-100% refund depending on severity), quality disputes (10-30% partial refund for minor issues), and accidental purchases (100% if caught early). If parties cannot agree, funds remain frozen indefinitely motivating compromise. For high-value disputes, parties can jointly use external arbitration services, then both enter the arbitrator's decided amount for automatic execution. The system handles every case at least as well as traditional chargebacks, with key advantages: merchants not punished with fees for defending themselves, buyers still get protection, settlement is instant and costs fractions of a cent instead of 1.5-3.5%, disputes can only be raised before payout (not 180 days after like chargebacks), and once funds are released the transaction is final. Best practices for quick resolution: buyers should raise disputes promptly with clear explanations and reasonable requests, sellers should respond within 24 hours with delivery proof and fair counter-offers. The system is available 24/7 with disputes auto-resolving the moment both parties reach agreement.",
     "author": {
       "@type": "Organization",
-      "name": "Conduit Escrow"
+      "name": "Conduit Escrow",
+      "url": "https://conduit-ucpi.com"
     },
     "publisher": {
       "@type": "Organization",
@@ -21,7 +25,17 @@ export default function ArbitrationPolicy() {
       }
     },
     "datePublished": "2024-01-01",
-    "dateModified": new Date().toISOString().split('T')[0]
+    "dateModified": new Date().toISOString().split('T')[0],
+    "keywords": "crypto escrow disputes, blockchain arbitration, escrow dispute resolution, USDC refund process, buyer seller negotiation, smart contract disputes, automatic arbitration, chargeback alternative, cryptocurrency buyer protection, escrow mediation, automated negotiation, frozen funds, dispute management, refund agreements",
+    "about": {
+      "@type": "Thing",
+      "name": "Cryptocurrency Escrow Dispute Resolution",
+      "description": "Automated arbitration system for resolving payment disputes in blockchain-based escrow transactions"
+    },
+    "mainEntityOfPage": {
+      "@type": "WebPage",
+      "@id": "https://conduit-ucpi.com/arbitration-policy"
+    }
   };
 
   return (

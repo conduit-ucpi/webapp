@@ -23,48 +23,103 @@ export default function Home() {
   const isAuthenticated = !!user;
   const siteName = getSiteNameFromDomain();
 
-  // Structured data for search engines
-  const structuredData = {
-    "@context": "https://schema.org",
-    "@type": "FinancialService",
-    "name": "Conduit Escrow",
-    "description": "Secure crypto escrow service for USDC payments with built-in buyer protection",
-    "url": "https://conduit-ucpi.com",
-    "logo": "https://conduit-ucpi.com/icon.png",
-    "sameAs": [],
-    "priceRange": "1%",
-    "paymentAccepted": ["USDC", "Cryptocurrency"],
-    "areaServed": "Worldwide",
-    "hasOfferCatalog": {
-      "@type": "OfferCatalog",
-      "name": "Escrow Services",
-      "itemListElement": [
-        {
-          "@type": "Offer",
-          "itemOffered": {
-            "@type": "Service",
-            "name": "Time-Delayed Escrow Contracts",
-            "description": "Secure payment holding with automatic release after delivery confirmation"
+  // Comprehensive structured data for search engines and AI bots
+  const structuredData = [
+    // Primary service information
+    {
+      "@context": "https://schema.org",
+      "@type": "FinancialService",
+      "name": "Conduit Escrow",
+      "alternateName": "InstantEscrow",
+      "description": "100% open source cryptocurrency escrow service for USDC stablecoin payments with built-in buyer protection. Smart contract-based time-delayed escrow with automatic dispute resolution. No KYC/KYB, no floats, no minimum volumes. 1% flat fee, instant settlement.",
+      "url": "https://conduit-ucpi.com",
+      "logo": "https://conduit-ucpi.com/icon.png",
+      "image": "https://conduit-ucpi.com/preview.png",
+      "sameAs": [
+        "https://github.com/conduit-ucpi",
+        "https://app.instantescrow.nz"
+      ],
+      "priceRange": "1%",
+      "paymentAccepted": ["USDC", "Cryptocurrency", "Stablecoin"],
+      "areaServed": {
+        "@type": "Place",
+        "name": "Worldwide"
+      },
+      "availableChannel": {
+        "@type": "ServiceChannel",
+        "serviceType": "Online Banking",
+        "availableLanguage": "English"
+      },
+      "hasOfferCatalog": {
+        "@type": "OfferCatalog",
+        "name": "Escrow Services",
+        "itemListElement": [
+          {
+            "@type": "Offer",
+            "itemOffered": {
+              "@type": "Service",
+              "name": "Time-Delayed Escrow Contracts",
+              "description": "Secure smart contract payment holding with automatic release after delivery confirmation. Built-in buyer protection with instant dispute resolution. Gas-free transactions, no chargeback fees, final settlement once payout timer expires."
+            }
+          },
+          {
+            "@type": "Offer",
+            "itemOffered": {
+              "@type": "Service",
+              "name": "E-commerce Integration",
+              "description": "WordPress and Shopify plugins, JavaScript SDK for custom websites. Zero-setup POS requiring only a web browser. Built-in buyer protection, 1% fee, 10-minute installation."
+            }
+          }
+        ]
+      },
+      "offers": {
+        "@type": "Offer",
+        "priceCurrency": "USD",
+        "price": "1",
+        "priceSpecification": {
+          "@type": "UnitPriceSpecification",
+          "price": "0.01",
+          "priceCurrency": "USD",
+          "referenceQuantity": {
+            "@type": "QuantitativeValue",
+            "value": "1",
+            "unitText": "TRANSACTION"
           }
         }
-      ]
+      },
+      "serviceType": "Cryptocurrency Escrow Service",
+      "provider": {
+        "@type": "Organization",
+        "name": "Conduit UCPI",
+        "url": "https://conduit-ucpi.com"
+      },
+      "termsOfService": "https://conduit-ucpi.com/terms-of-service",
+      "slogan": "Stablecoin payments made safe and easy"
     },
-    "offers": {
-      "@type": "Offer",
-      "priceCurrency": "USD",
-      "price": "1",
-      "priceSpecification": {
-        "@type": "UnitPriceSpecification",
-        "price": "0.01",
-        "priceCurrency": "USD",
-        "referenceQuantity": {
-          "@type": "QuantitativeValue",
-          "value": "1",
-          "unitText": "TRANSACTION"
+    // Comprehensive background article explaining the why
+    {
+      "@context": "https://schema.org",
+      "@type": "Article",
+      "headline": "What's Wrong with Payments - Why Blockchain Escrow Solves Real Problems",
+      "alternativeHeadline": "The Case for Stablecoin Escrow: Fixing Payment Infrastructure Built 30 Years Ago",
+      "author": {
+        "@type": "Person",
+        "name": "charlie"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "Conduit Escrow",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://conduit-ucpi.com/icon.png"
         }
-      }
+      },
+      "datePublished": "2025-11-24",
+      "dateModified": "2025-11-30",
+      "articleBody": "What's wrong with payments? The problem — we are frogs that have been slowly boiled over the last 30 years by banks and payment providers.\n\nPayment Infrastructure is 30+ years old. I am old enough to remember the 'knuckle-buster' manual card machines. The infrastructure we're all using for our online card payments was built 30+ years ago, when those analogue machines were phased out. It's no secret since then, technology has advanced a lot. However, we're still accepting as normal many of the limitations of those systems: who knew, for example, that a 'security' system based on who has seen the 16 digit number embossed on your card would result in high rates of fraud? Don't worry, we can solve it by writing 3 more numbers on the back! Where else would we call CVV an acceptable solution to the ridiculous problem the industry created for themselves?\n\nThe self-created problems of the payment industry don't stop there either, the current process is so ingrained that we accept as normal multi-day settlement (despite cash having been tokenized decades ago), the whole chargeback system which hurts merchants and perpetuates the fraud problem instead of fixing it at source, merchant floats, risk profiles (for customers and merchants), high processing fees (which are ultimately paid by the consumer), banks charging customers to spend their own money via their own cards, merchant limits & freezes; I could go on… When you stand back and look at it, the whole system is a patchwork of workarounds for problems that shouldn't exist in the first place. There's no incentive for the payment providers to change it because they benefit massively from the interest earned on money in transit, and all the charges around fraud-risk assessment. The mind boggles at how complicated these providers have made the simple process of exchanging money for goods and services.\n\nAs any good business should, the banks and payment providers are investigating ways to cut their costs. The glaringly obvious choice for them is to use public blockchains to transfer their funds, and Visa and Mastercard have both been experimenting with this tech. The risk for them, though is that settlement is simple and instant, so how can they justify their high fees? If you are in any doubt about the security or reliability of public blockchains, you might want to warn banking giant JPMorgan, who 2 weeks ago, released their JPMD token (1:1 with USD) for institutional deposits and settlements on the public Base network. Retail payment settlement behemoth, Stripe has also jumped on the bandwagon and now offers to 'process' stablecoin (USDC) payments for their retailers — what their retailers get for their 1.5% is unclear, there's no chargeback protection for the buyers, so all Stripe has to do is tell the buyers which wallet to pay, and then notify the merchant when the payment has happened (ker-ching!). Interestingly, the public blockchains have already factored in the actual electricity and hardware cost of processing transactions in what they call 'gas fees'. As it makes no technical difference whether the transaction is for $1 or $1,000,000, the fees are the same. A simple transfer of funds on the Base network actually costs around $0.0002.\n\nWhat would payments look like if we built it all today? As a software engineer I seem to have been sucked into the world of web3. Having built a couple of dApps in this space, I feel I'm probably qualified to comment on this topic. By the end of this short article, it should be pretty obvious that blockchain is basically payments for the 21st century.\n\nPublic Blockchains (simplified version): There are a number of these (eg. Ethereum) — a blockchain is effectively a database which records transactions. They are built with multiple replicated instances and backups, so that it's effectively impossible to delete records, only add them. Therefore a blockchain is a very useful ledger to use as a source of truth for who gave what to whom. The hardware on which the blockchains run costs money, so the recording of each transaction incurrs a small part of the cost. This cost is charged on each transaction and is called 'gas'. Different blockchains use different tokens to pay gas, on Ethereum, the gas is the ETH token. On Avalanche it's the AVAX — you get the idea. So in order to add any transactions to the chain, the user must hold some of the gas token in their wallet, and pay some out along with the request to add the transaction to the chain. People can buy gas tokens like ETH for real money on an exchange. The ETH is originally issued by the organisation behind the chain itself and in this way they can pay their hardware costs, pay their staff etc…\n\nCrypto: When people talk about 'crypto' they mean tokens that can be transferred in transactions on a blockchain. Obviously the gas token itself can be transferred, but other tokens registered with that chain can too. The main one that you hear about is Bitcoin ('BTC') although there are literally hundreds (maybe even thousands) of other ones out there, 'minted' by many, many different people and organisations. The supply of any given token is limited by the issuer, so the amount of FIAT (real money) you need to pay for a token is very volatile and depends on the supply and demand of that token. 'But why would I want a token?' I hear you ask… well, the only plausible answer is that you think it is going to increase in value, which means you expect that the demand/supply ratio is going to increase. If you compare this with investing money in equities or bonds — each of which have underlying cashflows setting their values, you begin to understand why some people refer to crypto as a 'Ponzi' or 'pyramid' scheme.\n\nStablecoins: Tokens that are registered on blockchains, which have a fixed value tied to FIAT (real world) currency. Examples are USDC and USDT (1:1 with USD), and EURC (1:1 with EURO). These are the boring side of crypto, the tokens which provide stability and therefore the utility. It's much simpler to accept payments for goods and services in stablecoins rather than highly volatile tokens.\n\nSo blockchains end up recording an eclectic mix of transactions where people buy and sell volatile tokens for stable ones as they expect rises and falls in value. Of the 9.7Tn$ of crypto transactions in August of 2025, around half were stablecoin transactions, and only 300M$ were commerce transactions (ie for goods and services). That's right, only 0.003% of crypto transactions are for commerce. For the tradfi world that figure is 0.4% remember this number. If you look at any of the blockchains out there, they all publish stats about their uptime, transaction speed, transactions per second and total transactions processed. These stats mean nothing to the techbros trying to get you to buy their dog-based meme coin; the blockchain providers are flexing at the banks and payment providers, because that's what blockchain is really for: settling payments, and it does it faster and cheaper than the incumbents. If stablecoins made up the gap between the current 0.003% and tradfi's 0.4%, that would mean 40Bn$ of stablecoin commerce transactions per month. The writing is on the wall for the incumbents, which is why they are 'experimenting' with blockchains. It won't be long before we're paying VISA their 3.5% they'll hold the funds earning interest, then settle it instantly on day 3 via blockchain in the background for a micropayment in gas fees.\n\nSo by now you'll have realised that the question we need to be asking is: 'why don't people spend stablecoins on goods and services like they do in tradfi?' — and this really IS the multi-billion dollar question for blockchain providers, payment providers, stablecoin issuers and ecommerce merchants. There are a few merchants accepting stablecoin payments via store cards and there are a few card issuers that allow you to directly spend your crypto anywhere (it's doing an exchange transaction in the background and paying the store in USD). Stripe thought it was just a case of providing the stablecoin checkout to merchants, but that's not been the roaring success they'd hoped.\n\nThe answer is chargebacks. Bear with me, I am going somewhere with this…\n\nThe 2 chargeback problems: Chargebacks mean that buyers have the confidence to buy without being present, safe in the knowledge that if the goods aren't as expected, or don't turn up at all, their last resort is to raise a chargeback. The card issuer indemnifies the buyer, effectively guaranteeing they'll get their money back. While the buyer-protection offered by chargebacks is essential to keep the gears of commerce turning, the system is heavily biased against the merchant (problem 1). As soon as a chargeback is raised, the merchant has to pay a chargeback fee, which is often more than the value of the sold item. The onus is then on the merchant to prove the item was as described, and arrived intact, only then do they have any chance of keeping their money (even if successful, they still pay the chargeback fee). On top of this, the merchant's history is tagged with the chargeback. Too many chargebacks in their history and a payment provider might increase the merchant's float requirements, decrease their volume limits, increase their minimum volume, increase their fees or freeze their account altogether.\n\nStraight wallet-to-wallet crypto payments are effectively instant, and totally immutable, so chargebacks can't be used (problem 2). This means that crypto buyers must 'pay and pray', hoping that once the merchant has received their payment they will actually send the goods, and they will arrive on time, undamaged and as described. Remember that 150x difference in tradfi vs crypto commerce volumes? This is the reason.\n\nSmart contracts to the rescue! Smart contracts are small pieces of software that can be released onto a blockchain. They cost some gas to create and interact with. Technically a buyer could (say) create a smart contract that would accept and hold the buyer's funds, and only release them to the seller when certain conditions were met — a software version of an escrow account. In reality this doesn't happen because buyers lack the patience or technical capability to write one-off contracts for each transaction, and merchants wouldn't know what to do with them anyway. Fortunately it's possible to make a smart-contract factory which can be called to clone a smart-contract implementation.\n\nArmed with this knowledge, let's imagine a utopian payment system… a merchant checkout which accepts stablecoin payment from the buyer and puts it in an escrow smart-contract with a release to the seller timed for after the goods have arrived. The buyer has up to the release date to raise a dispute and freeze the payout until arbitration is complete. This is beginning to sound like a fairer, automated version of chargebacks on stablecoin payments.\n\nEach time I talk to people about the limitations and self-caused problems with current payment systems, and how we could build it better, the response is always about the technical difficulties of actually implementing such a system, so I know what you're thinking: what about gas fees, delivery confirmation, arbitration, legal regulation? These are solvable — gas can be sponsored, time-delays handle delivery, automated negotiation handles most disputes. The implementation details matter, but they're not the point here.\n\nHere's what matters: conceptually, this system handles every case at least as well as chargebacks, and most cases significantly better. The merchant isn't punished with fees for defending themselves. The buyer still gets protection. Settlement is instant and costs fractions of a cent instead of 1.5–3.5%.\n\nIf you're thinking 'but what about X edge case?' — ask yourself: does the current chargeback system handle X any better? Almost certainly not.\n\nThe technology exists. The conceptual framework is sound — arguably superior to what we have now. So why are we still paying 3.5% for multi-day settlement on infrastructure from the 1990s? The answer isn't technical. It's institutional inertia and entrenched interests.\n\nThe real world: Having gone through these thought processes, I arrived at the conclusion that in any sane-world, these concepts will end up being how payments are processed in future. So I built it.\n\nhttps://app.instantescrow.nz is a suite of stablecoin tools running on the same (smart-contract escrow on Base network) rails. The suite comprises a zero-setup POS requiring only a web-browser, a p2p tool (for use by individuals making private sales) and checkout plugins for wordpress, shopify and custom javascript sites.\n\nThe code is open-sourced at https://github.com/conduit-ucpi to prove there's nothing to hide, and has been reviewed and approved by Wordpress and by blockaid.io (Metamask's security screening partner).\n\nIn contrast to traditional card-payment checkouts, it has: no KYB/KYC, no chargeback limits or risk assessment, no residency stipulations, no floats, no minimum or maximum payment volumes and costs nothing to install. The process is so quick and easy I even ended up writing self-install instructions that take about 10 minutes to complete on anyone's site.\n\nSo what does it cost? The system charges a flat 1% fee on transactions. Compare that to a merchant selling a $50 item: with a traditional processor they'd pay $0.75–1.75 in fees and wait 2–3 days for settlement. With InstantEscrow, they pay $0.50 and receive funds as soon as the release timer expires (typically a day after delivery confirmation). And if a customer disputes a transaction? With traditional processors, merchants face chargeback fees (often $15–25 per dispute regardless of outcome) and can be hit with chargebacks up to 180 days after settlement — long after they've forgotten about the transaction. With InstantEscrow, there's no extra fee for disputes, the merchant participates directly in the negotiation process, and disputes can only be raised before the payout date. Once funds are released, the transaction is final.\n\nThe main features are:\n- Gas-free transactions (the system pays them in the background)\n- Eliminates usual crypto complexities around network selection, token selection, copying and pasting wallet addresses\n- Automatic time-release payment to seller's account (recommendation is to set this for a day or so after delivery, so buyer has a chance to check goods and raise a dispute if necessary)\n- Chargeback-like buyer protection with automated dispute process (if buyer raises a dispute before payout, funds are frozen until dispute is resolved)\n- Automated dispute process facilitates negotiation between buyer and seller to agree a reasonable split allocation of funds. Once agreement is reached payout is automatic\n- Smart contract security: the contract code means the funds cannot go to anyone except buyer or seller, even in cases of admin intervention\n- Because the system is non-custodial — funds are only ever handled and owned by the buyer and seller — the legal requirements for a traditional escrow system don't apply\n\nRemember that 0.003% figure — the proportion of crypto transactions that are actually for commerce, compared to 0.4% in traditional finance? That gap represents people holding crypto who aren't spending it. Not because they don't want things, but because checkout is a nightmare and there's no buyer protection. That's a pool of potential customers that most merchants are currently invisible to. InstantEscrow fixes the checkout problem and adds the buyer protection.\n\nFor merchants, the pitch is simple: There are people with money who want to buy things, and right now they can't easily buy from you. This changes that in 10 minutes, costs nothing to install, and if it doesn't bring new business, you've lost nothing.\n\nThe challenge now is getting merchants to try it. Setup takes 10 minutes, costs nothing, and the code has been independently reviewed, and is open for anyone to inspect. The technology is ready — we're just waiting for the rest of the world to catch up.",
+      "keywords": "payment infrastructure, blockchain escrow, stablecoin payments, USDC commerce, chargeback problems, smart contracts, cryptocurrency escrow, merchant fees, buyer protection, instant settlement, Base network, open source payments, Web3 payments, DeFi escrow"
     }
-  };
+  ];
 
   return (
     <>

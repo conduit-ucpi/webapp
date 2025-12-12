@@ -246,11 +246,51 @@ export default function MerchantSavingsCalculator() {
             .calculator-grid {
               grid-template-columns: 1fr;
             }
+
+            .mobile-scroll {
+              overflow-x: auto;
+              -webkit-overflow-scrolling: touch;
+            }
+
+            .mobile-text-sm {
+              font-size: 0.9rem !important;
+            }
+
+            .mobile-padding-sm {
+              padding: 10px 15px !important;
+            }
+          }
+
+          @media (max-width: 640px) {
+            .comparison-table {
+              font-size: 0.85rem;
+            }
+
+            .comparison-table-value {
+              font-size: 1.1rem !important;
+            }
+
+            .savings-title {
+              font-size: 2rem !important;
+            }
+
+            .page-header h1 {
+              font-size: 2rem !important;
+            }
+
+            .input-field {
+              font-size: 1.2rem !important;
+              padding: 10px 14px !important;
+            }
+
+            .result-box {
+              padding: 20px !important;
+            }
           }
         `}</style>
 
         <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
-          <header style={{ marginBottom: '50px' }}>
+          <header className="page-header" style={{ marginBottom: '50px' }}>
             <h1 style={{
               fontFamily: "'Space Grotesk', sans-serif",
               fontSize: '2.5rem',
@@ -291,6 +331,7 @@ export default function MerchantSavingsCalculator() {
                 </label>
                 <input
                   type="text"
+                  className="input-field"
                   value={monthlyVolume === 0 ? '' : formatCurrency(monthlyVolume)}
                   placeholder="$0"
                   onChange={(e) => {
@@ -334,6 +375,7 @@ export default function MerchantSavingsCalculator() {
                 </label>
                 <input
                   type="text"
+                  className="input-field"
                   value={avgTransaction === 0 ? '' : formatCurrency(avgTransaction)}
                   placeholder="$0"
                   onChange={(e) => {
@@ -377,6 +419,7 @@ export default function MerchantSavingsCalculator() {
                 </label>
                 <input
                   type="text"
+                  className="input-field"
                   value={chargebackRate === 0 ? '' : `${chargebackRate}%`}
                   placeholder="0%"
                   onChange={(e) => {
@@ -420,6 +463,7 @@ export default function MerchantSavingsCalculator() {
                 </label>
                 <input
                   type="text"
+                  className="input-field"
                   value={profitMargin ? `${profitMargin}%` : ''}
                   placeholder="0%"
                   onChange={(e) => {
@@ -466,7 +510,7 @@ export default function MerchantSavingsCalculator() {
               gap: '20px'
             }}>
               {/* Annual Savings */}
-              <div style={{
+              <div className="result-box" style={{
                 background: 'linear-gradient(135deg, #001a0d 0%, #0a0a0a 100%)',
                 borderRadius: '12px',
                 border: '2px solid #00ff88',
@@ -487,7 +531,7 @@ export default function MerchantSavingsCalculator() {
                 }}>
                   Annual Savings
                 </div>
-                <div style={{
+                <div className="savings-title" style={{
                   fontFamily: "'Space Grotesk', sans-serif",
                   fontSize: '3rem',
                   fontWeight: 700,
@@ -598,13 +642,14 @@ export default function MerchantSavingsCalculator() {
           </div>
 
           {/* Side-by-side comparison table */}
-          <div style={{
+          <div className="mobile-scroll" style={{
             background: '#111',
             borderRadius: '12px',
             border: '1px solid #222',
             overflow: 'hidden',
             marginBottom: '40px'
           }}>
+            <div className="comparison-table" style={{ minWidth: '600px' }}>
             {/* Header */}
             <div style={{
               display: 'grid',
@@ -751,6 +796,7 @@ export default function MerchantSavingsCalculator() {
                   {formatPercent(calculations.stablecoinPercent)} of volume
                 </div>
               </div>
+            </div>
             </div>
           </div>
 

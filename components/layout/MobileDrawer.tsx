@@ -16,6 +16,7 @@ import {
   UserCircleIcon,
   ArrowLeftOnRectangleIcon,
   Cog6ToothIcon,
+  CalculatorIcon,
 } from '@heroicons/react/24/outline';
 import { useAuth } from '@/components/auth';
 import { useConfig } from '@/components/auth/ConfigProvider';
@@ -81,6 +82,11 @@ export default function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
     {
       title: 'Resources',
       items: [
+        {
+          href: '/merchant-savings-calculator',
+          label: 'Savings Calculator',
+          icon: CalculatorIcon,
+        },
         {
           href: '/buy-token',
           label: 'Buy Tokens',

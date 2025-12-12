@@ -286,6 +286,37 @@ export default function MerchantSavingsCalculator() {
             .result-box {
               padding: 20px !important;
             }
+
+            .table-cell-padding {
+              padding: 8px 10px !important;
+            }
+
+            .table-header-padding {
+              padding: 10px 12px !important;
+            }
+
+            .table-total-padding {
+              padding: 15px 12px !important;
+            }
+
+            .mobile-footer {
+              font-size: 0.75rem !important;
+              line-height: 1.5 !important;
+            }
+
+            .comparison-table {
+              min-width: 500px !important;
+            }
+
+            .scroll-hint {
+              display: block !important;
+              text-align: center;
+              padding: 8px;
+              background: #1a1a1a;
+              color: #666;
+              font-size: 0.7rem;
+              border-bottom: 1px solid #222;
+            }
           }
         `}</style>
 
@@ -686,6 +717,9 @@ export default function MerchantSavingsCalculator() {
             overflow: 'hidden',
             marginBottom: '40px'
           }}>
+            <div className="scroll-hint" style={{ display: 'none' }}>
+              ← Scroll to see all costs →
+            </div>
             <div className="comparison-table" style={{ minWidth: '600px' }}>
             {/* Header */}
             <div style={{
@@ -694,7 +728,7 @@ export default function MerchantSavingsCalculator() {
               background: '#1a1a1a',
               borderBottom: '1px solid #333'
             }}>
-              <div style={{ padding: '15px 20px' }}>
+              <div className="table-header-padding" style={{ padding: '15px 20px' }}>
                 <span style={{
                   color: '#666',
                   fontSize: '0.7rem',
@@ -704,7 +738,7 @@ export default function MerchantSavingsCalculator() {
                   Cost Category
                 </span>
               </div>
-              <div style={{
+              <div className="table-header-padding" style={{
                 padding: '15px 20px',
                 textAlign: 'right',
                 borderLeft: '1px solid #333'
@@ -719,7 +753,7 @@ export default function MerchantSavingsCalculator() {
                   Card Payment
                 </span>
               </div>
-              <div style={{
+              <div className="table-header-padding" style={{
                 padding: '15px 20px',
                 textAlign: 'right',
                 borderLeft: '1px solid #333'
@@ -747,10 +781,10 @@ export default function MerchantSavingsCalculator() {
                   background: row.highlight && row.traditional > 0 ? 'rgba(255, 68, 68, 0.03)' : 'transparent'
                 }}
               >
-                <div style={{ padding: '12px 20px' }}>
+                <div className="table-cell-padding" style={{ padding: '12px 20px' }}>
                   <div style={{ fontWeight: 500, marginBottom: '2px' }}>{row.label}</div>
                 </div>
-                <div style={{
+                <div className="table-cell-padding" style={{
                   padding: '12px 20px',
                   textAlign: 'right',
                   borderLeft: '1px solid #222'
@@ -765,7 +799,7 @@ export default function MerchantSavingsCalculator() {
                     {row.traditionalNote}
                   </div>
                 </div>
-                <div style={{
+                <div className="table-cell-padding" style={{
                   padding: '12px 20px',
                   textAlign: 'right',
                   borderLeft: '1px solid #222'
@@ -790,7 +824,7 @@ export default function MerchantSavingsCalculator() {
               background: '#1a1a1a',
               borderTop: '2px solid #333'
             }}>
-              <div style={{ padding: '20px' }}>
+              <div className="table-total-padding" style={{ padding: '20px' }}>
                 <span style={{
                   fontWeight: 600,
                   fontSize: '1rem'
@@ -801,7 +835,7 @@ export default function MerchantSavingsCalculator() {
                   on {formatCurrency(calculations.yearlyVolume)} volume
                 </div>
               </div>
-              <div style={{
+              <div className="table-total-padding" style={{
                 padding: '20px',
                 textAlign: 'right',
                 borderLeft: '1px solid #333'
@@ -817,7 +851,7 @@ export default function MerchantSavingsCalculator() {
                   {formatPercent(calculations.traditionalPercent)} of volume
                 </div>
               </div>
-              <div style={{
+              <div className="table-total-padding" style={{
                 padding: '20px',
                 textAlign: 'right',
                 borderLeft: '1px solid #333'
@@ -837,7 +871,7 @@ export default function MerchantSavingsCalculator() {
             </div>
           </div>
 
-          <footer style={{
+          <footer className="mobile-footer" style={{
             marginTop: '50px',
             padding: '20px',
             borderTop: '1px solid #222',

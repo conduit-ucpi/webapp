@@ -201,7 +201,7 @@ export default function MerchantSavingsCalculator() {
         background: '#0a0a0a',
         color: '#e8e8e8',
         fontFamily: "'IBM Plex Mono', monospace",
-        padding: '40px 20px',
+        padding: '20px 20px',
         margin: '0 auto'
       }}>
         <style>{`
@@ -290,7 +290,7 @@ export default function MerchantSavingsCalculator() {
         `}</style>
 
         <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
-          <header className="page-header" style={{ marginBottom: '50px' }}>
+          <header className="page-header" style={{ marginBottom: '30px' }}>
             <h1 style={{
               fontFamily: "'Space Grotesk', sans-serif",
               fontSize: '2.5rem',
@@ -298,7 +298,7 @@ export default function MerchantSavingsCalculator() {
               margin: 0,
               letterSpacing: '-1px'
             }}>
-              Payment Cost Calculator
+              Checkout Cost Calculator
             </h1>
             <p style={{
               color: '#666',
@@ -311,7 +311,7 @@ export default function MerchantSavingsCalculator() {
 
           {/* Inputs and Results Side-by-Side */}
           <div className="calculator-grid" style={{
-            marginBottom: '50px'
+            marginBottom: '30px'
           }}>
             {/* Left: Inputs */}
             <div style={{
@@ -321,7 +321,7 @@ export default function MerchantSavingsCalculator() {
               border: '1px solid #222',
               display: 'flex',
               flexDirection: 'column',
-              gap: '30px'
+              gap: '20px'
             }}>
               <div>
                 <label style={{ display: 'block', marginBottom: '10px' }}>
@@ -511,7 +511,7 @@ export default function MerchantSavingsCalculator() {
             <div style={{
               display: 'flex',
               flexDirection: 'column',
-              gap: '20px'
+              gap: '15px'
             }}>
               {/* Annual Savings */}
               <div className="result-box" style={{
@@ -673,7 +673,7 @@ export default function MerchantSavingsCalculator() {
                   e.currentTarget.style.boxShadow = '0 0 30px rgba(0, 255, 136, 0.3)';
                 }}
               >
-                Start Saving - Install Plugin
+                Start Saving
               </a>
             </div>
           </div>

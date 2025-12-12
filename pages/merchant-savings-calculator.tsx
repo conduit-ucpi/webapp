@@ -30,7 +30,7 @@ export default function MerchantSavingsCalculator() {
   const [monthlyVolume, setMonthlyVolume] = useState(25000);
   const [avgTransaction, setAvgTransaction] = useState(75);
   const [chargebackRate, setChargebackRate] = useState(0.5);
-  const [profitMargin, setProfitMargin] = useState<number | null>(null);
+  const [profitMargin, setProfitMargin] = useState<number | null>(10);
 
   const calculations: Calculations = useMemo(() => {
     const monthlyTransactions = monthlyVolume / avgTransaction;
@@ -271,20 +271,20 @@ export default function MerchantSavingsCalculator() {
             }
 
             .savings-title {
-              font-size: 2rem !important;
+              font-size: 1.75rem !important;
             }
 
             .page-header h1 {
-              font-size: 2rem !important;
+              font-size: 1.5rem !important;
             }
 
             .input-field {
-              font-size: 1.2rem !important;
-              padding: 10px 14px !important;
+              font-size: 1rem !important;
+              padding: 8px 12px !important;
             }
 
             .result-box {
-              padding: 20px !important;
+              padding: 16px !important;
             }
 
             .table-cell-padding {
@@ -336,10 +336,10 @@ export default function MerchantSavingsCalculator() {
         `}</style>
 
         <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
-          <header className="page-header" style={{ marginBottom: '30px' }}>
+          <header className="page-header" style={{ marginBottom: '20px' }}>
             <h1 style={{
               fontFamily: "'Space Grotesk', sans-serif",
-              fontSize: '2.5rem',
+              fontSize: '1.75rem',
               fontWeight: 700,
               margin: 0,
               letterSpacing: '-1px'
@@ -348,8 +348,8 @@ export default function MerchantSavingsCalculator() {
             </h1>
             <p style={{
               color: '#666',
-              fontSize: '0.9rem',
-              marginTop: '10px'
+              fontSize: '0.8rem',
+              marginTop: '6px'
             }}>
               See what you're really paying for
             </p>
@@ -361,13 +361,13 @@ export default function MerchantSavingsCalculator() {
           }}>
             {/* Left: Inputs */}
             <div style={{
-              padding: '30px',
+              padding: '20px',
               background: '#111',
               borderRadius: '12px',
               border: '1px solid #222',
               display: 'flex',
               flexDirection: 'column',
-              gap: '20px'
+              gap: '15px'
             }}>
               <div>
                 <label style={{ display: 'block', marginBottom: '10px' }}>
@@ -387,8 +387,8 @@ export default function MerchantSavingsCalculator() {
                   style={{
                     width: '100%',
                     maxWidth: '250px',
-                    padding: '12px 16px',
-                    fontSize: '1.5rem',
+                    padding: '8px 12px',
+                    fontSize: '1.1rem',
                     fontWeight: 600,
                     color: '#00ff88',
                     background: '#0a0a0a',
@@ -396,7 +396,7 @@ export default function MerchantSavingsCalculator() {
                     borderRadius: '8px',
                     outline: 'none',
                     fontFamily: "'IBM Plex Mono', monospace",
-                    marginBottom: '10px'
+                    marginBottom: '6px'
                   }}
                   onFocus={(e) => e.target.style.borderColor = '#00ff88'}
                   onBlur={(e) => e.target.style.borderColor = '#333'}
@@ -432,8 +432,8 @@ export default function MerchantSavingsCalculator() {
                   style={{
                     width: '100%',
                     maxWidth: '140px',
-                    padding: '12px 16px',
-                    fontSize: '1.5rem',
+                    padding: '8px 12px',
+                    fontSize: '1.1rem',
                     fontWeight: 600,
                     color: '#00ff88',
                     background: '#0a0a0a',
@@ -441,7 +441,7 @@ export default function MerchantSavingsCalculator() {
                     borderRadius: '8px',
                     outline: 'none',
                     fontFamily: "'IBM Plex Mono', monospace",
-                    marginBottom: '10px'
+                    marginBottom: '6px'
                   }}
                   onFocus={(e) => e.target.style.borderColor = '#00ff88'}
                   onBlur={(e) => e.target.style.borderColor = '#333'}
@@ -477,8 +477,8 @@ export default function MerchantSavingsCalculator() {
                   style={{
                     width: '100%',
                     maxWidth: '100px',
-                    padding: '12px 16px',
-                    fontSize: '1.5rem',
+                    padding: '8px 12px',
+                    fontSize: '1.1rem',
                     fontWeight: 600,
                     color: '#00ff88',
                     background: '#0a0a0a',
@@ -486,7 +486,7 @@ export default function MerchantSavingsCalculator() {
                     borderRadius: '8px',
                     outline: 'none',
                     fontFamily: "'IBM Plex Mono', monospace",
-                    marginBottom: '10px'
+                    marginBottom: '6px'
                   }}
                   onFocus={(e) => e.target.style.borderColor = '#00ff88'}
                   onBlur={(e) => e.target.style.borderColor = '#333'}
@@ -507,7 +507,7 @@ export default function MerchantSavingsCalculator() {
               <div>
                 <label style={{ display: 'block', marginBottom: '10px' }}>
                   <span style={{ color: '#888', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                    Profit Margin (optional)
+                    Current Profit Margin
                   </span>
                 </label>
                 <input
@@ -522,8 +522,8 @@ export default function MerchantSavingsCalculator() {
                   style={{
                     width: '100%',
                     maxWidth: '120px',
-                    padding: '12px 16px',
-                    fontSize: '1.5rem',
+                    padding: '8px 12px',
+                    fontSize: '1.1rem',
                     fontWeight: 600,
                     color: profitMargin ? '#00ff88' : '#666',
                     background: '#0a0a0a',
@@ -531,7 +531,7 @@ export default function MerchantSavingsCalculator() {
                     borderRadius: '8px',
                     outline: 'none',
                     fontFamily: "'IBM Plex Mono', monospace",
-                    marginBottom: '10px'
+                    marginBottom: '6px'
                   }}
                   onFocus={(e) => e.target.style.borderColor = '#00ff88'}
                   onBlur={(e) => e.target.style.borderColor = '#333'}
@@ -557,14 +557,14 @@ export default function MerchantSavingsCalculator() {
             <div style={{
               display: 'flex',
               flexDirection: 'column',
-              gap: '15px'
+              gap: '12px'
             }}>
               {/* Annual Savings */}
               <div className="result-box" style={{
                 background: 'linear-gradient(135deg, #001a0d 0%, #0a0a0a 100%)',
                 borderRadius: '12px',
                 border: '2px solid #00ff88',
-                padding: '30px',
+                padding: '20px',
                 textAlign: 'center',
                 boxShadow: '0 0 60px rgba(0, 255, 136, 0.1)',
                 flex: 1,
@@ -574,64 +574,64 @@ export default function MerchantSavingsCalculator() {
               }}>
                 <div style={{
                   color: '#00ff88',
-                  fontSize: '0.7rem',
+                  fontSize: '0.65rem',
                   textTransform: 'uppercase',
                   letterSpacing: '2px',
-                  marginBottom: '10px'
+                  marginBottom: '8px'
                 }}>
                   Annual Savings
                 </div>
                 <div className="savings-title" style={{
                   fontFamily: "'Space Grotesk', sans-serif",
-                  fontSize: '3rem',
+                  fontSize: '2.25rem',
                   fontWeight: 700,
                   color: '#00ff88',
                   textShadow: '0 0 40px rgba(0, 255, 136, 0.5)',
-                  marginBottom: '5px'
+                  marginBottom: '4px'
                 }}>
                   {formatCurrency(calculations.annualSavings)}
                 </div>
                 <div style={{
                   color: '#888',
-                  fontSize: '0.9rem'
+                  fontSize: '0.8rem'
                 }}>
                   {formatPercent(calculations.savingsPercent)} less than cards
                 </div>
 
                 {calculations.currentProfit && (
                   <div style={{
-                    marginTop: '20px',
-                    paddingTop: '20px',
+                    marginTop: '15px',
+                    paddingTop: '15px',
                     borderTop: '1px solid #1a3d2a'
                   }}>
                     <div style={{
                       display: 'grid',
                       gridTemplateColumns: '1fr 1fr',
-                      gap: '15px',
+                      gap: '12px',
                       textAlign: 'center'
                     }}>
                       <div>
-                        <div style={{ color: '#666', fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '5px' }}>
+                        <div style={{ color: '#666', fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>
                           Current Profit
                         </div>
-                        <div style={{ fontSize: '1.1rem', fontWeight: 600, color: '#888' }}>
+                        <div style={{ fontSize: '0.95rem', fontWeight: 600, color: '#888' }}>
                           {formatCurrency(calculations.currentProfit)}
                         </div>
                       </div>
                       <div>
-                        <div style={{ color: '#666', fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '5px' }}>
+                        <div style={{ color: '#666', fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>
                           New Profit
                         </div>
-                        <div style={{ fontSize: '1.1rem', fontWeight: 600, color: '#00ff88' }}>
+                        <div style={{ fontSize: '0.95rem', fontWeight: 600, color: '#00ff88' }}>
                           {formatCurrency(calculations.newProfit!)}
                         </div>
                       </div>
                     </div>
-                    <div style={{ marginTop: '10px' }}>
-                      <div style={{ color: '#666', fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '5px' }}>
+                    <div style={{ marginTop: '8px' }}>
+                      <div style={{ color: '#666', fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>
                         Profit Increase
                       </div>
-                      <div style={{ fontSize: '1.3rem', fontWeight: 600, color: '#00ff88' }}>
+                      <div style={{ fontSize: '1.1rem', fontWeight: 600, color: '#00ff88' }}>
                         +{formatPercent(calculations.profitIncrease!)}
                       </div>
                     </div>
@@ -644,30 +644,30 @@ export default function MerchantSavingsCalculator() {
                 background: '#111',
                 borderRadius: '12px',
                 border: '1px solid #222',
-                padding: '20px',
+                padding: '15px',
                 display: 'grid',
                 gridTemplateColumns: '1fr 1fr',
-                gap: '20px'
+                gap: '15px'
               }}>
                 <div>
-                  <div style={{ color: '#666', fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '5px' }}>
+                  <div style={{ color: '#666', fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>
                     Card Processing
                   </div>
-                  <div style={{ fontSize: '1.3rem', fontWeight: 600, color: '#ff4444' }}>
+                  <div style={{ fontSize: '1.1rem', fontWeight: 600, color: '#ff4444' }}>
                     {formatCurrency(calculations.traditionalTotal)}
                   </div>
-                  <div style={{ fontSize: '0.7rem', color: '#888', marginTop: '2px' }}>
+                  <div style={{ fontSize: '0.65rem', color: '#888', marginTop: '2px' }}>
                     {formatPercent(calculations.traditionalPercent)} of volume
                   </div>
                 </div>
                 <div>
-                  <div style={{ color: '#666', fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '5px' }}>
+                  <div style={{ color: '#666', fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>
                     Stablecoin
                   </div>
-                  <div style={{ fontSize: '1.3rem', fontWeight: 600, color: '#00ff88' }}>
+                  <div style={{ fontSize: '1.1rem', fontWeight: 600, color: '#00ff88' }}>
                     {formatCurrency(calculations.stablecoinTotal)}
                   </div>
-                  <div style={{ fontSize: '0.7rem', color: '#888', marginTop: '2px' }}>
+                  <div style={{ fontSize: '0.65rem', color: '#888', marginTop: '2px' }}>
                     {formatPercent(calculations.stablecoinPercent)} of volume
                   </div>
                 </div>
@@ -678,13 +678,13 @@ export default function MerchantSavingsCalculator() {
                 background: '#111',
                 borderRadius: '12px',
                 border: '1px solid #222',
-                padding: '15px 20px',
+                padding: '12px 15px',
                 textAlign: 'center'
               }}>
-                <div style={{ fontSize: '0.75rem', color: '#888', marginBottom: '5px' }}>
+                <div style={{ fontSize: '0.7rem', color: '#888', marginBottom: '4px' }}>
                   Even with just 5% adoption
                 </div>
-                <div style={{ fontSize: '1.2rem', fontWeight: 600, color: '#00ff88' }}>
+                <div style={{ fontSize: '1rem', fontWeight: 600, color: '#00ff88' }}>
                   {formatCurrency(calculations.annualSavings * 0.05)}/year saved
                 </div>
               </div>
@@ -697,11 +697,11 @@ export default function MerchantSavingsCalculator() {
                   background: 'linear-gradient(135deg, #00ff88 0%, #00cc6a 100%)',
                   color: '#0a0a0a',
                   textDecoration: 'none',
-                  padding: '18px 30px',
+                  padding: '14px 24px',
                   borderRadius: '12px',
                   textAlign: 'center',
                   fontWeight: 700,
-                  fontSize: '1rem',
+                  fontSize: '0.9rem',
                   fontFamily: "'Space Grotesk', sans-serif",
                   textTransform: 'uppercase',
                   letterSpacing: '1px',

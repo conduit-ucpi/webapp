@@ -202,7 +202,7 @@ export default function MerchantSavingsCalculator() {
         color: '#e8e8e8',
         fontFamily: "'IBM Plex Mono', monospace",
         padding: '40px 20px',
-        margin: '-2rem -1rem'
+        margin: '0 auto'
       }}>
         <style>{`
           @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;700&display=swap');
@@ -638,6 +638,39 @@ export default function MerchantSavingsCalculator() {
                   {formatCurrency(calculations.annualSavings * 0.05)}/year saved
                 </div>
               </div>
+
+              {/* CTA Button */}
+              <a
+                href="/plugins"
+                style={{
+                  display: 'block',
+                  background: 'linear-gradient(135deg, #00ff88 0%, #00cc6a 100%)',
+                  color: '#0a0a0a',
+                  textDecoration: 'none',
+                  padding: '18px 30px',
+                  borderRadius: '12px',
+                  textAlign: 'center',
+                  fontWeight: 700,
+                  fontSize: '1rem',
+                  fontFamily: "'Space Grotesk', sans-serif",
+                  textTransform: 'uppercase',
+                  letterSpacing: '1px',
+                  boxShadow: '0 0 30px rgba(0, 255, 136, 0.3)',
+                  transition: 'all 0.3s ease',
+                  border: 'none',
+                  cursor: 'pointer'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 5px 40px rgba(0, 255, 136, 0.5)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 0 30px rgba(0, 255, 136, 0.3)';
+                }}
+              >
+                Start Saving - Install Plugin
+              </a>
             </div>
           </div>
 

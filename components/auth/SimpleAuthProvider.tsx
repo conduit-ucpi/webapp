@@ -370,6 +370,7 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
   }, []);
 
   // During SSR or initial render, provide a minimal context to prevent hydration issues
+  // CRITICAL: Always render children to allow SSR/SEO - individual pages handle their own loading states
   if (!mounted || isLoading || !config) {
     // Create a minimal auth context that won't break components during hydration
     const fallbackAuthValue = {
@@ -401,14 +402,10 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
       raiseDispute: async () => { throw new Error('Auth not ready'); }
     };
 
+    // ALWAYS render children for SEO - pages handle their own loading states
     return (
       <AuthContext.Provider value={fallbackAuthValue}>
-        <div className="min-h-screen flex items-center justify-center bg-white">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading configuration...</p>
-          </div>
-        </div>
+        {children}
       </AuthContext.Provider>
     );
   }

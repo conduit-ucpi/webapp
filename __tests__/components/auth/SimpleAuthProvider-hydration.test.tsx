@@ -167,10 +167,11 @@ describe('SimpleAuthProvider Hydration Behavior', () => {
 
     const { container } = render(<TestConfigNull />, { wrapper });
 
-    // When config is null, should show loading screen, not the test component
-    // This prevents the "useAuth must be used within a SimpleAuthProvider" error
-    expect(screen.queryByTestId('config-null-test')).not.toBeInTheDocument();
-    expect(container.textContent).toContain('Loading configuration...');
+    // CHANGED: For SEO, we now ALWAYS render children, even when config is loading
+    // This allows SSR/SEO to see actual page content instead of loading spinners
+    // The auth context will have isLoading: true, but pages still render
+    expect(screen.queryByTestId('config-null-test')).toBeInTheDocument();
+    expect(container.textContent).toContain('Auth: available');
 
     // Restore mock
     jest.restoreAllMocks();
@@ -231,12 +232,10 @@ describe('SimpleAuthProvider Hydration Behavior', () => {
       // Should never show a failure component
       expect(screen.queryByTestId('failure')).not.toBeInTheDocument();
 
-      // Should either show the success component OR show loading screen (both are valid)
+      // CHANGED: For SEO, we now ALWAYS render children, never show loading screen
+      // The auth context is always available with isLoading state
       const successElement = screen.queryByTestId('success');
-      const hasLoadingText = container.textContent?.includes('Loading configuration...');
-
-      // One of these should be true: either success component or loading screen
-      expect(successElement || hasLoadingText).toBeTruthy();
+      expect(successElement).toBeInTheDocument();
     });
   });
 });

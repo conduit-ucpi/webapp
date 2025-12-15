@@ -719,7 +719,7 @@ export default function MerchantSavingsCalculator() {
                   e.currentTarget.style.boxShadow = '0 0 30px rgba(0, 255, 136, 0.3)';
                 }}
               >
-                Start Saving
+                Find out more
               </a>
             </div>
           </div>

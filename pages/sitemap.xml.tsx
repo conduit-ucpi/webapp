@@ -2,7 +2,7 @@ import { GetServerSideProps } from 'next';
 
 // This creates a dynamic sitemap.xml for search engines
 function generateSiteMap() {
-  const baseUrl = 'https://app.instantescrow.nz';
+  const baseUrl = 'https://stabledrop.me';
 
   // Static pages that should be indexed
   const staticPages = [

@@ -6,13 +6,31 @@ function generateSiteMap() {
 
   // Static pages that should be indexed
   const staticPages = [
+    // High priority pages
     { path: '', priority: '1.0', changefreq: 'daily' },  // homepage
     { path: '/faq', priority: '0.9', changefreq: 'weekly' },
     { path: '/arbitration-policy', priority: '0.9', changefreq: 'weekly' },
+    { path: '/merchant-savings-calculator', priority: '0.9', changefreq: 'weekly' },
+
+    // Integration & plugin pages
     { path: '/integrate', priority: '0.8', changefreq: 'weekly' },
     { path: '/plugins', priority: '0.8', changefreq: 'weekly' },
+    { path: '/plugin', priority: '0.8', changefreq: 'weekly' },
+    { path: '/shopify', priority: '0.8', changefreq: 'weekly' },
+    { path: '/wordpress', priority: '0.8', changefreq: 'weekly' },
+
+    // Core functionality pages
     { path: '/create', priority: '0.7', changefreq: 'weekly' },
+    { path: '/contract-create', priority: '0.7', changefreq: 'weekly' },
+    { path: '/dashboard', priority: '0.7', changefreq: 'weekly' },
+
+    // Wallet & token pages
     { path: '/wallet', priority: '0.6', changefreq: 'weekly' },
+    { path: '/buy-token', priority: '0.6', changefreq: 'weekly' },
+
+    // Legal pages
+    { path: '/privacy-policy', priority: '0.5', changefreq: 'monthly' },
+    { path: '/terms-of-service', priority: '0.5', changefreq: 'monthly' },
   ];
 
   return `<?xml version="1.0" encoding="UTF-8"?>

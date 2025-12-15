@@ -30,15 +30,15 @@ export default class CustomDocument extends Document<DocumentProps> {
   return (
     <Html lang="en" translate="no">
       <Head>
-        {/* Google Tag Manager */}
+        {/* Google Analytics 4 */}
+        <script async src="https://www.googletagmanager.com/gtag/js?id=G-C5RP49B2R8"></script>
         <script dangerouslySetInnerHTML={{
-          __html: `(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-})(window,document,'script','dataLayer','GTM-5VFDF67M');`
+          __html: `window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('js', new Date());
+gtag('config', 'G-C5RP49B2R8');`
         }} />
-        {/* End Google Tag Manager */}
+        {/* End Google Analytics 4 */}
 
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
@@ -63,13 +63,6 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         {/* MetaMask compatibility script removed - Web3Auth Modal handles MetaMask coexistence automatically */}
       </Head>
       <body>
-        {/* Google Tag Manager (noscript) */}
-        <noscript dangerouslySetInnerHTML={{
-          __html: `<iframe src="https://www.googletagmanager.com/ns.html?id=GTM-5VFDF67M"
-height="0" width="0" style="display:none;visibility:hidden"></iframe>`
-        }} />
-        {/* End Google Tag Manager (noscript) */}
-
         <Main />
         <NextScript />
       </body>

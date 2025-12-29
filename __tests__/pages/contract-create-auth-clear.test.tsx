@@ -57,7 +57,7 @@ jest.mock('@/hooks/useContractValidation', () => ({
 
 const mockRouterPush = jest.fn();
 
-describe('ContractCreate - Auth Cache Clearing', () => {
+describe('ContractCreate - Auth Session Persistence', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
@@ -69,67 +69,24 @@ describe('ContractCreate - Auth Cache Clearing', () => {
     });
   });
 
-  it('should call disconnect() on mount to clear cached authentication', async () => {
+  it('should NOT call disconnect() on mount - existing sessions should persist', async () => {
     // Render the component
     render(<ContractCreate />);
 
-    // Wait for the useEffect to execute
-    await waitFor(() => {
-      expect(mockDisconnect).toHaveBeenCalled();
-    });
-
-    // Verify disconnect was called exactly once
-    expect(mockDisconnect).toHaveBeenCalledTimes(1);
-  });
-
-  it('should call disconnect() even when auth is initially loading', async () => {
-    // Mock auth loading state
-    jest.spyOn(require('@/components/auth'), 'useAuth').mockReturnValueOnce({
-      user: null,
-      isLoading: true,
-      isConnected: false,
-      disconnect: mockDisconnect,
-      authenticatedFetch: mockAuthenticatedFetch,
-      getEthersProvider: jest.fn(),
-    });
-
-    render(<ContractCreate />);
-
-    // Since authLoading is true, disconnect should NOT be called immediately
-    expect(mockDisconnect).not.toHaveBeenCalled();
-
-    // But once auth finishes loading and component re-renders, it should be called
-    // (In real usage, the component would re-render when authLoading becomes false)
-  });
-
-  it('should call disconnect() only once, not repeatedly', async () => {
-    const { rerender } = render(<ContractCreate />);
-
-    // Wait for initial useEffect
-    await waitFor(() => {
-      expect(mockDisconnect).toHaveBeenCalled();
-    });
-
-    // Clear the mock to verify no additional calls
-    mockDisconnect.mockClear();
-
-    // Force a re-render
-    rerender(<ContractCreate />);
-
-    // Wait a bit to ensure no additional calls
+    // Wait a bit to ensure useEffect would have run
     await new Promise(resolve => setTimeout(resolve, 100));
 
-    // Verify disconnect was NOT called again
+    // Verify disconnect was NOT called (we preserve existing sessions)
     expect(mockDisconnect).not.toHaveBeenCalled();
   });
 
-  it('should clear auth cache even when user has cached session', async () => {
-    // Mock a user with cached session (typical scenario we want to prevent)
+  it('should allow user to remain authenticated across page loads', async () => {
+    // Mock a user with existing session
     jest.spyOn(require('@/components/auth'), 'useAuth').mockReturnValueOnce({
       user: {
-        userId: 'cached-user',
-        email: 'cached@example.com',
-        walletAddress: '0xcached',
+        userId: 'existing-user',
+        email: 'existing@example.com',
+        walletAddress: '0xexisting',
         authProvider: 'web3auth'
       },
       isLoading: false,
@@ -141,36 +98,43 @@ describe('ContractCreate - Auth Cache Clearing', () => {
 
     render(<ContractCreate />);
 
-    // Verify disconnect is called to clear the cached session
-    await waitFor(() => {
-      expect(mockDisconnect).toHaveBeenCalled();
-    });
+    // Wait a bit
+    await new Promise(resolve => setTimeout(resolve, 100));
 
-    expect(mockDisconnect).toHaveBeenCalledTimes(1);
+    // Verify disconnect was NOT called - session persists
+    expect(mockDisconnect).not.toHaveBeenCalled();
   });
 
-  it('should force fresh authentication by clearing cache on every page load', async () => {
-    // First render (simulating first page load)
-    const { unmount } = render(<ContractCreate />);
+  it('should not unnecessarily clear auth state during component lifecycle', async () => {
+    const { rerender } = render(<ContractCreate />);
 
-    await waitFor(() => {
-      expect(mockDisconnect).toHaveBeenCalled();
-    });
+    // Wait for initial render
+    await new Promise(resolve => setTimeout(resolve, 100));
 
-    expect(mockDisconnect).toHaveBeenCalledTimes(1);
+    // Verify no disconnect on initial render
+    expect(mockDisconnect).not.toHaveBeenCalled();
 
-    // Unmount and clear
-    unmount();
-    mockDisconnect.mockClear();
+    // Force a re-render
+    rerender(<ContractCreate />);
 
-    // Second render (simulating second page load)
+    // Wait again
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    // Verify disconnect was still not called
+    expect(mockDisconnect).not.toHaveBeenCalled();
+  });
+
+  it('should rely on auth system to handle expired sessions automatically', async () => {
+    // The auth system (via refreshUserData) handles expired sessions
+    // No need to proactively disconnect on mount
     render(<ContractCreate />);
 
-    await waitFor(() => {
-      expect(mockDisconnect).toHaveBeenCalled();
-    });
+    await new Promise(resolve => setTimeout(resolve, 100));
 
-    // Verify disconnect is called again on the second page load
-    expect(mockDisconnect).toHaveBeenCalledTimes(1);
+    // Verify we don't proactively disconnect
+    expect(mockDisconnect).not.toHaveBeenCalled();
+
+    // Note: If session is actually expired, refreshUserData will handle it
+    // by triggering requestAuthentication() which prompts for signature only when needed
   });
 });

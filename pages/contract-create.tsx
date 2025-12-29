@@ -145,20 +145,9 @@ export default function ContractCreate() {
     willShowForm: isConnected || !!address
   });
 
-  // Clear auth cache on mount to force fresh authentication
-  useEffect(() => {
-    const clearAuthCache = async () => {
-      console.log('🔧 ContractCreate: Clearing any cached authentication on mount');
-      await disconnect();
-    };
-
-    // Only disconnect if there's a user or if auth is not loading
-    // This ensures we clear any cached session
-    if (!authLoading) {
-      clearAuthCache();
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  // Intentionally empty deps - we want this to run ONCE on mount only
+  // Don't clear auth on mount - let existing session persist
+  // This prevents unnecessary signature requests when user already authenticated
+  // The auth system will handle expired sessions automatically via refreshUserData
 
   // Initialize form from query parameters
   useEffect(() => {

@@ -59,7 +59,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Debug logging
     console.log('Environment variables check:');
     console.log('NEXT_PUBLIC_BASE_PATH:', process.env.NEXT_PUBLIC_BASE_PATH);
-    console.log('WEB3AUTH_CLIENT_ID:', process.env.WEB3AUTH_CLIENT_ID ? 'Present' : 'Missing');
     console.log('CHAIN_ID:', process.env.CHAIN_ID);
     console.log('RPC_URL:', process.env.RPC_URL || 'MISSING - THIS WILL CAUSE ERRORS');
     console.log('RPC_URL raw bytes:', process.env.RPC_URL ? Array.from(process.env.RPC_URL).map(c => c.charCodeAt(0)) : 'N/A');
@@ -85,9 +84,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Validate critical configuration
     if (!process.env.RPC_URL) {
       throw new Error('RPC_URL environment variable is required but not set');
-    }
-    if (!process.env.WEB3AUTH_CLIENT_ID) {
-      throw new Error('WEB3AUTH_CLIENT_ID environment variable is required but not set');
     }
     if (!process.env.USDC_CONTRACT_ADDRESS) {
       console.error('USDC_CONTRACT_ADDRESS is missing or null');
@@ -115,8 +111,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const primaryToken = defaultSymbol === 'USDT' && usdtDetails ? usdtDetails : usdcDetails;
 
     const config = {
-      web3AuthClientId: process.env.WEB3AUTH_CLIENT_ID,
-      web3AuthNetwork: process.env.WEB3AUTH_NETWORK || 'sapphire_devnet',
       chainId: parseInt(process.env.CHAIN_ID || '8453'), // Default: Base Mainnet
       rpcUrl: process.env.RPC_URL?.trim(),
       usdcContractAddress: process.env.USDC_CONTRACT_ADDRESS,

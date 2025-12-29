@@ -9,9 +9,6 @@ export interface TokenDetails {
 }
 
 export interface Config {
-  web3AuthClientId: string;
-  web3AuthNetwork: string;
-  dynamicEnvironmentId?: string; // Dynamic.xyz environment ID
   chainId: number;
   rpcUrl: string;
   usdcContractAddress: string;

@@ -16,8 +16,6 @@ describe('Session Cleanup', () => {
     chainId: 8453,
     rpcUrl: 'https://mainnet.base.org',
     explorerBaseUrl: 'https://basescan.org',
-    web3AuthNetwork: 'sapphire_mainnet',
-    web3AuthClientId: 'test-client-id',
     walletConnectProjectId: 'test-wc-project-id', // Required for WalletConnect
     usdcContractAddress: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
     usdtContractAddress: '0xUSDT'
@@ -28,8 +26,6 @@ describe('Session Cleanup', () => {
     rpcUrl: 'https://mainnet.base.org',
     usdcContractAddress: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
     contractFactoryAddress: '0xFactory',
-    web3AuthClientId: 'test-client-id',
-    web3AuthNetwork: 'sapphire_mainnet',
     moonPayApiKey: 'test-key',
     explorerBaseUrl: 'https://basescan.org',
     maxGasPriceGwei: '100',

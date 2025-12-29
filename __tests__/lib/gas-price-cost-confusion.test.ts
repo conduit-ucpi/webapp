@@ -59,8 +59,6 @@ describe('Gas Price vs Cost Confusion Prevention', () => {
 
   it('should handle realistic gas prices without confusing price and cost', async () => {
     const mockConfig = {
-      web3AuthClientId: 'test',
-      web3AuthNetwork: 'testnet',
       rpcUrl: 'https://mainnet.base.org',
       chainId: 8453,
       usdcContractAddress: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',

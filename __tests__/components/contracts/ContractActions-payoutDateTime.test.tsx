@@ -57,8 +57,6 @@ global.alert = jest.fn();
 
 describe('ContractActions - PayoutDateTime', () => {
   const mockConfig = {
-    web3AuthClientId: 'test-client-id',
-    web3AuthNetwork: 'testnet',
     usdcContractAddress: '0x123456789',
     chainId: 43113,
     rpcUrl: 'https://api.avax-test.network/ext/bc/C/rpc',

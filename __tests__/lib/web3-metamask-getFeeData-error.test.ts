@@ -35,8 +35,6 @@ describe('Universal Hybrid Provider - All Wallets Use Base RPC', () => {
 
     // Create config
     const config = {
-      web3AuthClientId: 'test-client-id',
-      web3AuthNetwork: 'testnet',
       chainId: 8453, // Base mainnet
       rpcUrl: 'https://base-rpc.example.com',
       usdcContractAddress: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',

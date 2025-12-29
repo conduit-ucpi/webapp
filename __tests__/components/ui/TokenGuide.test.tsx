@@ -35,8 +35,6 @@ describe('TokenGuide', () => {
   };
 
   const mockConfig = {
-    web3AuthClientId: 'test-client-id',
-    web3AuthNetwork: 'testnet',
     chainId: 43114,
     rpcUrl: 'https://api.avax.network/ext/bc/C/rpc',
     usdcContractAddress: '0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E',

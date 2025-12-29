@@ -63,11 +63,9 @@ export interface AuthProvider {
 
 // Configuration types
 export interface AuthConfig {
-  web3AuthClientId: string;
   chainId: number;
   rpcUrl: string;
   explorerBaseUrl: string;
-  web3AuthNetwork: string;
   walletConnectProjectId?: string;
   usdcContractAddress?: string;
   usdtContractAddress?: string;

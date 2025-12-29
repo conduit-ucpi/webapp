@@ -58,16 +58,6 @@ A Next.js web application for creating and managing time-delayed escrow contract
 
 The app requires extensive configuration. See `.env.example` for the complete list. Key variables:
 
-#### Wallet Connection (Choose ONE primary provider)
-```bash
-# Dynamic.xyz (Recommended - best mobile support)
-DYNAMIC_ENVIRONMENT_ID=your_dynamic_environment_id_here
-
-# OR Web3Auth (Legacy - has mobile issues)
-WEB3AUTH_CLIENT_ID=your_web3auth_client_id_here
-WEB3AUTH_NETWORK=sapphire_devnet
-```
-
 #### Blockchain Configuration
 ```bash
 CHAIN_ID=84532                    # Base Sepolia testnet
@@ -438,9 +428,8 @@ When adding new environment variables:
 ### Common Issues
 
 **Wallet won't connect on mobile**
-- Use Dynamic.xyz instead of Web3Auth
-- Ensure `DYNAMIC_ENVIRONMENT_ID` is set
-- Test with MetaMask mobile app
+- Ensure `WALLETCONNECT_PROJECT_ID` is set correctly
+- Test with MetaMask mobile app or other mobile wallets
 
 **Authentication fails**
 - Check `USER_SERVICE_URL` is correct

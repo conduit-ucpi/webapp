@@ -30,7 +30,6 @@ jest.mock('@/components/auth', () => ({
 jest.mock('@/components/auth/ConfigProvider', () => ({
   useConfig: () => ({
     config: {
-      web3AuthClientId: 'test-client-id',
       chainId: 8453,
       rpcUrl: 'https://mainnet.base.org',
       usdcContractAddress: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',

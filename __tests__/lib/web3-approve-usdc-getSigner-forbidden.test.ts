@@ -25,8 +25,6 @@ describe('Web3Service.fundAndSendTransaction - getSigner forbidden fix', () => {
   let mockAuthenticatedFetch: jest.Mock;
 
   const testConfig = {
-    web3AuthClientId: 'test-client-id',
-    web3AuthNetwork: 'testnet',
     chainId: 8453,
     rpcUrl: 'https://mainnet.base.org',
     usdcContractAddress: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
@@ -39,7 +37,6 @@ describe('Web3Service.fundAndSendTransaction - getSigner forbidden fix', () => {
     depositFundsFoundryGas: '150000',
     gasPriceBuffer: '1.2',
     basePath: '/',
-    dynamicEnvironmentId: 'test-dynamic-id',
     explorerBaseUrl: 'https://basescan.org',
     serviceLink: 'https://test.example.com'
   };

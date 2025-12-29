@@ -11,8 +11,6 @@ const mockFetch = fetch as jest.MockedFunction<typeof fetch>;
 
 // Mock config
 const mockConfig = {
-  web3AuthClientId: 'test-client-id',
-  web3AuthNetwork: 'testnet',
   chainId: 8453, // Base mainnet
   rpcUrl: 'https://mainnet.base.org',
   usdcContractAddress: '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913',

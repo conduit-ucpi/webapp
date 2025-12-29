@@ -45,8 +45,6 @@ describe('Web3Service - RPC for read-only operations', () => {
       gasPriceBuffer: '1.2',
       tokenSymbol: 'USDC',
       defaultTokenSymbol: 'USDC',
-      web3AuthClientId: 'test-client-id',
-      web3AuthNetwork: 'sapphire_devnet',
       moonPayApiKey: 'test-moonpay-key',
       basePath: 'https://test.conduit-ucpi.com',
       explorerBaseUrl: 'https://sepolia.basescan.org'

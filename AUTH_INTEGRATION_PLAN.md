@@ -181,7 +181,6 @@ No changes needed! Keep existing:
 No new environment variables needed! Use existing:
 - `CHAIN_ID` - Already configured
 - `RPC_URL` - Already configured  
-- `WEB3AUTH_CLIENT_ID` - Already configured
 - `WALLETCONNECT_PROJECT_ID` - Need to add
 
 ### Feature Flags

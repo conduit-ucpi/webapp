@@ -20,8 +20,6 @@ jest.mock('@/components/auth', () => ({
 jest.mock('@/components/auth/ConfigProvider', () => ({
   useConfig: jest.fn(() => ({
     config: {
-      web3AuthClientId: 'test-client-id',
-      web3AuthNetwork: 'testnet',
       chainId: 43113,
       rpcUrl: 'https://api.avax-test.network/ext/bc/C/rpc',
       usdcContractAddress: '0x123456789',

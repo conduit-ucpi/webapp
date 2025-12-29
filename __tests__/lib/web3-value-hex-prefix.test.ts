@@ -110,8 +110,6 @@ describe('Web3Service - Double 0x Prefix Bug', () => {
   let mockProvider: any;
 
   const testConfig: Config = {
-    web3AuthClientId: 'test-client-id',
-    web3AuthNetwork: 'testnet',
     chainId: 8453, // Base mainnet
     rpcUrl: 'https://mainnet.base.org',
     usdcContractAddress: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',

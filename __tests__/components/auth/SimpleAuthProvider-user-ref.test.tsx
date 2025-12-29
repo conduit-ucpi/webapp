@@ -44,8 +44,6 @@ jest.mock('@/hooks/useSimpleEthers', () => ({
 jest.mock('@/components/auth/ConfigProvider', () => ({
   useConfig: () => ({
     config: {
-      web3AuthClientId: 'test-client-id',
-      web3AuthNetwork: 'testnet',
       chainId: 8453,
       rpcUrl: 'https://test-rpc.url',
       explorerBaseUrl: 'https://test-explorer.url',

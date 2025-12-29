@@ -38,8 +38,8 @@ When working correctly, Web3Auth should show a modal with social login options (
 - Check that all required variables are set (see `.env.example`)
 
 ### Network Configuration
-- Ensure `CHAIN_ID` matches the RPC URL (43113 for Avalanche testnet)
-- Verify `WEB3AUTH_CLIENT_ID` is valid and corresponds to your Web3Auth project
+- Ensure `CHAIN_ID` matches the RPC URL (e.g., 8453 for Base mainnet, 84532 for Base Sepolia testnet)
+- Verify `WALLETCONNECT_PROJECT_ID` is valid and corresponds to your WalletConnect/Reown project
 
 ### Build Issues
 - Run `npm install` to ensure all dependencies are installed

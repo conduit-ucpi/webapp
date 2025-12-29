@@ -29,7 +29,6 @@ npm install @web3auth/no-modal @web3auth/openlogin-adapter @web3auth/ethereum-pr
 WALLETCONNECT_PROJECT_ID=your_project_id_here
 
 # Web3Auth Client ID (get from https://dashboard.web3auth.io)  
-WEB3AUTH_CLIENT_ID=your_client_id_here
 ```
 
 ### 2. Initial Setup
@@ -70,7 +69,6 @@ export const web3Modal = createWeb3Modal({
 
 // Web3Auth setup (for social login)
 export const web3auth = new Web3AuthNoModal({
-  clientId: process.env.WEB3AUTH_CLIENT_ID,
   chainConfig,
   web3AuthNetwork: "sapphire_mainnet" // Use "testnet" for development
 })

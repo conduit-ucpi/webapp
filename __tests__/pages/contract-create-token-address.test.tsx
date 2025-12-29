@@ -63,8 +63,6 @@ describe('ContractCreate - Token Address Routing', () => {
   const USDT_ADDRESS = '0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2'; // Base USDT
 
   const mockConfig = {
-    web3AuthClientId: 'test-client-id',
-    web3AuthNetwork: 'sapphire_devnet',
     chainId: 8453,
     rpcUrl: 'https://mainnet.base.org',
     usdcContractAddress: USDC_ADDRESS,

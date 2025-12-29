@@ -116,8 +116,6 @@ describe('DisputeResolutionModal', () => {
 
     mockUseConfig.mockReturnValue({
       config: {
-        web3AuthClientId: 'test-client-id',
-        web3AuthNetwork: 'testnet',
         chainId: 43113,
         rpcUrl: 'https://api.avax-test.network/ext/bc/C/rpc',
         usdcContractAddress: '0x5425890298aed601595a70AB815c96711a31Bc65',

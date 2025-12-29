@@ -44,6 +44,10 @@ export class Web3Service {
   private isDesktopQRSession: boolean = false;
   private isInitialized: boolean = false;
 
+  // Network state cache to avoid repeated switch prompts
+  private lastNetworkCheck: { chainId: bigint; timestamp: number } | null = null;
+  private static NETWORK_CHECK_CACHE_MS = 60000; // Cache network verification for 60 seconds
+
   private constructor(config: Config) {
     this.config = config;
     // Initialize read-only provider immediately (no wallet needed)
@@ -101,6 +105,88 @@ export class Web3Service {
     this.isInitialized = false;
     this.isDesktopQRSession = false;
     this.onMobileActionRequired = undefined;
+    this.lastNetworkCheck = null; // Clear network cache on state reset
+  }
+
+  /**
+   * Verify the wallet is on the correct network, with caching to avoid repeated prompts
+   *
+   * @param forceCheck - If true, bypass cache and always check network
+   * @returns true if on correct network or successfully switched
+   * @throws Error if network switch fails or not supported
+   */
+  private async verifyAndSwitchNetwork(forceCheck: boolean = false): Promise<boolean> {
+    if (!this.provider || !this.config.chainId) {
+      return true; // Skip if no provider or chainId configured
+    }
+
+    const expectedChainId = BigInt(this.config.chainId);
+
+    // Check cache first (unless forced)
+    if (!forceCheck && this.lastNetworkCheck) {
+      const cacheAge = Date.now() - this.lastNetworkCheck.timestamp;
+      if (cacheAge < Web3Service.NETWORK_CHECK_CACHE_MS && this.lastNetworkCheck.chainId === expectedChainId) {
+        console.log('[Web3Service] ✅ Using cached network verification (checked', Math.round(cacheAge / 1000), 'seconds ago)');
+        return true;
+      }
+    }
+
+    // Perform actual network check
+    const network = await this.provider.getNetwork();
+
+    if (network.chainId === expectedChainId) {
+      // Cache successful verification
+      this.lastNetworkCheck = { chainId: network.chainId, timestamp: Date.now() };
+      console.log('[Web3Service] ✅ Network verified - on correct chain:', network.chainId.toString());
+      return true;
+    }
+
+    // Wrong network - attempt to switch
+    console.warn('[Web3Service] ⚠️ WRONG NETWORK detected!', {
+      currentChain: network.chainId.toString(),
+      currentName: network.name,
+      expectedChain: expectedChainId.toString(),
+      expectedName: this.getNetworkName(this.config.chainId)
+    });
+
+    try {
+      const provider = this.provider as any;
+      const rawProvider = provider._getProvider?.() || provider.provider;
+
+      if (!rawProvider?.request) {
+        throw new Error('Provider does not support network switching');
+      }
+
+      console.log('[Web3Service] 🔄 Automatically switching network...');
+      const chainIdHex = `0x${expectedChainId.toString(16)}`;
+      await rawProvider.request({
+        method: 'wallet_switchEthereumChain',
+        params: [{ chainId: chainIdHex }]
+      });
+
+      // Cache successful switch
+      this.lastNetworkCheck = { chainId: expectedChainId, timestamp: Date.now() };
+      console.log('[Web3Service] ✅ Network switched successfully!');
+      return true;
+
+    } catch (switchError: any) {
+      console.error('[Web3Service] ❌ Failed to switch network:', switchError);
+
+      throw new Error(
+        `Cannot proceed: Wallet is on ${network.name} (chain ${network.chainId.toString()}) ` +
+        `but expected ${this.getNetworkName(this.config.chainId)} (chain ${expectedChainId.toString()}). ` +
+        `Please switch your wallet to the correct network manually.`
+      );
+    }
+  }
+
+  /**
+   * Invalidate the network verification cache
+   * Call this after errors to force a fresh network check on next transaction
+   */
+  public invalidateNetworkCache(): void {
+    console.log('[Web3Service] Network cache invalidated - next transaction will verify network');
+    this.lastNetworkCheck = null;
   }
 
   /**
@@ -829,51 +915,8 @@ export class Web3Service {
     console.log('[Web3Service.fundAndSendTransaction] Using unified ethers provider approach (same as balance reading)');
 
     // CRITICAL: Verify network BEFORE sending transaction
-    // We MUST check the wallet's network (not RPC) to ensure wallet can sign on correct chain
-    // This is a one-time check before transaction (acceptable), not during page rendering
-    if (this.config.chainId) {
-      const network = await this.provider.getNetwork();
-      const expectedChainId = BigInt(this.config.chainId);
-
-      if (network.chainId !== expectedChainId) {
-        console.warn('[Web3Service] ⚠️ WRONG NETWORK detected before transaction (wallet network)!', {
-          currentChain: network.chainId.toString(),
-          currentName: network.name,
-          expectedChain: expectedChainId.toString(),
-          expectedName: this.getNetworkName(this.config.chainId)
-        });
-
-        // Attempt to switch network automatically
-        try {
-          const provider = this.provider as any;
-          const rawProvider = provider._getProvider?.() || provider.provider;
-
-          if (rawProvider?.request) {
-            console.log('[Web3Service] 🔄 Automatically switching network before transaction...');
-
-            const chainIdHex = `0x${expectedChainId.toString(16)}`;
-            await rawProvider.request({
-              method: 'wallet_switchEthereumChain',
-              params: [{ chainId: chainIdHex }]
-            });
-
-            console.log('[Web3Service] ✅ Network switched successfully!');
-          } else {
-            throw new Error('Provider does not support network switching');
-          }
-        } catch (switchError: any) {
-          console.error('[Web3Service] ❌ Failed to switch network:', switchError);
-
-          throw new Error(
-            `Cannot send transaction: Wallet is on ${network.name} (chain ${network.chainId.toString()}) ` +
-            `but expected ${this.getNetworkName(this.config.chainId)} (chain ${expectedChainId.toString()}). ` +
-            `Please switch your wallet to the correct network manually.`
-          );
-        }
-      } else {
-        console.log('[Web3Service] ✅ Network verified - on correct chain:', network.chainId.toString());
-      }
-    }
+    // Uses cached verification to avoid repeated prompts during multi-transaction flows
+    await this.verifyAndSwitchNetwork();
 
     const userAddress = await this.getUserAddress();
 

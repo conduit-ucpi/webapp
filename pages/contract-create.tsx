@@ -235,11 +235,18 @@ export default function ContractCreate() {
     fetchUserData();
   }, [isConnected, address, user, hasAttemptedUserFetch, refreshUserData]);
 
-  // Send postMessage to parent window
+  // Send postMessage to parent window (iframe) or opener (popup)
   const sendPostMessage = (event: PostMessageEvent) => {
+    // Send to iframe parent
     if (isInIframe && window.parent) {
-      console.log('🔧 ContractCreate: Sending postMessage:', event);
+      console.log('🔧 ContractCreate: Sending postMessage to iframe parent:', event);
       window.parent.postMessage(event, '*');
+    }
+
+    // Send to popup opener
+    if (isInPopup && window.opener) {
+      console.log('🔧 ContractCreate: Sending postMessage to popup opener:', event);
+      window.opener.postMessage(event, '*');
     }
   };
 

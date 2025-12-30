@@ -7,6 +7,7 @@
  *   ConduitCheckout.init({
  *     sellerAddress: '0x4f118f99a4e8bb384061bcfe081e3bbdec28482d',
  *     baseUrl: 'https://yoursite.com', // Your webapp deployment URL
+ *     verifyPayment: true, // Enable backend verification (default: true)
  *     onSuccess: function(data) { console.log('Payment completed!', data); },
  *     onError: function(error) { console.log('Payment failed:', error); },
  *     onCancel: function() { console.log('Payment cancelled'); }
@@ -22,6 +23,11 @@
 (function(window) {
   'use strict';
 
+  // Contract state constants
+  const VERIFIED_STATES = ['ACTIVE', 'COMPLETED', 'CLAIMED', 'RESOLVED', 'DISPUTED'];
+  const PENDING_STATES = ['OK', 'IN-PROCESS'];
+  const FAILED_STATES = ['NEVER_FUNDED'];
+
   const ConduitCheckout = {
     config: {
       sellerAddress: null,
@@ -29,13 +35,18 @@
       tokenSymbol: 'USDC', // 'USDC' or 'USDT'
       expiryDays: 7, // Default expiry in days
       mode: 'popup', // 'popup' or 'redirect'
+      verifyPayment: true, // Enable backend verification
+      verificationTimeout: 30000, // 30 seconds max polling
+      verificationInterval: 2000, // Poll every 2 seconds
       onSuccess: function(data) { console.log('Payment success:', data); },
       onError: function(error) { console.error('Payment error:', error); },
-      onCancel: function() { console.log('Payment cancelled'); }
+      onCancel: function() { console.log('Payment cancelled'); },
+      onVerifying: null // Optional callback during verification
     },
 
     popup: null,
     messageListener: null,
+    currentPayment: null, // Store expected payment data
 
     /**
      * Initialize the Conduit Checkout widget
@@ -45,9 +56,13 @@
      * @param {string} [options.tokenSymbol='USDC'] - Token to use ('USDC' or 'USDT')
      * @param {number} [options.expiryDays=7] - Days until auto-release to seller
      * @param {string} [options.mode='popup'] - Display mode: 'popup' or 'redirect'
+     * @param {boolean} [options.verifyPayment=true] - Enable backend verification
+     * @param {number} [options.verificationTimeout=30000] - Max time to poll (ms)
+     * @param {number} [options.verificationInterval=2000] - Poll interval (ms)
      * @param {Function} [options.onSuccess] - Success callback
      * @param {Function} [options.onError] - Error callback
      * @param {Function} [options.onCancel] - Cancel callback
+     * @param {Function} [options.onVerifying] - Verification callback
      */
     init: function(options) {
       if (!options.sellerAddress) {
@@ -87,6 +102,14 @@
       if (!params.description) {
         throw new Error('ConduitCheckout: description is required');
       }
+
+      // Store expected payment data for verification
+      this.currentPayment = {
+        amount: parseFloat(params.amount),
+        description: params.description,
+        tokenSymbol: params.tokenSymbol || this.config.tokenSymbol,
+        orderId: params.orderId
+      };
 
       const checkoutUrl = this.buildCheckoutUrl(params);
       console.log('Opening checkout:', checkoutUrl);
@@ -178,6 +201,147 @@
     },
 
     /**
+     * Verify payment by polling resultservice
+     * @param {string} contractId - Contract ID to verify
+     * @returns {Promise<Object>} Verified payment data
+     * @private
+     */
+    verifyPayment: async function(contractId) {
+      const startTime = Date.now();
+      const timeout = this.config.verificationTimeout || 30000;
+      const interval = this.config.verificationInterval || 2000;
+
+      console.log('🔍 Starting payment verification for contract:', contractId);
+
+      // Call onVerifying callback if provided
+      if (this.config.onVerifying) {
+        try {
+          this.config.onVerifying({ contractId, status: 'verifying' });
+        } catch (err) {
+          console.error('Error in onVerifying callback:', err);
+        }
+      }
+
+      while (Date.now() - startTime < timeout) {
+        try {
+          const response = await fetch(
+            `${this.config.baseUrl}/api/results`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contractid: contractId,
+                sellerWalletId: this.config.sellerAddress
+              })
+            }
+          );
+
+          if (!response.ok) {
+            console.warn('⚠️ Verification API error:', response.status, response.statusText);
+            await this.sleep(interval);
+            continue;
+          }
+
+          const data = await response.json();
+          console.log('🔍 Verification response:', data);
+
+          // No results yet - keep polling
+          if (data.count === 0) {
+            console.log('⏳ Contract not found in database yet, polling again...');
+            await this.sleep(interval);
+            continue;
+          }
+
+          const result = data.results[0];
+
+          // Security check: Seller address must match
+          if (result.sellerWalletId.toLowerCase() !== this.config.sellerAddress.toLowerCase()) {
+            throw new Error('Security violation: Seller address mismatch');
+          }
+
+          // Check if payment is verified (funds on blockchain)
+          if (VERIFIED_STATES.includes(result.state)) {
+            console.log('✅ Payment verified successfully');
+
+            // Optional: Verify amount matches
+            if (this.currentPayment && this.currentPayment.amount) {
+              const expectedAmount = parseFloat(this.currentPayment.amount);
+              const actualAmount = parseFloat(result.amount);
+              if (Math.abs(expectedAmount - actualAmount) > 0.001) {
+                console.warn('⚠️ Amount mismatch:', { expected: expectedAmount, actual: actualAmount });
+                throw new Error('Security violation: Amount mismatch');
+              }
+            }
+
+            // Optional: Verify token matches
+            if (this.currentPayment && this.currentPayment.tokenSymbol) {
+              if (result.currencySymbol !== this.currentPayment.tokenSymbol) {
+                console.warn('⚠️ Token mismatch:', { expected: this.currentPayment.tokenSymbol, actual: result.currencySymbol });
+                throw new Error('Security violation: Token mismatch');
+              }
+            }
+
+            return {
+              contractId: result.contractid,
+              chainAddress: result.chainAddress,
+              seller: result.sellerWalletId,
+              amount: result.amount,
+              currencySymbol: result.currencySymbol,
+              description: result.description,
+              state: result.state,
+              verified: true,
+              verifiedAt: new Date().toISOString()
+            };
+          }
+
+          // Check if payment failed
+          if (FAILED_STATES.includes(result.state)) {
+            throw new Error('Payment verification failed: Contract was never funded');
+          }
+
+          // Payment still pending - keep polling
+          if (PENDING_STATES.includes(result.state)) {
+            console.log('⏳ Payment still pending (state:', result.state, '), polling again in', interval, 'ms');
+            await this.sleep(interval);
+            continue;
+          }
+
+          // Unknown state - log and keep polling
+          console.warn('⚠️ Unknown contract state:', result.state);
+          await this.sleep(interval);
+
+        } catch (error) {
+          // If it's a security violation, throw immediately
+          if (error.message.includes('Security violation')) {
+            throw error;
+          }
+
+          // If it's a failed payment, throw immediately
+          if (error.message.includes('Payment verification failed')) {
+            throw error;
+          }
+
+          // Other errors - log and continue polling
+          console.error('❌ Verification error (will retry):', error);
+          await this.sleep(interval);
+        }
+      }
+
+      // Timeout reached
+      throw new Error('Payment verification timeout - please contact support');
+    },
+
+    /**
+     * Sleep helper for polling
+     * @param {number} ms - Milliseconds to sleep
+     * @returns {Promise<void>}
+     * @private
+     */
+    sleep: function(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    },
+
+    /**
      * Setup postMessage listener for iframe/popup communication
      * @private
      */
@@ -186,7 +350,7 @@
         window.removeEventListener('message', this.messageListener);
       }
 
-      this.messageListener = (event) => {
+      this.messageListener = async (event) => {
         // Verify origin matches baseUrl
         const expectedOrigin = new URL(this.config.baseUrl).origin;
         if (event.origin !== expectedOrigin) {
@@ -194,16 +358,35 @@
         }
 
         const message = event.data;
-        console.log('Received postMessage:', message);
+        console.log('📨 Received postMessage:', message);
 
         switch (message.type) {
           case 'contract_created':
-            console.log('Contract created:', message.data);
+            console.log('📝 Contract created:', message.data);
             break;
 
           case 'payment_completed':
-            this.config.onSuccess(message.data);
-            this.cleanup();
+            // Verify payment before calling onSuccess
+            if (this.config.verifyPayment !== false) {
+              try {
+                console.log('🔍 Payment completed postMessage received, starting verification...');
+
+                const verifiedData = await this.verifyPayment(message.data.contractId);
+
+                console.log('✅ Payment verified, calling onSuccess');
+                this.config.onSuccess(verifiedData);
+                this.cleanup();
+
+              } catch (error) {
+                console.error('❌ Payment verification failed:', error);
+                this.config.onError(error.message || 'Payment verification failed');
+              }
+            } else {
+              // Skip verification (not recommended for production)
+              console.warn('⚠️ Payment verification is disabled - calling onSuccess without verification');
+              this.config.onSuccess(message.data);
+              this.cleanup();
+            }
             break;
 
           case 'payment_error':
@@ -229,6 +412,7 @@
         window.removeEventListener('message', this.messageListener);
         this.messageListener = null;
       }
+      this.currentPayment = null;
     },
 
     /**

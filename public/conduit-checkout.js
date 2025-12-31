@@ -24,9 +24,8 @@
   'use strict';
 
   // Contract state constants
-  const VERIFIED_STATES = ['ACTIVE', 'COMPLETED', 'CLAIMED', 'RESOLVED', 'DISPUTED'];
-  const PENDING_STATES = ['OK', 'IN-PROCESS'];
-  const FAILED_STATES = ['NEVER_FUNDED'];
+  // Error states that indicate payment failed
+  const FAILED_STATES = ['NEVER_FUNDED', 'ERROR', 'FAILED'];
 
   const ConduitCheckout = {
     config: {
@@ -256,61 +255,69 @@
 
           const result = data.results[0];
 
-          // Security check: Seller address must match
-          if (result.sellerWalletId.toLowerCase() !== this.config.sellerAddress.toLowerCase()) {
-            throw new Error('Security violation: Seller address mismatch');
-          }
-
-          // Check if payment is verified (funds on blockchain)
-          if (VERIFIED_STATES.includes(result.state)) {
-            console.log('✅ Payment verified successfully');
-
-            // Optional: Verify amount matches
-            if (this.currentPayment && this.currentPayment.amount) {
-              const expectedAmount = parseFloat(this.currentPayment.amount);
-              const actualAmount = parseFloat(result.amount);
-              if (Math.abs(expectedAmount - actualAmount) > 0.001) {
-                console.warn('⚠️ Amount mismatch:', { expected: expectedAmount, actual: actualAmount });
-                throw new Error('Security violation: Amount mismatch');
-              }
-            }
-
-            // Optional: Verify token matches
-            if (this.currentPayment && this.currentPayment.tokenSymbol) {
-              if (result.currencySymbol !== this.currentPayment.tokenSymbol) {
-                console.warn('⚠️ Token mismatch:', { expected: this.currentPayment.tokenSymbol, actual: result.currencySymbol });
-                throw new Error('Security violation: Token mismatch');
-              }
-            }
-
-            return {
-              contractId: result.contractid,
-              chainAddress: result.chainAddress,
-              seller: result.sellerWalletId,
-              amount: result.amount,
-              currencySymbol: result.currencySymbol,
-              description: result.description,
-              state: result.state,
-              verified: true,
-              verifiedAt: new Date().toISOString()
-            };
-          }
-
-          // Check if payment failed
+          // 1. Check if payment failed (error state)
           if (FAILED_STATES.includes(result.state)) {
-            throw new Error('Payment verification failed: Contract was never funded');
+            throw new Error('Payment verification failed: Contract was never funded or encountered an error');
           }
 
-          // Payment still pending - keep polling
-          if (PENDING_STATES.includes(result.state)) {
-            console.log('⏳ Payment still pending (state:', result.state, '), polling again in', interval, 'ms');
+          // 2. Check if contract is on blockchain (has chainAddress)
+          if (!result.chainAddress) {
+            console.log('⏳ Contract not yet on blockchain (no chainAddress), polling again in', interval, 'ms');
             await this.sleep(interval);
             continue;
           }
 
-          // Unknown state - log and keep polling
-          console.warn('⚠️ Unknown contract state:', result.state);
-          await this.sleep(interval);
+          console.log('✅ Contract found on blockchain:', result.chainAddress);
+
+          // 3. Security check: Seller address must match
+          if (result.sellerWalletId.toLowerCase() !== this.config.sellerAddress.toLowerCase()) {
+            throw new Error('Security violation: Seller address mismatch');
+          }
+
+          // 4. Verify amount matches (if provided)
+          if (this.currentPayment && this.currentPayment.amount) {
+            const expectedAmount = parseFloat(this.currentPayment.amount);
+            const actualAmount = parseFloat(result.amount);
+            if (Math.abs(expectedAmount - actualAmount) > 0.001) {
+              console.warn('⚠️ Amount mismatch:', { expected: expectedAmount, actual: actualAmount });
+              throw new Error('Security violation: Amount mismatch');
+            }
+          }
+
+          // 5. Verify token/currency matches (if provided)
+          if (this.currentPayment && this.currentPayment.tokenSymbol) {
+            if (result.currencySymbol !== this.currentPayment.tokenSymbol) {
+              console.warn('⚠️ Token mismatch:', { expected: this.currentPayment.tokenSymbol, actual: result.currencySymbol });
+              throw new Error('Security violation: Token mismatch');
+            }
+          }
+
+          // 6. Verify expiry/payout date matches (if provided)
+          if (this.currentPayment && this.currentPayment.expiryTimestamp) {
+            const expectedExpiry = parseInt(this.currentPayment.expiryTimestamp);
+            const actualExpiry = parseInt(result.expiryTimestamp || result.payoutTimestamp);
+            // Allow 60 second tolerance for timing differences
+            if (Math.abs(expectedExpiry - actualExpiry) > 60) {
+              console.warn('⚠️ Expiry mismatch:', { expected: expectedExpiry, actual: actualExpiry });
+              throw new Error('Security violation: Payout date mismatch');
+            }
+          }
+
+          console.log('✅ Payment verified successfully - all checks passed');
+
+          // All checks passed - payment is verified!
+          return {
+            contractId: result.contractid,
+            chainAddress: result.chainAddress,
+            seller: result.sellerWalletId,
+            amount: result.amount,
+            currencySymbol: result.currencySymbol,
+            description: result.description,
+            state: result.state,
+            expiryTimestamp: result.expiryTimestamp || result.payoutTimestamp,
+            verified: true,
+            verifiedAt: new Date().toISOString()
+          };
 
         } catch (error) {
           // If it's a security violation, throw immediately

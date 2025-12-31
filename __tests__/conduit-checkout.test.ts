@@ -137,19 +137,20 @@ describe('ConduitCheckout SDK', () => {
       };
     });
 
-    it('should verify payment successfully with ACTIVE state', async () => {
+    it('should verify payment successfully when chainAddress exists', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({
           count: 1,
           results: [{
             contractid: 'abc123',
-            chainAddress: '0xcontract123',
+            chainAddress: '0xcontract123', // This is what we check for!
             sellerWalletId: '0x1234567890abcdef1234567890abcdef12345678',
             amount: 50.0,
             currencySymbol: 'USDC',
             description: 'Test Product',
-            state: 'ACTIVE',
+            state: 'ACTIVE', // State doesn't matter as long as it's not FAILED
+            expiryTimestamp: 1767745061,
           }],
         }),
       });
@@ -170,6 +171,7 @@ describe('ConduitCheckout SDK', () => {
 
       expect(result).toMatchObject({
         contractId: 'abc123',
+        chainAddress: '0xcontract123',
         seller: '0x1234567890abcdef1234567890abcdef12345678',
         amount: 50.0,
         currencySymbol: 'USDC',
@@ -178,21 +180,21 @@ describe('ConduitCheckout SDK', () => {
       });
     });
 
-    it('should accept all verified states', async () => {
-      const verifiedStates = ['ACTIVE', 'COMPLETED', 'CLAIMED', 'RESOLVED', 'DISPUTED'];
+    it('should accept any non-failed state when chainAddress exists', async () => {
+      const validStates = ['ACTIVE', 'COMPLETED', 'CLAIMED', 'RESOLVED', 'DISPUTED', 'OK', 'PENDING', 'UNKNOWN'];
 
-      for (const state of verifiedStates) {
+      for (const state of validStates) {
         mockFetch.mockResolvedValueOnce({
           ok: true,
           json: async () => ({
             count: 1,
             results: [{
               contractid: 'abc123',
-              chainAddress: '0xcontract123',
+              chainAddress: '0xcontract123', // Key: has chainAddress
               sellerWalletId: '0x1234567890abcdef1234567890abcdef12345678',
               amount: 50.0,
               currencySymbol: 'USDC',
-              state,
+              state, // Any state is OK if chainAddress exists and not FAILED
             }],
           }),
         });
@@ -215,6 +217,7 @@ describe('ConduitCheckout SDK', () => {
             count: 1,
             results: [{
               contractid: 'abc123',
+              chainAddress: '0xcontract123',
               sellerWalletId: '0x1234567890abcdef1234567890abcdef12345678',
               amount: 50.0,
               currencySymbol: 'USDC',
@@ -231,7 +234,7 @@ describe('ConduitCheckout SDK', () => {
       expect(result.verified).toBe(true);
     });
 
-    it('should poll when state is pending', async () => {
+    it('should poll when chainAddress is missing (not yet on blockchain)', async () => {
       mockFetch
         .mockResolvedValueOnce({
           ok: true,
@@ -239,10 +242,11 @@ describe('ConduitCheckout SDK', () => {
             count: 1,
             results: [{
               contractid: 'abc123',
+              chainAddress: null, // Not on blockchain yet!
               sellerWalletId: '0x1234567890abcdef1234567890abcdef12345678',
               amount: 50.0,
               currencySymbol: 'USDC',
-              state: 'OK', // Pending state
+              state: 'OK',
             }],
           }),
         })
@@ -252,6 +256,7 @@ describe('ConduitCheckout SDK', () => {
             count: 1,
             results: [{
               contractid: 'abc123',
+              chainAddress: '0xcontract123', // Now on blockchain!
               sellerWalletId: '0x1234567890abcdef1234567890abcdef12345678',
               amount: 50.0,
               currencySymbol: 'USDC',
@@ -329,6 +334,7 @@ describe('ConduitCheckout SDK', () => {
           count: 1,
           results: [{
             contractid: 'abc123',
+            chainAddress: '0xcontract123',
             sellerWalletId: '0xBADACTOR0000000000000000000000000000DEAD', // Wrong seller!
             amount: 50.0,
             currencySymbol: 'USDC',
@@ -349,6 +355,7 @@ describe('ConduitCheckout SDK', () => {
           count: 1,
           results: [{
             contractid: 'abc123',
+            chainAddress: '0xcontract123',
             sellerWalletId: '0X1234567890ABCDEF1234567890ABCDEF12345678', // Uppercase
             amount: 50.0,
             currencySymbol: 'USDC',
@@ -368,6 +375,7 @@ describe('ConduitCheckout SDK', () => {
           count: 1,
           results: [{
             contractid: 'abc123',
+            chainAddress: '0xcontract123',
             sellerWalletId: '0x1234567890abcdef1234567890abcdef12345678',
             amount: 25.0, // Wrong amount!
             currencySymbol: 'USDC',
@@ -390,6 +398,7 @@ describe('ConduitCheckout SDK', () => {
           count: 1,
           results: [{
             contractid: 'abc123',
+            chainAddress: '0xcontract123',
             sellerWalletId: '0x1234567890abcdef1234567890abcdef12345678',
             amount: 50.0001, // Tiny difference (within 0.001 tolerance)
             currencySymbol: 'USDC',
@@ -409,6 +418,7 @@ describe('ConduitCheckout SDK', () => {
           count: 1,
           results: [{
             contractid: 'abc123',
+            chainAddress: '0xcontract123',
             sellerWalletId: '0x1234567890abcdef1234567890abcdef12345678',
             amount: 50.0,
             currencySymbol: 'USDT', // Wrong token!
@@ -431,6 +441,7 @@ describe('ConduitCheckout SDK', () => {
           count: 1,
           results: [{
             contractid: 'abc123',
+            chainAddress: '0xcontract123', // Must have chainAddress
             sellerWalletId: '0x1234567890abcdef1234567890abcdef12345678',
             amount: 999.0, // Different amount
             currencySymbol: 'USDT', // Different token
@@ -468,6 +479,7 @@ describe('ConduitCheckout SDK', () => {
             count: 1,
             results: [{
               contractid: 'abc123',
+              chainAddress: '0xcontract123',
               sellerWalletId: '0x1234567890abcdef1234567890abcdef12345678',
               amount: 50.0,
               currencySymbol: 'USDC',
@@ -493,6 +505,7 @@ describe('ConduitCheckout SDK', () => {
             count: 1,
             results: [{
               contractid: 'abc123',
+              chainAddress: '0xcontract123',
               sellerWalletId: '0x1234567890abcdef1234567890abcdef12345678',
               amount: 50.0,
               currencySymbol: 'USDC',
@@ -516,6 +529,7 @@ describe('ConduitCheckout SDK', () => {
           count: 1,
           results: [{
             contractid: 'abc123',
+            chainAddress: '0xcontract123',
             sellerWalletId: '0xBADACTOR0000000000000000000000000000DEAD',
             amount: 50.0,
             currencySymbol: 'USDC',
@@ -555,6 +569,7 @@ describe('ConduitCheckout SDK', () => {
           count: 1,
           results: [{
             contractid: 'abc123',
+            chainAddress: '0xcontract123',
             sellerWalletId: '0x1234567890abcdef1234567890abcdef12345678',
             amount: 50.0,
             currencySymbol: 'USDC',
@@ -583,6 +598,7 @@ describe('ConduitCheckout SDK', () => {
           count: 1,
           results: [{
             contractid: 'abc123',
+            chainAddress: '0xcontract123',
             sellerWalletId: '0x1234567890abcdef1234567890abcdef12345678',
             amount: 50.0,
             currencySymbol: 'USDC',

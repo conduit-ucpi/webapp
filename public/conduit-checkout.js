@@ -280,7 +280,7 @@
             const rawAmount = parseFloat(result.amount);
 
             // If currency has 'micro' prefix, convert from micro units
-            const actualAmount = result.currencySymbol.toLowerCase().startsWith('micro')
+            const actualAmount = result.currency.toLowerCase().startsWith('micro')
               ? rawAmount / 1000000
               : rawAmount;
 
@@ -289,18 +289,18 @@
                 expected: expectedAmount,
                 actual: actualAmount,
                 raw: rawAmount,
-                currency: result.currencySymbol
+                currency: result.currency
               });
               throw new Error('Security violation: Amount mismatch');
             }
-            console.log('✅ Amount verified:', actualAmount, result.currencySymbol);
+            console.log('✅ Amount verified:', actualAmount, result.currency);
           }
 
           // 5. Verify token/currency matches (if provided)
           if (this.currentPayment && this.currentPayment.tokenSymbol) {
             // Normalize currency symbols by removing 'micro' prefix for comparison
             const expectedCurrency = this.currentPayment.tokenSymbol.toLowerCase();
-            const actualCurrencyRaw = result.currencySymbol.toLowerCase();
+            const actualCurrencyRaw = result.currency.toLowerCase();
             const actualCurrency = actualCurrencyRaw.startsWith('micro')
               ? actualCurrencyRaw.substring(5) // Remove 'micro' prefix
               : actualCurrencyRaw;
@@ -308,13 +308,13 @@
             if (expectedCurrency !== actualCurrency && expectedCurrency !== actualCurrencyRaw) {
               console.warn('⚠️ Token mismatch:', {
                 expected: this.currentPayment.tokenSymbol,
-                actual: result.currencySymbol,
+                actual: result.currency,
                 normalizedExpected: expectedCurrency,
                 normalizedActual: actualCurrency
               });
               throw new Error('Security violation: Token mismatch');
             }
-            console.log('✅ Currency verified:', result.currencySymbol);
+            console.log('✅ Currency verified:', result.currency);
           }
 
           // 6. Verify expiry/payout date matches (if provided)
@@ -332,15 +332,15 @@
 
           // All checks passed - payment is verified!
           const rawAmount = parseFloat(result.amount);
-          const isMicroCurrency = result.currencySymbol.toLowerCase().startsWith('micro');
+          const isMicroCurrency = result.currency.toLowerCase().startsWith('micro');
 
           // Convert micro currencies (microUSDC, microUSDT, etc.) to base units
           const displayAmount = isMicroCurrency ? rawAmount / 1000000 : rawAmount;
 
           // Get the display currency symbol (remove 'micro' prefix if present)
           const displayCurrency = isMicroCurrency
-            ? result.currencySymbol.substring(5) // Remove 'micro' prefix
-            : result.currencySymbol;
+            ? result.currency.substring(5) // Remove 'micro' prefix
+            : result.currency;
 
           return {
             contractId: result.contractid,
@@ -349,7 +349,7 @@
             amount: displayAmount, // Amount in base units (USDC, USDT, etc.)
             amountRaw: rawAmount, // Original amount (may be in micro units)
             currencySymbol: displayCurrency, // Base currency (USDC, USDT, etc.)
-            currencyRaw: result.currencySymbol, // Original currency from backend
+            currencyRaw: result.currency, // Original currency from backend
             description: result.description,
             state: result.state,
             expiryTimestamp: result.expiryTimestamp || result.payoutTimestamp,

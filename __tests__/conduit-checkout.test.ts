@@ -147,7 +147,7 @@ describe('ConduitCheckout SDK', () => {
             chainAddress: '0xcontract123', // This is what we check for!
             sellerWalletId: '0x1234567890abcdef1234567890abcdef12345678',
             amount: 50000000, // Backend returns microUSDC (50 USDC = 50,000,000 microUSDC)
-            currencySymbol: 'microUSDC',
+            currency: 'microUSDC',
             description: 'Test Product',
             state: 'ACTIVE', // State doesn't matter as long as it's not FAILED
             expiryTimestamp: 1767745061,
@@ -195,7 +195,7 @@ describe('ConduitCheckout SDK', () => {
               chainAddress: '0xcontract123', // Key: has chainAddress
               sellerWalletId: '0x1234567890abcdef1234567890abcdef12345678',
               amount: 50.0,
-              currencySymbol: 'USDC',
+              currency: 'USDC',
               state, // Any state is OK if chainAddress exists and not FAILED
             }],
           }),
@@ -222,7 +222,7 @@ describe('ConduitCheckout SDK', () => {
               chainAddress: '0xcontract123',
               sellerWalletId: '0x1234567890abcdef1234567890abcdef12345678',
               amount: 50.0,
-              currencySymbol: 'USDC',
+              currency: 'USDC',
               state: 'ACTIVE',
             }],
           }),
@@ -247,7 +247,7 @@ describe('ConduitCheckout SDK', () => {
               chainAddress: null, // Not on blockchain yet!
               sellerWalletId: '0x1234567890abcdef1234567890abcdef12345678',
               amount: 50.0,
-              currencySymbol: 'USDC',
+              currency: 'USDC',
               state: 'OK',
             }],
           }),
@@ -261,7 +261,7 @@ describe('ConduitCheckout SDK', () => {
               chainAddress: '0xcontract123', // Now on blockchain!
               sellerWalletId: '0x1234567890abcdef1234567890abcdef12345678',
               amount: 50.0,
-              currencySymbol: 'USDC',
+              currency: 'USDC',
               state: 'ACTIVE',
             }],
           }),
@@ -339,7 +339,7 @@ describe('ConduitCheckout SDK', () => {
             chainAddress: '0xcontract123',
             sellerWalletId: '0xBADACTOR0000000000000000000000000000DEAD', // Wrong seller!
             amount: 50.0,
-            currencySymbol: 'USDC',
+            currency: 'USDC',
             state: 'ACTIVE',
           }],
         }),
@@ -360,7 +360,7 @@ describe('ConduitCheckout SDK', () => {
             chainAddress: '0xcontract123',
             sellerWalletId: '0X1234567890ABCDEF1234567890ABCDEF12345678', // Uppercase
             amount: 50.0,
-            currencySymbol: 'USDC',
+            currency: 'USDC',
             state: 'ACTIVE',
           }],
         }),
@@ -380,7 +380,7 @@ describe('ConduitCheckout SDK', () => {
             chainAddress: '0xcontract123',
             sellerWalletId: '0x1234567890abcdef1234567890abcdef12345678',
             amount: 25.0, // Wrong amount!
-            currencySymbol: 'USDC',
+            currency: 'USDC',
             state: 'ACTIVE',
           }],
         }),
@@ -403,7 +403,7 @@ describe('ConduitCheckout SDK', () => {
             chainAddress: '0xcontract123',
             sellerWalletId: '0x1234567890abcdef1234567890abcdef12345678',
             amount: 50.0001, // Tiny difference (within 0.001 tolerance)
-            currencySymbol: 'USDC',
+            currency: 'USDC',
             state: 'ACTIVE',
           }],
         }),
@@ -423,7 +423,7 @@ describe('ConduitCheckout SDK', () => {
             chainAddress: '0xcontract123',
             sellerWalletId: '0x1234567890abcdef1234567890abcdef12345678',
             amount: 50.0,
-            currencySymbol: 'USDT', // Wrong token!
+            currency: 'USDT', // Wrong token!
             state: 'ACTIVE',
           }],
         }),
@@ -446,7 +446,7 @@ describe('ConduitCheckout SDK', () => {
             chainAddress: '0xcontract123', // Must have chainAddress
             sellerWalletId: '0x1234567890abcdef1234567890abcdef12345678',
             amount: 999.0, // Different amount
-            currencySymbol: 'USDT', // Different token
+            currency: 'USDT', // Different token
             state: 'ACTIVE',
           }],
         }),
@@ -484,7 +484,7 @@ describe('ConduitCheckout SDK', () => {
               chainAddress: '0xcontract123',
               sellerWalletId: '0x1234567890abcdef1234567890abcdef12345678',
               amount: 50.0,
-              currencySymbol: 'USDC',
+              currency: 'USDC',
               state: 'ACTIVE',
             }],
           }),
@@ -510,7 +510,7 @@ describe('ConduitCheckout SDK', () => {
               chainAddress: '0xcontract123',
               sellerWalletId: '0x1234567890abcdef1234567890abcdef12345678',
               amount: 50.0,
-              currencySymbol: 'USDC',
+              currency: 'USDC',
               state: 'ACTIVE',
             }],
           }),
@@ -534,7 +534,7 @@ describe('ConduitCheckout SDK', () => {
             chainAddress: '0xcontract123',
             sellerWalletId: '0xBADACTOR0000000000000000000000000000DEAD',
             amount: 50.0,
-            currencySymbol: 'USDC',
+            currency: 'USDC',
             state: 'ACTIVE',
           }],
         }),
@@ -574,7 +574,7 @@ describe('ConduitCheckout SDK', () => {
             chainAddress: '0xcontract123',
             sellerWalletId: '0x1234567890abcdef1234567890abcdef12345678',
             amount: 50.0,
-            currencySymbol: 'USDC',
+            currency: 'USDC',
             state: 'ACTIVE',
           }],
         }),
@@ -603,7 +603,7 @@ describe('ConduitCheckout SDK', () => {
             chainAddress: '0xcontract123',
             sellerWalletId: '0x1234567890abcdef1234567890abcdef12345678',
             amount: 50.0,
-            currencySymbol: 'USDC',
+            currency: 'USDC',
             state: 'ACTIVE',
           }],
         }),
@@ -697,7 +697,7 @@ describe('ConduitCheckout SDK', () => {
             chainAddress: '0xcontract456',
             sellerWalletId: '0x1234567890abcdef1234567890abcdef12345678',
             amount: 50.0,
-            currencySymbol: 'USDC',
+            currency: 'USDC',
             description: 'Test Product',
             state: 'ACTIVE',
           }],

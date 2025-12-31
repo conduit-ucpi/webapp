@@ -499,12 +499,16 @@ app.post('/api/conduit-webhook', async (req, res) => {
           <ul>
             <li>Check the browser console for more details</li>
             <li>Verify you have sufficient USDC balance</li>
+            <li>Verify the payment amount matches exactly</li>
             <li>Contact support with the error message above</li>
           </ul>
         </div>
-        <button onclick="location.reload()">Try Again</button>
+        <button class="button" onclick="location.reload()">Try Again</button>
       `;
       statusDiv.style.display = 'block';
+
+      // Prevent any automatic navigation away from error
+      console.log('🛑 Error displayed - staying on page for review');
     }
 
     function showCancelled() {

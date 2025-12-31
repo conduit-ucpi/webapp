@@ -146,8 +146,8 @@ describe('ConduitCheckout SDK', () => {
             contractid: 'abc123',
             chainAddress: '0xcontract123', // This is what we check for!
             sellerWalletId: '0x1234567890abcdef1234567890abcdef12345678',
-            amount: 50.0,
-            currencySymbol: 'USDC',
+            amount: 50000000, // Backend returns microUSDC (50 USDC = 50,000,000 microUSDC)
+            currencySymbol: 'microUSDC',
             description: 'Test Product',
             state: 'ACTIVE', // State doesn't matter as long as it's not FAILED
             expiryTimestamp: 1767745061,
@@ -173,11 +173,13 @@ describe('ConduitCheckout SDK', () => {
         contractId: 'abc123',
         chainAddress: '0xcontract123',
         seller: '0x1234567890abcdef1234567890abcdef12345678',
-        amount: 50.0,
-        currencySymbol: 'USDC',
+        amount: 50.0, // SDK converts to USDC for display
+        currencySymbol: 'USDC', // SDK removes 'micro' prefix
         state: 'ACTIVE',
         verified: true,
       });
+      expect(result.amountRaw).toBe(50000000); // Original microUSDC amount
+      expect(result.currencyRaw).toBe('microUSDC'); // Original currency
     });
 
     it('should accept any non-failed state when chainAddress exists', async () => {

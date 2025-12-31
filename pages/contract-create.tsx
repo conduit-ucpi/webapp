@@ -624,17 +624,13 @@ export default function ContractCreate() {
           sendPostMessage({ type: 'close_modal' });
         }, 2000);
       } else if (isInPopup) {
-        // In popup - close popup and redirect opener to return URL
+        // In popup - just close popup (DON'T redirect opener)
+        // The SDK will handle showing verification success/failure in the parent window
         setTimeout(() => {
-          if (returnUrl && typeof returnUrl === 'string' && window.opener) {
-            // Build WordPress status URL for completed payment
-            const completedUrl = buildWordPressStatusUrl('completed', {
-              contract_id: contractId || '',
-              contract_hash: result?.contractAddress || '',
-              tx_hash: result?.depositTxHash || ''
-            });
-            window.opener.location.href = completedUrl;
-          }
+          // NOTE: We do NOT redirect the opener window here anymore
+          // The SDK receives the postMessage and handles verification/display
+          // Redirecting would clear the SDK's verification UI
+
           // Close the popup
           window.close();
         }, 2000);
@@ -683,7 +679,14 @@ export default function ContractCreate() {
           window.location.href = errorUrl;
         }
       } else {
-        alert(error.message || 'Payment failed');
+        // For SDK usage: Don't redirect - let SDK handle error display
+        // Just close the popup if we're in one
+        if (isInPopup) {
+          setTimeout(() => window.close(), 2000);
+        } else if (!isInIframe) {
+          // Only show alert if not in popup/iframe (direct page access)
+          alert(error.message || 'Payment failed');
+        }
       }
 
       setIsLoading(false);
@@ -697,14 +700,13 @@ export default function ContractCreate() {
     if (isInIframe) {
       sendPostMessage({ type: 'close_modal' });
     } else if (isInPopup) {
-      // In popup - close popup and return to opener
-      if (window.opener) {
+      // In popup - close popup (SDK will handle displaying cancellation message)
+      if (window.opener && wordpress_source === 'true' && returnUrl && typeof returnUrl === 'string') {
         // For WordPress integration, redirect to cancelled status page
-        if (returnUrl && typeof returnUrl === 'string') {
-          const cancelUrl = buildWordPressStatusUrl('cancelled');
-          window.opener.location.href = cancelUrl;
-        }
+        const cancelUrl = buildWordPressStatusUrl('cancelled');
+        window.opener.location.href = cancelUrl;
       }
+      // Close popup (SDK will show cancellation message in parent window)
       window.close();
     } else {
       if (returnUrl && typeof returnUrl === 'string') {

@@ -277,19 +277,44 @@
           // 4. Verify amount matches (if provided)
           if (this.currentPayment && this.currentPayment.amount) {
             const expectedAmount = parseFloat(this.currentPayment.amount);
-            const actualAmount = parseFloat(result.amount);
+            const rawAmount = parseFloat(result.amount);
+
+            // If currency has 'micro' prefix, convert from micro units
+            const actualAmount = result.currencySymbol.toLowerCase().startsWith('micro')
+              ? rawAmount / 1000000
+              : rawAmount;
+
             if (Math.abs(expectedAmount - actualAmount) > 0.001) {
-              console.warn('⚠️ Amount mismatch:', { expected: expectedAmount, actual: actualAmount });
+              console.warn('⚠️ Amount mismatch:', {
+                expected: expectedAmount,
+                actual: actualAmount,
+                raw: rawAmount,
+                currency: result.currencySymbol
+              });
               throw new Error('Security violation: Amount mismatch');
             }
+            console.log('✅ Amount verified:', actualAmount, result.currencySymbol);
           }
 
           // 5. Verify token/currency matches (if provided)
           if (this.currentPayment && this.currentPayment.tokenSymbol) {
-            if (result.currencySymbol !== this.currentPayment.tokenSymbol) {
-              console.warn('⚠️ Token mismatch:', { expected: this.currentPayment.tokenSymbol, actual: result.currencySymbol });
+            // Normalize currency symbols by removing 'micro' prefix for comparison
+            const expectedCurrency = this.currentPayment.tokenSymbol.toLowerCase();
+            const actualCurrencyRaw = result.currencySymbol.toLowerCase();
+            const actualCurrency = actualCurrencyRaw.startsWith('micro')
+              ? actualCurrencyRaw.substring(5) // Remove 'micro' prefix
+              : actualCurrencyRaw;
+
+            if (expectedCurrency !== actualCurrency && expectedCurrency !== actualCurrencyRaw) {
+              console.warn('⚠️ Token mismatch:', {
+                expected: this.currentPayment.tokenSymbol,
+                actual: result.currencySymbol,
+                normalizedExpected: expectedCurrency,
+                normalizedActual: actualCurrency
+              });
               throw new Error('Security violation: Token mismatch');
             }
+            console.log('✅ Currency verified:', result.currencySymbol);
           }
 
           // 6. Verify expiry/payout date matches (if provided)
@@ -306,12 +331,25 @@
           console.log('✅ Payment verified successfully - all checks passed');
 
           // All checks passed - payment is verified!
+          const rawAmount = parseFloat(result.amount);
+          const isMicroCurrency = result.currencySymbol.toLowerCase().startsWith('micro');
+
+          // Convert micro currencies (microUSDC, microUSDT, etc.) to base units
+          const displayAmount = isMicroCurrency ? rawAmount / 1000000 : rawAmount;
+
+          // Get the display currency symbol (remove 'micro' prefix if present)
+          const displayCurrency = isMicroCurrency
+            ? result.currencySymbol.substring(5) // Remove 'micro' prefix
+            : result.currencySymbol;
+
           return {
             contractId: result.contractid,
             chainAddress: result.chainAddress,
             seller: result.sellerWalletId,
-            amount: result.amount,
-            currencySymbol: result.currencySymbol,
+            amount: displayAmount, // Amount in base units (USDC, USDT, etc.)
+            amountRaw: rawAmount, // Original amount (may be in micro units)
+            currencySymbol: displayCurrency, // Base currency (USDC, USDT, etc.)
+            currencyRaw: result.currencySymbol, // Original currency from backend
             description: result.description,
             state: result.state,
             expiryTimestamp: result.expiryTimestamp || result.payoutTimestamp,
@@ -506,7 +544,10 @@
 
               } catch (error) {
                 console.error('❌ Payment verification failed:', error);
+                // Call onError and DON'T cleanup - keep the SDK active
+                // This ensures the error message stays visible and doesn't get cleared by navigation
                 this.config.onError(error.message || 'Payment verification failed');
+                // Note: NOT calling cleanup() here so error state persists
               }
             } else {
               // Skip verification (not recommended for production)

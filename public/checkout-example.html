@@ -332,6 +332,16 @@ app.post('/api/conduit-webhook', async (req, res) => {
       onVerifying: function(data) {
         console.log('🔍 Verifying payment...', data);
         showVerifying(data.contractId);
+      },
+
+      onWebhookSuccess: function(data) {
+        console.log('✅ Webhook delivered!', data);
+        updateWebhookStatus('success', data);
+      },
+
+      onWebhookError: function(error) {
+        console.error('❌ Webhook failed!', error);
+        updateWebhookStatus('error', error);
       }
     });
 
@@ -377,11 +387,38 @@ app.post('/api/conduit-webhook', async (req, res) => {
       statusDiv.className = 'info';
       statusDiv.innerHTML = `
         <h3>🔍 Verifying Payment...</h3>
-        <p>Contract ID: ${contractId}</p>
+        <p><strong>Contract ID:</strong> ${contractId}</p>
         <p>Please wait while we verify your payment on the blockchain...</p>
-        <div class="spinner"></div>
+        <p><small>This may take 10-30 seconds while we poll the blockchain...</small></p>
+        <div id="webhook-status" style="margin-top: 15px; padding: 10px; background: #f0f0f0; border-radius: 4px; display: none;">
+          <strong>📡 Webhook Status:</strong>
+          <div id="webhook-details"></div>
+        </div>
       `;
       statusDiv.style.display = 'block';
+    }
+
+    function updateWebhookStatus(status, data) {
+      const webhookStatus = document.getElementById('webhook-status');
+      const webhookDetails = document.getElementById('webhook-details');
+
+      if (!webhookStatus || !webhookDetails) return;
+
+      webhookStatus.style.display = 'block';
+
+      if (status === 'success') {
+        webhookDetails.innerHTML = `
+          <p style="color: green; margin: 5px 0;">✅ Webhook delivered successfully!</p>
+          <p style="margin: 5px 0; font-size: 0.9em;"><strong>Payload:</strong></p>
+          <pre style="background: white; padding: 10px; border-radius: 4px; overflow: auto; max-height: 200px; font-size: 0.8em;">${JSON.stringify(data.payload, null, 2)}</pre>
+        `;
+      } else {
+        webhookDetails.innerHTML = `
+          <p style="color: red; margin: 5px 0;">❌ Webhook delivery failed</p>
+          <p style="margin: 5px 0; font-size: 0.9em;"><strong>Error:</strong> ${data.error || data.statusText || 'Unknown error'}</p>
+          <p style="margin: 5px 0; font-size: 0.85em; color: #666;"><em>Note: Payment was still verified successfully. This is just a webhook delivery issue.</em></p>
+        `;
+      }
     }
 
     function showVerifiedPayment(data) {
@@ -433,6 +470,11 @@ app.post('/api/conduit-webhook', async (req, res) => {
             <li>✓ Funds auto-release to seller after protection period (if no disputes)</li>
             <li>✓ You can dispute before funds are released if there's a problem</li>
           </ul>
+        </div>
+
+        <div id="webhook-status" style="margin-top: 20px; padding: 15px; background: #f0f0f0; border-radius: 4px; display: none;">
+          <strong>📡 Webhook Status:</strong>
+          <div id="webhook-details"></div>
         </div>
 
         <div class="merchant-note">

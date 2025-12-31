@@ -407,6 +407,8 @@
           timestamp: Math.floor(Date.now() / 1000)
         };
 
+        console.log('📦 Webhook payload:', payload);
+
         const headers = {
           'Content-Type': 'application/json',
         };
@@ -419,6 +421,7 @@
           );
           if (signature) {
             headers['X-Conduit-Signature'] = signature;
+            console.log('🔐 Webhook signature generated:', signature.substring(0, 16) + '...');
           }
         }
 
@@ -430,12 +433,24 @@
 
         if (!response.ok) {
           console.error('❌ Webhook delivery failed:', response.status, response.statusText);
+          // Notify via callback if available
+          if (this.config.onWebhookError) {
+            this.config.onWebhookError({ status: response.status, statusText: response.statusText });
+          }
           // Don't throw - still call onSuccess even if webhook fails
         } else {
           console.log('✅ Webhook delivered successfully');
+          // Notify via callback if available
+          if (this.config.onWebhookSuccess) {
+            this.config.onWebhookSuccess({ payload, status: response.status });
+          }
         }
       } catch (error) {
         console.error('❌ Webhook error:', error);
+        // Notify via callback if available
+        if (this.config.onWebhookError) {
+          this.config.onWebhookError({ error: error.message });
+        }
         // Don't throw - still call onSuccess even if webhook fails
       }
     },

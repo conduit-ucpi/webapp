@@ -38,6 +38,8 @@
       verifyPayment: true, // Enable backend verification
       verificationTimeout: 30000, // 30 seconds max polling
       verificationInterval: 2000, // Poll every 2 seconds
+      webhookUrl: null, // Optional: Auto-send verified data to your backend
+      webhookSecret: null, // Optional: HMAC secret for webhook signature
       onSuccess: function(data) { console.log('Payment success:', data); },
       onError: function(error) { console.error('Payment error:', error); },
       onCancel: function() { console.log('Payment cancelled'); },
@@ -342,6 +344,103 @@
     },
 
     /**
+     * Generate HMAC-SHA256 signature for webhook
+     * @param {string} message - Message to sign
+     * @param {string} secret - Secret key
+     * @returns {Promise<string>} Hex-encoded signature
+     * @private
+     */
+    generateHMAC: async function(message, secret) {
+      if (!window.crypto || !window.crypto.subtle) {
+        console.warn('⚠️ Web Crypto API not available, webhook will not be signed');
+        return null;
+      }
+
+      try {
+        const encoder = new TextEncoder();
+        const keyData = encoder.encode(secret);
+        const messageData = encoder.encode(message);
+
+        const key = await window.crypto.subtle.importKey(
+          'raw',
+          keyData,
+          { name: 'HMAC', hash: 'SHA-256' },
+          false,
+          ['sign']
+        );
+
+        const signature = await window.crypto.subtle.sign(
+          'HMAC',
+          key,
+          messageData
+        );
+
+        // Convert to hex string
+        return Array.from(new Uint8Array(signature))
+          .map(b => b.toString(16).padStart(2, '0'))
+          .join('');
+      } catch (error) {
+        console.error('Failed to generate HMAC:', error);
+        return null;
+      }
+    },
+
+    /**
+     * Automatically send verified payment to merchant's webhook
+     * @param {Object} verifiedData - Verified payment data
+     * @returns {Promise<void>}
+     * @private
+     */
+    sendWebhook: async function(verifiedData) {
+      if (!this.config.webhookUrl) {
+        return; // No webhook configured, skip
+      }
+
+      try {
+        console.log('📤 Sending webhook to:', this.config.webhookUrl);
+
+        const payload = {
+          ...verifiedData,
+          orderId: this.currentPayment?.orderId,
+          email: this.currentPayment?.email,
+          metadata: this.currentPayment?.metadata,
+          timestamp: Math.floor(Date.now() / 1000)
+        };
+
+        const headers = {
+          'Content-Type': 'application/json',
+        };
+
+        // Generate HMAC signature if secret provided
+        if (this.config.webhookSecret) {
+          const signature = await this.generateHMAC(
+            JSON.stringify(payload),
+            this.config.webhookSecret
+          );
+          if (signature) {
+            headers['X-Conduit-Signature'] = signature;
+          }
+        }
+
+        const response = await fetch(this.config.webhookUrl, {
+          method: 'POST',
+          headers: headers,
+          body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+          console.error('❌ Webhook delivery failed:', response.status, response.statusText);
+          // Don't throw - still call onSuccess even if webhook fails
+        } else {
+          console.log('✅ Webhook delivered successfully');
+        }
+      } catch (error) {
+        console.error('❌ Webhook error:', error);
+        // Don't throw - still call onSuccess even if webhook fails
+      }
+    },
+
+    /**
      * Setup postMessage listener for iframe/popup communication
      * @private
      */
@@ -373,7 +472,13 @@
 
                 const verifiedData = await this.verifyPayment(message.data.contractId);
 
-                console.log('✅ Payment verified, calling onSuccess');
+                console.log('✅ Payment verified');
+
+                // Send webhook BEFORE calling onSuccess
+                await this.sendWebhook(verifiedData);
+
+                // THEN call onSuccess
+                console.log('✅ Calling onSuccess');
                 this.config.onSuccess(verifiedData);
                 this.cleanup();
 

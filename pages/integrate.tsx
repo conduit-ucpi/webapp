@@ -83,25 +83,30 @@ export default function IntegratePage() {
                 section="step2"
                 code={`<script>
   ConduitCheckout.init({
-    // Your wallet address to receive payments
+    // REQUIRED: Your wallet address to receive payments
     sellerAddress: '0xYourWalletAddressHere',
 
-    // Base URL of checkout page
+    // REQUIRED: Base URL of checkout page
     baseUrl: '${typeof window !== 'undefined' ? window.location.origin : 'https://app.instantescrow.nz'}',
 
-    // Default token: 'USDC' or 'USDT' (default: 'USDC')
+    // RECOMMENDED: Auto-send verified payment to your backend
+    webhookUrl: 'https://yoursite.com/api/conduit-webhook',
+    webhookSecret: 'your-secret-key',  // For HMAC signature verification
+
+    // Optional: Default token ('USDC' or 'USDT')
     tokenSymbol: 'USDC',
 
-    // Days until auto-release to seller (default: 7)
+    // Optional: Days until auto-release (default: 7)
     expiryDays: 7,
 
-    // Display mode: 'popup' or 'redirect'
+    // Optional: Display mode ('popup' or 'redirect')
     mode: 'popup',
 
-    // Success callback
+    // Success callback (webhook already sent!)
     onSuccess: function(data) {
-      console.log('Payment completed!', data);
-      alert('Thank you! Payment received: ' + data.transactionHash);
+      console.log('Payment verified!', data);
+      // Just show UI - your backend already received webhook
+      alert('Thank you! Order #' + data.orderId + ' confirmed!');
     },
 
     // Error callback
@@ -509,6 +514,182 @@ export default function IntegratePage() {
                 <li>• Base network (Ethereum L2)</li>
                 <li>• Low transaction costs</li>
               </ul>
+            </div>
+          </div>
+        </section>
+
+        {/* Backend Integration - CRITICAL FOR PRODUCTION */}
+        <section className="mb-16 bg-yellow-50 border-2 border-yellow-400 rounded-lg p-8">
+          <h2 className="text-3xl font-bold text-gray-900 mb-6">🔐 Backend Integration (REQUIRED for Production)</h2>
+
+          <div className="bg-white border border-yellow-600 rounded-lg p-6 mb-6">
+            <h3 className="text-xl font-semibold text-green-600 mb-3">✅ EASY: Use Webhooks!</h3>
+            <p className="text-gray-800 mb-4">
+              The SDK automatically sends verified payment data to YOUR backend webhook.
+              Just configure <code className="bg-gray-100 px-2 py-1 rounded">webhookUrl</code> and create ONE endpoint to:
+            </p>
+            <ul className="list-disc list-inside space-y-2 text-gray-800">
+              <li>Receive verified payment data automatically</li>
+              <li>Mark the order as PAID in YOUR system</li>
+              <li>Trigger order fulfillment (ship goods, deliver digital products, etc.)</li>
+              <li>Send confirmation emails to the customer</li>
+              <li>Update inventory and accounting systems</li>
+            </ul>
+            <p className="text-gray-800 mt-4">
+              <strong>No manual fetch() calls needed!</strong> The SDK handles everything.
+            </p>
+          </div>
+
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-3">Step 1: Configure SDK with Webhook</h3>
+              <CodeBlock
+                section="backend-frontend"
+                language="javascript"
+                code={`ConduitCheckout.init({
+  // REQUIRED
+  sellerAddress: '0xYourWalletAddress',
+  baseUrl: 'https://app.instantescrow.nz',
+
+  // WEBHOOK CONFIG (RECOMMENDED)
+  webhookUrl: 'https://yoursite.com/api/conduit-webhook',
+  webhookSecret: 'your-secret-key',  // Store securely!
+
+  onSuccess: function(verifiedData) {
+    // Webhook already sent! Just show UI confirmation
+    console.log('Payment verified!', verifiedData);
+    window.location.href = '/thank-you?order=' + verifiedData.orderId;
+  },
+
+  onError: function(error) {
+    alert('Payment failed: ' + error);
+  }
+});`}
+              />
+              <p className="text-gray-700 mt-4">
+                <strong>💡 Key Point:</strong> The SDK automatically sends verified payment data to your webhook URL.
+                You don't need manual <code className="bg-gray-100 px-2 py-1 rounded">fetch()</code> calls in <code className="bg-gray-100 px-2 py-1 rounded">onSuccess</code>!
+              </p>
+            </div>
+
+            <div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-3">Step 2: Create Webhook Endpoint (ONE endpoint!)</h3>
+              <p className="text-gray-700 mb-4">
+                Example Node.js/Express webhook handler:
+              </p>
+              <CodeBlock
+                section="backend-endpoint"
+                language="javascript"
+                code={`const crypto = require('crypto');
+
+// POST /api/conduit-webhook
+app.post('/api/conduit-webhook', async (req, res) => {
+  try {
+    // 1. VERIFY HMAC SIGNATURE (prevents spoofing)
+    const signature = req.headers['x-conduit-signature'];
+    const payload = JSON.stringify(req.body);
+
+    const expectedSig = crypto
+      .createHmac('sha256', process.env.WEBHOOK_SECRET)
+      .update(payload)
+      .digest('hex');
+
+    if (signature !== expectedSig) {
+      return res.status(401).json({ error: 'Invalid signature' });
+    }
+
+    // 2. EXTRACT VERIFIED DATA
+    const {
+      contractId,
+      chainAddress,
+      amount,
+      currencySymbol,
+      state,
+      verified,
+      verifiedAt,
+      orderId,
+      email,
+      metadata
+    } = req.body;
+
+    console.log('✅ Payment verified:', contractId, amount, currencySymbol);
+
+    // 3. PROCESS PAYMENT IN YOUR SYSTEM
+    await db.orders.update({
+      where: { id: orderId },
+      data: {
+        status: 'PAID',
+        paymentContractId: contractId,
+        paymentChainAddress: chainAddress,
+        paymentAmount: amount,
+        paidAt: new Date(verifiedAt)
+      }
+    });
+
+    // 4. FULFILL ORDER
+    await fulfillment.ship(orderId);
+    await email.sendConfirmation(email, orderId);
+
+    // 5. RESPOND SUCCESS
+    res.json({ received: true });
+
+  } catch (error) {
+    console.error('Webhook error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+});`}
+              />
+            </div>
+
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+              <h3 className="text-xl font-semibold text-gray-900 mb-3">✅ What the Verified Data Means</h3>
+              <table className="min-w-full">
+                <tbody className="divide-y divide-gray-200">
+                  <tr>
+                    <td className="py-2 pr-4 font-mono text-sm text-gray-900">verified: true</td>
+                    <td className="py-2 text-sm text-gray-700">Backend confirmed payment exists in blockchain</td>
+                  </tr>
+                  <tr>
+                    <td className="py-2 pr-4 font-mono text-sm text-gray-900">state: "ACTIVE"</td>
+                    <td className="py-2 text-sm text-gray-700">Funds are locked in escrow contract</td>
+                  </tr>
+                  <tr>
+                    <td className="py-2 pr-4 font-mono text-sm text-gray-900">seller: "0x..."</td>
+                    <td className="py-2 text-sm text-gray-700">Matches YOUR wallet (verified by SDK)</td>
+                  </tr>
+                  <tr>
+                    <td className="py-2 pr-4 font-mono text-sm text-gray-900">amount: 50.0</td>
+                    <td className="py-2 text-sm text-gray-700">Matches expected amount (verified by SDK)</td>
+                  </tr>
+                  <tr>
+                    <td className="py-2 pr-4 font-mono text-sm text-gray-900">chainAddress</td>
+                    <td className="py-2 text-sm text-gray-700">Blockchain contract address (permanent record)</td>
+                  </tr>
+                </tbody>
+              </table>
+              <p className="mt-4 text-sm text-gray-700">
+                ✅ <strong>Safe to ship goods!</strong> The SDK has verified everything before calling onSuccess.
+              </p>
+            </div>
+
+            <div className="bg-green-50 border border-green-200 rounded-lg p-6">
+              <h3 className="text-xl font-semibold text-gray-900 mb-3">🎯 Customer Experience Flow (with Webhooks)</h3>
+              <ol className="list-decimal list-inside space-y-2 text-gray-800">
+                <li>Customer clicks "Pay with USDC"</li>
+                <li>Popup opens, customer connects wallet and pays</li>
+                <li><strong>SDK verifies payment on blockchain (automatic)</strong></li>
+                <li><strong>SDK sends webhook to YOUR backend (automatic)</strong></li>
+                <li><strong>Your backend marks order as paid (automatic)</strong></li>
+                <li>Your onSuccess callback shows confirmation UI</li>
+                <li>Customer sees confirmation page</li>
+                <li>Customer receives email receipt (sent by your webhook)</li>
+                <li>You ship the goods (triggered by your webhook)</li>
+                <li>Funds auto-release to you after 7 days (if no disputes)</li>
+              </ol>
+              <p className="mt-4 text-sm text-gray-700">
+                <strong>💡 Steps 3-5 happen automatically!</strong> The SDK handles verification and webhook delivery.
+              </p>
             </div>
           </div>
         </section>

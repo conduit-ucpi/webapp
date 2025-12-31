@@ -140,25 +140,31 @@
   <h3>2. Initialize with Your Config</h3>
   <div class="code-block"><code>&lt;script&gt;
   ConduitCheckout.init({
-    // Your wallet address to receive payments
+    // REQUIRED: Your wallet address to receive payments
     sellerAddress: '0x4f118f99a4e8bb384061bcfe081e3bbdec28482d',
 
-    // Base URL of Conduit checkout page
+    // REQUIRED: Base URL of Conduit checkout page
     baseUrl: 'https://app.instantescrow.nz',
 
-    // Default token (USDC or USDT)
+    // RECOMMENDED: Auto-send verified payments to your backend
+    webhookUrl: 'https://yoursite.com/api/conduit-webhook',
+    webhookSecret: 'your-secret-key',  // Store securely!
+
+    // Optional: Default token (USDC or USDT)
     tokenSymbol: 'USDC',
 
-    // Days until auto-release to seller (default: 7)
+    // Optional: Days until auto-release to seller (default: 7)
     expiryDays: 7,
 
-    // Display mode: 'popup' or 'redirect'
+    // Optional: Display mode ('popup' or 'redirect')
     mode: 'popup',
 
-    // Success callback
+    // Success callback (webhook already sent!)
     onSuccess: function(data) {
-      console.log('Payment completed!', data);
-      alert('Payment successful! Transaction: ' + data.transactionHash);
+      console.log('Payment verified!', data);
+      // Webhook already sent to your backend!
+      // Just show UI confirmation
+      alert('Thank you! Order confirmed!');
     },
 
     // Error callback
@@ -205,10 +211,12 @@
   <ul>
     <li><code>sellerAddress</code> (required) - Your wallet address to receive payments</li>
     <li><code>baseUrl</code> (required) - Base URL of the Conduit checkout page</li>
+    <li><code>webhookUrl</code> (recommended) - Your backend endpoint to receive verified payments</li>
+    <li><code>webhookSecret</code> (recommended) - Secret key for HMAC signature verification</li>
     <li><code>tokenSymbol</code> (optional) - Default token: 'USDC' or 'USDT' (default: 'USDC')</li>
     <li><code>expiryDays</code> (optional) - Days until auto-release (default: 7)</li>
     <li><code>mode</code> (optional) - Display mode: 'popup' or 'redirect' (default: 'popup')</li>
-    <li><code>onSuccess</code> (optional) - Success callback function</li>
+    <li><code>onSuccess</code> (optional) - Success callback function (webhook already sent!)</li>
     <li><code>onError</code> (optional) - Error callback function</li>
     <li><code>onCancel</code> (optional) - Cancel callback function</li>
   </ul>
@@ -230,17 +238,55 @@
   <h3>ConduitCheckout.close()</h3>
   <p>Programmatically close any open checkout.</p>
 
-  <h2>Webhook Integration</h2>
-  <p>If you provide a <code>webhookUrl</code>, Conduit will POST payment verification data to your endpoint:</p>
-  <div class="code-block"><code>{
-  "transaction_hash": "0x...",
-  "contract_address": "0x...",
-  "contract_id": "abc123",
-  "order_id": 1234,
-  "expected_amount": 50.00,
-  "expected_recipient": "0x...",
-  "merchant_wallet": "0x..."
+  <h2>🔐 Webhook Integration (RECOMMENDED)</h2>
+  <p>Configure <code>webhookUrl</code> and the SDK will automatically POST verified payment data to your backend:</p>
+
+  <h3>Webhook Payload:</h3>
+  <div class="code-block"><code>POST /api/conduit-webhook
+Headers:
+  Content-Type: application/json
+  X-Conduit-Signature: hmac-sha256-signature
+
+Body:
+{
+  "contractId": "abc123",
+  "chainAddress": "0x123abc...",
+  "seller": "0x4f118f...",
+  "amount": 50.0,
+  "currencySymbol": "USDC",
+  "state": "ACTIVE",
+  "verified": true,
+  "verifiedAt": "2025-12-30T14:30:00Z",
+  "orderId": "YOUR-ORDER-123",
+  "email": "customer@example.com",
+  "metadata": { "sku": "WIDGET-001" },
+  "timestamp": 1735568400
 }</code></div>
+
+  <h3>Verification Example (Node.js):</h3>
+  <div class="code-block"><code>const crypto = require('crypto');
+
+app.post('/api/conduit-webhook', async (req, res) => {
+  // 1. Verify HMAC signature
+  const signature = req.headers['x-conduit-signature'];
+  const payload = JSON.stringify(req.body);
+
+  const expectedSig = crypto
+    .createHmac('sha256', process.env.WEBHOOK_SECRET)
+    .update(payload)
+    .digest('hex');
+
+  if (signature !== expectedSig) {
+    return res.status(401).json({ error: 'Invalid signature' });
+  }
+
+  // 2. Process verified payment
+  const { contractId, amount, orderId } = req.body;
+  await db.orders.update(orderId, { status: 'PAID' });
+  await fulfillment.ship(orderId);
+
+  res.json({ received: true });
+});</code></div>
 
   <!-- Load the Conduit Checkout library -->
   <script src="/conduit-checkout.js"></script>
@@ -256,18 +302,36 @@
       mode: 'popup', // Will be overridden per button
 
       onSuccess: function(data) {
-        console.log('✅ Payment successful!', data);
-        showStatus('success', 'Payment completed! Transaction: ' + (data.transactionHash || 'pending'));
+        console.log('✅ Payment verified!', data);
+
+        // WEBHOOK ALREADY SENT!
+        // If you configured webhookUrl, your backend already received the
+        // verified payment data. Just show UI confirmation here.
+
+        // IMPORTANT: In production with webhooks:
+        // 1. Configure webhookUrl in init()
+        // 2. Your backend receives verified data automatically
+        // 3. Backend marks order as PAID
+        // 4. Backend triggers fulfillment (ship goods)
+        // 5. Backend sends confirmation email to customer
+        // 6. onSuccess just shows UI: "Thank you! Order confirmed!"
+
+        showVerifiedPayment(data);
       },
 
       onError: function(error) {
-        console.error('❌ Payment failed:', error);
-        showStatus('error', 'Payment failed: ' + error);
+        console.error('❌ Payment verification failed:', error);
+        showError(error);
       },
 
       onCancel: function() {
         console.log('🚫 Payment cancelled');
-        showStatus('info', 'Payment cancelled by user');
+        showCancelled();
+      },
+
+      onVerifying: function(data) {
+        console.log('🔍 Verifying payment...', data);
+        showVerifying(data.contractId);
       }
     });
 
@@ -308,15 +372,108 @@
       });
     }
 
-    function showStatus(type, message) {
+    function showVerifying(contractId) {
       const statusDiv = document.getElementById('status');
-      statusDiv.className = type;
-      statusDiv.textContent = message;
+      statusDiv.className = 'info';
+      statusDiv.innerHTML = `
+        <h3>🔍 Verifying Payment...</h3>
+        <p>Contract ID: ${contractId}</p>
+        <p>Please wait while we verify your payment on the blockchain...</p>
+        <div class="spinner"></div>
+      `;
       statusDiv.style.display = 'block';
+    }
 
-      setTimeout(() => {
-        statusDiv.style.display = 'none';
-      }, 5000);
+    function showVerifiedPayment(data) {
+      const statusDiv = document.getElementById('status');
+      statusDiv.className = 'success';
+      statusDiv.innerHTML = `
+        <h2>✅ Payment Verified Successfully!</h2>
+
+        <div class="payment-details">
+          <h3>Payment Details:</h3>
+          <table>
+            <tr>
+              <td><strong>Contract ID:</strong></td>
+              <td>${data.contractId}</td>
+            </tr>
+            <tr>
+              <td><strong>Amount:</strong></td>
+              <td>${data.amount} ${data.currencySymbol}</td>
+            </tr>
+            <tr>
+              <td><strong>Seller:</strong></td>
+              <td>${data.seller}</td>
+            </tr>
+            <tr>
+              <td><strong>Status:</strong></td>
+              <td><span class="badge ${data.state.toLowerCase()}">${data.state}</span></td>
+            </tr>
+            <tr>
+              <td><strong>Blockchain Address:</strong></td>
+              <td style="word-break: break-all; font-family: monospace; font-size: 0.85em;">${data.chainAddress || 'Pending'}</td>
+            </tr>
+            <tr>
+              <td><strong>Verified:</strong></td>
+              <td>${data.verified ? '✓ Yes (Backend Confirmed)' : '✗ No'}</td>
+            </tr>
+            <tr>
+              <td><strong>Verified At:</strong></td>
+              <td>${new Date(data.verifiedAt).toLocaleString()}</td>
+            </tr>
+          </table>
+        </div>
+
+        <div class="next-steps">
+          <h3>What Happens Next:</h3>
+          <ul>
+            <li>✓ Your payment is secured in blockchain escrow</li>
+            <li>✓ Merchant will ship your goods</li>
+            <li>✓ Your purchase is protected for ${data.expiryDays || 7} days</li>
+            <li>✓ Funds auto-release to seller after protection period (if no disputes)</li>
+            <li>✓ You can dispute before funds are released if there's a problem</li>
+          </ul>
+        </div>
+
+        <div class="merchant-note">
+          <h4>📦 For Merchants:</h4>
+          <p>Payment has been verified! You can now safely ship the goods.</p>
+          <p><strong>RECOMMENDED:</strong> Configure <code>webhookUrl</code> in the SDK init() and your backend will receive this data automatically. No manual fetch() calls needed!</p>
+          <p><strong>Alternative:</strong> You can manually send this data to your backend from onSuccess, but webhooks are more reliable (work even if user closes browser).</p>
+        </div>
+      `;
+      statusDiv.style.display = 'block';
+      // NO setTimeout - leave it visible permanently!
+    }
+
+    function showError(error) {
+      const statusDiv = document.getElementById('status');
+      statusDiv.className = 'error';
+      statusDiv.innerHTML = `
+        <h2>❌ Payment Verification Failed</h2>
+        <p><strong>Error:</strong> ${error}</p>
+        <div class="error-help">
+          <h3>What to do:</h3>
+          <ul>
+            <li>Check the browser console for more details</li>
+            <li>Verify you have sufficient USDC balance</li>
+            <li>Contact support with the error message above</li>
+          </ul>
+        </div>
+        <button onclick="location.reload()">Try Again</button>
+      `;
+      statusDiv.style.display = 'block';
+    }
+
+    function showCancelled() {
+      const statusDiv = document.getElementById('status');
+      statusDiv.className = 'info';
+      statusDiv.innerHTML = `
+        <h2>🚫 Payment Cancelled</h2>
+        <p>The payment was cancelled by the user.</p>
+        <button onclick="location.reload()">Start Over</button>
+      `;
+      statusDiv.style.display = 'block';
     }
   </script>
 </body>

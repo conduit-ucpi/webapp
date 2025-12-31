@@ -711,4 +711,233 @@ describe('ConduitCheckout SDK', () => {
       await expect(promise).resolves.toBeUndefined();
     });
   });
+
+  describe('Webhook Integration', () => {
+    let mockCrypto: any;
+
+    beforeEach(() => {
+      // Mock Web Crypto API for HMAC on windowMock
+      mockCrypto = {
+        subtle: {
+          importKey: jest.fn().mockResolvedValue('mock-key'),
+          sign: jest.fn().mockResolvedValue(new Uint8Array([0x12, 0x34, 0x56, 0x78]).buffer),
+        },
+      };
+      windowMock.crypto = mockCrypto;
+
+      ConduitCheckout.init({
+        sellerAddress: '0x1234567890abcdef1234567890abcdef12345678',
+        baseUrl: 'https://app.example.com',
+        webhookUrl: 'https://merchant.com/api/webhook',
+        webhookSecret: 'test-secret-key',
+      });
+
+      ConduitCheckout.currentPayment = {
+        amount: 50.0,
+        description: 'Test Product',
+        tokenSymbol: 'USDC',
+        orderId: 'ORDER-123',
+        email: 'customer@example.com',
+        metadata: { sku: 'WIDGET-001' },
+      };
+    });
+
+    it('should send webhook with verified payment data', async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({}),
+      });
+
+      const verifiedData = {
+        contractId: 'abc123',
+        chainAddress: '0xcontract456',
+        seller: '0x1234567890abcdef1234567890abcdef12345678',
+        amount: 50.0,
+        currencySymbol: 'USDC',
+        state: 'ACTIVE',
+        verified: true,
+        verifiedAt: new Date().toISOString(),
+      };
+
+      await ConduitCheckout.sendWebhook(verifiedData);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://merchant.com/api/webhook',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            'Content-Type': 'application/json',
+          }),
+          body: expect.stringContaining('abc123'),
+        })
+      );
+
+      const callArgs = mockFetch.mock.calls[0];
+      const body = JSON.parse(callArgs[1].body);
+
+      expect(body).toMatchObject({
+        contractId: 'abc123',
+        chainAddress: '0xcontract456',
+        seller: '0x1234567890abcdef1234567890abcdef12345678',
+        amount: 50.0,
+        currencySymbol: 'USDC',
+        state: 'ACTIVE',
+        verified: true,
+        orderId: 'ORDER-123',
+        email: 'customer@example.com',
+        metadata: { sku: 'WIDGET-001' },
+      });
+      expect(body.timestamp).toBeDefined();
+    });
+
+    it('should include HMAC signature when secret is provided', async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({}),
+      });
+
+      const verifiedData = {
+        contractId: 'abc123',
+        seller: '0x1234567890abcdef1234567890abcdef12345678',
+        amount: 50.0,
+        currencySymbol: 'USDC',
+        state: 'ACTIVE',
+        verified: true,
+        verifiedAt: new Date().toISOString(),
+      };
+
+      await ConduitCheckout.sendWebhook(verifiedData);
+
+      const callArgs = mockFetch.mock.calls[0];
+      const headers = callArgs[1].headers;
+
+      expect(headers['X-Conduit-Signature']).toBe('12345678'); // Hex from mocked Uint8Array
+      expect(mockCrypto.subtle.importKey).toHaveBeenCalled();
+      expect(mockCrypto.subtle.sign).toHaveBeenCalled();
+    });
+
+    it('should skip webhook when webhookUrl not configured', async () => {
+      ConduitCheckout.config.webhookUrl = null;
+
+      const verifiedData = {
+        contractId: 'abc123',
+        state: 'ACTIVE',
+        verified: true,
+      };
+
+      await ConduitCheckout.sendWebhook(verifiedData);
+
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it('should not throw on webhook delivery failure', async () => {
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 500,
+        statusText: 'Internal Server Error',
+      });
+
+      const verifiedData = {
+        contractId: 'abc123',
+        state: 'ACTIVE',
+        verified: true,
+      };
+
+      // Should not throw
+      await expect(ConduitCheckout.sendWebhook(verifiedData)).resolves.toBeUndefined();
+    });
+
+    it('should not throw on webhook network error', async () => {
+      mockFetch.mockRejectedValue(new Error('Network error'));
+
+      const verifiedData = {
+        contractId: 'abc123',
+        state: 'ACTIVE',
+        verified: true,
+      };
+
+      // Should not throw
+      await expect(ConduitCheckout.sendWebhook(verifiedData)).resolves.toBeUndefined();
+    });
+
+    it('should handle missing Web Crypto API gracefully', async () => {
+      windowMock.crypto = null;
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({}),
+      });
+
+      const verifiedData = {
+        contractId: 'abc123',
+        state: 'ACTIVE',
+        verified: true,
+      };
+
+      await ConduitCheckout.sendWebhook(verifiedData);
+
+      // Should send webhook without signature
+      expect(mockFetch).toHaveBeenCalled();
+      const headers = mockFetch.mock.calls[0][1].headers;
+      expect(headers['X-Conduit-Signature']).toBeUndefined();
+    });
+  });
+
+  describe('HMAC Signature Generation', () => {
+    let mockCrypto: any;
+
+    beforeEach(() => {
+      ConduitCheckout.init({
+        sellerAddress: '0x1234567890abcdef1234567890abcdef12345678',
+        baseUrl: 'https://app.example.com',
+      });
+
+      mockCrypto = {
+        subtle: {
+          importKey: jest.fn().mockResolvedValue('mock-key'),
+          sign: jest.fn().mockResolvedValue(
+            new Uint8Array([0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc, 0xde, 0xf0]).buffer
+          ),
+        },
+      };
+      windowMock.crypto = mockCrypto;
+    });
+
+    it('should generate HMAC-SHA256 signature', async () => {
+      const message = 'test message';
+      const secret = 'test-secret';
+
+      const signature = await ConduitCheckout.generateHMAC(message, secret);
+
+      expect(signature).toBe('123456789abcdef0');
+      expect(mockCrypto.subtle.importKey).toHaveBeenCalledWith(
+        'raw',
+        expect.anything(), // Can be Uint8Array or array depending on environment
+        { name: 'HMAC', hash: 'SHA-256' },
+        false,
+        ['sign']
+      );
+      expect(mockCrypto.subtle.sign).toHaveBeenCalledWith(
+        'HMAC',
+        'mock-key',
+        expect.anything() // Can be Uint8Array or array depending on environment
+      );
+    });
+
+    it('should return null when Web Crypto API not available', async () => {
+      windowMock.crypto = null;
+
+      const signature = await ConduitCheckout.generateHMAC('message', 'secret');
+
+      expect(signature).toBeNull();
+    });
+
+    it('should return null on crypto error', async () => {
+      mockCrypto.subtle.importKey = jest.fn().mockRejectedValue(new Error('Crypto error'));
+
+      const signature = await ConduitCheckout.generateHMAC('message', 'secret');
+
+      expect(signature).toBeNull();
+    });
+  });
 });

@@ -632,6 +632,59 @@ export class ReownWalletConnectProvider {
         }
       }
 
+      // CRITICAL: Verify and switch to correct network BEFORE creating SIWE message
+      // Otherwise user might sign on wrong chain (e.g., BNB instead of Base)
+      console.log('🔧 ReownWalletConnect: Verifying network before authentication...')
+
+      try {
+        const currentChainId = await walletProvider.request({ method: 'eth_chainId' })
+        const expectedChainId = this.config.chainId // Use chainId from config (decimal from ENV)
+        const currentChainIdNum = typeof currentChainId === 'string'
+          ? (currentChainId.startsWith('0x') ? parseInt(currentChainId, 16) : parseInt(currentChainId, 10))
+          : currentChainId
+
+        console.log('🔧 ReownWalletConnect: Network check before auth - current:', currentChainIdNum, 'expected:', expectedChainId)
+
+        if (currentChainIdNum !== expectedChainId) {
+          console.log('🔧 ReownWalletConnect: ⚠️ Wrong network - switching before authentication')
+          console.log('🔧 ReownWalletConnect: Target network - decimal:', expectedChainId, 'name:', this.getNetworkName(expectedChainId))
+
+          try {
+            // Convert decimal chainId to hex for the wallet_switchEthereumChain request
+            const expectedChainIdHex = toHex(expectedChainId)
+            console.log('🔧 ReownWalletConnect: Requesting network switch to hex:', expectedChainIdHex)
+
+            // Network switch request - wallet will show modal to user
+            await walletProvider.request({
+              method: 'wallet_switchEthereumChain',
+              params: [{ chainId: expectedChainIdHex }]
+            })
+
+            // Verify the switch worked
+            const newChainId = await walletProvider.request({ method: 'eth_chainId' })
+            const newChainIdNum = typeof newChainId === 'string'
+              ? (newChainId.startsWith('0x') ? parseInt(newChainId, 16) : parseInt(newChainId, 10))
+              : newChainId
+
+            if (newChainIdNum !== expectedChainId) {
+              console.error('🔧 ReownWalletConnect: ❌ Network switch failed - still on:', this.getNetworkName(newChainIdNum))
+              console.error('🔧 ReownWalletConnect: Cannot authenticate on wrong network')
+              return false
+            } else {
+              console.log('🔧 ReownWalletConnect: ✅ Network switched successfully to:', this.getNetworkName(newChainIdNum))
+            }
+          } catch (switchError) {
+            console.error('🔧 ReownWalletConnect: ❌ Network switch request failed:', switchError)
+            console.error('🔧 ReownWalletConnect: Cannot authenticate - user must be on', this.getNetworkName(expectedChainId))
+            return false
+          }
+        } else {
+          console.log('🔧 ReownWalletConnect: ✅ Already on correct network:', this.getNetworkName(currentChainIdNum))
+        }
+      } catch (chainError) {
+        console.warn('🔧 ReownWalletConnect: ⚠️ Could not verify network, proceeding anyway:', chainError)
+      }
+
       console.log('🔧 ReownWalletConnect: Creating SIWE message manually', { address })
 
       // Step 1: Get a nonce from the backend
@@ -645,7 +698,8 @@ export class ReownWalletConnectProvider {
 
       // Step 2: Create SIWE message manually (avoiding siwe library parser issues)
       // Construct message string directly following EIP-4361 format
-      const chainId = this.appKit.getCaipNetwork()?.id || this.config.chainId
+      // ALWAYS use config chainId (not wallet's current network) for SIWE message
+      const chainId = this.config.chainId
       const domain = window.location.host
       const uri = window.location.origin
       const issuedAt = new Date().toISOString()

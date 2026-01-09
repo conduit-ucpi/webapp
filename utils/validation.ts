@@ -17,7 +17,9 @@ export {
 export {
   isValidWalletAddress,
   formatWalletAddress,
-  ensureAddressPrefix
+  ensureAddressPrefix,
+  addressesEqual,
+  emailsEqual
 } from './address';
 
 // Re-export currency utilities

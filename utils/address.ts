@@ -39,3 +39,31 @@ export function ensureAddressPrefix(address: string): string {
   }
   return `0x${address}`;
 }
+
+/**
+ * Compare two wallet addresses for equality (case-insensitive)
+ * Returns true if addresses are the same, accounting for case differences
+ */
+export function addressesEqual(address1: string | undefined | null, address2: string | undefined | null): boolean {
+  if (!address1 || !address2) return false;
+
+  // Normalize both addresses to lowercase for comparison
+  const normalized1 = address1.trim().toLowerCase();
+  const normalized2 = address2.trim().toLowerCase();
+
+  return normalized1 === normalized2;
+}
+
+/**
+ * Compare two email addresses for equality (case-insensitive)
+ * Returns true if emails are the same, accounting for case differences
+ */
+export function emailsEqual(email1: string | undefined | null, email2: string | undefined | null): boolean {
+  if (!email1 || !email2) return false;
+
+  // Normalize both emails to lowercase for comparison
+  const normalized1 = email1.trim().toLowerCase();
+  const normalized2 = email2.trim().toLowerCase();
+
+  return normalized1 === normalized2;
+}

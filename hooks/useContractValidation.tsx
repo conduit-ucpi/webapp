@@ -3,7 +3,9 @@ import {
   isValidAmount,
   isValidDescription,
   isValidBuyerIdentifier,
-  isValidWalletAddress
+  isValidWalletAddress,
+  addressesEqual,
+  emailsEqual
 } from '@/utils/validation';
 
 // Validation error types
@@ -48,13 +50,33 @@ export interface WordPressValidationContext {
 export function useCreateContractValidation() {
   const [errors, setErrors] = useState<CreateContractErrors>({});
 
-  const validateForm = useCallback((form: CreateContractForm): boolean => {
+  const validateForm = useCallback((
+    form: CreateContractForm,
+    sellerInfo?: { email?: string; walletAddress?: string }
+  ): boolean => {
     const newErrors: CreateContractErrors = {};
 
     // Validate buyer identifier (email or Farcaster handle)
     const buyerValidation = isValidBuyerIdentifier(form.buyerEmail);
     if (!buyerValidation.isValid) {
       newErrors.buyerEmail = buyerValidation.error || 'Invalid buyer identifier';
+    }
+
+    // Check if buyer and seller are the same person (if seller info provided)
+    if (sellerInfo && buyerValidation.isValid) {
+      const buyerIdentifier = form.buyerEmail.trim();
+
+      // Check if buyer email matches seller email (case-insensitive)
+      if (sellerInfo.email && emailsEqual(buyerIdentifier, sellerInfo.email)) {
+        newErrors.buyerEmail = `You cannot create a payment request to yourself. The buyer email (${buyerIdentifier}) matches your account email (${sellerInfo.email}).`;
+      }
+
+      // Check if buyer looks like a wallet address and matches seller wallet (case-insensitive)
+      if (sellerInfo.walletAddress && isValidWalletAddress(buyerIdentifier)) {
+        if (addressesEqual(buyerIdentifier, sellerInfo.walletAddress)) {
+          newErrors.buyerEmail = `You cannot create a payment request to yourself. The buyer wallet address matches your connected wallet.`;
+        }
+      }
     }
 
     // Validate amount
@@ -103,13 +125,21 @@ export function useContractCreateValidation() {
 
   const validateForm = useCallback((
     form: ContractCreateForm,
-    wordpressContext?: WordPressValidationContext
+    wordpressContext?: WordPressValidationContext,
+    buyerInfo?: { walletAddress?: string }
   ): boolean => {
     const newErrors: ContractCreateErrors = {};
 
     // Validate seller (must be wallet address)
     if (!isValidWalletAddress(form.seller)) {
       newErrors.seller = 'Invalid seller wallet address';
+    }
+
+    // Check if buyer and seller are the same person (if buyer info provided)
+    if (buyerInfo?.walletAddress && isValidWalletAddress(form.seller)) {
+      if (addressesEqual(form.seller, buyerInfo.walletAddress)) {
+        newErrors.seller = `You cannot make a payment to yourself. The seller wallet address (${form.seller}) matches your connected wallet (${buyerInfo.walletAddress}).`;
+      }
     }
 
     // Validate amount

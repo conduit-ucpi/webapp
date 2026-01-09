@@ -15,6 +15,7 @@ import {
   isValidDescription,
   isValidAmount,
   isValidBuyerIdentifier,
+  isValidWalletAddress,
   toMicroUSDC,
   formatUSDC,
   formatDateTimeWithTZ,
@@ -178,6 +179,21 @@ export default function CreateContractWizard() {
           const buyerValidation = isValidBuyerIdentifier(form.buyerEmail);
           if (!buyerValidation.isValid) {
             newErrors.buyerEmail = buyerValidation.error || 'Invalid buyer identifier';
+          } else {
+            // Check if buyer and seller are the same person
+            const buyerIdentifier = form.buyerEmail.trim();
+
+            // Check if buyer email matches seller email (case-insensitive)
+            if (user?.email && buyerIdentifier.toLowerCase() === user.email.toLowerCase()) {
+              newErrors.buyerEmail = `You cannot create a payment request to yourself. The buyer email (${buyerIdentifier}) matches your account email (${user.email}).`;
+            }
+
+            // Check if buyer looks like a wallet address and matches seller wallet (case-insensitive)
+            if (user?.walletAddress && isValidWalletAddress(buyerIdentifier)) {
+              if (buyerIdentifier.toLowerCase() === user.walletAddress.toLowerCase()) {
+                newErrors.buyerEmail = `You cannot create a payment request to yourself. The buyer wallet address matches your connected wallet.`;
+              }
+            }
           }
         }
 

@@ -321,10 +321,14 @@ export default function ContractCreate() {
 
   const handleCreateContract = async () => {
     console.log('🔧 ContractCreate: handleCreateContract called');
-    
-    const formValid = validateForm(form, { wordpress_source, webhook_url, order_id });
+
+    const formValid = validateForm(
+      form,
+      { wordpress_source, webhook_url, order_id },
+      { walletAddress: address } // Pass buyer wallet address for validation
+    );
     console.log('🔧 ContractCreate: form validation result:', formValid);
-    
+
     if (!formValid || !config) {
       console.log('🔧 ContractCreate: Early return due to validation or config issues');
       return;

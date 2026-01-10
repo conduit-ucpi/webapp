@@ -349,6 +349,301 @@ export default function FAQ() {
           "@type": "Answer",
           "text": "The system runs on Google Cloud with automated deployment and is built by experienced engineers (ex-Skyscanner principals with 50+ years combined experience). Most importantly, your transactions exist on the blockchain independently of our servers - you own them and could theoretically use other tools to access them if needed."
         }
+      },
+      // Merchant Getting Started
+      {
+        "@type": "Question",
+        "name": "What do I need to start accepting payments as a merchant?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "An email address. That's it. No application, no bank statements, no business plan, no waiting period. You can process your first transaction in under 10 minutes."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Why is there no approval process?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Traditional processors take custody of your money, so they need to assess your risk. We never touch your funds — they go from buyer to smart contract to you. No custody means no underwriting."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Why is there no credit check or business verification?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Processors who hold funds need to know you won't disappear owing them money. We can't be left holding the bag because we never hold anything."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Why no reserve requirements?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Reserves exist so processors can cover chargebacks if you can't. Our system doesn't have chargebacks — disputes are resolved before funds leave escrow. Nothing to reserve against."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Why no monthly minimums or volume requirements?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Those exist to make small merchants worth the processor's underwriting cost. We have no underwriting cost."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "What if I sell CBD, supplements, adult content, firearms, or other high-risk categories?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "We don't restrict product categories. Traditional processors reject high-risk merchants because they're afraid of chargebacks and regulatory scrutiny. Our system doesn't have chargebacks, and we don't make decisions about your funds, so we don't need to police what you sell."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Can my merchant account be frozen or terminated?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "We can't freeze funds that aren't in our custody. Your money is either in the escrow contract (where only you and the buyer can claim it) or in your wallet. There's no 'account' to terminate — each transaction is its own contract."
+        }
+      },
+      // Merchant How It Works
+      {
+        "@type": "Question",
+        "name": "What happens when a customer pays me as a merchant?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Funds go into a smart contract (not to you, not to us). At the agreed payout date, funds release to your wallet automatically. If there's a dispute before then, funds stay frozen until you and the buyer agree on a resolution."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How is this different from a chargeback?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Chargebacks: Customer calls their bank, bank takes your money immediately, you pay $15-25 fee regardless of outcome, you have 7-10 days to gather evidence, bank decides, you can lose even with proof, customer has up to 180 days to dispute. This system: Customer raises dispute in the app, funds freeze (but aren't taken from you), you negotiate directly with the customer, when you both agree on a split funds release automatically, no fee, no third party deciding your fate."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "What if a buyer disputes in bad faith?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "They can freeze the funds, but they can't get them without your agreement. A buyer who received goods and disputes anyway is stuck — they don't get money back, you don't get paid, until someone blinks. Keep your shipping receipts."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "What does my customer see during checkout?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Your customer authenticates with email or social login. If they don't have a wallet, one is created automatically — but they still own it (they can export their keys anytime). If they don't have USDC or USDT, we provide links to buy some. They confirm the payment, sign it on their device, done. No wallet setup, no gas fees, no crypto knowledge required."
+        }
+      },
+      // Stablecoin Part
+      {
+        "@type": "Question",
+        "name": "Which stablecoins can customers pay with?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "USDC or USDT. Both are pegged 1:1 to USD. USDT has higher global circulation; USDC has cleaner off-ramp economics via Coinbase."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "What if my customer doesn't have USDC or USDT?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "The checkout provides links to purchase stablecoins directly. Customers can buy with card or bank transfer through integrated on-ramps."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Do my customers need a crypto wallet?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "No. Customers who don't have a wallet get one created automatically during checkout. They still own it — they can export their private keys anytime. It's their wallet, we just make setup invisible."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "What if a customer already has a wallet?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "They can connect it instead. Works either way."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Who pays the blockchain transaction fees?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "We do. Gas fees on Base are fractions of a cent, but users would normally need to hold ETH to pay them. We've eliminated that — your customers never need to touch ETH. They pay in USDC or USDT, that's it."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "What about price volatility with cryptocurrency?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "USDC and USDT are stablecoins — they're pegged 1:1 to USD. $100 USDC is always worth $100. This isn't Bitcoin."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I turn stablecoins into real money?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Coinbase converts USDC to USD at 1:1 with no fee for conversions under $5 million per month. For USDT, most exchanges charge a small fee (typically 0.1-0.5%) or you can swap USDT to USDC first. Either way, your effective cost is close to just the 1% transaction fee."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I handle accounting for stablecoin payments?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "USDC and USDT are 1:1 with USD, so the transaction value is straightforward. Each transaction has a blockchain record with timestamp, amount, and addresses. Treat the off-ramp (converting to fiat) as a separate event. Talk to your accountant about crypto income reporting in your jurisdiction."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "What about taxes on stablecoin payments?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "In most jurisdictions, receiving stablecoins as payment is treated like receiving USD — it's income at the time of receipt. The off-ramp may have tax implications depending on timing and any value fluctuation. This isn't tax advice; consult a professional."
+        }
+      },
+      // Security and Fraud
+      {
+        "@type": "Question",
+        "name": "Why is fraud lower with stablecoin payments?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Card payments are 'pull' — you hand over credentials that let the merchant's processor extract funds. Stablecoin payments are 'push' — the buyer actively sends funds. There's no shared secret to steal. A fraudster would need access to your customer's wallet, not just a number printed on a piece of plastic. No credentials are exchanged, nothing is stored, nothing can be skimmed or phished."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "What does lower fraud mean for me as a merchant?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Card-not-present fraud runs about 0.5% of transaction volume. You pay for that — either directly through losses, or indirectly through processor fees that price in fraud risk. With push payments, that category of fraud doesn't exist. Buyers must have the funds and actively authorize the transaction."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Where does payment security actually happen?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "With stablecoin payments, all security happens on the customer's device at the moment they connect their wallet and sign the transaction. There's no card number to store, no credentials database to breach, no sensitive data flowing through servers. We couldn't leak your customers' payment details if we wanted to — we never have them."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Does this mean I don't need PCI compliance?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "There's no card data, so there's nothing to comply with. No annual audits, no questionnaires, no security requirements for handling data you never touch."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "What about fraud protection services?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "You don't need them. Push payments from user-owned wallets eliminate the problem at the root. There's no stolen card number to use, no credentials to phish, no processor database to breach. You don't need AI fraud detection, velocity checks, address verification, 3D Secure, or any of it."
+        }
+      },
+      // Regulatory and Custody
+      {
+        "@type": "Question",
+        "name": "Don't escrow services require banking licenses and regulatory approval?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Traditional escrow does, because a third party holds your money. We're not custodial. Funds go directly from the buyer's wallet into a smart contract that both parties own. We never hold, control, or have access to the funds. The contract code determines what happens. Admin can only allocate disputed funds between buyer and seller, never to anyone else."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "What about MiCA or money transmission laws?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Regulations like MiCA apply to Crypto-Asset Service Providers who custody funds or act as intermediaries. We're infrastructure. The smart contracts run on a public blockchain. Users interact directly with their own contracts. If our website disappeared tomorrow, your contracts would still execute."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "But you resolve disputes — doesn't that make you a custodian?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "No. Dispute resolution means we can allocate funds between buyer and seller when they can't agree. We cannot extract funds to ourselves or any third party. The contract code makes this impossible — not against policy, impossible. Anyone can verify this by reading the verified contract on-chain."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "What if a regulator disagrees with your interpretation?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Regulatory interpretation varies by jurisdiction. But the architecture is genuinely different from custodial services. If a specific jurisdiction decides non-custodial smart contract infrastructure requires licensing, that's a conversation about that jurisdiction — it doesn't change the technical reality of how the system works."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "What if regulations change and you get shut down?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Your in-flight transactions still complete. The smart contracts exist on the blockchain, not on our servers. If regulators shut us down tomorrow, every active contract keeps running — funds release at the scheduled time, disputes resolve when parties agree."
+        }
+      },
+      // Trust and Platform Risk
+      {
+        "@type": "Question",
+        "name": "How do I know you won't steal my money as a merchant?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "You don't have to trust us. The smart contract code is verified on-chain — anyone can read it. The code proves funds can only go to buyer or seller. Paste it into ChatGPT and ask 'can the admin steal my funds?' The answer is provably no."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "What if your company shuts down while I have active transactions?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Your in-flight transactions complete automatically — they're smart contracts, not our servers. If we disappeared tomorrow, funds release to you at the scheduled time, or stay frozen in dispute until you and the buyer work it out directly."
+        }
+      },
+      // Comparison to Traditional Processing
+      {
+        "@type": "Question",
+        "name": "What fees am I actually avoiding compared to traditional payment processors?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Interchange fees (~2%), per-transaction fees ($0.25-0.30), chargeback fees ($15-25 per dispute), rolling reserve (20-30% held), monthly minimums, PCI compliance costs, and fraud protection services are all gone. You pay 1% transaction fee and that's it."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "What's the catch with this payment system?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Your customers need USDC or USDT. That's the real barrier. We've reduced the friction (auto-wallets, on-ramp links, gas-free transactions), but if your customers don't have stablecoins and won't get them, this doesn't help you."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Why wouldn't I just keep using Stripe or traditional processors?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "If Stripe works for you, keep using it. This is for merchants who: sell in high-risk categories that get rejected or shut down, have been burned by account freezes or fund holds, want to reach crypto holders, want a backup payment channel that can't be frozen, or are tired of chargeback economics."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Can I test the merchant payment system first?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Yes. Create a test transaction for $0.001 — the fee is waived so you can see how it works risk-free."
+        }
       }
     ]
   };
@@ -357,8 +652,8 @@ export default function FAQ() {
     <>
       <SEO
         title="FAQ - Crypto Escrow Questions Answered | Conduit Escrow"
-        description="Get answers to all your questions about crypto escrow, USDC payments, disputes, security, and how our blockchain escrow system protects buyers and sellers."
-        keywords="crypto escrow faq, blockchain escrow questions, USDC payment help, escrow dispute resolution, smart contract security, crypto payment protection, escrow how it works"
+        description="Get answers to all your questions about crypto escrow, USDC payments, disputes, security, merchant payment processing, chargebacks, PCI compliance, and how our blockchain escrow system protects buyers and sellers."
+        keywords="crypto escrow faq, blockchain escrow questions, USDC payment help, escrow dispute resolution, smart contract security, crypto payment protection, merchant payments, stablecoin payments, no chargebacks, PCI compliance free, high-risk merchant, escrow how it works"
         canonical="/faq"
         structuredData={faqSchema}
       />
@@ -815,6 +1110,398 @@ export default function FAQ() {
                       </h3>
                       <p className="text-gray-600 leading-relaxed">
                         The system runs on Google Cloud with automated deployment and is built by experienced engineers (ex-Skyscanner principals with 50+ years combined experience). Most importantly, your transactions exist on the blockchain independently of our servers - you own them and could theoretically use other tools to access them if needed.
+                      </p>
+                    </article>
+                  </div>
+                </section>
+
+                {/* Merchant Getting Started */}
+                <section>
+                  <h2 className="text-2xl font-semibold text-gray-800 mb-4">For Merchants - Getting Started</h2>
+                  <div className="space-y-4">
+                    <article className="bg-white rounded-lg shadow-sm p-6">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                        What do I need to start accepting payments as a merchant?
+                      </h3>
+                      <p className="text-gray-600 leading-relaxed">
+                        An email address. That's it. No application, no bank statements, no business plan, no waiting period. You can process your first transaction in under 10 minutes.
+                      </p>
+                    </article>
+
+                    <article className="bg-white rounded-lg shadow-sm p-6">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                        Why is there no approval process?
+                      </h3>
+                      <p className="text-gray-600 leading-relaxed">
+                        Traditional processors take custody of your money, so they need to assess your risk. We never touch your funds — they go from buyer to smart contract to you. No custody means no underwriting.
+                      </p>
+                    </article>
+
+                    <article className="bg-white rounded-lg shadow-sm p-6">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                        Why is there no credit check or business verification?
+                      </h3>
+                      <p className="text-gray-600 leading-relaxed">
+                        Processors who hold funds need to know you won't disappear owing them money. We can't be left holding the bag because we never hold anything.
+                      </p>
+                    </article>
+
+                    <article className="bg-white rounded-lg shadow-sm p-6">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                        Why no reserve requirements?
+                      </h3>
+                      <p className="text-gray-600 leading-relaxed">
+                        Reserves exist so processors can cover chargebacks if you can't. Our system doesn't have chargebacks — disputes are resolved before funds leave escrow. Nothing to reserve against.
+                      </p>
+                    </article>
+
+                    <article className="bg-white rounded-lg shadow-sm p-6">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                        Why no monthly minimums or volume requirements?
+                      </h3>
+                      <p className="text-gray-600 leading-relaxed">
+                        Those exist to make small merchants worth the processor's underwriting cost. We have no underwriting cost.
+                      </p>
+                    </article>
+
+                    <article className="bg-white rounded-lg shadow-sm p-6">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                        What if I sell CBD, supplements, adult content, firearms, or other high-risk categories?
+                      </h3>
+                      <p className="text-gray-600 leading-relaxed">
+                        We don't restrict product categories. Traditional processors reject high-risk merchants because they're afraid of chargebacks and regulatory scrutiny. Our system doesn't have chargebacks, and we don't make decisions about your funds, so we don't need to police what you sell.
+                      </p>
+                    </article>
+
+                    <article className="bg-white rounded-lg shadow-sm p-6">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                        Can my merchant account be frozen or terminated?
+                      </h3>
+                      <p className="text-gray-600 leading-relaxed">
+                        We can't freeze funds that aren't in our custody. Your money is either in the escrow contract (where only you and the buyer can claim it) or in your wallet. There's no "account" to terminate — each transaction is its own contract.
+                      </p>
+                    </article>
+                  </div>
+                </section>
+
+                {/* Merchant How It Works */}
+                <section>
+                  <h2 className="text-2xl font-semibold text-gray-800 mb-4">For Merchants - How It Works</h2>
+                  <div className="space-y-4">
+                    <article className="bg-white rounded-lg shadow-sm p-6">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                        What happens when a customer pays me as a merchant?
+                      </h3>
+                      <p className="text-gray-600 leading-relaxed">
+                        Funds go into a smart contract (not to you, not to us). At the agreed payout date, funds release to your wallet automatically. If there's a dispute before then, funds stay frozen until you and the buyer agree on a resolution.
+                      </p>
+                    </article>
+
+                    <article className="bg-white rounded-lg shadow-sm p-6">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                        How is this different from a chargeback?
+                      </h3>
+                      <div className="text-gray-600 leading-relaxed space-y-2">
+                        <p className="font-medium">Chargebacks:</p>
+                        <ul className="list-disc pl-5 space-y-1">
+                          <li>Customer calls their bank</li>
+                          <li>Bank takes your money immediately</li>
+                          <li>You pay $15-25 fee regardless of outcome</li>
+                          <li>You have 7-10 days to gather evidence</li>
+                          <li>Bank decides</li>
+                          <li>You can lose even with proof</li>
+                          <li>Customer has up to 180 days to dispute</li>
+                        </ul>
+                        <p className="font-medium pt-3">This system:</p>
+                        <ul className="list-disc pl-5 space-y-1">
+                          <li>Customer raises dispute in the app</li>
+                          <li>Funds freeze (but aren't taken from you)</li>
+                          <li>You negotiate directly with the customer</li>
+                          <li>When you both agree on a split, funds release automatically</li>
+                          <li>No fee</li>
+                          <li>No third party deciding your fate</li>
+                        </ul>
+                      </div>
+                    </article>
+
+                    <article className="bg-white rounded-lg shadow-sm p-6">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                        What if a buyer disputes in bad faith?
+                      </h3>
+                      <p className="text-gray-600 leading-relaxed">
+                        They can freeze the funds, but they can't get them without your agreement. A buyer who received goods and disputes anyway is stuck — they don't get money back, you don't get paid, until someone blinks. Keep your shipping receipts.
+                      </p>
+                    </article>
+
+                    <article className="bg-white rounded-lg shadow-sm p-6">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                        What does my customer see during checkout?
+                      </h3>
+                      <p className="text-gray-600 leading-relaxed">
+                        Your customer authenticates with email or social login. If they don't have a wallet, one is created automatically — but they still own it (they can export their keys anytime). If they don't have USDC or USDT, we provide links to buy some. They confirm the payment, sign it on their device, done. No wallet setup, no gas fees, no crypto knowledge required.
+                      </p>
+                    </article>
+                  </div>
+                </section>
+
+                {/* The Stablecoin Part */}
+                <section>
+                  <h2 className="text-2xl font-semibold text-gray-800 mb-4">Understanding Stablecoins</h2>
+                  <div className="space-y-4">
+                    <article className="bg-white rounded-lg shadow-sm p-6">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                        Which stablecoins can customers pay with?
+                      </h3>
+                      <p className="text-gray-600 leading-relaxed">
+                        USDC or USDT. Both are pegged 1:1 to USD. USDT has higher global circulation; USDC has cleaner off-ramp economics via Coinbase.
+                      </p>
+                    </article>
+
+                    <article className="bg-white rounded-lg shadow-sm p-6">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                        What if my customer doesn't have USDC or USDT?
+                      </h3>
+                      <p className="text-gray-600 leading-relaxed">
+                        The checkout provides links to purchase stablecoins directly. Customers can buy with card or bank transfer through integrated on-ramps.
+                      </p>
+                    </article>
+
+                    <article className="bg-white rounded-lg shadow-sm p-6">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                        Do my customers need a crypto wallet?
+                      </h3>
+                      <p className="text-gray-600 leading-relaxed">
+                        No. Customers who don't have a wallet get one created automatically during checkout. They still own it — they can export their private keys anytime. It's their wallet, we just make setup invisible.
+                      </p>
+                    </article>
+
+                    <article className="bg-white rounded-lg shadow-sm p-6">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                        What if a customer already has a wallet?
+                      </h3>
+                      <p className="text-gray-600 leading-relaxed">
+                        They can connect it instead. Works either way.
+                      </p>
+                    </article>
+
+                    <article className="bg-white rounded-lg shadow-sm p-6">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                        Who pays the blockchain transaction fees?
+                      </h3>
+                      <p className="text-gray-600 leading-relaxed">
+                        We do. Gas fees on Base are fractions of a cent, but users would normally need to hold ETH to pay them. We've eliminated that — your customers never need to touch ETH. They pay in USDC or USDT, that's it.
+                      </p>
+                    </article>
+
+                    <article className="bg-white rounded-lg shadow-sm p-6">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                        What about price volatility with cryptocurrency?
+                      </h3>
+                      <p className="text-gray-600 leading-relaxed">
+                        USDC and USDT are stablecoins — they're pegged 1:1 to USD. $100 USDC is always worth $100. This isn't Bitcoin.
+                      </p>
+                    </article>
+
+                    <article className="bg-white rounded-lg shadow-sm p-6">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                        How do I turn stablecoins into real money?
+                      </h3>
+                      <p className="text-gray-600 leading-relaxed">
+                        Coinbase converts USDC to USD at 1:1 with no fee for conversions under $5 million per month. For USDT, most exchanges charge a small fee (typically 0.1-0.5%) or you can swap USDT to USDC first. Either way, your effective cost is close to just the 1% transaction fee.
+                      </p>
+                    </article>
+
+                    <article className="bg-white rounded-lg shadow-sm p-6">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                        How do I handle accounting for stablecoin payments?
+                      </h3>
+                      <p className="text-gray-600 leading-relaxed">
+                        USDC and USDT are 1:1 with USD, so the transaction value is straightforward. Each transaction has a blockchain record with timestamp, amount, and addresses. Treat the off-ramp (converting to fiat) as a separate event. Talk to your accountant about crypto income reporting in your jurisdiction.
+                      </p>
+                    </article>
+
+                    <article className="bg-white rounded-lg shadow-sm p-6">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                        What about taxes on stablecoin payments?
+                      </h3>
+                      <p className="text-gray-600 leading-relaxed">
+                        In most jurisdictions, receiving stablecoins as payment is treated like receiving USD — it's income at the time of receipt. The off-ramp may have tax implications depending on timing and any value fluctuation. This isn't tax advice; consult a professional.
+                      </p>
+                    </article>
+                  </div>
+                </section>
+
+                {/* Security and Fraud */}
+                <section>
+                  <h2 className="text-2xl font-semibold text-gray-800 mb-4">Security and Fraud Protection</h2>
+                  <div className="space-y-4">
+                    <article className="bg-white rounded-lg shadow-sm p-6">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                        Why is fraud lower with stablecoin payments?
+                      </h3>
+                      <p className="text-gray-600 leading-relaxed">
+                        Card payments are "pull" — you hand over credentials that let the merchant's processor extract funds. Stablecoin payments are "push" — the buyer actively sends funds. There's no shared secret to steal. A fraudster would need access to your customer's wallet, not just a number printed on a piece of plastic. No credentials are exchanged, nothing is stored, nothing can be skimmed or phished.
+                      </p>
+                    </article>
+
+                    <article className="bg-white rounded-lg shadow-sm p-6">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                        What does lower fraud mean for me as a merchant?
+                      </h3>
+                      <p className="text-gray-600 leading-relaxed">
+                        Card-not-present fraud runs about 0.5% of transaction volume. You pay for that — either directly through losses, or indirectly through processor fees that price in fraud risk. With push payments, that category of fraud doesn't exist. Buyers must have the funds and actively authorize the transaction.
+                      </p>
+                    </article>
+
+                    <article className="bg-white rounded-lg shadow-sm p-6">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                        Where does payment security actually happen?
+                      </h3>
+                      <p className="text-gray-600 leading-relaxed">
+                        With stablecoin payments, all security happens on the customer's device at the moment they connect their wallet and sign the transaction. There's no card number to store, no credentials database to breach, no sensitive data flowing through servers. We couldn't leak your customers' payment details if we wanted to — we never have them.
+                      </p>
+                    </article>
+
+                    <article className="bg-white rounded-lg shadow-sm p-6">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                        Does this mean I don't need PCI compliance?
+                      </h3>
+                      <p className="text-gray-600 leading-relaxed">
+                        There's no card data, so there's nothing to comply with. No annual audits, no questionnaires, no security requirements for handling data you never touch.
+                      </p>
+                    </article>
+
+                    <article className="bg-white rounded-lg shadow-sm p-6">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                        What about fraud protection services?
+                      </h3>
+                      <p className="text-gray-600 leading-relaxed">
+                        You don't need them. Push payments from user-owned wallets eliminate the problem at the root. There's no stolen card number to use, no credentials to phish, no processor database to breach. You don't need AI fraud detection, velocity checks, address verification, 3D Secure, or any of it.
+                      </p>
+                    </article>
+                  </div>
+                </section>
+
+                {/* Regulatory and Custody */}
+                <section>
+                  <h2 className="text-2xl font-semibold text-gray-800 mb-4">Regulatory and Custody</h2>
+                  <div className="space-y-4">
+                    <article className="bg-white rounded-lg shadow-sm p-6">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                        Don't escrow services require banking licenses and regulatory approval?
+                      </h3>
+                      <p className="text-gray-600 leading-relaxed">
+                        Traditional escrow does, because a third party holds your money. We're not custodial. Funds go directly from the buyer's wallet into a smart contract that both parties own. We never hold, control, or have access to the funds. The contract code determines what happens. Admin can only allocate disputed funds between buyer and seller, never to anyone else.
+                      </p>
+                    </article>
+
+                    <article className="bg-white rounded-lg shadow-sm p-6">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                        What about MiCA or money transmission laws?
+                      </h3>
+                      <p className="text-gray-600 leading-relaxed">
+                        Regulations like MiCA apply to Crypto-Asset Service Providers who custody funds or act as intermediaries. We're infrastructure. The smart contracts run on a public blockchain. Users interact directly with their own contracts. If our website disappeared tomorrow, your contracts would still execute.
+                      </p>
+                    </article>
+
+                    <article className="bg-white rounded-lg shadow-sm p-6">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                        But you resolve disputes — doesn't that make you a custodian?
+                      </h3>
+                      <p className="text-gray-600 leading-relaxed">
+                        No. Dispute resolution means we can allocate funds between buyer and seller when they can't agree. We cannot extract funds to ourselves or any third party. The contract code makes this impossible — not against policy, impossible. Anyone can verify this by reading the verified contract on-chain.
+                      </p>
+                    </article>
+
+                    <article className="bg-white rounded-lg shadow-sm p-6">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                        What if a regulator disagrees with your interpretation?
+                      </h3>
+                      <p className="text-gray-600 leading-relaxed">
+                        Regulatory interpretation varies by jurisdiction. But the architecture is genuinely different from custodial services. If a specific jurisdiction decides non-custodial smart contract infrastructure requires licensing, that's a conversation about that jurisdiction — it doesn't change the technical reality of how the system works.
+                      </p>
+                    </article>
+
+                    <article className="bg-white rounded-lg shadow-sm p-6">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                        What if regulations change and you get shut down?
+                      </h3>
+                      <p className="text-gray-600 leading-relaxed">
+                        Your in-flight transactions still complete. The smart contracts exist on the blockchain, not on our servers. If regulators shut us down tomorrow, every active contract keeps running — funds release at the scheduled time, disputes resolve when parties agree.
+                      </p>
+                    </article>
+                  </div>
+                </section>
+
+                {/* Trust and Platform Risk */}
+                <section>
+                  <h2 className="text-2xl font-semibold text-gray-800 mb-4">Trust and Platform Risk</h2>
+                  <div className="space-y-4">
+                    <article className="bg-white rounded-lg shadow-sm p-6">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                        How do I know you won't steal my money as a merchant?
+                      </h3>
+                      <p className="text-gray-600 leading-relaxed">
+                        You don't have to trust us. The smart contract code is verified on-chain — anyone can read it. The code proves funds can only go to buyer or seller. Paste it into ChatGPT and ask "can the admin steal my funds?" The answer is provably no.
+                      </p>
+                    </article>
+
+                    <article className="bg-white rounded-lg shadow-sm p-6">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                        What if your company shuts down while I have active transactions?
+                      </h3>
+                      <p className="text-gray-600 leading-relaxed">
+                        Your in-flight transactions complete automatically — they're smart contracts, not our servers. If we disappeared tomorrow, funds release to you at the scheduled time, or stay frozen in dispute until you and the buyer work it out directly.
+                      </p>
+                    </article>
+                  </div>
+                </section>
+
+                {/* Comparison to Traditional Processing */}
+                <section>
+                  <h2 className="text-2xl font-semibold text-gray-800 mb-4">Comparison to Traditional Payment Processing</h2>
+                  <div className="space-y-4">
+                    <article className="bg-white rounded-lg shadow-sm p-6">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                        What fees am I actually avoiding compared to traditional payment processors?
+                      </h3>
+                      <div className="text-gray-600 leading-relaxed">
+                        <ul className="list-disc pl-5 space-y-1">
+                          <li>Interchange fees (~2%): Gone</li>
+                          <li>Per-transaction fees ($0.25-0.30): Gone</li>
+                          <li>Chargeback fees ($15-25 per dispute): Gone</li>
+                          <li>Rolling reserve (20-30% held): Gone</li>
+                          <li>Monthly minimums: Gone</li>
+                          <li>PCI compliance costs: Gone</li>
+                          <li>Fraud protection services: Gone</li>
+                        </ul>
+                      </div>
+                    </article>
+
+                    <article className="bg-white rounded-lg shadow-sm p-6">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                        What's the catch with this payment system?
+                      </h3>
+                      <p className="text-gray-600 leading-relaxed">
+                        Your customers need USDC or USDT. That's the real barrier. We've reduced the friction (auto-wallets, on-ramp links, gas-free transactions), but if your customers don't have stablecoins and won't get them, this doesn't help you.
+                      </p>
+                    </article>
+
+                    <article className="bg-white rounded-lg shadow-sm p-6">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                        Why wouldn't I just keep using Stripe or traditional processors?
+                      </h3>
+                      <p className="text-gray-600 leading-relaxed">
+                        If Stripe works for you, keep using it. This is for merchants who: sell in high-risk categories that get rejected or shut down, have been burned by account freezes or fund holds, want to reach crypto holders, want a backup payment channel that can't be frozen, or are tired of chargeback economics.
+                      </p>
+                    </article>
+
+                    <article className="bg-white rounded-lg shadow-sm p-6">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                        Can I test the merchant payment system first?
+                      </h3>
+                      <p className="text-gray-600 leading-relaxed">
+                        Yes. Create a test transaction for $0.001 — the fee is waived so you can see how it works risk-free.
                       </p>
                     </article>
                   </div>

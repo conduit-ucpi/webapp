@@ -51,7 +51,11 @@ export default function ContractPay() {
   // Determine token details from contract
   const selectedTokenSymbol = useMemo(() => {
     if (!contract) return config?.defaultTokenSymbol || 'USDC';
-    return contract.currencySymbol || 'USDC';
+    // Extract token symbol from currency field (e.g., "microUSDC" -> "USDC")
+    if (contract.currency) {
+      return contract.currency.replace('micro', '').toUpperCase();
+    }
+    return 'USDC';
   }, [contract, config?.defaultTokenSymbol]);
 
   const selectedToken = useMemo(

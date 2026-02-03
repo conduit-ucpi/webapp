@@ -207,19 +207,25 @@ export default function Home() {
                     </div>
                   </div>
 
-                  {/* For Merchants - Accept Crypto Payments */}
+                  {/* For Merchants - Add Stablecoin Checkout */}
                   <div className="border-2 border-green-200 dark:border-green-700 rounded-lg p-6 hover:border-green-400 dark:hover:border-green-500 hover:shadow-lg transition-all bg-white dark:bg-secondary-800">
                     <h3 className="text-xl font-semibold text-secondary-900 dark:text-white mb-2">
-                      Accept Crypto Payments
+                      Add Stablecoin Checkout
                     </h3>
-                    <p className="text-sm text-secondary-600 dark:text-secondary-400 mb-4">
-                      WordPress, Shopify plugins or JavaScript SDK for any website
+                    <p className="text-sm text-secondary-600 dark:text-secondary-400 mb-2">
+                      Complete checkout experience with plugins for WordPress/Shopify or JavaScript SDK for custom sites
+                    </p>
+                    <p className="text-sm font-medium text-green-700 dark:text-green-400 mb-4">
+                      ✓ No admin needed - self-install in 10 minutes
                     </p>
                     <Link href="/plugins">
                       <Button size="lg" className="w-full bg-green-500 hover:bg-green-600 text-white">
-                        View Integration Options →
+                        View Demos & Integration Options →
                       </Button>
                     </Link>
+                    <p className="text-xs text-secondary-500 dark:text-secondary-400 mt-2 text-center">
+                      See working examples and user experience videos
+                    </p>
                     <div className="mt-4 flex flex-wrap gap-3 text-xs text-secondary-600 dark:text-secondary-400">
                       <span className="flex items-center">
                         <svg className="w-3 h-3 mr-1 text-green-500" fill="currentColor" viewBox="0 0 20 20">

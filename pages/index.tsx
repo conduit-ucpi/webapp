@@ -287,38 +287,6 @@ export default function Home() {
           </svg>
         </div>
 
-        {/* Integration Callout */}
-        <div className="mt-12">
-          {/* E-commerce Integration */}
-          <div className="bg-gradient-to-r from-green-50 to-blue-50 border-2 border-green-200 rounded-xl p-8 hover:border-green-300 hover:shadow-lg transition-all">
-            <div className="text-center">
-              <h3 className="text-2xl sm:text-3xl font-bold text-secondary-900 mb-3">
-                E-commerce Integration
-              </h3>
-              <p className="text-base sm:text-lg text-secondary-700 mb-6">
-                WordPress & Shopify plugins • JavaScript SDK for any website • Built-in buyer protection • 1% fee
-              </p>
-              <Link href="/plugins">
-                <div className="inline-flex bg-green-500 text-white px-6 py-3 rounded-lg font-semibold items-center gap-2 hover:bg-green-600 transition-colors text-base sm:text-lg cursor-pointer">
-                  View Integration Options
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </div>
-              </Link>
-              <div className="mt-4">
-                <Link href="/plugins#wordpress-heading" className="text-primary-600 hover:text-primary-700 font-medium text-sm sm:text-base inline-flex items-center gap-1">
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-                    <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
-                  </svg>
-                  Watch the plugin demo
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
-
         {/* Open Source Trust Section */}
         <section className="mt-32 bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 rounded-2xl p-12" aria-label="Open Source Security">
           <div className="max-w-4xl mx-auto">
@@ -529,55 +497,6 @@ export default function Home() {
                         View FAQ
                       </Button>
                     </Link>
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            {/* Final CTA */}
-            <section className="mt-32" aria-label="Get Started">
-              <div className="text-center bg-primary-50 border border-primary-200 rounded-lg p-12 hover:border-primary-300 hover:shadow-lg transition-all">
-                <h2 className="text-3xl font-bold text-secondary-900 mb-4">You've been using the "hope for the best" system.</h2>
-                <p className="text-2xl text-primary-600 font-semibold mb-4">
-                  Time to upgrade.
-                </p>
-                <p className="text-lg text-secondary-700 mb-8">
-                  Start with just your email - no crypto wallet required
-                </p>
-                <ConnectWalletEmbedded
-                  useSmartRouting={false}
-                  showTwoOptionLayout={true}
-                />
-                <div className="mt-6 flex flex-wrap items-center justify-center gap-4 text-sm text-secondary-600">
-                  <div className="flex items-center">
-                    <svg className="w-4 h-4 mr-2 text-primary-500" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                    No wallet needed
-                  </div>
-                  <div className="flex items-center">
-                    <svg className="w-4 h-4 mr-2 text-primary-500" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                    Email or social login
-                  </div>
-                  <div className="flex items-center">
-                    <svg className="w-4 h-4 mr-2 text-primary-500" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                    Free testing
-                  </div>
-                  <div className="flex items-center">
-                    <svg className="w-4 h-4 mr-2 text-primary-500" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                    1% fee
-                  </div>
-                  <div className="flex items-center">
-                    <svg className="w-4 h-4 mr-2 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                    Open source
                   </div>
                 </div>
               </div>

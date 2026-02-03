@@ -219,11 +219,11 @@ export default function Home() {
                       Complete checkout experience with plugins for WordPress/Shopify or JavaScript SDK for custom sites
                     </p>
                     <p className="text-sm font-medium text-green-700 dark:text-green-400 mb-4">
-                      ✓ No admin needed - self-install in 10 minutes
+                      ✓ No admin needed - self-install in 10 minutes on your site
                     </p>
                     <Link href="/plugins">
-                      <Button size="lg" className="w-full bg-green-500 hover:bg-green-600 text-white">
-                        View Demos & Integration Options →
+                      <Button size="lg" className="w-full bg-green-500 hover:bg-green-600 text-white whitespace-nowrap">
+                        Demos & Integration
                       </Button>
                     </Link>
                     <p className="text-xs text-secondary-500 dark:text-secondary-400 mt-2 text-center">

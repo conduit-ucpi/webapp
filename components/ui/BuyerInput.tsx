@@ -21,6 +21,7 @@ interface BuyerInputProps {
   placeholder?: string;
   required?: boolean;
   helpText?: string;
+  disabled?: boolean;
 }
 
 export default function BuyerInput({
@@ -30,7 +31,8 @@ export default function BuyerInput({
   label = "Buyer",
   placeholder = "Search Farcaster user or enter email",
   required = false,
-  helpText
+  helpText,
+  disabled = false
 }: BuyerInputProps) {
   const { config } = useConfig();
   const [inputValue, setInputValue] = useState(value);
@@ -173,14 +175,14 @@ export default function BuyerInput({
       )}
       
       <div className="relative">
-        <Combobox value={selectedUser} onChange={handleUserSelect}>
+        <Combobox value={selectedUser} onChange={handleUserSelect} disabled={disabled}>
           <div className="relative">
             <div className="relative">
               <Combobox.Input
                 className={`w-full px-4 py-2 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                   error ? 'border-red-300' : 'border-gray-300'
-                }`}
-                displayValue={(user: FarcasterUser | null) => 
+                } ${disabled ? 'bg-gray-100 cursor-not-allowed text-gray-500' : ''}`}
+                displayValue={(user: FarcasterUser | null) =>
                   user ? `@${user.username}` : inputValue
                 }
                 onChange={(event) => handleInputChange(event.target.value)}

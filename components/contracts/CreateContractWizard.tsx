@@ -85,6 +85,7 @@ export default function CreateContractWizard() {
   const [errors, setErrors] = useState<FormErrors>({});
   const [showQRModal, setShowQRModal] = useState(false);
   const [isInstantPayment, setIsInstantPayment] = useState(false);
+  const [noBuyerEmail, setNoBuyerEmail] = useState(false);
   const [selectedTokenSymbol, setSelectedTokenSymbol] = useState<string>(
     config?.defaultTokenSymbol || config?.tokenSymbol || 'USDC'
   );
@@ -207,8 +208,8 @@ export default function CreateContractWizard() {
         // Use SDK utils if available, otherwise fall back to local validation
         const descriptionValidator = isValidDescription;
 
-        // Only validate buyer email if NOT instant payment (email not needed for QR payments)
-        if (!isInstantPayment) {
+        // Only validate buyer email if NOT instant payment AND NOT noBuyerEmail (email not needed for QR payments or manual notification)
+        if (!isInstantPayment && !noBuyerEmail) {
           // Validate buyer identifier (email or Farcaster handle)
           const buyerValidation = isValidBuyerIdentifier(form.buyerEmail);
           if (!buyerValidation.isValid) {
@@ -300,7 +301,9 @@ export default function CreateContractWizard() {
       }
       
       const pendingContractRequest = {
-        buyerEmail: form.buyerType === 'email' ? form.buyerEmail : (form.buyerFid ? `${form.buyerFid}@farcaster.xyz` : ''),
+        buyerEmail: noBuyerEmail
+          ? 'createdempty@conduit-ucpi.com'
+          : (form.buyerType === 'email' ? form.buyerEmail : (form.buyerFid ? `${form.buyerFid}@farcaster.xyz` : '')),
         buyerFarcasterHandle: form.buyerType === 'farcaster' ? form.buyerEmail : '',
         sellerEmail: user.email,
         sellerAddress: user.walletAddress,
@@ -335,7 +338,11 @@ export default function CreateContractWizard() {
       showToast({
         type: 'success',
         title: 'Payment request created!',
-        message: isInstantPayment ? 'QR code ready!' : `${form.buyerEmail} will receive an email notification.`
+        message: isInstantPayment
+          ? 'QR code ready!'
+          : noBuyerEmail
+            ? 'Payment link ready to share!'
+            : `${form.buyerEmail} will receive an email notification.`
       });
     } catch (error: any) {
       console.error('Contract creation failed:', error);
@@ -402,19 +409,53 @@ export default function CreateContractWizard() {
 
                 {/* Buyer email - only show if NOT instant payment */}
                 {!isInstantPayment && (
-                  <BuyerInput
-                    label="Buyer's email address"
-                    value={form.buyerEmail}
-                    onChange={(value, type, fid) => setForm(prev => ({
-                      ...prev,
-                      buyerEmail: value,
-                      buyerType: type,
-                      buyerFid: fid
-                    }))}
-                    error={errors.buyerEmail}
-                    placeholder="Search Farcaster user or enter email"
-                    helpText="They'll receive an email with payment instructions"
-                  />
+                  <>
+                    <BuyerInput
+                      label="Buyer's email address"
+                      value={form.buyerEmail}
+                      onChange={(value, type, fid) => setForm(prev => ({
+                        ...prev,
+                        buyerEmail: value,
+                        buyerType: type,
+                        buyerFid: fid
+                      }))}
+                      error={errors.buyerEmail}
+                      placeholder="Search Farcaster user or enter email"
+                      helpText={noBuyerEmail ? "You'll notify the buyer manually with the payment link" : "They'll receive an email with payment instructions"}
+                      disabled={noBuyerEmail}
+                    />
+
+                    {/* No buyer email checkbox */}
+                    <div className="flex items-start -mt-2">
+                      <input
+                        type="checkbox"
+                        id="noBuyerEmail"
+                        checked={noBuyerEmail}
+                        onChange={(e) => {
+                          const checked = e.target.checked;
+                          setNoBuyerEmail(checked);
+                          if (checked) {
+                            // Clear buyer email when checkbox is checked
+                            setForm(prev => ({
+                              ...prev,
+                              buyerEmail: '',
+                              buyerType: 'email',
+                              buyerFid: undefined
+                            }));
+                            // Clear any buyer email errors
+                            setErrors(prev => ({ ...prev, buyerEmail: undefined }));
+                          }
+                        }}
+                        className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-secondary-300 rounded mt-0.5"
+                      />
+                      <label htmlFor="noBuyerEmail" className="ml-3 block text-sm text-secondary-700">
+                        <span className="font-medium">No buyer email - I'll share the payment link myself</span>
+                        <p className="text-secondary-500 mt-1">
+                          You'll get a shareable payment link to send directly to the buyer
+                        </p>
+                      </label>
+                    </div>
+                  </>
                 )}
 
                 <div>
@@ -560,7 +601,7 @@ export default function CreateContractWizard() {
                     {isInstantPayment ? 'QR Code Payment Summary' : 'Payment Request Summary'}
                   </h3>
                   <div className="space-y-3">
-                    {!isInstantPayment && (
+                    {!isInstantPayment && !noBuyerEmail && (
                       <div className="flex justify-between">
                         <span className="text-secondary-600">Buyer:</span>
                         <span className="font-medium">{form.buyerEmail}</span>
@@ -603,6 +644,25 @@ export default function CreateContractWizard() {
                       <li className="flex items-start">
                         <span className="font-medium mr-2">3.</span>
                         <span>Funds are released to you immediately after payment confirmation</span>
+                      </li>
+                    </ol>
+                  ) : noBuyerEmail ? (
+                    <ol className="space-y-2 text-sm text-primary-800">
+                      <li className="flex items-start">
+                        <span className="font-medium mr-2">1.</span>
+                        <span>You'll receive a payment link to share with the buyer</span>
+                      </li>
+                      <li className="flex items-start">
+                        <span className="font-medium mr-2">2.</span>
+                        <span>The buyer clicks the link and pays {formatUSDC(toMicroUSDC(parseFloat(form.amount || '0')))} {selectedTokenSymbol} to our secure escrow</span>
+                      </li>
+                      <li className="flex items-start">
+                        <span className="font-medium mr-2">3.</span>
+                        <span>Funds are automatically released to you on {formatDateTimeWithTZ(form.payoutTimestamp)}</span>
+                      </li>
+                      <li className="flex items-start">
+                        <span className="font-medium mr-2">4.</span>
+                        <span>Both parties can raise disputes if needed before the release date</span>
                       </li>
                     </ol>
                   ) : (
@@ -658,8 +718,10 @@ export default function CreateContractWizard() {
   const canProceed = () => {
     switch (currentStep) {
       case 0:
-        // For instant payment, only description is needed; for normal payment, email + description
-        return isInstantPayment ? !!form.description : !!(form.buyerEmail && form.description);
+        // For instant payment, only description is needed
+        // For noBuyerEmail, only description is needed
+        // For normal payment, email + description
+        return isInstantPayment || noBuyerEmail ? !!form.description : !!(form.buyerEmail && form.description);
       case 1:
         // For instant payment, timestamp can be 0; for delayed payment, it must be set
         return form.amount && (isInstantPayment || form.payoutTimestamp > 0);
@@ -691,7 +753,9 @@ export default function CreateContractWizard() {
             <p className="text-secondary-600">
               {isInstantPayment
                 ? 'Your QR code payment request is ready'
-                : `An email has been sent to ${form.buyerEmail}`
+                : noBuyerEmail
+                  ? 'Your payment link is ready to share with the buyer'
+                  : `An email has been sent to ${form.buyerEmail}`
               }
             </p>
           </div>
@@ -742,7 +806,7 @@ export default function CreateContractWizard() {
           <div className="bg-secondary-50 rounded-lg p-4 mb-6">
             <h3 className="font-medium text-secondary-900 mb-3">Payment Request Summary</h3>
             <div className="space-y-2 text-sm">
-              {!isInstantPayment && (
+              {!isInstantPayment && !noBuyerEmail && (
                 <div className="flex justify-between">
                   <span className="text-secondary-600">Buyer:</span>
                   <span className="font-medium">{form.buyerEmail}</span>
@@ -789,6 +853,7 @@ export default function CreateContractWizard() {
                 });
                 setErrors({});
                 setIsInstantPayment(false);
+                setNoBuyerEmail(false);
                 setPaymentLinkCopied(false);
               }}
               variant="outline"

@@ -133,12 +133,12 @@ export default function Home() {
       <div className="bg-white dark:bg-secondary-900 min-h-screen transition-colors" key="home-page">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-24">
         {/* Hero Section */}
-        <div className="grid lg:grid-cols-2 gap-12 items-center min-h-[80vh]">
-          <div className="space-y-8">
-            <h1 className="text-5xl lg:text-6xl font-bold text-secondary-900 dark:text-white leading-tight tracking-tight">
+        <div className="grid lg:grid-cols-2 gap-16 lg:gap-20 items-center min-h-[85vh]">
+          <div className="space-y-12">
+            <h1 className="text-5xl lg:text-7xl font-bold text-secondary-900 dark:text-white leading-[1.1] tracking-tight">
               <span className="text-primary-500">Stablecoin payments</span> made safe and easy
             </h1>
-            <p className="text-lg lg:text-xl text-secondary-700 dark:text-secondary-300 leading-relaxed max-w-2xl">
+            <p className="text-xl lg:text-2xl text-secondary-600 dark:text-secondary-300 leading-relaxed max-w-2xl">
               <span className="font-semibold text-secondary-900 dark:text-white">{siteName}</span> gives stablecoin payments a familiar checkout experience and buyer protections, opening stores up to new customers with just one line of code.
             </p>
             <div className="flex items-center gap-3 bg-green-50 border border-green-200 rounded-lg px-4 py-3 w-fit">
@@ -169,17 +169,17 @@ export default function Home() {
                 </Link>
               </div>
             ) : (
-              <div className="pt-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="pt-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   {/* For P2P Users - Send or Request Payment */}
-                  <div className="border border-primary-200 dark:border-primary-700 rounded-xl p-6 hover:border-primary-400 dark:hover:border-primary-500 transition-colors bg-white dark:bg-secondary-800">
-                    <h3 className="text-xl font-semibold text-secondary-900 dark:text-white mb-2">
+                  <div className="border border-primary-200 dark:border-primary-700 rounded-xl p-8 hover:border-primary-400 dark:hover:border-primary-500 transition-colors bg-white dark:bg-secondary-800">
+                    <h3 className="text-xl font-semibold text-secondary-900 dark:text-white mb-3">
                       Send or Request Payment
                     </h3>
-                    <p className="text-sm text-secondary-600 dark:text-secondary-400 mb-2">
+                    <p className="text-sm text-secondary-600 dark:text-secondary-400 mb-3">
                       Create payment requests or manage your escrow transactions
                     </p>
-                    <p className="text-xs text-secondary-500 dark:text-secondary-400 mb-4">
+                    <p className="text-xs text-secondary-500 dark:text-secondary-400 mb-6">
                       Authenticate with social ID, passwordless email or existing wallet
                     </p>
                     <ConnectWalletEmbedded
@@ -209,11 +209,11 @@ export default function Home() {
                   </div>
 
                   {/* For Merchants - Add Stablecoin checkout to your site */}
-                  <div className="border border-green-200 dark:border-green-700 rounded-xl p-6 hover:border-green-400 dark:hover:border-green-500 transition-colors bg-white dark:bg-secondary-800">
-                    <h3 className="text-xl font-semibold text-secondary-900 dark:text-white mb-2">
+                  <div className="border border-green-200 dark:border-green-700 rounded-xl p-8 hover:border-green-400 dark:hover:border-green-500 transition-colors bg-white dark:bg-secondary-800">
+                    <h3 className="text-xl font-semibold text-secondary-900 dark:text-white mb-3">
                       Add Stablecoin checkout to your site
                     </h3>
-                    <p className="text-sm font-medium text-green-700 dark:text-green-400 mb-4">
+                    <p className="text-sm font-medium text-green-700 dark:text-green-400 mb-6">
                       ✓ No admin needed - self-install in 10 minutes on your site
                     </p>
                     <Link href="/plugins">
@@ -269,53 +269,53 @@ export default function Home() {
 
 
         {/* Open Source Trust Section */}
-        <section className="mt-32 bg-green-50 border border-green-200 rounded-2xl p-12" aria-label="Open Source Security">
-          <div className="max-w-4xl mx-auto">
-            <div className="text-center mb-16">
-              <h2 className="text-4xl font-bold text-secondary-900 mb-4 tracking-tight">Open Source</h2>
-              <p className="text-xl text-secondary-600 leading-relaxed">Don't trust us. Verify the code yourself.</p>
+        <section className="mt-40 lg:mt-48 bg-secondary-50 rounded-2xl p-12 lg:p-16" aria-label="Open Source Security">
+          <div className="max-w-5xl mx-auto">
+            <div className="text-center mb-20">
+              <h2 className="text-4xl lg:text-5xl font-bold text-secondary-900 mb-6 tracking-tight">Open Source</h2>
+              <p className="text-xl lg:text-2xl text-secondary-600 leading-relaxed">Don't trust us. Verify the code yourself.</p>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-6 mb-8">
-              <div className="bg-white rounded-xl p-6 border border-secondary-200">
-                <h3 className="text-lg font-semibold text-secondary-900 mb-3 flex items-center">
-                  <svg className="w-5 h-5 mr-2 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+            <div className="grid md:grid-cols-2 gap-8 mb-12">
+              <div className="bg-white rounded-xl p-8 border border-secondary-200">
+                <h3 className="text-lg font-semibold text-secondary-900 mb-4 flex items-center">
+                  <svg className="w-5 h-5 mr-2 text-primary-500" fill="currentColor" viewBox="0 0 20 20">
                     <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
                     <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd" />
                   </svg>
                   Every Line of Code is Public
                 </h3>
-                <p className="text-secondary-600">All smart contracts, frontend, and backend code is on GitHub. No hidden fees, no backdoors, no secrets.</p>
+                <p className="text-secondary-600 leading-relaxed">All smart contracts, frontend, and backend code is on GitHub. No hidden fees, no backdoors, no secrets.</p>
               </div>
 
-              <div className="bg-white rounded-xl p-6 border border-secondary-200">
-                <h3 className="text-lg font-semibold text-secondary-900 mb-3 flex items-center">
-                  <svg className="w-5 h-5 mr-2 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+              <div className="bg-white rounded-xl p-8 border border-secondary-200">
+                <h3 className="text-lg font-semibold text-secondary-900 mb-4 flex items-center">
+                  <svg className="w-5 h-5 mr-2 text-primary-500" fill="currentColor" viewBox="0 0 20 20">
                     <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
                   </svg>
                   Community Audited
                 </h3>
-                <p className="text-secondary-600">Developers worldwide can review our code. Bugs get found and fixed faster than closed-source alternatives.</p>
+                <p className="text-secondary-600 leading-relaxed">Developers worldwide can review our code. Bugs get found and fixed faster than closed-source alternatives.</p>
               </div>
 
-              <div className="bg-white rounded-xl p-6 border border-secondary-200">
-                <h3 className="text-lg font-semibold text-secondary-900 mb-3 flex items-center">
-                  <svg className="w-5 h-5 mr-2 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+              <div className="bg-white rounded-xl p-8 border border-secondary-200">
+                <h3 className="text-lg font-semibold text-secondary-900 mb-4 flex items-center">
+                  <svg className="w-5 h-5 mr-2 text-primary-500" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                   </svg>
                   Blockchain Security
                 </h3>
-                <p className="text-secondary-600">Smart contracts are immutable and on-chain. What you see is what you get - no surprises, no changes.</p>
+                <p className="text-secondary-600 leading-relaxed">Smart contracts are immutable and on-chain. What you see is what you get - no surprises, no changes.</p>
               </div>
 
-              <div className="bg-white rounded-xl p-6 border border-secondary-200">
-                <h3 className="text-lg font-semibold text-secondary-900 mb-3 flex items-center">
-                  <svg className="w-5 h-5 mr-2 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+              <div className="bg-white rounded-xl p-8 border border-secondary-200">
+                <h3 className="text-lg font-semibold text-secondary-900 mb-4 flex items-center">
+                  <svg className="w-5 h-5 mr-2 text-primary-500" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M12.316 3.051a1 1 0 01.633 1.265l-4 12a1 1 0 11-1.898-.632l4-12a1 1 0 011.265-.633zM5.707 6.293a1 1 0 010 1.414L3.414 10l2.293 2.293a1 1 0 11-1.414 1.414l-3-3a1 1 0 010-1.414l3-3a1 1 0 011.414 0zm8.586 0a1 1 0 011.414 0l3 3a1 1 0 010 1.414l-3 3a1 1 0 11-1.414-1.414L16.586 10l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
                   </svg>
                   Fork It, Modify It, Own It
                 </h3>
-                <p className="text-secondary-600">MIT licensed. Run your own instance, customize it, or contribute improvements back to the community.</p>
+                <p className="text-secondary-600 leading-relaxed">MIT licensed. Run your own instance, customize it, or contribute improvements back to the community.</p>
               </div>
             </div>
 
@@ -337,40 +337,40 @@ export default function Home() {
         </section>
 
         {/* Interactive Demo Section */}
-        <section className="mt-32" id="how-it-works" aria-label="How Conduit Escrow Works">
+        <section className="mt-40 lg:mt-48" id="how-it-works" aria-label="How Conduit Escrow Works">
           <InteractiveDemo />
         </section>
 
-        <section className="mt-32" aria-label="Escrow Process Steps">
-        <h2 className="text-3xl font-bold text-secondary-900 dark:text-white text-center mb-16 tracking-tight">
+        <section className="mt-40 lg:mt-48" aria-label="Escrow Process Steps">
+        <h2 className="text-4xl lg:text-5xl font-bold text-secondary-900 dark:text-white text-center mb-20 tracking-tight">
           Simple 3-Step Escrow Process
         </h2>
         <div className="relative">
           {/* Connection lines */}
-          <div className="hidden md:block absolute top-10 left-1/4 right-1/4 h-0.5 bg-gradient-to-r from-primary-200 via-primary-300 to-primary-200"></div>
+          <div className="hidden md:block absolute top-12 left-1/4 right-1/4 h-0.5 bg-gradient-to-r from-primary-200 via-primary-300 to-primary-200"></div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
-            <div className="bg-white border border-secondary-200 rounded-xl p-8 hover:border-primary-300 transition-colors">
-              <div className="w-16 h-16 bg-primary-500 text-white rounded-full flex items-center justify-center mb-6 text-2xl font-bold shadow-sm">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-10 lg:gap-12 relative">
+            <div className="bg-white border border-secondary-200 rounded-xl p-10 hover:border-primary-300 transition-colors">
+              <div className="w-20 h-20 bg-primary-500 text-white rounded-full flex items-center justify-center mb-8 text-3xl font-bold shadow-sm">
                 1
               </div>
-              <h3 className="text-xl font-semibold text-secondary-900 mb-3">Seller creates payment request</h3>
+              <h3 className="text-xl font-semibold text-secondary-900 mb-4">Seller creates payment request</h3>
               <p className="text-secondary-600 leading-relaxed">with delivery timeframe</p>
             </div>
 
-            <div className="bg-white border border-secondary-200 rounded-xl p-8 hover:border-primary-300 transition-colors">
-              <div className="w-16 h-16 bg-primary-500 text-white rounded-full flex items-center justify-center mb-6 text-2xl font-bold shadow-sm">
+            <div className="bg-white border border-secondary-200 rounded-xl p-10 hover:border-primary-300 transition-colors">
+              <div className="w-20 h-20 bg-primary-500 text-white rounded-full flex items-center justify-center mb-8 text-3xl font-bold shadow-sm">
                 2
               </div>
-              <h3 className="text-xl font-semibold text-secondary-900 mb-3">Buyer puts funds in secure trust</h3>
+              <h3 className="text-xl font-semibold text-secondary-900 mb-4">Buyer puts funds in secure trust</h3>
               <p className="text-secondary-600 leading-relaxed">Money goes into secure trust, not directly to seller</p>
             </div>
 
-            <div className="bg-white border border-secondary-200 rounded-xl p-8 hover:border-primary-300 transition-colors">
-              <div className="w-16 h-16 bg-primary-500 text-white rounded-full flex items-center justify-center mb-6 text-2xl font-bold shadow-sm">
+            <div className="bg-white border border-secondary-200 rounded-xl p-10 hover:border-primary-300 transition-colors">
+              <div className="w-20 h-20 bg-primary-500 text-white rounded-full flex items-center justify-center mb-8 text-3xl font-bold shadow-sm">
                 3
               </div>
-              <h3 className="text-xl font-semibold text-secondary-900 mb-3">Automatic payout to seller</h3>
+              <h3 className="text-xl font-semibold text-secondary-900 mb-4">Automatic payout to seller</h3>
               <p className="text-secondary-600 leading-relaxed">Seller receives payment at pre-agreed date & time. Disputed transactions held in trust until resolution.</p>
             </div>
           </div>
@@ -380,35 +380,35 @@ export default function Home() {
         {!isConnected && (
           <>
             {/* Dispute Resolution Section */}
-            <section className="mt-32 bg-secondary-50 rounded-2xl p-12" aria-label="Dispute Resolution Process">
-              <div className="text-center mb-16">
-                <h2 className="text-4xl font-bold text-secondary-900 mb-4 tracking-tight">What if there's a problem?</h2>
-                <p className="text-xl text-secondary-600 max-w-3xl mx-auto leading-relaxed">Built-in dispute resolution protects both buyers and sellers without lawyers or fees</p>
+            <section className="mt-40 lg:mt-48 bg-secondary-50 rounded-2xl p-12 lg:p-16" aria-label="Dispute Resolution Process">
+              <div className="text-center mb-20">
+                <h2 className="text-4xl lg:text-5xl font-bold text-secondary-900 mb-6 tracking-tight">What if there's a problem?</h2>
+                <p className="text-xl lg:text-2xl text-secondary-600 max-w-3xl mx-auto leading-relaxed">Built-in dispute resolution protects both buyers and sellers without lawyers or fees</p>
               </div>
 
-              <div className="max-w-4xl mx-auto space-y-6">
+              <div className="max-w-4xl mx-auto space-y-8">
                 {/* Step 1: Buyer raises dispute */}
-                <div className="bg-white rounded-xl p-6 border border-secondary-200 hover:border-primary-300 transition-colors">
-                  <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 bg-primary-500 text-white rounded-full flex items-center justify-center flex-shrink-0 text-xl font-bold">
+                <div className="bg-white rounded-xl p-8 border border-secondary-200 hover:border-primary-300 transition-colors">
+                  <div className="flex items-start gap-6">
+                    <div className="w-14 h-14 bg-primary-500 text-white rounded-full flex items-center justify-center flex-shrink-0 text-2xl font-bold">
                       1
                     </div>
                     <div>
-                      <h3 className="text-xl font-semibold text-secondary-900 mb-2">Buyer raises a dispute</h3>
-                      <p className="text-secondary-700 leading-relaxed">If goods don't arrive, arrive damaged, or aren't as described, the buyer can click "Raise Dispute" before the payout date. Funds immediately freeze in escrow - the seller can't access them.</p>
+                      <h3 className="text-xl font-semibold text-secondary-900 mb-3">Buyer raises a dispute</h3>
+                      <p className="text-secondary-600 leading-relaxed">If goods don't arrive, arrive damaged, or aren't as described, the buyer can click "Raise Dispute" before the payout date. Funds immediately freeze in escrow - the seller can't access them.</p>
                     </div>
                   </div>
                 </div>
 
                 {/* Step 2: Automated negotiation */}
-                <div className="bg-white rounded-xl p-6 border border-secondary-200 hover:border-primary-300 transition-colors">
-                  <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 bg-primary-500 text-white rounded-full flex items-center justify-center flex-shrink-0 text-xl font-bold">
+                <div className="bg-white rounded-xl p-8 border border-secondary-200 hover:border-primary-300 transition-colors">
+                  <div className="flex items-start gap-6">
+                    <div className="w-14 h-14 bg-primary-500 text-white rounded-full flex items-center justify-center flex-shrink-0 text-2xl font-bold">
                       2
                     </div>
                     <div>
-                      <h3 className="text-xl font-semibold text-secondary-900 mb-2">Buyer and seller negotiate directly</h3>
-                      <p className="text-secondary-700 leading-relaxed mb-3">Our automated system facilitates direct negotiation between buyer and seller. Each party proposes a fair split of the escrowed funds (e.g., 70% refund to buyer, 30% to seller for shipping costs).</p>
+                      <h3 className="text-xl font-semibold text-secondary-900 mb-3">Buyer and seller negotiate directly</h3>
+                      <p className="text-secondary-600 leading-relaxed mb-4">Our automated system facilitates direct negotiation between buyer and seller. Each party proposes a fair split of the escrowed funds (e.g., 70% refund to buyer, 30% to seller for shipping costs).</p>
                       <div className="bg-primary-50 rounded p-4 border border-primary-200">
                         <p className="text-sm font-semibold text-secondary-900 mb-2">Why this works better than chargebacks:</p>
                         <ul className="text-sm text-secondary-700 space-y-1">
@@ -423,22 +423,22 @@ export default function Home() {
                 </div>
 
                 {/* Step 3: Resolution */}
-                <div className="bg-white rounded-xl p-6 border border-secondary-200 hover:border-primary-300 transition-colors">
-                  <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 bg-primary-500 text-white rounded-full flex items-center justify-center flex-shrink-0 text-xl font-bold">
+                <div className="bg-white rounded-xl p-8 border border-secondary-200 hover:border-primary-300 transition-colors">
+                  <div className="flex items-start gap-6">
+                    <div className="w-14 h-14 bg-primary-500 text-white rounded-full flex items-center justify-center flex-shrink-0 text-2xl font-bold">
                       3
                     </div>
                     <div>
-                      <h3 className="text-xl font-semibold text-secondary-900 mb-2">Automatic payout when agreed</h3>
-                      <p className="text-secondary-700 leading-relaxed mb-3">When both parties accept the same split, the smart contract automatically distributes funds according to the agreement. No waiting for manual review, no additional fees.</p>
-                      <p className="text-sm text-secondary-600 italic">If parties can't agree after reasonable negotiation attempts, admin mediation is available as a last resort - but the smart contract ensures funds can only go to the buyer or seller, never to anyone else.</p>
+                      <h3 className="text-xl font-semibold text-secondary-900 mb-3">Automatic payout when agreed</h3>
+                      <p className="text-secondary-600 leading-relaxed mb-4">When both parties accept the same split, the smart contract automatically distributes funds according to the agreement. No waiting for manual review, no additional fees.</p>
+                      <p className="text-sm text-secondary-500 italic">If parties can't agree after reasonable negotiation attempts, admin mediation is available as a last resort - but the smart contract ensures funds can only go to the buyer or seller, never to anyone else.</p>
                     </div>
                   </div>
                 </div>
 
                 {/* Key benefits comparison */}
-                <div className="bg-white border border-primary-200 rounded-xl p-6">
-                  <h4 className="text-lg font-semibold text-secondary-900 mb-6">Disputes vs. Traditional Chargebacks</h4>
+                <div className="bg-white border border-primary-200 rounded-xl p-8">
+                  <h4 className="text-lg font-semibold text-secondary-900 mb-8">Disputes vs. Traditional Chargebacks</h4>
                   <div className="grid md:grid-cols-2 gap-4 text-sm">
                     <div className="flex items-start gap-2">
                       <svg className="w-5 h-5 text-primary-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
@@ -482,35 +482,35 @@ export default function Home() {
             </section>
 
             {/* Cost Section */}
-            <section className="mt-32" aria-label="Pricing">
-              <div className="text-center mb-16">
-                <h2 className="text-4xl font-bold text-secondary-900 mb-4 tracking-tight">Cost</h2>
+            <section className="mt-40 lg:mt-48" aria-label="Pricing">
+              <div className="text-center mb-20">
+                <h2 className="text-4xl lg:text-5xl font-bold text-secondary-900 mb-6 tracking-tight">Cost</h2>
               </div>
 
-              <div className="bg-white border border-secondary-200 rounded-xl p-8 max-w-2xl mx-auto">
-                <div className="text-center space-y-6">
-                  <div className="flex justify-between items-center">
-                    <span className="text-lg text-secondary-700">Transaction fee</span>
-                    <span className="text-2xl font-bold text-primary-600">1%</span>
+              <div className="bg-white border border-secondary-200 rounded-xl p-10 lg:p-12 max-w-2xl mx-auto">
+                <div className="text-center space-y-8">
+                  <div className="flex justify-between items-center px-4">
+                    <span className="text-xl text-secondary-700">Transaction fee</span>
+                    <span className="text-4xl font-bold text-primary-600">1%</span>
                   </div>
-                  <div className="border-t border-secondary-200 pt-6">
-                    <p className="text-primary-600 font-semibold">Free testing with $0.001 payments</p>
-                    <p className="text-sm text-secondary-600 mt-1">Try it risk-free first</p>
+                  <div className="border-t border-secondary-200 pt-8">
+                    <p className="text-xl text-primary-600 font-semibold mb-2">Free testing with $0.001 payments</p>
+                    <p className="text-secondary-600">Try it risk-free first</p>
                   </div>
                 </div>
               </div>
             </section>
 
             {/* Contact Section */}
-            <section className="mt-32" aria-label="Contact Information">
-              <div className="text-center mb-16">
-                <h2 className="text-4xl font-bold text-secondary-900 mb-4 tracking-tight">Questions?</h2>
+            <section className="mt-40 lg:mt-48 mb-24" aria-label="Contact Information">
+              <div className="text-center mb-20">
+                <h2 className="text-4xl lg:text-5xl font-bold text-secondary-900 mb-6 tracking-tight">Questions?</h2>
               </div>
 
-              <div className="bg-white border border-secondary-200 rounded-xl p-8 max-w-2xl mx-auto">
-                <div className="text-center space-y-4">
-                  <p className="text-lg text-secondary-700">Need help or have questions?</p>
-                  <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+              <div className="bg-white border border-secondary-200 rounded-xl p-10 lg:p-12 max-w-2xl mx-auto">
+                <div className="text-center space-y-8">
+                  <p className="text-xl text-secondary-700">Need help or have questions?</p>
+                  <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
                     <a 
                       href="mailto:info@conduit-ucpi.com"
                       className="inline-flex items-center px-6 py-3 bg-primary-500 hover:bg-primary-600 text-white font-semibold rounded-lg transition-colors"

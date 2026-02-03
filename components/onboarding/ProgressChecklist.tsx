@@ -24,7 +24,7 @@ export default function ProgressChecklist({ onClose }: ProgressChecklistProps) {
   const router = useRouter();
   const siteName = getSiteNameFromDomain();
   const [isVisible, setIsVisible] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false);
   const [completedItems, setCompletedItems] = useState<string[]>([]);
   const [contractsExist, setContractsExist] = useState(false);
   const [showWalkthrough, setShowWalkthrough] = useState(false);

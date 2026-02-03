@@ -24,14 +24,36 @@ function isPendingContract(contract: Contract | PendingContract): contract is Pe
 export default function ContractDetailsModal({ isOpen, onClose, contract, onRefresh }: ContractDetailsModalProps) {
   const { user } = useAuth();
   const { config } = useConfig();
+  const [paymentLinkCopied, setPaymentLinkCopied] = useState(false);
 
   const isPending = isPendingContract(contract);
-  const isBuyer = user?.walletAddress?.toLowerCase() === 
+  const isBuyer = user?.walletAddress?.toLowerCase() ===
     (isPending ? '' : contract.buyerAddress?.toLowerCase());
-  const isSeller = user?.walletAddress?.toLowerCase() === 
+  const isSeller = user?.walletAddress?.toLowerCase() ===
     contract.sellerAddress?.toLowerCase();
 
   const status = isPending ? 'PENDING' : (contract as Contract).status;
+
+  // Generate payment link for pending contracts
+  const generatePaymentLink = (): string => {
+    if (!contract.id) return '';
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+    return `${baseUrl}/contract-pay?contractId=${contract.id}`;
+  };
+
+  // Copy payment link to clipboard
+  const handleCopyPaymentLink = async () => {
+    const link = generatePaymentLink();
+    if (!link) return;
+
+    try {
+      await navigator.clipboard.writeText(link);
+      setPaymentLinkCopied(true);
+      setTimeout(() => setPaymentLinkCopied(false), 3000);
+    } catch (error) {
+      console.error('Failed to copy payment link:', error);
+    }
+  };
   
   // Use centralized status display with role information
   // Use backend-provided status display
@@ -378,6 +400,49 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
 
         {/* Backend will provide all warnings and status information */}
 
+        {/* Payment Link Section for Pending Contracts */}
+        {isPending && isSeller && (
+          <div className="bg-primary-50 border border-primary-200 rounded-lg p-4 mb-4">
+            <h4 className="font-semibold text-primary-900 mb-2">Share Payment Link</h4>
+            <p className="text-sm text-primary-800 mb-3">
+              Send this link to the buyer for instant payment:
+            </p>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                readOnly
+                value={generatePaymentLink()}
+                className="flex-1 text-xs border border-primary-300 rounded-md px-3 py-2 bg-white font-mono text-primary-900"
+              />
+              <Button
+                onClick={handleCopyPaymentLink}
+                className={`${
+                  paymentLinkCopied
+                    ? 'bg-green-500 hover:bg-green-600'
+                    : 'bg-primary-500 hover:bg-primary-600'
+                } whitespace-nowrap`}
+                size="sm"
+              >
+                {paymentLinkCopied ? (
+                  <>
+                    <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                    Copied!
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                    Copy
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-secondary-200">
           {/* Contract-specific actions (Raise Dispute, Claim Funds, etc.) */}
@@ -391,7 +456,7 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
               onClose();
             }}
           />
-          
+
           <Button
             onClick={onClose}
             variant="outline"
@@ -399,7 +464,7 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
           >
             Close
           </Button>
-          
+
           {!isPending && config?.explorerBaseUrl && (contract as Contract).contractAddress && (
             <Button
               onClick={() => window.open(`${config.explorerBaseUrl}/address/${(contract as Contract).contractAddress}`, '_blank')}
@@ -409,7 +474,7 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
               View on Blockchain ↗
             </Button>
           )}
-          
+
           {/* Copy Contract ID */}
           <Button
             onClick={() => {

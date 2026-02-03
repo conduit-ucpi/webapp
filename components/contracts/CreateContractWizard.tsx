@@ -70,6 +70,9 @@ export default function CreateContractWizard() {
   const [currentStep, setCurrentStep] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [hasAttemptedUserFetch, setHasAttemptedUserFetch] = useState(false);
+  const [createdContractId, setCreatedContractId] = useState<string | null>(null);
+  const [showSuccessScreen, setShowSuccessScreen] = useState(false);
+  const [paymentLinkCopied, setPaymentLinkCopied] = useState(false);
 
   const [form, setForm] = useState<CreateContractForm>({
     buyerEmail: '',
@@ -154,6 +157,37 @@ export default function CreateContractWizard() {
     });
 
     return `${baseUrl}/contract-create?${params.toString()}`;
+  };
+
+  // Generate payment link for created contract
+  const generateContractPaymentLink = (): string => {
+    if (!createdContractId) return '';
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+    return `${baseUrl}/contract-pay?contractId=${createdContractId}`;
+  };
+
+  // Copy payment link to clipboard
+  const handleCopyPaymentLink = async () => {
+    const link = generateContractPaymentLink();
+    if (!link) return;
+
+    try {
+      await navigator.clipboard.writeText(link);
+      setPaymentLinkCopied(true);
+      setTimeout(() => setPaymentLinkCopied(false), 3000);
+      showToast({
+        type: 'success',
+        title: 'Link copied!',
+        message: 'Payment link copied to clipboard'
+      });
+    } catch (error) {
+      console.error('Failed to copy link:', error);
+      showToast({
+        type: 'error',
+        title: 'Copy failed',
+        message: 'Could not copy link to clipboard'
+      });
+    }
   };
 
   // Handle in-person QR code generation
@@ -292,13 +326,17 @@ export default function CreateContractWizard() {
         throw new Error(errorData.error || 'Failed to create contract');
       }
 
+      const responseData = await response.json();
+      const contractId = responseData.contractId || responseData.id;
+
+      setCreatedContractId(contractId);
+      setShowSuccessScreen(true);
+
       showToast({
         type: 'success',
         title: 'Payment request created!',
-        message: `${form.buyerEmail} will receive an email notification.`
+        message: isInstantPayment ? 'QR code ready!' : `${form.buyerEmail} will receive an email notification.`
       });
-
-      router.push('/dashboard');
     } catch (error: any) {
       console.error('Contract creation failed:', error);
       showToast({
@@ -632,11 +670,143 @@ export default function CreateContractWizard() {
     }
   };
 
+  // Show success screen after contract creation
+  if (showSuccessScreen && createdContractId) {
+    const paymentLink = generateContractPaymentLink();
+
+    return (
+      <div className="w-full max-w-2xl mx-auto">
+        {/* Wallet Info Section */}
+        <WalletInfo className="mb-6" />
+
+        <div className="bg-white rounded-lg border border-secondary-200 p-8">
+          {/* Success Header */}
+          <div className="text-center mb-6">
+            <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
+              <svg className="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h2 className="text-2xl font-bold text-secondary-900 mb-2">Payment Request Created!</h2>
+            <p className="text-secondary-600">
+              {isInstantPayment
+                ? 'Your QR code payment request is ready'
+                : `An email has been sent to ${form.buyerEmail}`
+              }
+            </p>
+          </div>
+
+          {/* Payment Link Section */}
+          <div className="bg-primary-50 border border-primary-200 rounded-lg p-6 mb-6">
+            <h3 className="font-semibold text-primary-900 mb-3">Share Payment Link</h3>
+            <p className="text-sm text-primary-800 mb-4">
+              Send this link directly to the buyer for instant payment:
+            </p>
+
+            {/* Link Display with Copy Button */}
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                readOnly
+                value={paymentLink}
+                className="flex-1 text-sm border border-primary-300 rounded-md px-3 py-2 bg-white font-mono text-primary-900"
+              />
+              <Button
+                onClick={handleCopyPaymentLink}
+                className={`${
+                  paymentLinkCopied
+                    ? 'bg-green-500 hover:bg-green-600'
+                    : 'bg-primary-500 hover:bg-primary-600'
+                } whitespace-nowrap`}
+              >
+                {paymentLinkCopied ? (
+                  <>
+                    <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                    Copied!
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                    Copy Link
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+
+          {/* Contract Summary */}
+          <div className="bg-secondary-50 rounded-lg p-4 mb-6">
+            <h3 className="font-medium text-secondary-900 mb-3">Payment Request Summary</h3>
+            <div className="space-y-2 text-sm">
+              {!isInstantPayment && (
+                <div className="flex justify-between">
+                  <span className="text-secondary-600">Buyer:</span>
+                  <span className="font-medium">{form.buyerEmail}</span>
+                </div>
+              )}
+              <div className="flex justify-between">
+                <span className="text-secondary-600">Amount:</span>
+                <span className="font-medium">{formatUSDC(toMicroUSDC(parseFloat(form.amount || '0')))} {selectedTokenSymbol}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-secondary-600">Release Date:</span>
+                <span className="font-medium">
+                  {isInstantPayment ? 'Instant' : formatDateTimeWithTZ(form.payoutTimestamp)}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-secondary-600">Contract ID:</span>
+                <span className="font-mono text-xs">{createdContractId}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex flex-col sm:flex-row gap-3">
+            <Button
+              onClick={() => router.push('/dashboard')}
+              className="flex-1 bg-primary-500 hover:bg-primary-600"
+            >
+              Go to Dashboard
+            </Button>
+            <Button
+              onClick={() => {
+                // Reset wizard for new payment request
+                setShowSuccessScreen(false);
+                setCreatedContractId(null);
+                setCurrentStep(0);
+                setForm({
+                  buyerEmail: '',
+                  buyerType: 'email',
+                  buyerFid: undefined,
+                  amount: '',
+                  payoutTimestamp: getDefaultTimestamp(),
+                  description: ''
+                });
+                setErrors({});
+                setIsInstantPayment(false);
+                setPaymentLinkCopied(false);
+              }}
+              variant="outline"
+              className="flex-1"
+            >
+              Create Another Request
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full max-w-2xl mx-auto">
       {/* Wallet Info Section */}
       <WalletInfo className="mb-6" />
-      
+
       <Wizard
         steps={steps}
         currentStep={currentStep}

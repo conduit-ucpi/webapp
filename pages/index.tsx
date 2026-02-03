@@ -141,18 +141,19 @@ export default function Home() {
             <p className="text-xl lg:text-2xl text-secondary-600 dark:text-secondary-300 leading-relaxed max-w-2xl">
               <span className="font-semibold text-secondary-900 dark:text-white">{siteName}</span> gives stablecoin payments a familiar checkout experience and buyer protections, opening stores up to new customers with just one line of code.
             </p>
-            <div className="flex items-center gap-3 bg-green-50 border border-green-200 rounded-lg px-4 py-3 w-fit">
-              <svg className="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+            <div className="flex items-center gap-3 text-secondary-700">
+              <svg className="w-5 h-5 text-primary-500" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
               </svg>
-              <span className="text-green-700 font-semibold">100% Open Source</span>
+              <span className="font-medium">100% Open Source</span>
+              <span className="text-secondary-400">•</span>
               <a
                 href="https://github.com/conduit-ucpi"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-green-600 hover:text-green-700 underline text-sm"
+                className="text-primary-500 hover:text-primary-600 underline text-sm font-medium"
               >
-                View on GitHub →
+                View on GitHub
               </a>
             </div>
             {isConnected ? (
@@ -409,9 +410,9 @@ export default function Home() {
                     <div>
                       <h3 className="text-xl font-semibold text-secondary-900 mb-3">Buyer and seller negotiate directly</h3>
                       <p className="text-secondary-600 leading-relaxed mb-4">Our automated system facilitates direct negotiation between buyer and seller. Each party proposes a fair split of the escrowed funds (e.g., 70% refund to buyer, 30% to seller for shipping costs).</p>
-                      <div className="bg-primary-50 rounded p-4 border border-primary-200">
-                        <p className="text-sm font-semibold text-secondary-900 mb-2">Why this works better than chargebacks:</p>
-                        <ul className="text-sm text-secondary-700 space-y-1">
+                      <div className="bg-secondary-50 rounded-lg p-5 border border-secondary-200">
+                        <p className="text-sm font-semibold text-secondary-900 mb-3">Why this works better than chargebacks:</p>
+                        <ul className="text-sm text-secondary-700 space-y-2">
                           <li>• No dispute fees for the seller (traditional systems charge $15-25 per chargeback)</li>
                           <li>• Seller participates in the resolution (not just a unilateral decision)</li>
                           <li>• Both parties can see all proposals and counter-offers</li>
@@ -437,7 +438,7 @@ export default function Home() {
                 </div>
 
                 {/* Key benefits comparison */}
-                <div className="bg-white border border-primary-200 rounded-xl p-8">
+                <div className="bg-white border border-secondary-200 rounded-xl p-8">
                   <h4 className="text-lg font-semibold text-secondary-900 mb-8">Disputes vs. Traditional Chargebacks</h4>
                   <div className="grid md:grid-cols-2 gap-4 text-sm">
                     <div className="flex items-start gap-2">

@@ -178,8 +178,11 @@ export default function Home() {
                     <h3 className="text-xl font-semibold text-secondary-900 dark:text-white mb-2">
                       Send or Request Payment
                     </h3>
-                    <p className="text-sm text-secondary-600 dark:text-secondary-400 mb-4">
+                    <p className="text-sm text-secondary-600 dark:text-secondary-400 mb-2">
                       Create payment requests or manage your escrow transactions
+                    </p>
+                    <p className="text-xs text-secondary-500 dark:text-secondary-400 mb-4">
+                      Authenticate with social ID, passwordless email or existing wallet
                     </p>
                     <ConnectWalletEmbedded
                       useSmartRouting={false}

@@ -398,56 +398,104 @@ export default function Home() {
 
         {!isConnected && (
           <>
-            {/* What You Get Section */}
-            <section className="mt-32 bg-secondary-50 rounded-2xl p-12" aria-label="Benefits and Features">
-              <div className="text-center mb-16">
-                <h2 className="text-4xl font-bold text-secondary-900 mb-4">What you get</h2>
+            {/* Dispute Resolution Section */}
+            <section className="mt-32 bg-secondary-50 rounded-2xl p-12" aria-label="Dispute Resolution Process">
+              <div className="text-center mb-12">
+                <h2 className="text-4xl font-bold text-secondary-900 mb-4">What if there's a problem?</h2>
+                <p className="text-xl text-secondary-700 max-w-3xl mx-auto">Built-in dispute resolution protects both buyers and sellers without lawyers or fees</p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
-                <div className="flex items-start space-x-4">
-                  <div className="w-8 h-8 bg-primary-500 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                    <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
+              <div className="max-w-4xl mx-auto space-y-6">
+                {/* Step 1: Buyer raises dispute */}
+                <div className="bg-white rounded-lg p-6 border border-secondary-200 hover:border-primary-300 hover:shadow-lg transition-all">
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 bg-primary-500 text-white rounded-full flex items-center justify-center flex-shrink-0 text-xl font-bold">
+                      1
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-semibold text-secondary-900 mb-2">Buyer raises a dispute</h3>
+                      <p className="text-secondary-700 leading-relaxed">If goods don't arrive, arrive damaged, or aren't as described, the buyer can click "Raise Dispute" before the payout date. Funds immediately freeze in escrow - the seller can't access them.</p>
+                    </div>
                   </div>
-                  <p className="text-secondary-700 text-lg leading-relaxed">All the protection of traditional escrow</p>
                 </div>
 
-                <div className="flex items-start space-x-4">
-                  <div className="w-8 h-8 bg-primary-500 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                    <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
+                {/* Step 2: Automated negotiation */}
+                <div className="bg-white rounded-lg p-6 border border-secondary-200 hover:border-primary-300 hover:shadow-lg transition-all">
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 bg-primary-500 text-white rounded-full flex items-center justify-center flex-shrink-0 text-xl font-bold">
+                      2
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-semibold text-secondary-900 mb-2">Buyer and seller negotiate directly</h3>
+                      <p className="text-secondary-700 leading-relaxed mb-3">Our automated system facilitates direct negotiation between buyer and seller. Each party proposes a fair split of the escrowed funds (e.g., 70% refund to buyer, 30% to seller for shipping costs).</p>
+                      <div className="bg-primary-50 rounded p-4 border border-primary-200">
+                        <p className="text-sm font-semibold text-secondary-900 mb-2">Why this works better than chargebacks:</p>
+                        <ul className="text-sm text-secondary-700 space-y-1">
+                          <li>• No dispute fees for the seller (traditional systems charge $15-25 per chargeback)</li>
+                          <li>• Seller participates in the resolution (not just a unilateral decision)</li>
+                          <li>• Both parties can see all proposals and counter-offers</li>
+                          <li>• Encourages reasonable compromises instead of all-or-nothing outcomes</li>
+                        </ul>
+                      </div>
+                    </div>
                   </div>
-                  <p className="text-secondary-700 text-lg leading-relaxed">Set up in 60 seconds, not 60 days</p>
                 </div>
 
-                <div className="flex items-start space-x-4">
-                  <div className="w-8 h-8 bg-primary-500 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                    <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
+                {/* Step 3: Resolution */}
+                <div className="bg-white rounded-lg p-6 border border-secondary-200 hover:border-primary-300 hover:shadow-lg transition-all">
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 bg-primary-500 text-white rounded-full flex items-center justify-center flex-shrink-0 text-xl font-bold">
+                      3
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-semibold text-secondary-900 mb-2">Automatic payout when agreed</h3>
+                      <p className="text-secondary-700 leading-relaxed mb-3">When both parties accept the same split, the smart contract automatically distributes funds according to the agreement. No waiting for manual review, no additional fees.</p>
+                      <p className="text-sm text-secondary-600 italic">If parties can't agree after reasonable negotiation attempts, admin mediation is available as a last resort - but the smart contract ensures funds can only go to the buyer or seller, never to anyone else.</p>
+                    </div>
                   </div>
-                  <p className="text-secondary-700 text-lg leading-relaxed">No legal fees, contracts, or bank meetings</p>
                 </div>
 
-                <div className="flex items-start space-x-4">
-                  <div className="w-8 h-8 bg-primary-500 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                    <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
+                {/* Key benefits comparison */}
+                <div className="bg-white border-2 border-primary-300 rounded-lg p-6">
+                  <h4 className="text-lg font-semibold text-secondary-900 mb-4">Disputes vs. Traditional Chargebacks</h4>
+                  <div className="grid md:grid-cols-2 gap-4 text-sm">
+                    <div className="flex items-start gap-2">
+                      <svg className="w-5 h-5 text-primary-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                      <div>
+                        <p className="font-semibold text-secondary-900">No dispute fees</p>
+                        <p className="text-secondary-600">Traditional processors charge $15-25 per chargeback</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <svg className="w-5 h-5 text-primary-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                      <div>
+                        <p className="font-semibold text-secondary-900">Seller has a voice</p>
+                        <p className="text-secondary-600">Can propose fair splits and explain their side</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <svg className="w-5 h-5 text-primary-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                      <div>
+                        <p className="font-semibold text-secondary-900">Finite timeline</p>
+                        <p className="text-secondary-600">Must be raised before payout, not 180 days later</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <svg className="w-5 h-5 text-primary-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                      <div>
+                        <p className="font-semibold text-secondary-900">Funds guaranteed safe</p>
+                        <p className="text-secondary-600">Smart contract only pays buyer or seller</p>
+                      </div>
+                    </div>
                   </div>
-                  <p className="text-secondary-700 text-lg leading-relaxed">Payment releases automatically on the agreed date</p>
-                </div>
-
-                <div className="flex items-start space-x-4 md:col-span-2">
-                  <div className="w-8 h-8 bg-primary-500 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                    <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                  </div>
-                  <p className="text-secondary-700 text-lg leading-relaxed">If there's a problem, buyer hits "dispute", funds stay held in trust until buyer and seller can agree on refund amount in auto-dispute system</p>
                 </div>
               </div>
             </section>

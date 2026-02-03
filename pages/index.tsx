@@ -210,14 +210,11 @@ export default function Home() {
                     </div>
                   </div>
 
-                  {/* For Merchants - Add Stablecoin Checkout */}
+                  {/* For Merchants - Add Stablecoin checkout to your site */}
                   <div className="border-2 border-green-200 dark:border-green-700 rounded-lg p-6 hover:border-green-400 dark:hover:border-green-500 hover:shadow-lg transition-all bg-white dark:bg-secondary-800">
                     <h3 className="text-xl font-semibold text-secondary-900 dark:text-white mb-2">
-                      Add Stablecoin Checkout
+                      Add Stablecoin checkout to your site
                     </h3>
-                    <p className="text-sm text-secondary-600 dark:text-secondary-400 mb-2">
-                      Complete checkout experience with plugins for WordPress/Shopify or JavaScript SDK for custom sites
-                    </p>
                     <p className="text-sm font-medium text-green-700 dark:text-green-400 mb-4">
                       ✓ No admin needed - self-install in 10 minutes on your site
                     </p>

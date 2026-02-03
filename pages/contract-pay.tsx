@@ -406,6 +406,8 @@ export default function ContractPay() {
   const balanceFloat = parseFloat(tokenBalance);
   const hasInsufficientBalance = balanceFloat < amountInTokens;
   const isInstantPayment = contract.expiryTimestamp === 0;
+  const isSameAddress = address?.toLowerCase() === contract.sellerAddress?.toLowerCase();
+  const cannotPay = hasInsufficientBalance || isSameAddress;
 
   return (
     <div className="min-h-screen bg-white">
@@ -505,8 +507,17 @@ export default function ContractPay() {
             </div>
           )}
 
-          {/* Insufficient balance warning */}
-          {hasInsufficientBalance ? (
+          {/* Same address warning */}
+          {isSameAddress ? (
+            <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-6">
+              <p className="text-sm text-red-800 font-medium">
+                ⚠️ Cannot Pay Yourself
+              </p>
+              <p className="text-sm text-red-700 mt-1">
+                You cannot pay this contract because your wallet address matches the seller's address. The buyer and seller must be different accounts.
+              </p>
+            </div>
+          ) : hasInsufficientBalance ? (
             <div className="bg-red-50 border border-red-200 rounded-md mb-6">
               <div className="p-4">
                 <p className="text-sm text-red-800 font-medium">
@@ -550,10 +561,12 @@ export default function ContractPay() {
             </Button>
             <Button
               onClick={handlePayment}
-              disabled={isPaymentInProgress || isLoadingBalance || hasInsufficientBalance}
+              disabled={isPaymentInProgress || isLoadingBalance || cannotPay}
               className="flex-1 bg-primary-500 hover:bg-primary-600 disabled:opacity-50 disabled:cursor-not-allowed"
               title={
-                hasInsufficientBalance
+                isSameAddress
+                  ? 'Cannot pay yourself - buyer and seller must be different accounts'
+                  : hasInsufficientBalance
                   ? `Insufficient balance: need ${amountInTokens.toFixed(4)} ${selectedTokenSymbol}, have ${balanceFloat.toFixed(4)} ${selectedTokenSymbol}`
                   : ''
               }

@@ -313,8 +313,20 @@ export default function ContractPay() {
           <meta name="viewport" content="width=device-width, initial-scale=1" />
         </Head>
         <div className="text-center p-6 max-w-md mx-auto">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Connect to Pay</h2>
-          <p className="text-gray-600 mb-6">Connect your wallet to complete this payment.</p>
+          {/* Buyer protection callout */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 text-left">
+            <h3 className="text-sm font-semibold text-blue-900 mb-2">
+              🛡️ You've received a secure payment request
+            </h3>
+            <ul className="text-sm text-blue-800 space-y-1">
+              <li>✓ Your payment is protected by escrow</li>
+              <li>✓ Can dispute if there's a problem</li>
+              <li>✓ No gas fees - we cover blockchain costs</li>
+            </ul>
+          </div>
+
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">Connect to Complete Payment</h2>
+          <p className="text-gray-600 mb-6">Choose how you'd like to pay. No crypto wallet needed - you can use your email.</p>
           <ConnectWalletEmbedded
             compact={true}
             useSmartRouting={false}

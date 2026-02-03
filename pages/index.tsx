@@ -171,44 +171,82 @@ export default function Home() {
                 </Link>
               </div>
             ) : (
-              <div className="space-y-4 pt-6">
-                <Link href="/merchant-savings-calculator">
-                  <div className="inline-flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-4 py-2 mb-4 hover:bg-green-100 hover:border-green-300 transition-colors cursor-pointer">
-                    <span className="text-sm text-green-800 font-medium">
-                      💰 Merchant Savings Calculator →
-                    </span>
+              <div className="pt-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* For P2P Users - Send or Request Payment */}
+                  <div className="border-2 border-primary-200 dark:border-primary-700 rounded-lg p-6 hover:border-primary-400 dark:hover:border-primary-500 hover:shadow-lg transition-all bg-white dark:bg-secondary-800">
+                    <h3 className="text-xl font-semibold text-secondary-900 dark:text-white mb-2">
+                      Send or Request Payment
+                    </h3>
+                    <p className="text-sm text-secondary-600 dark:text-secondary-400 mb-4">
+                      Create payment requests or manage your escrow transactions
+                    </p>
+                    <ConnectWalletEmbedded
+                      useSmartRouting={false}
+                      showTwoOptionLayout={true}
+                    />
+                    <div className="mt-4 flex flex-wrap gap-3 text-xs text-secondary-600 dark:text-secondary-400">
+                      <span className="flex items-center">
+                        <svg className="w-3 h-3 mr-1 text-primary-500" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                        No wallet needed
+                      </span>
+                      <span className="flex items-center">
+                        <svg className="w-3 h-3 mr-1 text-primary-500" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                        60 second setup
+                      </span>
+                      <span className="flex items-center">
+                        <svg className="w-3 h-3 mr-1 text-primary-500" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                        1% fee
+                      </span>
+                    </div>
                   </div>
-                </Link>
-                <div>
-                  <ConnectWalletEmbedded
-                    useSmartRouting={false}
-                    showTwoOptionLayout={true}
-                  />
-                </div>
-                <div className="flex flex-wrap items-center gap-4 text-sm text-secondary-600 dark:text-secondary-400">
-                  <div className="flex items-center">
-                    <svg className="w-4 h-4 mr-2 text-primary-500" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                    No wallet needed
-                  </div>
-                  <div className="flex items-center">
-                    <svg className="w-4 h-4 mr-2 text-primary-500" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                    60 second setup
-                  </div>
-                  <div className="flex items-center">
-                    <svg className="w-4 h-4 mr-2 text-primary-500" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                    1% fee
-                  </div>
-                  <div className="flex items-center">
-                    <svg className="w-4 h-4 mr-2 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                    Open source
+
+                  {/* For Merchants - Accept Crypto Payments */}
+                  <div className="border-2 border-green-200 dark:border-green-700 rounded-lg p-6 hover:border-green-400 dark:hover:border-green-500 hover:shadow-lg transition-all bg-white dark:bg-secondary-800">
+                    <h3 className="text-xl font-semibold text-secondary-900 dark:text-white mb-2">
+                      Accept Crypto Payments
+                    </h3>
+                    <p className="text-sm text-secondary-600 dark:text-secondary-400 mb-4">
+                      WordPress, Shopify plugins or JavaScript SDK for any website
+                    </p>
+                    <Link href="/plugins">
+                      <Button size="lg" className="w-full bg-green-500 hover:bg-green-600 text-white">
+                        View Integration Options →
+                      </Button>
+                    </Link>
+                    <div className="mt-4 flex flex-wrap gap-3 text-xs text-secondary-600 dark:text-secondary-400">
+                      <span className="flex items-center">
+                        <svg className="w-3 h-3 mr-1 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                        One-line SDK
+                      </span>
+                      <span className="flex items-center">
+                        <svg className="w-3 h-3 mr-1 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                        Buyer protection
+                      </span>
+                      <span className="flex items-center">
+                        <svg className="w-3 h-3 mr-1 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                        1% fee
+                      </span>
+                    </div>
+                    <Link href="/merchant-savings-calculator">
+                      <div className="inline-flex items-center gap-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-lg px-3 py-2 mt-4 hover:bg-green-100 dark:hover:bg-green-900/30 hover:border-green-300 dark:hover:border-green-600 transition-colors cursor-pointer">
+                        <span className="text-xs text-green-800 dark:text-green-300 font-medium">
+                          💰 Calculate Your Savings →
+                        </span>
+                      </div>
+                    </Link>
                   </div>
                 </div>
               </div>

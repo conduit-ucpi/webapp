@@ -1368,22 +1368,40 @@ export class Web3Service {
                 let revertReason = 'Unknown reason';
                 try {
                   // Re-simulate the failed transaction to get the revert reason
-                  const tx = await this.readProvider?.getTransaction(returnedHash);
-                  if (tx) {
-                    console.log('🔍 Re-simulating transaction to get revert reason...');
-                    // This will throw with the actual revert reason
-                    await this.readProvider?.call(tx, tx.blockNumber! - 1);
+                  if (this.readProvider) {
+                    const tx = await this.readProvider.getTransaction(returnedHash);
+                    if (tx) {
+                      console.log('🔍 Re-simulating transaction to get revert reason...');
+                      // Build a TransactionRequest from the original transaction
+                      const txRequest = {
+                        to: tx.to,
+                        from: tx.from,
+                        data: tx.data,
+                        value: tx.value,
+                        gasLimit: tx.gasLimit,
+                        gasPrice: tx.gasPrice,
+                        maxFeePerGas: tx.maxFeePerGas,
+                        maxPriorityFeePerGas: tx.maxPriorityFeePerGas
+                      };
+                      // This will throw with the actual revert reason
+                      await this.readProvider.call(txRequest);
+                    }
                   }
                 } catch (callError: any) {
                   // Extract revert reason from error
                   if (callError.reason) {
                     revertReason = callError.reason;
+                  } else if (callError.data) {
+                    // Try to decode the error data
+                    revertReason = `Error code: ${callError.data}`;
                   } else if (callError.message) {
                     // Try to extract reason from error message
                     const match = callError.message.match(/reverted with reason string '(.+?)'/);
                     if (match) {
                       revertReason = match[1];
                     } else if (callError.message.includes('execution reverted')) {
+                      revertReason = callError.message;
+                    } else {
                       revertReason = callError.message;
                     }
                   }

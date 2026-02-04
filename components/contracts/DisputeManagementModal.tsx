@@ -73,12 +73,20 @@ export default function DisputeManagementModal({ isOpen, onClose, contract, onRe
 
       // STEP 2: If agreement reached, submit user's vote to blockchain FIRST
       if (agreementReached) {
-        console.log('Submitting user vote to blockchain...');
+        console.log('Agreement detected! Will submit blockchain vote first, then notify backend.');
 
         // Check if contract has blockchain address
         if (!contract.contractAddress) {
           throw new Error('Contract not deployed to blockchain yet');
         }
+
+        console.log('📊 Contract info:', {
+          address: contract.contractAddress,
+          status: contract.status,
+          buyer: contract.buyerAddress,
+          seller: contract.sellerAddress,
+          userAddress: user?.walletAddress
+        });
 
         // Encode the vote transaction
         const escrowInterface = new ethers.Interface(ESCROW_CONTRACT_ABI);
@@ -86,22 +94,39 @@ export default function DisputeManagementModal({ isOpen, onClose, contract, onRe
           Math.round(refundPercent)
         ]);
 
-        // Use gas-sponsored transaction (same pattern as deposits)
-        const web3Service = await getWeb3Service();
-        const txHash = await web3Service.fundAndSendTransaction({
+        console.log('🔐 Submitting vote with parameters:', {
+          function: 'submitResolutionVote',
+          buyerPercentage: Math.round(refundPercent),
           to: contract.contractAddress,
-          data,
-          value: '0'
+          from: user?.walletAddress
         });
 
-        console.log('✅ User vote submitted to blockchain! Transaction hash:', txHash);
-        console.log('Waiting for transaction to complete before notifying backend...');
+        // Use gas-sponsored transaction (same pattern as deposits)
+        const web3Service = await getWeb3Service();
 
-        // Note: fundAndSendTransaction already waits for the transaction to complete
-        // Now proceed to notify backend, which will submit the admin's deciding vote
+        // CRITICAL: Wait for blockchain transaction to complete BEFORE proceeding
+        // If this throws an error, we will NOT notify the backend
+        try {
+          const txHash = await web3Service.fundAndSendTransaction({
+            to: contract.contractAddress,
+            data,
+            value: '0'
+          });
+
+          console.log('✅ User vote confirmed on blockchain! Transaction hash:', txHash);
+          console.log('✅ Blockchain transaction complete - now safe to notify backend');
+        } catch (blockchainError: any) {
+          // Blockchain vote failed - DO NOT notify backend
+          console.error('❌ Blockchain vote failed:', blockchainError);
+          throw new Error(
+            `Failed to submit vote to blockchain: ${blockchainError.message}\n\n` +
+            `The backend has NOT been notified. Please try again or contact support.`
+          );
+        }
       }
 
       // STEP 3: Submit dispute entry to backend
+      // CRITICAL: This only runs if we reach here (blockchain tx succeeded or no agreement needed)
       // If agreement was reached, this will trigger admin vote (which will be the deciding vote)
       // If no agreement, this just records the dispute entry
       const disputeEntry: SubmitDisputeEntryRequest = {

@@ -1408,12 +1408,42 @@ export class Web3Service {
                   console.error('🔍 Revert reason:', revertReason);
                 }
 
+                // Try to decode the function name from transaction data
+                let functionInfo = 'Unknown function';
+                try {
+                  if (this.readProvider) {
+                    const fullTx = await this.readProvider.getTransaction(returnedHash);
+                    if (fullTx && fullTx.data) {
+                      const selector = fullTx.data.slice(0, 10);
+                      // Check common function selectors
+                      if (selector === '0xf6c5558f') {
+                        const paramValue = parseInt(fullTx.data.slice(10), 16);
+                        functionInfo = `submitResolutionVote(${paramValue}%)`;
+                      } else if (selector === '0x1c08faac') {
+                        functionInfo = 'raiseDispute()';
+                      } else if (selector === '0x7b47ec1a') {
+                        functionInfo = 'claimFunds()';
+                      } else {
+                        functionInfo = `Function selector: ${selector}`;
+                      }
+                    }
+                  }
+                } catch (e) {
+                  // Ignore - just use default message
+                }
+
                 const revertError = new Error(
-                  `Transaction reverted on blockchain.\n` +
-                  `Reason: ${revertReason}\n` +
-                  `Transaction hash: ${returnedHash}\n` +
+                  `❌ Smart Contract Rejected Transaction\n\n` +
+                  `Function: ${functionInfo}\n` +
+                  `Reason: ${revertReason}\n\n` +
+                  `Common causes:\n` +
+                  `• Contract not in correct state (e.g., not disputed yet)\n` +
+                  `• User already voted or performed this action\n` +
+                  `• User not authorized (not buyer/seller/admin)\n` +
+                  `• Invalid parameters\n\n` +
+                  `Transaction: ${returnedHash}\n` +
                   `Block: ${receipt.blockNumber}\n` +
-                  `Check BaseScan: https://sepolia.basescan.org/tx/${returnedHash}`
+                  `Details: https://sepolia.basescan.org/tx/${returnedHash}`
                 );
                 revertError.name = 'TransactionRevertError';
                 throw revertError;
@@ -1442,10 +1472,22 @@ export class Web3Service {
         return returnedHash;
 
       } catch (confirmError) {
-        // Network broken - return hash anyway, transaction was submitted
+        // CRITICAL FIX: Don't catch transaction revert errors - re-throw them immediately
+        const errorMessage = confirmError instanceof Error ? confirmError.message : String(confirmError);
+        const isRevertError = (confirmError instanceof Error && confirmError.name === 'TransactionRevertError') ||
+                             errorMessage.includes('Transaction reverted on blockchain') ||
+                             errorMessage.includes('TransactionRevertError');
+
+        if (isRevertError) {
+          // Transaction reverted - propagate error to user, DO NOT return hash
+          console.error('❌ CRITICAL: Transaction REVERTED - propagating error to user');
+          throw confirmError;
+        }
+
+        // Only catch true network errors (RPC down, timeout, etc.)
         mLog.warn('Web3Service', '⚠️ Confirmation check failed (network issue) - returning hash', {
           hash: returnedHash,
-          error: confirmError instanceof Error ? confirmError.message : String(confirmError)
+          error: errorMessage
         });
         console.log('⚠️ Could not verify confirmation, but transaction was submitted:', returnedHash);
 

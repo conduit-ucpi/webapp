@@ -27,47 +27,18 @@ export default function DisputeManagementModal({ isOpen, onClose, contract, onRe
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!reason.trim() || refundPercent < 0 || refundPercent > 100) {
       return;
     }
 
     setIsSubmitting(true);
-    
+
     try {
-      const disputeEntry: SubmitDisputeEntryRequest = {
-        timestamp: Math.floor(Date.now() / 1000),
-        reason: reason.trim(),
-        refundPercent: Math.round(refundPercent)
-      };
+      // STEP 1: Check if agreement will be reached BEFORE notifying backend
+      let agreementReached = false;
 
-      const response = await fetch(`/api/contracts/${contract.id}/dispute`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(disputeEntry)
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Failed to submit dispute entry');
-      }
-
-      const result = await response.json();
-      // Check if response has success field (old format) or is a contract object (new format)
-      if (result.success === false) {
-        throw new Error(result.error || 'Failed to submit dispute entry');
-      }
-      // If result has an id field, it's likely the updated contract object (success)
-      // If result.success is undefined or true, also consider it success
-
-      // Check if agreement reached by looking at existing dispute data
-      console.log('Checking for agreement...');
-
-      if (!user?.walletAddress) {
-        console.log('No user wallet address available');
-      } else {
+      if (user?.walletAddress) {
         // Determine if current user is buyer or seller
         const userIsBuyer = user.walletAddress.toLowerCase() === contract.buyerAddress.toLowerCase();
         const otherPartyEmail = userIsBuyer ? contract.sellerEmail : contract.buyerEmail;
@@ -94,40 +65,75 @@ export default function DisputeManagementModal({ isOpen, onClose, contract, onRe
 
           // Check if percentages match
           if (latestOtherPartyDispute.refundPercent === Math.round(refundPercent)) {
-            console.log('Agreement reached! Submitting vote to blockchain...');
-
-            // Check if contract has blockchain address
-            if (!contract.contractAddress) {
-              throw new Error('Contract not deployed to blockchain yet');
-            }
-
-            // Encode the vote transaction
-            const escrowInterface = new ethers.Interface(ESCROW_CONTRACT_ABI);
-            const data = escrowInterface.encodeFunctionData('submitResolutionVote', [
-              Math.round(refundPercent)
-            ]);
-
-            // Use gas-sponsored transaction (same pattern as deposits)
-            const web3Service = await getWeb3Service();
-            const txHash = await web3Service.fundAndSendTransaction({
-              to: contract.contractAddress,
-              data,
-              value: '0'
-            });
-
-            console.log('Vote submitted to blockchain! Transaction hash:', txHash);
-            alert(`Agreement reached! Your vote has been submitted to the blockchain. Transaction: ${txHash}`);
-
-            // Backend automatically submits admin vote via checkAndAutoResolveIfAgreed()
-          } else {
-            console.log('No agreement yet. Latest proposals:', {
-              otherParty: latestOtherPartyDispute.refundPercent,
-              yourSubmission: Math.round(refundPercent)
-            });
+            agreementReached = true;
+            console.log('Agreement detected! Will submit blockchain vote first, then notify backend.');
           }
-        } else {
-          console.log('No disputes from other party yet');
         }
+      }
+
+      // STEP 2: If agreement reached, submit user's vote to blockchain FIRST
+      if (agreementReached) {
+        console.log('Submitting user vote to blockchain...');
+
+        // Check if contract has blockchain address
+        if (!contract.contractAddress) {
+          throw new Error('Contract not deployed to blockchain yet');
+        }
+
+        // Encode the vote transaction
+        const escrowInterface = new ethers.Interface(ESCROW_CONTRACT_ABI);
+        const data = escrowInterface.encodeFunctionData('submitResolutionVote', [
+          Math.round(refundPercent)
+        ]);
+
+        // Use gas-sponsored transaction (same pattern as deposits)
+        const web3Service = await getWeb3Service();
+        const txHash = await web3Service.fundAndSendTransaction({
+          to: contract.contractAddress,
+          data,
+          value: '0'
+        });
+
+        console.log('✅ User vote submitted to blockchain! Transaction hash:', txHash);
+        console.log('Waiting for transaction to complete before notifying backend...');
+
+        // Note: fundAndSendTransaction already waits for the transaction to complete
+        // Now proceed to notify backend, which will submit the admin's deciding vote
+      }
+
+      // STEP 3: Submit dispute entry to backend
+      // If agreement was reached, this will trigger admin vote (which will be the deciding vote)
+      // If no agreement, this just records the dispute entry
+      const disputeEntry: SubmitDisputeEntryRequest = {
+        timestamp: Math.floor(Date.now() / 1000),
+        reason: reason.trim(),
+        refundPercent: Math.round(refundPercent)
+      };
+
+      console.log('Notifying backend of dispute entry...');
+      const response = await fetch(`/api/contracts/${contract.id}/dispute`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(disputeEntry)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to submit dispute entry');
+      }
+
+      const result = await response.json();
+      // Check if response has success field (old format) or is a contract object (new format)
+      if (result.success === false) {
+        throw new Error(result.error || 'Failed to submit dispute entry');
+      }
+
+      console.log('✅ Backend notified. If agreement reached, admin vote will be submitted as deciding vote.');
+
+      if (agreementReached) {
+        alert('Agreement reached! Your vote has been submitted to the blockchain. The admin will now submit the final deciding vote to execute the resolution.');
       }
 
       // Reset form and close modal

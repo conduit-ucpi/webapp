@@ -1358,13 +1358,58 @@ export class Web3Service {
               console.log('✅ Transaction confirmed in block:', receipt.blockNumber);
 
               if (receipt.status === 0) {
-                throw new Error('Transaction failed on blockchain (status: 0)');
+                // Transaction was mined but REVERTED - this is a smart contract rejection
+                // DO NOT retry - throw immediately to surface the error
+                console.error('❌ Transaction REVERTED on blockchain');
+                console.error('Transaction hash:', returnedHash);
+                console.error('Block number:', receipt.blockNumber);
+
+                // Try to get the revert reason by simulating the transaction
+                let revertReason = 'Unknown reason';
+                try {
+                  // Re-simulate the failed transaction to get the revert reason
+                  const tx = await this.readProvider?.getTransaction(returnedHash);
+                  if (tx) {
+                    console.log('🔍 Re-simulating transaction to get revert reason...');
+                    // This will throw with the actual revert reason
+                    await this.readProvider?.call(tx, tx.blockNumber! - 1);
+                  }
+                } catch (callError: any) {
+                  // Extract revert reason from error
+                  if (callError.reason) {
+                    revertReason = callError.reason;
+                  } else if (callError.message) {
+                    // Try to extract reason from error message
+                    const match = callError.message.match(/reverted with reason string '(.+?)'/);
+                    if (match) {
+                      revertReason = match[1];
+                    } else if (callError.message.includes('execution reverted')) {
+                      revertReason = callError.message;
+                    }
+                  }
+                  console.error('🔍 Revert reason:', revertReason);
+                }
+
+                const revertError = new Error(
+                  `Transaction reverted on blockchain.\n` +
+                  `Reason: ${revertReason}\n` +
+                  `Transaction hash: ${returnedHash}\n` +
+                  `Block: ${receipt.blockNumber}\n` +
+                  `Check BaseScan: https://sepolia.basescan.org/tx/${returnedHash}`
+                );
+                revertError.name = 'TransactionRevertError';
+                throw revertError;
               }
 
               return returnedHash;
             }
           } catch (receiptError) {
-            // Ignore individual receipt check failures, keep trying
+            // CRITICAL FIX: Don't catch transaction revert errors - only catch RPC errors
+            if (receiptError instanceof Error && receiptError.name === 'TransactionRevertError') {
+              // Transaction reverted - propagate error immediately
+              throw receiptError;
+            }
+            // Only retry on RPC errors (network issues, timeout, etc.)
             mLog.debug('Web3Service', `Receipt check ${i + 1} failed, retrying...`);
           }
         }

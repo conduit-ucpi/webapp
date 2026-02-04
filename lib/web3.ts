@@ -27,6 +27,7 @@ export const ESCROW_CONTRACT_ABI = [
   'function depositFunds()',
   'function raiseDispute()',
   'function claimFunds()',
+  'function submitResolutionVote(uint256 _buyerPercentage)',
   'event FundsDeposited(address buyer, uint256 amount, uint256 timestamp)',
   'event DisputeRaised(uint256 timestamp)',
   'event DisputeResolved(address recipient, uint256 timestamp)',

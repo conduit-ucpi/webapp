@@ -1,10 +1,13 @@
 import { useState } from 'react';
+import { ethers } from 'ethers';
 import { Contract, SubmitDisputeEntryRequest } from '@/types';
 import { formatTimestamp, displayCurrency, formatCurrency } from '@/utils/validation';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import FarcasterNameDisplay from '@/components/ui/FarcasterNameDisplay';
 import { useConfig } from '@/components/auth/ConfigProvider';
+import { ESCROW_CONTRACT_ABI } from '@/lib/web3';
+import { useSimpleEthers } from '@/hooks/useSimpleEthers';
 
 interface DisputeManagementModalProps {
   isOpen: boolean;
@@ -15,6 +18,7 @@ interface DisputeManagementModalProps {
 
 export default function DisputeManagementModal({ isOpen, onClose, contract, onRefresh }: DisputeManagementModalProps) {
   const { config } = useConfig();
+  const { getWeb3Service } = useSimpleEthers();
   const [reason, setReason] = useState('');
   const [refundPercent, setRefundPercent] = useState<number>(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -55,6 +59,49 @@ export default function DisputeManagementModal({ isOpen, onClose, contract, onRe
       }
       // If result has an id field, it's likely the updated contract object (success)
       // If result.success is undefined or true, also consider it success
+
+      // Check if agreement reached by fetching dispute status
+      console.log('Checking for agreement...');
+      const statusResponse = await fetch(`/api/contracts/${contract.id}/dispute/status`);
+
+      if (statusResponse.ok) {
+        const disputeStatus = await statusResponse.json();
+        console.log('Dispute status:', disputeStatus);
+
+        // If agreement detected, submit vote to blockchain
+        if (disputeStatus.buyerLatestRefundEntry === disputeStatus.sellerLatestRefundEntry) {
+          console.log('Agreement reached! Submitting vote to blockchain...');
+
+          // Check if contract has blockchain address
+          if (!contract.contractAddress) {
+            throw new Error('Contract not deployed to blockchain yet');
+          }
+
+          // Encode the vote transaction
+          const escrowInterface = new ethers.Interface(ESCROW_CONTRACT_ABI);
+          const data = escrowInterface.encodeFunctionData('submitResolutionVote', [
+            Math.round(refundPercent)
+          ]);
+
+          // Use gas-sponsored transaction (same pattern as deposits)
+          const web3Service = await getWeb3Service();
+          const txHash = await web3Service.fundAndSendTransaction({
+            to: contract.contractAddress,
+            data,
+            value: '0'
+          });
+
+          console.log('Vote submitted to blockchain! Transaction hash:', txHash);
+          alert(`Agreement reached! Your vote has been submitted to the blockchain. Transaction: ${txHash}`);
+
+          // Backend automatically submits admin vote via checkAndAutoResolveIfAgreed()
+        } else {
+          console.log('No agreement yet. Latest proposals:', {
+            buyer: disputeStatus.buyerLatestRefundEntry,
+            seller: disputeStatus.sellerLatestRefundEntry
+          });
+        }
+      }
 
       // Reset form and close modal
       setReason('');

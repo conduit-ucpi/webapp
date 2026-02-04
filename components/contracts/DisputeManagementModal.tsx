@@ -6,6 +6,7 @@ import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import FarcasterNameDisplay from '@/components/ui/FarcasterNameDisplay';
 import { useConfig } from '@/components/auth/ConfigProvider';
+import { useAuth } from '@/components/auth';
 import { ESCROW_CONTRACT_ABI } from '@/lib/web3';
 import { useSimpleEthers } from '@/hooks/useSimpleEthers';
 
@@ -18,6 +19,7 @@ interface DisputeManagementModalProps {
 
 export default function DisputeManagementModal({ isOpen, onClose, contract, onRefresh }: DisputeManagementModalProps) {
   const { config } = useConfig();
+  const { user } = useAuth();
   const { getWeb3Service } = useSimpleEthers();
   const [reason, setReason] = useState('');
   const [refundPercent, setRefundPercent] = useState<number>(0);
@@ -60,46 +62,71 @@ export default function DisputeManagementModal({ isOpen, onClose, contract, onRe
       // If result has an id field, it's likely the updated contract object (success)
       // If result.success is undefined or true, also consider it success
 
-      // Check if agreement reached by fetching dispute status
+      // Check if agreement reached by looking at existing dispute data
       console.log('Checking for agreement...');
-      const statusResponse = await fetch(`/api/contracts/${contract.id}/dispute/status`);
 
-      if (statusResponse.ok) {
-        const disputeStatus = await statusResponse.json();
-        console.log('Dispute status:', disputeStatus);
+      if (!user?.walletAddress) {
+        console.log('No user wallet address available');
+      } else {
+        // Determine if current user is buyer or seller
+        const userIsBuyer = user.walletAddress.toLowerCase() === contract.buyerAddress.toLowerCase();
+        const otherPartyEmail = userIsBuyer ? contract.sellerEmail : contract.buyerEmail;
 
-        // If agreement detected, submit vote to blockchain
-        if (disputeStatus.buyerLatestRefundEntry === disputeStatus.sellerLatestRefundEntry) {
-          console.log('Agreement reached! Submitting vote to blockchain...');
+        console.log('Current user is:', userIsBuyer ? 'buyer' : 'seller');
+        console.log('Looking for disputes from:', otherPartyEmail);
 
-          // Check if contract has blockchain address
-          if (!contract.contractAddress) {
-            throw new Error('Contract not deployed to blockchain yet');
+        // Find the latest dispute from the OTHER party
+        const otherPartyDisputes = contract.disputes?.filter(d =>
+          d.userEmail === otherPartyEmail
+        );
+
+        if (otherPartyDisputes && otherPartyDisputes.length > 0) {
+          // Sort by timestamp descending to get the latest
+          const latestOtherPartyDispute = otherPartyDisputes.sort((a, b) => b.timestamp - a.timestamp)[0];
+
+          console.log('Latest dispute from other party:', {
+            email: latestOtherPartyDispute.userEmail,
+            refundPercent: latestOtherPartyDispute.refundPercent,
+            timestamp: latestOtherPartyDispute.timestamp
+          });
+
+          console.log('Current submission refundPercent:', Math.round(refundPercent));
+
+          // Check if percentages match
+          if (latestOtherPartyDispute.refundPercent === Math.round(refundPercent)) {
+            console.log('Agreement reached! Submitting vote to blockchain...');
+
+            // Check if contract has blockchain address
+            if (!contract.contractAddress) {
+              throw new Error('Contract not deployed to blockchain yet');
+            }
+
+            // Encode the vote transaction
+            const escrowInterface = new ethers.Interface(ESCROW_CONTRACT_ABI);
+            const data = escrowInterface.encodeFunctionData('submitResolutionVote', [
+              Math.round(refundPercent)
+            ]);
+
+            // Use gas-sponsored transaction (same pattern as deposits)
+            const web3Service = await getWeb3Service();
+            const txHash = await web3Service.fundAndSendTransaction({
+              to: contract.contractAddress,
+              data,
+              value: '0'
+            });
+
+            console.log('Vote submitted to blockchain! Transaction hash:', txHash);
+            alert(`Agreement reached! Your vote has been submitted to the blockchain. Transaction: ${txHash}`);
+
+            // Backend automatically submits admin vote via checkAndAutoResolveIfAgreed()
+          } else {
+            console.log('No agreement yet. Latest proposals:', {
+              otherParty: latestOtherPartyDispute.refundPercent,
+              yourSubmission: Math.round(refundPercent)
+            });
           }
-
-          // Encode the vote transaction
-          const escrowInterface = new ethers.Interface(ESCROW_CONTRACT_ABI);
-          const data = escrowInterface.encodeFunctionData('submitResolutionVote', [
-            Math.round(refundPercent)
-          ]);
-
-          // Use gas-sponsored transaction (same pattern as deposits)
-          const web3Service = await getWeb3Service();
-          const txHash = await web3Service.fundAndSendTransaction({
-            to: contract.contractAddress,
-            data,
-            value: '0'
-          });
-
-          console.log('Vote submitted to blockchain! Transaction hash:', txHash);
-          alert(`Agreement reached! Your vote has been submitted to the blockchain. Transaction: ${txHash}`);
-
-          // Backend automatically submits admin vote via checkAndAutoResolveIfAgreed()
         } else {
-          console.log('No agreement yet. Latest proposals:', {
-            buyer: disputeStatus.buyerLatestRefundEntry,
-            seller: disputeStatus.sellerLatestRefundEntry
-          });
+          console.log('No disputes from other party yet');
         }
       }
 

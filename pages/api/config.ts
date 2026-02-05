@@ -50,6 +50,41 @@ async function getTokenDetails(
   }
 }
 
+/**
+ * Fetch contract addresses from chainservice
+ * @param chainServiceUrl Chain service base URL
+ * @returns Contract addresses (factoryAddress, implementationAddress)
+ * @throws Error if chainservice is unavailable or returns invalid data
+ */
+async function getContractAddresses(
+  chainServiceUrl: string
+): Promise<{ factoryAddress: string; implementationAddress: string }> {
+  const url = `${chainServiceUrl}/api/chain/addresses`;
+  console.log(`Fetching contract addresses from chainservice: ${url}`);
+
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Chainservice returned status ${response.status}`);
+  }
+
+  const data = await response.json();
+
+  if (!data.factoryAddress || !data.implementationAddress) {
+    throw new Error('Chainservice returned incomplete contract addresses');
+  }
+
+  console.log('✅ Fetched contract addresses from chainservice:', {
+    factoryAddress: data.factoryAddress,
+    implementationAddress: data.implementationAddress,
+    timestamp: data.timestamp
+  });
+
+  return {
+    factoryAddress: data.factoryAddress,
+    implementationAddress: data.implementationAddress
+  };
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -92,9 +127,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.error('USDC_CONTRACT_ADDRESS is missing or null');
       return res.status(500).json({ error: 'USDC contract address not configured' });
     }
+    if (!process.env.CHAIN_SERVICE_URL) {
+      console.error('CHAIN_SERVICE_URL is missing - required for fetching contract addresses');
+      return res.status(500).json({ error: 'Chain service URL not configured' });
+    }
 
-    // Fetch token details from blockchain for both USDC and USDT
-    const [usdcDetails, usdtDetails] = await Promise.all([
+    // Fetch contract addresses from chainservice and token details from blockchain in parallel
+    const [contractAddresses, usdcDetails, usdtDetails] = await Promise.all([
+      getContractAddresses(process.env.CHAIN_SERVICE_URL),
       getTokenDetails(
         process.env.RPC_URL.trim(),
         process.env.USDC_CONTRACT_ADDRESS,
@@ -118,8 +158,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       rpcUrl: process.env.RPC_URL?.trim(),
       usdcContractAddress: process.env.USDC_CONTRACT_ADDRESS,
       usdtContractAddress: process.env.USDT_CONTRACT_ADDRESS,
-      contractAddress: process.env.CONTRACT_ADDRESS,
-      contractFactoryAddress: process.env.CONTRACT_FACTORY_ADDRESS,
+      contractAddress: contractAddresses.implementationAddress,
+      contractFactoryAddress: contractAddresses.factoryAddress,
       userServiceUrl: process.env.USER_SERVICE_URL,
       chainServiceUrl: process.env.CHAIN_SERVICE_URL,
       contractServiceUrl: process.env.CONTRACT_SERVICE_URL,

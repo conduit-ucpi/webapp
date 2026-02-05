@@ -24,6 +24,9 @@ export interface Config {
   maxGasCostGwei: string;
   usdcGrantFoundryGas: string;
   depositFundsFoundryGas: string;
+  resolutionVoteFoundryGas: string;
+  raiseDisputeFoundryGas: string;
+  claimFundsFoundryGas: string;
   gasPriceBuffer: string;
   basePath: string;
   explorerBaseUrl: string;

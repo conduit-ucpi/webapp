@@ -73,6 +73,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log('MAX_GAS_COST_GWEI:', process.env.MAX_GAS_COST_GWEI);
     console.log('USDC_GRANT_FOUNDRY_GAS:', process.env.USDC_GRANT_FOUNDRY_GAS);
     console.log('DEPOSIT_FUNDS_FOUNDRY_GAS:', process.env.DEPOSIT_FUNDS_FOUNDRY_GAS);
+    console.log('RESOLUTION_VOTE_FOUNDRY_GAS:', process.env.RESOLUTION_VOTE_FOUNDRY_GAS);
+    console.log('RAISE_DISPUTE_FOUNDRY_GAS:', process.env.RAISE_DISPUTE_FOUNDRY_GAS);
+    console.log('CLAIM_FUNDS_FOUNDRY_GAS:', process.env.CLAIM_FUNDS_FOUNDRY_GAS);
     console.log('GAS_PRICE_BUFFER:', process.env.GAS_PRICE_BUFFER);
     console.log('EXPLORER_BASE_URL:', process.env.EXPLORER_BASE_URL);
     console.log('SERVICE_LINK:', process.env.SERVICE_LINK);
@@ -126,6 +129,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       maxGasCostGwei: process.env.MAX_GAS_COST_GWEI || '0.15',
       usdcGrantFoundryGas: process.env.USDC_GRANT_FOUNDRY_GAS || '150000',
       depositFundsFoundryGas: process.env.DEPOSIT_FUNDS_FOUNDRY_GAS || '150000',
+      resolutionVoteFoundryGas: process.env.RESOLUTION_VOTE_FOUNDRY_GAS || '80000',
+      raiseDisputeFoundryGas: process.env.RAISE_DISPUTE_FOUNDRY_GAS || '150000',
+      claimFundsFoundryGas: process.env.CLAIM_FUNDS_FOUNDRY_GAS || '150000',
       gasPriceBuffer: process.env.GAS_PRICE_BUFFER || '1',
       basePath,
       explorerBaseUrl: process.env.EXPLORER_BASE_URL,

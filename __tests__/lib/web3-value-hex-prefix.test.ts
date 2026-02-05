@@ -121,6 +121,9 @@ describe('Web3Service - Double 0x Prefix Bug', () => {
     gasPriceBuffer: '1.2',
     usdcGrantFoundryGas: '54810',
     depositFundsFoundryGas: '61896',
+    resolutionVoteFoundryGas: '80000',
+    raiseDisputeFoundryGas: '150000',
+    claimFundsFoundryGas: '150000',
     basePath: '/',
     explorerBaseUrl: 'https://basescan.org',
     serviceLink: 'https://example.com'

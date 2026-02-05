@@ -35,6 +35,9 @@ describe('Web3Service.fundAndSendTransaction - getSigner forbidden fix', () => {
     maxGasCostGwei: '50000', // Increased to allow test transactions to pass
     usdcGrantFoundryGas: '100000',
     depositFundsFoundryGas: '150000',
+    resolutionVoteFoundryGas: '80000',
+    raiseDisputeFoundryGas: '150000',
+    claimFundsFoundryGas: '150000',
     gasPriceBuffer: '1.2',
     basePath: '/',
     explorerBaseUrl: 'https://basescan.org',

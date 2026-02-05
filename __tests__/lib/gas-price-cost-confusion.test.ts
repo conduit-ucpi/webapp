@@ -68,6 +68,9 @@ describe('Gas Price vs Cost Confusion Prevention', () => {
       maxGasCostGwei: '10.0',  // 10 gwei total transaction cost limit
       usdcGrantFoundryGas: '60000',
       depositFundsFoundryGas: '60000',
+    resolutionVoteFoundryGas: '80000',
+    raiseDisputeFoundryGas: '150000',
+    claimFundsFoundryGas: '150000',
       basePath: '',
       explorerBaseUrl: 'https://basescan.org',
       serviceLink: 'https://example.com',

@@ -45,6 +45,9 @@ describe('Universal Hybrid Provider - All Wallets Use Base RPC', () => {
       maxGasCostGwei: '50000', // 50000 gwei = 50000000000000 wei
       gasPriceBuffer: '1.2',
       depositFundsFoundryGas: '100000',
+    resolutionVoteFoundryGas: '80000',
+    raiseDisputeFoundryGas: '150000',
+    claimFundsFoundryGas: '150000',
       usdcGrantFoundryGas: '65000',
       basePath: '',
       explorerBaseUrl: 'https://base.blockscout.com',

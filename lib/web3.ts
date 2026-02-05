@@ -976,6 +976,19 @@ export class Web3Service {
         if (transactionType === 'depositFunds') {
           foundryGasEstimate = parseInt(this.config.depositFundsFoundryGas || '200000');
           console.log(`Using Foundry fallback for depositFunds (DEPOSIT_FUNDS_FOUNDRY_GAS): ${foundryGasEstimate} gas`);
+        } else if (transactionType === 'submitResolutionVote') {
+          // Resolution votes need MORE gas because they:
+          // 1. Write vote to storage
+          // 2. Check for consensus (reads 3 votes)
+          // 3. May execute full dispute resolution if consensus reached
+          foundryGasEstimate = parseInt(this.config.resolutionVoteFoundryGas || '300000');
+          console.log(`Using Foundry fallback for submitResolutionVote: ${foundryGasEstimate} gas`);
+        } else if (transactionType === 'raiseDispute') {
+          foundryGasEstimate = parseInt(this.config.raiseDisputeFoundryGas || '150000');
+          console.log(`Using Foundry fallback for raiseDispute: ${foundryGasEstimate} gas`);
+        } else if (transactionType === 'claimFunds') {
+          foundryGasEstimate = parseInt(this.config.claimFundsFoundryGas || '150000');
+          console.log(`Using Foundry fallback for claimFunds: ${foundryGasEstimate} gas`);
         } else {
           // Default to USDC operations (approve, transfer, etc.)
           foundryGasEstimate = parseInt(this.config.usdcGrantFoundryGas || '100000');
@@ -1051,7 +1064,19 @@ export class Web3Service {
 
     // Step 3: Calculate total gas needed with buffer from config
     // Use the configured GAS_PRICE_BUFFER for funding calculation
-    const gasPriceBuffer = parseFloat(this.config.gasPriceBuffer);
+    // Apply EXTRA buffer for dispute-related functions that may trigger complex execution
+    const baseGasPriceBuffer = parseFloat(this.config.gasPriceBuffer);
+    const transactionType = this.detectTransactionType(txParams.data);
+
+    // Dispute functions need EXTRA buffer because they may trigger full resolution execution
+    let gasPriceBuffer = baseGasPriceBuffer;
+    if (transactionType === 'submitResolutionVote') {
+      // Resolution votes need modest buffer for 3-party voting logic
+      // RPC estimated 60k and used 59.5k (barely ran out), so 1.5x should be sufficient
+      gasPriceBuffer = baseGasPriceBuffer * 1.5;
+      console.log(`⚖️  Applying 1.5x buffer multiplier for submitResolutionVote (3-party voting)`);
+    }
+
     const fundingBufferPercent = Math.round(gasPriceBuffer * 100);
     const totalGasNeeded = (gasEstimate * gasPrice * BigInt(fundingBufferPercent)) / BigInt(100);
 
@@ -1108,7 +1133,8 @@ export class Web3Service {
       console.log('[Web3Service.fundAndSendTransaction] Getting user address from auth context (no getSigner call)');
       // Note: We removed "const signer = await this.provider.getSigner();" from here
 
-      // Apply gas buffer for transaction execution (reuse gasPriceBuffer from earlier)
+      // Apply gas buffer for transaction execution
+      // Use the SAME gasPriceBuffer calculated earlier (includes 5x multiplier for disputes)
       const bufferedGasLimit = BigInt(Math.round(Number(gasEstimate) * gasPriceBuffer));
 
       const originalCostEth = Number(gasEstimate * gasPrice) / 1e18;
@@ -1119,7 +1145,7 @@ export class Web3Service {
       console.log('─'.repeat(60));
       console.log(`   Original Estimate: ${gasEstimate.toString()} gas`);
       console.log(`   Original Cost: ${originalCostEth.toExponential(4)} ETH`);
-      console.log(`   Buffer Multiplier (GAS_PRICE_BUFFER): ${gasPriceBuffer}x`);
+      console.log(`   Buffer Multiplier: ${gasPriceBuffer}x ${transactionType === 'submitResolutionVote' ? '(1.5x for 3-party voting)' : ''}`);
       console.log(`   Buffered Gas Limit: ${bufferedGasLimit.toString()} gas`);
       console.log(`   Buffered Cost: ${bufferedCostEth.toExponential(4)} ETH`);
       console.log('─'.repeat(60));
@@ -1648,7 +1674,7 @@ export class Web3Service {
   /**
    * Detect transaction type from encoded function data to choose appropriate Foundry gas fallback
    */
-  private detectTransactionType(data: string): 'depositFunds' | 'approve' | 'transfer' | 'unknown' {
+  private detectTransactionType(data: string): 'depositFunds' | 'approve' | 'transfer' | 'submitResolutionVote' | 'raiseDispute' | 'claimFunds' | 'unknown' {
     if (!data || data === '0x') {
       return 'unknown';
     }
@@ -1662,7 +1688,10 @@ export class Web3Service {
       const functionSignatures = {
         'depositFunds': 'function depositFunds()',
         'approve': 'function approve(address,uint256)',
-        'transfer': 'function transfer(address,uint256)'
+        'transfer': 'function transfer(address,uint256)',
+        'submitResolutionVote': 'function submitResolutionVote(uint256)',
+        'raiseDispute': 'function raiseDispute()',
+        'claimFunds': 'function claimFunds()'
       };
 
       // Calculate selectors dynamically
@@ -1673,7 +1702,7 @@ export class Web3Service {
           const calculatedSelector = func.selector;
 
           if (functionSelector === calculatedSelector) {
-            return functionName as 'depositFunds' | 'approve' | 'transfer';
+            return functionName as 'depositFunds' | 'approve' | 'transfer' | 'submitResolutionVote' | 'raiseDispute' | 'claimFunds';
           }
         }
       }

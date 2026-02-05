@@ -213,6 +213,14 @@ export default function ConnectWalletEmbedded({
 
           const connectionResult = await connect('walletconnect');
 
+          // Handle undefined/null connectionResult (config loading failure or unexpected error)
+          if (!connectionResult) {
+            mLog.error('ConnectWalletEmbedded', 'No connection result returned', {
+              error: 'connect() returned undefined or null - possible config loading failure'
+            });
+            return;
+          }
+
           if (connectionResult.success) {
             // LAZY AUTH: Wallet connected successfully
             // Backend authentication will happen automatically on first API call via:

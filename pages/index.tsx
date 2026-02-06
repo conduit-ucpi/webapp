@@ -274,7 +274,7 @@ export default function Home() {
           <div className="max-w-5xl mx-auto">
             <div className="text-center mb-20">
               <h2 className="text-4xl lg:text-5xl font-bold text-secondary-900 mb-6 tracking-tight">Open Source</h2>
-              <p className="text-xl lg:text-2xl text-secondary-600 leading-relaxed">Don't trust us. Verify the code yourself.</p>
+              <p className="text-xl lg:text-2xl text-secondary-600 leading-relaxed">anyone can check us out, we're open source and fully transparent</p>
             </div>
 
             <div className="grid md:grid-cols-2 gap-8 mb-12">

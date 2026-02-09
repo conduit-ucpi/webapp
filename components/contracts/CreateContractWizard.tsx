@@ -91,13 +91,11 @@ export default function CreateContractWizard() {
   );
 
   // Determine available tokens based on config
-  const availableTokens: Array<{ symbol: string; details: any }> = [];
-  if (config?.usdcDetails || config?.usdcContractAddress) {
-    availableTokens.push({ symbol: 'USDC', details: config?.usdcDetails });
-  }
-  if (config?.usdtDetails) {
-    availableTokens.push({ symbol: 'USDT', details: config?.usdtDetails });
-  }
+  const availableTokens = config?.supportedTokens && config.supportedTokens.length > 0
+    ? config.supportedTokens.filter(t => t.enabled !== false)
+    : (config?.usdcDetails || config?.usdcContractAddress
+        ? [config.usdcDetails || { symbol: 'USDC', address: config.usdcContractAddress }]
+        : []);
   const hasMultipleTokens = availableTokens.length > 1;
 
   // Fetch user data when wallet connects (lazy auth will trigger automatically if needed)
@@ -292,8 +290,13 @@ export default function CreateContractWizard() {
     setIsLoading(true);
     
     try {
-      if (!config.usdcContractAddress) {
-        throw new Error('USDC contract address not configured');
+      if (availableTokens.length === 0) {
+        throw new Error('No tokens configured');
+      }
+
+      const selectedToken = availableTokens.find(t => t.symbol === selectedTokenSymbol);
+      if (!selectedToken?.address) {
+        throw new Error(`Token ${selectedTokenSymbol} address not configured`);
       }
 
       if (!user.walletAddress) {

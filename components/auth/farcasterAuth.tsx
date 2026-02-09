@@ -703,15 +703,16 @@ function FarcasterAuthProviderInner({ children, AuthContext }: {
     };
     
     (provider as any).getUSDCBalance = async (userAddress?: string) => {
-      if (!config?.rpcUrl || !config?.usdcContractAddress) {
-        console.warn('getUSDCBalance: RPC URL or USDC contract address not configured');
+      const tokenAddress = config?.defaultToken?.address || config?.usdcContractAddress;
+      if (!config?.rpcUrl || !tokenAddress) {
+        console.warn('getUSDCBalance: RPC URL or token contract address not configured');
         return '0';
       }
-      
+
       // Use JsonRpcProvider to read from blockchain
       const jsonProvider = new ethers.JsonRpcProvider(config.rpcUrl);
       const usdcContract = new ethers.Contract(
-        config.usdcContractAddress,
+        tokenAddress,
         ERC20_ABI,
         jsonProvider
       );
@@ -1196,15 +1197,16 @@ function FarcasterAuthProviderInner({ children, AuthContext }: {
     
     // Blockchain operations
     getUSDCBalance: async (userAddress?: string) => {
-      if (!config?.rpcUrl || !config?.usdcContractAddress) {
-        console.warn('getUSDCBalance: RPC URL or USDC contract address not configured');
+      const tokenAddress = config?.defaultToken?.address || config?.usdcContractAddress;
+      if (!config?.rpcUrl || !tokenAddress) {
+        console.warn('getUSDCBalance: RPC URL or token contract address not configured');
         return '0';
       }
-      
+
       // Use JsonRpcProvider to read from blockchain
       const provider = new ethers.JsonRpcProvider(config.rpcUrl);
       const usdcContract = new ethers.Contract(
-        config.usdcContractAddress,
+        tokenAddress,
         ERC20_ABI,
         provider
       );

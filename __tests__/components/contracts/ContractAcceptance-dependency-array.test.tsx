@@ -107,8 +107,8 @@ describe('ContractAcceptance Dependency Array Safety', () => {
     const componentPath = path.join(process.cwd(), 'components/contracts/ContractAcceptance.tsx');
     const componentSource = fs.readFileSync(componentPath, 'utf8');
 
-    // Verify the specific line we fixed
-    const fixedLine = componentSource.includes('}, [user?.walletAddress, config?.usdcContractAddress, contract?.amount]);');
+    // Verify the specific line we fixed (using centralized token selection)
+    const fixedLine = componentSource.includes('}, [user?.walletAddress, selectedTokenAddress, contract?.amount]);');
     expect(fixedLine).toBe(true);
 
     // Verify the problematic pattern is NOT present

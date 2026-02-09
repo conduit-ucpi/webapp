@@ -68,8 +68,10 @@ export function useCreateContract() {
 
     try {
       // Validate config before proceeding
-      if (!config.usdcContractAddress) {
-        throw new Error('USDC contract address not configured. Please check server configuration.');
+      const hasTokenConfig = config.defaultToken?.address || config.usdcContractAddress ||
+                            (config.supportedTokens && config.supportedTokens.length > 0);
+      if (!hasTokenConfig) {
+        throw new Error('Token configuration not found. Please check server configuration.');
       }
 
       // Check if user is authenticated and has wallet address

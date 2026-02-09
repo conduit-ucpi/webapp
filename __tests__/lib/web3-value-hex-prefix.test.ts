@@ -158,7 +158,7 @@ describe('Web3Service - Double 0x Prefix Bug', () => {
     // This should NOT throw "Cannot convert 0x0x0 to a BigInt"
     await expect(
       web3Service.fundAndSendTransaction({
-        to: testConfig.usdcContractAddress,
+        to: testConfig.usdcContractAddress || '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
         data: usdcTransferData,
         // value is UNDEFINED - will default to '0x0'
       })

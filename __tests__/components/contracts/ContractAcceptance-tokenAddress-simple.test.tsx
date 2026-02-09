@@ -105,8 +105,8 @@ describe('ContractAcceptance tokenAddress Regression - Data Structure', () => {
     const componentPath = path.join(process.cwd(), 'components/contracts/ContractAcceptance.tsx');
     const componentSource = fs.readFileSync(componentPath, 'utf8');
 
-    // Verify the fix is present
-    expect(componentSource).toContain('tokenAddress: config.usdcContractAddress');
+    // Verify the fix is present (using centralized token selection)
+    expect(componentSource).toContain('tokenAddress: selectedTokenAddress');
     expect(componentSource).toContain('contractserviceId: contract.id');
     expect(componentSource).toContain('buyer: user.walletAddress');
     expect(componentSource).toContain('seller: contract.sellerAddress');

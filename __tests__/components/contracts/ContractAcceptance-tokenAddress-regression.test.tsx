@@ -30,7 +30,25 @@ jest.mock('@/components/auth/ConfigProvider', () => ({
     config: {
       usdcContractAddress: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
       chainId: 8453,
-      serviceLink: 'https://example.com'
+      serviceLink: 'https://example.com',
+      defaultToken: {
+        symbol: 'USDC',
+        address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+        name: 'USD Coin',
+        decimals: 6,
+        isDefault: true,
+        enabled: true
+      },
+      supportedTokens: [
+        {
+          symbol: 'USDC',
+          address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+          name: 'USD Coin',
+          decimals: 6,
+          isDefault: true,
+          enabled: true
+        }
+      ]
     },
   }),
 }));
@@ -47,6 +65,34 @@ jest.mock('next/router', () => ({
     push: jest.fn(),
     pathname: '/test',
   }),
+}));
+
+// Mock token selection hook
+jest.mock('@/hooks/useTokenSelection', () => ({
+  useTokenSelection: jest.fn(() => ({
+    selectedToken: {
+      symbol: 'USDC',
+      address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+      name: 'USD Coin',
+      decimals: 6,
+      isDefault: true,
+      enabled: true
+    },
+    selectedTokenSymbol: 'USDC',
+    selectedTokenAddress: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+    availableTokens: [
+      {
+        symbol: 'USDC',
+        address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+        name: 'USD Coin',
+        decimals: 6,
+        isDefault: true,
+        enabled: true
+      }
+    ],
+    findTokenBySymbol: jest.fn(),
+    isTokenAvailable: jest.fn()
+  })),
 }));
 
 const mockContract: PendingContract = {

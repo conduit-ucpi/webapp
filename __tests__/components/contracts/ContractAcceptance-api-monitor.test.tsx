@@ -51,7 +51,7 @@ describe('ContractAcceptance API Call Monitoring', () => {
     const componentSource = fs.readFileSync(componentPath, 'utf8');
 
     expect(componentSource).toContain('contractserviceId: contract.id');
-    expect(componentSource).toContain('tokenAddress: config.usdcContractAddress');
+    expect(componentSource).toContain('tokenAddress: selectedTokenAddress'); // Updated from config.usdcContractAddress
     expect(componentSource).toContain('buyer: user.walletAddress');
     expect(componentSource).toContain('seller: contract.sellerAddress');
     expect(componentSource).toContain('amount: contract.amount');
@@ -134,7 +134,7 @@ describe('ContractAcceptance API Call Monitoring', () => {
     const fieldMapping = {
       // Webapp field -> Chainservice field
       'contract.id': 'contractserviceId',
-      'config.usdcContractAddress': 'tokenAddress',
+      'selectedTokenAddress': 'tokenAddress', // Updated from config.usdcContractAddress
       'user.walletAddress': 'buyer',
       'contract.sellerAddress': 'seller',
       'contract.amount': 'amount', // Already in microUSDC format

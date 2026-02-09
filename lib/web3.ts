@@ -539,12 +539,17 @@ export class Web3Service {
       throw new Error('Read provider not initialized');
     }
 
+    const tokenAddress = this.config.defaultToken?.address || this.config.usdcContractAddress;
+    if (!tokenAddress) {
+      throw new Error('Token contract address not configured');
+    }
+
     console.log('getUSDCBalance - checking for address:', userAddress);
-    console.log('getUSDCBalance - USDC contract:', this.config.usdcContractAddress);
+    console.log('getUSDCBalance - Token contract:', tokenAddress);
     console.log('getUSDCBalance - Using READ-ONLY RPC provider (no wallet access)');
 
     const usdcContract = new ethers.Contract(
-      this.config.usdcContractAddress,
+      tokenAddress,
       ERC20_ABI,
       this.readProvider  // ← Use read provider, not wallet provider
     );
@@ -582,8 +587,13 @@ export class Web3Service {
       throw new Error('Provider not initialized');
     }
 
+    const tokenAddress = this.config.defaultToken?.address || this.config.usdcContractAddress;
+    if (!tokenAddress) {
+      throw new Error('Token contract address not configured');
+    }
+
     const usdcContract = new ethers.Contract(
-      this.config.usdcContractAddress,
+      tokenAddress,
       ERC20_ABI,
       this.provider
     );
@@ -816,12 +826,17 @@ export class Web3Service {
       throw new Error('Provider not initialized');
     }
 
+    const tokenAddress = this.config.defaultToken?.address || this.config.usdcContractAddress;
+    if (!tokenAddress) {
+      throw new Error('Token contract address not configured');
+    }
+
     const decimals = 6; // USDC has 6 decimals
     const amountWei = ethers.parseUnits(amount, decimals);
 
     // Sign transaction using generic method
     const signedTx = await this.signContractTransaction({
-      contractAddress: this.config.usdcContractAddress,
+      contractAddress: tokenAddress,
       abi: ERC20_ABI,
       functionName: 'transfer',
       functionArgs: [to, amountWei],
@@ -837,12 +852,17 @@ export class Web3Service {
       throw new Error('Provider not initialized');
     }
 
+    const tokenAddress = this.config.defaultToken?.address || this.config.usdcContractAddress;
+    if (!tokenAddress) {
+      throw new Error('Token contract address not configured');
+    }
+
     const decimals = 6; // USDC has 6 decimals
     const amountWei = ethers.parseUnits(amount, decimals);
 
     // Sign transaction using generic method
     const signedTx = await this.signContractTransaction({
-      contractAddress: this.config.usdcContractAddress,
+      contractAddress: tokenAddress,
       abi: ERC20_ABI,
       functionName: 'transfer',
       functionArgs: [to, amountWei],

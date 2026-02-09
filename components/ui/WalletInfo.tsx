@@ -39,8 +39,8 @@ export default function WalletInfo({
   );
 
   const effectiveTokenAddress = useMemo(
-    () => tokenAddress || config?.usdcContractAddress,
-    [tokenAddress, config?.usdcContractAddress]
+    () => tokenAddress || config?.defaultToken?.address || config?.usdcContractAddress,
+    [tokenAddress, config?.defaultToken?.address, config?.usdcContractAddress]
   );
 
   // Debug logging (only when token selection actually changes)

@@ -154,7 +154,7 @@ describe('ContractAcceptance Regression Protection', () => {
 
       // Verify all required fields are passed correctly to executeContractTransactionSequence
       expect(componentSource).toContain('contractserviceId: contract.id');
-      expect(componentSource).toContain('tokenAddress: config.usdcContractAddress');
+      expect(componentSource).toContain('tokenAddress: selectedTokenAddress'); // Updated from config.usdcContractAddress
       expect(componentSource).toContain('buyer: user.walletAddress');
       expect(componentSource).toContain('seller: contract.sellerAddress');
       expect(componentSource).toContain('amount: contract.amount'); // CRITICAL: Direct use

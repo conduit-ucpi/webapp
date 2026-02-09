@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { useAuth } from '@/components/auth';
 import { useSimpleEthers } from '@/hooks/useSimpleEthers';
+import { useTokenSelection } from '@/hooks/useTokenSelection';
 import { PendingContract } from '@/types';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
@@ -19,8 +20,22 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
   const router = useRouter();
   const { config } = useConfig();
   const { user, authenticatedFetch } = useAuth();
-  const tokenSymbol = config?.tokenSymbol || 'USDC';
   const { fundAndSendTransaction, getUSDCBalance, approveUSDC, depositToContract, depositFundsAsProxy, getWeb3Service } = useSimpleEthers();
+
+  // Extract token symbol from contract's currency field
+  const contractTokenSymbol = useMemo(() => {
+    if (!contract?.currency) return undefined;
+    // Extract token symbol from currency field (e.g., "microUSDC" -> "USDC")
+    return contract.currency.replace('micro', '').toUpperCase();
+  }, [contract]);
+
+  // Use centralized token selection logic
+  const {
+    selectedToken,
+    selectedTokenSymbol,
+    selectedTokenAddress
+  } = useTokenSelection(config, contractTokenSymbol);
+
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
   const [hasError, setHasError] = useState(false);
@@ -35,7 +50,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
 
   // Memoize the fetchBalance function to prevent infinite loops
   const fetchBalance = useCallback(async () => {
-    if (!user?.walletAddress || !config?.usdcContractAddress) {
+    if (!user?.walletAddress || !selectedTokenAddress) {
       setUserBalance(null);
       return;
     }
@@ -46,7 +61,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
       const balance = await getUSDCBalanceRef.current(user.walletAddress);
       setUserBalance(balance);
     } catch (error) {
-      console.error('Failed to fetch USDC balance:', error);
+      console.error('Failed to fetch token balance:', error);
       // In test environment, provide a fallback balance for specific tests
       if (process.env.NODE_ENV === 'test') {
         // Check if this is the hex balance test by looking at the contract amount
@@ -61,7 +76,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
     } finally {
       setIsLoadingBalance(false);
     }
-  }, [user?.walletAddress, config?.usdcContractAddress, contract?.amount]);
+  }, [user?.walletAddress, selectedTokenAddress, contract?.amount]);
 
   // Fetch user's USDC balance when component mounts or user changes
   useEffect(() => {
@@ -154,7 +169,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
         const result = await executeContractTransactionSequence(
           {
             contractserviceId: contract.id,
-            tokenAddress: config.usdcContractAddress,
+            tokenAddress: selectedTokenAddress,
             buyer: user.walletAddress,
             seller: contract.sellerAddress,
             amount: contract.amount, // Already in microUSDC format
@@ -240,7 +255,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
         <div className="space-y-3 mb-6">
           <div className="flex justify-between">
             <span className="text-gray-600">Amount:</span>
-            <span className="font-medium">${formatCurrency(contract.amount, 'microUSDC').amount} {tokenSymbol}</span>
+            <span className="font-medium">${formatCurrency(contract.amount, 'microUSDC').amount} {selectedTokenSymbol}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-600">Seller:</span>
@@ -278,7 +293,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
       <div className="space-y-3 mb-6">
         <div className="flex justify-between">
           <span className="text-gray-600">Amount:</span>
-          <span className="font-medium">${formatCurrency(contract.amount, 'microUSDC').amount} {tokenSymbol}</span>
+          <span className="font-medium">${formatCurrency(contract.amount, 'microUSDC').amount} {selectedTokenSymbol}</span>
         </div>
         <div className="flex justify-between">
           <span className="text-gray-600">Your Balance:</span>
@@ -286,7 +301,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
             {isLoadingBalance ? (
               <LoadingSpinner className="w-4 h-4" />
             ) : userBalance !== null ? (
-              `$${parseFloat(userBalance).toFixed(4)} ${tokenSymbol}`
+              `$${parseFloat(userBalance).toFixed(4)} ${selectedTokenSymbol}`
             ) : (
               'Unable to load'
             )}
@@ -305,16 +320,16 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
       {hasInsufficientBalance() ? (
         <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-6">
           <p className="text-sm text-red-800">
-            <strong>Insufficient balance:</strong> You need ${formatCurrency(contract.amount, 'microUSDC').amount} {tokenSymbol} but only have ${userBalance !== null ? parseFloat(userBalance).toFixed(4) : '0'} {tokenSymbol} in your wallet.
+            <strong>Insufficient balance:</strong> You need ${formatCurrency(contract.amount, 'microUSDC').amount} {selectedTokenSymbol} but only have ${userBalance !== null ? parseFloat(userBalance).toFixed(4) : '0'} {selectedTokenSymbol} in your wallet.
           </p>
           <p className="text-sm text-red-800 mt-2">
-            Please add {tokenSymbol} to your wallet before proceeding.
+            Please add {selectedTokenSymbol} to your wallet before proceeding.
           </p>
         </div>
       ) : (
         <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4 mb-6">
           <p className="text-sm text-yellow-800">
-            When you make this payment, the ${formatCurrency(contract.amount, 'microUSDC').amount} {tokenSymbol} will be held securely in escrow until {formatDateTimeWithTZ(contract.expiryTimestamp)}.
+            When you make this payment, the ${formatCurrency(contract.amount, 'microUSDC').amount} {selectedTokenSymbol} will be held securely in escrow until {formatDateTimeWithTZ(contract.expiryTimestamp)}.
           </p>
         </div>
       )}
@@ -328,7 +343,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
           ? 'Insufficient Balance'
           : isLoadingBalance
           ? 'Checking balance...'
-          : `Make Payment of $${formatCurrency(contract.amount, 'microUSDC').amount} ${tokenSymbol}`
+          : `Make Payment of $${formatCurrency(contract.amount, 'microUSDC').amount} ${selectedTokenSymbol}`
         }
       </Button>
     </div>

@@ -1,3 +1,5 @@
+import { TokenConfig, TokenDetails as TokenDetailsExtended } from './tokens';
+
 /**
  * Token details fetched from blockchain
  */
@@ -11,14 +13,29 @@ export interface TokenDetails {
 export interface Config {
   chainId: number;
   rpcUrl: string;
-  usdcContractAddress: string;
+  // New centralized token configuration
+  supportedTokens?: TokenDetailsExtended[];
+  defaultToken?: TokenDetailsExtended;
+  // Legacy fields for backward compatibility
+  usdcContractAddress?: string;
   usdtContractAddress?: string;
+  usdcDetails?: TokenDetails | null;
+  usdtDetails?: TokenDetails | null;
+  primaryToken?: TokenDetails | null;
+  tokenSymbol?: string; // Token symbol (e.g., "USDC", "USDT", "DAI")
+  defaultTokenSymbol?: string; // Default token symbol to use
+  // Contract addresses
   contractAddress?: string;
   contractFactoryAddress?: string;
+  // Service URLs
   userServiceUrl?: string;
   chainServiceUrl?: string;
   contractServiceUrl?: string;
+  // Third-party services
   moonPayApiKey: string;
+  walletConnectProjectId?: string;
+  neynarApiKey?: string;
+  // Gas configuration
   minGasWei: string;
   maxGasPriceGwei: string;
   maxGasCostGwei: string;
@@ -28,18 +45,11 @@ export interface Config {
   raiseDisputeFoundryGas: string;
   claimFundsFoundryGas: string;
   gasPriceBuffer: string;
+  // UI configuration
   basePath: string;
   explorerBaseUrl: string;
   serviceLink: string;
-  neynarApiKey?: string;
-  walletConnectProjectId?: string;
-  tokenSymbol?: string; // Token symbol (e.g., "USDC", "USDT", "DAI")
-  defaultTokenSymbol?: string; // Default token symbol to use
   siteName?: string; // Site branding name (e.g., "Instant Escrow", "USDCBAY")
-  // Token details from blockchain
-  usdcDetails?: TokenDetails | null;
-  usdtDetails?: TokenDetails | null;
-  primaryToken?: TokenDetails | null;
   // Optional wallet services configuration
   walletServicesShowWidget?: string;
   walletServicesButtonPosition?: string;

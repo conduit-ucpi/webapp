@@ -41,6 +41,7 @@ jobs:
         env:
           CHAIN_ID: ${{ vars.CHAIN_ID }}
           RPC_URL: ${{ vars.RPC_URL }}
+          SUPPORTED_TOKENS: ${{ vars.SUPPORTED_TOKENS }}
           USDC_CONTRACT_ADDRESS: ${{ vars.USDC_CONTRACT_ADDRESS }}
           USDT_CONTRACT_ADDRESS: ${{ vars.USDT_CONTRACT_ADDRESS }}
           DEFAULT_TOKEN_SYMBOL: ${{ vars.DEFAULT_TOKEN_SYMBOL }}
@@ -173,6 +174,7 @@ jobs:
             -e BUILD_VERSION="${{ env.BUILD_VERSION }}" \\
             -e CONTRACT_FACTORY_ADDRESS="${{ vars.CONTRACT_FACTORY_ADDRESS }}" \\
             -e CONTRACT_ADDRESS="${{ vars.CONTRACT_ADDRESS }}" \\
+            -e SUPPORTED_TOKENS='${{ vars.SUPPORTED_TOKENS }}' \\
             -e USDC_CONTRACT_ADDRESS="${{ vars.USDC_CONTRACT_ADDRESS }}" \\
             -e USDT_CONTRACT_ADDRESS="${{ vars.USDT_CONTRACT_ADDRESS }}" \\
             -e DEFAULT_TOKEN_SYMBOL="${{ vars.DEFAULT_TOKEN_SYMBOL }}" \\

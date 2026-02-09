@@ -4,6 +4,7 @@ import Head from 'next/head';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { useAuth } from '@/components/auth';
 import { useSimpleEthers } from '@/hooks/useSimpleEthers';
+import { useTokenSelection } from '@/hooks/useTokenSelection';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
@@ -67,36 +68,24 @@ export default function ContractCreate() {
     tokenSymbol: queryTokenSymbol
   } = router.query;
 
-  // Determine which token to use based on URL parameter or default
-  // Memoized to prevent unnecessary re-renders and re-calculations
-  const selectedTokenSymbol = useMemo(
-    () => (queryTokenSymbol as string) || config?.defaultTokenSymbol || 'USDC',
-    [queryTokenSymbol, config?.defaultTokenSymbol]
-  );
-
-  const selectedToken = useMemo(
-    () => selectedTokenSymbol === 'USDT' ? config?.usdtDetails : config?.usdcDetails,
-    [selectedTokenSymbol, config?.usdtDetails, config?.usdcDetails]
-  );
-
-  const selectedTokenAddress = useMemo(
-    () => selectedToken?.address || config?.usdcContractAddress || '',
-    [selectedToken?.address, config?.usdcContractAddress]
-  );
+  // Use centralized token selection logic
+  const {
+    selectedToken,
+    selectedTokenSymbol,
+    selectedTokenAddress,
+    availableTokens
+  } = useTokenSelection(config, queryTokenSymbol as string | undefined);
 
   // Debug logging for token selection (only on token changes)
   useEffect(() => {
     console.log('🔧 ContractCreate: Token selection details', {
       queryTokenSymbol,
-      configDefaultTokenSymbol: config?.defaultTokenSymbol,
       selectedTokenSymbol,
-      configUsdcDetails: config?.usdcDetails,
-      configUsdtDetails: config?.usdtDetails,
       selectedToken,
       selectedTokenAddress,
-      fallbackAddress: config?.usdcContractAddress
+      availableTokens: availableTokens.map(t => t.symbol)
     });
-  }, [selectedTokenSymbol, selectedToken, selectedTokenAddress, queryTokenSymbol, config?.defaultTokenSymbol, config?.usdcDetails, config?.usdtDetails, config?.usdcContractAddress]);
+  }, [selectedTokenSymbol, selectedToken, selectedTokenAddress, queryTokenSymbol, availableTokens]);
   
   // Check if we're in an iframe or popup
   const [isInIframe, setIsInIframe] = useState(false);

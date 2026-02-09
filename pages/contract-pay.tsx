@@ -4,6 +4,7 @@ import Head from 'next/head';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { useAuth } from '@/components/auth';
 import { useSimpleEthers } from '@/hooks/useSimpleEthers';
+import { useTokenSelection } from '@/hooks/useTokenSelection';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import ConnectWalletEmbedded from '@/components/auth/ConnectWalletEmbedded';
@@ -48,25 +49,20 @@ export default function ContractPay() {
 
   console.log('🔧 ContractPay: Query params', { contractId });
 
-  // Determine token details from contract
-  const selectedTokenSymbol = useMemo(() => {
-    if (!contract) return config?.defaultTokenSymbol || 'USDC';
+  // Extract token symbol from contract's currency field
+  const contractTokenSymbol = useMemo(() => {
+    if (!contract?.currency) return undefined;
     // Extract token symbol from currency field (e.g., "microUSDC" -> "USDC")
-    if (contract.currency) {
-      return contract.currency.replace('micro', '').toUpperCase();
-    }
-    return 'USDC';
-  }, [contract, config?.defaultTokenSymbol]);
+    return contract.currency.replace('micro', '').toUpperCase();
+  }, [contract]);
 
-  const selectedToken = useMemo(
-    () => selectedTokenSymbol === 'USDT' ? config?.usdtDetails : config?.usdcDetails,
-    [selectedTokenSymbol, config?.usdtDetails, config?.usdcDetails]
-  );
-
-  const selectedTokenAddress = useMemo(
-    () => selectedToken?.address || config?.usdcContractAddress || '',
-    [selectedToken?.address, config?.usdcContractAddress]
-  );
+  // Use centralized token selection logic
+  const {
+    selectedToken,
+    selectedTokenSymbol,
+    selectedTokenAddress,
+    availableTokens
+  } = useTokenSelection(config, contractTokenSymbol);
 
   // Fetch user data when wallet connects (lazy auth will trigger automatically if needed)
   useEffect(() => {

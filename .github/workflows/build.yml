@@ -161,6 +161,8 @@ jobs:
             --name ${{ vars.SERVICE_NAME }} \\
             --network ${{ vars.DOCKER_NETWORK }} \\
             --restart unless-stopped \\
+            --memory=256m \\
+            -e NODE_OPTIONS="--max-old-space-size=192" \\
             -e CHAIN_ID="${{ vars.CHAIN_ID }}" \\
             -e RPC_URL="${{ vars.RPC_URL }}" \\
             -e CHAIN_SERVICE_URL="${{ vars.CHAIN_SERVICE_URL }}" \\

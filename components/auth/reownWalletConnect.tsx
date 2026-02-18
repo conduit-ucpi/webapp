@@ -687,10 +687,24 @@ export class ReownWalletConnectProvider {
 
       console.log('🔧 ReownWalletConnect: Creating SIWE message manually', { address })
 
+      // CRITICAL FIX: Open AppKit modal before requesting signature
+      // WalletConnect/AppKit requires the modal to be open for wallet interactions to work
+      // Without this, personal_sign requests hang indefinitely without showing user a prompt
+      console.log('🔧 ReownWalletConnect: Opening AppKit modal for signature request...')
+      try {
+        await this.appKit.open({ view: 'Account' })
+        // Give modal time to fully render and establish connection
+        await new Promise(resolve => setTimeout(resolve, 500))
+      } catch (modalError) {
+        console.error('🔧 ReownWalletConnect: Failed to open modal:', modalError)
+        // Continue anyway - some wallet types might not need modal
+      }
+
       // Step 1: Get a nonce from the backend
       const nonceResponse = await fetch('/api/auth/siwe/nonce')
       if (!nonceResponse.ok) {
         console.error('🔧 ReownWalletConnect: Failed to get nonce')
+        try { await this.appKit.close() } catch (e) { /* ignore */ }
         return false
       }
       const { nonce } = await nonceResponse.json()
@@ -721,14 +735,18 @@ Issued At: ${issuedAt}`
         messageLength: message.length
       })
 
-      // Step 3: Sign the message
+      // Step 3: Sign the message (modal must be open for this to work)
+      console.log('🔧 ReownWalletConnect: Requesting signature from wallet (modal is open)...')
       const hexMessage = '0x' + Buffer.from(message, 'utf8').toString('hex')
       const signature = await walletProvider.request({
         method: 'personal_sign',
         params: [hexMessage, address]
       }) as string
 
-      console.log('🔧 ReownWalletConnect: Message signed by wallet')
+      console.log('🔧 ReownWalletConnect: ✅ Message signed by wallet')
+
+      // Close modal after successful signature
+      try { await this.appKit.close() } catch (e) { /* ignore */ }
 
       // Step 4: Send to backend for verification
       const verifyResponse = await fetch('/api/auth/siwe/verify', {
@@ -742,14 +760,18 @@ Issued At: ${issuedAt}`
 
       if (!verifyResponse.ok) {
         console.error('🔧 ReownWalletConnect: Backend verification failed')
+        try { await this.appKit.close() } catch (e) { /* ignore */ }
         return false
       }
 
       console.log('🔧 ReownWalletConnect: ✅ SIWX authentication successful!')
+      try { await this.appKit.close() } catch (e) { /* ignore */ }
       return true
 
     } catch (error) {
       console.error('🔧 ReownWalletConnect: Error requesting authentication:', error)
+      // Ensure modal is closed on any error
+      try { await this.appKit.close() } catch (e) { /* ignore */ }
       return false
     }
   }

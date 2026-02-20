@@ -93,6 +93,11 @@ export default function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
           icon: CreditCardIcon,
         },
         {
+          href: '/whats-wrong-with-payments',
+          label: 'What\'s Wrong with Payments',
+          icon: DocumentTextIcon,
+        },
+        {
           href: '/faq',
           label: 'FAQ',
           icon: QuestionMarkCircleIcon,

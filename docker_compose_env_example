@@ -1,0 +1,180 @@
+# Conduit UCPI Production Environment Configuration
+# Auto-generated from GitHub Actions cherry environment variables
+# Generated: 2026-02-17
+
+# ============================================================================
+# MONGODB CONFIGURATION
+# ============================================================================
+# MongoDB connection string (used by web3userservice and contractservice)
+# NOTE: Update with your actual MongoDB credentials
+MONGODB_URI=mongodb://admin:changeme@mongodb:27017/conduit?authSource=admin
+
+# MongoDB root credentials (for MongoDB container)
+MONGO_ROOT_USERNAME=admin
+MONGO_ROOT_PASSWORD=changeme
+
+# ============================================================================
+# SHARED CONFIGURATION
+# ============================================================================
+# Cookie domain for authentication
+# For local docker-compose use localhost, for production use actual domain
+COOKIE_DOMAIN=localhost
+
+# Logging level
+LOG_LEVEL=DEBUG
+
+# ============================================================================
+# WEB3 USER SERVICE (Authentication)
+# ============================================================================
+# JWT secret for signing authentication cookies
+# NOTE: Set your actual JWT secret here
+JWT_COOKIE_SECRET=CHANGE_ME_TO_SECURE_RANDOM_STRING
+
+# Farcaster verification endpoint
+FARCASTER_VERIFICATION_ENDPOINT=https://auth.farcaster.xyz/.well-known/jwks.json
+
+# Neynar API key for Farcaster integration
+# NOTE: Add your actual Neynar API key
+NEYNAR_API_KEY=CHANGE_ME
+
+# Dynamic Auth Configuration
+# NOTE: Add your actual Dynamic environment ID if using Dynamic Auth
+DYNAMIC_ENVIRONMENT_ID=test-env
+DYNAMIC_JWKS_URL_OVERRIDE=
+
+# ============================================================================
+# CONTRACT SERVICE (Contract Management)
+# ============================================================================
+# API key for inter-service communication
+# NOTE: Set your actual contract service API key
+CONTRACT_SERVICE_API_KEY=CHANGE_ME
+
+# Enable/disable batch claim scheduler
+BATCH_CLAIM_SCHEDULER_ENABLED=true
+
+# ============================================================================
+# CHAIN SERVICE (Blockchain Relay)
+# ============================================================================
+# Blockchain RPC Configuration
+RPC_URL=https://mainnet.base.org
+GAS_PRICE_RPC_URL=https://mainnet.base.org
+CHAIN_ID=8453
+
+# Smart Contract Addresses (Base Mainnet)
+USDC_CONTRACT_ADDRESS=0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913
+CONTRACT_FACTORY_ADDRESS=0x3a62fb294E34D2aB8c204560Da6Fe390F64710a4
+ESCROW_IMPLEMENTATION_ADDRESS=0x96ae74791b65bCAb9c527F073aa978893219C129
+
+# Relayer Wallet Configuration
+RELAYER_WALLET_ADDRESS=0x1936Cad0b758aD8f83CA392Ac9138ff2B4aB0b05
+# NOTE: Add your actual relayer private key (KEEP PRIVATE!)
+# WARNING: This is a randomly generated key for LOCAL TESTING ONLY - DO NOT use in production
+RELAYER_PRIVATE_KEY=0x47e179ec197488593b187f80a00eb0da91f1b9d0b13f8733639f19c30a34926a
+
+# Minimum creator fee in microUSDC (0.3 USDC = 300000 microUSDC)
+MIN_CREATOR_FEE_USDC_X_1M=300000
+
+# Service integration URL
+SERVICE_LINK=https://app.instantescrow.nz
+
+# Gas Payer Service Configuration
+GAS_PAYER_SERVICE=http://base.nogascost.com
+# NOTE: Request API key from gas-payer-service admin
+#       See: https://github.com/charliepank/gas-payer-service
+#       Email: charlie@conduit-ucpi.com
+GAS_PAYER_API_KEY=CHANGE_ME
+GAS_PAYER_CONTRACT_ADDRESS=
+
+# Gas Management Settings
+BLOCKCHAIN_CONNECT_TIMEOUT=30
+BLOCKCHAIN_READ_TIMEOUT=60
+BLOCKCHAIN_WRITE_TIMEOUT=120
+PRICE_MULTIPLIER=1.1
+MIN_GAS_WEI=6
+MAX_GAS_LIMIT=1000000
+MAX_GAS_COST_WEI=10000000000000000
+GAS_MULTIPLIER=1.2
+MAX_GAS_PRICE_MULTIPLIER=3.2
+
+# Gas Limits for Different Operations
+GAS_LIMIT_CREATE_CONTRACT=400000
+GAS_LIMIT_DEPOSIT=167000
+GAS_LIMIT_DISPUTE=31818
+GAS_LIMIT_CLAIM=94470
+GAS_LIMIT_RESOLVE=100000
+GAS_LIMIT_APPROVE_USDC=70833
+
+# Feature Flags
+AUTH_ENABLED=true
+CONTRACT_SERVICE_ENABLED=true
+EMAIL_SERVICE_ENABLED=true
+
+# ============================================================================
+# EMAIL SERVICE (Notifications)
+# ============================================================================
+# Email provider: "sendgrid" or "resend"
+EMAIL_PROVIDER=resend
+
+# SendGrid Configuration
+# NOTE: Add your actual SendGrid API key
+SENDGRID_API_KEY=CHANGE_ME
+
+# Resend Configuration
+# NOTE: Add your actual Resend API key
+RESEND_API_KEY=CHANGE_ME
+
+# Email sender configuration
+FROM_EMAIL=info@conduit-ucpi.com
+FROM_NAME=Charlie
+
+# Neynar/Farcaster Integration
+NEYNAR_ENABLED=true
+NEYNAR_EMAIL_API_KEY=
+NEYNAR_SIGNER_UUID=
+DIRECT_CAST_KEY=
+
+# ============================================================================
+# CADDY API GATEWAY (Reverse Proxy)
+# ============================================================================
+# Domain Configuration (for local docker-compose, use localhost)
+# For production deployment, change to actual domains
+APP_DOMAIN=localhost
+API_DOMAIN=api.localhost
+TEST_DOMAIN=test.localhost
+INTERNAL_DOMAIN=internal.localhost
+
+# Service Hosts (Docker Compose - using container names)
+USER_SERVICE_HOST=web3userservice
+CHAIN_SERVICE_HOST=chainservice
+CONTRACT_SERVICE_HOST=contractservice
+EMAIL_SERVICE_HOST=emailservice
+
+# Service Ports (Standard)
+USER_SERVICE_PORT=8977
+CHAIN_SERVICE_PORT=8978
+CONTRACT_SERVICE_PORT=8080
+EMAIL_SERVICE_PORT=8979
+
+# Caddy Logging
+CADDY_LOG_LEVEL=DEBUG
+
+# ============================================================================
+# DOCKER NETWORK (for docker-compose)
+# ============================================================================
+DOCKER_NETWORK=conduit-network
+
+# ============================================================================
+# NOTES
+# ============================================================================
+# 1. Never commit this .env file to version control - it contains secrets!
+# 2. Replace all "CHANGE_ME" values with actual credentials
+# 3. Keep RELAYER_PRIVATE_KEY secure - this controls blockchain transactions
+# 4. For GAS_PAYER_API_KEY: Request from gas-payer-service admin
+#    - GitHub: https://github.com/charliepank/gas-payer-service
+#    - Email: charlie@conduit-ucpi.com
+# 5. This file is configured for LOCAL docker-compose deployment
+# 6. For production deployment:
+#    - Change COOKIE_DOMAIN to your actual domain (e.g., .conduit-ucpi.com)
+#    - Change APP_DOMAIN, API_DOMAIN to your actual domains
+#    - Use external MongoDB URI instead of local container
+#    - Update service hosts to match your production naming (e.g., userservice-prod)

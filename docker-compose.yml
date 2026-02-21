@@ -1,0 +1,239 @@
+version: '3.8'
+
+services:
+  # MongoDB Database
+  mongodb:
+    image: mongo:7.0
+    container_name: conduit-mongodb
+    restart: unless-stopped
+    networks:
+      - conduit-network
+    volumes:
+      - mongodb-data:/data/db
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_ROOT_USERNAME:-admin}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD:-changeme}
+    ports:
+      - "27017:27017"
+    healthcheck:
+      test: ["CMD", "mongosh", "-u", "${MONGO_ROOT_USERNAME:-admin}", "-p", "${MONGO_ROOT_PASSWORD:-changeme}", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Web3 User Authentication Service
+  web3userservice:
+    image: ghcr.io/conduit-ucpi/web3userservice:latest
+    container_name: web3userservice
+    restart: unless-stopped
+    networks:
+      - conduit-network
+    mem_limit: 768m
+    environment:
+      - JAVA_OPTS=-Xmx537m -Xms384m
+      - COOKIE_DOMAIN=${COOKIE_DOMAIN:-localhost}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - MONGODB_URI=${MONGODB_URI}
+      - JWT_COOKIE_SECRET=${JWT_COOKIE_SECRET}
+      - FARCASTER_VERIFICATION_ENDPOINT=${FARCASTER_VERIFICATION_ENDPOINT}
+      - NEYNAR_API_KEY=${NEYNAR_API_KEY}
+      - DYNAMIC_ENVIRONMENT_ID=${DYNAMIC_ENVIRONMENT_ID:-test-env}
+      - DYNAMIC_JWKS_URL_OVERRIDE=${DYNAMIC_JWKS_URL_OVERRIDE:-}
+    ports:
+      - "8977:8977"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+
+  # Contract Management Service
+  contractservice:
+    image: ghcr.io/conduit-ucpi/contractservice:latest
+    container_name: contractservice
+    restart: unless-stopped
+    networks:
+      - conduit-network
+    mem_limit: 768m
+    environment:
+      - JAVA_OPTS=-Xmx537m -Xms384m
+      - COOKIE_DOMAIN=${COOKIE_DOMAIN:-localhost}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - USER_SERVICE_URL=http://web3userservice:8977
+      - MONGODB_URI=${MONGODB_URI}
+      - CHAIN_SERVICE_URL=http://chainservice:8978
+      - EMAIL_SERVICE_URL=http://emailservice:8979
+      - BATCH_CLAIM_SCHEDULER_ENABLED=${BATCH_CLAIM_SCHEDULER_ENABLED:-true}
+      - CONTRACT_SERVICE_API_KEY=${CONTRACT_SERVICE_API_KEY}
+    ports:
+      - "8080:8080"
+    depends_on:
+      web3userservice:
+        condition: service_started
+      mongodb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Blockchain Transaction Relay Service
+  chainservice:
+    image: ghcr.io/conduit-ucpi/chainservice:latest
+    container_name: chainservice
+    restart: unless-stopped
+    networks:
+      - conduit-network
+    mem_limit: 768m
+    environment:
+      - JAVA_OPTS=-Xmx537m -Xms384m
+      # Blockchain Configuration
+      - RPC_URL=${RPC_URL}
+      - GAS_PRICE_RPC_URL=${GAS_PRICE_RPC_URL}
+      - CHAIN_ID=${CHAIN_ID:-8453}
+      - USDC_CONTRACT_ADDRESS=${USDC_CONTRACT_ADDRESS}
+      - CONTRACT_FACTORY_ADDRESS=${CONTRACT_FACTORY_ADDRESS}
+      - ESCROW_IMPLEMENTATION_ADDRESS=${ESCROW_IMPLEMENTATION_ADDRESS}
+      # Relayer Configuration
+      - RELAYER_WALLET_ADDRESS=${RELAYER_WALLET_ADDRESS}
+      - RELAYER_PRIVATE_KEY=${RELAYER_PRIVATE_KEY}
+      - MIN_CREATOR_FEE_USDC_X_1M=${MIN_CREATOR_FEE_USDC_X_1M:-1000000}
+      # Service Integration
+      - USER_SERVICE_URL=http://web3userservice:8977
+      - CONTRACT_SERVICE_URL=http://contractservice:8080
+      - EMAIL_SERVICE_URL=http://emailservice:8979
+      - SERVICE_LINK=${SERVICE_LINK}
+      - CONTRACT_SERVICE_API_KEY=${CONTRACT_SERVICE_API_KEY}
+      # Gas Payer Configuration
+      - GAS_PAYER_SERVICE=${GAS_PAYER_SERVICE}
+      - GAS_PAYER_API_KEY=${GAS_PAYER_API_KEY}
+      # Gas Management (Optional)
+      - BLOCKCHAIN_CONNECT_TIMEOUT=${BLOCKCHAIN_CONNECT_TIMEOUT}
+      - BLOCKCHAIN_READ_TIMEOUT=${BLOCKCHAIN_READ_TIMEOUT}
+      - BLOCKCHAIN_WRITE_TIMEOUT=${BLOCKCHAIN_WRITE_TIMEOUT}
+      - PRICE_MULTIPLIER=${PRICE_MULTIPLIER}
+      - MIN_GAS_WEI=${MIN_GAS_WEI}
+      - MAX_GAS_LIMIT=${MAX_GAS_LIMIT}
+      - MAX_GAS_COST_WEI=${MAX_GAS_COST_WEI}
+      - GAS_MULTIPLIER=${GAS_MULTIPLIER}
+      - MAX_GAS_PRICE_MULTIPLIER=${MAX_GAS_PRICE_MULTIPLIER}
+      - GAS_LIMIT_CREATE_CONTRACT=${GAS_LIMIT_CREATE_CONTRACT}
+      - GAS_LIMIT_DEPOSIT=${GAS_LIMIT_DEPOSIT}
+      - GAS_LIMIT_DISPUTE=${GAS_LIMIT_DISPUTE}
+      - GAS_LIMIT_CLAIM=${GAS_LIMIT_CLAIM}
+      - GAS_LIMIT_RESOLVE=${GAS_LIMIT_RESOLVE}
+      - GAS_LIMIT_APPROVE_USDC=${GAS_LIMIT_APPROVE_USDC}
+      # Feature Flags
+      - AUTH_ENABLED=${AUTH_ENABLED:-true}
+      - CONTRACT_SERVICE_ENABLED=${CONTRACT_SERVICE_ENABLED:-true}
+      - EMAIL_SERVICE_ENABLED=${EMAIL_SERVICE_ENABLED:-true}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - SERVER_PORT=8978
+    ports:
+      - "8978:8978"
+    depends_on:
+      web3userservice:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8978/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Email Notification Service
+  emailservice:
+    image: ghcr.io/conduit-ucpi/emailservice:latest
+    container_name: emailservice
+    restart: unless-stopped
+    networks:
+      - conduit-network
+    mem_limit: 512m
+    environment:
+      - JAVA_OPTS=-Xmx358m -Xms256m
+      - COOKIE_DOMAIN=${COOKIE_DOMAIN:-localhost}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - USER_SERVICE_URL=http://web3userservice:8977
+      # Email Provider Configuration
+      - EMAIL_PROVIDER=${EMAIL_PROVIDER:-sendgrid}
+      - SENDGRID_API_KEY=${SENDGRID_API_KEY}
+      - RESEND_API_KEY=${RESEND_API_KEY}
+      - FROM_EMAIL=${FROM_EMAIL:-noreply@conduit.com}
+      - FROM_NAME=${FROM_NAME:-Conduit}
+      # Farcaster Integration (Optional)
+      - NEYNAR_ENABLED=${NEYNAR_ENABLED:-false}
+      - NEYNAR_API_KEY=${NEYNAR_EMAIL_API_KEY}
+      - NEYNAR_SIGNER_UUID=${NEYNAR_SIGNER_UUID}
+      - DIRECT_CAST_KEY=${DIRECT_CAST_KEY}
+      # Feature Flags
+      - AUTH_ENABLED=${AUTH_ENABLED:-true}
+      - SERVER_PORT=8979
+    ports:
+      - "8979:8979"
+    depends_on:
+      web3userservice:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8979/api/health/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Caddy API Gateway
+  caddy:
+    image: ghcr.io/conduit-ucpi/caddy:latest
+    container_name: conduit-caddy
+    restart: unless-stopped
+    networks:
+      - conduit-network
+    environment:
+      # Domain Configuration
+      - APP_DOMAIN=${APP_DOMAIN:-localhost}
+      - API_DOMAIN=${API_DOMAIN:-api.localhost}
+      - TEST_DOMAIN=${TEST_DOMAIN:-test.localhost}
+      - INTERNAL_DOMAIN=${INTERNAL_DOMAIN:-internal.localhost}
+      # Service Hosts and Ports
+      - USER_SERVICE_HOST=${USER_SERVICE_HOST:-web3userservice}
+      - USER_SERVICE_PORT=${USER_SERVICE_PORT:-8977}
+      - CHAIN_SERVICE_HOST=${CHAIN_SERVICE_HOST:-chainservice}
+      - CHAIN_SERVICE_PORT=${CHAIN_SERVICE_PORT:-8978}
+      - CONTRACT_SERVICE_HOST=${CONTRACT_SERVICE_HOST:-contractservice}
+      - CONTRACT_SERVICE_PORT=${CONTRACT_SERVICE_PORT:-8080}
+      - EMAIL_SERVICE_HOST=${EMAIL_SERVICE_HOST:-emailservice}
+      - EMAIL_SERVICE_PORT=${EMAIL_SERVICE_PORT:-8979}
+      # Logging
+      - LOG_LEVEL=${CADDY_LOG_LEVEL:-DEBUG}
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      web3userservice:
+        condition: service_started
+      contractservice:
+        condition: service_started
+      chainservice:
+        condition: service_started
+      emailservice:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "caddy", "version"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    volumes:
+      - ./caddy/Caddyfile.local:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+networks:
+  conduit-network:
+    driver: bridge
+
+volumes:
+  mongodb-data:
+    driver: local
+  caddy-data:
+    driver: local
+  caddy-config:
+    driver: local

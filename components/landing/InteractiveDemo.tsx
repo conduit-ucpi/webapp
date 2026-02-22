@@ -1,6 +1,6 @@
 'use client';
-import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { motion, useInView } from 'framer-motion';
 import Button from '@/components/ui/Button';
 
 interface DemoStep {
@@ -15,8 +15,8 @@ const DemoCard = ({ children, isActive }: { children: React.ReactNode; isActive:
   <div
     className={`relative p-6 rounded-lg border-2 transition-all duration-300 ${
       isActive
-        ? 'border-primary-500 bg-primary-50 shadow-lg'
-        : 'border-secondary-200 bg-white hover:border-secondary-300'
+        ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 shadow-lg'
+        : 'border-secondary-200 dark:border-secondary-700 bg-white dark:bg-secondary-800 hover:border-secondary-300 dark:hover:border-secondary-600'
     }`}
   >
     {children}
@@ -44,6 +44,9 @@ const CheckIcon = ({ className = "w-6 h-6" }) => (
 export default function InteractiveDemo() {
   const [activeStep, setActiveStep] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [hasAutoPlayed, setHasAutoPlayed] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const isInView = useInView(containerRef, { once: true, margin: '-100px' });
 
   const steps: DemoStep[] = [
     {
@@ -164,25 +167,32 @@ export default function InteractiveDemo() {
     }
   ];
 
-  const playDemo = async () => {
+  const playDemo = useCallback(async () => {
     setIsPlaying(true);
     setActiveStep(0);
-    
+
     for (let i = 0; i < steps.length; i++) {
       setActiveStep(i);
       await new Promise(resolve => setTimeout(resolve, 2000));
     }
-    
+
     setIsPlaying(false);
-  };
+  }, [steps.length]);
+
+  useEffect(() => {
+    if (isInView && !hasAutoPlayed && !isPlaying) {
+      setHasAutoPlayed(true);
+      playDemo();
+    }
+  }, [isInView, hasAutoPlayed, isPlaying, playDemo]);
 
   return (
-    <div className="bg-secondary-50 rounded-2xl p-8 lg:p-12">
+    <div ref={containerRef} className="bg-secondary-50 dark:bg-secondary-800 rounded-2xl p-8 lg:p-12">
       <div className="text-center mb-8">
-        <h2 className="text-3xl lg:text-4xl font-bold text-secondary-900 mb-4">
-          See How It Works
+        <h2 className="text-3xl lg:text-4xl font-bold text-secondary-900 dark:text-white mb-4">
+          Watch a Transaction in 30 Seconds
         </h2>
-        <p className="text-lg text-secondary-600 max-w-2xl mx-auto mb-6">
+        <p className="text-lg text-secondary-600 dark:text-secondary-400 max-w-2xl mx-auto mb-6">
           Follow Sarah and John through a real transaction to see how secure payments work
         </p>
         <Button
@@ -213,8 +223,8 @@ export default function InteractiveDemo() {
                   {activeStep > index ? <CheckIcon className="w-4 h-4" /> : step.id}
                 </motion.div>
                 <div className="flex-1">
-                  <h3 className="font-semibold text-secondary-900 mb-2">{step.title}</h3>
-                  <p className="text-sm text-secondary-600 mb-4">{step.description}</p>
+                  <h3 className="font-semibold text-secondary-900 dark:text-white mb-2">{step.title}</h3>
+                  <p className="text-sm text-secondary-600 dark:text-secondary-400 mb-4">{step.description}</p>
                   <div>
                     {step.visual}
                   </div>
@@ -226,10 +236,10 @@ export default function InteractiveDemo() {
       </div>
 
       <div className="mt-8 text-center">
-        <p className="text-sm text-secondary-600 mb-4">
+        <p className="text-sm text-secondary-600 dark:text-secondary-400 mb-4">
           Want to try it yourself? Create a test payment with just $0.001
         </p>
-        <Button variant="outline" className="border-primary-500 text-primary-600 hover:bg-primary-500 hover:text-white">
+        <Button variant="outline" className="border-primary-500 text-primary-600 dark:text-primary-400 hover:bg-primary-500 hover:text-white">
           Start Free Test
         </Button>
       </div>

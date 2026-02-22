@@ -8,6 +8,7 @@ interface ConnectWalletEmbeddedProps {
   useSmartRouting?: boolean;
   showTwoOptionLayout?: boolean;
   className?: string;
+  buttonClassName?: string;
   compact?: boolean;
   onSuccess?: () => void;
   autoConnect?: boolean;
@@ -19,6 +20,7 @@ export default function ConnectWalletEmbedded({
   useSmartRouting = true,
   showTwoOptionLayout = false,
   className = "",
+  buttonClassName,
   compact = false,
   onSuccess,
   autoConnect = false,
@@ -262,13 +264,23 @@ export default function ConnectWalletEmbedded({
 
   return (
     <div className={containerClass}>
-      <Button
-        onClick={handleConnect}
-        className="bg-primary-500 hover:bg-primary-600 text-white px-6 py-2 rounded-lg"
-        disabled={isBusy || !connect}
-      >
-        {isBusy ? 'Connecting...' : buttonText}
-      </Button>
+      {buttonClassName ? (
+        <button
+          onClick={handleConnect}
+          className={buttonClassName}
+          disabled={isBusy || !connect}
+        >
+          {isBusy ? 'Connecting...' : buttonText}
+        </button>
+      ) : (
+        <Button
+          onClick={handleConnect}
+          className="bg-primary-500 hover:bg-primary-600 text-white px-6 py-2 rounded-lg"
+          disabled={isBusy || !connect}
+        >
+          {isBusy ? 'Connecting...' : buttonText}
+        </Button>
+      )}
       {!compact && (
         <p className="mt-2 text-sm text-secondary-600 dark:text-secondary-400">
           Sign up with email or use your existing wallet

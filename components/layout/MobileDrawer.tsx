@@ -17,6 +17,7 @@ import {
   ArrowLeftOnRectangleIcon,
   Cog6ToothIcon,
   CalculatorIcon,
+  PlayCircleIcon,
 } from '@heroicons/react/24/outline';
 import { useAuth } from '@/components/auth';
 import { useConfig } from '@/components/auth/ConfigProvider';
@@ -82,6 +83,11 @@ export default function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
     {
       title: 'Resources',
       items: [
+        {
+          href: '/how-it-works',
+          label: 'How It Works',
+          icon: PlayCircleIcon,
+        },
         {
           href: '/merchant-savings-calculator',
           label: 'Savings Calculator',
@@ -200,17 +206,17 @@ export default function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
           <div className="fixed inset-0 bg-black/30 backdrop-blur-sm" />
         </Transition.Child>
 
-        <div className="fixed inset-0 flex">
+        <div className="fixed inset-0 flex justify-end">
           <Transition.Child
             as={Fragment}
             enter="transform transition ease-in-out duration-300"
-            enterFrom="-translate-x-full"
+            enterFrom="translate-x-full"
             enterTo="translate-x-0"
             leave="transform transition ease-in-out duration-300"
             leaveFrom="translate-x-0"
-            leaveTo="-translate-x-full"
+            leaveTo="translate-x-full"
           >
-            <Dialog.Panel className="relative mr-auto flex h-full w-full max-w-xs flex-col bg-white dark:bg-secondary-900 shadow-xl">
+            <Dialog.Panel className="relative ml-auto flex h-full w-full max-w-xs flex-col bg-white dark:bg-secondary-900 shadow-xl">
               {/* Header */}
               <div className="flex items-center justify-between px-4 py-4 border-b border-secondary-200 dark:border-secondary-700">
                 <div>

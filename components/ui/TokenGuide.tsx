@@ -4,7 +4,11 @@ import { useConfig } from '@/components/auth/ConfigProvider';
 import { useWalletAddress } from '@/hooks/useWalletAddress';
 import { getChainName } from '@/utils/chainNames';
 
-export default function TokenGuide() {
+interface TokenGuideProps {
+  currency?: string;
+}
+
+export default function TokenGuide({ currency }: TokenGuideProps) {
   const { user } = useAuth();
   const { config } = useConfig();
   const { walletAddress } = useWalletAddress();
@@ -16,7 +20,7 @@ export default function TokenGuide() {
     return getChainName(config.chainId);
   };
 
-  const tokenSymbol = config.tokenSymbol || 'USDC';
+  const tokenSymbol = currency || config.tokenSymbol || 'USDC';
 
   const copyToClipboard = async () => {
     if (!walletAddress) return;
@@ -97,7 +101,7 @@ export default function TokenGuide() {
             <ul className="mt-2 ml-4 space-y-1 break-words">
               <li>• <strong>MetaMask/Coinbase:</strong> Transfer {tokenSymbol} to/from another wallet</li>
               <li>• <strong>Major Exchanges:</strong>{' '}
-                <a href="https://www.coinbase.com/price/usdc" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-500 underline mx-1">Coinbase</a>,{' '}
+                <a href={`https://www.coinbase.com/price/${tokenSymbol.toLowerCase()}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-500 underline mx-1">Coinbase</a>,{' '}
                 <a href="https://www.binance.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-500 underline mx-1">Binance</a>,{' '}
                 <a href="https://www.kraken.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-500 underline mx-1">Kraken</a>,{' '}
                 <a href="https://crypto.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-500 underline mx-1">Crypto.com</a>,{' '}

@@ -897,7 +897,7 @@ export default function ContractCreate() {
                       💡 How to add {selectedTokenSymbol} to your wallet
                     </summary>
                     <div className="p-3 pt-0">
-                      <TokenGuide />
+                      <TokenGuide currency={selectedTokenSymbol} />
                     </div>
                   </details>
                 </div>
@@ -1051,7 +1051,7 @@ export default function ContractCreate() {
                     💡 How to add {selectedTokenSymbol} to your wallet
                   </summary>
                   <div className="p-3 pt-0">
-                    <TokenGuide />
+                    <TokenGuide currency={selectedTokenSymbol} />
                   </div>
                 </details>
               </div>

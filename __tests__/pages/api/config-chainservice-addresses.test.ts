@@ -7,7 +7,7 @@
 
 import { createMocks } from 'node-mocks-http';
 import { NextApiRequest, NextApiResponse } from 'next';
-import handler from '@/pages/api/config';
+import handler, { clearConfigCache } from '@/pages/api/config';
 
 // Mock fetch globally
 global.fetch = jest.fn();
@@ -17,6 +17,7 @@ describe('/api/config - chainservice contract addresses integration', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    clearConfigCache();
     // Reset environment
     process.env = {
       ...originalEnv,

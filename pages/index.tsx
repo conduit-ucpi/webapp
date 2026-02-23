@@ -1,11 +1,22 @@
 import Link from 'next/link';
+import Image from 'next/image';
+import dynamic from 'next/dynamic';
 import { useAuth } from '@/components/auth';
 import ConnectWalletEmbedded from '@/components/auth/ConnectWalletEmbedded';
 import Button from '@/components/ui/Button';
-import InteractiveDemo from '@/components/landing/InteractiveDemo';
 import SEO from '@/components/SEO';
 import { GetStaticProps } from 'next';
 import { getSiteNameFromDomain } from '@/utils/siteName';
+
+const InteractiveDemo = dynamic(
+  () => import('@/components/landing/InteractiveDemo'),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-96 bg-secondary-50 dark:bg-secondary-800 rounded-2xl animate-pulse" />
+    ),
+  }
+);
 
 export default function Home() {
   let user = null;
@@ -258,12 +269,13 @@ export default function Home() {
             )}
           </div>
           <div className="hidden lg:block">
-            <img
+            <Image
               src="/payment_gateway.png"
               alt="Secure blockchain escrow payment gateway for cryptocurrency transactions with buyer protection"
               className="w-full h-auto max-w-lg mx-auto"
-              width="500"
-              height="500"
+              width={500}
+              height={500}
+              priority
             />
           </div>
         </div>

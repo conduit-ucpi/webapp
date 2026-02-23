@@ -57,42 +57,41 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
 
     const initializeAuth = async () => {
       try {
-        await authManager.initialize(config);
+        // Fire auth manager init and session check in parallel
+        const [, sessionResponse] = await Promise.all([
+          authManager.initialize(config),
+          fetch('/api/auth/siwe/session').catch(() => null)
+        ]);
 
-        if (isMounted) {
-          // Check for existing SIWE session on startup
+        if (isMounted && sessionResponse?.ok) {
           try {
-            const sessionResponse = await fetch('/api/auth/siwe/session');
+            const sessionData = await sessionResponse.json();
 
-            if (sessionResponse.ok) {
-              const sessionData = await sessionResponse.json();
+            if (sessionData.address) {
+              mLog.info('AuthProvider', 'Found existing SIWE session on startup', {
+                address: sessionData.address
+              });
 
-              if (sessionData.address) {
-                mLog.info('AuthProvider', 'Found existing SIWE session on startup', {
+              // Fetch full user data from backend
+              const backendStatus = await authService.checkAuthentication();
+
+              if (backendStatus.success && backendStatus.user) {
+                setUser(backendStatus.user);
+                authManager.setState({
+                  isAuthenticated: true,
+                  isConnected: true,
                   address: sessionData.address
                 });
-
-                // Fetch full user data from backend
-                const backendStatus = await authService.checkAuthentication();
-
-                if (backendStatus.success && backendStatus.user) {
-                  setUser(backendStatus.user);
-                  authManager.setState({
-                    isAuthenticated: true,
-                    isConnected: true,
-                    address: sessionData.address
-                  });
-                  mLog.info('AuthProvider', '✅ Session restored from SIWE cookie');
-                }
+                mLog.info('AuthProvider', '✅ Session restored from SIWE cookie');
               }
-            } else {
-              mLog.debug('AuthProvider', 'No existing SIWE session found on startup');
             }
           } catch (sessionError) {
             mLog.debug('AuthProvider', 'Error checking SIWE session on startup:', {
               error: sessionError instanceof Error ? sessionError.message : String(sessionError)
             });
           }
+        } else if (isMounted) {
+          mLog.debug('AuthProvider', 'No existing SIWE session found on startup');
         }
       } catch (error) {
         console.error('🔧 AuthProvider: Initialization failed:', error);

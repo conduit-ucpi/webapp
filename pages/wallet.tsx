@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/components/auth';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { useSimpleEthers } from '@/hooks/useSimpleEthers';
@@ -11,14 +11,13 @@ import TokenGuide from '@/components/ui/TokenGuide';
 import { ethers } from 'ethers';
 import { useFarcaster } from '@/components/farcaster/FarcasterDetectionProvider';
 import { useWalletAddress } from '@/hooks/useWalletAddress';
-import { TransferUSDCRequest } from '@/types';
 import { ensureHexPrefix } from '@/utils/hexUtils';
 import { formatGweiAsEthForLogging } from '@/utils/logging';
 import { mLog } from '@/utils/mobileLogger';
 
 interface WalletBalances {
   native: string;
-  usdc: string;
+  tokens: Record<string, string>; // keyed by token symbol
 }
 
 interface ChainInfo {
@@ -32,22 +31,23 @@ interface ChainInfo {
 interface SendFormData {
   recipient: string;
   amount: string;
-  currency: 'NATIVE' | 'USDC';
+  currency: string; // 'NATIVE' or token symbol
 }
 
 export default function Wallet() {
   const { user, state, isLoading: authLoading, getEthersProvider, showWalletUI } = useAuth();
-  const { fundAndSendTransaction, getUSDCBalance, getNativeBalance, getUserAddress } = useSimpleEthers();
+  const { fundAndSendTransaction, getNativeBalance, getTokenBalance, getUserAddress } = useSimpleEthers();
   const { isInFarcaster } = useFarcaster();
   const { config } = useConfig();
   const { walletAddress, isLoading: isWalletAddressLoading } = useWalletAddress();
   // Using ethers directly instead of SDK
-  const [balances, setBalances] = useState<WalletBalances>({ native: '0.0000', usdc: '0.0000' });
+  const [balances, setBalances] = useState<WalletBalances>({ native: '0.0000', tokens: {} });
   const [isLoadingBalances, setIsLoadingBalances] = useState(false);
+  const defaultTokenSymbol = config?.defaultToken?.symbol || config?.defaultTokenSymbol || 'USDC';
   const [sendForm, setSendForm] = useState<SendFormData>({
     recipient: '',
     amount: '',
-    currency: 'USDC'
+    currency: defaultTokenSymbol
   });
   const [isSending, setIsSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
@@ -150,24 +150,39 @@ export default function Wallet() {
     try {
       console.log('🔧 Wallet: Loading balances via READ-ONLY RPC (no wallet access!)');
 
-      // Pass wallet address explicitly - NO wallet access needed for balance reading!
-      const [nativeBalance, usdcBalance] = await Promise.all([
+      // Fetch native balance + all supported token balances in parallel
+      const supportedTokens = config.supportedTokens || [];
+      const tokenBalancePromises = supportedTokens.map(token =>
+        getTokenBalance(walletAddress, token.address)
+          .then(balance => ({ symbol: token.symbol, balance }))
+          .catch(err => {
+            console.error(`Failed to fetch ${token.symbol} balance:`, err);
+            return { symbol: token.symbol, balance: 'Error' };
+          })
+      );
+
+      const [nativeBalance, ...tokenResults] = await Promise.all([
         getNativeBalance(walletAddress),
-        getUSDCBalance(walletAddress)
+        ...tokenBalancePromises
       ]);
+
+      const tokenBalances: Record<string, string> = {};
+      for (const result of tokenResults) {
+        tokenBalances[result.symbol] = result.balance;
+      }
 
       mLog.info('WalletPage', '✅ Balances loaded successfully (no wallet interaction)', {
         native: nativeBalance,
-        usdc: usdcBalance
+        tokens: tokenBalances
       });
       console.log('✅ Balances loaded via READ-ONLY RPC:', {
         native: nativeBalance,
-        usdc: usdcBalance
+        tokens: tokenBalances
       });
 
       setBalances({
         native: nativeBalance,
-        usdc: usdcBalance
+        tokens: tokenBalances
       });
     } catch (error) {
       mLog.error('WalletPage', '❌ Error loading balances', {
@@ -176,12 +191,12 @@ export default function Wallet() {
         errorType: error ? error.constructor.name : 'unknown'
       });
       console.error('Error loading balances:', error);
-      setBalances({ native: 'Error', usdc: 'Error' });
+      setBalances({ native: 'Error', tokens: {} });
     } finally {
       setIsLoadingBalances(false);
       mLog.info('WalletPage', 'Balance loading complete');
     }
-  }, [user, config, walletAddress, getNativeBalance, getUSDCBalance]);
+  }, [user, config, walletAddress, getNativeBalance, getTokenBalance]);
 
   useEffect(() => {
     // Load balances when user is authenticated AND wallet is connected
@@ -260,34 +275,35 @@ export default function Wallet() {
         });
         setSendSuccess(`Native token sent successfully! Transaction: ${txHash}`);
       } else {
-        // Send USDC via fundAndSendTransaction
+        // Send ERC20 token via fundAndSendTransaction
+        const token = config?.supportedTokens?.find(t => t.symbol === sendForm.currency);
+        if (!token) {
+          throw new Error(`Token ${sendForm.currency} not found in config`);
+        }
 
-        // Create USDC transfer transaction data
-        const usdcContract = new ethers.Contract(
-          config?.usdcContractAddress || '',
+        // Encode ERC20 transfer function call
+        const tokenContract = new ethers.Contract(
+          token.address,
           ['function transfer(address to, uint256 amount) returns (bool)']
         );
 
-        // Convert amount to microUSDC (6 decimals)
-        const amountInMicroUSDC = ethers.parseUnits(sendForm.amount, 6);
+        const amountInSmallestUnit = ethers.parseUnits(sendForm.amount, token.decimals);
 
-        // Encode the transfer function call
-        const txData = usdcContract.interface.encodeFunctionData('transfer', [
+        const txData = tokenContract.interface.encodeFunctionData('transfer', [
           sendForm.recipient,
-          amountInMicroUSDC
+          amountInSmallestUnit
         ]);
 
-        // Use fundAndSendTransaction to handle funding and sending in one step
         const txHash = await fundAndSendTransaction({
-          to: config?.usdcContractAddress || '',
+          to: token.address,
           data: txData
         });
 
-        setSendSuccess(`USDC sent successfully! Transaction: ${txHash}`);
+        setSendSuccess(`${token.symbol} sent successfully! Transaction: ${txHash}`);
       }
 
       // Reset form and reload balances
-      setSendForm({ recipient: '', amount: '', currency: 'USDC' });
+      setSendForm({ recipient: '', amount: '', currency: defaultTokenSymbol });
       setTimeout(loadBalances, 2000); // Reload after 2 seconds
     } catch (error: any) {
       console.error('Send error:', error);
@@ -306,9 +322,11 @@ export default function Wallet() {
     }
   };
 
-  const isValidAmount = (amount: string, currency: 'NATIVE' | 'USDC') => {
+  const isValidAmount = (amount: string, currency: string) => {
     const num = parseFloat(amount);
-    const maxBalance = currency === 'NATIVE' ? parseFloat(balances.native) : parseFloat(balances.usdc);
+    const maxBalance = currency === 'NATIVE'
+      ? parseFloat(balances.native)
+      : parseFloat(balances.tokens[currency] || '0');
     return !isNaN(num) && num > 0 && num <= maxBalance;
   };
 
@@ -403,43 +421,47 @@ export default function Wallet() {
 
           {/* Balances */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-gradient-to-r from-red-50 to-red-100 rounded-lg p-4">
+            {/* Native Token Balance */}
+            <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-red-800">Native Token Balance</p>
+                  <p className="text-sm font-medium text-gray-800">Native Token Balance</p>
                   <div className="flex items-center">
                     {isLoadingBalances ? (
-                      <div className="w-16 h-6 bg-red-200 animate-pulse rounded" />
+                      <div className="w-16 h-6 bg-gray-200 animate-pulse rounded" />
                     ) : (
-                      <p className="text-2xl font-bold text-red-900">{balances.native}</p>
+                      <p className="text-2xl font-bold text-gray-900">{balances.native}</p>
                     )}
-                    <span className="ml-2 text-sm text-red-700">{chainInfo?.name ? chainInfo.name.split(' ')[0] : 'Native'}</span>
+                    <span className="ml-2 text-sm text-gray-700">{chainInfo?.name ? chainInfo.name.split(' ')[0] : 'Native'}</span>
                   </div>
                 </div>
-                <div className="w-10 h-10 bg-red-200 rounded-full flex items-center justify-center">
-                  <span className="text-red-800 font-bold text-sm">N</span>
+                <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
+                  <span className="text-gray-800 font-bold text-sm">N</span>
                 </div>
               </div>
             </div>
 
-            <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-blue-800">USDC Balance</p>
-                  <div className="flex items-center">
-                    {isLoadingBalances ? (
-                      <div className="w-16 h-6 bg-blue-200 animate-pulse rounded" />
-                    ) : (
-                      <p className="text-2xl font-bold text-blue-900">{balances.usdc}</p>
-                    )}
-                    <span className="ml-2 text-sm text-blue-700">USDC</span>
+            {/* Supported Token Balances */}
+            {(config?.supportedTokens || []).map((token) => (
+              <div key={token.symbol} className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-blue-800">{token.name} Balance</p>
+                    <div className="flex items-center">
+                      {isLoadingBalances ? (
+                        <div className="w-16 h-6 bg-blue-200 animate-pulse rounded" />
+                      ) : (
+                        <p className="text-2xl font-bold text-blue-900">{balances.tokens[token.symbol] || '0.0000'}</p>
+                      )}
+                      <span className="ml-2 text-sm text-blue-700">{token.symbol}</span>
+                    </div>
+                  </div>
+                  <div className="w-10 h-10 bg-blue-200 rounded-full flex items-center justify-center">
+                    <span className="text-blue-800 font-bold text-sm">{token.symbol.charAt(0)}</span>
                   </div>
                 </div>
-                <div className="w-10 h-10 bg-blue-200 rounded-full flex items-center justify-center">
-                  <span className="text-blue-800 font-bold text-sm">$</span>
-                </div>
               </div>
-            </div>
+            ))}
           </div>
         </div>
 
@@ -457,29 +479,31 @@ export default function Wallet() {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Currency
               </label>
-              <div className="flex space-x-4">
+              <div className="flex flex-wrap gap-4">
                 <label className="flex items-center">
                   <input
                     type="radio"
                     name="currency"
                     value="NATIVE"
                     checked={sendForm.currency === 'NATIVE'}
-                    onChange={(e) => setSendForm(prev => ({ ...prev, currency: e.target.value as 'NATIVE' | 'USDC' }))}
+                    onChange={(e) => setSendForm(prev => ({ ...prev, currency: e.target.value }))}
                     className="mr-2"
                   />
                   Native
                 </label>
-                <label className="flex items-center">
-                  <input
-                    type="radio"
-                    name="currency"
-                    value="USDC"
-                    checked={sendForm.currency === 'USDC'}
-                    onChange={(e) => setSendForm(prev => ({ ...prev, currency: e.target.value as 'NATIVE' | 'USDC' }))}
-                    className="mr-2"
-                  />
-                  USDC
-                </label>
+                {(config?.supportedTokens || []).map((token) => (
+                  <label key={token.symbol} className="flex items-center">
+                    <input
+                      type="radio"
+                      name="currency"
+                      value={token.symbol}
+                      checked={sendForm.currency === token.symbol}
+                      onChange={(e) => setSendForm(prev => ({ ...prev, currency: e.target.value }))}
+                      className="mr-2"
+                    />
+                    {token.symbol}
+                  </label>
+                ))}
               </div>
             </div>
 
@@ -524,7 +548,7 @@ export default function Wallet() {
                 </p>
               )}
               <p className="text-sm text-gray-500 mt-1">
-                Available: {sendForm.currency === 'NATIVE' ? balances.native : balances.usdc} {sendForm.currency === 'NATIVE' ? 'Native' : 'USDC'}
+                Available: {sendForm.currency === 'NATIVE' ? balances.native : (balances.tokens[sendForm.currency] || '0.0000')} {sendForm.currency === 'NATIVE' ? 'Native' : sendForm.currency}
               </p>
             </div>
 

@@ -104,7 +104,7 @@ export default function TokenGuide({ currency }: TokenGuideProps) {
             <ul className="mt-2 ml-4 space-y-1 break-words">
               <li>• <strong>MetaMask/Coinbase:</strong> Transfer {tokenSymbol} to/from another wallet</li>
               <li>• <strong>Major Exchanges:</strong>{' '}
-                <a href={currency ? `https://www.coinbase.com/price/${currency.toLowerCase()}` : 'https://www.coinbase.com'} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-500 underline mx-1">Coinbase</a>,{' '}
+                <a href={`https://www.coinbase.com/price/${(currency || config.defaultToken?.symbol || config.defaultTokenSymbol || 'usdc').toLowerCase()}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-500 underline mx-1">Coinbase</a>,{' '}
                 <a href="https://www.binance.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-500 underline mx-1">Binance</a>,{' '}
                 <a href="https://www.kraken.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-500 underline mx-1">Kraken</a>,{' '}
                 <a href="https://crypto.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-500 underline mx-1">Crypto.com</a>,{' '}

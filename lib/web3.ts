@@ -565,6 +565,29 @@ export class Web3Service {
     return formattedBalance;
   }
 
+  async getTokenBalance(userAddress: string, tokenAddress: string): Promise<string> {
+    if (!this.readProvider) {
+      throw new Error('Read provider not initialized');
+    }
+
+    console.log('getTokenBalance - checking for address:', userAddress);
+    console.log('getTokenBalance - Token contract:', tokenAddress);
+
+    const tokenContract = new ethers.Contract(
+      tokenAddress,
+      ERC20_ABI,
+      this.readProvider
+    );
+
+    const balance = await tokenContract.balanceOf(userAddress);
+    const decimals = await tokenContract.decimals();
+
+    const formattedBalance = ethers.formatUnits(balance, decimals);
+    console.log(`getTokenBalance - ${tokenAddress}: ${formattedBalance}`);
+
+    return formattedBalance;
+  }
+
   async getNativeBalance(userAddress: string): Promise<string> {
     if (!this.readProvider) {
       throw new Error('Read provider not initialized');

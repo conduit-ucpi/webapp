@@ -85,6 +85,19 @@ export function useSimpleEthers() {
       return await web3Service.getUSDCBalance(userAddress);
     }, [config]),
 
+    getTokenBalance: useCallback(async (userAddress: string, tokenAddress: string) => {
+      console.log('🔧 useSimpleEthers: getTokenBalance via READ-ONLY RPC (no wallet access)');
+
+      if (!config) {
+        throw new Error('Config not available');
+      }
+
+      const { Web3Service } = await import('@/lib/web3');
+      const web3Service = Web3Service.getInstance(config);
+
+      return await web3Service.getTokenBalance(userAddress, tokenAddress);
+    }, [config]),
+
     getNativeBalance: useCallback(async (userAddress: string) => {
       console.log('🔧 useSimpleEthers: getNativeBalance via READ-ONLY RPC (no wallet access)');
 

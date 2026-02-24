@@ -121,35 +121,56 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
   // Fetch user data when wallet reconnects after a disconnect (e.g. account switch).
   // The init effect only runs once (singleton deps), so this effect reacts to
   // state.isConnected / state.address changes and checks for a SIWE session.
+  // For embedded wallets, SIWX auto-signing runs in parallel with the connect()
+  // call, so the backend session may not exist yet when this effect first fires.
+  // We retry a few times to allow the SIWX verification to complete.
   useEffect(() => {
     if (!state.isConnected || !state.address || user) return;
 
     let cancelled = false;
 
     const fetchUserForNewConnection = async () => {
-      try {
-        const sessionResponse = await fetch('/api/auth/siwe/session');
-        if (!sessionResponse.ok) return;
+      const maxAttempts = 5;
+      const delayMs = 1000;
 
-        const sessionData = await sessionResponse.json();
-        if (!sessionData.address || cancelled) return;
-
-        const backendStatus = await authService.checkAuthentication();
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
         if (cancelled) return;
 
-        if (backendStatus.success && backendStatus.user) {
-          setUser(backendStatus.user);
-          authManager.setState({
-            isAuthenticated: true,
-            isConnected: true,
-            address: sessionData.address,
+        try {
+          const sessionResponse = await fetch('/api/auth/siwe/session');
+          if (sessionResponse.ok) {
+            const sessionData = await sessionResponse.json();
+
+            if (sessionData.address && !cancelled) {
+              const backendStatus = await authService.checkAuthentication();
+              if (cancelled) return;
+
+              if (backendStatus.success && backendStatus.user) {
+                setUser(backendStatus.user);
+                authManager.setState({
+                  isAuthenticated: true,
+                  isConnected: true,
+                  address: sessionData.address,
+                });
+                mLog.info('AuthProvider', '✅ User data fetched after reconnect', {
+                  attempt,
+                  address: sessionData.address,
+                });
+                return;
+              }
+            }
+          }
+        } catch (error) {
+          mLog.debug('AuthProvider', 'Error fetching user data after reconnect', {
+            attempt,
+            error: error instanceof Error ? error.message : String(error),
           });
-          mLog.info('AuthProvider', '✅ User data fetched after reconnect');
         }
-      } catch (error) {
-        mLog.debug('AuthProvider', 'Error fetching user data after reconnect', {
-          error: error instanceof Error ? error.message : String(error),
-        });
+
+        // Wait before retrying (SIWX auto-sign may still be in progress)
+        if (attempt < maxAttempts && !cancelled) {
+          await new Promise(resolve => setTimeout(resolve, delayMs));
+        }
       }
     };
 

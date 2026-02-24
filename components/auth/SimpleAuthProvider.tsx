@@ -59,14 +59,11 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
   const [isLoadingUserData, setIsLoadingUserData] = useState(false);
   const [backendUserData, setBackendUserData] = useState<any>(null);
 
-  // Keep backend user data in sync with newAuth.user when it changes externally
+  // Keep backend user data in sync with newAuth.user when it changes externally.
+  // Must handle: initial set, account switch (A→B), and disconnect (→null).
   React.useEffect(() => {
-    if (newAuth.user && !backendUserData) {
-      setBackendUserData(newAuth.user);
-    } else if (!newAuth.user && backendUserData) {
-      setBackendUserData(null);
-    }
-  }, [newAuth.user, backendUserData]);
+    setBackendUserData(newAuth.user);
+  }, [newAuth.user]);
 
   // Helper: Fetch with auto-authentication on 401
   // This is used by both authenticatedFetch and refreshUserData
@@ -163,7 +160,7 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
   const authValue = React.useMemo(() => ({
     // Simple user data from state - no getter complexity needed
     user: backendUserData,
-    isLoading: newAuth.isLoading,
+    isLoading: newAuth.isLoading || (newAuth.isConnected && !backendUserData),
     isLoadingUserData, // Explicit loading state for backend user data
     isConnected: newAuth.isConnected,
     isAuthenticated: newAuth.isAuthenticated,

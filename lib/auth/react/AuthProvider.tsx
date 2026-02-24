@@ -292,6 +292,12 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
 
   const disconnect = useCallback(async (): Promise<void> => {
     try {
+      // Clear cached SIWX session from sessionStorage FIRST
+      // This prevents stale session data from being picked up on re-login
+      if (typeof window !== 'undefined' && window.sessionStorage) {
+        sessionStorage.removeItem('conduit_siwx_session');
+      }
+
       // Sign out from SIWE session (clears AUTH-TOKEN cookie)
       await fetch('/api/auth/siwe/signout', { method: 'POST' });
 

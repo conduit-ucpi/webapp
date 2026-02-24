@@ -2,15 +2,13 @@
  * Regression Tests: Account switching (disconnect Account A, login Account B)
  *
  * Bug 1: SimpleAuthProvider's backendUserData was never cleared on disconnect.
- * Fix: Sync effect now always keeps backendUserData in sync with newAuth.user.
+ * Fix: Sync effect now clears backendUserData when newAuth.user becomes null.
  *
  * Bug 2: After Account B connects (SIWX creates backend session), nobody fetches
- * Account B's user data. The init effect only runs once (singleton deps).
- * Fix: AuthProvider watches state.isConnected + state.address and fetches user data.
- *
- * Bug 3: isLoading went false as soon as wallet connected, before SIWE completed
- * and user data was fetched. Pages rendered with no user data.
- * Fix: isLoading stays true while connected but user data hasn't arrived yet.
+ * Account B's user data. The init effect only runs once (singleton deps). After
+ * disconnect + reconnect without page reload, user data is never populated.
+ * Fix: AuthProvider watches for state.isConnected + state.address changes and
+ * fetches user data when connected with a SIWE session but no user loaded.
  */
 
 import React from 'react';
@@ -124,16 +122,10 @@ let capturedDisconnect: (() => Promise<void>) | null = null;
 let capturedUpdateUserData: ((user: any) => void) | null = null;
 
 function TestConsumer() {
-  const { disconnect, user, updateUserData, isLoading, isConnected } = useAuth();
+  const { disconnect, user, updateUserData } = useAuth();
   capturedDisconnect = disconnect;
   capturedUpdateUserData = updateUserData;
-  return (
-    <>
-      <div data-testid="user">{user ? user.walletAddress : 'none'}</div>
-      <div data-testid="loading">{isLoading ? 'true' : 'false'}</div>
-      <div data-testid="connected">{isConnected ? 'true' : 'false'}</div>
-    </>
-  );
+  return <div data-testid="user">{user ? user.walletAddress : 'none'}</div>;
 }
 
 describe('Account switching: disconnect A, login B', () => {
@@ -195,7 +187,10 @@ describe('Account switching: disconnect A, login B', () => {
     });
     expect(screen.getByTestId('user').textContent).toBe('none');
 
-    // Account B connects — SIWX auto-signs and creates backend session
+    // Account B connects — SIWX auto-signs and creates backend session.
+    // Simulate: state changes to connected with Account B's address,
+    // and /api/auth/siwe/session returns Account B's session,
+    // and authService.checkAuthentication returns Account B's user data.
     mockFetch.mockImplementation(async (url: string) => {
       if (typeof url === 'string' && url.includes('/api/auth/siwe/session')) {
         return { ok: true, json: async () => ({ address: '0xAccountB' }) };
@@ -217,37 +212,12 @@ describe('Account switching: disconnect A, login B', () => {
       });
     });
 
+    // CRITICAL ASSERTION:
+    // AuthProvider should react to the new connected state, check the SIWE
+    // session, fetch Account B's user data, and call setUser().
+    // This requires an effect that watches state.isConnected/state.address.
     await waitFor(() => {
       expect(screen.getByTestId('user').textContent).toBe('0xAccountB');
     }, { timeout: 3000 });
-  });
-
-  it('isLoading must stay true while connected but user data has not arrived', async () => {
-    await act(async () => {
-      render(
-        <SimpleAuthProvider>
-          <TestConsumer />
-        </SimpleAuthProvider>
-      );
-    });
-
-    // Initially: not connected, not loading (auth init already finished via mock)
-    expect(screen.getByTestId('connected').textContent).toBe('false');
-
-    // Wallet connects but SIWE + user data fetch still in progress
-    // (no mock for /api/auth/siwe/session — so user data won't arrive yet)
-    await act(async () => {
-      mockSetState({
-        isConnected: true,
-        isLoading: false, // AuthManager says loading is done (wallet connected)
-        address: '0xAccountB',
-        providerName: 'walletconnect',
-      });
-    });
-
-    // Connected but no user yet — isLoading MUST stay true so pages show skeleton
-    expect(screen.getByTestId('connected').textContent).toBe('true');
-    expect(screen.getByTestId('user').textContent).toBe('none');
-    expect(screen.getByTestId('loading').textContent).toBe('true');
   });
 });

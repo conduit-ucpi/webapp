@@ -1,16 +1,18 @@
 /**
- * Regression Tests: User data cleanup on disconnect
+ * Regression Tests: Account switching (disconnect Account A, login Account B)
  *
- * Bug: When user logs in with Account A, logs out, then logs in with Account B,
- * Account A's user data persisted in SimpleAuthProvider's backendUserData state.
+ * Bug 1: SimpleAuthProvider's backendUserData was never cleared on disconnect.
+ * Fix: Sync effect now clears backendUserData when newAuth.user becomes null.
  *
- * Root cause: SimpleAuthProvider's sync effect only set backendUserData when
- * newAuth.user was truthy, but never cleared it when newAuth.user became null
- * on disconnect. So the stale Account A data remained visible after re-login.
+ * Bug 2: After Account B connects (SIWX creates backend session), nobody fetches
+ * Account B's user data. The init effect only runs once (singleton deps). After
+ * disconnect + reconnect without page reload, user data is never populated.
+ * Fix: AuthProvider watches for state.isConnected + state.address changes and
+ * fetches user data when connected with a SIWE session but no user loaded.
  */
 
 import React from 'react';
-import { render, act, screen } from '@testing-library/react';
+import { render, act, screen, waitFor } from '@testing-library/react';
 
 const SIWX_SESSION_STORAGE_KEY = 'conduit_siwx_session';
 
@@ -36,10 +38,13 @@ jest.mock('ethers', () => ({
   ethers: { JsonRpcProvider: jest.fn() },
 }));
 
-// Mock AuthManager
+// Track the subscribe callback so we can simulate state changes
+let stateChangeCallback: ((state: any) => void) | null = null;
+
 const mockDisconnect = jest.fn().mockResolvedValue(undefined);
 const mockInitialize = jest.fn().mockResolvedValue(undefined);
-const mockGetState = jest.fn().mockReturnValue({
+
+const defaultState = {
   isConnected: false,
   isLoading: false,
   isInitialized: true,
@@ -48,9 +53,23 @@ const mockGetState = jest.fn().mockReturnValue({
   providerName: null,
   capabilities: null,
   error: null,
+};
+
+let currentMockState = { ...defaultState };
+
+const mockGetState = jest.fn().mockImplementation(() => ({ ...currentMockState }));
+const mockSetState = jest.fn().mockImplementation((partial: any) => {
+  currentMockState = { ...currentMockState, ...partial };
+  if (stateChangeCallback) {
+    stateChangeCallback({ ...currentMockState });
+  }
 });
-const mockSubscribe = jest.fn().mockReturnValue(() => {});
-const mockSetState = jest.fn();
+const mockSubscribe = jest.fn().mockImplementation((cb: any) => {
+  stateChangeCallback = cb;
+  return () => { stateChangeCallback = null; };
+});
+
+const mockCheckAuthentication = jest.fn().mockResolvedValue({ success: false });
 
 jest.mock('@/lib/auth/core/AuthManager', () => ({
   AuthManager: {
@@ -73,13 +92,12 @@ jest.mock('@/lib/auth/core/AuthManager', () => ({
 jest.mock('@/lib/auth/backend/AuthService', () => ({
   AuthService: {
     getInstance: () => ({
-      checkAuthentication: jest.fn().mockResolvedValue({ success: false }),
+      checkAuthentication: mockCheckAuthentication,
       authenticateWithBackend: jest.fn(),
     }),
   },
 }));
 
-// Mock ConfigProvider to return a valid config
 jest.mock('@/components/auth/ConfigProvider', () => ({
   useConfig: () => ({
     config: {
@@ -92,17 +110,14 @@ jest.mock('@/components/auth/ConfigProvider', () => ({
   }),
 }));
 
-// Mock useSimpleEthers
 jest.mock('@/hooks/useSimpleEthers', () => ({
   useSimpleEthers: () => ({
     fundAndSendTransaction: jest.fn(),
   }),
 }));
 
-// Import SimpleAuthProvider (the production wrapper) and its useAuth
 import { SimpleAuthProvider, useAuth } from '@/components/auth/SimpleAuthProvider';
 
-// Helper component that captures auth functions and displays user
 let capturedDisconnect: (() => Promise<void>) | null = null;
 let capturedUpdateUserData: ((user: any) => void) | null = null;
 
@@ -113,17 +128,19 @@ function TestConsumer() {
   return <div data-testid="user">{user ? user.walletAddress : 'none'}</div>;
 }
 
-describe('SimpleAuthProvider: disconnect must clear backendUserData', () => {
+describe('Account switching: disconnect A, login B', () => {
   beforeEach(() => {
     sessionStorage.clear();
     mockFetch.mockReset();
     mockFetch.mockResolvedValue({ ok: false, json: async () => ({}) });
     capturedDisconnect = null;
     capturedUpdateUserData = null;
+    currentMockState = { ...defaultState };
+    stateChangeCallback = null;
     jest.clearAllMocks();
   });
 
-  it('after disconnect, user must be null — not stale Account A data', async () => {
+  it('after disconnect, backendUserData must be cleared', async () => {
     await act(async () => {
       render(
         <SimpleAuthProvider>
@@ -132,27 +149,75 @@ describe('SimpleAuthProvider: disconnect must clear backendUserData', () => {
       );
     });
 
-    // Starts with no user
     expect(screen.getByTestId('user').textContent).toBe('none');
 
-    // Simulate Account A login — updateUserData sets both AuthProvider user
-    // AND SimpleAuthProvider's backendUserData (via the sync effect)
     await act(async () => {
       capturedUpdateUserData!({ walletAddress: '0xAccountA', email: 'a@test.com' });
     });
 
     expect(screen.getByTestId('user').textContent).toBe('0xAccountA');
 
-    // Simulate disconnect
     mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({}) });
     await act(async () => {
       await capturedDisconnect!();
     });
 
-    // CRITICAL ASSERTION:
-    // After disconnect, user must be null.
-    // BUG: SimpleAuthProvider's backendUserData is never cleared because the
-    // sync effect (line 62-67) only sets when truthy, never clears on null.
     expect(screen.getByTestId('user').textContent).toBe('none');
+  });
+
+  it('after Account B connects with active SIWE session, user data must be fetched', async () => {
+    await act(async () => {
+      render(
+        <SimpleAuthProvider>
+          <TestConsumer />
+        </SimpleAuthProvider>
+      );
+    });
+
+    // Account A is logged in
+    await act(async () => {
+      capturedUpdateUserData!({ walletAddress: '0xAccountA', email: 'a@test.com' });
+    });
+    expect(screen.getByTestId('user').textContent).toBe('0xAccountA');
+
+    // Account A disconnects
+    mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({}) });
+    await act(async () => {
+      await capturedDisconnect!();
+    });
+    expect(screen.getByTestId('user').textContent).toBe('none');
+
+    // Account B connects — SIWX auto-signs and creates backend session.
+    // Simulate: state changes to connected with Account B's address,
+    // and /api/auth/siwe/session returns Account B's session,
+    // and authService.checkAuthentication returns Account B's user data.
+    mockFetch.mockImplementation(async (url: string) => {
+      if (typeof url === 'string' && url.includes('/api/auth/siwe/session')) {
+        return { ok: true, json: async () => ({ address: '0xAccountB' }) };
+      }
+      return { ok: false, json: async () => ({}) };
+    });
+
+    mockCheckAuthentication.mockResolvedValueOnce({
+      success: true,
+      user: { walletAddress: '0xAccountB', email: 'b@test.com' },
+    });
+
+    // Simulate AuthManager state change (Account B wallet connected)
+    await act(async () => {
+      mockSetState({
+        isConnected: true,
+        address: '0xAccountB',
+        providerName: 'walletconnect',
+      });
+    });
+
+    // CRITICAL ASSERTION:
+    // AuthProvider should react to the new connected state, check the SIWE
+    // session, fetch Account B's user data, and call setUser().
+    // This requires an effect that watches state.isConnected/state.address.
+    await waitFor(() => {
+      expect(screen.getByTestId('user').textContent).toBe('0xAccountB');
+    }, { timeout: 3000 });
   });
 });

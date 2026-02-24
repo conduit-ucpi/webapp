@@ -118,6 +118,46 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
     return unsubscribe;
   }, [authManager]);
 
+  // Fetch user data when wallet reconnects after a disconnect (e.g. account switch).
+  // The init effect only runs once (singleton deps), so this effect reacts to
+  // state.isConnected / state.address changes and checks for a SIWE session.
+  useEffect(() => {
+    if (!state.isConnected || !state.address || user) return;
+
+    let cancelled = false;
+
+    const fetchUserForNewConnection = async () => {
+      try {
+        const sessionResponse = await fetch('/api/auth/siwe/session');
+        if (!sessionResponse.ok) return;
+
+        const sessionData = await sessionResponse.json();
+        if (!sessionData.address || cancelled) return;
+
+        const backendStatus = await authService.checkAuthentication();
+        if (cancelled) return;
+
+        if (backendStatus.success && backendStatus.user) {
+          setUser(backendStatus.user);
+          authManager.setState({
+            isAuthenticated: true,
+            isConnected: true,
+            address: sessionData.address,
+          });
+          mLog.info('AuthProvider', '✅ User data fetched after reconnect');
+        }
+      } catch (error) {
+        mLog.debug('AuthProvider', 'Error fetching user data after reconnect', {
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    };
+
+    fetchUserForNewConnection();
+
+    return () => { cancelled = true; };
+  }, [state.isConnected, state.address, user, authManager, authService]);
+
   // LAZY AUTHENTICATION:
   // We don't authenticate with backend immediately after wallet connection.
   // Instead, the first API call that needs auth will trigger a 401 response,

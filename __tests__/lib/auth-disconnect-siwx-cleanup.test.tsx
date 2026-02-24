@@ -1,23 +1,21 @@
 /**
- * Regression Test: SIWX sessionStorage cleanup on disconnect
+ * Regression Tests: User data cleanup on disconnect
  *
  * Bug: When user logs in with Account A, logs out, then logs in with Account B,
- * the SIWX session cached in sessionStorage for Account A was never cleared.
- * This caused stale session data to be returned by BackendSIWXStorage.get(),
- * potentially auto-authenticating with the wrong account's context.
+ * Account A's user data persisted in SimpleAuthProvider's backendUserData state.
  *
- * Root cause: AuthProvider.disconnect() called /api/auth/siwe/signout (clears
- * backend cookie) and authManager.disconnect() (clears provider state), but
- * never removed the 'conduit_siwx_session' entry from sessionStorage.
+ * Root cause: SimpleAuthProvider's sync effect only set backendUserData when
+ * newAuth.user was truthy, but never cleared it when newAuth.user became null
+ * on disconnect. So the stale Account A data remained visible after re-login.
  */
 
 import React from 'react';
-import { render, act } from '@testing-library/react';
+import { render, act, screen } from '@testing-library/react';
 
 const SIWX_SESSION_STORAGE_KEY = 'conduit_siwx_session';
 
 // Mock fetch globally
-const mockFetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ({}) });
+const mockFetch = jest.fn().mockResolvedValue({ ok: false, json: async () => ({}) });
 global.fetch = mockFetch;
 
 // Mock mobileLogger
@@ -38,7 +36,7 @@ jest.mock('ethers', () => ({
   ethers: { JsonRpcProvider: jest.fn() },
 }));
 
-// Create mock AuthManager with disconnect that mimics real behavior
+// Mock AuthManager
 const mockDisconnect = jest.fn().mockResolvedValue(undefined);
 const mockInitialize = jest.fn().mockResolvedValue(undefined);
 const mockGetState = jest.fn().mockReturnValue({
@@ -66,6 +64,8 @@ jest.mock('@/lib/auth/core/AuthManager', () => ({
       connect: jest.fn(),
       signMessage: jest.fn(),
       getEthersProvider: jest.fn(),
+      requestAuthentication: jest.fn(),
+      showWalletUI: jest.fn(),
     }),
   },
 }));
@@ -79,66 +79,80 @@ jest.mock('@/lib/auth/backend/AuthService', () => ({
   },
 }));
 
-// Import AuthProvider AFTER mocks are set up
-import { AuthProvider, useAuth } from '@/lib/auth/react/AuthProvider';
+// Mock ConfigProvider to return a valid config
+jest.mock('@/components/auth/ConfigProvider', () => ({
+  useConfig: () => ({
+    config: {
+      chainId: 8453,
+      rpcUrl: 'https://test-rpc.url',
+      explorerBaseUrl: 'https://test-explorer.url',
+      walletConnectProjectId: 'test-project-id',
+    },
+    isLoading: false,
+  }),
+}));
 
-// Helper component that captures disconnect function
+// Mock useSimpleEthers
+jest.mock('@/hooks/useSimpleEthers', () => ({
+  useSimpleEthers: () => ({
+    fundAndSendTransaction: jest.fn(),
+  }),
+}));
+
+// Import SimpleAuthProvider (the production wrapper) and its useAuth
+import { SimpleAuthProvider, useAuth } from '@/components/auth/SimpleAuthProvider';
+
+// Helper component that captures auth functions and displays user
 let capturedDisconnect: (() => Promise<void>) | null = null;
+let capturedUpdateUserData: ((user: any) => void) | null = null;
 
-function DisconnectCapture() {
-  const { disconnect } = useAuth();
+function TestConsumer() {
+  const { disconnect, user, updateUserData } = useAuth();
   capturedDisconnect = disconnect;
-  return null;
+  capturedUpdateUserData = updateUserData;
+  return <div data-testid="user">{user ? user.walletAddress : 'none'}</div>;
 }
 
-const mockConfig = {
-  walletConnectProjectId: 'test-project-id',
-  chainId: 8453,
-  rpcUrl: 'https://test-rpc.url',
-} as any;
-
-describe('SIWX sessionStorage cleanup on disconnect', () => {
+describe('SimpleAuthProvider: disconnect must clear backendUserData', () => {
   beforeEach(() => {
     sessionStorage.clear();
     mockFetch.mockReset();
     mockFetch.mockResolvedValue({ ok: false, json: async () => ({}) });
     capturedDisconnect = null;
+    capturedUpdateUserData = null;
     jest.clearAllMocks();
   });
 
-  it('disconnect must clear conduit_siwx_session from sessionStorage', async () => {
-    // Simulate Account A's SIWX session being stored (as BackendSIWXStorage.add() does)
-    sessionStorage.setItem(SIWX_SESSION_STORAGE_KEY, JSON.stringify({
-      message: { domain: 'test.com', address: '0xAccountA' },
-      signature: '0xsig_a',
-      data: { accountAddress: '0xAccountA' },
-    }));
-
-    // Verify it's there
-    expect(sessionStorage.getItem(SIWX_SESSION_STORAGE_KEY)).not.toBeNull();
-
-    // Render AuthProvider and capture disconnect
+  it('after disconnect, user must be null — not stale Account A data', async () => {
     await act(async () => {
       render(
-        <AuthProvider config={mockConfig}>
-          <DisconnectCapture />
-        </AuthProvider>
+        <SimpleAuthProvider>
+          <TestConsumer />
+        </SimpleAuthProvider>
       );
     });
 
-    expect(capturedDisconnect).not.toBeNull();
+    // Starts with no user
+    expect(screen.getByTestId('user').textContent).toBe('none');
 
-    // Mock signout endpoint
+    // Simulate Account A login — updateUserData sets both AuthProvider user
+    // AND SimpleAuthProvider's backendUserData (via the sync effect)
+    await act(async () => {
+      capturedUpdateUserData!({ walletAddress: '0xAccountA', email: 'a@test.com' });
+    });
+
+    expect(screen.getByTestId('user').textContent).toBe('0xAccountA');
+
+    // Simulate disconnect
     mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({}) });
-
-    // Call disconnect (simulates user logging out)
     await act(async () => {
       await capturedDisconnect!();
     });
 
-    // THIS IS THE KEY ASSERTION:
-    // After disconnect, conduit_siwx_session must be removed from sessionStorage.
-    // If this fails, stale session data will persist and cause wrong-account bugs on re-login.
-    expect(sessionStorage.getItem(SIWX_SESSION_STORAGE_KEY)).toBeNull();
+    // CRITICAL ASSERTION:
+    // After disconnect, user must be null.
+    // BUG: SimpleAuthProvider's backendUserData is never cleared because the
+    // sync effect (line 62-67) only sets when truthy, never clears on null.
+    expect(screen.getByTestId('user').textContent).toBe('none');
   });
 });

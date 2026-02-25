@@ -57,6 +57,9 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
 
     const initializeAuth = async () => {
       try {
+        // Initialize auth manager first — this restores provider state and
+        // cleans up orphaned backend sessions, so it must complete before
+        // we check for an existing SIWE session.
         await authManager.initialize(config);
 
         if (isMounted) {
@@ -114,6 +117,46 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
 
     return unsubscribe;
   }, [authManager]);
+
+  // Fetch user data when wallet reconnects after a disconnect (e.g. account switch).
+  // The init effect only runs once (singleton deps), so this effect reacts to
+  // state.isConnected / state.address changes and checks for a SIWE session.
+  useEffect(() => {
+    if (!state.isConnected || !state.address || user) return;
+
+    let cancelled = false;
+
+    const fetchUserForNewConnection = async () => {
+      try {
+        const sessionResponse = await fetch('/api/auth/siwe/session');
+        if (!sessionResponse.ok) return;
+
+        const sessionData = await sessionResponse.json();
+        if (!sessionData.address || cancelled) return;
+
+        const backendStatus = await authService.checkAuthentication();
+        if (cancelled) return;
+
+        if (backendStatus.success && backendStatus.user) {
+          setUser(backendStatus.user);
+          authManager.setState({
+            isAuthenticated: true,
+            isConnected: true,
+            address: sessionData.address,
+          });
+          mLog.info('AuthProvider', '✅ User data fetched after reconnect');
+        }
+      } catch (error) {
+        mLog.debug('AuthProvider', 'Error fetching user data after reconnect', {
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    };
+
+    fetchUserForNewConnection();
+
+    return () => { cancelled = true; };
+  }, [state.isConnected, state.address, user, authManager, authService]);
 
   // LAZY AUTHENTICATION:
   // We don't authenticate with backend immediately after wallet connection.
@@ -289,6 +332,12 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
 
   const disconnect = useCallback(async (): Promise<void> => {
     try {
+      // Clear cached SIWX session from sessionStorage FIRST
+      // This prevents stale session data from being picked up on re-login
+      if (typeof window !== 'undefined' && window.sessionStorage) {
+        sessionStorage.removeItem('conduit_siwx_session');
+      }
+
       // Sign out from SIWE session (clears AUTH-TOKEN cookie)
       await fetch('/api/auth/siwe/signout', { method: 'POST' });
 

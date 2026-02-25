@@ -3,6 +3,15 @@ import { ethers } from 'ethers';
 import { TokenDetails } from '../../types';
 import { TokenConfig, parseTokensFromEnv } from '../../types/tokens';
 
+// In-memory cache for config response
+let cachedConfig: { data: any; timestamp: number } | null = null;
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+/** Clear the in-memory config cache (exposed for testing) */
+export function clearConfigCache() {
+  cachedConfig = null;
+}
+
 // ERC20 ABI for fetching token details
 const ERC20_ABI = [
   'function symbol() view returns (string)',
@@ -32,13 +41,6 @@ async function getTokenDetails(
       contract.name()
     ]);
 
-    console.log(`✅ Fetched ${tokenLabel} token details from blockchain:`, {
-      address: tokenAddress,
-      symbol,
-      decimals: Number(decimals),
-      name
-    });
-
     return {
       address: tokenAddress,
       symbol,
@@ -61,7 +63,6 @@ async function getContractAddresses(
   chainServiceUrl: string
 ): Promise<{ factoryAddress: string; implementationAddress: string }> {
   const url = `${chainServiceUrl}/api/chain/addresses`;
-  console.log(`Fetching contract addresses from chainservice: ${url}`);
 
   const response = await fetch(url);
   if (!response.ok) {
@@ -73,12 +74,6 @@ async function getContractAddresses(
   if (!data.factoryAddress || !data.implementationAddress) {
     throw new Error('Chainservice returned incomplete contract addresses');
   }
-
-  console.log('✅ Fetched contract addresses from chainservice:', {
-    factoryAddress: data.factoryAddress,
-    implementationAddress: data.implementationAddress,
-    timestamp: data.timestamp
-  });
 
   return {
     factoryAddress: data.factoryAddress,
@@ -92,32 +87,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    // Debug logging
-    console.log('Environment variables check:');
-    console.log('NEXT_PUBLIC_BASE_PATH:', process.env.NEXT_PUBLIC_BASE_PATH);
-    console.log('CHAIN_ID:', process.env.CHAIN_ID);
-    console.log('RPC_URL:', process.env.RPC_URL || 'MISSING - THIS WILL CAUSE ERRORS');
-    console.log('RPC_URL raw bytes:', process.env.RPC_URL ? Array.from(process.env.RPC_URL).map(c => c.charCodeAt(0)) : 'N/A');
-    console.log('RPC_URL trimmed:', process.env.RPC_URL?.trim());
-    console.log('RPC_URL trimmed bytes:', process.env.RPC_URL?.trim() ? Array.from(process.env.RPC_URL.trim()).map(c => c.charCodeAt(0)) : 'N/A');
-    console.log('SUPPORTED_TOKENS:', process.env.SUPPORTED_TOKENS ? 'Configured' : 'Not configured');
-    console.log('USDC_CONTRACT_ADDRESS (legacy):', process.env.USDC_CONTRACT_ADDRESS);
-    console.log('USDT_CONTRACT_ADDRESS (legacy):', process.env.USDT_CONTRACT_ADDRESS);
-    console.log('DEFAULT_TOKEN_SYMBOL:', process.env.DEFAULT_TOKEN_SYMBOL);
-    console.log('MOONPAY_API_KEY:', process.env.MOONPAY_API_KEY ? 'Present' : 'Missing');
-    console.log('MIN_GAS_WEI:', process.env.MIN_GAS_WEI);
-    console.log('MAX_GAS_PRICE_GWEI:', process.env.MAX_GAS_PRICE_GWEI);
-    console.log('MAX_GAS_COST_GWEI:', process.env.MAX_GAS_COST_GWEI);
-    console.log('USDC_GRANT_FOUNDRY_GAS:', process.env.USDC_GRANT_FOUNDRY_GAS);
-    console.log('DEPOSIT_FUNDS_FOUNDRY_GAS:', process.env.DEPOSIT_FUNDS_FOUNDRY_GAS);
-    console.log('RESOLUTION_VOTE_FOUNDRY_GAS:', process.env.RESOLUTION_VOTE_FOUNDRY_GAS);
-    console.log('RAISE_DISPUTE_FOUNDRY_GAS:', process.env.RAISE_DISPUTE_FOUNDRY_GAS);
-    console.log('CLAIM_FUNDS_FOUNDRY_GAS:', process.env.CLAIM_FUNDS_FOUNDRY_GAS);
-    console.log('GAS_PRICE_BUFFER:', process.env.GAS_PRICE_BUFFER);
-    console.log('EXPLORER_BASE_URL:', process.env.EXPLORER_BASE_URL);
-    console.log('SERVICE_LINK:', process.env.SERVICE_LINK);
-    console.log('CONTRACT_ADDRESS:', process.env.CONTRACT_ADDRESS);
-    console.log('WALLETCONNECT_PROJECT_ID:', process.env.WALLETCONNECT_PROJECT_ID ? 'Present' : 'Missing');
+    // Return cached config if still valid
+    if (cachedConfig && (Date.now() - cachedConfig.timestamp) < CACHE_TTL_MS) {
+      return res.status(200).json(cachedConfig.data);
+    }
 
     const basePath = process.env.NEXT_PUBLIC_BASE_PATH === 'null' ? '' : (process.env.NEXT_PUBLIC_BASE_PATH || '/webapp');
 
@@ -136,7 +109,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (process.env.SUPPORTED_TOKENS) {
       // Use new JSON configuration
       tokenConfigs = parseTokensFromEnv(process.env.SUPPORTED_TOKENS);
-      console.log('✅ Loaded token configuration from SUPPORTED_TOKENS:', tokenConfigs.map(t => t.symbol));
     } else {
       // Fallback to legacy individual env vars
       console.warn('⚠️ SUPPORTED_TOKENS not found, using legacy env vars');
@@ -245,7 +217,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       buildVersion: process.env.BUILD_VERSION || 'unknown'
     };
 
-    console.log('Config being sent:', config);
+    // Cache the config for subsequent requests
+    cachedConfig = { data: config, timestamp: Date.now() };
     res.status(200).json(config);
   } catch (error) {
     console.error('Config loading error:', error);

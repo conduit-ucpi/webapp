@@ -63,6 +63,8 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     if (newAuth.user && !backendUserData) {
       setBackendUserData(newAuth.user);
+    } else if (!newAuth.user && backendUserData) {
+      setBackendUserData(null);
     }
   }, [newAuth.user, backendUserData]);
 

@@ -26,85 +26,50 @@ interface FarcasterDetectionProviderProps {
 
 export const FarcasterDetectionProvider: React.FC<FarcasterDetectionProviderProps> = ({ children }) => {
   const [isInFarcaster, setIsInFarcaster] = useState(false);
-  const [isLoading, setIsLoading] = useState(true); // Start true to ensure detection runs
+  const [isLoading, setIsLoading] = useState(true);
   const [farcasterSDK, setFarcasterSDK] = useState<any>(null);
-  const [hasMounted, setHasMounted] = useState(false); // Track if we've mounted on client
-  
-  // Track when we've mounted to avoid hydration issues
-  useEffect(() => {
-    setHasMounted(true);
-  }, []);
 
-  // Emergency fallback - always set loading to false after 2 seconds no matter what
+  // Single effect: run synchronous detection after mount (avoids hydration mismatch)
   useEffect(() => {
-    const emergencyTimeout = setTimeout(() => {
-      setIsLoading(false);
-    }, 2000);
+    try {
+      // Method 1: Check for Farcaster-specific window properties
+      const hasParentFrame = window.parent !== window;
+      const hasReactNativeWebView = 'ReactNativeWebView' in window;
 
-    return () => clearTimeout(emergencyTimeout);
-  }, []);
+      // Method 2: Check user agent for Farcaster clients
+      const userAgent = navigator.userAgent;
+      const isFarcasterUserAgent = userAgent.includes('Farcaster') || userAgent.includes('Warpcast');
 
-  useEffect(() => {
-    // Only run detection after component has mounted to avoid hydration issues
-    if (!hasMounted) {
-      return;
-    }
-    
-    const detectFarcaster = () => {
-      // Ensure we're on client side
-      if (typeof window === 'undefined') {
-        return;
-      }
-      
-      setIsLoading(true);
-      
+      // Method 3: Try to detect Farcaster SDK
+      let sdkAvailable = false;
+      let sdk = null;
+
       try {
-        // Multiple detection methods for robustness
-        
-        // Method 1: Check for Farcaster-specific window properties
-        const hasParentFrame = typeof window !== 'undefined' && window.parent !== window;
-        const hasReactNativeWebView = typeof window !== 'undefined' && 'ReactNativeWebView' in window;
-        
-        // Method 2: Check user agent for Farcaster clients
-        const userAgent = typeof window !== 'undefined' ? navigator.userAgent : '';
-        const isFarcasterUserAgent = userAgent.includes('Farcaster') || userAgent.includes('Warpcast');
-        
-        // Method 3: Try to detect Farcaster SDK
-        let sdkAvailable = false;
-        let sdk = null;
-        
-        try {
-          // Check if Farcaster miniapp SDK is available
-          const farcasterSDK = (window as any).__farcaster__;
-          if (farcasterSDK) {
-            sdkAvailable = true;
-            sdk = farcasterSDK;
-          }
-        } catch (e) {
-          // Silently handle SDK check errors
+        const fcSDK = (window as any).__farcaster__;
+        if (fcSDK) {
+          sdkAvailable = true;
+          sdk = fcSDK;
         }
-        
-        // Method 4: Check for specific URL patterns (if Farcaster passes special params)
-        const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
-        const hasFarcasterParam = urlParams?.has('fc_frame') || urlParams?.has('farcaster');
-        
-        // Determine if we're in Farcaster based on multiple signals
-        const inFarcaster = sdkAvailable || 
-                           (hasParentFrame && (isFarcasterUserAgent || hasFarcasterParam)) ||
-                           hasReactNativeWebView;
-        
-        setIsInFarcaster(inFarcaster);
-        setFarcasterSDK(sdk);
-        
-      } catch (error) {
-        setIsInFarcaster(false);
-      } finally {
-        setIsLoading(false);
+      } catch (e) {
+        // Silently handle SDK check errors
       }
-    };
 
-    detectFarcaster();
-  }, [hasMounted]); // Only run when hasMounted changes
+      // Method 4: Check for specific URL patterns
+      const urlParams = new URLSearchParams(window.location.search);
+      const hasFarcasterParam = urlParams.has('fc_frame') || urlParams.has('farcaster');
+
+      const inFarcaster = sdkAvailable ||
+                         (hasParentFrame && (isFarcasterUserAgent || hasFarcasterParam)) ||
+                         hasReactNativeWebView;
+
+      setIsInFarcaster(inFarcaster);
+      setFarcasterSDK(sdk);
+    } catch (error) {
+      setIsInFarcaster(false);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   const value: FarcasterContextType = {
     isInFarcaster,

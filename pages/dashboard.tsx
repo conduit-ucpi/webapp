@@ -79,91 +79,161 @@ export default function Dashboard2() {
 
       {/* Override child component styling to match landing4 flat aesthetic */}
       <style jsx global>{`
-        /* Flatten card boxes */
+        /* ── Design tokens ── */
+        .dashboard2-flat {
+          --d-surface: transparent;
+          --d-divider: #f1f5f9;
+          --d-btn-bg: #0f172a;
+          --d-btn-bg-hover: #334155;
+          --d-btn-fg: #fff;
+          --d-outline-border: #cbd5e1;
+          --d-outline-fg: #334155;
+          --d-outline-hover: #f8fafc;
+          --d-tab-active: #0f172a;
+          --d-tab-text: #0f172a;
+          --d-badge-bg: #f1f5f9;
+          --d-badge-fg: #0f172a;
+          --d-icon-bg: #f1f5f9;
+          --d-icon-fg: #334155;
+          --d-input-bg: #fff;
+          --d-input-border: #cbd5e1;
+          --d-input-fg: #0f172a;
+          --d-input-placeholder: #94a3b8;
+          --d-text-primary: #0f172a;
+          --d-text-secondary: #64748b;
+          --d-card-bg: transparent;
+        }
+        .dark .dashboard2-flat {
+          --d-surface: transparent;
+          --d-divider: #1e293b;
+          --d-btn-bg: #fff;
+          --d-btn-bg-hover: #f1f5f9;
+          --d-btn-fg: #0f172a;
+          --d-outline-border: #475569;
+          --d-outline-fg: #cbd5e1;
+          --d-outline-hover: #1e293b;
+          --d-tab-active: #fff;
+          --d-tab-text: #fff;
+          --d-badge-bg: #1e293b;
+          --d-badge-fg: #e2e8f0;
+          --d-icon-bg: #1e293b;
+          --d-icon-fg: #94a3b8;
+          --d-input-bg: #0f172a;
+          --d-input-border: #334155;
+          --d-input-fg: #f1f5f9;
+          --d-input-placeholder: #64748b;
+          --d-text-primary: #f8fafc;
+          --d-text-secondary: #94a3b8;
+          --d-card-bg: transparent;
+        }
+
+        /* ── Flatten card boxes ── */
         .dashboard2-flat .bg-white.rounded-lg,
         .dashboard2-flat .bg-white.rounded-xl {
-          background: transparent !important;
+          background: var(--d-card-bg) !important;
           border: none !important;
           border-radius: 0 !important;
           box-shadow: none !important;
-          border-bottom: 1px solid #f1f5f9 !important;
+          border-bottom: 1px solid var(--d-divider) !important;
           padding-left: 0 !important;
           padding-right: 0 !important;
-        }
-        .dark .dashboard2-flat .bg-white.rounded-lg,
-        .dark .dashboard2-flat .bg-white.rounded-xl {
-          border-bottom-color: #1e293b !important;
         }
         .dashboard2-flat .bg-white.rounded-lg:hover,
         .dashboard2-flat .bg-white.rounded-xl:hover {
           box-shadow: none !important;
         }
-        /* Restyle primary buttons to match landing4 */
-        .dashboard2-flat .bg-primary-500,
+
+        /* ── Card text colours ── */
+        .dashboard2-flat .text-secondary-900 {
+          color: var(--d-text-primary) !important;
+        }
+        .dashboard2-flat .text-secondary-600,
+        .dashboard2-flat .text-secondary-500,
+        .dashboard2-flat .text-secondary-700 {
+          color: var(--d-text-secondary) !important;
+        }
+
+        /* ── Primary buttons (only <button> elements) ── */
         .dashboard2-flat button.bg-primary-500 {
-          background-color: #0f172a !important;
+          background-color: var(--d-btn-bg) !important;
+          color: var(--d-btn-fg) !important;
           border-radius: 0 !important;
           font-weight: 500 !important;
           letter-spacing: 0.025em !important;
         }
-        .dashboard2-flat .bg-primary-500:hover,
         .dashboard2-flat button.bg-primary-500:hover {
-          background-color: #334155 !important;
+          background-color: var(--d-btn-bg-hover) !important;
         }
-        .dark .dashboard2-flat .bg-primary-500,
-        .dark .dashboard2-flat button.bg-primary-500 {
-          background-color: #fff !important;
-          color: #0f172a !important;
-        }
-        .dark .dashboard2-flat .bg-primary-500:hover,
-        .dark .dashboard2-flat button.bg-primary-500:hover {
-          background-color: #f1f5f9 !important;
-        }
-        /* Restyle outline buttons to match landing4 */
-        .dashboard2-flat .border.border-secondary-300,
+
+        /* ── Outline buttons (only <button> elements) ── */
         .dashboard2-flat button.border.border-secondary-300 {
-          border-color: #cbd5e1 !important;
+          border-color: var(--d-outline-border) !important;
+          color: var(--d-outline-fg) !important;
           border-radius: 0 !important;
           font-weight: 500 !important;
           letter-spacing: 0.025em !important;
-          color: #334155 !important;
         }
-        .dashboard2-flat .border.border-secondary-300:hover,
         .dashboard2-flat button.border.border-secondary-300:hover {
-          background-color: #f8fafc !important;
+          background-color: var(--d-outline-hover) !important;
         }
-        .dark .dashboard2-flat .border.border-secondary-300,
-        .dark .dashboard2-flat button.border.border-secondary-300 {
-          border-color: #475569 !important;
-          color: #cbd5e1 !important;
-        }
-        .dark .dashboard2-flat .border.border-secondary-300:hover,
-        .dark .dashboard2-flat button.border.border-secondary-300:hover {
-          background-color: #1e293b !important;
-        }
-        /* Restyle rounded-md buttons generically */
-        .dashboard2-flat .rounded-md {
+
+        /* ── Square off button corners ── */
+        .dashboard2-flat button.rounded-md {
           border-radius: 0 !important;
         }
-        /* Restyle tab active indicator to match */
-        .dashboard2-flat .border-primary-500 {
-          border-color: #0f172a !important;
+
+        /* ── Tab active indicator ── */
+        .dashboard2-flat button.border-primary-500 {
+          border-color: var(--d-tab-active) !important;
         }
-        .dark .dashboard2-flat .border-primary-500 {
-          border-color: #fff !important;
+        .dashboard2-flat button.text-primary-600 {
+          color: var(--d-tab-text) !important;
         }
-        .dashboard2-flat .text-primary-600 {
-          color: #0f172a !important;
-        }
-        .dark .dashboard2-flat .text-primary-600 {
-          color: #fff !important;
-        }
-        /* Tab badge pills */
+
+        /* ── Tab badge pills ── */
         .dashboard2-flat .bg-primary-100 {
-          background-color: #f1f5f9 !important;
+          background-color: var(--d-badge-bg) !important;
         }
         .dashboard2-flat .text-primary-700 {
-          color: #0f172a !important;
+          color: var(--d-badge-fg) !important;
+        }
+
+        /* ── Icon circles (StatsCard bg-primary-50, ProgressChecklist bg-primary-100) ── */
+        .dashboard2-flat .bg-primary-50 {
+          background-color: var(--d-icon-bg) !important;
+        }
+        .dashboard2-flat .bg-primary-50 .text-primary-600,
+        .dashboard2-flat .bg-primary-100 .text-primary-600 {
+          color: var(--d-icon-fg) !important;
+        }
+
+        /* ── Search input ── */
+        .dashboard2-flat input[type="text"] {
+          background-color: var(--d-input-bg) !important;
+          border-color: var(--d-input-border) !important;
+          color: var(--d-input-fg) !important;
+          border-radius: 0 !important;
+        }
+        .dashboard2-flat input[type="text"]::placeholder {
+          color: var(--d-input-placeholder) !important;
+        }
+
+        /* ── ProgressChecklist container ── */
+        .dashboard2-flat .bg-white.border.border-primary-200 {
+          background: var(--d-card-bg) !important;
+          border-color: var(--d-divider) !important;
+          border-radius: 0 !important;
+        }
+
+        /* ── Progress bar (non-button bg-primary-500) ── */
+        .dashboard2-flat div.bg-primary-500 {
+          background-color: var(--d-btn-bg) !important;
+          border-radius: 2px !important;
+        }
+
+        /* ── Mobile tab dot indicator (non-button bg-primary-500) ── */
+        .dashboard2-flat div.bg-primary-500.w-4 {
+          background-color: var(--d-tab-active) !important;
         }
       `}</style>
 

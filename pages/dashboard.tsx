@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import Head from 'next/head';
+import { useRouter } from 'next/router';
 import { useAuth } from '@/components/auth';
 import EnhancedDashboard from '@/components/dashboard/EnhancedDashboard';
 import ConnectWalletEmbedded from '@/components/auth/ConnectWalletEmbedded';
@@ -12,6 +13,8 @@ import { btnPrimary } from '@/utils/landingStyles';
 export default function Dashboard2() {
   const { user, isLoading, isConnected } = useAuth();
   const { walletAddress, isLoading: isWalletAddressLoading } = useWalletAddress();
+  const router = useRouter();
+  const autoConnect = router.query.autoConnect === 'true';
 
   if (isLoading || isWalletAddressLoading) {
     return (
@@ -58,7 +61,7 @@ export default function Dashboard2() {
             <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-10 max-w-md mx-auto">
               You need to connect your wallet to view your contracts.
             </p>
-            <ConnectWalletEmbedded useSmartRouting={true} />
+            <ConnectWalletEmbedded useSmartRouting={true} autoConnect={autoConnect} />
           </div>
         </div>
       </>

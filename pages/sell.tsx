@@ -1,10 +1,7 @@
 import Link from 'next/link';
-import { useRouter } from 'next/router';
 import Head from 'next/head';
 import SEO from '@/components/SEO';
 import Fade from '@/components/ui/Fade';
-import ConnectWalletEmbedded from '@/components/auth/ConnectWalletEmbedded';
-import { useAuth } from '@/components/auth';
 import { btnPrimary, btnOutline } from '@/utils/landingStyles';
 import { financialServiceSchema, articleSchema } from '@/utils/structuredData';
 import { GetStaticProps } from 'next';
@@ -18,8 +15,6 @@ import { motion } from 'framer-motion';
 export default function Sell() {
 
   const siteName = getSiteNameFromDomain();
-  const router = useRouter();
-  const { isConnected } = useAuth();
 
   const heroStagger = {
     hidden: {},
@@ -71,31 +66,12 @@ export default function Sell() {
               </motion.p>
 
               <motion.div variants={heroChild} className="mt-12 flex flex-wrap gap-3">
-                {isConnected ? (
-                  <>
-                    <button className={btnPrimary} onClick={() => router.push('/create')}>
-                      Create Payment Request
-                    </button>
-                    <button className={btnOutline} onClick={() => router.push('/dashboard')}>
-                      View Dashboard
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <ConnectWalletEmbedded
-                      buttonText="Create Payment Request"
-                      buttonClassName={btnPrimary}
-                      compact
-                      onSuccess={() => router.push('/create')}
-                    />
-                    <ConnectWalletEmbedded
-                      buttonText="View Dashboard"
-                      buttonClassName={btnOutline}
-                      compact
-                      onSuccess={() => router.push('/dashboard')}
-                    />
-                  </>
-                )}
+                <Link href="/create?autoConnect=true">
+                  <button className={btnPrimary}>Create Payment Request</button>
+                </Link>
+                <Link href="/dashboard?autoConnect=true">
+                  <button className={btnOutline}>View Dashboard</button>
+                </Link>
               </motion.div>
 
               <motion.div variants={heroChild} className="mt-8 pt-8 border-t border-secondary-200 dark:border-secondary-700 max-w-md">
@@ -358,31 +334,12 @@ export default function Sell() {
                 Connect your wallet and create your first payment request. No sign-up forms, no approval process.
               </p>
               <div className="flex flex-wrap gap-3">
-                {isConnected ? (
-                  <>
-                    <button className={btnPrimary} onClick={() => router.push('/create')}>
-                      Create Payment Request
-                    </button>
-                    <button className={btnOutline} onClick={() => router.push('/dashboard')}>
-                      View Dashboard
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <ConnectWalletEmbedded
-                      buttonText="Create Payment Request"
-                      buttonClassName={btnPrimary}
-                      compact
-                      onSuccess={() => router.push('/create')}
-                    />
-                    <ConnectWalletEmbedded
-                      buttonText="View Dashboard"
-                      buttonClassName={btnOutline}
-                      compact
-                      onSuccess={() => router.push('/dashboard')}
-                    />
-                  </>
-                )}
+                <Link href="/create?autoConnect=true">
+                  <button className={btnPrimary}>Create Payment Request</button>
+                </Link>
+                <Link href="/dashboard?autoConnect=true">
+                  <button className={btnOutline}>View Dashboard</button>
+                </Link>
               </div>
             </Fade>
 

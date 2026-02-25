@@ -1,3 +1,4 @@
+import { useRouter } from 'next/router';
 import { useAuth } from '@/components/auth';
 import CreateContractWizard from '@/components/contracts/CreateContractWizard';
 import ConnectWalletEmbedded from '@/components/auth/ConnectWalletEmbedded';
@@ -5,6 +6,8 @@ import Skeleton from '@/components/ui/Skeleton';
 
 export default function CreatePage() {
   const { isLoading, isConnected, address } = useAuth();
+  const router = useRouter();
+  const autoConnect = router.query.autoConnect === 'true';
 
   if (isLoading) {
     return (
@@ -38,7 +41,7 @@ export default function CreatePage() {
         <p className="text-secondary-600 mb-6">
           You need to connect your wallet to create time-locked payments.
         </p>
-        <ConnectWalletEmbedded useSmartRouting={true} />
+        <ConnectWalletEmbedded useSmartRouting={true} autoConnect={autoConnect} />
       </div>
     );
   }

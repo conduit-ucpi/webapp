@@ -148,14 +148,39 @@ export default function ConnectWalletEmbedded({
     };
   }, [isConnected, address, user, onSuccess]);
 
-  // Auto-connect when autoConnect prop is true (e.g., from Shopify flow)
+  // Auto-connect when autoConnect prop is true (e.g., from /sell or Shopify flow)
+  // Must include `connect` in deps so it re-fires when the real auth provider mounts
+  // (the fallback no-op connect resolves to undefined, so we only mark as triggered on real attempts)
+  const autoConnectTriggeredRef = useRef(false);
   useEffect(() => {
-    if (autoConnect && !user && !isLoading && !isAuthenticating && connect) {
+    if (autoConnect && !autoConnectTriggeredRef.current && !user && !isLoading && !isAuthenticating && connect) {
+      // Test if connect is the real function (fallback returns bare Promise.resolve())
+      // The real connect accepts a provider argument and returns ConnectionResult
+      // We mark triggered immediately to prevent duplicate calls during the same auth cycle
+      autoConnectTriggeredRef.current = true;
       mLog.info('ConnectWalletEmbedded', 'Auto-connect triggered');
-      handleConnect();
+
+      // Call connect directly to test if it's real - if it returns undefined (fallback no-op),
+      // reset the ref so we retry when the real connect becomes available
+      connect('walletconnect').then((result: any) => {
+        if (!result) {
+          // Fallback no-op connect returned undefined - reset so we retry with real connect
+          mLog.warn('ConnectWalletEmbedded', 'Auto-connect got no result (auth not ready), will retry');
+          autoConnectTriggeredRef.current = false;
+        } else if (result.success) {
+          mLog.info('ConnectWalletEmbedded', 'Auto-connect succeeded', { address: result.address });
+          onSuccess?.();
+        } else {
+          mLog.error('ConnectWalletEmbedded', 'Auto-connect failed', { error: result.error });
+        }
+      }).catch((err: any) => {
+        mLog.error('ConnectWalletEmbedded', 'Auto-connect error', {
+          error: err instanceof Error ? err.message : String(err)
+        });
+        autoConnectTriggeredRef.current = false;
+      });
     }
-  }, [autoConnect]); // eslint-disable-line react-hooks/exhaustive-deps
-  // Intentionally limited deps - we only want to trigger on mount when autoConnect is true
+  }, [autoConnect, isLoading, connect]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Don't show loading spinner during SSR - always render actual content for SEO/crawlers
   if (user) {

@@ -350,8 +350,8 @@ export default function Wallet() {
   if (!user || !walletAddress || isInFarcaster) {
     return (
       <div className="max-w-md mx-auto text-center py-20">
-        <h1 className="text-2xl font-bold text-gray-900 mb-4">Connect Your Wallet</h1>
-        <p className="text-gray-600 mb-6">
+        <h1 className="text-2xl font-bold text-secondary-900 dark:text-white mb-4">Connect Your Wallet</h1>
+        <p className="text-secondary-600 dark:text-secondary-300 mb-6">
           You need to connect your wallet to manage your funds.
         </p>
         <ConnectWalletEmbedded useSmartRouting={true} />
@@ -364,31 +364,31 @@ export default function Wallet() {
   // Embedded wallet users get an additional button to open the Dynamic modal
 
   return (
-    <div className="py-10">
+    <div className="py-10 bg-white dark:bg-secondary-900 transition-colors">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Wallet Management</h1>
-          <p className="mt-2 text-gray-600">
+          <h1 className="text-3xl font-bold text-secondary-900 dark:text-white">Wallet Management</h1>
+          <p className="mt-2 text-secondary-600 dark:text-secondary-300">
             View your balances and send funds to other wallets
           </p>
         </div>
 
         {/* Wallet Info */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
+        <div className="bg-white dark:bg-secondary-900 rounded-lg shadow-sm dark:shadow-none border border-secondary-200 dark:border-secondary-700 p-6 mb-8">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h2 className="text-lg font-semibold text-gray-900">Connected Wallet</h2>
-              <div className="text-sm text-gray-600 mt-1">
+              <h2 className="text-lg font-semibold text-secondary-900 dark:text-white">Connected Wallet</h2>
+              <div className="text-sm text-secondary-600 dark:text-secondary-300 mt-1">
                 <ExpandableHash hash={walletAddress} />
               </div>
               {chainInfo && (
                 <div className="mt-2 flex items-center space-x-4 text-sm">
                   <span className="flex items-center">
                     <span className="w-2 h-2 bg-green-400 rounded-full mr-2 animate-pulse"></span>
-                    <span className="font-medium text-gray-700">{chainInfo.name}</span>
+                    <span className="font-medium text-secondary-700 dark:text-secondary-200">{chainInfo.name}</span>
                   </span>
-                  <span className="text-gray-500">Block #{chainInfo.blockNumber.toLocaleString()}</span>
-                  <span className="text-gray-500">Gas: {chainInfo.gasPrice ? `${parseFloat(chainInfo.gasPrice).toFixed(2)} Gwei` : 'Unavailable'}</span>
+                  <span className="text-secondary-500 dark:text-secondary-400">Block #{chainInfo.blockNumber.toLocaleString()}</span>
+                  <span className="text-secondary-500 dark:text-secondary-400">Gas: {chainInfo.gasPrice ? `${parseFloat(chainInfo.gasPrice).toFixed(2)} Gwei` : 'Unavailable'}</span>
                 </div>
               )}
             </div>
@@ -422,42 +422,42 @@ export default function Wallet() {
           {/* Balances */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Native Token Balance */}
-            <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg p-4">
+            <div className="bg-gradient-to-r from-secondary-50 to-secondary-100 dark:from-secondary-800 dark:to-secondary-700 rounded-lg p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-800">Native Token Balance</p>
+                  <p className="text-sm font-medium text-secondary-800 dark:text-secondary-100">Native Token Balance</p>
                   <div className="flex items-center">
                     {isLoadingBalances ? (
-                      <div className="w-16 h-6 bg-gray-200 animate-pulse rounded" />
+                      <div className="w-16 h-6 bg-secondary-200 dark:bg-secondary-700 animate-pulse rounded" />
                     ) : (
-                      <p className="text-2xl font-bold text-gray-900">{balances.native}</p>
+                      <p className="text-2xl font-bold text-secondary-900 dark:text-white">{balances.native}</p>
                     )}
-                    <span className="ml-2 text-sm text-gray-700">{chainInfo?.name ? chainInfo.name.split(' ')[0] : 'Native'}</span>
+                    <span className="ml-2 text-sm text-secondary-700 dark:text-secondary-200">{chainInfo?.name ? chainInfo.name.split(' ')[0] : 'Native'}</span>
                   </div>
                 </div>
-                <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
-                  <span className="text-gray-800 font-bold text-sm">N</span>
+                <div className="w-10 h-10 bg-secondary-200 dark:bg-secondary-700 rounded-full flex items-center justify-center">
+                  <span className="text-secondary-800 dark:text-secondary-200 font-bold text-sm">N</span>
                 </div>
               </div>
             </div>
 
             {/* Supported Token Balances */}
             {(config?.supportedTokens || []).map((token) => (
-              <div key={token.symbol} className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg p-4">
+              <div key={token.symbol} className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30 rounded-lg p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-blue-800">{token.name} Balance</p>
+                    <p className="text-sm font-medium text-blue-800 dark:text-blue-200">{token.name} Balance</p>
                     <div className="flex items-center">
                       {isLoadingBalances ? (
-                        <div className="w-16 h-6 bg-blue-200 animate-pulse rounded" />
+                        <div className="w-16 h-6 bg-blue-200 dark:bg-blue-700 animate-pulse rounded" />
                       ) : (
-                        <p className="text-2xl font-bold text-blue-900">{balances.tokens[token.symbol] || '0.0000'}</p>
+                        <p className="text-2xl font-bold text-blue-900 dark:text-blue-100">{balances.tokens[token.symbol] || '0.0000'}</p>
                       )}
-                      <span className="ml-2 text-sm text-blue-700">{token.symbol}</span>
+                      <span className="ml-2 text-sm text-blue-700 dark:text-blue-300">{token.symbol}</span>
                     </div>
                   </div>
-                  <div className="w-10 h-10 bg-blue-200 rounded-full flex items-center justify-center">
-                    <span className="text-blue-800 font-bold text-sm">{token.symbol.charAt(0)}</span>
+                  <div className="w-10 h-10 bg-blue-200 dark:bg-blue-700 rounded-full flex items-center justify-center">
+                    <span className="text-blue-800 dark:text-blue-200 font-bold text-sm">{token.symbol.charAt(0)}</span>
                   </div>
                 </div>
               </div>
@@ -471,12 +471,12 @@ export default function Wallet() {
         </div>
 
         {/* Send Funds */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-6">Send Funds</h2>
+        <div className="bg-white dark:bg-secondary-900 rounded-lg shadow-sm dark:shadow-none border border-secondary-200 dark:border-secondary-700 p-6">
+          <h2 className="text-lg font-semibold text-secondary-900 dark:text-white mb-6">Send Funds</h2>
 
           <form onSubmit={handleSendSubmit} className="space-y-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-secondary-700 dark:text-secondary-200 mb-2">
                 Currency
               </label>
               <div className="flex flex-wrap gap-4">
@@ -508,7 +508,7 @@ export default function Wallet() {
             </div>
 
             <div>
-              <label htmlFor="recipient" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="recipient" className="block text-sm font-medium text-secondary-700 dark:text-secondary-200 mb-2">
                 Recipient Address
               </label>
               <Input
@@ -525,7 +525,7 @@ export default function Wallet() {
             </div>
 
             <div>
-              <label htmlFor="amount" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="amount" className="block text-sm font-medium text-secondary-700 dark:text-secondary-200 mb-2">
                 Amount
               </label>
               <div className="relative">
@@ -539,7 +539,7 @@ export default function Wallet() {
                   className={sendForm.amount && !isValidAmount(sendForm.amount, sendForm.currency) ? 'border-red-300' : ''}
                 />
                 <div className="absolute inset-y-0 right-0 flex items-center pr-3">
-                  <span className="text-gray-500 text-sm">{sendForm.currency}</span>
+                  <span className="text-secondary-500 dark:text-secondary-400 text-sm">{sendForm.currency}</span>
                 </div>
               </div>
               {sendForm.amount && !isValidAmount(sendForm.amount, sendForm.currency) && (
@@ -547,19 +547,19 @@ export default function Wallet() {
                   Amount must be greater than 0 and not exceed your balance
                 </p>
               )}
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="text-sm text-secondary-500 dark:text-secondary-400 mt-1">
                 Available: {sendForm.currency === 'NATIVE' ? balances.native : (balances.tokens[sendForm.currency] || '0.0000')} {sendForm.currency === 'NATIVE' ? 'Native' : sendForm.currency}
               </p>
             </div>
 
             {sendError && (
-              <div className="bg-red-50 border border-red-200 rounded-md p-4">
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-4">
                 <p className="text-sm text-red-600">{sendError}</p>
               </div>
             )}
 
             {sendSuccess && (
-              <div className="bg-green-50 border border-green-200 rounded-md p-4">
+              <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-md p-4">
                 <p className="text-sm text-green-600">{sendSuccess}</p>
               </div>
             )}

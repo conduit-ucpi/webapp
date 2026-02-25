@@ -84,16 +84,16 @@ export default function PluginPage() {
         </>
       } />
 
-      <div className="min-h-screen bg-gray-50 py-8">
+      <div className="min-h-screen bg-white dark:bg-secondary-900 py-8 transition-colors">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="bg-white rounded-lg shadow-lg">
+          <div className="bg-white dark:bg-secondary-800 rounded-lg shadow-lg dark:shadow-none">
             {/* Header */}
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h1 className="text-3xl font-bold text-gray-900">Plugin Information</h1>
+            <div className="px-6 py-4 border-b border-secondary-200 dark:border-secondary-700">
+              <h1 className="text-3xl font-bold text-secondary-900 dark:text-white">Plugin Information</h1>
             </div>
 
             {/* Navigation */}
-            <div className="border-b border-gray-200">
+            <div className="border-b border-secondary-200 dark:border-secondary-700">
               <nav className="flex space-x-8 px-6" aria-label="Tabs">
                 {Object.entries(sections).map(([key, label]) => (
                   <button
@@ -102,7 +102,7 @@ export default function PluginPage() {
                     className={`py-4 px-1 border-b-2 font-medium text-sm ${
                       activeSection === key
                         ? 'border-blue-500 text-blue-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                        : 'border-transparent text-secondary-500 dark:text-secondary-400 hover:text-secondary-700 dark:hover:text-secondary-200 hover:border-secondary-300 dark:hover:border-secondary-600'
                     }`}
                   >
                     {label}
@@ -135,17 +135,17 @@ function FAQSection() {
   
   return (
     <div className="space-y-8">
-      <h2 className="text-2xl font-bold text-gray-900">Frequently Asked Questions</h2>
+      <h2 className="text-2xl font-bold text-secondary-900 dark:text-white">Frequently Asked Questions</h2>
       {faqSections.map((section, sectionIndex) => (
         <div key={sectionIndex}>
-          <h3 className="text-xl font-semibold text-gray-800 mb-4">{section.title}</h3>
+          <h3 className="text-xl font-semibold text-secondary-800 dark:text-secondary-100 mb-4">{section.title}</h3>
           <div className="space-y-4">
             {section.items.map((faq, index) => {
               const answer = typeof faq.answer === 'function' ? faq.answer(contractAddress, chainName, explorerUrl) : faq.answer
               return (
-                <div key={index} className="border border-gray-200 rounded-lg p-6">
-                  <h4 className="text-lg font-semibold text-gray-900 mb-3">{faq.question}</h4>
-                  <div className="text-gray-600 leading-relaxed whitespace-pre-line" 
+                <div key={index} className="border border-secondary-200 dark:border-secondary-700 rounded-lg p-6">
+                  <h4 className="text-lg font-semibold text-secondary-900 dark:text-white mb-3">{faq.question}</h4>
+                  <div className="text-secondary-600 dark:text-secondary-300 leading-relaxed whitespace-pre-line" 
                        dangerouslySetInnerHTML={{ __html: answer.replace(/\n/g, '<br />') }} />
                 </div>
               )
@@ -154,9 +154,9 @@ function FAQSection() {
         </div>
       ))}
 
-      <div className="mt-8 p-6 bg-blue-50 rounded-lg">
-        <h4 className="text-lg font-semibold text-gray-900 mb-3">Still have questions?</h4>
-        <p className="text-gray-600">Contact our support team at info@conduit-ucpi.com for additional assistance.</p>
+      <div className="mt-8 p-6 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+        <h4 className="text-lg font-semibold text-secondary-900 dark:text-white mb-3">Still have questions?</h4>
+        <p className="text-secondary-600 dark:text-secondary-300">Contact our support team at info@conduit-ucpi.com for additional assistance.</p>
       </div>
     </div>
   )
@@ -165,27 +165,27 @@ function FAQSection() {
 function TermsSection() {
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-gray-900">Terms of Service</h2>
-      <div className="prose max-w-none text-gray-600">
-        <p className="text-sm text-gray-500 mb-6">
+      <h2 className="text-2xl font-bold text-secondary-900 dark:text-white">Terms of Service</h2>
+      <div className="prose max-w-none text-secondary-600 dark:text-secondary-300">
+        <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-6">
           <strong>Last Updated:</strong> {formatDateTimeWithTZ(Date.now())}
         </p>
 
         <section className="mb-8">
-          <h3 className="text-xl font-semibold text-gray-900 mb-4">1. Acceptance of Terms</h3>
-          <p className="text-gray-700 mb-4">
+          <h3 className="text-xl font-semibold text-secondary-900 dark:text-white mb-4">1. Acceptance of Terms</h3>
+          <p className="text-secondary-700 dark:text-secondary-200 mb-4">
             By accessing and using Conduit UCPI ("the Service"), you accept and agree to be bound by the terms 
             and provision of this agreement. If you do not agree to abide by the above, please do not use this service.
           </p>
         </section>
 
         <section className="mb-8">
-          <h3 className="text-xl font-semibold text-gray-900 mb-4">2. Description of Service</h3>
-          <p className="text-gray-700 mb-4">
-            Conduit UCPI is a decentralized escrow platform that enables users to create time-delayed escrow 
+          <h3 className="text-xl font-semibold text-secondary-900 dark:text-white mb-4">2. Description of Service</h3>
+          <p className="text-secondary-700 dark:text-secondary-200 mb-4">
+            Conduit UCPI is a decentralized escrow platform that enables users to create time-delayed escrow
             contracts on EVM-compatible blockchains. The Service facilitates:
           </p>
-          <ul className="list-disc pl-6 text-gray-700 space-y-2">
+          <ul className="list-disc pl-6 text-secondary-700 dark:text-secondary-200 space-y-2">
             <li>Creation and management of escrow contracts</li>
             <li>USDC token transactions and transfers</li>
             <li>Integration with Web3 wallets and payment processors</li>
@@ -194,9 +194,9 @@ function TermsSection() {
         </section>
 
         <section className="mb-8">
-          <h3 className="text-xl font-semibold text-gray-900 mb-4">3. User Responsibilities</h3>
-          <p className="text-gray-700 mb-4">By using the Service, you agree to:</p>
-          <ul className="list-disc pl-6 text-gray-700 space-y-2">
+          <h3 className="text-xl font-semibold text-secondary-900 dark:text-white mb-4">3. User Responsibilities</h3>
+          <p className="text-secondary-700 dark:text-secondary-200 mb-4">By using the Service, you agree to:</p>
+          <ul className="list-disc pl-6 text-secondary-700 dark:text-secondary-200 space-y-2">
             <li>Provide accurate and truthful information</li>
             <li>Maintain the security of your wallet and private keys</li>
             <li>Comply with all applicable laws and regulations</li>
@@ -207,11 +207,11 @@ function TermsSection() {
         </section>
 
         <section className="mb-8">
-          <h3 className="text-xl font-semibold text-gray-900 mb-4">4. Risks and Disclaimers</h3>
-          <p className="text-gray-700 mb-4">
+          <h3 className="text-xl font-semibold text-secondary-900 dark:text-white mb-4">4. Risks and Disclaimers</h3>
+          <p className="text-secondary-700 dark:text-secondary-200 mb-4">
             <strong>IMPORTANT:</strong> Use of blockchain technology and cryptocurrencies involves significant risks:
           </p>
-          <ul className="list-disc pl-6 text-gray-700 space-y-2">
+          <ul className="list-disc pl-6 text-secondary-700 dark:text-secondary-200 space-y-2">
             <li>Transactions on the blockchain are irreversible</li>
             <li>Smart contracts may contain bugs or vulnerabilities</li>
             <li>Network congestion may delay transactions</li>
@@ -221,12 +221,12 @@ function TermsSection() {
         </section>
 
         <section className="mb-8">
-          <h3 className="text-xl font-semibold text-gray-900 mb-4">5. Limitation of Liability</h3>
-          <p className="text-gray-700 mb-4">
-            To the maximum extent permitted by law, Conduit UCPI and its operators shall not be liable for any 
+          <h3 className="text-xl font-semibold text-secondary-900 dark:text-white mb-4">5. Limitation of Liability</h3>
+          <p className="text-secondary-700 dark:text-secondary-200 mb-4">
+            To the maximum extent permitted by law, Conduit UCPI and its operators shall not be liable for any
             direct, indirect, incidental, special, consequential, or punitive damages, including but not limited to:
           </p>
-          <ul className="list-disc pl-6 text-gray-700 space-y-2">
+          <ul className="list-disc pl-6 text-secondary-700 dark:text-secondary-200 space-y-2">
             <li>Loss of funds or cryptocurrencies</li>
             <li>Smart contract failures or exploits</li>
             <li>Network downtime or service interruptions</li>
@@ -236,8 +236,8 @@ function TermsSection() {
         </section>
 
         <section className="mb-8">
-          <h3 className="text-xl font-semibold text-gray-900 mb-4">6. Contact Information</h3>
-          <p className="text-gray-700">
+          <h3 className="text-xl font-semibold text-secondary-900 dark:text-white mb-4">6. Contact Information</h3>
+          <p className="text-secondary-700 dark:text-secondary-200">
             If you have any questions about these Terms of Service, please contact us at{' '}
             <a href="mailto:legal@conduit-ucpi.com" className="text-primary-600 hover:text-primary-500">
               legal@conduit-ucpi.com
@@ -252,16 +252,16 @@ function TermsSection() {
 function PrivacySection() {
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-gray-900">Privacy Policy</h2>
-      <div className="prose max-w-none text-gray-600">
-        <p className="text-sm text-gray-500 mb-6">
+      <h2 className="text-2xl font-bold text-secondary-900 dark:text-white">Privacy Policy</h2>
+      <div className="prose max-w-none text-secondary-600 dark:text-secondary-300">
+        <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-6">
           <strong>Last Updated:</strong> {formatDate(Date.now())}
         </p>
 
         <section className="mb-8">
-          <h3 className="text-xl font-semibold text-gray-900 mb-4">1. Information We Collect</h3>
-          <p className="text-gray-700 mb-4">When you use Conduit UCPI, we collect the following types of information:</p>
-          <ul className="list-disc pl-6 text-gray-700 space-y-2">
+          <h3 className="text-xl font-semibold text-secondary-900 dark:text-white mb-4">1. Information We Collect</h3>
+          <p className="text-secondary-700 dark:text-secondary-200 mb-4">When you use Conduit UCPI, we collect the following types of information:</p>
+          <ul className="list-disc pl-6 text-secondary-700 dark:text-secondary-200 space-y-2">
             <li>Wallet addresses and public blockchain data</li>
             <li>Email addresses for account identification</li>
             <li>Transaction data related to escrow contracts</li>
@@ -270,9 +270,9 @@ function PrivacySection() {
         </section>
 
         <section className="mb-8">
-          <h3 className="text-xl font-semibold text-gray-900 mb-4">2. How We Use Your Information</h3>
-          <p className="text-gray-700 mb-4">We use the information we collect to:</p>
-          <ul className="list-disc pl-6 text-gray-700 space-y-2">
+          <h3 className="text-xl font-semibold text-secondary-900 dark:text-white mb-4">2. How We Use Your Information</h3>
+          <p className="text-secondary-700 dark:text-secondary-200 mb-4">We use the information we collect to:</p>
+          <ul className="list-disc pl-6 text-secondary-700 dark:text-secondary-200 space-y-2">
             <li>Provide and maintain our escrow services</li>
             <li>Process transactions and manage contracts</li>
             <li>Communicate with you about your account and transactions</li>
@@ -282,11 +282,11 @@ function PrivacySection() {
         </section>
 
         <section className="mb-8">
-          <h3 className="text-xl font-semibold text-gray-900 mb-4">3. Information Sharing</h3>
-          <p className="text-gray-700 mb-4">
+          <h3 className="text-xl font-semibold text-secondary-900 dark:text-white mb-4">3. Information Sharing</h3>
+          <p className="text-secondary-700 dark:text-secondary-200 mb-4">
             We do not sell, trade, or otherwise transfer your personal information to third parties, except:
           </p>
-          <ul className="list-disc pl-6 text-gray-700 space-y-2">
+          <ul className="list-disc pl-6 text-secondary-700 dark:text-secondary-200 space-y-2">
             <li>When required by law or legal process</li>
             <li>To protect our rights, property, or safety</li>
             <li>With your explicit consent</li>
@@ -295,8 +295,8 @@ function PrivacySection() {
         </section>
 
         <section className="mb-8">
-          <h3 className="text-xl font-semibold text-gray-900 mb-4">4. Blockchain Data</h3>
-          <p className="text-gray-700 mb-4">
+          <h3 className="text-xl font-semibold text-secondary-900 dark:text-white mb-4">4. Blockchain Data</h3>
+          <p className="text-secondary-700 dark:text-secondary-200 mb-4">
             Please note that blockchain transactions are public and immutable. Once a transaction is recorded on the 
             blockchain, it cannot be modified or deleted. This includes your wallet address and transaction 
             amounts, which will be permanently visible on the blockchain.
@@ -304,9 +304,9 @@ function PrivacySection() {
         </section>
 
         <section className="mb-8">
-          <h3 className="text-xl font-semibold text-gray-900 mb-4">5. Your Rights</h3>
-          <p className="text-gray-700 mb-4">You have the right to:</p>
-          <ul className="list-disc pl-6 text-gray-700 space-y-2">
+          <h3 className="text-xl font-semibold text-secondary-900 dark:text-white mb-4">5. Your Rights</h3>
+          <p className="text-secondary-700 dark:text-secondary-200 mb-4">You have the right to:</p>
+          <ul className="list-disc pl-6 text-secondary-700 dark:text-secondary-200 space-y-2">
             <li>Access and review your personal information</li>
             <li>Request correction of inaccurate information</li>
             <li>Request deletion of your personal information (subject to legal requirements)</li>
@@ -315,8 +315,8 @@ function PrivacySection() {
         </section>
 
         <section className="mb-8">
-          <h3 className="text-xl font-semibold text-gray-900 mb-4">6. Contact Us</h3>
-          <p className="text-gray-700">
+          <h3 className="text-xl font-semibold text-secondary-900 dark:text-white mb-4">6. Contact Us</h3>
+          <p className="text-secondary-700 dark:text-secondary-200">
             If you have any questions about this Privacy Policy or our data practices, please contact us at{' '}
             <a href="mailto:privacy@conduit-ucpi.com" className="text-primary-600 hover:text-primary-500">
               privacy@conduit-ucpi.com
@@ -331,30 +331,30 @@ function PrivacySection() {
 function ArbitrationSection() {
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-gray-900">Instant Escrow Auto-Arbitration System</h2>
-      <p className="text-lg text-gray-600 italic">How Disputes Work - For Buyers and Sellers</p>
+      <h2 className="text-2xl font-bold text-secondary-900 dark:text-white">Instant Escrow Auto-Arbitration System</h2>
+      <p className="text-lg text-secondary-600 dark:text-secondary-300 italic">How Disputes Work - For Buyers and Sellers</p>
       
       <div className="prose max-w-none">
-        <section className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
-          <h3 className="text-xl font-semibold text-gray-800 mb-4">Overview</h3>
-          <p className="text-gray-600 mb-2">
+        <section className="bg-white dark:bg-secondary-800/50 border border-secondary-200 dark:border-secondary-700 rounded-lg p-6 mb-6">
+          <h3 className="text-xl font-semibold text-secondary-800 dark:text-secondary-100 mb-4">Overview</h3>
+          <p className="text-secondary-600 dark:text-secondary-300 mb-2">
             Our auto-arbitration system empowers buyers and sellers to resolve disputes directly. <strong>Once funds are in dispute, they're frozen until both parties agree on a refund amount.</strong> The system automatically executes the agreed resolution without requiring admin intervention.
           </p>
         </section>
 
-        <section className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
-          <h3 className="text-xl font-semibold text-gray-800 mb-4">How the Auto-Arbitration System Works</h3>
+        <section className="bg-white dark:bg-secondary-800/50 border border-secondary-200 dark:border-secondary-700 rounded-lg p-6 mb-6">
+          <h3 className="text-xl font-semibold text-secondary-800 dark:text-secondary-100 mb-4">How the Auto-Arbitration System Works</h3>
           
           <div className="space-y-4">
-            <div className="p-4 bg-blue-50 rounded-lg">
-              <p className="text-gray-700">
+            <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+              <p className="text-secondary-700 dark:text-secondary-200">
                 <strong>Key Innovation:</strong> When both parties enter the same refund amount, the dispute automatically resolves and distributes funds accordingly. No waiting for admin decisions.
               </p>
             </div>
 
             <div>
-              <h4 className="text-lg font-semibold text-gray-700 mb-2">Step-by-Step Process</h4>
-              <ol className="list-decimal list-inside text-gray-600 space-y-2">
+              <h4 className="text-lg font-semibold text-secondary-700 dark:text-secondary-200 mb-2">Step-by-Step Process</h4>
+              <ol className="list-decimal list-inside text-secondary-600 dark:text-secondary-300 space-y-2">
                 <li><strong>Buyer raises dispute</strong> - Enters a comment explaining the issue and suggests a refund amount</li>
                 <li><strong>Seller gets notified</strong> - Receives email alert about the dispute</li>
                 <li><strong>Both parties negotiate</strong> - Through the dashboard, each can:
@@ -370,14 +370,14 @@ function ArbitrationSection() {
           </div>
         </section>
 
-        <section className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
-          <h3 className="text-xl font-semibold text-gray-800 mb-4">Managing Your Dispute</h3>
+        <section className="bg-white dark:bg-secondary-800/50 border border-secondary-200 dark:border-secondary-700 rounded-lg p-6 mb-6">
+          <h3 className="text-xl font-semibold text-secondary-800 dark:text-secondary-100 mb-4">Managing Your Dispute</h3>
           
           <div className="space-y-4">
             <div>
-              <h4 className="text-lg font-semibold text-gray-700 mb-2">Through Your Dashboard</h4>
-              <p className="text-gray-600 mb-2">Click "Manage Dispute" on any disputed contract to:</p>
-              <ul className="list-disc list-inside text-gray-600 space-y-1">
+              <h4 className="text-lg font-semibold text-secondary-700 dark:text-secondary-200 mb-2">Through Your Dashboard</h4>
+              <p className="text-secondary-600 dark:text-secondary-300 mb-2">Click "Manage Dispute" on any disputed contract to:</p>
+              <ul className="list-disc list-inside text-secondary-600 dark:text-secondary-300 space-y-1">
                 <li><strong>View history</strong> - See all previous comments and refund suggestions from both parties</li>
                 <li><strong>Add comments</strong> - Explain your position, provide evidence, respond to the other party</li>
                 <li><strong>Propose refund amount</strong> - Enter what you think is fair (can be updated anytime)</li>
@@ -387,9 +387,9 @@ function ArbitrationSection() {
           </div>
         </section>
 
-        <section className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
-          <h3 className="text-xl font-semibold text-gray-800 mb-4">Contact Information</h3>
-          <div className="space-y-2 text-gray-600">
+        <section className="bg-white dark:bg-secondary-800/50 border border-secondary-200 dark:border-secondary-700 rounded-lg p-6 mb-6">
+          <h3 className="text-xl font-semibold text-secondary-800 dark:text-secondary-100 mb-4">Contact Information</h3>
+          <div className="space-y-2 text-secondary-600 dark:text-secondary-300">
             <p>
               <strong>Technical Support:</strong> info@conduit-ucpi.com<br/>
               <strong>Platform Issues:</strong> Include contract reference number and description of the problem

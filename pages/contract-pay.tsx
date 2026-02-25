@@ -287,14 +287,14 @@ export default function ContractPay() {
   // Loading screen for initialization
   if (!config || (authLoading && !isConnected && !address)) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
+      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-secondary-900 transition-colors">
         <Head>
           <title>Pay Contract - Conduit UCPI</title>
           <meta name="viewport" content="width=device-width, initial-scale=1" />
         </Head>
         <div className="text-center p-6">
           <LoadingSpinner size="lg" />
-          <p className="mt-4 text-gray-600">Loading payment request...</p>
+          <p className="mt-4 text-secondary-600 dark:text-secondary-300">Loading payment request...</p>
         </div>
       </div>
     );
@@ -303,26 +303,26 @@ export default function ContractPay() {
   // Wallet not connected - show connection UI
   if (!isConnected && !address) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
+      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-secondary-900 transition-colors">
         <Head>
           <title>Pay Contract - Conduit UCPI</title>
           <meta name="viewport" content="width=device-width, initial-scale=1" />
         </Head>
         <div className="text-center p-6 max-w-md mx-auto">
           {/* Buyer protection callout */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 text-left">
-            <h3 className="text-sm font-semibold text-blue-900 mb-2">
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6 text-left">
+            <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-200 mb-2">
               🛡️ You've received a secure payment request
             </h3>
-            <ul className="text-sm text-blue-800 space-y-1">
+            <ul className="text-sm text-blue-800 dark:text-blue-300 space-y-1">
               <li>✓ Your payment is protected by escrow</li>
               <li>✓ Can dispute if there's a problem</li>
               <li>✓ No gas fees - we cover blockchain costs</li>
             </ul>
           </div>
 
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Connect to Complete Payment</h2>
-          <p className="text-gray-600 mb-6">Choose how you'd like to pay. No crypto wallet needed - you can use your email.</p>
+          <h2 className="text-xl font-semibold text-secondary-900 dark:text-white mb-4">Connect to Complete Payment</h2>
+          <p className="text-secondary-600 dark:text-secondary-300 mb-6">Choose how you'd like to pay. No crypto wallet needed - you can use your email.</p>
           <ConnectWalletEmbedded
             compact={true}
             useSmartRouting={false}
@@ -339,14 +339,14 @@ export default function ContractPay() {
   // No contract ID provided
   if (!contractId) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
+      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-secondary-900 transition-colors">
         <Head>
           <title>Pay Contract - Conduit UCPI</title>
           <meta name="viewport" content="width=device-width, initial-scale=1" />
         </Head>
         <div className="text-center p-6 max-w-md mx-auto">
           <h2 className="text-xl font-semibold text-red-600 mb-4">Invalid Payment Link</h2>
-          <p className="text-gray-600 mb-6">No payment request ID was provided.</p>
+          <p className="text-secondary-600 dark:text-secondary-300 mb-6">No payment request ID was provided.</p>
           <Button onClick={() => router.push('/dashboard')} variant="outline">
             Go to Dashboard
           </Button>
@@ -358,14 +358,14 @@ export default function ContractPay() {
   // Loading contract
   if (isLoadingContract) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
+      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-secondary-900 transition-colors">
         <Head>
           <title>Pay Contract - Conduit UCPI</title>
           <meta name="viewport" content="width=device-width, initial-scale=1" />
         </Head>
         <div className="text-center p-6">
           <LoadingSpinner size="lg" />
-          <p className="mt-4 text-gray-600">Loading payment request...</p>
+          <p className="mt-4 text-secondary-600 dark:text-secondary-300">Loading payment request...</p>
         </div>
       </div>
     );
@@ -374,14 +374,14 @@ export default function ContractPay() {
   // Contract error (expired, already paid, etc.)
   if (contractError) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
+      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-secondary-900 transition-colors">
         <Head>
           <title>Pay Contract - Conduit UCPI</title>
           <meta name="viewport" content="width=device-width, initial-scale=1" />
         </Head>
         <div className="text-center p-6 max-w-md mx-auto">
           <h2 className="text-xl font-semibold text-red-600 mb-4">Unable to Process Payment</h2>
-          <p className="text-gray-600 mb-6">{contractError}</p>
+          <p className="text-secondary-600 dark:text-secondary-300 mb-6">{contractError}</p>
           <Button onClick={() => router.push('/dashboard')} variant="outline">
             Go to Dashboard
           </Button>
@@ -393,14 +393,14 @@ export default function ContractPay() {
   // Contract not found
   if (!contract) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
+      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-secondary-900 transition-colors">
         <Head>
           <title>Pay Contract - Conduit UCPI</title>
           <meta name="viewport" content="width=device-width, initial-scale=1" />
         </Head>
         <div className="text-center p-6 max-w-md mx-auto">
           <h2 className="text-xl font-semibold text-red-600 mb-4">Payment Request Not Found</h2>
-          <p className="text-gray-600 mb-6">The payment request could not be found.</p>
+          <p className="text-secondary-600 dark:text-secondary-300 mb-6">The payment request could not be found.</p>
           <Button onClick={() => router.push('/dashboard')} variant="outline">
             Go to Dashboard
           </Button>
@@ -418,7 +418,7 @@ export default function ContractPay() {
   const cannotPay = hasInsufficientBalance || isSameAddress;
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white dark:bg-secondary-900 transition-colors">
       <Head>
         <title>Pay Contract - Conduit UCPI</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -432,18 +432,18 @@ export default function ContractPay() {
           tokenAddress={selectedTokenAddress}
         />
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Payment Request</h2>
+        <div className="bg-white dark:bg-secondary-900 rounded-lg shadow-sm dark:shadow-none border border-secondary-200 dark:border-secondary-700 p-6">
+          <h2 className="text-xl font-semibold text-secondary-900 dark:text-white mb-4">Payment Request</h2>
 
           <div className="space-y-3 mb-6">
             <div className="flex justify-between">
-              <span className="text-gray-600">Amount:</span>
+              <span className="text-secondary-600 dark:text-secondary-300">Amount:</span>
               <span className="font-medium text-lg">
                 {displayCurrency(contract.amount, contract.currency || 'microUSDC')}
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-600">Your Balance:</span>
+              <span className="text-secondary-600 dark:text-secondary-300">Your Balance:</span>
               <span className={`font-medium ${hasInsufficientBalance ? 'text-red-600' : 'text-green-600'}`}>
                 {isLoadingBalance ? (
                   <span className="animate-pulse">Loading...</span>
@@ -453,25 +453,25 @@ export default function ContractPay() {
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-600">Seller:</span>
+              <span className="text-secondary-600 dark:text-secondary-300">Seller:</span>
               <span className="text-sm font-mono">{contract.sellerAddress.slice(0, 6)}...{contract.sellerAddress.slice(-4)}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-600">Payout Date:</span>
+              <span className="text-secondary-600 dark:text-secondary-300">Payout Date:</span>
               <span className="font-medium">
                 {isInstantPayment ? 'Instant (no delay)' : formatDateTimeWithTZ(contract.expiryTimestamp)}
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-600">Description:</span>
+              <span className="text-secondary-600 dark:text-secondary-300">Description:</span>
               <span className="text-right max-w-xs text-sm">{contract.description}</span>
             </div>
           </div>
 
           {/* Payment Progress Steps */}
           {isPaymentInProgress && (
-            <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-              <h3 className="text-sm font-medium text-gray-700 mb-3">Payment Progress</h3>
+            <div className="mb-6 p-4 bg-secondary-50 dark:bg-secondary-800 rounded-lg">
+              <h3 className="text-sm font-medium text-secondary-700 dark:text-secondary-200 mb-3">Payment Progress</h3>
               <div className="space-y-2">
                 {paymentSteps.map((step) => (
                   <div key={step.id} className="flex items-center">
@@ -493,15 +493,15 @@ export default function ContractPay() {
                           </svg>
                         </div>
                       ) : (
-                        <div className="w-5 h-5 bg-gray-300 rounded-full"></div>
+                        <div className="w-5 h-5 bg-secondary-300 dark:bg-secondary-600 rounded-full"></div>
                       )}
                     </div>
                     <div className="flex-1">
                       <p className={`text-sm ${
-                        step.status === 'completed' ? 'text-green-700' :
-                        step.status === 'active' ? 'text-blue-700 font-medium' :
-                        step.status === 'error' ? 'text-red-700' :
-                        'text-gray-500'
+                        step.status === 'completed' ? 'text-green-700 dark:text-green-400' :
+                        step.status === 'active' ? 'text-blue-700 dark:text-blue-400 font-medium' :
+                        step.status === 'error' ? 'text-red-700 dark:text-red-400' :
+                        'text-secondary-500 dark:text-secondary-400'
                       }`}>
                         {step.label}
                       </p>
@@ -510,36 +510,36 @@ export default function ContractPay() {
                 ))}
               </div>
               {loadingMessage && (
-                <p className="mt-3 text-sm text-gray-600 italic whitespace-pre-line">{loadingMessage}</p>
+                <p className="mt-3 text-sm text-secondary-600 dark:text-secondary-300 italic whitespace-pre-line">{loadingMessage}</p>
               )}
             </div>
           )}
 
           {/* Same address warning */}
           {isSameAddress ? (
-            <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-6">
-              <p className="text-sm text-red-800 font-medium">
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-4 mb-6">
+              <p className="text-sm text-red-800 dark:text-red-300 font-medium">
                 ⚠️ Cannot Pay Yourself
               </p>
-              <p className="text-sm text-red-700 mt-1">
+              <p className="text-sm text-red-700 dark:text-red-400 mt-1">
                 You cannot pay this contract because your wallet address matches the seller's address. The buyer and seller must be different accounts.
               </p>
             </div>
           ) : hasInsufficientBalance ? (
-            <div className="bg-red-50 border border-red-200 rounded-md mb-6">
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md mb-6">
               <div className="p-4">
-                <p className="text-sm text-red-800 font-medium">
+                <p className="text-sm text-red-800 dark:text-red-300 font-medium">
                   ⚠️ Insufficient Balance
                 </p>
-                <p className="text-sm text-red-700 mt-1">
+                <p className="text-sm text-red-700 dark:text-red-400 mt-1">
                   You need {amountInTokens.toFixed(4)} {selectedTokenSymbol} but only have {balanceFloat.toFixed(4)} {selectedTokenSymbol}.
                   Please add {(amountInTokens - balanceFloat).toFixed(4)} {selectedTokenSymbol} to your wallet before proceeding.
                 </p>
               </div>
 
               {/* Expandable guide section */}
-              <details className="border-t border-red-200">
-                <summary className="cursor-pointer p-3 text-sm font-medium text-red-800 hover:bg-red-100">
+              <details className="border-t border-red-200 dark:border-red-800">
+                <summary className="cursor-pointer p-3 text-sm font-medium text-red-800 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/30">
                   💡 How to add {selectedTokenSymbol} to your wallet
                 </summary>
                 <div className="p-3 pt-0">
@@ -548,8 +548,8 @@ export default function ContractPay() {
               </details>
             </div>
           ) : (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4 mb-6">
-              <p className="text-sm text-yellow-800">
+            <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md p-4 mb-6">
+              <p className="text-sm text-yellow-800 dark:text-yellow-300">
                 {isInstantPayment
                   ? `Your ${displayCurrency(contract.amount, contract.currency || 'microUSDC')} will be released to the seller immediately after payment confirmation.`
                   : `Your ${displayCurrency(contract.amount, contract.currency || 'microUSDC')} will be held securely in escrow and released to the seller on the payout date unless you raise a dispute.`

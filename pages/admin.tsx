@@ -115,8 +115,8 @@ export default function AdminPage() {
   if (!user) {
     return (
       <div className="max-w-md mx-auto text-center py-20">
-        <h1 className="text-2xl font-bold text-gray-900 mb-4">Authentication Required</h1>
-        <p className="text-gray-600 mb-6">
+        <h1 className="text-2xl font-bold text-secondary-900 dark:text-white mb-4">Authentication Required</h1>
+        <p className="text-secondary-600 dark:text-secondary-300 mb-6">
           You need to connect your wallet to access this page.
         </p>
         <ConnectWalletEmbedded useSmartRouting={true} />
@@ -129,10 +129,10 @@ export default function AdminPage() {
     return (
       <div className="max-w-md mx-auto text-center py-20">
         <h1 className="text-2xl font-bold text-red-600 mb-4">Access Denied</h1>
-        <p className="text-gray-600 mb-6">
+        <p className="text-secondary-600 dark:text-secondary-300 mb-6">
           You are not authorized to access this page.
         </p>
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-secondary-500 dark:text-secondary-400">
           Current user: {user.email}
         </p>
       </div>
@@ -140,25 +140,25 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="py-10">
+    <div className="py-10 bg-white dark:bg-secondary-900 transition-colors">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-          <p className="mt-2 text-gray-600">
+          <h1 className="text-3xl font-bold text-secondary-900 dark:text-white">Admin Dashboard</h1>
+          <p className="mt-2 text-secondary-600 dark:text-secondary-300">
             Administrative tools and system management
           </p>
         </div>
 
         {/* Admin Info */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Admin User Info</h2>
+        <div className="bg-white dark:bg-secondary-900 rounded-lg shadow-sm dark:shadow-none border border-secondary-200 dark:border-secondary-700 p-6 mb-8">
+          <h2 className="text-lg font-semibold text-secondary-900 dark:text-white mb-4">Admin User Info</h2>
           <div className="space-y-2">
             <div className="flex justify-between">
-              <span className="text-gray-600">Email:</span>
+              <span className="text-secondary-600 dark:text-secondary-300">Email:</span>
               <span className="font-medium">{user.email}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-600">Wallet Address:</span>
+              <span className="text-secondary-600 dark:text-secondary-300">Wallet Address:</span>
               <span className="font-mono text-sm">{walletAddress}</span>
             </div>
           </div>
@@ -171,12 +171,12 @@ export default function AdminPage() {
 
         {/* Selected Contract Details */}
         {selectedContract && (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
+          <div className="bg-white dark:bg-secondary-900 rounded-lg shadow-sm dark:shadow-none border border-secondary-200 dark:border-secondary-700 p-6 mb-8">
             <div className="flex justify-between items-center mb-6">
               <div className="flex items-center space-x-3">
-                <h2 className="text-lg font-semibold text-gray-900">Contract Details</h2>
+                <h2 className="text-lg font-semibold text-secondary-900 dark:text-white">Contract Details</h2>
                 {isDisputedOnBlockchain() && (
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300">
                     <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                     </svg>
@@ -209,14 +209,14 @@ export default function AdminPage() {
               {isLoadingDetails ? (
                 <div className="flex justify-center items-center py-8">
                   <LoadingSpinner size="md" />
-                  <span className="ml-2 text-gray-600">Loading contract details...</span>
+                  <span className="ml-2 text-secondary-600 dark:text-secondary-300">Loading contract details...</span>
                 </div>
               ) : detailedContract ? (
                 <div className="space-y-4">
                   {/* Contract Card based on detailed data */}
                   {detailedContract.chainAddress ? (
-                    <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-6 rounded-xl border border-green-200">
-                      <h3 className="text-md font-semibold text-gray-900 mb-4">Contract Card (from detailed data)</h3>
+                    <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 p-6 rounded-xl border border-green-200 dark:border-green-800">
+                      <h3 className="text-md font-semibold text-secondary-900 dark:text-white mb-4">Contract Card (from detailed data)</h3>
                       <ContractCard
                         contract={{
                           contractAddress: detailedContract.chainAddress,
@@ -240,8 +240,8 @@ export default function AdminPage() {
                       />
                     </div>
                   ) : (
-                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-xl border border-blue-200">
-                      <h3 className="text-md font-semibold text-gray-900 mb-4">Pending Contract (from detailed data)</h3>
+                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 p-6 rounded-xl border border-blue-200 dark:border-blue-800">
+                      <h3 className="text-md font-semibold text-secondary-900 dark:text-white mb-4">Pending Contract (from detailed data)</h3>
                       <PendingContractCard
                         contract={detailedContract}
                         currentUserEmail=""
@@ -251,19 +251,19 @@ export default function AdminPage() {
                   )}
 
                   {/* Full Contract Details for Debugging */}
-                  <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-6 rounded-xl border border-purple-200">
-                    <h3 className="text-md font-semibold text-gray-900 mb-4">Complete Contract Data (for debugging)</h3>
-                    <div className="bg-white rounded-lg border border-purple-300 p-4 max-h-96 overflow-y-auto">
-                      <pre className="text-xs text-gray-800 whitespace-pre-wrap break-words font-mono">
+                  <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 p-6 rounded-xl border border-purple-200 dark:border-purple-800">
+                    <h3 className="text-md font-semibold text-secondary-900 dark:text-white mb-4">Complete Contract Data (for debugging)</h3>
+                    <div className="bg-white dark:bg-secondary-800 rounded-lg border border-purple-300 dark:border-purple-700 p-4 max-h-96 overflow-y-auto">
+                      <pre className="text-xs text-secondary-800 dark:text-secondary-200 whitespace-pre-wrap break-words font-mono">
                         {JSON.stringify(detailedContract, null, 2)}
                       </pre>
                     </div>
                   </div>
                 </div>
               ) : (
-                <div className="bg-gray-50 p-6 rounded-xl border border-gray-200">
-                  <h3 className="text-md font-semibold text-gray-900 mb-2">No Contract Details Available</h3>
-                  <p className="text-gray-600 text-sm">
+                <div className="bg-secondary-50 dark:bg-secondary-800 p-6 rounded-xl border border-secondary-200 dark:border-secondary-700">
+                  <h3 className="text-md font-semibold text-secondary-900 dark:text-white mb-2">No Contract Details Available</h3>
+                  <p className="text-secondary-600 dark:text-secondary-300 text-sm">
                     Failed to load detailed contract information from the contract service.
                   </p>
                 </div>
@@ -271,8 +271,8 @@ export default function AdminPage() {
             </div>
 
             {/* Raw Data Tickets */}
-            <div className="border-t border-gray-200 pt-6">
-              <h3 className="text-md font-semibold text-gray-900 mb-4">Raw Service Data</h3>
+            <div className="border-t border-secondary-200 dark:border-secondary-700 pt-6">
+              <h3 className="text-md font-semibold text-secondary-900 dark:text-white mb-4">Raw Service Data</h3>
               
               {isLoadingRawData ? (
                 <div className="flex justify-center items-center py-8">
@@ -281,10 +281,10 @@ export default function AdminPage() {
               ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   {/* Contract Service Data */}
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
                     <div className="flex items-center justify-between mb-3">
-                      <h4 className="text-sm font-semibold text-blue-900">Local Storage</h4>
-                      <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded">ContractService</span>
+                      <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-200">Local Storage</h4>
+                      <span className="text-xs text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/40 px-2 py-1 rounded">ContractService</span>
                     </div>
                     
                     {rawContractData?.contractservice?.error ? (
@@ -292,21 +292,21 @@ export default function AdminPage() {
                         Error: {rawContractData.contractservice.error}
                       </div>
                     ) : rawContractData?.contractservice?.data ? (
-                      <div className="bg-white rounded border p-3 max-h-96 overflow-y-auto">
-                        <pre className="text-xs text-gray-800 whitespace-pre-wrap break-words">
+                      <div className="bg-white dark:bg-secondary-800 rounded border p-3 max-h-96 overflow-y-auto">
+                        <pre className="text-xs text-secondary-800 dark:text-secondary-200 whitespace-pre-wrap break-words">
                           {JSON.stringify(rawContractData.contractservice.data, null, 2)}
                         </pre>
                       </div>
                     ) : (
-                      <div className="text-gray-500 text-sm">No data available</div>
+                      <div className="text-secondary-500 dark:text-secondary-400 text-sm">No data available</div>
                     )}
                   </div>
 
                   {/* Chain Service Data */}
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
                     <div className="flex items-center justify-between mb-3">
-                      <h4 className="text-sm font-semibold text-green-900">Blockchain</h4>
-                      <span className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded">ChainService</span>
+                      <h4 className="text-sm font-semibold text-green-900 dark:text-green-200">Blockchain</h4>
+                      <span className="text-xs text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/40 px-2 py-1 rounded">ChainService</span>
                     </div>
                     
                     {rawContractData?.chainservice?.error ? (
@@ -314,17 +314,17 @@ export default function AdminPage() {
                         Error: {rawContractData.chainservice.error}
                       </div>
                     ) : rawContractData?.chainservice?.message ? (
-                      <div className="text-gray-500 text-sm">
+                      <div className="text-secondary-500 dark:text-secondary-400 text-sm">
                         {rawContractData.chainservice.message}
                       </div>
                     ) : rawContractData?.chainservice?.data ? (
-                      <div className="bg-white rounded border p-3 max-h-96 overflow-y-auto">
-                        <pre className="text-xs text-gray-800 whitespace-pre-wrap break-words">
+                      <div className="bg-white dark:bg-secondary-800 rounded border p-3 max-h-96 overflow-y-auto">
+                        <pre className="text-xs text-secondary-800 dark:text-secondary-200 whitespace-pre-wrap break-words">
                           {JSON.stringify(rawContractData.chainservice.data, null, 2)}
                         </pre>
                       </div>
                     ) : (
-                      <div className="text-gray-500 text-sm">No data available</div>
+                      <div className="text-secondary-500 dark:text-secondary-400 text-sm">No data available</div>
                     )}
                   </div>
                 </div>
@@ -335,9 +335,9 @@ export default function AdminPage() {
 
 
         {/* Development Info */}
-        <div className="mt-8 bg-yellow-50 border border-yellow-200 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-yellow-800 mb-2">Development Mode</h3>
-          <p className="text-yellow-700 text-sm">
+        <div className="mt-8 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-6">
+          <h3 className="text-lg font-semibold text-yellow-800 dark:text-yellow-300 mb-2">Development Mode</h3>
+          <p className="text-yellow-700 dark:text-yellow-400 text-sm">
             This admin panel is currently in development. Features will be added as needed.
             Access is restricted to authorized administrators only.
           </p>

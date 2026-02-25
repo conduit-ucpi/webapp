@@ -716,7 +716,7 @@ export default function ContractCreate() {
   // With lazy auth, we only show loading if wallet hasn't connected yet
   if (!config || (authLoading && !isConnected && !address)) {
     return (
-      <div className={`min-h-screen flex items-center justify-center ${isInIframe || isInPopup ? 'bg-gray-50' : 'bg-white'}`}>
+      <div className={`min-h-screen flex items-center justify-center transition-colors ${isInIframe || isInPopup ? 'bg-secondary-50 dark:bg-secondary-800' : 'bg-white dark:bg-secondary-900'}`}>
         <Head children={
           <>
             <title>Create Contract - Conduit UCPI</title>
@@ -725,7 +725,7 @@ export default function ContractCreate() {
         } />
         <div className="text-center p-6">
           <LoadingSpinner size="lg" />
-          <p className="mt-4 text-gray-600">Initializing secure payment system...</p>
+          <p className="mt-4 text-secondary-600 dark:text-secondary-300">Initializing secure payment system...</p>
         </div>
       </div>
     );
@@ -735,7 +735,7 @@ export default function ContractCreate() {
   // With lazy auth, we check isConnected/address instead of user
   if (!isConnected && !address) {
     return (
-      <div className={`min-h-screen flex items-center justify-center ${isInIframe || isInPopup ? 'bg-gray-50' : 'bg-white'}`}>
+      <div className={`min-h-screen flex items-center justify-center transition-colors ${isInIframe || isInPopup ? 'bg-secondary-50 dark:bg-secondary-800' : 'bg-white dark:bg-secondary-900'}`}>
         <Head children={
           <>
             <title>Create Contract - Conduit UCPI</title>
@@ -743,8 +743,8 @@ export default function ContractCreate() {
           </>
         } />
         <div className="text-center p-6 max-w-md mx-auto">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Connect Your Account</h2>
-          <p className="text-gray-600 mb-6">Choose how you'd like to connect to create a secure escrow contract.</p>
+          <h2 className="text-xl font-semibold text-secondary-900 dark:text-white mb-4">Connect Your Account</h2>
+          <p className="text-secondary-600 dark:text-secondary-300 mb-6">Choose how you'd like to connect to create a secure escrow contract.</p>
           <ConnectWalletEmbedded
             compact={true}
             useSmartRouting={false}
@@ -762,7 +762,7 @@ export default function ContractCreate() {
   }
 
   return (
-    <div className={`${isInIframe || isInPopup ? 'min-h-screen bg-gray-50' : 'min-h-screen bg-white'}`}>
+    <div className={`transition-colors ${isInIframe || isInPopup ? 'min-h-screen bg-secondary-50 dark:bg-secondary-800' : 'min-h-screen bg-white dark:bg-secondary-900'}`}>
       <Head children={
         <>
           <title>Create Contract - Conduit UCPI</title>
@@ -789,7 +789,7 @@ export default function ContractCreate() {
                 }}
                 variant="outline"
                 size="sm"
-                className="text-gray-600 hover:text-gray-800"
+                className="text-secondary-600 dark:text-secondary-300 hover:text-secondary-800 dark:hover:text-secondary-100"
               >
                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -798,8 +798,8 @@ export default function ContractCreate() {
               </Button>
             </div>
 
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">
+            <div className="bg-white dark:bg-secondary-900 rounded-lg shadow-sm dark:shadow-none border border-secondary-200 dark:border-secondary-700 p-6">
+              <h2 className="text-xl font-semibold text-secondary-900 dark:text-white mb-4">
                 {isInIframe || isInPopup ? 'Stablecoin payment protected by escrow, no gas fees' : 'Payment Agreement'}
               </h2>
               
@@ -829,11 +829,11 @@ export default function ContractCreate() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-secondary-700 dark:text-secondary-200 mb-2">
                   Description ({form.description.length}/160)
                 </label>
                 <textarea
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                  className="w-full border border-secondary-300 dark:border-secondary-600 dark:bg-secondary-800 dark:text-white rounded-md px-3 py-2 text-sm"
                   rows={3}
                   maxLength={160}
                   value={form.description}
@@ -844,11 +844,11 @@ export default function ContractCreate() {
                 {errors.description && <p className="text-sm text-red-600 mt-1">{errors.description}</p>}
               </div>
 
-              <div className="bg-gray-50 border border-gray-200 rounded-md p-3">
-                <p className="text-sm text-gray-700">
+              <div className="bg-secondary-50 dark:bg-secondary-800 border border-secondary-200 dark:border-secondary-700 rounded-md p-3">
+                <p className="text-sm text-secondary-700 dark:text-secondary-200">
                   <strong>Payout Date:</strong>
                 </p>
-                <p className="text-sm text-gray-900">
+                <p className="text-sm text-secondary-900 dark:text-white">
                   {(() => {
                     // Calculate expiry timestamp (same logic as in handleCreateContract)
                     let expiryTimestamp = Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60); // Default to 7 days
@@ -862,7 +862,7 @@ export default function ContractCreate() {
                     return expiryTimestamp === 0 ? 'Instant' : formatDateTimeWithTZ(expiryTimestamp);
                   })()}
                 </p>
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-secondary-500 dark:text-secondary-400 mt-1">
                   {epoch_expiry === '0' || parseInt(epoch_expiry as string || '') === 0
                     ? 'Funds will be released immediately after payment'
                     : 'Funds will be released to the seller after this date if not disputed'
@@ -871,8 +871,8 @@ export default function ContractCreate() {
               </div>
 
               {order_id && (
-                <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
-                  <p className="text-sm text-blue-800">
+                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md p-3">
+                  <p className="text-sm text-blue-800 dark:text-blue-300">
                     <strong>Order ID:</strong> {order_id}
                   </p>
                 </div>
@@ -880,20 +880,20 @@ export default function ContractCreate() {
 
               {/* Balance warning on create step */}
               {form.amount && parseFloat(form.amount) > 0 && !isLoadingBalance && parseFloat(tokenBalance) < parseFloat(form.amount) && (
-                <div className="bg-red-50 border border-red-200 rounded-md mb-4">
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md mb-4">
                   <div className="p-3">
-                    <p className="text-sm text-red-800 font-medium">
+                    <p className="text-sm text-red-800 dark:text-red-300 font-medium">
                       ⚠️ Insufficient {selectedTokenSymbol} Balance
                     </p>
-                    <p className="text-xs text-red-700 mt-1">
+                    <p className="text-xs text-red-700 dark:text-red-400 mt-1">
                       You need {parseFloat(form.amount).toFixed(4)} {selectedTokenSymbol} but only have {parseFloat(tokenBalance).toFixed(4)} {selectedTokenSymbol}.
                       Please add {(parseFloat(form.amount) - parseFloat(tokenBalance)).toFixed(4)} {selectedTokenSymbol} to your wallet.
                     </p>
                   </div>
 
                   {/* Expandable guide section */}
-                  <details className="border-t border-red-200">
-                    <summary className="cursor-pointer p-3 text-sm font-medium text-red-800 hover:bg-red-100">
+                  <details className="border-t border-red-200 dark:border-red-800">
+                    <summary className="cursor-pointer p-3 text-sm font-medium text-red-800 dark:text-red-300 hover:bg-red-100">
                       💡 How to add {selectedTokenSymbol} to your wallet
                     </summary>
                     <div className="p-3 pt-0">
@@ -935,16 +935,16 @@ export default function ContractCreate() {
             </div>
           </>
         ) : (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Complete Payment</h2>
+          <div className="bg-white dark:bg-secondary-900 rounded-lg shadow-sm dark:shadow-none border border-secondary-200 dark:border-secondary-700 p-6">
+            <h2 className="text-xl font-semibold text-secondary-900 dark:text-white mb-4">Complete Payment</h2>
             
             <div className="space-y-3 mb-6">
               <div className="flex justify-between">
-                <span className="text-gray-600">Amount:</span>
+                <span className="text-secondary-600 dark:text-secondary-300">Amount:</span>
                 <span className="font-medium">${form.amount} {selectedTokenSymbol}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">Your Balance:</span>
+                <span className="text-secondary-600 dark:text-secondary-300">Your Balance:</span>
                 <span className={`font-medium ${parseFloat(tokenBalance) < parseFloat(form.amount) ? 'text-red-600' : 'text-green-600'}`}>
                   {isLoadingBalance ? (
                     <span className="animate-pulse">Loading...</span>
@@ -954,11 +954,11 @@ export default function ContractCreate() {
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">Seller:</span>
+                <span className="text-secondary-600 dark:text-secondary-300">Seller:</span>
                 <span className="text-sm font-mono">{form.seller.slice(0, 6)}...{form.seller.slice(-4)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">Payout Date:</span>
+                <span className="text-secondary-600 dark:text-secondary-300">Payout Date:</span>
                 <span className="font-medium">
                   {(() => {
                     // Calculate expiry timestamp (same logic as in handleCreateContract)
@@ -975,12 +975,12 @@ export default function ContractCreate() {
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">Description:</span>
+                <span className="text-secondary-600 dark:text-secondary-300">Description:</span>
                 <span className="text-right max-w-xs text-sm">{form.description}</span>
               </div>
               {order_id && (
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Order ID:</span>
+                  <span className="text-secondary-600 dark:text-secondary-300">Order ID:</span>
                   <span className="text-sm">{order_id}</span>
                 </div>
               )}
@@ -988,8 +988,8 @@ export default function ContractCreate() {
 
             {/* Payment Progress Steps */}
             {isLoading && (
-              <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-                <h3 className="text-sm font-medium text-gray-700 mb-3">Payment Progress</h3>
+              <div className="mb-6 p-4 bg-secondary-50 dark:bg-secondary-800 rounded-lg">
+                <h3 className="text-sm font-medium text-secondary-700 dark:text-secondary-200 mb-3">Payment Progress</h3>
                 <div className="space-y-2">
                   {paymentSteps.map((step, index) => (
                     <div key={step.id} className="flex items-center">
@@ -1011,15 +1011,15 @@ export default function ContractCreate() {
                             </svg>
                           </div>
                         ) : (
-                          <div className="w-5 h-5 bg-gray-300 rounded-full"></div>
+                          <div className="w-5 h-5 bg-secondary-300 dark:bg-secondary-600 rounded-full"></div>
                         )}
                       </div>
                       <div className="flex-1">
                         <p className={`text-sm ${
-                          step.status === 'completed' ? 'text-green-700' :
-                          step.status === 'active' ? 'text-blue-700 font-medium' :
-                          step.status === 'error' ? 'text-red-700' :
-                          'text-gray-500'
+                          step.status === 'completed' ? 'text-green-700 dark:text-green-400' :
+                          step.status === 'active' ? 'text-blue-700 dark:text-blue-400 font-medium' :
+                          step.status === 'error' ? 'text-red-700 dark:text-red-400' :
+                          'text-secondary-500 dark:text-secondary-400'
                         }`}>
                           {step.label}
                         </p>
@@ -1028,26 +1028,26 @@ export default function ContractCreate() {
                   ))}
                 </div>
                 {loadingMessage && (
-                  <p className="mt-3 text-sm text-gray-600 italic whitespace-pre-line">{loadingMessage}</p>
+                  <p className="mt-3 text-sm text-secondary-600 dark:text-secondary-300 italic whitespace-pre-line">{loadingMessage}</p>
                 )}
               </div>
             )}
 
             {parseFloat(tokenBalance) < parseFloat(form.amount) ? (
-              <div className="bg-red-50 border border-red-200 rounded-md mb-6">
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md mb-6">
                 <div className="p-4">
-                  <p className="text-sm text-red-800 font-medium">
+                  <p className="text-sm text-red-800 dark:text-red-300 font-medium">
                     ⚠️ Insufficient Balance
                   </p>
-                  <p className="text-sm text-red-700 mt-1">
+                  <p className="text-sm text-red-700 dark:text-red-400 mt-1">
                     You need {parseFloat(form.amount).toFixed(4)} {selectedTokenSymbol} but only have {parseFloat(tokenBalance).toFixed(4)} {selectedTokenSymbol}.
                     Please add {(parseFloat(form.amount) - parseFloat(tokenBalance)).toFixed(4)} {selectedTokenSymbol} to your wallet before proceeding.
                   </p>
                 </div>
 
                 {/* Expandable guide section */}
-                <details className="border-t border-red-200">
-                  <summary className="cursor-pointer p-3 text-sm font-medium text-red-800 hover:bg-red-100">
+                <details className="border-t border-red-200 dark:border-red-800">
+                  <summary className="cursor-pointer p-3 text-sm font-medium text-red-800 dark:text-red-300 hover:bg-red-100">
                     💡 How to add {selectedTokenSymbol} to your wallet
                   </summary>
                   <div className="p-3 pt-0">
@@ -1056,8 +1056,8 @@ export default function ContractCreate() {
                 </details>
               </div>
             ) : (
-              <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4 mb-6">
-                <p className="text-sm text-yellow-800">
+              <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md p-4 mb-6">
+                <p className="text-sm text-yellow-800 dark:text-yellow-300">
                   {(() => {
                     // Check if this is an instant payment
                     const parsedExpiry = epoch_expiry !== undefined ? parseInt(epoch_expiry as string, 10) : -1;

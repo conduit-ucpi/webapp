@@ -57,7 +57,7 @@ function WizardProgress({ steps, currentStep, onStepChange }: WizardProgressProp
         </div>
         <div className="w-full bg-secondary-200 rounded-full h-2">
           <div 
-            className="bg-primary-500 dark:bg-primary-400 h-2 rounded-full transition-all duration-300 ease-out"
+            className="bg-secondary-900 dark:bg-white h-2 rounded-full transition-all duration-300 ease-out"
             style={{ width: `${((currentStep + 1) / steps.length) * 100}%` }}
           />
         </div>
@@ -86,7 +86,7 @@ function WizardProgress({ steps, currentStep, onStepChange }: WizardProgressProp
                 <div className="flex items-center">
                   <div 
                     className={`w-8 h-0.5 ${
-                      isCompleted ? 'bg-primary-500 dark:bg-primary-400' : 'bg-secondary-200 dark:bg-secondary-700'
+                      isCompleted ? 'bg-secondary-900 dark:bg-white' : 'bg-secondary-200 dark:bg-secondary-700'
                     } transition-colors duration-300`}
                   />
                 </div>
@@ -104,12 +104,12 @@ function WizardProgress({ steps, currentStep, onStepChange }: WizardProgressProp
                     flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium
                     transition-all duration-300
                     ${isCompleted
-                      ? 'bg-primary-500 dark:bg-primary-400 text-white'
+                      ? 'bg-secondary-900 dark:bg-white text-white dark:text-secondary-900'
                       : isCurrent
-                        ? 'bg-primary-50 dark:bg-primary-900/30 border-2 border-primary-500 dark:border-primary-400 text-primary-600 dark:text-primary-400'
+                        ? 'bg-secondary-50 dark:bg-secondary-800 border-2 border-secondary-900 dark:border-white text-secondary-900 dark:text-white'
                         : 'bg-secondary-100 dark:bg-secondary-800 text-secondary-400'
                     }
-                    ${isClickable && !isCurrent ? 'group-hover:bg-primary-100 dark:group-hover:bg-primary-900/20 group-hover:text-primary-600 dark:group-hover:text-primary-400' : ''}
+                    ${isClickable && !isCurrent ? 'group-hover:bg-secondary-200 dark:group-hover:bg-secondary-700 group-hover:text-secondary-900 dark:group-hover:text-white' : ''}
                   `}
                 >
                   {isCompleted ? (
@@ -123,7 +123,7 @@ function WizardProgress({ steps, currentStep, onStepChange }: WizardProgressProp
                 
                 <div className="mt-2 text-center">
                   <p className={`text-sm font-medium ${
-                    isCurrent ? 'text-primary-600 dark:text-primary-400' : 'text-secondary-500'
+                    isCurrent ? 'text-secondary-900 dark:text-white' : 'text-secondary-500'
                   }`}>
                     {step.title}
                   </p>

@@ -1,7 +1,5 @@
 import Link from 'next/link';
 import Head from 'next/head';
-import { useAuth } from '@/components/auth';
-import ConnectWalletEmbedded from '@/components/auth/ConnectWalletEmbedded';
 // Page-local button styles to match minimalist aesthetic without modifying shared Button component
 const btn = 'inline-flex items-center justify-center font-medium tracking-wide transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary-400 focus-visible:ring-offset-2';
 const btnPrimary = `${btn} text-[15px] bg-secondary-900 dark:bg-white text-white dark:text-secondary-900 hover:bg-secondary-700 dark:hover:bg-secondary-100 px-8 py-3.5`;
@@ -37,16 +35,6 @@ function Fade({ children, delay = 0, className = '' }: { children: ReactNode; de
 // ---------------------------------------------------------------------------
 
 export default function Landing4() {
-  let user = null;
-  let isConnected = false;
-
-  try {
-    const authContext = useAuth();
-    user = authContext.user;
-    isConnected = authContext.isConnected;
-  } catch (error) {
-    // Auth context not available during SSR
-  }
 
   const siteName = getSiteNameFromDomain();
 
@@ -114,13 +102,6 @@ export default function Landing4() {
         <section className="min-h-[90vh] flex items-center" aria-label="Hero">
           <div className="max-w-5xl mx-auto px-6 sm:px-8 py-24 lg:py-32 w-full">
             <motion.div variants={heroStagger} initial="hidden" animate="show">
-              <motion.p
-                variants={heroChild}
-                className="text-xs tracking-[0.2em] uppercase text-secondary-400 dark:text-secondary-500 mb-10"
-              >
-                Stablecoin payments on Base
-              </motion.p>
-
               <motion.h1
                 variants={heroChild}
                 className="text-4xl sm:text-5xl lg:text-6xl font-semibold text-secondary-900 dark:text-white leading-[1.1] tracking-tight max-w-3xl"
@@ -134,32 +115,22 @@ export default function Landing4() {
                 className="mt-6 text-base text-secondary-500 dark:text-secondary-400 max-w-xl leading-relaxed"
                 style={{ fontFamily: "'Newsreader', Georgia, serif" }}
               >
-                No chargebacks. No floats. No freezes. No vetting. Just a 1&nbsp;% fee and buyer protection that actually works for merchants too.
+                No chargebacks. No floats. No freezes. No vetting. Just a 1&nbsp;% fee and an automated dispute system that works for both parties.
               </motion.p>
 
               <motion.div variants={heroChild} className="mt-12">
-                {isConnected ? (
-                  <div className="flex flex-wrap gap-3">
-                    <Link href="/dashboard">
-                      <button className={btnPrimary}>Dashboard</button>
-                    </Link>
-                    <Link href="/create">
-                      <button className={btnOutline}>Create Payment Request</button>
-                    </Link>
-                  </div>
-                ) : (
-                  <div className="max-w-sm [&>div]:text-left">
-                    <ConnectWalletEmbedded
-                      compact={true}
-                      useSmartRouting={false}
-                      showTwoOptionLayout={true}
-                      buttonClassName={btnPrimary}
-                    />
-                    <p className="mt-3 text-xs text-secondary-400 dark:text-secondary-500">
-                      Sign in with Google, email, or an existing wallet. No crypto knowledge required.
-                    </p>
-                  </div>
-                )}
+                <Link href="/plugins">
+                  <button className={btnPrimary}>Explore Plugins</button>
+                </Link>
+              </motion.div>
+
+              <motion.div variants={heroChild} className="mt-8 pt-8 border-t border-secondary-200 dark:border-secondary-700 max-w-md">
+                <Link
+                  href="/p2p"
+                  className="text-sm text-secondary-500 dark:text-secondary-400 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
+                >
+                  Not a merchant? Request a payment here &rarr;
+                </Link>
               </motion.div>
 
               <motion.div
@@ -169,7 +140,7 @@ export default function Landing4() {
                 <span>1% flat fee</span>
                 <span>10-minute setup</span>
                 <span>No vetting</span>
-                <span>Open source</span>
+                <a href="https://github.com/conduit-ucpi/contracts" target="_blank" rel="noopener noreferrer" className="hover:text-secondary-600 dark:hover:text-secondary-300 transition-colors underline">Open source</a>
               </motion.div>
             </motion.div>
           </div>
@@ -222,6 +193,41 @@ export default function Landing4() {
                 </Fade>
               ))}
             </div>
+          </div>
+        </section>
+
+        {/* ================================================================ */}
+        {/* TRY THE CHECKOUT                                                 */}
+        {/* ================================================================ */}
+        <section
+          className="border-t border-secondary-100 dark:border-secondary-800"
+          aria-label="Try the checkout"
+        >
+          <div className="max-w-5xl mx-auto px-6 sm:px-8 py-24 lg:py-28">
+            <Fade>
+              <p className="text-xs tracking-[0.2em] uppercase text-secondary-400 dark:text-secondary-500 mb-6">
+                Live demo
+              </p>
+              <h2
+                className="text-3xl sm:text-4xl font-light text-secondary-900 dark:text-white leading-snug mb-3"
+                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+              >
+                See what your customers see.
+              </h2>
+              <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-10 max-w-md">
+                This opens the actual Stabledrop checkout — the same experience your customers get when they click &ldquo;Pay&rdquo; on your site.
+              </p>
+              <a
+                href="https://stabledrop.me/contract-create?seller=0x4f118f99a4e8bb384061bcfe081e3bbdec28482d&amount=10.00&description=Basic+Product+-+One-time+Payment&tokenSymbol=USDC&order_id=BASIC-1772027291139&epoch_expiry=1772632091&return=https%3A%2F%2Fstabledrop.me%2Fcheckout-example.html"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <button className={btnPrimary}>See what your customers see</button>
+              </a>
+              <p className="mt-3 text-xs text-secondary-400 dark:text-secondary-500">
+                Pay $10 (try for free)
+              </p>
+            </Fade>
           </div>
         </section>
 
@@ -419,7 +425,7 @@ export default function Landing4() {
         {/* ================================================================ */}
         <section
           className="border-t border-secondary-100 dark:border-secondary-800"
-          aria-label="Get started"
+          aria-label="Explore plugins"
         >
           <div className="max-w-5xl mx-auto px-6 sm:px-8 pt-24 lg:pt-28 pb-16 lg:pb-20">
             <Fade>
@@ -427,37 +433,21 @@ export default function Landing4() {
                 className="text-3xl sm:text-4xl font-light text-secondary-900 dark:text-white leading-snug mb-3"
                 style={{ fontFamily: "'Newsreader', Georgia, serif" }}
               >
-                Try it.
+                Add crypto checkout to your store.
               </h2>
               <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-8 max-w-md">
-                Create a test escrow for $0.001. No real money until you&apos;re ready.
+                Integrate Stabledrop into your existing platform with our ready-made plugins.
               </p>
-              {isConnected ? (
-                <div className="flex flex-wrap gap-3">
-                  <Link href="/dashboard">
-                    <button className={btnPrimary}>Dashboard</button>
-                  </Link>
-                  <Link href="/create">
-                    <button className={btnOutline}>Create Payment Request</button>
-                  </Link>
-                </div>
-              ) : (
-                <div className="max-w-sm [&>div]:text-left">
-                  <ConnectWalletEmbedded
-                    compact={true}
-                    useSmartRouting={false}
-                    showTwoOptionLayout={true}
-                    buttonClassName={btnPrimary}
-                  />
-                </div>
-              )}
+              <Link href="/plugins">
+                <button className={btnPrimary}>Explore Plugins</button>
+              </Link>
             </Fade>
 
             {/* Footer links */}
             <Fade delay={0.2}>
               <div className="mt-14 pt-8 border-t border-secondary-100 dark:border-secondary-800 flex flex-wrap gap-x-8 gap-y-3 text-xs text-secondary-400 dark:text-secondary-500">
                 <a
-                  href="https://github.com/conduit-ucpi"
+                  href="https://github.com/conduit-ucpi/contracts"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="hover:text-secondary-600 dark:hover:text-secondary-300 transition-colors"

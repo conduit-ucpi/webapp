@@ -1,73 +1,22 @@
 import Link from 'next/link';
 import Head from 'next/head';
-// Page-local button styles to match minimalist aesthetic without modifying shared Button component
-const btn = 'inline-flex items-center justify-center font-medium tracking-wide transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary-400 focus-visible:ring-offset-2';
-const btnPrimary = `${btn} text-[15px] bg-secondary-900 dark:bg-white text-white dark:text-secondary-900 hover:bg-secondary-700 dark:hover:bg-secondary-100 px-8 py-3.5`;
-const btnOutline = `${btn} text-[15px] border border-secondary-300 dark:border-secondary-600 text-secondary-700 dark:text-secondary-300 hover:bg-secondary-50 dark:hover:bg-secondary-800 px-8 py-3.5`;
 import SEO from '@/components/SEO';
+import Fade from '@/components/ui/Fade';
+import { btnPrimary, btnOutline } from '@/utils/landingStyles';
+import { financialServiceSchema, articleSchema } from '@/utils/structuredData';
 import { GetStaticProps } from 'next';
 import { getSiteNameFromDomain } from '@/utils/siteName';
-import { motion, useInView } from 'framer-motion';
-import { useRef, ReactNode } from 'react';
-
-// ---------------------------------------------------------------------------
-// Fade-in helper — triggers once when the element scrolls into view
-// ---------------------------------------------------------------------------
-
-function Fade({ children, delay = 0, className = '' }: { children: ReactNode; delay?: number; className?: string }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once: true, margin: '-60px' });
-  return (
-    <motion.div
-      ref={ref}
-      className={className}
-      initial={{ opacity: 0, y: 16 }}
-      animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 16 }}
-      transition={{ duration: 0.5, delay, ease: [0.25, 0.4, 0.25, 1] }}
-    >
-      {children}
-    </motion.div>
-  );
-}
+import { motion } from 'framer-motion';
 
 // ---------------------------------------------------------------------------
 // Page
 // ---------------------------------------------------------------------------
 
-export default function Landing4() {
+export default function Merchant() {
 
   const siteName = getSiteNameFromDomain();
 
-  const structuredData = [
-    {
-      "@context": "https://schema.org",
-      "@type": "FinancialService",
-      "name": "Conduit Escrow",
-      "alternateName": "InstantEscrow",
-      "description": "100% open source cryptocurrency escrow service for USDC stablecoin payments with built-in buyer protection. Smart contract-based time-delayed escrow with automatic dispute resolution. No KYC/KYB, no floats, no minimum volumes. 1% flat fee, instant settlement.",
-      "url": "https://conduit-ucpi.com",
-      "logo": "https://conduit-ucpi.com/icon.png",
-      "image": "https://conduit-ucpi.com/preview.png",
-      "sameAs": ["https://github.com/conduit-ucpi", "https://app.instantescrow.nz"],
-      "priceRange": "1%",
-      "paymentAccepted": ["USDC", "Cryptocurrency", "Stablecoin"],
-      "areaServed": { "@type": "Place", "name": "Worldwide" },
-      "availableChannel": { "@type": "ServiceChannel", "serviceType": "Online Banking", "availableLanguage": "English" },
-      "hasOfferCatalog": {
-        "@type": "OfferCatalog",
-        "name": "Escrow Services",
-        "itemListElement": [
-          { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Time-Delayed Escrow Contracts", "description": "Secure smart contract payment holding with automatic release on a pre-agreed payout date. Buyer can dispute before payout." } },
-          { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "E-commerce Integration", "description": "WordPress and Shopify plugins, JavaScript SDK for custom websites." } }
-        ]
-      },
-      "offers": { "@type": "Offer", "priceCurrency": "USD", "price": "1", "priceSpecification": { "@type": "UnitPriceSpecification", "price": "0.01", "priceCurrency": "USD", "referenceQuantity": { "@type": "QuantitativeValue", "value": "1", "unitText": "TRANSACTION" } } },
-      "serviceType": "Cryptocurrency Escrow Service",
-      "provider": { "@type": "Organization", "name": "Conduit UCPI", "url": "https://conduit-ucpi.com" },
-      "termsOfService": "https://conduit-ucpi.com/terms-of-service",
-      "slogan": "Stablecoin payments made safe and easy"
-    }
-  ];
+  const structuredData = [financialServiceSchema, articleSchema];
 
   const heroStagger = {
     hidden: {},
@@ -84,7 +33,7 @@ export default function Landing4() {
         title="Conduit Escrow - Stablecoin Payments with Buyer Protection | 1% Fee"
         description="Stablecoin checkout with buyer protection. No chargebacks, no floats, no freezes, no vetting. 1% flat fee, 10-minute setup. Gas-free transactions. Open source escrow on Base."
         keywords="open source escrow, crypto escrow, blockchain escrow, USDC escrow, secure crypto payments, buyer protection, smart contract escrow, Base network escrow"
-        canonical="/"
+        canonical="/merchant"
         structuredData={structuredData}
       />
       <Head>
@@ -217,13 +166,19 @@ export default function Landing4() {
               <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-10 max-w-md">
                 This opens the actual Stabledrop checkout — the same experience your customers get when they click &ldquo;Pay&rdquo; on your site.
               </p>
-              <a
-                href="https://stabledrop.me/contract-create?seller=0x4f118f99a4e8bb384061bcfe081e3bbdec28482d&amount=10.00&description=Basic+Product+-+One-time+Payment&tokenSymbol=USDC&order_id=BASIC-1772027291139&epoch_expiry=1772632091&return=https%3A%2F%2Fstabledrop.me%2Fcheckout-example.html"
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
+                className={btnPrimary}
+                onClick={() => {
+                  const origin = window.location.origin;
+                  const returnUrl = encodeURIComponent(`${origin}/checkout-example.html`);
+                  window.open(
+                    `${origin}/contract-create?seller=0x4f118f99a4e8bb384061bcfe081e3bbdec28482d&amount=10.00&description=Basic+Product+-+One-time+Payment&tokenSymbol=USDC&order_id=BASIC-1772027291139&epoch_expiry=1772632091&return=${returnUrl}`,
+                    '_blank'
+                  );
+                }}
               >
-                <button className={btnPrimary}>See what your customers see</button>
-              </a>
+                See what your customers see
+              </button>
               <p className="mt-3 text-xs text-secondary-400 dark:text-secondary-500">
                 Pay $10 (try for free)
               </p>

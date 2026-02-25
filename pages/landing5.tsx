@@ -5,8 +5,8 @@ import ConnectWalletEmbedded from '@/components/auth/ConnectWalletEmbedded';
 import SEO from '@/components/SEO';
 import { GetStaticProps } from 'next';
 import { getSiteNameFromDomain } from '@/utils/siteName';
-import { motion, useInView } from 'framer-motion';
-import { useRef, ReactNode } from 'react';
+import { motion } from 'framer-motion';
+import Fade from '@/components/ui/Fade';
 
 // ---------------------------------------------------------------------------
 // Page-local button styles — protocol / terminal aesthetic
@@ -14,25 +14,6 @@ import { useRef, ReactNode } from 'react';
 const btn = 'inline-flex items-center justify-center font-mono tracking-wide transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0a0a]';
 const btnPrimary = `${btn} text-sm bg-primary-500 text-[#0a0a0a] font-semibold hover:bg-primary-400 px-8 py-3.5`;
 const btnOutline = `${btn} text-sm border border-primary-500/40 text-primary-400 hover:border-primary-400 hover:text-primary-300 px-8 py-3.5`;
-
-// ---------------------------------------------------------------------------
-// Fade-in helper
-// ---------------------------------------------------------------------------
-function Fade({ children, delay = 0, className = '' }: { children: ReactNode; delay?: number; className?: string }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once: true, margin: '-60px' });
-  return (
-    <motion.div
-      ref={ref}
-      className={className}
-      initial={{ opacity: 0, y: 16 }}
-      animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 16 }}
-      transition={{ duration: 0.5, delay, ease: [0.25, 0.4, 0.25, 1] }}
-    >
-      {children}
-    </motion.div>
-  );
-}
 
 // ---------------------------------------------------------------------------
 // Blinking cursor component

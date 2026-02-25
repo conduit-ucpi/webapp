@@ -7,10 +7,7 @@ import { SkeletonCard } from '@/components/ui/Skeleton';
 import ExpandableHash from '@/components/ui/ExpandableHash';
 import { useWalletAddress } from '@/hooks/useWalletAddress';
 import DashboardTour from '@/components/onboarding/DashboardTour';
-
-// Page-local button styles matching landing4
-const btn = 'inline-flex items-center justify-center font-medium tracking-wide transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary-400 focus-visible:ring-offset-2';
-const btnPrimary = `${btn} text-[15px] bg-secondary-900 dark:bg-white text-white dark:text-secondary-900 hover:bg-secondary-700 dark:hover:bg-secondary-100 px-8 py-3.5`;
+import { btnPrimary } from '@/utils/landingStyles';
 
 export default function Dashboard2() {
   const { user, isLoading, isConnected } = useAuth();

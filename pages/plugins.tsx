@@ -3,31 +3,9 @@ import Link from 'next/link';
 import Head from 'next/head';
 import { initRedditPixel, trackConversion } from '@/lib/tracking';
 import { useScrollTracking, useTimeTracking } from '@/hooks/usePageTracking';
-import { motion, useInView, AnimatePresence } from 'framer-motion';
-
-// Page-local button styles matching landing4
-const btn = 'inline-flex items-center justify-center font-medium tracking-wide transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary-400 focus-visible:ring-offset-2';
-const btnPrimary = `${btn} text-[15px] bg-secondary-900 dark:bg-white text-white dark:text-secondary-900 hover:bg-secondary-700 dark:hover:bg-secondary-100 px-8 py-3.5`;
-
-// ---------------------------------------------------------------------------
-// Fade-in helper — triggers once when the element scrolls into view
-// ---------------------------------------------------------------------------
-
-function Fade({ children, delay = 0, className = '' }: { children: ReactNode; delay?: number; className?: string }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once: true, margin: '-60px' });
-  return (
-    <motion.div
-      ref={ref}
-      className={className}
-      initial={{ opacity: 0, y: 16 }}
-      animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 16 }}
-      transition={{ duration: 0.5, delay, ease: [0.25, 0.4, 0.25, 1] }}
-    >
-      {children}
-    </motion.div>
-  );
-}
+import { motion, AnimatePresence } from 'framer-motion';
+import Fade from '@/components/ui/Fade';
+import { btnPrimary } from '@/utils/landingStyles';
 
 // ---------------------------------------------------------------------------
 // Collapsible section — eyebrow + heading always visible, content toggles

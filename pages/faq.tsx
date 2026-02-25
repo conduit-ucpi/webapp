@@ -1,30 +1,11 @@
-import React, { useRef, useState, ReactNode } from 'react';
+import React, { useState, ReactNode } from 'react';
 import SEO from '@/components/SEO'
 import Link from 'next/link'
 import Head from 'next/head'
 import { GetStaticProps } from 'next'
 import { useConfig } from '@/components/auth/ConfigProvider'
-import { motion, useInView, AnimatePresence } from 'framer-motion';
-
-// ---------------------------------------------------------------------------
-// Fade-in helper — triggers once when the element scrolls into view
-// ---------------------------------------------------------------------------
-
-function Fade({ children, delay = 0, className = '' }: { children: ReactNode; delay?: number; className?: string }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once: true, margin: '-60px' });
-  return (
-    <motion.div
-      ref={ref}
-      className={className}
-      initial={{ opacity: 0, y: 16 }}
-      animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 16 }}
-      transition={{ duration: 0.5, delay, ease: [0.25, 0.4, 0.25, 1] }}
-    >
-      {children}
-    </motion.div>
-  );
-}
+import { motion, AnimatePresence } from 'framer-motion';
+import Fade from '@/components/ui/Fade';
 
 // ---------------------------------------------------------------------------
 // Collapsible FAQ item — question as clickable heading, answer toggles

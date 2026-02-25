@@ -1,7 +1,10 @@
+import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/router';
 import Head from 'next/head';
 import SEO from '@/components/SEO';
 import Fade from '@/components/ui/Fade';
+import { useAuth } from '@/components/auth';
 import { btnPrimary, btnOutline } from '@/utils/landingStyles';
 import { financialServiceSchema, articleSchema } from '@/utils/structuredData';
 import { GetStaticProps } from 'next';
@@ -15,6 +18,28 @@ import { motion } from 'framer-motion';
 export default function Sell() {
 
   const siteName = getSiteNameFromDomain();
+  const router = useRouter();
+  const { isConnected, connect } = useAuth();
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
+
+  /** Trigger auth then navigate — or navigate immediately if already connected */
+  const handleAuthAndNavigate = async (destination: '/create' | '/dashboard') => {
+    if (isConnected) {
+      router.push(destination);
+      return;
+    }
+    try {
+      setIsAuthenticating(true);
+      if (connect) {
+        const result = await connect('walletconnect');
+        if (result?.success) {
+          router.push(destination);
+        }
+      }
+    } finally {
+      setIsAuthenticating(false);
+    }
+  };
 
   const heroStagger = {
     hidden: {},
@@ -66,12 +91,20 @@ export default function Sell() {
               </motion.p>
 
               <motion.div variants={heroChild} className="mt-12 flex flex-wrap gap-3">
-                <Link href="/create">
-                  <button className={btnPrimary}>Create Payment Request</button>
-                </Link>
-                <Link href="/dashboard">
-                  <button className={btnOutline}>View Dashboard</button>
-                </Link>
+                <button
+                  className={btnPrimary}
+                  disabled={isAuthenticating}
+                  onClick={() => handleAuthAndNavigate('/create')}
+                >
+                  {isAuthenticating ? 'Connecting...' : 'Create Payment Request'}
+                </button>
+                <button
+                  className={btnOutline}
+                  disabled={isAuthenticating}
+                  onClick={() => handleAuthAndNavigate('/dashboard')}
+                >
+                  {isAuthenticating ? 'Connecting...' : 'View Dashboard'}
+                </button>
               </motion.div>
 
               <motion.div variants={heroChild} className="mt-8 pt-8 border-t border-secondary-200 dark:border-secondary-700 max-w-md">
@@ -334,12 +367,20 @@ export default function Sell() {
                 Connect your wallet and create your first payment request. No sign-up forms, no approval process.
               </p>
               <div className="flex flex-wrap gap-3">
-                <Link href="/create">
-                  <button className={btnPrimary}>Create Payment Request</button>
-                </Link>
-                <Link href="/dashboard">
-                  <button className={btnOutline}>View Dashboard</button>
-                </Link>
+                <button
+                  className={btnPrimary}
+                  disabled={isAuthenticating}
+                  onClick={() => handleAuthAndNavigate('/create')}
+                >
+                  {isAuthenticating ? 'Connecting...' : 'Create Payment Request'}
+                </button>
+                <button
+                  className={btnOutline}
+                  disabled={isAuthenticating}
+                  onClick={() => handleAuthAndNavigate('/dashboard')}
+                >
+                  {isAuthenticating ? 'Connecting...' : 'View Dashboard'}
+                </button>
               </div>
             </Fade>
 

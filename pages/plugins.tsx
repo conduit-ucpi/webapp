@@ -1,9 +1,113 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef, useState, ReactNode } from 'react';
 import Link from 'next/link';
 import Head from 'next/head';
-import Button from '@/components/ui/Button';
 import { initRedditPixel, trackConversion } from '@/lib/tracking';
-import { useScrollTracking, useTimeTracking, useVideoTracking } from '@/hooks/usePageTracking';
+import { useScrollTracking, useTimeTracking } from '@/hooks/usePageTracking';
+import { motion, useInView, AnimatePresence } from 'framer-motion';
+
+// Page-local button styles matching landing4
+const btn = 'inline-flex items-center justify-center font-medium tracking-wide transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary-400 focus-visible:ring-offset-2';
+const btnPrimary = `${btn} text-[15px] bg-secondary-900 dark:bg-white text-white dark:text-secondary-900 hover:bg-secondary-700 dark:hover:bg-secondary-100 px-8 py-3.5`;
+
+// ---------------------------------------------------------------------------
+// Fade-in helper — triggers once when the element scrolls into view
+// ---------------------------------------------------------------------------
+
+function Fade({ children, delay = 0, className = '' }: { children: ReactNode; delay?: number; className?: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const inView = useInView(ref, { once: true, margin: '-60px' });
+  return (
+    <motion.div
+      ref={ref}
+      className={className}
+      initial={{ opacity: 0, y: 16 }}
+      animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 16 }}
+      transition={{ duration: 0.5, delay, ease: [0.25, 0.4, 0.25, 1] }}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Collapsible section — eyebrow + heading always visible, content toggles
+// ---------------------------------------------------------------------------
+
+function Collapsible({
+  eyebrow,
+  heading,
+  children,
+  defaultOpen = false,
+  className = '',
+}: {
+  eyebrow: string;
+  heading?: string;
+  children: ReactNode;
+  defaultOpen?: boolean;
+  className?: string;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className={className}>
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="w-full text-left group cursor-pointer"
+      >
+        {heading ? (
+          <>
+            <p className="text-xs tracking-[0.2em] uppercase text-secondary-400 dark:text-secondary-500 mb-3">
+              {eyebrow}
+            </p>
+            <div className="flex items-start justify-between gap-4">
+              <h2
+                className="text-2xl sm:text-3xl font-light text-secondary-900 dark:text-white leading-snug max-w-2xl"
+                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+              >
+                {heading}
+              </h2>
+              <span className="mt-2 flex-shrink-0 text-secondary-400 dark:text-secondary-500 transition-transform duration-300" style={{ transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M5 7.5L10 12.5L15 7.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </span>
+            </div>
+          </>
+        ) : (
+          <div className="flex items-center justify-between gap-4">
+            <h3 className="text-lg font-medium text-secondary-900 dark:text-white">
+              {eyebrow}
+            </h3>
+            <span className="flex-shrink-0 text-secondary-400 dark:text-secondary-500 transition-transform duration-300" style={{ transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+              <svg width="16" height="16" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M5 7.5L10 12.5L15 7.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </span>
+          </div>
+        )}
+      </button>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.3, ease: [0.25, 0.4, 0.25, 1] }}
+            className="overflow-hidden"
+          >
+            <div className="pt-8">
+              {children}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Page
+// ---------------------------------------------------------------------------
 
 export default function Plugins() {
   const pageTitle = "Smart Contract Escrow SDK for WordPress & Shopify | Non-Custodial Developer Tools";
@@ -11,7 +115,6 @@ export default function Plugins() {
   const pageUrl = "https://conduit-ucpi.com/plugins";
   const imageUrl = "https://conduit-ucpi.com/og-plugins.png";
 
-  // Structured data for Software Application
   const structuredData = {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
@@ -48,15 +151,9 @@ export default function Plugins() {
     }
   };
 
-  // Initialize tracking hooks
-  useScrollTracking(); // Track scroll depth (25%, 50%, 75%, 100%)
-  useTimeTracking();   // Track time on page (30s, 60s, 120s, 300s)
+  useScrollTracking();
+  useTimeTracking();
 
-  // Video tracking refs
-  const wordpressVideoRef = useVideoTracking('aYXG0hC7dFg', 'WordPress WooCommerce USDC Payment Plugin Demo');
-  const shopifyVideoRef = useVideoTracking('gwdWiErYq6o', 'Shopify USDC Payment Integration Demo');
-
-  // Initialize Reddit Pixel on component mount
   useEffect(() => {
     const redditPixelId = process.env.NEXT_PUBLIC_REDDIT_PIXEL_ID;
     if (redditPixelId && redditPixelId !== 'your_reddit_pixel_id_here') {
@@ -64,7 +161,6 @@ export default function Plugins() {
     }
   }, []);
 
-  // Conversion tracking handlers
   const handleWordPressClick = () => {
     trackConversion({
       conversionType: 'wordpress_plugin',
@@ -82,193 +178,140 @@ export default function Plugins() {
   };
 
   return (
-    <React.Fragment>
+    <>
       <Head>
-        {/* Primary Meta Tags */}
         <title>{pageTitle}</title>
         <meta name="title" content={pageTitle} />
         <meta name="description" content={pageDescription} />
         <meta name="keywords" content="blockchain escrow SDK, smart contract developer tools, non-custodial infrastructure, WordPress blockchain integration, Shopify Web3 tools, escrow smart contracts, decentralized buyer protection, WooCommerce blockchain plugin, Base network SDK, open-source escrow infrastructure" />
-
-        {/* Canonical URL */}
         <link rel="canonical" href={pageUrl} />
-
-        {/* Open Graph / Facebook */}
         <meta property="og:type" content="website" />
         <meta property="og:url" content={pageUrl} />
         <meta property="og:title" content={pageTitle} />
         <meta property="og:description" content={pageDescription} />
         <meta property="og:image" content={imageUrl} />
         <meta property="og:site_name" content="Conduit UCPI" />
-
-        {/* Twitter */}
         <meta property="twitter:card" content="summary_large_image" />
         <meta property="twitter:url" content={pageUrl} />
         <meta property="twitter:title" content={pageTitle} />
         <meta property="twitter:description" content={pageDescription} />
         <meta property="twitter:image" content={imageUrl} />
-
-        {/* Additional SEO Meta Tags */}
         <meta name="robots" content="index, follow" />
         <meta name="language" content="English" />
         <meta name="author" content="Conduit UCPI" />
-
-        {/* Structured Data */}
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
         />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,300;6..72,400&display=swap"
+          rel="stylesheet"
+        />
       </Head>
 
-      <div className="bg-white min-h-screen">
-        <article className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 lg:py-20">
+      <div className="bg-white dark:bg-secondary-900 transition-colors">
 
-          {/* Hero */}
-          <header className="mb-12 sm:mb-16">
-            <h1 className="text-3xl sm:text-4xl font-bold text-secondary-900 mb-4">
-              Smart Contract Escrow Integration for E-Commerce Platforms
-            </h1>
-            <p className="text-lg sm:text-xl text-secondary-600 max-w-2xl">
-              Developer tools for integrating blockchain-based buyer protection into WordPress and Shopify stores. Built on audited smart contracts, deployed on Base network infrastructure.
-            </p>
-          </header>
-
-          {/* The Market Opportunity */}
-          <section className="mb-12 sm:mb-16 border-l-4 border-secondary-300 pl-4 sm:pl-6 py-2" aria-label="Market opportunity">
-          <p className="text-base sm:text-lg text-secondary-700 mb-3">
-            <strong>The cryptocurrency market processes $9.7 trillion in monthly transactions.</strong> Yet only 0.003% of that volume is spent on goods and services. In traditional finance, commerce represents 0.4% of transaction volume—over 100x higher.
-          </p>
-          <p className="text-base sm:text-lg text-secondary-700 mb-3">
-            This gap represents a massive untapped market for merchants. What's preventing cryptocurrency holders from spending? <strong>The absence of buyer protection.</strong> Without purchase guarantees equivalent to credit card chargebacks, rational consumers won't use crypto for e-commerce.
-          </p>
-          <p className="text-base sm:text-lg text-secondary-700">
-            Our smart contract escrow system solves both sides of the equation: it provides buyers with time-locked purchase protection—removing their barrier to spending—while simultaneously <strong>eliminating chargeback fraud for merchants</strong> through blockchain-enforced settlements.
-          </p>
-          </section>
-
-          {/* What you get */}
-          <section className="mb-12 sm:mb-16" aria-label="Platform features">
-            <h2 className="text-xl sm:text-2xl font-bold text-secondary-900 mb-6">Developer SDK Features</h2>
-
-          <div className="space-y-6">
-            <div>
-              <h3 className="text-base sm:text-lg font-semibold text-secondary-900 mb-1">Rapid Integration SDK</h3>
-              <p className="text-sm sm:text-base text-secondary-600">Production-ready developer tools with under 5 minutes integration time. Single-line SDK integration for WordPress and Shopify platforms.</p>
-            </div>
-
-            <div>
-              <h3 className="text-base sm:text-lg font-semibold text-secondary-900 mb-1">Transparent Infrastructure Pricing</h3>
-              <p className="text-sm sm:text-base text-secondary-600">Open-source codebase with 1% infrastructure fee (0.30 USDC minimum) for network operations. No monthly fees, no custody fees, no hidden charges. Early adopters receive rate lock guarantee.</p>
-            </div>
-
-            <div>
-              <h3 className="text-base sm:text-lg font-semibold text-secondary-900 mb-1">Audited Smart Contract Infrastructure</h3>
-              <p className="text-sm sm:text-base text-secondary-600">Automated dispute resolution via blockchain-enforced escrow logic. All escrow operations executed by audited smart contracts—no intermediary custody or control.</p>
-            </div>
-
-            <div>
-              <h3 className="text-base sm:text-lg font-semibold text-secondary-900 mb-1">Technical Infrastructure (Not Financial Services)</h3>
-              <p className="text-sm sm:text-base text-secondary-600">We provide technical infrastructure only—no financial services, no custody, no exchange functionality. Developers integrate our SDK to enable buyer-seller escrow logic. End users maintain full control of their wallets and funds.</p>
-            </div>
-
-            <div>
-              <h3 className="text-base sm:text-lg font-semibold text-secondary-900 mb-1">100% Non-Custodial Architecture</h3>
-              <p className="text-sm sm:text-base text-secondary-600">Direct wallet-to-wallet settlement through smart contracts. We never hold, control, or have access to user funds. All escrow logic is executed on-chain by audited smart contracts that users interact with directly.</p>
-            </div>
+        {/* ================================================================ */}
+        {/* HERO                                                             */}
+        {/* ================================================================ */}
+        <section className="flex items-center" aria-label="Hero">
+          <div className="max-w-5xl mx-auto px-6 sm:px-8 pt-24 lg:pt-32 pb-16 lg:pb-20 w-full">
+            <Fade>
+              <p className="text-xs tracking-[0.2em] uppercase text-secondary-400 dark:text-secondary-500 mb-10">
+                Integrations
+              </p>
+              <h1
+                className="text-4xl sm:text-5xl lg:text-6xl font-semibold text-secondary-900 dark:text-white leading-[1.1] tracking-tight max-w-3xl"
+              >
+                Add escrow checkout to your store.
+              </h1>
+              <p
+                className="mt-6 text-base text-secondary-500 dark:text-secondary-400 max-w-xl leading-relaxed"
+                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+              >
+                WordPress. Shopify. Any website. Under 5 minutes.
+              </p>
+            </Fade>
           </div>
-          </section>
+        </section>
 
-          {/* WordPress */}
-          <section className="mb-12 border border-secondary-200 rounded-lg p-4 sm:p-6 lg:p-8" aria-labelledby="wordpress-heading">
-          <div className="mb-6">
-            <h2 id="wordpress-heading" className="text-xl sm:text-2xl font-bold text-secondary-900 mb-2">WordPress / WooCommerce Integration SDK</h2>
-            <p className="text-sm sm:text-base text-secondary-600">Open-source developer plugin for integrating smart contract escrow functionality into WooCommerce stores. Non-custodial infrastructure with blockchain-enforced settlement logic.</p>
-          </div>
+        {/* ================================================================ */}
+        {/* INTEGRATIONS                                                     */}
+        {/* ================================================================ */}
+        <section
+          className="border-t border-secondary-100 dark:border-secondary-800"
+          aria-label="Integrations"
+        >
+          <div className="max-w-5xl mx-auto px-6 sm:px-8 py-10 lg:py-12">
+            <Fade>
+              <h2 className="text-lg font-medium text-secondary-900 dark:text-white mb-8">
+                Integrate the checkout for your site:
+              </h2>
+            </Fade>
 
-          <div className="mb-6" ref={wordpressVideoRef}>
-            <div className="aspect-video bg-secondary-100 rounded-lg overflow-hidden">
-              <iframe
-                width="100%"
-                height="100%"
-                src="https://www.youtube.com/embed/aYXG0hC7dFg?enablejsapi=1"
-                title="WordPress WooCommerce USDC Payment Plugin Demo - Crypto Checkout with Buyer Protection"
-                aria-label="Video demonstration of USDC payment plugin for WordPress and WooCommerce"
-                frameBorder="0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                loading="lazy"
-              ></iframe>
-            </div>
-          </div>
+            <div className="space-y-0 divide-y divide-secondary-100 dark:divide-secondary-800">
+              {/* WordPress */}
+              <Fade>
+                <div className="py-6 first:pt-0">
+                  <Collapsible eyebrow="WordPress / WooCommerce">
+                    <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-10 max-w-md">
+                      Open-source plugin for integrating smart contract escrow into WooCommerce stores. Non-custodial infrastructure with blockchain-enforced settlement.
+                    </p>
 
-          <nav className="flex flex-col sm:flex-row gap-3 sm:gap-4" aria-label="WordPress plugin actions">
-            <a
-              href="https://wordpress.org/plugins/usdc-payments-with-buyer-protection/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex-1"
-              onClick={handleWordPressClick}
-            >
-              <Button size="lg" className="w-full">
-                Get WordPress Plugin
-              </Button>
-            </a>
-            <Link href="/faq" className="flex-1">
-              <Button variant="outline" size="lg" className="w-full">
-                FAQ
-              </Button>
-            </Link>
-          </nav>
-          </section>
+                    <div className="flex items-center gap-6 flex-wrap">
+                      <a
+                        href="https://wordpress.org/plugins/usdc-payments-with-buyer-protection/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={handleWordPressClick}
+                      >
+                        <button className={btnPrimary}>Get WordPress Plugin</button>
+                      </a>
+                      <Link
+                        href="/demos"
+                        className="text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-colors"
+                      >
+                        Watch demo &rarr;
+                      </Link>
+                    </div>
+                  </Collapsible>
+                </div>
+              </Fade>
 
-          {/* Shopify */}
-          <section className="mb-12 border border-secondary-200 rounded-lg p-4 sm:p-6 lg:p-8" aria-labelledby="shopify-heading">
-            <div className="mb-6">
-              <h2 id="shopify-heading" className="text-xl sm:text-2xl font-bold text-secondary-900 mb-2">Shopify Integration SDK</h2>
-              <p className="text-sm sm:text-base text-secondary-600">Developer tools for integrating blockchain escrow infrastructure into Shopify stores. Open-source smart contract integration with non-custodial dispute resolution logic.</p>
-          </div>
+              {/* Shopify */}
+              <Fade delay={0.1}>
+                <div className="py-6">
+                  <Collapsible eyebrow="Shopify">
+                    <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-10 max-w-md">
+                      Smart contract integration for Shopify stores. Open-source escrow with non-custodial dispute resolution.
+                    </p>
 
-          <div className="mb-6" ref={shopifyVideoRef}>
-            <div className="aspect-video bg-secondary-100 rounded-lg overflow-hidden">
-              <iframe
-                width="100%"
-                height="100%"
-                src="https://www.youtube.com/embed/gwdWiErYq6o?enablejsapi=1"
-                title="Shopify USDC Payment Integration Demo - Cryptocurrency Checkout with Smart Contract Escrow"
-                aria-label="Video demonstration of USDC payment integration for Shopify stores"
-                frameBorder="0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                loading="lazy"
-              ></iframe>
-            </div>
-          </div>
+                    <div className="flex items-center gap-6 flex-wrap">
+                      <Link href="/shopify/install-button" onClick={handleShopifyClick}>
+                        <button className={btnPrimary}>Install Shopify Integration</button>
+                      </Link>
+                      <Link
+                        href="/demos"
+                        className="text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-colors"
+                      >
+                        Watch demo &rarr;
+                      </Link>
+                    </div>
+                  </Collapsible>
+                </div>
+              </Fade>
 
-          <nav className="flex flex-col sm:flex-row gap-3 sm:gap-4" aria-label="Shopify integration actions">
-            <Link href="/shopify/install-button" className="flex-1" onClick={handleShopifyClick}>
-              <Button size="lg" className="w-full">
-                Install Shopify Integration
-              </Button>
-            </Link>
-            <Link href="/faq" className="flex-1">
-              <Button variant="outline" size="lg" className="w-full">
-                FAQ
-              </Button>
-            </Link>
-          </nav>
-          </section>
+              {/* JavaScript SDK */}
+              <Fade delay={0.2}>
+                <div className="py-6 last:pb-0">
+                  <Collapsible eyebrow="Any website">
+                    <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-10 max-w-md">
+                      Add secure USDC payments with built-in buyer protection using 3 lines of code.
+                    </p>
 
-          {/* JavaScript Integration */}
-          <section className="mb-12 border border-secondary-200 rounded-lg p-4 sm:p-6 lg:p-8" aria-labelledby="javascript-heading">
-            <div className="mb-6">
-              <h2 id="javascript-heading" className="text-xl sm:text-2xl font-bold text-secondary-900 mb-2">JavaScript SDK Integration</h2>
-              <p className="text-sm sm:text-base text-secondary-600">Lightweight JavaScript SDK for integrating crypto checkout into any website. Add secure USDC payments with built-in buyer protection using just 3 lines of code.</p>
-            </div>
-
-            <div className="mb-6 bg-secondary-50 border border-secondary-200 rounded-lg p-6">
-              <h3 className="text-base sm:text-lg font-semibold text-secondary-900 mb-4">Quick Integration Example</h3>
-              <pre className="bg-secondary-900 text-green-400 p-4 rounded-lg overflow-x-auto text-xs sm:text-sm">
-                <code>{`<!-- Add script to your HTML -->
+                    <div className="mb-10">
+                      <pre className="bg-secondary-900 dark:bg-secondary-800 text-green-400 p-6 rounded-lg overflow-x-auto text-xs sm:text-sm leading-relaxed">
+                        <code>{`<!-- Add script to your HTML -->
 <script src="https://conduit-ucpi.com/sdk/checkout.js"></script>
 
 <!-- Add checkout button -->
@@ -284,96 +327,209 @@ export default function Plugins() {
     }
   });
 </script>`}</code>
-              </pre>
-            </div>
+                      </pre>
+                    </div>
 
-            <nav className="flex flex-col sm:flex-row gap-3 sm:gap-4" aria-label="JavaScript SDK actions">
-              <Link href="/integrate" className="flex-1">
-                <Button size="lg" className="w-full">
-                  View Complete Integration Guide
-                </Button>
-              </Link>
-              <Link href="/faq" className="flex-1">
-                <Button variant="outline" size="lg" className="w-full">
+                    <Link href="/integrate">
+                      <button className={btnPrimary}>View Integration Guide</button>
+                    </Link>
+                  </Collapsible>
+                </div>
+              </Fade>
+            </div>
+          </div>
+        </section>
+
+        {/* ================================================================ */}
+        {/* THE OPPORTUNITY                                                  */}
+        {/* ================================================================ */}
+        <section
+          className="border-t border-secondary-100 dark:border-secondary-800"
+          aria-label="Market opportunity"
+        >
+          <div className="max-w-5xl mx-auto px-6 sm:px-8 py-10 lg:py-12">
+            <Fade>
+              <Collapsible
+                eyebrow="The opportunity"
+                heading="$9.7 trillion in monthly crypto volume. Almost none of it spent on goods — yet."
+              >
+                <div className="space-y-6 max-w-2xl">
+                  <p className="text-sm text-secondary-500 dark:text-secondary-400 leading-relaxed">
+                    Commerce represents 0.003% of crypto transaction volume — over 100x less than traditional finance. The reason? No buyer protection. Without purchase guarantees, rational consumers won&apos;t use crypto to buy things.
+                  </p>
+                  <p className="text-sm text-secondary-500 dark:text-secondary-400 leading-relaxed">
+                    Smart contract escrow solves both sides: buyers get time-locked purchase protection, and merchants eliminate chargeback fraud through blockchain-enforced settlements.
+                  </p>
+                </div>
+              </Collapsible>
+            </Fade>
+          </div>
+        </section>
+
+        {/* ================================================================ */}
+        {/* FEATURES                                                         */}
+        {/* ================================================================ */}
+        <section
+          className="border-t border-secondary-100 dark:border-secondary-800"
+          aria-label="Features"
+        >
+          <div className="max-w-5xl mx-auto px-6 sm:px-8 py-10 lg:py-12">
+            <Fade>
+              <Collapsible eyebrow="What you get" heading="Non-custodial escrow infrastructure.">
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-x-12 gap-y-10">
+                  {[
+                    {
+                      label: 'Rapid integration',
+                      text: 'Production-ready plugins with under 5 minutes integration time. Single-line SDK for WordPress, Shopify, or any website.',
+                    },
+                    {
+                      label: 'Transparent pricing',
+                      text: '1% infrastructure fee (0.30 USDC minimum). No monthly fees, no custody fees, no hidden charges.',
+                    },
+                    {
+                      label: 'Audited smart contracts',
+                      text: 'Automated dispute resolution via blockchain-enforced escrow logic. All operations executed by audited contracts on Base network.',
+                    },
+                    {
+                      label: 'Non-custodial',
+                      text: 'Direct wallet-to-wallet settlement. We never hold, control, or have access to user funds. All escrow logic is on-chain.',
+                    },
+                    {
+                      label: 'Technical infrastructure only',
+                      text: 'No financial services, no custody, no exchange. Developers integrate our SDK — end users maintain full control of their wallets.',
+                    },
+                    {
+                      label: 'Open source',
+                      text: 'Full codebase available for review. Verify the smart contracts, inspect the infrastructure, contribute improvements.',
+                    },
+                  ].map((item, i) => (
+                    <div key={i}>
+                      <h3 className="text-sm font-medium text-secondary-900 dark:text-white mb-1">
+                        {item.label}
+                      </h3>
+                      <p className="text-sm text-secondary-500 dark:text-secondary-400 leading-relaxed">
+                        {item.text}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </Collapsible>
+            </Fade>
+          </div>
+        </section>
+
+        {/* ================================================================ */}
+        {/* HOW IT WORKS                                                     */}
+        {/* ================================================================ */}
+        <section
+          className="border-t border-secondary-100 dark:border-secondary-800"
+          aria-label="How it works"
+        >
+          <div className="max-w-5xl mx-auto px-6 sm:px-8 py-10 lg:py-12">
+            <Fade>
+              <Collapsible eyebrow="How it works" heading="Escrow, dispute, settle.">
+                <div className="grid md:grid-cols-3 gap-x-12 gap-y-16">
+                  {[
+                    {
+                      num: '01',
+                      title: 'Escrow',
+                      desc: 'Funds are secured in audited smart contracts on Base network. Settlement is automated and cryptographically guaranteed — no intermediary custody.',
+                    },
+                    {
+                      num: '02',
+                      title: 'Dispute',
+                      desc: 'Buyers can trigger dispute resolution through the smart contract. Time-locked escrow prevents premature fund release during dispute windows.',
+                    },
+                    {
+                      num: '03',
+                      title: 'Settle',
+                      desc: 'Undisputed transactions settle automatically after the protection period. Disputed transactions enter structured arbitration with blockchain-recorded resolution.',
+                    },
+                  ].map((step, i) => (
+                    <div key={step.num}>
+                      <span className="text-[3.5rem] sm:text-[5rem] leading-none font-extralight text-secondary-100 dark:text-secondary-800 select-none block mb-4">
+                        {step.num}
+                      </span>
+                      <h3 className="text-lg font-medium text-secondary-900 dark:text-white mb-2">
+                        {step.title}
+                      </h3>
+                      <p className="text-sm text-secondary-500 dark:text-secondary-400 leading-relaxed">
+                        {step.desc}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-12">
+                  <Link
+                    href="/arbitration-policy"
+                    className="text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-colors"
+                  >
+                    View arbitration framework and dispute resolution procedures &rarr;
+                  </Link>
+                </div>
+              </Collapsible>
+            </Fade>
+          </div>
+        </section>
+
+        {/* ================================================================ */}
+        {/* DISCLAIMER                                                       */}
+        {/* ================================================================ */}
+        <section
+          className="border-t border-secondary-100 dark:border-secondary-800"
+          aria-label="Disclaimer"
+        >
+          <div className="max-w-5xl mx-auto px-6 sm:px-8 py-10 lg:py-12">
+            <Fade>
+              <Collapsible eyebrow="Non-custodial developer infrastructure" heading="Technical infrastructure, not financial services.">
+                <div className="space-y-4 text-sm text-secondary-500 dark:text-secondary-400 leading-relaxed max-w-2xl">
+                  <p>
+                    <strong className="text-secondary-900 dark:text-white">What this is:</strong> Open-source smart contract infrastructure for implementing escrow functionality in e-commerce applications. Similar to how Stripe provides payment infrastructure, we provide blockchain-based escrow infrastructure.
+                  </p>
+                  <div>
+                    <strong className="text-secondary-900 dark:text-white">What this is not:</strong>
+                    <ul className="mt-2 space-y-1 list-disc ml-5">
+                      <li>Not a cryptocurrency exchange or trading platform</li>
+                      <li>Not selling, issuing, or trading any digital assets</li>
+                      <li>Not a custodial service — we never hold or control user funds</li>
+                      <li>Not a financial services provider — technical infrastructure only</li>
+                    </ul>
+                  </div>
+                  <p>
+                    All funds remain under user control through non-custodial wallet connections. Escrow logic is executed by audited smart contracts on the Base network. We provide the integration layer and user interface — settlement occurs directly between buyer and seller wallets.
+                  </p>
+                  <p className="text-xs text-secondary-400 dark:text-secondary-500 italic">
+                    This is developer tooling for blockchain-based escrow implementation, not a regulated financial product or cryptocurrency service.
+                  </p>
+                </div>
+              </Collapsible>
+            </Fade>
+          </div>
+        </section>
+
+        {/* ================================================================ */}
+        {/* FOOTER                                                           */}
+        {/* ================================================================ */}
+        <section className="border-t border-secondary-100 dark:border-secondary-800">
+          <div className="max-w-5xl mx-auto px-6 sm:px-8 py-8">
+            <Fade>
+              <div className="flex flex-wrap gap-x-8 gap-y-3 text-xs text-secondary-400 dark:text-secondary-500">
+                <Link href="/faq" className="hover:text-secondary-600 dark:hover:text-secondary-300 transition-colors">
                   FAQ
-                </Button>
-              </Link>
-            </nav>
-          </section>
-
-          {/* How it works */}
-          <section className="mb-12 sm:mb-16" aria-labelledby="how-it-works-heading">
-            <h2 id="how-it-works-heading" className="text-xl sm:text-2xl font-bold text-secondary-900 mb-6">How Smart Contract Buyer Protection Works</h2>
-          <div className="space-y-4 sm:space-y-6">
-            <div className="flex gap-3 sm:gap-4">
-              <div className="flex-shrink-0 w-8 h-8 bg-primary-500 text-white rounded-full flex items-center justify-center font-bold text-sm">
-                1
+                </Link>
+                <a
+                  href="mailto:info@conduit-ucpi.com"
+                  className="hover:text-secondary-600 dark:hover:text-secondary-300 transition-colors"
+                >
+                  Technical support
+                </a>
               </div>
-              <div>
-                <p className="font-semibold text-secondary-900 text-base sm:text-lg">Blockchain-Enforced Escrow</p>
-                <p className="text-sm sm:text-base text-secondary-600">Funds are secured in audited smart contracts deployed on Base network. Settlement is automated and cryptographically guaranteed—no intermediary custody.</p>
-              </div>
-            </div>
-
-            <div className="flex gap-3 sm:gap-4">
-              <div className="flex-shrink-0 w-8 h-8 bg-primary-500 text-white rounded-full flex items-center justify-center font-bold text-sm">
-                2
-              </div>
-              <div>
-                <p className="font-semibold text-secondary-900 text-base sm:text-lg">Dispute Initiation Protocol</p>
-                <p className="text-sm sm:text-base text-secondary-600">Buyers can trigger dispute resolution through the smart contract interface. Time-locked escrow prevents premature fund release during dispute windows.</p>
-              </div>
-            </div>
-
-            <div className="flex gap-3 sm:gap-4">
-              <div className="flex-shrink-0 w-8 h-8 bg-primary-500 text-white rounded-full flex items-center justify-center font-bold text-sm">
-                3
-              </div>
-              <div>
-                <p className="font-semibold text-secondary-900 text-base sm:text-lg">Automated Resolution & Settlement</p>
-                <p className="text-sm sm:text-base text-secondary-600">Undisputed transactions settle automatically after the protection period. Disputed transactions enter structured arbitration with blockchain-recorded resolution.</p>
-              </div>
-            </div>
+            </Fade>
           </div>
+        </section>
 
-          <div className="mt-6">
-            <Link href="/arbitration-policy" className="text-sm sm:text-base text-primary-600 hover:text-primary-700 font-medium">
-              View complete arbitration framework and dispute resolution procedures →
-            </Link>
-          </div>
-          </section>
-
-          {/* Bottom links */}
-          <footer className="border-t border-secondary-200 pt-6 sm:pt-8">
-          <div className="flex flex-col sm:flex-row gap-4 justify-between text-sm sm:text-base">
-            <Link href="/faq" className="text-secondary-600 hover:text-secondary-900">
-              Integration Documentation & FAQ
-            </Link>
-            <a href="mailto:info@conduit-ucpi.com" className="text-secondary-600 hover:text-secondary-900">
-              Technical Support & Enterprise Inquiries
-            </a>
-          </div>
-          </footer>
-
-          {/* Important Disclaimer - For Regulatory Clarity */}
-          <aside className="mt-12 sm:mt-16 bg-blue-50 border-l-4 border-blue-500 p-4 sm:p-6" role="note" aria-label="Product classification and regulatory information">
-            <h2 className="text-lg sm:text-xl font-bold text-secondary-900 mb-3">Non-Custodial Developer Infrastructure</h2>
-            <div className="space-y-2 text-sm sm:text-base text-secondary-700">
-              <p><strong>What this is:</strong> Open-source smart contract infrastructure for implementing escrow functionality in e-commerce applications. Similar to how Stripe provides payment infrastructure, we provide blockchain-based escrow infrastructure.</p>
-              <p><strong>What this is NOT:</strong></p>
-              <ul className="list-disc ml-5 space-y-1">
-                <li>Not a cryptocurrency exchange or trading platform</li>
-                <li>Not selling, issuing, or trading any digital assets, tokens, or cryptocurrencies</li>
-                <li>Not a custodial service - we never hold, control, or have access to user funds</li>
-                <li>Not a financial services provider - we provide technical infrastructure only</li>
-              </ul>
-              <p className="mt-3"><strong>Technical Architecture:</strong> All funds remain under user control through non-custodial wallet connections. Escrow logic is executed by audited smart contracts deployed on the Base blockchain network. We provide the integration layer and user interface - settlement occurs directly between buyer and seller wallets via smart contracts.</p>
-              <p className="mt-3 text-xs sm:text-sm italic">This is developer tooling and educational resources for blockchain-based escrow implementation, not a regulated financial product or cryptocurrency service.</p>
-            </div>
-          </aside>
-
-        </article>
       </div>
-    </React.Fragment>
+    </>
   );
 }

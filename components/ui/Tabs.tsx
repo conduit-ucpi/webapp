@@ -63,17 +63,17 @@ export function Tabs({ tabs, activeTab, onTabChange, className = '' }: TabsProps
                 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm
                 transition-colors duration-200
                 ${activeTab === tab.id
-                  ? 'border-primary-500 text-primary-600'
-                  : 'border-transparent text-secondary-500 hover:text-secondary-700 hover:border-secondary-300'
+                  ? 'border-primary-500 dark:border-primary-400 text-primary-600 dark:text-primary-400'
+                  : 'border-transparent text-secondary-500 hover:text-secondary-700 dark:hover:text-secondary-300 hover:border-secondary-300'
                 }
               `}
             >
               {tab.label}
               {tab.count !== undefined && (
                 <span className={`ml-2 py-0.5 px-2 rounded-full text-xs ${
-                  activeTab === tab.id 
-                    ? 'bg-primary-100 text-primary-700'
-                    : 'bg-secondary-100 text-secondary-600'
+                  activeTab === tab.id
+                    ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400'
+                    : 'bg-secondary-100 dark:bg-secondary-800 text-secondary-600 dark:text-secondary-400'
                 }`}>
                   {tab.count}
                 </span>
@@ -100,7 +100,7 @@ export function Tabs({ tabs, activeTab, onTabChange, className = '' }: TabsProps
                 whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm
                 transition-colors duration-200 min-w-fit
                 ${activeTab === tab.id
-                  ? 'border-primary-500 text-primary-600'
+                  ? 'border-primary-500 dark:border-primary-400 text-primary-600 dark:text-primary-400'
                   : 'border-transparent text-secondary-500'
                 }
               `}
@@ -108,9 +108,9 @@ export function Tabs({ tabs, activeTab, onTabChange, className = '' }: TabsProps
               {tab.label}
               {tab.count !== undefined && (
                 <span className={`ml-2 py-0.5 px-2 rounded-full text-xs ${
-                  activeTab === tab.id 
-                    ? 'bg-primary-100 text-primary-700'
-                    : 'bg-secondary-100 text-secondary-600'
+                  activeTab === tab.id
+                    ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400'
+                    : 'bg-secondary-100 dark:bg-secondary-800 text-secondary-600 dark:text-secondary-400'
                 }`}>
                   {tab.count}
                 </span>
@@ -127,9 +127,9 @@ export function Tabs({ tabs, activeTab, onTabChange, className = '' }: TabsProps
             <div
               key={index}
               className={`h-1 w-1 rounded-full transition-all duration-200 ${
-                tabs[index].id === activeTab 
-                  ? 'bg-primary-500 w-4' 
-                  : 'bg-secondary-300'
+                tabs[index].id === activeTab
+                  ? 'bg-primary-500 dark:bg-primary-400 w-4'
+                  : 'bg-secondary-300 dark:bg-secondary-600'
               }`}
             />
           ))}

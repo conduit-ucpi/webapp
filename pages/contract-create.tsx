@@ -915,7 +915,7 @@ export default function ContractCreate() {
                 <Button
                   onClick={handleCreateContract}
                   disabled={isLoading || !address}
-                  className="flex-1 bg-primary-500 hover:bg-primary-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1"
                   title={
                     !address ? 'Please connect your wallet first' :
                     ''
@@ -1085,7 +1085,7 @@ export default function ContractCreate() {
               <Button
                 onClick={handlePayment}
                 disabled={isLoading || isLoadingBalance || parseFloat(tokenBalance) < parseFloat(form.amount)}
-                className="flex-1 bg-primary-500 hover:bg-primary-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1"
                 title={
                   parseFloat(tokenBalance) < parseFloat(form.amount)
                     ? `Insufficient balance: need ${form.amount} ${selectedTokenSymbol}, have ${parseFloat(tokenBalance).toFixed(4)} ${selectedTokenSymbol}`

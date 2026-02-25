@@ -256,7 +256,7 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
         <Button
           size="sm"
           onClick={() => onAccept((contract as PendingContract).id)}
-          className="w-full bg-primary-500 hover:bg-primary-600"
+          className="w-full"
         >
           {contract.ctaLabel || 'Accept Contract'}
         </Button>

@@ -783,7 +783,7 @@ export default function CreateContractWizard() {
                 className={`${
                   paymentLinkCopied
                     ? 'bg-green-500 hover:bg-green-600'
-                    : 'bg-primary-500 hover:bg-primary-600'
+                    : ''
                 } whitespace-nowrap`}
               >
                 {paymentLinkCopied ? (
@@ -836,7 +836,7 @@ export default function CreateContractWizard() {
           <div className="flex flex-col sm:flex-row gap-3">
             <Button
               onClick={() => router.push('/dashboard')}
-              className="flex-1 bg-primary-500 hover:bg-primary-600"
+              className="flex-1"
             >
               Go to Dashboard
             </Button>
@@ -919,7 +919,7 @@ export default function CreateContractWizard() {
                         }
                       }}
                       disabled={!canProceed() || isLoading}
-                      className="w-full sm:w-auto px-8 bg-primary-500 hover:bg-primary-600"
+                      className="w-full sm:w-auto px-8"
                     >
                       {isLoading ? 'Creating...' : 'Create Payment Request'}
                     </Button>

@@ -153,43 +153,6 @@ export default function Dashboard2() {
           color: var(--d-text-secondary) !important;
         }
 
-        /* ── Primary buttons (only <button> elements) ── */
-        .dashboard2-flat button.bg-primary-500 {
-          background-color: var(--d-btn-bg) !important;
-          color: var(--d-btn-fg) !important;
-          border-radius: 0 !important;
-          font-weight: 500 !important;
-          letter-spacing: 0.025em !important;
-        }
-        .dashboard2-flat button.bg-primary-500:hover {
-          background-color: var(--d-btn-bg-hover) !important;
-        }
-
-        /* ── Outline buttons (only <button> elements) ── */
-        .dashboard2-flat button.border.border-secondary-300 {
-          border-color: var(--d-outline-border) !important;
-          color: var(--d-outline-fg) !important;
-          border-radius: 0 !important;
-          font-weight: 500 !important;
-          letter-spacing: 0.025em !important;
-        }
-        .dashboard2-flat button.border.border-secondary-300:hover {
-          background-color: var(--d-outline-hover) !important;
-        }
-
-        /* ── Square off button corners ── */
-        .dashboard2-flat button.rounded-md {
-          border-radius: 0 !important;
-        }
-
-        /* ── Tab active indicator ── */
-        .dashboard2-flat button.border-primary-500 {
-          border-color: var(--d-tab-active) !important;
-        }
-        .dashboard2-flat button.text-primary-600 {
-          color: var(--d-tab-text) !important;
-        }
-
         /* ── Tab badge pills ── */
         .dashboard2-flat .bg-primary-100 {
           background-color: var(--d-badge-bg) !important;

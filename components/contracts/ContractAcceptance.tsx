@@ -337,7 +337,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
       <Button
         onClick={handleAccept}
         disabled={isLoading || isSuccess || hasInsufficientBalance() || isLoadingBalance}
-        className={`w-full ${hasInsufficientBalance() ? 'bg-gray-400' : 'bg-primary-500 hover:bg-primary-600'} ${(isLoading || isSuccess || hasInsufficientBalance() || isLoadingBalance) ? 'opacity-50 cursor-not-allowed' : ''}`}
+        className={`w-full ${hasInsufficientBalance() ? 'bg-gray-400' : ''} ${(isLoading || isSuccess || hasInsufficientBalance() || isLoadingBalance) ? 'opacity-50 cursor-not-allowed' : ''}`}
       >
         {hasInsufficientBalance()
           ? 'Insufficient Balance'

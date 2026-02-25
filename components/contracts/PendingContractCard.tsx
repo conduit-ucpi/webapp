@@ -90,7 +90,7 @@ export default function PendingContractCard({
         <div className="pt-4 border-t border-gray-200">
           <Button 
             onClick={() => onAccept(contract.id)}
-            className="w-full bg-primary-500 hover:bg-primary-600"
+            className="w-full"
           >
             Make Payment
           </Button>

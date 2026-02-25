@@ -50,6 +50,7 @@
     "react-hook-form": "^7.62.0",
     "react-hot-toast": "^2.6.0",
     "siwe": "^3.0.0",
+    "tailwind-merge": "^3.5.0",
     "viem": "^2.41.2",
     "wagmi": "^2.0.0",
     "web3": "^4.16.0"

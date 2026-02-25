@@ -198,7 +198,7 @@ export default function InteractiveDemo() {
         <Button
           onClick={playDemo}
           disabled={isPlaying}
-          className="bg-primary-500 hover:bg-primary-600 text-white"
+          className=""
         >
           {isPlaying ? 'Playing Demo...' : 'Play Interactive Demo'}
         </Button>
@@ -239,7 +239,7 @@ export default function InteractiveDemo() {
         <p className="text-sm text-secondary-600 dark:text-secondary-400 mb-4">
           Want to try it yourself? Create a test payment with just $0.001
         </p>
-        <Button variant="outline" className="border-primary-500 text-primary-600 dark:text-primary-400 hover:bg-primary-500 hover:text-white">
+        <Button variant="outline" className="">
           Start Free Test
         </Button>
       </div>

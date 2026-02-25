@@ -570,7 +570,7 @@ export default function ContractPay() {
             <Button
               onClick={handlePayment}
               disabled={isPaymentInProgress || isLoadingBalance || cannotPay}
-              className="flex-1 bg-primary-500 hover:bg-primary-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1"
               title={
                 isSameAddress
                   ? 'Cannot pay yourself - buyer and seller must be different accounts'

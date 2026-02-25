@@ -188,7 +188,7 @@ export default function BuyToken() {
 
               <Button
                 onClick={() => router.push('/dashboard')}
-                className="w-full bg-primary-500 hover:bg-primary-600"
+                className="w-full"
                 size="lg"
               >
                 Go to Dashboard

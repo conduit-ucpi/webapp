@@ -275,7 +275,7 @@ export default function ConnectWalletEmbedded({
       ) : (
         <Button
           onClick={handleConnect}
-          className="bg-primary-500 hover:bg-primary-600 text-white px-6 py-2 rounded-lg"
+          className="px-6 py-2"
           disabled={isBusy || !connect}
         >
           {isBusy ? 'Connecting...' : buttonText}

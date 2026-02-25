@@ -220,7 +220,7 @@ export default function ProgressChecklist({ onClose }: ProgressChecklistProps) {
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2">
               <div 
-                className="bg-primary-500 h-2 rounded-full transition-all duration-300 ease-out"
+                className="bg-primary-500 dark:bg-primary-400 h-2 rounded-full transition-all duration-300 ease-out"
                 style={{ width: `${progressPercentage}%` }}
               />
             </div>

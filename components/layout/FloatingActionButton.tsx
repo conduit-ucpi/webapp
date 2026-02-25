@@ -112,15 +112,15 @@ export default function FloatingActionButton() {
           }
         }}
         className={`w-14 h-14 rounded-full shadow-xl flex items-center justify-center transition-all hover:scale-110 ${
-          isOpen 
-            ? 'bg-secondary-600 dark:bg-secondary-700' 
-            : 'bg-primary-600 dark:bg-primary-500'
+          isOpen
+            ? 'bg-secondary-600 dark:bg-secondary-700'
+            : 'bg-secondary-900 dark:bg-white'
         }`}
       >
         {isOpen ? (
           <XMarkIcon className="w-7 h-7 text-white" />
         ) : (
-          <PlusIcon className="w-7 h-7 text-white" />
+          <PlusIcon className="w-7 h-7 text-white dark:text-secondary-900" />
         )}
       </button>
 

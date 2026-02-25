@@ -224,7 +224,7 @@ export default function AnimatedHero() {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                 >
-                  <Button size="lg" className="w-full sm:w-auto bg-primary-500 hover:bg-primary-600 text-white font-semibold">
+                  <Button size="lg" className="w-full sm:w-auto">
                     Create Payment Request
                   </Button>
                 </motion.div>
@@ -234,7 +234,7 @@ export default function AnimatedHero() {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                 >
-                  <Button variant="outline" size="lg" className="w-full sm:w-auto border-primary-500 text-primary-600 hover:bg-primary-500 hover:text-white">
+                  <Button variant="outline" size="lg" className="w-full sm:w-auto">
                     View Dashboard
                   </Button>
                 </motion.div>

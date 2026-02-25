@@ -419,7 +419,7 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
                 className={`${
                   paymentLinkCopied
                     ? 'bg-green-500 hover:bg-green-600'
-                    : 'bg-primary-500 hover:bg-primary-600'
+                    : ''
                 } whitespace-nowrap`}
                 size="sm"
               >

@@ -178,10 +178,10 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
                         <div
                           key={index}
                           className={`w-2 h-2 rounded-full ${
-                            index === currentStep 
-                              ? 'bg-primary-500' 
-                              : index < currentStep 
-                              ? 'bg-primary-300' 
+                            index === currentStep
+                              ? 'bg-primary-500 dark:bg-primary-400'
+                              : index < currentStep
+                              ? 'bg-primary-300 dark:bg-primary-600'
                               : 'bg-secondary-300 dark:bg-secondary-600'
                           }`}
                         />
@@ -213,7 +213,7 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
                     <Button
                       size="sm"
                       onClick={nextStep}
-                      className="text-xs bg-primary-500 hover:bg-primary-600"
+                      className="text-xs"
                     >
                       {currentStep === steps.length - 1 ? 'Finish' : 'Next'}
                     </Button>

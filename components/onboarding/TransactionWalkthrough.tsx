@@ -370,7 +370,7 @@ export default function TransactionWalkthrough({ isOpen, onClose, onComplete }: 
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2">
               <div 
-                className="bg-primary-500 h-2 rounded-full transition-all duration-300"
+                className="bg-primary-500 dark:bg-primary-400 h-2 rounded-full transition-all duration-300"
                 style={{ width: `${((currentStep + 1) / steps.length) * 100}%` }}
               />
             </div>

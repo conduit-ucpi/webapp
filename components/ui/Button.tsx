@@ -8,13 +8,13 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant = 'primary', size = 'md', ...props }, ref) => {
-    const baseClasses = 'inline-flex items-center justify-center rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50';
-    
+    const baseClasses = 'inline-flex items-center justify-center font-medium tracking-wide transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary-400 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50';
+
     const variants = {
-      primary: 'bg-primary-500 text-white hover:bg-primary-600',
-      secondary: 'bg-secondary-500 text-white hover:bg-secondary-600',
-      outline: 'border border-secondary-300 bg-transparent text-secondary-700 hover:bg-secondary-50 hover:text-secondary-900',
-      ghost: 'text-secondary-600 hover:bg-secondary-100 hover:text-secondary-900',
+      primary: 'bg-secondary-900 dark:bg-white text-white dark:text-secondary-900 hover:bg-secondary-700 dark:hover:bg-secondary-100',
+      secondary: 'bg-secondary-700 dark:bg-secondary-200 text-white dark:text-secondary-900 hover:bg-secondary-600 dark:hover:bg-secondary-300',
+      outline: 'border border-secondary-300 dark:border-secondary-600 bg-transparent text-secondary-700 dark:text-secondary-300 hover:bg-secondary-50 dark:hover:bg-secondary-800 hover:text-secondary-900 dark:hover:text-white',
+      ghost: 'text-secondary-600 dark:text-secondary-400 hover:bg-secondary-100 dark:hover:bg-secondary-800 hover:text-secondary-900 dark:hover:text-white',
       success: 'bg-success-500 text-white hover:bg-success-600',
       error: 'bg-error-500 text-white hover:bg-error-600',
     };

@@ -111,7 +111,7 @@ export default function CreateContract() {
         <Button
           type="submit"
           disabled={isLoading}
-          className="w-full bg-primary-500 hover:bg-primary-600"
+          className="w-full"
         >
           {isLoading ? (
             <>

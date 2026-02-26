@@ -2,7 +2,61 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import toast from 'react-hot-toast';
+import SEO from '@/components/SEO';
+import Fade from '@/components/ui/Fade';
+import { Tabs, TabPanel } from '@/components/ui/Tabs';
+import { btnPrimary } from '@/utils/landingStyles';
 import WalletRegistrationPrereq from '@/components/ui/WalletRegistrationPrereq';
+
+const integrationTabs = [
+  { id: 'simple', label: 'Simple (Copy & Paste)' },
+  { id: 'advanced', label: 'Advanced (Customizable)' },
+  { id: 'liquid', label: 'Liquid Theme' },
+];
+
+// Structured data for HowTo
+const structuredData = {
+  "@context": "https://schema.org",
+  "@type": "HowTo",
+  "name": "How to Install USDC Payment Button on Shopify",
+  "description": "Install the universal 'Buy with USDC' cryptocurrency payment button on your Shopify store in 2 minutes. Free to install, 1% transaction fee, automatic escrow protection, works on any Shopify theme.",
+  "totalTime": "PT2M",
+  "step": [
+    { "@type": "HowToStep", "name": "Copy the JavaScript code", "text": "Copy the single line of JavaScript code provided for your Shopify store" },
+    { "@type": "HowToStep", "name": "Open theme editor", "text": "Go to Online Store → Themes, click the three dots, and select 'Edit code'" },
+    { "@type": "HowToStep", "name": "Add code to theme.liquid", "text": "Open Layout → theme.liquid, find </head>, paste the code just before it, and save" },
+  ],
+  "tool": [{ "@type": "HowToTool", "name": "Shopify Admin Access" }],
+};
+
+function CodeBlock({ id, children }: { id: string; children: string }) {
+  const copy = () => {
+    navigator.clipboard.writeText(children);
+    toast.success('Copied to clipboard');
+  };
+
+  return (
+    <div className="relative bg-secondary-50 dark:bg-secondary-800 border border-secondary-200 dark:border-secondary-700 rounded-md p-4 overflow-x-auto">
+      <button
+        onClick={copy}
+        className={`${btnPrimary} absolute top-3 right-3 !py-1.5 !px-3 !text-xs`}
+      >
+        Copy
+      </button>
+      <code id={id} className="text-sm font-mono text-secondary-900 dark:text-secondary-100 whitespace-pre">
+        {children}
+      </code>
+    </div>
+  );
+}
+
+function StepNumber({ n }: { n: number }) {
+  return (
+    <span className="text-[2.5rem] leading-none font-extralight text-secondary-100 dark:text-secondary-800 select-none block mb-3">
+      {String(n).padStart(2, '0')}
+    </span>
+  );
+}
 
 export default function InstallButton() {
   const router = useRouter();
@@ -11,40 +65,7 @@ export default function InstallButton() {
   const [shopDomain, setShopDomain] = useState('');
   const [isConfigured, setIsConfigured] = useState(false);
 
-  const pageTitle = "Install USDC Checkout Button for Shopify | 2-Minute Setup";
-  const pageDescription = "Install the universal 'Buy with USDC' cryptocurrency payment button on your Shopify store in 2 minutes. Free to install, 1% transaction fee, automatic escrow protection, works on any Shopify theme.";
-  const pageUrl = "https://conduit-ucpi.com/shopify/install-button";
-  const imageUrl = "https://conduit-ucpi.com/og-shopify-install.png";
-
-  // Structured data for HowTo
-  const structuredData = {
-    "@context": "https://schema.org",
-    "@type": "HowTo",
-    "name": "How to Install USDC Payment Button on Shopify",
-    "description": pageDescription,
-    "totalTime": "PT2M",
-    "step": [
-      {
-        "@type": "HowToStep",
-        "name": "Copy the JavaScript code",
-        "text": "Copy the single line of JavaScript code provided for your Shopify store"
-      },
-      {
-        "@type": "HowToStep",
-        "name": "Open theme editor",
-        "text": "Go to Online Store → Themes, click the three dots, and select 'Edit code'"
-      },
-      {
-        "@type": "HowToStep",
-        "name": "Add code to theme.liquid",
-        "text": "Open Layout → theme.liquid, find </head>, paste the code just before it, and save"
-      }
-    ],
-    "tool": [{
-      "@type": "HowToTool",
-      "name": "Shopify Admin Access"
-    }]
-  };
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://app.instantescrow.nz';
 
   useEffect(() => {
     if (configured === 'true' && shop) {
@@ -55,221 +76,208 @@ export default function InstallButton() {
 
   const handleShopifyConnect = (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!shopDomain) {
-      toast.error('Please enter your shop domain');
-      return;
-    }
-
-    // Remove http:// or https:// prefix if present
-    let cleanedDomain = shopDomain.trim();
-    cleanedDomain = cleanedDomain.replace(/^https?:\/\//i, '');
-
-    // Ensure proper format
+    if (!shopDomain) { toast.error('Please enter your shop domain'); return; }
+    let cleanedDomain = shopDomain.trim().replace(/^https?:\/\//i, '');
     const domain = cleanedDomain.includes('.') ? cleanedDomain : `${cleanedDomain}.myshopify.com`;
-
-    // Redirect to OAuth flow
     window.location.href = `/api/shopify/auth?shop=${encodeURIComponent(domain)}`;
   };
 
-  const copyCode = (elementId: string) => {
-    const element = document.getElementById(elementId);
-    if (element) {
-      navigator.clipboard.writeText(element.textContent || '');
-      // Could add toast notification here
-    }
-  };
-
   return (
-    <React.Fragment>
+    <>
+      <SEO
+        title="Install USDC Checkout Button for Shopify | 2-Minute Setup"
+        description="Install the universal 'Buy with USDC' cryptocurrency payment button on your Shopify store in 2 minutes. Free to install, 1% transaction fee, automatic escrow protection."
+        keywords="install USDC button Shopify, Shopify cryptocurrency integration, add crypto payments Shopify, USDC checkout setup, stablecoin payments Shopify"
+        canonical="/shopify/install-button"
+        structuredData={structuredData}
+      />
       <Head>
-        {/* Primary Meta Tags */}
-        <title>{pageTitle}</title>
-        <meta name="title" content={pageTitle} />
-        <meta name="description" content={pageDescription} />
-        <meta name="keywords" content="install USDC button Shopify, Shopify cryptocurrency integration, add crypto payments Shopify, USDC checkout setup, Shopify Web3 payments, blockchain Shopify plugin, stablecoin payments Shopify" />
-
-        {/* Canonical URL */}
-        <link rel="canonical" href={pageUrl} />
-
-        {/* Open Graph / Facebook */}
-        <meta property="og:type" content="website" />
-        <meta property="og:url" content={pageUrl} />
-        <meta property="og:title" content={pageTitle} />
-        <meta property="og:description" content={pageDescription} />
-        <meta property="og:image" content={imageUrl} />
-        <meta property="og:site_name" content="Conduit UCPI" />
-
-        {/* Twitter */}
-        <meta property="twitter:card" content="summary_large_image" />
-        <meta property="twitter:url" content={pageUrl} />
-        <meta property="twitter:title" content={pageTitle} />
-        <meta property="twitter:description" content={pageDescription} />
-        <meta property="twitter:image" content={imageUrl} />
-
-        {/* Additional SEO Meta Tags */}
-        <meta name="robots" content="index, follow" />
-        <meta name="language" content="English" />
-        <meta name="author" content="Conduit UCPI" />
-
-        {/* Structured Data */}
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+        <link
+          href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,300;6..72,400&display=swap"
+          rel="stylesheet"
         />
       </Head>
 
-      <div className="bg-gray-50 min-h-screen py-4 sm:py-6 lg:py-8 px-4 sm:px-6">
-        <article className="max-w-5xl mx-auto bg-white rounded-lg p-4 sm:p-6 lg:p-8 shadow-sm">
-          <header className="mb-6">
-            <h1 className="text-secondary-900 m-0 mb-2 text-2xl sm:text-3xl lg:text-4xl font-bold">Shopify USDC Payment Integration</h1>
-            <p className="text-secondary-600 mb-4 sm:mb-6 text-sm sm:text-base">Deploy cryptocurrency payment processing to your Shopify store. <strong>No monthly fees • 1% transaction rate • Enterprise-grade security</strong></p>
-          </header>
+      <div className="bg-white dark:bg-secondary-900 transition-colors">
 
-        {/* Important first step */}
-        <WalletRegistrationPrereq
-          description="Before deploying the payment integration, you must register your settlement wallet address:"
-          returnInstruction="Return here to complete Shopify theme integration"
-        />
-
-        {/* Show setup form if not configured */}
-        {!isConfigured && !shop && (
-          <section className="bg-blue-50 border-2 border-primary-500 p-4 sm:p-6 rounded-lg my-4 sm:my-5" aria-label="Shopify store authorization">
-            <h2 className="text-primary-500 m-0 mb-3 sm:mb-4 text-lg sm:text-xl font-bold">Step 1: Authorize Store Access</h2>
-            <p className="text-secondary-600 mb-4 sm:mb-5 text-sm sm:text-base">
-              Link your Shopify store to configure payment routing and settlement parameters.
-            </p>
-            <form onSubmit={handleShopifyConnect} className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-              <input
-                type="text"
-                value={shopDomain}
-                onChange={(e) => setShopDomain(e.target.value)}
-                placeholder="your-store.myshopify.com"
-                required
-                className="flex-1 p-3 border-2 border-gray-300 rounded-md text-base focus:border-primary-500 focus:outline-none"
-              />
-              <button
-                type="submit"
-                className="bg-primary-500 text-white py-3 px-5 sm:px-6 border-none rounded-md text-base font-bold cursor-pointer hover:bg-primary-600 transition-colors"
+        {/* ================================================================ */}
+        {/* HERO                                                             */}
+        {/* ================================================================ */}
+        <section className="flex items-center" aria-label="Hero">
+          <div className="max-w-5xl mx-auto px-6 sm:px-8 py-24 lg:py-32 w-full">
+            <Fade>
+              <p className="text-xs tracking-[0.2em] uppercase text-secondary-400 dark:text-secondary-500 mb-6">
+                Shopify Integration
+              </p>
+              <h1
+                className="text-4xl sm:text-5xl font-semibold text-secondary-900 dark:text-white leading-[1.1] tracking-tight max-w-3xl"
               >
-                Connect Store
-              </button>
-            </form>
-            <p className="text-sm text-secondary-600 mt-3">
-              You will be redirected to Shopify's OAuth flow to authorize secure API access.
-            </p>
+                Add escrow checkout to your Shopify store.
+              </h1>
+              <p
+                className="mt-6 text-base text-secondary-500 dark:text-secondary-400 max-w-xl leading-relaxed"
+                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+              >
+                No monthly fees. 1% per transaction. Enterprise-grade escrow protection on every sale.
+              </p>
+              <div className="mt-14 flex flex-wrap gap-x-8 gap-y-2 text-xs text-secondary-400 dark:text-secondary-500">
+                <span>2-minute setup</span>
+                <span>Works on any theme</span>
+                <span>No app install required</span>
+              </div>
+            </Fade>
+          </div>
+        </section>
+
+        {/* ================================================================ */}
+        {/* PREREQUISITES                                                    */}
+        {/* ================================================================ */}
+        <WalletRegistrationPrereq />
+
+        {/* ================================================================ */}
+        {/* AUTHORIZE STORE                                                  */}
+        {/* ================================================================ */}
+        {!isConfigured && !shop && (
+          <section
+            className="border-t border-secondary-100 dark:border-secondary-800"
+            aria-label="Authorize store"
+          >
+            <div className="max-w-5xl mx-auto px-6 sm:px-8 py-16 lg:py-20">
+              <Fade>
+                <p className="text-xs tracking-[0.2em] uppercase text-secondary-400 dark:text-secondary-500 mb-6">
+                  Step 1
+                </p>
+                <h2
+                  className="text-3xl sm:text-4xl font-light text-secondary-900 dark:text-white leading-snug max-w-2xl mb-4"
+                  style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                >
+                  Authorize store access.
+                </h2>
+                <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-8 max-w-md">
+                  Link your Shopify store to configure payment routing and settlement parameters.
+                </p>
+                <form onSubmit={handleShopifyConnect} className="flex flex-col sm:flex-row gap-3 sm:gap-4 max-w-lg">
+                  <input
+                    type="text"
+                    value={shopDomain}
+                    onChange={(e) => setShopDomain(e.target.value)}
+                    placeholder="your-store.myshopify.com"
+                    required
+                    className="flex-1 px-4 py-3 border border-secondary-300 dark:border-secondary-600 rounded bg-white dark:bg-secondary-800 text-secondary-900 dark:text-white text-sm focus:border-primary-500 focus:outline-none transition-colors"
+                  />
+                  <button type="submit" className={btnPrimary}>
+                    Connect Store
+                  </button>
+                </form>
+                <p className="text-xs text-secondary-400 dark:text-secondary-500 mt-4">
+                  You will be redirected to Shopify&apos;s OAuth flow to authorize secure API access.
+                </p>
+              </Fade>
+            </div>
           </section>
         )}
 
-        {/* Show success message if configured */}
+        {/* Status messages */}
         {isConfigured && shop && (
-          <div className="bg-green-50 border border-green-300 text-green-900 p-3 sm:p-4 rounded-md my-4 text-sm sm:text-base">
-            ✓ <strong>Store Authorization Complete</strong> | Domain: {shop}<br />
-            ✓ Proceed to theme integration below
-          </div>
+          <section className="border-t border-secondary-100 dark:border-secondary-800">
+            <div className="max-w-5xl mx-auto px-6 sm:px-8 py-8">
+              <p className="text-sm text-primary-600 dark:text-primary-400">
+                Store authorization complete — <strong>{shop}</strong>. Proceed to theme integration below.
+              </p>
+            </div>
+          </section>
         )}
 
-        {/* Show default message if viewing page directly */}
         {!isConfigured && shop === undefined && (
-          <div className="bg-green-50 border border-green-300 text-green-900 p-3 sm:p-4 rounded-md my-4 text-sm sm:text-base">
-            ✓ <strong>Platform Status: Operational</strong><br />
-            ✓ Escrow protection period: <strong>14 days</strong> | Settlement: <strong>Automated</strong>
-          </div>
+          <section className="border-t border-secondary-100 dark:border-secondary-800">
+            <div className="max-w-5xl mx-auto px-6 sm:px-8 py-8">
+              <p className="text-sm text-secondary-500 dark:text-secondary-400">
+                Platform status: <strong className="text-secondary-900 dark:text-white">Operational</strong> — Escrow protection: <strong className="text-secondary-900 dark:text-white">14 days</strong> — Settlement: <strong className="text-secondary-900 dark:text-white">Automated</strong>
+              </p>
+            </div>
+          </section>
         )}
 
-        <h2 className="text-secondary-900 mt-6 sm:mt-8 text-xl sm:text-2xl font-bold">
-          {isConfigured || shop ? 'Step 2: ' : ''}Theme Integration Methods
-        </h2>
-
-        <div style={{ display: 'flex', gap: '10px', margin: '20px 0', borderBottom: '2px solid #eee' }}>
-          {['simple', 'advanced', 'liquid'].map(tab => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              style={{
-                padding: '10px 20px',
-                border: 'none',
-                background: 'none',
-                cursor: 'pointer',
-                color: activeTab === tab ? '#008060' : '#6d7175',
-                fontWeight: '500',
-                borderBottom: activeTab === tab ? '2px solid #008060' : 'none',
-                marginBottom: activeTab === tab ? '-2px' : '0'
-              }}
-            >
-              {tab === 'simple' && 'Simple (Copy & Paste)'}
-              {tab === 'advanced' && 'Advanced (Customizable)'}
-              {tab === 'liquid' && 'Liquid Theme'}
-            </button>
-          ))}
-        </div>
-
-        {activeTab === 'simple' && (
-          <div>
-            <div style={{ background: '#f0f8ff', padding: '20px', borderRadius: '8px', margin: '20px 0' }}>
-              <h3 style={{ display: 'flex', alignItems: 'center', margin: '0 0 15px' }}>
-                <span style={{ background: '#667eea', color: 'white', width: '30px', height: '30px', borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginRight: '10px', fontWeight: 'bold' }}>1</span>
-                Copy this code
-              </h3>
-              <p>This single line adds the button to ALL product pages automatically:</p>
-              <div style={{ background: '#f4f6f8', border: '1px solid #dfe3e8', borderRadius: '6px', padding: '16px', position: 'relative', overflowX: 'auto' }}>
-                <button
-                  onClick={() => copyCode('simple-code')}
-                  style={{ position: 'absolute', top: '10px', right: '10px', background: '#008060', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}
-                >
-                  Copy Code
-                </button>
-                <code id="simple-code" style={{ fontFamily: 'Monaco, "Courier New", monospace', fontSize: '14px' }}>
-                  {`<script src="${typeof window !== 'undefined' ? window.location.origin : 'https://app.instantescrow.nz'}/shopify-checkout.js" async></script>`}
-                </code>
-              </div>
-            </div>
-
-            <div style={{ background: '#f0f8ff', padding: '20px', borderRadius: '8px', margin: '20px 0' }}>
-              <h3 style={{ display: 'flex', alignItems: 'center', margin: '0 0 15px' }}>
-                <span style={{ background: '#667eea', color: 'white', width: '30px', height: '30px', borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginRight: '10px', fontWeight: 'bold' }}>2</span>
-                Add to your theme
-              </h3>
-              <ol style={{ paddingLeft: '20px' }}>
-                <li>Go to <strong>Online Store → Themes</strong></li>
-                <li>Find your current theme and click the <strong>three dots (...)</strong> button</li>
-                <li>Select <strong>Edit code</strong> from the dropdown</li>
-                <li>In the file list, open <strong>Layout</strong> folder → click <strong>theme.liquid</strong></li>
-                <li>Search for <code>&lt;/head&gt;</code> (use Ctrl+F or Cmd+F)</li>
-                <li>Paste the code just before <code>&lt;/head&gt;</code></li>
-                <li>Click <strong>Save</strong> (top right)</li>
-              </ol>
-            </div>
-
-            <div style={{ background: '#f0f8ff', padding: '20px', borderRadius: '8px', margin: '20px 0' }}>
-              <h3 style={{ display: 'flex', alignItems: 'center', margin: '0 0 15px' }}>
-                <span style={{ background: '#667eea', color: 'white', width: '30px', height: '30px', borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginRight: '10px', fontWeight: 'bold' }}>3</span>
-                That's it! 🎉
-              </h3>
-              <p>The button will automatically appear on:</p>
-              <ul>
-                <li>✓ All product pages</li>
-                <li>✓ Cart page (Express checkout)</li>
-                <li>✓ Quick shop modals</li>
-              </ul>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'advanced' && (
-          <div style={{ background: '#f0f8ff', padding: '20px', borderRadius: '8px', margin: '20px 0' }}>
-            <h3>Custom Integration</h3>
-            <p>For more control, you can manually trigger checkout:</p>
-            <div style={{ background: '#f4f6f8', border: '1px solid #dfe3e8', borderRadius: '6px', padding: '16px', position: 'relative', overflowX: 'auto' }}>
-              <button
-                onClick={() => copyCode('advanced-code')}
-                style={{ position: 'absolute', top: '10px', right: '10px', background: '#008060', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}
+        {/* ================================================================ */}
+        {/* THEME INTEGRATION                                                */}
+        {/* ================================================================ */}
+        <section
+          className="border-t border-secondary-100 dark:border-secondary-800"
+          aria-label="Theme integration"
+        >
+          <div className="max-w-5xl mx-auto px-6 sm:px-8 py-16 lg:py-20">
+            <Fade>
+              <p className="text-xs tracking-[0.2em] uppercase text-secondary-400 dark:text-secondary-500 mb-6">
+                {isConfigured || shop ? 'Step 2' : 'Integration'}
+              </p>
+              <h2
+                className="text-3xl sm:text-4xl font-light text-secondary-900 dark:text-white leading-snug max-w-2xl mb-10"
+                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
               >
-                Copy Code
-              </button>
-              <code id="advanced-code" style={{ fontFamily: 'Monaco, "Courier New", monospace', fontSize: '14px', whiteSpace: 'pre' }}>
+                Theme integration methods.
+              </h2>
+            </Fade>
+
+            <Tabs
+              tabs={integrationTabs}
+              activeTab={activeTab}
+              onTabChange={setActiveTab}
+              className="mb-8"
+            />
+
+            <TabPanel isActive={activeTab === 'simple'}>
+              <div className="space-y-12">
+                <Fade>
+                  <div>
+                    <StepNumber n={1} />
+                    <h3 className="text-lg font-medium text-secondary-900 dark:text-white mb-2">Copy this code</h3>
+                    <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-4">
+                      This single line adds the button to all product pages automatically.
+                    </p>
+                    <CodeBlock id="simple-code">
+                      {`<script src="${origin}/shopify-checkout.js" async></script>`}
+                    </CodeBlock>
+                  </div>
+                </Fade>
+
+                <Fade delay={0.1}>
+                  <div>
+                    <StepNumber n={2} />
+                    <h3 className="text-lg font-medium text-secondary-900 dark:text-white mb-2">Add to your theme</h3>
+                    <ol className="text-sm text-secondary-500 dark:text-secondary-400 leading-relaxed space-y-2 pl-5 list-decimal">
+                      <li>Go to <strong className="text-secondary-900 dark:text-white">Online Store &rarr; Themes</strong></li>
+                      <li>Find your current theme and click the <strong className="text-secondary-900 dark:text-white">three dots (&hellip;)</strong> button</li>
+                      <li>Select <strong className="text-secondary-900 dark:text-white">Edit code</strong> from the dropdown</li>
+                      <li>In the file list, open <strong className="text-secondary-900 dark:text-white">Layout</strong> folder &rarr; click <strong className="text-secondary-900 dark:text-white">theme.liquid</strong></li>
+                      <li>Search for <code className="bg-secondary-100 dark:bg-secondary-800 px-1 rounded text-xs">&lt;/head&gt;</code> (use Ctrl+F or Cmd+F)</li>
+                      <li>Paste the code just before <code className="bg-secondary-100 dark:bg-secondary-800 px-1 rounded text-xs">&lt;/head&gt;</code></li>
+                      <li>Click <strong className="text-secondary-900 dark:text-white">Save</strong> (top right)</li>
+                    </ol>
+                  </div>
+                </Fade>
+
+                <Fade delay={0.2}>
+                  <div>
+                    <StepNumber n={3} />
+                    <h3 className="text-lg font-medium text-secondary-900 dark:text-white mb-2">Done</h3>
+                    <p className="text-sm text-secondary-500 dark:text-secondary-400">
+                      The button will automatically appear on all product pages, the cart page, and quick shop modals.
+                    </p>
+                  </div>
+                </Fade>
+              </div>
+            </TabPanel>
+
+            <TabPanel isActive={activeTab === 'advanced'}>
+              <Fade>
+                <div>
+                  <h3 className="text-lg font-medium text-secondary-900 dark:text-white mb-2">Custom integration</h3>
+                  <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-4">
+                    For more control, you can manually trigger checkout.
+                  </p>
+                  <CodeBlock id="advanced-code">
 {`// Load the script
-<script src="${typeof window !== 'undefined' ? window.location.origin : 'https://app.instantescrow.nz'}/shopify-checkout.js"></script>
+<script src="${origin}/shopify-checkout.js"></script>
 
 // Custom button anywhere
 <button onclick="InstantEscrow.checkout()">
@@ -282,76 +290,123 @@ export default function InstallButton() {
     InstantEscrow.checkout();
   });
 </script>`}
-              </code>
-            </div>
-          </div>
-        )}
+                  </CodeBlock>
+                </div>
+              </Fade>
+            </TabPanel>
 
-        {activeTab === 'liquid' && (
-          <div style={{ background: '#f0f8ff', padding: '20px', borderRadius: '8px', margin: '20px 0' }}>
-            <h3>Liquid Template Integration</h3>
-            <p>Add directly to product templates:</p>
-            <div style={{ background: '#f4f6f8', border: '1px solid #dfe3e8', borderRadius: '6px', padding: '16px', position: 'relative', overflowX: 'auto' }}>
-              <button
-                onClick={() => copyCode('liquid-code')}
-                style={{ position: 'absolute', top: '10px', right: '10px', background: '#008060', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}
-              >
-                Copy Code
-              </button>
-              <code id="liquid-code" style={{ fontFamily: 'Monaco, "Courier New", monospace', fontSize: '14px', whiteSpace: 'pre' }}>
+            <TabPanel isActive={activeTab === 'liquid'}>
+              <Fade>
+                <div>
+                  <h3 className="text-lg font-medium text-secondary-900 dark:text-white mb-2">Liquid template integration</h3>
+                  <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-4">
+                    Add directly to product templates.
+                  </p>
+                  <CodeBlock id="liquid-code">
 {`{% comment %} Add to product-template.liquid {% endcomment %}
 {% if product.available %}
   <button
-    onclick="window.open('${typeof window !== 'undefined' ? window.location.origin : 'https://app.instantescrow.nz'}/shopify/quick-checkout?shop={{ shop.domain }}&product_id={{ product.id }}&variant_id={{ product.selected_or_first_available_variant.id }}&title={{ product.title | escape }}&price={{ product.price | money_without_currency }}&quantity=1', 'instantEscrow', 'width=500,height=700')"
+    onclick="window.open('${origin}/shopify/quick-checkout?shop={{ shop.domain }}&product_id={{ product.id }}&variant_id={{ product.selected_or_first_available_variant.id }}&title={{ product.title | escape }}&price={{ product.price | money_without_currency }}&quantity=1', 'instantEscrow', 'width=500,height=700')"
     style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 16px 24px; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 10px;"
   >
     Buy with USDC - Instant Checkout
   </button>
 {% endif %}`}
-              </code>
+                  </CodeBlock>
+                </div>
+              </Fade>
+            </TabPanel>
+          </div>
+        </section>
+
+        {/* ================================================================ */}
+        {/* BUTTON PREVIEW                                                   */}
+        {/* ================================================================ */}
+        <section
+          className="border-t border-secondary-100 dark:border-secondary-800 bg-secondary-50 dark:bg-secondary-900"
+          aria-label="Button preview"
+        >
+          <div className="max-w-5xl mx-auto px-6 sm:px-8 py-16 lg:py-20 text-center">
+            <Fade>
+              <p className="text-xs tracking-[0.2em] uppercase text-secondary-400 dark:text-secondary-500 mb-6">
+                Preview
+              </p>
+              <h2
+                className="text-3xl sm:text-4xl font-light text-secondary-900 dark:text-white leading-snug mb-8"
+                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+              >
+                How it looks on product pages.
+              </h2>
+              <div className="inline-block bg-white dark:bg-secondary-800 border border-secondary-200 dark:border-secondary-700 rounded-lg p-8 shadow-sm">
+                <button
+                  className="w-full max-w-[300px] py-4 px-6 rounded-lg text-white font-bold text-base cursor-default"
+                  style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}
+                >
+                  Buy with USDC - Instant Checkout
+                </button>
+                <p className="text-xs text-secondary-400 dark:text-secondary-500 mt-3">
+                  Protected by 14-day escrow &middot; No gas fees
+                </p>
+              </div>
+            </Fade>
+          </div>
+        </section>
+
+        {/* ================================================================ */}
+        {/* HOW PAYMENTS WORK                                                */}
+        {/* ================================================================ */}
+        <section
+          className="border-t border-secondary-100 dark:border-secondary-800"
+          aria-label="How payments work"
+        >
+          <div className="max-w-5xl mx-auto px-6 sm:px-8 py-16 lg:py-20">
+            <Fade>
+              <p className="text-xs tracking-[0.2em] uppercase text-secondary-400 dark:text-secondary-500 mb-16">
+                How payments work
+              </p>
+            </Fade>
+
+            <div className="grid md:grid-cols-3 lg:grid-cols-5 gap-x-12 gap-y-12">
+              {[
+                { num: '01', title: 'Customer clicks button', desc: 'Opens secure checkout window.' },
+                { num: '02', title: 'Pays with USDC', desc: 'Via wallet or email sign-in.' },
+                { num: '03', title: 'Order created', desc: 'Automatically in your Shopify system.' },
+                { num: '04', title: 'Escrow protection', desc: '14 days for dispute resolution.' },
+                { num: '05', title: 'Automatic payout', desc: 'Direct to your merchant wallet.' },
+              ].map((step, i) => (
+                <Fade key={step.num} delay={i * 0.08}>
+                  <div>
+                    <span className="text-[3rem] leading-none font-extralight text-secondary-100 dark:text-secondary-800 select-none block mb-3">
+                      {step.num}
+                    </span>
+                    <h3 className="text-sm font-medium text-secondary-900 dark:text-white mb-1">
+                      {step.title}
+                    </h3>
+                    <p className="text-sm text-secondary-500 dark:text-secondary-400 leading-relaxed">
+                      {step.desc}
+                    </p>
+                  </div>
+                </Fade>
+              ))}
             </div>
           </div>
-        )}
+        </section>
 
-        <h2 style={{ color: '#202223', marginTop: '30px' }}>🎨 Button Preview</h2>
-        <div style={{ border: '2px solid #667eea', borderRadius: '8px', padding: '20px', margin: '20px 0', background: 'white', textAlign: 'center' }}>
-          <p style={{ color: '#6d7175', marginBottom: '15px' }}>This is how it looks on product pages:</p>
-          <button style={{
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            color: 'white',
-            padding: '16px 24px',
-            border: 'none',
-            borderRadius: '8px',
-            fontSize: '16px',
-            fontWeight: 'bold',
-            cursor: 'pointer',
-            width: '100%',
-            maxWidth: '300px',
-            margin: '10px auto',
-            display: 'block',
-            boxShadow: '0 4px 15px rgba(102, 126, 234, 0.4)'
-          }}>
-            Buy with USDC - Instant Checkout
-          </button>
-          <p style={{ fontSize: '14px', color: '#667eea', marginTop: '10px' }}>
-            🔒 Protected by 14-day escrow • No gas fees
-          </p>
-        </div>
+        {/* ================================================================ */}
+        {/* TESTING TIP                                                      */}
+        {/* ================================================================ */}
+        <section
+          className="border-t border-secondary-100 dark:border-secondary-800"
+          aria-label="Testing"
+        >
+          <div className="max-w-5xl mx-auto px-6 sm:px-8 py-12">
+            <p className="text-sm text-secondary-500 dark:text-secondary-400">
+              <strong className="text-secondary-900 dark:text-white">Testing tip:</strong> Verify the payment flow in an incognito browser session to simulate the customer experience without cached authentication state.
+            </p>
+          </div>
+        </section>
 
-        <h2 style={{ color: '#202223', marginTop: '30px' }}>💰 How Payments Work</h2>
-        <ol style={{ paddingLeft: '20px' }}>
-          <li><strong>Customer clicks button</strong> → Opens secure checkout</li>
-          <li><strong>Pays with USDC</strong> → Via wallet or email (Web3Auth)</li>
-          <li><strong>Order created</strong> → Automatically in your system</li>
-          <li><strong>Escrow protection</strong> → 14 days for disputes</li>
-          <li><strong>Automatic payout</strong> → Direct to merchant wallet</li>
-        </ol>
-
-        <div className="bg-blue-50 border border-blue-200 text-blue-900 p-3 sm:p-4 rounded-md my-4 text-sm sm:text-base">
-          <strong>Integration Testing:</strong> Verify payment flow in an incognito browser session to simulate customer experience without cached authentication state.
-        </div>
-        </article>
       </div>
-    </React.Fragment>
+    </>
   );
 }

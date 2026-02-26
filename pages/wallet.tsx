@@ -480,7 +480,7 @@ export default function Wallet() {
                 Currency
               </label>
               <div className="flex flex-wrap gap-4">
-                <label className="flex items-center">
+                <label className="flex items-center text-secondary-700 dark:text-secondary-200">
                   <input
                     type="radio"
                     name="currency"
@@ -492,7 +492,7 @@ export default function Wallet() {
                   Native
                 </label>
                 {(config?.supportedTokens || []).map((token) => (
-                  <label key={token.symbol} className="flex items-center">
+                  <label key={token.symbol} className="flex items-center text-secondary-700 dark:text-secondary-200">
                     <input
                       type="radio"
                       name="currency"

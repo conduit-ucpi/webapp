@@ -172,7 +172,7 @@ export default function Merchant() {
                   const origin = window.location.origin;
                   const returnUrl = encodeURIComponent(`${origin}/checkout-example.html`);
                   window.open(
-                    `${origin}/contract-create?seller=0x4f118f99a4e8bb384061bcfe081e3bbdec28482d&amount=10.00&description=Basic+Product+-+One-time+Payment&tokenSymbol=USDC&order_id=BASIC-1772027291139&epoch_expiry=1772632091&return=${returnUrl}`,
+                    `${origin}/contract-create?seller=0x4f118f99a4e8bb384061bcfe081e3bbdec28482d&amount=0.001&description=Basic+Product+-+One-time+Payment&tokenSymbol=USDC&order_id=BASIC-1772027291139&epoch_expiry=1772632091&return=${returnUrl}`,
                     '_blank'
                   );
                 }}
@@ -180,7 +180,7 @@ export default function Merchant() {
                 See what your customers see
               </button>
               <p className="mt-3 text-xs text-secondary-400 dark:text-secondary-500">
-                Pay $10 (try for free)
+                Pay $0.001 USDC (try for free)
               </p>
             </Fade>
           </div>

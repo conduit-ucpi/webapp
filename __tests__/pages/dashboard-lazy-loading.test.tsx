@@ -17,6 +17,7 @@ import { useWalletAddress } from '@/hooks/useWalletAddress';
 jest.mock('next/router', () => ({
   useRouter: jest.fn(() => ({
     pathname: '/dashboard',
+    query: {},
     push: jest.fn(),
   })),
 }));
@@ -168,7 +169,7 @@ describe('Dashboard - Lazy Loading', () => {
     render(<Dashboard />);
 
     // Should show connect wallet message
-    expect(screen.getByText('Connect Your Wallet')).toBeInTheDocument();
+    expect(screen.getByText(/Connect your wallet to continue/i)).toBeInTheDocument();
     expect(screen.getByText(/You need to connect your wallet/i)).toBeInTheDocument();
     expect(screen.getByTestId('connect-wallet')).toBeInTheDocument();
   });
@@ -215,7 +216,7 @@ describe('Dashboard - Lazy Loading', () => {
 
     // Should show dashboard content
     expect(screen.getByText('Dashboard')).toBeInTheDocument();
-    expect(screen.getByText(/Manage your escrow contracts/i)).toBeInTheDocument();
+    expect(screen.getByText(/Manage escrow contracts/i)).toBeInTheDocument();
     expect(screen.getByTestId('enhanced-dashboard')).toBeInTheDocument();
 
     // Should show wallet address (in ExpandableHash component)

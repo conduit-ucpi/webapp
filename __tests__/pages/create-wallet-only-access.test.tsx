@@ -11,6 +11,15 @@
 import { render, screen } from '@testing-library/react';
 import CreatePage from '@/pages/create';
 
+// Mock next/router
+jest.mock('next/router', () => ({
+  useRouter: jest.fn(() => ({
+    pathname: '/create',
+    query: {},
+    push: jest.fn(),
+  })),
+}));
+
 // Mock the auth hook
 jest.mock('@/components/auth', () => ({
   useAuth: jest.fn(),

@@ -1,11 +1,13 @@
 import Link from 'next/link';
 import Head from 'next/head';
+import { useRouter } from 'next/router';
 import SEO from '@/components/SEO';
 import Fade from '@/components/ui/Fade';
 import { btnPrimary, btnOutline } from '@/utils/landingStyles';
 import { financialServiceSchema, articleSchema } from '@/utils/structuredData';
 import { GetStaticProps } from 'next';
 import { getSiteNameFromDomain } from '@/utils/siteName';
+import { useAuth } from '@/components/auth';
 import { motion } from 'framer-motion';
 
 // ---------------------------------------------------------------------------
@@ -13,6 +15,21 @@ import { motion } from 'framer-motion';
 // ---------------------------------------------------------------------------
 
 export default function Sell() {
+  const router = useRouter();
+  const { user, connect } = useAuth();
+
+  const handleConnectAndNavigate = async (destination: string) => {
+    if (user) {
+      router.push(destination);
+      return;
+    }
+    if (connect) {
+      const result = await connect('walletconnect');
+      if (result?.success) {
+        router.push(destination);
+      }
+    }
+  };
 
   const siteName = getSiteNameFromDomain();
 
@@ -66,12 +83,8 @@ export default function Sell() {
               </motion.p>
 
               <motion.div variants={heroChild} className="mt-12 flex flex-wrap gap-3">
-                <Link href="/create?autoConnect=true">
-                  <button className={btnPrimary}>Create Payment Request</button>
-                </Link>
-                <Link href="/dashboard?autoConnect=true">
-                  <button className={btnOutline}>View Dashboard</button>
-                </Link>
+                <button className={btnPrimary} onClick={() => handleConnectAndNavigate('/create')}>Create Payment Request</button>
+                <button className={btnOutline} onClick={() => handleConnectAndNavigate('/dashboard')}>View Dashboard</button>
               </motion.div>
 
               <motion.div variants={heroChild} className="mt-8 pt-8 border-t border-secondary-200 dark:border-secondary-700 max-w-md">
@@ -334,12 +347,8 @@ export default function Sell() {
                 Connect your wallet and create your first payment request. No sign-up forms, no approval process.
               </p>
               <div className="flex flex-wrap gap-3">
-                <Link href="/create?autoConnect=true">
-                  <button className={btnPrimary}>Create Payment Request</button>
-                </Link>
-                <Link href="/dashboard?autoConnect=true">
-                  <button className={btnOutline}>View Dashboard</button>
-                </Link>
+                <button className={btnPrimary} onClick={() => handleConnectAndNavigate('/create')}>Create Payment Request</button>
+                <button className={btnOutline} onClick={() => handleConnectAndNavigate('/dashboard')}>View Dashboard</button>
               </div>
             </Fade>
 

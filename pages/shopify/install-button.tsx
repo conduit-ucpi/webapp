@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import toast from 'react-hot-toast';
+import WalletRegistrationPrereq from '@/components/ui/WalletRegistrationPrereq';
 
 export default function InstallButton() {
   const router = useRouter();
@@ -126,20 +127,10 @@ export default function InstallButton() {
           </header>
 
         {/* Important first step */}
-        <section className="bg-yellow-50 border-2 border-yellow-400 p-4 sm:p-5 rounded-lg my-4 sm:my-5" aria-label="Required wallet configuration">
-          <h2 className="text-yellow-800 m-0 mb-3 text-lg sm:text-xl font-bold">Prerequisites: Wallet Registration</h2>
-          <p className="text-yellow-800 mb-3 text-sm sm:text-base">
-            Before deploying the payment integration, you must register your settlement wallet address:
-          </p>
-          <ol className="text-yellow-800 pl-5 mb-3 space-y-1 text-sm sm:text-base">
-            <li>Access the platform at <a href="https://app.instantescrow.nz" target="_blank" rel="noopener noreferrer" className="text-primary-500 font-bold hover:text-primary-600">app.instantescrow.nz</a></li>
-            <li>Authenticate with your Web3 wallet to register your merchant ID</li>
-            <li>Return here to complete Shopify theme integration</li>
-          </ol>
-          <p className="text-yellow-800 text-xs sm:text-sm mb-0">
-            One-time setup. Your wallet address establishes the settlement endpoint for all USDC transactions.
-          </p>
-        </section>
+        <WalletRegistrationPrereq
+          description="Before deploying the payment integration, you must register your settlement wallet address:"
+          returnInstruction="Return here to complete Shopify theme integration"
+        />
 
         {/* Show setup form if not configured */}
         {!isConfigured && !shop && (

@@ -388,7 +388,7 @@ export default function Merchant() {
                 className="text-3xl sm:text-4xl font-light text-secondary-900 dark:text-white leading-snug mb-3"
                 style={{ fontFamily: "'Newsreader', Georgia, serif" }}
               >
-                Add crypto checkout to your store.
+                Add stablecoin checkout to your store.
               </h2>
               <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-8 max-w-md">
                 Integrate Stabledrop into your existing platform with our ready-made plugins.

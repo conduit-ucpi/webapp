@@ -5,21 +5,23 @@ import { getChainShortName } from '@/utils/chainNames';
 export default function Footer() {
   const { config } = useConfig();
   const chainName = config ? getChainShortName(config.chainId) : 'blockchain';
-  
+
   return (
-    <footer className="bg-gray-50 border-t">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="text-center text-gray-600">
-          <p>&copy; 2024 Conduit UCPI. Secure escrow contracts on {chainName}.</p>
-          <div className="mt-4 space-x-6">
-            <Link href="/terms-of-service" className="text-gray-500 hover:text-gray-700 underline">
+    <footer className="border-t border-secondary-100 dark:border-secondary-800 bg-white dark:bg-secondary-900">
+      <div className="max-w-5xl mx-auto px-6 sm:px-8 py-10">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+          <p className="text-xs text-secondary-400 dark:text-secondary-500">
+            &copy; 2026 Conduit UCPI. Secure escrow contracts on {chainName}. Company No. 880319.
+          </p>
+          <div className="flex flex-wrap gap-x-8 gap-y-3 text-xs text-secondary-400 dark:text-secondary-500">
+            <Link href="/terms-of-service" className="hover:text-secondary-600 dark:hover:text-secondary-300 transition-colors">
               Terms of Service
             </Link>
-            <Link href="/privacy-policy" className="text-gray-500 hover:text-gray-700 underline">
+            <Link href="/privacy-policy" className="hover:text-secondary-600 dark:hover:text-secondary-300 transition-colors">
               Privacy Policy
             </Link>
-            <a href="mailto:info@conduit-ucpi.com" className="text-gray-500 hover:text-gray-700 underline">
-              Contact Us
+            <a href="mailto:info@conduit-ucpi.com" className="hover:text-secondary-600 dark:hover:text-secondary-300 transition-colors">
+              Contact
             </a>
           </div>
         </div>

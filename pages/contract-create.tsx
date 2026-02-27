@@ -924,7 +924,7 @@ export default function ContractCreate() {
                   {isLoading ? (
                     <>
                       <LoadingSpinner className="w-4 h-4 mr-2" />
-                      {loadingMessage || 'Creating...'}
+                      {loadingMessage?.match(/Step \d+/)?.[0] || 'Processing...'}
                     </>
                   ) : (
                     isInIframe || isInPopup ? 'Create Payment' : 'Pay'
@@ -1095,7 +1095,7 @@ export default function ContractCreate() {
                 {isLoading ? (
                   <>
                     <LoadingSpinner className="w-4 h-4 mr-2" />
-                    {loadingMessage || 'Processing...'}
+                    {loadingMessage?.match(/Step \d+/)?.[0] || 'Processing...'}
                   </>
                 ) : (
                   `Pay $${form.amount} ${selectedTokenSymbol}`

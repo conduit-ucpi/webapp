@@ -582,7 +582,7 @@ export default function ContractPay() {
               {isPaymentInProgress ? (
                 <>
                   <LoadingSpinner className="w-4 h-4 mr-2" />
-                  {loadingMessage || 'Processing...'}
+                  {loadingMessage?.match(/Step \d+/)?.[0] || 'Processing...'}
                 </>
               ) : (
                 `Pay ${displayCurrency(contract.amount, contract.currency || 'microUSDC')}`

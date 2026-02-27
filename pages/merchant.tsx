@@ -64,7 +64,7 @@ export default function Merchant() {
                 className="mt-6 text-base text-secondary-500 dark:text-secondary-400 max-w-xl leading-relaxed"
                 style={{ fontFamily: "'Newsreader', Georgia, serif" }}
               >
-                No chargebacks. No floats. No freezes. No vetting. Just a 1&nbsp;% fee and an automated dispute system that works for both parties.
+                A wallet address on your site won&apos;t convert&nbsp;&mdash; buyers don&apos;t trust it. We give them buyer protection, a familiar checkout with wallet, network and currency selected automatically, and zero gas fees. No vetting, 1&nbsp;% flat fee, 10-minute setup.
               </motion.p>
 
               <motion.div variants={heroChild} className="mt-12">

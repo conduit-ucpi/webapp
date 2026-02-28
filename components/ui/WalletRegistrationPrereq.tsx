@@ -87,6 +87,22 @@ export default function WalletRegistrationPrereq() {
             >
               Register a different address
             </button>
+
+            <div className="mt-6 bg-primary-50 dark:bg-primary-900/30 border border-primary-200 dark:border-primary-800 rounded-md px-4 py-3">
+              <p className="text-sm font-medium text-primary-700 dark:text-primary-300 mb-1">
+                First 100 transactions free
+              </p>
+              <p className="text-sm text-primary-600 dark:text-primary-400">
+                Email{' '}
+                <a
+                  href={`mailto:free-offer@conduit-ucpi.com?subject=Free%20100%20transactions&body=Wallet%20address%3A%20${address}`}
+                  className="underline hover:text-primary-800 dark:hover:text-primary-300 transition-colors"
+                >
+                  free-offer@conduit-ucpi.com
+                </a>
+                {' '}with this wallet address to claim. We&apos;ll refund fees on your first 100 transactions.
+              </p>
+            </div>
           </div>
         ) : (
           <button onClick={handleRegister} className={btnPrimary}>

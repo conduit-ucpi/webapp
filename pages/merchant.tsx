@@ -30,8 +30,8 @@ export default function Merchant() {
   return (
     <>
       <SEO
-        title="Conduit Escrow - Stablecoin Payments with Buyer Protection | 1% Fee"
-        description="Stablecoin checkout with buyer protection. No chargebacks, no floats, no freezes, no vetting. 1% flat fee, 10-minute setup. Gas-free transactions. Open source escrow on Base."
+        title="Conduit Escrow - Stablecoin Payments with Buyer Protection | First 100 Free"
+        description="Stablecoin checkout with buyer protection. No chargebacks, no floats, no freezes, no vetting. First 100 transactions free, then 1% flat fee. 10-minute setup. Gas-free transactions. Open source escrow on Base."
         keywords="open source escrow, crypto escrow, blockchain escrow, USDC escrow, secure crypto payments, buyer protection, smart contract escrow, Base network escrow"
         canonical="/merchant"
         structuredData={structuredData}
@@ -67,7 +67,19 @@ export default function Merchant() {
                 A wallet address on your site won&apos;t convert&nbsp;&mdash; buyers don&apos;t trust it. We give them buyer protection, a familiar checkout with wallet, network and currency selected automatically, and zero gas fees. No vetting, 1&nbsp;% flat fee, 10-minute setup.
               </motion.p>
 
-              <motion.div variants={heroChild} className="mt-12">
+              <motion.div
+                variants={heroChild}
+                className="mt-8 inline-flex items-center gap-2 bg-primary-50 dark:bg-primary-900/30 border border-primary-200 dark:border-primary-800 rounded-md px-4 py-2.5"
+              >
+                <span className="text-sm font-medium text-primary-700 dark:text-primary-300">
+                  First 100 transactions free
+                </span>
+                <span className="text-xs text-primary-500 dark:text-primary-400">
+                  &mdash; no fee until you&apos;re convinced
+                </span>
+              </motion.div>
+
+              <motion.div variants={heroChild} className="mt-8">
                 <Link href="/plugins">
                   <button className={btnPrimary}>Explore Plugins</button>
                 </Link>
@@ -86,7 +98,8 @@ export default function Merchant() {
                 variants={heroChild}
                 className="mt-14 flex flex-wrap gap-x-8 gap-y-2 text-xs text-secondary-400 dark:text-secondary-500"
               >
-                <span>1% flat fee</span>
+                <span>First 100 free</span>
+                <span>Then 1% flat fee</span>
                 <span>10-minute setup</span>
                 <span>No vetting</span>
                 <a href="https://github.com/conduit-ucpi/contracts" target="_blank" rel="noopener noreferrer" className="hover:text-secondary-600 dark:hover:text-secondary-300 transition-colors underline">Open source</a>
@@ -339,6 +352,9 @@ export default function Merchant() {
                   </span>
                   <p className="text-sm text-secondary-500 dark:text-secondary-400 mt-2">
                     per transaction. Nothing else.
+                  </p>
+                  <p className="text-sm text-primary-600 dark:text-primary-400 mt-3 font-medium">
+                    First 100 transactions free &mdash; claim yours during integration.
                   </p>
                 </div>
               </Fade>

@@ -201,6 +201,9 @@ export default function Merchant() {
                 >
                   Watch video instead
                 </a>
+                <Link href="/merchant-savings-calculator">
+                  <button className={btnOutline}>Calculate savings</button>
+                </Link>
               </div>
               <p className="mt-3 text-xs text-secondary-400 dark:text-secondary-500">
                 Pay $0.001 USDC (try for free)

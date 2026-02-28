@@ -165,6 +165,240 @@ export default function MerchantSavingsCalculator() {
     };
   }, [monthlyVolume, avgTransaction, chargebackRate, profitMargin]);
 
+  const exportSpreadsheet = async () => {
+    const ExcelJS = (await import('exceljs')).default;
+    const wb = new ExcelJS.Workbook();
+    wb.creator = 'Conduit Checkout Cost Calculator';
+    const ws = wb.addWorksheet('Cost Comparison');
+
+    // Column widths
+    ws.columns = [
+      { width: 28 },  // A - labels
+      { width: 18 },  // B - values / card
+      { width: 18 },  // C - stablecoin
+      { width: 6 },   // D - spacer
+      { width: 22 },  // E - summary labels
+      { width: 18 },  // F - summary values
+    ];
+
+    // Styles
+    const green = '00FF88';
+    const red = 'FF4444';
+    const dark = '0A0A0A';
+    const darkBg = '111111';
+    const headerFont = { bold: true, size: 14, color: { argb: 'FFFFFF' } };
+    const subFont = { bold: true, size: 11, color: { argb: '888888' } };
+    const inputFont = { bold: true, size: 12, color: { argb: green } };
+    const labelFont = { size: 10, color: { argb: 'AAAAAA' } };
+    const cardFont = { bold: true, size: 11, color: { argb: red } };
+    const stableFont = { bold: true, size: 11, color: { argb: green } };
+    const currency = '#,##0';
+    const currencyDec = '#,##0.00';
+    const pct = '0.00%';
+
+    const fillDark = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: dark } };
+    const fillRow = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: darkBg } };
+    const fillHeader = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: '1A1A1A' } };
+
+    // Fill entire sheet background
+    for (let r = 1; r <= 40; r++) {
+      const row = ws.getRow(r);
+      for (let c = 1; c <= 6; c++) {
+        row.getCell(c).fill = fillDark;
+        row.getCell(c).font = { color: { argb: 'E8E8E8' }, size: 10 };
+      }
+    }
+
+    // ── Title ──
+    const titleCell = ws.getCell('A1');
+    titleCell.value = 'Checkout Cost Calculator';
+    titleCell.font = headerFont;
+    titleCell.fill = fillDark;
+
+    // ── Inputs (rows 3-6) ──
+    // Labels in A, editable values in B
+    ws.getCell('A3').value = 'Monthly Card Volume';
+    ws.getCell('A3').font = labelFont;
+    ws.getCell('B3').value = monthlyVolume;
+    ws.getCell('B3').numFmt = currency;
+    ws.getCell('B3').font = inputFont;
+    ws.getCell('B3').fill = fillRow;
+
+    ws.getCell('A4').value = 'Average Transaction';
+    ws.getCell('A4').font = labelFont;
+    ws.getCell('B4').value = avgTransaction;
+    ws.getCell('B4').numFmt = currency;
+    ws.getCell('B4').font = inputFont;
+    ws.getCell('B4').fill = fillRow;
+
+    ws.getCell('A5').value = 'Chargeback Rate';
+    ws.getCell('A5').font = labelFont;
+    ws.getCell('B5').value = chargebackRate / 100;
+    ws.getCell('B5').numFmt = pct;
+    ws.getCell('B5').font = inputFont;
+    ws.getCell('B5').fill = fillRow;
+
+    ws.getCell('A6').value = 'Profit Margin';
+    ws.getCell('A6').font = labelFont;
+    ws.getCell('B6').value = profitMargin ? profitMargin / 100 : 0;
+    ws.getCell('B6').numFmt = pct;
+    ws.getCell('B6').font = inputFont;
+    ws.getCell('B6').fill = fillRow;
+
+    ws.getCell('C3').value = '← Change these values';
+    ws.getCell('C3').font = { italic: true, size: 9, color: { argb: '666666' } };
+
+    // ── Derived values (row 8-10) ──
+    // B3=monthlyVolume, B4=avgTransaction, B5=chargebackRate
+    ws.getCell('A8').value = 'Annual Volume';
+    ws.getCell('A8').font = labelFont;
+    ws.getCell('B8').value = { formula: 'B3*12' };
+    ws.getCell('B8').numFmt = currency;
+    ws.getCell('B8').font = { bold: true, size: 11, color: { argb: 'FFFFFF' } };
+
+    ws.getCell('A9').value = 'Annual Transactions';
+    ws.getCell('A9').font = labelFont;
+    ws.getCell('B9').value = { formula: 'ROUND((B3/B4)*12,0)' };
+    ws.getCell('B9').numFmt = '#,##0';
+    ws.getCell('B9').font = { size: 11, color: { argb: 'FFFFFF' } };
+
+    ws.getCell('A10').value = 'Annual Chargebacks';
+    ws.getCell('A10').font = labelFont;
+    ws.getCell('B10').value = { formula: 'ROUND(B9*B5,0)' };
+    ws.getCell('B10').numFmt = '#,##0';
+    ws.getCell('B10').font = { size: 11, color: { argb: 'FFFFFF' } };
+
+    // ── Cost Comparison Table (row 12+) ──
+    const tableStart = 12;
+
+    // Header row
+    ws.getCell(`A${tableStart}`).value = 'Cost Category';
+    ws.getCell(`A${tableStart}`).font = subFont;
+    ws.getCell(`A${tableStart}`).fill = fillHeader;
+    ws.getCell(`B${tableStart}`).value = 'Card Payment';
+    ws.getCell(`B${tableStart}`).font = { bold: true, size: 11, color: { argb: red } };
+    ws.getCell(`B${tableStart}`).fill = fillHeader;
+    ws.getCell(`C${tableStart}`).value = 'Stablecoin';
+    ws.getCell(`C${tableStart}`).font = { bold: true, size: 11, color: { argb: green } };
+    ws.getCell(`C${tableStart}`).fill = fillHeader;
+
+    // Cost rows with formulas referencing B8 (annual volume), B9 (annual txns), B10 (annual chargebacks)
+    const costRows: Array<{ label: string; cardFormula: string; stableFormula: string }> = [
+      { label: 'Payment processing fee',   cardFormula: '0',              stableFormula: 'B8*0.01' },
+      { label: 'Interchange fees (~2%)',    cardFormula: 'B8*0.02',       stableFormula: '0' },
+      { label: 'Network fees (0.14%)',      cardFormula: 'B8*0.0014',     stableFormula: '0' },
+      { label: 'Processor markup (0.4%)',   cardFormula: 'B8*0.004',      stableFormula: '0' },
+      { label: 'Per-transaction ($0.25)',   cardFormula: 'B9*0.25',       stableFormula: '0' },
+      { label: 'PCI compliance',            cardFormula: '300',           stableFormula: '0' },
+      { label: 'Chargeback fees ($20)',     cardFormula: 'B10*20',        stableFormula: '0' },
+      { label: 'Fraud losses (0.5%)',       cardFormula: 'B8*0.005',      stableFormula: '0' },
+      { label: 'Settlement delay cost',     cardFormula: '(B3*0.08*3)/365*12', stableFormula: '0' },
+      { label: 'Gas fees',                  cardFormula: '0',             stableFormula: '0' },
+    ];
+
+    costRows.forEach((row, i) => {
+      const r = tableStart + 1 + i;
+      const rowFill = i % 2 === 0 ? fillRow : fillDark;
+
+      ws.getCell(`A${r}`).value = row.label;
+      ws.getCell(`A${r}`).font = { size: 10, color: { argb: 'E8E8E8' } };
+      ws.getCell(`A${r}`).fill = rowFill;
+
+      ws.getCell(`B${r}`).value = { formula: row.cardFormula };
+      ws.getCell(`B${r}`).numFmt = currencyDec;
+      ws.getCell(`B${r}`).font = row.cardFormula === '0' ? { size: 10, color: { argb: '444444' } } : cardFont;
+      ws.getCell(`B${r}`).fill = rowFill;
+
+      ws.getCell(`C${r}`).value = { formula: row.stableFormula };
+      ws.getCell(`C${r}`).numFmt = currencyDec;
+      ws.getCell(`C${r}`).font = row.stableFormula === '0' ? { size: 10, color: { argb: green } } : { size: 10, color: { argb: 'E8E8E8' } };
+      ws.getCell(`C${r}`).fill = rowFill;
+    });
+
+    // Totals row
+    const firstDataRow = tableStart + 1;
+    const lastDataRow = tableStart + costRows.length;
+    const totalRow = lastDataRow + 1;
+
+    ws.getCell(`A${totalRow}`).value = 'ANNUAL TOTAL';
+    ws.getCell(`A${totalRow}`).font = { bold: true, size: 12, color: { argb: 'FFFFFF' } };
+    ws.getCell(`A${totalRow}`).fill = fillHeader;
+
+    ws.getCell(`B${totalRow}`).value = { formula: `SUM(B${firstDataRow}:B${lastDataRow})` };
+    ws.getCell(`B${totalRow}`).numFmt = currency;
+    ws.getCell(`B${totalRow}`).font = { bold: true, size: 14, color: { argb: red } };
+    ws.getCell(`B${totalRow}`).fill = fillHeader;
+
+    ws.getCell(`C${totalRow}`).value = { formula: `SUM(C${firstDataRow}:C${lastDataRow})` };
+    ws.getCell(`C${totalRow}`).numFmt = currency;
+    ws.getCell(`C${totalRow}`).font = { bold: true, size: 14, color: { argb: green } };
+    ws.getCell(`C${totalRow}`).fill = fillHeader;
+
+    // % of volume row
+    const pctRow = totalRow + 1;
+    ws.getCell(`A${pctRow}`).value = '% of volume';
+    ws.getCell(`A${pctRow}`).font = labelFont;
+    ws.getCell(`B${pctRow}`).value = { formula: `IF(B8=0,0,B${totalRow}/B8)` };
+    ws.getCell(`B${pctRow}`).numFmt = pct;
+    ws.getCell(`B${pctRow}`).font = cardFont;
+    ws.getCell(`C${pctRow}`).value = { formula: `IF(B8=0,0,C${totalRow}/B8)` };
+    ws.getCell(`C${pctRow}`).numFmt = pct;
+    ws.getCell(`C${pctRow}`).font = stableFont;
+
+    // ── Summary section (right side, rows 3-10) ──
+    ws.getCell('E3').value = 'Annual Savings';
+    ws.getCell('E3').font = { bold: true, size: 10, color: { argb: green } };
+    ws.getCell('F3').value = { formula: `B${totalRow}-C${totalRow}` };
+    ws.getCell('F3').numFmt = currency;
+    ws.getCell('F3').font = { bold: true, size: 16, color: { argb: green } };
+    ws.getCell('F3').fill = fillRow;
+
+    ws.getCell('E4').value = 'Savings vs Cards';
+    ws.getCell('E4').font = labelFont;
+    ws.getCell('F4').value = { formula: `IF(B${totalRow}=0,0,(B${totalRow}-C${totalRow})/B${totalRow})` };
+    ws.getCell('F4').numFmt = pct;
+    ws.getCell('F4').font = { bold: true, size: 11, color: { argb: green } };
+
+    ws.getCell('E6').value = 'Current Profit';
+    ws.getCell('E6').font = labelFont;
+    ws.getCell('F6').value = { formula: 'B8*B6' };
+    ws.getCell('F6').numFmt = currency;
+    ws.getCell('F6').font = { size: 11, color: { argb: '888888' } };
+
+    ws.getCell('E7').value = 'New Profit';
+    ws.getCell('E7').font = labelFont;
+    ws.getCell('F7').value = { formula: `F6+F3` };
+    ws.getCell('F7').numFmt = currency;
+    ws.getCell('F7').font = { bold: true, size: 11, color: { argb: green } };
+
+    ws.getCell('E8').value = 'Profit Increase';
+    ws.getCell('E8').font = labelFont;
+    ws.getCell('F8').value = { formula: 'IF(F6=0,0,F3/F6)' };
+    ws.getCell('F8').numFmt = pct;
+    ws.getCell('F8').font = { bold: true, size: 11, color: { argb: green } };
+
+    ws.getCell('E10').value = 'Even with 5% adoption';
+    ws.getCell('E10').font = { italic: true, size: 9, color: { argb: '888888' } };
+    ws.getCell('F10').value = { formula: 'F3*0.05' };
+    ws.getCell('F10').numFmt = currency;
+    ws.getCell('F10').font = { size: 11, color: { argb: green } };
+
+    // ── Disclaimer ──
+    const disclaimerRow = pctRow + 2;
+    ws.getCell(`A${disclaimerRow}`).value = 'Estimates based on typical e-commerce card-not-present rates. Actual costs vary by merchant category, processor, and card mix.';
+    ws.getCell(`A${disclaimerRow}`).font = { italic: true, size: 8, color: { argb: '555555' } };
+
+    // Download
+    const buffer = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'checkout-cost-comparison.xlsx';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const formatCurrency = (num: number): string => {
     if (num === 0) return '$0';
     return new Intl.NumberFormat('en-US', {
@@ -689,38 +923,70 @@ export default function MerchantSavingsCalculator() {
                 </div>
               </div>
 
-              {/* CTA Button */}
-              <a
-                href="/plugins"
-                style={{
-                  display: 'block',
-                  background: 'linear-gradient(135deg, #00ff88 0%, #00cc6a 100%)',
-                  color: '#0a0a0a',
-                  textDecoration: 'none',
-                  padding: '14px 24px',
-                  borderRadius: '12px',
-                  textAlign: 'center',
-                  fontWeight: 700,
-                  fontSize: '0.9rem',
-                  fontFamily: "'Space Grotesk', sans-serif",
-                  textTransform: 'uppercase',
-                  letterSpacing: '1px',
-                  boxShadow: '0 0 30px rgba(0, 255, 136, 0.3)',
-                  transition: 'all 0.3s ease',
-                  border: 'none',
-                  cursor: 'pointer'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 5px 40px rgba(0, 255, 136, 0.5)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = '0 0 30px rgba(0, 255, 136, 0.3)';
-                }}
-              >
-                Find out more
-              </a>
+              {/* CTA Buttons */}
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <a
+                  href="/plugins"
+                  style={{
+                    flex: 1,
+                    display: 'block',
+                    background: 'linear-gradient(135deg, #00ff88 0%, #00cc6a 100%)',
+                    color: '#0a0a0a',
+                    textDecoration: 'none',
+                    padding: '14px 24px',
+                    borderRadius: '12px',
+                    textAlign: 'center',
+                    fontWeight: 700,
+                    fontSize: '0.9rem',
+                    fontFamily: "'Space Grotesk', sans-serif",
+                    textTransform: 'uppercase',
+                    letterSpacing: '1px',
+                    boxShadow: '0 0 30px rgba(0, 255, 136, 0.3)',
+                    transition: 'all 0.3s ease',
+                    border: 'none',
+                    cursor: 'pointer'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = '0 5px 40px rgba(0, 255, 136, 0.5)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = '0 0 30px rgba(0, 255, 136, 0.3)';
+                  }}
+                >
+                  Find out more
+                </a>
+                <button
+                  onClick={exportSpreadsheet}
+                  style={{
+                    background: '#1a1a1a',
+                    color: '#e8e8e8',
+                    padding: '14px 16px',
+                    borderRadius: '12px',
+                    border: '1px solid #333',
+                    cursor: 'pointer',
+                    fontFamily: "'Space Grotesk', sans-serif",
+                    fontSize: '0.75rem',
+                    fontWeight: 500,
+                    textTransform: 'uppercase',
+                    letterSpacing: '1px',
+                    transition: 'all 0.3s ease',
+                    whiteSpace: 'nowrap'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = '#00ff88';
+                    e.currentTarget.style.color = '#00ff88';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = '#333';
+                    e.currentTarget.style.color = '#e8e8e8';
+                  }}
+                  title="Download as spreadsheet"
+                >
+                  Export
+                </button>
+              </div>
             </div>
           </div>
 

@@ -1274,7 +1274,7 @@ export default function ContractCreate() {
             useSmartRouting={false}
             showTwoOptionLayout={true}
             connectionMode={paymentMethod === 'qr' ? 'social-only' : 'default'}
-            autoConnect={!!shop}
+            autoConnect={true}
             onSuccess={() => {
               console.log('🔧 ContractCreate: Auth success callback triggered');
             }}

@@ -162,25 +162,34 @@ export default function ConnectWalletEmbedded({
       autoConnectTriggeredRef.current = true;
       mLog.info('ConnectWalletEmbedded', 'Auto-connect triggered');
 
-      // Call connect directly to test if it's real - if it returns undefined (fallback no-op),
-      // reset the ref so we retry when the real connect becomes available
-      connect('walletconnect').then((result: any) => {
-        if (!result) {
-          // Fallback no-op connect returned undefined - reset so we retry with real connect
-          mLog.warn('ConnectWalletEmbedded', 'Auto-connect got no result (auth not ready), will retry');
+      const doAutoConnect = async () => {
+        try {
+          // Set connection mode before connecting (controls which options are shown in modal)
+          if (connectionMode && setConnectionMode) {
+            mLog.info('ConnectWalletEmbedded', `Auto-connect setting connection mode: ${connectionMode}`);
+            await setConnectionMode(connectionMode);
+          }
+
+          const result = await connect('walletconnect');
+          if (!result) {
+            // Fallback no-op connect returned undefined - reset so we retry with real connect
+            mLog.warn('ConnectWalletEmbedded', 'Auto-connect got no result (auth not ready), will retry');
+            autoConnectTriggeredRef.current = false;
+          } else if (result.success) {
+            mLog.info('ConnectWalletEmbedded', 'Auto-connect succeeded', { address: result.address });
+            onSuccess?.();
+          } else {
+            mLog.error('ConnectWalletEmbedded', 'Auto-connect failed', { error: result.error });
+          }
+        } catch (err: any) {
+          mLog.error('ConnectWalletEmbedded', 'Auto-connect error', {
+            error: err instanceof Error ? err.message : String(err)
+          });
           autoConnectTriggeredRef.current = false;
-        } else if (result.success) {
-          mLog.info('ConnectWalletEmbedded', 'Auto-connect succeeded', { address: result.address });
-          onSuccess?.();
-        } else {
-          mLog.error('ConnectWalletEmbedded', 'Auto-connect failed', { error: result.error });
         }
-      }).catch((err: any) => {
-        mLog.error('ConnectWalletEmbedded', 'Auto-connect error', {
-          error: err instanceof Error ? err.message : String(err)
-        });
-        autoConnectTriggeredRef.current = false;
-      });
+      };
+
+      doAutoConnect();
     }
   }, [autoConnect, isLoading, connect]); // eslint-disable-line react-hooks/exhaustive-deps
 

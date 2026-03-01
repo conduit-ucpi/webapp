@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import { useConfig } from '@/components/auth/ConfigProvider';
@@ -12,10 +12,12 @@ import ConnectWalletEmbedded from '@/components/auth/ConnectWalletEmbedded';
 import WalletInfo from '@/components/ui/WalletInfo';
 import TokenGuide from '@/components/ui/TokenGuide';
 import CurrencyAmountInput from '@/components/ui/CurrencyAmountInput';
-import { isValidWalletAddress, toMicroUSDC, toUSDCForWeb3, formatDateTimeWithTZ } from '@/utils/validation';
+import { QRCodeSVG } from 'qrcode.react';
+import { isValidWalletAddress, toMicroUSDC, toUSDCForWeb3, formatDateTimeWithTZ, displayCurrency } from '@/utils/validation';
 import { useContractCreateValidation } from '@/hooks/useContractValidation';
-import { executeContractTransactionSequence } from '@/utils/contractTransactionSequence';
+import { executeContractTransactionSequence, executeDirectPaymentSequence } from '@/utils/contractTransactionSequence';
 import { createContractProgressHandler } from '@/utils/contractProgressHandler';
+import { getNetworkName } from '@/utils/networkUtils';
 
 console.log('🔧 ContractCreate: FILE LOADED - imports successful');
 
@@ -40,13 +42,15 @@ type PaymentStep = {
   status: 'pending' | 'active' | 'completed' | 'error';
 };
 
+type PaymentMethod = 'wallet' | 'qr' | null;
+
 export default function ContractCreate() {
   console.log('🔧 ContractCreate: Component mounted/rendered');
 
   const router = useRouter();
   const { config } = useConfig();
   const { user, authenticatedFetch, disconnect, isLoading: authLoading, isLoadingUserData, isConnected, address, refreshUserData } = useAuth();
-  const { approveUSDC, depositToContract, depositFundsAsProxy, getWeb3Service } = useSimpleEthers();
+  const { approveUSDC, depositToContract, depositFundsAsProxy, getWeb3Service, transferToContract, getTokenBalance } = useSimpleEthers();
   const { errors, validateForm, clearErrors } = useContractCreateValidation();
 
   // Query parameters
@@ -86,7 +90,9 @@ export default function ContractCreate() {
       availableTokens: availableTokens.map(t => t.symbol)
     });
   }, [selectedTokenSymbol, selectedToken, selectedTokenAddress, queryTokenSymbol, availableTokens]);
-  
+
+  const networkName = config ? getNetworkName(config.chainId) : 'Unknown Network';
+
   // Check if we're in an iframe or popup
   const [isInIframe, setIsInIframe] = useState(false);
   const [isInPopup, setIsInPopup] = useState(false);
@@ -107,11 +113,21 @@ export default function ContractCreate() {
   const [isLoadingBalance, setIsLoadingBalance] = useState(false);
   const [paymentSteps, setPaymentSteps] = useState<PaymentStep[]>([
     { id: 'verify', label: 'Verifying wallet connection', status: 'pending' },
-    { id: 'approve', label: `Approving ${selectedTokenSymbol} payment`, status: 'pending' },
-    { id: 'escrow', label: 'Securing funds in escrow', status: 'pending' },
+    { id: 'transfer', label: `Transferring ${selectedTokenSymbol} to escrow`, status: 'pending' },
     { id: 'confirm', label: 'Confirming transaction on blockchain', status: 'pending' },
+    { id: 'activate', label: 'Activating contract', status: 'pending' },
     { id: 'complete', label: 'Payment complete', status: 'pending' }
   ]);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(null);
+  // QR flow state
+  const [qrContractAddress, setQrContractAddress] = useState<string | null>(null);
+  const [qrCountdown, setQrCountdown] = useState(240);
+  const [qrPaymentDetected, setQrPaymentDetected] = useState(false);
+  const [qrActivationStatus, setQrActivationStatus] = useState<'idle' | 'checking' | 'success' | 'waiting'>('idle');
+  const [isCreatingContract, setIsCreatingContract] = useState(false);
+  const [copiedAddress, setCopiedAddress] = useState(false);
+  const qrPollingRef = useRef<NodeJS.Timeout | null>(null);
+  const qrCountdownRef = useRef<NodeJS.Timeout | null>(null);
 
   console.log('🔧 ContractCreate: Hooks initialized', {
     hasConfig: !!config,
@@ -224,6 +240,61 @@ export default function ContractCreate() {
     fetchUserData();
   }, [isConnected, address, user, hasAttemptedUserFetch, refreshUserData]);
 
+  // Cleanup QR polling/countdown on unmount
+  useEffect(() => {
+    return () => {
+      if (qrPollingRef.current) clearInterval(qrPollingRef.current);
+      if (qrCountdownRef.current) clearInterval(qrCountdownRef.current);
+    };
+  }, []);
+
+  // QR countdown timer
+  useEffect(() => {
+    if (!qrContractAddress || qrActivationStatus === 'success') return;
+
+    qrCountdownRef.current = setInterval(() => {
+      setQrCountdown(prev => {
+        if (prev <= 1) {
+          if (qrCountdownRef.current) clearInterval(qrCountdownRef.current);
+          checkAndActivate();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => {
+      if (qrCountdownRef.current) clearInterval(qrCountdownRef.current);
+    };
+  }, [qrContractAddress, qrActivationStatus]);
+
+  // QR balance polling
+  useEffect(() => {
+    if (!qrContractAddress || !selectedTokenAddress || qrActivationStatus === 'success') return;
+
+    const pollBalance = async () => {
+      try {
+        const balance = await getTokenBalance(qrContractAddress, selectedTokenAddress);
+        const balanceNum = parseFloat(balance);
+        const requiredAmount = parseFloat(form.amount);
+
+        if (balanceNum >= requiredAmount && requiredAmount > 0) {
+          console.log('ContractCreate: QR payment detected! Balance:', balance);
+          setQrPaymentDetected(true);
+        }
+      } catch (error) {
+        console.error('ContractCreate: Failed to poll contract balance:', error);
+      }
+    };
+
+    qrPollingRef.current = setInterval(pollBalance, 10000);
+    pollBalance();
+
+    return () => {
+      if (qrPollingRef.current) clearInterval(qrPollingRef.current);
+    };
+  }, [qrContractAddress, selectedTokenAddress, form.amount, qrActivationStatus, getTokenBalance]);
+
   // Send postMessage to parent window (iframe) or opener (popup)
   const sendPostMessage = (event: PostMessageEvent) => {
     // Send to iframe parent
@@ -307,6 +378,373 @@ export default function ContractCreate() {
   };
 
   // validateForm function now provided by useContractCreateValidation hook
+
+  const checkAndActivate = useCallback(async () => {
+    if (!qrContractAddress || !authenticatedFetch) return;
+
+    setQrActivationStatus('checking');
+
+    try {
+      const response = await authenticatedFetch('/api/chain/check-and-activate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contractAddress: qrContractAddress })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setQrActivationStatus('success');
+        if (qrPollingRef.current) clearInterval(qrPollingRef.current);
+        if (qrCountdownRef.current) clearInterval(qrCountdownRef.current);
+
+        // Send payment completed event
+        sendPostMessage({
+          type: 'payment_completed',
+          data: {
+            contractId,
+            amount: form.amount,
+            description: form.description,
+            seller: form.seller,
+            orderId: order_id,
+            contractAddress: qrContractAddress
+          }
+        });
+
+        // Redirect after brief delay - use same logic as wallet path
+        setTimeout(() => {
+          if (isInIframe) {
+            sendPostMessage({ type: 'close_modal' });
+          } else if (isInPopup) {
+            window.close();
+          } else if (returnUrl && typeof returnUrl === 'string') {
+            const completedUrl = buildWordPressStatusUrl('completed', {
+              contract_id: contractId || '',
+              contract_hash: qrContractAddress || ''
+            });
+            window.location.href = completedUrl;
+          } else {
+            router.push('/dashboard');
+          }
+        }, 2000);
+      } else {
+        console.log('ContractCreate: check-and-activate returned not successful:', data);
+        setQrActivationStatus('waiting');
+      }
+    } catch (error) {
+      console.error('ContractCreate: check-and-activate failed:', error);
+      setQrActivationStatus('waiting');
+    }
+  }, [qrContractAddress, authenticatedFetch, contractId, form, order_id, isInIframe, isInPopup, returnUrl, router]);
+
+  const createContractForQR = useCallback(async () => {
+    if (!contractId || !config || !address || !authenticatedFetch) return;
+
+    setIsCreatingContract(true);
+
+    try {
+      // Parse expiry timestamp same way as in handleCreateContract
+      let expiryTimestamp = Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60);
+      if (epoch_expiry !== undefined) {
+        const parsedExpiry = parseInt(epoch_expiry as string, 10);
+        if (!isNaN(parsedExpiry) && (parsedExpiry === 0 || parsedExpiry > Math.floor(Date.now() / 1000))) {
+          expiryTimestamp = parsedExpiry;
+        }
+      }
+
+      const createResponse = await authenticatedFetch('/api/chain/create-contract', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contractserviceId: contractId,
+          tokenAddress: selectedTokenAddress,
+          buyer: address,
+          seller: form.seller,
+          amount: toMicroUSDC(parseFloat(form.amount.trim())),
+          expiryTimestamp,
+          description: form.description
+        })
+      });
+
+      if (!createResponse.ok) {
+        const errorData = await createResponse.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Contract creation failed');
+      }
+
+      const createData = await createResponse.json();
+      console.log('ContractCreate: QR contract created:', createData);
+
+      if (createData.transactionHash) {
+        const web3Service = await getWeb3Service();
+        await web3Service.waitForTransaction(createData.transactionHash, 120000, contractId);
+      }
+
+      setQrContractAddress(createData.contractAddress);
+      setQrCountdown(240);
+    } catch (error: any) {
+      console.error('ContractCreate: Failed to create contract for QR:', error);
+      alert(error.message || 'Failed to create contract');
+    } finally {
+      setIsCreatingContract(false);
+    }
+  }, [contractId, config, address, authenticatedFetch, selectedTokenAddress, form, epoch_expiry, getWeb3Service]);
+
+  const handleWalletPayment = async () => {
+    if (!contractId || !config) {
+      console.error('ContractCreate: Missing required data for wallet payment');
+      return;
+    }
+
+    console.log('ContractCreate: Starting wallet payment (direct transfer)');
+    setIsLoading(true);
+
+    // Reset payment steps
+    setPaymentSteps([
+      { id: 'verify', label: 'Verifying wallet connection', status: 'pending' },
+      { id: 'transfer', label: `Transferring ${selectedTokenSymbol} to escrow`, status: 'pending' },
+      { id: 'confirm', label: 'Confirming transaction on blockchain', status: 'pending' },
+      { id: 'activate', label: 'Activating contract', status: 'pending' },
+      { id: 'complete', label: 'Payment complete', status: 'pending' }
+    ]);
+
+    try {
+      const requestedAmount = parseFloat(form.amount.trim());
+      const availableBalance = parseFloat(tokenBalance);
+
+      if (availableBalance < requestedAmount) {
+        const shortfall = requestedAmount - availableBalance;
+        throw new Error(
+          `Insufficient ${selectedTokenSymbol} balance. You need ${requestedAmount.toFixed(4)} ${selectedTokenSymbol} but only have ${availableBalance.toFixed(4)} ${selectedTokenSymbol}. You are short ${shortfall.toFixed(4)} ${selectedTokenSymbol}.`
+        );
+      }
+
+      // Step 1: Verify
+      updatePaymentStep('verify', 'active');
+      setLoadingMessage('Verifying wallet connection...');
+      await new Promise(resolve => setTimeout(resolve, 500));
+      updatePaymentStep('verify', 'completed');
+
+      // Parse expiry timestamp
+      let expiryTimestamp = Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60);
+      if (epoch_expiry !== undefined) {
+        const parsedExpiry = parseInt(epoch_expiry as string, 10);
+        if (!isNaN(parsedExpiry) && (parsedExpiry === 0 || parsedExpiry > Math.floor(Date.now() / 1000))) {
+          expiryTimestamp = parsedExpiry;
+        }
+      }
+
+      // Execute direct payment
+      updatePaymentStep('transfer', 'active');
+      setLoadingMessage('Creating contract and transferring funds...');
+
+      const result = await executeDirectPaymentSequence(
+        {
+          contractserviceId: contractId,
+          tokenAddress: selectedTokenAddress,
+          buyer: address || '',
+          seller: form.seller,
+          amount: toMicroUSDC(parseFloat(form.amount.trim())),
+          expiryTimestamp,
+          description: form.description
+        },
+        {
+          authenticatedFetch,
+          transferToContract,
+          getWeb3Service,
+          onProgress: (step, message, contractAddr) => {
+            console.log(`ContractCreate Progress: ${step} - ${message}`);
+            switch (step) {
+              case 'contract_creation':
+                setLoadingMessage('Step 1: Creating secure escrow...');
+                break;
+              case 'contract_confirmation':
+                setLoadingMessage('Step 1.5: Waiting for contract creation...');
+                break;
+              case 'contract_created':
+                setLoadingMessage('Step 1 complete: Contract created');
+                break;
+              case 'transfer':
+                updatePaymentStep('transfer', 'active');
+                setLoadingMessage('Step 2: Transferring funds to escrow...');
+                break;
+              case 'transfer_confirmation':
+                updatePaymentStep('transfer', 'completed');
+                updatePaymentStep('confirm', 'active');
+                setLoadingMessage('Step 2.5: Confirming transfer...');
+                break;
+              case 'activation':
+                updatePaymentStep('confirm', 'completed');
+                updatePaymentStep('activate', 'active');
+                setLoadingMessage('Step 3: Activating contract...');
+                break;
+              case 'complete':
+                updatePaymentStep('activate', 'completed');
+                updatePaymentStep('complete', 'completed');
+                setLoadingMessage('Payment completed successfully!');
+                break;
+            }
+          }
+        }
+      );
+
+      console.log('ContractCreate: Wallet payment completed:', result);
+
+      // Webhook verification (if webhook_url provided)
+      if (result.transferTxHash && webhook_url && authenticatedFetch) {
+        console.log('ContractCreate: Sending verification webhook');
+        try {
+          const verifyResponse = await authenticatedFetch('/api/payment/verify-and-webhook', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              transaction_hash: result.transferTxHash,
+              contract_address: result.contractAddress,
+              contract_hash: result.contractAddress,
+              contract_id: contractId,
+              webhook_url: webhook_url,
+              order_id: parseInt(order_id as string || '0'),
+              expected_amount: parseFloat(form.amount),
+              expected_recipient: result.contractAddress,
+              merchant_wallet: form.seller
+            })
+          });
+
+          if (!verifyResponse.ok) {
+            console.error('ContractCreate: Payment verification failed:', await verifyResponse.text());
+          } else {
+            const verifyResult = await verifyResponse.json();
+            console.log('ContractCreate: Payment verification sent:', verifyResult);
+          }
+        } catch (verifyError) {
+          console.error('ContractCreate: Payment verification error:', verifyError);
+        }
+      }
+
+      // Shopify order creation
+      if (shop) {
+        console.log('ContractCreate: Creating Shopify order for shop:', shop);
+        try {
+          const orderResponse = await fetch('/api/shopify/create-order', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              shop: shop as string,
+              orderId: order_id as string,
+              contractId,
+              productId: product_id as string,
+              variantId: variant_id as string,
+              title: title as string || form.description,
+              price: form.amount,
+              quantity: parseInt((quantity as string) || '1'),
+              buyerEmail: user?.email || queryEmail as string,
+              transactionHash: result?.transferTxHash
+            })
+          });
+
+          const orderData = await orderResponse.json();
+          console.log('ContractCreate: Shopify order result:', orderData);
+        } catch (orderError) {
+          console.error('ContractCreate: Failed to create Shopify order:', orderError);
+        }
+      }
+
+      // Send payment completed postMessage
+      sendPostMessage({
+        type: 'payment_completed',
+        data: {
+          contractId,
+          amount: form.amount,
+          description: form.description,
+          seller: form.seller,
+          orderId: order_id,
+          transactionHash: result?.transferTxHash
+        }
+      });
+
+      setLoadingMessage('Payment completed! Redirecting...');
+
+      // Handle redirect (same logic as existing handlePayment)
+      if (isInIframe) {
+        setTimeout(() => {
+          sendPostMessage({ type: 'close_modal' });
+        }, 2000);
+      } else if (isInPopup) {
+        setTimeout(() => {
+          window.close();
+        }, 2000);
+      } else {
+        if (returnUrl && typeof returnUrl === 'string') {
+          const completedUrl = buildWordPressStatusUrl('completed', {
+            contract_id: contractId || '',
+            contract_hash: result?.contractAddress || '',
+            tx_hash: result?.transferTxHash || ''
+          });
+          window.location.href = completedUrl;
+        } else {
+          router.push('/dashboard');
+        }
+      }
+
+    } catch (error: any) {
+      console.error('ContractCreate: Wallet payment failed:', error);
+
+      const activeStep = paymentSteps.find(s => s.status === 'active');
+      if (activeStep) {
+        updatePaymentStep(activeStep.id, 'error');
+      }
+
+      sendPostMessage({
+        type: 'payment_error',
+        error: error.message || 'Payment failed'
+      });
+
+      // WordPress error redirect
+      if (wordpress_source === 'true' && returnUrl && typeof returnUrl === 'string') {
+        const errorUrl = buildWordPressStatusUrl('error', {
+          error: encodeURIComponent(error.message || 'Payment failed')
+        });
+
+        if (isInPopup && window.opener) {
+          window.opener.location.href = errorUrl;
+          window.close();
+        } else if (!isInIframe) {
+          window.location.href = errorUrl;
+        }
+      } else {
+        if (isInPopup) {
+          setTimeout(() => window.close(), 2000);
+        } else if (!isInIframe) {
+          alert(error.message || 'Payment failed');
+        }
+      }
+
+      setIsLoading(false);
+      setLoadingMessage('');
+    }
+  };
+
+  const handleCopyAddress = async (addr: string) => {
+    try {
+      await navigator.clipboard.writeText(addr);
+      setCopiedAddress(true);
+      setTimeout(() => setCopiedAddress(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy address:', err);
+    }
+  };
+
+  const formatCountdown = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const buildEIP681Uri = (): string => {
+    if (!qrContractAddress || !selectedTokenAddress || !config) return '';
+    const chainId = config.chainId;
+    const microAmount = toMicroUSDC(parseFloat(form.amount.trim()));
+    return `ethereum:${selectedTokenAddress}@${chainId}/transfer?address=${qrContractAddress}&uint256=${microAmount}`;
+  };
 
   const handleCreateContract = async () => {
     console.log('🔧 ContractCreate: handleCreateContract called');
@@ -432,7 +870,7 @@ export default function ContractCreate() {
     }
   };
 
-  const handlePayment = async () => {
+  const handleLegacyPayment = async () => {
     if (!contractId || !config) {
       console.error('🔧 ContractCreate: Missing required data for payment');
       console.error('🔧 ContractCreate: contractId:', contractId);
@@ -731,9 +1169,81 @@ export default function ContractCreate() {
     );
   }
 
-  // Wallet not connected - show connection UI
-  // With lazy auth, we check isConnected/address instead of user
+  // ================================================================
+  // STAGE 1: Payment Method Choice (before auth or when not connected)
+  // Same pattern as contract-pay.tsx — choice comes FIRST
+  // ================================================================
   if (!isConnected && !address) {
+    // If payment method not chosen yet, show choice
+    if (paymentMethod === null) {
+      return (
+        <div className={`min-h-screen flex items-center justify-center transition-colors ${isInIframe || isInPopup ? 'bg-secondary-50 dark:bg-secondary-800' : 'bg-white dark:bg-secondary-900'}`}>
+          <Head children={
+            <>
+              <title>Create Contract - Conduit UCPI</title>
+              <meta name="viewport" content="width=device-width, initial-scale=1" />
+            </>
+          } />
+          <div className="p-6 max-w-md mx-auto">
+            {/* Buyer protection callout */}
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6 text-left">
+              <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-200 mb-2">
+                Secure escrow payment
+              </h3>
+              <ul className="text-sm text-blue-800 dark:text-blue-300 space-y-1">
+                <li>Your payment is protected by escrow</li>
+                <li>Can dispute if there is a problem</li>
+                <li>No gas fees - we cover blockchain costs</li>
+              </ul>
+            </div>
+
+            <h2 className="text-lg font-semibold text-secondary-900 dark:text-white mb-4 text-center">How would you like to pay?</h2>
+
+            <div className="space-y-3">
+              {/* Wallet option */}
+              <button
+                onClick={() => setPaymentMethod('wallet')}
+                className="w-full text-left p-4 rounded-lg border-2 border-secondary-200 dark:border-secondary-700 hover:border-blue-500 dark:hover:border-blue-400 transition-colors bg-white dark:bg-secondary-800"
+              >
+                <div className="flex items-start">
+                  <div className="flex-shrink-0 w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center mr-3">
+                    <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="font-medium text-secondary-900 dark:text-white">Connect my wallet</p>
+                    <p className="text-sm text-secondary-500 dark:text-secondary-400 mt-0.5">Pay directly from your crypto wallet (MetaMask, Coinbase, etc.)</p>
+                  </div>
+                </div>
+              </button>
+
+              {/* QR option */}
+              <button
+                onClick={() => setPaymentMethod('qr')}
+                className="w-full text-left p-4 rounded-lg border-2 border-secondary-200 dark:border-secondary-700 hover:border-blue-500 dark:hover:border-blue-400 transition-colors bg-white dark:bg-secondary-800"
+              >
+                <div className="flex items-start">
+                  <div className="flex-shrink-0 w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center mr-3">
+                    <svg className="w-5 h-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="font-medium text-secondary-900 dark:text-white">Pay via QR code</p>
+                    <p className="text-sm text-secondary-500 dark:text-secondary-400 mt-0.5">Send from any wallet -- no wallet connection needed</p>
+                  </div>
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ================================================================
+    // STAGE 2: Authentication (after payment method chosen)
+    // ================================================================
     return (
       <div className={`min-h-screen flex items-center justify-center transition-colors ${isInIframe || isInPopup ? 'bg-secondary-50 dark:bg-secondary-800' : 'bg-white dark:bg-secondary-900'}`}>
         <Head children={
@@ -743,19 +1253,38 @@ export default function ContractCreate() {
           </>
         } />
         <div className="text-center p-6 max-w-md mx-auto">
-          <h2 className="text-xl font-semibold text-secondary-900 dark:text-white mb-4">Connect Your Account</h2>
-          <p className="text-secondary-600 dark:text-secondary-300 mb-6">Choose how you'd like to connect to create a secure escrow contract.</p>
+          {paymentMethod === 'qr' && (
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6 text-left">
+              <p className="text-sm text-blue-800 dark:text-blue-300">
+                Sign in to protect your payment -- if there is ever a problem, you will be able to raise a dispute.
+              </p>
+            </div>
+          )}
+
+          <h2 className="text-xl font-semibold text-secondary-900 dark:text-white mb-4">
+            {paymentMethod === 'wallet' ? 'Connect Your Wallet' : 'Sign In to Continue'}
+          </h2>
+          <p className="text-secondary-600 dark:text-secondary-300 mb-6">
+            {paymentMethod === 'wallet'
+              ? 'Connect your wallet to complete the payment.'
+              : 'Sign in with your email or wallet to proceed.'}
+          </p>
           <ConnectWalletEmbedded
             compact={true}
             useSmartRouting={false}
             showTwoOptionLayout={true}
+            connectionMode={paymentMethod === 'qr' ? 'social-only' : 'default'}
             autoConnect={!!shop}
             onSuccess={() => {
-              // Force a re-render by triggering auth context refresh
-              // The user state should update automatically but this ensures it
               console.log('🔧 ContractCreate: Auth success callback triggered');
             }}
           />
+          <button
+            onClick={() => setPaymentMethod(null)}
+            className="mt-4 text-sm text-secondary-500 dark:text-secondary-400 hover:text-secondary-700 dark:hover:text-secondary-200 underline"
+          >
+            Back to payment options
+          </button>
         </div>
       </div>
     );
@@ -937,35 +1466,40 @@ export default function ContractCreate() {
         ) : (
           <div className="bg-white dark:bg-secondary-900 rounded-lg shadow-sm dark:shadow-none border border-secondary-200 dark:border-secondary-700 p-6">
             <h2 className="text-xl font-semibold text-secondary-900 dark:text-white mb-4">Complete Payment</h2>
-            
+
+            {/* Contract summary - always shown */}
             <div className="space-y-3 mb-6">
+              {/* Amount */}
               <div className="flex justify-between">
                 <span className="text-secondary-600 dark:text-secondary-300">Amount:</span>
                 <span className="font-medium">${form.amount} {selectedTokenSymbol}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-secondary-600 dark:text-secondary-300">Your Balance:</span>
-                <span className={`font-medium ${parseFloat(tokenBalance) < parseFloat(form.amount) ? 'text-red-600' : 'text-green-600'}`}>
-                  {isLoadingBalance ? (
-                    <span className="animate-pulse">Loading...</span>
-                  ) : (
-                    `${parseFloat(tokenBalance).toFixed(4)} ${selectedTokenSymbol}`
-                  )}
-                </span>
-              </div>
+              {/* Balance - only shown for wallet method */}
+              {(paymentMethod === null || paymentMethod === 'wallet') && (
+                <div className="flex justify-between">
+                  <span className="text-secondary-600 dark:text-secondary-300">Your Balance:</span>
+                  <span className={`font-medium ${parseFloat(tokenBalance) < parseFloat(form.amount) ? 'text-red-600' : 'text-green-600'}`}>
+                    {isLoadingBalance ? (
+                      <span className="animate-pulse">Loading...</span>
+                    ) : (
+                      `${parseFloat(tokenBalance).toFixed(4)} ${selectedTokenSymbol}`
+                    )}
+                  </span>
+                </div>
+              )}
+              {/* Seller */}
               <div className="flex justify-between">
                 <span className="text-secondary-600 dark:text-secondary-300">Seller:</span>
                 <span className="text-sm font-mono">{form.seller.slice(0, 6)}...{form.seller.slice(-4)}</span>
               </div>
+              {/* Payout Date */}
               <div className="flex justify-between">
                 <span className="text-secondary-600 dark:text-secondary-300">Payout Date:</span>
                 <span className="font-medium">
                   {(() => {
-                    // Calculate expiry timestamp (same logic as in handleCreateContract)
-                    let expiryTimestamp = Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60); // Default to 7 days
+                    let expiryTimestamp = Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60);
                     if (epoch_expiry !== undefined) {
                       const parsedExpiry = parseInt(epoch_expiry as string, 10);
-                      // Allow 0 for instant payments, or any future timestamp
                       if (!isNaN(parsedExpiry) && (parsedExpiry === 0 || parsedExpiry > Math.floor(Date.now() / 1000))) {
                         expiryTimestamp = parsedExpiry;
                       }
@@ -974,6 +1508,7 @@ export default function ContractCreate() {
                   })()}
                 </span>
               </div>
+              {/* Description */}
               <div className="flex justify-between">
                 <span className="text-secondary-600 dark:text-secondary-300">Description:</span>
                 <span className="text-right max-w-xs text-sm">{form.description}</span>
@@ -986,122 +1521,354 @@ export default function ContractCreate() {
               )}
             </div>
 
-            {/* Payment Progress Steps */}
-            {isLoading && (
-              <div className="mb-6 p-4 bg-secondary-50 dark:bg-secondary-800 rounded-lg">
-                <h3 className="text-sm font-medium text-secondary-700 dark:text-secondary-200 mb-3">Payment Progress</h3>
-                <div className="space-y-2">
-                  {paymentSteps.map((step, index) => (
-                    <div key={step.id} className="flex items-center">
-                      <div className="flex-shrink-0 mr-3">
-                        {step.status === 'completed' ? (
-                          <div className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
-                            <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                            </svg>
-                          </div>
-                        ) : step.status === 'active' ? (
-                          <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
-                            <LoadingSpinner className="w-3 h-3 text-white" />
-                          </div>
-                        ) : step.status === 'error' ? (
-                          <div className="w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
-                            <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                            </svg>
-                          </div>
-                        ) : (
-                          <div className="w-5 h-5 bg-secondary-300 dark:bg-secondary-600 rounded-full"></div>
-                        )}
+            {/* PAYMENT METHOD CHOICE (when paymentMethod === null) */}
+            {paymentMethod === null && (
+              <>
+                <h3 className="text-lg font-semibold text-secondary-900 dark:text-white mb-4 text-center">How would you like to pay?</h3>
+                <div className="space-y-3">
+                  {/* Wallet option */}
+                  <button
+                    onClick={() => setPaymentMethod('wallet')}
+                    className="w-full text-left p-4 rounded-lg border-2 border-secondary-200 dark:border-secondary-700 hover:border-blue-500 dark:hover:border-blue-400 transition-colors bg-white dark:bg-secondary-800"
+                  >
+                    <div className="flex items-start">
+                      <div className="flex-shrink-0 w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center mr-3">
+                        <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                        </svg>
                       </div>
-                      <div className="flex-1">
-                        <p className={`text-sm ${
-                          step.status === 'completed' ? 'text-green-700 dark:text-green-400' :
-                          step.status === 'active' ? 'text-blue-700 dark:text-blue-400 font-medium' :
-                          step.status === 'error' ? 'text-red-700 dark:text-red-400' :
-                          'text-secondary-500 dark:text-secondary-400'
-                        }`}>
-                          {step.label}
-                        </p>
+                      <div>
+                        <p className="font-medium text-secondary-900 dark:text-white">Pay with connected wallet</p>
+                        <p className="text-sm text-secondary-500 dark:text-secondary-400 mt-0.5">Transfer directly from your connected wallet</p>
                       </div>
                     </div>
-                  ))}
+                  </button>
+
+                  {/* QR option */}
+                  <button
+                    onClick={() => setPaymentMethod('qr')}
+                    className="w-full text-left p-4 rounded-lg border-2 border-secondary-200 dark:border-secondary-700 hover:border-blue-500 dark:hover:border-blue-400 transition-colors bg-white dark:bg-secondary-800"
+                  >
+                    <div className="flex items-start">
+                      <div className="flex-shrink-0 w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center mr-3">
+                        <svg className="w-5 h-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                        </svg>
+                      </div>
+                      <div>
+                        <p className="font-medium text-secondary-900 dark:text-white">Pay via QR code</p>
+                        <p className="text-sm text-secondary-500 dark:text-secondary-400 mt-0.5">Send from any wallet using a QR code</p>
+                      </div>
+                    </div>
+                  </button>
                 </div>
-                {loadingMessage && (
-                  <p className="mt-3 text-sm text-secondary-600 dark:text-secondary-300 italic whitespace-pre-line">{loadingMessage}</p>
-                )}
-              </div>
+              </>
             )}
 
-            {parseFloat(tokenBalance) < parseFloat(form.amount) ? (
-              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md mb-6">
-                <div className="p-4">
-                  <p className="text-sm text-red-800 dark:text-red-300 font-medium">
-                    ⚠️ Insufficient Balance
-                  </p>
-                  <p className="text-sm text-red-700 dark:text-red-400 mt-1">
-                    You need {parseFloat(form.amount).toFixed(4)} {selectedTokenSymbol} but only have {parseFloat(tokenBalance).toFixed(4)} {selectedTokenSymbol}.
-                    Please add {(parseFloat(form.amount) - parseFloat(tokenBalance)).toFixed(4)} {selectedTokenSymbol} to your wallet before proceeding.
-                  </p>
-                </div>
-
-                {/* Expandable guide section */}
-                <details className="border-t border-red-200 dark:border-red-800">
-                  <summary className="cursor-pointer p-3 text-sm font-medium text-red-800 dark:text-red-300 hover:bg-red-100">
-                    💡 How to add {selectedTokenSymbol} to your wallet
-                  </summary>
-                  <div className="p-3 pt-0">
-                    <TokenGuide currency={selectedTokenSymbol} />
+            {/* WALLET PAYMENT UI (when paymentMethod === 'wallet') */}
+            {paymentMethod === 'wallet' && (
+              <>
+                {/* Payment method switcher (when not in progress and no QR contract created) */}
+                {!isLoading && !qrContractAddress && (
+                  <div className="flex mb-6 bg-secondary-100 dark:bg-secondary-800 rounded-lg p-1">
+                    <button
+                      onClick={() => setPaymentMethod('wallet')}
+                      className="flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors bg-white dark:bg-secondary-700 text-secondary-900 dark:text-white shadow-sm"
+                    >
+                      Wallet Transfer
+                    </button>
+                    <button
+                      onClick={() => setPaymentMethod('qr')}
+                      className="flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors text-secondary-500 dark:text-secondary-400 hover:text-secondary-700 dark:hover:text-secondary-200"
+                    >
+                      QR Code
+                    </button>
                   </div>
-                </details>
-              </div>
-            ) : (
-              <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md p-4 mb-6">
-                <p className="text-sm text-yellow-800 dark:text-yellow-300">
-                  {(() => {
-                    // Check if this is an instant payment
-                    const parsedExpiry = epoch_expiry !== undefined ? parseInt(epoch_expiry as string, 10) : -1;
-                    const isInstant = parsedExpiry === 0;
+                )}
 
-                    if (isInstant) {
-                      return `Your $${form.amount} ${selectedTokenSymbol} will be released to the seller immediately after payment confirmation.`;
-                    } else {
-                      return `Your $${form.amount} ${selectedTokenSymbol} will be held securely in escrow and released to the seller on the payout date unless you raise a dispute (see email for instructions).`;
+                {/* Payment Progress Steps */}
+                {isLoading && (
+                  <div className="mb-6 p-4 bg-secondary-50 dark:bg-secondary-800 rounded-lg">
+                    <h3 className="text-sm font-medium text-secondary-700 dark:text-secondary-200 mb-3">Payment Progress</h3>
+                    <div className="space-y-2">
+                      {paymentSteps.map((pStep) => (
+                        <div key={pStep.id} className="flex items-center">
+                          <div className="flex-shrink-0 mr-3">
+                            {pStep.status === 'completed' ? (
+                              <div className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
+                                <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                </svg>
+                              </div>
+                            ) : pStep.status === 'active' ? (
+                              <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
+                                <LoadingSpinner className="w-3 h-3 text-white" />
+                              </div>
+                            ) : pStep.status === 'error' ? (
+                              <div className="w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
+                                <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                                </svg>
+                              </div>
+                            ) : (
+                              <div className="w-5 h-5 bg-secondary-300 dark:bg-secondary-600 rounded-full"></div>
+                            )}
+                          </div>
+                          <div className="flex-1">
+                            <p className={`text-sm ${
+                              pStep.status === 'completed' ? 'text-green-700 dark:text-green-400' :
+                              pStep.status === 'active' ? 'text-blue-700 dark:text-blue-400 font-medium' :
+                              pStep.status === 'error' ? 'text-red-700 dark:text-red-400' :
+                              'text-secondary-500 dark:text-secondary-400'
+                            }`}>
+                              {pStep.label}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    {loadingMessage && (
+                      <p className="mt-3 text-sm text-secondary-600 dark:text-secondary-300 italic whitespace-pre-line">{loadingMessage}</p>
+                    )}
+                  </div>
+                )}
+
+                {/* Balance warning / escrow info */}
+                {parseFloat(tokenBalance) < parseFloat(form.amount) ? (
+                  <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md mb-6">
+                    <div className="p-4">
+                      <p className="text-sm text-red-800 dark:text-red-300 font-medium">Insufficient Balance</p>
+                      <p className="text-sm text-red-700 dark:text-red-400 mt-1">
+                        You need {parseFloat(form.amount).toFixed(4)} {selectedTokenSymbol} but only have {parseFloat(tokenBalance).toFixed(4)} {selectedTokenSymbol}.
+                        Please add {(parseFloat(form.amount) - parseFloat(tokenBalance)).toFixed(4)} {selectedTokenSymbol} to your wallet before proceeding.
+                      </p>
+                    </div>
+                    <details className="border-t border-red-200 dark:border-red-800">
+                      <summary className="cursor-pointer p-3 text-sm font-medium text-red-800 dark:text-red-300 hover:bg-red-100">
+                        How to add {selectedTokenSymbol} to your wallet
+                      </summary>
+                      <div className="p-3 pt-0">
+                        <TokenGuide currency={selectedTokenSymbol} />
+                      </div>
+                    </details>
+                  </div>
+                ) : !isLoading && (
+                  <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md p-4 mb-6">
+                    <p className="text-sm text-yellow-800 dark:text-yellow-300">
+                      {(() => {
+                        const parsedExpiry = epoch_expiry !== undefined ? parseInt(epoch_expiry as string, 10) : -1;
+                        const isInstant = parsedExpiry === 0;
+                        if (isInstant) {
+                          return `Your $${form.amount} ${selectedTokenSymbol} will be released to the seller immediately after payment confirmation.`;
+                        } else {
+                          return `Your $${form.amount} ${selectedTokenSymbol} will be held securely in escrow and released to the seller on the payout date unless you raise a dispute.`;
+                        }
+                      })()}
+                    </p>
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                <div className="flex space-x-3">
+                  <Button
+                    onClick={handleCancel}
+                    variant="outline"
+                    className="flex-1"
+                    disabled={isLoading}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleWalletPayment}
+                    disabled={isLoading || isLoadingBalance || parseFloat(tokenBalance) < parseFloat(form.amount)}
+                    className="flex-1"
+                    title={
+                      parseFloat(tokenBalance) < parseFloat(form.amount)
+                        ? `Insufficient balance: need ${form.amount} ${selectedTokenSymbol}, have ${parseFloat(tokenBalance).toFixed(4)} ${selectedTokenSymbol}`
+                        : ''
                     }
-                  })()}
-                </p>
-              </div>
+                  >
+                    {isLoading ? (
+                      <>
+                        <LoadingSpinner className="w-4 h-4 mr-2" />
+                        {loadingMessage?.match(/Step \d+/)?.[0] || 'Processing...'}
+                      </>
+                    ) : (
+                      `Pay $${form.amount} ${selectedTokenSymbol}`
+                    )}
+                  </Button>
+                </div>
+              </>
             )}
 
-            <div className="flex space-x-3">
-              <Button
-                onClick={handleCancel}
-                variant="outline"
-                className="flex-1"
-                disabled={isLoading}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handlePayment}
-                disabled={isLoading || isLoadingBalance || parseFloat(tokenBalance) < parseFloat(form.amount)}
-                className="flex-1"
-                title={
-                  parseFloat(tokenBalance) < parseFloat(form.amount)
-                    ? `Insufficient balance: need ${form.amount} ${selectedTokenSymbol}, have ${parseFloat(tokenBalance).toFixed(4)} ${selectedTokenSymbol}`
-                    : ''
-                }
-              >
-                {isLoading ? (
-                  <>
-                    <LoadingSpinner className="w-4 h-4 mr-2" />
-                    {loadingMessage?.match(/Step \d+/)?.[0] || 'Processing...'}
-                  </>
-                ) : (
-                  `Pay $${form.amount} ${selectedTokenSymbol}`
+            {/* QR PAYMENT UI (when paymentMethod === 'qr') */}
+            {paymentMethod === 'qr' && (
+              <>
+                {/* Payment method switcher (when not creating and no QR contract yet) */}
+                {!isCreatingContract && !qrContractAddress && (
+                  <div className="flex mb-6 bg-secondary-100 dark:bg-secondary-800 rounded-lg p-1">
+                    <button
+                      onClick={() => setPaymentMethod('wallet')}
+                      className="flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors text-secondary-500 dark:text-secondary-400 hover:text-secondary-700 dark:hover:text-secondary-200"
+                    >
+                      Wallet Transfer
+                    </button>
+                    <button
+                      onClick={() => setPaymentMethod('qr')}
+                      className="flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors bg-white dark:bg-secondary-700 text-secondary-900 dark:text-white shadow-sm"
+                    >
+                      QR Code
+                    </button>
+                  </div>
                 )}
-              </Button>
-            </div>
+
+                {/* Step 1: Create the contract first */}
+                {!qrContractAddress && (
+                  <div className="text-center">
+                    <p className="text-sm text-secondary-600 dark:text-secondary-300 mb-4">
+                      First, we need to create a secure escrow contract on the blockchain. Then you will get a QR code to send your payment.
+                    </p>
+                    <Button
+                      onClick={createContractForQR}
+                      disabled={isCreatingContract}
+                      className="w-full"
+                    >
+                      {isCreatingContract ? (
+                        <>
+                          <LoadingSpinner className="w-4 h-4 mr-2" />
+                          Creating contract...
+                        </>
+                      ) : (
+                        'Generate Payment QR Code'
+                      )}
+                    </Button>
+                  </div>
+                )}
+
+                {/* Step 2: Show QR code and payment instructions */}
+                {qrContractAddress && qrActivationStatus !== 'success' && (
+                  <div>
+                    {/* Payment detected banner */}
+                    {qrPaymentDetected && (
+                      <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-md p-3 mb-4">
+                        <p className="text-sm font-medium text-green-800 dark:text-green-300">
+                          Payment detected! Verifying...
+                        </p>
+                      </div>
+                    )}
+
+                    {/* QR Code */}
+                    <div className="flex justify-center mb-4">
+                      <div className="bg-white p-4 rounded-lg border-2 border-secondary-200 shadow-sm">
+                        <QRCodeSVG
+                          value={buildEIP681Uri()}
+                          size={200}
+                          level="M"
+                          includeMargin={true}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Contract address with copy */}
+                    <div className="mb-4">
+                      <label className="block text-xs font-medium text-secondary-500 dark:text-secondary-400 mb-1">
+                        Pay-to Address
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          readOnly
+                          value={qrContractAddress}
+                          className="flex-1 border border-secondary-300 dark:border-secondary-600 rounded-md px-3 py-2 text-xs bg-secondary-50 dark:bg-secondary-800 font-mono text-secondary-900 dark:text-secondary-100"
+                          onClick={(e) => e.currentTarget.select()}
+                        />
+                        <Button
+                          variant="outline"
+                          onClick={() => handleCopyAddress(qrContractAddress)}
+                          className="whitespace-nowrap flex-shrink-0 text-xs"
+                        >
+                          {copiedAddress ? 'Copied!' : 'Copy'}
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Payment instructions */}
+                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md p-4 mb-4">
+                      <h4 className="font-medium text-blue-900 dark:text-blue-200 text-sm mb-2">Payment Instructions</h4>
+                      <ul className="text-xs text-blue-800 dark:text-blue-300 space-y-1.5">
+                        <li>Network: <span className="font-medium">{networkName}</span></li>
+                        <li>Token: <span className="font-medium">{selectedTokenSymbol}</span></li>
+                        <li>Amount: <span className="font-medium">{parseFloat(form.amount).toFixed(4)} {selectedTokenSymbol}</span></li>
+                      </ul>
+                    </div>
+
+                    {/* Warning */}
+                    <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md p-3 mb-4">
+                      <p className="text-xs text-yellow-800 dark:text-yellow-300 font-medium">
+                        Send exactly {parseFloat(form.amount).toFixed(4)} {selectedTokenSymbol} -- do not send more or less.
+                      </p>
+                    </div>
+
+                    {/* Countdown and activation controls */}
+                    <div className="space-y-3">
+                      <div className="text-center">
+                        <p className="text-sm text-secondary-500 dark:text-secondary-400">
+                          Auto-checking in <span className="font-mono font-medium text-secondary-900 dark:text-white">{formatCountdown(qrCountdown)}</span>
+                        </p>
+                      </div>
+
+                      {qrActivationStatus === 'checking' && (
+                        <div className="flex items-center justify-center text-sm text-blue-600 dark:text-blue-400">
+                          <LoadingSpinner className="w-4 h-4 mr-2" />
+                          Checking payment status...
+                        </div>
+                      )}
+                      {qrActivationStatus === 'waiting' && (
+                        <p className="text-center text-sm text-yellow-600 dark:text-yellow-400">
+                          Still waiting for payment... The timer and button remain active for retry.
+                        </p>
+                      )}
+
+                      <Button
+                        onClick={checkAndActivate}
+                        disabled={qrActivationStatus === 'checking'}
+                        className="w-full"
+                      >
+                        {qrActivationStatus === 'checking' ? (
+                          <>
+                            <LoadingSpinner className="w-4 h-4 mr-2" />
+                            Checking...
+                          </>
+                        ) : (
+                          'I have paid'
+                        )}
+                      </Button>
+
+                      <Button
+                        onClick={handleCancel}
+                        variant="outline"
+                        className="w-full"
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Success state */}
+                {qrActivationStatus === 'success' && (
+                  <div className="text-center py-6">
+                    <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <svg className="w-8 h-8 text-green-600 dark:text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <h3 className="text-lg font-semibold text-green-700 dark:text-green-400 mb-2">Payment Confirmed!</h3>
+                    <p className="text-sm text-secondary-600 dark:text-secondary-300">Your payment has been verified and the contract is now active. Redirecting...</p>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         )}
       </div>

@@ -26,6 +26,7 @@ import {
   getMaxLocalDatetime,
   getRelativeTime
 } from '@/utils/validation';
+import { emailsEqual } from '@/utils/address';
 
 interface CreateContractForm {
   buyerEmail: string;
@@ -217,7 +218,7 @@ export default function CreateContractWizard() {
             const buyerIdentifier = form.buyerEmail.trim();
 
             // Check if buyer email matches seller email (case-insensitive)
-            if (user?.email && buyerIdentifier.toLowerCase() === user.email.toLowerCase()) {
+            if (user?.email && emailsEqual(buyerIdentifier, user.email)) {
               newErrors.buyerEmail = `You cannot create a payment request to yourself. The buyer email (${buyerIdentifier}) matches your account email (${user.email}).`;
             }
 

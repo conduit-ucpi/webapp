@@ -3,6 +3,7 @@ import { displayCurrency, formatDateTimeWithTZ } from '@/utils/validation';
 import Button from '@/components/ui/Button';
 import ExpandableHash from '@/components/ui/ExpandableHash';
 import { useConfig } from '@/components/auth/ConfigProvider';
+import { emailsEqual } from '@/utils/address';
 
 interface PendingContractCardProps {
   contract: PendingContract;
@@ -17,8 +18,8 @@ export default function PendingContractCard({
 }: PendingContractCardProps) {
   const { config } = useConfig();
   const isExpired = Date.now() / 1000 > contract.expiryTimestamp;
-  const isBuyer = contract.buyerEmail === currentUserEmail;
-  const isSeller = contract.sellerEmail === currentUserEmail;
+  const isBuyer = emailsEqual(contract.buyerEmail, currentUserEmail);
+  const isSeller = emailsEqual(contract.sellerEmail, currentUserEmail);
   const canAccept = isBuyer && 
                    !contract.chainAddress && 
                    !isExpired && 

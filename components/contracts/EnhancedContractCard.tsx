@@ -5,6 +5,7 @@ import Button from '@/components/ui/Button';
 import { useAuth } from '@/components/auth';
 import { useMemo } from 'react';
 import FarcasterNameDisplay from '@/components/ui/FarcasterNameDisplay';
+import { emailsEqual } from '@/utils/address';
 
 interface EnhancedContractCardProps {
   contract: Contract | PendingContract;
@@ -54,8 +55,8 @@ export default function EnhancedContractCard({
   }, [contract]);
 
   const isPending = isPendingContract(contract);
-  const isBuyer = isPending 
-    ? user?.email === contract.buyerEmail 
+  const isBuyer = isPending
+    ? emailsEqual(user?.email, contract.buyerEmail)
     : user?.walletAddress?.toLowerCase() === contract.buyerAddress?.toLowerCase();
   const isSeller = user?.walletAddress?.toLowerCase() === 
     contract.sellerAddress?.toLowerCase();

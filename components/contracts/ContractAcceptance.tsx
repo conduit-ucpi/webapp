@@ -10,6 +10,7 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { formatCurrency, formatDateTimeWithTZ, toUSDCForWeb3 } from '@/utils/validation';
 import { executeContractTransactionSequence } from '@/utils/contractTransactionSequence';
 import { createContractProgressHandler } from '@/utils/contractProgressHandler';
+import { emailsEqual } from '@/utils/address';
 
 interface ContractAcceptanceProps {
   contract: PendingContract;
@@ -160,7 +161,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
       console.log('Using actual user wallet address:', userAddress);
       
       // Verify that the current user's email matches the contract's buyer email (if specified)
-      if (contract.buyerEmail && user?.email !== contract.buyerEmail) {
+      if (contract.buyerEmail && !emailsEqual(user?.email, contract.buyerEmail)) {
         throw new Error(`This contract is for ${contract.buyerEmail}, but you are logged in as ${user?.email}. Please log in with the correct account.`);
       }
 

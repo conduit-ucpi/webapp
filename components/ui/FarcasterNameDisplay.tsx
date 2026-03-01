@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { isFarcasterEmail, parseFarcasterEmail, fetchFarcasterUserByFid } from '@/utils/farcasterUtils';
 import { useAuth } from '@/components/auth';
+import { emailsEqual } from '@/utils/address';
 
 interface FarcasterNameDisplayProps {
   identifier: string | null | undefined;
@@ -91,7 +92,7 @@ export default function FarcasterNameDisplay({
   }
 
   // Check if this is the current user
-  const isCurrentUser = user?.email === identifier || 
+  const isCurrentUser = emailsEqual(user?.email, identifier) ||
     (isFarcasterEmail(identifier) && user?.fid && user?.fid === parseFarcasterEmail(identifier));
 
   if (loading) {

@@ -7,6 +7,7 @@ import ContractActions from './ContractActions';
 import ExpandableHash from '@/components/ui/ExpandableHash';
 import StatusBadge from '@/components/ui/StatusBadge';
 import FarcasterNameDisplay from '@/components/ui/FarcasterNameDisplay';
+import { emailsEqual } from '@/utils/address';
 
 interface ContractCardProps {
   contract: Contract | PendingContract;
@@ -26,12 +27,12 @@ export default function ContractCard({ contract, onAction, onAccept, isClaimingI
   const isPending = 'id' in contract && !('contractAddress' in contract);
   
   // Handle buyer/seller identification for both contract types
-  const isBuyer = isPending 
-    ? (contract as PendingContract).buyerEmail === user?.email
+  const isBuyer = isPending
+    ? emailsEqual((contract as PendingContract).buyerEmail, user?.email)
     : walletAddress?.toLowerCase() === (contract as Contract).buyerAddress?.toLowerCase();
-    
+
   const isSeller = isPending
-    ? (contract as PendingContract).sellerEmail === user?.email  
+    ? emailsEqual((contract as PendingContract).sellerEmail, user?.email)
     : walletAddress?.toLowerCase() === (contract as Contract).sellerAddress?.toLowerCase();
   
 

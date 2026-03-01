@@ -22,6 +22,7 @@ interface AuthContextValue {
 
   // Actions
   connect: () => Promise<ConnectionResult>;
+  setConnectionMode: (mode: 'default' | 'wallet-only' | 'social-only') => Promise<void>;
   authenticateBackend: (connectionResult?: ConnectionResult) => Promise<boolean>;
   requestAuthentication: () => Promise<boolean>; // Manually trigger SIWX authentication
   disconnect: () => Promise<void>;
@@ -481,6 +482,9 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
 
     // Actions
     connect,
+    setConnectionMode: async (mode: 'default' | 'wallet-only' | 'social-only') => {
+      await authManager.setConnectionMode(mode);
+    },
     authenticateBackend,
     requestAuthentication,
     disconnect,

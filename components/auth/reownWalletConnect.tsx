@@ -8,6 +8,8 @@ import { wrapProviderWithMobileDeepLinks } from '@/utils/mobileDeepLinkProvider'
 import { createAppKitSIWXConfig } from '@/lib/auth/siwx-config'
 import { mLog } from '@/utils/mobileLogger'
 
+export type ConnectionMode = 'default' | 'wallet-only' | 'social-only'
+
 export class ReownWalletConnectProvider {
   private appKit: any = null
   private provider: any = null
@@ -15,10 +17,45 @@ export class ReownWalletConnectProvider {
   private isDesktopQRSession: boolean = false
   private onMobileActionRequired?: (actionType: 'sign' | 'transaction') => void
   private isConnecting: boolean = false
+  private connectionMode: ConnectionMode = 'default'
 
   constructor(config: any, onMobileActionRequired?: (actionType: 'sign' | 'transaction') => void) {
     this.config = config
     this.onMobileActionRequired = onMobileActionRequired
+  }
+
+  /**
+   * Set the connection mode before opening the modal.
+   * - 'default': Show all options (wallets + email + social)
+   * - 'wallet-only': Show only wallet connectors (MetaMask, Coinbase, etc.)
+   * - 'social-only': Show only email/social login, hide wallet list
+   *
+   * If AppKit is already initialized with a different mode, it will be
+   * torn down and reinitialized with the new features on next connect().
+   */
+  async setConnectionMode(mode: ConnectionMode) {
+    if (mode === this.connectionMode && this.appKit) return
+    this.connectionMode = mode
+    // Tear down existing AppKit so initialize() recreates with new features
+    if (this.appKit) {
+      console.log(`🔧 ReownWalletConnect: Reinitializing AppKit for mode: ${mode}`)
+      try {
+        await this.appKit.disconnect()
+      } catch (_) { /* ignore disconnect errors during reinit */ }
+      this.appKit = null
+    }
+  }
+
+  private getFeaturesForMode(): Record<string, any> {
+    const base = { analytics: false, swaps: false, onramp: false }
+    switch (this.connectionMode) {
+      case 'wallet-only':
+        return { ...base, email: false, socials: false }
+      case 'social-only':
+        return { ...base, email: true, socials: ['google', 'x', 'discord', 'farcaster'], allWallets: 'HIDE' }
+      default:
+        return { ...base, email: true, socials: ['google', 'x', 'discord', 'farcaster'] }
+    }
   }
 
   async initialize() {
@@ -111,13 +148,7 @@ export class ReownWalletConnectProvider {
           url: typeof window !== 'undefined' ? window.location.origin : 'https://conduit-ucpi.com',
           icons: ['https://conduit-ucpi.com/favicon.ico']
         },
-        features: {
-          analytics: false, // Disable analytics for privacy
-          swaps: false,
-          onramp: false,
-          email: true, // Enable email login
-          socials: ['google', 'x', 'discord', 'farcaster'] // Enable social login options
-        },
+        features: this.getFeaturesForMode(),
         allowUnsupportedChain: false // Only allow the configured chain from env
       })
 

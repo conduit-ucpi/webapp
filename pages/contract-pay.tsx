@@ -104,10 +104,21 @@ export default function ContractPay() {
     fetchUserData();
   }, [isConnected, address, user, hasAttemptedUserFetch, refreshUserData]);
 
-  // Fetch contract details
+  // Fetch contract details - only after user is authenticated
   useEffect(() => {
     const fetchContract = async () => {
       if (!contractId || typeof contractId !== 'string') {
+        setIsLoadingContract(false);
+        return;
+      }
+
+      // Don't attempt fetch until user is connected and we have authenticatedFetch
+      if (!isConnected && !address) {
+        setIsLoadingContract(false);
+        return;
+      }
+
+      if (!authenticatedFetch) {
         setIsLoadingContract(false);
         return;
       }
@@ -117,11 +128,6 @@ export default function ContractPay() {
 
       try {
         console.log('ContractPay: Fetching contract:', contractId);
-
-        if (!authenticatedFetch) {
-          setIsLoadingContract(false);
-          return;
-        }
 
         const response = await authenticatedFetch(`/api/contracts/${contractId}`, {
           method: 'GET'
@@ -161,7 +167,7 @@ export default function ContractPay() {
     };
 
     fetchContract();
-  }, [contractId, authenticatedFetch]);
+  }, [contractId, authenticatedFetch, isConnected, address]);
 
   // Fetch token balance when contract is loaded
   useEffect(() => {
@@ -596,58 +602,9 @@ export default function ContractPay() {
     );
   }
 
-  // Loading contract
-  if (isLoadingContract) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-secondary-900 transition-colors">
-        <Head><title>{pageTitle}</title><meta name="viewport" content="width=device-width, initial-scale=1" /></Head>
-        <div className="text-center p-6">
-          <LoadingSpinner size="lg" />
-          <p className="mt-4 text-secondary-600 dark:text-secondary-300">Loading payment request...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Contract error
-  if (contractError) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-secondary-900 transition-colors">
-        <Head><title>{pageTitle}</title><meta name="viewport" content="width=device-width, initial-scale=1" /></Head>
-        <div className="text-center p-6 max-w-md mx-auto">
-          <h2 className="text-xl font-semibold text-red-600 mb-4">Unable to Process Payment</h2>
-          <p className="text-secondary-600 dark:text-secondary-300 mb-6">{contractError}</p>
-          <Button onClick={() => router.push('/dashboard')} variant="outline">Go to Dashboard</Button>
-        </div>
-      </div>
-    );
-  }
-
-  // Contract not found
-  if (!contract) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-secondary-900 transition-colors">
-        <Head><title>{pageTitle}</title><meta name="viewport" content="width=device-width, initial-scale=1" /></Head>
-        <div className="text-center p-6 max-w-md mx-auto">
-          <h2 className="text-xl font-semibold text-red-600 mb-4">Payment Request Not Found</h2>
-          <p className="text-secondary-600 dark:text-secondary-300 mb-6">The payment request could not be found.</p>
-          <Button onClick={() => router.push('/dashboard')} variant="outline">Go to Dashboard</Button>
-        </div>
-      </div>
-    );
-  }
-
-  // Contract data derived values
-  const amountInTokens = contract.amount / 1000000;
-  const balanceFloat = parseFloat(tokenBalance);
-  const hasInsufficientBalance = balanceFloat < amountInTokens;
-  const isInstantPayment = contract.expiryTimestamp === 0;
-  const isSameAddress = address?.toLowerCase() === contract.sellerAddress?.toLowerCase();
-  const cannotPay = hasInsufficientBalance || isSameAddress;
-  const networkName = config ? getNetworkName(config.chainId) : 'Unknown Network';
-
   // ================================================================
   // STAGE 1: Payment Method Choice (before auth or when not connected)
+  // Contract data is NOT loaded yet — we show a generic prompt.
   // ================================================================
   if (!isConnected && !address) {
     // If payment method not chosen yet, show choice
@@ -666,17 +623,6 @@ export default function ContractPay() {
                 <li>Can dispute if there is a problem</li>
                 <li>No gas fees - we cover blockchain costs</li>
               </ul>
-            </div>
-
-            {/* Payment amount summary */}
-            <div className="bg-white dark:bg-secondary-800 rounded-lg border border-secondary-200 dark:border-secondary-700 p-4 mb-6">
-              <div className="text-center">
-                <p className="text-secondary-500 dark:text-secondary-400 text-sm mb-1">Amount Due</p>
-                <p className="text-2xl font-bold text-secondary-900 dark:text-white">
-                  {displayCurrency(contract.amount, contract.currency || 'microUSDC')}
-                </p>
-                <p className="text-secondary-500 dark:text-secondary-400 text-xs mt-1">{contract.description}</p>
-              </div>
             </div>
 
             <h2 className="text-lg font-semibold text-secondary-900 dark:text-white mb-4 text-center">How would you like to pay?</h2>
@@ -750,6 +696,7 @@ export default function ContractPay() {
             compact={true}
             useSmartRouting={false}
             showTwoOptionLayout={true}
+            connectionMode={paymentMethod === 'qr' ? 'social-only' : paymentMethod === 'wallet' ? 'wallet-only' : 'default'}
             onSuccess={() => {
               console.log('ContractPay: Auth success callback triggered');
             }}
@@ -766,8 +713,63 @@ export default function ContractPay() {
   }
 
   // ================================================================
+  // POST-AUTH GUARDS: Loading, errors, and not-found states
+  // These only apply once the user is authenticated and we've attempted the contract fetch.
+  // ================================================================
+
+  // Loading contract after auth
+  if (isLoadingContract) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-secondary-900 transition-colors">
+        <Head><title>{pageTitle}</title><meta name="viewport" content="width=device-width, initial-scale=1" /></Head>
+        <div className="text-center p-6">
+          <LoadingSpinner size="lg" />
+          <p className="mt-4 text-secondary-600 dark:text-secondary-300">Loading payment request...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Contract error
+  if (contractError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-secondary-900 transition-colors">
+        <Head><title>{pageTitle}</title><meta name="viewport" content="width=device-width, initial-scale=1" /></Head>
+        <div className="text-center p-6 max-w-md mx-auto">
+          <h2 className="text-xl font-semibold text-red-600 mb-4">Unable to Process Payment</h2>
+          <p className="text-secondary-600 dark:text-secondary-300 mb-6">{contractError}</p>
+          <Button onClick={() => router.push('/dashboard')} variant="outline">Go to Dashboard</Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Contract not found
+  if (!contract) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-secondary-900 transition-colors">
+        <Head><title>{pageTitle}</title><meta name="viewport" content="width=device-width, initial-scale=1" /></Head>
+        <div className="text-center p-6 max-w-md mx-auto">
+          <h2 className="text-xl font-semibold text-red-600 mb-4">Payment Request Not Found</h2>
+          <p className="text-secondary-600 dark:text-secondary-300 mb-6">The payment request could not be found.</p>
+          <Button onClick={() => router.push('/dashboard')} variant="outline">Go to Dashboard</Button>
+        </div>
+      </div>
+    );
+  }
+
+  // ================================================================
   // STAGE 3: Authenticated - Show payment UI based on method
   // ================================================================
+
+  // Contract data derived values
+  const amountInTokens = contract.amount / 1000000;
+  const balanceFloat = parseFloat(tokenBalance);
+  const hasInsufficientBalance = balanceFloat < amountInTokens;
+  const isInstantPayment = contract.expiryTimestamp === 0;
+  const isSameAddress = address?.toLowerCase() === contract.sellerAddress?.toLowerCase();
+  const cannotPay = hasInsufficientBalance || isSameAddress;
+  const networkName = config ? getNetworkName(config.chainId) : 'Unknown Network';
 
   // If user connected without choosing a method (e.g., already connected), default to wallet
   const effectiveMethod = paymentMethod || 'wallet';

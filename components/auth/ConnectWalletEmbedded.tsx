@@ -13,6 +13,7 @@ interface ConnectWalletEmbeddedProps {
   onSuccess?: () => void;
   autoConnect?: boolean;
   preferredProvider?: 'dynamic' | 'walletconnect'; // Choose which provider to use
+  connectionMode?: 'default' | 'wallet-only' | 'social-only';
 }
 
 export default function ConnectWalletEmbedded({
@@ -24,9 +25,10 @@ export default function ConnectWalletEmbedded({
   compact = false,
   onSuccess,
   autoConnect = false,
-  preferredProvider
+  preferredProvider,
+  connectionMode
 }: ConnectWalletEmbeddedProps) {
-  const { user, isLoading, connect, isConnected, address, requestAuthentication } = useAuth();
+  const { user, isLoading, connect, isConnected, address, requestAuthentication, setConnectionMode } = useAuth();
   const [isAuthenticating, setIsAuthenticating] = useState(false);
 
   // Track if we've already handled OAuth redirect to prevent duplicate attempts
@@ -233,6 +235,12 @@ export default function ConnectWalletEmbedded({
 
       if (connect) {
         try {
+          // Set connection mode before opening the modal (controls which options are shown)
+          if (connectionMode && setConnectionMode) {
+            mLog.info('ConnectWalletEmbedded', `Setting connection mode: ${connectionMode}`);
+            await setConnectionMode(connectionMode);
+          }
+
           // Always use WalletConnect (handles social, email, and all wallets)
           mLog.info('ConnectWalletEmbedded', 'Calling connect function with WalletConnect');
           mLog.info('ConnectWalletEmbedded', 'SIWE enabled - authentication will happen automatically during connection');

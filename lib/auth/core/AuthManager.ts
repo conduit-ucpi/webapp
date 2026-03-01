@@ -14,6 +14,7 @@ import { ProviderRegistry } from './ProviderRegistry';
 import { TokenManager } from './TokenManager';
 import { mLog } from '../../../utils/mobileLogger';
 import { ethers } from 'ethers';
+import type { ConnectionMode } from '../../../components/auth/reownWalletConnect';
 
 export class AuthManager {
   private static instance: AuthManager;
@@ -73,6 +74,17 @@ export class AuthManager {
         isLoading: false,
         error: error instanceof Error ? error.message : 'Initialization failed'
       });
+    }
+  }
+
+  /**
+   * Set the connection mode on the WalletConnect provider to control
+   * which options the Reown modal shows (wallets only, social only, or all).
+   */
+  async setConnectionMode(mode: ConnectionMode): Promise<void> {
+    const provider = this.providerRegistry.getProvider('walletconnect');
+    if (provider && 'setConnectionMode' in provider) {
+      await (provider as any).setConnectionMode(mode);
     }
   }
 

@@ -10,7 +10,7 @@ import {
   ProviderCapabilities,
   TransactionRequest
 } from '../types/unified-provider';
-import { ReownWalletConnectProvider } from '../../../components/auth/reownWalletConnect';
+import { ReownWalletConnectProvider, ConnectionMode } from '../../../components/auth/reownWalletConnect';
 import { ethers } from "ethers";
 import { mLog } from '../../../utils/mobileLogger';
 
@@ -35,6 +35,10 @@ export class WalletConnectProvider implements UnifiedProvider {
   async initialize(): Promise<void> {
     mLog.info('WalletConnectProvider', 'Initialize called');
     await this.reownProvider.initialize();
+  }
+
+  async setConnectionMode(mode: ConnectionMode): Promise<void> {
+    await this.reownProvider.setConnectionMode(mode);
   }
 
   async connect(): Promise<ConnectionResult> {

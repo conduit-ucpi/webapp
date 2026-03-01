@@ -171,6 +171,7 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
     address: newAuth.address,
     state: newAuth.state, // Expose state object which includes providerName
     connect: newAuth.connect,
+    setConnectionMode: newAuth.setConnectionMode,
     authenticateBackend: newAuth.authenticateBackend,
     requestAuthentication: newAuth.requestAuthentication, // Manually trigger SIWX authentication
     disconnect: newAuth.disconnect,

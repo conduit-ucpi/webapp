@@ -59,6 +59,11 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
   const [isLoadingUserData, setIsLoadingUserData] = useState(false);
   const [backendUserData, setBackendUserData] = useState<any>(null);
 
+  // Dedup guard: if multiple fetchWithAuth calls hit 401 concurrently,
+  // only the first one triggers requestAuthentication(); the rest wait for
+  // the same promise to resolve before retrying.
+  const authInFlightRef = React.useRef<Promise<boolean> | null>(null);
+
   // Keep backend user data in sync with newAuth.user when it changes externally
   React.useEffect(() => {
     if (newAuth.user && !backendUserData) {
@@ -79,8 +84,21 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
         console.log('🔐 SimpleAuthProvider: JWT expired - requesting fresh signature (wallet still connected)');
 
         try {
-          // Trigger SIWX to request a new signature (wallet stays connected)
-          const success = await newAuth.requestAuthentication();
+          // Dedup: if another fetchWithAuth call already triggered auth, wait for it
+          let success: boolean;
+          if (authInFlightRef.current) {
+            console.log('🔐 SimpleAuthProvider: Authentication already in progress, waiting for it...');
+            success = await authInFlightRef.current;
+          } else {
+            // Trigger SIWX to request a new signature (wallet stays connected)
+            const authPromise = newAuth.requestAuthentication();
+            authInFlightRef.current = authPromise;
+            try {
+              success = await authPromise;
+            } finally {
+              authInFlightRef.current = null;
+            }
+          }
 
           if (success) {
             console.log('🔐 SimpleAuthProvider: ✅ Fresh signature obtained');

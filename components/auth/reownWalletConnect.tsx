@@ -34,15 +34,15 @@ export class ReownWalletConnectProvider {
    * torn down and reinitialized with the new features on next connect().
    */
   async setConnectionMode(mode: ConnectionMode) {
-    if (mode === this.connectionMode && this.appKit) return
+    if (mode === this.connectionMode) return
     this.connectionMode = mode
-    // Tear down existing AppKit so initialize() recreates with new features
+    // Use AppKit's updateFeatures() API to change modal options dynamically.
+    // createAppKit is a singleton — tearing it down and recreating doesn't work
+    // because the second call returns the cached instance with original features.
     if (this.appKit) {
-      console.log(`🔧 ReownWalletConnect: Reinitializing AppKit for mode: ${mode}`)
-      try {
-        await this.appKit.disconnect()
-      } catch (_) { /* ignore disconnect errors during reinit */ }
-      this.appKit = null
+      const features = this.getFeaturesForMode()
+      console.log(`🔧 ReownWalletConnect: Updating AppKit features for mode: ${mode}`, features)
+      this.appKit.updateFeatures(features)
     }
   }
 
@@ -50,9 +50,9 @@ export class ReownWalletConnectProvider {
     const base = { analytics: false, swaps: false, onramp: false }
     switch (this.connectionMode) {
       case 'wallet-only':
-        return { ...base, email: false, socials: false }
+        return { ...base, email: false, socials: false, allWallets: true, connectMethodsOrder: ['wallet'] }
       case 'social-only':
-        return { ...base, email: true, socials: ['google', 'x', 'discord', 'farcaster'], allWallets: 'HIDE' }
+        return { ...base, email: true, socials: ['google', 'x', 'discord', 'farcaster'], allWallets: false, emailShowWallets: false, connectMethodsOrder: ['email', 'social'] }
       default:
         return { ...base, email: true, socials: ['google', 'x', 'discord', 'farcaster'] }
     }

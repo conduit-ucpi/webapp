@@ -696,7 +696,7 @@ export default function ContractPay() {
             compact={true}
             useSmartRouting={false}
             showTwoOptionLayout={true}
-            connectionMode={paymentMethod === 'qr' ? 'social-only' : paymentMethod === 'wallet' ? 'wallet-only' : 'default'}
+            connectionMode={paymentMethod === 'qr' ? 'social-only' : 'default'}
             onSuccess={() => {
               console.log('ContractPay: Auth success callback triggered');
             }}

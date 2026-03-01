@@ -194,8 +194,13 @@ jest.mock('./hooks/useSimpleEthers', () => ({
     getWeb3Service: jest.fn(),
     fundAndSendTransaction: jest.fn().mockResolvedValue('0xtxhash'),
     getUSDCBalance: jest.fn().mockResolvedValue('100.0'),
+    getTokenBalance: jest.fn().mockResolvedValue('100.0'),
     getNativeBalance: jest.fn().mockResolvedValue('1.0'),
     getUserAddress: jest.fn().mockResolvedValue('0xuser'),
+    transferToContract: jest.fn().mockResolvedValue('0xtransfertxhash'),
+    approveUSDC: jest.fn().mockResolvedValue('0xapprovaltxhash'),
+    depositToContract: jest.fn().mockResolvedValue('0xdeposittxhash'),
+    depositFundsAsProxy: jest.fn().mockResolvedValue('0xproxytxhash'),
   })
 }))
 

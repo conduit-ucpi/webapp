@@ -222,6 +222,38 @@ export function useSimpleEthers() {
 
       // Return transaction hash in same format as depositToContract
       return result.transactionHash;
+    },
+
+    // Direct ERC20 transfer to a contract address (no approve step needed)
+    transferToContract: async (tokenAddress: string, contractAddress: string, amount: string) => {
+      console.log('');
+      console.log('='.repeat(80));
+      console.log('💸 DIRECT TOKEN TRANSFER');
+      console.log('='.repeat(80));
+      console.log('📋 Transfer Details:');
+      console.log(`   Token Contract: ${tokenAddress}`);
+      console.log(`   Recipient (Escrow): ${contractAddress}`);
+      console.log(`   Amount (micro units): ${amount}`);
+      console.log(`   Amount (tokens): ${(Number(amount) / 1000000).toFixed(6)}`);
+      console.log('');
+
+      // Encode ERC20 transfer function call (minimal ABI)
+      const erc20TransferAbi = [
+        "function transfer(address to, uint256 amount) external returns (bool)"
+      ];
+      const tokenInterface = new ethers.Interface(erc20TransferAbi);
+      const data = tokenInterface.encodeFunctionData('transfer', [
+        contractAddress, // recipient (the escrow contract)
+        amount // amount in micro units as string
+      ]);
+
+      console.log('🔧 Calling fundAndSendTransaction for direct transfer...');
+      const web3Service = await getWeb3Service();
+      return await web3Service.fundAndSendTransaction({
+        to: tokenAddress, // Send tx TO the token contract
+        data,
+        value: '0' // No ETH value needed for ERC20 transfer
+      });
     }
   };
 }

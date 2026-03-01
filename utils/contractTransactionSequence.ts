@@ -239,3 +239,159 @@ export async function executeContractTransactionSequence(
     depositTxHash
   };
 }
+
+/**
+ * Direct payment sequence for wallet-connected buyers
+ *
+ * This is a simplified flow that:
+ * 1. Creates the contract on the blockchain (via chainservice)
+ * 2. Transfers tokens directly to the contract address (ERC20 transfer, no approve step)
+ * 3. Calls check-and-activate to verify the balance and activate the contract
+ *
+ * This replaces the approve + depositFunds pattern with a simple ERC20 push transfer.
+ */
+
+interface DirectPaymentParams {
+  contractserviceId: string;
+  tokenAddress: string;
+  buyer: string;
+  seller: string;
+  amount: number; // microUSDC
+  expiryTimestamp: number;
+  description: string;
+}
+
+interface DirectPaymentResult {
+  contractAddress: string;
+  contractCreationTxHash?: string;
+  transferTxHash: string;
+}
+
+interface DirectPaymentOptions {
+  authenticatedFetch: (url: string, options?: RequestInit) => Promise<Response>;
+  transferToContract: (tokenAddress: string, contractAddress: string, amount: string) => Promise<string>;
+  getWeb3Service: () => Promise<any>;
+  onProgress?: (step: string, message: string, contractAddress?: string) => void;
+}
+
+export async function executeDirectPaymentSequence(
+  params: DirectPaymentParams,
+  options: DirectPaymentOptions
+): Promise<DirectPaymentResult> {
+  const {
+    authenticatedFetch,
+    transferToContract,
+    getWeb3Service,
+    onProgress
+  } = options;
+
+  // Step 1: Create the contract on the blockchain
+  onProgress?.('contract_creation', 'Creating secure escrow contract...');
+
+  const createResponse = await authenticatedFetch('/api/chain/create-contract', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params)
+  });
+
+  if (!createResponse.ok) {
+    const errorData = await createResponse.json().catch(() => ({}));
+    throw new Error(errorData.error || 'Contract creation failed');
+  }
+
+  const createData = await createResponse.json();
+  const contractAddress = createData.contractAddress;
+  const contractCreationTxHash = createData.transactionHash;
+
+  console.log('🔧 DirectPayment: Contract creation returned:', {
+    contractAddress,
+    transactionHash: contractCreationTxHash
+  });
+
+  // Step 1.5: Wait for contract creation transaction to be confirmed
+  if (contractCreationTxHash) {
+    console.log('🔧 DirectPayment: Waiting for contract creation to be confirmed:', contractCreationTxHash);
+    onProgress?.('contract_confirmation', 'Waiting for contract creation to be confirmed...');
+
+    try {
+      const web3Service = await getWeb3Service();
+      const receipt = await web3Service.waitForTransaction(contractCreationTxHash, 120000, params.contractserviceId);
+
+      if (receipt) {
+        console.log('🔧 DirectPayment: Contract creation confirmed. Block:', receipt.blockNumber);
+        onProgress?.('contract_created', `Contract created: ${contractAddress}`, contractAddress);
+
+        // Wait for nonce to update
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      } else {
+        throw new Error('Contract creation timed out or failed');
+      }
+    } catch (waitError) {
+      console.error('🔧 DirectPayment: Contract creation confirmation failed:', waitError);
+      throw new Error(`Contract creation confirmation failed: ${waitError instanceof Error ? waitError.message : 'Unknown error'}`);
+    }
+  }
+
+  // Step 2: Transfer tokens directly to the contract (simple ERC20 push transfer)
+  onProgress?.('transfer', 'Transferring funds to escrow...');
+  console.log('🔧 DirectPayment: Executing direct ERC20 transfer to contract');
+
+  const transferTxHash = await transferToContract(
+    params.tokenAddress,
+    contractAddress,
+    params.amount.toString()
+  );
+
+  console.log('🔧 DirectPayment: Transfer transaction:', transferTxHash);
+
+  // Step 2.5: Wait for transfer to be confirmed
+  if (transferTxHash) {
+    console.log('🔧 DirectPayment: Waiting for transfer to be confirmed:', transferTxHash);
+    onProgress?.('transfer_confirmation', 'Waiting for transfer to be confirmed...');
+
+    try {
+      const web3Service = await getWeb3Service();
+      const receipt = await web3Service.waitForTransaction(transferTxHash, 120000, params.contractserviceId);
+
+      if (receipt) {
+        console.log('🔧 DirectPayment: Transfer confirmed. Block:', receipt.blockNumber);
+      } else {
+        console.warn('🔧 DirectPayment: Transfer confirmation timed out - may still be pending');
+      }
+    } catch (waitError) {
+      console.error('🔧 DirectPayment: Transfer confirmation failed:', waitError);
+      throw new Error(`Transfer confirmation failed: ${waitError instanceof Error ? waitError.message : 'Unknown error'}`);
+    }
+  }
+
+  // Step 3: Call check-and-activate to verify balance and activate the contract
+  onProgress?.('activation', 'Activating contract...');
+  console.log('🔧 DirectPayment: Calling check-and-activate');
+
+  const activateResponse = await authenticatedFetch('/api/chain/check-and-activate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ contractAddress })
+  });
+
+  if (!activateResponse.ok) {
+    const errorData = await activateResponse.json().catch(() => ({}));
+    console.error('🔧 DirectPayment: check-and-activate failed:', errorData);
+    throw new Error(errorData.error || 'Contract activation failed');
+  }
+
+  const activateData = await activateResponse.json();
+  console.log('🔧 DirectPayment: check-and-activate response:', activateData);
+
+  if (!activateData.success) {
+    throw new Error(activateData.error || 'Contract activation returned unsuccessful');
+  }
+
+  onProgress?.('complete', 'Payment completed successfully');
+
+  return {
+    contractAddress,
+    contractCreationTxHash,
+    transferTxHash
+  };
+}

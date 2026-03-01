@@ -1033,7 +1033,7 @@ export default function ContractPay() {
                   {/* Contract address with copy */}
                   <div className="mb-4">
                     <label className="block text-xs font-medium text-secondary-500 dark:text-secondary-400 mb-1">
-                      Contract Address
+                      Pay-to Address
                     </label>
                     <div className="flex gap-2">
                       <input

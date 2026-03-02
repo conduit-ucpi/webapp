@@ -1238,7 +1238,7 @@ export default function ContractCreate() {
                     </svg>
                   </div>
                   <div>
-                    <p className="font-medium text-secondary-900 dark:text-white">Pay via QR code</p>
+                    <p className="font-medium text-secondary-900 dark:text-white">Pay by link / QR code</p>
                     <p className="text-sm text-secondary-500 dark:text-secondary-400 mt-0.5">Send from any wallet -- no wallet connection needed</p>
                   </div>
                 </div>
@@ -1564,8 +1564,8 @@ export default function ContractCreate() {
                         </svg>
                       </div>
                       <div>
-                        <p className="font-medium text-secondary-900 dark:text-white">Pay via QR code</p>
-                        <p className="text-sm text-secondary-500 dark:text-secondary-400 mt-0.5">Send from any wallet using a QR code</p>
+                        <p className="font-medium text-secondary-900 dark:text-white">Pay by link / QR code</p>
+                        <p className="text-sm text-secondary-500 dark:text-secondary-400 mt-0.5">Send from any wallet -- no wallet connection needed</p>
                       </div>
                     </div>
                   </button>
@@ -1734,7 +1734,7 @@ export default function ContractCreate() {
                 {!qrContractAddress && (
                   <div className="text-center">
                     <p className="text-sm text-secondary-600 dark:text-secondary-300 mb-4">
-                      First, we need to create a secure escrow contract on the blockchain. Then you will get a QR code to send your payment.
+                      First, we need to create a secure escrow contract on the blockchain. Then you will get a payment link to send your payment.
                     </p>
                     <Button
                       onClick={createContractForQR}
@@ -1747,7 +1747,7 @@ export default function ContractCreate() {
                           Creating contract...
                         </>
                       ) : (
-                        'Generate Payment QR Code'
+                        'Generate Payment Link'
                       )}
                     </Button>
                   </div>

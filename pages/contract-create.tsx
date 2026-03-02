@@ -18,6 +18,7 @@ import { useContractCreateValidation } from '@/hooks/useContractValidation';
 import { executeContractTransactionSequence, executeDirectPaymentSequence } from '@/utils/contractTransactionSequence';
 import { createContractProgressHandler } from '@/utils/contractProgressHandler';
 import { getNetworkName } from '@/utils/networkUtils';
+import { detectDevice } from '@/utils/deviceDetection';
 
 console.log('🔧 ContractCreate: FILE LOADED - imports successful');
 
@@ -120,6 +121,7 @@ export default function ContractCreate() {
   ]);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(null);
   // QR flow state
+  const [isMobileDevice, setIsMobileDevice] = useState(false);
   const [qrContractAddress, setQrContractAddress] = useState<string | null>(null);
   const [qrCountdown, setQrCountdown] = useState(240);
   const [qrPaymentDetected, setQrPaymentDetected] = useState(false);
@@ -738,6 +740,12 @@ export default function ContractCreate() {
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
+
+  // Detect mobile device for QR code vs deep link rendering
+  useEffect(() => {
+    const device = detectDevice();
+    setIsMobileDevice(device.isMobile || device.isTablet);
+  }, []);
 
   const buildEIP681Uri = (): string => {
     if (!qrContractAddress || !selectedTokenAddress || !config) return '';
@@ -1757,17 +1765,31 @@ export default function ContractCreate() {
                       </div>
                     )}
 
-                    {/* QR Code */}
-                    <div className="flex justify-center mb-4">
-                      <div className="bg-white p-4 rounded-lg border-2 border-secondary-200 shadow-sm">
-                        <QRCodeSVG
-                          value={buildEIP681Uri()}
-                          size={200}
-                          level="M"
-                          includeMargin={true}
-                        />
+                    {/* QR Code (desktop) or Deep Link button (mobile) */}
+                    {isMobileDevice ? (
+                      <div className="mb-4 space-y-3">
+                        <Button
+                          onClick={() => { window.location.href = buildEIP681Uri(); }}
+                          className="w-full"
+                        >
+                          Open in Wallet App
+                        </Button>
+                        <p className="text-xs text-center text-secondary-500 dark:text-secondary-400">
+                          Tap to open your wallet app with the payment pre-filled
+                        </p>
                       </div>
-                    </div>
+                    ) : (
+                      <div className="flex justify-center mb-4">
+                        <div className="bg-white p-4 rounded-lg border-2 border-secondary-200 shadow-sm">
+                          <QRCodeSVG
+                            value={buildEIP681Uri()}
+                            size={200}
+                            level="M"
+                            includeMargin={true}
+                          />
+                        </div>
+                      </div>
+                    )}
 
                     {/* Contract address with copy */}
                     <div className="mb-4">

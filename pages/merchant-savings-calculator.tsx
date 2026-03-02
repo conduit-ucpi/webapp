@@ -926,7 +926,7 @@ export default function MerchantSavingsCalculator() {
               {/* CTA Buttons */}
               <div style={{ display: 'flex', gap: '8px' }}>
                 <a
-                  href="/plugins"
+                  href="/merchant"
                   style={{
                     flex: 1,
                     display: 'block',

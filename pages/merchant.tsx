@@ -194,7 +194,7 @@ export default function Merchant() {
                   See what your customers see
                 </button>
                 <a
-                  href="https://youtu.be/Oh3mCLV7tow"
+                  href="https://youtu.be/uUSlf3FmazQ"
                   target="_blank"
                   rel="noopener noreferrer"
                   className={btnOutline}

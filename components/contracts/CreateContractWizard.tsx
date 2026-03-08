@@ -532,7 +532,7 @@ export default function CreateContractWizard() {
                     label={`Amount (${selectedTokenSymbol})`}
                     value={form.amount}
                     onChange={(value) => setForm(prev => ({ ...prev, amount: value }))}
-                    tokenSymbol={selectedTokenSymbol as 'USDC' | 'USDT'}
+                    tokenSymbol={selectedTokenSymbol}
                     error={errors.amount}
                     helpText="Amount must be over $1, or exactly 0.001 for testing"
                   />

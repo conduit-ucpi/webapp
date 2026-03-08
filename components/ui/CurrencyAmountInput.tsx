@@ -8,8 +8,8 @@ interface CurrencyAmountInputProps {
   value: string;
   /** Callback when USDC/USDT amount changes */
   onChange: (value: string) => void;
-  /** Token symbol (USDC or USDT) */
-  tokenSymbol: 'USDC' | 'USDT';
+  /** Token symbol (e.g., USDC, USDT, DAI) */
+  tokenSymbol: string;
   /** Error message to display */
   error?: string;
   /** Disable all inputs */
@@ -103,7 +103,8 @@ export default function CurrencyAmountInput({
   };
 
   const currencyInfo = getCurrencyInfo(localCurrency);
-  const showRateInfo = rate && rate !== 1.0 && localCurrency !== tokenSymbol;
+  const rateUnavailable = !rateLoading && rate === null && localCurrency !== tokenSymbol;
+  const showRateInfo = rate !== null && rate !== 1.0 && localCurrency !== tokenSymbol;
 
   return (
     <div className="w-full">
@@ -148,9 +149,9 @@ export default function CurrencyAmountInput({
               min="0"
               value={localAmount}
               onChange={handleLocalAmountChange}
-              disabled={disabled || rateLoading}
-              placeholder="0.00"
-              readOnly={disabled}
+              disabled={disabled || rateLoading || rateUnavailable}
+              placeholder={rateUnavailable ? 'Rate unavailable' : '0.00'}
+              readOnly={disabled || rateUnavailable}
               className={`
                 flex-1 min-w-0 px-2 sm:px-3 py-2.5 text-base
                 border border-secondary-300 rounded-md
@@ -172,7 +173,7 @@ export default function CurrencyAmountInput({
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
                 </svg>
                 <span className="font-medium">
-                  1 {localCurrency} = {rate.toFixed(6)} {tokenSymbol}
+                  1 {localCurrency} = {rate?.toFixed(6)} {tokenSymbol}
                 </span>
                 {rateLoading && (
                   <span className="inline-block w-3 h-3 border-2 border-secondary-300 border-t-primary-500 rounded-full animate-spin" />
@@ -223,9 +224,14 @@ export default function CurrencyAmountInput({
       )}
 
       {/* Rate Error Message */}
-      {rateError && (
+      {rateError && rateUnavailable && (
         <p className="mt-2 text-xs text-warning-600">
-          ⚠️ Could not fetch exchange rate. Using approximate values.
+          Exchange rate unavailable for {tokenSymbol}. Enter the {tokenSymbol} amount directly.
+        </p>
+      )}
+      {rateError && !rateUnavailable && (
+        <p className="mt-2 text-xs text-warning-600">
+          Could not fetch exchange rate. Using approximate values.
         </p>
       )}
 

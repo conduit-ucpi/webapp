@@ -72,8 +72,8 @@ async function fetchExchangeRate(fromCurrency: string, toCurrency: string): Prom
   } catch (error) {
     console.error('Failed to fetch exchange rate:', error);
 
-    // Fallback to approximate parity for USD
-    if (fromCurrency === 'USD') {
+    // Fallback to approximate parity only for USD-pegged stablecoins
+    if (fromCurrency === 'USD' && ['USDC', 'USDT', 'DAI'].includes(toCurrency)) {
       return 1.0;
     }
 
@@ -86,7 +86,7 @@ async function fetchExchangeRate(fromCurrency: string, toCurrency: string): Prom
  */
 export function useExchangeRate(
   fromCurrency: string,
-  toCurrency: 'USDC' | 'USDT'
+  toCurrency: string
 ) {
   const [rateData, setRateData] = useState<ExchangeRateData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -119,8 +119,8 @@ export function useExchangeRate(
       console.error('Exchange rate error:', err);
       setError(err.message || 'Failed to fetch exchange rate');
 
-      // Set fallback rate for USD
-      if (fromCurrency === 'USD') {
+      // Set fallback rate only for USD with stablecoins
+      if (fromCurrency === 'USD' && ['USDC', 'USDT', 'DAI'].includes(toCurrency)) {
         setRateData({
           rate: 1.0,
           lastUpdated: new Date(),
@@ -148,7 +148,7 @@ export function useExchangeRate(
   }, [loadRate]);
 
   return {
-    rate: rateData?.rate || 1.0,
+    rate: rateData?.rate || null,
     isLoading,
     error,
     lastUpdated: rateData?.lastUpdated,

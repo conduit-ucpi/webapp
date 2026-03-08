@@ -1358,7 +1358,7 @@ export default function ContractCreate() {
                   label={`Amount (${selectedTokenSymbol})`}
                   value={form.amount}
                   onChange={(value) => setForm(prev => ({ ...prev, amount: value }))}
-                  tokenSymbol={selectedTokenSymbol as 'USDC' | 'USDT'}
+                  tokenSymbol={selectedTokenSymbol}
                   error={errors.amount}
                   disabled={isLoading || !!amount} // Disable if provided via query param
                   helpText={isInIframe || isInPopup ? 'Secure escrow payment' : 'Amount includes $1 fee, minimum $1.001'}

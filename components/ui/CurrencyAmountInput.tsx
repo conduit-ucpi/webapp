@@ -224,14 +224,9 @@ export default function CurrencyAmountInput({
       )}
 
       {/* Rate Error Message */}
-      {rateError && rateUnavailable && (
+      {rateError && (
         <p className="mt-2 text-xs text-warning-600">
           Exchange rate unavailable for {tokenSymbol}. Enter the {tokenSymbol} amount directly.
-        </p>
-      )}
-      {rateError && !rateUnavailable && (
-        <p className="mt-2 text-xs text-warning-600">
-          Could not fetch exchange rate. Using approximate values.
         </p>
       )}
 

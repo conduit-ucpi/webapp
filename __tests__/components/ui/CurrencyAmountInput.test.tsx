@@ -231,7 +231,7 @@ describe('CurrencyAmountInput', () => {
       />
     );
 
-    expect(screen.getByText(/Could not fetch exchange rate/)).toBeInTheDocument();
+    expect(screen.getByText(/Exchange rate unavailable/)).toBeInTheDocument();
   });
 
   it.skip('should handle empty values', async () => {

@@ -74,9 +74,8 @@ describe('useExchangeRate', () => {
     expect(result.current.error).toBeTruthy();
   });
 
-  it.skip('should use fallback rate for USD on error', async () => {
+  it.skip('should not use a guessed rate on API failure', async () => {
     // Skipping this test due to cache interference between tests
-    // The fallback logic is tested manually and works in production
     (global.fetch as jest.Mock).mockRejectedValue(new Error('Network error'));
 
     const { result } = renderHook(() => useExchangeRate('USD', 'USDC'));
@@ -85,9 +84,9 @@ describe('useExchangeRate', () => {
       expect(result.current.isLoading).toBe(false);
     }, { timeout: 3000 });
 
-    // USD should get fallback rate of 1.0
-    expect(result.current.rate).toBe(1.0);
-    expect(result.current.source).toBe('Fallback');
+    // No fallback rate — rate should be null when API fails
+    expect(result.current.rate).toBeNull();
+    expect(result.current.error).toBeTruthy();
   });
 
   it('should fetch exchange rate only once on mount', async () => {

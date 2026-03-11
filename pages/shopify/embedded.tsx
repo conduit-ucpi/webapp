@@ -17,6 +17,7 @@ export default function ShopifyEmbedded() {
     <>
       <Head>
         <title>InstantEscrow USDC Payments</title>
+        <meta name="shopify-api-key" content="3d76e8d2767514c1a7775ff91432a995" />
         <script src="https://cdn.shopify.com/shopifycloud/app-bridge.js" />
       </Head>
 

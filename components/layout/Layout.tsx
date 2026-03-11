@@ -10,6 +10,11 @@ interface LayoutProps {
 export default function Layout({ children }: LayoutProps) {
   const router = useRouter();
   
+  // Shopify embedded app - no layout at all
+  if (router.pathname === '/shopify/embedded') {
+    return <>{children}</>;
+  }
+
   // Don't use main layout for plugin pages
   if (router.pathname === '/contract-create') {
     return (

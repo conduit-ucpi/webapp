@@ -212,14 +212,11 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
     `quantity=${quantity || '1'}&` +
     `return=${encodeURIComponent(`https://${shopString}`)}`;
 
+  // Redirect directly to the payment page — skip the interstitial
   return {
-    props: {
-      shop: shop as string,
-      productData,
-      orderId,
-      paymentUrl,
-      escrowDays,
-      isConfigured: true,
+    redirect: {
+      destination: paymentUrl,
+      permanent: false,
     },
   };
 };

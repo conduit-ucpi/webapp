@@ -53,50 +53,19 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
   const [isConnecting, setIsConnecting] = useState(false);
 
   // Initialize auth manager
+  // Note: AuthManager.restoreSession() already checks for orphaned backend
+  // sessions and clears them. We don't need a second /api/auth/siwe/session
+  // call here — the reconnect effect below will pick up any valid session
+  // when the provider state updates.
   useEffect(() => {
     let isMounted = true;
 
     const initializeAuth = async () => {
       try {
-        // Initialize auth manager first — this restores provider state and
-        // cleans up orphaned backend sessions, so it must complete before
-        // we check for an existing SIWE session.
         await authManager.initialize(config);
 
         if (isMounted) {
-          // Check for existing SIWE session on startup
-          try {
-            const sessionResponse = await fetch('/api/auth/siwe/session');
-
-            if (sessionResponse.ok) {
-              const sessionData = await sessionResponse.json();
-
-              if (sessionData.address) {
-                mLog.info('AuthProvider', 'Found existing SIWE session on startup', {
-                  address: sessionData.address
-                });
-
-                // Fetch full user data from backend
-                const backendStatus = await authService.checkAuthentication();
-
-                if (backendStatus.success && backendStatus.user) {
-                  setUser(backendStatus.user);
-                  authManager.setState({
-                    isAuthenticated: true,
-                    isConnected: true,
-                    address: sessionData.address
-                  });
-                  mLog.info('AuthProvider', '✅ Session restored from SIWE cookie');
-                }
-              }
-            } else {
-              mLog.debug('AuthProvider', 'No existing SIWE session found on startup');
-            }
-          } catch (sessionError) {
-            mLog.debug('AuthProvider', 'Error checking SIWE session on startup:', {
-              error: sessionError instanceof Error ? sessionError.message : String(sessionError)
-            });
-          }
+          mLog.debug('AuthProvider', 'Auth manager initialized');
         }
       } catch (error) {
         console.error('🔧 AuthProvider: Initialization failed:', error);

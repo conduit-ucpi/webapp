@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useNavigation } from '@/components/navigation/NavigationProvider';
@@ -8,9 +8,16 @@ import {
   Bars3Icon,
   ArrowLeftIcon,
 } from '@heroicons/react/24/outline';
+
+const SSR_DEFAULT_SITE_NAME = 'Instant Escrow';
+
 export default function Header() {
   const router = useRouter();
-  const siteName = getSiteNameFromDomain();
+  const [siteName, setSiteName] = useState(SSR_DEFAULT_SITE_NAME);
+
+  useEffect(() => {
+    setSiteName(getSiteNameFromDomain());
+  }, []);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { canGoBack, goBack } = useNavigation();
 

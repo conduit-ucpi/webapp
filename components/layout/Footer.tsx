@@ -1,10 +1,19 @@
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { getChainShortName } from '@/utils/chainNames';
 
+const SSR_DEFAULT_CHAIN_NAME = 'blockchain';
+
 export default function Footer() {
   const { config } = useConfig();
-  const chainName = config ? getChainShortName(config.chainId) : 'blockchain';
+  const [chainName, setChainName] = useState(SSR_DEFAULT_CHAIN_NAME);
+
+  useEffect(() => {
+    if (config) {
+      setChainName(getChainShortName(config.chainId));
+    }
+  }, [config]);
 
   return (
     <footer className="border-t border-secondary-100 dark:border-secondary-800 bg-white dark:bg-secondary-900">

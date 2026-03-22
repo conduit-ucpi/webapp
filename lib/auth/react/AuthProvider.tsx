@@ -42,7 +42,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 interface AuthProviderProps {
   children: React.ReactNode;
-  config: AuthConfig;
+  config: AuthConfig | null;
 }
 
 export function AuthProvider({ children, config }: AuthProviderProps) {
@@ -52,12 +52,14 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
 
-  // Initialize auth manager
+  // Initialize auth manager once config is available.
   // Note: AuthManager.restoreSession() already checks for orphaned backend
   // sessions and clears them. We don't need a second /api/auth/siwe/session
   // call here — the reconnect effect below will pick up any valid session
   // when the provider state updates.
   useEffect(() => {
+    if (!config) return; // Wait for config before initializing
+
     let isMounted = true;
 
     const initializeAuth = async () => {

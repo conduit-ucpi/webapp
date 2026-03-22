@@ -63,6 +63,10 @@ gtag('config', 'G-C5RP49B2R8');`
         {/* MetaMask compatibility script removed - Web3Auth Modal handles MetaMask coexistence automatically */}
       </Head>
       <body>
+        {/* Apply theme before React hydrates to prevent flash */}
+        <script dangerouslySetInnerHTML={{
+          __html: `(function(){try{var t=localStorage.getItem('theme');if(t==='dark'||((!t)&&window.matchMedia('(prefers-color-scheme:dark)').matches)){document.documentElement.classList.add('dark')}}catch(e){}})();`
+        }} />
         <Main />
         <NextScript />
       </body>

@@ -837,38 +837,33 @@ export class AuthManager {
       });
     }
 
-    // CRITICAL: Clear backend cookies if no frontend auth exists
-    // This ensures consistency when frontend loses auth but backend still has cookies
-    if (!this.currentProvider && typeof window !== 'undefined') {
+    // Clear orphaned backend cookies if no frontend auth exists.
+    // Fire-and-forget: this doesn't need to block initialization since
+    // the lazy auth pattern will handle re-authentication if needed.
+    if (!this.currentProvider && typeof window !== 'undefined' && typeof fetch === 'function') {
       mLog.info('AuthManager', 'No frontend provider connected - checking for orphaned backend session');
 
       try {
-        // Check if backend has a session
-        const sessionCheck = await fetch('/api/auth/siwe/session', { credentials: 'include' });
-
-        if (sessionCheck.ok) {
-          const sessionData = await sessionCheck.json();
-
-          if (sessionData.address) {
-            mLog.warn('AuthManager', 'Found backend session without frontend auth - clearing backend cookies', {
-              backendAddress: sessionData.address
+        fetch('/api/auth/siwe/session', { credentials: 'include' })
+          .then(async (sessionCheck) => {
+            if (sessionCheck.ok) {
+              const sessionData = await sessionCheck.json();
+              if (sessionData.address) {
+                mLog.warn('AuthManager', 'Found backend session without frontend auth - clearing backend cookies', {
+                  backendAddress: sessionData.address
+                });
+                await fetch('/api/auth/siwe/signout', { method: 'POST', credentials: 'include' });
+                mLog.info('AuthManager', '✅ Backend session cleared to maintain consistency');
+              }
+            }
+          })
+          .catch((error) => {
+            mLog.error('AuthManager', 'Failed to check/clear backend session', {
+              error: error instanceof Error ? error.message : String(error)
             });
-
-            // Clear backend session
-            await fetch('/api/auth/siwe/signout', {
-              method: 'POST',
-              credentials: 'include'
-            });
-
-            mLog.info('AuthManager', '✅ Backend session cleared to maintain consistency');
-          } else {
-            mLog.debug('AuthManager', 'No backend session found - state is consistent');
-          }
-        }
-      } catch (error) {
-        mLog.error('AuthManager', 'Failed to check/clear backend session', {
-          error: error instanceof Error ? error.message : String(error)
-        });
+          });
+      } catch {
+        // fetch not available (e.g. test environment)
       }
     }
   }

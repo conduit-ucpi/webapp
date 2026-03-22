@@ -383,66 +383,25 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
 }
 
 export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
-  const { config, isLoading } = useConfig();
-  const [mounted, setMounted] = useState(false);
+  const { config } = useConfig();
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  // During SSR or initial render, provide a minimal context to prevent hydration issues
-  // CRITICAL: Always render children to allow SSR/SEO - individual pages handle their own loading states
-  if (!mounted || isLoading || !config) {
-    // Create a minimal auth context that won't break components during hydration
-    const fallbackAuthValue = {
-      user: null,
-      isLoading: !mounted || isLoading,
-      isConnected: false,
-      isAuthenticated: false,
-      error: null,
-      address: null,
-      state: {
-        isConnected: false,
-        isLoading: !mounted || isLoading,
-        isInitialized: false,
-        isAuthenticated: false,
-        address: null,
-        providerName: null,
-        capabilities: null,
-        error: null
-      },
-      connect: () => Promise.resolve(),
-      disconnect: () => Promise.resolve(),
-      switchWallet: () => Promise.resolve(),
-      getEthersProvider: () => null,
-      showWalletUI: async () => { throw new Error('Auth not ready'); },
-      authenticatedFetch: async () => new Response('{}', { status: 200 }),
-      hasVisitedBefore: () => false,
-      refreshUserData: async () => {},
-      claimFunds: async () => { throw new Error('Auth not ready'); },
-      raiseDispute: async () => { throw new Error('Auth not ready'); }
-    };
-
-    // ALWAYS render children for SEO - pages handle their own loading states
-    return (
-      <AuthContext.Provider value={fallbackAuthValue}>
-        {children}
-      </AuthContext.Provider>
-    );
-  }
-
-  // Convert config to AuthConfig format expected by the new auth system
-  const authConfig = {
+  // Convert config to AuthConfig format (or null if not ready yet).
+  // NewAuthProvider accepts null and simply defers initialization.
+  const authConfig = config ? {
     chainId: config.chainId,
     rpcUrl: config.rpcUrl,
     explorerBaseUrl: config.explorerBaseUrl,
     walletConnectProjectId: config.walletConnectProjectId
-  };
+  } : null;
 
+  // CRITICAL: Always render the SAME component tree structure regardless of
+  // whether config is ready. Switching between different wrapper components
+  // causes React to unmount/remount the entire children tree (visible flash).
+  // NewAuthProvider gracefully handles null config by skipping initialization.
   return (
-    <NewAuthProvider config={authConfig} children={
-      <AuthWrapper children={children} />
-    } />
+    <NewAuthProvider config={authConfig}>
+      <AuthWrapper>{children}</AuthWrapper>
+    </NewAuthProvider>
   );
 }
 

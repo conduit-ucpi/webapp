@@ -3,8 +3,9 @@ import { screen } from '@testing-library/dom';
 import TokenGuide from '@/components/ui/TokenGuide';
 import { useAuth } from '@/components/auth';
 import { useConfig } from '@/components/auth/ConfigProvider';
-// import { useWeb3AuthInstance } from '@/components/auth/Web3AuthContextProvider'; // Not needed
 import { useWalletAddress } from '@/hooks/useWalletAddress';
+import { detectUserCurrency } from '@/utils/currencyDetection';
+
 // Mock the providers
 jest.mock('@/components/auth', () => ({
   useAuth: jest.fn(),
@@ -14,18 +15,23 @@ jest.mock('@/components/auth/ConfigProvider', () => ({
   useConfig: jest.fn(),
 }));
 
-// jest.mock('@/components/auth/Web3AuthContextProvider', () => ({
-//   useWeb3AuthInstance: jest.fn(),
-// })); // Not needed
-
 jest.mock('@/hooks/useWalletAddress', () => ({
   useWalletAddress: jest.fn(),
 }));
 
+jest.mock('@/utils/currencyDetection', () => ({
+  detectUserCurrency: jest.fn(),
+}));
+
+jest.mock('@onramp.money/onramp-web-sdk', () => ({
+  OnrampWebSDK: jest.fn(),
+}));
+
 const mockUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
 const mockUseConfig = useConfig as jest.MockedFunction<typeof useConfig>;
-// const mockUseWeb3AuthInstance = useWeb3AuthInstance as jest.MockedFunction<typeof useWeb3AuthInstance>; // Not needed
 const mockUseWalletAddress = useWalletAddress as jest.MockedFunction<typeof useWalletAddress>;
+const mockDetectUserCurrency = detectUserCurrency as jest.MockedFunction<typeof detectUserCurrency>;
+
 describe('TokenGuide', () => {
   const mockUser = {
     userId: 'test-user',
@@ -54,6 +60,8 @@ describe('TokenGuide', () => {
   };
 
   beforeEach(() => {
+    mockDetectUserCurrency.mockReturnValue('USD');
+
     mockUseAuth.mockReturnValue({
       user: mockUser,
       isLoading: false,
@@ -69,13 +77,6 @@ describe('TokenGuide', () => {
       config: mockConfig,
       isLoading: false,
     });
-
-    // mockUseWeb3AuthInstance.mockReturnValue({
-    //   web3authProvider: null,
-    //   isLoading: false,
-    //   web3authInstance: null,
-    //   onLogout: jest.fn(),
-    // });
 
     mockUseWalletAddress.mockReturnValue({
       walletAddress: mockUser.walletAddress,
@@ -119,7 +120,7 @@ describe('TokenGuide', () => {
 
   it('displays fallback network name for unknown chain', () => {
     mockUseConfig.mockReturnValue({
-      config: { ...mockConfig, chainId: 999999 }, // Use an unknown chain ID
+      config: { ...mockConfig, chainId: 999999 },
       isLoading: false,
     });
 
@@ -142,7 +143,6 @@ describe('TokenGuide', () => {
   it('shows all exchange links', () => {
     render(<TokenGuide />);
 
-    // Check that all exchange links are present
     expect(screen.getByRole('link', { name: 'Coinbase' })).toHaveAttribute('href', 'https://www.coinbase.com/price/usdc');
     expect(screen.getByRole('link', { name: 'Binance' })).toHaveAttribute('href', 'https://www.binance.com');
     expect(screen.getByRole('link', { name: 'Kraken' })).toHaveAttribute('href', 'https://www.kraken.com');
@@ -153,7 +153,6 @@ describe('TokenGuide', () => {
   it('shows links with correct security attributes', () => {
     render(<TokenGuide />);
 
-    // Check that external links have proper security attributes
     const links = screen.getAllByRole('link');
     links.forEach(link => {
       expect(link).toHaveAttribute('target', '_blank');
@@ -166,7 +165,6 @@ describe('TokenGuide', () => {
     expect(screen.getByText(/MetaMask\/Coinbase:/)).toBeInTheDocument();
     expect(screen.getByText(/Transfer USDC to\/from another wallet/)).toBeInTheDocument();
   });
-
 
   it('displays important warning about network deposits', () => {
     render(<TokenGuide />);
@@ -196,13 +194,6 @@ describe('TokenGuide', () => {
       hasVisitedBefore: jest.fn().mockReturnValue(false),
     });
 
-    // mockUseWeb3AuthInstance.mockReturnValue({
-    //   web3authProvider: null,
-    //   isLoading: false,
-    //   web3authInstance: null,
-    //   onLogout: jest.fn(),
-    // });
-
     mockUseWalletAddress.mockReturnValue({
       walletAddress: null,
       isLoading: false,
@@ -230,10 +221,11 @@ describe('TokenGuide', () => {
     expect(screen.getByText(/Cash Conversion:/)).toBeInTheDocument();
   });
 
-  it('has proper styling classes', () => {
+  it('has proper styling classes on manual instructions section', () => {
     render(<TokenGuide />);
 
-    const container = screen.getByText('How to Add USDC to Your Wallet/How to get cash from your Wallet').closest('div');
+    const heading = screen.getByText('How to Add USDC to Your Wallet/How to get cash from your Wallet');
+    const container = heading.closest('div.bg-blue-50');
     expect(container).toHaveClass('bg-blue-50', 'border', 'border-blue-200', 'rounded-lg', 'p-6');
   });
 
@@ -243,5 +235,71 @@ describe('TokenGuide', () => {
     expect(screen.getByText('1.')).toBeInTheDocument();
     expect(screen.getByText(/2\. Your wallet address:/)).toBeInTheDocument();
     expect(screen.getByText('3.')).toBeInTheDocument();
+  });
+
+  // Onramp widget tests
+  describe('Onramp widget for Nigerian users', () => {
+    const ngnConfig = {
+      ...mockConfig,
+      onrampAppId: '1953324',
+    };
+
+    it('does not show Onramp widget for non-Nigerian users', () => {
+      mockDetectUserCurrency.mockReturnValue('USD');
+      mockUseConfig.mockReturnValue({ config: ngnConfig, isLoading: false });
+
+      render(<TokenGuide />);
+      expect(screen.queryByText('Buy USDC with Naira')).not.toBeInTheDocument();
+    });
+
+    it('does not show Onramp widget when onrampAppId is not configured', () => {
+      mockDetectUserCurrency.mockReturnValue('NGN');
+      // mockConfig has no onrampAppId
+      render(<TokenGuide />);
+      expect(screen.queryByText('Buy USDC with Naira')).not.toBeInTheDocument();
+    });
+
+    it('shows Onramp widget section for Nigerian users with appId configured', () => {
+      mockDetectUserCurrency.mockReturnValue('NGN');
+      mockUseConfig.mockReturnValue({ config: ngnConfig, isLoading: false });
+
+      render(<TokenGuide />);
+      expect(screen.getByText('Buy USDC with Naira')).toBeInTheDocument();
+      expect(screen.getByText(/Purchase USDC directly using Nigerian Naira/)).toBeInTheDocument();
+    });
+
+    it('shows alternative title for manual instructions when Onramp is shown', () => {
+      mockDetectUserCurrency.mockReturnValue('NGN');
+      mockUseConfig.mockReturnValue({ config: ngnConfig, isLoading: false });
+
+      render(<TokenGuide />);
+      expect(screen.getByText('Alternative: Manual Transfer')).toBeInTheDocument();
+      expect(screen.queryByText('How to Add USDC to Your Wallet/How to get cash from your Wallet')).not.toBeInTheDocument();
+    });
+
+    it('renders the onramp widget container element', () => {
+      mockDetectUserCurrency.mockReturnValue('NGN');
+      mockUseConfig.mockReturnValue({ config: ngnConfig, isLoading: false });
+
+      render(<TokenGuide />);
+      const container = document.getElementById('onramp-widget-container');
+      expect(container).toBeInTheDocument();
+    });
+
+    it('shows loading indicator while widget initializes', () => {
+      mockDetectUserCurrency.mockReturnValue('NGN');
+      mockUseConfig.mockReturnValue({ config: ngnConfig, isLoading: false });
+
+      render(<TokenGuide />);
+      expect(screen.getByText('Loading purchase widget...')).toBeInTheDocument();
+    });
+
+    it('uses correct token symbol in Onramp heading when currency prop provided', () => {
+      mockDetectUserCurrency.mockReturnValue('NGN');
+      mockUseConfig.mockReturnValue({ config: ngnConfig, isLoading: false });
+
+      render(<TokenGuide currency="USDT" />);
+      expect(screen.getByText('Buy USDT with Naira')).toBeInTheDocument();
+    });
   });
 });

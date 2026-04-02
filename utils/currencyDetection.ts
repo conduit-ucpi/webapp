@@ -45,6 +45,7 @@ export const SUPPORTED_CURRENCIES: CurrencyInfo[] = [
   { code: 'CLP', symbol: 'CLP$', name: 'Chilean Peso', countries: ['CL'] },
   { code: 'ARS', symbol: 'AR$', name: 'Argentine Peso', countries: ['AR'] },
   { code: 'COP', symbol: 'COL$', name: 'Colombian Peso', countries: ['CO'] },
+  { code: 'NGN', symbol: '₦', name: 'Nigerian Naira', countries: ['NG'] },
 ];
 
 /**

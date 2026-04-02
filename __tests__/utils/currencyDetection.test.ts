@@ -78,6 +78,17 @@ describe('currencyDetection', () => {
       expect(currency).toBe('JPY');
     });
 
+    it('should detect NGN from Nigerian locale', () => {
+      Object.defineProperty(global.navigator, 'language', {
+        value: 'en-NG',
+        writable: true,
+        configurable: true
+      });
+
+      const currency = detectUserCurrency();
+      expect(currency).toBe('NGN');
+    });
+
     it('should fallback to USD when locale has no currency mapping', () => {
       Object.defineProperty(global.navigator, 'language', {
         value: 'xx-XX', // Unknown locale
@@ -188,7 +199,7 @@ describe('currencyDetection', () => {
 
     it('should include all major world currencies', () => {
       const codes = SUPPORTED_CURRENCIES.map(c => c.code);
-      const major = ['USD', 'EUR', 'GBP', 'JPY', 'CNY', 'INR', 'BRL', 'CAD', 'AUD'];
+      const major = ['USD', 'EUR', 'GBP', 'JPY', 'CNY', 'INR', 'BRL', 'CAD', 'AUD', 'NGN'];
       major.forEach(code => {
         expect(codes).toContain(code);
       });

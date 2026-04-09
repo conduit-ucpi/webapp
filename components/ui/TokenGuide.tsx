@@ -46,7 +46,7 @@ export default function TokenGuide({ currency }: TokenGuideProps) {
         flowType: 1, // Buy/Onramp
         fiatType: 6, // NGN
         containerId: '#onramp-widget-container',
-        sandbox: true,
+        sandbox: false,
       });
 
       sdk.on('TX_EVENTS', (event: any) => {

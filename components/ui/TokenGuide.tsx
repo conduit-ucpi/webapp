@@ -159,7 +159,7 @@ export default function TokenGuide({ currency }: TokenGuideProps) {
           <div
             id="onramp-widget-container"
             ref={onrampContainerRef}
-            style={{ width: '100%', minHeight: onrampLoading ? 0 : 500 }}
+            style={{ width: '100%', height: onrampLoading ? 0 : 'calc(100vh - 200px)', minHeight: onrampLoading ? 0 : 600 }}
           />
         </div>
       )}

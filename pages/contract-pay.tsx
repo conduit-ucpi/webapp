@@ -633,10 +633,11 @@ export default function ContractPay() {
               </ul>
             </div>
 
-            <h2 className="text-lg font-semibold text-secondary-900 dark:text-white mb-4 text-center">How would you like to pay?</h2>
+            <h2 className="text-lg font-semibold text-secondary-900 dark:text-white mb-2 text-center">Choose how to pay</h2>
+            <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-4 text-center">Not sure? If you don&apos;t already hold USDC in a crypto wallet, choose the first option.</p>
 
             <div className="space-y-3">
-              {/* Wallet option */}
+              {/* Wallet / sign-in option */}
               <button
                 onClick={() => setPaymentMethod('wallet')}
                 className="w-full text-left p-4 rounded-lg border-2 border-secondary-200 dark:border-secondary-700 hover:border-blue-500 dark:hover:border-blue-400 transition-colors bg-white dark:bg-secondary-800"
@@ -648,13 +649,13 @@ export default function ContractPay() {
                     </svg>
                   </div>
                   <div>
-                    <p className="font-medium text-secondary-900 dark:text-white">Connect my wallet</p>
-                    <p className="text-sm text-secondary-500 dark:text-secondary-400 mt-0.5">Pay directly from your crypto wallet (MetaMask, Coinbase, etc.)</p>
+                    <p className="font-medium text-secondary-900 dark:text-white">Pay with Stabledrop</p>
+                    <p className="text-sm text-secondary-500 dark:text-secondary-400 mt-0.5">Sign in with Google, email, or connect a wallet like MetaMask. We&apos;ll help you get USDC if you don&apos;t have any yet.</p>
                   </div>
                 </div>
               </button>
 
-              {/* QR option */}
+              {/* Own wallet / QR option */}
               <button
                 onClick={() => setPaymentMethod('qr')}
                 className="w-full text-left p-4 rounded-lg border-2 border-secondary-200 dark:border-secondary-700 hover:border-blue-500 dark:hover:border-blue-400 transition-colors bg-white dark:bg-secondary-800"
@@ -666,8 +667,8 @@ export default function ContractPay() {
                     </svg>
                   </div>
                   <div>
-                    <p className="font-medium text-secondary-900 dark:text-white">Pay by link / QR code</p>
-                    <p className="text-sm text-secondary-500 dark:text-secondary-400 mt-0.5">Send from any wallet -- no wallet connection needed</p>
+                    <p className="font-medium text-secondary-900 dark:text-white">Pay from my own wallet</p>
+                    <p className="text-sm text-secondary-500 dark:text-secondary-400 mt-0.5">Send USDC directly from your wallet app using a payment link or QR code.</p>
                   </div>
                 </div>
               </button>

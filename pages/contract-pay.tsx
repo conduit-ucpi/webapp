@@ -611,13 +611,12 @@ export default function ContractPay() {
   }
 
   // ================================================================
-  // STAGE 1: Payment Method Choice (before auth or when not connected)
-  // Contract data is NOT loaded yet — we show a generic prompt.
+  // STAGE 1: Payment Method Choice
+  // Shown whenever no method is selected — including after the user
+  // clicks "Change payment method" while already connected.
   // ================================================================
-  if (!isConnected && !address) {
-    // If payment method not chosen yet, show choice
-    if (paymentMethod === null) {
-      return (
+  if (paymentMethod === null) {
+    return (
         <div className="min-h-screen flex items-center justify-center bg-white dark:bg-secondary-900 transition-colors">
           <Head><title>{pageTitle}</title><meta name="viewport" content="width=device-width, initial-scale=1" /></Head>
           <div className="p-6 max-w-md mx-auto">
@@ -675,12 +674,13 @@ export default function ContractPay() {
             </div>
           </div>
         </div>
-      );
-    }
+    );
+  }
 
-    // ================================================================
-    // STAGE 2: Authentication (after payment method chosen)
-    // ================================================================
+  // ================================================================
+  // STAGE 2: Authentication (method chosen but user not yet connected)
+  // ================================================================
+  if (!isConnected && !address) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white dark:bg-secondary-900 transition-colors">
         <Head><title>{pageTitle}</title><meta name="viewport" content="width=device-width, initial-scale=1" /></Head>

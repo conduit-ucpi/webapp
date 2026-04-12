@@ -835,28 +835,14 @@ export default function ContractPay() {
             </div>
           </div>
 
-          {/* Payment method selector (can switch if not in progress) */}
+          {/* Change payment method link (hidden while a payment is in progress) */}
           {!isPaymentInProgress && !qrContractAddress && (
-            <div className="flex mb-6 bg-secondary-100 dark:bg-secondary-800 rounded-lg p-1">
+            <div className="mb-6 text-right">
               <button
-                onClick={() => setPaymentMethod('wallet')}
-                className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
-                  effectiveMethod === 'wallet'
-                    ? 'bg-white dark:bg-secondary-700 text-secondary-900 dark:text-white shadow-sm'
-                    : 'text-secondary-500 dark:text-secondary-400 hover:text-secondary-700 dark:hover:text-secondary-200'
-                }`}
+                onClick={() => setPaymentMethod(null)}
+                className="text-sm text-primary-600 dark:text-primary-400 hover:underline"
               >
-                Wallet Transfer
-              </button>
-              <button
-                onClick={() => setPaymentMethod('qr')}
-                className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
-                  effectiveMethod === 'qr'
-                    ? 'bg-white dark:bg-secondary-700 text-secondary-900 dark:text-white shadow-sm'
-                    : 'text-secondary-500 dark:text-secondary-400 hover:text-secondary-700 dark:hover:text-secondary-200'
-                }`}
-              >
-                QR Code
+                Change payment method
               </button>
             </div>
           )}

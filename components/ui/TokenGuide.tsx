@@ -22,8 +22,8 @@ export default function TokenGuide({ currency }: TokenGuideProps) {
 
   useEffect(() => {
     // TODO: REMOVE - temporary hardcode for testing Onramp widget
-    setUserCurrency('NGN');
-    // setUserCurrency(detectUserCurrency());
+    // setUserCurrency('NGN');
+    setUserCurrency(detectUserCurrency());
   }, []);
 
   const showOnramp = userCurrency === 'NGN' && config?.onrampAppId;

@@ -803,7 +803,7 @@ export default function ContractPay() {
           <div className="space-y-3 mb-6">
             <div className="flex justify-between">
               <span className="text-secondary-600 dark:text-secondary-300">Amount:</span>
-              <span className="font-medium text-lg">
+              <span className="font-medium text-lg text-secondary-900 dark:text-white">
                 {displayCurrency(contract.amount, contract.currency || 'microUSDC')}
               </span>
             </div>
@@ -821,17 +821,17 @@ export default function ContractPay() {
             )}
             <div className="flex justify-between">
               <span className="text-secondary-600 dark:text-secondary-300">Seller:</span>
-              <span className="text-sm font-mono">{contract.sellerAddress.slice(0, 6)}...{contract.sellerAddress.slice(-4)}</span>
+              <span className="text-sm font-mono text-secondary-900 dark:text-white">{contract.sellerAddress.slice(0, 6)}...{contract.sellerAddress.slice(-4)}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-secondary-600 dark:text-secondary-300">Payout Date:</span>
-              <span className="font-medium">
+              <span className="font-medium text-secondary-900 dark:text-white">
                 {isInstantPayment ? 'Instant (no delay)' : formatDateTimeWithTZ(contract.expiryTimestamp)}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-secondary-600 dark:text-secondary-300">Description:</span>
-              <span className="text-right max-w-xs text-sm">{contract.description}</span>
+              <span className="text-right max-w-xs text-sm text-secondary-900 dark:text-white">{contract.description}</span>
             </div>
           </div>
 

@@ -993,7 +993,7 @@ export default function ContractPay() {
                         Creating contract...
                       </>
                     ) : (
-                      'Generate Payment Link'
+                      'Pay'
                     )}
                   </Button>
                   {isSameAddress && (

@@ -181,7 +181,7 @@ export default function DisputeManagementModal({ isOpen, onClose, contract, onRe
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white dark:bg-secondary-900 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto border border-transparent dark:border-secondary-700">
+      <div className="bg-white dark:bg-secondary-800 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-transparent dark:border-secondary-700">
         <div className="p-6">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Manage Dispute</h2>
@@ -196,7 +196,7 @@ export default function DisputeManagementModal({ isOpen, onClose, contract, onRe
           </div>
 
           {/* Contract Info */}
-          <div className="bg-gray-50 dark:bg-secondary-800 rounded-lg p-4 mb-6">
+          <div className="bg-gray-50 dark:bg-secondary-900/60 border border-transparent dark:border-secondary-700 rounded-lg p-4 mb-6">
             <h3 className="font-medium text-gray-900 dark:text-white mb-2">Contract Details</h3>
             <div className="text-sm text-gray-600 dark:text-secondary-300 space-y-1">
               <div><span className="font-medium">Description:</span> {contract.description}</div>
@@ -273,7 +273,7 @@ export default function DisputeManagementModal({ isOpen, onClose, contract, onRe
                   maxLength={160}
                   required
                   rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-secondary-700 bg-white dark:bg-secondary-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-secondary-500 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-secondary-700 bg-white dark:bg-secondary-900 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-secondary-500 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                   placeholder="Explain your position in the dispute..."
                 />
                 <div className="text-xs text-gray-500 dark:text-secondary-400 mt-1">
@@ -303,7 +303,7 @@ export default function DisputeManagementModal({ isOpen, onClose, contract, onRe
                       max="100"
                       value={refundPercent}
                       onChange={(e) => setRefundPercent(Math.max(0, Math.min(100, parseInt(e.target.value) || 0)))}
-                      className="w-16 px-2 py-1 border border-gray-300 dark:border-secondary-700 bg-white dark:bg-secondary-800 text-gray-900 dark:text-white rounded text-center text-sm"
+                      className="w-16 px-2 py-1 border border-gray-300 dark:border-secondary-700 bg-white dark:bg-secondary-900 text-gray-900 dark:text-white rounded text-center text-sm"
                     />
                     <span className="text-sm text-gray-600 dark:text-secondary-300">%</span>
                   </div>

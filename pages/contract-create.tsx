@@ -109,6 +109,7 @@ export default function ContractCreate() {
   const [loadingMessage, setLoadingMessage] = useState('');
   const [hasAttemptedUserFetch, setHasAttemptedUserFetch] = useState(false);
   const [contractId, setContractId] = useState<string | null>(null);
+  const [pendingExpiryTimestamp, setPendingExpiryTimestamp] = useState<number | null>(null);
   const [step, setStep] = useState<'create' | 'payment'>('create');
   const [tokenBalance, setTokenBalance] = useState<string>('0');
   const [isLoadingBalance, setIsLoadingBalance] = useState(false);
@@ -441,18 +442,18 @@ export default function ContractCreate() {
 
   const createContractForQR = useCallback(async () => {
     if (!contractId || !config || !address || !authenticatedFetch) return;
+    if (pendingExpiryTimestamp === null) {
+      console.error('🔧 ContractCreate: pendingExpiryTimestamp not set; cannot deploy without the DB-stored value');
+      return;
+    }
 
     setIsCreatingContract(true);
 
     try {
-      // Parse expiry timestamp same way as in handleCreateContract
-      let expiryTimestamp = Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60);
-      if (epoch_expiry !== undefined) {
-        const parsedExpiry = parseInt(epoch_expiry as string, 10);
-        if (!isNaN(parsedExpiry) && (parsedExpiry === 0 || parsedExpiry > Math.floor(Date.now() / 1000))) {
-          expiryTimestamp = parsedExpiry;
-        }
-      }
+      // Reuse the expiryTimestamp stored in the pending contract to avoid drift
+      // between the DB value and the on-chain value (prevents ERROR status from
+      // expiryTimestampMismatch in contractservice).
+      const expiryTimestamp = pendingExpiryTimestamp;
 
       const createResponse = await authenticatedFetch('/api/chain/create-contract', {
         method: 'POST',
@@ -489,11 +490,15 @@ export default function ContractCreate() {
     } finally {
       setIsCreatingContract(false);
     }
-  }, [contractId, config, address, authenticatedFetch, selectedTokenAddress, form, epoch_expiry, getWeb3Service]);
+  }, [contractId, config, address, authenticatedFetch, selectedTokenAddress, form, pendingExpiryTimestamp, getWeb3Service]);
 
   const handleWalletPayment = async () => {
     if (!contractId || !config) {
       console.error('ContractCreate: Missing required data for wallet payment');
+      return;
+    }
+    if (pendingExpiryTimestamp === null) {
+      console.error('ContractCreate: pendingExpiryTimestamp not set; cannot deploy without the DB-stored value');
       return;
     }
 
@@ -526,14 +531,9 @@ export default function ContractCreate() {
       await new Promise(resolve => setTimeout(resolve, 500));
       updatePaymentStep('verify', 'completed');
 
-      // Parse expiry timestamp
-      let expiryTimestamp = Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60);
-      if (epoch_expiry !== undefined) {
-        const parsedExpiry = parseInt(epoch_expiry as string, 10);
-        if (!isNaN(parsedExpiry) && (parsedExpiry === 0 || parsedExpiry > Math.floor(Date.now() / 1000))) {
-          expiryTimestamp = parsedExpiry;
-        }
-      }
+      // Reuse the expiryTimestamp stored in the pending contract to avoid drift
+      // between the DB value and the on-chain value.
+      const expiryTimestamp = pendingExpiryTimestamp;
 
       // Execute direct payment
       updatePaymentStep('transfer', 'active');
@@ -851,6 +851,7 @@ export default function ContractCreate() {
       console.log('🔧 ContractCreate: Using contractId:', contractId);
       
       setContractId(contractId);
+      setPendingExpiryTimestamp(expiryTimestamp);
       setStep('payment');
       
       // Send contract created event
@@ -883,6 +884,10 @@ export default function ContractCreate() {
       console.error('🔧 ContractCreate: Missing required data for payment');
       console.error('🔧 ContractCreate: contractId:', contractId);
       console.error('🔧 ContractCreate: config:', !!config);
+      return;
+    }
+    if (pendingExpiryTimestamp === null) {
+      console.error('🔧 ContractCreate: pendingExpiryTimestamp not set; cannot deploy without the DB-stored value');
       return;
     }
 
@@ -924,16 +929,10 @@ export default function ContractCreate() {
       await new Promise(resolve => setTimeout(resolve, 500)); // Brief pause for UI feedback
       updatePaymentStep('verify', 'completed');
       
-      // Parse expiry timestamp same way as in contract creation
-      let expiryTimestamp = Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60); // Default to 7 days
-      if (epoch_expiry !== undefined) {
-        const parsedExpiry = parseInt(epoch_expiry as string, 10);
-        // Allow 0 for instant payments, or any future timestamp
-        if (!isNaN(parsedExpiry) && (parsedExpiry === 0 || parsedExpiry > Math.floor(Date.now() / 1000))) {
-          expiryTimestamp = parsedExpiry;
-        }
-      }
-      
+      // Reuse the expiryTimestamp stored in the pending contract to avoid drift
+      // between the DB value and the on-chain value.
+      const expiryTimestamp = pendingExpiryTimestamp;
+
       // Execute the complete transaction sequence with proper confirmation waiting
       updatePaymentStep('approve', 'active');
 

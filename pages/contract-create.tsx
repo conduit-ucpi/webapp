@@ -1480,7 +1480,7 @@ export default function ContractCreate() {
               {/* Amount */}
               <div className="flex justify-between">
                 <span className="text-secondary-600 dark:text-secondary-300">Amount:</span>
-                <span className="font-medium">${form.amount} {selectedTokenSymbol}</span>
+                <span className="font-medium text-secondary-900 dark:text-white">${form.amount} {selectedTokenSymbol}</span>
               </div>
               {/* Balance - only shown for wallet method */}
               {(paymentMethod === null || paymentMethod === 'wallet') && (
@@ -1498,12 +1498,12 @@ export default function ContractCreate() {
               {/* Seller */}
               <div className="flex justify-between">
                 <span className="text-secondary-600 dark:text-secondary-300">Seller:</span>
-                <span className="text-sm font-mono">{form.seller.slice(0, 6)}...{form.seller.slice(-4)}</span>
+                <span className="text-sm font-mono text-secondary-900 dark:text-white">{form.seller.slice(0, 6)}...{form.seller.slice(-4)}</span>
               </div>
               {/* Payout Date */}
               <div className="flex justify-between">
                 <span className="text-secondary-600 dark:text-secondary-300">Payout Date:</span>
-                <span className="font-medium">
+                <span className="font-medium text-secondary-900 dark:text-white">
                   {(() => {
                     let expiryTimestamp = Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60);
                     if (epoch_expiry !== undefined) {
@@ -1519,12 +1519,12 @@ export default function ContractCreate() {
               {/* Description */}
               <div className="flex justify-between">
                 <span className="text-secondary-600 dark:text-secondary-300">Description:</span>
-                <span className="text-right max-w-xs text-sm">{form.description}</span>
+                <span className="text-right max-w-xs text-sm text-secondary-900 dark:text-white">{form.description}</span>
               </div>
               {order_id && (
                 <div className="flex justify-between">
                   <span className="text-secondary-600 dark:text-secondary-300">Order ID:</span>
-                  <span className="text-sm">{order_id}</span>
+                  <span className="text-sm text-secondary-900 dark:text-white">{order_id}</span>
                 </div>
               )}
             </div>

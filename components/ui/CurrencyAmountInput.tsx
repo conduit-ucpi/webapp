@@ -109,19 +109,19 @@ export default function CurrencyAmountInput({
   return (
     <div className="w-full">
       {label && (
-        <label className="block text-sm font-medium text-secondary-700 mb-2">
+        <label className="block text-sm font-medium text-secondary-700 dark:text-secondary-200 mb-2">
           {label}
         </label>
       )}
 
       <div className={`
-        border-2 rounded-lg p-3 sm:p-4 bg-white transition-colors
-        ${error ? 'border-error-300' : 'border-secondary-200'}
-        ${disabled ? 'opacity-50 cursor-not-allowed bg-secondary-50' : ''}
+        border-2 rounded-lg p-3 sm:p-4 bg-white dark:bg-secondary-900 transition-colors
+        ${error ? 'border-error-300 dark:border-error-500' : 'border-secondary-200 dark:border-secondary-700'}
+        ${disabled ? 'opacity-50 cursor-not-allowed bg-secondary-50 dark:bg-secondary-800' : ''}
       `}>
         {/* Local Currency Input */}
         <div className="mb-1">
-          <label className="block text-xs font-medium text-secondary-600 mb-1.5">
+          <label className="block text-xs font-medium text-secondary-600 dark:text-secondary-300 mb-1.5">
             Your currency (for reference):
           </label>
           <div className="flex items-center gap-1.5 sm:gap-2">
@@ -131,8 +131,8 @@ export default function CurrencyAmountInput({
               disabled={rateLoading}
               className="
                 flex-shrink-0 w-20 sm:w-28 px-1 sm:px-2 py-2.5 text-xs sm:text-sm font-medium
-                border border-secondary-300 rounded-md
-                bg-white text-secondary-900
+                border border-secondary-300 dark:border-secondary-600 rounded-md
+                bg-white dark:bg-secondary-800 text-secondary-900 dark:text-white
                 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500
                 disabled:opacity-50 disabled:cursor-not-allowed
               "
@@ -154,10 +154,11 @@ export default function CurrencyAmountInput({
               readOnly={disabled || rateUnavailable}
               className={`
                 flex-1 min-w-0 px-2 sm:px-3 py-2.5 text-base
-                border border-secondary-300 rounded-md
+                border border-secondary-300 dark:border-secondary-600 rounded-md
+                bg-white dark:bg-secondary-800 text-secondary-900 dark:text-white placeholder:text-secondary-400 dark:placeholder:text-secondary-500
                 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500
-                disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-secondary-50
-                ${lastEdited === 'local' ? 'ring-2 ring-primary-200 border-primary-300' : ''}
+                disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-secondary-50 dark:disabled:bg-secondary-800
+                ${lastEdited === 'local' ? 'ring-2 ring-primary-200 border-primary-300 dark:ring-primary-700 dark:border-primary-500' : ''}
               `}
             />
           </div>
@@ -168,20 +169,20 @@ export default function CurrencyAmountInput({
           <div className="py-2 px-2">
             <div className="flex flex-col items-center gap-1">
               {/* Rate */}
-              <div className="flex items-center gap-2 text-xs text-secondary-600">
-                <svg className="w-4 h-4 text-secondary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="flex items-center gap-2 text-xs text-secondary-600 dark:text-secondary-300">
+                <svg className="w-4 h-4 text-secondary-400 dark:text-secondary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
                 </svg>
                 <span className="font-medium">
                   1 {localCurrency} = {rate?.toFixed(6)} {tokenSymbol}
                 </span>
                 {rateLoading && (
-                  <span className="inline-block w-3 h-3 border-2 border-secondary-300 border-t-primary-500 rounded-full animate-spin" />
+                  <span className="inline-block w-3 h-3 border-2 border-secondary-300 dark:border-secondary-600 border-t-primary-500 rounded-full animate-spin" />
                 )}
               </div>
               {/* Date - Always visible */}
               {!rateLoading && lastUpdated && (
-                <div className="text-xs text-secondary-500">
+                <div className="text-xs text-secondary-500 dark:text-secondary-400">
                   {source} • {formatDateTimeWithTZ(Math.floor(lastUpdated.getTime() / 1000))}
                 </div>
               )}
@@ -191,7 +192,7 @@ export default function CurrencyAmountInput({
 
         {/* Token Amount Input */}
         <div className="mt-1">
-          <label className="block text-xs font-medium text-secondary-600 mb-1.5">
+          <label className="block text-xs font-medium text-secondary-600 dark:text-secondary-300 mb-1.5">
             {paymentLabel}:
           </label>
           <div className="flex items-center gap-1.5 sm:gap-2">
@@ -205,13 +206,14 @@ export default function CurrencyAmountInput({
               placeholder="0.00"
               className={`
                 flex-1 min-w-0 px-2 sm:px-3 py-2.5 text-base font-medium
-                border border-secondary-300 rounded-md
+                border border-secondary-300 dark:border-secondary-600 rounded-md
+                bg-white dark:bg-secondary-800 text-secondary-900 dark:text-white placeholder:text-secondary-400 dark:placeholder:text-secondary-500
                 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500
-                disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-secondary-50
-                ${lastEdited === 'token' ? 'ring-2 ring-primary-200 border-primary-300' : ''}
+                disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-secondary-50 dark:disabled:bg-secondary-800
+                ${lastEdited === 'token' ? 'ring-2 ring-primary-200 border-primary-300 dark:ring-primary-700 dark:border-primary-500' : ''}
               `}
             />
-            <span className="flex-shrink-0 px-2 sm:px-3 py-2.5 text-xs sm:text-sm font-semibold text-secondary-700 bg-secondary-100 border border-secondary-300 rounded-md whitespace-nowrap">
+            <span className="flex-shrink-0 px-2 sm:px-3 py-2.5 text-xs sm:text-sm font-semibold text-secondary-700 dark:text-secondary-200 bg-secondary-100 dark:bg-secondary-700 border border-secondary-300 dark:border-secondary-600 rounded-md whitespace-nowrap">
               {tokenSymbol}
             </span>
           </div>
@@ -220,19 +222,19 @@ export default function CurrencyAmountInput({
 
       {/* Error Message */}
       {error && (
-        <p className="mt-2 text-sm text-error-600">{error}</p>
+        <p className="mt-2 text-sm text-error-600 dark:text-error-400">{error}</p>
       )}
 
       {/* Rate Error Message */}
       {rateError && (
-        <p className="mt-2 text-xs text-warning-600">
+        <p className="mt-2 text-xs text-warning-600 dark:text-warning-400">
           Exchange rate unavailable for {tokenSymbol}. Enter the {tokenSymbol} amount directly.
         </p>
       )}
 
       {/* Help Text */}
       {helpText && !error && (
-        <p className="mt-2 text-xs text-secondary-500">{helpText}</p>
+        <p className="mt-2 text-xs text-secondary-500 dark:text-secondary-400">{helpText}</p>
       )}
     </div>
   );

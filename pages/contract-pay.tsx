@@ -332,7 +332,8 @@ export default function ContractPay() {
           seller: contract.sellerAddress,
           amount: contract.amount,
           expiryTimestamp: contract.expiryTimestamp,
-          description: contract.description
+          description: contract.description,
+          ...(contract.arbiterAddress ? { arbiter: contract.arbiterAddress } : {})
         })
       });
 
@@ -403,7 +404,8 @@ export default function ContractPay() {
           seller: contract.sellerAddress,
           amount: contract.amount,
           expiryTimestamp: contract.expiryTimestamp,
-          description: contract.description
+          description: contract.description,
+          arbiterAddress: contract.arbiterAddress
         },
         {
           authenticatedFetch,

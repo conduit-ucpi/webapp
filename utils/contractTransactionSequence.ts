@@ -259,6 +259,7 @@ interface DirectPaymentParams {
   amount: number; // microUSDC
   expiryTimestamp: number;
   description: string;
+  arbiterAddress?: string; // Optional custom arbiter; omitted from wire when falsy
 }
 
 interface DirectPaymentResult {
@@ -288,10 +289,18 @@ export async function executeDirectPaymentSequence(
   // Step 1: Create the contract on the blockchain
   onProgress?.('contract_creation', 'Creating secure escrow contract...');
 
+  // Build request body: translate optional `arbiterAddress` to wire field `arbiter`.
+  // Omit the key entirely when falsy (chainservice defaults to zero-address sentinel).
+  const { arbiterAddress, ...paramsWithoutArbiter } = params;
+  const createContractBody = {
+    ...paramsWithoutArbiter,
+    ...(arbiterAddress ? { arbiter: arbiterAddress } : {})
+  };
+
   const createResponse = await authenticatedFetch('/api/chain/create-contract', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(params)
+    body: JSON.stringify(createContractBody)
   });
 
   if (!createResponse.ok) {

@@ -133,6 +133,9 @@ export interface PendingContract {
   expiryTimestamp: number;
   chainId?: string;
   chainAddress?: string;
+  // Optional custom arbiter address chosen by the seller.
+  // When present, this contract uses a non-default dispute resolver.
+  arbiterAddress?: string;
   description: string;
   createdAt: number;
   createdBy: string;

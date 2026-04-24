@@ -11,6 +11,7 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import ConnectWalletEmbedded from '@/components/auth/ConnectWalletEmbedded';
 import WalletInfo from '@/components/ui/WalletInfo';
 import TokenGuide from '@/components/ui/TokenGuide';
+import CustomArbiterNotice from '@/components/contracts/CustomArbiterNotice';
 import { toMicroUSDC, toUSDCForWeb3, formatDateTimeWithTZ, displayCurrency } from '@/utils/validation';
 import { executeContractTransactionSequence, executeDirectPaymentSequence } from '@/utils/contractTransactionSequence';
 import { createContractProgressHandler } from '@/utils/contractProgressHandler';
@@ -834,6 +835,10 @@ export default function ContractPay() {
               <span className="text-right max-w-xs text-sm text-secondary-900 dark:text-white">{contract.description}</span>
             </div>
           </div>
+
+          {/* Custom arbiter warning — only rendered when the seller has set a
+              non-default arbiter address on the pending contract. */}
+          <CustomArbiterNotice arbiterAddress={contract.arbiterAddress} />
 
           {/* Change payment method link (hidden while a payment is in progress) */}
           {!isPaymentInProgress && !qrContractAddress && (

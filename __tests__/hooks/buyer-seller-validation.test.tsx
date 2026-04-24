@@ -136,7 +136,8 @@ describe('Buyer/Seller Validation Hooks', () => {
       const form = {
         seller: BUYER_WALLET,
         amount: '10.00',
-        description: 'Test payment'
+        description: 'Test payment',
+        arbiterAddress: ''
       };
 
       const buyerInfo = {
@@ -159,7 +160,8 @@ describe('Buyer/Seller Validation Hooks', () => {
       const form = {
         seller: BUYER_WALLET.toLowerCase(),
         amount: '10.00',
-        description: 'Test payment'
+        description: 'Test payment',
+        arbiterAddress: ''
       };
 
       const buyerInfo = {
@@ -181,7 +183,8 @@ describe('Buyer/Seller Validation Hooks', () => {
       const form = {
         seller: SELLER_WALLET,
         amount: '10.00',
-        description: 'Test payment'
+        description: 'Test payment',
+        arbiterAddress: ''
       };
 
       const buyerInfo = {
@@ -203,7 +206,8 @@ describe('Buyer/Seller Validation Hooks', () => {
       const form = {
         seller: SELLER_WALLET,
         amount: '10.00',
-        description: 'Test payment'
+        description: 'Test payment',
+        arbiterAddress: ''
       };
 
       let isValid: boolean;
@@ -221,7 +225,8 @@ describe('Buyer/Seller Validation Hooks', () => {
       const form = {
         seller: BUYER_WALLET,
         amount: '10.00',
-        description: 'Test payment'
+        description: 'Test payment',
+        arbiterAddress: ''
       };
 
       const wordpressContext = {
@@ -241,6 +246,110 @@ describe('Buyer/Seller Validation Hooks', () => {
 
       expect(isValid!).toBe(false);
       expect(result.current.errors.seller).toContain('cannot make a payment to yourself');
+    });
+  });
+
+  describe('useContractCreateValidation - Optional arbiterAddress', () => {
+    // Third valid checksummed address (distinct from SELLER_WALLET and BUYER_WALLET above)
+    const ARBITER_WALLET = '0xdD870fA1b7C4700F2BD7f44238821C26f7392148';
+
+    const baseForm = {
+      seller: SELLER_WALLET,
+      amount: '10.00',
+      description: 'Test payment'
+    };
+
+    it('should be valid when arbiterAddress is blank', () => {
+      const { result } = renderHook(() => useContractCreateValidation());
+
+      let isValid: boolean;
+      act(() => {
+        isValid = result.current.validateForm({ ...baseForm, arbiterAddress: '' });
+      });
+
+      expect(isValid!).toBe(true);
+      expect(result.current.errors.arbiterAddress).toBeUndefined();
+    });
+
+    it('should be valid when arbiterAddress is whitespace-only', () => {
+      const { result } = renderHook(() => useContractCreateValidation());
+
+      let isValid: boolean;
+      act(() => {
+        isValid = result.current.validateForm({ ...baseForm, arbiterAddress: '   ' });
+      });
+
+      expect(isValid!).toBe(true);
+      expect(result.current.errors.arbiterAddress).toBeUndefined();
+    });
+
+    it('should be valid when arbiterAddress is a valid checksummed address', () => {
+      const { result } = renderHook(() => useContractCreateValidation());
+
+      let isValid: boolean;
+      act(() => {
+        isValid = result.current.validateForm({ ...baseForm, arbiterAddress: ARBITER_WALLET });
+      });
+
+      expect(isValid!).toBe(true);
+      expect(result.current.errors.arbiterAddress).toBeUndefined();
+    });
+
+    it('should be valid when arbiterAddress is a lowercase (non-checksummed) valid address', () => {
+      const { result } = renderHook(() => useContractCreateValidation());
+
+      let isValid: boolean;
+      act(() => {
+        isValid = result.current.validateForm({
+          ...baseForm,
+          arbiterAddress: ARBITER_WALLET.toLowerCase()
+        });
+      });
+
+      expect(isValid!).toBe(true);
+      expect(result.current.errors.arbiterAddress).toBeUndefined();
+    });
+
+    it('should surface an error for a plainly invalid arbiterAddress string', () => {
+      const { result } = renderHook(() => useContractCreateValidation());
+
+      let isValid: boolean;
+      act(() => {
+        isValid = result.current.validateForm({ ...baseForm, arbiterAddress: 'not-an-address' });
+      });
+
+      expect(isValid!).toBe(false);
+      expect(result.current.errors.arbiterAddress).toBe('Invalid arbiter wallet address');
+    });
+
+    it('should surface an error for a too-short 0x-prefixed arbiterAddress', () => {
+      const { result } = renderHook(() => useContractCreateValidation());
+
+      let isValid: boolean;
+      act(() => {
+        isValid = result.current.validateForm({ ...baseForm, arbiterAddress: '0x1234' });
+      });
+
+      expect(isValid!).toBe(false);
+      expect(result.current.errors.arbiterAddress).toBe('Invalid arbiter wallet address');
+    });
+
+    it('should not surface an arbiterAddress error when other fields are invalid but arbiter is blank', () => {
+      const { result } = renderHook(() => useContractCreateValidation());
+
+      let isValid: boolean;
+      act(() => {
+        isValid = result.current.validateForm({
+          seller: 'not-a-wallet',
+          amount: 'abc',
+          description: '',
+          arbiterAddress: ''
+        });
+      });
+
+      expect(isValid!).toBe(false);
+      // Other errors should be set, but arbiterAddress should remain clean
+      expect(result.current.errors.arbiterAddress).toBeUndefined();
     });
   });
 });

@@ -20,6 +20,7 @@ export interface ContractCreateErrors {
   seller?: string;
   amount?: string;
   description?: string;
+  arbiterAddress?: string;
 }
 
 // Form data types
@@ -34,6 +35,8 @@ export interface ContractCreateForm {
   seller: string;
   amount: string;
   description: string;
+  // Optional advanced override for the dispute resolver. Blank/undefined ⇒ use system default.
+  arbiterAddress?: string;
 }
 
 // WordPress validation context
@@ -150,6 +153,14 @@ export function useContractCreateValidation() {
     // Validate description
     if (!isValidDescription(form.description)) {
       newErrors.description = 'Description must be 1-160 characters';
+    }
+
+    // Validate optional arbiter wallet address (advanced field)
+    // If blank/whitespace-only: skip — this is an optional override.
+    // If provided: must be a valid Ethereum address.
+    const trimmedArbiter = form.arbiterAddress?.trim() ?? '';
+    if (trimmedArbiter.length > 0 && !isValidWalletAddress(trimmedArbiter)) {
+      newErrors.arbiterAddress = 'Invalid arbiter wallet address';
     }
 
     // Validate WordPress integration parameters if applicable

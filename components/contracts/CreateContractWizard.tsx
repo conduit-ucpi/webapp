@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
+import { ethers } from 'ethers';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { useAuth } from '@/components/auth';
 import { useToast } from '@/components/ui/Toast';
@@ -35,6 +36,7 @@ interface CreateContractForm {
   amount: string;
   payoutTimestamp: number;
   description: string;
+  arbiterAddress: string;
 }
 
 interface FormErrors {
@@ -42,6 +44,7 @@ interface FormErrors {
   amount?: string;
   expiry?: string;
   description?: string;
+  arbiterAddress?: string;
 }
 
 const steps: Step[] = [
@@ -81,12 +84,14 @@ export default function CreateContractWizard() {
     buyerFid: undefined,
     amount: '',
     payoutTimestamp: getDefaultTimestamp(),
-    description: ''
+    description: '',
+    arbiterAddress: ''
   });
   const [errors, setErrors] = useState<FormErrors>({});
   const [showQRModal, setShowQRModal] = useState(false);
   const [isInstantPayment, setIsInstantPayment] = useState(false);
   const [noBuyerEmail, setNoBuyerEmail] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [selectedTokenSymbol, setSelectedTokenSymbol] = useState<string>(
     config?.defaultTokenSymbol || config?.tokenSymbol || 'USDC'
   );
@@ -234,6 +239,16 @@ export default function CreateContractWizard() {
         if (!descriptionValidator(form.description)) {
           newErrors.description = 'Description must be 1-160 characters';
         }
+
+        // Validate optional arbiter wallet address (advanced field)
+        // If blank/whitespace-only: skip — this is an optional override.
+        // If provided: must be a valid Ethereum address.
+        {
+          const trimmedArbiter = form.arbiterAddress.trim();
+          if (trimmedArbiter.length > 0 && !isValidWalletAddress(trimmedArbiter)) {
+            newErrors.arbiterAddress = 'Invalid arbiter wallet address';
+          }
+        }
         break;
         
       case 1: // Payment Terms
@@ -316,7 +331,8 @@ export default function CreateContractWizard() {
         currencySymbol: selectedTokenSymbol,
         description: form.description,
         expiryTimestamp: form.payoutTimestamp,
-        serviceLink: config.serviceLink
+        serviceLink: config.serviceLink,
+        ...(form.arbiterAddress.trim() ? { arbiterAddress: ethers.getAddress(form.arbiterAddress.trim()) } : {})
       };
 
       if (!authenticatedFetch) {
@@ -483,6 +499,48 @@ export default function CreateContractWizard() {
                       : 'This will appear in the payment request email to the buyer.'
                     }
                   </p>
+                </div>
+
+                {/* Advanced Options (collapsed by default) */}
+                <div className="border-t border-secondary-200 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowAdvanced(prev => !prev)}
+                    aria-expanded={showAdvanced}
+                    className="flex items-center justify-between w-full text-left text-sm font-medium text-secondary-700 hover:text-secondary-900 focus:outline-none"
+                  >
+                    <span>Advanced Options</span>
+                    <svg
+                      className={`h-4 w-4 text-secondary-500 transform transition-transform ${showAdvanced ? 'rotate-180' : ''}`}
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      aria-hidden="true"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+
+                  {showAdvanced && (
+                    <div className="mt-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <label className="text-sm font-medium text-secondary-700">
+                          Arbiter Wallet Address
+                        </label>
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-secondary-100 text-secondary-700">
+                          Advanced &middot; Optional
+                        </span>
+                      </div>
+                      <Input
+                        type="text"
+                        value={form.arbiterAddress}
+                        onChange={(e) => setForm(prev => ({ ...prev, arbiterAddress: e.target.value }))}
+                        placeholder="0x..."
+                        error={errors.arbiterAddress}
+                        helpText="Optional override for the dispute resolver. Leave blank to use the system default."
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             </>
@@ -853,11 +911,13 @@ export default function CreateContractWizard() {
                   buyerFid: undefined,
                   amount: '',
                   payoutTimestamp: getDefaultTimestamp(),
-                  description: ''
+                  description: '',
+                  arbiterAddress: ''
                 });
                 setErrors({});
                 setIsInstantPayment(false);
                 setNoBuyerEmail(false);
+                setShowAdvanced(false);
                 setPaymentLinkCopied(false);
               }}
               variant="outline"

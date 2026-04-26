@@ -183,9 +183,9 @@ export default function TokenGuide({ currency }: TokenGuideProps) {
       {/* Coinbase Onramp button for non-Nigerian users */}
       {showCoinbase && (
         <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-indigo-900 mb-3">Buy {tokenSymbol} with Card or Bank</h3>
+          <h3 className="text-lg font-semibold text-indigo-900 mb-3">Buy USDC with Card or Bank</h3>
           <p className="text-sm text-indigo-800 mb-4">
-            Purchase {tokenSymbol} via Coinbase using a card, bank transfer, or Apple Pay. Funds are sent directly to your connected wallet.
+            Purchase USDC via Coinbase using a card, bank transfer, or Apple Pay — no fees on USDC. Funds are sent directly to your connected wallet.
           </p>
           {coinbaseError && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">

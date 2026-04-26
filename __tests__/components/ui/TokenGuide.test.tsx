@@ -366,12 +366,12 @@ describe('TokenGuide', () => {
       expect(mockOpenCoinbaseOnramp).toHaveBeenCalledWith({ walletAddress: mockUser.walletAddress });
     });
 
-    it('uses correct token symbol when currency prop is provided', () => {
+    it('always shows USDC in heading regardless of currency prop (Coinbase only delivers USDC)', () => {
       mockDetectUserCurrency.mockReturnValue('USD');
       mockUseConfig.mockReturnValue({ config: cbConfig, isLoading: false });
 
       render(<TokenGuide currency="USDT" />);
-      expect(screen.getByText('Buy USDT with Card or Bank')).toBeInTheDocument();
+      expect(screen.getByText('Buy USDC with Card or Bank')).toBeInTheDocument();
     });
   });
 });

@@ -237,8 +237,10 @@ describe('DateTime-Local Conversion Functions', () => {
       // Our way should preserve the timestamp
       expect(rightRoundTrip).toBe(timestamp);
 
-      // The wrong way would shift it by timezone offset (unless in UTC timezone)
-      const timezoneOffset = new Date().getTimezoneOffset() * 60; // in seconds
+      // The wrong way would shift it by timezone offset (unless the test timestamp
+      // falls in a UTC-equivalent moment for the local zone — e.g. winter in GMT).
+      // Use the offset AT THE TIMESTAMP, not now, since DST may differ across the year.
+      const timezoneOffset = new Date(timestamp * 1000).getTimezoneOffset() * 60;
       if (timezoneOffset !== 0) {
         expect(wrongRoundTrip).not.toBe(timestamp);
       }

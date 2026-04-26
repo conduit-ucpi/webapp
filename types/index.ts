@@ -34,6 +34,7 @@ export interface Config {
   // Third-party services
   moonPayApiKey: string;
   onrampAppId?: string;
+  coinbaseProjectId?: string;
   walletConnectProjectId?: string;
   neynarApiKey?: string;
   // Gas configuration

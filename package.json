@@ -19,6 +19,7 @@
     "check-currency-boundaries": "node scripts/check-currency-boundaries.js"
   },
   "dependencies": {
+    "@coinbase/cdp-sdk": "^1.48.2",
     "@conduit-ucpi/sdk": "^0.1.0",
     "@farcaster/miniapp-sdk": "^0.2.0",
     "@farcaster/miniapp-wagmi-connector": "^1.0.0",

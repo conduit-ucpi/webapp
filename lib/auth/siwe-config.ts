@@ -8,6 +8,7 @@
  */
 
 import { createSIWEConfig } from '@reown/appkit-siwe'
+import { SIWE_STATEMENT } from './siwe-statement'
 
 export function createAppKitSIWEConfig() {
   console.log('🔐 SIWE: createAppKitSIWEConfig() called - SIWE configuration is being initialized')
@@ -45,7 +46,7 @@ export function createAppKitSIWEConfig() {
       // Build SIWE message manually (EIP-4361 format)
       const domain = window.location.host
       const uri = window.location.origin
-      const statement = 'Sign in to Conduit UCPI'
+      const statement = SIWE_STATEMENT
       const issuedAt = new Date().toISOString()
 
       const message = `${domain} wants you to sign in with your Ethereum account:

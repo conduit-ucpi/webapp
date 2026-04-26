@@ -8,6 +8,7 @@
 import { InformalMessenger } from '@reown/appkit-siwx'
 import type { SIWXMessage } from '@reown/appkit-controllers'
 import { mLog } from '@/utils/mobileLogger'
+import { SIWE_STATEMENT } from './siwe-statement'
 
 /**
  * Get nonce from our backend
@@ -155,6 +156,7 @@ export class BackendSIWXMessenger extends InformalMessenger {
     super({
       domain,
       uri,
+      statement: SIWE_STATEMENT,
       getNonce: getBackendNonce, // Use our backend nonce fetcher
       clearChainIdNamespace: false // Keep full chain ID format
     })

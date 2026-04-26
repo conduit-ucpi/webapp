@@ -6,6 +6,7 @@ import { toHex } from '@/utils/hexUtils'
 import { detectDevice } from '@/utils/deviceDetection'
 import { wrapProviderWithMobileDeepLinks } from '@/utils/mobileDeepLinkProvider'
 import { createAppKitSIWXConfig } from '@/lib/auth/siwx-config'
+import { SIWE_STATEMENT } from '@/lib/auth/siwe-statement'
 import { mLog } from '@/utils/mobileLogger'
 
 export type ConnectionMode = 'default' | 'wallet-only' | 'social-only'
@@ -735,9 +736,11 @@ export class ReownWalletConnectProvider {
       const uri = window.location.origin
       const issuedAt = new Date().toISOString()
 
-      // EIP-4361 SIWE message format (without optional statement field)
+      // EIP-4361 SIWE message format with statement
       const message = `${domain} wants you to sign in with your Ethereum account:
 ${address}
+
+${SIWE_STATEMENT}
 
 URI: ${uri}
 Version: 1

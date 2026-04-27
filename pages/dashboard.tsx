@@ -261,7 +261,7 @@ export default function Dashboard2() {
                   Manage wallet
                 </Link>
                 <Link
-                  href="/buy-usdc"
+                  href="/wallet"
                   className="text-xs text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-colors"
                 >
                   Buy USDC

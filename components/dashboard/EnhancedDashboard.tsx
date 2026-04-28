@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/router';
 import { useAuth } from '@/components/auth';
 import { Contract, PendingContract } from '@/types';
 import Button from '@/components/ui/Button';
@@ -16,7 +17,6 @@ import {
   DisputedContractsEmptyState
 } from '@/components/ui/EmptyState';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
-import ContractAcceptance from '@/components/contracts/ContractAcceptance';
 import ContractDetailsModal from '@/components/contracts/ContractDetailsModal';
 import DisputeManagementModal from '@/components/contracts/DisputeManagementModal';
 import ProgressChecklist from '@/components/onboarding/ProgressChecklist';
@@ -39,16 +39,15 @@ export default function EnhancedDashboard() {
     hasAuthenticatedFetch: !!authenticatedFetch,
     authFetchType: typeof authenticatedFetch
   });
+  const router = useRouter();
   const [allContracts, setAllContracts] = useState<(Contract | PendingContract)[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState<StatusFilter>('ALL');
   const [searchTerm, setSearchTerm] = useState('');
-  const [contractToAccept, setContractToAccept] = useState<PendingContract | null>(null);
-  
+
   // Prevent duplicate API calls
   const hasFetched = React.useRef(false);
-  const [showAcceptance, setShowAcceptance] = useState(false);
   const [selectedContract, setSelectedContract] = useState<Contract | PendingContract | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [isDemoMode, setIsDemoMode] = useState(false);
@@ -442,8 +441,7 @@ export default function EnhancedDashboard() {
 
   const handleContractAction = (contract: Contract | PendingContract, action: string) => {
     if (action === 'accept' && !('contractAddress' in contract)) {
-      setContractToAccept(contract as PendingContract);
-      setShowAcceptance(true);
+      router.push(`/contract-pay?contractId=${contract.id}`);
     } else if (action === 'manage' && 'contractAddress' in contract) {
       setContractToManage(contract as Contract);
       setShowManageDispute(true);
@@ -653,33 +651,6 @@ export default function EnhancedDashboard() {
           </div>
         )
       } />
-
-      {/* Contract Acceptance Modal */}
-      {showAcceptance && contractToAccept && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div data-modal-panel className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto relative">
-            <button
-              onClick={() => {
-                setShowAcceptance(false);
-                setContractToAccept(null);
-              }}
-              className="absolute top-4 right-4 text-secondary-400 hover:text-secondary-600 z-10"
-            >
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-            <ContractAcceptance
-              contract={contractToAccept}
-              onAcceptComplete={() => {
-                setShowAcceptance(false);
-                setContractToAccept(null);
-                fetchContracts();
-              }}
-            />
-          </div>
-        </div>
-      )}
 
       {/* Contract Details Modal */}
       {showDetailsModal && selectedContract && (

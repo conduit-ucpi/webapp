@@ -440,7 +440,11 @@ export default function EnhancedDashboard() {
   ];
 
   const handleContractAction = (contract: Contract | PendingContract, action: string) => {
-    if (action === 'accept' && !('contractAddress' in contract)) {
+    const isPending = !('contractAddress' in contract);
+    // Any primary CTA on a pending contract is "pay this request" — route to /contract-pay.
+    // The card sometimes emits 'view-details' as a fallback when it doesn't recognize the
+    // backend's ctaType, which would otherwise open the details modal instead of paying.
+    if (isPending && (action === 'accept' || action === 'view-details')) {
       router.push(`/contract-pay?contractId=${contract.id}`);
     } else if (action === 'manage' && 'contractAddress' in contract) {
       setContractToManage(contract as Contract);

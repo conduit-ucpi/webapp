@@ -111,7 +111,7 @@ export default function EnhancedContractCard({
     if (isPending && !displayStatus) {
       displayStatus = 'PENDING';
     }
-    
+
     // Map status to appropriate colors
     const getStatusColor = (status: string) => {
       switch (status?.toUpperCase()) {
@@ -131,9 +131,13 @@ export default function EnhancedContractCard({
       }
     };
 
+    // Pending contracts are awaiting buyer funding — make that explicit in the UI.
+    const label =
+      displayStatus?.toUpperCase() === 'PENDING' ? 'PENDING FUNDING' : (displayStatus || 'Unknown');
+
     return {
-      label: displayStatus || 'Unknown',
-      color: getStatusColor(displayStatus || 'UNKNOWN')
+      label,
+      color: getStatusColor(displayStatus || 'UNKNOWN'),
     };
   }, [status, isPending]);
   

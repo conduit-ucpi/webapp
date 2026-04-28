@@ -20,6 +20,31 @@ function isValidEvmAddress(address: unknown): address is string {
   return typeof address === 'string' && /^0x[a-fA-F0-9]{40}$/.test(address);
 }
 
+// Coinbase requires the originating user's IP for security validation:
+// the quote can only be redeemed by the same client. Behind Caddy, the socket
+// address is the proxy, so we must read forwarded headers first.
+function extractClientIp(req: NextApiRequest): string | null {
+  const forwardedFor = req.headers['x-forwarded-for'];
+  const xff = Array.isArray(forwardedFor) ? forwardedFor[0] : forwardedFor;
+  if (xff) {
+    const first = xff.split(',')[0]?.trim();
+    if (first) return normalizeIp(first);
+  }
+
+  const realIp = req.headers['x-real-ip'];
+  const xri = Array.isArray(realIp) ? realIp[0] : realIp;
+  if (xri) return normalizeIp(xri.trim());
+
+  const socketAddr = req.socket?.remoteAddress;
+  if (socketAddr) return normalizeIp(socketAddr);
+
+  return null;
+}
+
+function normalizeIp(ip: string): string {
+  return ip.startsWith('::ffff:') ? ip.slice('::ffff:'.length) : ip;
+}
+
 async function validateUserSession(req: NextApiRequest, authToken: string): Promise<boolean> {
   if (!process.env.USER_SERVICE_URL) {
     console.error('USER_SERVICE_URL not configured');
@@ -67,6 +92,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(400).json({ error: 'Invalid wallet address' });
   }
 
+  const clientIp = extractClientIp(req);
+  if (!clientIp) {
+    console.error('Unable to determine client IP for Coinbase session token');
+    return res.status(400).json({ error: 'Unable to determine client IP' });
+  }
+
   try {
     const jwt = await generateJwt({
       apiKeyId,
@@ -86,6 +117,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       body: JSON.stringify({
         addresses: [{ address, blockchains: [blockchain] }],
         assets: [asset],
+        clientIp,
       }),
     });
 

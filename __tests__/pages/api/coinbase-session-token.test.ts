@@ -6,8 +6,11 @@
  * before ever calling Coinbase.
  */
 
-import { createMocks, RequestMethod } from 'node-mocks-http';
+import { createMocks } from 'node-mocks-http';
+import type { NextApiRequest, NextApiResponse } from 'next';
 import handler from '@/pages/api/coinbase/session-token';
+
+type RequestMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'OPTIONS' | 'HEAD';
 
 jest.mock('@coinbase/cdp-sdk/auth', () => ({
   generateJwt: jest.fn(),
@@ -38,12 +41,32 @@ describe('/api/coinbase/session-token', () => {
     process.env = originalEnv;
   });
 
-  function makeReq(opts: { method?: RequestMethod; body?: unknown; cookie?: string } = {}) {
-    return createMocks({
+  function makeReq(opts: {
+    method?: RequestMethod;
+    body?: unknown;
+    cookie?: string;
+    forwardedFor?: string;
+    realIp?: string;
+    socketAddress?: string;
+  } = {}) {
+    const headers: Record<string, string> = {};
+    if (opts.cookie) headers.cookie = opts.cookie;
+    if (opts.forwardedFor) headers['x-forwarded-for'] = opts.forwardedFor;
+    if (opts.realIp) headers['x-real-ip'] = opts.realIp;
+
+    const mocks = createMocks({
       method: opts.method ?? 'POST',
       body: opts.body ?? { address: VALID_ADDRESS },
-      headers: opts.cookie ? { cookie: opts.cookie } : {},
+      headers,
     });
+
+    // node-mocks-http does not populate req.socket; attach a minimal one for our IP fallback.
+    (mocks.req as any).socket = { remoteAddress: opts.socketAddress ?? '127.0.0.1' };
+
+    return {
+      req: mocks.req as unknown as NextApiRequest,
+      res: mocks.res as unknown as NextApiResponse & { _getStatusCode(): number; _getData(): string },
+    };
   }
 
   function mockUserServiceOk() {
@@ -97,7 +120,7 @@ describe('/api/coinbase/session-token', () => {
 
   it('mints a JWT scoped to POST /onramp/v1/token and returns the Coinbase token', async () => {
     mockUserServiceOk();
-    const { req, res } = makeReq({ cookie: 'AUTH-TOKEN=valid' });
+    const { req, res } = makeReq({ cookie: 'AUTH-TOKEN=valid', forwardedFor: '203.0.113.42' });
 
     await handler(req, res);
 
@@ -121,6 +144,7 @@ describe('/api/coinbase/session-token', () => {
     expect(sentBody).toEqual({
       addresses: [{ address: VALID_ADDRESS, blockchains: ['base'] }],
       assets: ['USDC'],
+      clientIp: '203.0.113.42',
     });
   });
 
@@ -128,6 +152,7 @@ describe('/api/coinbase/session-token', () => {
     mockUserServiceOk();
     const { req, res } = makeReq({
       cookie: 'AUTH-TOKEN=valid',
+      forwardedFor: '203.0.113.42',
       body: { address: VALID_ADDRESS, blockchain: 'ethereum', asset: 'ETH' },
     });
 
@@ -138,6 +163,72 @@ describe('/api/coinbase/session-token', () => {
     const sentBody = JSON.parse(coinbaseCall![1].body);
     expect(sentBody.addresses[0].blockchains).toEqual(['ethereum']);
     expect(sentBody.assets).toEqual(['ETH']);
+  });
+
+  describe('clientIp parameter (required by Coinbase)', () => {
+    it('uses the first IP from x-forwarded-for (the originating client) when behind a proxy', async () => {
+      mockUserServiceOk();
+      // Caddy/proxy chain: client → caddy → app, so XFF is "client, caddy"
+      const { req, res } = makeReq({
+        cookie: 'AUTH-TOKEN=valid',
+        forwardedFor: '203.0.113.42, 10.0.0.1',
+      });
+
+      await handler(req, res);
+
+      expect(res._getStatusCode()).toBe(200);
+      const coinbaseCall = (global.fetch as jest.Mock).mock.calls.find(c => String(c[0]).includes('coinbase.com'));
+      const sentBody = JSON.parse(coinbaseCall![1].body);
+      expect(sentBody.clientIp).toBe('203.0.113.42');
+    });
+
+    it('falls back to x-real-ip when x-forwarded-for is absent', async () => {
+      mockUserServiceOk();
+      const { req, res } = makeReq({ cookie: 'AUTH-TOKEN=valid', realIp: '198.51.100.7' });
+
+      await handler(req, res);
+
+      expect(res._getStatusCode()).toBe(200);
+      const coinbaseCall = (global.fetch as jest.Mock).mock.calls.find(c => String(c[0]).includes('coinbase.com'));
+      const sentBody = JSON.parse(coinbaseCall![1].body);
+      expect(sentBody.clientIp).toBe('198.51.100.7');
+    });
+
+    it('falls back to req.socket.remoteAddress when no forwarded headers are present', async () => {
+      mockUserServiceOk();
+      const { req, res } = makeReq({ cookie: 'AUTH-TOKEN=valid', socketAddress: '198.51.100.99' });
+
+      await handler(req, res);
+
+      expect(res._getStatusCode()).toBe(200);
+      const coinbaseCall = (global.fetch as jest.Mock).mock.calls.find(c => String(c[0]).includes('coinbase.com'));
+      const sentBody = JSON.parse(coinbaseCall![1].body);
+      expect(sentBody.clientIp).toBe('198.51.100.99');
+    });
+
+    it('strips the ::ffff: IPv4-mapped IPv6 prefix from the socket address', async () => {
+      mockUserServiceOk();
+      const { req, res } = makeReq({ cookie: 'AUTH-TOKEN=valid', socketAddress: '::ffff:198.51.100.99' });
+
+      await handler(req, res);
+
+      expect(res._getStatusCode()).toBe(200);
+      const coinbaseCall = (global.fetch as jest.Mock).mock.calls.find(c => String(c[0]).includes('coinbase.com'));
+      const sentBody = JSON.parse(coinbaseCall![1].body);
+      expect(sentBody.clientIp).toBe('198.51.100.99');
+    });
+
+    it('trims whitespace from the forwarded IP', async () => {
+      mockUserServiceOk();
+      const { req, res } = makeReq({ cookie: 'AUTH-TOKEN=valid', forwardedFor: '  203.0.113.42  , 10.0.0.1' });
+
+      await handler(req, res);
+
+      expect(res._getStatusCode()).toBe(200);
+      const coinbaseCall = (global.fetch as jest.Mock).mock.calls.find(c => String(c[0]).includes('coinbase.com'));
+      const sentBody = JSON.parse(coinbaseCall![1].body);
+      expect(sentBody.clientIp).toBe('203.0.113.42');
+    });
   });
 
   it('returns 502 when Coinbase rejects the request', async () => {

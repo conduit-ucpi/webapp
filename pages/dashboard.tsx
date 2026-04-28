@@ -127,7 +127,7 @@ export default function Dashboard2() {
           --d-card-bg: transparent;
         }
 
-        /* ── Flatten card boxes ── */
+        /* ── Flatten card boxes (modals opt out via [data-modal] on an ancestor) ── */
         .dashboard2-flat .bg-white.rounded-lg,
         .dashboard2-flat .bg-white.rounded-xl {
           background: var(--d-card-bg) !important;
@@ -141,6 +141,24 @@ export default function Dashboard2() {
         .dashboard2-flat .bg-white.rounded-lg:hover,
         .dashboard2-flat .bg-white.rounded-xl:hover {
           box-shadow: none !important;
+        }
+        /* Restore card styling inside modals so they aren't transparent / unreadable */
+        .dashboard2-flat [data-modal-panel].bg-white.rounded-lg,
+        .dashboard2-flat [data-modal-panel] .bg-white.rounded-lg,
+        .dashboard2-flat [data-modal-panel] .bg-white.rounded-xl {
+          background: #ffffff !important;
+          border: 1px solid #e2e8f0 !important;
+          border-radius: 0.5rem !important;
+          border-bottom: 1px solid #e2e8f0 !important;
+          padding-left: revert !important;
+          padding-right: revert !important;
+        }
+        .dark .dashboard2-flat [data-modal-panel].bg-white.rounded-lg,
+        .dark .dashboard2-flat [data-modal-panel] .bg-white.rounded-lg,
+        .dark .dashboard2-flat [data-modal-panel] .bg-white.rounded-xl {
+          background: #0f172a !important;
+          border: 1px solid #1e293b !important;
+          border-bottom: 1px solid #1e293b !important;
         }
 
         /* ── Card text colours ── */

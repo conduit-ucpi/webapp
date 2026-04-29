@@ -49,6 +49,7 @@ export default function ContractPay() {
   const [isLoadingBalance, setIsLoadingBalance] = useState(false);
   const [hasAttemptedUserFetch, setHasAttemptedUserFetch] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(null);
+  const [showTokenGuide, setShowTokenGuide] = useState(false);
 
   // QR flow state
   const [isMobileDevice, setIsMobileDevice] = useState(false);
@@ -923,14 +924,20 @@ export default function ContractPay() {
                       Please add {(amountInTokens - balanceFloat).toFixed(4)} {selectedTokenSymbol} to your wallet before proceeding.
                     </p>
                   </div>
-                  <details className="border-t border-red-200 dark:border-red-800">
-                    <summary className="cursor-pointer p-3 text-sm font-medium text-red-800 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/30">
-                      How to add {selectedTokenSymbol} to your wallet
-                    </summary>
-                    <div className="p-3 pt-0">
-                      <TokenGuide />
-                    </div>
-                  </details>
+                  <div className="border-t border-red-200 dark:border-red-800 p-3">
+                    <Button
+                      onClick={() => setShowTokenGuide(!showTokenGuide)}
+                      variant="outline"
+                      className="w-full"
+                    >
+                      {showTokenGuide ? `Hide guide` : `Show me how to add ${selectedTokenSymbol} to my wallet`}
+                    </Button>
+                    {showTokenGuide && (
+                      <div className="mt-3">
+                        <TokenGuide />
+                      </div>
+                    )}
+                  </div>
                 </div>
               ) : !isPaymentInProgress && (
                 <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md p-4 mb-6">

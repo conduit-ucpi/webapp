@@ -66,7 +66,7 @@ export default function DisputeModal({ isOpen, onClose, onSubmit, isSubmitting =
           leaveFrom="opacity-100"
           leaveTo="opacity-0"
         >
-          <div className="fixed inset-0 bg-black bg-opacity-25" />
+          <div className="fixed inset-0 bg-black bg-opacity-50" />
         </Transition.Child>
 
         <div className="fixed inset-0 overflow-y-auto">
@@ -80,22 +80,22 @@ export default function DisputeModal({ isOpen, onClose, onSubmit, isSubmitting =
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
+              <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white dark:bg-secondary-800 p-6 text-left align-middle shadow-xl border border-transparent dark:border-secondary-700 transition-all">
                 <Dialog.Title
                   as="h3"
-                  className="text-lg font-medium leading-6 text-gray-900 mb-4"
+                  className="text-lg font-medium leading-6 text-gray-900 dark:text-white mb-4"
                 >
                   Raise a Dispute
                 </Dialog.Title>
 
                 <div className="space-y-4">
                   <div>
-                    <label htmlFor="reason" className="block text-sm font-medium text-gray-700 mb-1">
+                    <label htmlFor="reason" className="block text-sm font-medium text-gray-700 dark:text-secondary-200 mb-1">
                       Dispute Reason
                     </label>
                     <textarea
                       id="reason"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-secondary-600 bg-white dark:bg-secondary-900 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-secondary-400 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                       rows={3}
                       maxLength={160}
                       placeholder="Please describe the reason for this dispute..."
@@ -109,17 +109,17 @@ export default function DisputeModal({ isOpen, onClose, onSubmit, isSubmitting =
                       disabled={isSubmitting}
                     />
                     <div className="mt-1 flex justify-between">
-                      <span className="text-xs text-gray-500">
+                      <span className="text-xs text-gray-500 dark:text-secondary-400">
                         {reason.length}/160 characters
                       </span>
                       {errors.reason && (
-                        <span className="text-xs text-red-600">{errors.reason}</span>
+                        <span className="text-xs text-red-600 dark:text-red-400">{errors.reason}</span>
                       )}
                     </div>
                   </div>
 
                   <div>
-                    <label htmlFor="split" className="block text-sm font-medium text-gray-700 mb-1">
+                    <label htmlFor="split" className="block text-sm font-medium text-gray-700 dark:text-secondary-200 mb-1">
                       Suggested Split (% to buyer)
                     </label>
                     <div className="flex items-center space-x-3">
@@ -141,13 +141,13 @@ export default function DisputeModal({ isOpen, onClose, onSubmit, isSubmitting =
                         disabled={isSubmitting}
                         className="w-24"
                       />
-                      <span className="text-sm text-gray-600">%</span>
+                      <span className="text-sm text-gray-600 dark:text-secondary-300">%</span>
                     </div>
-                    <div className="mt-1 text-xs text-gray-500">
+                    <div className="mt-1 text-xs text-gray-500 dark:text-secondary-400">
                       Buyer gets {refundPercent}%, Seller gets {100 - refundPercent}%
                     </div>
                     {errors.split && (
-                      <div className="mt-1 text-xs text-red-600">{errors.split}</div>
+                      <div className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.split}</div>
                     )}
                   </div>
                 </div>

@@ -187,6 +187,9 @@ export default function TokenGuide({ currency }: TokenGuideProps) {
           <p className="text-sm text-indigo-800 mb-4">
             Purchase USDC via Coinbase using a card, bank transfer, or Apple Pay — no fees on USDC. Funds are sent directly to your connected wallet.
           </p>
+          <p className="text-sm text-indigo-800 mb-4">
+            If you're doing this for the first time, setting up KYC on Coinbase (or any other exchange) is an unavoidable and painful process. You may also need to speak to your bank as they sometimes block payments to exchanges. The upside is that you only have to do it once.
+          </p>
           {coinbaseError && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
               <p className="text-red-800 text-sm">{coinbaseError}</p>

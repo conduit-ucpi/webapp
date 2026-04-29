@@ -31,7 +31,7 @@ const PENDING: PendingContract = {
   sellerAddress: '0xseller',
   expiryTimestamp: Math.floor(Date.now() / 1000) + 86400,
   description: 'Pending contract',
-  createdAt: String(Math.floor(Date.now() / 1000)),
+  createdAt: Math.floor(Date.now() / 1000),
   createdBy: '0xbuyer',
   state: 'OK',
   adminNotes: [],

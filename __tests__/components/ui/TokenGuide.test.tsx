@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react';
+import { render, act } from '@testing-library/react';
 import { screen } from '@testing-library/dom';
 import TokenGuide from '@/components/ui/TokenGuide';
 import { useAuth } from '@/components/auth';
@@ -26,6 +26,13 @@ jest.mock('@/utils/currencyDetection', () => ({
 jest.mock('@onramp.money/onramp-web-sdk', () => ({
   OnrampWebSDK: jest.fn(),
 }));
+
+jest.mock('@/lib/coinbaseOnramp', () => ({
+  openCoinbaseOnramp: jest.fn(),
+}));
+
+import { openCoinbaseOnramp } from '@/lib/coinbaseOnramp';
+const mockOpenCoinbaseOnramp = openCoinbaseOnramp as jest.MockedFunction<typeof openCoinbaseOnramp>;
 
 const mockUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
 const mockUseConfig = useConfig as jest.MockedFunction<typeof useConfig>;
@@ -300,6 +307,71 @@ describe('TokenGuide', () => {
 
       render(<TokenGuide currency="USDT" />);
       expect(screen.getByText('Buy USDT with Naira')).toBeInTheDocument();
+    });
+  });
+
+  describe('Coinbase Onramp for non-Nigerian users', () => {
+    const cbConfig = {
+      ...mockConfig,
+      coinbaseProjectId: 'test-project-id',
+    };
+
+    it('shows Coinbase button for non-NGN users when project ID is configured', () => {
+      mockDetectUserCurrency.mockReturnValue('USD');
+      mockUseConfig.mockReturnValue({ config: cbConfig, isLoading: false });
+
+      render(<TokenGuide />);
+      expect(screen.getByText('Buy USDC with Card or Bank')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Buy with Coinbase/ })).toBeInTheDocument();
+    });
+
+    it('hides Coinbase button when project ID is not configured', () => {
+      mockDetectUserCurrency.mockReturnValue('USD');
+      // mockConfig has no coinbaseProjectId
+      render(<TokenGuide />);
+      expect(screen.queryByText('Buy USDC with Card or Bank')).not.toBeInTheDocument();
+    });
+
+    it('hides Coinbase button for Nigerian users (Onramp.money takes priority)', () => {
+      mockDetectUserCurrency.mockReturnValue('NGN');
+      mockUseConfig.mockReturnValue({
+        config: { ...cbConfig, onrampAppId: '1953324' },
+        isLoading: false,
+      });
+
+      render(<TokenGuide />);
+      expect(screen.queryByText('Buy USDC with Card or Bank')).not.toBeInTheDocument();
+      expect(screen.getByText('Buy USDC with Naira')).toBeInTheDocument();
+    });
+
+    it('switches manual instructions heading to "Alternative" when Coinbase shown', () => {
+      mockDetectUserCurrency.mockReturnValue('USD');
+      mockUseConfig.mockReturnValue({ config: cbConfig, isLoading: false });
+
+      render(<TokenGuide />);
+      expect(screen.getByText('Alternative: Manual Transfer')).toBeInTheDocument();
+    });
+
+    it('calls openCoinbaseOnramp with the user wallet address on click', async () => {
+      mockDetectUserCurrency.mockReturnValue('USD');
+      mockUseConfig.mockReturnValue({ config: cbConfig, isLoading: false });
+      mockOpenCoinbaseOnramp.mockResolvedValue(undefined);
+
+      render(<TokenGuide />);
+      const button = screen.getByRole('button', { name: /Buy with Coinbase/ });
+      await act(async () => {
+        button.click();
+      });
+
+      expect(mockOpenCoinbaseOnramp).toHaveBeenCalledWith({ walletAddress: mockUser.walletAddress });
+    });
+
+    it('always shows USDC in heading regardless of currency prop (Coinbase only delivers USDC)', () => {
+      mockDetectUserCurrency.mockReturnValue('USD');
+      mockUseConfig.mockReturnValue({ config: cbConfig, isLoading: false });
+
+      render(<TokenGuide currency="USDT" />);
+      expect(screen.getByText('Buy USDC with Card or Bank')).toBeInTheDocument();
     });
   });
 });

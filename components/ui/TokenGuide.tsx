@@ -4,6 +4,7 @@ import { useConfig } from '@/components/auth/ConfigProvider';
 import { useWalletAddress } from '@/hooks/useWalletAddress';
 import { getChainName } from '@/utils/chainNames';
 import { detectUserCurrency } from '@/utils/currencyDetection';
+import { openCoinbaseOnramp } from '@/lib/coinbaseOnramp';
 
 interface TokenGuideProps {
   currency?: string;
@@ -19,14 +20,15 @@ export default function TokenGuide({ currency }: TokenGuideProps) {
   const [onrampError, setOnrampError] = useState<string | null>(null);
   const onrampContainerRef = useRef<HTMLDivElement>(null);
   const onrampSdkRef = useRef<any>(null);
+  const [coinbaseLoading, setCoinbaseLoading] = useState(false);
+  const [coinbaseError, setCoinbaseError] = useState<string | null>(null);
 
   useEffect(() => {
-    // TODO: REMOVE - temporary hardcode for testing Onramp widget
-    // setUserCurrency('NGN');
     setUserCurrency(detectUserCurrency());
   }, []);
 
   const showOnramp = userCurrency === 'NGN' && config?.onrampAppId;
+  const showCoinbase = userCurrency !== null && userCurrency !== 'NGN' && !!config?.coinbaseProjectId;
 
   const initOnrampWidget = useCallback(async () => {
     if (!showOnramp || !walletAddress || !onrampContainerRef.current) return;
@@ -85,6 +87,20 @@ export default function TokenGuide({ currency }: TokenGuideProps) {
       }
     };
   }, [initOnrampWidget]);
+
+  const handleCoinbaseClick = useCallback(async () => {
+    if (!walletAddress) return;
+    setCoinbaseLoading(true);
+    setCoinbaseError(null);
+    try {
+      await openCoinbaseOnramp({ walletAddress });
+    } catch (error) {
+      console.error('Failed to open Coinbase Onramp:', error);
+      setCoinbaseError(error instanceof Error ? error.message : 'Failed to open Coinbase. Use the manual instructions below.');
+    } finally {
+      setCoinbaseLoading(false);
+    }
+  }, [walletAddress]);
 
   if (!user || !config) return null;
 
@@ -164,10 +180,42 @@ export default function TokenGuide({ currency }: TokenGuideProps) {
         </div>
       )}
 
+      {/* Coinbase Onramp button for non-Nigerian users */}
+      {showCoinbase && (
+        <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-6">
+          <h3 className="text-lg font-semibold text-indigo-900 mb-3">Buy USDC with Card or Bank</h3>
+          <p className="text-sm text-indigo-800 mb-4">
+            Purchase USDC via Coinbase using a card, bank transfer, or Apple Pay — no fees on USDC. Funds are sent directly to your connected wallet.
+          </p>
+          {coinbaseError && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+              <p className="text-red-800 text-sm">{coinbaseError}</p>
+            </div>
+          )}
+          <button
+            onClick={handleCoinbaseClick}
+            disabled={coinbaseLoading || !walletAddress}
+            className="inline-flex items-center px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white font-medium rounded-md transition-colors"
+          >
+            {coinbaseLoading ? (
+              <>
+                <svg className="animate-spin -ml-1 mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+                Opening Coinbase...
+              </>
+            ) : (
+              <>Buy with Coinbase</>
+            )}
+          </button>
+        </div>
+      )}
+
       {/* Manual instructions */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
         <h3 className="text-lg font-semibold text-blue-900 mb-3">
-          {showOnramp ? 'Alternative: Manual Transfer' : `How to Add ${tokenSymbol} to Your Wallet/How to get cash from your Wallet`}
+          {showOnramp || showCoinbase ? 'Alternative: Manual Transfer' : `How to Add ${tokenSymbol} to Your Wallet/How to get cash from your Wallet`}
         </h3>
         <div className="space-y-3 text-sm text-blue-800">
           <div className="flex items-start">

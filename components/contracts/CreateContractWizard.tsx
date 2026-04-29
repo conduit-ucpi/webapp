@@ -430,23 +430,8 @@ export default function CreateContractWizard() {
                 {/* Buyer email - only show if NOT instant payment */}
                 {!isInstantPayment && (
                   <>
-                    <BuyerInput
-                      label="Buyer's email address"
-                      value={form.buyerEmail}
-                      onChange={(value, type, fid) => setForm(prev => ({
-                        ...prev,
-                        buyerEmail: value,
-                        buyerType: type,
-                        buyerFid: fid
-                      }))}
-                      error={errors.buyerEmail}
-                      placeholder="Search Farcaster user or enter email"
-                      helpText={noBuyerEmail ? "You'll notify the buyer manually with the payment link" : "They'll receive an email with payment instructions"}
-                      disabled={noBuyerEmail}
-                    />
-
                     {/* No buyer email checkbox */}
-                    <div className="flex items-start -mt-2">
+                    <div className="flex items-start">
                       <input
                         type="checkbox"
                         id="noBuyerEmail"
@@ -475,6 +460,21 @@ export default function CreateContractWizard() {
                         </p>
                       </label>
                     </div>
+
+                    <BuyerInput
+                      label="Buyer's email address"
+                      value={form.buyerEmail}
+                      onChange={(value, type, fid) => setForm(prev => ({
+                        ...prev,
+                        buyerEmail: value,
+                        buyerType: type,
+                        buyerFid: fid
+                      }))}
+                      error={errors.buyerEmail}
+                      placeholder="Search Farcaster user or enter email"
+                      helpText={noBuyerEmail ? "You'll notify the buyer manually with the payment link" : "They'll receive an email with payment instructions"}
+                      disabled={noBuyerEmail}
+                    />
                   </>
                 )}
 

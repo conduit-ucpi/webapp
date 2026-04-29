@@ -90,9 +90,15 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
     return unsubscribe;
   }, [authManager]);
 
-  // Fetch user data when wallet reconnects after a disconnect (e.g. account switch).
-  // The init effect only runs once (singleton deps), so this effect reacts to
-  // state.isConnected / state.address changes and checks for a SIWE session.
+  // Fetch user data whenever the wallet is connected but `user` is null.
+  // This covers two cases:
+  //   1. Cold page load: AuthManager.restoreSession() sets isConnected=true
+  //      synchronously; we need to fetch the user before downstream code runs.
+  //   2. Account switch / reconnect: address transitions trigger a re-fetch.
+  //
+  // /api/auth/identity is the source of truth — if the AUTH-TOKEN cookie is
+  // valid the backend returns the user, otherwise it returns 401 and we leave
+  // user=null so lazy auth will trigger on the next protected call.
   useEffect(() => {
     if (!state.isConnected || !state.address || user) return;
 
@@ -100,22 +106,12 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
 
     const fetchUserForNewConnection = async () => {
       try {
-        const sessionResponse = await fetch('/api/auth/siwe/session');
-        if (!sessionResponse.ok) return;
-
-        const sessionData = await sessionResponse.json();
-        if (!sessionData.address || cancelled) return;
-
         const backendStatus = await authService.checkAuthentication();
         if (cancelled) return;
 
         if (backendStatus.success && backendStatus.user) {
           setUser(backendStatus.user);
-          authManager.setState({
-            isAuthenticated: true,
-            isConnected: true,
-            address: sessionData.address,
-          });
+          authManager.setState({ isAuthenticated: true });
           mLog.info('AuthProvider', '✅ User data fetched after reconnect');
         }
       } catch (error) {

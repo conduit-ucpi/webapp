@@ -34,14 +34,19 @@ export class AuthManager {
    * window the dashboard flashes the "Connect your wallet" prompt for
    * ~50-150ms on every cold load before the connect event lands.
    */
-  private static readonly RESTORE_GRACE_MS = 1000;
+  private static readonly RESTORE_GRACE_MS = 2000;
 
   private constructor() {
     this.providerRegistry = new ProviderRegistry();
     this.tokenManager = new TokenManager();
+    // Start in the loading state. React providers seed their useState from
+    // authManager.getState(), so a default of isLoading=false would cause
+    // the first render to show "not loading, not connected" — which the
+    // dashboard correctly interprets as the connect prompt, producing a
+    // visible flash before initialize() flips the flag.
     this.state = {
       isConnected: false,
-      isLoading: false,
+      isLoading: true,
       isInitialized: false,
       isAuthenticated: false,
       address: null,

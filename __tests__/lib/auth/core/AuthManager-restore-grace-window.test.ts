@@ -170,7 +170,7 @@ describe('AuthManager restoreSession grace window for async provider restore', (
     expect(manager.getState().isLoading).toBe(true);
 
     // Wait long enough for the grace window to elapse.
-    await new Promise((r) => setTimeout(r, 1100));
+    await new Promise((r) => setTimeout(r, 2200));
 
     const state = manager.getState();
     expect(state.isConnected).toBe(false);
@@ -238,11 +238,11 @@ describe('AuthManager restoreSession grace window — regression guards', () => 
     await manager.initialize(config);
     listener.mockClear();
 
-    await new Promise((r) => setTimeout(r, 1100));
+    await new Promise((r) => setTimeout(r, 2200));
 
     const sawIsLoadingFalse = listener.mock.calls.some(
       ([s]) => s.isLoading === false && s.isConnected === false
     );
     expect(sawIsLoadingFalse).toBe(true);
-  }, 5000);
+  }, 8000);
 });

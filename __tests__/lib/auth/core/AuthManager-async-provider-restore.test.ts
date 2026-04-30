@@ -236,6 +236,51 @@ describe('AuthManager async provider restore — regression guards', () => {
     expect(manager.getState().address).toBeNull();
   });
 
+  it('ignores a transient disconnect event when provider.isConnected() still reports connected (AppKit flap)', async () => {
+    // AppKit can emit a disconnect-shaped event during its own internal
+    // state shuffle (e.g. while restoring a persisted session), even though
+    // the wallet is genuinely still connected. If we tear down state on
+    // every such event, downstream UI sees the wallet as disconnected and
+    // pages like /create render the "Connect your wallet" prompt despite
+    // the user actually being connected.
+    let liveConnected = false;
+    let liveAddr: string | null = null;
+    const callbacks: ConnectionChangeCb[] = [];
+    const provider: any = {
+      isConnected: jest.fn(() => liveConnected),
+      getAddress: jest.fn(async () => {
+        if (!liveAddr) throw new Error('not connected');
+        return liveAddr;
+      }),
+      getProviderName: jest.fn(() => 'walletconnect'),
+      getCapabilities: jest.fn(() => ({})),
+      getEthersProviderAsync: jest.fn().mockResolvedValue({}),
+      onConnectionChange: jest.fn((cb: ConnectionChangeCb) => {
+        callbacks.push(cb);
+        return () => {};
+      }),
+    };
+    mockGetAllProviders.mockReturnValue([provider]);
+
+    const manager = AuthManager.getInstance();
+    await manager.initialize(config);
+
+    // AppKit fires connect — settles state.
+    liveConnected = true;
+    liveAddr = '0xabc';
+    callbacks.forEach((cb) => cb({ isConnected: true, address: '0xabc' }));
+    await new Promise((r) => setTimeout(r, 30));
+    expect(manager.getState().isConnected).toBe(true);
+    expect(manager.getState().address).toBe('0xabc');
+
+    // AppKit fires a transient disconnect event — but the live check still
+    // reports connected. We must NOT tear down state.
+    callbacks.forEach((cb) => cb({ isConnected: false, address: null }));
+    await new Promise((r) => setTimeout(r, 30));
+    expect(manager.getState().isConnected).toBe(true);
+    expect(manager.getState().address).toBe('0xabc');
+  });
+
   it('does not throw if onConnectionChange fires before async work completes', async () => {
     // Edge case: the callback fires synchronously inside the subscribe call
     // (some libs do this with the current value). AuthManager should handle

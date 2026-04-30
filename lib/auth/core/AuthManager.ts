@@ -1005,7 +1005,26 @@ export class AuthManager {
         address,
       });
     } else {
-      // Disconnect — clear state if this was the active provider.
+      // Disconnect event. AppKit/Reown can emit transient disconnect events
+      // during its own state shuffle (e.g. while restoring a persisted
+      // session) even though the wallet is genuinely still connected.
+      // Verify against the provider's live isConnected() check before
+      // tearing down state — if the live check still says connected, this
+      // was a flap, not a real disconnect.
+      let liveStillConnected = false;
+      try {
+        liveStillConnected = !!provider.isConnected();
+      } catch {
+        liveStillConnected = false;
+      }
+
+      if (liveStillConnected) {
+        mLog.debug('AuthManager', 'Ignoring transient disconnect event — provider still reports connected', {
+          providerName: provider.getProviderName(),
+        });
+        return;
+      }
+
       if (this.currentProvider === provider) {
         this.currentProvider = null;
         this.setState({

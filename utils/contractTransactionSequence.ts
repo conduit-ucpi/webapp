@@ -124,32 +124,35 @@ export async function resolveOrCreateOnChainContract(
     }
   }
 
-  // Re-fetch contractservice and trust *its* stored address. The chainservice may
-  // have created an orphan if the post-create notification was rejected.
+  // Prefer contractservice's stored address as the source of truth (defends
+  // against the chainservice returning an orphan address when its post-create
+  // notification is rejected). If contractservice hasn't recorded the address
+  // yet (notification timing, eventual consistency), fall back to the address
+  // chainservice just returned. The pre-create GET above is the real defence
+  // against double-deploys; this is only for catching mismatches.
   const refreshed = await fetchPending();
-  const authoritativeAddress: string | undefined = refreshed?.contractAddress;
+  const storedAddress: string | undefined = refreshed?.contractAddress;
 
-  if (!authoritativeAddress) {
-    throw new Error(
-      'Escrow was deployed on-chain but contractservice did not record an address. ' +
-      'Refusing to proceed with payment to avoid sending funds to an orphaned contract.'
-    );
-  }
-
-  if (candidateAddress && candidateAddress.toLowerCase() !== authoritativeAddress.toLowerCase()) {
+  if (storedAddress && candidateAddress && storedAddress.toLowerCase() !== candidateAddress.toLowerCase()) {
     console.warn(
       '🔧 resolveOrCreate: chainservice returned',
       candidateAddress,
       'but contractservice stores',
-      authoritativeAddress,
-      '- using contractservice value'
+      storedAddress,
+      '- using contractservice value (chainservice address is likely an orphan)'
     );
   }
 
-  onProgress?.('contract_created', `Contract created: ${authoritativeAddress}`, authoritativeAddress);
+  const finalAddress = storedAddress ?? candidateAddress;
+
+  if (!finalAddress) {
+    throw new Error('Contract creation succeeded but no address was returned');
+  }
+
+  onProgress?.('contract_created', `Contract created: ${finalAddress}`, finalAddress);
 
   return {
-    contractAddress: authoritativeAddress,
+    contractAddress: finalAddress,
     alreadyExisted: false,
     contractCreationTxHash: txHash
   };

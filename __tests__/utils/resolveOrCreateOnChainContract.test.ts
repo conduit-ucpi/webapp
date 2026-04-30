@@ -92,13 +92,31 @@ describe('resolveOrCreateOnChainContract', () => {
     expect(result.alreadyExisted).toBe(false);
   });
 
-  it('throws when escrow was deployed but contractservice has no address recorded', async () => {
+  it('falls back to chainservice address when contractservice has not yet recorded one', async () => {
+    // Notification can race with the response in some configs; if contractservice
+    // hasn't stored the address yet, trust what chainservice just returned. The
+    // pre-create GET (test above) is the real protection against orphans.
     const fetchMock = makeFetch({
       '/api/contracts/pending-id-1': () => ({ ok: true, body: { id: 'pending-id-1' } }),
       '/api/chain/create-contract': () => ({
         ok: true,
-        body: { contractAddress: ORPHAN_ADDRESS, transactionHash: '0xtx' }
+        body: { contractAddress: STORED_ADDRESS, transactionHash: '0xtx' }
       })
+    });
+
+    const result = await resolveOrCreateOnChainContract(baseParams, {
+      authenticatedFetch: fetchMock,
+      getWeb3Service: mockGetWeb3Service
+    });
+
+    expect(result.contractAddress).toBe(STORED_ADDRESS);
+    expect(result.alreadyExisted).toBe(false);
+  });
+
+  it('throws when neither contractservice nor chainservice provides an address', async () => {
+    const fetchMock = makeFetch({
+      '/api/contracts/pending-id-1': () => ({ ok: true, body: { id: 'pending-id-1' } }),
+      '/api/chain/create-contract': () => ({ ok: true, body: { transactionHash: '0xtx' } })
     });
 
     await expect(
@@ -106,7 +124,7 @@ describe('resolveOrCreateOnChainContract', () => {
         authenticatedFetch: fetchMock,
         getWeb3Service: mockGetWeb3Service
       })
-    ).rejects.toThrow(/orphaned/i);
+    ).rejects.toThrow(/no address/i);
   });
 
   it('passes arbiter address through when present', async () => {

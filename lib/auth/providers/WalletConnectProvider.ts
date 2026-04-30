@@ -209,6 +209,17 @@ export class WalletConnectProvider implements UnifiedProvider {
     return this.reownProvider.isConnected();
   }
 
+  /**
+   * Subscribe to async wallet connection changes from AppKit. AuthManager
+   * uses this on cold load to update its state when AppKit finishes its
+   * persisted-session restore after the synchronous pass.
+   */
+  onConnectionChange(
+    callback: (info: { isConnected: boolean; address: string | null }) => void
+  ): () => void {
+    return this.reownProvider.onConnectionChange(callback);
+  }
+
   async getAddress(): Promise<string> {
     if (!this.currentAddress) {
       throw new Error('No address available - not connected');

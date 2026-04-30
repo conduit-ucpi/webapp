@@ -24,6 +24,7 @@ export class AuthManager {
   private state: AuthState;
   private listeners: Array<(state: AuthState) => void> = [];
   private isConnectInProgress: boolean = false;
+  private connectionChangeUnsubscribes: Array<() => void> = [];
 
   private constructor() {
     this.providerRegistry = new ProviderRegistry();
@@ -365,6 +366,13 @@ export class AuthManager {
       });
 
       this.currentProvider = null;
+
+      // Clean up async-restore subscriptions — they were tied to the
+      // previous session.
+      for (const unsubscribe of this.connectionChangeUnsubscribes) {
+        try { unsubscribe(); } catch { /* ignore */ }
+      }
+      this.connectionChangeUnsubscribes = [];
 
       console.log('🔧 AuthManager: ✅ Disconnected successfully');
     } catch (error) {
@@ -844,5 +852,114 @@ export class AuthManager {
     // before the wallet has a chance to reconnect, forcing the user to
     // re-sign on every refresh. Lazy auth handles any real mismatch on
     // the next protected request via the 401 path in BackendClient.
+
+    // If the synchronous loop didn't find a connected provider, subscribe to
+    // any provider that exposes onConnectionChange. AppKit/Reown finishes
+    // restoring its persisted session asynchronously after this point — we
+    // need to react when that happens, otherwise the dashboard renders the
+    // "Connect your wallet" prompt despite the wallet actually being
+    // connected. Subscriptions stick around for the lifetime of the manager
+    // (cleared on disconnect) and idempotently no-op for already-connected
+    // providers.
+    if (!this.currentProvider) {
+      try {
+        const providers = this.providerRegistry.getAllProviders();
+        const hasBackendAuthForListener = !!this.tokenManager.getToken();
+        for (const provider of providers) {
+          if (typeof provider.onConnectionChange !== 'function') continue;
+
+          const handler = (info: { isConnected: boolean; address: string | null }) => {
+            this.handleProviderConnectionChange(provider, info, hasBackendAuthForListener)
+              .catch((err) => {
+                mLog.debug('AuthManager', 'onConnectionChange handler error', {
+                  providerName: provider.getProviderName(),
+                  error: err instanceof Error ? err.message : String(err),
+                });
+              });
+          };
+
+          try {
+            const unsubscribe = provider.onConnectionChange(handler);
+            if (typeof unsubscribe === 'function') {
+              this.connectionChangeUnsubscribes.push(unsubscribe);
+            }
+          } catch (subError) {
+            mLog.debug('AuthManager', 'Failed to subscribe to provider connection changes', {
+              providerName: provider.getProviderName(),
+              error: subError instanceof Error ? subError.message : String(subError),
+            });
+          }
+        }
+      } catch (error) {
+        mLog.debug('AuthManager', 'Error wiring async-restore subscriptions', {
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+  }
+
+  /**
+   * React to a provider's onConnectionChange callback. Mirrors the
+   * synchronous restore branch: when the provider becomes connected, set
+   * up the ethers provider and update state. When it disconnects, clear
+   * state if it was the active provider.
+   */
+  private async handleProviderConnectionChange(
+    provider: UnifiedProvider,
+    info: { isConnected: boolean; address: string | null },
+    hasBackendAuth: boolean
+  ): Promise<void> {
+    if (info.isConnected) {
+      // If we already have a connected provider and it's this one, ignore.
+      if (this.currentProvider === provider && this.state.isConnected) {
+        return;
+      }
+
+      this.currentProvider = provider;
+
+      let address = info.address;
+      if (!address) {
+        try {
+          address = await provider.getAddress();
+        } catch {
+          address = null;
+        }
+      }
+
+      try {
+        await provider.getEthersProviderAsync();
+      } catch (error) {
+        mLog.debug('AuthManager', 'Failed to init ethers provider on async restore', {
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+
+      this.setState({
+        isConnected: true,
+        isAuthenticated: hasBackendAuth,
+        address,
+        providerName: provider.getProviderName(),
+        capabilities: provider.getCapabilities(),
+      });
+      mLog.info('AuthManager', '✅ Provider connected asynchronously after restoreSession', {
+        providerName: provider.getProviderName(),
+        address,
+      });
+    } else {
+      // Disconnect — clear state if this was the active provider.
+      if (this.currentProvider === provider) {
+        this.currentProvider = null;
+        this.setState({
+          isConnected: false,
+          isAuthenticated: false,
+          address: null,
+          providerName: null,
+          capabilities: null,
+        });
+        mLog.info('AuthManager', 'Provider disconnected via onConnectionChange', {
+          providerName: provider.getProviderName(),
+        });
+      }
+    }
   }
 }

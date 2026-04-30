@@ -811,6 +811,49 @@ Issued At: ${issuedAt}`
   }
 
   /**
+   * Subscribe to AppKit's account-changed events. Used by AuthManager to
+   * react to AppKit's async session restore on cold load: when the user
+   * refreshes the page, AppKit's persisted session is rehydrated after
+   * AuthManager.restoreSession() has already finished its synchronous
+   * pass, so we need a push-based hook to update state when that lands.
+   */
+  onConnectionChange(
+    callback: (info: { isConnected: boolean; address: string | null }) => void
+  ): () => void {
+    if (!this.appKit || typeof this.appKit.subscribeAccount !== 'function') {
+      return () => {}
+    }
+
+    let lastSeenConnected: boolean | null = null
+    let lastSeenAddress: string | null = null
+
+    const unsubscribe = this.appKit.subscribeAccount((accountState: any) => {
+      // accountState shape from AppKit: { isConnected, address, caipAddress, ... }
+      const isConnected = !!(accountState?.isConnected || accountState?.caipAddress)
+      let address: string | null = null
+      if (accountState?.address) {
+        address = accountState.address
+      } else if (accountState?.caipAddress) {
+        const parts = String(accountState.caipAddress).split(':')
+        address = parts[2] || null
+      }
+
+      // Dedup: AppKit can emit identical states; only forward real changes.
+      if (isConnected === lastSeenConnected && address === lastSeenAddress) return
+      lastSeenConnected = isConnected
+      lastSeenAddress = address
+
+      try {
+        callback({ isConnected, address })
+      } catch (err) {
+        console.warn('🔧 ReownWalletConnect: onConnectionChange callback threw', err)
+      }
+    })
+
+    return typeof unsubscribe === 'function' ? unsubscribe : () => {}
+  }
+
+  /**
    * Create an EIP-1193 compatible provider for ethers
    * Includes a disconnect method for proper cleanup
    */

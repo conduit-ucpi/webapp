@@ -75,6 +75,14 @@ export interface UnifiedProvider {
 
   // Optional: User info (for social logins)
   getUserInfo?(): Record<string, unknown> | null;
+
+  // Optional: subscribe to async connection changes (e.g. AppKit finishing
+  // its persisted-session restore after restoreSession() has already run).
+  // Returns an unsubscribe function. AuthManager uses this to update state
+  // when the wallet reconnects asynchronously on cold load.
+  onConnectionChange?(
+    callback: (info: { isConnected: boolean; address: string | null }) => void
+  ): () => void;
 }
 
 /**

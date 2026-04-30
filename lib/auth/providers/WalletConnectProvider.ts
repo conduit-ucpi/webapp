@@ -221,10 +221,18 @@ export class WalletConnectProvider implements UnifiedProvider {
   }
 
   async getAddress(): Promise<string> {
-    if (!this.currentAddress) {
-      throw new Error('No address available - not connected');
+    // currentAddress is only populated by connect(); it stays null after
+    // an AppKit auto-restore on cold load. Fall back to the underlying
+    // Reown provider, which reads AppKit's CAIP address directly.
+    if (this.currentAddress) {
+      return this.currentAddress;
     }
-    return this.currentAddress;
+    const restored = this.reownProvider.getAddress();
+    if (restored) {
+      this.currentAddress = restored;
+      return restored;
+    }
+    throw new Error('No address available - not connected');
   }
 
   async getChainId(): Promise<number> {

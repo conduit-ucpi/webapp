@@ -837,34 +837,12 @@ export class AuthManager {
       });
     }
 
-    // Clear orphaned backend cookies if no frontend auth exists.
-    // Fire-and-forget: this doesn't need to block initialization since
-    // the lazy auth pattern will handle re-authentication if needed.
-    if (!this.currentProvider && typeof window !== 'undefined' && typeof fetch === 'function') {
-      mLog.info('AuthManager', 'No frontend provider connected - checking for orphaned backend session');
-
-      try {
-        fetch('/api/auth/siwe/session', { credentials: 'include' })
-          .then(async (sessionCheck) => {
-            if (sessionCheck.ok) {
-              const sessionData = await sessionCheck.json();
-              if (sessionData.address) {
-                mLog.warn('AuthManager', 'Found backend session without frontend auth - clearing backend cookies', {
-                  backendAddress: sessionData.address
-                });
-                await fetch('/api/auth/siwe/signout', { method: 'POST', credentials: 'include' });
-                mLog.info('AuthManager', '✅ Backend session cleared to maintain consistency');
-              }
-            }
-          })
-          .catch((error) => {
-            mLog.error('AuthManager', 'Failed to check/clear backend session', {
-              error: error instanceof Error ? error.message : String(error)
-            });
-          });
-      } catch {
-        // fetch not available (e.g. test environment)
-      }
-    }
+    // Note: we do NOT proactively clear backend cookies when no frontend
+    // provider reports connected here. AppKit/WalletConnect can finish its
+    // async session restore after this synchronous pass — eagerly calling
+    // /api/auth/siwe/signout in that window kills a still-valid session
+    // before the wallet has a chance to reconnect, forcing the user to
+    // re-sign on every refresh. Lazy auth handles any real mismatch on
+    // the next protected request via the 401 path in BackendClient.
   }
 }

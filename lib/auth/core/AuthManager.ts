@@ -25,6 +25,16 @@ export class AuthManager {
   private listeners: Array<(state: AuthState) => void> = [];
   private isConnectInProgress: boolean = false;
   private connectionChangeUnsubscribes: Array<() => void> = [];
+  private restoreGraceTimer: ReturnType<typeof setTimeout> | null = null;
+  private restoreGraceActive: boolean = false;
+  /**
+   * How long to keep isLoading=true after restoreSession() finishes when a
+   * subscribable provider is registered but not yet connected. AppKit/Reown
+   * fires its persisted-session restore asynchronously; without this grace
+   * window the dashboard flashes the "Connect your wallet" prompt for
+   * ~50-150ms on every cold load before the connect event lands.
+   */
+  private static readonly RESTORE_GRACE_MS = 1000;
 
   private constructor() {
     this.providerRegistry = new ProviderRegistry();
@@ -63,9 +73,13 @@ export class AuthManager {
       // Check for existing session
       await this.restoreSession();
 
+      // If restoreSession armed a grace window for an async provider restore
+      // (AppKit firing onConnectionChange after this synchronous pass), keep
+      // isLoading=true so the UI doesn't flash the connect prompt. The
+      // connect handler or the grace timeout will clear it.
       this.setState({
         isInitialized: true,
-        isLoading: false
+        isLoading: this.restoreGraceActive,
       });
 
       console.log('🔧 AuthManager: ✅ Initialized successfully');
@@ -367,12 +381,13 @@ export class AuthManager {
 
       this.currentProvider = null;
 
-      // Clean up async-restore subscriptions — they were tied to the
-      // previous session.
+      // Clean up async-restore subscriptions and any pending grace timer
+      // — they were tied to the previous session.
       for (const unsubscribe of this.connectionChangeUnsubscribes) {
         try { unsubscribe(); } catch { /* ignore */ }
       }
       this.connectionChangeUnsubscribes = [];
+      this.clearRestoreGraceTimer();
 
       console.log('🔧 AuthManager: ✅ Disconnected successfully');
     } catch (error) {
@@ -862,6 +877,7 @@ export class AuthManager {
     // (cleared on disconnect) and idempotently no-op for already-connected
     // providers.
     if (!this.currentProvider) {
+      let subscribedAny = false;
       try {
         const providers = this.providerRegistry.getAllProviders();
         const hasBackendAuthForListener = !!this.tokenManager.getToken();
@@ -883,6 +899,7 @@ export class AuthManager {
             if (typeof unsubscribe === 'function') {
               this.connectionChangeUnsubscribes.push(unsubscribe);
             }
+            subscribedAny = true;
           } catch (subError) {
             mLog.debug('AuthManager', 'Failed to subscribe to provider connection changes', {
               providerName: provider.getProviderName(),
@@ -895,7 +912,40 @@ export class AuthManager {
           error: error instanceof Error ? error.message : String(error),
         });
       }
+
+      // If we wired up a subscription AND the synchronous handler hasn't
+      // already fired (which would have set currentProvider), hold the
+      // loading flag for a grace window so the UI doesn't render the
+      // disconnected branch while AppKit is still restoring.
+      if (subscribedAny && !this.currentProvider) {
+        this.armRestoreGraceWindow();
+      }
     }
+  }
+
+  private armRestoreGraceWindow(): void {
+    this.clearRestoreGraceTimer();
+    this.restoreGraceActive = true;
+    this.restoreGraceTimer = setTimeout(() => {
+      this.restoreGraceTimer = null;
+      // Only flip isLoading=false if no provider connected during the
+      // window. If one did, handleProviderConnectionChange already cleared
+      // the flag as part of its setState.
+      if (this.restoreGraceActive) {
+        this.restoreGraceActive = false;
+        if (!this.state.isConnected) {
+          this.setState({ isLoading: false });
+        }
+      }
+    }, AuthManager.RESTORE_GRACE_MS);
+  }
+
+  private clearRestoreGraceTimer(): void {
+    if (this.restoreGraceTimer !== null) {
+      clearTimeout(this.restoreGraceTimer);
+      this.restoreGraceTimer = null;
+    }
+    this.restoreGraceActive = false;
   }
 
   /**
@@ -934,12 +984,16 @@ export class AuthManager {
         });
       }
 
+      // Cancel the grace window — async restore landed in time.
+      this.clearRestoreGraceTimer();
+
       this.setState({
         isConnected: true,
         isAuthenticated: hasBackendAuth,
         address,
         providerName: provider.getProviderName(),
         capabilities: provider.getCapabilities(),
+        isLoading: false,
       });
       mLog.info('AuthManager', '✅ Provider connected asynchronously after restoreSession', {
         providerName: provider.getProviderName(),

@@ -42,6 +42,120 @@ interface TransactionSequenceOptions {
 }
 
 /**
+ * Resolve the on-chain escrow address for a pending contract, deploying one only
+ * if contractservice does not already have one recorded.
+ *
+ * Why: chainservice may successfully deploy a contract on-chain but fail to notify
+ * contractservice (e.g. "already deployed" 400). In that case the chainservice
+ * response carries an *orphan* address that is not linked to the pending record.
+ * Routing a payment to the orphan loses the funds from the user's dashboard view.
+ * Treat contractservice's stored address as the source of truth.
+ */
+export interface ResolveOrCreateParams {
+  contractserviceId: string;
+  tokenAddress: string;
+  buyer: string;
+  seller: string;
+  amount: number;
+  expiryTimestamp: number;
+  description: string;
+  arbiterAddress?: string;
+}
+
+export interface ResolveOrCreateResult {
+  contractAddress: string;
+  alreadyExisted: boolean;
+  contractCreationTxHash?: string;
+}
+
+export async function resolveOrCreateOnChainContract(
+  params: ResolveOrCreateParams,
+  options: {
+    authenticatedFetch: (url: string, init?: RequestInit) => Promise<Response>;
+    getWeb3Service: () => Promise<any>;
+    onProgress?: (step: string, message: string, contractAddress?: string) => void;
+  }
+): Promise<ResolveOrCreateResult> {
+  const { authenticatedFetch, getWeb3Service, onProgress } = options;
+
+  const fetchPending = async () => {
+    const r = await authenticatedFetch(`/api/contracts/${params.contractserviceId}`, { method: 'GET' });
+    if (!r.ok) {
+      throw new Error('Failed to load pending contract while resolving on-chain address');
+    }
+    return r.json();
+  };
+
+  const existing = await fetchPending();
+  if (existing?.contractAddress) {
+    onProgress?.('contract_existing', `Using existing escrow contract: ${existing.contractAddress}`, existing.contractAddress);
+    return { contractAddress: existing.contractAddress, alreadyExisted: true };
+  }
+
+  onProgress?.('contract_creation', 'Creating secure escrow contract...');
+
+  const { arbiterAddress, ...paramsWithoutArbiter } = params;
+  const createBody = {
+    ...paramsWithoutArbiter,
+    ...(arbiterAddress ? { arbiter: arbiterAddress } : {})
+  };
+
+  const createResponse = await authenticatedFetch('/api/chain/create-contract', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(createBody)
+  });
+
+  if (!createResponse.ok) {
+    const errorData = await createResponse.json().catch(() => ({}));
+    throw new Error(errorData.error || 'Contract creation failed');
+  }
+
+  const createData = await createResponse.json();
+  const candidateAddress: string | undefined = createData.contractAddress;
+  const txHash: string | undefined = createData.transactionHash;
+
+  if (txHash) {
+    onProgress?.('contract_confirmation', 'Waiting for contract creation to be confirmed...');
+    const web3Service = await getWeb3Service();
+    const receipt = await web3Service.waitForTransaction(txHash, 120000, params.contractserviceId);
+    if (!receipt) {
+      throw new Error('Contract creation timed out or failed');
+    }
+  }
+
+  // Re-fetch contractservice and trust *its* stored address. The chainservice may
+  // have created an orphan if the post-create notification was rejected.
+  const refreshed = await fetchPending();
+  const authoritativeAddress: string | undefined = refreshed?.contractAddress;
+
+  if (!authoritativeAddress) {
+    throw new Error(
+      'Escrow was deployed on-chain but contractservice did not record an address. ' +
+      'Refusing to proceed with payment to avoid sending funds to an orphaned contract.'
+    );
+  }
+
+  if (candidateAddress && candidateAddress.toLowerCase() !== authoritativeAddress.toLowerCase()) {
+    console.warn(
+      '🔧 resolveOrCreate: chainservice returned',
+      candidateAddress,
+      'but contractservice stores',
+      authoritativeAddress,
+      '- using contractservice value'
+    );
+  }
+
+  onProgress?.('contract_created', `Contract created: ${authoritativeAddress}`, authoritativeAddress);
+
+  return {
+    contractAddress: authoritativeAddress,
+    alreadyExisted: false,
+    contractCreationTxHash: txHash
+  };
+}
+
+/**
  * Execute the complete contract creation and funding sequence
  * with proper transaction confirmation waiting
  */
@@ -59,57 +173,18 @@ export async function executeContractTransactionSequence(
     useProxyDeposit = false // Default to direct deposit (old behavior)
   } = options;
 
-  // Step 1: Create the contract on the blockchain
-  onProgress?.('contract_creation', 'Creating secure escrow contract...');
+  // Step 1: Resolve the on-chain escrow address. Skips deploy if one already
+  // exists for this pending contract; trusts contractservice's stored address as
+  // the source of truth so we never approve/deposit against a chainservice
+  // orphan address.
+  const { contractAddress, contractCreationTxHash } = await resolveOrCreateOnChainContract(
+    params,
+    { authenticatedFetch, getWeb3Service, onProgress }
+  );
 
-  const createResponse = await authenticatedFetch('/api/chain/create-contract', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(params)
-  });
-
-  if (!createResponse.ok) {
-    const errorData = await createResponse.json().catch(() => ({}));
-    throw new Error(errorData.error || 'Contract creation failed');
-  }
-
-  const createData = await createResponse.json();
-  const contractAddress = createData.contractAddress;
-  const contractCreationTxHash = createData.transactionHash;
-
-  console.log('🔧 ContractSequence: Contract creation returned:', {
-    contractAddress,
-    transactionHash: contractCreationTxHash
-  });
-
-  // Step 1.5: Wait for contract creation transaction to be confirmed
   if (contractCreationTxHash) {
-    console.log('🔧 ContractSequence: Waiting for contract creation transaction to be confirmed:', contractCreationTxHash);
-    onProgress?.('contract_confirmation', 'Waiting for contract creation to be confirmed...');
-
-    try {
-      const web3Service = await getWeb3Service();
-      const receipt = await web3Service.waitForTransaction(contractCreationTxHash, 120000, params.contractserviceId); // 2 minute timeout
-
-      if (receipt) {
-        console.log('🔧 ContractSequence: ✅ Contract creation confirmed. Block:', receipt.blockNumber);
-
-        // Notify UI that contract is created and ready
-        onProgress?.('contract_created', `Your contract is: ${contractAddress}. Depending on your wallet configuration, you may be required to approve transactions.`, contractAddress);
-
-        // Additional safety: Ensure nonce has updated after transaction confirmation
-        // This prevents the next transaction from using the same nonce
-        await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds for nonce to update
-        console.log('🔧 ContractSequence: ✅ Nonce update delay completed');
-      } else {
-        throw new Error('Contract creation timed out or failed - cannot proceed without confirmation');
-      }
-    } catch (waitError) {
-      console.error('🔧 ContractSequence: ❌ Contract creation confirmation failed:', waitError);
-      throw new Error(`Contract creation confirmation failed: ${waitError instanceof Error ? waitError.message : 'Unknown error'}`);
-    }
-  } else {
-    console.log('🔧 ContractSequence: No transaction hash returned, proceeding to approval immediately');
+    // Brief settle so the buyer's nonce is up to date before signing the next tx
+    await new Promise(resolve => setTimeout(resolve, 2000));
   }
 
   // Step 2: Approve token spending (USDC or USDT based on params.tokenAddress)
@@ -286,59 +361,18 @@ export async function executeDirectPaymentSequence(
     onProgress
   } = options;
 
-  // Step 1: Create the contract on the blockchain
-  onProgress?.('contract_creation', 'Creating secure escrow contract...');
+  // Step 1: Resolve the on-chain escrow address. Skips deploy if one already exists
+  // for this pending contract; trusts contractservice's stored address as the source
+  // of truth (chainservice can return an orphan address if its post-create
+  // notification to contractservice fails).
+  const { contractAddress, contractCreationTxHash } = await resolveOrCreateOnChainContract(
+    params,
+    { authenticatedFetch, getWeb3Service, onProgress }
+  );
 
-  // Build request body: translate optional `arbiterAddress` to wire field `arbiter`.
-  // Omit the key entirely when falsy (chainservice defaults to zero-address sentinel).
-  const { arbiterAddress, ...paramsWithoutArbiter } = params;
-  const createContractBody = {
-    ...paramsWithoutArbiter,
-    ...(arbiterAddress ? { arbiter: arbiterAddress } : {})
-  };
-
-  const createResponse = await authenticatedFetch('/api/chain/create-contract', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(createContractBody)
-  });
-
-  if (!createResponse.ok) {
-    const errorData = await createResponse.json().catch(() => ({}));
-    throw new Error(errorData.error || 'Contract creation failed');
-  }
-
-  const createData = await createResponse.json();
-  const contractAddress = createData.contractAddress;
-  const contractCreationTxHash = createData.transactionHash;
-
-  console.log('🔧 DirectPayment: Contract creation returned:', {
-    contractAddress,
-    transactionHash: contractCreationTxHash
-  });
-
-  // Step 1.5: Wait for contract creation transaction to be confirmed
+  // Brief settle so the buyer's nonce is up to date before signing the transfer
   if (contractCreationTxHash) {
-    console.log('🔧 DirectPayment: Waiting for contract creation to be confirmed:', contractCreationTxHash);
-    onProgress?.('contract_confirmation', 'Waiting for contract creation to be confirmed...');
-
-    try {
-      const web3Service = await getWeb3Service();
-      const receipt = await web3Service.waitForTransaction(contractCreationTxHash, 120000, params.contractserviceId);
-
-      if (receipt) {
-        console.log('🔧 DirectPayment: Contract creation confirmed. Block:', receipt.blockNumber);
-        onProgress?.('contract_created', `Contract created: ${contractAddress}`, contractAddress);
-
-        // Wait for nonce to update
-        await new Promise(resolve => setTimeout(resolve, 2000));
-      } else {
-        throw new Error('Contract creation timed out or failed');
-      }
-    } catch (waitError) {
-      console.error('🔧 DirectPayment: Contract creation confirmation failed:', waitError);
-      throw new Error(`Contract creation confirmation failed: ${waitError instanceof Error ? waitError.message : 'Unknown error'}`);
-    }
+    await new Promise(resolve => setTimeout(resolve, 2000));
   }
 
   // Step 2: Transfer tokens directly to the contract (simple ERC20 push transfer)

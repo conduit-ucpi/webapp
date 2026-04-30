@@ -13,7 +13,7 @@ import WalletInfo from '@/components/ui/WalletInfo';
 import TokenGuide from '@/components/ui/TokenGuide';
 import CustomArbiterNotice from '@/components/contracts/CustomArbiterNotice';
 import { toMicroUSDC, toUSDCForWeb3, formatDateTimeWithTZ, displayCurrency } from '@/utils/validation';
-import { executeContractTransactionSequence, executeDirectPaymentSequence } from '@/utils/contractTransactionSequence';
+import { executeContractTransactionSequence, executeDirectPaymentSequence, resolveOrCreateOnChainContract } from '@/utils/contractTransactionSequence';
 import { createContractProgressHandler } from '@/utils/contractProgressHandler';
 import { getNetworkName } from '@/utils/networkUtils';
 import { detectDevice } from '@/utils/deviceDetection';
@@ -316,17 +316,18 @@ export default function ContractPay() {
     }
   }, [qrContractAddress, authenticatedFetch, router]);
 
-  // Create on-chain contract for QR path
+  // Create on-chain contract for QR path. Uses resolveOrCreateOnChainContract so
+  // we never deploy a second escrow when one is already linked to this pending
+  // contract, and so the address shown in the QR is always the one
+  // contractservice considers authoritative for this contractId.
   const createContractForQR = useCallback(async () => {
     if (!contract || !config || !address || !authenticatedFetch) return;
 
     setIsCreatingContract(true);
 
     try {
-      const createResponse = await authenticatedFetch('/api/chain/create-contract', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const { contractAddress: resolvedAddress } = await resolveOrCreateOnChainContract(
+        {
           contractserviceId: contract.id,
           tokenAddress: selectedTokenAddress,
           buyer: address,
@@ -334,29 +335,17 @@ export default function ContractPay() {
           amount: contract.amount,
           expiryTimestamp: contract.expiryTimestamp,
           description: contract.description,
-          ...(contract.arbiterAddress ? { arbiter: contract.arbiterAddress } : {})
-        })
-      });
+          arbiterAddress: contract.arbiterAddress
+        },
+        { authenticatedFetch, getWeb3Service }
+      );
 
-      if (!createResponse.ok) {
-        const errorData = await createResponse.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Contract creation failed');
-      }
-
-      const createData = await createResponse.json();
-      console.log('ContractPay: QR contract created:', createData);
-
-      // Wait for confirmation if we have a tx hash
-      if (createData.transactionHash) {
-        const web3Service = await getWeb3Service();
-        await web3Service.waitForTransaction(createData.transactionHash, 120000, contract.id);
-      }
-
-      setQrContractAddress(createData.contractAddress);
-      setQrCountdown(240); // Reset countdown
+      console.log('ContractPay: QR escrow address resolved:', resolvedAddress);
+      setQrContractAddress(resolvedAddress);
+      setQrCountdown(240);
     } catch (error: any) {
-      console.error('ContractPay: Failed to create contract for QR:', error);
-      alert(error.message || 'Failed to create contract');
+      console.error('ContractPay: Failed to resolve contract for QR:', error);
+      alert(error.message || 'Failed to prepare contract');
     } finally {
       setIsCreatingContract(false);
     }

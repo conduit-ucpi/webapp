@@ -34,33 +34,44 @@ const baseOptions = {
 };
 
 /**
- * Wire up happy-path mocks so the sequence runs end-to-end.
- * Call 1: POST /api/chain/create-contract
- * Call 2: POST /api/chain/check-and-activate
+ * Wire up happy-path mocks so the sequence runs end-to-end. URL-aware to
+ * support resolveOrCreateOnChainContract's GET-then-POST-then-GET flow.
  */
 function setupHappyPathMocks() {
-  mockAuthenticatedFetch
-    .mockResolvedValueOnce({
-      ok: true,
-      json: jest.fn().mockResolvedValue({
-        contractAddress: '0xContractAddress',
-        transactionHash: '0xContractCreationTxHash'
-      })
-    })
-    .mockResolvedValueOnce({
-      ok: true,
-      json: jest.fn().mockResolvedValue({ success: true })
-    });
+  let pendingFetchCount = 0;
+  mockAuthenticatedFetch.mockImplementation(async (url: string) => {
+    if (url.includes('/api/contracts/')) {
+      pendingFetchCount++;
+      const body = pendingFetchCount === 1
+        ? { id: baseParams.contractserviceId }
+        : { id: baseParams.contractserviceId, contractAddress: '0xContractAddress' };
+      return { ok: true, json: jest.fn().mockResolvedValue(body) };
+    }
+    if (url.includes('/api/chain/create-contract')) {
+      return {
+        ok: true,
+        json: jest.fn().mockResolvedValue({
+          contractAddress: '0xContractAddress',
+          transactionHash: '0xContractCreationTxHash'
+        })
+      };
+    }
+    // check-and-activate
+    return { ok: true, json: jest.fn().mockResolvedValue({ success: true }) };
+  });
 
   mockTransferToContract.mockResolvedValue('0xTransferTxHash');
   mockWaitForTransaction.mockResolvedValue({ blockNumber: 12345, status: 1 });
 }
 
 function getCreateContractBody(): any {
-  // The first authenticatedFetch call is the /api/chain/create-contract POST
-  const firstCall = mockAuthenticatedFetch.mock.calls[0];
-  expect(firstCall[0]).toBe('/api/chain/create-contract');
-  const init = firstCall[1];
+  // resolveOrCreateOnChainContract fetches the pending record first, so the
+  // create-contract POST is no longer the first call.
+  const createCall = mockAuthenticatedFetch.mock.calls.find(
+    (c: any[]) => c[0] === '/api/chain/create-contract'
+  );
+  expect(createCall).toBeDefined();
+  const init = createCall![1];
   return JSON.parse(init.body as string);
 }
 

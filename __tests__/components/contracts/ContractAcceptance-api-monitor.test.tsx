@@ -11,25 +11,22 @@ describe('ContractAcceptance API Call Monitoring', () => {
     const fs = require('fs');
     const path = require('path');
 
-    // The API call has been moved to the shared utility
+    // The API call lives in resolveOrCreateOnChainContract (in the shared utility).
+    // The body uses `createBody`, which is `params` with optional arbiter rewriting.
     const utilityPath = path.join(process.cwd(), 'utils/contractTransactionSequence.ts');
     const utilitySource = fs.readFileSync(utilityPath, 'utf8');
 
-    // Extract the specific create-contract API call from the utility
     const createContractCallMatch = utilitySource.match(
-      /const createResponse = await authenticatedFetch\('\/api\/chain\/create-contract'[\s\S]*?JSON\.stringify\(params\)/
+      /const createResponse = await authenticatedFetch\(\s*['"`]\/api\/chain\/create-contract['"`][\s\S]*?JSON\.stringify\(createBody\)/
     );
 
     expect(createContractCallMatch).toBeTruthy();
     const createContractCall = createContractCallMatch[0];
 
-    // Calculate a hash of the API call structure
+    // Calculate a hash of the API call structure. If anyone changes the call,
+    // this fails loudly — update the expectedHash only after verifying intent.
     const apiCallHash = createHash('sha256').update(createContractCall).digest('hex');
-
-    // This hash will change if ANYONE modifies the API call
-    // If this test fails, it means the API call structure was changed
-    // Update the hash only after verifying the change is intentional and correct
-    const expectedHash = '048a0b2b4fba7db51d7031ccaa8cf54dcf69b436769f8bf3ed579acd2c4623fd';
+    const expectedHash = '8b5ab02b4a8ef0a0e42dd83ff592d4a459dfc17bab7846cbaf6ca43846cca906';
 
     if (apiCallHash !== expectedHash) {
       console.log('🚨 API CALL STRUCTURE CHANGED! 🚨');
@@ -41,9 +38,8 @@ describe('ContractAcceptance API Call Monitoring', () => {
       console.log('If this change is accidental, revert your changes and investigate.');
     }
 
-    // Verify the API call uses the params object (which contains all required fields)
     expect(createContractCall).toContain('/api/chain/create-contract');
-    expect(createContractCall).toContain('JSON.stringify(params)');
+    expect(createContractCall).toContain('JSON.stringify(createBody)');
     expect(createContractCall).toContain('POST');
 
     // Also verify that ContractAcceptance passes the correct params to the utility

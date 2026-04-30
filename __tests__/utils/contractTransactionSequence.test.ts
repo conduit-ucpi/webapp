@@ -39,17 +39,48 @@ const defaultOptions = {
 };
 
 describe('executeContractTransactionSequence', () => {
+  // After resolveOrCreateOnChainContract was added (regression: orphan contract
+  // address from chainservice when contractservice rejects the create
+  // notification), the helper performs two GETs against /api/contracts/{id}: one
+  // before the create call (to detect an already-deployed escrow) and one
+  // after (to read the authoritative address from contractservice). Tests use
+  // this default URL-aware fetch mock so individual cases only need to override
+  // when they want the deployed address to differ from '0xContractAddress'.
+  const installDefaultFetchMock = (overrides: { contractAddress?: string; transactionHash?: string; createOk?: boolean; createBody?: any } = {}) => {
+    const deployedAddress = overrides.contractAddress ?? '0xContractAddress';
+    const txHash = overrides.transactionHash;
+    let pendingFetchCount = 0;
+
+    mockAuthenticatedFetch.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (url.includes('/api/contracts/')) {
+        pendingFetchCount++;
+        // First GET: contract not yet deployed. Subsequent GETs: deployed.
+        const body = pendingFetchCount === 1
+          ? { id: 'test-contract-id' }
+          : { id: 'test-contract-id', contractAddress: deployedAddress };
+        return { ok: true, json: jest.fn().mockResolvedValue(body) } as any;
+      }
+      if (url.includes('/api/chain/create-contract')) {
+        if (overrides.createOk === false) {
+          return { ok: false, json: jest.fn().mockResolvedValue(overrides.createBody ?? { error: 'Contract creation failed' }) } as any;
+        }
+        return {
+          ok: true,
+          json: jest.fn().mockResolvedValue({
+            contractAddress: deployedAddress,
+            ...(txHash !== undefined ? { transactionHash: txHash } : { transactionHash: '0xContractCreationTxHash' })
+          })
+        } as any;
+      }
+      // deposit-notification or other
+      return { ok: true, json: jest.fn().mockResolvedValue({ success: true }) } as any;
+    });
+  };
+
   beforeEach(() => {
     jest.clearAllMocks();
 
-    // Reset default mock behaviors
-    mockAuthenticatedFetch.mockResolvedValue({
-      ok: true,
-      json: jest.fn().mockResolvedValue({
-        contractAddress: '0xContractAddress',
-        transactionHash: '0xContractCreationTxHash'
-      })
-    });
+    installDefaultFetchMock();
 
     mockApproveUSDC.mockResolvedValue('0xApprovalTxHash');
     mockDepositToContract.mockResolvedValue('0xDepositTxHash');
@@ -65,8 +96,8 @@ describe('executeContractTransactionSequence', () => {
 
       const result = await executeContractTransactionSequence(defaultParams, defaultOptions);
 
-      // Verify the sequence of calls (1 for contract creation + 1 for deposit notification)
-      expect(mockAuthenticatedFetch).toHaveBeenCalledTimes(2);
+      // Sequence: pre-create GET, create POST, post-create GET, deposit-notification POST
+      expect(mockAuthenticatedFetch).toHaveBeenCalledTimes(4);
       expect(mockWaitForTransaction).toHaveBeenNthCalledWith(1, '0xContractCreationTxHash', 120000, 'test-contract-id');
       expect(mockApproveUSDC).toHaveBeenCalledTimes(1);
       expect(mockWaitForTransaction).toHaveBeenNthCalledWith(2, '0xApprovalTxHash', 120000, 'test-contract-id');
@@ -169,7 +200,7 @@ describe('executeContractTransactionSequence', () => {
 
       // Should fail and throw error
       await expect(executeContractTransactionSequence(defaultParams, defaultOptions))
-        .rejects.toThrow('Contract creation timed out or failed - cannot proceed without confirmation');
+        .rejects.toThrow('Contract creation timed out or failed');
 
       // Subsequent transactions should NOT be attempted when contract creation fails
       expect(mockApproveUSDC).not.toHaveBeenCalled();
@@ -177,22 +208,13 @@ describe('executeContractTransactionSequence', () => {
     });
 
     it('should fail if transaction confirmation throws error', async () => {
-      // Clear all mocks and reset implementations completely
       jest.clearAllMocks();
       mockWaitForTransaction.mockReset();
       mockAuthenticatedFetch.mockReset();
       mockApproveUSDC.mockReset();
       mockDepositToContract.mockReset();
 
-      // Set up fresh mocks for this test
-      mockAuthenticatedFetch.mockResolvedValue({
-        ok: true,
-        json: jest.fn().mockResolvedValue({
-          contractAddress: '0xContractAddress',
-          transactionHash: '0xContractCreationTxHash'
-        })
-      });
-
+      installDefaultFetchMock();
       mockApproveUSDC.mockResolvedValue('0xApprovalTxHash');
       mockDepositToContract.mockResolvedValue('0xDepositTxHash');
 
@@ -204,8 +226,8 @@ describe('executeContractTransactionSequence', () => {
       await expect(executeContractTransactionSequence(defaultParams, defaultOptions))
         .rejects.toThrow('USDC approval confirmation failed: Network error');
 
-      // Contract creation should have been called
-      expect(mockAuthenticatedFetch).toHaveBeenCalledTimes(1);
+      // Pre-create GET, create POST, post-create GET (then approval failed before deposit-notification)
+      expect(mockAuthenticatedFetch).toHaveBeenCalledTimes(3);
 
       // Approval should have been attempted
       expect(mockApproveUSDC).toHaveBeenCalledTimes(1);
@@ -221,12 +243,7 @@ describe('executeContractTransactionSequence', () => {
 
   describe('Error Handling', () => {
     it('should throw error if contract creation fails', async () => {
-      mockAuthenticatedFetch.mockResolvedValue({
-        ok: false,
-        json: jest.fn().mockResolvedValue({
-          error: 'Contract creation failed'
-        })
-      });
+      installDefaultFetchMock({ createOk: false, createBody: { error: 'Contract creation failed' } });
 
       await expect(executeContractTransactionSequence(defaultParams, defaultOptions))
         .rejects.toThrow('Contract creation failed');
@@ -237,41 +254,23 @@ describe('executeContractTransactionSequence', () => {
     });
 
     it('should throw error if USDC approval fails', async () => {
-      // Reset all mocks completely for this test
       jest.clearAllMocks();
       mockWaitForTransaction.mockReset();
       mockAuthenticatedFetch.mockReset();
       mockApproveUSDC.mockReset();
       mockDepositToContract.mockReset();
 
-      // Set up fresh mocks for this test
-      mockAuthenticatedFetch.mockResolvedValue({
-        ok: true,
-        json: jest.fn().mockResolvedValue({
-          contractAddress: '0xContractAddress',
-          transactionHash: '0xContractCreationTxHash'
-        })
-      });
-
-      // Mock successful contract creation confirmation
+      installDefaultFetchMock();
       mockWaitForTransaction.mockResolvedValueOnce({ blockNumber: 12345, status: 1 });
-
-      // Mock USDC approval failure
       mockApproveUSDC.mockRejectedValue(new Error('Approval failed'));
-
-      // Mock other methods (won't be called but need to be defined)
       mockDepositToContract.mockResolvedValue('0xDepositTxHash');
 
       await expect(executeContractTransactionSequence(defaultParams, defaultOptions))
         .rejects.toThrow('Approval failed');
 
-      // Contract creation should have been called
-      expect(mockAuthenticatedFetch).toHaveBeenCalledTimes(1);
-
-      // Approval should have been attempted (and failed)
+      // Pre-create GET, create POST, post-create GET (then approval failed)
+      expect(mockAuthenticatedFetch).toHaveBeenCalledTimes(3);
       expect(mockApproveUSDC).toHaveBeenCalledTimes(1);
-
-      // Deposit should not be called
       expect(mockDepositToContract).not.toHaveBeenCalled();
     });
 
@@ -284,25 +283,25 @@ describe('executeContractTransactionSequence', () => {
       await expect(executeContractTransactionSequence(defaultParams, defaultOptions))
         .rejects.toThrow('Deposit failed');
 
-      // Contract creation and approval should have been called
-      expect(mockAuthenticatedFetch).toHaveBeenCalledTimes(1);
+      // Pre-create GET, create POST, post-create GET (deposit-notification not reached)
+      expect(mockAuthenticatedFetch).toHaveBeenCalledTimes(3);
       expect(mockApproveUSDC).toHaveBeenCalledTimes(1);
     });
 
     it('should handle contract creation response without error field', async () => {
-      mockAuthenticatedFetch.mockResolvedValue({
-        ok: false,
-        json: jest.fn().mockResolvedValue({}) // No error field
-      });
+      installDefaultFetchMock({ createOk: false, createBody: {} });
 
       await expect(executeContractTransactionSequence(defaultParams, defaultOptions))
         .rejects.toThrow('Contract creation failed');
     });
 
     it('should handle contract creation response JSON parse error', async () => {
-      mockAuthenticatedFetch.mockResolvedValue({
-        ok: false,
-        json: jest.fn().mockRejectedValue(new Error('Invalid JSON'))
+      // Override the default to make the create call return ok:false with rejecting json
+      mockAuthenticatedFetch.mockImplementation(async (url: string) => {
+        if (url.includes('/api/contracts/')) {
+          return { ok: true, json: jest.fn().mockResolvedValue({ id: 'test-contract-id' }) } as any;
+        }
+        return { ok: false, json: jest.fn().mockRejectedValue(new Error('Invalid JSON')) } as any;
       });
 
       await expect(executeContractTransactionSequence(defaultParams, defaultOptions))

@@ -26,45 +26,73 @@ const defaultOptions = {
   onProgress: jest.fn()
 };
 
+/**
+ * URL-aware fetch mock. resolveOrCreateOnChainContract performs:
+ *   1. GET /api/contracts/{id}      - pending record (not yet deployed)
+ *   2. POST /api/chain/create-contract
+ *   3. GET /api/contracts/{id}      - pending record (now with stored contractAddress)
+ * After that the sequence does its on-chain steps and finally:
+ *   4. POST /api/contracts/deposit-notification
+ */
+function installFetchMock(opts: {
+  contractAddress?: string;
+  transactionHash?: string;
+  depositNotificationResponse?: { ok: boolean; bodyText?: string; bodyJson?: any };
+  depositNotificationThrows?: Error;
+} = {}) {
+  const deployedAddress = opts.contractAddress ?? '0xContractAddress';
+  const txHash = opts.transactionHash ?? '0xContractCreationTxHash';
+  let pendingFetchCount = 0;
+
+  mockAuthenticatedFetch.mockImplementation(async (url: string) => {
+    if (url.includes('/api/contracts/deposit-notification')) {
+      if (opts.depositNotificationThrows) throw opts.depositNotificationThrows;
+      const r = opts.depositNotificationResponse ?? { ok: true, bodyJson: { success: true } };
+      return {
+        ok: r.ok,
+        json: () => Promise.resolve(r.bodyJson ?? {}),
+        text: () => Promise.resolve(r.bodyText ?? '')
+      } as any;
+    }
+    if (url.includes('/api/contracts/')) {
+      pendingFetchCount++;
+      const body = pendingFetchCount === 1
+        ? { id: defaultParams.contractserviceId }
+        : { id: defaultParams.contractserviceId, contractAddress: deployedAddress };
+      return { ok: true, json: () => Promise.resolve(body) } as any;
+    }
+    if (url.includes('/api/chain/create-contract')) {
+      return {
+        ok: true,
+        json: () => Promise.resolve({ contractAddress: deployedAddress, transactionHash: txHash })
+      } as any;
+    }
+    throw new Error(`Unexpected fetch: ${url}`);
+  });
+}
+
 describe('Contract Transaction Sequence - Deposit Notification', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    // Mock Web3Service
     mockGetWeb3Service.mockResolvedValue({
       waitForTransaction: mockWaitForTransaction
     });
 
-    // Mock successful transaction confirmations
     mockWaitForTransaction.mockResolvedValue({
       blockNumber: 12345,
       status: 1
     });
 
-    // Mock successful transactions
     mockApproveUSDC.mockResolvedValue('0xApprovalTxHash');
     mockDepositToContract.mockResolvedValue('0xDepositTxHash');
   });
 
   it('should call deposit notification after successful deposit confirmation', async () => {
-    // Mock contract creation response
-    mockAuthenticatedFetch
-      .mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({
-          contractAddress: '0xContractAddress',
-          transactionHash: '0xContractCreationTxHash'
-        })
-      })
-      // Mock deposit notification response
-      .mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({ success: true })
-      });
+    installFetchMock();
 
     const result = await executeContractTransactionSequence(defaultParams, defaultOptions);
 
-    // Verify the sequence completed successfully
     expect(result).toEqual({
       contractAddress: '0xContractAddress',
       contractCreationTxHash: '0xContractCreationTxHash',
@@ -72,46 +100,27 @@ describe('Contract Transaction Sequence - Deposit Notification', () => {
       depositTxHash: '0xDepositTxHash'
     });
 
-    // Verify deposit notification was called
-    expect(mockAuthenticatedFetch).toHaveBeenCalledTimes(2);
+    // Pre-create GET, create POST, post-create GET, deposit-notification POST
+    expect(mockAuthenticatedFetch).toHaveBeenCalledTimes(4);
 
-    // First call: contract creation
-    expect(mockAuthenticatedFetch).toHaveBeenNthCalledWith(1, expect.anything(), expect.anything());
-
-    // Second call: deposit notification
-    expect(mockAuthenticatedFetch).toHaveBeenNthCalledWith(2,
+    // Deposit notification call (last)
+    expect(mockAuthenticatedFetch).toHaveBeenLastCalledWith(
       '/api/contracts/deposit-notification',
       {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          contractHash: '0xContractAddress'
-        })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contractHash: '0xContractAddress' })
       }
     );
   });
 
   it('should complete successfully even if deposit notification fails', async () => {
-    // Mock contract creation success, deposit notification failure
-    mockAuthenticatedFetch
-      .mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({
-          contractAddress: '0xContractAddress',
-          transactionHash: '0xContractCreationTxHash'
-        })
-      })
-      // Mock deposit notification failure
-      .mockResolvedValueOnce({
-        ok: false,
-        text: () => Promise.resolve('Contract service error')
-      });
+    installFetchMock({
+      depositNotificationResponse: { ok: false, bodyText: 'Contract service error' }
+    });
 
     const result = await executeContractTransactionSequence(defaultParams, defaultOptions);
 
-    // Verify the sequence still completed successfully
     expect(result).toEqual({
       contractAddress: '0xContractAddress',
       contractCreationTxHash: '0xContractCreationTxHash',
@@ -119,111 +128,82 @@ describe('Contract Transaction Sequence - Deposit Notification', () => {
       depositTxHash: '0xDepositTxHash'
     });
 
-    // Verify deposit notification was attempted
-    expect(mockAuthenticatedFetch).toHaveBeenCalledTimes(2);
-    expect(mockAuthenticatedFetch).toHaveBeenNthCalledWith(2,
+    expect(mockAuthenticatedFetch).toHaveBeenCalledTimes(4);
+    expect(mockAuthenticatedFetch).toHaveBeenLastCalledWith(
       '/api/contracts/deposit-notification',
-      expect.objectContaining({
-        method: 'POST'
-      })
+      expect.objectContaining({ method: 'POST' })
     );
   });
 
   it('should call deposit notification with correct contract address', async () => {
     const testContractAddress = '0xSpecificContractAddress123';
-
-    // Mock contract creation with specific address
-    mockAuthenticatedFetch
-      .mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({
-          contractAddress: testContractAddress,
-          transactionHash: '0xContractCreationTxHash'
-        })
-      })
-      // Mock deposit notification success
-      .mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({ success: true })
-      });
+    installFetchMock({ contractAddress: testContractAddress });
 
     await executeContractTransactionSequence(defaultParams, defaultOptions);
 
-    // Verify deposit notification uses the correct contract address
-    expect(mockAuthenticatedFetch).toHaveBeenNthCalledWith(2,
+    expect(mockAuthenticatedFetch).toHaveBeenLastCalledWith(
       '/api/contracts/deposit-notification',
       {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          contractHash: testContractAddress
-        })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contractHash: testContractAddress })
       }
     );
   });
 
   it('should only call deposit notification after deposit confirmation, not before', async () => {
-    // Create a custom mockWaitForTransaction that tracks when it's called
     const waitCallOrder: string[] = [];
-
     mockWaitForTransaction.mockImplementation((txHash: string) => {
       waitCallOrder.push(`WAIT_${txHash}`);
       return Promise.resolve({ blockNumber: 12345, status: 1 });
     });
 
-    // Track authenticatedFetch calls
     const fetchCallOrder: string[] = [];
+    let pendingFetchCount = 0;
     mockAuthenticatedFetch.mockImplementation((url: string) => {
       if (url.includes('deposit-notification')) {
         fetchCallOrder.push('DEPOSIT_NOTIFICATION');
-      } else {
-        fetchCallOrder.push('CONTRACT_CREATION');
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ success: true }) });
       }
-
+      if (url.includes('/api/contracts/')) {
+        pendingFetchCount++;
+        fetchCallOrder.push(pendingFetchCount === 1 ? 'PENDING_GET_PRE' : 'PENDING_GET_POST');
+        const body = pendingFetchCount === 1
+          ? { id: defaultParams.contractserviceId }
+          : { id: defaultParams.contractserviceId, contractAddress: '0xContractAddress' };
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(body) });
+      }
+      // create-contract
+      fetchCallOrder.push('CONTRACT_CREATION');
       return Promise.resolve({
         ok: true,
         json: () => Promise.resolve({
           contractAddress: '0xContractAddress',
-          transactionHash: '0xContractCreationTxHash',
-          success: true
+          transactionHash: '0xContractCreationTxHash'
         })
       });
     });
 
     await executeContractTransactionSequence(defaultParams, defaultOptions);
 
-    // Verify deposit notification only happened after deposit wait
     expect(waitCallOrder).toContain('WAIT_0xDepositTxHash');
-    expect(fetchCallOrder).toEqual(['CONTRACT_CREATION', 'DEPOSIT_NOTIFICATION']);
+    expect(fetchCallOrder).toEqual([
+      'PENDING_GET_PRE',
+      'CONTRACT_CREATION',
+      'PENDING_GET_POST',
+      'DEPOSIT_NOTIFICATION'
+    ]);
 
-    // Get the indices to verify order
     const depositWaitIndex = waitCallOrder.findIndex(call => call === 'WAIT_0xDepositTxHash');
-    const notificationIndex = fetchCallOrder.findIndex(call => call === 'DEPOSIT_NOTIFICATION');
-
-    // Notification should be after deposit wait (this is a timing assertion)
     expect(depositWaitIndex).toBeGreaterThanOrEqual(0);
-    expect(notificationIndex).toBe(1); // Second fetch call
+    expect(fetchCallOrder.indexOf('DEPOSIT_NOTIFICATION')).toBe(3);
   });
 
   it('should not break if deposit notification throws an exception', async () => {
-    // Mock contract creation success
-    mockAuthenticatedFetch
-      .mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({
-          contractAddress: '0xContractAddress',
-          transactionHash: '0xContractCreationTxHash'
-        })
-      })
-      // Mock deposit notification throwing exception
-      .mockRejectedValueOnce(new Error('Network error'));
+    installFetchMock({ depositNotificationThrows: new Error('Network error') });
 
-    // Should not throw despite notification failure
     const result = await executeContractTransactionSequence(defaultParams, defaultOptions);
 
-    // Verify the sequence still completed successfully
     expect(result).toEqual({
       contractAddress: '0xContractAddress',
       contractCreationTxHash: '0xContractCreationTxHash',
@@ -231,7 +211,6 @@ describe('Contract Transaction Sequence - Deposit Notification', () => {
       depositTxHash: '0xDepositTxHash'
     });
 
-    // Verify notification was attempted
-    expect(mockAuthenticatedFetch).toHaveBeenCalledTimes(2);
+    expect(mockAuthenticatedFetch).toHaveBeenCalledTimes(4);
   });
 });

@@ -34,13 +34,14 @@ describe('Nonce Collision Prevention - Contract Transaction Sequence', () => {
       waitForTransaction: mockWaitForTransaction
     };
 
-    // Mock authenticated fetch with tracking (handles both contract creation and deposit notification)
-    let fetchCallCount = 0;
+    // Mock authenticated fetch (URL-aware) for the four call sites:
+    //   GET  /api/contracts/{id}            — pre-create check (silent)
+    //   POST /api/chain/create-contract     — contract creation
+    //   GET  /api/contracts/{id}            — post-create authoritative read (silent)
+    //   POST /api/contracts/deposit-notification — final notify
+    let pendingFetchCount = 0;
     mockAuthenticatedFetch = jest.fn().mockImplementation((url: string) => {
-      fetchCallCount++;
-
-      if (fetchCallCount === 1) {
-        // First call: Contract creation
+      if (url.includes('/api/chain/create-contract')) {
         executionLog.push('CONTRACT_CREATION_START');
         return Promise.resolve({
           ok: true,
@@ -52,8 +53,8 @@ describe('Nonce Collision Prevention - Contract Transaction Sequence', () => {
           executionLog.push('CONTRACT_CREATION_COMPLETE');
           return result;
         });
-      } else {
-        // Second call: Deposit notification (happens after all transactions)
+      }
+      if (url.includes('/api/contracts/deposit-notification')) {
         executionLog.push('DEPOSIT_NOTIFICATION_START');
         return Promise.resolve({
           ok: true,
@@ -63,6 +64,15 @@ describe('Nonce Collision Prevention - Contract Transaction Sequence', () => {
           return result;
         });
       }
+      if (url.includes('/api/contracts/')) {
+        // Silent pending-record GETs (before/after create)
+        pendingFetchCount++;
+        const body = pendingFetchCount === 1
+          ? { id: 'test-contract' }
+          : { id: 'test-contract', contractAddress: '0xContractAddress' };
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(body) });
+      }
+      throw new Error(`Unexpected fetch: ${url}`);
     });
 
     // Mock USDC approval with tracking

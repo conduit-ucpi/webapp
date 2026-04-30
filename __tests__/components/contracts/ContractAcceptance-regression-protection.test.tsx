@@ -127,13 +127,14 @@ describe('ContractAcceptance Regression Protection', () => {
   describe('API Call Structure Protection', () => {
 
     it('should verify correct API call structure in shared utility', () => {
-      // The API call has moved to the shared utility
+      // The API call has moved to the shared utility (resolveOrCreateOnChainContract).
+      // The body is built from `params` with optional arbiter rewriting only —
+      // no other field manipulation, no double conversion.
       const utilityPath = path.join(process.cwd(), 'utils/contractTransactionSequence.ts');
       const utilitySource = fs.readFileSync(utilityPath, 'utf8');
 
-      // Find the create-contract API call in the utility
       const apiCallMatch = utilitySource.match(
-        /authenticatedFetch\(.*?\/api\/chain\/create-contract.*?body:\s*JSON\.stringify\(params\)/s
+        /authenticatedFetch\(\s*['"`]\/api\/chain\/create-contract['"`][\s\S]*?body:\s*JSON\.stringify\(createBody\)/
       );
 
       expect(apiCallMatch).toBeTruthy();
@@ -141,12 +142,17 @@ describe('ContractAcceptance Regression Protection', () => {
       if (apiCallMatch) {
         const requestBody = apiCallMatch[0];
 
-        // Verify the utility uses params object (no field manipulation)
         expect(requestBody).toContain('/api/chain/create-contract');
-        expect(requestBody).toContain('JSON.stringify(params)');
-        expect(requestBody).not.toContain('...contract'); // No spread operator
+        expect(requestBody).toContain('JSON.stringify(createBody)');
+        expect(requestBody).not.toContain('...contract'); // No spread of contract object
         expect(requestBody).not.toContain('toMicroUSDC('); // No double conversion
       }
+
+      // createBody is constructed from `params` with arbiter address rewritten
+      // to wire-format `arbiter` (omitted when falsy). Verify that exact pattern.
+      expect(utilitySource).toMatch(
+        /const\s+createBody\s*=\s*\{\s*\.\.\.paramsWithoutArbiter,\s*\.\.\.\(arbiterAddress\s*\?\s*\{\s*arbiter:\s*arbiterAddress\s*\}\s*:\s*\{\}\)/
+      );
 
       // Verify ContractAcceptance passes correct structure to utility
       const componentPath = path.join(process.cwd(), 'components/contracts/ContractAcceptance.tsx');

@@ -55,12 +55,29 @@ describe('Contract Transaction Sequence - Nonce Sequencing', () => {
   beforeEach(() => {
     mockWeb3Service = createMockWeb3Service();
 
-    mockAuthenticatedFetch = jest.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({
-        contractAddress: '0xTestContract',
-        transactionHash: '0xContractCreationTx'
-      })
+    // URL-aware: resolveOrCreateOnChainContract does GET pending, POST create,
+    // GET pending. Pending must NOT advertise contractAddress on the first GET
+    // (else create is skipped); MUST advertise it on the second GET.
+    let pendingFetchCount = 0;
+    mockAuthenticatedFetch = jest.fn().mockImplementation((url: string) => {
+      if (url.includes('/api/chain/create-contract')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            contractAddress: '0xTestContract',
+            transactionHash: '0xContractCreationTx'
+          })
+        });
+      }
+      if (url.includes('/api/contracts/')) {
+        pendingFetchCount++;
+        const body = pendingFetchCount === 1
+          ? { id: 'test-contract-id' }
+          : { id: 'test-contract-id', contractAddress: '0xTestContract' };
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(body) });
+      }
+      // deposit-notification
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ success: true }) });
     });
 
     mockApproveUSDC = jest.fn().mockImplementation(async (contractAddress: string, amount: string) => {
@@ -154,7 +171,7 @@ describe('Contract Transaction Sequence - Nonce Sequencing', () => {
         depositToContract: mockDepositToContract,
         getWeb3Service: mockGetWeb3Service
       }
-    )).rejects.toThrow('Contract creation timed out or failed - cannot proceed without confirmation');
+    )).rejects.toThrow('Contract creation timed out or failed');
 
     // Verify that approval and deposit were never called
     expect(mockApproveUSDC).not.toHaveBeenCalled();

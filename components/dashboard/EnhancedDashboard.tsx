@@ -21,6 +21,8 @@ import ContractDetailsModal from '@/components/contracts/ContractDetailsModal';
 import DisputeManagementModal from '@/components/contracts/DisputeManagementModal';
 import ProgressChecklist from '@/components/onboarding/ProgressChecklist';
 import { displayCurrency } from '@/utils/validation';
+import { useToast } from '@/components/ui/Toast';
+import { buildReportCsv, ReportRow } from '@/utils/reportExport';
 
 type StatusFilter = 'ALL' | 'ACTION_NEEDED' | 'ACTIVE' | 'COMPLETED' | 'DISPUTED';
 
@@ -31,6 +33,7 @@ export default function EnhancedDashboard() {
   console.log(`🔧 EnhancedDashboard RENDER #${renderCount.current}`);
   
   const { user, authenticatedFetch } = useAuth();
+  const { showToast } = useToast();
   
   // Track what's changing in auth
   console.log(`🔧 Dashboard auth values:`, {
@@ -54,6 +57,7 @@ export default function EnhancedDashboard() {
   const [contractToManage, setContractToManage] = useState<Contract | null>(null);
   const [showManageDispute, setShowManageDispute] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   // Sample demo data
   const createDemoData = (): (Contract | PendingContract)[] => {
@@ -330,6 +334,61 @@ export default function EnhancedDashboard() {
     }
   };
 
+  const handleExportReport = async () => {
+    if (!authenticatedFetch) {
+      showToast({ type: 'error', title: 'Export failed', message: 'Authentication not available' });
+      return;
+    }
+
+    const wallet = user?.walletAddress?.toLowerCase();
+    if (!wallet) {
+      showToast({ type: 'error', title: 'Export failed', message: 'Wallet address not available' });
+      return;
+    }
+
+    setIsExporting(true);
+    try {
+      const response = await authenticatedFetch('/api/results', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sellerWalletId: wallet })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Report request failed (${response.status})`);
+      }
+
+      const data = await response.json();
+      const rows: ReportRow[] = Array.isArray(data?.results) ? data.results : [];
+      const csv = buildReportCsv(rows);
+
+      const today = new Date();
+      const yyyy = today.getFullYear();
+      const mm = (today.getMonth() + 1).toString().padStart(2, '0');
+      const dd = today.getDate().toString().padStart(2, '0');
+      const filename = `conduit-report-${wallet}-${yyyy}-${mm}-${dd}.csv`;
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      console.error('Failed to export report:', err);
+      showToast({
+        type: 'error',
+        title: 'Export failed',
+        message: err?.message || 'Could not generate report'
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
 
   useEffect(() => {
     console.log('🔧 Dashboard useEffect triggered');
@@ -582,27 +641,50 @@ export default function EnhancedDashboard() {
       {/* Section Header with Refresh Button */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6">
         <h2 className="text-xl font-semibold text-secondary-900 dark:text-white mb-4 sm:mb-0">Your payment agreements</h2>
-        <Button
-          onClick={handleRefresh}
-          variant="outline"
-          size="sm"
-          disabled={isRefreshing}
-          className="w-full sm:w-auto"
-        >
-          {isRefreshing ? (
-            <>
-              <LoadingSpinner size="sm" className="w-4 h-4 mr-2" />
-              Refreshing...
-            </>
-          ) : (
-            <>
-              <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-              Refresh
-            </>
-          )}
-        </Button>
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          <Button
+            onClick={handleRefresh}
+            variant="outline"
+            size="sm"
+            disabled={isRefreshing}
+            className="w-full sm:w-auto"
+          >
+            {isRefreshing ? (
+              <>
+                <LoadingSpinner size="sm" className="w-4 h-4 mr-2" />
+                Refreshing...
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Refresh
+              </>
+            )}
+          </Button>
+          <Button
+            onClick={handleExportReport}
+            variant="outline"
+            size="sm"
+            disabled={isExporting}
+            className="w-full sm:w-auto"
+          >
+            {isExporting ? (
+              <>
+                <LoadingSpinner size="sm" className="w-4 h-4 mr-2" />
+                Exporting...
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3" />
+                </svg>
+                Export Report
+              </>
+            )}
+          </Button>
+        </div>
       </div>
 
       {/* Tabs */}

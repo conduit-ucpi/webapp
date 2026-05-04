@@ -778,20 +778,38 @@ export default function CreateContractWizard() {
   };
 
   const canProceed = () => {
+    let result: any;
     switch (currentStep) {
       case 0:
         // For instant payment, only description is needed
         // For noBuyerEmail, only description is needed
         // For normal payment, email + description
-        return isInstantPayment || noBuyerEmail ? !!form.description : !!(form.buyerEmail && form.description);
+        result = isInstantPayment || noBuyerEmail ? !!form.description : !!(form.buyerEmail && form.description);
+        break;
       case 1:
         // For instant payment, timestamp can be 0; for delayed payment, it must be set
-        return form.amount && (isInstantPayment || form.payoutTimestamp > 0);
+        result = form.amount && (isInstantPayment || form.payoutTimestamp > 0);
+        break;
       case 2:
-        return user && user.walletAddress; // Only allow final submission when user is authenticated
+        result = user && user.walletAddress; // Only allow final submission when user is authenticated
+        break;
       default:
-        return false;
+        result = false;
     }
+    console.log('🔧 canProceed', {
+      step: currentStep,
+      result: !!result,
+      isInstantPayment,
+      noBuyerEmail,
+      hasBuyerEmail: !!form.buyerEmail,
+      hasDescription: !!form.description,
+      hasAmount: !!form.amount,
+      payoutTimestamp: form.payoutTimestamp,
+      hasUser: !!user,
+      hasWallet: !!user?.walletAddress,
+      isLoading,
+    });
+    return result;
   };
 
   // Show success screen after contract creation

@@ -25,6 +25,7 @@ interface AuthContextValue {
   setConnectionMode: (mode: 'default' | 'wallet-only' | 'social-only') => Promise<void>;
   authenticateBackend: (connectionResult?: ConnectionResult) => Promise<boolean>;
   requestAuthentication: () => Promise<boolean>; // Manually trigger SIWX authentication
+  getLastAuthFailure: () => { kind: string; message: string } | null;
   disconnect: () => Promise<void>;
   switchWallet: () => Promise<ConnectionResult>;
   signMessage: (message: string) => Promise<string>;
@@ -454,6 +455,7 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
     },
     authenticateBackend,
     requestAuthentication,
+    getLastAuthFailure: () => authManager.getLastAuthFailure(),
     disconnect,
     switchWallet,
     signMessage,

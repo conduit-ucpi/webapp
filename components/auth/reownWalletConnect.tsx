@@ -8,6 +8,9 @@ import { wrapProviderWithMobileDeepLinks } from '@/utils/mobileDeepLinkProvider'
 import { createAppKitSIWXConfig } from '@/lib/auth/siwx-config'
 import { SIWE_STATEMENT } from '@/lib/auth/siwe-statement'
 import { mLog } from '@/utils/mobileLogger'
+import { classifyAuthError, type AuthFailure } from '@/lib/auth/classifyAuthError'
+export { classifyAuthError } from '@/lib/auth/classifyAuthError'
+export type { AuthFailure, AuthFailureKind } from '@/lib/auth/classifyAuthError'
 
 export type ConnectionMode = 'default' | 'wallet-only' | 'social-only'
 
@@ -19,6 +22,11 @@ export class ReownWalletConnectProvider {
   private onMobileActionRequired?: (actionType: 'sign' | 'transaction') => void
   private isConnecting: boolean = false
   private connectionMode: ConnectionMode = 'default'
+  private lastAuthFailure: AuthFailure | null = null
+
+  getLastAuthFailure(): AuthFailure | null {
+    return this.lastAuthFailure
+  }
 
   constructor(config: any, onMobileActionRequired?: (actionType: 'sign' | 'transaction') => void) {
     this.config = config
@@ -619,6 +627,7 @@ export class ReownWalletConnectProvider {
    * This manually creates and signs a SIWE message, then sends it to the backend
    */
   async requestAuthentication(): Promise<boolean> {
+    this.lastAuthFailure = null
     try {
       console.log('🔧 ReownWalletConnect: Manually requesting SIWX authentication...')
 
@@ -784,6 +793,7 @@ Issued At: ${issuedAt}`
 
     } catch (error) {
       console.error('🔧 ReownWalletConnect: Error requesting authentication:', error)
+      this.lastAuthFailure = classifyAuthError(error)
       return false
     }
   }

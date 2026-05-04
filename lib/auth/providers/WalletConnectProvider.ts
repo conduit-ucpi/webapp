@@ -255,6 +255,18 @@ export class WalletConnectProvider implements UnifiedProvider {
   }
 
   /**
+   * Returns the classified failure from the most recent
+   * `requestAuthentication()` call, or null if it succeeded / never ran.
+   */
+  getLastAuthFailure(): { kind: string; message: string } | null {
+    const reown = this.reownProvider as any;
+    if (typeof reown?.getLastAuthFailure === 'function') {
+      return reown.getLastAuthFailure();
+    }
+    return null;
+  }
+
+  /**
    * Show the Reown wallet management UI
    * Opens the AppKit modal with the account view
    */

@@ -23,6 +23,7 @@ import ProgressChecklist from '@/components/onboarding/ProgressChecklist';
 import { displayCurrency } from '@/utils/validation';
 import { useToast } from '@/components/ui/Toast';
 import { buildReportCsv, ReportRow } from '@/components/dashboard/reportExport';
+import { WalletSigningError } from '@/lib/auth/errors/WalletSigningError';
 
 type StatusFilter = 'ALL' | 'ACTION_NEEDED' | 'ACTIVE' | 'COMPLETED' | 'DISPUTED';
 
@@ -213,7 +214,17 @@ export default function EnhancedDashboard() {
       setError('');
     } catch (error: any) {
       console.error('Failed to fetch contracts:', error);
-      setError(error.message || 'Failed to load contracts');
+      if (error instanceof WalletSigningError) {
+        showToast({
+          type: 'error',
+          title: "Couldn't sign in with your wallet",
+          message: error.message,
+          duration: 12000,
+        });
+        setError('Wallet sign-in failed — see notification for details.');
+      } else {
+        setError(error.message || 'Failed to load contracts');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -328,7 +339,17 @@ export default function EnhancedDashboard() {
       setError('');
     } catch (error: any) {
       console.error('Failed to refresh contracts:', error);
-      setError(error.message || 'Failed to refresh contracts');
+      if (error instanceof WalletSigningError) {
+        showToast({
+          type: 'error',
+          title: "Couldn't sign in with your wallet",
+          message: error.message,
+          duration: 12000,
+        });
+        setError('Wallet sign-in failed — see notification for details.');
+      } else {
+        setError(error.message || 'Failed to refresh contracts');
+      }
     } finally {
       setIsRefreshing(false);
     }

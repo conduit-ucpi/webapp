@@ -458,6 +458,18 @@ export class AuthManager {
   }
 
   /**
+   * Returns the classified failure from the most recent
+   * `requestAuthentication()` call on the current provider, or null.
+   */
+  getLastAuthFailure(): { kind: string; message: string } | null {
+    const provider = this.currentProvider as any;
+    if (provider && typeof provider.getLastAuthFailure === 'function') {
+      return provider.getLastAuthFailure();
+    }
+    return null;
+  }
+
+  /**
    * Show wallet management UI
    * Opens the provider's wallet management interface if supported
    */

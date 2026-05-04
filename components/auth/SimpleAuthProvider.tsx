@@ -5,6 +5,7 @@
 import React, { useState, useEffect } from 'react';
 import { AuthProvider as NewAuthProvider, useAuth as useNewAuth, BackendClient } from '@/lib/auth';
 import { AuthenticationExpiredError } from '@/lib/auth/errors/AuthenticationExpiredError';
+import { WalletSigningError } from '@/lib/auth/errors/WalletSigningError';
 import { useConfig } from './ConfigProvider';
 import { toUSDCForWeb3 } from '@/utils/validation';
 
@@ -30,6 +31,7 @@ const defaultAuthValue = {
   connect: () => Promise.resolve(),
   authenticateBackend: () => Promise.resolve(false),
   requestAuthentication: () => Promise.resolve(false), // Manual SIWX authentication trigger
+  getLastAuthFailure: () => null,
   disconnect: () => Promise.resolve(),
   switchWallet: () => Promise.resolve(),
   getEthersProvider: () => null,
@@ -163,7 +165,13 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
             return await backendClient.authenticatedFetch(url, options);
           } else {
             console.error('🔐 SimpleAuthProvider: Failed to obtain fresh signature');
-            throw new Error('Authentication failed - could not obtain fresh signature');
+            const failure = newAuth.getLastAuthFailure?.();
+            if (failure) {
+              throw new WalletSigningError(failure.message, failure);
+            }
+            throw new WalletSigningError(
+              'Authentication failed - could not obtain fresh signature'
+            );
           }
         } catch (authError) {
           console.error('🔐 SimpleAuthProvider: Authentication error:', authError);

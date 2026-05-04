@@ -1,5 +1,5 @@
-import { fromMicroUSDC } from './currency';
-import { formatDateTimeWithTZ } from './datetime';
+import { fromMicroUSDC } from '@/utils/currency';
+import { formatDateTimeWithTZ } from '@/utils/datetime';
 
 export interface ReportRow {
   contractid: string;

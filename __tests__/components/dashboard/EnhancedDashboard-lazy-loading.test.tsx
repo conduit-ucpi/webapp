@@ -10,6 +10,14 @@
 import { render, waitFor, screen } from '@testing-library/react';
 import EnhancedDashboard from '@/components/dashboard/EnhancedDashboard';
 import { useAuth } from '@/components/auth';
+import { ToastProvider } from '@/components/ui/Toast';
+
+const renderDashboard = () =>
+  render(
+    <ToastProvider>
+      <EnhancedDashboard />
+    </ToastProvider>
+  );
 
 // Mock next/router
 jest.mock('next/router', () => ({
@@ -104,7 +112,7 @@ describe('EnhancedDashboard - Lazy Loading', () => {
       raiseDispute: jest.fn()
     });
 
-    render(<EnhancedDashboard />);
+    renderDashboard();
 
     // Wait for the API call to happen
     await waitFor(() => {
@@ -167,7 +175,7 @@ describe('EnhancedDashboard - Lazy Loading', () => {
       raiseDispute: jest.fn()
     });
 
-    render(<EnhancedDashboard />);
+    renderDashboard();
 
     // Wait for the initial API call
     await waitFor(() => {
@@ -213,7 +221,7 @@ describe('EnhancedDashboard - Lazy Loading', () => {
       raiseDispute: jest.fn()
     });
 
-    render(<EnhancedDashboard />);
+    renderDashboard();
 
     // Should show loading state
     expect(screen.getByTestId('loading-spinner')).toBeInTheDocument();
@@ -276,7 +284,7 @@ describe('EnhancedDashboard - Lazy Loading', () => {
       raiseDispute: jest.fn()
     });
 
-    render(<EnhancedDashboard />);
+    renderDashboard();
 
     // Wait for contracts to load
     await waitFor(() => {

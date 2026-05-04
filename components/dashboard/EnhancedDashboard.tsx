@@ -22,7 +22,7 @@ import DisputeManagementModal from '@/components/contracts/DisputeManagementModa
 import ProgressChecklist from '@/components/onboarding/ProgressChecklist';
 import { displayCurrency } from '@/utils/validation';
 import { useToast } from '@/components/ui/Toast';
-import { buildReportCsv, ReportRow } from '@/utils/reportExport';
+import { buildReportCsv, ReportRow } from '@/components/dashboard/reportExport';
 
 type StatusFilter = 'ALL' | 'ACTION_NEEDED' | 'ACTIVE' | 'COMPLETED' | 'DISPUTED';
 

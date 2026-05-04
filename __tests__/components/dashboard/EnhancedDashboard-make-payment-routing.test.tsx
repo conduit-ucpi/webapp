@@ -13,6 +13,14 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import EnhancedDashboard from '@/components/dashboard/EnhancedDashboard';
 import { useAuth } from '@/components/auth';
 import { useRouter } from 'next/router';
+import { ToastProvider } from '@/components/ui/Toast';
+
+const renderDashboard = () =>
+  render(
+    <ToastProvider>
+      <EnhancedDashboard />
+    </ToastProvider>
+  );
 
 const pushMock = jest.fn();
 
@@ -114,7 +122,7 @@ describe('EnhancedDashboard — Make Payment routes to /contract-pay', () => {
     });
     mockAuthWithFetch(fetchImpl);
 
-    render(<EnhancedDashboard />);
+    renderDashboard();
 
     const button = await waitFor(() => screen.getByRole('button', { name: /make payment/i }));
     fireEvent.click(button);
@@ -131,7 +139,7 @@ describe('EnhancedDashboard — Make Payment routes to /contract-pay', () => {
     });
     mockAuthWithFetch(fetchImpl);
 
-    render(<EnhancedDashboard />);
+    renderDashboard();
 
     const button = await waitFor(() => screen.getByRole('button', { name: /make payment/i }));
     fireEvent.click(button);

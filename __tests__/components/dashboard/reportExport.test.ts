@@ -1,4 +1,4 @@
-import { buildReportCsv, ReportRow } from '@/utils/reportExport';
+import { buildReportCsv, ReportRow } from '@/components/dashboard/reportExport';
 import { formatDateTimeWithTZ } from '@/utils/datetime';
 
 describe('reportExport', () => {

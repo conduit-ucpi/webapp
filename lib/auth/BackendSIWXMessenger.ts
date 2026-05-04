@@ -11,6 +11,80 @@ import { mLog } from '@/utils/mobileLogger'
 import { SIWE_STATEMENT } from './siwe-statement'
 
 /**
+ * Detect whether the currently connected wallet is an embedded wallet
+ * (social/email login with smart-account capability) vs. an external wallet
+ * (MetaMask, WalletConnect, etc.).
+ *
+ * Embedded wallets support headless SIWX signing — no popup. External wallets
+ * require a manual signature popup, so we skip SIWX for them and use lazy auth.
+ *
+ * Pure function: takes only DOM/storage references so it can be unit-tested
+ * by injecting mocks. In production, callers pass globals.
+ */
+export function detectEmbeddedWallet(
+  storage: Pick<Storage, 'getItem' | 'length' | 'key'> = typeof localStorage !== 'undefined' ? localStorage : ({ getItem: () => null, length: 0, key: () => null } as any),
+  doc: Pick<Document, 'querySelector'> | null = typeof document !== 'undefined' ? document : null
+): { isEmbeddedWallet: boolean; method: string } {
+  const storageKeys: string[] = []
+  for (let i = 0; i < storage.length; i++) {
+    const k = storage.key(i)
+    if (k) storageKeys.push(k)
+  }
+
+  try {
+    // Method 0: Reown AppKit embedded wallet (email/social login)
+    // Reown's email/Google/social login leaves @appkit-wallet/* and @appkit/connected_social
+    // keys in localStorage and creates a smart account capable of headless signing.
+    const hasAppkitEmbedded =
+      storage.getItem('@appkit/connected_social') !== null ||
+      storage.getItem('@appkit-wallet/EMAIL') !== null ||
+      storageKeys.some(k => k.startsWith('@appkit-wallet/SMART_ACCOUNT'))
+
+    if (hasAppkitEmbedded) {
+      return { isEmbeddedWallet: true, method: 'appkit social/email storage' }
+    }
+
+    // Method 1: Embedded wallet iframe (older WalletConnect embedded flow)
+    if (doc) {
+      const embeddedIframe = doc.querySelector('iframe[src*="secure.walletconnect"]')
+      if (embeddedIframe) {
+        return { isEmbeddedWallet: true, method: 'iframe detected' }
+      }
+    }
+
+    // Method 2: Embedded wallet session metadata in WalletConnect storage
+    const hasEmbeddedSession = storageKeys.some(key =>
+      key.includes('wc@2:client') ||
+      key.includes('wc_embedded') ||
+      key.includes('wc@2:core') ||
+      key.includes('wc@2:universal_provider')
+    )
+
+    if (hasEmbeddedSession) {
+      const wcData = storageKeys
+        .filter(k => k.includes('wc@2'))
+        .map(k => {
+          try { return JSON.parse(storage.getItem(k) || '{}') } catch { return {} }
+        })
+
+      const hasEmbeddedMetadata = wcData.some((data: any) => {
+        const metadata = data?.metadata || data?.peerMetadata
+        return metadata?.name?.toLowerCase().includes('coinbase') ||
+               (metadata?.name?.toLowerCase().includes('wallet') && metadata?.url?.includes('secure.walletconnect'))
+      })
+
+      if (hasEmbeddedMetadata) {
+        return { isEmbeddedWallet: true, method: 'storage metadata' }
+      }
+    }
+  } catch (e) {
+    console.log('🔐 BackendSIWXMessenger: Detection error:', e)
+  }
+
+  return { isEmbeddedWallet: false, method: 'unknown' }
+}
+
+/**
  * Get nonce from our backend
  *
  * HYBRID APPROACH: Support both headless SIWX (embedded wallets) and lazy auth (external wallets)
@@ -52,54 +126,9 @@ async function getBackendNonce(input: SIWXMessage.Input): Promise<string> {
   // DETECTION STRATEGY: Check for embedded wallet indicators in global scope
   // Since SIWX input doesn't have wallet type info, we check AppKit's iframe/window state
 
-  let isEmbeddedWallet = false
-  let detectionMethod = 'unknown'
-
-  try {
-    // Method 1: Check for embedded wallet iframe (social/email login creates iframe)
-    const embeddedIframe = document.querySelector('iframe[src*="secure.walletconnect"]')
-    if (embeddedIframe) {
-      isEmbeddedWallet = true
-      detectionMethod = 'iframe detected'
-      console.log('🔐 BackendSIWXMessenger: ✅ Embedded wallet detected via iframe')
-    }
-
-    // Method 2: Check for embedded wallet session in localStorage/sessionStorage
-    if (!isEmbeddedWallet) {
-      const storageKeys = Object.keys(localStorage)
-      const hasEmbeddedSession = storageKeys.some(key =>
-        key.includes('wc@2:client') ||
-        key.includes('wc_embedded') ||
-        key.includes('wc@2:core') ||
-        key.includes('wc@2:universal_provider')
-      )
-
-      if (hasEmbeddedSession) {
-        // Check if it's actually an embedded wallet session (not just WalletConnect session)
-        const wcData = storageKeys
-          .filter(k => k.includes('wc@2'))
-          .map(k => {
-            try { return JSON.parse(localStorage.getItem(k) || '{}') } catch { return {} }
-          })
-
-        // Embedded wallets have specific metadata indicating social/email login
-        const hasEmbeddedMetadata = wcData.some((data: any) => {
-          const metadata = data?.metadata || data?.peerMetadata
-          return metadata?.name?.toLowerCase().includes('coinbase') || // Coinbase Wallet embedded
-                 metadata?.name?.toLowerCase().includes('wallet') && metadata?.url?.includes('secure.walletconnect')
-        })
-
-        if (hasEmbeddedMetadata) {
-          isEmbeddedWallet = true
-          detectionMethod = 'storage metadata'
-          console.log('🔐 BackendSIWXMessenger: ✅ Embedded wallet detected via storage metadata')
-        }
-      }
-    }
-
-  } catch (e) {
-    console.log('🔐 BackendSIWXMessenger: Detection error:', e)
-  }
+  const detection = detectEmbeddedWallet()
+  const isEmbeddedWallet = detection.isEmbeddedWallet
+  const detectionMethod = detection.method
 
   mLog.info('BackendSIWXMessenger', 'Detection result', {
     isEmbeddedWallet,

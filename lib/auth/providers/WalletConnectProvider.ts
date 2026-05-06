@@ -193,7 +193,45 @@ export class WalletConnectProvider implements UnifiedProvider {
 
   async getEthersProviderAsync(): Promise<ethers.BrowserProvider | null> {
     mLog.info('WalletConnectProvider', 'Get ethers provider requested (async)');
-    return this.cachedEthersProvider;
+
+    // If we already cached one (set by connect()), reuse it.
+    if (this.cachedEthersProvider) {
+      return this.cachedEthersProvider;
+    }
+
+    // Cold-load case: AppKit auto-restored the wallet session, so connect()
+    // never ran and the cache is empty. Build the ethers provider directly
+    // from the underlying Reown wallet provider if available.
+    if (!this.reownProvider.isConnected()) {
+      mLog.info(
+        'WalletConnectProvider',
+        'No cached ethers provider and Reown reports not connected'
+      );
+      return null;
+    }
+
+    try {
+      const walletProvider = this.reownProvider.getProvider();
+      if (!walletProvider) {
+        mLog.warn(
+          'WalletConnectProvider',
+          'Reown reports connected but getProvider() returned no wallet provider'
+        );
+        return null;
+      }
+
+      this.cachedEthersProvider = new ethers.BrowserProvider(walletProvider);
+      mLog.info(
+        'WalletConnectProvider',
+        '✅ Built ethers provider on-demand from restored Reown session'
+      );
+      return this.cachedEthersProvider;
+    } catch (error) {
+      mLog.error('WalletConnectProvider', 'Failed to build ethers provider on demand', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return null;
+    }
   }
 
   getCapabilities(): ProviderCapabilities {

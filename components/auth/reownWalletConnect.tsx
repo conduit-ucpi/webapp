@@ -61,9 +61,9 @@ export class ReownWalletConnectProvider {
       case 'wallet-only':
         return { ...base, email: false, socials: false, allWallets: true, connectMethodsOrder: ['wallet'] }
       case 'social-only':
-        return { ...base, email: true, socials: ['google', 'x', 'discord', 'farcaster'], allWallets: false, emailShowWallets: false, connectMethodsOrder: ['email', 'social'] }
+        return { ...base, email: true, socials: ['google', 'apple', 'x', 'discord', 'farcaster'], allWallets: false, emailShowWallets: false, connectMethodsOrder: ['email', 'social'] }
       default:
-        return { ...base, email: true, socials: ['google', 'x', 'discord', 'farcaster'] }
+        return { ...base, email: true, socials: ['google', 'apple', 'x', 'discord', 'farcaster'] }
     }
   }
 

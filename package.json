@@ -28,10 +28,10 @@
     "@metamask/sdk": "^0.33.1",
     "@moonpay/moonpay-js": "^0.7.3",
     "@onramp.money/onramp-web-sdk": "^2.0.1",
-    "@reown/appkit": "^1.6.0",
-    "@reown/appkit-adapter-ethers": "^1.6.0",
-    "@reown/appkit-siwe": "^1.8.14",
-    "@reown/appkit-siwx": "^1.8.14",
+    "@reown/appkit": "^1.8.19",
+    "@reown/appkit-adapter-ethers": "^1.8.19",
+    "@reown/appkit-siwe": "^1.8.19",
+    "@reown/appkit-siwx": "^1.8.19",
     "@shopify/shopify-api": "^7.7.0",
     "@tanstack/react-query": "^5.85.3",
     "@testing-library/dom": "^10.4.1",
@@ -75,10 +75,15 @@
     "jest": "^30.0.5",
     "jest-environment-jsdom": "^30.0.5",
     "node-mocks-http": "^1.17.2",
-    "postcss": "^8.4.31",
+    "postcss": "^8.5.10",
     "tailwindcss": "^3.3.5",
     "ts-jest": "^29.4.1",
     "tsx": "^4.0.0",
     "typescript": "5.4.5"
+  },
+  "overrides": {
+    "minimatch": "^9.0.7",
+    "axios": "^1.15.2",
+    "postcss": "$postcss"
   }
 }

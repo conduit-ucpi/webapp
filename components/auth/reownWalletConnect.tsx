@@ -9,6 +9,7 @@ import { createAppKitSIWXConfig } from '@/lib/auth/siwx-config'
 import { SIWE_STATEMENT } from '@/lib/auth/siwe-statement'
 import { mLog } from '@/utils/mobileLogger'
 import { classifyAuthError, type AuthFailure } from '@/lib/auth/classifyAuthError'
+import { reportAuthFailure } from '@/lib/auth/reportAuthFailure'
 export { classifyAuthError } from '@/lib/auth/classifyAuthError'
 export type { AuthFailure, AuthFailureKind } from '@/lib/auth/classifyAuthError'
 
@@ -794,6 +795,11 @@ Issued At: ${issuedAt}`
     } catch (error) {
       console.error('🔧 ReownWalletConnect: Error requesting authentication:', error)
       this.lastAuthFailure = classifyAuthError(error)
+      reportAuthFailure(
+        this.lastAuthFailure.kind,
+        'request-authentication',
+        this.lastAuthFailure.message
+      )
       return false
     }
   }

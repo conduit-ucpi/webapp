@@ -2,6 +2,8 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useAuth } from '@/components/auth';
 import Button from '@/components/ui/Button';
 import { mLog } from '@/utils/mobileLogger';
+import { isMagicReachable } from '@/lib/auth/magicReachability';
+import { reportAuthFailure } from '@/lib/auth/reportAuthFailure';
 
 interface ConnectWalletEmbeddedProps {
   buttonText?: string;
@@ -30,6 +32,39 @@ export default function ConnectWalletEmbedded({
 }: ConnectWalletEmbeddedProps) {
   const { user, isLoading, connect, isConnected, address, requestAuthentication, setConnectionMode } = useAuth();
   const [isAuthenticating, setIsAuthenticating] = useState(false);
+
+  // Pre-flight: is magiclabs.com reachable? Reown's social-login embedded
+  // wallet delegates signing to it, so when it's blocked (BT Web Protect,
+  // NextDNS, ad-blockers, corporate firewalls), social/email login fails
+  // silently. Probe on mount and, if blocked, hide social options upfront
+  // and show the user a banner explaining what's happening.
+  const [magicBlocked, setMagicBlocked] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    isMagicReachable().then((ok) => {
+      if (cancelled) return;
+      if (!ok) {
+        setMagicBlocked(true);
+        reportAuthFailure(
+          'magic-blocked',
+          'pre-flight',
+          'tee.express.magiclabs.com unreachable from browser'
+        );
+        mLog.warn(
+          'ConnectWalletEmbedded',
+          '⚠️ magiclabs.com unreachable — disabling social-login options',
+          {}
+        );
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Effective connection mode: if magic is blocked, force wallet-only so
+  // the user isn't shown a Google/Apple/email button that will silently fail.
+  const effectiveConnectionMode = magicBlocked ? 'wallet-only' : connectionMode;
 
   // Track if we've already handled OAuth redirect to prevent duplicate attempts
   const oauthHandledRef = useRef(false);
@@ -165,9 +200,10 @@ export default function ConnectWalletEmbedded({
       const doAutoConnect = async () => {
         try {
           // Set connection mode before connecting (controls which options are shown in modal)
-          if (connectionMode && setConnectionMode) {
-            mLog.info('ConnectWalletEmbedded', `Auto-connect setting connection mode: ${connectionMode}`);
-            await setConnectionMode(connectionMode);
+          // effectiveConnectionMode is forced to 'wallet-only' when magiclabs is blocked.
+          if (effectiveConnectionMode && setConnectionMode) {
+            mLog.info('ConnectWalletEmbedded', `Auto-connect setting connection mode: ${effectiveConnectionMode}`);
+            await setConnectionMode(effectiveConnectionMode);
           }
 
           const result = await connect('walletconnect');
@@ -244,10 +280,11 @@ export default function ConnectWalletEmbedded({
 
       if (connect) {
         try {
-          // Set connection mode before opening the modal (controls which options are shown)
-          if (connectionMode && setConnectionMode) {
-            mLog.info('ConnectWalletEmbedded', `Setting connection mode: ${connectionMode}`);
-            await setConnectionMode(connectionMode);
+          // Set connection mode before opening the modal (controls which options are shown).
+          // effectiveConnectionMode is forced to 'wallet-only' when magiclabs is blocked.
+          if (effectiveConnectionMode && setConnectionMode) {
+            mLog.info('ConnectWalletEmbedded', `Setting connection mode: ${effectiveConnectionMode}`);
+            await setConnectionMode(effectiveConnectionMode);
           }
 
           // Always use WalletConnect (handles social, email, and all wallets)
@@ -325,8 +362,28 @@ export default function ConnectWalletEmbedded({
       )}
       {!compact && (
         <p className="mt-2 text-sm text-secondary-600 dark:text-secondary-400">
-          Sign up with email or use your existing wallet
+          {magicBlocked
+            ? 'Connect your wallet to continue'
+            : 'Sign up with email or use your existing wallet'}
         </p>
+      )}
+      {magicBlocked && !compact && (
+        <div
+          role="status"
+          className="mt-3 mx-auto max-w-md rounded-md border border-amber-300 bg-amber-50 p-3 text-left text-xs text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200"
+        >
+          <p className="font-semibold">Email & social sign-in unavailable</p>
+          <p className="mt-1">
+            Your network appears to be blocking{' '}
+            <span className="font-mono">magiclabs.com</span>, which our
+            email/social sign-in depends on. You can still connect with
+            MetaMask, Coinbase Wallet, or WalletConnect QR.
+          </p>
+          <p className="mt-1">
+            To restore email/social sign-in, try a different network, disable
+            ad blockers, or switch your DNS to <span className="font-mono">1.1.1.1</span>.
+          </p>
+        </div>
       )}
     </div>
   );

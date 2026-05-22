@@ -578,25 +578,13 @@ export class Web3Service {
   }
 
   async getUSDCAllowance(userAddress: string, spenderAddress: string): Promise<string> {
-    if (!this.provider) {
-      throw new Error('Provider not initialized');
-    }
-
     const tokenAddress = this.config.defaultToken?.address || this.config.usdcContractAddress;
     if (!tokenAddress) {
       throw new Error('Token contract address not configured');
     }
 
-    const usdcContract = new ethers.Contract(
-      tokenAddress,
-      ERC20_ABI,
-      this.provider
-    );
-
-    const allowance = await usdcContract.allowance(userAddress, spenderAddress);
-    const decimals = await usdcContract.decimals();
-    
-    return ethers.formatUnits(allowance, decimals);
+    // Reads via the read-only RPC owner; no connected wallet required.
+    return await this.rpcClient.getTokenAllowance(userAddress, spenderAddress, tokenAddress);
   }
 
   // Deprecated - use signUSDCApproval instead
@@ -610,61 +598,16 @@ export class Web3Service {
   }
 
 
-  // Get contract info from deployed escrow contract
+  // Get contract info from deployed escrow contract.
+  // Reads via the read-only RPC owner; no connected wallet required.
   async getContractInfo(contractAddress: string) {
-    if (!this.provider) {
-      throw new Error('Provider not initialized');
-    }
-
-    const contract = new ethers.Contract(
-      contractAddress,
-      ESCROW_CONTRACT_ABI,
-      this.provider
-    );
-
-    const info = await contract.getContractInfo();
-    return {
-      buyer: info._buyer,
-      seller: info._seller,
-      amount: ethers.formatUnits(info._amount, 6), // USDC has 6 decimals
-      expiryTimestamp: Number(info._expiryTimestamp),
-      descriptionHash: info._descriptionHash,
-      currentState: Number(info._currentState),
-      currentTimestamp: Number(info._currentTimestamp)
-    };
+    return await this.rpcClient.getContractInfo(contractAddress);
   }
 
-  // Check various contract states
+  // Check various contract states.
+  // Reads via the read-only RPC owner; no connected wallet required.
   async getContractState(contractAddress: string) {
-    if (!this.provider) {
-      throw new Error('Provider not initialized');
-    }
-
-    const contract = new ethers.Contract(
-      contractAddress,
-      ESCROW_CONTRACT_ABI,
-      this.provider
-    );
-
-    const [isExpired, canClaim, canDispute, isFunded, canDeposit, isDisputed, isClaimed] = await Promise.all([
-      contract.isExpired(),
-      contract.canClaim(),
-      contract.canDispute(),
-      contract.isFunded(),
-      contract.canDeposit(),
-      contract.isDisputed(),
-      contract.isClaimed()
-    ]);
-
-    return {
-      isExpired,
-      canClaim,
-      canDispute,
-      isFunded,
-      canDeposit,
-      isDisputed,
-      isClaimed
-    };
+    return await this.rpcClient.getContractState(contractAddress);
   }
 
   /**

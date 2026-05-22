@@ -15,6 +15,7 @@ import {
 } from './authInterface';
 import { useConfig } from '../auth/ConfigProvider';
 import { ethers, formatUnits } from 'ethers';
+import { RpcClient } from '@/lib/rpc/RpcClient';
 // Contract methods are now deprecated - use API endpoints instead
 import { BackendAuth } from './backendAuth';
 
@@ -34,82 +35,63 @@ const ERC20_ABI = [
  * Combines JSON-RPC for reads and Wagmi for signing
  */
 class FarcasterSyntheticProvider {
+  private rpcClient: RpcClient;
   private jsonRpcProvider: ethers.JsonRpcProvider;
   private rpcUrl: string;
   private address: string | undefined;
   private signMessageAsync: ((args: { message: string }) => Promise<string>) | undefined;
   private walletClient: any;
-  
+
   constructor(
-    rpcUrl: string, 
+    rpcUrl: string,
     address?: string,
     signMessageAsync?: (args: { message: string }) => Promise<string>,
     walletClient?: any
   ) {
-    this.jsonRpcProvider = new ethers.JsonRpcProvider(rpcUrl);
+    // Reads go through the single read-RPC owner (RpcClient). We keep a
+    // reference to its underlying provider for the ethers-provider interface
+    // methods RpcClient does not (yet) expose (getBalance/estimateGas/call).
+    this.rpcClient = new RpcClient(rpcUrl);
+    this.jsonRpcProvider = this.rpcClient.getProvider();
     this.rpcUrl = rpcUrl;
     this.address = address;
     this.signMessageAsync = signMessageAsync;
     this.walletClient = walletClient;
   }
-  
+
   // Ethers provider interface methods
   async getNetwork() {
-    return this.jsonRpcProvider.getNetwork();
+    return this.rpcClient.getNetwork();
   }
-  
+
   async getBlockNumber() {
-    return this.jsonRpcProvider.getBlockNumber();
+    return this.rpcClient.getBlockNumber();
   }
-  
+
   async getBalance(address: string) {
     return this.jsonRpcProvider.getBalance(address);
   }
-  
+
   async getTransactionCount(address: string) {
-    return this.jsonRpcProvider.getTransactionCount(address);
+    return this.rpcClient.getTransactionCount(address);
   }
-  
+
   async estimateGas(tx: any) {
     return this.jsonRpcProvider.estimateGas(tx);
   }
-  
+
   async getFeeData() {
-    // Use direct RPC call instead of provider's getFeeData to avoid inflated gas values
-    try {
-      const response = await fetch(this.rpcUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          method: 'eth_gasPrice',
-          params: [],
-          id: 1
-        })
-      });
-      
-      if (response.ok) {
-        const result = await response.json();
-        if (result.result) {
-          return {
-            gasPrice: BigInt(result.result),
-            maxFeePerGas: null,
-            maxPriorityFeePerGas: null
-          };
-        }
-      }
-    } catch (error) {
-      console.warn('Failed to get gas price from RPC in Farcaster provider:', error);
-    }
-    
-    // Fallback to a reasonable gas price instead of provider's getFeeData
+    // Deliberate raw eth_gasPrice (not provider.getFeeData) to avoid inflated
+    // gas values, with a 1-gwei fallback — delegated to RpcClient, which owns
+    // this exact behavior.
+    const gasPrice = await this.rpcClient.getRawGasPriceWithFallback();
     return {
-      gasPrice: BigInt('1000000000'), // 1 gwei fallback
+      gasPrice,
       maxFeePerGas: null,
       maxPriorityFeePerGas: null
     };
   }
-  
+
   async call(tx: any) {
     return this.jsonRpcProvider.call(tx);
   }
@@ -698,10 +680,10 @@ function FarcasterAuthProviderInner({ children, AuthContext }: {
       if (!config?.rpcUrl) {
         throw new Error('RPC URL not configured');
       }
-      // Return simple JsonRpcProvider - signing handled by Wagmi
-      return new ethers.JsonRpcProvider(config.rpcUrl);
+      // Read-only provider from the single read-RPC owner; signing handled by Wagmi.
+      return new RpcClient(config.rpcUrl).getProvider();
     };
-    
+
     (provider as any).getUSDCBalance = async (userAddress?: string) => {
       const tokenAddress = config?.defaultToken?.address || config?.usdcContractAddress;
       if (!config?.rpcUrl || !tokenAddress) {
@@ -709,20 +691,22 @@ function FarcasterAuthProviderInner({ children, AuthContext }: {
         return '0';
       }
 
-      // Use JsonRpcProvider to read from blockchain
-      const jsonProvider = new ethers.JsonRpcProvider(config.rpcUrl);
+      // Read balance via the read-only RPC library. Preserve the original
+      // hardcoded 6-decimal formatting (USDC) rather than reading decimals
+      // on-chain, so behavior is unchanged.
+      const provider = new RpcClient(config.rpcUrl).getProvider();
       const usdcContract = new ethers.Contract(
         tokenAddress,
         ERC20_ABI,
-        jsonProvider
+        provider
       );
-      
+
       const targetAddress = userAddress || address;
       if (!targetAddress) {
         console.warn('getUSDCBalance: No address available');
         return '0';
       }
-      
+
       try {
         const balance = await usdcContract.balanceOf(targetAddress);
         return formatUnits(balance, 6);
@@ -1203,14 +1187,15 @@ function FarcasterAuthProviderInner({ children, AuthContext }: {
         return '0';
       }
 
-      // Use JsonRpcProvider to read from blockchain
-      const provider = new ethers.JsonRpcProvider(config.rpcUrl);
+      // Read balance via the read-only RPC library (preserve hardcoded
+      // 6-decimal USDC formatting below).
+      const provider = new RpcClient(config.rpcUrl).getProvider();
       const usdcContract = new ethers.Contract(
         tokenAddress,
         ERC20_ABI,
         provider
       );
-      
+
       // Get balance for the requested address (or current user)
       const targetAddress = userAddress || address;
       if (!targetAddress) {

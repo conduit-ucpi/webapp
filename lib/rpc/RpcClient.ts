@@ -54,18 +54,87 @@ const ERC20_METADATA_ABI = [
 
 export class RpcClient {
   private readonly provider: ethers.JsonRpcProvider;
+  private readonly rpcUrl: string;
 
   constructor(rpcUrl: string) {
     // Mirror the prior Web3Service.readProvider behavior exactly: pass the
     // configured rpcUrl straight to ethers (which tolerates an absent URL,
     // e.g. during provider-switching teardown with an empty config). We do not
     // throw here, so constructing Web3Service never regresses on empty config.
+    this.rpcUrl = rpcUrl;
     this.provider = new ethers.JsonRpcProvider(rpcUrl);
   }
 
   /** Underlying read-only provider, for the few low-level reads that need it. */
   getProvider(): ethers.JsonRpcProvider {
     return this.provider;
+  }
+
+  // ---- Network / chain reads --------------------------------------------
+
+  /** The ethers Network object (chainId, name). */
+  async getNetwork(): Promise<ethers.Network> {
+    return this.provider.getNetwork();
+  }
+
+  /** chainId as a JS number. */
+  async getChainId(): Promise<number> {
+    const network = await this.provider.getNetwork();
+    return Number(network.chainId);
+  }
+
+  /** Latest block number. */
+  async getBlockNumber(): Promise<number> {
+    return this.provider.getBlockNumber();
+  }
+
+  /** Nonce (transaction count) for an address. */
+  async getTransactionCount(
+    address: string,
+    blockTag?: ethers.BlockTag
+  ): Promise<number> {
+    return this.provider.getTransactionCount(address, blockTag);
+  }
+
+  // ---- Fee / gas reads ---------------------------------------------------
+
+  /** Provider fee data (gasPrice / maxFeePerGas / maxPriorityFeePerGas). */
+  async getFeeData(): Promise<ethers.FeeData> {
+    return this.provider.getFeeData();
+  }
+
+  /**
+   * Raw eth_gasPrice via direct JSON-RPC, with a hardcoded 1-gwei fallback.
+   *
+   * This reproduces FarcasterSyntheticProvider.getFeeData()'s deliberate
+   * behavior: it bypasses ethers' provider.getFeeData() "to avoid inflated gas
+   * values", reads eth_gasPrice directly, and falls back to exactly 1 gwei
+   * (1_000_000_000n) when the RPC is unavailable, returns no result, or the
+   * HTTP response is not ok. Callers that need the {gasPrice, maxFeePerGas,
+   * maxPriorityFeePerGas} shape can wrap this.
+   */
+  async getRawGasPriceWithFallback(): Promise<bigint> {
+    try {
+      const response = await fetch(this.rpcUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'eth_gasPrice',
+          params: [],
+          id: 1,
+        }),
+      });
+      if (response.ok) {
+        const result = await response.json();
+        if (result.result) {
+          return BigInt(result.result);
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to get gas price from RPC in RpcClient:', error);
+    }
+    return BigInt('1000000000'); // 1 gwei fallback
   }
 
   // ---- Balances ----------------------------------------------------------

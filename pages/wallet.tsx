@@ -9,6 +9,7 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import ExpandableHash from '@/components/ui/ExpandableHash';
 import TokenGuide from '@/components/ui/TokenGuide';
 import { ethers } from 'ethers';
+import { RpcClient } from '@/lib/rpc/RpcClient';
 import { useFarcaster } from '@/components/farcaster/FarcasterDetectionProvider';
 import { useWalletAddress } from '@/hooks/useWalletAddress';
 import { ensureHexPrefix } from '@/utils/hexUtils';
@@ -62,21 +63,20 @@ export default function Wallet() {
     try {
       console.log('🔧 Loading chain info via READ-ONLY RPC (no wallet access!)');
 
-      // Use READ-ONLY RPC provider (no wallet access needed!)
-      const readProvider = new ethers.JsonRpcProvider(config.rpcUrl);
+      // Read via the single read-RPC owner (RpcClient) — no wallet access needed.
+      const rpcClient = new RpcClient(config.rpcUrl);
 
-      // Get network info from RPC provider
-      const network = await readProvider.getNetwork();
-      const chainId = Number(network.chainId);
+      // Get network info
+      const chainId = await rpcClient.getChainId();
 
       // Get current block number
-      const blockNumber = await readProvider.getBlockNumber();
+      const blockNumber = await rpcClient.getBlockNumber();
 
       // Get current gas price
       let gasPrice: string | null = null;
       try {
         console.log('Loading chain info - fetching gas price via RPC...');
-        const feeData = await readProvider.getFeeData();
+        const feeData = await rpcClient.getFeeData();
         if (feeData.gasPrice) {
           gasPrice = ethers.formatUnits(feeData.gasPrice, 'gwei');
           console.log(`Got gas price from RPC: ${formatGweiAsEthForLogging(parseFloat(gasPrice))}`);

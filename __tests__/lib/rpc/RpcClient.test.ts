@@ -207,4 +207,112 @@ describe('RpcClient', () => {
       expect(mock.ethCalls).toHaveLength(7);
     });
   });
+
+  describe('network / chain reads', () => {
+    it('getChainId returns chainId as a JS number', async () => {
+      mock = installRpcWireMock(() => undefined, '0x2105');
+      const client = new RpcClient(RPC_URL);
+      const chainId = await client.getChainId();
+      expect(chainId).toBe(8453);
+      expect(typeof chainId).toBe('number');
+    });
+
+    it('getBlockNumber returns the latest block as a number', async () => {
+      mock = installRpcWireMock((req) => {
+        if (req.method === 'eth_blockNumber') return '0x10c8e0';
+        return undefined;
+      });
+      const client = new RpcClient(RPC_URL);
+      expect(await client.getBlockNumber()).toBe(1_100_000);
+    });
+
+    it('getTransactionCount returns the nonce as a number', async () => {
+      mock = installRpcWireMock((req) => {
+        if (req.method === 'eth_getTransactionCount') return '0x5';
+        return undefined;
+      });
+      const client = new RpcClient(RPC_URL);
+      expect(await client.getTransactionCount(USER)).toBe(5);
+    });
+  });
+
+  describe('getFeeData', () => {
+    it('returns provider fee data with gasPrice', async () => {
+      mock = installRpcWireMock((req) => {
+        switch (req.method) {
+          case 'eth_gasPrice':
+            return '0x186a0'; // 100_000 wei
+          case 'eth_maxPriorityFeePerGas':
+            return '0x3d090';
+          case 'eth_getBlockByNumber':
+            return {
+              number: '0x10c8e0',
+              baseFeePerGas: '0x186a0',
+              gasLimit: '0x1',
+              gasUsed: '0x1',
+              hash: '0x' + '00'.repeat(32),
+              parentHash: '0x' + '00'.repeat(32),
+              timestamp: '0x1',
+              transactions: [],
+              miner: '0x' + '00'.repeat(20),
+              extraData: '0x',
+              nonce: '0x0000000000000000',
+              difficulty: '0x0',
+            };
+          default:
+            return undefined;
+        }
+      });
+      const client = new RpcClient(RPC_URL);
+      const fee = await client.getFeeData();
+      expect(fee.gasPrice).toBe(BigInt(100000));
+    });
+  });
+
+  describe('getRawGasPriceWithFallback (Farcaster gas quirk)', () => {
+    let originalFetch: typeof global.fetch;
+    const mockFetch = jest.fn();
+
+    beforeEach(() => {
+      originalFetch = global.fetch;
+      global.fetch = mockFetch as unknown as typeof global.fetch;
+    });
+    afterEach(() => {
+      global.fetch = originalFetch;
+      mockFetch.mockReset();
+    });
+
+    it('sends a raw eth_gasPrice POST and returns the gas price as a BigInt', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ result: '0x186a0' }),
+      });
+      const client = new RpcClient(RPC_URL);
+      const price = await client.getRawGasPriceWithFallback();
+      expect(price).toBe(BigInt(100000));
+      expect(mockFetch).toHaveBeenCalledWith(RPC_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jsonrpc: '2.0', method: 'eth_gasPrice', params: [], id: 1 }),
+      });
+    });
+
+    it('falls back to exactly 1 gwei when the RPC throws', async () => {
+      mockFetch.mockRejectedValueOnce(new Error('down'));
+      const client = new RpcClient(RPC_URL);
+      expect(await client.getRawGasPriceWithFallback()).toBe(BigInt('1000000000'));
+    });
+
+    it('falls back to 1 gwei when there is no result field', async () => {
+      mockFetch.mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ id: 1 }) });
+      const client = new RpcClient(RPC_URL);
+      expect(await client.getRawGasPriceWithFallback()).toBe(BigInt('1000000000'));
+    });
+
+    it('falls back to 1 gwei when the HTTP response is not ok', async () => {
+      mockFetch.mockResolvedValueOnce({ ok: false, json: () => Promise.resolve({ result: '0x186a0' }) });
+      const client = new RpcClient(RPC_URL);
+      expect(await client.getRawGasPriceWithFallback()).toBe(BigInt('1000000000'));
+    });
+  });
 });

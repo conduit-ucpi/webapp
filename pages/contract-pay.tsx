@@ -179,20 +179,8 @@ export default function ContractPay() {
       if (address && selectedTokenAddress && config?.rpcUrl && contract) {
         setIsLoadingBalance(true);
         try {
-          const { ethers } = await import('ethers');
-          const provider = new ethers.JsonRpcProvider(config.rpcUrl);
-          const tokenContract = new ethers.Contract(
-            selectedTokenAddress,
-            ['function balanceOf(address) view returns (uint256)', 'function decimals() view returns (uint8)'],
-            provider
-          );
-
-          const [balance, decimals] = await Promise.all([
-            tokenContract.balanceOf(address),
-            tokenContract.decimals()
-          ]);
-
-          const formattedBalance = ethers.formatUnits(balance, decimals);
+          // Read via the read-only RPC library (RpcClient, through useSimpleEthers).
+          const formattedBalance = await getTokenBalance(address, selectedTokenAddress);
           setTokenBalance(formattedBalance);
           console.log(`ContractPay: ${selectedTokenSymbol} balance:`, formattedBalance);
         } catch (error) {
@@ -205,7 +193,7 @@ export default function ContractPay() {
     };
 
     fetchTokenBalance();
-  }, [address, selectedTokenAddress, selectedTokenSymbol, config?.rpcUrl, contract]);
+  }, [address, selectedTokenAddress, selectedTokenSymbol, config?.rpcUrl, contract, getTokenBalance]);
 
   // Update payment step status
   const updatePaymentStep = (stepId: string, status: 'active' | 'completed' | 'error') => {

@@ -3,6 +3,7 @@ import { Config } from '@/types';
 // WalletProvider removed - using ethers.BrowserProvider directly
 import { toHex, toHexString, ensureHexPrefix } from '@/utils/hexUtils';
 import { mLog } from '@/utils/mobileLogger';
+import { RpcClient } from '@/lib/rpc/RpcClient';
 
 // ERC20 ABI for USDC interactions
 export const ERC20_ABI = [
@@ -34,12 +35,13 @@ export const ESCROW_CONTRACT_ABI = [
   'event FundsClaimed(address recipient, uint256 amount, uint256 timestamp)'
 ];
 
-import { formatWeiAsEthForLogging, formatGweiAsEthForLogging, formatMicroUSDCForLogging } from '@/utils/logging';
+import { formatWeiAsEthForLogging, formatGweiAsEthForLogging } from '@/utils/logging';
 
 export class Web3Service {
   private static instance: Web3Service | null = null;
   private provider: ethers.BrowserProvider | null = null;
   private readProvider: ethers.JsonRpcProvider | null = null; // Read-only RPC provider (no wallet needed)
+  private rpcClient: RpcClient; // Single owner of read-only RPC (balances, token reads, contract reads)
   private config: Config;
   private onMobileActionRequired?: (actionType: 'sign' | 'transaction') => void;
   private isDesktopQRSession: boolean = false;
@@ -53,6 +55,8 @@ export class Web3Service {
     this.config = config;
     // Initialize read-only provider immediately (no wallet needed)
     this.readProvider = new ethers.JsonRpcProvider(config.rpcUrl);
+    // Single owner of read-only RPC — balance/token/contract reads delegate here.
+    this.rpcClient = new RpcClient(config.rpcUrl);
     console.log('[Web3Service] Read-only RPC provider created (no wallet access)');
   }
 
@@ -535,10 +539,6 @@ export class Web3Service {
   }
 
   async getUSDCBalance(userAddress: string): Promise<string> {
-    if (!this.readProvider) {
-      throw new Error('Read provider not initialized');
-    }
-
     const tokenAddress = this.config.defaultToken?.address || this.config.usdcContractAddress;
     if (!tokenAddress) {
       throw new Error('Token contract address not configured');
@@ -548,58 +548,30 @@ export class Web3Service {
     console.log('getUSDCBalance - Token contract:', tokenAddress);
     console.log('getUSDCBalance - Using READ-ONLY RPC provider (no wallet access)');
 
-    const usdcContract = new ethers.Contract(
-      tokenAddress,
-      ERC20_ABI,
-      this.readProvider  // ← Use read provider, not wallet provider
-    );
-
-    const balance = await usdcContract.balanceOf(userAddress);
-    const decimals = await usdcContract.decimals();
-
-    console.log(`getUSDCBalance - raw balance: ${formatMicroUSDCForLogging(balance)}`);
-    console.log('getUSDCBalance - decimals:', decimals);
-    const formattedBalance = ethers.formatUnits(balance, decimals);
+    // Delegated to the single read-RPC owner (RpcClient).
+    const formattedBalance = await this.rpcClient.getTokenBalance(userAddress, tokenAddress);
     console.log('getUSDCBalance - formatted balance:', formattedBalance);
 
     return formattedBalance;
   }
 
   async getTokenBalance(userAddress: string, tokenAddress: string): Promise<string> {
-    if (!this.readProvider) {
-      throw new Error('Read provider not initialized');
-    }
-
     console.log('getTokenBalance - checking for address:', userAddress);
     console.log('getTokenBalance - Token contract:', tokenAddress);
 
-    const tokenContract = new ethers.Contract(
-      tokenAddress,
-      ERC20_ABI,
-      this.readProvider
-    );
-
-    const balance = await tokenContract.balanceOf(userAddress);
-    const decimals = await tokenContract.decimals();
-
-    const formattedBalance = ethers.formatUnits(balance, decimals);
+    // Delegated to the single read-RPC owner (RpcClient).
+    const formattedBalance = await this.rpcClient.getTokenBalance(userAddress, tokenAddress);
     console.log(`getTokenBalance - ${tokenAddress}: ${formattedBalance}`);
 
     return formattedBalance;
   }
 
   async getNativeBalance(userAddress: string): Promise<string> {
-    if (!this.readProvider) {
-      throw new Error('Read provider not initialized');
-    }
-
     console.log('getNativeBalance - checking for address:', userAddress);
     console.log('getNativeBalance - Using READ-ONLY RPC provider (no wallet access)');
 
-    const balance = await this.readProvider.getBalance(userAddress);
-    const formattedBalance = ethers.formatEther(balance);
-
-    console.log('getNativeBalance - raw balance (wei):', balance.toString());
+    // Delegated to the single read-RPC owner (RpcClient).
+    const formattedBalance = await this.rpcClient.getNativeBalance(userAddress);
     console.log('getNativeBalance - formatted balance:', formattedBalance);
 
     return formattedBalance;

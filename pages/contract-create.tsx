@@ -176,20 +176,8 @@ export default function ContractCreate() {
       if (address && selectedTokenAddress && config?.rpcUrl) {
         setIsLoadingBalance(true);
         try {
-          const { ethers } = await import('ethers');
-          const provider = new ethers.JsonRpcProvider(config.rpcUrl);
-          const tokenContract = new ethers.Contract(
-            selectedTokenAddress,
-            ['function balanceOf(address) view returns (uint256)', 'function decimals() view returns (uint8)'],
-            provider
-          );
-
-          const [balance, decimals] = await Promise.all([
-            tokenContract.balanceOf(address),
-            tokenContract.decimals()
-          ]);
-
-          const formattedBalance = ethers.formatUnits(balance, decimals);
+          // Read via the read-only RPC library (RpcClient, through useSimpleEthers).
+          const formattedBalance = await getTokenBalance(address, selectedTokenAddress);
           setTokenBalance(formattedBalance);
           console.log(`🔧 ContractCreate: ${selectedTokenSymbol} balance:`, formattedBalance);
         } catch (error) {
@@ -202,7 +190,7 @@ export default function ContractCreate() {
     };
 
     fetchTokenBalance();
-  }, [address, selectedTokenAddress, selectedTokenSymbol, config?.rpcUrl]);
+  }, [address, selectedTokenAddress, selectedTokenSymbol, config?.rpcUrl, getTokenBalance]);
 
   // Detect iframe and popup environment
   useEffect(() => {

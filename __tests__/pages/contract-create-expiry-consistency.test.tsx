@@ -35,6 +35,11 @@ jest.mock('next/router', () => ({
 const mockAuthenticatedFetch = jest.fn();
 const mockValidateForm = jest.fn(() => true);
 const mockGetWeb3Service = jest.fn();
+// Stable reference: the real useSimpleEthers wraps getTokenBalance in
+// useCallback, so it must be stable across renders. A fresh jest.fn() per
+// render would re-fire the balance-fetch effect (which now depends on it) and
+// loop forever. Mirror production by hoisting one stable mock.
+const mockGetTokenBalance = jest.fn().mockResolvedValue('1000');
 
 jest.mock('@/components/auth', () => ({
   useAuth: () => ({
@@ -94,7 +99,7 @@ jest.mock('@/hooks/useSimpleEthers', () => ({
     depositFundsAsProxy: jest.fn(),
     getWeb3Service: mockGetWeb3Service,
     transferToContract: jest.fn(),
-    getTokenBalance: jest.fn().mockResolvedValue('1000'),
+    getTokenBalance: mockGetTokenBalance,
   }),
 }));
 

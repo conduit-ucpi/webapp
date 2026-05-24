@@ -424,7 +424,13 @@ export default function EnhancedDashboard() {
     } else {
       console.log('🔧 Skipping fetchContracts - either no authenticatedFetch or already fetched');
     }
-  }, [authenticatedFetch]); // Only depend on authenticatedFetch
+    // NOTE: authenticatedFetch is intentionally NOT a dependency — it is
+    // recreated on every auth step, so depending on it re-runs this effect on
+    // every auth change (churn). authenticatedFetch is always provided by the
+    // auth context, and the hasFetched ref makes this a one-shot fetch, so a
+    // mount-once effect is correct here.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Calculate stats from contracts
   const stats = useMemo(() => {

@@ -23,13 +23,31 @@ import path from 'path';
 
 const ROOT = path.join(__dirname, '../../');
 
-// Files that read balances/contract data via useSimpleEthers in effects.
-const FILES = [
-  'pages/contract-pay.tsx',
-  'pages/contract-create.tsx',
-  'pages/wallet.tsx',
-  'components/ui/WalletInfo.tsx',
-];
+// Scan ALL pages and components — a hand-curated list previously let new
+// violations (CreateContractWizard, EmailPromptManager) slip through. The rule
+// is uniform: no unstable useAuth/useSimpleEthers callback in a useEffect
+// dependency array, anywhere.
+function collectSourceFiles(): string[] {
+  const out: string[] = [];
+  const scan = (dir: string) => {
+    const abs = path.join(ROOT, dir);
+    if (!fs.existsSync(abs)) return;
+    for (const entry of fs.readdirSync(abs, { withFileTypes: true })) {
+      const rel = `${dir}/${entry.name}`;
+      if (entry.isDirectory()) {
+        if (entry.name === 'node_modules' || entry.name === '.next') continue;
+        scan(rel);
+      } else if (/\.tsx?$/.test(entry.name) && !/\.(test|spec)\.tsx?$/.test(entry.name)) {
+        out.push(rel);
+      }
+    }
+  };
+  scan('pages');
+  scan('components');
+  return out;
+}
+
+const FILES = collectSourceFiles();
 
 // Unstable-across-renders hook methods. These come from useSimpleEthers AND
 // useAuth, both of which return a fresh value whose function members are

@@ -96,6 +96,9 @@ export default function ContractPay() {
   const [copiedAddress, setCopiedAddress] = useState(false);
   const qrPollingRef = useRef<NodeJS.Timeout | null>(null);
   const qrCountdownRef = useRef<NodeJS.Timeout | null>(null);
+  // Guards the contract fetch to run once per contractId, independent of
+  // authenticatedFetch identity churn during the auth flow.
+  const fetchedContractIdRef = useRef<string | null>(null);
 
   // Wallet flow payment steps
   const [paymentSteps, setPaymentSteps] = useState<PaymentStep[]>([
@@ -141,7 +144,16 @@ export default function ContractPay() {
     };
 
     fetchUserData();
-  }, [isConnected, address, user, hasAttemptedUserFetch, refreshUserData]);
+    // NOTE: refreshUserData is intentionally NOT a dependency. It is an unstable
+    // closure recreated on every auth step (SimpleAuthProvider's authValue memo
+    // depends on backendUserData/isLoadingUserData, which flip during the auth
+    // flow). Including it re-fires this effect mid-auth, calling refreshUserData
+    // again → another auth → a re-render/re-auth storm that races the SIWX
+    // session rotation and produces perpetual 401s. The primitive guards
+    // (hasAttemptedUserFetch / isConnected / address / user) already control
+    // when the one-shot fetch should run.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isConnected, address, user, hasAttemptedUserFetch]);
 
   // Fetch contract details - only after user is authenticated
   useEffect(() => {
@@ -161,6 +173,15 @@ export default function ContractPay() {
         setIsLoadingContract(false);
         return;
       }
+
+      // Fetch once per contractId. Without this guard, the effect re-fires
+      // whenever authenticatedFetch's identity changes (it is recreated on every
+      // auth step), launching concurrent fetches that race the SIWX session
+      // rotation and 401 — feeding a re-render/re-auth storm.
+      if (fetchedContractIdRef.current === contractId) {
+        return;
+      }
+      fetchedContractIdRef.current = contractId;
 
       setIsLoadingContract(true);
       setContractError(null);
@@ -206,7 +227,12 @@ export default function ContractPay() {
     };
 
     fetchContract();
-  }, [contractId, authenticatedFetch, isConnected, address]);
+    // NOTE: authenticatedFetch is intentionally NOT a dependency — its identity
+    // changes on every auth step and would re-fire this fetch. The
+    // fetchedContractIdRef guard makes it one-shot per contractId; connection
+    // state (isConnected/address) plus contractId are the real triggers.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contractId, isConnected, address]);
 
   // Fetch token balance when contract is loaded
   useEffect(() => {

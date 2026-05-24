@@ -31,8 +31,14 @@ const FILES = [
   'components/ui/WalletInfo.tsx',
 ];
 
-// useSimpleEthers methods that are unstable across renders.
+// Unstable-across-renders hook methods. These come from useSimpleEthers AND
+// useAuth, both of which return a fresh value whose function members are
+// recreated when auth/config state changes. Putting any of them in a useEffect
+// dependency array re-fires the effect on every such change — and for the auth
+// callbacks (authenticatedFetch / refreshUserData) that re-fire drives a
+// re-render/re-auth storm (perpetual 401s). Depend on primitive inputs instead.
 const UNSTABLE_METHODS = [
+  // useSimpleEthers
   'getTokenBalance',
   'getNativeBalance',
   'getUSDCBalance',
@@ -43,23 +49,37 @@ const UNSTABLE_METHODS = [
   'transferToContract',
   'approveUSDC',
   'depositToContract',
+  // useAuth
+  'authenticatedFetch',
+  'refreshUserData',
 ];
 
 /**
- * Extract the dependency-array text of every useEffect(...) call in a source
- * string. We find `useEffect(` then the matching `, [ ... ]);` that closes it.
- * A light scan is enough: we look for the `}, [ ... ])` that ends each effect.
+ * Extract the dependency-array text of every useEffect(...) call.
+ *
+ * Precision matters: we must NOT pick up a useCallback's/useMemo's dependency
+ * array. We walk from each `useEffect(` and brace-match to the call's own
+ * closing `)`, then read the `[...]` immediately before that close as the dep
+ * array. This guarantees the dep array belongs to THIS useEffect and not a
+ * sibling/nested hook that happens to appear later in the file.
  */
 function extractUseEffectDepArrays(source: string): string[] {
   const deps: string[] = [];
   const re = /useEffect\s*\(/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(source)) !== null) {
-    // From the useEffect start, find the closing `}, [ ... ])` of the call.
-    const rest = source.slice(m.index);
-    // Match the LAST `}, [ ... ])` that belongs to this effect: the first
-    // occurrence of `, [` that follows the effect body's closing brace.
-    const depMatch = rest.match(/\}\s*,\s*\[([\s\S]*?)\]\s*\)/);
+    // Start just after the opening "(" of useEffect(.
+    let i = m.index + m[0].length;
+    let depth = 1; // we're inside useEffect's parens
+    for (; i < source.length && depth > 0; i++) {
+      const ch = source[i];
+      if (ch === '(') depth++;
+      else if (ch === ')') depth--;
+    }
+    // i now points just past useEffect's closing ")". The dependency array, if
+    // present, is the last [...] before that close.
+    const callText = source.slice(m.index, i);
+    const depMatch = callText.match(/,\s*\[([\s\S]*?)\]\s*\)\s*$/);
     if (depMatch) {
       deps.push(depMatch[1]);
     }

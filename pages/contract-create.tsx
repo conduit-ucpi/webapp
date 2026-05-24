@@ -236,7 +236,13 @@ export default function ContractCreate() {
     };
 
     fetchUserData();
-  }, [isConnected, address, user, hasAttemptedUserFetch, refreshUserData]);
+    // NOTE: refreshUserData is intentionally NOT a dependency — it is recreated
+    // on every auth step, so including it re-fires this effect mid-auth and
+    // drives a re-render/re-auth storm (perpetual 401s). The primitive guards
+    // (hasAttemptedUserFetch / isConnected / address / user) control the
+    // one-shot fetch. See the matching fix in contract-pay.tsx.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isConnected, address, user, hasAttemptedUserFetch]);
 
   // Cleanup QR polling/countdown on unmount
   useEffect(() => {

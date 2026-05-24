@@ -39,6 +39,29 @@ export default function ContractPay() {
     getWeb3Service, transferToContract, getTokenBalance
   } = useSimpleEthers();
 
+  // TEMPORARY DIAGNOSTIC (remove once the render loop is confirmed fixed):
+  // Logs which render inputs CHANGED IDENTITY since the previous render, so we
+  // can see definitively what drives the re-render loop instead of inferring
+  // from log ordering. Each line shows true/false per dependency.
+  const __diagPrev = useRef<Record<string, unknown>>({});
+  {
+    const cur: Record<string, unknown> = {
+      contractId,
+      authenticatedFetch,
+      isConnected,
+      address,
+      user,
+      config,
+      refreshUserData,
+      getTokenBalance,
+      routerQuery: router.query,
+    };
+    const prev = __diagPrev.current;
+    const changed = Object.keys(cur).filter((k) => prev[k] !== cur[k]);
+    console.log('🔬 ContractPay render — changed identities:', changed.length ? changed.join(', ') : '(none — pure re-render)');
+    __diagPrev.current = cur;
+  }
+
   // State
   const [contract, setContract] = useState<PendingContract | null>(null);
   const [isLoadingContract, setIsLoadingContract] = useState(true);

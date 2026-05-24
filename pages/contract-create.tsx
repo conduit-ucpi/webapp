@@ -291,7 +291,12 @@ export default function ContractCreate() {
     return () => {
       if (qrPollingRef.current) clearInterval(qrPollingRef.current);
     };
-  }, [qrContractAddress, selectedTokenAddress, form.amount, qrActivationStatus, getTokenBalance]);
+    // NOTE: getTokenBalance is intentionally NOT a dependency. useSimpleEthers
+    // returns a fresh object each render, so including it re-creates the
+    // polling interval (and immediately re-polls) on every render — a loop.
+    // The primitive deps capture every input that should restart polling.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [qrContractAddress, selectedTokenAddress, form.amount, qrActivationStatus]);
 
   // Send postMessage to parent window (iframe) or opener (popup)
   const sendPostMessage = (event: PostMessageEvent) => {

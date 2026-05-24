@@ -274,7 +274,12 @@ export default function ContractPay() {
     return () => {
       if (qrPollingRef.current) clearInterval(qrPollingRef.current);
     };
-  }, [qrContractAddress, selectedTokenAddress, contract, qrActivationStatus, getTokenBalance]);
+    // NOTE: getTokenBalance is intentionally NOT a dependency. useSimpleEthers
+    // returns a fresh object each render, so including it re-creates the
+    // polling interval (and immediately re-polls) on every render — a loop.
+    // The primitive deps capture every input that should restart polling.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [qrContractAddress, selectedTokenAddress, contract, qrActivationStatus]);
 
   // Check and activate contract (QR path)
   const checkAndActivate = useCallback(async () => {

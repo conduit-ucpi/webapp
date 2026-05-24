@@ -36,8 +36,10 @@ function makeFetch(handlers: Record<string, (init?: RequestInit) => any>) {
     for (const [pattern, handler] of Object.entries(handlers)) {
       if (url.includes(pattern)) {
         const result = handler(init);
+        const ok = result.ok ?? true;
         return {
-          ok: result.ok ?? true,
+          ok,
+          status: result.status ?? (ok ? 200 : 500),
           json: async () => result.body
         } as Response;
       }
@@ -47,7 +49,22 @@ function makeFetch(handlers: Record<string, (init?: RequestInit) => any>) {
 }
 
 describe('resolveOrCreateOnChainContract', () => {
+  let setTimeoutSpy: jest.SpyInstance | undefined;
   beforeEach(() => jest.clearAllMocks());
+  afterEach(() => {
+    setTimeoutSpy?.mockRestore();
+    setTimeoutSpy = undefined;
+  });
+
+  // The post-create re-fetch backs off with real setTimeout delays. Collapse
+  // those delays to 0 so retry tests don't wait wall-clock seconds (we are
+  // testing retry COUNT/behavior, not the actual backoff durations).
+  const collapseBackoff = () => {
+    const realSetTimeout = global.setTimeout;
+    setTimeoutSpy = jest
+      .spyOn(global, 'setTimeout')
+      .mockImplementation(((fn: any) => realSetTimeout(fn, 0)) as any);
+  };
 
   it('skips create-contract when contractservice already has an address', async () => {
     const fetchMock = makeFetch({
@@ -174,6 +191,77 @@ describe('resolveOrCreateOnChainContract', () => {
     });
 
     expect('arbiter' in createBody).toBe(false);
+  });
+
+  it('retries the post-create re-fetch on a transient 500, then uses the stored address', async () => {
+    collapseBackoff();
+    // Immediately after the on-chain create confirms, contractservice is still
+    // processing the chain event and 500s briefly before recording the address.
+    let pendingFetchCount = 0;
+    const fetchMock = makeFetch({
+      '/api/contracts/pending-id-1': () => {
+        pendingFetchCount++;
+        if (pendingFetchCount === 1) return { ok: true, body: { id: 'pending-id-1' } }; // pre-create
+        if (pendingFetchCount === 2) return { ok: false, status: 500, body: { error: 'busy' } }; // transient
+        return { ok: true, body: { id: 'pending-id-1', contractAddress: STORED_ADDRESS } }; // recovered
+      },
+      '/api/chain/create-contract': () => ({
+        ok: true,
+        body: { contractAddress: ORPHAN_ADDRESS, transactionHash: '0xtx' }
+      })
+    });
+
+    const result = await resolveOrCreateOnChainContract(baseParams, {
+      authenticatedFetch: fetchMock,
+      getWeb3Service: mockGetWeb3Service
+    });
+
+    expect(result.contractAddress).toBe(STORED_ADDRESS);
+    expect(pendingFetchCount).toBeGreaterThanOrEqual(3); // pre-create + 500 + retry
+  });
+
+  it('falls back to the chainservice address when the post-create re-fetch keeps 500ing', async () => {
+    collapseBackoff();
+    // The on-chain create succeeded; a persistently-slow contractservice must
+    // NOT fail the whole payment — we already have a usable candidate address.
+    let pendingFetchCount = 0;
+    const fetchMock = makeFetch({
+      '/api/contracts/pending-id-1': () => {
+        pendingFetchCount++;
+        if (pendingFetchCount === 1) return { ok: true, body: { id: 'pending-id-1' } }; // pre-create OK
+        return { ok: false, status: 500, body: { error: 'still busy' } }; // every re-fetch 500s
+      },
+      '/api/chain/create-contract': () => ({
+        ok: true,
+        body: { contractAddress: STORED_ADDRESS, transactionHash: '0xtx' }
+      })
+    });
+
+    const result = await resolveOrCreateOnChainContract(baseParams, {
+      authenticatedFetch: fetchMock,
+      getWeb3Service: mockGetWeb3Service
+    });
+
+    // Did not throw; fell back to the address chainservice returned.
+    expect(result.contractAddress).toBe(STORED_ADDRESS);
+    expect(result.alreadyExisted).toBe(false);
+  });
+
+  it('still fails fast (no retry) when the PRE-create fetch errors', async () => {
+    // A 500 before we create anything is a real error — surface it immediately,
+    // do not retry (retries only protect the post-create eventual-consistency
+    // window).
+    const fetchMock = makeFetch({
+      '/api/contracts/pending-id-1': () => ({ ok: false, status: 500, body: { error: 'down' } }),
+      '/api/chain/create-contract': () => { throw new Error('should not be called'); }
+    });
+
+    await expect(
+      resolveOrCreateOnChainContract(baseParams, {
+        authenticatedFetch: fetchMock,
+        getWeb3Service: mockGetWeb3Service
+      })
+    ).rejects.toThrow(/Failed to load pending contract/);
   });
 
   it('throws when chainservice create-contract fails', async () => {

@@ -28,8 +28,6 @@ type PaymentStep = {
 type PaymentMethod = 'wallet' | 'qr' | null;
 
 export default function ContractPay() {
-  console.log('ContractPay: Component mounted/rendered');
-
   const router = useRouter();
   const { contractId } = router.query;
   const { config } = useConfig();
@@ -38,41 +36,6 @@ export default function ContractPay() {
     approveUSDC, depositToContract, depositFundsAsProxy,
     getWeb3Service, transferToContract, getTokenBalance
   } = useSimpleEthers();
-
-  // TEMPORARY DIAGNOSTIC (remove once the render loop is confirmed fixed):
-  // Distinguishes a REMOUNT (new component instance — effects re-run, contract
-  // re-fetches) from a plain RE-RENDER, and logs which render inputs changed
-  // identity. The steady-state log showed "(none)" changing yet the contract
-  // kept re-fetching, which only happens on a remount — so we confirm that and
-  // tag each instance with a unique mountId to see fresh instances in the log.
-  const __mountId = useRef<number>(Math.floor(Math.random() * 1e6));
-  const __isFirstRender = useRef(true);
-  useEffect(() => {
-    console.log(`🔬 ContractPay MOUNTED — instance #${__mountId.current}`);
-    return () => console.log(`🔬 ContractPay UNMOUNTED — instance #${__mountId.current}`);
-  }, []);
-  const __diagPrev = useRef<Record<string, unknown>>({});
-  {
-    const cur: Record<string, unknown> = {
-      contractId,
-      authenticatedFetch,
-      isConnected,
-      address,
-      user,
-      config,
-      refreshUserData,
-      getTokenBalance,
-      routerQuery: router.query,
-    };
-    const prev = __diagPrev.current;
-    const changed = Object.keys(cur).filter((k) => prev[k] !== cur[k]);
-    console.log(
-      `🔬 ContractPay render [#${__mountId.current}${__isFirstRender.current ? ' FIRST' : ''}] — changed:`,
-      changed.length ? changed.join(', ') : '(none — pure re-render)'
-    );
-    __diagPrev.current = cur;
-    __isFirstRender.current = false;
-  }
 
   // State
   const [contract, setContract] = useState<PendingContract | null>(null);

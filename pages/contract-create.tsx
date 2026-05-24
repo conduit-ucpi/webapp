@@ -46,7 +46,6 @@ type PaymentStep = {
 type PaymentMethod = 'wallet' | 'qr' | null;
 
 export default function ContractCreate() {
-  console.log('🔧 ContractCreate: Component mounted/rendered');
 
   const router = useRouter();
   const { config } = useConfig();

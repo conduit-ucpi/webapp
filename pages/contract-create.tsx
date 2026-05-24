@@ -190,7 +190,13 @@ export default function ContractCreate() {
     };
 
     fetchTokenBalance();
-  }, [address, selectedTokenAddress, selectedTokenSymbol, config?.rpcUrl, getTokenBalance]);
+    // NOTE: getTokenBalance is intentionally NOT a dependency. It comes from
+    // useSimpleEthers, which returns a fresh object each render; including the
+    // function identity re-fires this effect every render (balance flashing /
+    // reload loop). The primitive deps below already capture every input that
+    // should re-trigger the fetch, matching the original behavior.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [address, selectedTokenAddress, selectedTokenSymbol, config?.rpcUrl]);
 
   // Detect iframe and popup environment
   useEffect(() => {

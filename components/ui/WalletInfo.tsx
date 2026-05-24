@@ -70,7 +70,13 @@ export default function WalletInfo({
 
       fetchBalance();
     }
-  }, [address, effectiveTokenAddress, config?.rpcUrl, displayTokenSymbol, getTokenBalance]);
+    // NOTE: getTokenBalance is intentionally NOT a dependency. It comes from
+    // useSimpleEthers, which returns a fresh object each render; including the
+    // function identity re-fires this effect every render (balance flashing /
+    // reload loop). The primitive deps below already capture every input that
+    // should re-trigger the fetch.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [address, effectiveTokenAddress, config?.rpcUrl, displayTokenSymbol]);
 
   const copyToClipboard = async () => {
     if (!address) return;

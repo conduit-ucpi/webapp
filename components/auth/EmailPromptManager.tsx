@@ -83,7 +83,14 @@ export default function EmailPromptManager({ children }: { children: React.React
     };
 
     autoCollectEmail();
-  }, [user, isLoading, getProviderUserInfo, refreshUserData]);
+    // NOTE: getProviderUserInfo and refreshUserData are intentionally NOT
+    // dependencies — both are unstable closures recreated on every auth step,
+    // so including them re-runs this effect (and its setShowEmailPrompt calls)
+    // on every auth change, contributing to the re-render/re-auth churn. The
+    // real triggers are user/isLoading; the heavy path is guarded by the
+    // hasAttemptedAutoCollect ref.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, isLoading]);
 
   const handleEmailSubmit = async (email: string) => {
     setIsSubmitting(true);

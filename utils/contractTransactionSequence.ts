@@ -78,12 +78,25 @@ export async function resolveOrCreateOnChainContract(
 ): Promise<ResolveOrCreateResult> {
   const { authenticatedFetch, getWeb3Service, onProgress } = options;
 
-  const fetchPending = async () => {
-    const r = await authenticatedFetch(`/api/contracts/${params.contractserviceId}`, { method: 'GET' });
-    if (!r.ok) {
+  // Fetch the pending contract. Optionally retry on transient server errors
+  // (HTTP >= 500): immediately after the on-chain create is confirmed, the
+  // contract service is still processing the chain event and recording the
+  // address, and briefly returns 500. We back off and retry rather than failing
+  // the whole payment. We do NOT retry 4xx (e.g. 401/404) — those are real and
+  // should surface immediately.
+  const fetchPending = async (retries = 0, delayMs = 750) => {
+    for (let attempt = 0; ; attempt++) {
+      const r = await authenticatedFetch(`/api/contracts/${params.contractserviceId}`, { method: 'GET' });
+      if (r.ok) {
+        return r.json();
+      }
+      const isTransient = r.status >= 500;
+      if (isTransient && attempt < retries) {
+        await new Promise((resolve) => setTimeout(resolve, delayMs * (attempt + 1)));
+        continue;
+      }
       throw new Error('Failed to load pending contract while resolving on-chain address');
     }
-    return r.json();
   };
 
   const existing = await fetchPending();
@@ -130,8 +143,27 @@ export async function resolveOrCreateOnChainContract(
   // yet (notification timing, eventual consistency), fall back to the address
   // chainservice just returned. The pre-create GET above is the real defence
   // against double-deploys; this is only for catching mismatches.
-  const refreshed = await fetchPending();
-  const storedAddress: string | undefined = refreshed?.contractAddress;
+  //
+  // Retry transient 5xx here: this GET runs immediately after the on-chain
+  // create is confirmed, while contractservice is still processing the chain
+  // event — it briefly 500s. Without retry the whole payment fails with
+  // "Failed to load pending contract" even though the create succeeded.
+  //
+  // If the re-fetch still fails after retries, do NOT fail the payment: the
+  // create already succeeded on-chain and chainservice returned a usable
+  // candidateAddress. The re-fetch is only to prefer contractservice's stored
+  // address when available; falling back to candidateAddress is correct.
+  let storedAddress: string | undefined;
+  try {
+    const refreshed = await fetchPending(4, 750);
+    storedAddress = refreshed?.contractAddress;
+  } catch (refetchError) {
+    console.warn(
+      '🔧 resolveOrCreate: post-create contract re-fetch failed after retries; ' +
+        'falling back to the address chainservice returned.',
+      refetchError instanceof Error ? refetchError.message : refetchError
+    );
+  }
 
   if (storedAddress && candidateAddress && storedAddress.toLowerCase() !== candidateAddress.toLowerCase()) {
     console.warn(

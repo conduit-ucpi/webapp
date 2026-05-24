@@ -5,13 +5,6 @@ import { getNetworkName } from '@/utils/networkUtils';
 import { formatWalletAddress } from '@/utils/validation';
 import { useSimpleEthers } from '@/hooks/useSimpleEthers';
 import Button from '@/components/ui/Button';
-import { ethers } from 'ethers';
-
-// ERC20 ABI for token balance
-const ERC20_ABI = [
-  'function balanceOf(address owner) view returns (uint256)',
-  'function decimals() view returns (uint8)'
-];
 
 interface WalletInfoProps {
   className?: string;
@@ -26,7 +19,7 @@ export default function WalletInfo({
 }: WalletInfoProps) {
   const { user, address } = useAuth(); // Get address for lazy auth support
   const { config } = useConfig();
-  const { getUSDCBalance } = useSimpleEthers();
+  const { getTokenBalance } = useSimpleEthers();
   const [balance, setBalance] = useState<string>('0.0000');
   const [isLoadingBalance, setIsLoadingBalance] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -55,7 +48,8 @@ export default function WalletInfo({
     });
   }, [tokenSymbol, tokenAddress, displayTokenSymbol, effectiveTokenAddress, config?.usdcDetails, config?.usdtDetails]);
 
-  // Fetch token balance using ethers directly
+  // Fetch token balance via the read-only RPC library (RpcClient, through
+  // useSimpleEthers -> Web3Service). No direct provider instantiation here.
   // Use address instead of user?.walletAddress for lazy auth support
   useEffect(() => {
     if (address && effectiveTokenAddress && config?.rpcUrl) {
@@ -63,22 +57,7 @@ export default function WalletInfo({
 
       const fetchBalance = async () => {
         try {
-          // Create provider and token contract
-          const provider = new ethers.JsonRpcProvider(config.rpcUrl);
-          const tokenContract = new ethers.Contract(
-            effectiveTokenAddress,
-            ERC20_ABI,
-            provider
-          );
-
-          // Fetch balance and decimals
-          const [balance, decimals] = await Promise.all([
-            tokenContract.balanceOf(address),
-            tokenContract.decimals()
-          ]);
-
-          // Format balance with proper decimals
-          const formattedBalance = ethers.formatUnits(balance, decimals);
+          const formattedBalance = await getTokenBalance(address, effectiveTokenAddress);
           const balanceNumber = parseFloat(formattedBalance);
           setBalance(balanceNumber.toFixed(4));
         } catch (error) {
@@ -91,6 +70,12 @@ export default function WalletInfo({
 
       fetchBalance();
     }
+    // NOTE: getTokenBalance is intentionally NOT a dependency. It comes from
+    // useSimpleEthers, which returns a fresh object each render; including the
+    // function identity re-fires this effect every render (balance flashing /
+    // reload loop). The primitive deps below already capture every input that
+    // should re-trigger the fetch.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [address, effectiveTokenAddress, config?.rpcUrl, displayTokenSymbol]);
 
   const copyToClipboard = async () => {

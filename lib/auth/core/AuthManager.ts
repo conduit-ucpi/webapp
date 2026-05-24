@@ -491,7 +491,12 @@ export class AuthManager {
    * Get current auth state
    */
   getState(): AuthState {
-    return { ...this.state };
+    // Return the stable internal reference. AuthState is treated as immutable
+    // (setState always replaces it wholesale), so callers must not mutate it.
+    // Returning a fresh clone on every call previously churned the identity of
+    // `state` for every React consumer, re-deriving memoized values
+    // (authValue / authenticatedFetch) and driving a post-auth re-render loop.
+    return this.state;
   }
 
   /**
@@ -614,6 +619,19 @@ export class AuthManager {
   }
 
   setState(newState: Partial<AuthState>): void {
+    // Change detection: if the patch doesn't actually change any value, this is
+    // a no-op. We must NOT replace the state object or notify listeners on a
+    // no-op, otherwise `state` identity churns and React consumers re-render in
+    // a loop (e.g. updateUserData repeatedly calling setState({isAuthenticated:
+    // true}) when already authenticated). AuthState is a flat object, so a
+    // shallow compare of the patched keys is sufficient.
+    const changed = (Object.keys(newState) as Array<keyof AuthState>).some(
+      key => this.state[key] !== newState[key]
+    );
+    if (!changed) {
+      return;
+    }
+
     this.state = { ...this.state, ...newState };
 
     // CRITICAL FIX: Expose wallet address on window for Web3Service

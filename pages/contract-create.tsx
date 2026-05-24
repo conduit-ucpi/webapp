@@ -46,7 +46,6 @@ type PaymentStep = {
 type PaymentMethod = 'wallet' | 'qr' | null;
 
 export default function ContractCreate() {
-  console.log('🔧 ContractCreate: Component mounted/rendered');
 
   const router = useRouter();
   const { config } = useConfig();
@@ -176,20 +175,8 @@ export default function ContractCreate() {
       if (address && selectedTokenAddress && config?.rpcUrl) {
         setIsLoadingBalance(true);
         try {
-          const { ethers } = await import('ethers');
-          const provider = new ethers.JsonRpcProvider(config.rpcUrl);
-          const tokenContract = new ethers.Contract(
-            selectedTokenAddress,
-            ['function balanceOf(address) view returns (uint256)', 'function decimals() view returns (uint8)'],
-            provider
-          );
-
-          const [balance, decimals] = await Promise.all([
-            tokenContract.balanceOf(address),
-            tokenContract.decimals()
-          ]);
-
-          const formattedBalance = ethers.formatUnits(balance, decimals);
+          // Read via the read-only RPC library (RpcClient, through useSimpleEthers).
+          const formattedBalance = await getTokenBalance(address, selectedTokenAddress);
           setTokenBalance(formattedBalance);
           console.log(`🔧 ContractCreate: ${selectedTokenSymbol} balance:`, formattedBalance);
         } catch (error) {
@@ -202,6 +189,12 @@ export default function ContractCreate() {
     };
 
     fetchTokenBalance();
+    // NOTE: getTokenBalance is intentionally NOT a dependency. It comes from
+    // useSimpleEthers, which returns a fresh object each render; including the
+    // function identity re-fires this effect every render (balance flashing /
+    // reload loop). The primitive deps below already capture every input that
+    // should re-trigger the fetch, matching the original behavior.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [address, selectedTokenAddress, selectedTokenSymbol, config?.rpcUrl]);
 
   // Detect iframe and popup environment
@@ -242,7 +235,13 @@ export default function ContractCreate() {
     };
 
     fetchUserData();
-  }, [isConnected, address, user, hasAttemptedUserFetch, refreshUserData]);
+    // NOTE: refreshUserData is intentionally NOT a dependency — it is recreated
+    // on every auth step, so including it re-fires this effect mid-auth and
+    // drives a re-render/re-auth storm (perpetual 401s). The primitive guards
+    // (hasAttemptedUserFetch / isConnected / address / user) control the
+    // one-shot fetch. See the matching fix in contract-pay.tsx.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isConnected, address, user, hasAttemptedUserFetch]);
 
   // Cleanup QR polling/countdown on unmount
   useEffect(() => {
@@ -297,7 +296,12 @@ export default function ContractCreate() {
     return () => {
       if (qrPollingRef.current) clearInterval(qrPollingRef.current);
     };
-  }, [qrContractAddress, selectedTokenAddress, form.amount, qrActivationStatus, getTokenBalance]);
+    // NOTE: getTokenBalance is intentionally NOT a dependency. useSimpleEthers
+    // returns a fresh object each render, so including it re-creates the
+    // polling interval (and immediately re-polls) on every render — a loop.
+    // The primitive deps capture every input that should restart polling.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [qrContractAddress, selectedTokenAddress, form.amount, qrActivationStatus]);
 
   // Send postMessage to parent window (iframe) or opener (popup)
   const sendPostMessage = (event: PostMessageEvent) => {

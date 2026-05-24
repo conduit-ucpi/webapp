@@ -28,8 +28,6 @@ type PaymentStep = {
 type PaymentMethod = 'wallet' | 'qr' | null;
 
 export default function ContractPay() {
-  console.log('ContractPay: Component mounted/rendered');
-
   const router = useRouter();
   const { contractId } = router.query;
   const { config } = useConfig();
@@ -61,6 +59,9 @@ export default function ContractPay() {
   const [copiedAddress, setCopiedAddress] = useState(false);
   const qrPollingRef = useRef<NodeJS.Timeout | null>(null);
   const qrCountdownRef = useRef<NodeJS.Timeout | null>(null);
+  // Guards the contract fetch to run once per contractId, independent of
+  // authenticatedFetch identity churn during the auth flow.
+  const fetchedContractIdRef = useRef<string | null>(null);
 
   // Wallet flow payment steps
   const [paymentSteps, setPaymentSteps] = useState<PaymentStep[]>([
@@ -106,7 +107,16 @@ export default function ContractPay() {
     };
 
     fetchUserData();
-  }, [isConnected, address, user, hasAttemptedUserFetch, refreshUserData]);
+    // NOTE: refreshUserData is intentionally NOT a dependency. It is an unstable
+    // closure recreated on every auth step (SimpleAuthProvider's authValue memo
+    // depends on backendUserData/isLoadingUserData, which flip during the auth
+    // flow). Including it re-fires this effect mid-auth, calling refreshUserData
+    // again → another auth → a re-render/re-auth storm that races the SIWX
+    // session rotation and produces perpetual 401s. The primitive guards
+    // (hasAttemptedUserFetch / isConnected / address / user) already control
+    // when the one-shot fetch should run.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isConnected, address, user, hasAttemptedUserFetch]);
 
   // Fetch contract details - only after user is authenticated
   useEffect(() => {
@@ -126,6 +136,15 @@ export default function ContractPay() {
         setIsLoadingContract(false);
         return;
       }
+
+      // Fetch once per contractId. Without this guard, the effect re-fires
+      // whenever authenticatedFetch's identity changes (it is recreated on every
+      // auth step), launching concurrent fetches that race the SIWX session
+      // rotation and 401 — feeding a re-render/re-auth storm.
+      if (fetchedContractIdRef.current === contractId) {
+        return;
+      }
+      fetchedContractIdRef.current = contractId;
 
       setIsLoadingContract(true);
       setContractError(null);
@@ -171,7 +190,12 @@ export default function ContractPay() {
     };
 
     fetchContract();
-  }, [contractId, authenticatedFetch, isConnected, address]);
+    // NOTE: authenticatedFetch is intentionally NOT a dependency — its identity
+    // changes on every auth step and would re-fire this fetch. The
+    // fetchedContractIdRef guard makes it one-shot per contractId; connection
+    // state (isConnected/address) plus contractId are the real triggers.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contractId, isConnected, address]);
 
   // Fetch token balance when contract is loaded
   useEffect(() => {
@@ -179,20 +203,8 @@ export default function ContractPay() {
       if (address && selectedTokenAddress && config?.rpcUrl && contract) {
         setIsLoadingBalance(true);
         try {
-          const { ethers } = await import('ethers');
-          const provider = new ethers.JsonRpcProvider(config.rpcUrl);
-          const tokenContract = new ethers.Contract(
-            selectedTokenAddress,
-            ['function balanceOf(address) view returns (uint256)', 'function decimals() view returns (uint8)'],
-            provider
-          );
-
-          const [balance, decimals] = await Promise.all([
-            tokenContract.balanceOf(address),
-            tokenContract.decimals()
-          ]);
-
-          const formattedBalance = ethers.formatUnits(balance, decimals);
+          // Read via the read-only RPC library (RpcClient, through useSimpleEthers).
+          const formattedBalance = await getTokenBalance(address, selectedTokenAddress);
           setTokenBalance(formattedBalance);
           console.log(`ContractPay: ${selectedTokenSymbol} balance:`, formattedBalance);
         } catch (error) {
@@ -205,6 +217,12 @@ export default function ContractPay() {
     };
 
     fetchTokenBalance();
+    // NOTE: getTokenBalance is intentionally NOT a dependency. It comes from
+    // useSimpleEthers, which returns a fresh object each render; including the
+    // function identity re-fires this effect every render (balance flashing /
+    // reload loop). The primitive deps below already capture every input that
+    // should re-trigger the fetch, matching the original behavior.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [address, selectedTokenAddress, selectedTokenSymbol, config?.rpcUrl, contract]);
 
   // Update payment step status
@@ -280,7 +298,12 @@ export default function ContractPay() {
     return () => {
       if (qrPollingRef.current) clearInterval(qrPollingRef.current);
     };
-  }, [qrContractAddress, selectedTokenAddress, contract, qrActivationStatus, getTokenBalance]);
+    // NOTE: getTokenBalance is intentionally NOT a dependency. useSimpleEthers
+    // returns a fresh object each render, so including it re-creates the
+    // polling interval (and immediately re-polls) on every render — a loop.
+    // The primitive deps capture every input that should restart polling.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [qrContractAddress, selectedTokenAddress, contract, qrActivationStatus]);
 
   // Check and activate contract (QR path)
   const checkAndActivate = useCallback(async () => {

@@ -136,7 +136,12 @@ export default function CreateContractWizard() {
     };
 
     fetchUserData();
-  }, [isConnected, address, user, hasAttemptedUserFetch, refreshUserData]);
+    // NOTE: refreshUserData is intentionally NOT a dependency — recreated on
+    // every auth step, so including it re-fires this effect mid-auth and drives
+    // a re-render/re-auth storm. The hasAttemptedUserFetch/isConnected/address/
+    // user guards make this a one-shot fetch. See contract-pay.tsx.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isConnected, address, user, hasAttemptedUserFetch]);
 
   // Utility functions (same as original)
   const getUserTimezone = () => {

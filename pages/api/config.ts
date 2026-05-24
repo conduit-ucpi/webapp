@@ -1,7 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { ethers } from 'ethers';
 import { TokenDetails } from '../../types';
 import { TokenConfig, parseTokensFromEnv } from '../../types/tokens';
+import { RpcClient } from '../../lib/rpc/RpcClient';
 
 // In-memory cache for config response
 let cachedConfig: { data: any; timestamp: number } | null = null;
@@ -11,13 +11,6 @@ const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 export function clearConfigCache() {
   cachedConfig = null;
 }
-
-// ERC20 ABI for fetching token details
-const ERC20_ABI = [
-  'function symbol() view returns (string)',
-  'function decimals() view returns (uint8)',
-  'function name() view returns (string)'
-];
 
 /**
  * Fetch token details from the blockchain
@@ -32,21 +25,9 @@ async function getTokenDetails(
   tokenLabel: string
 ): Promise<TokenDetails | null> {
   try {
-    const provider = new ethers.JsonRpcProvider(rpcUrl);
-    const contract = new ethers.Contract(tokenAddress, ERC20_ABI, provider);
-
-    const [symbol, decimals, name] = await Promise.all([
-      contract.symbol(),
-      contract.decimals(),
-      contract.name()
-    ]);
-
-    return {
-      address: tokenAddress,
-      symbol,
-      decimals: Number(decimals),
-      name
-    };
+    // Read via the single read-RPC owner (RpcClient) instead of a local provider.
+    const rpcClient = new RpcClient(rpcUrl);
+    return await rpcClient.getTokenMetadata(tokenAddress);
   } catch (error) {
     console.error(`Failed to fetch ${tokenLabel} token details:`, error);
     return null;

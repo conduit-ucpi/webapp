@@ -2,7 +2,7 @@
  * React Auth Provider - Main context provider for the reorganized auth system
  */
 
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { AuthConfig, ProviderType } from '../types';
 import { AuthState, AuthUser, ConnectionResult } from '../types/unified-provider';
 import { AuthManager } from '../core/AuthManager';
@@ -438,7 +438,25 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
     authManager.setState({ isAuthenticated: true });
   }, [authManager]);
 
-  const contextValue: AuthContextValue = {
+  // Stable wrappers for the two members that were previously inline closures.
+  // authManager is a stable singleton (useState lazy init), so these never change.
+  const setConnectionMode = useCallback(
+    async (mode: 'default' | 'wallet-only' | 'social-only') => {
+      await authManager.setConnectionMode(mode);
+    },
+    [authManager]
+  );
+  const getLastAuthFailure = useCallback(
+    () => authManager.getLastAuthFailure(),
+    [authManager]
+  );
+
+  // Memoize the context value so it only changes when its actual inputs change.
+  // Previously this was a fresh object literal every render: AuthProvider
+  // re-renders (e.g. during connect/auth state changes) handed every useAuth()
+  // consumer a brand-new value, churning authenticatedFetch and re-firing
+  // downstream effects (contract re-fetch -> balance re-read) in a loop.
+  const contextValue = useMemo<AuthContextValue>(() => ({
     // State
     state,
     user,
@@ -450,12 +468,10 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
 
     // Actions
     connect,
-    setConnectionMode: async (mode: 'default' | 'wallet-only' | 'social-only') => {
-      await authManager.setConnectionMode(mode);
-    },
+    setConnectionMode,
     authenticateBackend,
     requestAuthentication,
-    getLastAuthFailure: () => authManager.getLastAuthFailure(),
+    getLastAuthFailure,
     disconnect,
     switchWallet,
     signMessage,
@@ -467,7 +483,22 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
 
     // Provider info
     getProviderUserInfo
-  };
+  }), [
+    state,
+    user,
+    connect,
+    setConnectionMode,
+    authenticateBackend,
+    requestAuthentication,
+    getLastAuthFailure,
+    disconnect,
+    switchWallet,
+    signMessage,
+    updateUserData,
+    getEthersProvider,
+    showWalletUI,
+    getProviderUserInfo
+  ]);
 
   return (
     <AuthContext.Provider value={contextValue}>

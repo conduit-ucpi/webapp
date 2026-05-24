@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
+import { Dialog, Transition } from '@headlessui/react';
 import { ethers } from 'ethers';
 import { Contract, SubmitDisputeEntryRequest } from '@/types';
 import { formatTimestamp, displayCurrency, formatCurrency } from '@/utils/validation';
@@ -174,15 +175,41 @@ export default function DisputeManagementModal({ isOpen, onClose, contract, onRe
     }
   };
 
-  if (!isOpen) return null;
-
   // Sort disputes by timestamp (oldest first)
   const sortedDisputes = contract.disputes ? [...contract.disputes].sort((a, b) => a.timestamp - b.timestamp) : [];
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white dark:bg-secondary-800 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-transparent dark:border-secondary-700">
-        <div className="p-6">
+    <Transition appear show={isOpen} as={Fragment}>
+      {/* Headless UI Dialog portals to the document root, so the overlay always
+          covers the viewport — fixes the previous bleed-through where the
+          hand-rolled `fixed inset-0` div was anchored to a transformed
+          dashboard ancestor instead of the viewport. */}
+      <Dialog as="div" className="relative z-50" onClose={onClose}>
+        <Transition.Child
+          as={Fragment}
+          enter="ease-out duration-300"
+          enterFrom="opacity-0"
+          enterTo="opacity-100"
+          leave="ease-in duration-200"
+          leaveFrom="opacity-100"
+          leaveTo="opacity-0"
+        >
+          <div className="fixed inset-0 bg-black bg-opacity-50" />
+        </Transition.Child>
+
+        <div className="fixed inset-0 overflow-y-auto">
+          <div className="flex min-h-full items-center justify-center p-4 text-center">
+            <Transition.Child
+              as={Fragment}
+              enter="ease-out duration-300"
+              enterFrom="opacity-0 scale-95"
+              enterTo="opacity-100 scale-100"
+              leave="ease-in duration-200"
+              leaveFrom="opacity-100 scale-100"
+              leaveTo="opacity-0 scale-95"
+            >
+              <Dialog.Panel className="w-full max-w-4xl max-h-[90vh] overflow-y-auto transform rounded-lg bg-white dark:bg-secondary-800 text-left align-middle shadow-2xl border border-transparent dark:border-secondary-700 transition-all">
+                <div className="p-6">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Manage Dispute</h2>
             <button
@@ -340,8 +367,12 @@ export default function DisputeManagementModal({ isOpen, onClose, contract, onRe
               </div>
             </form>
           </div>
+                </div>
+              </Dialog.Panel>
+            </Transition.Child>
+          </div>
         </div>
-      </div>
-    </div>
+      </Dialog>
+    </Transition>
   );
 }

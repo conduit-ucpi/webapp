@@ -40,9 +40,17 @@ export default function ContractPay() {
   } = useSimpleEthers();
 
   // TEMPORARY DIAGNOSTIC (remove once the render loop is confirmed fixed):
-  // Logs which render inputs CHANGED IDENTITY since the previous render, so we
-  // can see definitively what drives the re-render loop instead of inferring
-  // from log ordering. Each line shows true/false per dependency.
+  // Distinguishes a REMOUNT (new component instance — effects re-run, contract
+  // re-fetches) from a plain RE-RENDER, and logs which render inputs changed
+  // identity. The steady-state log showed "(none)" changing yet the contract
+  // kept re-fetching, which only happens on a remount — so we confirm that and
+  // tag each instance with a unique mountId to see fresh instances in the log.
+  const __mountId = useRef<number>(Math.floor(Math.random() * 1e6));
+  const __isFirstRender = useRef(true);
+  useEffect(() => {
+    console.log(`🔬 ContractPay MOUNTED — instance #${__mountId.current}`);
+    return () => console.log(`🔬 ContractPay UNMOUNTED — instance #${__mountId.current}`);
+  }, []);
   const __diagPrev = useRef<Record<string, unknown>>({});
   {
     const cur: Record<string, unknown> = {
@@ -58,8 +66,12 @@ export default function ContractPay() {
     };
     const prev = __diagPrev.current;
     const changed = Object.keys(cur).filter((k) => prev[k] !== cur[k]);
-    console.log('🔬 ContractPay render — changed identities:', changed.length ? changed.join(', ') : '(none — pure re-render)');
+    console.log(
+      `🔬 ContractPay render [#${__mountId.current}${__isFirstRender.current ? ' FIRST' : ''}] — changed:`,
+      changed.length ? changed.join(', ') : '(none — pure re-render)'
+    );
     __diagPrev.current = cur;
+    __isFirstRender.current = false;
   }
 
   // State

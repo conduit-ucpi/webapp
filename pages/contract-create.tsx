@@ -6,6 +6,8 @@ import { useAuth } from '@/components/auth';
 import { useSimpleEthers } from '@/hooks/useSimpleEthers';
 import { useTokenSelection } from '@/hooks/useTokenSelection';
 import { useQrPayment } from '@/hooks/useQrPayment';
+import { useLazyUserData } from '@/hooks/useLazyUserData';
+import { useTokenBalance } from '@/hooks/useTokenBalance';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
@@ -107,12 +109,9 @@ export default function ContractCreate() {
   // errors now provided by useContractCreateValidation hook
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
-  const [hasAttemptedUserFetch, setHasAttemptedUserFetch] = useState(false);
   const [contractId, setContractId] = useState<string | null>(null);
   const [pendingExpiryTimestamp, setPendingExpiryTimestamp] = useState<number | null>(null);
   const [step, setStep] = useState<'create' | 'payment'>('create');
-  const [tokenBalance, setTokenBalance] = useState<string>('0');
-  const [isLoadingBalance, setIsLoadingBalance] = useState(false);
   const [paymentSteps, setPaymentSteps] = useState<PaymentStep[]>([
     { id: 'verify', label: 'Verifying wallet connection', status: 'pending' },
     { id: 'transfer', label: `Transferring ${selectedTokenSymbol} to escrow`, status: 'pending' },
@@ -164,34 +163,14 @@ export default function ContractCreate() {
     }
   }, [seller, amount, description]);
 
-  // Fetch token balance immediately when wallet connects (not just on payment step)
-  // With lazy auth, we use address instead of user?.walletAddress
-  useEffect(() => {
-    const fetchTokenBalance = async () => {
-      if (address && selectedTokenAddress && config?.rpcUrl) {
-        setIsLoadingBalance(true);
-        try {
-          // Read via the read-only RPC library (RpcClient, through useSimpleEthers).
-          const formattedBalance = await getTokenBalance(address, selectedTokenAddress);
-          setTokenBalance(formattedBalance);
-          console.log(`🔧 ContractCreate: ${selectedTokenSymbol} balance:`, formattedBalance);
-        } catch (error) {
-          console.error(`Failed to fetch ${selectedTokenSymbol} balance:`, error);
-          setTokenBalance('0');
-        } finally {
-          setIsLoadingBalance(false);
-        }
-      }
-    };
-
-    fetchTokenBalance();
-    // NOTE: getTokenBalance is intentionally NOT a dependency. It comes from
-    // useSimpleEthers, which returns a fresh object each render; including the
-    // function identity re-fires this effect every render (balance flashing /
-    // reload loop). The primitive deps below already capture every input that
-    // should re-trigger the fetch, matching the original behavior.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [address, selectedTokenAddress, selectedTokenSymbol, config?.rpcUrl]);
+  // Token balance (read-only), fetched as soon as a wallet is connected and the
+  // RPC is configured. The hook internally also requires address + tokenAddress.
+  const { tokenBalance, isLoadingBalance } = useTokenBalance({
+    enabled: !!config?.rpcUrl,
+    address,
+    tokenAddress: selectedTokenAddress,
+    getTokenBalance,
+  });
 
   // Detect iframe and popup environment
   useEffect(() => {
@@ -199,45 +178,8 @@ export default function ContractCreate() {
     setIsInPopup(window.opener !== null);
   }, []);
 
-  // Fetch user data when wallet connects (lazy auth will trigger automatically if needed)
-  useEffect(() => {
-    const fetchUserData = async () => {
-      // Only fetch once per session
-      if (hasAttemptedUserFetch) {
-        return;
-      }
-
-      // Only fetch if wallet is connected
-      if (!isConnected && !address) {
-        return;
-      }
-
-      // If we already have user data, no need to fetch
-      if (user) {
-        return;
-      }
-
-      console.log('🔧 ContractCreate: Fetching user data (lazy auth will trigger if needed)');
-      setHasAttemptedUserFetch(true);
-
-      try {
-        // This will trigger lazy auth automatically if no session exists
-        await refreshUserData?.();
-        console.log('🔧 ContractCreate: User data loaded successfully');
-      } catch (error) {
-        // If it fails, that's OK - we'll proceed without user data
-        console.log('🔧 ContractCreate: Could not load user data, proceeding without it');
-      }
-    };
-
-    fetchUserData();
-    // NOTE: refreshUserData is intentionally NOT a dependency — it is recreated
-    // on every auth step, so including it re-fires this effect mid-auth and
-    // drives a re-render/re-auth storm (perpetual 401s). The primitive guards
-    // (hasAttemptedUserFetch / isConnected / address / user) control the
-    // one-shot fetch. See the matching fix in contract-pay.tsx.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isConnected, address, user, hasAttemptedUserFetch]);
+  // Lazy-auth one-shot user-data fetch (triggers SIWX if no session exists).
+  useLazyUserData({ isConnected, address, user, refreshUserData });
 
   // Send postMessage to parent window (iframe) or opener (popup)
   const sendPostMessage = (event: PostMessageEvent) => {

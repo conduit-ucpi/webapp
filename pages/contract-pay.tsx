@@ -7,6 +7,8 @@ import { useAuth } from '@/components/auth';
 import { useSimpleEthers } from '@/hooks/useSimpleEthers';
 import { useTokenSelection } from '@/hooks/useTokenSelection';
 import { useQrPayment } from '@/hooks/useQrPayment';
+import { useLazyUserData } from '@/hooks/useLazyUserData';
+import { useTokenBalance } from '@/hooks/useTokenBalance';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import ConnectWalletEmbedded from '@/components/auth/ConnectWalletEmbedded';
@@ -44,9 +46,6 @@ export default function ContractPay() {
   const [contractError, setContractError] = useState<string | null>(null);
   const [isPaymentInProgress, setIsPaymentInProgress] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
-  const [tokenBalance, setTokenBalance] = useState<string>('0');
-  const [isLoadingBalance, setIsLoadingBalance] = useState(false);
-  const [hasAttemptedUserFetch, setHasAttemptedUserFetch] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(null);
   const [showTokenGuide, setShowTokenGuide] = useState(false);
 
@@ -84,35 +83,8 @@ export default function ContractPay() {
     availableTokens
   } = useTokenSelection(config, contractTokenSymbol);
 
-  // Fetch user data when wallet connects
-  useEffect(() => {
-    const fetchUserData = async () => {
-      if (hasAttemptedUserFetch) return;
-      if (!isConnected && !address) return;
-      if (user) return;
-
-      console.log('ContractPay: Fetching user data (lazy auth will trigger if needed)');
-      setHasAttemptedUserFetch(true);
-
-      try {
-        await refreshUserData?.();
-        console.log('ContractPay: User data loaded successfully');
-      } catch (error) {
-        console.log('ContractPay: Could not load user data, proceeding without it');
-      }
-    };
-
-    fetchUserData();
-    // NOTE: refreshUserData is intentionally NOT a dependency. It is an unstable
-    // closure recreated on every auth step (SimpleAuthProvider's authValue memo
-    // depends on backendUserData/isLoadingUserData, which flip during the auth
-    // flow). Including it re-fires this effect mid-auth, calling refreshUserData
-    // again → another auth → a re-render/re-auth storm that races the SIWX
-    // session rotation and produces perpetual 401s. The primitive guards
-    // (hasAttemptedUserFetch / isConnected / address / user) already control
-    // when the one-shot fetch should run.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isConnected, address, user, hasAttemptedUserFetch]);
+  // Lazy-auth one-shot user-data fetch (triggers SIWX if no session exists).
+  useLazyUserData({ isConnected, address, user, refreshUserData });
 
   // Fetch contract details - only after user is authenticated
   useEffect(() => {
@@ -193,33 +165,14 @@ export default function ContractPay() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contractId, isConnected, address]);
 
-  // Fetch token balance when contract is loaded
-  useEffect(() => {
-    const fetchTokenBalance = async () => {
-      if (address && selectedTokenAddress && config?.rpcUrl && contract) {
-        setIsLoadingBalance(true);
-        try {
-          // Read via the read-only RPC library (RpcClient, through useSimpleEthers).
-          const formattedBalance = await getTokenBalance(address, selectedTokenAddress);
-          setTokenBalance(formattedBalance);
-          console.log(`ContractPay: ${selectedTokenSymbol} balance:`, formattedBalance);
-        } catch (error) {
-          console.error(`Failed to fetch ${selectedTokenSymbol} balance:`, error);
-          setTokenBalance('0');
-        } finally {
-          setIsLoadingBalance(false);
-        }
-      }
-    };
-
-    fetchTokenBalance();
-    // NOTE: getTokenBalance is intentionally NOT a dependency. It comes from
-    // useSimpleEthers, which returns a fresh object each render; including the
-    // function identity re-fires this effect every render (balance flashing /
-    // reload loop). The primitive deps below already capture every input that
-    // should re-trigger the fetch, matching the original behavior.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [address, selectedTokenAddress, selectedTokenSymbol, config?.rpcUrl, contract]);
+  // Token balance (read-only). Enabled once the contract is loaded and the RPC
+  // is configured; the hook also internally requires address + tokenAddress.
+  const { tokenBalance, isLoadingBalance } = useTokenBalance({
+    enabled: !!config?.rpcUrl && !!contract,
+    address,
+    tokenAddress: selectedTokenAddress,
+    getTokenBalance,
+  });
 
   // Update payment step status
   const updatePaymentStep = (stepId: string, status: 'active' | 'completed' | 'error') => {

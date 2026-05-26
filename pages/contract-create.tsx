@@ -8,6 +8,7 @@ import { useTokenSelection } from '@/hooks/useTokenSelection';
 import { useQrPayment } from '@/hooks/useQrPayment';
 import { useLazyUserData } from '@/hooks/useLazyUserData';
 import { useTokenBalance } from '@/hooks/useTokenBalance';
+import { useContractPayment } from '@/hooks/useContractPayment';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
@@ -18,8 +19,6 @@ import CurrencyAmountInput from '@/components/ui/CurrencyAmountInput';
 import { QRCodeSVG } from 'qrcode.react';
 import { isValidWalletAddress, toMicroUSDC, toUSDCForWeb3, formatDateTimeWithTZ, displayCurrency } from '@/utils/validation';
 import { useContractCreateValidation } from '@/hooks/useContractValidation';
-import { executeContractTransactionSequence, executeDirectPaymentSequence } from '@/utils/contractTransactionSequence';
-import { createContractProgressHandler } from '@/utils/contractProgressHandler';
 import { getNetworkName } from '@/utils/networkUtils';
 import { detectDevice } from '@/utils/deviceDetection';
 
@@ -54,6 +53,7 @@ export default function ContractCreate() {
   const { config } = useConfig();
   const { user, authenticatedFetch, disconnect, isLoading: authLoading, isLoadingUserData, isConnected, address, refreshUserData } = useAuth();
   const { approveUSDC, depositToContract, depositFundsAsProxy, getWeb3Service, transferToContract, getTokenBalance } = useSimpleEthers();
+  const { runDirectPayment, runLegacyPayment } = useContractPayment();
   const { errors, validateForm, clearErrors } = useContractCreateValidation();
 
   // Query parameters
@@ -352,6 +352,145 @@ export default function ContractCreate() {
     }, [contractId, form, order_id, isInIframe, isInPopup, returnUrl, router]),
   });
 
+  // Create's success tail: webhook verification, Shopify order, postMessage, and
+  // the iframe/popup/WordPress/dashboard redirect. Injected into the shared
+  // payment hook as onSuccess so the orchestration stays shared while these
+  // embed-specific side-effects remain here.
+  const handlePaymentSuccess = async (result: any) => {
+    console.log('ContractCreate: Payment completed:', result);
+
+    // The transaction hash field differs by path: the direct/wallet sequence
+    // returns transferTxHash; the legacy approve+deposit sequence returns
+    // depositTxHash. They are mutually exclusive, so pick whichever is present.
+    const txHash = result?.depositTxHash ?? result?.transferTxHash;
+
+    // Webhook verification (if webhook_url provided)
+    if (txHash && webhook_url && authenticatedFetch) {
+      console.log('ContractCreate: Sending verification webhook');
+      try {
+        const verifyResponse = await authenticatedFetch('/api/payment/verify-and-webhook', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            transaction_hash: txHash,
+            contract_address: result.contractAddress,
+            contract_hash: result.contractAddress,
+            contract_id: contractId,
+            webhook_url: webhook_url,
+            order_id: parseInt(order_id as string || '0'),
+            expected_amount: parseFloat(form.amount),
+            expected_recipient: result.contractAddress,
+            merchant_wallet: form.seller
+          })
+        });
+
+        if (!verifyResponse.ok) {
+          console.error('ContractCreate: Payment verification failed:', await verifyResponse.text());
+        } else {
+          const verifyResult = await verifyResponse.json();
+          console.log('ContractCreate: Payment verification sent:', verifyResult);
+        }
+      } catch (verifyError) {
+        console.error('ContractCreate: Payment verification error:', verifyError);
+      }
+    }
+
+    // Shopify order creation
+    if (shop) {
+      console.log('ContractCreate: Creating Shopify order for shop:', shop);
+      try {
+        const orderResponse = await fetch('/api/shopify/create-order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            shop: shop as string,
+            orderId: order_id as string,
+            contractId,
+            productId: product_id as string,
+            variantId: variant_id as string,
+            title: title as string || form.description,
+            price: form.amount,
+            quantity: parseInt((quantity as string) || '1'),
+            buyerEmail: user?.email || queryEmail as string,
+            transactionHash: txHash
+          })
+        });
+
+        const orderData = await orderResponse.json();
+        console.log('ContractCreate: Shopify order result:', orderData);
+      } catch (orderError) {
+        console.error('ContractCreate: Failed to create Shopify order:', orderError);
+      }
+    }
+
+    // Send payment completed postMessage
+    sendPostMessage({
+      type: 'payment_completed',
+      data: {
+        contractId,
+        amount: form.amount,
+        description: form.description,
+        seller: form.seller,
+        orderId: order_id,
+        transactionHash: txHash
+      }
+    });
+
+    setLoadingMessage('Payment completed! Redirecting...');
+
+    // Handle redirect (same logic as existing handlePayment)
+    if (isInIframe) {
+      setTimeout(() => {
+        sendPostMessage({ type: 'close_modal' });
+      }, 2000);
+    } else if (isInPopup) {
+      setTimeout(() => {
+        window.close();
+      }, 2000);
+    } else {
+      if (returnUrl && typeof returnUrl === 'string') {
+        const completedUrl = buildWordPressStatusUrl('completed', {
+          contract_id: contractId || '',
+          contract_hash: result?.contractAddress || '',
+          tx_hash: txHash || ''
+        });
+        window.location.href = completedUrl;
+      } else {
+        router.push('/dashboard');
+      }
+    }
+  };
+
+  // Create's error tail: postMessage error + WordPress error redirect / alert.
+  const handlePaymentError = (error: Error) => {
+    console.error('ContractCreate: Payment failed:', error);
+
+    sendPostMessage({
+      type: 'payment_error',
+      error: error.message || 'Payment failed'
+    });
+
+    // WordPress error redirect
+    if (wordpress_source === 'true' && returnUrl && typeof returnUrl === 'string') {
+      const errorUrl = buildWordPressStatusUrl('error', {
+        error: encodeURIComponent(error.message || 'Payment failed')
+      });
+
+      if (isInPopup && window.opener) {
+        window.opener.location.href = errorUrl;
+        window.close();
+      } else if (!isInIframe) {
+        window.location.href = errorUrl;
+      }
+    } else {
+      if (isInPopup) {
+        setTimeout(() => window.close(), 2000);
+      } else if (!isInIframe) {
+        alert(error.message || 'Payment failed');
+      }
+    }
+  };
+
   const handleWalletPayment = async () => {
     if (!contractId || !config) {
       console.error('ContractCreate: Missing required data for wallet payment');
@@ -363,9 +502,8 @@ export default function ContractCreate() {
     }
 
     console.log('ContractCreate: Starting wallet payment (direct transfer)');
-    setIsLoading(true);
 
-    // Reset payment steps
+    // Reset payment steps (labels are page-specific; the hook drives statuses).
     setPaymentSteps([
       { id: 'verify', label: 'Verifying wallet connection', status: 'pending' },
       { id: 'transfer', label: `Transferring ${selectedTokenSymbol} to escrow`, status: 'pending' },
@@ -374,215 +512,35 @@ export default function ContractCreate() {
       { id: 'complete', label: 'Payment complete', status: 'pending' }
     ]);
 
-    try {
-      const requestedAmount = parseFloat(form.amount.trim());
-      const availableBalance = parseFloat(tokenBalance);
-
-      if (availableBalance < requestedAmount) {
-        const shortfall = requestedAmount - availableBalance;
-        throw new Error(
-          `Insufficient ${selectedTokenSymbol} balance. You need ${requestedAmount.toFixed(4)} ${selectedTokenSymbol} but only have ${availableBalance.toFixed(4)} ${selectedTokenSymbol}. You are short ${shortfall.toFixed(4)} ${selectedTokenSymbol}.`
-        );
+    await runDirectPayment(
+      {
+        contractserviceId: contractId,
+        tokenAddress: selectedTokenAddress,
+        buyer: address || '',
+        seller: form.seller,
+        // Reuse the DB-stored expiry to avoid drift between DB and chain.
+        amount: toMicroUSDC(parseFloat(form.amount.trim())),
+        expiryTimestamp: pendingExpiryTimestamp,
+        description: form.description
+      },
+      {
+        selectedTokenSymbol,
+        tokenBalance,
+        requiredAmount: parseFloat(form.amount.trim()),
+        authenticatedFetch,
+        transferToContract,
+        approveUSDC,
+        depositToContract,
+        depositFundsAsProxy,
+        getWeb3Service,
+        updatePaymentStep,
+        setLoadingMessage,
+        setBusy: setIsLoading,
+        getActiveStep: () => paymentSteps.find(s => s.status === 'active'),
+        onSuccess: handlePaymentSuccess,
+        onError: handlePaymentError,
       }
-
-      // Step 1: Verify
-      updatePaymentStep('verify', 'active');
-      setLoadingMessage('Verifying wallet connection...');
-      await new Promise(resolve => setTimeout(resolve, 500));
-      updatePaymentStep('verify', 'completed');
-
-      // Reuse the expiryTimestamp stored in the pending contract to avoid drift
-      // between the DB value and the on-chain value.
-      const expiryTimestamp = pendingExpiryTimestamp;
-
-      // Execute direct payment
-      updatePaymentStep('transfer', 'active');
-      setLoadingMessage('Creating contract and transferring funds...');
-
-      const result = await executeDirectPaymentSequence(
-        {
-          contractserviceId: contractId,
-          tokenAddress: selectedTokenAddress,
-          buyer: address || '',
-          seller: form.seller,
-          amount: toMicroUSDC(parseFloat(form.amount.trim())),
-          expiryTimestamp,
-          description: form.description
-        },
-        {
-          authenticatedFetch,
-          transferToContract,
-          getWeb3Service,
-          onProgress: (step, message, contractAddr) => {
-            console.log(`ContractCreate Progress: ${step} - ${message}`);
-            switch (step) {
-              case 'contract_creation':
-                setLoadingMessage('Step 1: Creating secure escrow...');
-                break;
-              case 'contract_confirmation':
-                setLoadingMessage('Step 1.5: Waiting for contract creation...');
-                break;
-              case 'contract_created':
-                setLoadingMessage('Step 1 complete: Contract created');
-                break;
-              case 'transfer':
-                updatePaymentStep('transfer', 'active');
-                setLoadingMessage('Step 2: Transferring funds to escrow...');
-                break;
-              case 'transfer_confirmation':
-                updatePaymentStep('transfer', 'completed');
-                updatePaymentStep('confirm', 'active');
-                setLoadingMessage('Step 2.5: Confirming transfer...');
-                break;
-              case 'activation':
-                updatePaymentStep('confirm', 'completed');
-                updatePaymentStep('activate', 'active');
-                setLoadingMessage('Step 3: Activating contract...');
-                break;
-              case 'complete':
-                updatePaymentStep('activate', 'completed');
-                updatePaymentStep('complete', 'completed');
-                setLoadingMessage('Payment completed successfully!');
-                break;
-            }
-          }
-        }
-      );
-
-      console.log('ContractCreate: Wallet payment completed:', result);
-
-      // Webhook verification (if webhook_url provided)
-      if (result.transferTxHash && webhook_url && authenticatedFetch) {
-        console.log('ContractCreate: Sending verification webhook');
-        try {
-          const verifyResponse = await authenticatedFetch('/api/payment/verify-and-webhook', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              transaction_hash: result.transferTxHash,
-              contract_address: result.contractAddress,
-              contract_hash: result.contractAddress,
-              contract_id: contractId,
-              webhook_url: webhook_url,
-              order_id: parseInt(order_id as string || '0'),
-              expected_amount: parseFloat(form.amount),
-              expected_recipient: result.contractAddress,
-              merchant_wallet: form.seller
-            })
-          });
-
-          if (!verifyResponse.ok) {
-            console.error('ContractCreate: Payment verification failed:', await verifyResponse.text());
-          } else {
-            const verifyResult = await verifyResponse.json();
-            console.log('ContractCreate: Payment verification sent:', verifyResult);
-          }
-        } catch (verifyError) {
-          console.error('ContractCreate: Payment verification error:', verifyError);
-        }
-      }
-
-      // Shopify order creation
-      if (shop) {
-        console.log('ContractCreate: Creating Shopify order for shop:', shop);
-        try {
-          const orderResponse = await fetch('/api/shopify/create-order', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              shop: shop as string,
-              orderId: order_id as string,
-              contractId,
-              productId: product_id as string,
-              variantId: variant_id as string,
-              title: title as string || form.description,
-              price: form.amount,
-              quantity: parseInt((quantity as string) || '1'),
-              buyerEmail: user?.email || queryEmail as string,
-              transactionHash: result?.transferTxHash
-            })
-          });
-
-          const orderData = await orderResponse.json();
-          console.log('ContractCreate: Shopify order result:', orderData);
-        } catch (orderError) {
-          console.error('ContractCreate: Failed to create Shopify order:', orderError);
-        }
-      }
-
-      // Send payment completed postMessage
-      sendPostMessage({
-        type: 'payment_completed',
-        data: {
-          contractId,
-          amount: form.amount,
-          description: form.description,
-          seller: form.seller,
-          orderId: order_id,
-          transactionHash: result?.transferTxHash
-        }
-      });
-
-      setLoadingMessage('Payment completed! Redirecting...');
-
-      // Handle redirect (same logic as existing handlePayment)
-      if (isInIframe) {
-        setTimeout(() => {
-          sendPostMessage({ type: 'close_modal' });
-        }, 2000);
-      } else if (isInPopup) {
-        setTimeout(() => {
-          window.close();
-        }, 2000);
-      } else {
-        if (returnUrl && typeof returnUrl === 'string') {
-          const completedUrl = buildWordPressStatusUrl('completed', {
-            contract_id: contractId || '',
-            contract_hash: result?.contractAddress || '',
-            tx_hash: result?.transferTxHash || ''
-          });
-          window.location.href = completedUrl;
-        } else {
-          router.push('/dashboard');
-        }
-      }
-
-    } catch (error: any) {
-      console.error('ContractCreate: Wallet payment failed:', error);
-
-      const activeStep = paymentSteps.find(s => s.status === 'active');
-      if (activeStep) {
-        updatePaymentStep(activeStep.id, 'error');
-      }
-
-      sendPostMessage({
-        type: 'payment_error',
-        error: error.message || 'Payment failed'
-      });
-
-      // WordPress error redirect
-      if (wordpress_source === 'true' && returnUrl && typeof returnUrl === 'string') {
-        const errorUrl = buildWordPressStatusUrl('error', {
-          error: encodeURIComponent(error.message || 'Payment failed')
-        });
-
-        if (isInPopup && window.opener) {
-          window.opener.location.href = errorUrl;
-          window.close();
-        } else if (!isInIframe) {
-          window.location.href = errorUrl;
-        }
-      } else {
-        if (isInPopup) {
-          setTimeout(() => window.close(), 2000);
-        } else if (!isInIframe) {
-          alert(error.message || 'Payment failed');
-        }
-      }
-
-      setIsLoading(false);
-      setLoadingMessage('');
-    }
+    );
   };
 
   const handleCopyAddress = async (addr: string) => {
@@ -729,8 +687,6 @@ export default function ContractCreate() {
   const handleLegacyPayment = async () => {
     if (!contractId || !config) {
       console.error('🔧 ContractCreate: Missing required data for payment');
-      console.error('🔧 ContractCreate: contractId:', contractId);
-      console.error('🔧 ContractCreate: config:', !!config);
       return;
     }
     if (pendingExpiryTimestamp === null) {
@@ -738,10 +694,9 @@ export default function ContractCreate() {
       return;
     }
 
-    console.log('🔧 ContractCreate: handlePayment starting with modern fundAndSendTransaction method');
-    setIsLoading(true);
-    
-    // Reset payment steps to initial state
+    console.log('🔧 ContractCreate: Starting legacy payment (approve + deposit)');
+
+    // Reset payment steps (labels are page-specific; the hook drives statuses).
     setPaymentSteps([
       { id: 'verify', label: 'Verifying wallet connection', status: 'pending' },
       { id: 'approve', label: `Approving ${selectedTokenSymbol} payment`, status: 'pending' },
@@ -750,233 +705,35 @@ export default function ContractCreate() {
       { id: 'complete', label: 'Payment complete', status: 'pending' }
     ]);
 
-    try {
-      console.log('🔧 ContractCreate: Starting payment process');
-      console.log('🔧 ContractCreate: Payment using token:', {
+    await runLegacyPayment(
+      {
+        contractserviceId: contractId,
+        tokenAddress: selectedTokenAddress,
+        buyer: address || '',
+        seller: form.seller,
+        // Reuse the DB-stored expiry to avoid drift between DB and chain.
+        amount: toMicroUSDC(parseFloat(form.amount.trim())),
+        expiryTimestamp: pendingExpiryTimestamp,
+        description: form.description
+      },
+      {
         selectedTokenSymbol,
-        selectedTokenAddress,
-        amount: form.amount,
-        balance: tokenBalance
-      });
-
-      // Check if user has sufficient balance
-      const requestedAmount = parseFloat(form.amount.trim());
-      const availableBalance = parseFloat(tokenBalance);
-
-      if (availableBalance < requestedAmount) {
-        const shortfall = requestedAmount - availableBalance;
-        throw new Error(
-          `Insufficient ${selectedTokenSymbol} balance. You need ${requestedAmount.toFixed(4)} ${selectedTokenSymbol} but only have ${availableBalance.toFixed(4)} ${selectedTokenSymbol}. You are short ${shortfall.toFixed(4)} ${selectedTokenSymbol}.`
-        );
+        tokenBalance,
+        requiredAmount: parseFloat(form.amount.trim()),
+        authenticatedFetch,
+        transferToContract,
+        approveUSDC,
+        depositToContract,
+        depositFundsAsProxy,
+        getWeb3Service,
+        updatePaymentStep,
+        setLoadingMessage,
+        setBusy: setIsLoading,
+        getActiveStep: () => paymentSteps.find(s => s.status === 'active'),
+        onSuccess: handlePaymentSuccess,
+        onError: handlePaymentError,
       }
-
-      // Step 1: Verify wallet connection
-      updatePaymentStep('verify', 'active');
-      setLoadingMessage('Verifying wallet connection...');
-      await new Promise(resolve => setTimeout(resolve, 500)); // Brief pause for UI feedback
-      updatePaymentStep('verify', 'completed');
-      
-      // Reuse the expiryTimestamp stored in the pending contract to avoid drift
-      // between the DB value and the on-chain value.
-      const expiryTimestamp = pendingExpiryTimestamp;
-
-      // Execute the complete transaction sequence with proper confirmation waiting
-      updatePaymentStep('approve', 'active');
-
-      const result = await executeContractTransactionSequence(
-        {
-          contractserviceId: contractId,
-          tokenAddress: selectedTokenAddress,
-          buyer: address || '',
-          seller: form.seller,
-          amount: toMicroUSDC(parseFloat(form.amount.trim())),
-          expiryTimestamp: expiryTimestamp,
-          description: form.description
-        },
-        {
-          authenticatedFetch,
-          approveUSDC,
-          depositToContract,
-          depositFundsAsProxy,
-          getWeb3Service,
-          onProgress: createContractProgressHandler({
-            setLoadingMessage,
-            updatePaymentStep
-          }, 'Step'),
-          useProxyDeposit: true
-        }
-      );
-
-      // result now contains: { contractAddress, contractCreationTxHash?, approvalTxHash, depositTxHash }
-
-      console.log('🔧 ContractCreate: Payment completed successfully:', result);
-
-      // Add debugging for transaction verification
-      if (result.depositTxHash) {
-        console.log('🔧 ContractCreate: Deposit transaction hash received:', result.depositTxHash);
-        console.log(`🔧 ContractCreate: Contract address should receive ${selectedTokenSymbol}:`, result.contractAddress);
-
-        // If webhook_url is provided, verify payment and send webhook
-        if (webhook_url && authenticatedFetch) {
-          console.log('🔧 ContractCreate: Webhook URL provided, sending verification webhook');
-          try {
-            const verifyResponse = await authenticatedFetch('/api/payment/verify-and-webhook', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                transaction_hash: result.depositTxHash,
-                contract_address: result.contractAddress,
-                contract_hash: result.contractAddress, // Include as both contract_address and contract_hash for compatibility
-                contract_id: contractId,
-                webhook_url: webhook_url,
-                order_id: parseInt(order_id as string || '0'),
-                expected_amount: parseFloat(form.amount),
-                expected_recipient: result.contractAddress,
-                merchant_wallet: form.seller
-              })
-            });
-
-            if (!verifyResponse.ok) {
-              console.error('🔧 ContractCreate: Payment verification failed:', await verifyResponse.text());
-              // Don't fail the payment flow - payment was successful, just webhook failed
-            } else {
-              const verifyResult = await verifyResponse.json();
-              console.log('🔧 ContractCreate: Payment verification and webhook sent successfully:', verifyResult);
-            }
-          } catch (verifyError) {
-            console.error('🔧 ContractCreate: Payment verification error:', verifyError);
-            // Don't fail the payment flow - payment was successful, just webhook failed
-          }
-        }
-      } else {
-        console.warn('🔧 ContractCreate: No deposit transaction hash received!');
-      }
-
-      // Create order in Shopify if this is from a shop
-      if (shop) {
-        console.log('🔧 ContractCreate: Creating Shopify order for shop:', shop);
-        try {
-          const orderResponse = await fetch('/api/shopify/create-order', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              shop: shop as string,
-              orderId: order_id as string,
-              contractId,
-              productId: product_id as string,
-              variantId: variant_id as string,
-              title: title as string || form.description,
-              price: form.amount,
-              quantity: parseInt((quantity as string) || '1'),
-              buyerEmail: user?.email || queryEmail as string,
-              transactionHash: result?.depositTxHash
-            })
-          });
-
-          const orderData = await orderResponse.json();
-          console.log('🔧 ContractCreate: Shopify order creation result:', orderData);
-
-          if (orderData.shopifyOrderCreated) {
-            console.log('🔧 ContractCreate: Shopify order created successfully!', orderData.shopifyOrderNumber);
-          }
-        } catch (orderError) {
-          console.error('🔧 ContractCreate: Failed to create Shopify order:', orderError);
-          // Don't fail the payment flow - payment was successful
-        }
-      }
-
-      // Send payment completed event
-      sendPostMessage({
-        type: 'payment_completed',
-        data: {
-          contractId,
-          amount: form.amount,
-          description: form.description,
-          seller: form.seller,
-          orderId: order_id,
-          transactionHash: result?.depositTxHash
-        }
-      });
-
-      setLoadingMessage('Payment completed! Redirecting...');
-      
-      // Handle redirect
-      if (isInIframe) {
-        // In iframe - send close modal event
-        setTimeout(() => {
-          sendPostMessage({ type: 'close_modal' });
-        }, 2000);
-      } else if (isInPopup) {
-        // In popup - just close popup (DON'T redirect opener)
-        // The SDK will handle showing verification success/failure in the parent window
-        setTimeout(() => {
-          // NOTE: We do NOT redirect the opener window here anymore
-          // The SDK receives the postMessage and handles verification/display
-          // Redirecting would clear the SDK's verification UI
-
-          // Close the popup
-          window.close();
-        }, 2000);
-      } else {
-        // Not in iframe or popup - redirect to return URL or dashboard
-        if (returnUrl && typeof returnUrl === 'string') {
-          // Build WordPress status URL for completed payment
-          const completedUrl = buildWordPressStatusUrl('completed', {
-            contract_id: contractId || '',
-            contract_hash: result?.contractAddress || '',
-            tx_hash: result?.depositTxHash || ''
-          });
-          window.location.href = completedUrl;
-        } else {
-          router.push('/dashboard');
-        }
-      }
-
-    } catch (error: any) {
-      console.error('🔧 ContractCreate: Payment failed:', error);
-      console.error('🔧 ContractCreate: Error type:', error.name);
-      console.error('🔧 ContractCreate: Error message:', error.message);
-      console.error('🔧 ContractCreate: Error stack:', error.stack);
-
-      // Mark the current active step as error
-      const activeStep = paymentSteps.find(s => s.status === 'active');
-      if (activeStep) {
-        updatePaymentStep(activeStep.id, 'error');
-      }
-
-      sendPostMessage({
-        type: 'payment_error',
-        error: error.message || 'Payment failed'
-      });
-
-      // For WordPress integration, redirect to error status page
-      if (wordpress_source === 'true' && returnUrl && typeof returnUrl === 'string') {
-        const errorUrl = buildWordPressStatusUrl('error', {
-          error: encodeURIComponent(error.message || 'Payment failed')
-        });
-
-        if (isInPopup && window.opener) {
-          window.opener.location.href = errorUrl;
-          window.close();
-        } else if (!isInIframe) {
-          window.location.href = errorUrl;
-        }
-      } else {
-        // For SDK usage: Don't redirect - let SDK handle error display
-        // Just close the popup if we're in one
-        if (isInPopup) {
-          setTimeout(() => window.close(), 2000);
-        } else if (!isInIframe) {
-          // Only show alert if not in popup/iframe (direct page access)
-          alert(error.message || 'Payment failed');
-        }
-      }
-
-      setIsLoading(false);
-      setLoadingMessage('');
-    }
+    );
   };
 
   const handleCancel = () => {

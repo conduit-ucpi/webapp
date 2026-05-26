@@ -9,6 +9,7 @@ import { useTokenSelection } from '@/hooks/useTokenSelection';
 import { useQrPayment } from '@/hooks/useQrPayment';
 import { useLazyUserData } from '@/hooks/useLazyUserData';
 import { useTokenBalance } from '@/hooks/useTokenBalance';
+import { useContractPayment } from '@/hooks/useContractPayment';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import ConnectWalletEmbedded from '@/components/auth/ConnectWalletEmbedded';
@@ -16,8 +17,7 @@ import WalletInfo from '@/components/ui/WalletInfo';
 import TokenGuide from '@/components/ui/TokenGuide';
 import CustomArbiterNotice from '@/components/contracts/CustomArbiterNotice';
 import { toMicroUSDC, toUSDCForWeb3, formatDateTimeWithTZ, displayCurrency } from '@/utils/validation';
-import { executeContractTransactionSequence, executeDirectPaymentSequence, resolveOrCreateOnChainContract } from '@/utils/contractTransactionSequence';
-import { createContractProgressHandler } from '@/utils/contractProgressHandler';
+import { resolveOrCreateOnChainContract } from '@/utils/contractTransactionSequence';
 import { getNetworkName } from '@/utils/networkUtils';
 import { detectDevice } from '@/utils/deviceDetection';
 import { PendingContract } from '@/types';
@@ -39,6 +39,7 @@ export default function ContractPay() {
     approveUSDC, depositToContract, depositFundsAsProxy,
     getWeb3Service, transferToContract, getTokenBalance
   } = useSimpleEthers();
+  const { runDirectPayment, runLegacyPayment } = useContractPayment();
 
   // State
   const [contract, setContract] = useState<PendingContract | null>(null);
@@ -244,104 +245,48 @@ export default function ContractPay() {
     }
 
     console.log('ContractPay: Starting wallet payment process');
-    setIsPaymentInProgress(true);
 
-    // Reset payment steps
+    // Reset payment steps (labels are page-specific; the hook drives statuses).
     setPaymentSteps(prev => prev.map(step => ({ ...step, status: 'pending' })));
 
-    try {
-      // Check balance
-      const requestedAmountInTokens = contract.amount / 1000000;
-      const availableBalance = parseFloat(tokenBalance);
-
-      if (availableBalance < requestedAmountInTokens) {
-        const shortfall = requestedAmountInTokens - availableBalance;
-        throw new Error(
-          `Insufficient ${selectedTokenSymbol} balance. You need ${requestedAmountInTokens.toFixed(4)} ${selectedTokenSymbol} but only have ${availableBalance.toFixed(4)} ${selectedTokenSymbol}. You are short ${shortfall.toFixed(4)} ${selectedTokenSymbol}.`
-        );
-      }
-
-      // Step 1: Verify wallet connection
-      updatePaymentStep('verify', 'active');
-      setLoadingMessage('Verifying wallet connection...');
-      await new Promise(resolve => setTimeout(resolve, 500));
-      updatePaymentStep('verify', 'completed');
-
-      // Execute the direct payment sequence (transfer instead of approve+deposit)
-      updatePaymentStep('transfer', 'active');
-      setLoadingMessage('Creating contract and transferring funds...');
-
-      const result = await executeDirectPaymentSequence(
-        {
-          contractserviceId: contract.id,
-          tokenAddress: selectedTokenAddress,
-          buyer: address,
-          seller: contract.sellerAddress,
-          amount: contract.amount,
-          expiryTimestamp: contract.expiryTimestamp,
-          description: contract.description,
-          arbiterAddress: contract.arbiterAddress
+    await runDirectPayment(
+      {
+        contractserviceId: contract.id,
+        tokenAddress: selectedTokenAddress,
+        buyer: address,
+        seller: contract.sellerAddress,
+        amount: contract.amount,
+        expiryTimestamp: contract.expiryTimestamp,
+        description: contract.description,
+        arbiterAddress: contract.arbiterAddress
+      },
+      {
+        selectedTokenSymbol,
+        tokenBalance,
+        requiredAmount: contract.amount / 1000000,
+        authenticatedFetch,
+        transferToContract,
+        approveUSDC,
+        depositToContract,
+        depositFundsAsProxy,
+        getWeb3Service,
+        updatePaymentStep,
+        setLoadingMessage,
+        setBusy: setIsPaymentInProgress,
+        getActiveStep: () => paymentSteps.find(s => s.status === 'active'),
+        onSuccess: (result) => {
+          console.log('ContractPay: Wallet payment completed successfully:', result);
+          setLoadingMessage('Payment completed! Redirecting...');
+          setTimeout(() => {
+            router.push('/dashboard');
+          }, 2000);
         },
-        {
-          authenticatedFetch,
-          transferToContract,
-          getWeb3Service,
-          onProgress: (step, message, contractAddr) => {
-            console.log(`ContractPay Progress: ${step} - ${message}`);
-            switch (step) {
-              case 'contract_creation':
-                setLoadingMessage('Step 1: Creating secure escrow...');
-                break;
-              case 'contract_confirmation':
-                setLoadingMessage('Step 1.5: Waiting for contract creation...');
-                break;
-              case 'contract_created':
-                setLoadingMessage('Step 1 complete: Contract created');
-                break;
-              case 'transfer':
-                updatePaymentStep('transfer', 'active');
-                setLoadingMessage('Step 2: Transferring funds to escrow...');
-                break;
-              case 'transfer_confirmation':
-                updatePaymentStep('transfer', 'completed');
-                updatePaymentStep('confirm', 'active');
-                setLoadingMessage('Step 2.5: Confirming transfer...');
-                break;
-              case 'activation':
-                updatePaymentStep('confirm', 'completed');
-                updatePaymentStep('activate', 'active');
-                setLoadingMessage('Step 3: Activating contract...');
-                break;
-              case 'complete':
-                updatePaymentStep('activate', 'completed');
-                updatePaymentStep('complete', 'completed');
-                setLoadingMessage('Payment completed successfully!');
-                break;
-            }
-          }
-        }
-      );
-
-      console.log('ContractPay: Wallet payment completed successfully:', result);
-
-      setLoadingMessage('Payment completed! Redirecting...');
-
-      setTimeout(() => {
-        router.push('/dashboard');
-      }, 2000);
-
-    } catch (error: any) {
-      console.error('ContractPay: Wallet payment failed:', error);
-
-      const activeStep = paymentSteps.find(s => s.status === 'active');
-      if (activeStep) {
-        updatePaymentStep(activeStep.id, 'error');
+        onError: (error) => {
+          console.error('ContractPay: Wallet payment failed:', error);
+          alert(error.message || 'Payment failed');
+        },
       }
-
-      alert(error.message || 'Payment failed');
-      setIsPaymentInProgress(false);
-      setLoadingMessage('');
-    }
+    );
   };
 
   // Legacy payment handler (approve + deposit flow for backward compatibility)
@@ -352,9 +297,8 @@ export default function ContractPay() {
     }
 
     console.log('ContractPay: Starting legacy payment process');
-    setIsPaymentInProgress(true);
 
-    // Reset payment steps to legacy steps
+    // Reset payment steps to legacy steps (labels are page-specific).
     setPaymentSteps([
       { id: 'verify', label: 'Verifying wallet connection', status: 'pending' },
       { id: 'approve', label: `Approving ${selectedTokenSymbol} payment`, status: 'pending' },
@@ -363,64 +307,43 @@ export default function ContractPay() {
       { id: 'complete', label: 'Payment complete', status: 'pending' }
     ]);
 
-    try {
-      const requestedAmountInTokens = contract.amount / 1000000;
-      const availableBalance = parseFloat(tokenBalance);
-
-      if (availableBalance < requestedAmountInTokens) {
-        const shortfall = requestedAmountInTokens - availableBalance;
-        throw new Error(
-          `Insufficient ${selectedTokenSymbol} balance. You need ${requestedAmountInTokens.toFixed(4)} ${selectedTokenSymbol} but only have ${availableBalance.toFixed(4)} ${selectedTokenSymbol}. You are short ${shortfall.toFixed(4)} ${selectedTokenSymbol}.`
-        );
-      }
-
-      updatePaymentStep('verify', 'active');
-      setLoadingMessage('Verifying wallet connection...');
-      await new Promise(resolve => setTimeout(resolve, 500));
-      updatePaymentStep('verify', 'completed');
-
-      updatePaymentStep('approve', 'active');
-
-      const result = await executeContractTransactionSequence(
-        {
-          contractserviceId: contract.id,
-          tokenAddress: selectedTokenAddress,
-          buyer: address,
-          seller: contract.sellerAddress,
-          amount: contract.amount,
-          expiryTimestamp: contract.expiryTimestamp,
-          description: contract.description
+    await runLegacyPayment(
+      {
+        contractserviceId: contract.id,
+        tokenAddress: selectedTokenAddress,
+        buyer: address,
+        seller: contract.sellerAddress,
+        amount: contract.amount,
+        expiryTimestamp: contract.expiryTimestamp,
+        description: contract.description
+      },
+      {
+        selectedTokenSymbol,
+        tokenBalance,
+        requiredAmount: contract.amount / 1000000,
+        authenticatedFetch,
+        transferToContract,
+        approveUSDC,
+        depositToContract,
+        depositFundsAsProxy,
+        getWeb3Service,
+        updatePaymentStep,
+        setLoadingMessage,
+        setBusy: setIsPaymentInProgress,
+        getActiveStep: () => paymentSteps.find(s => s.status === 'active'),
+        onSuccess: (result) => {
+          console.log('ContractPay: Legacy payment completed successfully:', result);
+          setLoadingMessage('Payment completed! Redirecting...');
+          setTimeout(() => {
+            router.push('/dashboard');
+          }, 2000);
         },
-        {
-          authenticatedFetch,
-          approveUSDC,
-          depositToContract,
-          depositFundsAsProxy,
-          getWeb3Service,
-          onProgress: createContractProgressHandler({
-            setLoadingMessage,
-            updatePaymentStep
-          }, 'Step'),
-          useProxyDeposit: true
-        }
-      );
-
-      console.log('ContractPay: Legacy payment completed successfully:', result);
-      setLoadingMessage('Payment completed! Redirecting...');
-      setTimeout(() => {
-        router.push('/dashboard');
-      }, 2000);
-
-    } catch (error: any) {
-      console.error('ContractPay: Legacy payment failed:', error);
-      const activeStep = paymentSteps.find(s => s.status === 'active');
-      if (activeStep) {
-        updatePaymentStep(activeStep.id, 'error');
+        onError: (error) => {
+          console.error('ContractPay: Legacy payment failed:', error);
+          alert(error.message || 'Payment failed');
+        },
       }
-      alert(error.message || 'Payment failed');
-      setIsPaymentInProgress(false);
-      setLoadingMessage('');
-    }
+    );
   };
 
   // Copy contract address to clipboard

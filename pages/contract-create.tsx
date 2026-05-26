@@ -5,6 +5,7 @@ import { useConfig } from '@/components/auth/ConfigProvider';
 import { useAuth } from '@/components/auth';
 import { useSimpleEthers } from '@/hooks/useSimpleEthers';
 import { useTokenSelection } from '@/hooks/useTokenSelection';
+import { useQrPayment } from '@/hooks/useQrPayment';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
@@ -121,16 +122,11 @@ export default function ContractCreate() {
   ]);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(null);
   const [showTokenGuide, setShowTokenGuide] = useState(false);
-  // QR flow state
+  // QR flow state. The QR-payment subsystem (countdown, balance polling,
+  // activation) lives in useQrPayment; the page keeps only the bits outside
+  // that subsystem (mobile-vs-deeplink rendering, clipboard copy).
   const [isMobileDevice, setIsMobileDevice] = useState(false);
-  const [qrContractAddress, setQrContractAddress] = useState<string | null>(null);
-  const [qrCountdown, setQrCountdown] = useState(240);
-  const [qrPaymentDetected, setQrPaymentDetected] = useState(false);
-  const [qrActivationStatus, setQrActivationStatus] = useState<'idle' | 'checking' | 'success' | 'waiting'>('idle');
-  const [isCreatingContract, setIsCreatingContract] = useState(false);
   const [copiedAddress, setCopiedAddress] = useState(false);
-  const qrPollingRef = useRef<NodeJS.Timeout | null>(null);
-  const qrCountdownRef = useRef<NodeJS.Timeout | null>(null);
 
   console.log('🔧 ContractCreate: Hooks initialized', {
     hasConfig: !!config,
@@ -243,66 +239,6 @@ export default function ContractCreate() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isConnected, address, user, hasAttemptedUserFetch]);
 
-  // Cleanup QR polling/countdown on unmount
-  useEffect(() => {
-    return () => {
-      if (qrPollingRef.current) clearInterval(qrPollingRef.current);
-      if (qrCountdownRef.current) clearInterval(qrCountdownRef.current);
-    };
-  }, []);
-
-  // QR countdown timer
-  useEffect(() => {
-    if (!qrContractAddress || qrActivationStatus === 'success') return;
-
-    qrCountdownRef.current = setInterval(() => {
-      setQrCountdown(prev => {
-        if (prev <= 1) {
-          if (qrCountdownRef.current) clearInterval(qrCountdownRef.current);
-          checkAndActivate();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => {
-      if (qrCountdownRef.current) clearInterval(qrCountdownRef.current);
-    };
-  }, [qrContractAddress, qrActivationStatus]);
-
-  // QR balance polling
-  useEffect(() => {
-    if (!qrContractAddress || !selectedTokenAddress || qrActivationStatus === 'success') return;
-
-    const pollBalance = async () => {
-      try {
-        const balance = await getTokenBalance(qrContractAddress, selectedTokenAddress);
-        const balanceNum = parseFloat(balance);
-        const requiredAmount = parseFloat(form.amount);
-
-        if (balanceNum >= requiredAmount && requiredAmount > 0) {
-          console.log('ContractCreate: QR payment detected! Balance:', balance);
-          setQrPaymentDetected(true);
-        }
-      } catch (error) {
-        console.error('ContractCreate: Failed to poll contract balance:', error);
-      }
-    };
-
-    qrPollingRef.current = setInterval(pollBalance, 10000);
-    pollBalance();
-
-    return () => {
-      if (qrPollingRef.current) clearInterval(qrPollingRef.current);
-    };
-    // NOTE: getTokenBalance is intentionally NOT a dependency. useSimpleEthers
-    // returns a fresh object each render, so including it re-creates the
-    // polling interval (and immediately re-polls) on every render — a loop.
-    // The primitive deps capture every input that should restart polling.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [qrContractAddress, selectedTokenAddress, form.amount, qrActivationStatus]);
-
   // Send postMessage to parent window (iframe) or opener (popup)
   const sendPostMessage = (event: PostMessageEvent) => {
     // Send to iframe parent
@@ -387,115 +323,92 @@ export default function ContractCreate() {
 
   // validateForm function now provided by useContractCreateValidation hook
 
-  const checkAndActivate = useCallback(async () => {
-    if (!qrContractAddress || !authenticatedFetch) return;
-
-    setQrActivationStatus('checking');
-
-    try {
-      const response = await authenticatedFetch('/api/chain/check-and-activate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contractAddress: qrContractAddress })
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        setQrActivationStatus('success');
-        if (qrPollingRef.current) clearInterval(qrPollingRef.current);
-        if (qrCountdownRef.current) clearInterval(qrCountdownRef.current);
-
-        // Send payment completed event
-        sendPostMessage({
-          type: 'payment_completed',
-          data: {
-            contractId,
-            amount: form.amount,
-            description: form.description,
+  // QR-payment subsystem (countdown, balance polling, activation). The page
+  // injects how the on-chain contract is created (POST /api/chain/create-contract
+  // using the DB-stored expiry) and what happens on activation (postMessage +
+  // WordPress/iframe/popup/dashboard redirect). Timing lives in the hook;
+  // behavior is unchanged from the previous inline implementation.
+  const qr = useQrPayment({
+    authenticatedFetch,
+    getTokenBalance,
+    selectedTokenAddress,
+    chainId: config?.chainId,
+    requiredAmount: parseFloat(form.amount) || 0,
+    requiredAmountMicro: form.amount ? toMicroUSDC(parseFloat(form.amount.trim())) : 0,
+    createContract: useCallback(async () => {
+      if (!contractId || !config || !address || !authenticatedFetch) return undefined;
+      if (pendingExpiryTimestamp === null) {
+        console.error('🔧 ContractCreate: pendingExpiryTimestamp not set; cannot deploy without the DB-stored value');
+        return undefined;
+      }
+      try {
+        // Reuse the expiryTimestamp stored in the pending contract to avoid drift
+        // between the DB value and the on-chain value (prevents ERROR status from
+        // expiryTimestampMismatch in contractservice).
+        const expiryTimestamp = pendingExpiryTimestamp;
+        const createResponse = await authenticatedFetch('/api/chain/create-contract', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contractserviceId: contractId,
+            tokenAddress: selectedTokenAddress,
+            buyer: address,
             seller: form.seller,
-            orderId: order_id,
-            contractAddress: qrContractAddress
-          }
+            amount: toMicroUSDC(parseFloat(form.amount.trim())),
+            expiryTimestamp,
+            description: form.description
+          })
         });
-
-        // Redirect after brief delay - use same logic as wallet path
-        setTimeout(() => {
-          if (isInIframe) {
-            sendPostMessage({ type: 'close_modal' });
-          } else if (isInPopup) {
-            window.close();
-          } else if (returnUrl && typeof returnUrl === 'string') {
-            const completedUrl = buildWordPressStatusUrl('completed', {
-              contract_id: contractId || '',
-              contract_hash: qrContractAddress || ''
-            });
-            window.location.href = completedUrl;
-          } else {
-            router.push('/dashboard');
-          }
-        }, 2000);
-      } else {
-        console.log('ContractCreate: check-and-activate returned not successful:', data);
-        setQrActivationStatus('waiting');
+        if (!createResponse.ok) {
+          const errorData = await createResponse.json().catch(() => ({}));
+          throw new Error(errorData.error || 'Contract creation failed');
+        }
+        const createData = await createResponse.json();
+        console.log('ContractCreate: QR contract created:', createData);
+        if (createData.transactionHash) {
+          const web3Service = await getWeb3Service();
+          await web3Service.waitForTransaction(createData.transactionHash, 120000, contractId);
+        }
+        return createData.contractAddress;
+      } catch (error: any) {
+        console.error('ContractCreate: Failed to create contract for QR:', error);
+        alert(error.message || 'Failed to create contract');
+        return undefined;
       }
-    } catch (error) {
-      console.error('ContractCreate: check-and-activate failed:', error);
-      setQrActivationStatus('waiting');
-    }
-  }, [qrContractAddress, authenticatedFetch, contractId, form, order_id, isInIframe, isInPopup, returnUrl, router]);
-
-  const createContractForQR = useCallback(async () => {
-    if (!contractId || !config || !address || !authenticatedFetch) return;
-    if (pendingExpiryTimestamp === null) {
-      console.error('🔧 ContractCreate: pendingExpiryTimestamp not set; cannot deploy without the DB-stored value');
-      return;
-    }
-
-    setIsCreatingContract(true);
-
-    try {
-      // Reuse the expiryTimestamp stored in the pending contract to avoid drift
-      // between the DB value and the on-chain value (prevents ERROR status from
-      // expiryTimestampMismatch in contractservice).
-      const expiryTimestamp = pendingExpiryTimestamp;
-
-      const createResponse = await authenticatedFetch('/api/chain/create-contract', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contractserviceId: contractId,
-          tokenAddress: selectedTokenAddress,
-          buyer: address,
+    }, [contractId, config, address, authenticatedFetch, selectedTokenAddress, form, pendingExpiryTimestamp, getWeb3Service]),
+    onActivated: useCallback((contractAddress: string) => {
+      // Send payment completed event, then redirect using the same logic as the
+      // wallet path (iframe → close_modal, popup → window.close, WordPress →
+      // status URL, otherwise → dashboard).
+      sendPostMessage({
+        type: 'payment_completed',
+        data: {
+          contractId,
+          amount: form.amount,
+          description: form.description,
           seller: form.seller,
-          amount: toMicroUSDC(parseFloat(form.amount.trim())),
-          expiryTimestamp,
-          description: form.description
-        })
+          orderId: order_id,
+          contractAddress
+        }
       });
-
-      if (!createResponse.ok) {
-        const errorData = await createResponse.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Contract creation failed');
-      }
-
-      const createData = await createResponse.json();
-      console.log('ContractCreate: QR contract created:', createData);
-
-      if (createData.transactionHash) {
-        const web3Service = await getWeb3Service();
-        await web3Service.waitForTransaction(createData.transactionHash, 120000, contractId);
-      }
-
-      setQrContractAddress(createData.contractAddress);
-      setQrCountdown(240);
-    } catch (error: any) {
-      console.error('ContractCreate: Failed to create contract for QR:', error);
-      alert(error.message || 'Failed to create contract');
-    } finally {
-      setIsCreatingContract(false);
-    }
-  }, [contractId, config, address, authenticatedFetch, selectedTokenAddress, form, pendingExpiryTimestamp, getWeb3Service]);
+      setTimeout(() => {
+        if (isInIframe) {
+          sendPostMessage({ type: 'close_modal' });
+        } else if (isInPopup) {
+          window.close();
+        } else if (returnUrl && typeof returnUrl === 'string') {
+          const completedUrl = buildWordPressStatusUrl('completed', {
+            contract_id: contractId || '',
+            contract_hash: contractAddress || ''
+          });
+          window.location.href = completedUrl;
+        } else {
+          router.push('/dashboard');
+        }
+      }, 2000);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [contractId, form, order_id, isInIframe, isInPopup, returnUrl, router]),
+  });
 
   const handleWalletPayment = async () => {
     if (!contractId || !config) {
@@ -740,24 +653,11 @@ export default function ContractCreate() {
     }
   };
 
-  const formatCountdown = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
   // Detect mobile device for QR code vs deep link rendering
   useEffect(() => {
     const device = detectDevice();
     setIsMobileDevice(device.isMobile || device.isTablet);
   }, []);
-
-  const buildEIP681Uri = (): string => {
-    if (!qrContractAddress || !selectedTokenAddress || !config) return '';
-    const chainId = config.chainId;
-    const microAmount = toMicroUSDC(parseFloat(form.amount.trim()));
-    return `ethereum:${selectedTokenAddress}@${chainId}/transfer?address=${qrContractAddress}&uint256=${microAmount}`;
-  };
 
   const handleCreateContract = async () => {
     console.log('🔧 ContractCreate: handleCreateContract called');
@@ -1587,7 +1487,7 @@ export default function ContractCreate() {
             {paymentMethod === 'wallet' && (
               <>
                 {/* Payment method switcher (when not in progress and no QR contract created) */}
-                {!isLoading && !qrContractAddress && (
+                {!isLoading && !qr.qrContractAddress && (
                   <div className="flex mb-6 bg-secondary-100 dark:bg-secondary-800 rounded-lg p-1">
                     <button
                       onClick={() => setPaymentMethod('wallet')}
@@ -1729,7 +1629,7 @@ export default function ContractCreate() {
             {paymentMethod === 'qr' && (
               <>
                 {/* Payment method switcher (when not creating and no QR contract yet) */}
-                {!isCreatingContract && !qrContractAddress && (
+                {!qr.isCreatingContract && !qr.qrContractAddress && (
                   <div className="flex mb-6 bg-secondary-100 dark:bg-secondary-800 rounded-lg p-1">
                     <button
                       onClick={() => setPaymentMethod('wallet')}
@@ -1747,17 +1647,17 @@ export default function ContractCreate() {
                 )}
 
                 {/* Step 1: Create the contract first */}
-                {!qrContractAddress && (
+                {!qr.qrContractAddress && (
                   <div className="text-center">
                     <p className="text-sm text-secondary-600 dark:text-secondary-300 mb-4">
                       First, we need to create a secure escrow contract on the blockchain. Then you will get a payment link to send your payment.
                     </p>
                     <Button
-                      onClick={createContractForQR}
-                      disabled={isCreatingContract}
+                      onClick={qr.createContract}
+                      disabled={qr.isCreatingContract}
                       className="w-full"
                     >
-                      {isCreatingContract ? (
+                      {qr.isCreatingContract ? (
                         <>
                           <LoadingSpinner className="w-4 h-4 mr-2" />
                           Creating contract...
@@ -1770,10 +1670,10 @@ export default function ContractCreate() {
                 )}
 
                 {/* Step 2: Show QR code and payment instructions */}
-                {qrContractAddress && qrActivationStatus !== 'success' && (
+                {qr.qrContractAddress && qr.qrActivationStatus !== 'success' && (
                   <div>
                     {/* Payment detected banner */}
-                    {qrPaymentDetected && (
+                    {qr.qrPaymentDetected && (
                       <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-md p-3 mb-4">
                         <p className="text-sm font-medium text-green-800 dark:text-green-300">
                           Payment detected! Verifying...
@@ -1785,7 +1685,7 @@ export default function ContractCreate() {
                     {isMobileDevice ? (
                       <div className="mb-4 space-y-3">
                         <Button
-                          onClick={() => { window.location.href = buildEIP681Uri(); }}
+                          onClick={() => { window.location.href = qr.buildEip681Uri(); }}
                           className="w-full"
                         >
                           Open in Wallet App
@@ -1798,7 +1698,7 @@ export default function ContractCreate() {
                       <div className="flex justify-center mb-4">
                         <div className="bg-white p-4 rounded-lg border-2 border-secondary-200 shadow-sm">
                           <QRCodeSVG
-                            value={buildEIP681Uri()}
+                            value={qr.buildEip681Uri()}
                             size={200}
                             level="M"
                             includeMargin={true}
@@ -1816,13 +1716,13 @@ export default function ContractCreate() {
                         <input
                           type="text"
                           readOnly
-                          value={qrContractAddress}
+                          value={qr.qrContractAddress}
                           className="flex-1 border border-secondary-300 dark:border-secondary-600 rounded-md px-3 py-2 text-xs bg-secondary-50 dark:bg-secondary-800 font-mono text-secondary-900 dark:text-secondary-100"
                           onClick={(e) => e.currentTarget.select()}
                         />
                         <Button
                           variant="outline"
-                          onClick={() => handleCopyAddress(qrContractAddress)}
+                          onClick={() => handleCopyAddress(qr.qrContractAddress || '')}
                           className="whitespace-nowrap flex-shrink-0 text-xs"
                         >
                           {copiedAddress ? 'Copied!' : 'Copy'}
@@ -1851,28 +1751,28 @@ export default function ContractCreate() {
                     <div className="space-y-3">
                       <div className="text-center">
                         <p className="text-sm text-secondary-500 dark:text-secondary-400">
-                          Auto-checking in <span className="font-mono font-medium text-secondary-900 dark:text-white">{formatCountdown(qrCountdown)}</span>
+                          Auto-checking in <span className="font-mono font-medium text-secondary-900 dark:text-white">{qr.formatCountdown(qr.qrCountdown)}</span>
                         </p>
                       </div>
 
-                      {qrActivationStatus === 'checking' && (
+                      {qr.qrActivationStatus === 'checking' && (
                         <div className="flex items-center justify-center text-sm text-blue-600 dark:text-blue-400">
                           <LoadingSpinner className="w-4 h-4 mr-2" />
                           Checking payment status...
                         </div>
                       )}
-                      {qrActivationStatus === 'waiting' && (
+                      {qr.qrActivationStatus === 'waiting' && (
                         <p className="text-center text-sm text-yellow-600 dark:text-yellow-400">
                           Still waiting for payment... The timer and button remain active for retry.
                         </p>
                       )}
 
                       <Button
-                        onClick={checkAndActivate}
-                        disabled={qrActivationStatus === 'checking'}
+                        onClick={qr.checkAndActivate}
+                        disabled={qr.qrActivationStatus === 'checking'}
                         className="w-full"
                       >
-                        {qrActivationStatus === 'checking' ? (
+                        {qr.qrActivationStatus === 'checking' ? (
                           <>
                             <LoadingSpinner className="w-4 h-4 mr-2" />
                             Checking...
@@ -1894,7 +1794,7 @@ export default function ContractCreate() {
                 )}
 
                 {/* Success state */}
-                {qrActivationStatus === 'success' && (
+                {qr.qrActivationStatus === 'success' && (
                   <div className="text-center py-6">
                     <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
                       <svg className="w-8 h-8 text-green-600 dark:text-green-400" fill="currentColor" viewBox="0 0 20 20">

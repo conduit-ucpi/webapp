@@ -3,15 +3,7 @@ import { Combobox, Transition } from '@headlessui/react';
 import { MagnifyingGlassIcon, UserIcon, EnvelopeIcon, CheckIcon } from '@heroicons/react/24/outline';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { useDebounce } from '@/hooks/useDebounce';
-
-interface FarcasterUser {
-  fid: number;
-  username: string;
-  displayName: string;
-  pfpUrl: string;
-  followerCount: number;
-  verified: boolean;
-}
+import { useUserSearch, FarcasterUser } from '@/hooks/useUserSearch';
 
 interface BuyerInputProps {
   value: string;
@@ -37,13 +29,20 @@ export default function BuyerInput({
   const { config } = useConfig();
   const [inputValue, setInputValue] = useState(value);
   const [buyerType, setBuyerType] = useState<'email' | 'farcaster' | null>(null);
-  const [isSearching, setIsSearching] = useState(false);
-  const [searchResults, setSearchResults] = useState<FarcasterUser[]>([]);
   const [selectedUser, setSelectedUser] = useState<FarcasterUser | null>(null);
   const [showDropdown, setShowDropdown] = useState(false);
-  
+
   const debouncedSearch = useDebounce(inputValue, 300);
   const hasNeynarKey = !!config?.neynarApiKey;
+
+  // Farcaster user search (fetch + parsing) lives in the shared hook; the
+  // component still owns dropdown visibility (presentation state).
+  const {
+    results: searchResults,
+    isSearching,
+    search: runUserSearch,
+    clear: clearSearchResults,
+  } = useUserSearch({ enabled: hasNeynarKey });
 
   // Determine if input is an email
   const isEmail = useCallback((text: string) => {
@@ -62,36 +61,18 @@ export default function BuyerInput({
     return false;
   }, [isEmail]);
 
-  // Search for Farcaster users
+  // Search for Farcaster users via the shared hook, then open the dropdown.
+  // The hook handles the fetch, encoding, response parsing, and error cases;
+  // here we only translate "we ran a search" into dropdown visibility.
   const searchUsers = useCallback(async (query: string) => {
-    if (!hasNeynarKey || !query || query.length < 1) {
-      setSearchResults([]);
-      return;
-    }
-
-    setIsSearching(true);
-    try {
-      const response = await fetch(`/api/users/search?q=${encodeURIComponent(query)}`);
-      if (response.ok) {
-        const data = await response.json();
-        setSearchResults(data.users || []);
-        setShowDropdown(true);
-      } else {
-        console.error('Failed to search users');
-        setSearchResults([]);
-      }
-    } catch (error) {
-      console.error('Error searching users:', error);
-      setSearchResults([]);
-    } finally {
-      setIsSearching(false);
-    }
-  }, [hasNeynarKey]);
+    await runUserSearch(query);
+    setShowDropdown(true);
+  }, [runUserSearch]);
 
   // Handle search based on input
   useEffect(() => {
     if (!debouncedSearch) {
-      setSearchResults([]);
+      clearSearchResults();
       setShowDropdown(false);
       return;
     }
@@ -99,7 +80,7 @@ export default function BuyerInput({
     if (isEmail(debouncedSearch)) {
       // It's an email, no need to search
       setBuyerType('email');
-      setSearchResults([]);
+      clearSearchResults();
       setShowDropdown(false);
       setSelectedUser(null);
     } else if (isFarcasterSearch(debouncedSearch) && hasNeynarKey) {
@@ -108,10 +89,10 @@ export default function BuyerInput({
       searchUsers(debouncedSearch);
     } else {
       // Clear search if input doesn't match any pattern
-      setSearchResults([]);
+      clearSearchResults();
       setShowDropdown(false);
     }
-  }, [debouncedSearch, isEmail, isFarcasterSearch, searchUsers, hasNeynarKey]);
+  }, [debouncedSearch, isEmail, isFarcasterSearch, searchUsers, hasNeynarKey, clearSearchResults]);
 
   // Handle input change
   const handleInputChange = (newValue: string) => {

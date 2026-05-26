@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/components/auth';
 import { Contract, PendingContract } from '@/types';
+import { transformCombinedContracts } from '@/hooks/useCombinedContracts';
 import Button from '@/components/ui/Button';
 import StatsCard from '@/components/ui/StatsCard';
 import { Tabs, TabPanel, Tab } from '@/components/ui/Tabs';
@@ -139,78 +140,14 @@ export default function EnhancedDashboard() {
       }
 
       const contractsData = await response.json();
-      
+
       if (!Array.isArray(contractsData)) {
         throw new Error('Invalid response format - expected array');
       }
-      
-      // Transform contracts into unified array (same logic as ContractList)
-      const unified: (Contract | PendingContract)[] = [];
-      
-      contractsData.forEach((item: any) => {
-        if (!item.contract) {
-          return;
-        }
-        
-        const contract = item.contract;
 
-        // A contract is only pending if it has NO chainAddress in MongoDB
-        // Blockchain query failures don't make a deployed contract "pending"
-        if (!contract.chainAddress) {
-          // Pending contract (not yet deployed)
-          const pendingContract: PendingContract = {
-            id: contract.id,
-            sellerEmail: contract.sellerEmail || '',
-            buyerEmail: contract.buyerEmail || '',
-            amount: contract.amount || 0,
-            currency: contract.currency || 'USDC',
-            sellerAddress: contract.sellerAddress || '',
-            expiryTimestamp: contract.expiryTimestamp || 0,
-            chainId: contract.chainId,
-            chainAddress: contract.chainAddress,
-            description: contract.description || '',
-            createdAt: contract.createdAt?.toString() || '',
-            createdBy: contract.createdBy || '',
-            state: contract.state || 'OK',
-            adminNotes: contract.adminNotes || [],
-            ctaType: item.ctaType,
-            ctaLabel: item.ctaLabel,
-            ctaVariant: item.ctaVariant
-          };
-          unified.push(pendingContract);
-        } else {
-          // Regular contract
-          const regularContract: Contract = {
-            id: contract.id,
-            contractAddress: contract.chainAddress || '',
-            buyerAddress: item.blockchainBuyerAddress || contract.buyerAddress || '',
-            sellerAddress: item.blockchainSellerAddress || contract.sellerAddress || '',
-            amount: parseFloat(item.blockchainAmount || contract.amount || '0'),
-            expiryTimestamp: item.blockchainExpiryTimestamp || contract.expiryTimestamp || 0,
-            description: contract.description || '',
-            status: item.status || 'UNKNOWN',
-            createdAt: contract.createdAt || 0,
-            funded: item.blockchainFunded || false,
-            buyerEmail: contract.buyerEmail,
-            sellerEmail: contract.sellerEmail,
-            productName: contract.productName,
-            adminNotes: contract.adminNotes || [],
-            disputes: contract.disputes || [],
-            blockchainQueryError: item.blockchainError,
-            blockchainStatus: item.blockchainStatus,
-            hasDiscrepancy: Object.values(item.discrepancies || {}).some(Boolean),
-            discrepancyDetails: Object.entries(item.discrepancies || {})
-              .filter(([, value]) => value)
-              .map(([key]) => key),
-            ctaType: item.ctaType,
-            ctaLabel: item.ctaLabel,
-            ctaVariant: item.ctaVariant
-          };
-          unified.push(regularContract);
-        }
-      });
-      
-      setAllContracts(unified);
+      // Transform via the shared single-source-of-truth helper (same logic
+      // previously inlined here and in ContractList).
+      setAllContracts(transformCombinedContracts(contractsData));
       setError('');
     } catch (error: any) {
       console.error('Failed to fetch contracts:', error);
@@ -264,78 +201,13 @@ export default function EnhancedDashboard() {
       }
 
       const contractsData = await response.json();
-      
+
       if (!Array.isArray(contractsData)) {
         throw new Error('Invalid response format - expected array');
       }
-      
-      // Transform contracts into unified array (same logic as fetchContracts)
-      const unified: (Contract | PendingContract)[] = [];
-      
-      contractsData.forEach((item: any) => {
-        if (!item.contract) {
-          return;
-        }
-        
-        const contract = item.contract;
 
-        // A contract is only pending if it has NO chainAddress in MongoDB
-        // Blockchain query failures don't make a deployed contract "pending"
-        if (!contract.chainAddress) {
-          // Pending contract (not yet deployed)
-          const pendingContract: PendingContract = {
-            id: contract.id,
-            sellerEmail: contract.sellerEmail || '',
-            buyerEmail: contract.buyerEmail || '',
-            amount: contract.amount || 0,
-            currency: contract.currency || 'USDC',
-            sellerAddress: contract.sellerAddress || '',
-            expiryTimestamp: contract.expiryTimestamp || 0,
-            chainId: contract.chainId,
-            chainAddress: contract.chainAddress,
-            description: contract.description || '',
-            createdAt: contract.createdAt?.toString() || '',
-            createdBy: contract.createdBy || '',
-            state: contract.state || 'OK',
-            adminNotes: contract.adminNotes || [],
-            ctaType: item.ctaType,
-            ctaLabel: item.ctaLabel,
-            ctaVariant: item.ctaVariant
-          };
-          unified.push(pendingContract);
-        } else {
-          // Regular contract
-          const regularContract: Contract = {
-            id: contract.id,
-            contractAddress: contract.chainAddress || '',
-            buyerAddress: item.blockchainBuyerAddress || contract.buyerAddress || '',
-            sellerAddress: item.blockchainSellerAddress || contract.sellerAddress || '',
-            amount: parseFloat(item.blockchainAmount || contract.amount || '0'),
-            expiryTimestamp: item.blockchainExpiryTimestamp || contract.expiryTimestamp || 0,
-            description: contract.description || '',
-            status: item.status || 'UNKNOWN',
-            createdAt: contract.createdAt || 0,
-            funded: item.blockchainFunded || false,
-            buyerEmail: contract.buyerEmail,
-            sellerEmail: contract.sellerEmail,
-            productName: contract.productName,
-            adminNotes: contract.adminNotes || [],
-            disputes: contract.disputes || [],
-            blockchainQueryError: item.blockchainError,
-            blockchainStatus: item.blockchainStatus,
-            hasDiscrepancy: Object.values(item.discrepancies || {}).some(Boolean),
-            discrepancyDetails: Object.entries(item.discrepancies || {})
-              .filter(([, value]) => value)
-              .map(([key]) => key),
-            ctaType: item.ctaType,
-            ctaLabel: item.ctaLabel,
-            ctaVariant: item.ctaVariant
-          };
-          unified.push(regularContract);
-        }
-      });
-      
-      setAllContracts(unified);
+      // Transform via the shared single-source-of-truth helper.
+      setAllContracts(transformCombinedContracts(contractsData));
       setError('');
     } catch (error: any) {
       console.error('Failed to refresh contracts:', error);

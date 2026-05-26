@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/components/auth';
 import { useRouter } from 'next/router';
 import { getSiteNameFromDomain } from '@/utils/siteName';
+import { useCombinedContracts } from '@/hooks/useCombinedContracts';
 import Button from '@/components/ui/Button';
 import TransactionWalkthrough from './TransactionWalkthrough';
 
@@ -26,27 +27,13 @@ export default function ProgressChecklist({ onClose }: ProgressChecklistProps) {
   const [isVisible, setIsVisible] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [completedItems, setCompletedItems] = useState<string[]>([]);
-  const [contractsExist, setContractsExist] = useState(false);
   const [showWalkthrough, setShowWalkthrough] = useState(false);
 
-  // Check if user has contracts
-  useEffect(() => {
-    const checkContracts = async () => {
-      if (!user) return;
-      
-      try {
-        const response = await fetch('/api/combined-contracts');
-        if (response.ok) {
-          const contracts = await response.json();
-          setContractsExist(Array.isArray(contracts) && contracts.length > 0);
-        }
-      } catch (error) {
-        console.error('Failed to check contracts:', error);
-      }
-    };
-
-    checkContracts();
-  }, [user]);
+  // Existence check via the shared combined-contracts hook. The hook returns an
+  // empty list on fetch error or non-array responses, so `length > 0` preserves
+  // the prior "false unless we got a non-empty array" semantics.
+  const { contracts } = useCombinedContracts({ enabled: !!user });
+  const contractsExist = contracts.length > 0;
 
   const checklistItems: ChecklistItem[] = [
     {

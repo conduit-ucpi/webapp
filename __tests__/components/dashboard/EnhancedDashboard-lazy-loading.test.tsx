@@ -296,4 +296,116 @@ describe('EnhancedDashboard - Lazy Loading', () => {
       expect(screen.queryByTestId('loading-spinner')).not.toBeInTheDocument();
     });
   });
+
+  // Characterization test: locks down the /api/combined-contracts payload
+  // TRANSFORM (item.contract → Contract | PendingContract union) before that
+  // logic is extracted into a shared hook. The existing tests above only assert
+  // the fetch happens and loading clears — they do NOT assert the transform's
+  // output. The dashboard stats are derived directly from the transform:
+  //   - "Active"  = deployed contracts (have contractAddress) with status ACTIVE
+  //   - "Pending" = items without chainAddress (the pending branch)
+  //   - "Total Value" = sum of transformed `amount` (parseFloat of
+  //                     blockchainAmount || contract.amount)
+  // If the refactor scrambles the branch selection or the amount mapping, the
+  // rendered stats change and this test fails.
+  it('transforms the combined-contracts payload into the correct unified stats', async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const payload = [
+      {
+        // Deployed + ACTIVE → counts as Active; amount comes from blockchainAmount.
+        contract: {
+          id: 'deployed-1',
+          chainAddress: '0xdeployed',
+          sellerEmail: 'seller@example.com',
+          buyerEmail: 'buyer@example.com',
+          amount: '1000000', // contract.amount fallback (ignored when blockchainAmount set)
+          expiryTimestamp: now + 86400,
+          description: 'Deployed contract',
+          createdAt: now,
+        },
+        status: 'ACTIVE',
+        blockchainAmount: '2000000', // 2 USDC in microUSDC — should win
+      },
+      {
+        // No chainAddress → pending branch; amount from contract.amount.
+        contract: {
+          id: 'pending-1',
+          sellerEmail: 'seller2@example.com',
+          buyerEmail: 'buyer2@example.com',
+          amount: 500000, // 0.5 USDC in microUSDC
+          expiryTimestamp: now + 86400,
+          description: 'Pending contract',
+          createdAt: now,
+        },
+      },
+    ];
+
+    const mockAuthenticatedFetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => payload,
+    });
+
+    mockUseAuth.mockReturnValue({
+      user: null,
+      isLoading: false,
+      isConnected: true,
+      isAuthenticated: false,
+      error: null,
+      address: '0x1234567890123456789012345678901234567890',
+      state: {
+        isConnected: true,
+        isLoading: false,
+        isInitialized: true,
+        isAuthenticated: false,
+        address: '0x1234567890123456789012345678901234567890',
+        providerName: 'reown',
+        capabilities: null,
+        error: null,
+      },
+      connect: jest.fn(),
+      authenticateBackend: jest.fn(),
+      requestAuthentication: jest.fn(),
+      disconnect: jest.fn(),
+      switchWallet: jest.fn(),
+      getEthersProvider: jest.fn(),
+      showWalletUI: jest.fn(),
+      getProviderUserInfo: jest.fn(),
+      authenticatedFetch: mockAuthenticatedFetch,
+      hasVisitedBefore: jest.fn(),
+      refreshUserData: jest.fn(),
+      claimFunds: jest.fn(),
+      raiseDispute: jest.fn(),
+    } as any);
+
+    renderDashboard();
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('loading-spinner')).not.toBeInTheDocument();
+    });
+
+    // Read a StatsCard's numeric value by its title. "Active"/"Pending" also
+    // appear as filter-tab labels, so we scope to the StatsCard title paragraph
+    // (rendered with the secondary-600 class) and read its sibling value <p>.
+    const statValueFor = (title: string): string => {
+      const titleEls = screen
+        .getAllByText(title)
+        .filter((el) => el.className.includes('text-secondary-600'));
+      expect(titleEls).toHaveLength(1);
+      const valueEl = titleEls[0].nextElementSibling;
+      return valueEl?.textContent ?? '';
+    };
+
+    // Active card = 1 (the deployed ACTIVE contract).
+    expect(statValueFor('Active')).toBe('1');
+
+    // Pending card = 1 (the item with no chainAddress).
+    expect(statValueFor('Pending')).toBe('1');
+
+    // Total Value = blockchainAmount (2000000) + contract.amount (500000) = 2500000 microUSDC.
+    // Assert against the same formatter the component uses so we lock the
+    // numeric transform without hard-coding the currency display format.
+    const { displayCurrency } = require('@/utils/validation');
+    const expectedTotal = displayCurrency(2500000, 'microUSDC');
+    expect(screen.getByText(expectedTotal)).toBeInTheDocument();
+  });
 });

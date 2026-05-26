@@ -11,7 +11,7 @@ import { useTokenBalance } from '@/hooks/useTokenBalance';
 import { useContractPayment } from '@/hooks/useContractPayment';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
-import ConnectWalletEmbedded from '@/components/auth/ConnectWalletEmbedded';
+import ConnectPaymentStage from '@/components/contracts/ConnectPaymentStage';
 import WalletInfo from '@/components/ui/WalletInfo';
 import TokenGuide from '@/components/ui/TokenGuide';
 import CustomArbiterNotice from '@/components/contracts/CustomArbiterNotice';
@@ -461,40 +461,13 @@ export default function ContractPay() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white dark:bg-secondary-900 transition-colors">
         <Head><title>{pageTitle}</title><meta name="viewport" content="width=device-width, initial-scale=1" /></Head>
-        <div className="text-center p-6 max-w-md mx-auto">
-          {paymentMethod === 'qr' && (
-            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6 text-left">
-              <p className="text-sm text-blue-800 dark:text-blue-300">
-                Sign in to protect your payment -- if there is ever a problem, you will be able to raise a dispute.
-              </p>
-            </div>
-          )}
-
-          <h2 className="text-xl font-semibold text-secondary-900 dark:text-white mb-4">
-            {paymentMethod === 'wallet' ? 'Connect Your Wallet' : 'Sign In to Continue'}
-          </h2>
-          <p className="text-secondary-600 dark:text-secondary-300 mb-6">
-            {paymentMethod === 'wallet'
-              ? 'Connect your wallet to complete the payment.'
-              : 'Sign in with your email or wallet to proceed.'}
-          </p>
-          <ConnectWalletEmbedded
-            compact={true}
-            useSmartRouting={false}
-            showTwoOptionLayout={true}
-            connectionMode={paymentMethod === 'qr' ? 'social-only' : 'default'}
-            autoConnect={true}
-            onSuccess={() => {
-              console.log('ContractPay: Auth success callback triggered');
-            }}
-          />
-          <button
-            onClick={() => setPaymentMethod(null)}
-            className="mt-4 text-sm text-secondary-500 dark:text-secondary-400 hover:text-secondary-700 dark:hover:text-secondary-200 underline"
-          >
-            Back to payment options
-          </button>
-        </div>
+        <ConnectPaymentStage
+          paymentMethod={paymentMethod}
+          onBack={() => setPaymentMethod(null)}
+          onConnectSuccess={() => {
+            console.log('ContractPay: Auth success callback triggered');
+          }}
+        />
       </div>
     );
   }

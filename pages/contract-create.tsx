@@ -23,6 +23,7 @@ import { isValidWalletAddress, toMicroUSDC, toUSDCForWeb3, formatDateTimeWithTZ,
 import { useContractCreateValidation } from '@/hooks/useContractValidation';
 import { getNetworkName } from '@/utils/networkUtils';
 import { detectDevice } from '@/utils/deviceDetection';
+import { buildWordPressStatusUrl as buildWpStatusUrl } from '@/utils/wordpressStatusUrl';
 
 console.log('🔧 ContractCreate: FILE LOADED - imports successful');
 
@@ -200,54 +201,14 @@ export default function ContractCreate() {
     }
   };
 
-  // Extract WordPress order key from return URL
-  const getWordPressOrderKey = (): string | null => {
-    if (!returnUrl || typeof returnUrl !== 'string') return null;
-    try {
-      const url = new URL(returnUrl);
-      return url.searchParams.get('key');
-    } catch {
-      return null;
-    }
-  };
-
-  // Helper function to build WordPress payment status URLs
-  const buildWordPressStatusUrl = (status: 'completed' | 'cancelled' | 'error', additionalParams: Record<string, string> = {}): string => {
-    if (!returnUrl || typeof returnUrl !== 'string' || !order_id || wordpress_source !== 'true') {
-      return (typeof returnUrl === 'string') ? returnUrl : '/dashboard'; // Return original URL if not WordPress integration
-    }
-
-    try {
-      const url = new URL(returnUrl);
-      const orderId = order_id;
-
-      // Extract order key from original return URL if it exists
-      const orderKey = url.searchParams.get('key') || '';
-
-      // Build new URL with /usdc-payment-status/ path
-      const baseUrl = `${url.origin}/usdc-payment-status/${orderId}/`;
-      const statusUrl = new URL(baseUrl);
-
-      // Add required parameters
-      if (orderKey) {
-        statusUrl.searchParams.set('key', orderKey);
-      }
-      statusUrl.searchParams.set('payment_status', status);
-
-      // Add additional parameters (contract_id, contract_hash, tx_hash, error, etc.)
-      Object.entries(additionalParams).forEach(([key, value]) => {
-        if (value) {
-          statusUrl.searchParams.set(key, value);
-        }
-      });
-
-      console.log('🔧 ContractCreate: Built WordPress status URL:', statusUrl.toString());
-      return statusUrl.toString();
-    } catch (error) {
-      console.error('🔧 ContractCreate: Failed to build WordPress status URL:', error);
-      return (typeof returnUrl === 'string') ? returnUrl : '/dashboard'; // Fallback to original URL
-    }
-  };
+  // Build WordPress payment-status redirect URLs via the shared util, injecting
+  // this page's embed context (the pure URL logic + its tests live in
+  // utils/wordpressStatusUrl.ts).
+  const buildWordPressStatusUrl = (
+    status: 'completed' | 'cancelled' | 'error',
+    additionalParams: Record<string, string> = {}
+  ): string =>
+    buildWpStatusUrl(status, { returnUrl, orderId: order_id, wordpressSource: wordpress_source }, additionalParams);
 
   // validateForm function now provided by useContractCreateValidation hook
 

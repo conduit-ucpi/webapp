@@ -24,6 +24,7 @@ import { useContractCreateValidation } from '@/hooks/useContractValidation';
 import { getNetworkName } from '@/utils/networkUtils';
 import { detectDevice } from '@/utils/deviceDetection';
 import { buildWordPressStatusUrl as buildWpStatusUrl } from '@/utils/wordpressStatusUrl';
+import { safeRedirectUrl } from '@/utils/safeRedirect';
 
 console.log('🔧 ContractCreate: FILE LOADED - imports successful');
 
@@ -290,7 +291,7 @@ export default function ContractCreate() {
             contract_id: contractId || '',
             contract_hash: contractAddress || ''
           });
-          window.location.href = completedUrl;
+          window.location.href = safeRedirectUrl(completedUrl);
         } else {
           router.push('/dashboard');
         }
@@ -401,7 +402,7 @@ export default function ContractCreate() {
           contract_hash: result?.contractAddress || '',
           tx_hash: txHash || ''
         });
-        window.location.href = completedUrl;
+        window.location.href = safeRedirectUrl(completedUrl);
       } else {
         router.push('/dashboard');
       }
@@ -424,10 +425,10 @@ export default function ContractCreate() {
       });
 
       if (isInPopup && window.opener) {
-        window.opener.location.href = errorUrl;
+        window.opener.location.href = safeRedirectUrl(errorUrl);
         window.close();
       } else if (!isInIframe) {
-        window.location.href = errorUrl;
+        window.location.href = safeRedirectUrl(errorUrl);
       }
     } else {
       if (isInPopup) {
@@ -693,7 +694,7 @@ export default function ContractCreate() {
       if (window.opener && wordpress_source === 'true' && returnUrl && typeof returnUrl === 'string') {
         // For WordPress integration, redirect to cancelled status page
         const cancelUrl = buildWordPressStatusUrl('cancelled');
-        window.opener.location.href = cancelUrl;
+        window.opener.location.href = safeRedirectUrl(cancelUrl);
       }
       // Close popup (SDK will show cancellation message in parent window)
       window.close();
@@ -701,7 +702,7 @@ export default function ContractCreate() {
       if (returnUrl && typeof returnUrl === 'string') {
         // Build WordPress status URL for cancelled payment
         const cancelUrl = buildWordPressStatusUrl('cancelled');
-        window.location.href = cancelUrl;
+        window.location.href = safeRedirectUrl(cancelUrl);
       } else {
         router.push('/dashboard');
       }

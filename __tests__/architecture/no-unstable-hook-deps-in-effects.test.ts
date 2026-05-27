@@ -44,6 +44,11 @@ function collectSourceFiles(): string[] {
   };
   scan('pages');
   scan('components');
+  // The payment-flow effects (token balance, lazy-auth user fetch, QR polling)
+  // were extracted from the pages into custom hooks. The unstable-dep rule must
+  // follow them there, so scan hooks/ too — that is now where getTokenBalance /
+  // refreshUserData are consumed inside effects.
+  scan('hooks');
   return out;
 }
 
@@ -138,8 +143,21 @@ describe('Architecture: no unstable useSimpleEthers method in useEffect deps', (
   });
 
   it('the dep-array extractor actually finds effects (guards against a vacuous pass)', () => {
-    const source = fs.readFileSync(path.join(ROOT, 'pages/contract-pay.tsx'), 'utf-8');
-    const arrays = extractUseEffectDepArrays(source);
-    expect(arrays.length).toBeGreaterThan(3);
+    // Guard against a vacuous pass: the extractor must find a meaningful number
+    // of useEffect dependency arrays across the scanned files. (Previously this
+    // counted effects in contract-pay.tsx specifically, but the payment-flow
+    // effects were extracted into hooks/, so we now assert against the full
+    // scanned set, which includes those hooks.)
+    const total = FILES.reduce((sum, relPath) => {
+      const source = fs.readFileSync(path.join(ROOT, relPath), 'utf-8');
+      return sum + extractUseEffectDepArrays(source).length;
+    }, 0);
+    expect(total).toBeGreaterThan(10);
+
+    // And specifically: the extracted hooks must be present in the scan, so the
+    // unstable-dep rule actually polices where those effects now live.
+    expect(FILES).toEqual(
+      expect.arrayContaining(['hooks/useTokenBalance.ts', 'hooks/useQrPayment.ts'])
+    );
   });
 });

@@ -60,8 +60,12 @@ describe('contract-create.tsx — expiryTimestamp handler invariants', () => {
    * The three handlers that deploy to chainservice. Each must reuse the DB
    * value (via pendingExpiryTimestamp), not recompute it.
    */
+  // NOTE: the QR deploy handler was extracted into the useQrPayment hook call;
+  // it is now the inline `createContract: useCallback` callback passed to that
+  // hook (previously `const createContractForQR = useCallback`). The expiry
+  // invariants below are unchanged and still apply to that callback body.
   const DEPLOY_HANDLERS = [
-    'const createContractForQR = useCallback',
+    'createContract: useCallback',
     'const handleWalletPayment = async',
     'const handleLegacyPayment = async',
   ];

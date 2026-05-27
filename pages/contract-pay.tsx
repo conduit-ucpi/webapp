@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import { useConfig } from '@/components/auth/ConfigProvider';
@@ -18,11 +18,11 @@ import CustomArbiterNotice from '@/components/contracts/CustomArbiterNotice';
 import PaymentProgress from '@/components/contracts/PaymentProgress';
 import QrPaymentPanel from '@/components/contracts/QrPaymentPanel';
 import { usePaymentSteps } from '@/hooks/usePaymentSteps';
+import { usePayableContract } from '@/hooks/usePayableContract';
 import { toMicroUSDC, toUSDCForWeb3, formatDateTimeWithTZ, displayCurrency } from '@/utils/validation';
 import { resolveOrCreateOnChainContract } from '@/utils/contractTransactionSequence';
 import { getNetworkName } from '@/utils/networkUtils';
 import { detectDevice } from '@/utils/deviceDetection';
-import { PendingContract } from '@/types';
 
 type PaymentMethod = 'wallet' | 'qr' | null;
 
@@ -38,9 +38,6 @@ export default function ContractPay() {
   const { runDirectPayment, runLegacyPayment } = useContractPayment();
 
   // State
-  const [contract, setContract] = useState<PendingContract | null>(null);
-  const [isLoadingContract, setIsLoadingContract] = useState(true);
-  const [contractError, setContractError] = useState<string | null>(null);
   const [isPaymentInProgress, setIsPaymentInProgress] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(null);
@@ -51,9 +48,14 @@ export default function ContractPay() {
   // not part of that subsystem (mobile-vs-deeplink rendering, clipboard copy).
   const [isMobileDevice, setIsMobileDevice] = useState(false);
   const [copiedAddress, setCopiedAddress] = useState(false);
-  // Guards the contract fetch to run once per contractId, independent of
-  // authenticatedFetch identity churn during the auth flow.
-  const fetchedContractIdRef = useRef<string | null>(null);
+
+  // Fetch + validate the payable contract by id (one-shot, lazy-auth aware).
+  const { contract, isLoadingContract, contractError } = usePayableContract({
+    contractId,
+    isConnected,
+    address,
+    authenticatedFetch,
+  });
 
   // Payment step state + update algorithm live in usePaymentSteps; the initial
   // (wallet-flow) labels are page-specific.
@@ -88,85 +90,6 @@ export default function ContractPay() {
 
   // Lazy-auth one-shot user-data fetch (triggers SIWX if no session exists).
   useLazyUserData({ isConnected, address, user, refreshUserData });
-
-  // Fetch contract details - only after user is authenticated
-  useEffect(() => {
-    const fetchContract = async () => {
-      if (!contractId || typeof contractId !== 'string') {
-        setIsLoadingContract(false);
-        return;
-      }
-
-      // Don't attempt fetch until user is connected and we have authenticatedFetch
-      if (!isConnected && !address) {
-        setIsLoadingContract(false);
-        return;
-      }
-
-      if (!authenticatedFetch) {
-        setIsLoadingContract(false);
-        return;
-      }
-
-      // Fetch once per contractId. Without this guard, the effect re-fires
-      // whenever authenticatedFetch's identity changes (it is recreated on every
-      // auth step), launching concurrent fetches that race the SIWX session
-      // rotation and 401 — feeding a re-render/re-auth storm.
-      if (fetchedContractIdRef.current === contractId) {
-        return;
-      }
-      fetchedContractIdRef.current = contractId;
-
-      setIsLoadingContract(true);
-      setContractError(null);
-
-      try {
-        console.log('ContractPay: Fetching contract:', contractId);
-
-        const response = await authenticatedFetch(`/api/contracts/${contractId}`, {
-          method: 'GET'
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.error || 'Failed to fetch contract');
-        }
-
-        const contractData = await response.json();
-        console.log('ContractPay: Contract fetched:', contractData);
-
-        // Validate contract state
-        if (contractData.contractAddress) {
-          setContractError('This payment request has already been paid.');
-          setIsLoadingContract(false);
-          return;
-        }
-
-        if (contractData.expiryTimestamp && contractData.expiryTimestamp !== 0) {
-          const now = Math.floor(Date.now() / 1000);
-          if (contractData.expiryTimestamp < now) {
-            setContractError('This payment request has expired.');
-            setIsLoadingContract(false);
-            return;
-          }
-        }
-
-        setContract(contractData);
-      } catch (error: any) {
-        console.error('ContractPay: Failed to fetch contract:', error);
-        setContractError(error.message || 'Failed to load payment request');
-      } finally {
-        setIsLoadingContract(false);
-      }
-    };
-
-    fetchContract();
-    // NOTE: authenticatedFetch is intentionally NOT a dependency — its identity
-    // changes on every auth step and would re-fire this fetch. The
-    // fetchedContractIdRef guard makes it one-shot per contractId; connection
-    // state (isConnected/address) plus contractId are the real triggers.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [contractId, isConnected, address]);
 
   // Token balance (read-only). Enabled once the contract is loaded and the RPC
   // is configured; the hook also internally requires address + tokenAddress.

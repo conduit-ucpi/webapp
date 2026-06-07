@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>StableDrop Liquid — How cashflow funding works</title>
+<style>
+  :root {
+    --bg: #0f1320;
+    --panel: #171c2e;
+    --text: #f3f6fc;
+    --muted: #9aa6bd;
+    --line: #2a3450;
+
+    --onchain: #f59e0b;     /* amber  = on-chain */
+    --offchain: #38bdf8;    /* blue   = off-chain */
+    --custody-no: #4ade80;  /* green  = non-custodial / trustless */
+    --recover: #fbbf24;     /* yellow = recovery / safety path */
+    --reject: #fca5a5;      /* red    = rejected / refunded path */
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    padding: 32px 24px 64px;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; }
+  h1 { font-size: 24px; margin: 0 0 4px; letter-spacing: -0.02em; }
+  .tagline { color: var(--muted); margin: 0 0 20px; font-size: 15px; line-height: 1.5; }
+
+  .explainer {
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 12px; padding: 16px 18px; margin-bottom: 24px;
+    font-size: 14px; line-height: 1.55;
+  }
+  .explainer b { color: var(--custody-no); }
+  .who-is { display: flex; flex-wrap: wrap; gap: 22px; margin-top: 12px; }
+  .who-is .role { font-size: 13px; color: var(--muted); }
+  .who-is .role b { color: var(--text); }
+
+  /* legend */
+  .legend {
+    display: flex; flex-wrap: wrap; gap: 18px;
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 12px; padding: 14px 18px; margin-bottom: 28px;
+  }
+  .legend .grp { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .legend .sep { width: 1px; align-self: stretch; background: var(--line); }
+  .chip { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+  .swatch { width: 14px; height: 14px; border-radius: 4px; }
+  .swatch.line { width: 22px; height: 0; border-top: 3px solid; border-radius: 0; }
+
+  .step {
+    position: relative;
+    display: grid;
+    grid-template-columns: 56px 1fr;
+    gap: 18px;
+    padding-bottom: 26px;
+  }
+  .step:last-child { padding-bottom: 0; }
+  .step:not(:last-child)::before {
+    content: ""; position: absolute;
+    left: 27px; top: 56px; bottom: -4px;
+    width: 2px; background: var(--line);
+  }
+  .num {
+    width: 56px; height: 56px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 20px; z-index: 1;
+    background: var(--panel); border: 2px solid var(--line);
+  }
+  .num.alt { color: var(--recover); border-color: var(--recover); }
+  .card {
+    background: var(--panel); border: 1px solid var(--line);
+    border-left-width: 5px; border-radius: 12px; padding: 16px 18px;
+  }
+  .card h3 { margin: 0 0 6px; font-size: 16px; }
+  .card .who { color: var(--muted); font-size: 13px; margin: 0 0 10px; }
+  .card p { margin: 0; font-size: 14px; line-height: 1.5; color: #d7deec; }
+
+  .tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .tag {
+    font-size: 11.5px; font-weight: 600; letter-spacing: .02em;
+    padding: 4px 10px; border-radius: 999px; border: 1px solid;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .tag.onchain  { color: var(--onchain);  border-color: var(--onchain);  background: rgba(245,158,11,.10); }
+  .tag.offchain { color: var(--offchain); border-color: var(--offchain); background: rgba(56,189,248,.10); }
+  .tag.front    { color: #c4b5fd; border-color: #c4b5fd; background: rgba(196,181,253,.10); }
+  .tag.back     { color: #f0abfc; border-color: #f0abfc; background: rgba(240,171,252,.10); }
+  .tag.noncust  { color: var(--custody-no); border-color: var(--custody-no); background: rgba(74,222,128,.10); }
+  .tag.recover  { color: var(--recover); border-color: var(--recover); background: rgba(251,191,36,.10); }
+
+  .card.is-off { border-left-color: var(--offchain); }
+  .card.is-on  { border-left-color: var(--onchain); }
+  .card.is-recover { border-left-color: var(--recover); }
+
+  .section-head { display: flex; align-items: center; gap: 14px; margin: 40px 0 22px; }
+  .section-head .rule { flex: 1; height: 1px; background: var(--line); }
+  .section-head .label {
+    font-size: 13px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+    padding: 6px 14px; border-radius: 999px; border: 1px solid;
+  }
+  .section-head .label.recover { color: var(--recover); border-color: var(--recover); background: rgba(251,191,36,.08); }
+  .section-sub { color: var(--muted); font-size: 14px; margin: -8px 0 22px; line-height: 1.5; }
+
+  .banner {
+    margin: 30px 0 0; padding: 16px 18px; border-radius: 12px;
+    background: rgba(74,222,128,.08); border: 1px solid var(--custody-no);
+    font-size: 14px; line-height: 1.55;
+  }
+  .banner b { color: var(--custody-no); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>StableDrop Liquid — Get your locked payout funded early</h1>
+  <p class="tagline">Got money locked in escrow that pays out later? StableDrop Liquid lets a funder advance you most of that cash today, at a small discount, so you don't have to wait for the payout date — without ever risking the money if the deal falls through.</p>
+
+  <div class="explainer">
+    <b>The idea in one line:</b> a seller is owed, say, $10,000 in 30 days (locked in escrow). They'd rather have ~$9,800 today. A funder advances them the cash now and, in return, becomes the person the escrow pays out to at maturity. The whole exchange happens atomically on the blockchain — money and payout rights change hands in the same instant, or not at all. Everything a funder needs to assess a cashflow is already public on the blockchain; our app just makes that data easy to browse.
+    <div class="who-is">
+      <span class="role"><b>Seller</b> — owns a future escrow payout, wants cash now</span>
+      <span class="role"><b>Funder</b> — has stablecoins, advances the cash to acquire the payout at a discount</span>
+      <span class="role"><b>StableDrop</b> — provides the funding platform, takes a small fee, holds nothing</span>
+    </div>
+  </div>
+
+  <div class="legend">
+    <div class="grp">
+      <span class="chip"><span class="swatch line" style="border-color:var(--offchain)"></span> Off-chain (our app / database)</span>
+      <span class="chip"><span class="swatch line" style="border-color:var(--onchain)"></span> On-chain (public blockchain)</span>
+    </div>
+    <div class="sep"></div>
+    <div class="grp">
+      <span class="chip"><span class="swatch" style="background:#c4b5fd"></span> Frontend (in your browser)</span>
+      <span class="chip"><span class="swatch" style="background:#f0abfc"></span> Backend (our servers)</span>
+    </div>
+    <div class="sep"></div>
+    <div class="grp">
+      <span class="chip"><span class="swatch" style="background:var(--custody-no)"></span> Non-custodial &amp; trustless (we never hold or control the money)</span>
+    </div>
+  </div>
+
+  <!-- STEP 1 -->
+  <div class="step">
+    <div class="num">1</div>
+    <div class="card is-off">
+      <h3>The cashflow is available for funding</h3>
+      <p class="who">Automatic · seller can opt out</p>
+      <p>Any active escrow that pays out in the future can be found by funders by default. They see the amount, the payout date, and risk signals like dispute history. <b>None of this is information StableDrop creates or owns</b> — every escrow already lives on the public blockchain, where anyone can read it. Our app is just a convenient window onto that public data. Sellers who'd rather stay private can hide their escrow from our view at any time.</p>
+      <div class="tags">
+        <span class="tag offchain">Off-chain (just a view)</span>
+        <span class="tag onchain">Data lives on-chain</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 2 -->
+  <div class="step">
+    <div class="num">2</div>
+    <div class="card is-off">
+      <h3>A funder makes an offer</h3>
+      <p class="who">Funder · in their browser</p>
+      <p>A funder browses available cashflows, filters by payout date, amount, and discount, and makes an offer — "I'll advance you $9,800 now for your $10,000 payout." They set how long the offer stays open. Several funders can have offers on the same cashflow at once. No sign-up or KYC is needed to make an offer — any wallet with stablecoins can.</p>
+      <div class="tags">
+        <span class="tag offchain">Off-chain</span>
+        <span class="tag front">Frontend</span>
+        <span class="tag back">Backend (offer)</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 3 -->
+  <div class="step">
+    <div class="num">3</div>
+    <div class="card is-off">
+      <h3>The seller accepts one offer</h3>
+      <p class="who">Seller · in their browser</p>
+      <p>The seller compares the offers and accepts the one they like. The funding fee is shown up front, so the seller knows their exact take-home before agreeing. Accepting one offer automatically cancels all the others on that cashflow.</p>
+      <div class="tags">
+        <span class="tag offchain">Off-chain</span>
+        <span class="tag front">Frontend</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 4 -->
+  <div class="step">
+    <div class="num">4</div>
+    <div class="card is-on">
+      <h3>A one-time "swap vault" is created for this sale</h3>
+      <p class="who">On-chain · we cover the blockchain fee</p>
+      <p>A dedicated escrow-swap contract is created on the blockchain just for this deal. It's hard-wired with the exact terms — who the seller is, who the funder is, the agreed amount, the fee, and a payment deadline that's guaranteed to fall safely before the payout date. <b>No money is in it yet.</b></p>
+      <div class="tags">
+        <span class="tag onchain">On-chain</span>
+        <span class="tag noncust">Trustless — terms locked in code</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 5 -->
+  <div class="step">
+    <div class="num">5</div>
+    <div class="card is-on">
+      <h3>The seller hands over the payout rights to the vault</h3>
+      <p class="who">Seller · signs with their own wallet</p>
+      <p>The seller points the escrow's payout at the swap vault. This is the only thing they hand over — and crucially, the vault can only ever do one of two things with it: give it to the funder (if they pay) or give it straight back to the seller (if they don't). The seller's money is never exposed to loss.</p>
+      <div class="tags">
+        <span class="tag onchain">On-chain</span>
+        <span class="tag front">Signed in browser</span>
+        <span class="tag noncust">Seller stays protected</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 6 -->
+  <div class="step">
+    <div class="num">6</div>
+    <div class="card is-on">
+      <h3>The funder pays — and everything swaps at once</h3>
+      <p class="who">Funder · paid directly, atomically</p>
+      <p>The funder sends the agreed payment. In a single, all-or-nothing transaction the vault checks there's no active dispute, then: the payout rights transfer to the funder, the seller receives their cash (minus the small fee), and StableDrop collects the fee. If <i>any</i> part can't complete — wrong amount, a dispute, or the deadline passed — the whole thing reverts and the funder is refunded. There's no in-between state.</p>
+      <div class="tags">
+        <span class="tag onchain">On-chain</span>
+        <span class="tag noncust">Atomic swap — all or nothing</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 7 -->
+  <div class="step">
+    <div class="num">7</div>
+    <div class="card is-on">
+      <h3>At maturity, the original escrow pays the funder</h3>
+      <p class="who">Funder · paid directly on-chain</p>
+      <p>The underlying escrow is untouched and works exactly as before — but now its payout goes to the funder, the new owner of the cashflow. The seller already got their cash in step 6. Everyone's done.</p>
+      <div class="tags">
+        <span class="tag onchain">On-chain</span>
+        <span class="tag noncust">Non-custodial payout</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== SAFETY / RECOVERY BRANCH ===== -->
+  <div class="section-head">
+    <span class="rule"></span>
+    <span class="label recover">What if the funder doesn't pay?</span>
+    <span class="rule"></span>
+  </div>
+  <p class="section-sub">Steps 4–7 are the smooth path. If a funder accepts but never actually pays, the seller is fully protected — they simply take their cashflow back. Recovery and a completed deal can never both happen.</p>
+
+  <!-- RECOVER A -->
+  <div class="step">
+    <div class="num alt">A</div>
+    <div class="card is-recover">
+      <h3>The payment deadline passes with no payment</h3>
+      <p class="who">Built-in safety timer</p>
+      <p>Every deal has a hard deadline for the funder to pay, and it's always set to expire <b>safely before</b> the escrow's real payout date. So the cashflow can never mature while a deal is in progress — there's always time for the seller to step in.</p>
+      <div class="tags">
+        <span class="tag onchain">On-chain</span>
+        <span class="tag recover">Deadline expired</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- RECOVER B -->
+  <div class="step">
+    <div class="num alt">B</div>
+    <div class="card is-recover">
+      <h3>The seller reclaims their cashflow</h3>
+      <p class="who">Seller only · signs with their own wallet</p>
+      <p>After the deadline, the seller calls "recover" and the payout rights snap straight back to them — no loss, no permission needed from anyone. They keep their full cashflow and can offer it for funding again later. The funder never paid, so nothing was owed to them.</p>
+      <div class="tags">
+        <span class="tag onchain">On-chain</span>
+        <span class="tag recover">Seller-only recovery</span>
+        <span class="tag noncust">No loss to the seller</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="banner">
+    <b>Trustless and non-custodial, end to end.</b> StableDrop Liquid never holds your money or your cashflow. The swap vault can only ever do two things — complete the deal (funder pays → seller gets cash, funder gets the payout) or hand the cashflow back to the seller after the deadline — and never both. No operator approval, no off-chain signature, no oracle, no one with special powers can interfere. StableDrop just provides the funding platform, takes a small fee at the moment of funding, and covers the blockchain fees.
+  </div>
+</div>
+</body>
+</html>

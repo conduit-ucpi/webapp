@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>StableDrop — How a Payment Works</title>
+<style>
+  :root {
+    --bg: #0f1320;
+    --panel: #171c2e;
+    --text: #f3f6fc;
+    --muted: #9aa6bd;
+    --line: #2a3450;
+
+    /* meaning colors */
+    --onchain: #f59e0b;     /* amber  = on-chain */
+    --offchain: #38bdf8;    /* blue   = off-chain */
+    --custody-no: #4ade80;  /* green  = non-custodial / you keep control */
+    --dispute: #fca5a5;     /* red    = dispute path */
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    padding: 32px 24px 64px;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; }
+  h1 { font-size: 24px; margin: 0 0 4px; letter-spacing: -0.02em; }
+  .tagline { color: var(--muted); margin: 0 0 24px; font-size: 15px; }
+
+  /* legend */
+  .legend {
+    display: flex; flex-wrap: wrap; gap: 18px;
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 12px; padding: 14px 18px; margin-bottom: 28px;
+  }
+  .legend .grp { display: flex; align-items: center; gap: 16px; }
+  .legend .sep { width: 1px; align-self: stretch; background: var(--line); }
+  .chip { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+  .swatch { width: 14px; height: 14px; border-radius: 4px; }
+  .swatch.line { width: 22px; height: 0; border-top: 3px solid; border-radius: 0; }
+
+  /* steps */
+  .step {
+    position: relative;
+    display: grid;
+    grid-template-columns: 56px 1fr;
+    gap: 18px;
+    padding-bottom: 26px;
+  }
+  .step:last-child { padding-bottom: 0; }
+  /* connector line */
+  .step:not(:last-child)::before {
+    content: ""; position: absolute;
+    left: 27px; top: 56px; bottom: -4px;
+    width: 2px; background: var(--line);
+  }
+  .num {
+    width: 56px; height: 56px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 20px; z-index: 1;
+    background: var(--panel); border: 2px solid var(--line);
+  }
+  .card {
+    background: var(--panel); border: 1px solid var(--line);
+    border-left-width: 5px; border-radius: 12px; padding: 16px 18px;
+  }
+  .card h3 { margin: 0 0 6px; font-size: 16px; }
+  .card .who { color: var(--muted); font-size: 13px; margin: 0 0 10px; }
+  .card p { margin: 0; font-size: 14px; line-height: 1.5; color: #d7deec; }
+
+  .tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .tag {
+    font-size: 11.5px; font-weight: 600; letter-spacing: .02em;
+    padding: 4px 10px; border-radius: 999px; border: 1px solid;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .tag.onchain  { color: var(--onchain);  border-color: var(--onchain);  background: rgba(245,158,11,.10); }
+  .tag.offchain { color: var(--offchain); border-color: var(--offchain); background: rgba(56,189,248,.10); }
+  .tag.front    { color: #c4b5fd; border-color: #c4b5fd; background: rgba(196,181,253,.10); }
+  .tag.back     { color: #f0abfc; border-color: #f0abfc; background: rgba(240,171,252,.10); }
+  .tag.noncust  { color: var(--custody-no); border-color: var(--custody-no); background: rgba(74,222,128,.10); }
+  .tag.dispute  { color: #fca5a5; border-color: #fca5a5; background: rgba(252,165,165,.10); }
+  .tag.nocust-na{ color: var(--muted); border-color: var(--line); }
+
+  /* left border meaning = on/off chain */
+  .card.is-off { border-left-color: var(--offchain); }
+  .card.is-on  { border-left-color: var(--onchain); }
+  .card.is-dispute { border-left-color: var(--dispute); }
+
+  /* section divider for the dispute branch */
+  .section-head {
+    display: flex; align-items: center; gap: 14px;
+    margin: 40px 0 22px;
+  }
+  .section-head .rule { flex: 1; height: 1px; background: var(--line); }
+  .section-head .label {
+    font-size: 13px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+    color: var(--dispute); padding: 6px 14px; border-radius: 999px;
+    border: 1px solid var(--dispute); background: rgba(252,165,165,.08);
+  }
+  .section-sub { color: var(--muted); font-size: 14px; margin: -8px 0 22px; }
+
+  /* dispute steps use a letter instead of a number */
+  .num.alt { color: var(--dispute); border-color: var(--dispute); }
+
+  .banner {
+    margin: 30px 0 0; padding: 16px 18px; border-radius: 12px;
+    background: rgba(74,222,128,.08); border: 1px solid var(--custody-no);
+    font-size: 14px; line-height: 1.55;
+  }
+  .banner b { color: var(--custody-no); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>StableDrop — How a payment works</h1>
+  <p class="tagline">A buyer's money is held safely until it's time to pay the seller — for goods <i>or</i> services (say, a builder finishing a job). Here's every step.</p>
+
+  <div class="legend">
+    <div class="grp">
+      <span class="chip"><span class="swatch line" style="border-color:var(--offchain)"></span> Off-chain (our app / database)</span>
+      <span class="chip"><span class="swatch line" style="border-color:var(--onchain)"></span> On-chain (public blockchain)</span>
+    </div>
+    <div class="sep"></div>
+    <div class="grp">
+      <span class="chip"><span class="swatch" style="background:#c4b5fd"></span> Frontend (in your browser)</span>
+      <span class="chip"><span class="swatch" style="background:#f0abfc"></span> Backend (our servers)</span>
+    </div>
+    <div class="sep"></div>
+    <div class="grp">
+      <span class="chip"><span class="swatch" style="background:var(--custody-no)"></span> Non-custodial (we never hold the money)</span>
+    </div>
+  </div>
+
+  <!-- STEP 1 -->
+  <div class="step">
+    <div class="num">1</div>
+    <div class="card is-off">
+      <h3>Seller creates a payment request</h3>
+      <p class="who">Seller · in their browser</p>
+      <p>The seller — whether selling an item or providing a service (like a builder quoting for a job) — fills in an amount, a description, a release date, and the buyer's email. This just creates a record in our system — nothing happens with any money yet, and nothing is on the blockchain.</p>
+      <div class="tags">
+        <span class="tag offchain">Off-chain</span>
+        <span class="tag front">Frontend</span>
+        <span class="tag back">Backend (saved)</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 2 -->
+  <div class="step">
+    <div class="num">2</div>
+    <div class="card is-off">
+      <h3>Buyer gets a payment link</h3>
+      <p class="who">Buyer · by email</p>
+      <p>We email the buyer a link to the request (or the seller can share the link directly). Still no money and no blockchain involved — just a notification.</p>
+      <div class="tags">
+        <span class="tag offchain">Off-chain</span>
+        <span class="tag back">Backend (email)</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 3 -->
+  <div class="step">
+    <div class="num">3</div>
+    <div class="card is-off">
+      <h3>Buyer opens the link &amp; signs in</h3>
+      <p class="who">Buyer · in their browser</p>
+      <p>The buyer opens the link and connects their own crypto wallet. They review the amount and the release date before agreeing to anything.</p>
+      <div class="tags">
+        <span class="tag offchain">Off-chain</span>
+        <span class="tag front">Frontend</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 4 -->
+  <div class="step">
+    <div class="num">4</div>
+    <div class="card is-on">
+      <h3>Buyer accepts → a secure escrow "vault" is created on the blockchain</h3>
+      <p class="who">Buyer accepts · vault created on-chain (we cover the blockchain fee)</p>
+      <p>When the buyer accepts, a brand-new escrow contract — think of it as a digital safe — is created on the public blockchain. It's programmed to only ever release money to the buyer or the seller. <b>No money moves into it yet.</b></p>
+      <div class="tags">
+        <span class="tag onchain">On-chain</span>
+        <span class="tag noncust">Non-custodial vault</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 5 -->
+  <div class="step">
+    <div class="num">5</div>
+    <div class="card is-on">
+      <h3>Buyer approves &amp; deposits the funds</h3>
+      <p class="who">Buyer · signs with their own wallet</p>
+      <p>The buyer approves the payment and the funds move <b>directly from the buyer's wallet into the escrow vault</b>. The buyer signs this themselves with their own wallet — their private key never leaves their device, and the money never touches a StableDrop wallet.</p>
+      <div class="tags">
+        <span class="tag onchain">On-chain</span>
+        <span class="tag front">Signed in browser</span>
+        <span class="tag noncust">Non-custodial — we never hold it</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 6 -->
+  <div class="step">
+    <div class="num">6</div>
+    <div class="card is-off">
+      <h3>Both parties are notified — money is now locked &amp; protected</h3>
+      <p class="who">Buyer &amp; Seller · by email</p>
+      <p>We email both sides to confirm the funds are safely locked in the vault until the release date. The buyer is protected; the seller knows the money is committed.</p>
+      <div class="tags">
+        <span class="tag offchain">Off-chain</span>
+        <span class="tag back">Backend (email)</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 7 -->
+  <div class="step">
+    <div class="num">7</div>
+    <div class="card is-on">
+      <h3>On the release date, the seller is paid automatically</h3>
+      <p class="who">Seller · paid directly on-chain</p>
+      <p>Once the release date passes (and there's no dispute), the funds go <b>straight from the vault to the seller's wallet</b>. Again, the money never passes through StableDrop — the blockchain enforces it.</p>
+      <div class="tags">
+        <span class="tag onchain">On-chain</span>
+        <span class="tag noncust">Non-custodial payout</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== DISPUTE BRANCH ===== -->
+  <div class="section-head">
+    <span class="rule"></span>
+    <span class="label">What if there's a problem?</span>
+    <span class="rule"></span>
+  </div>
+  <p class="section-sub">Steps 1–7 are the smooth path. If the buyer isn't happy <i>before</i> the release date, they can open a dispute instead — and even then, StableDrop can never take the money.</p>
+
+  <!-- DISPUTE A -->
+  <div class="step">
+    <div class="num alt">A</div>
+    <div class="card is-dispute">
+      <h3>Buyer opens a dispute</h3>
+      <p class="who">Buyer only · before the release date</p>
+      <p>If something's wrong (an item not received or not as described, or work that wasn't finished or done properly), the <b>buyer</b> can raise a dispute — but only while the money is still locked and only <b>before the release date</b>. Once that date passes with no dispute, the seller is simply paid as normal. The seller can't open a dispute; they just receive payment on time.</p>
+      <div class="tags">
+        <span class="tag onchain">On-chain</span>
+        <span class="tag dispute">Buyer-initiated</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- DISPUTE B -->
+  <div class="step">
+    <div class="num alt">B</div>
+    <div class="card is-dispute">
+      <h3>The money freezes in the vault</h3>
+      <p class="who">Funds stay locked on-chain</p>
+      <p>The moment a dispute is opened, the funds are <b>frozen inside the escrow vault</b>. The seller can no longer auto-claim, and the money still doesn't move to anyone — it just waits until the dispute is settled. As always, it never goes to a StableDrop wallet.</p>
+      <div class="tags">
+        <span class="tag onchain">On-chain</span>
+        <span class="tag noncust">Non-custodial — still locked in the vault</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- DISPUTE C -->
+  <div class="step">
+    <div class="num alt">C</div>
+    <div class="card is-dispute">
+      <h3>The split is decided by a 2-of-3 vote</h3>
+      <p class="who">Buyer · Seller · Arbiter (a neutral tie-breaker)</p>
+      <p>Each contract has three voters: the buyer, the seller, and a neutral <b>arbiter</b> who can only help decide — never take the funds. When any <b>two of the three agree</b> on how to split the money (e.g. full refund, full payment, or anything in between like 60/40), that decision is locked in.</p>
+      <div class="tags">
+        <span class="tag onchain">On-chain</span>
+        <span class="tag dispute">2-of-3 agreement</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- DISPUTE D -->
+  <div class="step">
+    <div class="num alt">D</div>
+    <div class="card is-dispute">
+      <h3>Funds are released — only ever to buyer and seller</h3>
+      <p class="who">Buyer and/or Seller · paid directly on-chain</p>
+      <p>The agreed split is paid out straight from the vault to the buyer and/or the seller. The blockchain <b>physically prevents</b> the money from going anywhere else — not to the arbiter, not to StableDrop. The two shares always add up to 100% of the escrow.</p>
+      <div class="tags">
+        <span class="tag onchain">On-chain</span>
+        <span class="tag noncust">Non-custodial payout</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="banner">
+    <b>Non-custodial, end to end — even in a dispute.</b> StableDrop never holds your money. Funds go buyer&nbsp;→&nbsp;vault&nbsp;→&nbsp;seller (or back to the buyer if a dispute is resolved that way), all on the blockchain, controlled only by code. The arbiter and StableDrop can help <i>decide</i> a dispute, but the contract makes it impossible for them to <i>take</i> the funds. We just handle the easy parts — the request, the notifications, and covering the blockchain fees so you don't have to.
+  </div>
+</div>
+</body>
+</html>

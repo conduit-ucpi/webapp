@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import { useConfig } from '@/components/auth/ConfigProvider';
@@ -16,6 +16,7 @@ import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import ConnectPaymentStage from '@/components/contracts/ConnectPaymentStage';
+import PaymentMethodChoice from '@/components/contracts/PaymentMethodChoice';
 import WalletInfo from '@/components/ui/WalletInfo';
 import TokenGuide from '@/components/ui/TokenGuide';
 import CurrencyAmountInput from '@/components/ui/CurrencyAmountInput';
@@ -25,9 +26,6 @@ import { getNetworkName } from '@/utils/networkUtils';
 import { detectDevice } from '@/utils/deviceDetection';
 import { buildWordPressStatusUrl as buildWpStatusUrl } from '@/utils/wordpressStatusUrl';
 import { safeRedirectUrl } from '@/utils/safeRedirect';
-
-console.log('🔧 ContractCreate: FILE LOADED - imports successful');
-
 
 interface ContractCreateForm {
   seller: string;
@@ -82,17 +80,6 @@ export default function ContractCreate() {
     availableTokens
   } = useTokenSelection(config, queryTokenSymbol as string | undefined);
 
-  // Debug logging for token selection (only on token changes)
-  useEffect(() => {
-    console.log('🔧 ContractCreate: Token selection details', {
-      queryTokenSymbol,
-      selectedTokenSymbol,
-      selectedToken,
-      selectedTokenAddress,
-      availableTokens: availableTokens.map(t => t.symbol)
-    });
-  }, [selectedTokenSymbol, selectedToken, selectedTokenAddress, queryTokenSymbol, availableTokens]);
-
   const networkName = config ? getNetworkName(config.chainId) : 'Unknown Network';
 
   // Check if we're in an iframe or popup
@@ -133,27 +120,6 @@ export default function ContractCreate() {
   const [isMobileDevice, setIsMobileDevice] = useState(false);
   const [copiedAddress, setCopiedAddress] = useState(false);
 
-  console.log('🔧 ContractCreate: Hooks initialized', {
-    hasConfig: !!config,
-    authLoading,
-    isConnected,
-    address,
-    hasUser: !!user,
-    userEmail: user?.email,
-    hasAuthenticatedFetch: !!authenticatedFetch,
-    userWallet: user?.walletAddress,
-    queryParams: { seller, amount, description, returnUrl, order_id, epoch_expiry },
-    selectedTokenSymbol,
-    selectedTokenAddress,
-    queryTokenSymbol
-  });
-
-  console.log('🔧 ContractCreate: Auth state decision (with lazy auth support)', {
-    willShowLoading: !config || (authLoading && !isConnected && !address),
-    willShowAuth: !isConnected && !address,
-    willShowForm: isConnected || !!address
-  });
-
   // Don't clear auth on mount - let existing session persist
   // This prevents unnecessary signature requests when user already authenticated
   // The auth system will handle expired sessions automatically via refreshUserData
@@ -191,13 +157,11 @@ export default function ContractCreate() {
   const sendPostMessage = (event: PostMessageEvent) => {
     // Send to iframe parent
     if (isInIframe && window.parent) {
-      console.log('🔧 ContractCreate: Sending postMessage to iframe parent:', event);
       window.parent.postMessage(event, '*');
     }
 
     // Send to popup opener
     if (isInPopup && window.opener) {
-      console.log('🔧 ContractCreate: Sending postMessage to popup opener:', event);
       window.opener.postMessage(event, '*');
     }
   };
@@ -508,26 +472,16 @@ export default function ContractCreate() {
   }, []);
 
   const handleCreateContract = async () => {
-    console.log('🔧 ContractCreate: handleCreateContract called');
-
     const formValid = validateForm(
       form,
       { wordpress_source, webhook_url, order_id },
       { walletAddress: address } // Pass buyer wallet address for validation
     );
-    console.log('🔧 ContractCreate: form validation result:', formValid);
 
     if (!formValid || !config) {
-      console.log('🔧 ContractCreate: Early return due to validation or config issues');
       return;
     }
 
-    console.log('🔧 ContractCreate: Starting contract creation process');
-    console.log('🔧 ContractCreate: Using token:', {
-      selectedTokenSymbol,
-      selectedTokenAddress,
-      selectedToken
-    });
     setIsLoading(true);
 
     try {
@@ -538,10 +492,8 @@ export default function ContractCreate() {
       
       // Check if wallet is connected and has address
       setLoadingMessage('Initializing...');
-      console.log('🔧 ContractCreate: Wallet address:', address);
 
       if (!address) {
-        console.error('🔧 ContractCreate: No wallet address found');
         throw new Error('Please connect your wallet first.');
       }
       
@@ -576,8 +528,6 @@ export default function ContractCreate() {
         suppressSending: true
       };
 
-      console.log('🔧 ContractCreate: About to call authenticatedFetch');
-      
       if (!authenticatedFetch) {
         throw new Error('authenticatedFetch is not available');
       }
@@ -594,15 +544,10 @@ export default function ContractCreate() {
       }
 
       const result = await response.json();
-      console.log('🔧 ContractCreate: Contract created successfully:', result);
-      console.log('🔧 ContractCreate: Contract result.id:', result.id);
-      console.log('🔧 ContractCreate: Contract result.contractId:', result.contractId);
-      console.log('🔧 ContractCreate: All result fields:', Object.keys(result));
-      
+
       // Use result.contractId or result.id depending on what the backend returns
       const contractId = result.contractId || result.id;
-      console.log('🔧 ContractCreate: Using contractId:', contractId);
-      
+
       setContractId(contractId);
       setPendingExpiryTimestamp(expiryTimestamp);
       setStep('payment');
@@ -641,8 +586,6 @@ export default function ContractCreate() {
       console.error('🔧 ContractCreate: pendingExpiryTimestamp not set; cannot deploy without the DB-stored value');
       return;
     }
-
-    console.log('🔧 ContractCreate: Starting legacy payment (approve + deposit)');
 
     // Reset payment steps (labels are page-specific; the hook drives statuses).
     setPaymentSteps([
@@ -758,43 +701,11 @@ export default function ContractCreate() {
 
             <h2 className="text-lg font-semibold text-secondary-900 dark:text-white mb-4 text-center">How would you like to pay?</h2>
 
-            <div className="space-y-3">
-              {/* Wallet option */}
-              <button
-                onClick={() => setPaymentMethod('wallet')}
-                className="w-full text-left p-4 rounded-lg border-2 border-secondary-200 dark:border-secondary-700 hover:border-blue-500 dark:hover:border-blue-400 transition-colors bg-white dark:bg-secondary-800"
-              >
-                <div className="flex items-start">
-                  <div className="flex-shrink-0 w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center mr-3">
-                    <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="font-medium text-secondary-900 dark:text-white">Connect my wallet</p>
-                    <p className="text-sm text-secondary-500 dark:text-secondary-400 mt-0.5">Pay directly from your crypto wallet (MetaMask, Coinbase, etc.)</p>
-                  </div>
-                </div>
-              </button>
-
-              {/* QR option */}
-              <button
-                onClick={() => setPaymentMethod('qr')}
-                className="w-full text-left p-4 rounded-lg border-2 border-secondary-200 dark:border-secondary-700 hover:border-blue-500 dark:hover:border-blue-400 transition-colors bg-white dark:bg-secondary-800"
-              >
-                <div className="flex items-start">
-                  <div className="flex-shrink-0 w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center mr-3">
-                    <svg className="w-5 h-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="font-medium text-secondary-900 dark:text-white">Pay by link / QR code</p>
-                    <p className="text-sm text-secondary-500 dark:text-secondary-400 mt-0.5">Send from any wallet -- no wallet connection needed</p>
-                  </div>
-                </div>
-              </button>
-            </div>
+            <PaymentMethodChoice
+              walletTitle="Connect my wallet"
+              walletSubtitle="Pay directly from your crypto wallet (MetaMask, Coinbase, etc.)"
+              onSelect={setPaymentMethod}
+            />
           </div>
         </div>
       );
@@ -815,7 +726,7 @@ export default function ContractCreate() {
           paymentMethod={paymentMethod}
           onBack={() => setPaymentMethod(null)}
           onConnectSuccess={() => {
-            console.log('🔧 ContractCreate: Auth success callback triggered');
+            // Page re-renders into the form once auth state updates.
           }}
         />
       </div>
@@ -1063,43 +974,11 @@ export default function ContractCreate() {
             {paymentMethod === null && (
               <>
                 <h3 className="text-lg font-semibold text-secondary-900 dark:text-white mb-4 text-center">How would you like to pay?</h3>
-                <div className="space-y-3">
-                  {/* Wallet option */}
-                  <button
-                    onClick={() => setPaymentMethod('wallet')}
-                    className="w-full text-left p-4 rounded-lg border-2 border-secondary-200 dark:border-secondary-700 hover:border-blue-500 dark:hover:border-blue-400 transition-colors bg-white dark:bg-secondary-800"
-                  >
-                    <div className="flex items-start">
-                      <div className="flex-shrink-0 w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center mr-3">
-                        <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                        </svg>
-                      </div>
-                      <div>
-                        <p className="font-medium text-secondary-900 dark:text-white">Pay with connected wallet</p>
-                        <p className="text-sm text-secondary-500 dark:text-secondary-400 mt-0.5">Transfer directly from your connected wallet</p>
-                      </div>
-                    </div>
-                  </button>
-
-                  {/* QR option */}
-                  <button
-                    onClick={() => setPaymentMethod('qr')}
-                    className="w-full text-left p-4 rounded-lg border-2 border-secondary-200 dark:border-secondary-700 hover:border-blue-500 dark:hover:border-blue-400 transition-colors bg-white dark:bg-secondary-800"
-                  >
-                    <div className="flex items-start">
-                      <div className="flex-shrink-0 w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center mr-3">
-                        <svg className="w-5 h-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
-                        </svg>
-                      </div>
-                      <div>
-                        <p className="font-medium text-secondary-900 dark:text-white">Pay by link / QR code</p>
-                        <p className="text-sm text-secondary-500 dark:text-secondary-400 mt-0.5">Send from any wallet -- no wallet connection needed</p>
-                      </div>
-                    </div>
-                  </button>
-                </div>
+                <PaymentMethodChoice
+                  walletTitle="Pay with connected wallet"
+                  walletSubtitle="Transfer directly from your connected wallet"
+                  onSelect={setPaymentMethod}
+                />
               </>
             )}
 

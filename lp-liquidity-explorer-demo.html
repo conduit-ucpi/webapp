@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stabledrop — Liquidity Explorer</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg-primary: #ffffff;
+    --bg-secondary: #f5f5f3;
+    --bg-tertiary: #ededea;
+    --text-primary: #1a1a18;
+    --text-secondary: #6b6b67;
+    --text-tertiary: #9b9b96;
+    --border-tertiary: rgba(0,0,0,0.12);
+    --border-secondary: rgba(0,0,0,0.22);
+    --border-primary: rgba(0,0,0,0.35);
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    --font-mono: 'SF Mono', 'Fira Code', 'Fira Mono', monospace;
+    --green: #1D9E75;
+    --green-dark: #085041;
+    --green-light: #E1F5EE;
+    --blue: #185FA5;
+    --blue-light: #E6F1FB;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg-primary: #1c1c1a;
+      --bg-secondary: #252523;
+      --bg-tertiary: #2e2e2b;
+      --text-primary: #f0f0ec;
+      --text-secondary: #a0a09a;
+      --text-tertiary: #6b6b65;
+      --border-tertiary: rgba(255,255,255,0.10);
+      --border-secondary: rgba(255,255,255,0.18);
+      --border-primary: rgba(255,255,255,0.28);
+      --green-light: #043428;
+      --blue-light: #042C53;
+    }
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    font-size: 16px;
+    line-height: 1.5;
+    min-height: 100vh;
+    padding: 0 1.5rem 2rem;
+  }
+
+  .lx-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.5rem 0 1rem;
+    border-bottom: 0.5px solid var(--border-tertiary);
+    margin-bottom: 1.5rem;
+  }
+  .lx-logo {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .lx-logo-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--green);
+    display: inline-block;
+  }
+  .lx-nav {
+    display: flex;
+    gap: 1.5rem;
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+  .lx-nav span.active {
+    color: var(--text-primary);
+    font-weight: 500;
+    border-bottom: 1.5px solid var(--text-primary);
+    padding-bottom: 2px;
+    cursor: default;
+  }
+  .lx-nav span.disabled {
+    color: var(--text-tertiary);
+    cursor: not-allowed;
+  }
+  .lx-wallet {
+    font-size: 12px;
+    color: var(--text-secondary);
+    background: var(--bg-secondary);
+    border: 0.5px solid var(--border-tertiary);
+    border-radius: var(--radius-md);
+    padding: 6px 12px;
+    display: flex; align-items: center; gap: 6px;
+  }
+
+  .lx-metrics {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 1.5rem;
+  }
+  .lx-metric {
+    background: var(--bg-secondary);
+    border-radius: var(--radius-md);
+    padding: 1rem;
+  }
+  .lx-metric-label { font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; }
+  .lx-metric-value { font-size: 22px; font-weight: 500; color: var(--text-primary); }
+  .lx-metric-sub { font-size: 11px; color: var(--text-tertiary); margin-top: 2px; }
+
+  .lx-filters {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+  }
+  .lx-filter-label { font-size: 12px; color: var(--text-secondary); margin-right: 4px; }
+  .lx-chip {
+    font-size: 12px;
+    border: 0.5px solid var(--border-secondary);
+    border-radius: 99px;
+    padding: 4px 12px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    background: transparent;
+  }
+  .lx-chip.active {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border-color: var(--border-primary);
+  }
+  .lx-search {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    border: 0.5px solid var(--border-tertiary);
+    border-radius: var(--radius-md);
+    padding: 4px 10px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    background: var(--bg-primary);
+    min-width: 200px;
+  }
+
+  .lx-table {
+    background: var(--bg-primary);
+    border: 0.5px solid var(--border-tertiary);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    margin-bottom: 1rem;
+  }
+
+  .lx-table-header {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr 1fr 100px;
+    gap: 8px;
+    padding: 10px 1rem;
+    font-size: 11px;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    border-bottom: 0.5px solid var(--border-tertiary);
+    background: var(--bg-secondary);
+  }
+
+  .lx-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr 1fr 100px;
+    gap: 8px;
+    align-items: center;
+    padding: 12px 1rem;
+    border-bottom: 0.5px solid var(--border-tertiary);
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+  .lx-row:hover { background: var(--bg-secondary); }
+  .lx-row:last-child { border-bottom: none; }
+
+  .lx-contract-id { font-size: 13px; font-weight: 500; color: var(--text-primary); }
+  .lx-contract-meta { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+  .lx-address { font-size: 11px; font-family: var(--font-mono); color: var(--text-tertiary); margin-top: 2px; }
+  .lx-amount { font-size: 14px; font-weight: 500; color: var(--text-primary); }
+  .lx-currency { font-size: 11px; color: var(--text-secondary); }
+  .lx-fact { font-size: 13px; color: var(--text-primary); }
+  .lx-fact-sub { font-size: 11px; color: var(--text-secondary); margin-top: 1px; }
+
+  .lx-btn-fund {
+    font-size: 12px;
+    font-weight: 500;
+    background: var(--text-primary);
+    color: var(--bg-primary);
+    border: none;
+    border-radius: var(--radius-md);
+    padding: 7px 14px;
+    cursor: pointer;
+    width: 100%;
+  }
+  .lx-btn-fund:hover { opacity: 0.82; }
+
+  .lx-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 0 0;
+    font-size: 12px;
+    color: var(--text-tertiary);
+  }
+  .lx-chain-badge {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 11px;
+    color: var(--text-tertiary);
+    border: 0.5px solid var(--border-tertiary);
+    border-radius: var(--radius-md);
+    padding: 4px 10px;
+  }
+  .lx-chain-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--blue); flex-shrink: 0; }
+
+  /* Modal */
+  .modal-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+  }
+  .modal-backdrop.open { display: flex; }
+  .modal {
+    background: var(--bg-primary);
+    border: 0.5px solid var(--border-secondary);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    width: 400px;
+    max-width: 95vw;
+  }
+  .modal-title { font-size: 15px; font-weight: 500; color: var(--text-primary); margin-bottom: 4px; }
+  .modal-sub { font-size: 12px; color: var(--text-secondary); margin-bottom: 1.25rem; }
+  .modal-field { margin-bottom: 1rem; }
+  .modal-field label { display: block; font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; }
+  .modal-field input {
+    width: 100%;
+    font-size: 14px;
+    padding: 8px 10px;
+    border-radius: var(--radius-md);
+    border: 0.5px solid var(--border-secondary);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+  }
+  .modal-calc {
+    background: var(--bg-secondary);
+    border-radius: var(--radius-md);
+    padding: 12px;
+    margin-bottom: 1.25rem;
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+  .modal-calc-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
+  .modal-calc-row:last-child { margin-bottom: 0; }
+  .modal-calc-row.total {
+    border-top: 0.5px solid var(--border-tertiary);
+    padding-top: 8px;
+    margin-top: 4px;
+    font-weight: 500;
+    color: var(--text-primary);
+  }
+  .modal-note {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    margin-bottom: 1.25rem;
+    line-height: 1.6;
+  }
+  .modal-actions { display: flex; gap: 8px; }
+  .modal-btn-cancel {
+    flex: 1; padding: 8px; font-size: 13px;
+    border: 0.5px solid var(--border-secondary);
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-family: var(--font-sans);
+  }
+  .modal-btn-send {
+    flex: 2; padding: 8px; font-size: 13px; font-weight: 500;
+    border: none; border-radius: var(--radius-md);
+    background: var(--text-primary);
+    color: var(--bg-primary);
+    cursor: pointer;
+    font-family: var(--font-sans);
+  }
+  .modal-btn-send:hover { opacity: 0.82; }
+
+  .demo-banner {
+    background: var(--green-light);
+    color: var(--green-dark);
+    font-size: 12px;
+    text-align: center;
+    padding: 6px;
+    letter-spacing: 0.03em;
+  }
+</style>
+</head>
+<body>
+
+<div class="demo-banner">Demo — sample data only, not connected to chain</div>
+
+<div class="lx-header">
+  <div class="lx-logo">
+    <span class="lx-logo-dot"></span>
+    Stabledrop — liquidity explorer
+  </div>
+  <nav class="lx-nav">
+    <span class="active">On-chain escrows</span>
+    <span class="disabled">My positions</span>
+    <span class="disabled">History</span>
+  </nav>
+  <div class="lx-wallet">
+    <i class="ti ti-wallet" style="font-size:14px;" aria-hidden="true"></i>
+    0x3f4a…c91b
+  </div>
+</div>
+
+<div class="lx-metrics">
+  <div class="lx-metric">
+    <div class="lx-metric-label">Escrows visible on-chain</div>
+    <div class="lx-metric-value">247</div>
+    <div class="lx-metric-sub">Base mainnet, live</div>
+  </div>
+  <div class="lx-metric">
+    <div class="lx-metric-label">Total locked value</div>
+    <div class="lx-metric-value">£1.4m</div>
+    <div class="lx-metric-sub">USDC equivalent</div>
+  </div>
+  <div class="lx-metric">
+    <div class="lx-metric-label">Avg. maturity</div>
+    <div class="lx-metric-value">38 days</div>
+    <div class="lx-metric-sub">Across active escrows</div>
+  </div>
+</div>
+
+<div class="lx-filters">
+  <span class="lx-filter-label">Maturity</span>
+  <button class="lx-chip" onclick="setChip(this)">7 days</button>
+  <button class="lx-chip active" onclick="setChip(this)">30 days</button>
+  <button class="lx-chip" onclick="setChip(this)">60 days</button>
+  <button class="lx-chip" onclick="setChip(this)">90 days</button>
+  <div class="lx-search">
+    <i class="ti ti-search" style="font-size:14px;" aria-hidden="true"></i>
+    <span>Contract address or ID</span>
+  </div>
+</div>
+
+<div class="lx-table">
+  <div class="lx-table-header">
+    <div>Escrow</div>
+    <div>Locked</div>
+    <div>Matures</div>
+    <div>Prior escrows</div>
+    <div>Disputes</div>
+    <div></div>
+  </div>
+
+  <div class="lx-row" onclick="openModal('ESC-00412','£12,400',12400,'24 Jul 2026')">
+    <div>
+      <div class="lx-contract-id">ESC-00412</div>
+      <div class="lx-contract-meta">Construction · Edinburgh</div>
+      <div class="lx-address">0x8f2a3d…bb14</div>
+    </div>
+    <div><div class="lx-amount">£12,400</div><div class="lx-currency">USDC</div></div>
+    <div><div class="lx-fact">24 Jul 2026</div><div class="lx-fact-sub">31 days</div></div>
+    <div><div class="lx-fact">8</div><div class="lx-fact-sub">completed</div></div>
+    <div><div class="lx-fact">0</div><div class="lx-fact-sub">all-time</div></div>
+    <div><button class="lx-btn-fund" onclick="event.stopPropagation();openModal('ESC-00412','£12,400',12400,'24 Jul 2026')">Make offer</button></div>
+  </div>
+
+  <div class="lx-row" onclick="openModal('ESC-00389','£5,800',5800,'21 Jul 2026')">
+    <div>
+      <div class="lx-contract-id">ESC-00389</div>
+      <div class="lx-contract-meta">Professional services · Glasgow</div>
+      <div class="lx-address">0x3c19f7…4a02</div>
+    </div>
+    <div><div class="lx-amount">£5,800</div><div class="lx-currency">USDC</div></div>
+    <div><div class="lx-fact">21 Jul 2026</div><div class="lx-fact-sub">28 days</div></div>
+    <div><div class="lx-fact">3</div><div class="lx-fact-sub">completed</div></div>
+    <div><div class="lx-fact">0</div><div class="lx-fact-sub">all-time</div></div>
+    <div><button class="lx-btn-fund" onclick="event.stopPropagation();openModal('ESC-00389','£5,800',5800,'21 Jul 2026')">Make offer</button></div>
+  </div>
+
+  <div class="lx-row" onclick="openModal('ESC-00401','£28,000',28000,'6 Aug 2026')">
+    <div>
+      <div class="lx-contract-id">ESC-00401</div>
+      <div class="lx-contract-meta">Construction · Aberdeen</div>
+      <div class="lx-address">0x91cc2b…7f38</div>
+    </div>
+    <div><div class="lx-amount">£28,000</div><div class="lx-currency">USDC</div></div>
+    <div><div class="lx-fact">6 Aug 2026</div><div class="lx-fact-sub">44 days</div></div>
+    <div><div class="lx-fact">12</div><div class="lx-fact-sub">completed</div></div>
+    <div><div class="lx-fact">1</div><div class="lx-fact-sub">all-time</div></div>
+    <div><button class="lx-btn-fund" onclick="event.stopPropagation();openModal('ESC-00401','£28,000',28000,'6 Aug 2026')">Make offer</button></div>
+  </div>
+
+  <div class="lx-row" onclick="openModal('ESC-00376','£3,200',3200,'11 Jul 2026')">
+    <div>
+      <div class="lx-contract-id">ESC-00376</div>
+      <div class="lx-contract-meta">Trades · Dundee</div>
+      <div class="lx-address">0x44be90…2c55</div>
+    </div>
+    <div><div class="lx-amount">£3,200</div><div class="lx-currency">USDC</div></div>
+    <div><div class="lx-fact">11 Jul 2026</div><div class="lx-fact-sub">18 days</div></div>
+    <div><div class="lx-fact">2</div><div class="lx-fact-sub">completed</div></div>
+    <div><div class="lx-fact">0</div><div class="lx-fact-sub">all-time</div></div>
+    <div><button class="lx-btn-fund" onclick="event.stopPropagation();openModal('ESC-00376','£3,200',3200,'11 Jul 2026')">Make offer</button></div>
+  </div>
+
+  <div class="lx-row" onclick="openModal('ESC-00418','£41,500',41500,'22 Aug 2026')">
+    <div>
+      <div class="lx-contract-id">ESC-00418</div>
+      <div class="lx-contract-meta">Construction · Stirling</div>
+      <div class="lx-address">0xb72d1e…9900</div>
+    </div>
+    <div><div class="lx-amount">£41,500</div><div class="lx-currency">USDC</div></div>
+    <div><div class="lx-fact">22 Aug 2026</div><div class="lx-fact-sub">60 days</div></div>
+    <div><div class="lx-fact">5</div><div class="lx-fact-sub">completed</div></div>
+    <div><div class="lx-fact">0</div><div class="lx-fact-sub">all-time</div></div>
+    <div><button class="lx-btn-fund" onclick="event.stopPropagation();openModal('ESC-00418','£41,500',41500,'22 Aug 2026')">Make offer</button></div>
+  </div>
+
+</div>
+
+<div class="lx-footer">
+  <div class="lx-chain-badge">
+    <span class="lx-chain-dot"></span>
+    Base mainnet · data read directly from chain
+  </div>
+  <div>Showing 5 of 247 escrows · sorted by maturity</div>
+</div>
+
+<!-- Offer modal -->
+<div class="modal-backdrop" id="modal" onclick="closeModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-title" id="modal-title">Make an offer</div>
+    <div class="modal-sub" id="modal-sub"></div>
+    <div class="modal-field">
+      <label for="discount-input">Your discount rate (%)</label>
+      <input type="number" id="discount-input" min="0.1" max="10" step="0.1" value="1.5" oninput="recalc()" />
+    </div>
+    <div class="modal-calc">
+      <div class="modal-calc-row">
+        <span>Escrow value at maturity</span>
+        <span id="calc-locked"></span>
+      </div>
+      <div class="modal-calc-row">
+        <span>Your discount</span>
+        <span id="calc-discount"></span>
+      </div>
+      <div class="modal-calc-row total">
+        <span>You pay now</span>
+        <span id="calc-pay"></span>
+      </div>
+    </div>
+    <div class="modal-note">
+      This offer will be sent to the seller. They can accept or decline. No funds move until they accept and the atomic swap executes on-chain.
+    </div>
+    <div class="modal-actions">
+      <button class="modal-btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="modal-btn-send" onclick="alert('Demo only — offer not sent.')">Send offer</button>
+    </div>
+  </div>
+</div>
+
+<script>
+var currentLocked = 0;
+
+function fmt(n) {
+  return '£' + Math.round(n).toLocaleString('en-GB');
+}
+
+function openModal(id, lockedStr, lockedNum, maturity) {
+  currentLocked = lockedNum;
+  document.getElementById('modal-title').textContent = 'Make an offer — ' + id;
+  document.getElementById('modal-sub').textContent = lockedStr + ' locked · matures ' + maturity;
+  document.getElementById('calc-locked').textContent = lockedStr;
+  document.getElementById('discount-input').value = '1.5';
+  recalc();
+  document.getElementById('modal').classList.add('open');
+}
+
+function closeModal(e) {
+  if (!e || e.target === document.getElementById('modal')) {
+    document.getElementById('modal').classList.remove('open');
+  }
+}
+
+function recalc() {
+  var rate = parseFloat(document.getElementById('discount-input').value) || 0;
+  var disc = currentLocked * (rate / 100);
+  document.getElementById('calc-discount').textContent = '− ' + fmt(disc);
+  document.getElementById('calc-pay').textContent = fmt(currentLocked - disc);
+}
+
+function setChip(el) {
+  document.querySelectorAll('.lx-chip').forEach(function(c) { c.classList.remove('active'); });
+  el.classList.add('active');
+}
+</script>
+
+</body>
+</html>

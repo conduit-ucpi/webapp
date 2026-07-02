@@ -48,6 +48,37 @@ jest.mock('@/components/contracts/ContractDetailsModal', () => () => (
 jest.mock('@/components/contracts/DisputeManagementModal', () => () => null);
 
 const PENDING_CONTRACT_ID = 'pending-contract-abc123';
+const DEPLOYED_CONTRACT_ID = 'deployed-contract-def456';
+
+function makeDeployedUnfundedContractApiResponse() {
+  return [
+    {
+      contract: {
+        id: DEPLOYED_CONTRACT_ID,
+        sellerEmail: 'seller@example.com',
+        buyerEmail: 'buyer@example.com',
+        amount: 1000000,
+        currency: 'USDC',
+        sellerAddress: '0xseller',
+        buyerAddress: '0xbuyer',
+        // chainAddress present → treated as deployed
+        chainAddress: '0xescrow',
+        expiryTimestamp: Math.floor(Date.now() / 1000) + 86400,
+        description: 'Test deployed unfunded contract',
+        createdAt: Math.floor(Date.now() / 1000),
+        createdBy: '0xbuyer',
+        state: 'OK',
+        adminNotes: [],
+      },
+      status: 'AWAITING_FUNDING',
+      blockchainStatus: 'CREATED',
+      blockchainFunded: false,
+      ctaType: 'ACCEPT_CONTRACT',
+      ctaLabel: 'Complete Payment',
+      ctaVariant: 'action',
+    },
+  ];
+}
 
 function makePendingContractApiResponse(ctaType: string) {
   return [
@@ -145,5 +176,23 @@ describe('EnhancedDashboard — Make Payment routes to /contract-pay', () => {
     fireEvent.click(button);
 
     expect(pushMock).toHaveBeenCalledWith(`/contract-pay?contractId=${PENDING_CONTRACT_ID}`);
+  });
+
+  it('routes to /contract-pay for a deployed-but-unfunded contract (buyer CTA on CREATED status)', async () => {
+    // The escrow exists on-chain but was never funded. The buyer's CTA should
+    // route to the pay page, which reuses the recorded escrow address instead
+    // of deploying a second contract.
+    const fetchImpl = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => makeDeployedUnfundedContractApiResponse(),
+    });
+    mockAuthWithFetch(fetchImpl);
+
+    renderDashboard();
+
+    const button = await waitFor(() => screen.getByRole('button', { name: /complete payment/i }));
+    fireEvent.click(button);
+
+    expect(pushMock).toHaveBeenCalledWith(`/contract-pay?contractId=${DEPLOYED_CONTRACT_ID}`);
   });
 });

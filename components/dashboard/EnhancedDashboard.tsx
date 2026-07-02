@@ -399,16 +399,20 @@ export default function EnhancedDashboard() {
 
   const handleContractAction = (contract: Contract | PendingContract, action: string) => {
     const isPending = !('contractAddress' in contract);
-    // Any primary CTA on a pending contract is "pay this request" — route to /contract-pay.
+    // 'accept' means "pay this request" — route to /contract-pay. This covers both
+    // pending contracts and deployed-but-unfunded ones (blockchain status CREATED),
+    // where the pay flow reuses the existing escrow address instead of deploying again.
     // The card sometimes emits 'view-details' as a fallback when it doesn't recognize the
-    // backend's ctaType, which would otherwise open the details modal instead of paying.
-    if (isPending && (action === 'accept' || action === 'view-details')) {
+    // backend's ctaType on a pending contract, which would otherwise open the details
+    // modal instead of paying.
+    if ((action === 'accept' || (isPending && action === 'view-details')) && contract.id) {
       router.push(`/contract-pay?contractId=${contract.id}`);
     } else if (action === 'manage' && 'contractAddress' in contract) {
       setContractToManage(contract as Contract);
       setShowManageDispute(true);
-    } else if (action === 'view-details' || action === 'dispute' || action === 'claim') {
+    } else if (action === 'accept' || action === 'view-details' || action === 'dispute' || action === 'claim') {
       // Open details modal for actions handled by ContractActions component
+      // ('accept' lands here only when the contract has no contractservice id to pay against)
       setSelectedContract(contract);
       setShowDetailsModal(true);
     }

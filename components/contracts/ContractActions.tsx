@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useRouter } from 'next/router';
 import { Contract, PendingContract, RaiseDisputeRequest } from '@/types';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { useAuth } from '@/components/auth';
@@ -21,6 +22,7 @@ interface ContractActionsProps {
 }
 
 export default function ContractActions({ contract, isBuyer, isSeller, onAction, onAccept, isClaimingInProgress, onClaimStart, onClaimComplete }: ContractActionsProps) {
+  const router = useRouter();
   const { config } = useConfig();
   const { user, claimFunds, raiseDispute } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
@@ -249,18 +251,32 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
       );
 
     case 'ACCEPT_CONTRACT':
-      if (!onAccept || !isPending) {
-        return null; // Can't accept without callback or if not pending
+      if (onAccept && isPending) {
+        return (
+          <Button
+            size="sm"
+            onClick={() => onAccept((contract as PendingContract).id)}
+            className="w-full"
+          >
+            {contract.ctaLabel || 'Accept Contract'}
+          </Button>
+        );
       }
-      return (
-        <Button
-          size="sm"
-          onClick={() => onAccept((contract as PendingContract).id)}
-          className="w-full"
-        >
-          {contract.ctaLabel || 'Accept Contract'}
-        </Button>
-      );
+      // Deployed-but-unfunded contracts (blockchain status CREATED) also carry
+      // ACCEPT_CONTRACT for the buyer. Route to the pay page, which reuses the
+      // recorded escrow address instead of deploying a second contract.
+      if (contract.id) {
+        return (
+          <Button
+            size="sm"
+            onClick={() => router.push(`/contract-pay?contractId=${contract.id}`)}
+            className="w-full"
+          >
+            {contract.ctaLabel || 'Complete Payment'}
+          </Button>
+        );
+      }
+      return null; // No callback and no contractservice id to pay against
 
     case 'AWAITING_FUNDING':
     case 'PENDING_ACCEPTANCE':

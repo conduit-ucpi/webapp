@@ -659,7 +659,7 @@ export default function ContractCreate() {
       <div className={`min-h-screen flex items-center justify-center transition-colors ${isInIframe || isInPopup ? 'bg-secondary-50 dark:bg-secondary-800' : 'bg-white dark:bg-secondary-900'}`}>
         <Head children={
           <>
-            <title>Create Contract - Conduit UCPI</title>
+            <title>Complete Payment - StableDrop</title>
             <meta name="viewport" content="width=device-width, initial-scale=1" />
           </>
         } />
@@ -682,7 +682,7 @@ export default function ContractCreate() {
         <div className={`min-h-screen flex items-center justify-center transition-colors ${isInIframe || isInPopup ? 'bg-secondary-50 dark:bg-secondary-800' : 'bg-white dark:bg-secondary-900'}`}>
           <Head children={
             <>
-              <title>Create Contract - Conduit UCPI</title>
+              <title>Complete Payment - StableDrop</title>
               <meta name="viewport" content="width=device-width, initial-scale=1" />
             </>
           } />
@@ -718,7 +718,7 @@ export default function ContractCreate() {
       <div className={`min-h-screen flex items-center justify-center transition-colors ${isInIframe || isInPopup ? 'bg-secondary-50 dark:bg-secondary-800' : 'bg-white dark:bg-secondary-900'}`}>
         <Head children={
           <>
-            <title>Create Contract - Conduit UCPI</title>
+            <title>Complete Payment - StableDrop</title>
             <meta name="viewport" content="width=device-width, initial-scale=1" />
           </>
         } />
@@ -737,7 +737,7 @@ export default function ContractCreate() {
     <div className={`transition-colors ${isInIframe || isInPopup ? 'min-h-screen bg-secondary-50 dark:bg-secondary-800' : 'min-h-screen bg-white dark:bg-secondary-900'}`}>
       <Head children={
         <>
-          <title>Create Contract - Conduit UCPI</title>
+          <title>Complete Payment - StableDrop</title>
           <meta name="viewport" content="width=device-width, initial-scale=1" />
         </>
       } />
@@ -818,7 +818,7 @@ export default function ContractCreate() {
 
               <div className="bg-secondary-50 dark:bg-secondary-800 border border-secondary-200 dark:border-secondary-700 rounded-md p-3">
                 <p className="text-sm text-secondary-700 dark:text-secondary-200">
-                  <strong>Payout Date:</strong>
+                  <strong>Release date:</strong>
                 </p>
                 <p className="text-sm text-secondary-900 dark:text-white">
                   {(() => {
@@ -943,7 +943,7 @@ export default function ContractCreate() {
               </div>
               {/* Payout Date */}
               <div className="flex justify-between">
-                <span className="text-secondary-600 dark:text-secondary-300">Payout Date:</span>
+                <span className="text-secondary-600 dark:text-secondary-300">Release date:</span>
                 <span className="font-medium text-secondary-900 dark:text-white">
                   {(() => {
                     let expiryTimestamp = Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60);

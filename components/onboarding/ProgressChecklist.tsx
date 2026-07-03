@@ -39,7 +39,7 @@ export default function ProgressChecklist({ onClose }: ProgressChecklistProps) {
     {
       id: 'connect-wallet',
       title: 'Connect Your Wallet',
-      description: 'Link your crypto wallet to start creating secure payment agreements',
+      description: 'Link your crypto wallet to start creating secure payment requests',
       checkCondition: () => !!user?.walletAddress,
     },
     {

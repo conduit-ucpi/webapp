@@ -30,7 +30,7 @@ export default function Merchant() {
   return (
     <>
       <SEO
-        title="Conduit Escrow - Stablecoin Payments with Buyer Protection | First 100 Free"
+        title="StableDrop - Stablecoin Payments with Buyer Protection | First 100 Free"
         description="Stablecoin checkout with buyer protection. No chargebacks, no floats, no freezes, no vetting. First 100 transactions free, then 1% flat fee. 10-minute setup. Gas-free transactions. Open source escrow on Base."
         keywords="open source escrow, crypto escrow, blockchain escrow, USDC escrow, secure crypto payments, buyer protection, smart contract escrow, Base network escrow"
         canonical="/merchant"
@@ -177,7 +177,7 @@ export default function Merchant() {
                 See what your customers see.
               </h2>
               <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-10 max-w-md">
-                This opens the actual Stabledrop checkout — the same experience your customers get when they click &ldquo;Pay&rdquo; on your site.
+                This opens the actual StableDrop checkout — the same experience your customers get when they click &ldquo;Pay&rdquo; on your site.
               </p>
               <div className="flex flex-wrap gap-3">
                 <button
@@ -420,7 +420,7 @@ export default function Merchant() {
                 Add stablecoin checkout to your store.
               </h2>
               <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-8 max-w-md">
-                Integrate Stabledrop into your existing platform with our ready-made plugins.
+                Integrate StableDrop into your existing platform with our ready-made plugins.
               </p>
               <Link href="/plugins">
                 <button className={btnPrimary}>Explore Plugins</button>

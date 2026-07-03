@@ -14,7 +14,7 @@ export default function TermsOfService() {
           <section className="mb-8">
             <h2 className="text-2xl font-semibold text-secondary-900 dark:text-white mb-4">1. Acceptance of Terms</h2>
             <p className="text-secondary-700 dark:text-secondary-200 mb-4">
-              By accessing and using Conduit UCPI ("the Service"), you accept and agree to be bound by the terms 
+              By accessing and using StableDrop ("the Service"), you accept and agree to be bound by the terms 
               and provision of this agreement. If you do not agree to abide by the above, please do not use this service.
             </p>
           </section>
@@ -22,7 +22,7 @@ export default function TermsOfService() {
           <section className="mb-8">
             <h2 className="text-2xl font-semibold text-secondary-900 dark:text-white mb-4">2. Description of Service</h2>
             <p className="text-secondary-700 dark:text-secondary-200 mb-4">
-              Conduit UCPI is a decentralized escrow platform that enables users to create time-delayed escrow 
+              StableDrop is a decentralized escrow platform that enables users to create time-delayed escrow 
               contracts on EVM-compatible blockchains. The Service facilitates:
             </p>
             <ul className="list-disc pl-6 text-secondary-700 dark:text-secondary-200 space-y-2">
@@ -65,7 +65,7 @@ export default function TermsOfService() {
           <section className="mb-8">
             <h2 className="text-2xl font-semibold text-secondary-900 dark:text-white mb-4">5. Limitation of Liability</h2>
             <p className="text-secondary-700 dark:text-secondary-200 mb-4">
-              To the maximum extent permitted by law, Conduit UCPI and its operators shall not be liable for any 
+              To the maximum extent permitted by law, StableDrop and its operators shall not be liable for any 
               direct, indirect, incidental, special, consequential, or punitive damages, including but not limited to:
             </p>
             <ul className="list-disc pl-6 text-secondary-700 dark:text-secondary-200 space-y-2">

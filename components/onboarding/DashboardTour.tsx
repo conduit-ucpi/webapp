@@ -14,14 +14,14 @@ export default function DashboardTour() {
       id: 'welcome',
       target: '[data-tour="dashboard-header"]',
       title: 'Welcome to Your Dashboard!',
-      content: 'This is your command center where you can manage all your payment agreements and see important stats.',
+      content: 'This is your command center where you can manage all your payment requests and see important stats.',
       placement: 'bottom' as const,
     },
     {
       id: 'stats',
       target: '[data-tour="stats-cards"]',
       title: 'Track Your Payments',
-      content: 'These cards show you a quick overview: active contracts, pending payments, completed deals, and total value.',
+      content: 'These cards show you a quick overview: active contracts, pending payments, completed requests, and total value.',
       placement: 'bottom' as const,
     },
     {
@@ -42,7 +42,7 @@ export default function DashboardTour() {
       id: 'tabs',
       target: '[data-tour="filter-tabs"]',
       title: 'Filter Your View',
-      content: 'Use these tabs to see contracts that need action, active ones, completed deals, or disputed payments.',
+      content: 'Use these tabs to see contracts that need action, active ones, completed requests, or disputed payments.',
       placement: 'bottom' as const,
     },
     {

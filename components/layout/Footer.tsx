@@ -20,7 +20,7 @@ export default function Footer() {
       <div className="max-w-5xl mx-auto px-6 sm:px-8 py-10">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
           <p className="text-xs text-secondary-400 dark:text-secondary-500">
-            &copy; 2026 Conduit UCPI. Secure escrow contracts on {chainName}. Company No. 880319.
+            &copy; 2026 StableDrop (Conduit UCPI Ltd, Company No. 880319). Secure escrow contracts on {chainName}.
           </p>
           <div className="flex flex-wrap gap-x-8 gap-y-3 text-xs text-secondary-400 dark:text-secondary-500">
             <Link href="/terms-of-service" className="hover:text-secondary-600 dark:hover:text-secondary-300 transition-colors">

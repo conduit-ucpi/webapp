@@ -272,9 +272,9 @@ export default function CreateContractWizard() {
           if (!form.payoutTimestamp || form.payoutTimestamp <= 0) {
             newErrors.expiry = 'Please select a valid date and time';
           } else if (form.payoutTimestamp <= now) {
-            newErrors.expiry = 'Payout time must be in the future';
+            newErrors.expiry = 'Release date must be in the future';
           } else if (form.payoutTimestamp > oneYearFromNow) {
-            newErrors.expiry = 'Payout time must be within 1 year';
+            newErrors.expiry = 'Release date must be within 1 year';
           }
         }
         break;

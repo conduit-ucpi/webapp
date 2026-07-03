@@ -9,7 +9,7 @@ import {
   ArrowLeftIcon,
 } from '@heroicons/react/24/outline';
 
-const SSR_DEFAULT_SITE_NAME = 'Instant Escrow';
+const SSR_DEFAULT_SITE_NAME = 'StableDrop';
 
 export default function Header() {
   const router = useRouter();
@@ -52,7 +52,7 @@ export default function Header() {
                   {siteName}
                 </span>
                 <span className="text-xs text-primary-600 dark:text-primary-400 -mt-1">
-                  Conduit UCPI
+                  Escrow-protected payments
                 </span>
               </Link>
             </div>

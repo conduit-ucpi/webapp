@@ -96,7 +96,7 @@ export default function Plugins() {
   const structuredData = {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
-    "name": "Conduit UCPI - Smart Contract Escrow SDK",
+    "name": "StableDrop - Smart Contract Escrow SDK",
     "applicationCategory": "DeveloperApplication",
     "operatingSystem": "Web",
     "offers": {
@@ -124,7 +124,7 @@ export default function Plugins() {
     "url": pageUrl,
     "creator": {
       "@type": "Organization",
-      "name": "Conduit UCPI",
+      "name": "StableDrop",
       "url": "https://conduit-ucpi.com"
     }
   };
@@ -168,7 +168,7 @@ export default function Plugins() {
         <meta property="og:title" content={pageTitle} />
         <meta property="og:description" content={pageDescription} />
         <meta property="og:image" content={imageUrl} />
-        <meta property="og:site_name" content="Conduit UCPI" />
+        <meta property="og:site_name" content="StableDrop" />
         <meta property="twitter:card" content="summary_large_image" />
         <meta property="twitter:url" content={pageUrl} />
         <meta property="twitter:title" content={pageTitle} />
@@ -176,7 +176,7 @@ export default function Plugins() {
         <meta property="twitter:image" content={imageUrl} />
         <meta name="robots" content="index, follow" />
         <meta name="language" content="English" />
-        <meta name="author" content="Conduit UCPI" />
+        <meta name="author" content="StableDrop" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}

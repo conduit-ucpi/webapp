@@ -213,13 +213,13 @@ export default function Dashboard2() {
                 <h1
                   className="text-3xl sm:text-4xl lg:text-5xl font-semibold text-secondary-900 dark:text-white leading-[1.1] tracking-tight"
                 >
-                  Your contracts.
+                  Your payment requests.
                 </h1>
                 <p
                   className="mt-4 text-sm text-secondary-500 dark:text-secondary-400 max-w-md leading-relaxed"
                   style={{ fontFamily: "'Newsreader', Georgia, serif" }}
                 >
-                  Manage escrow contracts and track transaction history.
+                  Track and manage your escrow-protected payment requests.
                 </p>
               </div>
 

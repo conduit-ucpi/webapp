@@ -9,7 +9,7 @@ export default function HowItWorks() {
     <>
       <SEO
         title="How It Works - See a Secure Escrow Payment in Action"
-        description="Watch how Conduit Escrow protects buyers and sellers with time-delayed smart contract payments. Step-by-step walkthrough of a real transaction."
+        description="Watch how StableDrop protects buyers and sellers with time-delayed smart contract payments. Step-by-step walkthrough of a real transaction."
         keywords="escrow tutorial, how escrow works, smart contract payment, buyer protection demo, secure payment walkthrough"
         canonical="/how-it-works"
       />

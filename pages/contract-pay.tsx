@@ -224,7 +224,7 @@ export default function ContractPay() {
   // RENDER SECTION
   // ================================================================
 
-  const pageTitle = 'Pay Contract - Conduit UCPI';
+  const pageTitle = 'Payment Request - StableDrop';
 
   // Loading screen for initialization
   if (!config || (authLoading && !isConnected && !address)) {
@@ -291,7 +291,7 @@ export default function ContractPay() {
                     </svg>
                   </div>
                   <div>
-                    <p className="font-medium text-secondary-900 dark:text-white">Pay with Stabledrop</p>
+                    <p className="font-medium text-secondary-900 dark:text-white">Pay with StableDrop</p>
                     <p className="text-sm text-secondary-500 dark:text-secondary-400 mt-0.5">Sign in with Google, email, or connect a wallet like MetaMask. We&apos;ll help you get USDC if you don&apos;t have any yet.</p>
                   </div>
                 </div>
@@ -440,7 +440,7 @@ export default function ContractPay() {
               <span className="text-sm font-mono text-secondary-900 dark:text-white">{contract.sellerAddress.slice(0, 6)}...{contract.sellerAddress.slice(-4)}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-secondary-600 dark:text-secondary-300">Payout Date:</span>
+              <span className="text-secondary-600 dark:text-secondary-300">Release date:</span>
               <span className="font-medium text-secondary-900 dark:text-white">
                 {isInstantPayment ? 'Instant (no delay)' : formatDateTimeWithTZ(contract.expiryTimestamp)}
               </span>

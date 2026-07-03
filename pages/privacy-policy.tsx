@@ -14,7 +14,7 @@ export default function PrivacyPolicy() {
           <section className="mb-8">
             <h2 className="text-2xl font-semibold text-secondary-900 dark:text-white mb-4">1. Information We Collect</h2>
             <p className="text-secondary-700 dark:text-secondary-200 mb-4">
-              When you use Conduit UCPI, we collect the following types of information:
+              When you use StableDrop, we collect the following types of information:
             </p>
             <ul className="list-disc pl-6 text-secondary-700 dark:text-secondary-200 space-y-2">
               <li>Wallet addresses and public blockchain data</li>

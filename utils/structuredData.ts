@@ -6,7 +6,7 @@
 export const financialServiceSchema = {
   "@context": "https://schema.org",
   "@type": "FinancialService",
-  "name": "Conduit Escrow",
+  "name": "StableDrop",
   "alternateName": "InstantEscrow",
   "description": "100% open source cryptocurrency escrow service for USDC stablecoin payments with built-in buyer protection. Smart contract-based time-delayed escrow with automatic dispute resolution. No KYC/KYB, no floats, no minimum volumes. 1% flat fee, instant settlement.",
   "url": "https://conduit-ucpi.com",
@@ -27,7 +27,7 @@ export const financialServiceSchema = {
   },
   "offers": { "@type": "Offer", "priceCurrency": "USD", "price": "1", "priceSpecification": { "@type": "UnitPriceSpecification", "price": "0.01", "priceCurrency": "USD", "referenceQuantity": { "@type": "QuantitativeValue", "value": "1", "unitText": "TRANSACTION" } } },
   "serviceType": "Cryptocurrency Escrow Service",
-  "provider": { "@type": "Organization", "name": "Conduit UCPI", "url": "https://conduit-ucpi.com" },
+  "provider": { "@type": "Organization", "name": "StableDrop", "url": "https://conduit-ucpi.com" },
   "termsOfService": "https://conduit-ucpi.com/terms-of-service",
   "slogan": "Stablecoin payments made safe and easy"
 };
@@ -43,7 +43,7 @@ export const articleSchema = {
   },
   "publisher": {
     "@type": "Organization",
-    "name": "Conduit Escrow",
+    "name": "StableDrop",
     "logo": {
       "@type": "ImageObject",
       "url": "https://conduit-ucpi.com/icon.png"

@@ -35,7 +35,7 @@ export default function ShopifyIndex() {
     "url": pageUrl,
     "creator": {
       "@type": "Organization",
-      "name": "Conduit UCPI",
+      "name": "StableDrop",
       "url": "https://conduit-ucpi.com"
     }
   };
@@ -58,7 +58,7 @@ export default function ShopifyIndex() {
         <meta property="og:title" content={pageTitle} />
         <meta property="og:description" content={pageDescription} />
         <meta property="og:image" content={imageUrl} />
-        <meta property="og:site_name" content="Conduit UCPI" />
+        <meta property="og:site_name" content="StableDrop" />
 
         {/* Twitter */}
         <meta property="twitter:card" content="summary_large_image" />
@@ -70,7 +70,7 @@ export default function ShopifyIndex() {
         {/* Additional SEO Meta Tags */}
         <meta name="robots" content="index, follow" />
         <meta name="language" content="English" />
-        <meta name="author" content="Conduit UCPI" />
+        <meta name="author" content="StableDrop" />
 
         {/* Structured Data */}
         <script

@@ -6,7 +6,7 @@ import Fade from '@/components/ui/Fade';
 import { btnOutline } from '@/utils/landingStyles';
 
 export default function Demos() {
-  const pageTitle = "Demo Videos | Conduit UCPI Escrow Integrations";
+  const pageTitle = "Demo Videos | StableDrop Escrow Integrations";
   const pageDescription = "Watch demo videos showing how to integrate smart contract escrow into WordPress WooCommerce and Shopify stores.";
 
   useScrollTracking();

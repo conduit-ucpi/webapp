@@ -153,7 +153,7 @@ export class ReownWalletConnectProvider {
           eip155: 'eoa' // Force EOA for standard ECDSA signatures (backend compatibility)
         },
         metadata: {
-          name: 'Conduit UCPI',
+          name: 'StableDrop',
           description: 'Time-delayed escrow contracts on Base',
           url: typeof window !== 'undefined' ? window.location.origin : 'https://conduit-ucpi.com',
           icons: ['https://conduit-ucpi.com/favicon.ico']

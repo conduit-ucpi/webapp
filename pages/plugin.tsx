@@ -79,8 +79,8 @@ export default function PluginPage() {
     <>
       <Head children={
         <>
-          <title>Plugin Information - Conduit UCPI</title>
-          <meta name="description" content="FAQ, Terms & Conditions, Privacy Policy, and Arbitration information for Conduit UCPI" />
+          <title>Plugin Information - StableDrop</title>
+          <meta name="description" content="FAQ, Terms & Conditions, Privacy Policy, and Arbitration information for StableDrop" />
         </>
       } />
 
@@ -174,7 +174,7 @@ function TermsSection() {
         <section className="mb-8">
           <h3 className="text-xl font-semibold text-secondary-900 dark:text-white mb-4">1. Acceptance of Terms</h3>
           <p className="text-secondary-700 dark:text-secondary-200 mb-4">
-            By accessing and using Conduit UCPI ("the Service"), you accept and agree to be bound by the terms 
+            By accessing and using StableDrop ("the Service"), you accept and agree to be bound by the terms 
             and provision of this agreement. If you do not agree to abide by the above, please do not use this service.
           </p>
         </section>
@@ -182,7 +182,7 @@ function TermsSection() {
         <section className="mb-8">
           <h3 className="text-xl font-semibold text-secondary-900 dark:text-white mb-4">2. Description of Service</h3>
           <p className="text-secondary-700 dark:text-secondary-200 mb-4">
-            Conduit UCPI is a decentralized escrow platform that enables users to create time-delayed escrow
+            StableDrop is a decentralized escrow platform that enables users to create time-delayed escrow
             contracts on EVM-compatible blockchains. The Service facilitates:
           </p>
           <ul className="list-disc pl-6 text-secondary-700 dark:text-secondary-200 space-y-2">
@@ -223,7 +223,7 @@ function TermsSection() {
         <section className="mb-8">
           <h3 className="text-xl font-semibold text-secondary-900 dark:text-white mb-4">5. Limitation of Liability</h3>
           <p className="text-secondary-700 dark:text-secondary-200 mb-4">
-            To the maximum extent permitted by law, Conduit UCPI and its operators shall not be liable for any
+            To the maximum extent permitted by law, StableDrop and its operators shall not be liable for any
             direct, indirect, incidental, special, consequential, or punitive damages, including but not limited to:
           </p>
           <ul className="list-disc pl-6 text-secondary-700 dark:text-secondary-200 space-y-2">
@@ -260,7 +260,7 @@ function PrivacySection() {
 
         <section className="mb-8">
           <h3 className="text-xl font-semibold text-secondary-900 dark:text-white mb-4">1. Information We Collect</h3>
-          <p className="text-secondary-700 dark:text-secondary-200 mb-4">When you use Conduit UCPI, we collect the following types of information:</p>
+          <p className="text-secondary-700 dark:text-secondary-200 mb-4">When you use StableDrop, we collect the following types of information:</p>
           <ul className="list-disc pl-6 text-secondary-700 dark:text-secondary-200 space-y-2">
             <li>Wallet addresses and public blockchain data</li>
             <li>Email addresses for account identification</li>
@@ -331,7 +331,7 @@ function PrivacySection() {
 function ArbitrationSection() {
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-secondary-900 dark:text-white">Instant Escrow Auto-Arbitration System</h2>
+      <h2 className="text-2xl font-bold text-secondary-900 dark:text-white">StableDrop Auto-Arbitration System</h2>
       <p className="text-lg text-secondary-600 dark:text-secondary-300 italic">How Disputes Work - For Buyers and Sellers</p>
       
       <div className="prose max-w-none">

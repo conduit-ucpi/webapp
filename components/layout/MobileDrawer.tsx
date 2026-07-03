@@ -218,7 +218,7 @@ export default function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
                     {siteName}
                   </div>
                   <div className="text-xs text-primary-600 dark:text-primary-400">
-                    Conduit UCPI
+                    Escrow-protected payments
                   </div>
                 </div>
                 <button

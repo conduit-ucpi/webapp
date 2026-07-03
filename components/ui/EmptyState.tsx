@@ -155,7 +155,7 @@ export function NoContractsEmptyState({
       description: "Create your first payment request to start receiving protected payments. Your buyers will get an email notification and can pay with confidence knowing funds are secured."
     },
     any: {
-      title: "Your payment agreements await",
+      title: "Your payment requests await",
       description: "This is where all your secure payment contracts will appear. Create a payment request or wait for someone to send you one - either way, your funds are protected."
     }
   };

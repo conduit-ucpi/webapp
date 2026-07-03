@@ -523,7 +523,7 @@ export default function EnhancedDashboard() {
         <div className="relative">
           <input
             type="text"
-            placeholder="Search payment agreements..."
+            placeholder="Search payment requests..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-10 pr-4 py-2 border border-secondary-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
@@ -543,7 +543,7 @@ export default function EnhancedDashboard() {
 
       {/* Section Header with Refresh Button */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6">
-        <h2 className="text-xl font-semibold text-secondary-900 dark:text-white mb-4 sm:mb-0">Your payment agreements</h2>
+        <h2 className="text-xl font-semibold text-secondary-900 dark:text-white mb-4 sm:mb-0">Your payment requests</h2>
         <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
           <Button
             onClick={handleRefresh}

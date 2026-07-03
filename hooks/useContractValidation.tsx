@@ -94,9 +94,9 @@ export function useCreateContractValidation() {
     if (!form.payoutTimestamp || form.payoutTimestamp <= 0) {
       newErrors.expiry = 'Please select a valid date and time';
     } else if (form.payoutTimestamp <= now) {
-      newErrors.expiry = 'Payout time must be in the future';
+      newErrors.expiry = 'Release date must be in the future';
     } else if (form.payoutTimestamp > oneYearFromNow) {
-      newErrors.expiry = 'Payout time cannot be more than 1 year in the future';
+      newErrors.expiry = 'Release date cannot be more than 1 year in the future';
     }
 
     // Validate description

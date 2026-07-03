@@ -255,7 +255,7 @@ export default function FAQ() {
         "name": "Is your code open source so I can review it myself?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "Yes! The entire Conduit UCPI platform is open source and available at github.com/conduit-ucpi. This includes our smart contracts, backend services, and frontend applications. You can review every line of code, see our development history, and verify that the deployed contracts match the published source code. This transparency is core to our commitment to trustless, secure transactions."
+          "text": "Yes! The entire StableDrop platform is open source and available at github.com/conduit-ucpi. This includes our smart contracts, backend services, and frontend applications. You can review every line of code, see our development history, and verify that the deployed contracts match the published source code. This transparency is core to our commitment to trustless, secure transactions."
         }
       },
       {
@@ -707,7 +707,7 @@ export default function FAQ() {
   return (
     <>
       <SEO
-        title="FAQ - Crypto Escrow Questions Answered | Conduit Escrow"
+        title="FAQ - Crypto Escrow Questions Answered | StableDrop"
         description="Get answers to all your questions about crypto escrow, USDC payments, disputes, security, merchant payment processing, chargebacks, PCI compliance, and how our blockchain escrow system protects buyers and sellers."
         keywords="crypto escrow faq, blockchain escrow questions, USDC payment help, escrow dispute resolution, smart contract security, crypto payment protection, merchant payments, stablecoin payments, no chargebacks, PCI compliance free, high-risk merchant, escrow how it works"
         canonical="/faq"
@@ -1100,7 +1100,7 @@ export default function FAQ() {
               <Fade delay={0.15}>
                 <FAQItem question="Is your code open source so I can review it myself?">
                   <p className="text-sm text-secondary-500 dark:text-secondary-400 leading-relaxed">
-                    Yes! The entire Conduit UCPI platform is open source and available at <a href="https://github.com/conduit-ucpi" target="_blank" rel="noopener noreferrer" className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 underline">github.com/conduit-ucpi</a>. This includes our smart contracts, backend services, and frontend applications. You can review every line of code, see our development history, and verify that the deployed contracts match the published source code. This transparency is core to our commitment to trustless, secure transactions.
+                    Yes! The entire StableDrop platform is open source and available at <a href="https://github.com/conduit-ucpi" target="_blank" rel="noopener noreferrer" className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 underline">github.com/conduit-ucpi</a>. This includes our smart contracts, backend services, and frontend applications. You can review every line of code, see our development history, and verify that the deployed contracts match the published source code. This transparency is core to our commitment to trustless, secure transactions.
                   </p>
                 </FAQItem>
               </Fade>

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import Modal from './Modal';
 import Button from './Button';
@@ -19,14 +20,17 @@ export default function PaymentQRModal({
   description,
   tokenSymbol = 'USDC'
 }: PaymentQRModalProps) {
+  const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle');
+
   const handleCopyLink = async () => {
     try {
       await navigator.clipboard.writeText(url);
-      alert('Payment link copied to clipboard!');
+      setCopyState('copied');
     } catch (err) {
       console.error('Failed to copy:', err);
-      alert('Failed to copy link. Please copy manually.');
+      setCopyState('failed');
     }
+    setTimeout(() => setCopyState('idle'), 3000);
   };
 
   return (
@@ -79,7 +83,7 @@ export default function PaymentQRModal({
               onClick={handleCopyLink}
               className="whitespace-nowrap flex-shrink-0"
             >
-              Copy
+              {copyState === 'copied' ? '✓ Copied' : copyState === 'failed' ? 'Select & copy above' : 'Copy'}
             </Button>
           </div>
         </div>

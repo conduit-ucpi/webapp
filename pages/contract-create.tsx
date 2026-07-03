@@ -10,6 +10,7 @@ import { useLazyUserData } from '@/hooks/useLazyUserData';
 import { useTokenBalance } from '@/hooks/useTokenBalance';
 import { useContractPayment } from '@/hooks/useContractPayment';
 import PaymentProgress from '@/components/contracts/PaymentProgress';
+import { useToastHelpers } from '@/components/ui/Toast';
 import QrPaymentPanel from '@/components/contracts/QrPaymentPanel';
 import { usePaymentSteps } from '@/hooks/usePaymentSteps';
 import Input from '@/components/ui/Input';
@@ -52,6 +53,7 @@ export default function ContractCreate() {
   const { approveUSDC, depositToContract, depositFundsAsProxy, getWeb3Service, transferToContract, getTokenBalance } = useSimpleEthers();
   const { runDirectPayment, runLegacyPayment } = useContractPayment();
   const { errors, validateForm, clearErrors } = useContractCreateValidation();
+  const toast = useToastHelpers();
 
   // Query parameters
   const {
@@ -226,7 +228,7 @@ export default function ContractCreate() {
         return createData.contractAddress;
       } catch (error: any) {
         console.error('ContractCreate: Failed to create contract for QR:', error);
-        alert(error.message || 'Failed to create contract');
+        toast.error('Could not prepare the payment', `${error.message || 'Something went wrong.'} Please try again.`);
         return undefined;
       }
     }, [contractId, config, address, authenticatedFetch, selectedTokenAddress, form, pendingExpiryTimestamp, getWeb3Service]),
@@ -398,7 +400,7 @@ export default function ContractCreate() {
       if (isInPopup) {
         setTimeout(() => window.close(), 2000);
       } else if (!isInIframe) {
-        alert(error.message || 'Payment failed');
+        toast.error('Payment failed', `${error.message || 'Something went wrong.'} No money has left your wallet — you can try again.`);
       }
     }
   };
@@ -570,7 +572,7 @@ export default function ContractCreate() {
         type: 'payment_error',
         error: error.message || 'Failed to create contract'
       });
-      alert(error.message || 'Failed to create contract');
+      toast.error('Payment failed', `${error.message || 'Something went wrong.'} Please try again.`);
     } finally {
       setIsLoading(false);
       setLoadingMessage('');

@@ -169,11 +169,19 @@ export default function CreateContractWizard() {
     return `${baseUrl}/contract-create?${params.toString()}`;
   };
 
-  // Generate payment link for created contract
+  // Generate payment link for created contract. Alongside the id, the link
+  // carries display hints (amount, description, seller, release date) so the
+  // buyer sees what they are being asked to pay before signing in; the pay
+  // page re-fetches the authoritative details after auth.
   const generateContractPaymentLink = (): string => {
     if (!createdContractId) return '';
     const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
-    return `${baseUrl}/contract-pay?contractId=${createdContractId}`;
+    const params = new URLSearchParams({ contractId: createdContractId });
+    if (form.amount) params.set('amount', form.amount);
+    if (form.description) params.set('desc', form.description);
+    if (user?.email) params.set('seller', user.email);
+    if (form.payoutTimestamp) params.set('release', form.payoutTimestamp.toString());
+    return `${baseUrl}/contract-pay?${params.toString()}`;
   };
 
   // Copy payment link to clipboard
@@ -597,7 +605,7 @@ export default function CreateContractWizard() {
                     onChange={(value) => setForm(prev => ({ ...prev, amount: value }))}
                     tokenSymbol={selectedTokenSymbol}
                     error={errors.amount}
-                    helpText="Amount must be over $1, or exactly 0.001 for testing"
+                    helpText="Minimum amount is $1"
                   />
                   <div className="mt-2 p-3 bg-info-50 border border-info-200 rounded-md">
                     <p className="text-sm text-info-800">
@@ -801,19 +809,6 @@ export default function CreateContractWizard() {
       default:
         result = false;
     }
-    console.log('🔧 canProceed', {
-      step: currentStep,
-      result: !!result,
-      isInstantPayment,
-      noBuyerEmail,
-      hasBuyerEmail: !!form.buyerEmail,
-      hasDescription: !!form.description,
-      hasAmount: !!form.amount,
-      payoutTimestamp: form.payoutTimestamp,
-      hasUser: !!user,
-      hasWallet: !!user?.walletAddress,
-      isLoading,
-    });
     return result;
   };
 

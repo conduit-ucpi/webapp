@@ -5,6 +5,7 @@ import { Contract, SubmitDisputeEntryRequest } from '@/types';
 import { formatTimestamp, displayCurrency, formatCurrency } from '@/utils/validation';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import { useToastHelpers } from '@/components/ui/Toast';
 import FarcasterNameDisplay from '@/components/ui/FarcasterNameDisplay';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { useAuth } from '@/components/auth';
@@ -22,6 +23,7 @@ export default function DisputeManagementModal({ isOpen, onClose, contract, onRe
   const { config } = useConfig();
   const { user } = useAuth();
   const { getWeb3Service } = useSimpleEthers();
+  const toast = useToastHelpers();
   const [reason, setReason] = useState('');
   const [refundPercent, setRefundPercent] = useState<number>(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -159,7 +161,9 @@ export default function DisputeManagementModal({ isOpen, onClose, contract, onRe
       console.log('✅ Backend notified. If agreement reached, admin vote will be submitted as deciding vote.');
 
       if (agreementReached) {
-        alert('Agreement reached! Your vote has been submitted to the blockchain. The admin will now submit the final deciding vote to execute the resolution.');
+        toast.success('Agreement reached!', 'Your vote has been recorded. The arbiter will now submit the final vote to complete the resolution.');
+      } else {
+        toast.success('Response submitted', 'Your dispute response has been recorded.');
       }
 
       // Reset form and close modal
@@ -169,7 +173,7 @@ export default function DisputeManagementModal({ isOpen, onClose, contract, onRe
       onClose();
     } catch (error: any) {
       console.error('Failed to submit dispute entry:', error);
-      alert(error.message || 'Failed to submit dispute entry');
+      toast.error('Failed to submit response', `${error.message || 'Something went wrong.'} Please try again.`);
     } finally {
       setIsSubmitting(false);
     }

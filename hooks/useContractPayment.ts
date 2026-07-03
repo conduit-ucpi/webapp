@@ -102,27 +102,27 @@ export function useContractPayment() {
           onProgress: (step, _message, _contractAddr) => {
             switch (step) {
               case 'contract_creation':
-                deps.setLoadingMessage('Step 1: Creating secure escrow...');
+                deps.setLoadingMessage('Setting up your secure escrow...');
                 break;
               case 'contract_confirmation':
-                deps.setLoadingMessage('Step 1.5: Waiting for contract creation...');
+                deps.setLoadingMessage('Waiting for the escrow to be confirmed...');
                 break;
               case 'contract_created':
-                deps.setLoadingMessage('Step 1 complete: Contract created');
+                deps.setLoadingMessage('Escrow ready');
                 break;
               case 'transfer':
                 deps.updatePaymentStep('transfer', 'active');
-                deps.setLoadingMessage('Step 2: Transferring funds to escrow...');
+                deps.setLoadingMessage('Moving your funds into escrow...');
                 break;
               case 'transfer_confirmation':
                 deps.updatePaymentStep('transfer', 'completed');
                 deps.updatePaymentStep('confirm', 'active');
-                deps.setLoadingMessage('Step 2.5: Confirming transfer...');
+                deps.setLoadingMessage('Confirming your payment...');
                 break;
               case 'activation':
                 deps.updatePaymentStep('confirm', 'completed');
                 deps.updatePaymentStep('activate', 'active');
-                deps.setLoadingMessage('Step 3: Activating contract...');
+                deps.setLoadingMessage('Finalizing...');
                 break;
               case 'complete':
                 deps.updatePaymentStep('activate', 'completed');

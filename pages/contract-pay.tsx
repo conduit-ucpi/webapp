@@ -11,6 +11,8 @@ import { useTokenBalance } from '@/hooks/useTokenBalance';
 import { useContractPayment } from '@/hooks/useContractPayment';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import { useToastHelpers } from '@/components/ui/Toast';
+import { MobileWalletPrompt } from '@/components/ui/MobileWalletPrompt';
 import ConnectPaymentStage from '@/components/contracts/ConnectPaymentStage';
 import WalletInfo from '@/components/ui/WalletInfo';
 import TokenGuide from '@/components/ui/TokenGuide';
@@ -28,7 +30,7 @@ type PaymentMethod = 'wallet' | 'qr' | null;
 
 export default function ContractPay() {
   const router = useRouter();
-  const { contractId } = router.query;
+  const { contractId, amount: hintAmount, desc: hintDesc, seller: hintSeller, release: hintRelease } = router.query;
   const { config } = useConfig();
   const { user, authenticatedFetch, isLoading: authLoading, isConnected, address, refreshUserData } = useAuth();
   const {
@@ -36,6 +38,7 @@ export default function ContractPay() {
     getWeb3Service, transferToContract, getTokenBalance
   } = useSimpleEthers();
   const { runDirectPayment } = useContractPayment();
+  const toast = useToastHelpers();
 
   // State
   const [isPaymentInProgress, setIsPaymentInProgress] = useState(false);
@@ -48,6 +51,7 @@ export default function ContractPay() {
   // not part of that subsystem (mobile-vs-deeplink rendering, clipboard copy).
   const [isMobileDevice, setIsMobileDevice] = useState(false);
   const [copiedAddress, setCopiedAddress] = useState(false);
+  const [mobilePromptDismissed, setMobilePromptDismissed] = useState(false);
 
   // Fetch + validate the payable contract by id (one-shot, lazy-auth aware).
   const { contract, isLoadingContract, contractError } = usePayableContract({
@@ -71,8 +75,6 @@ export default function ContractPay() {
     { id: 'activate', label: 'Activating contract', status: 'pending' },
     { id: 'complete', label: 'Payment complete', status: 'pending' }
   ]);
-
-  console.log('ContractPay: Query params', { contractId });
 
   // Extract token symbol from contract's currency field
   const contractTokenSymbol = useMemo(() => {
@@ -134,7 +136,7 @@ export default function ContractPay() {
         return resolvedAddress;
       } catch (error: any) {
         console.error('ContractPay: Failed to resolve contract for QR:', error);
-        alert(error.message || 'Failed to prepare contract');
+        toast.error('Could not prepare the payment', `${error.message || 'Something went wrong.'} Please try again.`);
         return undefined;
       }
     }, [contract, config, address, authenticatedFetch, selectedTokenAddress, getWeb3Service]),
@@ -152,7 +154,7 @@ export default function ContractPay() {
       return;
     }
 
-    console.log('ContractPay: Starting wallet payment process');
+    setMobilePromptDismissed(false);
 
     // Reset to the wallet-flow steps (labels are page-specific; the hook drives statuses).
     setPaymentSteps([
@@ -197,7 +199,7 @@ export default function ContractPay() {
         },
         onError: (error) => {
           console.error('ContractPay: Wallet payment failed:', error);
-          alert(error.message || 'Payment failed');
+          toast.error('Payment failed', `${error.message || 'Something went wrong.'} No money has left your wallet — you can try again.`);
         },
       }
     );
@@ -259,19 +261,50 @@ export default function ContractPay() {
   // clicks "Change payment method" while already connected.
   // ================================================================
   if (paymentMethod === null) {
+    // Display hints carried in the share link so the buyer can see what they're
+    // being asked to pay before signing in. These are unverified previews only;
+    // the authoritative details are re-fetched after auth and shown again.
+    const previewAmount = typeof hintAmount === 'string' && !isNaN(parseFloat(hintAmount)) ? parseFloat(hintAmount) : null;
+    const previewDesc = typeof hintDesc === 'string' && hintDesc.trim() ? hintDesc : null;
+    const previewSeller = typeof hintSeller === 'string' && hintSeller.trim() ? hintSeller : null;
+    const previewRelease = typeof hintRelease === 'string' && /^\d+$/.test(hintRelease) ? parseInt(hintRelease, 10) : null;
+    const hasPreview = previewAmount !== null || previewDesc !== null || previewSeller !== null;
+
     return (
         <div className="min-h-screen flex items-center justify-center bg-white dark:bg-secondary-900 transition-colors">
           <Head><title>{pageTitle}</title><meta name="viewport" content="width=device-width, initial-scale=1" /></Head>
           <div className="p-6 max-w-md mx-auto">
+            {/* What is being paid, shown before any sign-in is asked of the buyer */}
+            {hasPreview && (
+              <div className="bg-white dark:bg-secondary-800 border border-secondary-200 dark:border-secondary-700 rounded-lg p-5 mb-4 text-left shadow-sm">
+                <p className="text-sm text-secondary-500 dark:text-secondary-400">
+                  {previewSeller ? <><span className="font-medium text-secondary-900 dark:text-white">{previewSeller}</span> is requesting</> : 'You are being asked to pay'}
+                </p>
+                {previewAmount !== null && (
+                  <p className="text-3xl font-bold text-secondary-900 dark:text-white mt-1">
+                    ${previewAmount.toFixed(2)} <span className="text-base font-medium text-secondary-500">USDC</span>
+                  </p>
+                )}
+                {previewDesc && (
+                  <p className="text-sm text-secondary-700 dark:text-secondary-300 mt-2">{previewDesc}</p>
+                )}
+                {previewRelease !== null && previewRelease > 0 && (
+                  <p className="text-xs text-secondary-500 dark:text-secondary-400 mt-2">
+                    Held in escrow until {formatDateTimeWithTZ(previewRelease)} — released to the seller then, unless you dispute.
+                  </p>
+                )}
+              </div>
+            )}
+
             {/* Buyer protection callout */}
             <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6 text-left">
               <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-200 mb-2">
-                You have received a secure payment request
+                {hasPreview ? 'This payment is protected' : 'You have received a secure payment request'}
               </h3>
               <ul className="text-sm text-blue-800 dark:text-blue-300 space-y-1">
                 <li>Your payment is protected by escrow</li>
-                <li>Can dispute if there is a problem</li>
-                <li>No gas fees - we cover blockchain costs</li>
+                <li>You can dispute if there is a problem</li>
+                <li>No gas fees &mdash; we cover blockchain costs</li>
               </ul>
             </div>
 
@@ -430,14 +463,21 @@ export default function ContractPay() {
                   {isLoadingBalance ? (
                     <span className="animate-pulse">Loading...</span>
                   ) : (
-                    `${balanceFloat.toFixed(4)} ${selectedTokenSymbol}`
+                    `${balanceFloat.toFixed(2)} ${selectedTokenSymbol}`
                   )}
                 </span>
               </div>
             )}
             <div className="flex justify-between">
               <span className="text-secondary-600 dark:text-secondary-300">Seller:</span>
-              <span className="text-sm font-mono text-secondary-900 dark:text-white">{contract.sellerAddress.slice(0, 6)}...{contract.sellerAddress.slice(-4)}</span>
+              {contract.sellerEmail ? (
+                <span className="text-right">
+                  <span className="block text-sm text-secondary-900 dark:text-white">{contract.sellerEmail}</span>
+                  <span className="block text-xs font-mono text-secondary-400 dark:text-secondary-500">{contract.sellerAddress.slice(0, 6)}...{contract.sellerAddress.slice(-4)}</span>
+                </span>
+              ) : (
+                <span className="text-sm font-mono text-secondary-900 dark:text-white">{contract.sellerAddress.slice(0, 6)}...{contract.sellerAddress.slice(-4)}</span>
+              )}
             </div>
             <div className="flex justify-between">
               <span className="text-secondary-600 dark:text-secondary-300">Release date:</span>
@@ -477,6 +517,14 @@ export default function ContractPay() {
                 <PaymentProgress steps={paymentSteps} loadingMessage={loadingMessage} />
               )}
 
+              {/* External-wallet users on mobile must switch to their wallet app
+                  to approve the transfer — the app does not foreground itself. */}
+              <MobileWalletPrompt
+                isOpen={isPaymentInProgress && isMobileDevice && !mobilePromptDismissed && (user?.authProvider === 'walletconnect' || user?.authProvider === 'external_wallet')}
+                onClose={() => setMobilePromptDismissed(true)}
+                actionType="transaction"
+              />
+
               {/* Warnings */}
               {isSameAddress ? (
                 <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-4 mb-6">
@@ -490,8 +538,8 @@ export default function ContractPay() {
                   <div className="p-4">
                     <p className="text-sm text-red-800 dark:text-red-300 font-medium">Insufficient Balance</p>
                     <p className="text-sm text-red-700 dark:text-red-400 mt-1">
-                      You need {amountInTokens.toFixed(4)} {selectedTokenSymbol} but only have {balanceFloat.toFixed(4)} {selectedTokenSymbol}.
-                      Please add {(amountInTokens - balanceFloat).toFixed(4)} {selectedTokenSymbol} to your wallet before proceeding.
+                      You need {amountInTokens.toFixed(2)} {selectedTokenSymbol} but only have {balanceFloat.toFixed(2)} {selectedTokenSymbol}.
+                      Please add {(amountInTokens - balanceFloat).toFixed(2)} {selectedTokenSymbol} to your wallet before proceeding.
                     </p>
                   </div>
                   <div className="border-t border-red-200 dark:border-red-800 p-3">
@@ -514,7 +562,7 @@ export default function ContractPay() {
                   <p className="text-sm text-yellow-800 dark:text-yellow-300">
                     {isInstantPayment
                       ? `Your ${displayCurrency(contract.amount, contract.currency || 'microUSDC')} will be released to the seller immediately after payment confirmation.`
-                      : `Your ${displayCurrency(contract.amount, contract.currency || 'microUSDC')} will be held securely in escrow and released to the seller on the payout date unless you raise a dispute.`
+                      : `Your ${displayCurrency(contract.amount, contract.currency || 'microUSDC')} will be held securely in escrow and released to the seller on the release date unless you raise a dispute.`
                     }
                   </p>
                 </div>
@@ -538,14 +586,14 @@ export default function ContractPay() {
                     isSameAddress
                       ? 'Cannot pay yourself - buyer and seller must be different accounts'
                       : hasInsufficientBalance
-                      ? `Insufficient balance: need ${amountInTokens.toFixed(4)} ${selectedTokenSymbol}, have ${balanceFloat.toFixed(4)} ${selectedTokenSymbol}`
+                      ? `Insufficient balance: need ${amountInTokens.toFixed(2)} ${selectedTokenSymbol}, have ${balanceFloat.toFixed(2)} ${selectedTokenSymbol}`
                       : ''
                   }
                 >
                   {isPaymentInProgress ? (
                     <>
                       <LoadingSpinner className="w-4 h-4 mr-2" />
-                      {loadingMessage?.match(/Step \d+/)?.[0] || 'Processing...'}
+                      Processing...
                     </>
                   ) : (
                     `Pay ${displayCurrency(contract.amount, contract.currency || 'microUSDC')}`

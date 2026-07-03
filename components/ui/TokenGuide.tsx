@@ -15,6 +15,7 @@ export default function TokenGuide({ currency }: TokenGuideProps) {
   const { config } = useConfig();
   const { walletAddress } = useWalletAddress();
   const [copied, setCopied] = useState(false);
+  const [copyFailed, setCopyFailed] = useState(false);
   const [userCurrency, setUserCurrency] = useState<string | null>(null);
   const [onrampLoading, setOnrampLoading] = useState(false);
   const [onrampError, setOnrampError] = useState<string | null>(null);
@@ -148,7 +149,8 @@ export default function TokenGuide({ currency }: TokenGuideProps) {
       throw new Error('Both copy methods failed');
     } catch (error) {
       console.error('Failed to copy address:', error);
-      alert('Could not copy address. Please copy manually: ' + walletAddress);
+      setCopyFailed(true);
+      setTimeout(() => setCopyFailed(false), 4000);
     }
   };
 
@@ -249,6 +251,9 @@ export default function TokenGuide({ currency }: TokenGuideProps) {
               </button>
             </div>
             <code className="bg-blue-100 px-2 py-1 rounded text-xs whitespace-nowrap block mt-1 overflow-x-auto">{walletAddress}</code>
+            {copyFailed && (
+              <p className="text-xs text-red-600 mt-1">Could not copy automatically &mdash; select and copy the address above.</p>
+            )}
           </div>
           <div className="flex items-start">
             <span className="font-semibold mr-2">3.</span>

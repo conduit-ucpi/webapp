@@ -7,6 +7,7 @@ import { useTokenSelection } from '@/hooks/useTokenSelection';
 import { PendingContract } from '@/types';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import { useToastHelpers } from '@/components/ui/Toast';
 import { formatCurrency, formatDateTimeWithTZ, toUSDCForWeb3 } from '@/utils/validation';
 import { executeContractTransactionSequence } from '@/utils/contractTransactionSequence';
 import { createContractProgressHandler } from '@/utils/contractProgressHandler';
@@ -22,6 +23,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
   const { config } = useConfig();
   const { user, authenticatedFetch } = useAuth();
   const { fundAndSendTransaction, getUSDCBalance, approveUSDC, depositToContract, depositFundsAsProxy, getWeb3Service } = useSimpleEthers();
+  const toast = useToastHelpers();
 
   // Extract token symbol from contract's currency field
   const contractTokenSymbol = useMemo(() => {
@@ -109,7 +111,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
 
   const handleAccept = async () => {
     if (!config) {
-      alert('Configuration not loaded');
+      toast.error('Still loading', 'The page is still loading its configuration. Please try again in a moment.');
       return;
     }
 
@@ -228,7 +230,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
     } catch (error: any) {
       console.error('Contract acceptance failed:', error);
       setHasError(true);
-      alert(error.message || 'Failed to accept contract');
+      toast.error('Payment failed', `${error.message || 'Something went wrong.'} Please try again.`);
       // Only re-enable on error
       setIsLoading(false);
       setLoadingMessage('');

@@ -23,6 +23,7 @@ export default function WalletInfo({
   const [balance, setBalance] = useState<string>('0.0000');
   const [isLoadingBalance, setIsLoadingBalance] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [copyFailed, setCopyFailed] = useState(false);
 
   // Use provided token symbol/address or fall back to config
   // Memoized to prevent unnecessary re-calculations
@@ -113,7 +114,8 @@ export default function WalletInfo({
       throw new Error('Both copy methods failed');
     } catch (error) {
       console.error('Failed to copy address:', error);
-      alert('Could not copy address. Please copy manually: ' + address);
+      setCopyFailed(true);
+      setTimeout(() => setCopyFailed(false), 4000);
     }
   };
 
@@ -146,7 +148,7 @@ export default function WalletInfo({
                 type="button"
                 title={copied ? 'Address copied!' : 'Click to copy wallet address'}
               >
-                {copied ? '✓ Copied' : 'Copy'}
+                {copied ? '✓ Copied' : copyFailed ? 'Copy failed — long-press the address' : 'Copy'}
               </Button>
             </div>
           </div>

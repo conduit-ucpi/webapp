@@ -6,6 +6,7 @@ import { useAuth } from '@/components/auth';
 import { ESCROW_CONTRACT_ABI } from '@conduit-ucpi/sdk';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import { useToastHelpers } from '@/components/ui/Toast';
 import DisputeModal from './DisputeModal';
 import DisputeManagementModal from './DisputeManagementModal';
 import { formatDateTimeWithTZ } from '@/utils/validation';
@@ -25,6 +26,7 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
   const router = useRouter();
   const { config } = useConfig();
   const { user, claimFunds, raiseDispute } = useAuth();
+  const toast = useToastHelpers();
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
   const [hasError, setHasError] = useState(false);
@@ -32,50 +34,17 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
   const [showDisputeManagementModal, setShowDisputeManagementModal] = useState(false);
 
   const isPending = !('contractAddress' in contract);
-  
-  // Debug contract data when status is ERROR
-  if ((contract as Contract).status === 'ERROR') {
-    console.log('🔴 ContractActions: Contract has ERROR status. Debug info:', {
-      contractId: contract.id,
-      contractAddress: 'contractAddress' in contract ? (contract as Contract).contractAddress : 'N/A',
-      status: (contract as Contract).status,
-      ctaType: contract.ctaType,
-      ctaLabel: contract.ctaLabel,
-      isPending,
-      fullContract: contract
-    });
-  }
-  
+
   const handleOpenDisputeModal = () => {
-    console.log('🔧 ContractActions: handleOpenDisputeModal called', {
-      config: !!config,
-      isBuyer,
-      isPending,
-      contractStatus: (contract as Contract).status,
-      user: !!user,
-      isLoading,
-      shouldOpen: config && isBuyer && !isPending && (contract as Contract).status === 'ACTIVE' && user && !isLoading
-    });
-    
-    // Temporarily allow ERROR status for debugging
-    const allowedStatuses = ['ACTIVE', 'ERROR'];
-    const contractStatus = (contract as Contract).status;
-    
-    if (!config || !isBuyer || isPending || !allowedStatuses.includes(contractStatus) || !user || isLoading) {
-      console.log('🔴 ContractActions: Dispute modal blocked - conditions not met');
+    if (!config || !isBuyer || isPending || (contract as Contract).status !== 'ACTIVE' || !user || isLoading) {
       return;
     }
-    
-    console.log('✅ ContractActions: Opening dispute modal');
+
     setShowDisputeModal(true);
   };
 
   const handleRaiseDispute = async (reason: string, refundPercent: number) => {
-    // Temporarily allow ERROR status for debugging
-    const allowedStatuses = ['ACTIVE', 'ERROR'];
-    const contractStatus = (contract as Contract).status;
-    
-    if (!config || !isBuyer || isPending || !allowedStatuses.includes(contractStatus) || !user || isLoading) return;
+    if (!config || !isBuyer || isPending || (contract as Contract).status !== 'ACTIVE' || !user || isLoading) return;
 
     setIsLoading(true);
     setLoadingMessage('Raising dispute...');
@@ -119,15 +88,15 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
         }
       });
 
-      console.log('✅ Raise dispute successful! Transaction hash:', txHash);
       onAction(); // Refresh contracts
       setIsLoading(false);
       setLoadingMessage('');
       setShowDisputeModal(false);
+      toast.success('Dispute raised', 'The seller and arbiter have been notified. You can follow progress from your dashboard.');
     } catch (error: any) {
-      console.error('❌ Dispute failed:', error);
+      console.error('Dispute failed:', error);
       setHasError(true);
-      alert(error.message || 'Failed to raise dispute');
+      toast.error('Failed to raise dispute', `${error.message || 'Something went wrong.'} Please try again.`);
       // Only re-enable button on error
       setIsLoading(false);
       setLoadingMessage('');
@@ -136,21 +105,10 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
   };
 
   const handleClaimFunds = async () => {
-    console.log('🔵 handleClaimFunds called');
     if (!config || !isSeller || isPending || (contract as Contract).status !== 'EXPIRED' || !user || isLoading || isClaimingInProgress) {
-      console.log('🔴 handleClaimFunds early return', { 
-        config: !!config, 
-        isSeller, 
-        isPending, 
-        status: (contract as Contract).status,
-        user: !!user,
-        isLoading,
-        isClaimingInProgress
-      });
       return;
     }
 
-    console.log('🟢 Starting claim funds process');
     setIsLoading(true);
     setLoadingMessage('Claiming funds...');
     setHasError(false);
@@ -174,22 +132,18 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
         userAddress
       );
 
-      console.log('✅ Claim funds successful! Transaction hash:', txHash);
       onAction(); // Refresh contracts
       onClaimComplete?.(); // Re-enable all claim buttons after success
       // Keep local loading state to prevent double-clicks until page refreshes
-      console.log('📊 State after success:', { isLoading: true, hasError: false });
+      toast.success('Funds claimed', 'The money is on its way to your wallet.');
     } catch (error: any) {
-      console.error('❌ Claim failed:', error);
+      console.error('Claim failed:', error);
       setHasError(true);
-      alert(error.message || 'Failed to claim funds');
+      toast.error('Failed to claim funds', `${error.message || 'Something went wrong.'} Please try again.`);
       // Re-enable buttons on error
       setIsLoading(false);
       setLoadingMessage('');
       onClaimComplete?.(); // Re-enable all claim buttons after error
-      console.log('📊 State after error:', { isLoading: false, hasError: true });
-    } finally {
-      console.log('🏁 handleClaimFunds completed');
     }
   };
 

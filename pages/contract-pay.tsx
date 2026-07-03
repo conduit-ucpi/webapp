@@ -35,7 +35,7 @@ export default function ContractPay() {
     approveUSDC, depositToContract, depositFundsAsProxy,
     getWeb3Service, transferToContract, getTokenBalance
   } = useSimpleEthers();
-  const { runDirectPayment, runLegacyPayment } = useContractPayment();
+  const { runDirectPayment } = useContractPayment();
 
   // State
   const [isPaymentInProgress, setIsPaymentInProgress] = useState(false);
@@ -197,63 +197,6 @@ export default function ContractPay() {
         },
         onError: (error) => {
           console.error('ContractPay: Wallet payment failed:', error);
-          alert(error.message || 'Payment failed');
-        },
-      }
-    );
-  };
-
-  // Legacy payment handler (approve + deposit flow for backward compatibility)
-  const handleLegacyPayment = async () => {
-    if (!contract || !config || !address) {
-      console.error('ContractPay: Missing required data for payment');
-      return;
-    }
-
-    console.log('ContractPay: Starting legacy payment process');
-
-    // Reset payment steps to legacy steps (labels are page-specific).
-    setPaymentSteps([
-      { id: 'verify', label: 'Verifying wallet connection', status: 'pending' },
-      { id: 'approve', label: `Approving ${selectedTokenSymbol} payment`, status: 'pending' },
-      { id: 'escrow', label: 'Securing funds in escrow', status: 'pending' },
-      { id: 'confirm', label: 'Confirming transaction on blockchain', status: 'pending' },
-      { id: 'complete', label: 'Payment complete', status: 'pending' }
-    ]);
-
-    await runLegacyPayment(
-      {
-        contractserviceId: contract.id,
-        tokenAddress: selectedTokenAddress,
-        buyer: address,
-        seller: contract.sellerAddress,
-        amount: contract.amount,
-        expiryTimestamp: contract.expiryTimestamp,
-        description: contract.description
-      },
-      {
-        selectedTokenSymbol,
-        tokenBalance,
-        requiredAmount: contract.amount / 1000000,
-        authenticatedFetch,
-        transferToContract,
-        approveUSDC,
-        depositToContract,
-        depositFundsAsProxy,
-        getWeb3Service,
-        updatePaymentStep,
-        setLoadingMessage,
-        setBusy: setIsPaymentInProgress,
-        getActiveStep,
-        onSuccess: (result) => {
-          console.log('ContractPay: Legacy payment completed successfully:', result);
-          setLoadingMessage('Payment completed! Redirecting...');
-          setTimeout(() => {
-            router.push('/dashboard');
-          }, 2000);
-        },
-        onError: (error) => {
-          console.error('ContractPay: Legacy payment failed:', error);
           alert(error.message || 'Payment failed');
         },
       }

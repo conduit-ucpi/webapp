@@ -12,7 +12,6 @@ import {
   ScaleIcon,
   CreditCardIcon,
   ShieldCheckIcon,
-  DocumentTextIcon,
   UserCircleIcon,
   ArrowLeftOnRectangleIcon,
   Cog6ToothIcon,
@@ -97,11 +96,6 @@ export default function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
           href: '/buy-token',
           label: 'Buy Tokens',
           icon: CreditCardIcon,
-        },
-        {
-          href: '/whats-wrong-with-payments',
-          label: 'What\'s Wrong with Payments',
-          icon: DocumentTextIcon,
         },
         {
           href: '/faq',

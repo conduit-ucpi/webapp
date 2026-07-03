@@ -22,7 +22,7 @@ export default function HowItWorks() {
               Ready to try it yourself?
             </p>
             <div className="flex flex-wrap gap-4 justify-center">
-              <Link href="/#get-started">
+              <Link href="/create">
                 <Button size="lg" className="px-8">
                   Get Started
                 </Button>

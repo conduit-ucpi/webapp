@@ -29,21 +29,8 @@ import { WalletSigningError } from '@/lib/auth/errors/WalletSigningError';
 type StatusFilter = 'ALL' | 'ACTION_NEEDED' | 'ACTIVE' | 'COMPLETED' | 'DISPUTED';
 
 export default function EnhancedDashboard() {
-  // Track renders
-  const renderCount = React.useRef(0);
-  renderCount.current++;
-  console.log(`🔧 EnhancedDashboard RENDER #${renderCount.current}`);
-  
   const { user, authenticatedFetch } = useAuth();
   const { showToast } = useToast();
-  
-  // Track what's changing in auth
-  console.log(`🔧 Dashboard auth values:`, {
-    hasUser: !!user,
-    userEmail: user?.email,
-    hasAuthenticatedFetch: !!authenticatedFetch,
-    authFetchType: typeof authenticatedFetch
-  });
   const router = useRouter();
   const [allContracts, setAllContracts] = useState<(Contract | PendingContract)[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -284,17 +271,11 @@ export default function EnhancedDashboard() {
 
 
   useEffect(() => {
-    console.log('🔧 Dashboard useEffect triggered');
-    console.log('🔧 Dashboard auth state:', { hasAuthenticatedFetch: !!authenticatedFetch, hasFetched: hasFetched.current });
-
     // Only fetch if we have authenticatedFetch available AND haven't fetched yet
     // With lazy loading, user might be null but authenticatedFetch will trigger auth on first API call
     if (authenticatedFetch && !hasFetched.current) {
-      console.log('🔧 Calling fetchContracts - will trigger lazy auth if needed');
       hasFetched.current = true;
       fetchContracts();
-    } else {
-      console.log('🔧 Skipping fetchContracts - either no authenticatedFetch or already fetched');
     }
     // NOTE: authenticatedFetch is intentionally NOT a dependency — it is
     // recreated on every auth step, so depending on it re-runs this effect on
@@ -302,6 +283,29 @@ export default function EnhancedDashboard() {
     // auth context, and the hasFetched ref makes this a one-shot fetch, so a
     // mount-once effect is correct here.
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Keep the list fresh without user action: on-chain state changes (a buyer
+  // funds, a release date passes) otherwise never appear until manual Refresh.
+  // Poll only while the tab is visible, and re-fetch when the tab regains focus.
+  // A ref to the latest handleRefresh avoids resubscribing the timer per render
+  // while still seeing current state (demo mode, refresh-in-flight).
+  const handleRefreshRef = React.useRef<() => void>(() => {});
+  handleRefreshRef.current = () => {
+    if (!isRefreshing) handleRefresh();
+  };
+  useEffect(() => {
+    const refreshIfIdle = () => {
+      if (document.visibilityState === 'visible' && hasFetched.current) {
+        handleRefreshRef.current();
+      }
+    };
+    const interval = setInterval(refreshIfIdle, 45000);
+    document.addEventListener('visibilitychange', refreshIfIdle);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', refreshIfIdle);
+    };
   }, []);
 
   // Calculate stats from contracts
@@ -316,11 +320,15 @@ export default function EnhancedDashboard() {
       !('contractAddress' in c) || c.status === 'CREATED' || c.status === 'PENDING'
     ).length;
     
-    const completedCount = allContracts.filter(c => 
+    const completedCount = allContracts.filter(c =>
       'contractAddress' in c && (c.status === 'CLAIMED' || c.status === 'RESOLVED')
     ).length;
-    
-    const totalValue = allContracts.reduce((sum, c) => sum + (c.amount || 0), 0);
+
+    // Money currently held in escrow — only deployed, still-active contracts.
+    // Summing every historical/pending contract would show a meaningless figure.
+    const totalValue = allContracts
+      .filter(c => 'contractAddress' in c && (c.status === 'ACTIVE' || c.status === 'EXPIRED' || c.status === 'DISPUTED'))
+      .reduce((sum, c) => sum + (c.amount || 0), 0);
     
     const actionNeededCount = allContracts.filter(c => {
       // Use backend-provided CTA variant only (case-insensitive)
@@ -505,7 +513,7 @@ export default function EnhancedDashboard() {
           }
         />
         <StatsCard
-          title="Total Value"
+          title="In Escrow"
           value={displayCurrency(stats.totalValue, 'microUSDC')}
           icon={
             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">

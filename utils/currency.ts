@@ -21,7 +21,7 @@ export function formatCurrency(amount: string | number, currency: string = 'micr
     if (typeof amount === 'string') {
       numericAmount = parseFloat(amount);
       if (isNaN(numericAmount)) {
-        return { amount: '0.0000', currency: 'USDC', displayValue: '0.0000 USDC', numericAmount: 0 };
+        return { amount: '0.00', currency: 'USDC', displayValue: '0.00 USDC', numericAmount: 0 };
       }
     } else {
       numericAmount = amount;
@@ -42,8 +42,13 @@ export function formatCurrency(amount: string | number, currency: string = 'micr
 
     const displayCurrency = 'USDC';
 
-    // Format to 4 decimal places
-    const formattedAmount = displayAmount.toFixed(4);
+    // Money-style formatting: two decimals ($10.00, not $10.0000). Amounts
+    // with genuine sub-cent precision (e.g. 0.001 test payments) keep up to
+    // four decimals, trimming trailing zeros but never below two decimals.
+    const hasSubCent = Math.abs(displayAmount * 100 - Math.round(displayAmount * 100)) > 1e-9;
+    const formattedAmount = hasSubCent
+      ? displayAmount.toFixed(4).replace(/(\.\d{2}\d*?)0+$/, '$1')
+      : displayAmount.toFixed(2);
     const displayValue = `${formattedAmount} ${displayCurrency}`;
 
     return {
@@ -53,7 +58,7 @@ export function formatCurrency(amount: string | number, currency: string = 'micr
       numericAmount: displayAmount
     };
   } catch (error) {
-    return { amount: '0.0000', currency: 'USDC', displayValue: '0.0000 USDC', numericAmount: 0 };
+    return { amount: '0.00', currency: 'USDC', displayValue: '0.00 USDC', numericAmount: 0 };
   }
 }
 

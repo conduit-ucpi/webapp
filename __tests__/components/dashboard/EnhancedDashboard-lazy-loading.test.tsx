@@ -304,8 +304,8 @@ describe('EnhancedDashboard - Lazy Loading', () => {
   // output. The dashboard stats are derived directly from the transform:
   //   - "Active"  = deployed contracts (have contractAddress) with status ACTIVE
   //   - "Pending" = items without chainAddress (the pending branch)
-  //   - "Total Value" = sum of transformed `amount` (parseFloat of
-  //                     blockchainAmount || contract.amount)
+  //   - "In Escrow" = sum of transformed `amount` for deployed contracts
+  //                    still holding funds (ACTIVE/EXPIRED/DISPUTED)
   // If the refactor scrambles the branch selection or the amount mapping, the
   // rendered stats change and this test fails.
   it('transforms the combined-contracts payload into the correct unified stats', async () => {
@@ -401,11 +401,12 @@ describe('EnhancedDashboard - Lazy Loading', () => {
     // Pending card = 1 (the item with no chainAddress).
     expect(statValueFor('Pending')).toBe('1');
 
-    // Total Value = blockchainAmount (2000000) + contract.amount (500000) = 2500000 microUSDC.
+    // In Escrow = deployed ACTIVE/EXPIRED/DISPUTED only, so just the
+    // blockchainAmount (2000000); the pending item's 500000 is excluded.
     // Assert against the same formatter the component uses so we lock the
     // numeric transform without hard-coding the currency display format.
     const { displayCurrency } = require('@/utils/validation');
-    const expectedTotal = displayCurrency(2500000, 'microUSDC');
-    expect(screen.getByText(expectedTotal)).toBeInTheDocument();
+    const expectedTotal = displayCurrency(2000000, 'microUSDC');
+    expect(statValueFor('In Escrow')).toBe(expectedTotal);
   });
 });

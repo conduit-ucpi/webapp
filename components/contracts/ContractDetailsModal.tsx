@@ -5,6 +5,7 @@ import Button from '@/components/ui/Button';
 import StatusBadge from '@/components/ui/StatusBadge';
 import ExpandableHash from '@/components/ui/ExpandableHash';
 import { formatWalletAddress, displayCurrency, formatDateTimeWithTZ } from '@/utils/validation';
+import { getStatusDisplay } from '@/utils/statusDisplay';
 import { useAuth } from '@/components/auth';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import ContractActions from './ContractActions';
@@ -25,6 +26,7 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
   const { user } = useAuth();
   const { config } = useConfig();
   const [paymentLinkCopied, setPaymentLinkCopied] = useState(false);
+  const [contractIdCopied, setContractIdCopied] = useState(false);
 
   const isPending = isPendingContract(contract);
   const isBuyer = user?.walletAddress?.toLowerCase() ===
@@ -34,11 +36,17 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
 
   const status = isPending ? 'PENDING' : (contract as Contract).status;
 
-  // Generate payment link for pending contracts
+  // Generate payment link for pending contracts. Carries display hints so the
+  // buyer sees the payment summary before signing in (see contract-pay).
   const generatePaymentLink = (): string => {
     if (!contract.id) return '';
     const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
-    return `${baseUrl}/contract-pay?contractId=${contract.id}`;
+    const params = new URLSearchParams({ contractId: contract.id });
+    if (contract.amount) params.set('amount', (contract.amount / 1000000).toString());
+    if (contract.description) params.set('desc', contract.description);
+    if (contract.sellerEmail) params.set('seller', contract.sellerEmail);
+    if (contract.expiryTimestamp) params.set('release', contract.expiryTimestamp.toString());
+    return `${baseUrl}/contract-pay?${params.toString()}`;
   };
 
   // Copy payment link to clipboard
@@ -55,12 +63,8 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
     }
   };
   
-  // Use centralized status display with role information
-  // Use backend-provided status display
-  const statusDisplay = {
-    label: contract.ctaLabel || status || 'Unknown',
-    color: contract.ctaVariant?.toLowerCase() === 'action' ? 'bg-primary-50 text-primary-600 border-primary-200' : 'bg-secondary-50 text-secondary-600 border-secondary-200'
-  };
+  // Human-readable status via the shared status map.
+  const statusDisplay = getStatusDisplay(status);
   
   // Calculate time remaining for active contracts
   const timeRemaining = () => {
@@ -103,7 +107,7 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
           <div className="flex items-start space-x-3 mb-3 sm:mb-0">
             <StatusBadge 
               status={status} 
-              label={contract.ctaLabel || statusDisplay.label}
+              label={statusDisplay.label}
               color={statusDisplay.color}
             />
             <div>
@@ -333,8 +337,6 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
               {(contract as Contract).adminNotes!.map((note, index) => {
                 // Handle different possible structures of admin notes
                 const noteData = note as any; // Type assertion for flexibility
-                console.log('Admin note data structure:', noteData); // Debug all properties
-                
                 const noteText = noteData.note || noteData.content || 'No content';
                 const createdBy = noteData.createdBy || noteData.addedBy || 'Unknown';
                 const timestamp = noteData.timestamp || noteData.addedAt || noteData.createdAt;
@@ -346,8 +348,6 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
                 const sellerPercentage = noteData.sellerPercentage || noteData.sellerPercent;
                 const refundAmount = noteData.refundAmount;
                 const refundPercent = noteData.refundPercent || noteData.refundPercentage;
-                
-                console.log('Refund data check:', { refundAmount, refundPercent, buyerActualAmount, sellerActualAmount });
                 
                 return (
                   <div key={index} className="bg-white rounded p-3 border border-secondary-200">
@@ -477,14 +477,19 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
 
           {/* Copy Contract ID */}
           <Button
-            onClick={() => {
-              navigator.clipboard.writeText(contract.id || 'unknown');
-              // Could add a toast notification here
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(contract.id || 'unknown');
+                setContractIdCopied(true);
+                setTimeout(() => setContractIdCopied(false), 2500);
+              } catch (error) {
+                console.error('Failed to copy contract ID:', error);
+              }
             }}
             variant="outline"
             className="w-full sm:w-auto"
           >
-            Copy Contract ID
+            {contractIdCopied ? '✓ Copied' : 'Copy Contract ID'}
           </Button>
         </div>
       </div>

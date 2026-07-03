@@ -156,7 +156,7 @@ describe('DisputeResolutionModal', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Test contract')).toBeInTheDocument();
-      expect(screen.getByText('$0.0010')).toBeInTheDocument();
+      expect(screen.getByText('$0.001')).toBeInTheDocument();
     });
   });
 

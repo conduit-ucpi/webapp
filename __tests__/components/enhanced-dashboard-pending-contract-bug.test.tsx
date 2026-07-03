@@ -33,7 +33,7 @@ describe('Enhanced Dashboard Pending Contract Bug Fix', () => {
   });
 
   describe('Pending contract currency display in Enhanced Dashboard', () => {
-    it('should display 1000 microUSDC as $0.0010 (not $1000) for pending contracts', () => {
+    it('should display 1000 microUSDC as $0.001 (not $1000) for pending contracts', () => {
       const pendingContract = createPendingContract(1000); // 1000 microUSDC from MongoDB
 
       render(
@@ -46,14 +46,14 @@ describe('Enhanced Dashboard Pending Contract Bug Fix', () => {
       );
 
       // Should show the correct amount for pending contract
-      expect(screen.getByText('$0.0010')).toBeInTheDocument();
+      expect(screen.getByText('$0.001')).toBeInTheDocument();
 
       // Should NOT show the buggy amount
       expect(screen.queryByText('$1000')).not.toBeInTheDocument();
-      expect(screen.queryByText('$1000.0000')).not.toBeInTheDocument();
+      expect(screen.queryByText('$1000.00')).not.toBeInTheDocument();
     });
 
-    it('should display 250000 microUSDC as $0.2500 (not $250000) for pending contracts', () => {
+    it('should display 250000 microUSDC as $0.25 (not $250000) for pending contracts', () => {
       const pendingContract = createPendingContract(250000); // 250000 microUSDC = $0.25
 
       render(
@@ -66,13 +66,13 @@ describe('Enhanced Dashboard Pending Contract Bug Fix', () => {
       );
 
       // Should show the correct amount
-      expect(screen.getByText('$0.2500')).toBeInTheDocument();
+      expect(screen.getByText('$0.25')).toBeInTheDocument();
 
       // Should NOT show the buggy amount
       expect(screen.queryByText('$250000')).not.toBeInTheDocument();
     });
 
-    it('should display 1000000 microUSDC as $1.0000 (not $1000000) for pending contracts', () => {
+    it('should display 1000000 microUSDC as $1.00 (not $1000000) for pending contracts', () => {
       const pendingContract = createPendingContract(1000000); // 1000000 microUSDC = $1.00
 
       render(
@@ -85,7 +85,7 @@ describe('Enhanced Dashboard Pending Contract Bug Fix', () => {
       );
 
       // Should show the correct amount
-      expect(screen.getByText('$1.0000')).toBeInTheDocument();
+      expect(screen.getByText('$1.00')).toBeInTheDocument();
 
       // Should NOT show the buggy amount
       expect(screen.queryByText('$1000000')).not.toBeInTheDocument();
@@ -125,7 +125,7 @@ describe('Enhanced Dashboard Pending Contract Bug Fix', () => {
         />
       );
 
-      expect(screen.getByText('$5.0000')).toBeInTheDocument();
+      expect(screen.getByText('$5.00')).toBeInTheDocument();
 
       // Render active contract
       rerender(
@@ -138,7 +138,7 @@ describe('Enhanced Dashboard Pending Contract Bug Fix', () => {
       );
 
       // Should show the same amount for both pending and active
-      expect(screen.getByText('$5.0000')).toBeInTheDocument();
+      expect(screen.getByText('$5.00')).toBeInTheDocument();
     });
   });
 
@@ -157,11 +157,11 @@ describe('Enhanced Dashboard Pending Contract Bug Fix', () => {
       );
 
       // The fix: should show $0.001 (correct conversion from 1000 microUSDC)
-      expect(screen.getByText('$0.0010')).toBeInTheDocument();
+      expect(screen.getByText('$0.001')).toBeInTheDocument();
 
       // The bug: should NOT show $1000 (incorrect)
       expect(screen.queryByText('$1000')).not.toBeInTheDocument();
-      expect(screen.queryByText('$1000.0000')).not.toBeInTheDocument();
+      expect(screen.queryByText('$1000.00')).not.toBeInTheDocument();
 
       // Also verify it shows as pending
       expect(screen.getByText('Pending')).toBeInTheDocument();

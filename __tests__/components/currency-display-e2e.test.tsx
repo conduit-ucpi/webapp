@@ -38,7 +38,7 @@ describe('Currency Display E2E Test - Real Components with Real Functions', () =
   });
 
   describe('Real component with real functions - no mocking', () => {
-    it('should display 1000 microUSDC as $0.0010 (not $1000)', () => {
+    it('should display 1000 microUSDC as $0.001 (not $1000)', () => {
       const contract = createTestContract(1000); // 1000 microUSDC
 
       render(
@@ -49,14 +49,14 @@ describe('Currency Display E2E Test - Real Components with Real Functions', () =
       );
 
       // Should show the correct amount
-      expect(screen.getByText('$0.0010')).toBeInTheDocument();
+      expect(screen.getByText('$0.001')).toBeInTheDocument();
 
       // Should NOT show the buggy amount
-      expect(screen.queryByText('$1000.0000')).not.toBeInTheDocument();
+      expect(screen.queryByText('$1000.00')).not.toBeInTheDocument();
       expect(screen.queryByText('$1000')).not.toBeInTheDocument();
     });
 
-    it('should display 250000 microUSDC as $0.2500 (not $250000)', () => {
+    it('should display 250000 microUSDC as $0.25 (not $250000)', () => {
       const contract = createTestContract(250000); // 250000 microUSDC = $0.25
 
       render(
@@ -67,14 +67,14 @@ describe('Currency Display E2E Test - Real Components with Real Functions', () =
       );
 
       // Should show the correct amount
-      expect(screen.getByText('$0.2500')).toBeInTheDocument();
+      expect(screen.getByText('$0.25')).toBeInTheDocument();
 
       // Should NOT show the buggy amount
-      expect(screen.queryByText('$250000.0000')).not.toBeInTheDocument();
+      expect(screen.queryByText('$250000.00')).not.toBeInTheDocument();
       expect(screen.queryByText('$250000')).not.toBeInTheDocument();
     });
 
-    it('should display 1000000 microUSDC as $1.0000 (not $1000000)', () => {
+    it('should display 1000000 microUSDC as $1.00 (not $1000000)', () => {
       const contract = createTestContract(1000000); // 1000000 microUSDC = $1.00
 
       render(
@@ -85,14 +85,14 @@ describe('Currency Display E2E Test - Real Components with Real Functions', () =
       );
 
       // Should show the correct amount
-      expect(screen.getByText('$1.0000')).toBeInTheDocument();
+      expect(screen.getByText('$1.00')).toBeInTheDocument();
 
       // Should NOT show the buggy amount
-      expect(screen.queryByText('$1000000.0000')).not.toBeInTheDocument();
+      expect(screen.queryByText('$1000000.00')).not.toBeInTheDocument();
       expect(screen.queryByText('$1000000')).not.toBeInTheDocument();
     });
 
-    it('should display 10000000 microUSDC as $10.0000 (not $10000000)', () => {
+    it('should display 10000000 microUSDC as $10.00 (not $10000000)', () => {
       const contract = createTestContract(10000000); // 10000000 microUSDC = $10.00
 
       render(
@@ -103,10 +103,10 @@ describe('Currency Display E2E Test - Real Components with Real Functions', () =
       );
 
       // Should show the correct amount
-      expect(screen.getByText('$10.0000')).toBeInTheDocument();
+      expect(screen.getByText('$10.00')).toBeInTheDocument();
 
       // Should NOT show the buggy amount
-      expect(screen.queryByText('$10000000.0000')).not.toBeInTheDocument();
+      expect(screen.queryByText('$10000000.00')).not.toBeInTheDocument();
       expect(screen.queryByText('$10000000')).not.toBeInTheDocument();
     });
   });
@@ -122,7 +122,7 @@ describe('Currency Display E2E Test - Real Components with Real Functions', () =
         />
       );
 
-      expect(screen.getByText('$0.0000')).toBeInTheDocument();
+      expect(screen.getByText('$0.00')).toBeInTheDocument();
     });
 
     it('should handle very small amounts correctly', () => {
@@ -136,7 +136,7 @@ describe('Currency Display E2E Test - Real Components with Real Functions', () =
       );
 
       // 1 microUSDC is so small it rounds to $0.00
-      expect(screen.getByText('$0.0000')).toBeInTheDocument();
+      expect(screen.getByText('$0.00')).toBeInTheDocument();
     });
 
     it('should handle large amounts correctly', () => {
@@ -149,7 +149,7 @@ describe('Currency Display E2E Test - Real Components with Real Functions', () =
         />
       );
 
-      expect(screen.getByText('$100.0000')).toBeInTheDocument();
+      expect(screen.getByText('$100.00')).toBeInTheDocument();
       expect(screen.queryByText('$100000000')).not.toBeInTheDocument();
     });
   });
@@ -169,11 +169,11 @@ describe('Currency Display E2E Test - Real Components with Real Functions', () =
       );
 
       // The fix: should show $0.001 (correct)
-      expect(screen.getByText('$0.0010')).toBeInTheDocument();
+      expect(screen.getByText('$0.001')).toBeInTheDocument();
 
       // The bug: should NOT show $1000 (incorrect)
       expect(screen.queryByText('$1000')).not.toBeInTheDocument();
-      expect(screen.queryByText('$1000.0000')).not.toBeInTheDocument();
+      expect(screen.queryByText('$1000.00')).not.toBeInTheDocument();
     });
   });
 
@@ -181,10 +181,10 @@ describe('Currency Display E2E Test - Real Components with Real Functions', () =
     it('should verify the function behavior matches component behavior', () => {
       // Test the exact function calls that components make
       const testCases = [
-        { microUSDC: 1000, expected: '$0.0010' },
-        { microUSDC: 250000, expected: '$0.2500' },
-        { microUSDC: 1000000, expected: '$1.0000' },
-        { microUSDC: 10000000, expected: '$10.0000' },
+        { microUSDC: 1000, expected: '$0.001' },
+        { microUSDC: 250000, expected: '$0.25' },
+        { microUSDC: 1000000, expected: '$1.00' },
+        { microUSDC: 10000000, expected: '$10.00' },
       ];
 
       testCases.forEach(({ microUSDC, expected }) => {
@@ -199,15 +199,15 @@ describe('Currency Display E2E Test - Real Components with Real Functions', () =
 
       // 'USDC' parameter: treat as already-converted USDC
       const result1 = displayCurrency(amount, 'USDC');
-      expect(result1).toBe('$1000.0000'); // 1000 USDC = $1000
+      expect(result1).toBe('$1000.00'); // 1000 USDC = $1000
 
       // 'microUSDC' parameter: convert from microUSDC to USDC
       const result2 = displayCurrency(amount, 'microUSDC');
-      expect(result2).toBe('$0.0010'); // 1000 microUSDC = $0.001
+      expect(result2).toBe('$0.001'); // 1000 microUSDC = $0.001
 
       // 'UNKNOWN' parameter: default to microUSDC conversion
       const result3 = displayCurrency(amount, 'UNKNOWN');
-      expect(result3).toBe('$0.0010'); // defaults to microUSDC conversion
+      expect(result3).toBe('$0.001'); // defaults to microUSDC conversion
 
       // Only microUSDC and unknown should behave the same
       expect(result2).toBe(result3);

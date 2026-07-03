@@ -234,6 +234,6 @@ describe('ContractAcceptance API Call Monitoring', () => {
     expect(componentSource).toContain('catch (fundingError)');
     expect(componentSource).toContain('throw fundingError');
     expect(componentSource).toContain('catch (error: any)');
-    expect(componentSource).toContain('alert(error.message');
+    expect(componentSource).toContain("toast.error('Payment failed'");
   });
 });

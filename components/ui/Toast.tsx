@@ -201,10 +201,17 @@ function ToastItem({ toast, onDismiss }: ToastItemProps) {
   );
 }
 
-// Convenience hook for common toast types
+// Convenience hook for common toast types.
+// Tolerates a missing ToastProvider (falls back to console) so components
+// remain usable in embedded/standalone render contexts and unit tests.
 export function useToastHelpers() {
-  const { showToast } = useToast();
-  
+  const context = useContext(ToastContext);
+  const showToast = context
+    ? context.showToast
+    : (toast: Omit<Toast, 'id'>) => {
+        console.warn(`Toast (no provider): [${toast.type}] ${toast.title}${toast.message ? ` — ${toast.message}` : ''}`);
+      };
+
   return {
     success: (title: string, message?: string) => {
       showToast({ type: 'success', title, message });

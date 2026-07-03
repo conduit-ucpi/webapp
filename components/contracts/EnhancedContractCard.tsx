@@ -3,9 +3,10 @@ import { Contract, PendingContract } from '@/types';
 import { formatWalletAddress, displayCurrency, formatDateTimeWithTZ } from '@/utils/validation';
 import Button from '@/components/ui/Button';
 import { useAuth } from '@/components/auth';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import FarcasterNameDisplay from '@/components/ui/FarcasterNameDisplay';
 import { emailsEqual } from '@/utils/address';
+import { getStatusDisplay } from '@/utils/statusDisplay';
 
 interface EnhancedContractCardProps {
   contract: Contract | PendingContract;
@@ -75,7 +76,7 @@ export default function EnhancedContractCard({
       'RAISE_DISPUTE': 'dispute',
       'CLAIM_FUNDS': 'claim'
     };
-    
+
     // Map CTA types to button variants
     const variantMap: Record<string, 'primary' | 'secondary' | 'outline' | 'ghost' | 'success' | 'error'> = {
       'ACCEPT_CONTRACT': 'primary',
@@ -83,15 +84,23 @@ export default function EnhancedContractCard({
       'RAISE_DISPUTE': 'error',
       'CLAIM_FUNDS': 'success'
     };
-    
+
+    // Dispute/claim buttons open the details modal where the action is
+    // confirmed and executed — label them as a review step so the button
+    // does what it says, rather than promising the action itself.
+    const labelOverrides: Record<string, string> = {
+      'RAISE_DISPUTE': 'Review & dispute',
+      'CLAIM_FUNDS': 'Review & claim'
+    };
+
     // Check if this component directly handles the action
     const action = actionMap[contract.ctaType as keyof typeof actionMap];
-    
+
     // If we don't have a specific handler, still show the button
     // but use 'view-details' as the action to open the details modal
     // where ContractActions component can handle it
     return {
-      label: contract.ctaLabel,
+      label: labelOverrides[contract.ctaType] || contract.ctaLabel,
       action: action || 'view-details',
       variant: variantMap[contract.ctaType] || 'primary'
     };
@@ -102,44 +111,33 @@ export default function EnhancedContractCard({
     return 'status' in contract ? contract.status : 'PENDING';
   }, [contract]);
 
-  // Use backend-provided status display only
+  // Human-readable status via the shared status map.
   const statusDisplay = useMemo(() => {
-    // For regular contracts, use the status field from the backend
-    let displayStatus = status;
-
-    // For pending contracts without a status field, show PENDING
-    if (isPending && !displayStatus) {
-      displayStatus = 'PENDING';
-    }
-
-    // Map status to appropriate colors
-    const getStatusColor = (status: string) => {
-      switch (status?.toUpperCase()) {
-        case 'ACTIVE':
-          return 'bg-success-50 text-success-600 border-success-200';
-        case 'DISPUTED':
-          return 'bg-error-50 text-error-600 border-error-200';
-        case 'EXPIRED':
-          return 'bg-warning-50 text-warning-600 border-warning-200';
-        case 'CLAIMED':
-        case 'RESOLVED':
-          return 'bg-secondary-50 text-secondary-600 border-secondary-200';
-        case 'PENDING':
-          return 'bg-primary-50 text-primary-600 border-primary-200';
-        default:
-          return 'bg-secondary-50 text-secondary-600 border-secondary-200';
-      }
-    };
-
-    // Pending contracts are awaiting buyer funding — make that explicit in the UI.
-    const label =
-      displayStatus?.toUpperCase() === 'PENDING' ? 'PENDING FUNDING' : (displayStatus || 'Unknown');
-
-    return {
-      label,
-      color: getStatusColor(displayStatus || 'UNKNOWN'),
-    };
+    const displayStatus = isPending && !status ? 'PENDING' : status;
+    return getStatusDisplay(displayStatus);
   }, [status, isPending]);
+
+  // Copy-payment-link affordance for sellers of unpaid requests. The link
+  // carries display hints so the buyer sees the summary before signing in.
+  const [linkCopied, setLinkCopied] = useState(false);
+  const showShareLink = isPendingContract(contract) && isSeller && !!contract.id;
+  const handleCopyPaymentLink = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!isPendingContract(contract) || !contract.id) return;
+    const params = new URLSearchParams({ contractId: contract.id });
+    if (contract.amount) params.set('amount', (contract.amount / 1000000).toString());
+    if (contract.description) params.set('desc', contract.description);
+    if (contract.sellerEmail) params.set('seller', contract.sellerEmail);
+    if (contract.expiryTimestamp) params.set('release', contract.expiryTimestamp.toString());
+    const link = `${window.location.origin}/contract-pay?${params.toString()}`;
+    try {
+      await navigator.clipboard.writeText(link);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2500);
+    } catch (err) {
+      console.error('Failed to copy payment link:', err);
+    }
+  };
   
   return (
     <div 
@@ -188,7 +186,7 @@ export default function EnhancedContractCard({
               {timeRemaining.text}
             </span>
             <span className="text-xs text-secondary-500">
-              Expires {formatDateTimeWithTZ(contract.expiryTimestamp)}
+              Releases {formatDateTimeWithTZ(contract.expiryTimestamp)}
             </span>
           </div>
           <div className="w-full bg-secondary-200 rounded-full h-2">
@@ -246,6 +244,15 @@ export default function EnhancedContractCard({
             className="w-full sm:w-auto min-h-[44px]" // Mobile touch target
           >
             {primaryAction.label}
+          </Button>
+        )}
+        {showShareLink && (
+          <Button
+            onClick={handleCopyPaymentLink}
+            variant="outline"
+            className="w-full sm:w-auto min-h-[44px]"
+          >
+            {linkCopied ? '✓ Link copied' : 'Copy payment link'}
           </Button>
         )}
         <Button

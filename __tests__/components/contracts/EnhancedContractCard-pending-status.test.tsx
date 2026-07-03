@@ -38,10 +38,10 @@ const PENDING: PendingContract = {
 };
 
 describe('EnhancedContractCard — pending status label', () => {
-  it('renders "PENDING FUNDING" (not just "PENDING") for a pending contract', () => {
+  it("renders the human 'Awaiting payment' label (not raw PENDING) for a pending contract", () => {
     render(<EnhancedContractCard contract={PENDING} />);
 
-    expect(screen.getAllByText('PENDING FUNDING').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Awaiting payment').length).toBeGreaterThan(0);
     // Make sure the bare "PENDING" label doesn't appear anywhere as a status.
     expect(screen.queryByText(/^PENDING$/)).not.toBeInTheDocument();
   });

@@ -15,8 +15,8 @@ describe('Double Conversion Prevention Test', () => {
       // AFTER the fix: this should show $0.001 (correct!)
       const result = displayCurrency(contractAmountFromMongo, 'microUSDC');
 
-      expect(result).toBe('$0.0010'); // Correct: 1000 microUSDC = $0.001 USDC
-      expect(result).not.toBe('$1000.0000'); // Wrong: this would be the bug
+      expect(result).toBe('$0.001'); // Correct: 1000 microUSDC = $0.001 USDC
+      expect(result).not.toBe('$1000.00'); // Wrong: this would be the bug
     });
 
     it('should show 1000000 microUSDC as $1.00 (NOT $1000000)', () => {
@@ -24,18 +24,18 @@ describe('Double Conversion Prevention Test', () => {
 
       const result = displayCurrency(contractAmountFromMongo, 'microUSDC');
 
-      expect(result).toBe('$1.0000'); // Correct: 1000000 microUSDC = $1.00 USDC
-      expect(result).not.toBe('$1000000.0000'); // Wrong: would be 1000x too large
+      expect(result).toBe('$1.00'); // Correct: 1000000 microUSDC = $1.00 USDC
+      expect(result).not.toBe('$1000000.00'); // Wrong: would be 1000x too large
     });
   });
 
   describe('Simulation of old buggy behavior vs new correct behavior', () => {
     it('should demonstrate the difference between old and new behavior', () => {
       const testCases = [
-        { microUSDC: 1000, correctUSDC: '$0.0010', buggyUSDC: '$1000.0000' },
-        { microUSDC: 250000, correctUSDC: '$0.2500', buggyUSDC: '$250000.0000' },
-        { microUSDC: 1000000, correctUSDC: '$1.0000', buggyUSDC: '$1000000.0000' },
-        { microUSDC: 5000000, correctUSDC: '$5.0000', buggyUSDC: '$5000000.0000' },
+        { microUSDC: 1000, correctUSDC: '$0.001', buggyUSDC: '$1000.00' },
+        { microUSDC: 250000, correctUSDC: '$0.25', buggyUSDC: '$250000.00' },
+        { microUSDC: 1000000, correctUSDC: '$1.00', buggyUSDC: '$1000000.00' },
+        { microUSDC: 5000000, correctUSDC: '$5.00', buggyUSDC: '$5000000.00' },
       ];
 
       testCases.forEach(({ microUSDC, correctUSDC, buggyUSDC }) => {
@@ -56,11 +56,11 @@ describe('Double Conversion Prevention Test', () => {
 
       // With 'USDC' parameter: treat as 1000 USDC (already converted)
       const usdcParamResult = displayCurrency(amount, 'USDC');
-      expect(usdcParamResult).toBe('$1000.0000'); // 1000 USDC displayed as $1000
+      expect(usdcParamResult).toBe('$1000.00'); // 1000 USDC displayed as $1000
 
       // With 'microUSDC' parameter: treat as 1000 microUSDC (needs conversion)
       const microUsdcParamResult = displayCurrency(amount, 'microUSDC');
-      expect(microUsdcParamResult).toBe('$0.0010'); // 1000 microUSDC = $0.001
+      expect(microUsdcParamResult).toBe('$0.001'); // 1000 microUSDC = $0.001
 
       // Parameters behave differently based on input currency
       expect(usdcParamResult).not.toBe(microUsdcParamResult);
@@ -72,12 +72,12 @@ describe('Double Conversion Prevention Test', () => {
 
       // CORRECT: Using 'microUSDC' parameter for microUSDC amounts
       const correctResult = displayCurrency(microUsdcFromDatabase, 'microUSDC');
-      expect(correctResult).toBe('$0.2500');
+      expect(correctResult).toBe('$0.25');
 
       // WRONG: Using 'USDC' parameter for microUSDC amounts (would cause the bug)
       // This would show $250,000 instead of $0.25 - but that's what caller asked for
       const wrongParameterResult = displayCurrency(microUsdcFromDatabase, 'USDC');
-      expect(wrongParameterResult).toBe('$250000.0000');
+      expect(wrongParameterResult).toBe('$250000.00');
 
       // The fix is: use the correct parameter for your data type
       expect(correctResult).not.toBe(wrongParameterResult);
@@ -90,15 +90,15 @@ describe('Double Conversion Prevention Test', () => {
       const amount = 10000; // 10000 microUSDC = $0.01 USDC
 
       const result = displayCurrency(amount, 'microUSDC');
-      expect(result).toBe('$0.0100'); // Should be 1 cent
-      expect(result).not.toBe('$10000.0000'); // Should NOT be $10,000
+      expect(result).toBe('$0.01'); // Should be 1 cent
+      expect(result).not.toBe('$10000.00'); // Should NOT be $10,000
     });
 
     it('should verify no conversion is applied twice', () => {
       // If conversion was applied twice, these would be way off
       const testCases = [
-        { input: 1000000, expected: '$1.0000', notExpected: '$0.0010' }, // 1 USDC
-        { input: 5000000, expected: '$5.0000', notExpected: '$0.0050' }, // 5 USDC
+        { input: 1000000, expected: '$1.00', notExpected: '$0.001' }, // 1 USDC
+        { input: 5000000, expected: '$5.00', notExpected: '$0.005' }, // 5 USDC
       ];
 
       testCases.forEach(({ input, expected, notExpected }) => {

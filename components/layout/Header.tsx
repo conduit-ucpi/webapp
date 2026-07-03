@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useNavigation } from '@/components/navigation/NavigationProvider';
+import { useAuth } from '@/components/auth';
 import { getSiteNameFromDomain } from '@/utils/siteName';
 import MobileDrawer from './MobileDrawer';
 import {
@@ -9,17 +10,28 @@ import {
   ArrowLeftIcon,
 } from '@heroicons/react/24/outline';
 
+// Desktop-only nav links; the full list lives in the drawer.
+const DESKTOP_NAV_LINKS = [
+  { href: '/how-it-works', label: 'How It Works' },
+  { href: '/merchant-savings-calculator', label: 'Pricing' },
+  { href: '/faq', label: 'FAQ' },
+];
+
 const SSR_DEFAULT_SITE_NAME = 'StableDrop';
 
 export default function Header() {
   const router = useRouter();
   const [siteName, setSiteName] = useState(SSR_DEFAULT_SITE_NAME);
+  // Render auth-dependent UI only after mount to avoid SSR hydration mismatch.
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setSiteName(getSiteNameFromDomain());
+    setMounted(true);
   }, []);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { canGoBack, goBack } = useNavigation();
+  const { isConnected } = useAuth();
 
   // Don't show header on plugin pages
   if (router.pathname === '/contract-create') {
@@ -57,8 +69,39 @@ export default function Header() {
               </Link>
             </div>
 
-            {/* Right side: Menu */}
-            <div className="flex items-center">
+            {/* Right side: desktop nav + sign-in, then menu */}
+            <div className="flex items-center gap-1">
+              <nav className="hidden md:flex items-center gap-1 mr-2" aria-label="Primary">
+                {DESKTOP_NAV_LINKS.map((link) => (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      router.pathname === link.href
+                        ? 'text-primary-700 dark:text-primary-300 bg-primary-50 dark:bg-primary-900/20'
+                        : 'text-secondary-600 dark:text-secondary-300 hover:bg-secondary-100 dark:hover:bg-secondary-800'
+                    }`}
+                  >
+                    {link.label}
+                  </Link>
+                ))}
+                {mounted && (
+                  <Link
+                    href="/dashboard"
+                    className={
+                      isConnected
+                        ? `px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                            router.pathname === '/dashboard'
+                              ? 'text-primary-700 dark:text-primary-300 bg-primary-50 dark:bg-primary-900/20'
+                              : 'text-secondary-600 dark:text-secondary-300 hover:bg-secondary-100 dark:hover:bg-secondary-800'
+                          }`
+                        : 'ml-1 px-4 py-2 rounded-lg text-sm font-medium bg-primary-600 text-white hover:bg-primary-700 transition-colors'
+                    }
+                  >
+                    {isConnected ? 'Dashboard' : 'Get Started'}
+                  </Link>
+                )}
+              </nav>
               <button
                 onClick={() => setMobileMenuOpen(true)}
                 className="p-2 rounded-lg hover:bg-secondary-100 dark:hover:bg-secondary-800 transition-colors"

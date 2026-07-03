@@ -79,9 +79,12 @@ export default function Merchant() {
                 </span>
               </motion.div>
 
-              <motion.div variants={heroChild} className="mt-8">
+              <motion.div variants={heroChild} className="mt-8 flex flex-wrap gap-3">
+                <Link href="/dashboard">
+                  <button className={btnPrimary}>Get Started</button>
+                </Link>
                 <Link href="/plugins">
-                  <button className={btnPrimary}>Explore Plugins</button>
+                  <button className={btnOutline}>Explore Plugins</button>
                 </Link>
               </motion.div>
 
@@ -191,7 +194,7 @@ export default function Merchant() {
                     );
                   }}
                 >
-                  See what your customers see
+                  Try the demo checkout
                 </button>
                 <a
                   href="https://youtu.be/uUSlf3FmazQ"
@@ -206,7 +209,7 @@ export default function Merchant() {
                 </Link>
               </div>
               <p className="mt-3 text-xs text-secondary-400 dark:text-secondary-500">
-                Pay $0.001 USDC (try for free)
+                Opens a real checkout for a $0.001 USDC demo purchase from our test store &mdash; effectively free, and nothing is shipped.
               </p>
             </Fade>
           </div>

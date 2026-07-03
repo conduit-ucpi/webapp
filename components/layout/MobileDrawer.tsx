@@ -329,9 +329,16 @@ export default function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
                     </button>
                   </div>
                 ) : (
-                  <div className="text-center">
-                    <p className="text-xs text-secondary-500 dark:text-secondary-400 mb-2">
-                      Connect wallet to access all features
+                  <div className="space-y-2">
+                    <button
+                      onClick={() => handleNavigation('/dashboard')}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                    >
+                      <WalletIcon className="w-4 h-4" />
+                      <span className="text-sm font-medium">Get Started</span>
+                    </button>
+                    <p className="text-xs text-secondary-500 dark:text-secondary-400 text-center">
+                      Sign in with email, Google, or a crypto wallet
                     </p>
                   </div>
                 )}

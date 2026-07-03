@@ -157,7 +157,7 @@ export default function Wallet() {
           .then(balance => ({ symbol: token.symbol, balance }))
           .catch(err => {
             console.error(`Failed to fetch ${token.symbol} balance:`, err);
-            return { symbol: token.symbol, balance: 'Error' };
+            return { symbol: token.symbol, balance: 'Unavailable' };
           })
       );
 
@@ -191,7 +191,7 @@ export default function Wallet() {
         errorType: error ? error.constructor.name : 'unknown'
       });
       console.error('Error loading balances:', error);
-      setBalances({ native: 'Error', tokens: {} });
+      setBalances({ native: 'Unavailable', tokens: {} });
     } finally {
       setIsLoadingBalances(false);
       mLog.info('WalletPage', 'Balance loading complete');

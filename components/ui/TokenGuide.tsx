@@ -220,7 +220,7 @@ export default function TokenGuide({ currency }: TokenGuideProps) {
       {/* Manual instructions */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
         <h3 className="text-lg font-semibold text-blue-900 mb-3">
-          {showOnramp || showCoinbase ? 'Alternative: Manual Transfer' : `How to Add ${tokenSymbol} to Your Wallet/How to get cash from your Wallet`}
+          {showOnramp || showCoinbase ? 'Alternative: Manual Transfer' : `How to add ${tokenSymbol} to your wallet`}
         </h3>
         <div className="space-y-3 text-sm text-blue-800">
           <div className="flex items-start">

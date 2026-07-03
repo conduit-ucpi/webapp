@@ -60,10 +60,10 @@ export default function WalletInfo({
         try {
           const formattedBalance = await getTokenBalance(address, effectiveTokenAddress);
           const balanceNumber = parseFloat(formattedBalance);
-          setBalance(balanceNumber.toFixed(4));
+          setBalance(balanceNumber.toFixed(2));
         } catch (error) {
           console.error(`Failed to fetch ${displayTokenSymbol} balance:`, error);
-          setBalance('Error');
+          setBalance('unavailable');
         } finally {
           setIsLoadingBalance(false);
         }
@@ -128,7 +128,7 @@ export default function WalletInfo({
 
   return (
     <div className={`bg-secondary-50 rounded-lg p-4 border border-secondary-200 ${className}`}>
-      <h3 className="text-sm font-medium text-secondary-900 mb-3">YOUR wallet information</h3>
+      <h3 className="text-sm font-medium text-secondary-900 mb-3">Your wallet</h3>
 
       <div className="space-y-3">
         {/* Wallet Address */}
@@ -161,6 +161,8 @@ export default function WalletInfo({
             <span className="text-xs font-medium text-secondary-900">
               {isLoadingBalance ? (
                 <span className="animate-pulse">Loading...</span>
+              ) : balance === 'unavailable' ? (
+                <span className="text-secondary-500">Couldn&apos;t load &mdash; refresh to retry</span>
               ) : (
                 `${balance} ${displayTokenSymbol}`
               )}

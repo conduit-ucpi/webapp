@@ -54,17 +54,17 @@ export default function DashboardTour() {
     },
   ];
 
+  // The tour no longer auto-launches on first visit (a full-screen overlay one
+  // second after landing competed with the onboarding checklist and email
+  // prompt). The checklist's "Start Tour" item dispatches this event instead.
   useEffect(() => {
-    // Check if user is authenticated and hasn't seen the tour
-    if (user && config && !localStorage.getItem('dashboardTourCompleted')) {
-      // Small delay to ensure page is fully loaded
-      const timer = setTimeout(() => {
-        startTour(dashboardTourSteps);
-        localStorage.setItem('dashboardTourCompleted', 'true');
-      }, 1000);
-
-      return () => clearTimeout(timer);
-    }
+    const handleStart = () => {
+      if (!user || !config) return;
+      startTour(dashboardTourSteps);
+      localStorage.setItem('dashboardTourCompleted', 'true');
+    };
+    window.addEventListener('stabledrop:start-dashboard-tour', handleStart);
+    return () => window.removeEventListener('stabledrop:start-dashboard-tour', handleStart);
   }, [user, config, startTour, dashboardTourSteps]);
 
   // This component doesn't render anything visible

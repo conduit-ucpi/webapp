@@ -28,6 +28,9 @@ export default function ProgressChecklist({ onClose }: ProgressChecklistProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [completedItems, setCompletedItems] = useState<string[]>([]);
   const [showWalkthrough, setShowWalkthrough] = useState(false);
+  // Bumped when a checklist item completes via localStorage so the
+  // completed-items effect re-evaluates without a page reload.
+  const [checklistVersion, setChecklistVersion] = useState(0);
 
   // Existence check via the shared combined-contracts hook. The hook returns an
   // empty list on fetch error or non-array responses, so `length > 0` preserves
@@ -88,7 +91,7 @@ export default function ProgressChecklist({ onClose }: ProgressChecklistProps) {
       .filter(item => item.checkCondition())
       .map(item => item.id);
     setCompletedItems(completed);
-  }, [user, contractsExist]);
+  }, [user, contractsExist, checklistVersion]);
 
   // Show checklist for new users
   useEffect(() => {
@@ -103,10 +106,10 @@ export default function ProgressChecklist({ onClose }: ProgressChecklistProps) {
   }, [user, contractsExist]);
 
   const handleAction = (item: ChecklistItem) => {
-    if (item.id === 'start-tour') {
-      // Trigger dashboard tour
-      localStorage.removeItem('dashboardTourCompleted');
-      window.location.reload();
+    if (item.id === 'explore-dashboard') {
+      // Launch the guided tour in place (DashboardTour listens for this event).
+      window.dispatchEvent(new Event('stabledrop:start-dashboard-tour'));
+      setChecklistVersion(v => v + 1);
       return;
     }
 
@@ -287,8 +290,9 @@ export default function ProgressChecklist({ onClose }: ProgressChecklistProps) {
         isOpen={showWalkthrough}
         onClose={() => setShowWalkthrough(false)}
         onComplete={() => {
-          // Refresh the checklist to show walkthrough as completed
-          window.location.reload();
+          setShowWalkthrough(false);
+          // Re-evaluate the checklist so the walkthrough item shows completed.
+          setChecklistVersion(v => v + 1);
         }}
       />
     </div>

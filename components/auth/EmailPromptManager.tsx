@@ -3,6 +3,20 @@ import { useAuth } from './SimpleAuthProvider';
 import EmailCollection from './EmailCollection';
 import { isValidEmail } from '../../utils/validation';
 
+// Persisted per-user so a declined prompt stays declined across page loads —
+// previously Skip only lived in React state and the prompt re-nagged on every
+// navigation.
+const SKIP_STORAGE_KEY = 'email-prompt-skipped';
+
+function hasSkippedEmailPrompt(userId: string | undefined): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    return localStorage.getItem(SKIP_STORAGE_KEY) === (userId || 'anonymous');
+  } catch {
+    return false;
+  }
+}
+
 export default function EmailPromptManager({ children }: { children: React.ReactNode }) {
   const { user, isLoading, refreshUserData, getProviderUserInfo } = useAuth();
   const [showEmailPrompt, setShowEmailPrompt] = useState(false);
@@ -16,23 +30,14 @@ export default function EmailPromptManager({ children }: { children: React.React
       if (!isLoading && user && !user.email && !hasAttemptedAutoCollect.current) {
         hasAttemptedAutoCollect.current = true;
 
-        console.log('📧 EmailPromptManager: User has no email, attempting auto-collection from provider...');
-
         // Try to get email from provider (for embedded wallets like Google, Twitter, etc.)
         const providerUserInfo = getProviderUserInfo();
 
         if (providerUserInfo && providerUserInfo.email && typeof providerUserInfo.email === 'string') {
           const emailFromProvider = providerUserInfo.email;
 
-          console.log('📧 EmailPromptManager: Found email from provider', {
-            email: emailFromProvider.substring(0, 3) + '***', // Log partial email for privacy
-            authProvider: providerUserInfo.authProvider
-          });
-
           // Validate the email
           if (isValidEmail(emailFromProvider)) {
-            console.log('📧 EmailPromptManager: Email is valid, auto-submitting to backend...');
-
             try {
               setIsSubmitting(true);
 
@@ -45,8 +50,6 @@ export default function EmailPromptManager({ children }: { children: React.React
               });
 
               if (response.ok) {
-                console.log('📧 EmailPromptManager: ✅ Email auto-saved successfully!');
-
                 // Refresh user data to get the updated email
                 await refreshUserData();
 
@@ -54,29 +57,24 @@ export default function EmailPromptManager({ children }: { children: React.React
                 setShowEmailPrompt(false);
                 return;
               } else {
-                console.error('📧 EmailPromptManager: Failed to auto-save email', {
+                console.error('EmailPromptManager: Failed to auto-save email', {
                   status: response.status
                 });
               }
             } catch (error) {
-              console.error('📧 EmailPromptManager: Error auto-saving email:', error);
+              console.error('EmailPromptManager: Error auto-saving email:', error);
             } finally {
               setIsSubmitting(false);
             }
-          } else {
-            console.warn('📧 EmailPromptManager: Email from provider failed validation', {
-              email: emailFromProvider.substring(0, 3) + '***'
-            });
           }
-        } else {
-          console.log('📧 EmailPromptManager: No email available from provider (likely external wallet)');
         }
 
-        // If we get here, auto-collection failed - show the manual prompt
-        setShowEmailPrompt(true);
+        // Auto-collection failed (likely an external wallet with no provider
+        // email) — show the manual prompt unless the user already declined it.
+        setShowEmailPrompt(!hasSkippedEmailPrompt(user.userId));
       } else if (!isLoading && user && !user.email) {
-        // We've already attempted auto-collection, just show the prompt
-        setShowEmailPrompt(true);
+        // We've already attempted auto-collection this session.
+        setShowEmailPrompt(!hasSkippedEmailPrompt(user.userId));
       } else {
         setShowEmailPrompt(false);
       }
@@ -119,6 +117,11 @@ export default function EmailPromptManager({ children }: { children: React.React
   };
 
   const handleSkip = () => {
+    try {
+      localStorage.setItem(SKIP_STORAGE_KEY, user?.userId || 'anonymous');
+    } catch {
+      // Storage unavailable (private mode / embedded) — session-only skip.
+    }
     setShowEmailPrompt(false);
   };
 

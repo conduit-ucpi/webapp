@@ -380,8 +380,9 @@ export default function ConnectWalletEmbedded({
             MetaMask, Coinbase Wallet, or WalletConnect QR.
           </p>
           <p className="mt-1">
-            To restore email/social sign-in, try a different network, disable
-            ad blockers, or switch your DNS to <span className="font-mono">1.1.1.1</span>.
+            This usually happens on office or school Wi-Fi, or with an ad
+            blocker running. Try a different network (e.g. your phone's
+            hotspot) or pause your ad blocker, then reload this page.
           </p>
         </div>
       )}

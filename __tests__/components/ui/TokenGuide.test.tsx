@@ -97,7 +97,7 @@ describe('TokenGuide', () => {
 
   it('renders the guide with correct title', () => {
     render(<TokenGuide />);
-    expect(screen.getByText('How to Add USDC to Your Wallet/How to get cash from your Wallet')).toBeInTheDocument();
+    expect(screen.getByText('How to add USDC to your wallet')).toBeInTheDocument();
   });
 
   it('displays the correct network for Avalanche mainnet', () => {
@@ -231,7 +231,7 @@ describe('TokenGuide', () => {
   it('has proper styling classes on manual instructions section', () => {
     render(<TokenGuide />);
 
-    const heading = screen.getByText('How to Add USDC to Your Wallet/How to get cash from your Wallet');
+    const heading = screen.getByText('How to add USDC to your wallet');
     const container = heading.closest('div.bg-blue-50');
     expect(container).toHaveClass('bg-blue-50', 'border', 'border-blue-200', 'rounded-lg', 'p-6');
   });
@@ -281,7 +281,7 @@ describe('TokenGuide', () => {
 
       render(<TokenGuide />);
       expect(screen.getByText('Alternative: Manual Transfer')).toBeInTheDocument();
-      expect(screen.queryByText('How to Add USDC to Your Wallet/How to get cash from your Wallet')).not.toBeInTheDocument();
+      expect(screen.queryByText('How to add USDC to your wallet')).not.toBeInTheDocument();
     });
 
     it('renders the onramp widget container element', () => {

@@ -558,14 +558,29 @@ export default function ContractPay() {
                   </div>
                 </div>
               ) : !isPaymentInProgress && (
-                <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md p-4 mb-6">
-                  <p className="text-sm text-yellow-800 dark:text-yellow-300">
-                    {isInstantPayment
-                      ? `Your ${displayCurrency(contract.amount, contract.currency || 'microUSDC')} will be released to the seller immediately after payment confirmation.`
-                      : `Your ${displayCurrency(contract.amount, contract.currency || 'microUSDC')} will be held securely in escrow and released to the seller on the release date unless you raise a dispute.`
-                    }
-                  </p>
-                </div>
+                <>
+                  <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md p-4 mb-6">
+                    <p className="text-sm text-yellow-800 dark:text-yellow-300">
+                      {isInstantPayment
+                        ? `Your ${displayCurrency(contract.amount, contract.currency || 'microUSDC')} will be released to the seller immediately after payment confirmation.`
+                        : `Your ${displayCurrency(contract.amount, contract.currency || 'microUSDC')} will be held securely in escrow and released to the seller on the release date unless you raise a dispute.`
+                      }
+                    </p>
+                  </div>
+                  <div className="mb-6 text-center">
+                    <button
+                      onClick={() => setShowTokenGuide(!showTokenGuide)}
+                      className="text-sm text-primary-600 dark:text-primary-400 hover:underline"
+                    >
+                      {showTokenGuide ? 'Hide guide' : `Need ${selectedTokenSymbol}? See how to get it`}
+                    </button>
+                    {showTokenGuide && (
+                      <div className="mt-3 text-left">
+                        <TokenGuide />
+                      </div>
+                    )}
+                  </div>
+                </>
               )}
 
               {/* Action Buttons */}

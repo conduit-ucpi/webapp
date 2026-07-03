@@ -101,7 +101,7 @@ describe('BuyToken Page', () => {
     it('renders USDC guide information', () => {
       render(<BuyToken />);
 
-      expect(screen.getByText('How to Add USDC to Your Wallet/How to get cash from your Wallet')).toBeInTheDocument();
+      expect(screen.getByText('How to add USDC to your wallet')).toBeInTheDocument();
       expect(screen.getByText(/Check your network:/)).toBeInTheDocument();
       expect(screen.getByText(/Your wallet address:/)).toBeInTheDocument();
     });

@@ -216,7 +216,7 @@ describe('Dashboard - Lazy Loading', () => {
 
     // Should show dashboard content
     expect(screen.getByText('Dashboard')).toBeInTheDocument();
-    expect(screen.getByText(/Manage escrow contracts/i)).toBeInTheDocument();
+    expect(screen.getByText(/Track and manage your escrow-protected payment requests/i)).toBeInTheDocument();
     expect(screen.getByTestId('enhanced-dashboard')).toBeInTheDocument();
 
     // Should show wallet address (in ExpandableHash component)

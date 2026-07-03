@@ -117,7 +117,7 @@ describe('CreateContractWizard - arbiterAddress (advanced option)', () => {
 
   const fillStepZero = (arbiter?: string) => {
     // Buyer email (mocked BuyerInput)
-    fireEvent.change(screen.getByPlaceholderText('Search Farcaster user or enter email'), {
+    fireEvent.change(screen.getByPlaceholderText('buyer@example.com'), {
       target: { value: 'buyer@test.com' },
     });
     // Description

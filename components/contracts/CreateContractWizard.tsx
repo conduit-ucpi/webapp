@@ -407,88 +407,106 @@ export default function CreateContractWizard() {
               </p>
 
               <div className="space-y-6">
-                {/* Instant Payment Checkbox */}
-                <div className="flex items-start">
-                  <input
-                    type="checkbox"
-                    id="instantPayment"
-                    checked={isInstantPayment}
-                    onChange={(e) => {
-                      const checked = e.target.checked;
-                      setIsInstantPayment(checked);
-                      if (checked) {
-                        // Set timestamp to 0 for instant payment and clear buyer email
-                        setForm(prev => ({
-                          ...prev,
-                          payoutTimestamp: 0,
-                          buyerEmail: '',
-                          buyerType: 'email',
-                          buyerFid: undefined
-                        }));
-                      } else {
-                        // Reset to default timestamp when unchecked
-                        setForm(prev => ({ ...prev, payoutTimestamp: getDefaultTimestamp() }));
-                      }
-                    }}
-                    className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-secondary-300 rounded mt-0.5"
+                {/* How the request reaches the buyer — one explicit choice
+                    instead of two overlapping checkboxes. */}
+                <fieldset>
+                  <legend className="block text-sm font-medium text-secondary-700 mb-2">
+                    How will the buyer get this request?
+                  </legend>
+                  <div className="space-y-2">
+                    {([
+                      {
+                        id: 'email' as const,
+                        title: 'Email the buyer',
+                        detail: "We'll send them a payment link by email",
+                      },
+                      {
+                        id: 'link' as const,
+                        title: "Share a link myself",
+                        detail: "You'll get a payment link to send however you like",
+                      },
+                      {
+                        id: 'qr' as const,
+                        title: 'In-person QR code',
+                        detail: 'They scan and pay on the spot — funds are released to you immediately',
+                      },
+                    ]).map((mode) => {
+                      const currentMode = isInstantPayment ? 'qr' : noBuyerEmail ? 'link' : 'email';
+                      const selected = currentMode === mode.id;
+                      return (
+                        <label
+                          key={mode.id}
+                          className={`flex items-start p-3 rounded-lg border cursor-pointer transition-colors ${
+                            selected
+                              ? 'border-primary-500 bg-primary-50'
+                              : 'border-secondary-200 hover:border-secondary-300'
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="deliveryMode"
+                            value={mode.id}
+                            checked={selected}
+                            onChange={() => {
+                              if (mode.id === 'qr') {
+                                setIsInstantPayment(true);
+                                setNoBuyerEmail(false);
+                                setForm(prev => ({
+                                  ...prev,
+                                  payoutTimestamp: 0,
+                                  buyerEmail: '',
+                                  buyerType: 'email',
+                                  buyerFid: undefined
+                                }));
+                              } else {
+                                setIsInstantPayment(prev => {
+                                  if (prev) {
+                                    // Coming back from instant mode: restore a release date
+                                    setForm(f => ({ ...f, payoutTimestamp: getDefaultTimestamp() }));
+                                  }
+                                  return false;
+                                });
+                                if (mode.id === 'link') {
+                                  setNoBuyerEmail(true);
+                                  setForm(prev => ({
+                                    ...prev,
+                                    buyerEmail: '',
+                                    buyerType: 'email',
+                                    buyerFid: undefined
+                                  }));
+                                  setErrors(prev => ({ ...prev, buyerEmail: undefined }));
+                                } else {
+                                  setNoBuyerEmail(false);
+                                }
+                              }
+                            }}
+                            className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-secondary-300 mt-0.5"
+                          />
+                          <span className="ml-3 block text-sm text-secondary-700">
+                            <span className="font-medium">{mode.title}</span>
+                            <span className="block text-secondary-500 mt-0.5">{mode.detail}</span>
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </fieldset>
+
+                {/* Buyer contact - only for the email mode */}
+                {!isInstantPayment && !noBuyerEmail && (
+                  <BuyerInput
+                    label="Who's paying you?"
+                    value={form.buyerEmail}
+                    onChange={(value, type, fid) => setForm(prev => ({
+                      ...prev,
+                      buyerEmail: value,
+                      buyerType: type,
+                      buyerFid: fid
+                    }))}
+                    error={errors.buyerEmail}
+                    placeholder="buyer@example.com"
+                    helpText="Enter their email address — they'll receive payment instructions. You can also type a Farcaster username to search."
                   />
-                  <label htmlFor="instantPayment" className="ml-3 block text-sm text-secondary-700">
-                    <span className="font-medium">Instant QR code payment</span>
-                    <p className="text-secondary-500 mt-1">
-                      For in-person transactions - funds are released immediately after payment (no email needed)
-                    </p>
-                  </label>
-                </div>
-
-                {/* Buyer email - only show if NOT instant payment */}
-                {!isInstantPayment && (
-                  <>
-                    {/* No buyer email checkbox */}
-                    <div className="flex items-start">
-                      <input
-                        type="checkbox"
-                        id="noBuyerEmail"
-                        checked={noBuyerEmail}
-                        onChange={(e) => {
-                          const checked = e.target.checked;
-                          setNoBuyerEmail(checked);
-                          if (checked) {
-                            // Clear buyer email when checkbox is checked
-                            setForm(prev => ({
-                              ...prev,
-                              buyerEmail: '',
-                              buyerType: 'email',
-                              buyerFid: undefined
-                            }));
-                            // Clear any buyer email errors
-                            setErrors(prev => ({ ...prev, buyerEmail: undefined }));
-                          }
-                        }}
-                        className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-secondary-300 rounded mt-0.5"
-                      />
-                      <label htmlFor="noBuyerEmail" className="ml-3 block text-sm text-secondary-700">
-                        <span className="font-medium">No buyer email - I'll share the payment link myself</span>
-                        <p className="text-secondary-500 mt-1">
-                          You'll get a shareable payment link to send directly to the buyer
-                        </p>
-                      </label>
-                    </div>
-
-                    <BuyerInput
-                      label="Buyer's email address"
-                      value={form.buyerEmail}
-                      onChange={(value, type, fid) => setForm(prev => ({
-                        ...prev,
-                        buyerEmail: value,
-                        buyerType: type,
-                        buyerFid: fid
-                      }))}
-                      error={errors.buyerEmail}
-                      placeholder="Search Farcaster user or enter email"
-                      helpText={noBuyerEmail ? "You'll notify the buyer manually with the payment link" : "They'll receive an email with payment instructions"}
-                      disabled={noBuyerEmail}
-                    />
-                  </>
                 )}
 
                 <div>
@@ -550,7 +568,7 @@ export default function CreateContractWizard() {
                         onChange={(e) => setForm(prev => ({ ...prev, arbiterAddress: e.target.value }))}
                         placeholder="0x..."
                         error={errors.arbiterAddress}
-                        helpText="Optional override for the dispute resolver. Leave blank to use the system default."
+                        helpText="The arbiter is the neutral party who settles a dispute if buyer and seller can't agree. Leave blank to use our built-in dispute resolution — only set this if you and the buyer have agreed on your own arbiter."
                       />
                     </div>
                   )}
@@ -607,6 +625,23 @@ export default function CreateContractWizard() {
                     error={errors.amount}
                     helpText="Minimum amount is $1"
                   />
+                  {/* Fee breakdown — sellers should never have to guess what they'll receive */}
+                  {parseFloat(form.amount || '0') > 0 && (
+                    <div className="mt-2 p-3 bg-secondary-50 border border-secondary-200 rounded-md text-sm">
+                      <div className="flex justify-between text-secondary-600">
+                        <span>Buyer pays</span>
+                        <span>${parseFloat(form.amount).toFixed(2)} {selectedTokenSymbol}</span>
+                      </div>
+                      <div className="flex justify-between text-secondary-600 mt-1">
+                        <span>Service fee (1%)</span>
+                        <span>&minus;${(parseFloat(form.amount) * 0.01).toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between font-medium text-secondary-900 mt-1 pt-1 border-t border-secondary-200">
+                        <span>You receive</span>
+                        <span>${(parseFloat(form.amount) * 0.99).toFixed(2)} {selectedTokenSymbol}</span>
+                      </div>
+                    </div>
+                  )}
                   <div className="mt-2 p-3 bg-info-50 border border-info-200 rounded-md">
                     <p className="text-sm text-info-800">
                       💡 <strong>How it works:</strong> The buyer pays this amount upfront.
@@ -686,6 +721,12 @@ export default function CreateContractWizard() {
                       <span className="text-secondary-600">Amount:</span>
                       <span className="font-medium text-lg">
                         {formatUSDC(toMicroUSDC(parseFloat(form.amount || '0')))} {selectedTokenSymbol}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-secondary-600">You receive (after 1% fee):</span>
+                      <span className="font-medium">
+                        {(parseFloat(form.amount || '0') * 0.99).toFixed(2)} {selectedTokenSymbol}
                       </span>
                     </div>
                     <div className="flex justify-between">
@@ -842,9 +883,13 @@ export default function CreateContractWizard() {
 
           {/* Payment Link Section */}
           <div className="bg-primary-50 border border-primary-200 rounded-lg p-6 mb-6">
-            <h3 className="font-semibold text-primary-900 mb-3">Share Payment Link</h3>
+            <h3 className="font-semibold text-primary-900 mb-3">
+              {noBuyerEmail || isInstantPayment ? 'Share Payment Link' : 'Payment Link'}
+            </h3>
             <p className="text-sm text-primary-800 mb-4">
-              Send this link directly to the buyer for instant payment:
+              {noBuyerEmail || isInstantPayment
+                ? 'Send this link to the buyer — it opens the payment page directly:'
+                : "The buyer already has this link in their email — you don't need to do anything else. You can also share it yourself (e.g. by chat) to speed things up:"}
             </p>
 
             {/* Link Display with Copy Button */}

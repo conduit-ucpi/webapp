@@ -18,6 +18,7 @@ import {
   Cog6ToothIcon,
   CalculatorIcon,
   PlayCircleIcon,
+  Squares2X2Icon,
 } from '@heroicons/react/24/outline';
 import { useAuth } from '@/components/auth';
 import { useConfig } from '@/components/auth/ConfigProvider';
@@ -70,6 +71,12 @@ export default function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
           href: '/dashboard',
           label: 'Dashboard',
           icon: RectangleStackIcon,
+          requiresAuth: true,
+        },
+        {
+          href: '/projects',
+          label: 'Projects',
+          icon: Squares2X2Icon,
           requiresAuth: true,
         },
         {

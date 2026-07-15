@@ -170,6 +170,27 @@ export async function fetchFeeBaseUnits(
   return String(data.fee);
 }
 
+/**
+ * Lightweight views for a list of root nodes: chain state + viewer roles, but
+ * NOT fee/payout previews (not needed in the list, and one fee-quote per row
+ * would be wasteful). Used by GET /api/projects.
+ */
+export async function buildRootViews(
+  req: NextApiRequest,
+  authToken: string,
+  roots: ProjectNode[]
+): Promise<ProjectNodeView[]> {
+  const wallet = viewerWallet(req);
+  const chainStates = await fetchChainStates(req, authToken, roots);
+  return roots.map((node) => ({
+    ...node,
+    chainState: node.chainAddress ? chainStates.get(node.chainAddress.toLowerCase()) ?? null : null,
+    viewerRoles: rolesFor(node, wallet),
+    feeBaseUnits: '0',
+    recipientPayoutsBaseUnits: [],
+  }));
+}
+
 /** Merge off-chain nodes, chain state, roles, fee, and payout previews. */
 export async function buildTreeView(
   req: NextApiRequest,

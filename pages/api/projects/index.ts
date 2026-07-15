@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { requireAuth } from '@/utils/api-auth';
-import { draftToCreateRequest, fanoutServiceUrl, serviceHeaders } from '@/utils/projectsServer';
+import { buildRootViews, draftToCreateRequest, fanoutServiceUrl, serviceHeaders } from '@/utils/projectsServer';
 
 /**
  * GET  /api/projects — root node of every project tree the caller is a party to.
@@ -33,6 +33,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       body,
     });
     const data = await response.json();
+
+    // Enrich the list with live chain state + the viewer's roles per root, so
+    // the client renders status/role badges without any of its own logic.
+    if (req.method === 'GET' && response.ok && Array.isArray(data)) {
+      const views = await buildRootViews(req, authToken, data);
+      return res.status(200).json(views);
+    }
+
     res.status(response.status).json(data);
   } catch (error) {
     console.error('projects index API error:', error);

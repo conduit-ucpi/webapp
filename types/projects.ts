@@ -114,6 +114,36 @@ export interface CreateProjectRequest {
   suppressSending?: boolean;
 }
 
+/**
+ * What the creation wizard submits. Recipient shares are given as raw dollar
+ * amounts OR percentages (per `splitMode`); the server converts them to
+ * canonical basis points (thin-frontend rule — the client never owns the
+ * bps conversion). One draft = one node (v1 creates single-node trees).
+ */
+export interface ProjectDraftRecipient {
+  address: string;
+  /** Interpreted per splitMode: a dollar amount or a percentage. */
+  value: number;
+  email?: string | null;
+}
+
+export interface ProjectDraft {
+  sellerAddress: string;
+  sellerEmail?: string | null;
+  buyerEmail?: string | null;
+  verifierAddress?: string | null;
+  totalAmount: number;
+  currency: string;
+  currencySymbol?: string | null;
+  expiryTimestamp: number;
+  chainId?: string | null;
+  description: string;
+  splitMode: 'amount' | 'percent';
+  recipients: ProjectDraftRecipient[];
+  serviceLink: string;
+  suppressSending?: boolean;
+}
+
 export interface SubcontractRequest {
   parentNodeId: string;
   sliceIndex: number;

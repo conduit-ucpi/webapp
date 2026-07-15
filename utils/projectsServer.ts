@@ -7,13 +7,61 @@
  */
 import type { NextApiRequest } from 'next';
 import {
+  CreateProjectRequest,
+  ProjectDraft,
   ProjectNode,
   ProjectNodeChainState,
   ProjectNodeView,
   ProjectRole,
   ProjectTreeView,
 } from '@/types/projects';
-import { fromBaseUnits, splitByBps, toBaseUnits } from '@/utils/projectMath';
+import { amountsToBps, fromBaseUnits, percentToBps, splitByBps, toBaseUnits } from '@/utils/projectMath';
+
+/**
+ * Convert a wizard draft (dollar amounts or percentages per recipient) into the
+ * canonical bps-based create request contractfanoutservice expects. This is the
+ * authoritative $→bps conversion — it lives here, server-side, so the client
+ * never owns it. Throws (surfaced as 400) on invalid splits.
+ */
+export function draftToCreateRequest(draft: ProjectDraft): CreateProjectRequest {
+  if (!draft.recipients || draft.recipients.length === 0) {
+    throw new Error('At least one recipient is required');
+  }
+  const bps =
+    draft.splitMode === 'percent'
+      ? normalizePercents(draft.recipients.map((r) => r.value))
+      : amountsToBps(draft.recipients.map((r) => r.value));
+
+  return {
+    root: {
+      sellerAddress: draft.sellerAddress,
+      sellerEmail: draft.sellerEmail ?? null,
+      buyerEmail: draft.buyerEmail ?? null,
+      verifierAddress: draft.verifierAddress ?? null,
+      amount: draft.totalAmount,
+      currency: draft.currency,
+      currencySymbol: draft.currencySymbol ?? null,
+      expiryTimestamp: draft.expiryTimestamp,
+      chainId: draft.chainId ?? null,
+      description: draft.description,
+      recipients: draft.recipients.map((r, i) => ({ bps: bps[i], address: r.address, child: null })),
+    },
+    serviceLink: draft.serviceLink,
+    suppressSending: draft.suppressSending ?? false,
+  };
+}
+
+/** Percentages → bps summing to exactly 10000, residue on the largest share. */
+function normalizePercents(percents: number[]): number[] {
+  const bps = percents.map((p) => percentToBps(p));
+  const residue = 10000 - bps.reduce((a, b) => a + b, 0);
+  if (residue !== 0) {
+    const largest = bps.indexOf(Math.max(...bps));
+    bps[largest] += residue;
+    if (bps[largest] <= 0) throw new Error('Percentages must sum to 100%');
+  }
+  return bps;
+}
 
 export function fanoutServiceUrl(): string {
   const url = process.env.FANOUT_SERVICE_URL;

@@ -7,7 +7,7 @@ import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 import { Wizard, WizardStep, WizardNavigation, WizardStep as Step } from '@/components/ui/Wizard';
 import RecipientSplitEditor, { RecipientRow } from '@/components/projects/RecipientSplitEditor';
-import { useProjectCreation } from '@/hooks/useProjectCreation';
+import { useProjectCreation, SubcontractContext } from '@/hooks/useProjectCreation';
 import { ProjectDraft } from '@/types/projects';
 import {
   isValidWalletAddress,
@@ -42,7 +42,15 @@ export interface ProjectPrefill {
   recipients?: RecipientRow[];
 }
 
-export default function CreateProjectWizard({ prefill }: { prefill?: ProjectPrefill }) {
+interface WizardProps {
+  prefill?: ProjectPrefill;
+  /** Present when subcontracting an existing node's slice (loose tree). */
+  subcontract?: SubcontractContext;
+  /** "clone" and "subcontract" tweak copy and the completion banner. */
+  intent?: 'create' | 'clone' | 'subcontract';
+}
+
+export default function CreateProjectWizard({ prefill, subcontract, intent = 'create' }: WizardProps) {
   const router = useRouter();
   const { config } = useConfig();
   const { user, address } = useAuth();
@@ -160,13 +168,11 @@ export default function CreateProjectWizard({ prefill }: { prefill?: ProjectPref
   async function handleFund() {
     try {
       const amountBaseUnits = toBaseUnitsClient(parseFloat(totalAmount), decimals);
-      const groupId = await createAndFund(buildDraft(), {
-        tokenAddress,
-        chainId,
-        buyerAddress,
-        tokenDecimals: decimals,
-        amountBaseUnits,
-      });
+      const groupId = await createAndFund(
+        buildDraft(),
+        { tokenAddress, chainId, buyerAddress, tokenDecimals: decimals, amountBaseUnits },
+        subcontract
+      );
       showToast({ type: 'success', title: 'Project funded', message: 'Your project is live.' });
       router.push(`/projects/${groupId}`);
     } catch (e) {
@@ -178,6 +184,14 @@ export default function CreateProjectWizard({ prefill }: { prefill?: ProjectPref
 
   return (
     <Wizard steps={steps} currentStep={currentStep} className="px-4">
+      {intent !== 'create' && (
+        <div className="max-w-2xl mx-auto mb-6 rounded-md bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 p-3 text-sm text-blue-800 dark:text-blue-200">
+          {intent === 'clone'
+            ? 'Cloning an existing project — parties and splits are pre-filled. Set a new amount (try a small "test run" first to prove the flow) and a new dispute deadline.'
+            : 'Subcontracting a slice — this creates a new linked project you fund yourself. The parent payout is unchanged.'}
+        </div>
+      )}
+
       {currentStep === 0 && (
         <WizardStep>
           <div className="space-y-5 max-w-2xl mx-auto">

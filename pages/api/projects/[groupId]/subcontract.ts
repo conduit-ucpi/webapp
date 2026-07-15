@@ -1,11 +1,14 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { requireAuth } from '@/utils/api-auth';
-import { fanoutServiceUrl, serviceHeaders } from '@/utils/projectsServer';
+import { draftToCreateRequest, fanoutServiceUrl, serviceHeaders } from '@/utils/projectsServer';
 
 /**
  * POST /api/projects/[groupId]/subcontract — attach a new loose subcontract
- * tree under a recipient slice of an existing node (body: SubcontractRequest).
- * Only the slice's recipient or the node's seller may do this; enforced by
+ * tree under a recipient slice of an existing node. Body:
+ *   { parentNodeId, sliceIndex, draft }  (draft = a ProjectDraft)
+ * The $→bps conversion runs server-side (thin-frontend rule); the result is
+ * forwarded to contractfanoutservice as { parentNodeId, sliceIndex, tree }.
+ * Only the slice's recipient or the node's seller may do this — enforced by
  * contractfanoutservice.
  */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -20,12 +23,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ error: 'groupId is required' });
     }
 
+    const { parentNodeId, sliceIndex, draft } = req.body || {};
+    let body: string;
+    try {
+      body = JSON.stringify({
+        parentNodeId,
+        sliceIndex,
+        tree: draftToCreateRequest(draft),
+      });
+    } catch (conversionError) {
+      return res.status(400).json({
+        error: conversionError instanceof Error ? conversionError.message : 'Invalid subcontract draft',
+      });
+    }
+
     const response = await fetch(
       `${fanoutServiceUrl()}/api/fanouts/${encodeURIComponent(groupId)}/subcontract`,
       {
         method: 'POST',
         headers: serviceHeaders(req, authToken),
-        body: JSON.stringify(req.body),
+        body,
       }
     );
     const data = await response.json();

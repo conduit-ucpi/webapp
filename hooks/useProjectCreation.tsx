@@ -21,6 +21,13 @@ interface DeployParams {
   amountBaseUnits: string;
 }
 
+/** When present, the record is created as a subcontract of an existing tree. */
+export interface SubcontractContext {
+  parentGroupId: string;
+  parentNodeId: string;
+  sliceIndex: number;
+}
+
 /**
  * Drives the buyer's create-and-fund sequence for a project. Each step is
  * resumable: on failure the state names the stage reached so the caller can
@@ -43,12 +50,18 @@ export function useProjectCreation() {
   const reset = () =>
     setState({ stage: 'idle', groupId: null, rootAddress: null, error: null });
 
-  async function createRecord(draft: ProjectDraft): Promise<string> {
+  async function createRecord(draft: ProjectDraft, subcontract?: SubcontractContext): Promise<string> {
     setState((s) => ({ ...s, stage: 'creating', error: null }));
-    const res = await authenticatedFetch('/api/projects', {
+    const url = subcontract
+      ? `/api/projects/${subcontract.parentGroupId}/subcontract`
+      : '/api/projects';
+    const body = subcontract
+      ? { parentNodeId: subcontract.parentNodeId, sliceIndex: subcontract.sliceIndex, draft }
+      : draft;
+    const res = await authenticatedFetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(draft),
+      body: JSON.stringify(body),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Failed to create project');
@@ -97,10 +110,18 @@ export function useProjectCreation() {
     setState((s) => ({ ...s, stage: 'done' }));
   }
 
-  /** Full sequence. Returns the groupId on success. */
-  async function createAndFund(draft: ProjectDraft, params: DeployParams): Promise<string> {
+  /**
+   * Full sequence. Returns the groupId on success. When `subcontract` is set,
+   * the record is created as a linked child of an existing tree, then deployed
+   * and funded exactly like a top-level project.
+   */
+  async function createAndFund(
+    draft: ProjectDraft,
+    params: DeployParams,
+    subcontract?: SubcontractContext
+  ): Promise<string> {
     try {
-      const groupId = state.groupId ?? (await createRecord(draft));
+      const groupId = state.groupId ?? (await createRecord(draft, subcontract));
       const rootAddress =
         state.rootAddress ?? (await deploy(groupId, params)).nodes.find((n) => n.depth === 0)!.chainAddress!;
       await fund(rootAddress, params);

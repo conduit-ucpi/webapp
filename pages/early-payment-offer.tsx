@@ -423,8 +423,8 @@ Happy to walk through the numbers.${sign}`;
   return (
     <>
       <SEO
-        title="Early Payment Offer — Stabledrop"
-        description="Your customer pays into escrow on day one. Sell the escrow and get the cash the same day. Model the discount, factoring, and revenue impact."
+        title="Triple Your Revenue by Changing Payment Terms — Stabledrop"
+        description="Get paid on day one instead of waiting 60 days, and the same working capital turns three times as often. Your customer pays into escrow up front, you sell the escrow for cash today — no borrowing, no personal guarantee. Model the discount, factoring, and revenue impact."
       />
       <div className="sd">
         <style>{CSS}</style>

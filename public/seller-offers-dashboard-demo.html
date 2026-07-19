@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stabledrop — Your payments</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg-primary: #ffffff;
+    --bg-secondary: #f5f5f3;
+    --bg-tertiary: #ededea;
+    --text-primary: #1a1a18;
+    --text-secondary: #6b6b67;
+    --text-tertiary: #9b9b96;
+    --border-tertiary: rgba(0,0,0,0.12);
+    --border-secondary: rgba(0,0,0,0.22);
+    --border-primary: rgba(0,0,0,0.35);
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    --font-mono: 'SF Mono', 'Fira Code', monospace;
+    --green: #1D9E75;
+    --green-dark: #085041;
+    --green-mid: #0F6E56;
+    --green-light: #E1F5EE;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg-primary: #1c1c1a;
+      --bg-secondary: #252523;
+      --bg-tertiary: #2e2e2b;
+      --text-primary: #f0f0ec;
+      --text-secondary: #a0a09a;
+      --text-tertiary: #6b6b65;
+      --border-tertiary: rgba(255,255,255,0.10);
+      --border-secondary: rgba(255,255,255,0.18);
+      --border-primary: rgba(255,255,255,0.28);
+      --green-light: #04342C;
+      --green-dark: #9FE1CB;
+    }
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    font-size: 16px;
+    line-height: 1.5;
+    min-height: 100vh;
+    padding: 0 1.5rem 2rem;
+  }
+
+  .demo-banner {
+    background: var(--green-light);
+    color: var(--green-dark);
+    font-size: 12px;
+    text-align: center;
+    padding: 6px;
+    letter-spacing: 0.03em;
+    margin: 0 -1.5rem 0;
+  }
+
+  .sd-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.5rem 0 1rem;
+    border-bottom: 0.5px solid var(--border-tertiary);
+    margin-bottom: 1.5rem;
+  }
+  .sd-logo {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .sd-logo-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--green);
+    display: inline-block;
+  }
+  .sd-greeting {
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+  .sd-wallet {
+    font-size: 12px;
+    color: var(--text-secondary);
+    background: var(--bg-secondary);
+    border: 0.5px solid var(--border-tertiary);
+    border-radius: var(--radius-md);
+    padding: 6px 12px;
+    display: flex; align-items: center; gap: 6px;
+  }
+
+  .sd-summary {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0,1fr));
+    gap: 12px;
+    margin-bottom: 1.5rem;
+  }
+  .sd-metric {
+    background: var(--bg-secondary);
+    border-radius: var(--radius-md);
+    padding: 1rem;
+  }
+  .sd-metric-label { font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; }
+  .sd-metric-value { font-size: 22px; font-weight: 500; color: var(--text-primary); }
+  .sd-metric-sub { font-size: 11px; color: var(--text-tertiary); margin-top: 2px; }
+
+  .sd-section-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .sd-badge-new {
+    font-size: 11px;
+    font-weight: 500;
+    background: var(--green-light);
+    color: var(--green-dark);
+    border-radius: 99px;
+    padding: 2px 9px;
+  }
+
+  .sd-card {
+    background: var(--bg-primary);
+    border: 0.5px solid var(--border-tertiary);
+    border-radius: var(--radius-lg);
+    margin-bottom: 12px;
+    overflow: hidden;
+  }
+  .sd-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 1rem;
+    border-bottom: 0.5px solid var(--border-tertiary);
+    background: var(--bg-secondary);
+  }
+  .sd-card-id { font-size: 13px; font-weight: 500; color: var(--text-primary); }
+  .sd-card-meta { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+  .sd-card-amount { text-align: right; }
+  .sd-card-amount-value { font-size: 16px; font-weight: 500; color: var(--text-primary); }
+  .sd-card-amount-sub { font-size: 11px; color: var(--text-secondary); margin-top: 1px; }
+
+  .sd-offer {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 1rem;
+    border-bottom: 0.5px solid var(--border-tertiary);
+    transition: opacity 0.2s;
+  }
+  .sd-offer:last-child { border-bottom: none; }
+  .sd-offer.declined { opacity: 0.4; pointer-events: none; }
+
+  .sd-offer-main { flex: 1; }
+  .sd-offer-headline {
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--text-primary);
+  }
+  .sd-offer-headline span { color: var(--green-mid); }
+  .sd-offer-detail { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+  .sd-offer-expiry { font-size: 11px; color: var(--text-tertiary); margin-top: 4px; display: flex; align-items: center; gap: 4px; }
+
+  .sd-offer-actions { display: flex; gap: 8px; flex-shrink: 0; }
+
+  .sd-btn-accept {
+    font-size: 12px;
+    font-weight: 500;
+    background: var(--green);
+    color: #ffffff;
+    border: none;
+    border-radius: var(--radius-md);
+    padding: 8px 18px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .sd-btn-accept:hover { opacity: 0.88; }
+
+  .sd-btn-decline {
+    font-size: 12px;
+    background: transparent;
+    color: var(--text-secondary);
+    border: 0.5px solid var(--border-secondary);
+    border-radius: var(--radius-md);
+    padding: 8px 14px;
+    cursor: pointer;
+    white-space: nowrap;
+    font-family: var(--font-sans);
+  }
+  .sd-btn-decline:hover { background: var(--bg-secondary); }
+
+  .sd-no-offers {
+    padding: 1rem;
+    font-size: 13px;
+    color: var(--text-tertiary);
+  }
+
+  /* Modal overlay — uses normal flow to avoid fixed-position collapse */
+  .modal-overlay {
+    display: none;
+    background: rgba(0,0,0,0.45);
+    border-radius: var(--radius-lg);
+    padding: 2rem 1rem;
+    margin-bottom: 12px;
+    align-items: center;
+    justify-content: center;
+    min-height: 340px;
+  }
+  .modal-overlay.open { display: flex; }
+
+  .modal {
+    background: var(--bg-primary);
+    border: 0.5px solid var(--border-secondary);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    width: 400px;
+    max-width: 100%;
+  }
+  .modal-title { font-size: 15px; font-weight: 500; color: var(--text-primary); margin-bottom: 4px; }
+  .modal-job { font-size: 12px; color: var(--text-secondary); margin-bottom: 1.25rem; }
+
+  .modal-amount {
+    background: var(--bg-secondary);
+    border-radius: var(--radius-md);
+    padding: 12px;
+    margin-bottom: 1.25rem;
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+  .modal-amount-row { display: flex; justify-content: space-between; margin-bottom: 6px; }
+  .modal-amount-row:last-child { margin-bottom: 0; }
+  .modal-amount-row.total {
+    border-top: 0.5px solid var(--border-tertiary);
+    padding-top: 8px;
+    margin-top: 4px;
+    font-weight: 500;
+    color: var(--text-primary);
+    font-size: 14px;
+  }
+
+  .modal-note {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    margin-bottom: 1.25rem;
+    line-height: 1.6;
+  }
+  .modal-actions { display: flex; gap: 8px; }
+  .modal-btn-cancel {
+    flex: 1; padding: 9px; font-size: 13px;
+    border: 0.5px solid var(--border-secondary);
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-family: var(--font-sans);
+  }
+  .modal-btn-confirm {
+    flex: 2; padding: 9px; font-size: 13px; font-weight: 500;
+    border: none; border-radius: var(--radius-md);
+    background: var(--green);
+    color: #ffffff;
+    cursor: pointer;
+    font-family: var(--font-sans);
+  }
+  .modal-btn-confirm:hover { opacity: 0.88; }
+</style>
+</head>
+<body>
+
+<div class="demo-banner">Demo — sample data only, not connected to chain</div>
+
+<div class="sd-header">
+  <div class="sd-logo">
+    <span class="sd-logo-dot"></span>
+    Stabledrop
+  </div>
+  <div class="sd-greeting">Hi Dave — here are your payments</div>
+  <div class="sd-wallet">
+    <i class="ti ti-wallet" style="font-size:14px;" aria-hidden="true"></i>
+    0xd4f1…3a88
+  </div>
+</div>
+
+<div class="sd-summary">
+  <div class="sd-metric">
+    <div class="sd-metric-label">Total locked</div>
+    <div class="sd-metric-value">£57,100</div>
+    <div class="sd-metric-sub">Across 3 escrows</div>
+  </div>
+  <div class="sd-metric">
+    <div class="sd-metric-label">Pending offers</div>
+    <div class="sd-metric-value" id="offer-count">2</div>
+    <div class="sd-metric-sub">Waiting for your decision</div>
+  </div>
+  <div class="sd-metric">
+    <div class="sd-metric-label">Paid out to date</div>
+    <div class="sd-metric-value">£23,400</div>
+    <div class="sd-metric-sub">All-time</div>
+  </div>
+</div>
+
+<!-- Confirm modal — inline flow -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <div class="modal-title">Accept this offer?</div>
+    <div class="modal-job" id="modal-job"></div>
+    <div class="modal-amount">
+      <div class="modal-amount-row">
+        <span>You were owed at maturity</span>
+        <span id="m-full"></span>
+      </div>
+      <div class="modal-amount-row">
+        <span>Early payment discount</span>
+        <span id="m-discount"></span>
+      </div>
+      <div class="modal-amount-row total">
+        <span>You receive now</span>
+        <span id="m-receive"></span>
+      </div>
+    </div>
+    <div class="modal-note">Once you confirm, the payment will be transferred to your wallet on-chain. This cannot be undone.</div>
+    <div class="modal-actions">
+      <button class="modal-btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="modal-btn-confirm" onclick="closeModal()">Confirm — get paid now</button>
+    </div>
+  </div>
+</div>
+
+<div class="sd-section-label">
+  Offers waiting for you
+  <span class="sd-badge-new" id="new-badge">2 new</span>
+</div>
+
+<div class="sd-card">
+  <div class="sd-card-header">
+    <div>
+      <div class="sd-card-id">Caledonian Build Ltd — fit-out, Glasgow</div>
+      <div class="sd-card-meta">ESC-00412 · matures 24 Jul 2026 · 31 days away</div>
+    </div>
+    <div class="sd-card-amount">
+      <div class="sd-card-amount-value">£12,400</div>
+      <div class="sd-card-amount-sub">locked in escrow</div>
+    </div>
+  </div>
+  <div class="sd-offer" id="offer-1">
+    <div class="sd-offer-main">
+      <div class="sd-offer-headline">Get <span>£12,214</span> today</div>
+      <div class="sd-offer-detail">Instead of waiting 31 days for £12,400 — you give up £186</div>
+      <div class="sd-offer-expiry">
+        <i class="ti ti-clock" style="font-size:13px;" aria-hidden="true"></i>
+        Offer expires in 47 hours
+      </div>
+    </div>
+    <div class="sd-offer-actions">
+      <button class="sd-btn-decline" onclick="declineOffer('offer-1')">Decline</button>
+      <button class="sd-btn-accept" onclick="openModal('offer-1','Caledonian Build Ltd — fit-out, Glasgow','£12,400','£186','£12,214')">Accept</button>
+    </div>
+  </div>
+</div>
+
+<div class="sd-card">
+  <div class="sd-card-header">
+    <div>
+      <div class="sd-card-id">Stirling Commercial Properties — M&amp;E works</div>
+      <div class="sd-card-meta">ESC-00418 · matures 22 Aug 2026 · 60 days away</div>
+    </div>
+    <div class="sd-card-amount">
+      <div class="sd-card-amount-value">£41,500</div>
+      <div class="sd-card-amount-sub">locked in escrow</div>
+    </div>
+  </div>
+  <div class="sd-offer" id="offer-2">
+    <div class="sd-offer-main">
+      <div class="sd-offer-headline">Get <span>£40,506</span> today</div>
+      <div class="sd-offer-detail">Instead of waiting 60 days for £41,500 — you give up £994</div>
+      <div class="sd-offer-expiry">
+        <i class="ti ti-clock" style="font-size:13px;" aria-hidden="true"></i>
+        Offer expires in 23 hours
+      </div>
+    </div>
+    <div class="sd-offer-actions">
+      <button class="sd-btn-decline" onclick="declineOffer('offer-2')">Decline</button>
+      <button class="sd-btn-accept" onclick="openModal('offer-2','Stirling Commercial Properties — M&amp;E works','£41,500','£994','£40,506')">Accept</button>
+    </div>
+  </div>
+</div>
+
+<div class="sd-section-label" style="margin-top:1.5rem;">No offers yet</div>
+
+<div class="sd-card">
+  <div class="sd-card-header">
+    <div>
+      <div class="sd-card-id">Robertson Homes — electrical first fix</div>
+      <div class="sd-card-meta">ESC-00389 · matures 21 Jul 2026 · 28 days away</div>
+    </div>
+    <div class="sd-card-amount">
+      <div class="sd-card-amount-value">£3,200</div>
+      <div class="sd-card-amount-sub">locked in escrow</div>
+    </div>
+  </div>
+  <div class="sd-no-offers">No offers yet — we'll email you when one arrives.</div>
+</div>
+
+<script>
+var activeOfferId = null;
+var declinedOffers = 0;
+
+function openModal(offerId, job, full, discount, receive) {
+  activeOfferId = offerId;
+  document.getElementById('modal-job').textContent = job;
+  document.getElementById('m-full').textContent = full;
+  document.getElementById('m-discount').textContent = '− ' + discount;
+  document.getElementById('m-receive').textContent = receive;
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+  activeOfferId = null;
+}
+
+function declineOffer(id) {
+  var offer = document.getElementById(id);
+  if (!offer) return;
+  offer.classList.add('declined');
+  var detail = offer.querySelector('.sd-offer-detail');
+  if (detail) detail.textContent = 'Offer declined.';
+  var expiry = offer.querySelector('.sd-offer-expiry');
+  if (expiry) expiry.style.display = 'none';
+  declinedOffers++;
+  updateBadge();
+}
+
+function updateBadge() {
+  var remaining = 2 - declinedOffers;
+  if (remaining < 0) remaining = 0;
+  document.getElementById('offer-count').textContent = remaining;
+  var badge = document.getElementById('new-badge');
+  if (remaining === 0) {
+    badge.style.display = 'none';
+  } else {
+    badge.textContent = remaining + ' new';
+  }
+}
+</script>
+
+</body>
+</html>

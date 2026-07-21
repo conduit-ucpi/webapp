@@ -265,34 +265,48 @@ export default function EarlyPaymentOffer() {
 
   const m = useMemo(() => {
     const yf = days / 365;
-    // The spread runs from what the buyer earns holding the cash (their floor —
-    // below it they'd rather wait) up to the point where the seller nets exactly
-    // what borrowing would have given them (their ceiling — above it they'd rather
-    // use the bank). The fee and the factoring rate come out before either side
-    // splits anything, so the ceiling sits well below the raw borrowing rate.
-    const rFloor = yield_;
+    const neutral = face / (1 + (yield_ / 100) * yf);
+    const borrowNow = face / (1 + (rBorrow / 100) * yf);
+
+    // What's actually available to pay the buyer with, in money:
+    //   potential cost of funding (what borrowing would have cost)
+    // − actual cost of funding    (Stabledrop's fee + the LP's discount)
+    // The LP's rate is the seller's real cost of capital here; the borrowing rate
+    // is only the benchmark that says how much that saving is worth.
+    const costPotential = face - borrowNow;
+    const costActual = face - (face * (1 - FEE_PCT / 100)) / (1 + (rEscrowFactor / 100) * yf);
+
+    // Expressed as the largest discount the seller can hand over before they'd
+    // rather have borrowed. Slightly more than costPotential − costActual, because
+    // the flat fee is charged on the escrow and so shrinks as the discount grows.
     const rCeil =
       (((1 - FEE_PCT / 100) * (1 + (rBorrow / 100) * yf)) / (1 + (rEscrowFactor / 100) * yf) - 1) /
       yf *
       100;
-    const spread = rCeil - rFloor;
-    const dealPossible = spread > 0;
-    // `split` is the share of the spread handed to the buyer as a bigger discount.
-    const rOffer = dealPossible ? rFloor + (split / 100) * spread : rFloor;
-    const escrow = face / (1 + (rOffer / 100) * yf);
-    const discount = face - escrow;
-    const neutral = face / (1 + (yield_ / 100) * yf);
+    const maxDiscount = face - face / (1 + (rCeil / 100) * yf);
+    const buyerFloorAmt = face - neutral; // below this the buyer would rather wait
+    const pot = maxDiscount - buyerFloorAmt;
+    const dealPossible = pot > 0;
+
+    // `split` divides that pot. Money, not rates — 0% leaves the buyer exactly
+    // indifferent, 100% leaves the seller exactly indifferent.
+    const discount = dealPossible ? buyerFloorAmt + (split / 100) * pot : buyerFloorAmt;
+    const escrow = face - discount;
+    const rOffer = escrow > 0 ? (face / escrow - 1) / yf * 100 : 0;
+    const rFloor = yield_;
+
     const feeAmt = escrow * (FEE_PCT / 100);
     const netClaim = escrow - feeAmt;
     const cashNow = netClaim / (1 + (rEscrowFactor / 100) * yf);
-    const borrowNow = face / (1 + (rBorrow / 100) * yf);
     const cycleNow = deliver + days;
     const revNowCash = (365 / cycleNow) * face * (1 - badDebt / 100);
     const revNewCash = (365 / deliver) * cashNow;
     const due = new Date(Date.now() + days * 86400000);
     return {
       escrow, discount, feeAmt, netClaim, cashNow, borrowNow, due, cycleNow,
-      rOffer, rFloor, rCeil, spread, dealPossible,
+      rOffer, rFloor, rCeil, dealPossible,
+      costPotential, costActual, maxDiscount, buyerFloorAmt, pot,
+      spread: rCeil - rFloor,
       buyerEarns: face - neutral,
       buyerGain: neutral - escrow,
       factorCut: netClaim - cashNow,
@@ -332,7 +346,7 @@ Paying at the end of the terms makes sense for you today: holding the cash for $
 
 We'd like to beat that. Fund the invoice into escrow today and we'll take ${n0(m.discount)} off — you pay ${n0(m.escrow)} instead of ${n0(face)}. That's equivalent to earning ${m.rOffer.toFixed(2)}% APR on the cash over the same period, better than holding it.
 
-The money doesn't come to us. It sits locked in a Stabledrop escrow and is only released when we've delivered — if we don't, you get it back. Buyer protection and dispute management are built in.
+The money doesn't come to us. It sits locked in a Stabledrop escrow until ${dayShort(m.due)} — the day you'd have paid anyway — and is released to us then only if we've delivered. If we haven't, you get it back. Buyer protection and dispute management are built in.
 
 Paying this way genuinely helps us: it guarantees payment on time, and lets us factor the invoice to access the capital early and keep working on your next orders.
 
@@ -646,8 +660,8 @@ Happy to walk through the numbers.${sign}`;
                 label="Buyer's share of the spread (%)"
                 hint={
                   m.dealPossible
-                    ? `${m.rFloor.toFixed(2)}%–${m.rCeil.toFixed(2)}% is the room to play with. At ${split}% the discount is ${m.rOffer.toFixed(2)}%`
-                    : `No room: borrowing at ${rBorrow.toFixed(1)}% doesn't beat their ${yield_.toFixed(2)}% once the fee and factoring are paid`
+                    ? `${n0(m.pot)} on the table. At ${split}% they keep ${n0(m.buyerGain)}, you keep ${n0(m.pot - m.buyerGain)}`
+                    : `Nothing on the table: funding at ${rEscrowFactor.toFixed(1)}% plus the fee costs more than the ${rBorrow.toFixed(1)}% it replaces`
                 }
                 value={split}
                 onChange={setSplit}

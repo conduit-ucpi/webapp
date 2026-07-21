@@ -19,6 +19,7 @@ import {
   CalculatorIcon,
   PlayCircleIcon,
   Squares2X2Icon,
+  BanknotesIcon,
 } from '@heroicons/react/24/outline';
 import { useAuth } from '@/components/auth';
 import { useConfig } from '@/components/auth/ConfigProvider';
@@ -99,6 +100,11 @@ export default function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
           href: '/merchant-savings-calculator',
           label: 'Savings Calculator',
           icon: CalculatorIcon,
+        },
+        {
+          href: '/early-payment-offer',
+          label: 'Early Payment Offer',
+          icon: BanknotesIcon,
         },
         {
           href: '/buy-token',

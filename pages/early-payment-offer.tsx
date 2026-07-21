@@ -273,6 +273,8 @@ export default function EarlyPaymentOffer() {
     const cashNow = netClaim / (1 + (rEscrowFactor / 100) * yf);
     const borrowNow = face / (1 + (rBorrow / 100) * yf);
     const cycleNow = deliver + days;
+    const revNowCash = (365 / cycleNow) * face * (1 - badDebt / 100);
+    const revNewCash = (365 / deliver) * cashNow;
     const due = new Date(Date.now() + days * 86400000);
     return {
       escrow, discount, feeAmt, netClaim, cashNow, borrowNow, due, cycleNow,
@@ -284,10 +286,14 @@ export default function EarlyPaymentOffer() {
       pct: face > 0 ? (discount / face) * 100 : 0,
       turnsNow: 365 / cycleNow,
       turnsNew: 365 / deliver,
-      multiple: cycleNow / deliver,
-      revNow: (365 / cycleNow) * face,
-      revNew: (365 / deliver) * face,
-      revGain: (365 / deliver) * face - (365 / cycleNow) * face,
+      // Cash actually collected per year, both sides. Waiting out the terms bills
+      // the full face but writes off bad debt; getting paid on day one collects
+      // cashNow — face less the buyer's discount, the fee and the factoring cut —
+      // with nothing written off, because escrow guarantees payment.
+      multiple: revNowCash > 0 ? revNewCash / revNowCash : 0,
+      revNow: revNowCash,
+      revNew: revNewCash,
+      revGain: revNewCash - revNowCash,
     };
   }, [face, days, deliver, yield_, rOffer, rEscrowFactor, rBorrow, badDebt]);
 

@@ -282,6 +282,9 @@ export default function EarlyPaymentOffer() {
       buyerGain: neutral - escrow,
       factorCut: netClaim - cashNow,
       gain: cashNow - borrowNow,
+      // Same saving as `gain`, but across a year's worth of jobs rather than one
+      // invoice — the hero tile sits next to an annual figure, so it has to match.
+      gainYr: (cashNow - borrowNow) * (365 / deliver),
       badDebtCost: face * (badDebt / 100),
       pct: face > 0 ? (discount / face) * 100 : 0,
       turnsNow: 365 / cycleNow,
@@ -480,9 +483,9 @@ Happy to walk through the numbers.${sign}`;
                   <div className="v">+{n0(m.revGain)}</div>
                 </div>
                 <div className="sd-hero-cell">
-                  <div className="l">vs borrowing at {rBorrow.toFixed(0)}%</div>
+                  <div className="l">vs borrowing at {rBorrow.toFixed(0)}% / yr</div>
                   <div className={`v${sellerAhead ? "" : " neg"}`}>
-                    {sellerAhead ? "+" : "−"}{n0(Math.abs(m.gain))}
+                    {sellerAhead ? "+" : "−"}{n0(Math.abs(m.gainYr))}
                   </div>
                 </div>
               </div>

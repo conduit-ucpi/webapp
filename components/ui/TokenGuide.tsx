@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/components/auth';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { useWalletAddress } from '@/hooks/useWalletAddress';
@@ -16,10 +16,6 @@ export default function TokenGuide({ currency }: TokenGuideProps) {
   const { walletAddress } = useWalletAddress();
   const [copied, setCopied] = useState(false);
   const [userCurrency, setUserCurrency] = useState<string | null>(null);
-  const [onrampLoading, setOnrampLoading] = useState(false);
-  const [onrampError, setOnrampError] = useState<string | null>(null);
-  const onrampContainerRef = useRef<HTMLDivElement>(null);
-  const onrampSdkRef = useRef<any>(null);
   const [coinbaseLoading, setCoinbaseLoading] = useState(false);
   const [coinbaseError, setCoinbaseError] = useState<string | null>(null);
 
@@ -27,66 +23,7 @@ export default function TokenGuide({ currency }: TokenGuideProps) {
     setUserCurrency(detectUserCurrency());
   }, []);
 
-  const showOnramp = userCurrency === 'NGN' && config?.onrampAppId;
   const showCoinbase = userCurrency !== null && userCurrency !== 'NGN' && !!config?.coinbaseProjectId;
-
-  const initOnrampWidget = useCallback(async () => {
-    if (!showOnramp || !walletAddress || !onrampContainerRef.current) return;
-    if (onrampSdkRef.current) return; // Already initialized
-
-    setOnrampLoading(true);
-    setOnrampError(null);
-
-    try {
-      const { OnrampWebSDK } = await import('@onramp.money/onramp-web-sdk');
-
-      const sdk = new OnrampWebSDK({
-        appId: parseInt(config!.onrampAppId!, 10),
-        walletAddress,
-        coinCode: 'usdc',
-        network: 'base',
-        flowType: 1, // Buy/Onramp
-        fiatType: 6, // NGN
-        containerId: '#onramp-widget-container',
-        sandbox: false,
-      });
-
-      sdk.on('TX_EVENTS', (event: any) => {
-        console.log('Onramp TX event:', event);
-      });
-
-      sdk.on('WIDGET_EVENTS', (event: any) => {
-        console.log('Onramp widget event:', event);
-        if (event.type === 'ONRAMP_WIDGET_READY') {
-          setOnrampLoading(false);
-        }
-        if (event.type === 'ONRAMP_WIDGET_FAILED') {
-          setOnrampError('Widget failed to load. Please try again.');
-          setOnrampLoading(false);
-        }
-      });
-
-      onrampSdkRef.current = sdk;
-      sdk.show();
-    } catch (error) {
-      console.error('Failed to initialize Onramp widget:', error);
-      setOnrampError('Failed to load the buy widget. Please use the manual instructions below.');
-      setOnrampLoading(false);
-    }
-  }, [showOnramp, walletAddress, config]);
-
-  useEffect(() => {
-    initOnrampWidget();
-
-    return () => {
-      if (onrampSdkRef.current) {
-        try {
-          onrampSdkRef.current.close();
-        } catch { /* ignore cleanup errors */ }
-        onrampSdkRef.current = null;
-      }
-    };
-  }, [initOnrampWidget]);
 
   const handleCoinbaseClick = useCallback(async () => {
     if (!walletAddress) return;
@@ -154,32 +91,6 @@ export default function TokenGuide({ currency }: TokenGuideProps) {
 
   return (
     <div className="space-y-4">
-      {/* Onramp widget for Nigerian users */}
-      {showOnramp && (
-        <div className="bg-green-50 border border-green-200 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-green-900 mb-3">Buy {tokenSymbol} with Naira</h3>
-          <p className="text-sm text-green-800 mb-4">
-            Purchase {tokenSymbol} directly using Nigerian Naira (NGN). Funds will be sent to your connected wallet.
-          </p>
-          {onrampError && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
-              <p className="text-red-800 text-sm">{onrampError}</p>
-            </div>
-          )}
-          {onrampLoading && (
-            <div className="flex items-center justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
-              <span className="ml-3 text-sm text-green-800">Loading purchase widget...</span>
-            </div>
-          )}
-          <div
-            id="onramp-widget-container"
-            ref={onrampContainerRef}
-            style={{ width: '100%', height: onrampLoading ? 0 : 'calc(100vh - 200px)', minHeight: onrampLoading ? 0 : 600 }}
-          />
-        </div>
-      )}
-
       {/* Coinbase Onramp button for non-Nigerian users */}
       {showCoinbase && (
         <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-6">
@@ -218,7 +129,7 @@ export default function TokenGuide({ currency }: TokenGuideProps) {
       {/* Manual instructions */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
         <h3 className="text-lg font-semibold text-blue-900 mb-3">
-          {showOnramp || showCoinbase ? 'Alternative: Manual Transfer' : `How to Add ${tokenSymbol} to Your Wallet/How to get cash from your Wallet`}
+          {showCoinbase ? 'Alternative: Manual Transfer' : `How to Add ${tokenSymbol} to Your Wallet/How to get cash from your Wallet`}
         </h3>
         <div className="space-y-3 text-sm text-blue-800">
           <div className="flex items-start">

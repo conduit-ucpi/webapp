@@ -171,7 +171,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       contractServiceUrl: process.env.CONTRACT_SERVICE_URL,
       // Third-party services
       moonPayApiKey: process.env.MOONPAY_API_KEY,
-      onrampAppId: process.env.ONRAMP_APP_ID,
       coinbaseProjectId: process.env.COINBASE_PROJECT_ID,
       walletConnectProjectId: process.env.WALLETCONNECT_PROJECT_ID,
       neynarApiKey: process.env.NEYNAR_API_KEY,

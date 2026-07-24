@@ -23,10 +23,6 @@ jest.mock('@/utils/currencyDetection', () => ({
   detectUserCurrency: jest.fn(),
 }));
 
-jest.mock('@onramp.money/onramp-web-sdk', () => ({
-  OnrampWebSDK: jest.fn(),
-}));
-
 jest.mock('@/lib/coinbaseOnramp', () => ({
   openCoinbaseOnramp: jest.fn(),
 }));
@@ -244,72 +240,6 @@ describe('TokenGuide', () => {
     expect(screen.getByText('3.')).toBeInTheDocument();
   });
 
-  // Onramp widget tests
-  describe('Onramp widget for Nigerian users', () => {
-    const ngnConfig = {
-      ...mockConfig,
-      onrampAppId: '1953324',
-    };
-
-    it('does not show Onramp widget for non-Nigerian users', () => {
-      mockDetectUserCurrency.mockReturnValue('USD');
-      mockUseConfig.mockReturnValue({ config: ngnConfig, isLoading: false });
-
-      render(<TokenGuide />);
-      expect(screen.queryByText('Buy USDC with Naira')).not.toBeInTheDocument();
-    });
-
-    it('does not show Onramp widget when onrampAppId is not configured', () => {
-      mockDetectUserCurrency.mockReturnValue('NGN');
-      // mockConfig has no onrampAppId
-      render(<TokenGuide />);
-      expect(screen.queryByText('Buy USDC with Naira')).not.toBeInTheDocument();
-    });
-
-    it('shows Onramp widget section for Nigerian users with appId configured', () => {
-      mockDetectUserCurrency.mockReturnValue('NGN');
-      mockUseConfig.mockReturnValue({ config: ngnConfig, isLoading: false });
-
-      render(<TokenGuide />);
-      expect(screen.getByText('Buy USDC with Naira')).toBeInTheDocument();
-      expect(screen.getByText(/Purchase USDC directly using Nigerian Naira/)).toBeInTheDocument();
-    });
-
-    it('shows alternative title for manual instructions when Onramp is shown', () => {
-      mockDetectUserCurrency.mockReturnValue('NGN');
-      mockUseConfig.mockReturnValue({ config: ngnConfig, isLoading: false });
-
-      render(<TokenGuide />);
-      expect(screen.getByText('Alternative: Manual Transfer')).toBeInTheDocument();
-      expect(screen.queryByText('How to Add USDC to Your Wallet/How to get cash from your Wallet')).not.toBeInTheDocument();
-    });
-
-    it('renders the onramp widget container element', () => {
-      mockDetectUserCurrency.mockReturnValue('NGN');
-      mockUseConfig.mockReturnValue({ config: ngnConfig, isLoading: false });
-
-      render(<TokenGuide />);
-      const container = document.getElementById('onramp-widget-container');
-      expect(container).toBeInTheDocument();
-    });
-
-    it('shows loading indicator while widget initializes', () => {
-      mockDetectUserCurrency.mockReturnValue('NGN');
-      mockUseConfig.mockReturnValue({ config: ngnConfig, isLoading: false });
-
-      render(<TokenGuide />);
-      expect(screen.getByText('Loading purchase widget...')).toBeInTheDocument();
-    });
-
-    it('uses correct token symbol in Onramp heading when currency prop provided', () => {
-      mockDetectUserCurrency.mockReturnValue('NGN');
-      mockUseConfig.mockReturnValue({ config: ngnConfig, isLoading: false });
-
-      render(<TokenGuide currency="USDT" />);
-      expect(screen.getByText('Buy USDT with Naira')).toBeInTheDocument();
-    });
-  });
-
   describe('Coinbase Onramp for non-Nigerian users', () => {
     const cbConfig = {
       ...mockConfig,
@@ -332,16 +262,12 @@ describe('TokenGuide', () => {
       expect(screen.queryByText('Buy USDC with Card or Bank')).not.toBeInTheDocument();
     });
 
-    it('hides Coinbase button for Nigerian users (Onramp.money takes priority)', () => {
+    it('hides Coinbase button for Nigerian users', () => {
       mockDetectUserCurrency.mockReturnValue('NGN');
-      mockUseConfig.mockReturnValue({
-        config: { ...cbConfig, onrampAppId: '1953324' },
-        isLoading: false,
-      });
+      mockUseConfig.mockReturnValue({ config: cbConfig, isLoading: false });
 
       render(<TokenGuide />);
       expect(screen.queryByText('Buy USDC with Card or Bank')).not.toBeInTheDocument();
-      expect(screen.getByText('Buy USDC with Naira')).toBeInTheDocument();
     });
 
     it('switches manual instructions heading to "Alternative" when Coinbase shown', () => {

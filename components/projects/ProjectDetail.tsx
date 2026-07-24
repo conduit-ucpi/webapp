@@ -74,9 +74,9 @@ function NodeCard({
             <h2 className="text-lg font-semibold text-secondary-900 dark:text-secondary-100 truncate">
               {node.description || 'Untitled'}
             </h2>
-            {!isRoot && <span className="text-xs text-secondary-500">child</span>}
+            {!isRoot && <span className="text-xs text-secondary-500 dark:text-secondary-400">child</span>}
           </div>
-          <p className="text-sm text-secondary-500 mt-1">
+          <p className="text-sm text-secondary-500 dark:text-secondary-400 mt-1">
             {symbol} {node.amount.toFixed(2)}
             {node.chainAddress && (
               <>
@@ -101,7 +101,7 @@ function NodeCard({
 
       {/* Dispute-deadline framing + G1 warning */}
       <div className="text-sm">
-        <span className="text-secondary-500">Dispute deadline: </span>
+        <span className="text-secondary-500 dark:text-secondary-400">Dispute deadline: </span>
         <span className="text-secondary-900 dark:text-secondary-100">
           {formatDateTimeWithTZ(node.expiryTimestamp)} ({getRelativeTime(node.expiryTimestamp)})
         </span>
@@ -124,7 +124,7 @@ function NodeCard({
                 <span className="font-mono text-secondary-700 dark:text-secondary-300 truncate mr-3">
                   {r.childGroupId ? '↳ subcontracted' : r.address ? `${r.address.slice(0, 8)}…${r.address.slice(-6)}` : '—'}
                 </span>
-                <span className="text-secondary-500 shrink-0">
+                <span className="text-secondary-500 dark:text-secondary-400 shrink-0">
                   {(r.bps / 100).toFixed(2)}%
                   {payout && (
                     <span className="text-secondary-900 dark:text-secondary-100 ml-2">
@@ -137,7 +137,7 @@ function NodeCard({
           })}
         </ul>
         {isRoot && node.feeBaseUnits !== '0' && (
-          <p className="text-xs text-secondary-400 mt-2">
+          <p className="text-xs text-secondary-500 dark:text-secondary-400 mt-2">
             Platform fee (1%): {symbol} {fromBaseUnits(BigInt(node.feeBaseUnits), decimals)} — deducted before the split
           </p>
         )}

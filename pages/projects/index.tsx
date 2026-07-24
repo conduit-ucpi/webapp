@@ -43,7 +43,13 @@ export default function ProjectsListPage() {
     return () => {
       cancelled = true;
     };
-  }, [isConnected, wallet, authenticatedFetch]);
+    // NOTE: authenticatedFetch is intentionally NOT a dependency. It comes from
+    // useSimpleEthers, which returns a fresh object each render; including the
+    // function identity re-fires this effect every render (refetch loop). The
+    // primitive deps below already capture every input that should re-trigger
+    // the fetch.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isConnected, wallet]);
 
   if (isLoading) {
     return (
@@ -58,8 +64,8 @@ export default function ProjectsListPage() {
   if (!isConnected || !address) {
     return (
       <div className="max-w-md mx-auto text-center py-20">
-        <h1 className="text-2xl font-bold text-secondary-900 mb-4">Connect Your Wallet</h1>
-        <p className="text-secondary-600 mb-6">Connect your wallet to see your projects.</p>
+        <h1 className="text-2xl font-bold text-secondary-900 dark:text-secondary-100 mb-4">Connect Your Wallet</h1>
+        <p className="text-secondary-600 dark:text-secondary-400 mb-6">Connect your wallet to see your projects.</p>
         <ConnectWalletEmbedded useSmartRouting={true} />
       </div>
     );
@@ -110,7 +116,7 @@ export default function ProjectsListPage() {
                     <p className="font-medium text-secondary-900 dark:text-secondary-100 truncate">
                       {p.description || 'Untitled project'}
                     </p>
-                    <p className="text-sm text-secondary-500 mt-1">
+                    <p className="text-sm text-secondary-500 dark:text-secondary-400 mt-1">
                       {symbol} {p.amount.toFixed(2)} · {p.recipients.length} recipient
                       {p.recipients.length === 1 ? '' : 's'}
                     </p>

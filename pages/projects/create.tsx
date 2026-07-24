@@ -54,7 +54,13 @@ export default function CreateProjectPage() {
     return () => {
       cancelled = true;
     };
-  }, [cloneId, subGroupId, subNodeId, wallet, isConnected, authenticatedFetch]);
+    // NOTE: authenticatedFetch is intentionally NOT a dependency. It comes from
+    // useSimpleEthers, which returns a fresh object each render; including the
+    // function identity re-fires this effect every render (prefill reload loop).
+    // The primitive deps below already capture every input that should
+    // re-trigger the prefill fetch.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cloneId, subGroupId, subNodeId, wallet, isConnected]);
 
   if (isLoading) {
     return (
@@ -68,8 +74,8 @@ export default function CreateProjectPage() {
   if (!isConnected || !address) {
     return (
       <div className="max-w-md mx-auto text-center py-20">
-        <h1 className="text-2xl font-bold text-secondary-900 mb-4">Connect Your Wallet</h1>
-        <p className="text-secondary-600 mb-6">Connect your wallet to create a project.</p>
+        <h1 className="text-2xl font-bold text-secondary-900 dark:text-secondary-100 mb-4">Connect Your Wallet</h1>
+        <p className="text-secondary-600 dark:text-secondary-400 mb-6">Connect your wallet to create a project.</p>
         <ConnectWalletEmbedded useSmartRouting={true} autoConnect={autoConnect} />
       </div>
     );

@@ -33,7 +33,6 @@ export interface Config {
   contractServiceUrl?: string;
   // Third-party services
   moonPayApiKey: string;
-  onrampAppId?: string;
   coinbaseProjectId?: string;
   walletConnectProjectId?: string;
   neynarApiKey?: string;

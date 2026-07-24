@@ -48,25 +48,25 @@ function WizardProgress({ steps, currentStep, onStepChange }: WizardProgressProp
       {/* Mobile progress bar */}
       <div className="sm:hidden">
         <div className="flex items-center justify-between mb-4">
-          <p className="text-sm font-medium text-secondary-900">
+          <p className="text-sm font-medium text-secondary-900 dark:text-secondary-100">
             Step {currentStep + 1} of {steps.length}
           </p>
-          <p className="text-sm text-secondary-500">
+          <p className="text-sm text-secondary-500 dark:text-secondary-400">
             {Math.round(((currentStep + 1) / steps.length) * 100)}% complete
           </p>
         </div>
-        <div className="w-full bg-secondary-200 rounded-full h-2">
+        <div className="w-full bg-secondary-200 dark:bg-secondary-700 rounded-full h-2">
           <div 
             className="bg-secondary-900 dark:bg-white h-2 rounded-full transition-all duration-300 ease-out"
             style={{ width: `${((currentStep + 1) / steps.length) * 100}%` }}
           />
         </div>
         <div className="mt-4">
-          <h2 className="text-lg font-semibold text-secondary-900">
+          <h2 className="text-lg font-semibold text-secondary-900 dark:text-secondary-100">
             {steps[currentStep]?.title}
           </h2>
           {steps[currentStep]?.description && (
-            <p className="text-sm text-secondary-600 mt-1">
+            <p className="text-sm text-secondary-600 dark:text-secondary-400 mt-1">
               {steps[currentStep].description}
             </p>
           )}
@@ -123,17 +123,17 @@ function WizardProgress({ steps, currentStep, onStepChange }: WizardProgressProp
                 
                 <div className="mt-2 text-center">
                   <p className={`text-sm font-medium ${
-                    isCurrent ? 'text-secondary-900 dark:text-white' : 'text-secondary-500'
+                    isCurrent ? 'text-secondary-900 dark:text-white' : 'text-secondary-500 dark:text-secondary-400'
                   }`}>
                     {step.title}
                   </p>
                   {step.description && (
-                    <p className="text-xs text-secondary-400 mt-1 max-w-24">
+                    <p className="text-xs text-secondary-500 dark:text-secondary-400 mt-1 max-w-24">
                       {step.description}
                     </p>
                   )}
                   {step.isOptional && (
-                    <p className="text-xs text-secondary-400 mt-1">Optional</p>
+                    <p className="text-xs text-secondary-500 dark:text-secondary-400 mt-1">Optional</p>
                   )}
                 </div>
               </button>

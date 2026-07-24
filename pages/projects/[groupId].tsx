@@ -49,8 +49,8 @@ export default function ProjectDetailPage() {
   if (!isConnected || !address) {
     return (
       <div className="max-w-md mx-auto text-center py-20">
-        <h1 className="text-2xl font-bold text-secondary-900 mb-4">Connect Your Wallet</h1>
-        <p className="text-secondary-600 mb-6">Connect your wallet to view this project.</p>
+        <h1 className="text-2xl font-bold text-secondary-900 dark:text-secondary-100 mb-4">Connect Your Wallet</h1>
+        <p className="text-secondary-600 dark:text-secondary-400 mb-6">Connect your wallet to view this project.</p>
         <ConnectWalletEmbedded useSmartRouting={true} />
       </div>
     );
@@ -79,7 +79,7 @@ export default function ProjectDetailPage() {
   return (
     <div className="py-6">
       <div className="max-w-4xl mx-auto px-4">
-        <Link href="/projects" className="text-sm text-secondary-500 hover:text-secondary-700 dark:hover:text-secondary-300">
+        <Link href="/projects" className="text-sm text-secondary-500 dark:text-secondary-400 hover:text-secondary-700 dark:hover:text-secondary-300">
           ← All projects
         </Link>
       </div>

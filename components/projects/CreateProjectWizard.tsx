@@ -193,7 +193,7 @@ export default function CreateProjectWizard({ prefill, subcontract, intent = 'cr
       )}
 
       {currentStep === 0 && (
-        <WizardStep>
+        <WizardStep className="dark:bg-secondary-900 dark:border-secondary-700">
           <div className="space-y-5 max-w-2xl mx-auto">
             <Input
               label="Supplier (seller) wallet address"
@@ -235,7 +235,7 @@ export default function CreateProjectWizard({ prefill, subcontract, intent = 'cr
       )}
 
       {currentStep === 1 && (
-        <WizardStep>
+        <WizardStep className="dark:bg-secondary-900 dark:border-secondary-700">
           <div className="space-y-5 max-w-3xl mx-auto">
             <Input
               label={`Total amount (${currencySymbol})`}
@@ -265,7 +265,7 @@ export default function CreateProjectWizard({ prefill, subcontract, intent = 'cr
       )}
 
       {currentStep === 2 && (
-        <WizardStep>
+        <WizardStep className="dark:bg-secondary-900 dark:border-secondary-700">
           <div className="space-y-4 max-w-2xl mx-auto">
             <h3 className="text-lg font-semibold">Review</h3>
             <dl className="divide-y divide-secondary-200 dark:divide-secondary-700 text-sm">

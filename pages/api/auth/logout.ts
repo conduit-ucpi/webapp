@@ -1,4 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
+import { forwardSetCookie } from '@/lib/auth/forwardSetCookie';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -13,10 +14,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     });
 
-    const cookies = response.headers.get('set-cookie');
-    if (cookies) {
-      res.setHeader('Set-Cookie', cookies);
-    }
+    // Forward Set-Cookie header to clear cookie (host-only on localhost)
+    forwardSetCookie(response, req, res);
 
     res.status(response.status).json(await response.json());
   } catch (error) {

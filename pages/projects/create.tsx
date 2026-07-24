@@ -54,7 +54,13 @@ export default function CreateProjectPage() {
     return () => {
       cancelled = true;
     };
-  }, [cloneId, subGroupId, subNodeId, wallet, isConnected, authenticatedFetch]);
+    // NOTE: authenticatedFetch is intentionally NOT a dependency. It comes from
+    // useSimpleEthers, which returns a fresh object each render; including the
+    // function identity re-fires this effect every render (prefill reload loop).
+    // The primitive deps below already capture every input that should
+    // re-trigger the prefill fetch.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cloneId, subGroupId, subNodeId, wallet, isConnected]);
 
   if (isLoading) {
     return (

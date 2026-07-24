@@ -152,7 +152,7 @@ interface WizardStepProps {
 
 export function WizardStep({ children, className = '' }: WizardStepProps) {
   return (
-    <div className={`bg-white dark:bg-secondary-900 rounded-lg border border-secondary-200 dark:border-secondary-700 p-6 sm:p-8 ${className}`}>
+    <div className={`bg-white rounded-lg border border-secondary-200 p-6 sm:p-8 ${className}`}>
       {children}
     </div>
   );

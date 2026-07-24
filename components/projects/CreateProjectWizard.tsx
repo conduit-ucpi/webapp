@@ -226,7 +226,7 @@ export default function CreateProjectWizard({ prefill, subcontract, intent = 'cr
               error={errors.expiry}
             />
             {expiryTimestamp > 0 && (
-              <p className="text-sm text-secondary-500">
+              <p className="text-sm text-secondary-500 dark:text-secondary-400">
                 {formatDateTimeWithTZ(expiryTimestamp)} ({getRelativeTime(expiryTimestamp)})
               </p>
             )}
@@ -290,7 +290,7 @@ export default function CreateProjectWizard({ prefill, subcontract, intent = 'cr
               silent after the dispute deadline, you can no longer dispute — set a comfortable deadline.
             </div>
             {state.stage !== 'idle' && (
-              <p className="text-sm text-secondary-500">Status: {stageLabel(state.stage)}</p>
+              <p className="text-sm text-secondary-500 dark:text-secondary-400">Status: {stageLabel(state.stage)}</p>
             )}
           </div>
         </WizardStep>
@@ -314,7 +314,7 @@ export default function CreateProjectWizard({ prefill, subcontract, intent = 'cr
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between gap-4 py-2">
-      <dt className="text-secondary-500">{label}</dt>
+      <dt className="text-secondary-500 dark:text-secondary-400">{label}</dt>
       <dd className="text-secondary-900 dark:text-secondary-100 text-right break-all">{value}</dd>
     </div>
   );

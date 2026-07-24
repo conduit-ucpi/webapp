@@ -68,8 +68,8 @@ export default function CreateProjectPage() {
   if (!isConnected || !address) {
     return (
       <div className="max-w-md mx-auto text-center py-20">
-        <h1 className="text-2xl font-bold text-secondary-900 mb-4">Connect Your Wallet</h1>
-        <p className="text-secondary-600 mb-6">Connect your wallet to create a project.</p>
+        <h1 className="text-2xl font-bold text-secondary-900 dark:text-secondary-100 mb-4">Connect Your Wallet</h1>
+        <p className="text-secondary-600 dark:text-secondary-400 mb-6">Connect your wallet to create a project.</p>
         <ConnectWalletEmbedded useSmartRouting={true} autoConnect={autoConnect} />
       </div>
     );

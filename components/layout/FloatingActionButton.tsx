@@ -9,6 +9,7 @@ import {
   RectangleStackIcon,
   WalletIcon,
   CreditCardIcon,
+  Squares2X2Icon,
 } from '@heroicons/react/24/outline';
 import { useAuth } from '@/components/auth';
 
@@ -42,6 +43,12 @@ export default function FloatingActionButton() {
       label: 'Dashboard',
       href: '/dashboard',
       icon: RectangleStackIcon,
+      requiresAuth: true,
+    },
+    {
+      label: 'Projects',
+      href: '/projects',
+      icon: Squares2X2Icon,
       requiresAuth: true,
     },
     {

@@ -258,38 +258,76 @@ export default function EarlyPaymentOffer() {
   const [days, setDays] = useState(60);
   const [deliver, setDeliver] = useState(30);
   const [yield_, setYield] = useState(5.0);
-  const [rOffer, setROffer] = useState(6.0);
+  const [split, setSplit] = useState(25);
   const [rEscrowFactor, setREscrowFactor] = useState(2.0);
-  const [rBorrow, setRBorrow] = useState(30.0);
+  const [rBorrow, setRBorrow] = useState(22.0);
   const [badDebt, setBadDebt] = useState(2.0);
 
   const m = useMemo(() => {
     const yf = days / 365;
-    const escrow = face / (1 + (rOffer / 100) * yf);
-    const discount = face - escrow;
     const neutral = face / (1 + (yield_ / 100) * yf);
+    const borrowNow = face / (1 + (rBorrow / 100) * yf);
+
+    // What's actually available to pay the buyer with, in money:
+    //   potential cost of funding (what borrowing would have cost)
+    // − actual cost of funding    (Stabledrop's fee + the LP's discount)
+    // The LP's rate is the seller's real cost of capital here; the borrowing rate
+    // is only the benchmark that says how much that saving is worth.
+    const costPotential = face - borrowNow;
+    const costActual = face - (face * (1 - FEE_PCT / 100)) / (1 + (rEscrowFactor / 100) * yf);
+
+    // Expressed as the largest discount the seller can hand over before they'd
+    // rather have borrowed. Slightly more than costPotential − costActual, because
+    // the flat fee is charged on the escrow and so shrinks as the discount grows.
+    const rCeil =
+      (((1 - FEE_PCT / 100) * (1 + (rBorrow / 100) * yf)) / (1 + (rEscrowFactor / 100) * yf) - 1) /
+      yf *
+      100;
+    const maxDiscount = face - face / (1 + (rCeil / 100) * yf);
+    const buyerFloorAmt = face - neutral; // below this the buyer would rather wait
+    const pot = maxDiscount - buyerFloorAmt;
+    const dealPossible = pot > 0;
+
+    // `split` divides that pot. Money, not rates — 0% leaves the buyer exactly
+    // indifferent, 100% leaves the seller exactly indifferent.
+    const discount = dealPossible ? buyerFloorAmt + (split / 100) * pot : buyerFloorAmt;
+    const escrow = face - discount;
+    const rOffer = escrow > 0 ? (face / escrow - 1) / yf * 100 : 0;
+    const rFloor = yield_;
+
     const feeAmt = escrow * (FEE_PCT / 100);
     const netClaim = escrow - feeAmt;
     const cashNow = netClaim / (1 + (rEscrowFactor / 100) * yf);
-    const borrowNow = face / (1 + (rBorrow / 100) * yf);
     const cycleNow = deliver + days;
+    const revNowCash = (365 / cycleNow) * face * (1 - badDebt / 100);
+    const revNewCash = (365 / deliver) * cashNow;
     const due = new Date(Date.now() + days * 86400000);
     return {
       escrow, discount, feeAmt, netClaim, cashNow, borrowNow, due, cycleNow,
+      rOffer, rFloor, rCeil, dealPossible,
+      costPotential, costActual, maxDiscount, buyerFloorAmt, pot,
+      spread: rCeil - rFloor,
       buyerEarns: face - neutral,
       buyerGain: neutral - escrow,
       factorCut: netClaim - cashNow,
       gain: cashNow - borrowNow,
+      // Same saving as `gain`, but across a year's worth of jobs rather than one
+      // invoice — the hero tile sits next to an annual figure, so it has to match.
+      gainYr: (cashNow - borrowNow) * (365 / deliver),
       badDebtCost: face * (badDebt / 100),
       pct: face > 0 ? (discount / face) * 100 : 0,
       turnsNow: 365 / cycleNow,
       turnsNew: 365 / deliver,
-      multiple: cycleNow / deliver,
-      revNow: (365 / cycleNow) * face,
-      revNew: (365 / deliver) * face,
-      revGain: (365 / deliver) * face - (365 / cycleNow) * face,
+      // Cash actually collected per year, both sides. Waiting out the terms bills
+      // the full face but writes off bad debt; getting paid on day one collects
+      // cashNow — face less the buyer's discount, the fee and the factoring cut —
+      // with nothing written off, because escrow guarantees payment.
+      multiple: revNowCash > 0 ? revNewCash / revNowCash : 0,
+      revNow: revNowCash,
+      revNew: revNewCash,
+      revGain: revNewCash - revNowCash,
     };
-  }, [face, days, deliver, yield_, rOffer, rEscrowFactor, rBorrow, badDebt]);
+  }, [face, days, deliver, yield_, split, rEscrowFactor, rBorrow, badDebt]);
 
   const [buyerName, setBuyerName] = useState("");
   const [sellerName, setSellerName] = useState("");
@@ -306,14 +344,14 @@ A proposal on our ${n0(face)} invoice, due ${dayShort(m.due)}.
 
 Paying at the end of the terms makes sense for you today: holding the cash for ${days} days earns you roughly ${n0(m.buyerEarns)} at ${yield_.toFixed(2)}%.
 
-We'd like to beat that. Fund the invoice into escrow today and we'll take ${n0(m.discount)} off — you pay ${n0(m.escrow)} instead of ${n0(face)}. That's equivalent to earning ${rOffer.toFixed(2)}% APR on the cash over the same period, better than holding it.
+We'd like to beat that. Fund the invoice into escrow today and we'll take ${n0(m.discount)} off — you pay ${n0(m.escrow)} instead of ${n0(face)}. That's equivalent to earning ${m.rOffer.toFixed(2)}% APR on the cash over the same period, better than holding it.
 
-The money doesn't come to us. It sits locked in a Stabledrop escrow and is only released when we've delivered — if we don't, you get it back. Buyer protection and dispute management are built in.
+The money doesn't come to us. It sits locked in a Stabledrop escrow until ${dayShort(m.due)} — the day you'd have paid anyway — and is released to us then only if we've delivered. If we haven't, you get it back. Buyer protection and dispute management are built in.
 
 Paying this way genuinely helps us: it guarantees payment on time, and lets us factor the invoice to access the capital early and keep working on your next orders.
 
 Happy to walk through the numbers.${sign}`;
-  }, [buyerName, sellerName, face, days, yield_, rOffer, m]);
+  }, [buyerName, sellerName, face, days, yield_, m]);
 
   const copyMsg = async () => {
     if (!buyerName.trim()) {
@@ -341,14 +379,15 @@ Happy to walk through the numbers.${sign}`;
     const pct = "0.00%";
     const rows = [
       ["Stabledrop — early payment model"],
-      ["Change the yellow-noted inputs (rows 5–13) and everything recalculates. Amounts in USDC."],
+      ["Change the inputs (rows 5–9, 11–14) and everything recalculates. Row 10 is derived. Amounts in USDC."],
       [],
       ["INPUTS", "", ""],
       ["Invoice amount", face, "Full amount you'd normally bill"],
       ["Payment terms (days)", days, "How long your customer takes to pay"],
       ["Job length (days)", deliver, "Order to delivery"],
       ["Customer's yield on cash", yield_ / 100, "What holding the money earns them, annualised"],
-      ["Discount you offer (annualised)", rOffer / 100, "Set above their yield so they say yes"],
+      ["Buyer's share of the spread", split / 100, "0% = seller keeps it all, 100% = buyer keeps it all"],
+      ["→ Discount you offer (annualised)", m.rOffer / 100, `Derived: ${m.rFloor.toFixed(2)}% floor + ${split}% of the ${m.spread.toFixed(2)}pt spread`],
       ["Escrow factoring rate", rEscrowFactor / 100, "Funder's charge — no credit risk left to price"],
       ["Your borrowing cost today", rBorrow / 100, "Source: iwoca — from 1.5%/mo; representative 40% APR"],
       ["Stabledrop fee (flat, % of escrow)", FEE_PCT / 100, "Fixed. Taken once, when the escrow is funded"],
@@ -375,42 +414,47 @@ Happy to walk through the numbers.${sign}`;
       ["THE REAL PRIZE — YOUR YEAR", "", ""],
       ["Cash cycle today (days)", 0, "Job + waiting"],
       ["Jobs per year today", 0, ""],
-      ["Revenue capacity today", 0, ""],
+      ["Cash collected per year today", 0, "Bills the full invoice, less bad debt"],
       ["Jobs per year, paid on day one", 0, ""],
-      ["Revenue capacity, paid on day one", 0, ""],
-      ["Extra revenue capacity per year", 0, "Same money, nothing borrowed"],
+      ["Cash collected per year, paid on day one", 0, "Less discount, fee and factoring — no bad debt"],
+      ["Extra cash per year", 0, "Same money, nothing borrowed"],
       ["Revenue multiple", 0, ""],
+      ["Saving vs borrowing, per year", 0, "Per-invoice saving × jobs per year"],
       [],
       ["Estimates, not financial advice. © 2026 Conduit UCPI, Company No. SC880319."],
     ];
     const ws = XLSX.utils.aoa_to_sheet(rows);
     const F = (a: string, f: string, z: string) => { (ws as any)[a] = { t: "n", f, z }; };
-    // inputs formats
+    // inputs formats — B10 is derived, so F() below gives it its own format
     ["B5", "B6", "B7"].forEach((a) => ((ws as any)[a].z = cur));
-    ["B8", "B9", "B10", "B11", "B12", "B13"].forEach((a) => ((ws as any)[a].z = pct));
+    ["B8", "B9", "B11", "B12", "B13", "B14"].forEach((a) => ((ws as any)[a].z = pct));
+    // derived discount: buyer's floor + their share of the spread up to the point
+    // where the seller nets exactly what borrowing would have paid them
+    F("B10", "B8+B9*((((1-B13)*(1+B12*B17)/(1+B11*B17))-1)/B17-B8)", pct);
     // step 1
-    F("B16", "B6/365", "0.0000");
-    F("B17", "B5/(1+B9*B16)", cur);
-    F("B18", "-B17*B12", cur);
-    F("B19", "B17+B18", cur);
-    F("B20", "B5*B13", cur);
+    F("B17", "B6/365", "0.0000");
+    F("B18", "B5/(1+B10*B17)", cur);
+    F("B19", "-B18*B13", cur);
+    F("B20", "B18+B19", cur);
+    F("B21", "B5*B14", cur);
     // step 2
-    F("B23", "-(B19-B19/(1+B10*B16))", cur);
-    F("B24", "B19+B23", cur);
-    F("B25", "B5/(1+B11*B16)", cur);
-    F("B26", "B24-B25", cur);
+    F("B24", "-(B20-B20/(1+B11*B17))", cur);
+    F("B25", "B20+B24", cur);
+    F("B26", "B5/(1+B12*B17)", cur);
+    F("B27", "B25-B26", cur);
     // step 3
-    F("B29", "B5-B17", cur);
-    F("B30", "B5-B5/(1+B8*B16)", cur);
-    F("B31", "B29-B30", cur);
-    // year
-    F("B34", "B7+B6", "0");
-    F("B35", "365/B34", "0.0");
-    F("B36", "B35*B5", cur);
-    F("B37", "365/B7", "0.0");
-    F("B38", "B37*B5", cur);
-    F("B39", "B38-B36", cur);
-    F("B40", "B34/B7", '0.0"×"');
+    F("B30", "B5-B18", cur);
+    F("B31", "B5-B5/(1+B8*B17)", cur);
+    F("B32", "B30-B31", cur);
+    // year — cash collected on both sides, matching the page
+    F("B35", "B7+B6", "0");
+    F("B36", "365/B35", "0.0");
+    F("B37", "B36*B5*(1-B14)", cur);
+    F("B38", "365/B7", "0.0");
+    F("B39", "B38*B25", cur);
+    F("B40", "B39-B37", cur);
+    F("B41", "B39/B37", '0.0"×"');
+    F("B42", "B27*(365/B7)", cur);
     ws["!cols"] = [{ wch: 42 }, { wch: 15 }, { wch: 52 }];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Model");
@@ -474,9 +518,9 @@ Happy to walk through the numbers.${sign}`;
                   <div className="v">+{n0(m.revGain)}</div>
                 </div>
                 <div className="sd-hero-cell">
-                  <div className="l">vs borrowing at {rBorrow.toFixed(0)}%</div>
+                  <div className="l">vs borrowing at {rBorrow.toFixed(0)}% / yr</div>
                   <div className={`v${sellerAhead ? "" : " neg"}`}>
-                    {sellerAhead ? "+" : "−"}{n0(Math.abs(m.gain))}
+                    {sellerAhead ? "+" : "−"}{n0(Math.abs(m.gainYr))}
                   </div>
                 </div>
               </div>
@@ -613,13 +657,17 @@ Happy to walk through the numbers.${sign}`;
                 step={0.25}
               />
               <Ctl
-                label="The discount you offer (%)"
-                hint={`Anything above ${yield_.toFixed(2)}% and they win by paying today`}
-                value={rOffer}
-                onChange={setROffer}
+                label="Buyer's share of the spread (%)"
+                hint={
+                  m.dealPossible
+                    ? `${n0(m.pot)} on the table. At ${split}% they keep ${n0(m.buyerGain)}, you keep ${n0(m.pot - m.buyerGain)}`
+                    : `Nothing on the table: funding at ${rEscrowFactor.toFixed(1)}% plus the fee costs more than the ${rBorrow.toFixed(1)}% it replaces`
+                }
+                value={split}
+                onChange={setSplit}
                 min={0}
-                max={20}
-                step={0.25}
+                max={100}
+                step={1}
               />
             </div>
             <div className="sd-rows">

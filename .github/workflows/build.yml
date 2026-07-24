@@ -45,7 +45,6 @@ jobs:
           USDC_CONTRACT_ADDRESS: ${{ vars.USDC_CONTRACT_ADDRESS }}
           USDT_CONTRACT_ADDRESS: ${{ vars.USDT_CONTRACT_ADDRESS }}
           DEFAULT_TOKEN_SYMBOL: ${{ vars.DEFAULT_TOKEN_SYMBOL }}
-          CONTRACT_FACTORY_ADDRESS: ${{ vars.CONTRACT_FACTORY_ADDRESS }}
           USER_SERVICE_URL: ${{ vars.USER_SERVICE_URL }}
           CHAIN_SERVICE_URL: ${{ vars.CHAIN_SERVICE_URL }}
           CONTRACT_SERVICE_URL: ${{ vars.CONTRACT_SERVICE_URL }}
@@ -178,8 +177,6 @@ jobs:
             -e GIT_SHA="${{ env.GIT_SHA }}" \\
             -e COOKIE_DOMAIN="${{ vars.COOKIE_DOMAIN }}" \\
             -e BUILD_VERSION="${{ env.BUILD_VERSION }}" \\
-            -e CONTRACT_FACTORY_ADDRESS="${{ vars.CONTRACT_FACTORY_ADDRESS }}" \\
-            -e CONTRACT_ADDRESS="${{ vars.CONTRACT_ADDRESS }}" \\
             -e SUPPORTED_TOKENS='${{ vars.SUPPORTED_TOKENS }}' \\
             -e USDC_CONTRACT_ADDRESS="${{ vars.USDC_CONTRACT_ADDRESS }}" \\
             -e USDT_CONTRACT_ADDRESS="${{ vars.USDT_CONTRACT_ADDRESS }}" \\

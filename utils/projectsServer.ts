@@ -8,6 +8,8 @@
 import type { NextApiRequest } from 'next';
 import {
   CreateProjectRequest,
+  ProjectDeployment,
+  ProjectDescendantTree,
   ProjectDraft,
   ProjectNode,
   ProjectNodeChainState,
@@ -96,14 +98,35 @@ export function viewerWallet(req: NextApiRequest): string | null {
   return typeof viewer === 'string' && viewer.startsWith('0x') ? viewer.toLowerCase() : null;
 }
 
-function rolesFor(node: ProjectNode, wallet: string | null): ProjectRole[] {
+/**
+ * The parties that actually hold each role on a node, which is not simply what
+ * the record stores. A committed child's buyer is its parent node's supplier —
+ * the subcontractor's own client, who therefore holds the dispute rights — and
+ * the record's buyerAddress stays null until deploy stamps it. An unset
+ * verifier is the buyer on-chain.
+ */
+export function partiesOf(node: ProjectNode, byId: Map<string, ProjectNode>) {
+  const parent = node.parentId ? byId.get(node.parentId) : undefined;
+  const buyer = node.buyerAddress || parent?.sellerAddress || null;
+  return {
+    effectiveBuyerAddress: buyer,
+    buyerFromParent: !node.buyerAddress && !!parent?.sellerAddress,
+    effectiveVerifierAddress: node.verifierAddress || buyer,
+    verifierIsBuyer: !node.verifierAddress,
+  };
+}
+
+function rolesFor(
+  node: ProjectNode,
+  wallet: string | null,
+  parties: ReturnType<typeof partiesOf>
+): ProjectRole[] {
   if (!wallet) return [];
   const roles: ProjectRole[] = [];
   const is = (a: string | null | undefined) => a != null && a.toLowerCase() === wallet;
-  if (is(node.buyerAddress)) roles.push('buyer');
+  if (is(parties.effectiveBuyerAddress)) roles.push('buyer');
   if (is(node.sellerAddress)) roles.push('seller');
-  // An unset verifier defaults to the buyer on-chain.
-  if (is(node.verifierAddress) || (!node.verifierAddress && is(node.buyerAddress))) roles.push('verifier');
+  if (is(parties.effectiveVerifierAddress)) roles.push('verifier');
   if (node.recipients.some((r) => is(r.address))) roles.push('recipient');
   return roles;
 }
@@ -182,13 +205,71 @@ export async function buildRootViews(
 ): Promise<ProjectNodeView[]> {
   const wallet = viewerWallet(req);
   const chainStates = await fetchChainStates(req, authToken, roots);
-  return roots.map((node) => ({
-    ...node,
-    chainState: node.chainAddress ? chainStates.get(node.chainAddress.toLowerCase()) ?? null : null,
-    viewerRoles: rolesFor(node, wallet),
-    feeBaseUnits: '0',
-    recipientPayoutsBaseUnits: [],
-  }));
+  // Roots only: there is no parent to inherit a buyer from.
+  const empty = new Map<string, ProjectNode>();
+  return roots.map((node) => {
+    const parties = partiesOf(node, empty);
+    return {
+      ...node,
+      chainState: node.chainAddress ? chainStates.get(node.chainAddress.toLowerCase()) ?? null : null,
+      viewerRoles: rolesFor(node, wallet, parties),
+      ...parties,
+      feeBaseUnits: '0',
+      recipientPayoutsBaseUnits: [],
+    };
+  });
+}
+
+/**
+ * Can this tree be committed on-chain? A project is saved as a draft first and
+ * deployed later, so this reports whether every wallet address the deploy needs
+ * is present. Rules mirror contractfanoutservice's deploy path: each node needs
+ * a seller, each slice needs a payout address or a committed child, and the root
+ * needs a buyer (children take their parent's seller as on-chain buyer).
+ *
+ * NOTE: this is a first cut of the readiness model the spec puts in
+ * contractfanoutservice (multi-tier drafting, phase 3). Move it there when
+ * invited node stubs land — a stub with no seller yet is the same question.
+ */
+export function deploymentOf(
+  nodes: ProjectNode[],
+  descendants?: Record<string, ProjectDescendantTree>
+): ProjectDeployment {
+  const root = nodes.find((n) => n.depth === 0) ?? nodes[0];
+  const deployedCount = nodes.filter((n) => !!n.chainAddress).length;
+  const missing: string[] = [];
+
+  if (!root?.buyerAddress) missing.push('Buyer wallet address');
+  const check = (list: ProjectNode[], treeLabel: string | null) => {
+    for (const node of list) {
+      const label = treeLabel
+        ? `${treeLabel} — "${node.description || 'node'}"`
+        : node.depth === 0
+          ? 'the project'
+          : `"${node.description || 'child'}"`;
+      if (node.chainAddress) continue; // already on-chain; its terms are settled
+      if (!node.sellerAddress) missing.push(`Supplier wallet address for ${label}`);
+      node.recipients.forEach((r, i) => {
+        if (!r.address && !r.childId) missing.push(`Recipient ${i + 1} wallet address for ${label}`);
+      });
+      if (!node.markedReadyAt) missing.push(`Verifier sign-off for ${label}`);
+    }
+  };
+  check(nodes, null);
+  // Deploying commits everything below this project too, and the service
+  // refuses the whole run if any of it is unfinished — so an incomplete
+  // subcontract has to show up here, not as a failure after the click.
+  Object.values(descendants ?? {}).forEach((tree) => {
+    check(tree.nodes, `subcontract "${tree.description || tree.groupId}"`);
+  });
+
+  return {
+    deployed: deployedCount === nodes.length && nodes.length > 0,
+    partiallyDeployed: deployedCount > 0 && deployedCount < nodes.length,
+    ready: missing.length === 0,
+    missing,
+    buyerAddress: root?.buyerAddress ?? null,
+  };
 }
 
 /** Merge off-chain nodes, chain state, roles, fee, and payout previews. */
@@ -197,10 +278,12 @@ export async function buildTreeView(
   authToken: string,
   groupId: string,
   nodes: ProjectNode[],
+  descendants: ProjectTreeView['descendants'] = undefined,
   decimals: number = 6
 ): Promise<ProjectTreeView> {
   const wallet = viewerWallet(req);
   const chainStates = await fetchChainStates(req, authToken, nodes);
+  const byId = new Map(nodes.map((n) => [n.id, n]));
 
   const views: ProjectNodeView[] = await Promise.all(
     nodes.map(async (node) => {
@@ -210,17 +293,19 @@ export async function buildTreeView(
         escrow,
         node.recipients.map((r) => r.bps)
       );
+      const parties = partiesOf(node, byId);
       return {
         ...node,
         chainState: node.chainAddress ? chainStates.get(node.chainAddress.toLowerCase()) ?? null : null,
-        viewerRoles: rolesFor(node, wallet),
+        viewerRoles: rolesFor(node, wallet, parties),
+        ...parties,
         feeBaseUnits,
         recipientPayoutsBaseUnits: payouts.map((p) => p.toString()),
       };
     })
   );
 
-  return { groupId, nodes: views };
+  return { groupId, nodes: views, descendants, deployment: deploymentOf(nodes, descendants) };
 }
 
 export { fromBaseUnits };

@@ -113,14 +113,21 @@ export default function CreateProjectPage() {
 /** Clone: copy parties + splits (as percentages) from the source root. */
 function buildClonePrefill(tree: ProjectTreeView): ProjectPrefill {
   const root = tree.nodes.find((n) => n.depth === 0) || tree.nodes[0];
+  // The supplier's own slice (if any) feeds the wizard's fixed supplier row;
+  // everything else becomes an additional-recipient row.
+  const supplierSliceIndex = root.recipients.findIndex(
+    (r) => r.address?.toLowerCase() === root.sellerAddress.toLowerCase()
+  );
   return {
     sellerAddress: root.sellerAddress,
     verifierAddress: root.verifierAddress || undefined,
     description: root.description,
     totalAmount: String(root.amount),
     splitMode: 'percent',
+    supplierShare:
+      supplierSliceIndex >= 0 ? (root.recipients[supplierSliceIndex].bps / 100).toString() : undefined,
     recipients: root.recipients
-      .filter((r) => !!r.address)
+      .filter((r, i) => !!r.address && i !== supplierSliceIndex)
       .map((r) => ({ address: r.address as string, value: (r.bps / 100).toString(), email: '' })),
   };
 }
@@ -145,7 +152,7 @@ function buildSubcontractPrefill(
       description: `Subcontract of: ${node.description}`,
       totalAmount: sliceAmount.toFixed(2),
       splitMode: 'amount',
-      recipients: [{ address: '', value: '', email: '' }],
+      recipients: [],
     },
     sliceIndex,
   };

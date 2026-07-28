@@ -31,7 +31,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
     const tree = await treeResponse.json();
 
-    const view = await buildTreeView(req, authToken, tree.groupId, tree.nodes);
+    const view = await buildTreeView(req, authToken, tree.groupId, tree.nodes, tree.descendants);
     res.status(200).json(view);
   } catch (error) {
     console.error('projects detail API error:', error);

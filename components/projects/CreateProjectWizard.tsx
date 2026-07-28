@@ -19,7 +19,7 @@ import {
 const steps: Step[] = [
   { id: 'details', title: 'Project details', description: 'Supplier, verifier, description' },
   { id: 'recipients', title: 'Recipients & split', description: 'Who gets paid what' },
-  { id: 'review', title: 'Review & fund', description: 'Confirm and deposit' },
+  { id: 'review', title: 'Review & save', description: 'Save — deploy and fund later' },
 ];
 
 interface FeeQuote {
@@ -34,6 +34,9 @@ export interface ProjectPrefill {
   description?: string;
   totalAmount?: string;
   splitMode?: 'amount' | 'percent';
+  /** The supplier's own share of the split; empty = supplier not paid directly. */
+  supplierShare?: string;
+  /** Additional recipients beyond the supplier. */
   recipients?: RecipientRow[];
 }
 
@@ -50,13 +53,12 @@ export default function CreateProjectWizard({ prefill, subcontract, intent = 'cr
   const { config } = useConfig();
   const { user, address } = useAuth();
   const { showToast } = useToast();
-  const { state, createAndFund } = useProjectCreation();
+  const { state, createDraft } = useProjectCreation();
 
   // Session wallet addresses arrive lower-cased; checksum them so anything we
   // pass on (verifier default, on-chain calls) survives downstream validation.
   const buyerAddress = toChecksumAddress(user?.walletAddress || address || '');
   const decimals = config?.usdcDetails?.decimals ?? 6;
-  const tokenAddress = config?.usdcContractAddress || '';
   const chainId = config?.chainId ? String(config.chainId) : '';
   const currencySymbol = config?.tokenSymbol || 'USDC';
 
@@ -66,9 +68,8 @@ export default function CreateProjectWizard({ prefill, subcontract, intent = 'cr
   const [description, setDescription] = useState(prefill?.description || '');
   const [totalAmount, setTotalAmount] = useState(prefill?.totalAmount || '');
   const [splitMode, setSplitMode] = useState<'amount' | 'percent'>(prefill?.splitMode || 'amount');
-  const [rows, setRows] = useState<RecipientRow[]>(
-    prefill?.recipients || [{ address: '', value: '', email: '' }]
-  );
+  const [supplierShare, setSupplierShare] = useState(prefill?.supplierShare || '');
+  const [rows, setRows] = useState<RecipientRow[]>(prefill?.recipients || []);
   const [sellerEmail, setSellerEmail] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [rowErrors, setRowErrors] = useState<Record<number, string>>({});
@@ -100,14 +101,19 @@ export default function CreateProjectWizard({ prefill, subcontract, intent = 'cr
       if (!isValidWalletAddress(r.address)) re[i] = 'Invalid wallet address';
       else if (!(parseFloat(r.value) > 0)) re[i] = 'Share must be positive';
     });
+    const supplierPaid = parseFloat(supplierShare) > 0;
+    const e: Record<string, string> = {};
+    if (supplierShare && !supplierPaid) e.supplierShare = 'Share must be positive (or leave it empty)';
+    if (!supplierPaid && rows.length === 0)
+      e.supplierShare = 'Give the supplier a share or add a recipient';
+    if (rows.some((r) => r.address.toLowerCase() === sellerAddress.toLowerCase()))
+      showToast({ type: 'warning', title: 'Duplicate recipient', message: 'The supplier already has their own row above.' });
     const dupes = rows.filter((r, i) => rows.findIndex((o) => o.address.toLowerCase() === r.address.toLowerCase()) !== i);
     if (dupes.length) showToast({ type: 'warning', title: 'Duplicate recipient', message: 'The same wallet appears more than once.' });
     setRowErrors(re);
-    if (!isValidAmount(totalAmount)) {
-      setErrors((s) => ({ ...s, totalAmount: 'Enter a valid total amount' }));
-      return false;
-    }
-    return Object.keys(re).length === 0;
+    if (!isValidAmount(totalAmount)) e.totalAmount = 'Enter a valid total amount';
+    setErrors((s) => ({ ...s, totalAmount: '', supplierShare: '', ...e }));
+    return Object.keys(re).length === 0 && Object.keys(e).length === 0;
   }
 
   async function goNext() {
@@ -154,31 +160,36 @@ export default function CreateProjectWizard({ prefill, subcontract, intent = 'cr
       chainId,
       description,
       splitMode,
-      recipients: rows.map((r) => ({
-        address: toChecksumAddress(r.address),
-        value: parseFloat(r.value),
-        email: r.email || null,
-      })),
+      // The supplier is the first payout slice whenever they take a share.
+      recipients: [
+        ...(parseFloat(supplierShare) > 0
+          ? [{ address: toChecksumAddress(sellerAddress), value: parseFloat(supplierShare), email: sellerEmail || null }]
+          : []),
+        ...rows.map((r) => ({
+          address: toChecksumAddress(r.address),
+          value: parseFloat(r.value),
+          email: r.email || null,
+        })),
+      ],
       serviceLink: typeof window !== 'undefined' ? window.location.origin : '',
     };
   }
 
-  async function handleFund() {
+  async function handleSave() {
     try {
-      const amountBaseUnits = toBaseUnitsClient(parseFloat(totalAmount), decimals);
-      const groupId = await createAndFund(
-        buildDraft(),
-        { tokenAddress, chainId, buyerAddress, tokenDecimals: decimals, amountBaseUnits },
-        subcontract
-      );
-      showToast({ type: 'success', title: 'Project funded', message: 'Your project is live.' });
+      const groupId = await createDraft(buildDraft(), subcontract);
+      showToast({
+        type: 'success',
+        title: 'Project saved',
+        message: 'Deploy it on-chain when you are ready.',
+      });
       router.push(`/projects/${groupId}`);
     } catch (e) {
-      showToast({ type: 'error', title: 'Could not complete', message: e instanceof Error ? e.message : 'Unknown error' });
+      showToast({ type: 'error', title: 'Could not save', message: e instanceof Error ? e.message : 'Unknown error' });
     }
   }
 
-  const busy = ['creating', 'deploying', 'approving', 'funding'].includes(state.stage);
+  const busy = state.stage === 'creating';
 
   return (
     <Wizard steps={steps} currentStep={currentStep} className="px-4">
@@ -193,6 +204,12 @@ export default function CreateProjectWizard({ prefill, subcontract, intent = 'cr
       {currentStep === 0 && (
         <WizardStep className="dark:bg-secondary-900 dark:border-secondary-700">
           <div className="space-y-5 max-w-2xl mx-auto">
+            <div className="rounded-md bg-secondary-50 dark:bg-secondary-800/50 border border-secondary-200 dark:border-secondary-700 p-3 text-sm text-secondary-700 dark:text-secondary-300">
+              You are the <strong>buyer</strong>: this project will be funded from your connected
+              wallet ({buyerAddress.slice(0, 6)}…{buyerAddress.slice(-4)}). Nothing is committed
+              yet — this wizard saves the project, and you deploy it on-chain and deposit the funds
+              afterwards, from the project&apos;s own page.
+            </div>
             <Input
               label="Supplier (seller) wallet address"
               placeholder="0x… — who does or coordinates the work"
@@ -235,6 +252,10 @@ export default function CreateProjectWizard({ prefill, subcontract, intent = 'cr
               onModeChange={setSplitMode}
               total={totalAmount}
               currencySymbol={currencySymbol}
+              supplierAddress={sellerAddress}
+              supplierValue={supplierShare}
+              onSupplierValueChange={setSupplierShare}
+              supplierError={errors.supplierShare || undefined}
               rows={rows}
               onChange={setRows}
               errors={rowErrors}
@@ -254,6 +275,7 @@ export default function CreateProjectWizard({ prefill, subcontract, intent = 'cr
           <div className="space-y-4 max-w-2xl mx-auto">
             <h3 className="text-lg font-semibold">Review</h3>
             <dl className="divide-y divide-secondary-200 dark:divide-secondary-700 text-sm">
+              <Row label="Funded by" value={`You (buyer) — ${buyerAddress}`} />
               <Row label="Supplier" value={sellerAddress} />
               <Row label="Verifier" value={verifierAddress || buyerAddress} />
               <Row label="Description" value={description} />
@@ -269,9 +291,14 @@ export default function CreateProjectWizard({ prefill, subcontract, intent = 'cr
                 }
               />
             </dl>
+            <div className="rounded-md bg-secondary-50 dark:bg-secondary-800/50 border border-secondary-200 dark:border-secondary-700 p-3 text-sm text-secondary-700 dark:text-secondary-300">
+              Saving records this project off-chain only — no gas, no deposit, nothing on-chain
+              yet. From the project page you can then deploy the escrow and fund it.
+            </div>
             <div className="rounded-md bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 p-3 text-sm text-amber-800 dark:text-amber-200">
-              Funds are released only when the verifier confirms completion — never automatically,
-              and never on a timer. You can raise a dispute at any point until that happens.
+              Once funded, money is released only when the verifier confirms completion — never
+              automatically, and never on a timer. You can raise a dispute at any point until that
+              happens.
             </div>
             {state.stage !== 'idle' && (
               <p className="text-sm text-secondary-500 dark:text-secondary-400">Status: {stageLabel(state.stage)}</p>
@@ -285,8 +312,8 @@ export default function CreateProjectWizard({ prefill, subcontract, intent = 'cr
           currentStep={currentStep}
           totalSteps={steps.length}
           onPrevious={() => setCurrentStep((s) => Math.max(s - 1, 0))}
-          onNext={currentStep < steps.length - 1 ? goNext : handleFund}
-          nextLabel={currentStep < steps.length - 1 ? 'Continue' : 'Create & fund'}
+          onNext={currentStep < steps.length - 1 ? goNext : handleSave}
+          nextLabel={currentStep < steps.length - 1 ? 'Continue' : 'Save project'}
           isNextLoading={busy || feeLoading}
           isNextDisabled={busy}
         />
@@ -307,22 +334,14 @@ function Row({ label, value }: { label: string; value: string }) {
 function stageLabel(stage: string): string {
   switch (stage) {
     case 'creating': return 'Saving project…';
-    case 'deploying': return 'Deploying on-chain…';
-    case 'approving': return 'Awaiting your approval signature…';
-    case 'funding': return 'Depositing funds…';
-    case 'done': return 'Done';
+    case 'done': return 'Saved';
     case 'error': return 'Error — you can retry';
     default: return stage;
   }
 }
 
-// Client-side unit helpers: DISPLAY ONLY (approval amount + review figures).
-// The authoritative conversions run server-side in projectMath.
-function toBaseUnitsClient(amount: number, decimals: number): string {
-  const fixed = amount.toFixed(decimals);
-  const [whole, frac = ''] = fixed.split('.');
-  return (BigInt(whole + frac.padEnd(decimals, '0'))).toString();
-}
+// Client-side unit helper: DISPLAY ONLY (review figures). The authoritative
+// conversions run server-side in projectMath.
 function fromBaseUnitsClient(units: string, decimals: number): string {
   const s = units.padStart(decimals + 1, '0');
   const whole = s.slice(0, -decimals);

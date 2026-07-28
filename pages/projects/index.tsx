@@ -7,6 +7,7 @@ import Button from '@/components/ui/Button';
 import Skeleton from '@/components/ui/Skeleton';
 import ConnectWalletEmbedded from '@/components/auth/ConnectWalletEmbedded';
 import { StatusBadge, RoleBadges } from '@/components/projects/ProjectBadges';
+import ApprovalMeter from '@/components/projects/ApprovalMeter';
 import { ProjectNodeView } from '@/types/projects';
 import { formatTokenAmount } from '@/utils/projectMath';
 
@@ -93,6 +94,17 @@ export default function ProjectsListPage() {
         </div>
       )}
 
+      {(() => {
+        const needsYou = (projects ?? []).reduce((n, p) => n + (p.awaitingYouCount ?? 0), 0);
+        return needsYou > 0 ? (
+          <div className="mb-4 rounded-md border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 p-3 text-sm text-amber-800 dark:text-amber-200">
+            {needsYou} contract{needsYou === 1 ? '' : 's'} across your projects{' '}
+            {needsYou === 1 ? 'is' : 'are'} waiting for you to approve the terms. Nothing deploys
+            until every contract in a chain is approved.
+          </div>
+        ) : null;
+      })()}
+
       {projects === null ? (
         <div className="space-y-4">
           <Skeleton className="h-24 w-full" />
@@ -121,7 +133,13 @@ export default function ProjectsListPage() {
                     <p className="text-sm text-secondary-500 dark:text-secondary-400 mt-1">
                       {symbol} {formatTokenAmount(p.amount, decimals)} · {p.recipients.length} recipient
                       {p.recipients.length === 1 ? '' : 's'}
+                      {((p.nodeCount ?? 1) > 1 || p.recipients.some((r) => r.childId || r.childGroupId)) && (
+                        <span className="ml-2 inline-flex items-center rounded bg-secondary-100 dark:bg-secondary-800 px-1.5 py-0.5 text-xs text-secondary-600 dark:text-secondary-300">
+                          ⑂ {(p.nodeCount ?? 1) > 1 ? `${p.nodeCount} contracts` : 'multi-tier'}
+                        </span>
+                      )}
                     </p>
+                    <ApprovalMeter project={p} />
                   </div>
                   <div className="flex flex-col items-end gap-2 shrink-0">
                     <StatusBadge status={p.chainState?.status ?? null} />

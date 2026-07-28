@@ -13,6 +13,13 @@ interface RecipientSplitEditorProps {
   onModeChange: (mode: 'amount' | 'percent') => void;
   total: string;
   currencySymbol: string;
+  /** The supplier from step 1: rendered as the fixed first row of the split. */
+  supplierAddress?: string;
+  /** The supplier's share; empty means the supplier is not paid directly. */
+  supplierValue?: string;
+  onSupplierValueChange?: (value: string) => void;
+  supplierError?: string;
+  /** Additional recipients beyond the supplier. */
   rows: RecipientRow[];
   onChange: (rows: RecipientRow[]) => void;
   errors?: Record<number, string>;
@@ -21,9 +28,11 @@ interface RecipientSplitEditorProps {
 const MAX_RECIPIENTS = 10;
 
 /**
- * Editor for a node's recipient split. Users enter either dollar amounts or
- * percentages (toggle); this component only renders the running totals for
- * fast feedback — the authoritative $→bps conversion happens server-side at
+ * Editor for a node's recipient split. The supplier named in step 1 is the
+ * fixed first row (their share editable, address not); further rows are
+ * additional recipients. Users enter either dollar amounts or percentages
+ * (toggle); this component only renders the running totals for fast
+ * feedback — the authoritative $→bps conversion happens server-side at
  * submit (thin-frontend rule). It never blocks submission on its own math.
  */
 export default function RecipientSplitEditor({
@@ -31,12 +40,20 @@ export default function RecipientSplitEditor({
   onModeChange,
   total,
   currencySymbol,
+  supplierAddress,
+  supplierValue = '',
+  onSupplierValueChange,
+  supplierError,
   rows,
   onChange,
   errors = {},
 }: RecipientSplitEditorProps) {
   const totalNum = parseFloat(total) || 0;
-  const sum = rows.reduce((acc, r) => acc + (parseFloat(r.value) || 0), 0);
+  const hasSupplier = !!supplierAddress;
+  const sum =
+    rows.reduce((acc, r) => acc + (parseFloat(r.value) || 0), 0) +
+    (hasSupplier ? parseFloat(supplierValue) || 0 : 0);
+  const count = rows.length + (hasSupplier ? 1 : 0);
 
   const target = mode === 'percent' ? 100 : totalNum;
   const targetLabel = mode === 'percent' ? '100%' : `${currencySymbol} ${totalNum.toFixed(2)}`;
@@ -47,7 +64,7 @@ export default function RecipientSplitEditor({
     onChange(rows.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
 
   const addRow = () => {
-    if (rows.length >= MAX_RECIPIENTS) return;
+    if (count >= MAX_RECIPIENTS) return;
     onChange([...rows, { address: '', value: '', email: '' }]);
   };
 
@@ -57,7 +74,7 @@ export default function RecipientSplitEditor({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-medium text-secondary-900 dark:text-secondary-100">
-          Recipients ({rows.length}/{MAX_RECIPIENTS})
+          Split ({count}/{MAX_RECIPIENTS})
         </h3>
         <div className="inline-flex rounded-md border border-secondary-200 dark:border-secondary-700 overflow-hidden">
           {(['amount', 'percent'] as const).map((m) => (
@@ -76,6 +93,36 @@ export default function RecipientSplitEditor({
           ))}
         </div>
       </div>
+
+      {hasSupplier && (
+        <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-start">
+          <div className="sm:col-span-6">
+            <div className="flex items-center gap-2 min-h-[40px] px-3 rounded-md border border-secondary-200 dark:border-secondary-700 bg-secondary-50 dark:bg-secondary-800/50">
+              <span className="text-xs font-medium uppercase tracking-wide text-secondary-500 dark:text-secondary-400 shrink-0">
+                Supplier
+              </span>
+              <span className="font-mono text-sm text-secondary-700 dark:text-secondary-300 truncate">
+                {supplierAddress.slice(0, 8)}…{supplierAddress.slice(-6)}
+              </span>
+            </div>
+            {supplierError && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{supplierError}</p>}
+          </div>
+          <div className="sm:col-span-3">
+            <Input
+              type="number"
+              inputMode="decimal"
+              placeholder={mode === 'percent' ? '%' : currencySymbol}
+              value={supplierValue}
+              onChange={(e) => onSupplierValueChange?.(e.target.value)}
+            />
+          </div>
+          <div className="sm:col-span-3 pt-2">
+            <p className="text-xs text-secondary-500 dark:text-secondary-400">
+              Leave empty if the supplier isn&apos;t paid directly.
+            </p>
+          </div>
+        </div>
+      )}
 
       {rows.map((row, i) => (
         <div key={i} className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-start">
@@ -104,18 +151,16 @@ export default function RecipientSplitEditor({
             />
           </div>
           <div className="sm:col-span-1 flex justify-end">
-            {rows.length > 1 && (
-              <Button variant="ghost" onClick={() => removeRow(i)} className="min-h-[40px] px-2" aria-label="Remove recipient">
-                ✕
-              </Button>
-            )}
+            <Button variant="ghost" onClick={() => removeRow(i)} className="min-h-[40px] px-2" aria-label="Remove recipient">
+              ✕
+            </Button>
           </div>
         </div>
       ))}
 
       <div className="flex items-center justify-between">
-        <Button variant="outline" onClick={addRow} disabled={rows.length >= MAX_RECIPIENTS}>
-          + Add recipient
+        <Button variant="outline" onClick={addRow} disabled={count >= MAX_RECIPIENTS}>
+          + Add another recipient
         </Button>
         <p className={`text-sm ${balanced ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}`}>
           {sumLabel} of {targetLabel}

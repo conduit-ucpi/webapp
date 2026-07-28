@@ -5,7 +5,6 @@ const baseDraft = (overrides: Partial<ProjectDraft> = {}): ProjectDraft => ({
   sellerAddress: '0xSeller',
   totalAmount: 100,
   currency: 'USDC',
-  expiryTimestamp: 4102444800,
   description: 'test',
   splitMode: 'amount',
   recipients: [

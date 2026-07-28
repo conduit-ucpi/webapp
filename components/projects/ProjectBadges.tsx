@@ -9,7 +9,6 @@ const STATUS_META: Record<ProjectChainStatus | 'OFFCHAIN', { label: string; tone
   DISPUTED: { label: 'Disputed', tone: 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300' },
   RESOLVED: { label: 'Resolved', tone: 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300' },
   CLAIMED: { label: 'Paid out', tone: 'bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300' },
-  EXPIRED: { label: 'Dispute window closed', tone: 'bg-secondary-100 text-secondary-700 dark:bg-secondary-800 dark:text-secondary-300' },
   UNKNOWN: { label: 'Unknown', tone: 'bg-secondary-100 text-secondary-700 dark:bg-secondary-800 dark:text-secondary-300' },
 };
 

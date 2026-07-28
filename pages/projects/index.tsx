@@ -8,6 +8,7 @@ import Skeleton from '@/components/ui/Skeleton';
 import ConnectWalletEmbedded from '@/components/auth/ConnectWalletEmbedded';
 import { StatusBadge, RoleBadges } from '@/components/projects/ProjectBadges';
 import { ProjectNodeView } from '@/types/projects';
+import { formatTokenAmount } from '@/utils/projectMath';
 
 export default function ProjectsListPage() {
   const { isLoading, isConnected, address, user, authenticatedFetch } = useAuth();
@@ -15,6 +16,7 @@ export default function ProjectsListPage() {
   const router = useRouter();
   const wallet = user?.walletAddress || address || '';
   const symbol = config?.tokenSymbol || 'USDC';
+  const decimals = config?.usdcDetails?.decimals ?? 6;
 
   const [projects, setProjects] = useState<ProjectNodeView[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -117,7 +119,7 @@ export default function ProjectsListPage() {
                       {p.description || 'Untitled project'}
                     </p>
                     <p className="text-sm text-secondary-500 dark:text-secondary-400 mt-1">
-                      {symbol} {p.amount.toFixed(2)} · {p.recipients.length} recipient
+                      {symbol} {formatTokenAmount(p.amount, decimals)} · {p.recipients.length} recipient
                       {p.recipients.length === 1 ? '' : 's'}
                     </p>
                   </div>

@@ -34,7 +34,6 @@ export interface ProjectNode {
   currency: string;
   currencySymbol: string | null;
   recipients: RecipientSplit[];
-  expiryTimestamp: number;
   chainId: string | null;
   chainAddress: string | null;
   description: string;
@@ -51,7 +50,6 @@ export type ProjectChainStatus =
   | 'DISPUTED'
   | 'RESOLVED'
   | 'CLAIMED'
-  | 'EXPIRED'
   | 'UNKNOWN';
 
 export interface ProjectNodeChainState {
@@ -97,11 +95,12 @@ export interface ProjectNodeInput {
   sellerEmail?: string | null;
   sellerAddress: string;
   buyerEmail?: string | null;
+  /** Buyer wallet, recorded at creation so the buyer is a party to their own tree. */
+  buyerAddress?: string | null;
   verifierAddress?: string | null;
   amount: number;
   currency: string;
   currencySymbol?: string | null;
-  expiryTimestamp: number;
   chainId?: string | null;
   description: string;
   productName?: string | null;
@@ -131,11 +130,12 @@ export interface ProjectDraft {
   sellerAddress: string;
   sellerEmail?: string | null;
   buyerEmail?: string | null;
+  /** Buyer wallet, recorded at creation so the buyer is a party to their own tree. */
+  buyerAddress?: string | null;
   verifierAddress?: string | null;
   totalAmount: number;
   currency: string;
   currencySymbol?: string | null;
-  expiryTimestamp: number;
   chainId?: string | null;
   description: string;
   splitMode: 'amount' | 'percent';

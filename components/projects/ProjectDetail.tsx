@@ -8,8 +8,7 @@ import { StatusBadge, RoleBadges } from '@/components/projects/ProjectBadges';
 import { useProjectActions } from '@/hooks/useProjectActions';
 import { useSimpleEthers } from '@/hooks/useSimpleEthers';
 import { ProjectNodeView, ProjectTreeView } from '@/types/projects';
-import { fromBaseUnits } from '@/utils/projectMath';
-import { formatDateTimeWithTZ, getRelativeTime } from '@/utils/validation';
+import { formatTokenAmount, fromBaseUnits } from '@/utils/projectMath';
 
 interface ProjectDetailProps {
   tree: ProjectTreeView;
@@ -49,9 +48,9 @@ function NodeCard({
   const roles = node.viewerRoles;
   const has = (r: string) => roles.includes(r as never);
 
-  const expiryPassed = node.expiryTimestamp * 1000 <= Date.now();
   const funded = node.chainState?.funded ?? false;
-  const canDispute = has('buyer') && funded && !expiryPassed && (status === 'ACTIVE' || status === 'AWAITING_VERIFICATION');
+  // No deadline: the buyer can dispute right up until payout.
+  const canDispute = has('buyer') && funded && (status === 'ACTIVE' || status === 'AWAITING_VERIFICATION');
   const canMarkComplete = has('seller') && status === 'ACTIVE';
   const canVerify = has('verifier') && status === 'AWAITING_VERIFICATION';
   const canFund = has('buyer') && !!node.chainAddress && (status === 'CREATED' || (status && !funded));
@@ -77,7 +76,7 @@ function NodeCard({
             {!isRoot && <span className="text-xs text-secondary-500 dark:text-secondary-400">child</span>}
           </div>
           <p className="text-sm text-secondary-500 dark:text-secondary-400 mt-1">
-            {symbol} {node.amount.toFixed(2)}
+            {symbol} {formatTokenAmount(node.amount, decimals)}
             {node.chainAddress && (
               <>
                 {' · '}
@@ -99,19 +98,13 @@ function NodeCard({
         </div>
       </div>
 
-      {/* Dispute-deadline framing + G1 warning */}
-      <div className="text-sm">
-        <span className="text-secondary-500 dark:text-secondary-400">Dispute deadline: </span>
-        <span className="text-secondary-900 dark:text-secondary-100">
-          {formatDateTimeWithTZ(node.expiryTimestamp)} ({getRelativeTime(node.expiryTimestamp)})
-        </span>
-        {has('buyer') && funded && !expiryPassed && status !== 'CLAIMED' && (
-          <p className="mt-1 text-amber-600 dark:text-amber-400">
-            After this deadline you can no longer dispute. Funds never auto-release — they move only
-            when the verifier confirms completion.
-          </p>
-        )}
-      </div>
+      {/* No deadline: dispute stays open until the verifier releases the funds */}
+      {has('buyer') && funded && status !== 'CLAIMED' && (
+        <p className="text-sm text-secondary-500 dark:text-secondary-400">
+          You can raise a dispute at any time until the verifier confirms completion. Funds never
+          auto-release and there is no deadline to miss.
+        </p>
+      )}
 
       {/* Split visualization */}
       <div>

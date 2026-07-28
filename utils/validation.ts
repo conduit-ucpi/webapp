@@ -16,6 +16,7 @@ export {
 // Re-export address utilities
 export {
   isValidWalletAddress,
+  toChecksumAddress,
   formatWalletAddress,
   ensureAddressPrefix,
   addressesEqual,

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/router';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { useAuth } from '@/components/auth';
@@ -11,18 +11,13 @@ import { useProjectCreation, SubcontractContext } from '@/hooks/useProjectCreati
 import { ProjectDraft } from '@/types/projects';
 import {
   isValidWalletAddress,
+  toChecksumAddress,
   isValidDescription,
   isValidAmount,
-  datetimeLocalToTimestamp,
-  timestampToDatetimeLocal,
-  getDefaultTimestamp,
-  getCurrentLocalDatetime,
-  formatDateTimeWithTZ,
-  getRelativeTime,
 } from '@/utils/validation';
 
 const steps: Step[] = [
-  { id: 'details', title: 'Project details', description: 'Supplier, verifier, deadline' },
+  { id: 'details', title: 'Project details', description: 'Supplier, verifier, description' },
   { id: 'recipients', title: 'Recipients & split', description: 'Who gets paid what' },
   { id: 'review', title: 'Review & fund', description: 'Confirm and deposit' },
 ];
@@ -57,7 +52,9 @@ export default function CreateProjectWizard({ prefill, subcontract, intent = 'cr
   const { showToast } = useToast();
   const { state, createAndFund } = useProjectCreation();
 
-  const buyerAddress = user?.walletAddress || address || '';
+  // Session wallet addresses arrive lower-cased; checksum them so anything we
+  // pass on (verifier default, on-chain calls) survives downstream validation.
+  const buyerAddress = toChecksumAddress(user?.walletAddress || address || '');
   const decimals = config?.usdcDetails?.decimals ?? 6;
   const tokenAddress = config?.usdcContractAddress || '';
   const chainId = config?.chainId ? String(config.chainId) : '';
@@ -67,7 +64,6 @@ export default function CreateProjectWizard({ prefill, subcontract, intent = 'cr
   const [sellerAddress, setSellerAddress] = useState(prefill?.sellerAddress || '');
   const [verifierAddress, setVerifierAddress] = useState(prefill?.verifierAddress || '');
   const [description, setDescription] = useState(prefill?.description || '');
-  const [expiryLocal, setExpiryLocal] = useState(timestampToDatetimeLocal(getDefaultTimestamp()));
   const [totalAmount, setTotalAmount] = useState(prefill?.totalAmount || '');
   const [splitMode, setSplitMode] = useState<'amount' | 'percent'>(prefill?.splitMode || 'amount');
   const [rows, setRows] = useState<RecipientRow[]>(
@@ -79,12 +75,10 @@ export default function CreateProjectWizard({ prefill, subcontract, intent = 'cr
   const [feeQuote, setFeeQuote] = useState<FeeQuote | null>(null);
   const [feeLoading, setFeeLoading] = useState(false);
 
-  // Default the verifier to the buyer (matches on-chain default; editable).
-  useEffect(() => {
-    if (!verifierAddress && buyerAddress) setVerifierAddress(buyerAddress);
-  }, [buyerAddress, verifierAddress]);
-
-  const expiryTimestamp = useMemo(() => datetimeLocalToTimestamp(expiryLocal), [expiryLocal]);
+  // The verifier is deliberately NOT pre-filled with the buyer. On-chain an unset
+  // verifier already defaults to the buyer, so pre-filling changes nothing mechanically
+  // but hides a real choice: nominating someone else is what keeps the escrow
+  // completable if the buyer goes silent.
 
   function validateDetails(): boolean {
     const e: Record<string, string> = {};
@@ -96,8 +90,6 @@ export default function CreateProjectWizard({ prefill, subcontract, intent = 'cr
     else if (verifierAddress && verifierAddress.toLowerCase() === sellerAddress.toLowerCase())
       e.verifierAddress = 'Verifier cannot be the supplier';
     if (!isValidDescription(description)) e.description = 'Enter a short description';
-    if (!expiryTimestamp || expiryTimestamp * 1000 <= Date.now())
-      e.expiry = 'Dispute deadline must be in the future';
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -145,19 +137,25 @@ export default function CreateProjectWizard({ prefill, subcontract, intent = 'cr
 
   function buildDraft(): ProjectDraft {
     return {
-      sellerAddress,
+      sellerAddress: toChecksumAddress(sellerAddress),
       sellerEmail: sellerEmail || null,
       buyerEmail: user?.email || null,
-      verifierAddress: verifierAddress || null,
+      buyerAddress,
+      // Blank means "the buyer verifies" — send the buyer's address explicitly rather
+      // than null. On-chain it makes no difference (an unset verifier defaults to the
+      // buyer), but contractfanoutservice's isParty() matches the caller's wallet
+      // against sellerAddress/buyerAddress/verifierAddress/recipients, and buyerAddress
+      // is null on a node until deploy. Sending null here locks the buyer out of their
+      // own tree with a 403 unless their account happens to carry a matching email.
+      verifierAddress: toChecksumAddress(verifierAddress || buyerAddress),
       totalAmount: parseFloat(totalAmount),
       currency: currencySymbol,
       currencySymbol,
-      expiryTimestamp,
       chainId,
       description,
       splitMode,
       recipients: rows.map((r) => ({
-        address: r.address,
+        address: toChecksumAddress(r.address),
         value: parseFloat(r.value),
         email: r.email || null,
       })),
@@ -187,7 +185,7 @@ export default function CreateProjectWizard({ prefill, subcontract, intent = 'cr
       {intent !== 'create' && (
         <div className="max-w-2xl mx-auto mb-6 rounded-md bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 p-3 text-sm text-blue-800 dark:text-blue-200">
           {intent === 'clone'
-            ? 'Cloning an existing project — parties and splits are pre-filled. Set a new amount (try a small "test run" first to prove the flow) and a new dispute deadline.'
+            ? 'Cloning an existing project — parties and splits are pre-filled. Set a new amount (try a small "test run" first to prove the flow).'
             : 'Subcontracting a slice — this creates a new linked project you fund yourself. The parent payout is unchanged.'}
         </div>
       )}
@@ -203,8 +201,9 @@ export default function CreateProjectWizard({ prefill, subcontract, intent = 'cr
               error={errors.sellerAddress}
             />
             <Input
-              label="Verifier wallet address"
-              helpText="Confirms completion on your behalf. Defaults to you; cannot be the supplier."
+              label="Verifier wallet address (optional)"
+              placeholder={`Defaults to you (${buyerAddress.slice(0, 6)}…${buyerAddress.slice(-4)})`}
+              helpText="Who signs off that the work is done. Leave blank to do it yourself. Naming someone else means the project can still complete if you are unavailable. Cannot be the supplier."
               value={verifierAddress}
               onChange={(e) => setVerifierAddress(e.target.value)}
               error={errors.verifierAddress}
@@ -216,20 +215,6 @@ export default function CreateProjectWizard({ prefill, subcontract, intent = 'cr
               onChange={(e) => setDescription(e.target.value)}
               error={errors.description}
             />
-            <Input
-              label="Dispute deadline"
-              type="datetime-local"
-              helpText="Your only window to raise a dispute. Funds do NOT auto-release at this time — after it, you can no longer dispute."
-              value={expiryLocal}
-              min={getCurrentLocalDatetime()}
-              onChange={(e) => setExpiryLocal(e.target.value)}
-              error={errors.expiry}
-            />
-            {expiryTimestamp > 0 && (
-              <p className="text-sm text-secondary-500 dark:text-secondary-400">
-                {formatDateTimeWithTZ(expiryTimestamp)} ({getRelativeTime(expiryTimestamp)})
-              </p>
-            )}
           </div>
         </WizardStep>
       )}
@@ -272,7 +257,6 @@ export default function CreateProjectWizard({ prefill, subcontract, intent = 'cr
               <Row label="Supplier" value={sellerAddress} />
               <Row label="Verifier" value={verifierAddress || buyerAddress} />
               <Row label="Description" value={description} />
-              <Row label="Dispute deadline" value={`${formatDateTimeWithTZ(expiryTimestamp)}`} />
               <Row label="Total" value={`${currencySymbol} ${parseFloat(totalAmount || '0').toFixed(2)}`} />
               <Row
                 label="Platform fee (1%)"
@@ -286,8 +270,8 @@ export default function CreateProjectWizard({ prefill, subcontract, intent = 'cr
               />
             </dl>
             <div className="rounded-md bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 p-3 text-sm text-amber-800 dark:text-amber-200">
-              Funds are released only when the verifier confirms completion. If the supplier goes
-              silent after the dispute deadline, you can no longer dispute — set a comfortable deadline.
+              Funds are released only when the verifier confirms completion — never automatically,
+              and never on a timer. You can raise a dispute at any point until that happens.
             </div>
             {state.stage !== 'idle' && (
               <p className="text-sm text-secondary-500 dark:text-secondary-400">Status: {stageLabel(state.stage)}</p>

@@ -139,10 +139,15 @@ export interface ProjectDeployment {
   deployed: boolean;
   /** Some but not all nodes are deployed (a partial/failed deploy — retryable). */
   partiallyDeployed: boolean;
-  /** All wallet addresses present, so a deploy can be attempted. */
+  /** Everything present and signed off, so a deploy can be attempted. */
   ready: boolean;
-  /** Human-readable reasons the tree is not ready, for display. */
+  /** Missing wallet details, named for display. */
   missing: string[];
+  /** Contracts whose verifier has not signed off yet, named for display. */
+  awaitingApproval: string[];
+  /** Contracts in the whole chain, and how many are signed off (or already live). */
+  nodeCount: number;
+  approvedCount: number;
   /** Buyer recorded on the root node — who funds, and the on-chain buyer. */
   buyerAddress: string | null;
 }

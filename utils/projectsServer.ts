@@ -238,21 +238,27 @@ export function deploymentOf(
   const root = nodes.find((n) => n.depth === 0) ?? nodes[0];
   const deployedCount = nodes.filter((n) => !!n.chainAddress).length;
   const missing: string[] = [];
+  const awaitingApproval: string[] = [];
+  let nodeCount = 0;
+  let approvedCount = 0;
 
   if (!root?.buyerAddress) missing.push('Buyer wallet address');
   const check = (list: ProjectNode[], treeLabel: string | null) => {
     for (const node of list) {
-      const label = treeLabel
-        ? `${treeLabel} — "${node.description || 'node'}"`
-        : node.depth === 0
-          ? 'the project'
-          : `"${node.description || 'child'}"`;
-      if (node.chainAddress) continue; // already on-chain; its terms are settled
+      const name = node.description || (node.depth === 0 ? 'the project' : 'child contract');
+      const label = treeLabel ? `${treeLabel} — "${name}"` : `"${name}"`;
+      nodeCount += 1;
+      // Already on-chain: its terms are settled, nothing left to check.
+      if (node.chainAddress) {
+        approvedCount += 1;
+        continue;
+      }
       if (!node.sellerAddress) missing.push(`Supplier wallet address for ${label}`);
       node.recipients.forEach((r, i) => {
         if (!r.address && !r.childId) missing.push(`Recipient ${i + 1} wallet address for ${label}`);
       });
-      if (!node.markedReadyAt) missing.push(`Verifier sign-off for ${label}`);
+      if (node.markedReadyAt) approvedCount += 1;
+      else awaitingApproval.push(label);
     }
   };
   check(nodes, null);
@@ -264,9 +270,12 @@ export function deploymentOf(
   });
 
   return {
+    awaitingApproval,
+    nodeCount,
+    approvedCount,
     deployed: deployedCount === nodes.length && nodes.length > 0,
     partiallyDeployed: deployedCount > 0 && deployedCount < nodes.length,
-    ready: missing.length === 0,
+    ready: missing.length === 0 && awaitingApproval.length === 0,
     missing,
     buyerAddress: root?.buyerAddress ?? null,
   };

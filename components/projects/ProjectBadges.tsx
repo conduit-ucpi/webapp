@@ -24,6 +24,23 @@ export function StatusBadge({ status }: { status: ProjectChainStatus | null }) {
   return <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${meta.tone}`}>{meta.label}</span>;
 }
 
+/**
+ * Whether one contract's verifier has signed its terms off. Carries a glyph and
+ * a word, so approval never reads as colour alone. Deployed contracts don't get
+ * one — their terms are settled and the status badge already says so.
+ */
+export function ApprovalBadge({ approved }: { approved: boolean }) {
+  const tone = approved
+    ? 'bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300'
+    : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300';
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${tone}`}>
+      <span aria-hidden="true">{approved ? '✓' : '○'}</span>
+      {approved ? 'Verified' : 'Not verified'}
+    </span>
+  );
+}
+
 export function RoleBadges({ roles }: { roles: ProjectRole[] }) {
   if (!roles.length) return null;
   return (

@@ -224,7 +224,9 @@ describe('deploymentOf and verifier sign-off', () => {
   it('is not ready until the verifier has signed off', () => {
     const d = deploymentOf([node({ markedReadyAt: null })]);
     expect(d.ready).toBe(false);
-    expect(d.missing.join(' ')).toMatch(/verifier sign-off/i);
+    // Sign-offs are listed apart from missing wallet details.
+    expect(d.missing).toEqual([]);
+    expect(d.awaitingApproval).toEqual(['"root"']);
   });
 
   it('is ready once signed off', () => {
@@ -236,7 +238,7 @@ describe('deploymentOf and verifier sign-off', () => {
     const child = node({ id: 'n2', parentId: 'n1', depth: 1, description: 'design', markedReadyAt: null });
     const d = deploymentOf([parent, child]);
     expect(d.ready).toBe(false);
-    expect(d.missing.join(' ')).toMatch(/design/);
+    expect(d.awaitingApproval.join(' ')).toMatch(/design/);
   });
 
   it('needs sign-off on subcontracts below too', () => {
@@ -248,7 +250,7 @@ describe('deploymentOf and verifier sign-off', () => {
     };
     const d = deploymentOf([approved()], { g2: sub });
     expect(d.ready).toBe(false);
-    expect(d.missing.join(' ')).toMatch(/subcontract "design"/);
+    expect(d.awaitingApproval.join(' ')).toMatch(/subcontract "design"/);
   });
 
   it('does not ask for sign-off on contracts already deployed', () => {

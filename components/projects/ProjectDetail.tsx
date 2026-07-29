@@ -5,7 +5,8 @@ import { useConfig } from '@/components/auth/ConfigProvider';
 import { useAuth } from '@/components/auth';
 import { useToast } from '@/components/ui/Toast';
 import Button from '@/components/ui/Button';
-import { StatusBadge, RoleBadges } from '@/components/projects/ProjectBadges';
+import { StatusBadge, RoleBadges, ApprovalBadge } from '@/components/projects/ProjectBadges';
+import ApprovalMeter from '@/components/projects/ApprovalMeter';
 import { useProjectActions } from '@/hooks/useProjectActions';
 import { useSimpleEthers } from '@/hooks/useSimpleEthers';
 import { ProjectDescendantTree, ProjectNode, ProjectNodeView, ProjectTreeView } from '@/types/projects';
@@ -128,6 +129,7 @@ function NodeCard({
         </div>
         <div className="flex flex-col items-end gap-2 shrink-0">
           <StatusBadge status={status} />
+          {!node.chainAddress && <ApprovalBadge approved={!!node.markedReadyAt} />}
           <RoleBadges roles={roles} />
         </div>
       </div>
@@ -329,10 +331,23 @@ function DeploymentPanel({ tree, onRefresh }: { tree: ProjectTreeView; onRefresh
           </Button>
         )}
       </div>
-      {!deployment.ready && (
+      <ApprovalMeter total={deployment.nodeCount} approved={deployment.approvedCount} />
+
+      {deployment.awaitingApproval?.length > 0 && (
+        <div className="text-sm text-secondary-700 dark:text-secondary-300">
+          <p className="font-medium">Waiting on their verifier:</p>
+          <ul className="list-disc list-inside mt-1 space-y-0.5">
+            {deployment.awaitingApproval.map((m, i) => (
+              <li key={i}>{m}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {deployment.missing.length > 0 && (
         <div className="text-sm text-amber-700 dark:text-amber-300">
           <p className="font-medium">
-            Still needed before this can go on-chain — a contract only deploys once everything
+            Still missing before this can go on-chain — a contract only deploys once everything
             below it can too:
           </p>
           <ul className="list-disc list-inside mt-1 space-y-0.5">
@@ -587,14 +602,12 @@ function DescendantNode({
   const symbol = node.currencySymbol || node.currency || 'USDC';
   return (
     <div className="space-y-1">
-      <p className="text-secondary-600 dark:text-secondary-400">
-        {node.description || 'Untitled'} · {symbol} {formatTokenAmount(node.amount, decimals)}
-        {!node.chainAddress && (
-          <span className="ml-2 text-xs">
-            {node.markedReadyAt ? '✓ approved' : '· awaiting verifier approval'}
-          </span>
-        )}
-      </p>
+      <div className="flex flex-wrap items-center gap-2 text-secondary-600 dark:text-secondary-400">
+        <span>
+          {node.description || 'Untitled'} · {symbol} {formatTokenAmount(node.amount, decimals)}
+        </span>
+        {!node.chainAddress && <ApprovalBadge approved={!!node.markedReadyAt} />}
+      </div>
       <ul className="space-y-1">
         {node.recipients.map((r, i) => {
           // Shares only: per-recipient payout previews are computed for the

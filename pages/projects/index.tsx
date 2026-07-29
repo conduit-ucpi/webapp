@@ -139,7 +139,13 @@ export default function ProjectsListPage() {
                         </span>
                       )}
                     </p>
-                    <ApprovalMeter project={p} />
+                    <ApprovalMeter
+                      className="mt-2"
+                      total={p.nodeCount}
+                      approved={p.approvedCount}
+                      deployed={p.deployedCount}
+                      awaitingYou={p.awaitingYouCount}
+                    />
                   </div>
                   <div className="flex flex-col items-end gap-2 shrink-0">
                     <StatusBadge status={p.chainState?.status ?? null} />

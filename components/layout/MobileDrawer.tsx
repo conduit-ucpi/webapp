@@ -20,6 +20,8 @@ import {
   PlayCircleIcon,
   Squares2X2Icon,
   BanknotesIcon,
+  ArrowsRightLeftIcon,
+  ArrowTrendingUpIcon,
 } from '@heroicons/react/24/outline';
 import { useAuth } from '@/components/auth';
 import { useConfig } from '@/components/auth/ConfigProvider';
@@ -42,6 +44,8 @@ interface NavItem {
   icon: React.ComponentType<{ className?: string }>;
   requiresAuth?: boolean;
   isAdmin?: boolean;
+  // Static pages served from /public — need a full page load, not client-side routing
+  isStatic?: boolean;
 }
 
 export default function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
@@ -95,6 +99,18 @@ export default function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
           href: '/how-it-works',
           label: 'How It Works',
           icon: PlayCircleIcon,
+        },
+        {
+          href: '/stabledrop-payment-flow.html',
+          label: 'How a Payment Works',
+          icon: ArrowsRightLeftIcon,
+          isStatic: true,
+        },
+        {
+          href: '/stabledrop-liquid-flow.html',
+          label: 'How Liquid Funding Works',
+          icon: ArrowTrendingUpIcon,
+          isStatic: true,
         },
         {
           href: '/merchant-savings-calculator',
@@ -152,8 +168,12 @@ export default function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
     },
   ];
 
-  const handleNavigation = (href: string) => {
-    router.push(href);
+  const handleNavigation = (href: string, isStatic?: boolean) => {
+    if (isStatic) {
+      window.location.href = href;
+    } else {
+      router.push(href);
+    }
     onClose();
   };
 
@@ -185,13 +205,14 @@ export default function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
       return null;
     }
 
-    const active = isActive(item.href);
+    // Static pages live outside the Next router, so they never match a pathname
+    const active = !item.isStatic && isActive(item.href);
     const Icon = item.icon;
-    
+
     return (
       <button
         key={item.href}
-        onClick={() => handleNavigation(item.href)}
+        onClick={() => handleNavigation(item.href, item.isStatic)}
         className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors rounded-lg ${
           active
             ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300'

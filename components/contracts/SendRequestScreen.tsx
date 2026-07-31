@@ -146,10 +146,14 @@ export default function SendRequestScreen({
       const file = await qrFile();
       const withQr = !!file && !!navigator.canShare?.({ files: [file] });
       try {
+        // Never send `url` alongside `text`: WhatsApp and several other share
+        // targets take the url and drop the body, so the buyer receives a bare
+        // link with no amount, no description and no explanation. The link is
+        // already inside the message, so text alone carries everything.
         await navigator.share(
           withQr
             ? { title: subject, text: buildMessage(true), files: [file as File] }
-            : { title: subject, text: buildMessage(false), url: paymentLink }
+            : { title: subject, text: buildMessage(false) }
         );
         return;
       } catch {

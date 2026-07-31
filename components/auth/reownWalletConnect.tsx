@@ -6,6 +6,7 @@ import { toHex } from '@/utils/hexUtils'
 import { detectDevice } from '@/utils/deviceDetection'
 import { wrapProviderWithMobileDeepLinks } from '@/utils/mobileDeepLinkProvider'
 import { createAppKitSIWXConfig } from '@/lib/auth/siwx-config'
+import { EmbeddedOnlySIWX } from '@/lib/auth/EmbeddedOnlySIWX'
 import { SIWE_STATEMENT } from '@/lib/auth/siwe-statement'
 import { mLog } from '@/utils/mobileLogger'
 import { classifyAuthError, type AuthFailure } from '@/lib/auth/classifyAuthError'
@@ -115,28 +116,29 @@ export class ReownWalletConnectProvider {
       // Create ethers adapter
       const ethersAdapter = new EthersAdapter()
 
-      // UNIVERSAL LAZY AUTH: Disable SIWX entirely for all devices
-      // Problem: SIWX prompts for signature even with SKIP nonce (both mobile and desktop external wallets)
-      // Solution: Disable SIWX universally, use lazy auth for all wallet types
+      // SIWX FOR EMBEDDED WALLETS ONLY (email OTP, Apple, Google)
       //
-      // Benefits:
-      // - No signature prompts immediately after connection (better UX)
-      // - Consistent behavior across all devices and wallet types
-      // - Signature only requested when actually needed (first API call)
+      // Previously SIWX was disabled for everyone, because it prompted for a
+      // signature even with a SKIP nonce. That also meant Reown Authentication
+      // never ran, so Reown never recorded how the user connected — leaving
+      // appKitAccount.connection_method "unknown" and email null, which is why
+      // verified emails never reached the backend.
       //
-      // Trade-off:
-      // - Embedded wallets on desktop lose headless signing during connection
-      // - They'll get signature prompt on first API call instead
-      // - But it's clearer to users what they're signing (actual data request, not just connection)
+      // EmbeddedOnlySIWX runs Reown Authentication for embedded wallets (where
+      // signing is headless and Reown holds a verified email) and short-circuits
+      // for external wallets, which keep lazy auth and get no connect-time
+      // prompt. See lib/auth/EmbeddedOnlySIWX.ts.
+      //
+      // Kill switch: set NEXT_PUBLIC_EMBEDDED_SIWX=false to restore the previous
+      // disabled-for-everyone behaviour.
+      const embeddedSiwxEnabled = process.env.NEXT_PUBLIC_EMBEDDED_SIWX !== 'false'
 
       mLog.info('ReownWalletConnect', '========================================')
-      mLog.info('ReownWalletConnect', 'SIWX COMPLETELY DISABLED (universal lazy auth)')
-      mLog.info('ReownWalletConnect', 'All wallets use lazy auth pattern')
-      mLog.info('ReownWalletConnect', 'NO signature prompts after connection')
-      mLog.info('ReownWalletConnect', 'Signature only when needed (first API call)')
+      mLog.info('ReownWalletConnect', `SIWX: ${embeddedSiwxEnabled ? 'EMBEDDED WALLETS ONLY' : 'DISABLED'}`)
+      mLog.info('ReownWalletConnect', 'External wallets always use lazy auth (no connect-time prompt)')
       mLog.info('ReownWalletConnect', '========================================')
 
-      const siwxConfig = undefined // Disable SIWX for everyone
+      const siwxConfig = embeddedSiwxEnabled ? new EmbeddedOnlySIWX() : undefined
 
       // Create AppKit instance
       console.log('🔧 ReownWalletConnect: Creating AppKit...')

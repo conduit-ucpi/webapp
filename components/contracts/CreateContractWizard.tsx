@@ -6,10 +6,8 @@ import { useAuth } from '@/components/auth';
 import { useToast } from '@/components/ui/Toast';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
-import BuyerInput from '@/components/ui/BuyerInput';
 import WalletInfo from '@/components/ui/WalletInfo';
 import PaymentQRModal from '@/components/ui/PaymentQRModal';
-import CurrencyAmountInput from '@/components/ui/CurrencyAmountInput';
 import { Wizard, WizardStep, WizardNavigation, WizardStep as Step } from '@/components/ui/Wizard';
 import {
   isValidEmail,
@@ -20,13 +18,17 @@ import {
   toMicroUSDC,
   formatUSDC,
   formatDateTimeWithTZ,
-  timestampToDatetimeLocal,
-  datetimeLocalToTimestamp,
-  getDefaultTimestamp,
-  getCurrentLocalDatetime,
-  getMaxLocalDatetime,
-  getRelativeTime
+  getDefaultTimestamp
 } from '@/utils/validation';
+import ReleaseDateField from '@/components/contracts/ReleaseDateField';
+import AdvancedOptions from '@/components/contracts/AdvancedOptions';
+import PaymentTermsForm from '@/components/contracts/PaymentTermsForm';
+import CreateProgressSteps from '@/components/contracts/CreateProgressSteps';
+import ReviewRequest from '@/components/contracts/ReviewRequest';
+import SendRequestScreen from '@/components/contracts/SendRequestScreen';
+import { useTokenBalance } from '@/hooks/useTokenBalance';
+import { getNetworkName } from '@/utils/networkUtils';
+import { useSimpleEthers } from '@/hooks/useSimpleEthers';
 import { emailsEqual } from '@/utils/address';
 
 interface CreateContractForm {
@@ -47,16 +49,13 @@ interface FormErrors {
   arbiterAddress?: string;
 }
 
+// Amount, timing and description now share one screen ("Request a Payment"),
+// matching the Connect / Payment Terms / Complete & Send journey.
 const steps: Step[] = [
   {
-    id: 'details',
-    title: 'Basic Details',
-    description: 'Who and what'
-  },
-  {
     id: 'payment',
-    title: 'Payment Terms', 
-    description: 'Amount and timing'
+    title: 'Payment Terms',
+    description: 'Amount, timing and description'
   },
   {
     id: 'review',
@@ -90,8 +89,11 @@ export default function CreateContractWizard() {
   const [errors, setErrors] = useState<FormErrors>({});
   const [showQRModal, setShowQRModal] = useState(false);
   const [isInstantPayment, setIsInstantPayment] = useState(false);
-  const [noBuyerEmail, setNoBuyerEmail] = useState(false);
-  const [showAdvanced, setShowAdvanced] = useState(false);
+  // The buyer is no longer identified by email on the create screen - the
+  // request is delivered by share link instead - so this defaults on. The
+  // existing gates then skip buyer-email validation and the submit path
+  // already handles the no-email case.
+  const [noBuyerEmail, setNoBuyerEmail] = useState(true);
   const [selectedTokenSymbol, setSelectedTokenSymbol] = useState<string>(
     config?.defaultTokenSymbol || config?.tokenSymbol || 'USDC'
   );
@@ -102,7 +104,18 @@ export default function CreateContractWizard() {
     : (config?.usdcDetails || config?.usdcContractAddress
         ? [config.usdcDetails || { symbol: 'USDC', address: config.usdcContractAddress }]
         : []);
-  const hasMultipleTokens = availableTokens.length > 1;
+
+  // Token balance (read-only), shown on the Request a Payment screen. Same
+  // pattern as contract-create/contract-pay - the hook itself also requires
+  // address + tokenAddress before it fetches.
+  const { getTokenBalance } = useSimpleEthers();
+  const selectedTokenAddress = availableTokens.find(t => t.symbol === selectedTokenSymbol)?.address;
+  const { tokenBalance, isLoadingBalance } = useTokenBalance({
+    enabled: !!config?.rpcUrl,
+    address,
+    tokenAddress: selectedTokenAddress,
+    getTokenBalance,
+  });
 
   // Fetch user data when wallet connects (lazy auth will trigger automatically if needed)
   useEffect(() => {
@@ -142,16 +155,6 @@ export default function CreateContractWizard() {
     // user guards make this a one-shot fetch. See contract-pay.tsx.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isConnected, address, user, hasAttemptedUserFetch]);
-
-  // Utility functions (same as original)
-  const getUserTimezone = () => {
-    const date = new Date();
-    const timeString = date.toLocaleTimeString('en-US', {
-      timeZoneName: 'short'
-    });
-    const parts = timeString.split(' ');
-    return parts[parts.length - 1];
-  };
 
   // Generate payment URL for in-person QR code
   const generatePaymentUrl = (): string => {
@@ -202,7 +205,7 @@ export default function CreateContractWizard() {
 
   // Handle in-person QR code generation
   const handleGenerateQR = () => {
-    if (!validateStep(2)) {
+    if (!validateStep(0)) {
       return;
     }
     setShowQRModal(true);
@@ -254,9 +257,8 @@ export default function CreateContractWizard() {
             newErrors.arbiterAddress = 'Invalid arbiter wallet address';
           }
         }
-        break;
+        // Falls through: amount and timing are on this same screen now.
         
-      case 1: // Payment Terms
         // Use SDK utils if available, otherwise fall back to local validation
         const amountValidator = isValidAmount;
 
@@ -279,8 +281,8 @@ export default function CreateContractWizard() {
         }
         break;
         
-      case 2: // Review - validate everything
-        return validateStep(0) && validateStep(1);
+      case 1: // Review - everything was validated on the form screen
+        return validateStep(0);
     }
     
     setErrors(newErrors);
@@ -388,392 +390,42 @@ export default function CreateContractWizard() {
         return (
           <WizardStep children={
             <>
-              <h2 className="text-xl font-semibold text-secondary-900 mb-2">
-                {isInstantPayment ? 'Payment details' : "Who's the buyer?"}
+              <h2 className="text-2xl sm:text-3xl font-semibold text-secondary-900 dark:text-white mb-6 text-center">
+                Request a Payment
               </h2>
-              <p className="text-secondary-600 mb-6">
-                {isInstantPayment
-                  ? 'Set up an instant QR code payment for in-person transactions.'
-                  : 'Tell us who will be making the payment and what this request is for.'
-                }
-              </p>
-
-              <div className="space-y-6">
-                {/* Instant Payment Checkbox */}
-                <div className="flex items-start">
-                  <input
-                    type="checkbox"
-                    id="instantPayment"
-                    checked={isInstantPayment}
-                    onChange={(e) => {
-                      const checked = e.target.checked;
-                      setIsInstantPayment(checked);
-                      if (checked) {
-                        // Set timestamp to 0 for instant payment and clear buyer email
-                        setForm(prev => ({
-                          ...prev,
-                          payoutTimestamp: 0,
-                          buyerEmail: '',
-                          buyerType: 'email',
-                          buyerFid: undefined
-                        }));
-                      } else {
-                        // Reset to default timestamp when unchecked
-                        setForm(prev => ({ ...prev, payoutTimestamp: getDefaultTimestamp() }));
-                      }
-                    }}
-                    className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-secondary-300 rounded mt-0.5"
-                  />
-                  <label htmlFor="instantPayment" className="ml-3 block text-sm text-secondary-700">
-                    <span className="font-medium">Instant QR code payment</span>
-                    <p className="text-secondary-500 mt-1">
-                      For in-person transactions - funds are released immediately after payment (no email needed)
-                    </p>
-                  </label>
-                </div>
-
-                {/* Buyer email - only show if NOT instant payment */}
-                {!isInstantPayment && (
-                  <>
-                    {/* No buyer email checkbox */}
-                    <div className="flex items-start">
-                      <input
-                        type="checkbox"
-                        id="noBuyerEmail"
-                        checked={noBuyerEmail}
-                        onChange={(e) => {
-                          const checked = e.target.checked;
-                          setNoBuyerEmail(checked);
-                          if (checked) {
-                            // Clear buyer email when checkbox is checked
-                            setForm(prev => ({
-                              ...prev,
-                              buyerEmail: '',
-                              buyerType: 'email',
-                              buyerFid: undefined
-                            }));
-                            // Clear any buyer email errors
-                            setErrors(prev => ({ ...prev, buyerEmail: undefined }));
-                          }
-                        }}
-                        className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-secondary-300 rounded mt-0.5"
-                      />
-                      <label htmlFor="noBuyerEmail" className="ml-3 block text-sm text-secondary-700">
-                        <span className="font-medium">No buyer email - I'll share the payment link myself</span>
-                        <p className="text-secondary-500 mt-1">
-                          You'll get a shareable payment link to send directly to the buyer
-                        </p>
-                      </label>
-                    </div>
-
-                    <BuyerInput
-                      label="Buyer's email address"
-                      value={form.buyerEmail}
-                      onChange={(value, type, fid) => setForm(prev => ({
-                        ...prev,
-                        buyerEmail: value,
-                        buyerType: type,
-                        buyerFid: fid
-                      }))}
-                      error={errors.buyerEmail}
-                      placeholder="Search Farcaster user or enter email"
-                      helpText={noBuyerEmail ? "You'll notify the buyer manually with the payment link" : "They'll receive an email with payment instructions"}
-                      disabled={noBuyerEmail}
-                    />
-                  </>
-                )}
-
-                <div>
-                  <label className="block text-sm font-medium text-secondary-700 mb-2">
-                    What are you selling? ({form.description.length}/160)
-                  </label>
-                  <textarea
-                    className="w-full border border-secondary-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                    rows={3}
-                    maxLength={160}
-                    value={form.description}
-                    onChange={(e) => setForm(prev => ({ ...prev, description: e.target.value }))}
-                    placeholder="Brief description of what you're selling..."
-                  />
-                  {errors.description && (
-                    <p className="text-sm text-error-600 mt-1">{errors.description}</p>
-                  )}
-                  <p className="text-xs text-secondary-500 mt-2">
-                    {isInstantPayment
-                      ? 'This will appear on the QR code payment screen.'
-                      : 'This will appear in the payment request email to the buyer.'
-                    }
-                  </p>
-                </div>
-
-                {/* Advanced Options (collapsed by default) */}
-                <div className="border-t border-secondary-200 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => setShowAdvanced(prev => !prev)}
-                    aria-expanded={showAdvanced}
-                    className="flex items-center justify-between w-full text-left text-sm font-medium text-secondary-700 hover:text-secondary-900 focus:outline-none"
-                  >
-                    <span>Advanced Options</span>
-                    <svg
-                      className={`h-4 w-4 text-secondary-500 transform transition-transform ${showAdvanced ? 'rotate-180' : ''}`}
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      aria-hidden="true"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </button>
-
-                  {showAdvanced && (
-                    <div className="mt-4">
-                      <div className="flex items-center gap-2 mb-2">
-                        <label className="text-sm font-medium text-secondary-700">
-                          Arbiter Wallet Address
-                        </label>
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-secondary-100 text-secondary-700">
-                          Advanced &middot; Optional
-                        </span>
-                      </div>
-                      <Input
-                        type="text"
-                        value={form.arbiterAddress}
-                        onChange={(e) => setForm(prev => ({ ...prev, arbiterAddress: e.target.value }))}
-                        placeholder="0x..."
-                        error={errors.arbiterAddress}
-                        helpText="Optional override for the dispute resolver. Leave blank to use the system default."
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
+              <PaymentTermsForm
+                amount={form.amount}
+                onAmountChange={(amount) => setForm(prev => ({ ...prev, amount }))}
+                payoutTimestamp={form.payoutTimestamp}
+                onPayoutTimestampChange={(payoutTimestamp) => setForm(prev => ({ ...prev, payoutTimestamp }))}
+                description={form.description}
+                onDescriptionChange={(description) => setForm(prev => ({ ...prev, description }))}
+                arbiterAddress={form.arbiterAddress}
+                onArbiterChange={(arbiterAddress) => setForm(prev => ({ ...prev, arbiterAddress }))}
+                errors={errors}
+                tokenSymbol={selectedTokenSymbol}
+                tokenOptions={availableTokens.map(t => t.symbol)}
+                onTokenChange={setSelectedTokenSymbol}
+                networkLabel={config ? getNetworkName(config.chainId) : undefined}
+                balanceText={isLoadingBalance ? undefined : `Balance: ${tokenBalance} ${selectedTokenSymbol}`}
+              />
             </>
           } />
         );
+
 
       case 1:
         return (
           <WizardStep children={
-            <>
-              <h2 className="text-xl font-semibold text-secondary-900 mb-2">
-                Payment terms
-              </h2>
-              <p className="text-secondary-600 mb-6">
-                {isInstantPayment
-                  ? 'Set the amount for this instant payment.'
-                  : 'Set the amount and when funds should be released.'
-                }
-              </p>
-
-              <div className="space-y-6">
-                {/* Token Selector - only show if multiple tokens available */}
-                {hasMultipleTokens && (
-                  <div>
-                    <label className="block text-sm font-medium text-secondary-700 mb-2">
-                      Payment Token
-                    </label>
-                    <select
-                      className="w-full border border-secondary-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                      value={selectedTokenSymbol}
-                      onChange={(e) => setSelectedTokenSymbol(e.target.value)}
-                    >
-                      {availableTokens.map((token) => (
-                        <option key={token.symbol} value={token.symbol}>
-                          {token.symbol}
-                        </option>
-                      ))}
-                    </select>
-                    <p className="text-xs text-secondary-500 mt-2">
-                      Select which stablecoin the buyer will use for payment
-                    </p>
-                  </div>
-                )}
-
-                <div>
-                  <CurrencyAmountInput
-                    label={`Amount (${selectedTokenSymbol})`}
-                    value={form.amount}
-                    onChange={(value) => setForm(prev => ({ ...prev, amount: value }))}
-                    tokenSymbol={selectedTokenSymbol}
-                    error={errors.amount}
-                    helpText="Amount must be over $1, or exactly 0.001 for testing"
-                  />
-                  <div className="mt-2 p-3 bg-info-50 border border-info-200 rounded-md">
-                    <p className="text-sm text-info-800">
-                      💡 <strong>How it works:</strong> The buyer pays this amount upfront.
-                      {isInstantPayment
-                        ? ' Funds are released to you immediately after payment.'
-                        : ' Funds are held securely until the release date, then automatically transferred to you.'
-                      }
-                    </p>
-                  </div>
-                </div>
-
-                {/* Conditional datetime input - only show if NOT instant payment */}
-                {!isInstantPayment && (
-                  <div>
-                    <label className="block text-sm font-medium text-secondary-700 mb-2">
-                      When should funds be released?
-                      <span className="ml-2 text-xs font-normal text-secondary-500">
-                        (Your timezone: {getUserTimezone()})
-                      </span>
-                    </label>
-                    <input
-                      type="datetime-local"
-                      className="w-full border border-secondary-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                      value={timestampToDatetimeLocal(form.payoutTimestamp)}
-                      onChange={(e) => setForm(prev => ({
-                        ...prev,
-                        payoutTimestamp: datetimeLocalToTimestamp(e.target.value)
-                      }))}
-                      min={getCurrentLocalDatetime()}
-                      max={getMaxLocalDatetime()}
-                    />
-                    {errors.expiry && (
-                      <p className="text-sm text-error-600 mt-1">{errors.expiry}</p>
-                    )}
-                    <div className="flex justify-between items-center mt-2">
-                      <p className="text-xs text-secondary-500">
-                        Funds will be released automatically at this time
-                      </p>
-                      {form.payoutTimestamp && !errors.expiry && (
-                        <p className="text-xs font-medium text-primary-600">
-                          {getRelativeTime(form.payoutTimestamp)}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </>
-          } />
-        );
-
-      case 2:
-        return (
-          <WizardStep children={
-            <>
-              <h2 className="text-xl font-semibold text-secondary-900 mb-2">
-                Review payment request
-              </h2>
-              <p className="text-secondary-600 mb-6">
-                Double-check the details before sending to the buyer.
-              </p>
-              
-              <div className="space-y-6">
-                {/* Contract Summary */}
-                <div className="bg-secondary-50 rounded-lg p-4">
-                  <h3 className="font-medium text-secondary-900 mb-4">
-                    {isInstantPayment ? 'QR Code Payment Summary' : 'Payment Request Summary'}
-                  </h3>
-                  <div className="space-y-3">
-                    {!isInstantPayment && !noBuyerEmail && (
-                      <div className="flex justify-between">
-                        <span className="text-secondary-600">Buyer:</span>
-                        <span className="font-medium">{form.buyerEmail}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between">
-                      <span className="text-secondary-600">Amount:</span>
-                      <span className="font-medium text-lg">
-                        {formatUSDC(toMicroUSDC(parseFloat(form.amount || '0')))} {selectedTokenSymbol}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-secondary-600">Release date:</span>
-                      <span className="font-medium">
-                        {isInstantPayment ? 'Instant (no delay)' : formatDateTimeWithTZ(form.payoutTimestamp)}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-secondary-600">Description:</span>
-                      <span className="font-medium text-right max-w-xs">
-                        {form.description}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* What happens next */}
-                <div className="bg-primary-50 rounded-lg p-4">
-                  <h3 className="font-medium text-primary-900 mb-3">What happens next?</h3>
-                  {isInstantPayment ? (
-                    <ol className="space-y-2 text-sm text-primary-800">
-                      <li className="flex items-start">
-                        <span className="font-medium mr-2">1.</span>
-                        <span>A QR code will be generated for in-person payment</span>
-                      </li>
-                      <li className="flex items-start">
-                        <span className="font-medium mr-2">2.</span>
-                        <span>The buyer scans the QR code and pays {formatUSDC(toMicroUSDC(parseFloat(form.amount || '0')))} {selectedTokenSymbol}</span>
-                      </li>
-                      <li className="flex items-start">
-                        <span className="font-medium mr-2">3.</span>
-                        <span>Funds are released to you immediately after payment confirmation</span>
-                      </li>
-                    </ol>
-                  ) : noBuyerEmail ? (
-                    <ol className="space-y-2 text-sm text-primary-800">
-                      <li className="flex items-start">
-                        <span className="font-medium mr-2">1.</span>
-                        <span>You'll receive a payment link to share with the buyer</span>
-                      </li>
-                      <li className="flex items-start">
-                        <span className="font-medium mr-2">2.</span>
-                        <span>The buyer clicks the link and pays {formatUSDC(toMicroUSDC(parseFloat(form.amount || '0')))} {selectedTokenSymbol} to our secure escrow</span>
-                      </li>
-                      <li className="flex items-start">
-                        <span className="font-medium mr-2">3.</span>
-                        <span>Funds are automatically released to you on {formatDateTimeWithTZ(form.payoutTimestamp)}</span>
-                      </li>
-                      <li className="flex items-start">
-                        <span className="font-medium mr-2">4.</span>
-                        <span>Both parties can raise disputes if needed before the release date</span>
-                      </li>
-                    </ol>
-                  ) : (
-                    <ol className="space-y-2 text-sm text-primary-800">
-                      <li className="flex items-start">
-                        <span className="font-medium mr-2">1.</span>
-                        <span>{form.buyerEmail} receives an email with payment instructions</span>
-                      </li>
-                      <li className="flex items-start">
-                        <span className="font-medium mr-2">2.</span>
-                        <span>They pay {formatUSDC(toMicroUSDC(parseFloat(form.amount || '0')))} {selectedTokenSymbol} to our secure escrow</span>
-                      </li>
-                      <li className="flex items-start">
-                        <span className="font-medium mr-2">3.</span>
-                        <span>Funds are automatically released to you on {formatDateTimeWithTZ(form.payoutTimestamp)}</span>
-                      </li>
-                      <li className="flex items-start">
-                        <span className="font-medium mr-2">4.</span>
-                        <span>Both parties can raise disputes if needed before the release date</span>
-                      </li>
-                    </ol>
-                  )}
-                </div>
-
-
-                {/* Edit buttons */}
-                <div className="grid grid-cols-2 gap-4 pt-4 border-t border-secondary-200">
-                  <Button
-                    variant="outline"
-                    onClick={() => setCurrentStep(0)}
-                    className="text-sm"
-                  >
-                    Edit Details
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => setCurrentStep(1)}
-                    className="text-sm"
-                  >
-                    Edit Payment Terms
-                  </Button>
-                </div>
-              </div>
-            </>
+            <ReviewRequest
+              amount={form.amount}
+              tokenSymbol={selectedTokenSymbol}
+              networkLabel={config ? getNetworkName(config.chainId) : undefined}
+              description={form.description}
+              payoutTimestamp={form.payoutTimestamp}
+              isInstantPayment={isInstantPayment}
+              onEdit={() => { setCurrentStep(0); setErrors({}); }}
+            />
           } />
         );
 
@@ -786,16 +438,14 @@ export default function CreateContractWizard() {
     let result: any;
     switch (currentStep) {
       case 0:
-        // For instant payment, only description is needed
-        // For noBuyerEmail, only description is needed
-        // For normal payment, email + description
-        result = isInstantPayment || noBuyerEmail ? !!form.description : !!(form.buyerEmail && form.description);
+        // One screen now: description, amount and (unless instant) a payout time.
+        result =
+          !!form.description &&
+          !!form.amount &&
+          (isInstantPayment || form.payoutTimestamp > 0) &&
+          (isInstantPayment || noBuyerEmail ? true : !!form.buyerEmail);
         break;
       case 1:
-        // For instant payment, timestamp can be 0; for delayed payment, it must be set
-        result = form.amount && (isInstantPayment || form.payoutTimestamp > 0);
-        break;
-      case 2:
         result = user && user.walletAddress; // Only allow final submission when user is authenticated
         break;
       default:
@@ -819,137 +469,23 @@ export default function CreateContractWizard() {
 
   // Show success screen after contract creation
   if (showSuccessScreen && createdContractId) {
-    const paymentLink = generateContractPaymentLink();
-
     return (
       <div className="w-full max-w-2xl mx-auto">
         {/* Wallet Info Section */}
         <WalletInfo className="mb-6" />
 
-        <div className="bg-white rounded-lg border border-secondary-200 p-8">
-          {/* Success Header */}
-          <div className="text-center mb-6">
-            <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
-              <svg className="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-            </div>
-            <h2 className="text-2xl font-bold text-secondary-900 mb-2">Payment Request Created!</h2>
-            <p className="text-secondary-600">
-              {isInstantPayment
-                ? 'Your QR code payment request is ready'
-                : noBuyerEmail
-                  ? 'Your payment link is ready to share with the buyer'
-                  : `An email has been sent to ${form.buyerEmail}`
-              }
-            </p>
-          </div>
+        <CreateProgressSteps current={2} />
 
-          {/* Payment Link Section */}
-          <div className="bg-primary-50 border border-primary-200 rounded-lg p-6 mb-6">
-            <h3 className="font-semibold text-primary-900 mb-3">Share Payment Link</h3>
-            <p className="text-sm text-primary-800 mb-4">
-              Send this link directly to the buyer for instant payment:
-            </p>
-
-            {/* Link Display with Copy Button */}
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                readOnly
-                value={paymentLink}
-                className="flex-1 text-sm border border-primary-300 rounded-md px-3 py-2 bg-white font-mono text-primary-900"
-              />
-              <Button
-                onClick={handleCopyPaymentLink}
-                className={`${
-                  paymentLinkCopied
-                    ? 'bg-green-500 hover:bg-green-600'
-                    : ''
-                } whitespace-nowrap`}
-              >
-                {paymentLinkCopied ? (
-                  <>
-                    <svg className="w-4 h-4 sm:mr-2" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                    <span className="hidden sm:inline">Copied!</span>
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-4 h-4 sm:mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                    </svg>
-                    <span className="hidden sm:inline">Copy Link</span>
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
-
-          {/* Contract Summary */}
-          <div className="bg-secondary-50 rounded-lg p-4 mb-6">
-            <h3 className="font-medium text-secondary-900 mb-3">Payment Request Summary</h3>
-            <div className="space-y-2 text-sm">
-              {!isInstantPayment && !noBuyerEmail && (
-                <div className="flex justify-between">
-                  <span className="text-secondary-600">Buyer:</span>
-                  <span className="font-medium">{form.buyerEmail}</span>
-                </div>
-              )}
-              <div className="flex justify-between">
-                <span className="text-secondary-600">Amount:</span>
-                <span className="font-medium">{formatUSDC(toMicroUSDC(parseFloat(form.amount || '0')))} {selectedTokenSymbol}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-secondary-600">Release Date:</span>
-                <span className="font-medium">
-                  {isInstantPayment ? 'Instant' : formatDateTimeWithTZ(form.payoutTimestamp)}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-secondary-600">Contract ID:</span>
-                <span className="font-mono text-xs">{createdContractId}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex flex-col sm:flex-row gap-3">
-            <Button
-              onClick={() => router.push('/dashboard')}
-              className="flex-1"
-            >
-              Go to Dashboard
-            </Button>
-            <Button
-              onClick={() => {
-                // Reset wizard for new payment request
-                setShowSuccessScreen(false);
-                setCreatedContractId(null);
-                setCurrentStep(0);
-                setForm({
-                  buyerEmail: '',
-                  buyerType: 'email',
-                  buyerFid: undefined,
-                  amount: '',
-                  payoutTimestamp: getDefaultTimestamp(),
-                  description: '',
-                  arbiterAddress: ''
-                });
-                setErrors({});
-                setIsInstantPayment(false);
-                setNoBuyerEmail(false);
-                setShowAdvanced(false);
-                setPaymentLinkCopied(false);
-              }}
-              variant="outline"
-              className="flex-1"
-            >
-              Create Another Request
-            </Button>
-          </div>
-        </div>
+        <SendRequestScreen
+          paymentLink={generateContractPaymentLink()}
+          amount={form.amount}
+          tokenSymbol={selectedTokenSymbol}
+          networkLabel={config ? getNetworkName(config.chainId) : undefined}
+          description={form.description}
+          copied={paymentLinkCopied}
+          onCopy={handleCopyPaymentLink}
+          onDone={() => router.push('/dashboard')}
+        />
       </div>
     );
   }
@@ -959,7 +495,13 @@ export default function CreateContractWizard() {
       {/* Wallet Info Section */}
       <WalletInfo className="mb-6" />
 
+      {/* Whole-journey indicator. Connect is done by the time the wizard
+          renders, and both the form and its review are "Payment Terms" -
+          "Complete & Send" is the share screen after the request exists. */}
+      <CreateProgressSteps current={showSuccessScreen ? 2 : 1} />
+
       <Wizard
+        hideProgress
         steps={steps}
         currentStep={currentStep}
         onStepChange={(step) => {
@@ -1007,13 +549,6 @@ export default function CreateContractWizard() {
                     >
                       {isLoading ? 'Creating...' : 'Create Payment Request'}
                     </Button>
-
-                    <p className="text-sm text-secondary-500 text-center">
-                      {isInstantPayment
-                        ? 'A QR code will be generated for instant in-person payment'
-                        : 'An email notification will be sent to the buyer'
-                      }
-                    </p>
                   </div>
                 </div>
               ) : (

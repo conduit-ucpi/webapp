@@ -1,8 +1,16 @@
 import { useRouter } from 'next/router';
 import { useAuth } from '@/components/auth';
 import CreateContractWizard from '@/components/contracts/CreateContractWizard';
-import ConnectWalletEmbedded from '@/components/auth/ConnectWalletEmbedded';
+import WalletChoiceCards from '@/components/auth/WalletChoiceCards';
 import Skeleton from '@/components/ui/Skeleton';
+import { getSiteNameFromDomain } from '@/utils/siteName';
+import CreateProgressSteps from '@/components/contracts/CreateProgressSteps';
+
+const HOW_IT_WORKS = [
+  'You set the amount, stablecoin, and release terms',
+  'The buyer pays into escrow – funds are held but not sent to you yet',
+  'Funds release to your wallet automatically on the release terms you set',
+];
 
 export default function CreatePage() {
   const { isLoading, isConnected, address } = useAuth();
@@ -35,13 +43,43 @@ export default function CreatePage() {
   // Check for wallet connection instead of backend user
   // Backend auth (SIWE) is not required - lazy auth will trigger on first API call
   if (!isConnected || !address) {
+    const siteName = getSiteNameFromDomain();
+
     return (
-      <div className="max-w-md mx-auto text-center py-20">
-        <h1 className="text-2xl font-bold text-secondary-900 mb-4">Connect Your Wallet</h1>
-        <p className="text-secondary-600 mb-6">
-          You need to connect your wallet to create time-locked payments.
-        </p>
-        <ConnectWalletEmbedded useSmartRouting={true} autoConnect={autoConnect} />
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12 sm:py-16">
+        {/* Step 1 of the create-request journey. Steps 2 and 3 are the wizard
+            stages the user reaches once connected - same component, so the
+            circles stay consistent across both screens. */}
+        <CreateProgressSteps current={0} />
+
+        <div className="text-center">
+          <h1 className="text-3xl sm:text-4xl font-bold text-secondary-900 dark:text-white tracking-tight">
+            Get Started with {siteName}
+          </h1>
+          <p className="mt-3 text-secondary-500 dark:text-secondary-400">
+            We use a wallet to securely send and receive your payments.
+          </p>
+        </div>
+
+        <WalletChoiceCards autoConnect={autoConnect} />
+
+        <div className="mt-6 rounded-2xl border border-secondary-200 dark:border-secondary-700 bg-white dark:bg-secondary-900 p-6 sm:p-7">
+          <h2 className="text-lg font-semibold text-secondary-900 dark:text-white">
+            How this works
+          </h2>
+          <ol className="mt-5 space-y-4">
+            {HOW_IT_WORKS.map((text, i) => (
+              <li key={i} className="flex gap-4">
+                <span className="shrink-0 w-7 h-7 rounded-full bg-secondary-200 dark:bg-secondary-700 text-secondary-600 dark:text-secondary-300 grid place-items-center text-xs font-semibold">
+                  {i + 1}
+                </span>
+                <p className="text-sm text-secondary-500 dark:text-secondary-400 leading-relaxed pt-1">
+                  {text}
+                </p>
+              </li>
+            ))}
+          </ol>
+        </div>
       </div>
     );
   }

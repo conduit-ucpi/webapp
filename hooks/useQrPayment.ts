@@ -45,7 +45,9 @@ interface UseQrPaymentResult {
   qrPaymentDetected: boolean;
   qrActivationStatus: QrActivationStatus;
   isCreatingContract: boolean;
-  createContract: () => Promise<void>;
+  /** Resolves the escrow address and also returns it, for callers that need to
+   *  act on it immediately rather than wait for the state update. */
+  createContract: () => Promise<string | undefined>;
   checkAndActivate: () => Promise<void>;
   buildEip681Uri: () => string;
   formatCountdown: (seconds: number) => string;
@@ -99,7 +101,10 @@ export function useQrPayment(params: UseQrPaymentParams): UseQrPaymentResult {
     }
   }, [qrContractAddress, authenticatedFetch, onActivated]);
 
-  const createContract = useCallback(async () => {
+  // Returns the resolved escrow address as well as storing it, so a caller that
+  // needs to act on it immediately — signing a transfer to it from the
+  // connected wallet — does not have to wait for the state round-trip.
+  const createContract = useCallback(async (): Promise<string | undefined> => {
     setIsCreatingContract(true);
     try {
       const resolved = await createContractImpl();
@@ -107,6 +112,7 @@ export function useQrPayment(params: UseQrPaymentParams): UseQrPaymentResult {
         setQrContractAddress(resolved);
         setQrCountdown(COUNTDOWN_SECONDS);
       }
+      return resolved;
     } finally {
       setIsCreatingContract(false);
     }

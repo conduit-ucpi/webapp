@@ -14,19 +14,27 @@ interface WizardProps {
   onStepChange?: (step: number) => void;
   children: ReactNode;
   className?: string;
+  /**
+   * Suppress the built-in progress bar. Use when the surrounding page already
+   * shows a wider journey indicator and two would be redundant.
+   */
+  hideProgress?: boolean;
 }
 
-export function Wizard({ 
-  steps, 
-  currentStep, 
-  onStepChange, 
-  children, 
-  className = '' 
+export function Wizard({
+  steps,
+  currentStep,
+  onStepChange,
+  children,
+  className = '',
+  hideProgress = false
 }: WizardProps) {
   return (
     <div className={`w-full max-w-4xl mx-auto ${className}`}>
       {/* Progress indicator */}
-      <WizardProgress steps={steps} currentStep={currentStep} onStepChange={onStepChange} />
+      {!hideProgress && (
+        <WizardProgress steps={steps} currentStep={currentStep} onStepChange={onStepChange} />
+      )}
       
       {/* Step content */}
       <div className="mt-8">

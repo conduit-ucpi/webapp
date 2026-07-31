@@ -6,7 +6,6 @@ import { useAuth } from '@/components/auth';
 import { useToast } from '@/components/ui/Toast';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
-import WalletInfo from '@/components/ui/WalletInfo';
 import PaymentQRModal from '@/components/ui/PaymentQRModal';
 import { Wizard, WizardStep, WizardNavigation, WizardStep as Step } from '@/components/ui/Wizard';
 import {
@@ -20,6 +19,13 @@ import {
   formatDateTimeWithTZ,
   getDefaultTimestamp
 } from '@/utils/validation';
+import {
+  MIN_AMOUNT,
+  TEST_AMOUNT,
+  formatUsd,
+  isAllowedAmount,
+  parseAmount,
+} from '@/utils/escrowFees';
 import ReleaseDateField from '@/components/contracts/ReleaseDateField';
 import AdvancedOptions from '@/components/contracts/AdvancedOptions';
 import PaymentTermsForm from '@/components/contracts/PaymentTermsForm';
@@ -179,26 +185,33 @@ export default function CreateContractWizard() {
     return `${baseUrl}/contract-pay?contractId=${createdContractId}`;
   };
 
-  // Copy payment link to clipboard
-  const handleCopyPaymentLink = async () => {
-    const link = generateContractPaymentLink();
-    if (!link) return;
+  // Copy to clipboard. `kind` only affects wording — the send screen decides
+  // whether that's the bare link or the full message.
+  const handleCopyPaymentLink = async (
+    text?: string,
+    kind: 'link' | 'message' = 'link'
+  ) => {
+    const payload = text ?? generateContractPaymentLink();
+    if (!payload) return;
 
     try {
-      await navigator.clipboard.writeText(link);
+      await navigator.clipboard.writeText(payload);
       setPaymentLinkCopied(true);
       setTimeout(() => setPaymentLinkCopied(false), 3000);
       showToast({
         type: 'success',
-        title: 'Link copied!',
-        message: 'Payment link copied to clipboard'
+        title: kind === 'message' ? 'Message copied!' : 'Link copied!',
+        message:
+          kind === 'message'
+            ? 'Paste it to your buyer — it includes the link and what the payment is for'
+            : 'Payment link copied to clipboard'
       });
     } catch (error) {
       console.error('Failed to copy link:', error);
       showToast({
         type: 'error',
         title: 'Copy failed',
-        message: 'Could not copy link to clipboard'
+        message: 'Could not copy to clipboard'
       });
     }
   };
@@ -264,6 +277,14 @@ export default function CreateContractWizard() {
 
         if (!amountValidator(form.amount)) {
           newErrors.amount = 'Please enter a valid amount';
+        } else {
+          // isValidAmount only checks "> 0". The contract also enforces a
+          // floor, with the test amount as the sole exemption — without this
+          // the guidance under the field would state a rule the form ignores.
+          const parsedAmount = parseAmount(form.amount);
+          if (parsedAmount !== null && !isAllowedAmount(parsedAmount)) {
+            newErrors.amount = `Enter ${formatUsd(MIN_AMOUNT)} or more, or exactly ${TEST_AMOUNT} for a free test`;
+          }
         }
 
         // Only validate timestamp if not instant payment
@@ -471,9 +492,6 @@ export default function CreateContractWizard() {
   if (showSuccessScreen && createdContractId) {
     return (
       <div className="w-full max-w-2xl mx-auto">
-        {/* Wallet Info Section */}
-        <WalletInfo className="mb-6" />
-
         <CreateProgressSteps current={2} />
 
         <SendRequestScreen
@@ -482,6 +500,9 @@ export default function CreateContractWizard() {
           tokenSymbol={selectedTokenSymbol}
           networkLabel={config ? getNetworkName(config.chainId) : undefined}
           description={form.description}
+          payoutLabel={
+            form.payoutTimestamp ? formatDateTimeWithTZ(form.payoutTimestamp) : undefined
+          }
           copied={paymentLinkCopied}
           onCopy={handleCopyPaymentLink}
           onDone={() => router.push('/dashboard')}
@@ -492,9 +513,6 @@ export default function CreateContractWizard() {
 
   return (
     <div className="w-full max-w-2xl mx-auto">
-      {/* Wallet Info Section */}
-      <WalletInfo className="mb-6" />
-
       {/* Whole-journey indicator. Connect is done by the time the wizard
           renders, and both the form and its review are "Payment Terms" -
           "Complete & Send" is the share screen after the request exists. */}

@@ -4,13 +4,16 @@
  * Presentation only: validation and submission stay in CreateContractWizard.
  * Everything here is composed from existing pieces rather than reimplemented:
  *   - CurrencyAmountInput (layout="split")  dual amount + live exchange rate
+ *   - AmountGuidance                        live fee / minimum / free test
  *   - ReleaseDateField                      payout date, timezone handling
  *   - AdvancedOptions                       collapsed arbiter override
  */
 
 import CurrencyAmountInput from '@/components/ui/CurrencyAmountInput';
+import AmountGuidance from '@/components/contracts/AmountGuidance';
 import ReleaseDateField from '@/components/contracts/ReleaseDateField';
 import AdvancedOptions from '@/components/contracts/AdvancedOptions';
+import { TEST_AMOUNT } from '@/utils/escrowFees';
 
 interface PaymentTermsFormProps {
   amount: string;
@@ -56,17 +59,27 @@ export default function PaymentTermsForm({
 }: PaymentTermsFormProps) {
   return (
     <div className="rounded-2xl border border-secondary-200 dark:border-secondary-700 bg-white dark:bg-secondary-900 p-5 sm:p-6 space-y-6">
-      <CurrencyAmountInput
-        layout="split"
-        value={amount}
-        onChange={onAmountChange}
-        tokenSymbol={tokenSymbol}
-        tokenOptions={tokenOptions}
-        onTokenChange={onTokenChange}
-        networkLabel={networkLabel}
-        balanceText={balanceText}
-        error={errors.amount}
-      />
+      {/* Grouped so the parent's space-y-6 treats input and guidance as one
+          block — the note has to read as part of the field, not a sibling. */}
+      <div>
+        <CurrencyAmountInput
+          layout="split"
+          value={amount}
+          onChange={onAmountChange}
+          tokenSymbol={tokenSymbol}
+          tokenOptions={tokenOptions}
+          onTokenChange={onTokenChange}
+          networkLabel={networkLabel}
+          balanceText={balanceText}
+          error={errors.amount}
+        />
+
+        <AmountGuidance
+          amount={amount}
+          tokenSymbol={tokenSymbol}
+          onUseTestAmount={() => onAmountChange(String(TEST_AMOUNT))}
+        />
+      </div>
 
       <div className="rounded-xl border border-secondary-200 dark:border-secondary-700 p-4">
         <ReleaseDateField

@@ -3,7 +3,7 @@ import { Contract, PendingContract } from '@/types';
 import { formatWalletAddress, displayCurrency, formatDateTimeWithTZ } from '@/utils/validation';
 import Button from '@/components/ui/Button';
 import { useAuth } from '@/components/auth';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import FarcasterNameDisplay from '@/components/ui/FarcasterNameDisplay';
 import { emailsEqual } from '@/utils/address';
 
@@ -58,9 +58,31 @@ export default function EnhancedContractCard({
   const isBuyer = isPending
     ? emailsEqual(user?.email, contract.buyerEmail)
     : user?.walletAddress?.toLowerCase() === contract.buyerAddress?.toLowerCase();
-  const isSeller = user?.walletAddress?.toLowerCase() === 
+  const isSeller = user?.walletAddress?.toLowerCase() ===
     contract.sellerAddress?.toLowerCase();
-  
+
+  // Delivering the link is entirely the seller's job, so losing access to it
+  // once they leave the send screen is a dead end. Offer it back until the
+  // buyer has actually paid, after which re-sending is meaningless.
+  const [linkCopied, setLinkCopied] = useState(false);
+  // A pending contract isn't on chain yet, so it's unfunded by definition;
+  // only a live Contract carries a `funded` flag to check.
+  const isUnfunded = isPendingContract(contract) ? true : !contract.funded;
+  const canReshare = isSeller && isUnfunded && !!contract.id;
+
+  const copyPaymentLink = async () => {
+    if (!contract.id || typeof window === 'undefined') return;
+    try {
+      await navigator.clipboard.writeText(
+        `${window.location.origin}/contract-pay?contractId=${contract.id}`
+      );
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 3000);
+    } catch (error) {
+      console.error('Failed to copy payment link:', error);
+    }
+  };
+
   // Use backend-provided CTA information only
   const primaryAction = useMemo(() => {
     // Only use backend-provided CTA fields (case-insensitive check)
@@ -258,6 +280,18 @@ export default function EnhancedContractCard({
         >
           View Details
         </Button>
+        {canReshare && (
+          <Button
+            onClick={(e) => {
+              e.stopPropagation();
+              copyPaymentLink();
+            }}
+            variant="outline"
+            className="w-full sm:w-auto min-h-[44px]"
+          >
+            {linkCopied ? 'Link copied' : 'Copy payment link'}
+          </Button>
+        )}
       </div>
 
       {/* Backend will provide all status information via the status field and CTA labels */}

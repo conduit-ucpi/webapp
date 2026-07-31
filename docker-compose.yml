@@ -30,7 +30,7 @@ services:
       - conduit-network
     mem_limit: 768m
     environment:
-      - JAVA_OPTS=-Xmx537m -Xms384m
+      - JAVA_TOOL_OPTIONS=-XX:MaxRAMPercentage=50 -XX:MaxMetaspaceSize=128m -XX:ReservedCodeCacheSize=64m
       - COOKIE_DOMAIN=${COOKIE_DOMAIN:-localhost}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - MONGODB_URI=${MONGODB_URI}
@@ -54,7 +54,7 @@ services:
       - conduit-network
     mem_limit: 768m
     environment:
-      - JAVA_OPTS=-Xmx537m -Xms384m
+      - JAVA_TOOL_OPTIONS=-XX:MaxRAMPercentage=50 -XX:MaxMetaspaceSize=128m -XX:ReservedCodeCacheSize=64m
       - COOKIE_DOMAIN=${COOKIE_DOMAIN:-localhost}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - USER_SERVICE_URL=http://web3userservice:8977
@@ -70,12 +70,9 @@ services:
         condition: service_started
       mongodb:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/actuator/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+    # healthcheck inherited from the image (see contractservice/Dockerfile).
+    # The previous override probed /actuator/health, which this service does not
+    # serve - it has no actuator dependency, only a plain HealthController at /health.
 
   # Blockchain Transaction Relay Service
   chainservice:
@@ -86,7 +83,7 @@ services:
       - conduit-network
     mem_limit: 768m
     environment:
-      - JAVA_OPTS=-Xmx537m -Xms384m
+      - JAVA_TOOL_OPTIONS=-XX:MaxRAMPercentage=50 -XX:MaxMetaspaceSize=128m -XX:ReservedCodeCacheSize=64m
       # Blockchain Configuration
       - RPC_URL=${RPC_URL}
       - GAS_PRICE_RPC_URL=${GAS_PRICE_RPC_URL}
@@ -133,12 +130,7 @@ services:
     depends_on:
       web3userservice:
         condition: service_started
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8978/actuator/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+    # healthcheck inherited from the image (see chainservice/Dockerfile)
 
   # Email Notification Service
   emailservice:
@@ -149,7 +141,7 @@ services:
       - conduit-network
     mem_limit: 512m
     environment:
-      - JAVA_OPTS=-Xmx358m -Xms256m
+      - JAVA_TOOL_OPTIONS=-XX:MaxRAMPercentage=50 -XX:MaxMetaspaceSize=96m -XX:ReservedCodeCacheSize=48m
       - COOKIE_DOMAIN=${COOKIE_DOMAIN:-localhost}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - USER_SERVICE_URL=http://web3userservice:8977
@@ -172,12 +164,7 @@ services:
     depends_on:
       web3userservice:
         condition: service_started
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8979/api/health/status"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+    # healthcheck inherited from the image (see emailservice/Dockerfile)
 
   # Caddy API Gateway
   caddy:

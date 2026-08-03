@@ -19,9 +19,9 @@ import { useState, useEffect, useCallback, useRef } from 'react';
  *                        (create: postMessage + WordPress/iframe/popup redirect;
  *                        pay: router.push('/dashboard')).
  *
- * Behavior is a verbatim extraction of the prior inline implementation in both
- * pages; nothing about the timing, polling cadence, or status transitions
- * changed.
+ * checkAndActivate reads the escrow's token balance before it will spend
+ * anything — see the comment on the call itself. Both callers (the "I have
+ * paid" button and the countdown auto-fire) get that gate.
  */
 export type QrActivationStatus = 'idle' | 'checking' | 'success' | 'waiting';
 
@@ -73,12 +73,44 @@ export function useQrPayment(params: UseQrPaymentParams): UseQrPaymentResult {
   const qrPollingRef = useRef<NodeJS.Timeout | null>(null);
   const qrCountdownRef = useRef<NodeJS.Timeout | null>(null);
 
+  // getTokenBalance comes from useSimpleEthers, which returns a fresh object
+  // each render. Held in a ref so checkAndActivate below does not have to take
+  // it as a dependency — checkAndActivate is itself a dependency of the
+  // countdown effect, which would then re-create its interval every render.
+  const getTokenBalanceRef = useRef(getTokenBalance);
+  useEffect(() => {
+    getTokenBalanceRef.current = getTokenBalance;
+  });
+
   const checkAndActivate = useCallback(async () => {
     if (!qrContractAddress || !authenticatedFetch) return;
 
     setQrActivationStatus('checking');
 
     try {
+      // /api/chain/check-and-activate is NOT a read. chainservice signs and
+      // submits an on-chain checkAndActivate(), which the escrow reverts with
+      // InsufficientDirectPayment when it has not been funded — and gas is
+      // still burned on the reverting transaction (gas estimation fails, but
+      // chainservice falls back to a configured limit and sends anyway).
+      // balanceOf is free, so confirm the money is actually there first.
+      const funded = await (async () => {
+        if (!selectedTokenAddress || requiredAmount <= 0) return false;
+        try {
+          const balance = await getTokenBalanceRef.current(qrContractAddress, selectedTokenAddress);
+          return parseFloat(balance) >= requiredAmount;
+        } catch (error) {
+          // An unreadable balance is not permission to spend gas on a guess.
+          console.error('useQrPayment: balance read before activation failed:', error);
+          return false;
+        }
+      })();
+
+      if (!funded) {
+        setQrActivationStatus('waiting');
+        return;
+      }
+
       const response = await authenticatedFetch('/api/chain/check-and-activate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -99,7 +131,7 @@ export function useQrPayment(params: UseQrPaymentParams): UseQrPaymentResult {
       console.error('useQrPayment: check-and-activate failed:', error);
       setQrActivationStatus('waiting');
     }
-  }, [qrContractAddress, authenticatedFetch, onActivated]);
+  }, [qrContractAddress, authenticatedFetch, selectedTokenAddress, requiredAmount, onActivated]);
 
   // Returns the resolved escrow address as well as storing it, so a caller that
   // needs to act on it immediately — signing a transfer to it from the

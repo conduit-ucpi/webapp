@@ -5,14 +5,12 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner';
 /** The subset of useQrPayment's return that this panel renders. */
 interface QrController {
   qrContractAddress: string | null;
-  qrCountdown: number;
   qrPaymentDetected: boolean;
   qrActivationStatus: 'idle' | 'checking' | 'success' | 'waiting';
   isCreatingContract: boolean;
   createContract: () => void;
   checkAndActivate: () => void;
   buildEip681Uri: () => string;
-  formatCountdown: (seconds: number) => string;
 }
 
 interface QrPaymentPanelProps {
@@ -88,7 +86,7 @@ export default function QrPaymentPanel({
           {qr.qrPaymentDetected && (
             <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-md p-3 mb-4">
               <p className="text-sm font-medium text-green-800 dark:text-green-300">
-                Payment detected! Verifying...
+                Payment detected! Press &quot;I have paid&quot; to complete.
               </p>
             </div>
           )}
@@ -159,26 +157,10 @@ export default function QrPaymentPanel({
             </p>
           </div>
 
-          {/* Countdown and activation controls */}
+          {/* Activation controls. The check runs when the user presses the
+              button — there is no live status to report before that, so the
+              panel does not claim to be checking. */}
           <div className="space-y-3">
-            <div className="text-center">
-              <p className="text-sm text-secondary-500 dark:text-secondary-400">
-                Auto-checking in <span className="font-mono font-medium text-secondary-900 dark:text-white">{qr.formatCountdown(qr.qrCountdown)}</span>
-              </p>
-            </div>
-
-            {qr.qrActivationStatus === 'checking' && (
-              <div className="flex items-center justify-center text-sm text-blue-600 dark:text-blue-400">
-                <LoadingSpinner className="w-4 h-4 mr-2" />
-                Checking payment status...
-              </div>
-            )}
-            {qr.qrActivationStatus === 'waiting' && (
-              <p className="text-center text-sm text-yellow-600 dark:text-yellow-400">
-                Still waiting for payment... The timer and button remain active for retry.
-              </p>
-            )}
-
             <Button
               onClick={qr.checkAndActivate}
               disabled={qr.qrActivationStatus === 'checking'}
@@ -193,6 +175,12 @@ export default function QrPaymentPanel({
                 'I have paid'
               )}
             </Button>
+
+            {qr.qrActivationStatus === 'waiting' && (
+              <p className="text-center text-sm text-yellow-600 dark:text-yellow-400">
+                No payment found yet. Once your transfer has gone through, press &quot;I have paid&quot; again.
+              </p>
+            )}
 
             <Button
               onClick={onCancel}

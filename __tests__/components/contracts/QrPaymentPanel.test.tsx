@@ -108,12 +108,21 @@ describe('QrPaymentPanel', () => {
       expect(screen.getAllByText(/10\.0000 USDC/).length).toBeGreaterThan(0);
     });
 
-    it('shows the countdown and fires checkAndActivate from "I have paid"', () => {
+    it('fires checkAndActivate from "I have paid"', () => {
       const q = qr();
       render(<QrPaymentPanel {...baseProps(q)} />);
-      expect(screen.getByText(/4:00/)).toBeInTheDocument();
       fireEvent.click(screen.getByText('I have paid'));
       expect(q.checkAndActivate).toHaveBeenCalled();
+    });
+
+    // The panel used to show "Auto-checking in 4:00" and "Checking payment
+    // status...", which read as though a check were already running when in
+    // fact nothing happened until the countdown expired.
+    it('does not claim to be checking when it is not', () => {
+      render(<QrPaymentPanel {...baseProps(qr())} />);
+      expect(screen.queryByText(/Auto-checking/)).toBeNull();
+      expect(screen.queryByText(/4:00/)).toBeNull();
+      expect(screen.queryByText(/Checking payment status/)).toBeNull();
     });
 
     it('fires onCancel from the cancel button', () => {
@@ -125,7 +134,7 @@ describe('QrPaymentPanel', () => {
 
     it('shows the payment-detected banner when qrPaymentDetected', () => {
       render(<QrPaymentPanel {...baseProps(makeQr({ qrContractAddress: '0xEscrow', qrPaymentDetected: true }))} />);
-      expect(screen.getByText('Payment detected! Verifying...')).toBeInTheDocument();
+      expect(screen.getByText(/Payment detected!/)).toBeInTheDocument();
     });
   });
 

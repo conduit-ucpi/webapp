@@ -1,863 +1,1184 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useRef, type ReactNode } from "react";
 import * as XLSX from "xlsx";
 import SEO from "@/components/SEO";
 
-const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@400;500;700;800&display=swap');
+/* ==================================================================
+   Stabledrop — /early-payment-offer
 
-.sd {
-  --bg: #0b0c0b;
-  --card: #151715;
-  --card-2: #101210;
-  --line: #262a26;
-  --ink: #f2f4f2;
-  --muted: #8b918b;
-  --green: #4ade80;
-  --green-dim: #86efac;
-  --green-glow: rgba(74, 222, 128, 0.35);
-  --green-tint: rgba(74, 222, 128, 0.07);
-  --red: #f0625d;
-  background: var(--bg);
-  color: var(--ink);
-  font-family: 'JetBrains Mono', ui-monospace, monospace;
-  min-height: 100%;
-  padding: 28px 18px 56px;
-  -webkit-font-smoothing: antialiased;
-  font-variant-numeric: tabular-nums;
-}
-.sd-wrap { max-width: 960px; margin: 0 auto; }
+   The funder buys a senior claim capped below the escrow, so the
+   seller keeps a residual and takes the first loss on a dispute.
 
-.sd-h1 {
-  font-family: 'Space Grotesk', sans-serif;
-  font-size: clamp(26px, 4.8vw, 40px); font-weight: 700; letter-spacing: -0.02em;
-  margin: 0 0 8px;
-}
-.sd-h1 .x { color: var(--green); text-shadow: 0 0 24px var(--green-glow); }
-.sd-sub { font-size: 13px; color: var(--muted); margin: 0 0 28px; line-height: 1.6; max-width: 62ch; }
+   1. Step 2 has TWO funder parameters (senior cap, discount rate)
+      rather than one factoring rate. The residual falls out.
+   2. Sliders with a real market range show it as a marked band.
+   3. Factoring floor is the risk-free rate — nothing prices below it.
+   4. "Cash today" is the advance only. The residual is a second,
+      later line. Capital recycling still uses total proceeds because
+      in steady state you collect one residual per job.
+   ================================================================== */
 
-.sd-top { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 18px; }
-@media (max-width: 760px) { .sd-top { grid-template-columns: 1fr; } }
+const C = {
+  bg: "#000000",
+  panel: "#0a0c0a",
+  panel2: "#0e120e",
+  line: "#1b211b",
+  lineB: "#2c352c",
+  text: "#e6efe6",
+  dim: "#75836f",
+  dimmer: "#4a544a",
+  green: "#00ff88",
+  greenInk: "#08301e",
+  red: "#ff4d4d",
+  redInk: "#330e0e",
+  amber: "#ffc043",
+  amberInk: "#332608",
+};
 
-.sd-card {
-  background: var(--card); border: 1px solid var(--line); border-radius: 16px;
-  padding: 24px; margin-bottom: 18px;
-}
-.sd-card.flat { margin-bottom: 0; }
+const RISK_FREE = 3.65; // SOFR, 28 Jul 2026. Use SONIA for sterling.
+const FEE_RATE = 1.0; // Stabledrop, flat, taken at funding
 
-.sd-hero {
-  background: radial-gradient(120% 120% at 50% 0%, rgba(74,222,128,0.12), rgba(74,222,128,0.02) 60%), var(--card-2);
-  border: 1.5px solid var(--green); border-radius: 16px; padding: 28px 24px;
-  box-shadow: 0 0 40px rgba(74, 222, 128, 0.12), inset 0 0 60px rgba(74, 222, 128, 0.03);
-  display: flex; flex-direction: column; justify-content: center; text-align: center;
-}
-.sd-hero-lab {
-  font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase;
-  color: var(--green); margin-bottom: 12px; font-weight: 500;
-}
-.sd-hero-val {
-  font-size: clamp(38px, 6vw, 52px); font-weight: 800; color: var(--green);
-  text-shadow: 0 0 28px var(--green-glow); letter-spacing: -0.02em; line-height: 1;
-}
-.sd-hero-sub { font-size: 12.5px; color: var(--muted); margin-top: 12px; }
-.sd-hero-div { border-top: 1px solid rgba(74,222,128,0.2); margin: 20px 0 16px; }
-.sd-hero-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-.sd-hero-cell .l { font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); margin-bottom: 5px; }
-.sd-hero-cell .v { font-size: 17px; font-weight: 700; color: var(--green); }
-.sd-hero-cell .v.neg { color: var(--red); }
+/* ---- funder regimes ---- */
+const REGIMES = {
+  none: {
+    label: "No track record",
+    cap: 86,
+    rate: 22,
+    blurb:
+      "Day one. The funder is pricing dispute risk it can't measure, on a contract with no production history. Wide on both parameters.",
+  },
+  junior: {
+    label: "You take first loss",
+    cap: 90,
+    rate: 15,
+    blurb:
+      "You hold a junior strip beneath the funder. Costs you the tail, buys a much tighter senior rate. This is how the first deal gets done.",
+  },
+  season: {
+    label: "Seasoned book",
+    cap: 93,
+    rate: 7,
+    blurb:
+      "Two to three years of dispute data, approved arbitrators only, audited contract. Prices like forfaiting paper — risk-free plus 250–500bp.",
+  },
+} as const;
 
-.sd-lab {
-  font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase;
-  color: var(--muted); font-weight: 500; margin-bottom: 10px;
-}
-.sd-ctl { margin-bottom: 22px; }
-.sd-ctl:last-child { margin-bottom: 4px; }
-.sd-box {
-  background: var(--card-2); border: 1px solid var(--line); border-radius: 10px;
-  color: var(--green); font-family: inherit; font-size: 19px; font-weight: 700;
-  padding: 12px 16px; width: 172px; margin-bottom: 12px;
-}
-.sd-box:focus-visible { outline: 1.5px solid var(--green); border-color: var(--green); }
-.sd-hint { font-size: 11px; color: var(--muted); margin-top: 9px; line-height: 1.5; }
+type RegimeKey = keyof typeof REGIMES;
 
-input[type=range].sd-range {
-  -webkit-appearance: none; appearance: none; width: 100%; height: 22px;
-  background: transparent; cursor: pointer; display: block;
-}
-input[type=range].sd-range::-webkit-slider-runnable-track {
-  height: 3px; background: #3a3f3a; border-radius: 999px;
-}
-input[type=range].sd-range::-moz-range-track { height: 3px; background: #3a3f3a; border-radius: 999px; }
-input[type=range].sd-range::-webkit-slider-thumb {
-  -webkit-appearance: none; appearance: none; width: 20px; height: 20px;
-  background: var(--green); border-radius: 50%; margin-top: -8.5px;
-  box-shadow: 0 0 14px var(--green-glow);
-}
-input[type=range].sd-range::-moz-range-thumb {
-  width: 20px; height: 20px; background: var(--green); border: none; border-radius: 50%;
-  box-shadow: 0 0 14px var(--green-glow);
-}
-input[type=range].sd-range:focus-visible { outline: 1.5px solid var(--green); outline-offset: 4px; border-radius: 999px; }
-
-.sd-step-t {
-  font-family: 'Space Grotesk', sans-serif;
-  font-size: 19px; font-weight: 700; letter-spacing: -0.01em; margin: 2px 0 10px; color: var(--ink);
-}
-.sd-p { font-size: 13px; line-height: 1.7; color: var(--muted); margin: 0 0 6px; max-width: 68ch; }
-.sd-p b { color: var(--ink); font-weight: 700; }
-.sd-p .g { color: var(--green); font-weight: 700; }
-
-.sd-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 32px; margin-top: 18px; }
-@media (max-width: 640px) { .sd-grid2 { grid-template-columns: 1fr; } }
-
-.sd-rows { margin-top: 16px; border-top: 1px solid var(--line); }
-.sd-row {
-  display: flex; justify-content: space-between; align-items: baseline; gap: 14px;
-  font-size: 13px; padding: 10px 0; border-bottom: 1px solid var(--line);
-}
-.sd-row .k { color: var(--muted); }
-.sd-row .k small { display: block; font-size: 10.5px; opacity: 0.8; margin-top: 2px; }
-.sd-row .v { font-weight: 700; white-space: nowrap; color: var(--ink); }
-.sd-row .v.neg { color: var(--red); }
-.sd-row .v.pos { color: var(--green); }
-.sd-row .v small { font-size: 10.5px; color: var(--muted); font-weight: 400; margin-left: 7px; }
-.sd-row.tot .k { color: var(--ink); font-weight: 700; }
-.sd-row.tot .v { color: var(--green); font-size: 15px; }
-
-.sd-pill {
-  margin-top: 16px; padding: 13px 16px; border-radius: 12px; font-size: 12.5px;
-  display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
-  border: 1px solid;
-}
-.sd-pill.good { background: var(--green-tint); border-color: rgba(74,222,128,0.35); color: var(--green); }
-.sd-pill.warn { background: rgba(240,98,93,0.06); border-color: rgba(240,98,93,0.35); color: var(--red); }
-.sd-pill .amt { font-size: 17px; font-weight: 800; white-space: nowrap; }
-
-.sd-turn-r {
-  display: grid; grid-template-columns: 1fr auto auto; gap: 8px 18px;
-  padding: 12px 0; border-bottom: 1px solid var(--line); font-size: 13px; align-items: baseline;
-}
-.sd-turn-r .lab { color: var(--ink); }
-.sd-turn-r .lab span { display: block; font-size: 10.5px; color: var(--muted); margin-top: 2px; }
-.sd-turn-r .num { color: var(--muted); text-align: right; min-width: 88px; font-size: 12px; }
-.sd-turn-r .rev { font-weight: 700; text-align: right; min-width: 100px; }
-.sd-turn-r.gain { border-bottom: none; }
-.sd-turn-r.gain .lab, .sd-turn-r.gain .num { color: var(--green); }
-.sd-turn-r.gain .rev {
-  color: var(--green); font-size: 22px; font-weight: 800;
-  text-shadow: 0 0 18px var(--green-glow);
-}
-
-.sd-msg-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 28px; margin: 14px 0 4px; }
-@media (max-width: 640px) { .sd-msg-fields { grid-template-columns: 1fr; } }
-.sd-msg-box {
-  background: var(--card-2); border: 1px solid var(--line); border-radius: 10px;
-  color: var(--ink); font-family: inherit; font-size: 13px; font-weight: 500;
-  padding: 11px 14px; width: 100%; box-sizing: border-box;
-}
-.sd-msg-box:focus-visible { outline: 1.5px solid var(--green); border-color: var(--green); }
-.sd-msg-box.nudge { border-color: var(--red); outline: 1.5px solid var(--red); }
-.sd-nudge-txt { font-size: 11px; color: var(--red); margin-top: 7px; }
-.sd-msg-pre {
-  background: var(--card-2); border: 1px solid var(--line); border-radius: 12px;
-  padding: 18px 20px; margin-top: 16px; font-size: 12.5px; line-height: 1.75;
-  color: var(--ink); white-space: pre-wrap; font-family: inherit;
-}
-.sd-msg-actions { display: flex; gap: 10px; margin-top: 14px; }
-.sd-copy {
-  background: linear-gradient(180deg, var(--green-dim), var(--green));
-  color: #06130a; border: none; border-radius: 10px; padding: 11px 22px;
-  font-size: 12px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase;
-  cursor: pointer; font-family: inherit;
-}
-.sd-copy.done { background: var(--card); color: var(--green); border: 1px solid var(--green); }
-.sd-cta { display: flex; gap: 12px; margin: 26px 0 10px; }
-.sd-btn {
-  flex: 1; text-align: center;
-  background: linear-gradient(180deg, var(--green-dim), var(--green));
-  color: #06130a; border: none; border-radius: 14px;
-  padding: 17px 26px; font-size: 14px; font-weight: 800; letter-spacing: 0.08em;
-  text-transform: uppercase; cursor: pointer; font-family: inherit; text-decoration: none;
-  box-shadow: 0 0 30px rgba(74, 222, 128, 0.25);
-}
-.sd-btn:hover { filter: brightness(1.06); }
-.sd-btn.ghost {
-  flex: 0 0 auto; background: var(--card); color: var(--ink);
-  border: 1px solid var(--line); box-shadow: none;
-}
-.sd-btn.ghost:hover { border-color: var(--green); color: var(--green); filter: none; }
-
-.sd-foot {
-  margin-top: 30px; padding-top: 18px; border-top: 1px solid var(--line);
-  font-size: 10.5px; color: var(--muted); line-height: 1.75;
-}
-`;
-
-const n0 = (x: number) => Math.round(x).toLocaleString("en-GB");
-const dayShort = (d: Date) => d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
-
-const FEE_PCT = 1.0; // Stabledrop's flat fee, % of escrowed amount
-
-interface CtlProps {
+interface Band {
   label: string;
-  hint?: string;
+  from: number;
+  to: number;
+  colour: string;
+}
+
+const CAP_BANDS: Band[] = [
+  { label: "no history", from: 85, to: 87, colour: C.red },
+  { label: "first loss", from: 89, to: 91, colour: C.amber },
+  { label: "seasoned", from: 92, to: 94, colour: C.green },
+];
+const RATE_BANDS: Band[] = [
+  { label: "seasoned", from: 6, to: 9, colour: C.green },
+  { label: "first loss", from: 12, to: 18, colour: C.amber },
+  { label: "no history", from: 18, to: 30, colour: C.red },
+];
+const BORROW_BANDS: Band[] = [
+  { label: "iwoca floor", from: 18, to: 22, colour: C.amber },
+  { label: "representative", from: 36, to: 44, colour: C.red },
+];
+const YIELD_BANDS: Band[] = [
+  { label: "risk-free", from: 3.4, to: 4.0, colour: C.green },
+  { label: "deposit acct", from: 1.5, to: 3.0, colour: C.amber },
+];
+const BAD_DEBT_BANDS: Band[] = [
+  { label: "typical SME", from: 0.8, to: 2.5, colour: C.amber },
+];
+const SHARE_BANDS: Band[] = [
+  { label: "usual ask", from: 20, to: 50, colour: C.amber },
+];
+
+/* ---- helpers ---- */
+const money = (n: number) => Math.round(n).toLocaleString("en-GB");
+const pct = (n: number, d = 1) => `${n.toFixed(d)}%`;
+const addDays = (d: number) => {
+  const x = new Date();
+  x.setDate(x.getDate() + d);
+  return x.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+};
+
+/* ---- slider with optional marked bands ---- */
+interface SliderProps {
+  label: string;
+  help?: ReactNode;
   value: number;
   onChange: (n: number) => void;
   min: number;
   max: number;
   step: number;
+  format: (v: number) => string;
+  bands?: Band[];
+  big?: boolean;
+  allowType?: boolean;
 }
 
-function Ctl({ label, hint, value, onChange, min, max, step }: CtlProps) {
-  const [txt, setTxt] = useState(String(value));
-  const [editing, setEditing] = useState(false);
-
-  useEffect(() => {
-    if (!editing) setTxt(String(value));
-  }, [value, editing]);
-
-  const commit = (t: string) => {
-    setTxt(t);
-    if (t === "" || t === "-" || t === ".") return;
-    const n = Number(t);
-    if (Number.isFinite(n) && n >= 0) onChange(n);
-  };
+function Slider({
+  label,
+  help,
+  value,
+  onChange,
+  min,
+  max,
+  step,
+  format,
+  bands,
+  big,
+  allowType,
+}: SliderProps) {
+  const [typing, setTyping] = useState<string | null>(null);
+  const posOf = (v: number) =>
+    ((Math.min(max, Math.max(min, v)) - min) / (max - min)) * 100;
 
   return (
-    <div className="sd-ctl">
-      <div className="sd-lab">{label}</div>
-      <input
-        className="sd-box"
-        type="text"
-        inputMode="decimal"
-        aria-label={label}
-        value={txt}
-        onFocus={() => setEditing(true)}
-        onBlur={() => {
-          setEditing(false);
-          setTxt(String(value));
+    <div style={{ marginBottom: bands ? 30 : 20 }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "baseline",
+          gap: 12,
+          marginBottom: 8,
         }}
-        onChange={(e) => commit(e.target.value.replace(/[^0-9.]/g, ""))}
-      />
-      <input
-        className="sd-range"
-        type="range"
-        aria-label={label + " slider"}
-        value={Math.min(Math.max(value, min), max)}
-        min={min}
-        max={max}
-        step={step}
-        onChange={(e) => onChange(Number(e.target.value))}
-      />
-      {hint && <div className="sd-hint">{hint}</div>}
+      >
+        <span
+          style={{
+            fontSize: 10.5,
+            letterSpacing: "0.14em",
+            textTransform: "uppercase",
+            color: C.dim,
+          }}
+        >
+          {label}
+        </span>
+        {allowType ? (
+          <input
+            value={typing === null ? format(value) : typing}
+            onChange={(e) => setTyping(e.target.value)}
+            onBlur={() => {
+              const n = parseFloat(String(typing).replace(/[^0-9.]/g, ""));
+              if (!isNaN(n)) onChange(n);
+              setTyping(null);
+            }}
+            style={{
+              background: "transparent",
+              border: `1px solid ${C.line}`,
+              borderRadius: 3,
+              color: C.green,
+              fontFamily: "inherit",
+              fontSize: big ? 20 : 15,
+              fontWeight: 700,
+              textAlign: "right",
+              width: 130,
+              padding: "3px 7px",
+            }}
+            aria-label={`${label} value`}
+          />
+        ) : (
+          <span
+            style={{
+              fontSize: big ? 20 : 15,
+              fontWeight: big ? 700 : 500,
+              color: big ? C.green : C.text,
+            }}
+          >
+            {format(value)}
+          </span>
+        )}
+      </div>
+
+      <div style={{ position: "relative", height: 24 }}>
+        {bands ? (
+          <div
+            style={{
+              position: "absolute",
+              top: 9,
+              left: 0,
+              right: 0,
+              height: 6,
+              background: C.panel2,
+              border: `1px solid ${C.line}`,
+              borderRadius: 3,
+              overflow: "hidden",
+            }}
+          >
+            {bands.map((b) => {
+              const on = value >= b.from && value <= b.to;
+              return (
+                <div
+                  key={b.label}
+                  style={{
+                    position: "absolute",
+                    left: `${posOf(b.from)}%`,
+                    width: `${posOf(b.to) - posOf(b.from)}%`,
+                    top: 0,
+                    bottom: 0,
+                    background: b.colour,
+                    opacity: on ? 0.6 : 0.15,
+                  }}
+                />
+              );
+            })}
+          </div>
+        ) : (
+          <div
+            style={{
+              position: "absolute",
+              top: 9,
+              left: 0,
+              right: 0,
+              height: 6,
+              background: C.panel2,
+              border: `1px solid ${C.line}`,
+              borderRadius: 3,
+            }}
+          />
+        )}
+        <input
+          className="sd-range"
+          type="range"
+          min={min}
+          max={max}
+          step={step}
+          value={Math.min(max, Math.max(min, value))}
+          onChange={(e) => onChange(parseFloat(e.target.value))}
+          aria-label={label}
+        />
+      </div>
+
+      {bands ? (
+        <div style={{ position: "relative", height: 26, marginTop: 1 }}>
+          {bands.map((b) => {
+            const on = value >= b.from && value <= b.to;
+            const mid = (posOf(b.from) + posOf(b.to)) / 2;
+            return (
+              <div
+                key={b.label}
+                style={{
+                  position: "absolute",
+                  left: `${mid}%`,
+                  transform: "translateX(-50%)",
+                  width: 86,
+                  textAlign: "center",
+                }}
+              >
+                <div
+                  style={{
+                    height: 4,
+                    width: 1,
+                    background: b.colour,
+                    opacity: on ? 0.9 : 0.4,
+                    margin: "0 auto 3px",
+                  }}
+                />
+                <div
+                  style={{
+                    fontSize: 9,
+                    lineHeight: 1.3,
+                    letterSpacing: "0.03em",
+                    color: on ? b.colour : C.dimmer,
+                  }}
+                >
+                  {b.label}
+                  <br />
+                  <span style={{ opacity: 0.7 }}>
+                    {b.from}–{b.to}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
+
+      {help ? (
+        <div style={{ fontSize: 11, color: C.dimmer, marginTop: 6, lineHeight: 1.5 }}>
+          {help}
+        </div>
+      ) : null}
     </div>
   );
 }
 
+interface RowProps {
+  label: string;
+  sub?: string;
+  value: string;
+  tone?: "cost" | "good";
+  strong?: boolean;
+}
+
+function Row({ label, sub, value, tone, strong }: RowProps) {
+  const colour = tone === "cost" ? C.red : tone === "good" ? C.green : C.text;
+  return (
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "baseline",
+        padding: "9px 0",
+        borderBottom: `1px solid ${C.line}`,
+        gap: 14,
+      }}
+    >
+      <div>
+        <div style={{ fontSize: 12.5, color: strong ? C.text : C.dim }}>{label}</div>
+        {sub ? (
+          <div style={{ fontSize: 10, color: C.dimmer, marginTop: 2 }}>{sub}</div>
+        ) : null}
+      </div>
+      <div
+        style={{
+          fontSize: strong ? 18 : 13.5,
+          fontWeight: strong ? 700 : 500,
+          color: colour,
+          whiteSpace: "nowrap",
+        }}
+      >
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function Section({
+  eyebrow,
+  title,
+  children,
+}: {
+  eyebrow?: string;
+  title?: string;
+  children: ReactNode;
+}) {
+  return (
+    <section style={{ marginTop: 46 }}>
+      {eyebrow ? (
+        <div
+          style={{
+            fontSize: 10,
+            letterSpacing: "0.22em",
+            textTransform: "uppercase",
+            color: C.dim,
+            marginBottom: 9,
+          }}
+        >
+          {eyebrow}
+        </div>
+      ) : null}
+      {title ? (
+        <h2
+          style={{
+            fontSize: 20,
+            lineHeight: 1.35,
+            fontWeight: 700,
+            margin: "0 0 12px",
+          }}
+        >
+          {title}
+        </h2>
+      ) : null}
+      {children}
+    </section>
+  );
+}
+
+function Panel({ children, glow }: { children: ReactNode; glow?: boolean }) {
+  return (
+    <div
+      style={{
+        background: C.panel,
+        border: `1px solid ${glow ? C.lineB : C.line}`,
+        borderRadius: 4,
+        padding: "18px 18px 6px",
+        boxShadow: glow ? `0 0 40px ${C.green}12` : "none",
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+/* ================= main ================= */
+
 export default function EarlyPaymentOffer() {
-  const [face, setFace] = useState(100000);
-  const [days, setDays] = useState(60);
-  const [deliver, setDeliver] = useState(30);
-  const [yield_, setYield] = useState(5.0);
-  const [split, setSplit] = useState(25);
-  const [rEscrowFactor, setREscrowFactor] = useState(2.0);
-  const [rBorrow, setRBorrow] = useState(22.0);
+  const [invoice, setInvoice] = useState(100000);
+  const [terms, setTerms] = useState(60);
   const [badDebt, setBadDebt] = useState(2.0);
+  const [regime, setRegime] = useState<RegimeKey>("junior");
+  const [cap, setCap] = useState<number>(REGIMES.junior.cap);
+  const [discRate, setDiscRate] = useState<number>(REGIMES.junior.rate);
+  const [borrowRate, setBorrowRate] = useState(30);
+  const [buyerYield, setBuyerYield] = useState(3.65);
+  const [buyerShare, setBuyerShare] = useState(25);
+  const [jobDays, setJobDays] = useState(30);
 
-  const m = useMemo(() => {
-    const yf = days / 365;
-    const neutral = face / (1 + (yield_ / 100) * yf);
-    const borrowNow = face / (1 + (rBorrow / 100) * yf);
-
-    // What's actually available to pay the buyer with, in money:
-    //   potential cost of funding (what borrowing would have cost)
-    // − actual cost of funding    (Stabledrop's fee + the LP's discount)
-    // The LP's rate is the seller's real cost of capital here; the borrowing rate
-    // is only the benchmark that says how much that saving is worth.
-    const costPotential = face - borrowNow;
-    const costActual = face - (face * (1 - FEE_PCT / 100)) / (1 + (rEscrowFactor / 100) * yf);
-
-    // Expressed as the largest discount the seller can hand over before they'd
-    // rather have borrowed. Slightly more than costPotential − costActual, because
-    // the flat fee is charged on the escrow and so shrinks as the discount grows.
-    const rCeil =
-      (((1 - FEE_PCT / 100) * (1 + (rBorrow / 100) * yf)) / (1 + (rEscrowFactor / 100) * yf) - 1) /
-      yf *
-      100;
-    const maxDiscount = face - face / (1 + (rCeil / 100) * yf);
-    const buyerFloorAmt = face - neutral; // below this the buyer would rather wait
-    const pot = maxDiscount - buyerFloorAmt;
-    const dealPossible = pot > 0;
-
-    // `split` divides that pot. Money, not rates — 0% leaves the buyer exactly
-    // indifferent, 100% leaves the seller exactly indifferent.
-    const discount = dealPossible ? buyerFloorAmt + (split / 100) * pot : buyerFloorAmt;
-    const escrow = face - discount;
-    const rOffer = escrow > 0 ? (face / escrow - 1) / yf * 100 : 0;
-    const rFloor = yield_;
-
-    const feeAmt = escrow * (FEE_PCT / 100);
-    const netClaim = escrow - feeAmt;
-    const cashNow = netClaim / (1 + (rEscrowFactor / 100) * yf);
-    const cycleNow = deliver + days;
-    const revNowCash = (365 / cycleNow) * face * (1 - badDebt / 100);
-    const revNewCash = (365 / deliver) * cashNow;
-    const due = new Date(Date.now() + days * 86400000);
-    return {
-      escrow, discount, feeAmt, netClaim, cashNow, borrowNow, due, cycleNow,
-      rOffer, rFloor, rCeil, dealPossible,
-      costPotential, costActual, maxDiscount, buyerFloorAmt, pot,
-      spread: rCeil - rFloor,
-      buyerEarns: face - neutral,
-      buyerGain: neutral - escrow,
-      factorCut: netClaim - cashNow,
-      gain: cashNow - borrowNow,
-      // Same saving as `gain`, but across a year's worth of jobs rather than one
-      // invoice — the hero tile sits next to an annual figure, so it has to match.
-      gainYr: (cashNow - borrowNow) * (365 / deliver),
-      badDebtCost: face * (badDebt / 100),
-      pct: face > 0 ? (discount / face) * 100 : 0,
-      turnsNow: 365 / cycleNow,
-      turnsNew: 365 / deliver,
-      // Cash actually collected per year, both sides. Waiting out the terms bills
-      // the full face but writes off bad debt; getting paid on day one collects
-      // cashNow — face less the buyer's discount, the fee and the factoring cut —
-      // with nothing written off, because escrow guarantees payment.
-      multiple: revNowCash > 0 ? revNewCash / revNowCash : 0,
-      revNow: revNowCash,
-      revNew: revNewCash,
-      revGain: revNewCash - revNowCash,
-    };
-  }, [face, days, deliver, yield_, split, rEscrowFactor, rBorrow, badDebt]);
-
-  const [buyerName, setBuyerName] = useState("");
-  const [sellerName, setSellerName] = useState("");
+  const [custName, setCustName] = useState("");
+  const [signOff, setSignOff] = useState("");
+  const [nudge, setNudge] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [needName, setNeedName] = useState(false);
   const nameRef = useRef<HTMLInputElement>(null);
 
-  const message = useMemo(() => {
-    const hi = `Hi ${buyerName.trim() || "[customer name]"},`;
-    const sign = sellerName.trim() ? `\n${sellerName.trim()}` : "";
-    return `${hi}
+  const applyRegime = (k: RegimeKey) => {
+    setRegime(k);
+    setCap(REGIMES[k].cap);
+    setDiscRate(REGIMES[k].rate);
+  };
 
-A proposal on our ${n0(face)} invoice, due ${dayShort(m.due)}.
+  const m = useMemo(() => {
+    const t = terms / 365;
+    const carry = (discRate / 100) * t;
 
-Paying at the end of the terms makes sense for you today: holding the cash for ${days} days earns you roughly ${n0(m.buyerEarns)} at ${yield_.toFixed(2)}%.
+    // Buyer's opportunity cost of paying now
+    const buyerEarn = invoice * (buyerYield / 100) * t;
 
-We'd like to beat that. Fund the invoice into escrow today and we'll take ${n0(m.discount)} off — you pay ${n0(m.escrow)} instead of ${n0(face)}. That's equivalent to earning ${m.rOffer.toFixed(2)}% APR on the cash over the same period, better than holding it.
+    // Value the escrow creates, measured on the invoice, before it's shared.
+    // Borrowing avoided + bad debt avoided, less the two costs of doing it.
+    const borrowCost = invoice * (borrowRate / 100) * t;
+    const badDebtAvoided = invoice * (badDebt / 100);
+    const fee0 = invoice * (FEE_RATE / 100);
+    const senior0 = (invoice - fee0) * (cap / 100);
+    const funderCut0 = senior0 * carry;
+    const grossSpread = Math.max(
+      0,
+      borrowCost + badDebtAvoided - fee0 - funderCut0
+    );
 
-The money doesn't come to us. It sits locked in a Stabledrop escrow until ${dayShort(m.due)} — the day you'd have paid anyway — and is released to us then only if we've delivered. If we haven't, you get it back. Buyer protection and dispute management are built in.
+    // Split it. Buyer needs at least their forgone yield to say yes.
+    const buyerCut = grossSpread * (buyerShare / 100);
+    const discount = buyerEarn + buyerCut;
 
-Paying this way genuinely helps us: it guarantees payment on time, and lets us factor the invoice to access the capital early and keep working on your next orders.
+    const face = invoice - discount; // locked into escrow
+    const fee = face * (FEE_RATE / 100);
+    const escrow = face - fee; // yours to sell
+    const senior = escrow * (cap / 100); // funder repaid first, up to here
+    const advance = senior * (1 - carry); // cash today
+    const funderCut = senior - advance;
+    const residual = escrow - senior; // yours, paid last
+    const total = advance + residual;
 
-Happy to walk through the numbers.${sign}`;
-  }, [buyerName, sellerName, face, days, yield_, m]);
+    const breakeven = 1 - advance / escrow; // refund % the funder survives
+    const borrowAlt = invoice - borrowCost; // the old way
 
-  const copyMsg = async () => {
-    if (!buyerName.trim()) {
-      setNeedName(true);
+    // capital recycling
+    const cycleNow = jobDays + terms;
+    const jobsNow = 365 / cycleNow;
+    const revNow = jobsNow * invoice * (1 - badDebt / 100);
+    const jobsNew = 365 / jobDays;
+    const revNew = jobsNew * total;
+    const multiple = revNow > 0 ? revNew / revNow : 0;
+
+    const waterfall = [0, 5, 10, 15, 20, 30, 50, 100].map((d) => {
+      const left = escrow * (1 - d / 100);
+      const funderGets = Math.min(senior, left);
+      const sellerLate = Math.max(0, left - senior);
+      return {
+        d,
+        funderPnL: funderGets - advance,
+        sellerLate,
+        sellerTotal: advance + sellerLate,
+      };
+    });
+
+    return {
+      buyerEarn, borrowCost, badDebtAvoided, grossSpread, buyerCut, discount,
+      face, fee, escrow, senior, advance, funderCut, residual, total,
+      breakeven, borrowAlt, cycleNow, jobsNow, revNow, jobsNew, revNew,
+      multiple, waterfall,
+    };
+  }, [invoice, terms, badDebt, cap, discRate, borrowRate, buyerYield, buyerShare, jobDays]);
+
+  const due = addDays(terms);
+  const noSub = cap >= 99;
+  const buyerBetter = m.discount - m.buyerEarn;
+  const aheadOfBorrowing = m.total - m.borrowAlt;
+  const buyerApr = m.discount > 0 && terms > 0
+    ? (m.discount / m.face) * (365 / terms) * 100
+    : 0;
+
+  const message = `Hi ${custName || "[customer name]"},
+
+A proposal on our ${money(invoice)} invoice, due ${due}.
+
+Paying at the end of the terms makes sense for you today: holding the cash for ${terms} days earns you roughly ${money(m.buyerEarn)} at ${pct(buyerYield, 2)}.
+
+We'd like to beat that. Fund the invoice into escrow today and we'll take ${money(m.discount)} off — you pay ${money(m.face)} instead of ${money(invoice)}. That's equivalent to earning ${pct(buyerApr, 2)} APR on the cash over the same period, better than holding it.
+
+The money doesn't come to us. It sits locked in a Stabledrop escrow until ${due} — the day you'd have paid anyway — and is released to us then only if we've delivered. If we haven't, you get it back. Buyer protection and dispute management are built in.
+
+Paying this way genuinely helps us: it guarantees payment on time, and lets us sell the escrow to access the capital early and keep working on your next orders.
+
+Happy to walk through the numbers.
+
+${signOff || "[your name]"}`;
+
+  const copy = () => {
+    if (!custName.trim()) {
+      setNudge(true);
       if (nameRef.current) nameRef.current.focus();
       return;
     }
-    setNeedName(false);
-    try {
-      await navigator.clipboard.writeText(message);
-    } catch {
-      const ta = document.createElement("textarea");
-      ta.value = message;
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand("copy");
-      document.body.removeChild(ta);
+    setNudge(false);
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(message).then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2200);
+      });
     }
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1800);
   };
 
   const exportXlsx = () => {
-    const cur = "#,##0";
-    const pct = "0.00%";
-    const rows = [
-      ["Stabledrop — early payment model"],
-      ["Change the inputs (rows 5–9, 11–14) and everything recalculates. Row 10 is derived. Amounts in USDC."],
-      [],
-      ["INPUTS", "", ""],
-      ["Invoice amount", face, "Full amount you'd normally bill"],
-      ["Payment terms (days)", days, "How long your customer takes to pay"],
-      ["Job length (days)", deliver, "Order to delivery"],
-      ["Customer's yield on cash", yield_ / 100, "What holding the money earns them, annualised"],
-      ["Buyer's share of the spread", split / 100, "0% = seller keeps it all, 100% = buyer keeps it all"],
-      ["→ Discount you offer (annualised)", m.rOffer / 100, `Derived: ${m.rFloor.toFixed(2)}% floor + ${split}% of the ${m.spread.toFixed(2)}pt spread`],
-      ["Escrow factoring rate", rEscrowFactor / 100, "Funder's charge — no credit risk left to price"],
-      ["Your borrowing cost today", rBorrow / 100, "Source: iwoca — from 1.5%/mo; representative 40% APR"],
-      ["Stabledrop fee (flat, % of escrow)", FEE_PCT / 100, "Fixed. Taken once, when the escrow is funded"],
-      ["Bad debt rate today", badDebt / 100, "What you write off or chase"],
-      [],
-      ["STEP 1 — THE GUARANTEE", "", ""],
-      ["Year fraction (terms/365)", 0, "Simple interest, actual/365"],
-      ["Escrowed by customer at day 0", 0, ""],
-      ["Stabledrop's fee (taken at funding)", 0, ""],
-      ["Released to you at maturity — guaranteed", 0, ""],
-      ["Bad debt you stop carrying (memo)", 0, ""],
-      [],
-      ["STEP 2 — CASH ON DAY ONE", "", ""],
-      ["Funder's cut", 0, "No personal guarantee — nothing to secure"],
-      ["In your account on day one", 0, ""],
-      ["Borrowing the same the old way", 0, "Plus a personal guarantee"],
-      ["You're ahead by", 0, ""],
-      [],
-      ["STEP 3 — WHY YOUR CUSTOMER SAYS YES", "", ""],
-      ["Discount off their bill", 0, ""],
-      ["They'd earn by holding their cash", 0, ""],
-      ["They're better off by", 0, "Positive = they say yes; protection is free"],
-      [],
-      ["THE REAL PRIZE — YOUR YEAR", "", ""],
-      ["Cash cycle today (days)", 0, "Job + waiting"],
-      ["Jobs per year today", 0, ""],
-      ["Cash collected per year today", 0, "Bills the full invoice, less bad debt"],
-      ["Jobs per year, paid on day one", 0, ""],
-      ["Cash collected per year, paid on day one", 0, "Less discount, fee and factoring — no bad debt"],
-      ["Extra cash per year", 0, "Same money, nothing borrowed"],
-      ["Revenue multiple", 0, ""],
-      ["Saving vs borrowing, per year", 0, "Per-invoice saving × jobs per year"],
-      [],
-      ["Estimates, not financial advice. © 2026 Conduit UCPI, Company No. SC880319."],
+    const rows: (string | number | { f: string })[][] = [
+      ["Stabledrop — early payment offer", ""],
+      ["", ""],
+      ["INPUTS", ""],
+      ["Invoice", invoice],
+      ["Payment terms (days)", terms],
+      ["Bad debt now (%)", badDebt],
+      ["Senior cap (%)", cap],
+      ["Discount rate (%/yr)", discRate],
+      ["Borrowing cost (%/yr)", borrowRate],
+      ["Buyer's yield (%/yr)", buyerYield],
+      ["Buyer's share of spread (%)", buyerShare],
+      ["Job length (days)", jobDays],
+      ["Stabledrop fee (%)", FEE_RATE],
+      ["", ""],
+      ["THE DEAL", ""],
+      ["Buyer's forgone yield", { f: "B4*B10/100*B5/365" }],
+      ["Borrowing avoided", { f: "B4*B9/100*B5/365" }],
+      ["Bad debt avoided", { f: "B4*B6/100" }],
+      ["Discount off their bill", m.discount],
+      ["Locked in escrow", { f: "B4-B19" }],
+      ["Stabledrop fee", { f: "B20*B13/100" }],
+      ["Escrow, yours to sell", { f: "B20-B21" }],
+      ["Funder's senior claim", { f: "B22*B7/100" }],
+      ["Funder's cut", { f: "B23*B8/100*B5/365" }],
+      ["Cash today (advance)", { f: "B23-B24" }],
+      ["Your residual on release", { f: "B22-B23" }],
+      ["You end up with", { f: "B25+B26" }],
+      ["Funder breakeven refund %", { f: "(1-B25/B22)*100" }],
+      ["", ""],
+      ["YOUR YEAR", ""],
+      ["Cycle now (days)", { f: "B12+B5" }],
+      ["Jobs/yr now", { f: "365/B31" }],
+      ["Revenue now", { f: "B32*B4*(1-B6/100)" }],
+      ["Cycle paid day one", { f: "B12" }],
+      ["Jobs/yr paid day one", { f: "365/B34" }],
+      ["Revenue paid day one", { f: "B35*B27" }],
+      ["Multiple", { f: "B36/B33" }],
     ];
     const ws = XLSX.utils.aoa_to_sheet(rows);
-    const F = (a: string, f: string, z: string) => { (ws as any)[a] = { t: "n", f, z }; };
-    // inputs formats — B10 is derived, so F() below gives it its own format
-    ["B5", "B6", "B7"].forEach((a) => ((ws as any)[a].z = cur));
-    ["B8", "B9", "B11", "B12", "B13", "B14"].forEach((a) => ((ws as any)[a].z = pct));
-    // derived discount: buyer's floor + their share of the spread up to the point
-    // where the seller nets exactly what borrowing would have paid them
-    F("B10", "B8+B9*((((1-B13)*(1+B12*B17)/(1+B11*B17))-1)/B17-B8)", pct);
-    // step 1
-    F("B17", "B6/365", "0.0000");
-    F("B18", "B5/(1+B10*B17)", cur);
-    F("B19", "-B18*B13", cur);
-    F("B20", "B18+B19", cur);
-    F("B21", "B5*B14", cur);
-    // step 2
-    F("B24", "-(B20-B20/(1+B11*B17))", cur);
-    F("B25", "B20+B24", cur);
-    F("B26", "B5/(1+B12*B17)", cur);
-    F("B27", "B25-B26", cur);
-    // step 3
-    F("B30", "B5-B18", cur);
-    F("B31", "B5-B5/(1+B8*B17)", cur);
-    F("B32", "B30-B31", cur);
-    // year — cash collected on both sides, matching the page
-    F("B35", "B7+B6", "0");
-    F("B36", "365/B35", "0.0");
-    F("B37", "B36*B5*(1-B14)", cur);
-    F("B38", "365/B7", "0.0");
-    F("B39", "B38*B25", cur);
-    F("B40", "B39-B37", cur);
-    F("B41", "B39/B37", '0.0"×"');
-    F("B42", "B27*(365/B7)", cur);
-    ws["!cols"] = [{ wch: 42 }, { wch: 15 }, { wch: 52 }];
+    ws["!cols"] = [{ wch: 30 }, { wch: 18 }];
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Model");
-    XLSX.writeFile(wb, "stabledrop-model.xlsx");
+    XLSX.utils.book_append_sheet(wb, ws, "Early payment offer");
+    XLSX.writeFile(wb, "stabledrop-early-payment-offer.xlsx");
   };
 
-  const buyerYes = m.buyerGain > 0;
-  const sellerAhead = m.gain > 0;
+  const inputStyle = (bad: boolean) => ({
+    background: C.panel2,
+    border: `1px solid ${bad ? C.red : C.line}`,
+    borderRadius: 3,
+    color: C.text,
+    fontFamily: "inherit",
+    fontSize: 13,
+    padding: "9px 11px",
+    width: "100%",
+  });
 
   return (
     <>
       <SEO
         title="Triple Your Revenue by Changing Payment Terms — Stabledrop"
-        description="Get paid on day one instead of waiting 60 days, and the same working capital turns three times as often. Your customer pays into escrow up front, you sell the escrow for cash today — no borrowing, no personal guarantee. Model the discount, factoring, and revenue impact."
+        description="Get paid on day one instead of waiting 60 days, and the same working capital turns three times as often. Your customer pays into escrow up front, you sell a senior claim on it for cash today — no borrowing, no personal guarantee. Model the discount, the funder's cap and rate, and the revenue impact."
       />
-      <div className="sd">
-        <style>{CSS}</style>
+      <div
+        style={{
+          background: C.bg,
+          color: C.text,
+          fontFamily: "'JetBrains Mono', ui-monospace, Menlo, monospace",
+          padding: "26px 16px 70px",
+          minHeight: "100%",
+        }}
+      >
+        <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap');
+        .sd-range{-webkit-appearance:none;appearance:none;width:100%;background:transparent;height:24px;margin:0;cursor:pointer;position:relative;z-index:2}
+        .sd-range:focus{outline:none}
+        .sd-range:focus-visible::-webkit-slider-thumb{box-shadow:0 0 0 3px ${C.greenInk},0 0 0 4px ${C.green}}
+        .sd-range::-webkit-slider-runnable-track{height:6px;background:transparent}
+        .sd-range::-webkit-slider-thumb{-webkit-appearance:none;height:17px;width:17px;border-radius:50%;background:${C.green};border:3px solid ${C.bg};margin-top:-6px;box-shadow:0 0 9px ${C.green}55}
+        .sd-range::-moz-range-track{height:6px;background:transparent}
+        .sd-range::-moz-range-thumb{height:13px;width:13px;border-radius:50%;background:${C.green};border:3px solid ${C.bg};box-shadow:0 0 9px ${C.green}55}
+        .sd-wrap{max-width:780px;margin:0 auto}
+        .sd-2{display:grid;gap:16px}
+        @media(min-width:700px){.sd-2{grid-template-columns:1fr 1fr}}
+        .sd-3{display:grid;gap:14px}
+        @media(min-width:700px){.sd-3{grid-template-columns:repeat(3,1fr)}}
+        @media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+        .sd-btn{font-family:inherit;cursor:pointer;border-radius:3px}
+      `}</style>
+
         <div className="sd-wrap">
-          <h1 className="sd-h1">
-            <span className="x">{m.multiple.toFixed(1)}×</span> your revenue on the same
-            money
+          <div style={{ fontSize: 11, color: C.dim, letterSpacing: "0.1em", marginBottom: 26 }}>
+            Instant Escrow · Conduit UCPI
+          </div>
+
+          {/* hero */}
+          <h1 style={{ fontSize: 30, lineHeight: 1.2, fontWeight: 700, margin: "0 0 14px" }}>
+            {m.multiple.toFixed(1)}× your revenue
+            <br />
+            <span style={{ color: C.green }}>on the same money</span>
           </h1>
-          <p className="sd-sub">
-            Your customer pays into escrow on day one. You sell the escrow and get the cash
-            the same day. A small discount makes it worth their while. Nothing borrowed, no
-            personal guarantee, nobody waiting.
+          <p style={{ color: C.dim, fontSize: 13.5, lineHeight: 1.7, maxWidth: 620, margin: 0 }}>
+            Your customer pays into escrow on day one. You sell most of the escrow
+            and get the cash the same day, keeping the tail. A small discount makes
+            it worth their while. Nothing borrowed, no personal guarantee, nobody
+            waiting.
           </p>
 
-          <div className="sd-top">
-            <div className="sd-card flat">
-              <Ctl
+          <div style={{ marginTop: 26 }}>
+            <Panel glow>
+              <Slider
                 label="Invoice amount"
-                hint="Slider: 1k – 500k (type for higher amounts)"
-                value={face}
-                onChange={setFace}
+                value={invoice}
+                onChange={setInvoice}
                 min={1000}
                 max={500000}
                 step={1000}
+                format={money}
+                big
+                allowType
+                help="Type for higher amounts. Below ~250k no manual funding desk will bid — the underwriting cost exceeds the spread, so this has to be programmatic."
               />
-              <Ctl
+              <Slider
                 label="Payment terms (days)"
-                hint={`Due ${dayShort(m.due)} — how long your customer takes to pay`}
-                value={days}
-                onChange={setDays}
+                value={terms}
+                onChange={setTerms}
                 min={7}
-                max={180}
+                max={120}
                 step={1}
+                format={(v) => `${v} days`}
+                help={`Due ${due} — how long your customer takes to pay`}
               />
-            </div>
-
-            <div className="sd-hero">
-              <div className="sd-hero-lab">Cash in your account today</div>
-              <div className="sd-hero-val">{n0(m.cashNow)}</div>
-              <div className="sd-hero-sub">
-                on a {n0(face)} invoice at {days} days
-              </div>
-              <div className="sd-hero-div" />
-              <div className="sd-hero-grid">
-                <div className="sd-hero-cell">
-                  <div className="l">Extra revenue / yr</div>
-                  <div className="v">+{n0(m.revGain)}</div>
+              <div className="sd-3" style={{ padding: "12px 0 14px" }}>
+                <div>
+                  <div style={{ fontSize: 10, letterSpacing: "0.14em", color: C.dim, textTransform: "uppercase" }}>
+                    Cash today
+                  </div>
+                  <div style={{ fontSize: 27, fontWeight: 700, color: C.green }}>
+                    {money(m.advance)}
+                  </div>
+                  <div style={{ fontSize: 10.5, color: C.dimmer }}>
+                    {pct((m.advance / invoice) * 100)} of face, day one
+                  </div>
                 </div>
-                <div className="sd-hero-cell">
-                  <div className="l">vs borrowing at {rBorrow.toFixed(0)}% / yr</div>
-                  <div className={`v${sellerAhead ? "" : " neg"}`}>
-                    {sellerAhead ? "+" : "−"}{n0(Math.abs(m.gainYr))}
+                <div>
+                  <div style={{ fontSize: 10, letterSpacing: "0.14em", color: C.dim, textTransform: "uppercase" }}>
+                    Residual on {due}
+                  </div>
+                  <div style={{ fontSize: 27, fontWeight: 700, color: C.text }}>
+                    {money(m.residual)}
+                  </div>
+                  <div style={{ fontSize: 10.5, color: C.dimmer }}>if undisputed</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 10, letterSpacing: "0.14em", color: C.dim, textTransform: "uppercase" }}>
+                    Extra revenue / yr
+                  </div>
+                  <div style={{ fontSize: 27, fontWeight: 700, color: C.green }}>
+                    +{money(m.revNew - m.revNow)}
+                  </div>
+                  <div style={{ fontSize: 10.5, color: C.dimmer }}>
+                    vs borrowing at {pct(borrowRate)}
                   </div>
                 </div>
               </div>
-            </div>
+            </Panel>
           </div>
 
-          {/* 1 */}
-          <div className="sd-card">
-            <div className="sd-lab">Step 1 — the guarantee</div>
-            <p className="sd-step-t">
-              Your customer locks {n0(m.escrow)} into escrow before you start
-            </p>
-            <p className="sd-p">
-              It's out of their account and locked. On <b>{dayShort(m.due)}</b> it's
-              released to you — automatically, no chasing. If you don't deliver, they get
-              it back. Stabledrop's fee is a flat <span className="g">{FEE_PCT.toFixed(0)}%</span>{" "}
-              of the escrow, taken when it's funded. That's the whole cost, whatever you do
+          {/* STEP 1 */}
+          <Section
+            eyebrow="Step 1 — the guarantee"
+            title={`Your customer locks ${money(m.face)} into escrow before you start`}
+          >
+            <p style={{ color: C.dim, fontSize: 13, lineHeight: 1.7, marginTop: 0 }}>
+              It's out of their account and locked. On <strong style={{ color: C.text }}>{due}</strong> it's
+              released to you — automatically, no chasing. If you don't deliver,
+              they get it back. Stabledrop's fee is a flat {pct(FEE_RATE, 0)} of the
+              escrow, taken when it's funded. That's the whole cost, whatever you do
               next.
             </p>
-            <div className="sd-grid2">
-              <Ctl
+            <Panel>
+              <Slider
                 label="What bad payers cost you now (%)"
-                hint="What you write off or chase, out of everything you invoice"
                 value={badDebt}
                 onChange={setBadDebt}
                 min={0}
-                max={10}
-                step={0.5}
+                max={8}
+                step={0.1}
+                format={(v) => pct(v, 1)}
+                bands={BAD_DEBT_BANDS}
+                help="What you write off or chase, out of everything you invoice"
               />
-            </div>
-            <div className="sd-rows">
-              <div className="sd-row">
-                <span className="k">Locked in escrow today</span>
-                <span className="v">{n0(m.escrow)}</span>
-              </div>
-              <div className="sd-row">
-                <span className="k">Stabledrop's fee — flat {FEE_PCT.toFixed(0)}%</span>
-                <span className="v neg">− {n0(m.feeAmt)}</span>
-              </div>
-              <div className="sd-row tot">
-                <span className="k">Yours on {dayShort(m.due)} — guaranteed</span>
-                <span className="v">{n0(m.netClaim)}</span>
-              </div>
-            </div>
-            <div className="sd-pill good">
-              <span>Bad debt you stop carrying</span>
-              <span className="amt">≈ {n0(m.badDebtCost)}/invoice</span>
-            </div>
-          </div>
+              <Row label="Locked in escrow today" value={money(m.face)} />
+              <Row label={`Stabledrop's fee — flat ${pct(FEE_RATE, 0)}`} value={`− ${money(m.fee)}`} tone="cost" />
+              <Row label={`Yours on ${due} — guaranteed`} value={money(m.escrow)} strong />
+              <Row label="Bad debt you stop carrying" value={`≈ ${money(m.badDebtAvoided)}/invoice`} tone="good" />
+            </Panel>
+          </Section>
 
-          {/* 2 */}
-          <div className="sd-card">
-            <div className="sd-lab">Step 2 — cash on day one</div>
-            <p className="sd-step-t">
-              Don't wait {days} days — sell the escrow for {n0(m.cashNow)} today
+          {/* STEP 2 */}
+          <Section
+            eyebrow="Step 2 — cash on day one"
+            title={`Don't wait ${terms} days — sell the escrow for ${money(m.advance)} today`}
+          >
+            <p style={{ color: C.dim, fontSize: 13, lineHeight: 1.7, marginTop: 0 }}>
+              A funder buys a senior claim on your escrow — repaid first, up to a
+              cap. What's left is your <strong style={{ color: C.text }}>residual</strong>, paid
+              when the escrow releases. The money's already locked in, so they take
+              no risk on your customer, and charge like it:{" "}
+              <strong style={{ color: C.green }}>{pct(discRate, 2)}</strong> against
+              the <strong style={{ color: C.red }}>{pct(borrowRate, 1)}</strong> you'd
+              pay to borrow. <strong style={{ color: C.text }}>No personal guarantee</strong> —
+              there's no loan, so there's nothing to secure against your house.
             </p>
-            <p className="sd-p">
-              A funder buys your place in the escrow and pays you now. The money's already
-              locked in, so they take no risk on your customer — and charge like it:{" "}
-              <span className="g">{rEscrowFactor.toFixed(1)}%</span> against the{" "}
-              <b>{rBorrow.toFixed(1)}%</b> you'd pay to borrow. <b>No personal
-              guarantee</b> — there's no loan, so there's nothing to secure against your
-              house.
-            </p>
-            <div className="sd-grid2">
-              <Ctl
-                label="Factoring the escrow (%)"
-                hint="The funder's charge for paying you today. Low — no credit risk left to price"
-                value={rEscrowFactor}
-                onChange={setREscrowFactor}
-                min={0}
-                max={20}
+
+            {/* regime presets */}
+            <div style={{ display: "flex", gap: 7, flexWrap: "wrap", marginBottom: 14 }}>
+              {(Object.keys(REGIMES) as RegimeKey[]).map((k) => {
+                const r = REGIMES[k];
+                const on = cap === r.cap && discRate === r.rate;
+                return (
+                  <button
+                    key={k}
+                    className="sd-btn"
+                    onClick={() => applyRegime(k)}
+                    style={{
+                      flex: "1 1 170px",
+                      padding: "10px 11px",
+                      textAlign: "left",
+                      background: on ? C.greenInk : C.panel,
+                      border: `1px solid ${on ? C.green : C.line}`,
+                      color: on ? C.green : C.dim,
+                      fontSize: 11.5,
+                    }}
+                  >
+                    {r.label}
+                    <div style={{ fontSize: 9.5, opacity: 0.75, marginTop: 3 }}>
+                      cap {r.cap} · {r.rate}%/yr
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+            <div
+              style={{
+                padding: "10px 12px",
+                background: C.panel2,
+                borderLeft: `2px solid ${C.dimmer}`,
+                fontSize: 11.5,
+                lineHeight: 1.6,
+                color: C.dim,
+                marginBottom: 16,
+              }}
+            >
+              {REGIMES[regime].blurb}
+            </div>
+
+            <Panel>
+              <Slider
+                label="Senior cap (% of escrow)"
+                value={cap}
+                onChange={setCap}
+                min={80}
+                max={100}
                 step={0.5}
+                format={(v) => pct(v, 1)}
+                bands={CAP_BANDS}
+                help="How much the funder is repaid before you see anything. The rest is your residual — and your first loss on a dispute."
               />
-              <Ctl
-                label="What borrowing costs you now (%)"
-                hint="Source: iwoca — unsecured loans from 1.5%/month (~18%/yr), representative 40% APR"
-                value={rBorrow}
-                onChange={setRBorrow}
-                min={0}
+              <Slider
+                label="Discount rate (% / yr)"
+                value={discRate}
+                onChange={setDiscRate}
+                min={RISK_FREE}
                 max={40}
-                step={0.5}
-              />
-            </div>
-            <div className="sd-rows">
-              <div className="sd-row">
-                <span className="k">Your escrow, after the fee</span>
-                <span className="v">{n0(m.netClaim)}</span>
-              </div>
-              <div className="sd-row">
-                <span className="k">Funder's cut</span>
-                <span className="v neg">− {n0(m.factorCut)}</span>
-              </div>
-              <div className="sd-row tot">
-                <span className="k">In your account today</span>
-                <span className="v">{n0(m.cashNow)}</span>
-              </div>
-              <div className="sd-row">
-                <span className="k">Borrowing it instead</span>
-                <span className="v">
-                  {n0(m.borrowNow)}
-                  <small>+ personal guarantee</small>
-                </span>
-              </div>
-            </div>
-            <div className={`sd-pill ${sellerAhead ? "good" : "warn"}`}>
-              <span>{sellerAhead ? "You're ahead by" : "You're behind by"}</span>
-              <span className="amt">
-                {sellerAhead ? "+" : "−"}{n0(Math.abs(m.gain))}
-              </span>
-            </div>
-          </div>
-
-          {/* 3 */}
-          <div className="sd-card">
-            <div className="sd-lab">Step 3 — why your customer says yes</div>
-            <p className="sd-step-t">
-              Pay them {n0(m.discount)} to fund the escrow up front
-            </p>
-            <p className="sd-p">
-              Holding {n0(face)} for {days} days earns them <b>{n0(m.buyerEarns)}</b>.
-              That's why they pay late. Offer a discount worth slightly more and paying
-              today becomes the better deal — plus, if you don't deliver, they get their
-              money back. That protection is free.
-            </p>
-            <div className="sd-grid2">
-              <Ctl
-                label="What their cash earns them (%)"
-                hint="Interest they make holding your money for the invoice period"
-                value={yield_}
-                onChange={setYield}
-                min={0}
-                max={15}
                 step={0.25}
+                format={(v) => pct(v, 2)}
+                bands={RATE_BANDS}
+                help={`The funder's charge for paying you today. Floor is the risk-free rate, ${RISK_FREE}% (SOFR, 28 Jul 2026) — nothing prices below it.`}
               />
-              <Ctl
+              <Slider
+                label="What borrowing costs you now (%)"
+                value={borrowRate}
+                onChange={setBorrowRate}
+                min={6}
+                max={50}
+                step={0.5}
+                format={(v) => pct(v, 1)}
+                bands={BORROW_BANDS}
+                help="Source: iwoca — unsecured loans from 1.5%/month (~18%/yr), representative 40% APR"
+              />
+
+              {noSub ? (
+                <div
+                  style={{
+                    margin: "2px 0 16px",
+                    padding: "10px 12px",
+                    background: C.redInk,
+                    border: `1px solid ${C.red}`,
+                    borderRadius: 3,
+                    fontSize: 11.5,
+                    lineHeight: 1.6,
+                    color: C.red,
+                  }}
+                >
+                  No subordination left. With nothing of yours underneath, a funder
+                  is exposed to a full refund and can't price it. Expect no bids at
+                  any rate.
+                </div>
+              ) : null}
+
+              <Row label="Your escrow, after the fee" value={money(m.escrow)} />
+              <Row label={`Funder's senior claim — cap ${pct(cap, 1)}`} value={money(m.senior)} />
+              <Row label={`Funder's cut — ${pct(discRate, 2)}/yr over ${terms}d`} value={`− ${money(m.funderCut)}`} tone="cost" />
+              <Row label="In your account today" value={money(m.advance)} tone="good" strong />
+              <Row label={`Your residual on ${due}`} value={money(m.residual)} sub="paid after the funder, if undisputed" />
+              <Row label={`Borrowing it instead at ${pct(borrowRate, 1)}`} value={money(m.borrowAlt)} sub="+ personal guarantee" />
+              <Row
+                label="You're ahead by"
+                value={`${aheadOfBorrowing >= 0 ? "+" : "−"}${money(Math.abs(aheadOfBorrowing))}`}
+                tone={aheadOfBorrowing >= 0 ? "good" : "cost"}
+                strong
+              />
+            </Panel>
+
+            {/* dispute absorption */}
+            <div style={{ marginTop: 22 }}>
+              <div style={{ fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", color: C.dim, marginBottom: 10 }}>
+                Who absorbs a dispute
+              </div>
+              <div style={{ display: "flex", height: 40, borderRadius: 3, overflow: "hidden", border: `1px solid ${C.line}` }}>
+                <div style={{ width: `${100 - cap}%`, background: C.greenInk, borderRight: `1px solid ${C.green}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9.5, color: C.green, minWidth: 0 }}>
+                  your residual
+                </div>
+                <div style={{ width: `${Math.max(0, m.breakeven * 100 - (100 - cap))}%`, background: C.amberInk, borderRight: `1px solid ${C.amber}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9.5, color: C.amber, minWidth: 0 }}>
+                  carry
+                </div>
+                <div style={{ flex: 1, background: C.redInk, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9.5, color: C.red }}>
+                  funder loses
+                </div>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: C.dimmer, marginTop: 5 }}>
+                <span>0% refund</span>
+                <span style={{ color: C.amber }}>breakeven {pct(m.breakeven * 100, 1)}</span>
+                <span>100%</span>
+              </div>
+              <p style={{ fontSize: 11.5, lineHeight: 1.65, color: C.dim, marginTop: 10 }}>
+                Your residual takes the first {pct(100 - cap, 1)} of any refund, and
+                the funder's discount buys another {pct(Math.max(0, m.breakeven * 100 - (100 - cap)), 1)} because
+                it advanced less than its cap. Past {pct(m.breakeven * 100, 1)} the
+                funder is out of pocket. A full refund costs it {money(m.advance)} —
+                which no cap fixes, and is what an approved-arbitrator requirement
+                is for.
+              </p>
+              <div style={{ overflowX: "auto", marginTop: 10 }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11.5, minWidth: 430 }}>
+                  <thead>
+                    <tr>
+                      {["Refund", "Funder P&L", "Your residual", "You keep"].map((h, i) => (
+                        <th key={h} style={{ textAlign: i === 0 ? "left" : "right", padding: "8px 9px", borderBottom: `1px solid ${C.lineB}`, color: C.dim, fontWeight: 500, fontSize: 9.5, letterSpacing: "0.1em", textTransform: "uppercase" }}>
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {m.waterfall.map((r) => (
+                      <tr key={r.d}>
+                        <td style={{ padding: "7px 9px", borderBottom: `1px solid ${C.line}` }}>{r.d}%</td>
+                        <td style={{ padding: "7px 9px", textAlign: "right", borderBottom: `1px solid ${C.line}`, color: r.funderPnL >= 0 ? C.green : C.red }}>
+                          {r.funderPnL >= 0 ? "+" : "−"}{money(Math.abs(r.funderPnL))}
+                        </td>
+                        <td style={{ padding: "7px 9px", textAlign: "right", borderBottom: `1px solid ${C.line}`, color: r.sellerLate > 0 ? C.text : C.dimmer }}>
+                          {money(r.sellerLate)}
+                        </td>
+                        <td style={{ padding: "7px 9px", textAlign: "right", borderBottom: `1px solid ${C.line}` }}>
+                          {money(r.sellerTotal)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div style={{ fontSize: 10, color: C.dimmer, marginTop: 6 }}>
+                No recourse — the advance already paid to you isn't clawed back.
+              </div>
+            </div>
+          </Section>
+
+          {/* STEP 3 */}
+          <Section
+            eyebrow="Step 3 — why your customer says yes"
+            title={`Pay them ${money(m.discount)} to fund the escrow up front`}
+          >
+            <p style={{ color: C.dim, fontSize: 13, lineHeight: 1.7, marginTop: 0 }}>
+              Holding {money(invoice)} for {terms} days earns them{" "}
+              <strong style={{ color: C.text }}>{money(m.buyerEarn)}</strong>. That's
+              why they pay late. Offer a discount worth more and paying today becomes
+              the better deal — plus, if you don't deliver, they get their money
+              back. That protection is free.
+            </p>
+            <Panel>
+              <Slider
+                label="What their cash earns them (%)"
+                value={buyerYield}
+                onChange={setBuyerYield}
+                min={0}
+                max={10}
+                step={0.05}
+                format={(v) => pct(v, 2)}
+                bands={YIELD_BANDS}
+                help={`Interest they make holding your money. Risk-free is ${RISK_FREE}% (SOFR, 28 Jul 2026).`}
+              />
+              <Slider
                 label="Buyer's share of the spread (%)"
-                hint={
-                  m.dealPossible
-                    ? `${n0(m.pot)} on the table. At ${split}% they keep ${n0(m.buyerGain)}, you keep ${n0(m.pot - m.buyerGain)}`
-                    : `Nothing on the table: funding at ${rEscrowFactor.toFixed(1)}% plus the fee costs more than the ${rBorrow.toFixed(1)}% it replaces`
-                }
-                value={split}
-                onChange={setSplit}
+                value={buyerShare}
+                onChange={setBuyerShare}
                 min={0}
                 max={100}
                 step={1}
+                format={(v) => pct(v, 0)}
+                bands={SHARE_BANDS}
+                help={`${money(m.grossSpread)} on the table. At ${pct(buyerShare, 0)} they keep ${money(m.buyerCut)}, you keep ${money(m.grossSpread - m.buyerCut)}.`}
               />
-            </div>
-            <div className="sd-rows">
-              <div className="sd-row">
-                <span className="k">Discount off their bill</span>
-                <span className="v neg">− {n0(m.discount)}</span>
-              </div>
-              <div className="sd-row">
-                <span className="k">They'd earn by waiting</span>
-                <span className="v">{n0(m.buyerEarns)}</span>
-              </div>
-            </div>
-            <div className={`sd-pill ${buyerYes ? "good" : "warn"}`}>
-              <span>
-                {buyerYes ? "They're better off by" : "They're worse off — they'll say no"}
-              </span>
-              <span className="amt">
-                {buyerYes ? "+" : "−"}{n0(Math.abs(m.buyerGain))}
-              </span>
-            </div>
-          </div>
+              <Row label="Discount off their bill" value={`− ${money(m.discount)}`} tone="cost" />
+              <Row label="They'd earn by waiting" value={money(m.buyerEarn)} />
+              <Row
+                label="They're better off by"
+                value={`+${money(buyerBetter)}`}
+                tone="good"
+                strong
+                sub={`equivalent to ${pct(buyerApr, 2)} APR on the cash`}
+              />
+            </Panel>
+          </Section>
 
-          {/* message */}
-          <div className="sd-card">
-            <div className="sd-lab">Send it to them</div>
-            <p className="sd-step-t">The message that makes the ask</p>
-            <p className="sd-p">
-              Built from your numbers above — it updates as you move the sliders. Copy it
-              into an email or WhatsApp and edit as you like.
+          {/* MESSAGE */}
+          <Section eyebrow="Send it to them" title="The message that makes the ask">
+            <p style={{ color: C.dim, fontSize: 12.5, lineHeight: 1.7, marginTop: 0 }}>
+              Built from your numbers above — it updates as you move the sliders.
+              Copy it into an email or WhatsApp and edit as you like.
             </p>
-            <div className="sd-msg-fields">
+            <div className="sd-2" style={{ marginBottom: 14 }}>
               <div>
-                <div className="sd-lab">Your customer's name</div>
+                <div style={{ fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: C.dim, marginBottom: 6 }}>
+                  Your customer's name
+                </div>
                 <input
                   ref={nameRef}
-                  className={`sd-msg-box${needName ? " nudge" : ""}`}
-                  type="text"
-                  placeholder="e.g. Sarah"
-                  value={buyerName}
-                  onChange={(e) => {
-                    setBuyerName(e.target.value);
-                    if (e.target.value.trim()) setNeedName(false);
-                  }}
+                  value={custName}
+                  onChange={(e) => { setCustName(e.target.value); if (e.target.value.trim()) setNudge(false); }}
+                  style={inputStyle(nudge)}
+                  placeholder="Jane"
+                  aria-label="Your customer's name"
                 />
-                {needName && (
-                  <div className="sd-nudge-txt">
-                    Add your customer's name before copying
+                {nudge ? (
+                  <div style={{ fontSize: 10.5, color: C.red, marginTop: 5 }}>
+                    Add their name first.
                   </div>
-                )}
+                ) : null}
               </div>
               <div>
-                <div className="sd-lab">Sign off as</div>
+                <div style={{ fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: C.dim, marginBottom: 6 }}>
+                  Sign off as
+                </div>
                 <input
-                  className="sd-msg-box"
-                  type="text"
-                  placeholder="e.g. Charlie, Acme Ltd"
-                  value={sellerName}
-                  onChange={(e) => setSellerName(e.target.value)}
+                  value={signOff}
+                  onChange={(e) => setSignOff(e.target.value)}
+                  style={inputStyle(false)}
+                  placeholder="Charlie"
+                  aria-label="Sign off as"
                 />
               </div>
             </div>
-            <div className="sd-msg-pre">{message}</div>
-            <div className="sd-msg-actions">
-              <button className={`sd-copy${copied ? " done" : ""}`} onClick={copyMsg}>
-                {copied ? "Copied ✓" : "Copy message"}
-              </button>
-            </div>
-          </div>
+            <pre
+              style={{
+                background: C.panel2,
+                border: `1px solid ${C.line}`,
+                borderRadius: 4,
+                padding: 16,
+                fontSize: 12,
+                lineHeight: 1.7,
+                color: C.text,
+                whiteSpace: "pre-wrap",
+                fontFamily: "inherit",
+                margin: 0,
+              }}
+            >
+              {message}
+            </pre>
+            <button
+              className="sd-btn"
+              onClick={copy}
+              style={{
+                marginTop: 12,
+                padding: "11px 20px",
+                background: copied ? C.greenInk : C.green,
+                border: `1px solid ${C.green}`,
+                color: copied ? C.green : C.bg,
+                fontSize: 12.5,
+                fontWeight: 700,
+                letterSpacing: "0.06em",
+              }}
+            >
+              {copied ? "Copied" : "Copy message"}
+            </button>
+          </Section>
 
-          {/* tally */}
-          <div className="sd-card">
-            <div className="sd-lab">All of it together</div>
-            <div className="sd-rows" style={{ marginTop: 8 }}>
-              <div className="sd-row">
-                <span className="k">Your invoice</span>
-                <span className="v">{n0(face)}</span>
-              </div>
-              <div className="sd-row">
-                <span className="k">Customer's discount</span>
-                <span className="v neg">− {n0(m.discount)}</span>
-              </div>
-              <div className="sd-row">
-                <span className="k">Stabledrop's fee ({FEE_PCT.toFixed(0)}%)</span>
-                <span className="v neg">− {n0(m.feeAmt)}</span>
-              </div>
-              <div className="sd-row">
-                <span className="k">Funder's cut</span>
-                <span className="v neg">− {n0(m.factorCut)}</span>
-              </div>
-              <div className="sd-row tot">
-                <span className="k">In your account today</span>
-                <span className="v">{n0(m.cashNow)}</span>
-              </div>
-              <div className="sd-row">
-                <span className="k">The old way: borrow at {rBorrow.toFixed(1)}%</span>
-                <span className="v">{n0(m.borrowNow)}</span>
-              </div>
-            </div>
-            <div className={`sd-pill ${sellerAhead ? "good" : "warn"}`}>
-              <span>You keep</span>
-              <span className="amt">
-                {sellerAhead ? "+" : "−"}{n0(Math.abs(m.gain))}
-              </span>
-            </div>
-            <p className="sd-p" style={{ marginTop: 14 }}>
-              {sellerAhead ? (
-                <>
-                  You're up, your customer's up, and the bad debt is gone. Nobody paid for
-                  that — it's what taking the credit risk <b>out</b> of the deal is worth.
-                </>
-              ) : (
-                <>
-                  On these numbers the costs outweigh the borrowing you'd replace. The gap
-                  between {rEscrowFactor.toFixed(1)}% and {rBorrow.toFixed(1)}% has to
-                  cover the discount and both fees.
-                </>
-              )}
+          {/* ALL TOGETHER */}
+          <Section eyebrow="All of it together">
+            <Panel>
+              <Row label="Your invoice" value={money(invoice)} />
+              <Row label="Customer's discount" value={`− ${money(m.discount)}`} tone="cost" />
+              <Row label={`Stabledrop's fee (${pct(FEE_RATE, 0)})`} value={`− ${money(m.fee)}`} tone="cost" />
+              <Row label="Funder's cut" value={`− ${money(m.funderCut)}`} tone="cost" />
+              <Row label="In your account today" value={money(m.advance)} tone="good" strong />
+              <Row label={`Your residual on ${due}`} value={`+ ${money(m.residual)}`} />
+              <Row label="You end up with" value={money(m.total)} strong />
+              <Row label={`The old way: borrow at ${pct(borrowRate, 1)}`} value={money(m.borrowAlt)} />
+              <Row
+                label="You keep"
+                value={`${aheadOfBorrowing >= 0 ? "+" : "−"}${money(Math.abs(aheadOfBorrowing))}`}
+                tone={aheadOfBorrowing >= 0 ? "good" : "cost"}
+                strong
+              />
+            </Panel>
+            <p style={{ color: C.dim, fontSize: 12.5, lineHeight: 1.7 }}>
+              You're up, your customer's up, and the bad debt is gone. Nobody paid
+              for that — it's what taking the credit risk{" "}
+              <strong style={{ color: C.text }}>out</strong> of the deal is worth.
             </p>
-          </div>
+          </Section>
 
-          {/* recycle */}
-          <div className="sd-card">
-            <div className="sd-lab">The real prize — your year</div>
-            <p className="sd-p">
-              Each job ties up your money for {m.cycleNow} days — {deliver} working,{" "}
-              {days} waiting to be paid. Get paid on day one and the waiting disappears:
-              the same money starts the next job straight away.
+          {/* THE YEAR */}
+          <Section eyebrow="The real prize — your year">
+            <p style={{ color: C.dim, fontSize: 13, lineHeight: 1.7, marginTop: 0 }}>
+              Each job ties up your money for {m.cycleNow} days — {jobDays} working,{" "}
+              {terms} waiting to be paid. Get paid on day one and the waiting
+              disappears: the same money starts the next job straight away.
             </p>
-            <div className="sd-grid2">
-              <Ctl
+            <Panel>
+              <Slider
                 label="How long a job takes (days)"
-                hint="Order to delivery. The rest of the cycle is just waiting"
-                value={deliver}
-                onChange={setDeliver}
-                min={1}
+                value={jobDays}
+                onChange={setJobDays}
+                min={3}
                 max={120}
                 step={1}
+                format={(v) => `${v} days`}
+                help="Order to delivery. The rest of the cycle is just waiting."
               />
-            </div>
-            <div className="sd-rows">
-              <div className="sd-turn-r">
-                <div className="lab">
-                  As you are now
-                  <span>{m.cycleNow}-day cycle</span>
+              <div className="sd-2" style={{ padding: "8px 0 16px" }}>
+                <div style={{ padding: 14, background: C.panel2, border: `1px solid ${C.line}`, borderRadius: 3 }}>
+                  <div style={{ fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: C.dim }}>
+                    As you are now
+                  </div>
+                  <div style={{ fontSize: 11.5, color: C.dimmer, margin: "3px 0 8px" }}>
+                    {m.cycleNow}-day cycle
+                  </div>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: C.text }}>
+                    {m.jobsNow.toFixed(1)} jobs/yr
+                  </div>
+                  <div style={{ fontSize: 15, color: C.dim, marginTop: 4 }}>
+                    {money(m.revNow)}
+                  </div>
                 </div>
-                <div className="num">{m.turnsNow.toFixed(1)} jobs/yr</div>
-                <div className="rev">{n0(m.revNow)}</div>
-              </div>
-              <div className="sd-turn-r">
-                <div className="lab">
-                  Paid on day one
-                  <span>{deliver}-day cycle</span>
+                <div style={{ padding: 14, background: C.greenInk, border: `1px solid ${C.green}`, borderRadius: 3 }}>
+                  <div style={{ fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: C.green }}>
+                    Paid on day one
+                  </div>
+                  <div style={{ fontSize: 11.5, color: C.green, opacity: 0.7, margin: "3px 0 8px" }}>
+                    {jobDays}-day cycle
+                  </div>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: C.green }}>
+                    {m.jobsNew.toFixed(1)} jobs/yr
+                  </div>
+                  <div style={{ fontSize: 15, color: C.green, marginTop: 4 }}>
+                    {money(m.revNew)}
+                  </div>
                 </div>
-                <div className="num">{m.turnsNew.toFixed(1)} jobs/yr</div>
-                <div className="rev">{n0(m.revNew)}</div>
               </div>
-              <div className="sd-turn-r gain">
-                <div className="lab">
-                  Extra revenue capacity
-                  <span>Same money. Nothing borrowed.</span>
-                </div>
-                <div className="num">+{(m.turnsNew - m.turnsNow).toFixed(1)}</div>
-                <div className="rev">+{n0(m.revGain)}</div>
-              </div>
-            </div>
-            <p className="sd-p" style={{ marginTop: 12 }}>
-              <b>{m.multiple.toFixed(1)}× the revenue off the same pot.</b> You still have
-              to win the work — but the money is no longer what's stopping you.
+              <Row
+                label="Extra revenue capacity"
+                sub="Same money. Nothing borrowed."
+                value={`+${money(m.revNew - m.revNow)}`}
+                tone="good"
+                strong
+              />
+              <Row label="Extra jobs / yr" value={`+${(m.jobsNew - m.jobsNow).toFixed(1)}`} />
+            </Panel>
+            <p style={{ color: C.dim, fontSize: 13, lineHeight: 1.7 }}>
+              <strong style={{ color: C.green }}>{m.multiple.toFixed(1)}× the revenue off the same pot.</strong>{" "}
+              You still have to win the work — but the money is no longer what's
+              stopping you.
             </p>
-          </div>
+          </Section>
 
-          <div className="sd-cta">
-            <a className="sd-btn" href="https://stabledrop.me/merchant">
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 30 }}>
+            <a
+              href="https://stabledrop.me/merchant"
+              className="sd-btn"
+              style={{
+                padding: "11px 20px",
+                background: C.green,
+                border: `1px solid ${C.green}`,
+                color: C.bg,
+                fontSize: 12.5,
+                fontWeight: 700,
+                letterSpacing: "0.06em",
+                textDecoration: "none",
+              }}
+            >
               Find out more
             </a>
-            <button className="sd-btn ghost" onClick={exportXlsx}>
+            <button
+              className="sd-btn"
+              onClick={exportXlsx}
+              style={{
+                padding: "11px 20px",
+                background: "transparent",
+                border: `1px solid ${C.lineB}`,
+                color: C.text,
+                fontSize: 12.5,
+                letterSpacing: "0.06em",
+              }}
+            >
               Export to Excel
             </button>
           </div>
 
-          <div className="sd-foot">
-            The discount is {m.pct.toFixed(2)}% of your invoice — a trade discount, not
-            interest. Nothing is invested; the escrow can always pay out in full.
-            Stabledrop's fee is a flat {FEE_PCT.toFixed(0)}% of the escrowed amount.
-            Borrowing comparison based on iwoca published rates (from 1.5%/month;
-            representative 40% APR). Simple interest, actual/365. Estimates, not financial
-            advice.
-            <br />© 2026 Conduit UCPI. Secure escrow contracts on blockchain. Company No.
-            880319.
-          </div>
+          <p style={{ fontSize: 10, lineHeight: 1.8, color: C.dimmer, marginTop: 28 }}>
+            The discount is {pct((m.discount / invoice) * 100, 2)} of your invoice — a
+            trade discount, not interest. Nothing is invested; the escrow can always
+            pay out in full. Stabledrop's fee is a flat {pct(FEE_RATE, 0)} of the
+            escrowed amount. The funder sets the senior cap and the discount rate,
+            not Stabledrop; the residual is whatever the cap leaves and is paid after
+            the funder. Slider bands are indicative of comparable short-dated
+            collateralised trade paper, not quotes. Risk-free floor {RISK_FREE}%
+            (SOFR, 28 Jul 2026; use SONIA for sterling). Borrowing comparison based
+            on iwoca published rates (from 1.5%/month; representative 40% APR).
+            Simple interest, actual/365. Estimates, not financial advice.
+            <br />
+            <br />© 2026 Conduit UCPI. Secure escrow contracts on blockchain. Company
+            No. 880319.
+          </p>
         </div>
       </div>
     </>

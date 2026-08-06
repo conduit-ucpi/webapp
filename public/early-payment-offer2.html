@@ -208,6 +208,72 @@ footer{margin-top:64px;padding-top:28px;border-top:1px solid var(--line);font-si
 footer a{color:var(--faint);border-bottom-color:var(--line2)}
 footer a:hover{color:var(--green)}
 
+/* ---------- example-figure treatment ---------- */
+.examplenote{
+  border:1px dashed var(--line2);border-radius:8px;padding:16px 18px;margin-top:34px;
+  font-size:13.5px;color:var(--faint);line-height:1.7;
+}
+.examplenote b{color:var(--ink);font-weight:700}
+.linkish{
+  font-family:var(--mono);font-size:inherit;line-height:inherit;
+  background:transparent;border:0;padding:0;cursor:pointer;
+  color:var(--green);border-bottom:1px solid rgba(74,222,128,.35);
+}
+.linkish:hover{border-bottom-color:var(--green)}
+
+/* a figure in the prose you can go and change yourself */
+.assump{
+  font-family:var(--mono);font-size:inherit;line-height:inherit;font-weight:700;
+  background:transparent;border:0;padding:0;cursor:pointer;color:var(--ink);
+  border-bottom:1px dashed var(--gold);font-variant-numeric:tabular-nums;
+}
+.assump:hover{color:var(--gold)}
+
+.sumlabel{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.sumlabel em{
+  font-style:normal;text-transform:none;letter-spacing:.02em;font-size:12px;
+  color:var(--gold);border:1px solid rgba(201,162,39,.35);background:var(--gold-bg);
+  border-radius:99px;padding:2px 10px;
+}
+.sumlabel em.set{color:var(--green);border-color:rgba(74,222,128,.35);background:var(--green-bg)}
+
+/* lighter disclosure, for tucking away explanation */
+details.inline{border-top:0;margin-top:12px}
+details.inline summary{padding:9px 0;font-size:12px;letter-spacing:.1em;color:var(--faint)}
+details.inline summary::after{font-size:15px}
+details.inline .body{padding-bottom:6px}
+details.inline .body p{margin:.5em 0;font-size:14px}
+details.inline .body p:first-child{margin-top:0}
+
+/* ---------- how much detail to show ---------- */
+.readmode{
+  display:flex;align-items:center;justify-content:flex-end;gap:14px;flex-wrap:wrap;
+  padding-bottom:8px;
+}
+.readmode .rmlabel{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint)}
+.rmbtns{display:flex;border:1px solid var(--line2);border-radius:99px;padding:3px;gap:3px}
+.rmbtns button{
+  font-family:var(--mono);font-size:12px;letter-spacing:.06em;cursor:pointer;
+  background:transparent;border:0;border-radius:99px;padding:7px 15px;color:var(--faint);
+}
+.rmbtns button:hover{color:var(--green)}
+.rmbtns button[aria-pressed=true]{background:var(--green-bg);color:var(--green)}
+
+/* ---------- per-assumption provenance ---------- */
+.dflt{
+  font-size:12px;color:var(--faint);letter-spacing:.04em;margin:6px 0 0;
+}
+.dflt.changed{color:var(--green)}
+.dflt.preset{color:var(--gold)}
+.resetrow{display:flex;justify-content:flex-end;margin-top:22px}
+#resetdefaults[hidden]{display:none}
+
+/* ---------- glossary ---------- */
+dl.gloss{margin:0;font-size:14px}
+dl.gloss dt{color:var(--ink);font-weight:700;margin-top:16px}
+dl.gloss dt:first-child{margin-top:0}
+dl.gloss dd{margin:5px 0 0;color:var(--soft);line-height:1.7}
+
 :focus-visible{outline:2px solid var(--green);outline-offset:3px;border-radius:2px}
 
 @media (max-width:700px){
@@ -232,6 +298,14 @@ footer a:hover{color:var(--green)}
 <div class="hero">
   <h1>Get paid on day one<span class="alt">not day <span class="num" id="h-terms">60</span>.</span></h1>
   <p class="lede">Your customer pays into escrow when they place the order. You sell most of that escrow for cash the same day and keep the tail. <b>Nothing borrowed. No personal guarantee. Nobody chasing.</b></p>
+</div>
+
+<div class="readmode">
+  <span class="rmlabel">Detail</span>
+  <div class="rmbtns" role="group" aria-label="How much explanation to show">
+    <button type="button" data-mode="simple" aria-pressed="true">Keep it simple</button>
+    <button type="button" data-mode="all" aria-pressed="false">Explain everything</button>
+  </div>
 </div>
 
 <!-- ============ INPUTS ============ -->
@@ -269,14 +343,27 @@ footer a:hover{color:var(--green)}
           <button data-cap="90" data-rate="15" aria-pressed="true"><strong>You take first loss</strong><em>repaid to 90% · 15%/yr</em></button>
           <button data-cap="93" data-rate="7" aria-pressed="false"><strong>Proven book</strong><em>repaid to 93% · 7%/yr</em></button>
         </div>
-        <p class="hint">Standing behind the funder for the first slice of any dispute is what buys you the tighter rate. It's how the first deal gets done.</p>
+        <details class="inline">
+          <summary>Why these three?</summary>
+          <div class="body">
+            <p class="hint">A funder that has never seen your contracts prices wide, because it is guessing at a dispute rate it cannot measure. Standing behind it for the first slice of any dispute is what buys the tighter rate — that is how the first deal gets done. Once there is a track record, the rate falls again.</p>
+            <p class="hint">All three are illustrations of that curve. They are not offers, and a real funder will quote you its own.</p>
+          </div>
+        </details>
       </div>
 
     </div>
 
+    <div class="examplenote">
+      <b>Every figure here is an example.</b> The invoice, the terms and the funder's pricing above are a worked illustration — and so are the things behind them: what borrowing costs you, what bad payers cost you, what your customer's cash earns. None of it is a quote.
+      <br><br>
+      <button type="button" class="linkish" id="opencalc">Set your own figures</button> and every number on this page follows.
+    </div>
+
     <details id="assumptions">
-      <summary>Change the assumptions</summary>
+      <summary><span class="sumlabel">Set your own figures <em id="sumtag">examples until you do</em></span></summary>
       <div class="body">
+        <p class="hint" style="margin-top:0">These are the assumptions the whole page rests on. Change any of them to your own and everything above and below recalculates.</p>
         <div class="mini">
           <div class="field">
             <div class="rangehead"><label for="borrow">What borrowing costs you now</label><span class="rangeval" id="borrowval">30%</span></div>
@@ -306,6 +393,9 @@ footer a:hover{color:var(--green)}
           </div>
         </div>
         <p class="hint">Stabledrop's fee is fixed at 1% of the escrow. Everything else here is yours to argue about.</p>
+        <div class="resetrow">
+          <button type="button" class="linkish" id="resetdefaults" hidden>Put the example figures back</button>
+        </div>
       </div>
     </details>
   </div>
@@ -315,6 +405,7 @@ footer a:hover{color:var(--green)}
     <div><span class="k">The rest, on <b id="a-when">—</b></span><span class="v num" id="a-res">—</span><span class="s">if undisputed</span></div>
     <div class="grow"><span class="k">Extra revenue a year</span><span class="v num" id="a-year">—</span><span class="s">same money, nothing borrowed</span></div>
   </div>
+  <p class="hint" id="examplecap">—</p>
 
   <div class="warn" id="nodeal" hidden>At these numbers there's nothing to share. The funder's charge is more than what waiting costs your customer, so no discount makes both of you better off. Lower the funder's rate or check what borrowing really costs you.</div>
 </section>
@@ -323,21 +414,28 @@ footer a:hover{color:var(--green)}
 <section class="card">
   <span class="stepno">Step one — the money is locked before you start</span>
   <h2>Your customer pays <span class="num" id="s1-escrow">—</span> into escrow up front</h2>
-  <p>It leaves their account and sits locked. On <b id="s1-date">—</b> — the day they'd have paid you anyway — it releases automatically. No invoice, no chasing, no ageing debtor. If you don't deliver, they get it back.</p>
+  <p>It leaves their account and sits locked. On <b id="s1-date">—</b> — the day they'd have paid you anyway — it releases automatically. No invoice, no chasing, no ageing debtor.</p>
   <div class="ledger">
     <div><span>Locked in escrow today</span><span id="s1-a">—</span></div>
     <div class="out"><span>Stabledrop's fee <span class="sub">flat 1%, taken once</span></span><span id="s1-fee">—</span></div>
     <div class="total"><span>Yours on release, guaranteed</span><span id="s1-net">—</span></div>
-    <div><span>Bad debt you stop carrying</span><span id="s1-bad">—</span></div>
+    <div><span>Bad debt you stop carrying <span class="sub">assumes <button type="button" class="assump" data-field="bad"><span id="s1-badrate">—</span></button> of what you invoice goes bad today</span></span><span id="s1-bad">—</span></div>
   </div>
+
+  <details class="inline">
+    <summary>What if I don't deliver?</summary>
+    <div class="body">
+      <p>Then they get their money back. The escrow only releases against delivery, which is exactly why they are willing to fund it before you start — they are not taking your word for anything.</p>
+      <p>If the two of you disagree about whether you delivered, the refund percentage is set by a registered arbitrator rather than by either side.</p>
+    </div>
+  </details>
 </section>
 
 <!-- ============ STEP 2 ============ -->
 <section class="card">
   <span class="stepno">Step two — you don't wait for it</span>
   <h2>Sell the escrow for <span class="num" id="s2-cash">—</span> today</h2>
-  <p>A funder buys the right to be repaid first out of your escrow, up to a cap. What's left over is yours when the escrow releases. Because the money is already locked in, the funder isn't betting on whether your customer pays — and prices accordingly: <b><span class="num" id="s2-rate">—</span></b> against the <b><span class="num" id="s2-borrow">—</span></b> you'd pay to borrow.</p>
-  <p>There's no loan here, so there's nothing to secure against your house, and nothing to claw back if the deal later sours.</p>
+  <p>A funder buys the right to be repaid first out of your escrow, up to a cap. What's left over is yours when the escrow releases. Because the money is already locked in, the funder isn't betting on whether your customer pays — and prices accordingly: <b><span class="num" id="s2-rate">—</span></b> against the <button type="button" class="assump" data-field="borrow"><span id="s2-borrow">—</span></button> you'd pay to borrow.</p>
   <div class="ledger">
     <div><span>Your escrow, after the fee</span><span id="s2-net">—</span></div>
     <div><span>Funder repaid first, up to <span class="num" id="s2-cap">—</span></span><span id="s2-senior">—</span></div>
@@ -346,7 +444,31 @@ footer a:hover{color:var(--green)}
     <div class="total"><span>The rest, on <b id="s2-date">—</b></span><span id="s2-res">—</span></div>
   </div>
 
-  <details>
+  <details class="inline">
+    <summary>What these words actually mean</summary>
+    <div class="body">
+      <dl class="gloss">
+        <dt>Escrow</dt>
+        <dd>Money held by neither side. Your customer can't spend it and you can't touch it until you've delivered.</dd>
+        <dt>Repaid first</dt>
+        <dd>When the escrow releases, the funder is paid before you are, up to its cap. That priority is the thing it is actually buying.</dd>
+        <dt>Your tail</dt>
+        <dd>Whatever the escrow releases above the funder's cap. It's yours, but you're paid last.</dd>
+        <dt>First loss</dt>
+        <dd>If there's a refund, it comes out of your tail before it touches the funder. That's the risk you keep — and the reason the rate is lower than borrowing.</dd>
+      </dl>
+    </div>
+  </details>
+
+  <details class="inline">
+    <summary>Is this a loan?</summary>
+    <div class="body">
+      <p>No. Nobody lends you anything and you don't owe anyone a repayment. You are selling a claim on money that is already sitting in escrow.</p>
+      <p>So there is nothing to secure against your house, no personal guarantee to sign, and nothing to claw back if the deal later sours.</p>
+    </div>
+  </details>
+
+  <details class="inline">
     <summary>What happens if there's a dispute?</summary>
     <div class="body">
       <p>Your tail absorbs the first <b><span class="num" id="d-first">—</span></b> of any refund. The funder's charge covers another <b><span class="num" id="d-second">—</span></b>, because it advanced less than its cap. Past <b><span class="num" id="d-break">—</span></b> the funder is out of pocket — which is why a refund percentage is set by a registered arbitrator, not by either side.</p>
@@ -363,7 +485,7 @@ footer a:hover{color:var(--green)}
 <section class="card">
   <span class="stepno">Step three — why they say yes</span>
   <h2>Take <span class="num" id="s3-disc">—</span> off their bill</h2>
-  <p>Sitting on your money for <span class="num" id="s3-days">—</span> days earns them <span class="num" id="s3-earn">—</span>. That's the whole reason invoices get paid late. Beat it, and paying today is simply the better trade — and they get buyer protection thrown in for nothing.</p>
+  <p>Sitting on your money for <span class="num" id="s3-days">—</span> days earns them <button type="button" class="assump" data-field="rf"><span id="s3-earn">—</span></button>. That's the whole reason invoices get paid late. Beat it, and paying today is simply the better trade — and they get buyer protection thrown in for nothing.</p>
   <div class="ledger">
     <div class="in"><span>Discount off their bill</span><span id="s3-d">—</span></div>
     <div><span>What they'd have earned by waiting</span><span id="s3-e">—</span></div>
@@ -393,7 +515,7 @@ footer a:hover{color:var(--green)}
 <section class="card">
   <span class="stepno">The real prize</span>
   <h2><span class="num" id="y-mult">—</span> the revenue off the same pot of money</h2>
-  <p>Every job ties up your cash for <span class="num" id="y-old">—</span> days: <span class="num" id="y-job">—</span> doing the work, then <span class="num" id="y-wait">—</span> just waiting to be paid. Get paid on day one and the waiting disappears. The same money starts the next job immediately.</p>
+  <p>Every job ties up your cash for <span class="num" id="y-old">—</span> days: <button type="button" class="assump" data-field="job"><span id="y-job">—</span></button> doing the work, then <span class="num" id="y-wait">—</span> just waiting to be paid. Get paid on day one and the waiting disappears. The same money starts the next job immediately.</p>
 
   <div style="margin-top:26px">
     <div class="yearrow">
@@ -432,7 +554,13 @@ footer a:hover{color:var(--green)}
 </section>
 
 <footer>
+  <p><b>Every figure on this page is an illustration, not a quote.</b> Nothing here is financial advice.</p>
+  <details class="inline">
+    <summary>Small print and sources</summary>
+    <div class="body">
   <p>The discount is a trade discount, not interest. Nothing is invested — the escrow can always pay out in full. Stabledrop's fee is a flat 1% of the escrowed amount. The funder, not Stabledrop, sets the repayment cap and the rate; your tail is whatever the cap leaves and is paid after the funder. Rate bands are indicative of comparable short-dated collateralised trade paper, not quotes. Nothing prices below the risk-free floor of 3.65% (SOFR, 28 Jul 2026; use SONIA for sterling). Borrowing comparison based on iwoca published rates — from 1.5% a month, representative 40% APR. Simple interest, actual/365. Estimates, not financial advice.</p>
+    </div>
+  </details>
   <p>© 2026 Conduit UCPI. Secure escrow contracts on blockchain. Company No. SC880319.<br>
   <a href="https://stabledrop.me/terms-of-service">Terms of Service</a> · <a href="https://stabledrop.me/privacy-policy">Privacy Policy</a> · <a href="mailto:info@conduit-ucpi.com">Contact</a></p>
 </footer>
@@ -444,6 +572,23 @@ footer a:hover{color:var(--green)}
   "use strict";
   var $ = function(id){ return document.getElementById(id); };
   var FEE = 0.01;
+
+  // every figure starts as an illustration until the reader sets their own
+  var ASSUMPTIONS = ["cap","rate","bad","borrow","rf","share","job"];
+  var DEFAULTS = {};
+  var edited = {};   // controls the reader has actually moved, as opposed to ones a preset set
+  var reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // how each assumption is written out, wherever it appears
+  var FMT = {
+    borrow: function(x){ return pct(x,0); },
+    bad:    function(x){ return pct(x,1); },
+    rf:     function(x){ return pct(x,2); },
+    share:  function(x){ return pct(x,0); },
+    job:    function(x){ return x + " days"; },
+    cap:    function(x){ return pct(x,0); },
+    rate:   function(x){ return pct(x,2); }
+  };
 
   var money = function(n){ return "£" + Math.round(n).toLocaleString("en-GB"); };
   var pct = function(n,d){ return n.toFixed(d===undefined?1:d) + "%"; };
@@ -558,15 +703,40 @@ footer a:hover{color:var(--green)}
     $("duedate").textContent = when;
     $("smallnote").hidden = v.F >= 250000;
 
-    $("borrowval").textContent = pct(v.borrow*100,0);
-    $("badval").textContent    = pct(v.bad*100);
-    $("rfval").textContent     = pct(v.rf*100,2);
-    $("shareval").textContent  = pct(v.share*100,0);
-    $("jobval").textContent    = v.job + " days";
-    $("capval").textContent    = pct(v.cap*100,0);
-    $("rateval").textContent   = pct(v.r*100,2);
+    // each assumption: its value, and where that value came from
+    syncProfile();
+    var mine = 0;
+    ASSUMPTIONS.forEach(function(id){
+      $(id + "val").textContent = FMT[id](Number($(id).value));
+
+      var note = $(id + "-dflt");
+      if(!note) return;
+      if(edited[id]){
+        note.className = "dflt changed";
+        note.textContent = "yours — the example was " + FMT[id](Number(DEFAULTS[id]));
+        mine++;
+      } else if($(id).value !== DEFAULTS[id]){
+        note.className = "dflt preset";
+        note.textContent = "set by the profile above — still an illustration";
+      } else {
+        note.className = "dflt";
+        note.textContent = "example figure";
+      }
+    });
+
+    $("resetdefaults").hidden = mine === 0;
+    var tag = $("sumtag");
+    tag.className = mine ? "set" : "";
+    tag.textContent = mine
+      ? mine + (mine === 1 ? " figure is yours" : " figures are yours")
+      : "examples until you set them";
 
     $("nodeal").hidden = m.workable;
+
+    $("examplecap").textContent = mine
+      ? "Your figures: a " + money(v.F) + " invoice paid at " + v.t + " days."
+      : "Worked example: a " + money(v.F) + " invoice paid at " + v.t +
+        " days, on illustrative assumptions. Set your own above and every figure follows.";
 
     // headline
     $("a-cash").textContent = money(m.cash);
@@ -582,6 +752,7 @@ footer a:hover{color:var(--green)}
     $("s1-fee").textContent = "− " + money(m.fee);
     $("s1-net").textContent = money(m.net);
     $("s1-bad").textContent = "≈ " + money(v.bad*v.F) + " an invoice";
+    $("s1-badrate").textContent = pct(v.bad*100);
 
     // step 2
     $("s2-cash").textContent   = money(m.cash);
@@ -644,13 +815,76 @@ footer a:hover{color:var(--green)}
   }
 
   // ---- wiring ----
+
+  // remember the shipped figures, and give each control a line saying where it stands
+  ASSUMPTIONS.forEach(function(id){
+    var el = $(id);
+    DEFAULTS[id] = el.value;
+    var note = document.createElement("p");
+    note.className = "dflt";
+    note.id = id + "-dflt";
+    el.parentNode.insertBefore(note, el.nextSibling);
+  });
+
+  $("resetdefaults").addEventListener("click", function(){
+    ASSUMPTIONS.forEach(function(id){ $(id).value = DEFAULTS[id]; });
+    edited = {};
+    render();
+  });
+
+  // one control for how much explanation the page shows
+  var readBtns = Array.prototype.slice.call(document.querySelectorAll(".rmbtns button"));
+  function explainers(){
+    return Array.prototype.slice.call(document.querySelectorAll("details.inline"));
+  }
+  function syncReadMode(){
+    var all = explainers();
+    var open = all.filter(function(d){ return d.open; }).length;
+    var mode = open === 0 ? "simple" : (open === all.length ? "all" : "");
+    readBtns.forEach(function(b){
+      b.setAttribute("aria-pressed", b.dataset.mode === mode ? "true" : "false");
+    });
+  }
+  readBtns.forEach(function(b){
+    b.addEventListener("click", function(){
+      var open = b.dataset.mode === "all";
+      explainers().forEach(function(d){ d.open = open; });
+      syncReadMode();
+    });
+  });
+  // toggle doesn't bubble, so listen on the way down
+  document.addEventListener("toggle", function(e){
+    var t = e.target;
+    if(t && t.tagName === "DETAILS" && t.classList.contains("inline")) syncReadMode();
+  }, true);
+  syncReadMode();
+
+  // jump from a figure in the prose to the control that sets it
+  function openAssumptions(field){
+    var d = $("assumptions");
+    if(!d.open) d.open = true;
+    var el = field ? $(field) : null;
+    (el || d).scrollIntoView({
+      block: el ? "center" : "start",
+      behavior: reduceMotion ? "auto" : "smooth"
+    });
+    if(el){
+      try { el.focus({preventScroll:true}); } catch(e){ el.focus(); }
+    }
+  }
+
   var ids = ["amount","terms","cap","rate","bad","borrow","rf","share","job","cust","sign"];
   ids.forEach(function(id){
     $(id).addEventListener("input", function(){
-      if(id==="cap"||id==="rate") syncProfile();
+      if(ASSUMPTIONS.indexOf(id) > -1) edited[id] = true;
       render();
     });
   });
+
+  Array.prototype.forEach.call(document.querySelectorAll(".assump"), function(b){
+    b.addEventListener("click", function(){ openAssumptions(b.dataset.field); });
+  });
+  $("opencalc").addEventListener("click", function(){ openAssumptions(null); });
 
   Array.prototype.forEach.call(document.querySelectorAll(".chip"), function(c){
     c.addEventListener("click", function(){ $("amount").value = c.dataset.amt; render(); });

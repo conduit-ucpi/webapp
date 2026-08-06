@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Get paid on day one — Stabledrop</title>
+<meta name="description" content="Your customer pays into escrow up front. You sell most of it for cash the same day and keep the tail. No borrowing, no personal guarantee. Model the numbers on your own invoice.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#000000;
+  --card:#0A0A0A;
+  --card2:#060606;
+  --line:#1C1F1C;
+  --line2:#2A2E2A;
+  --ink:#FFFFFF;
+  --soft:#9DA69F;
+  --faint:#6E766F;
+  --green:#4ADE80;
+  --green-dim:#2E8F55;
+  --green-bg:rgba(74,222,128,.09);
+  --gold:#C9A227;
+  --gold-bg:rgba(201,162,39,.12);
+  --track:#232623;
+  --r:12px;
+  --pad:clamp(18px,4vw,32px);
+  --mono:"Geist Mono","Roboto Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;background:var(--bg);color:var(--ink);
+  font-family:var(--mono);
+  font-size:16px;line-height:1.75;font-weight:400;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:900px;margin:0 auto;padding:0 clamp(16px,5vw,32px) 90px}
+h1,h2,h3{font-family:var(--mono);font-weight:700;letter-spacing:-.01em;line-height:1.2;margin:0}
+h1{font-size:clamp(30px,6.2vw,46px);line-height:1.22}
+h1 .alt{color:var(--green);display:block}
+h2{font-size:clamp(21px,3.6vw,29px);line-height:1.35}
+h3{font-size:17px}
+p{margin:.85em 0;color:var(--soft)}
+p b,li b{color:var(--ink);font-weight:700}
+a{color:var(--green);text-decoration:none;border-bottom:1px solid rgba(74,222,128,.35)}
+a:hover{border-bottom-color:var(--green)}
+.num{font-variant-numeric:tabular-nums}
+
+/* ---------- masthead ---------- */
+header.top{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:26px 0 46px;flex-wrap:wrap}
+.brand{font-size:14px;letter-spacing:.06em;color:var(--soft);border:0}
+.brand span{color:var(--faint)}
+.brand:hover{color:var(--green)}
+.eyebrow{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint)}
+
+.hero{padding-bottom:36px}
+.hero h1{max-width:18ch}
+.hero .lede{font-size:clamp(15px,2.1vw,17px);color:var(--soft);max-width:66ch;margin-top:24px;line-height:1.8}
+.hero .lede b{color:var(--ink);font-weight:400}
+
+/* ---------- cards ---------- */
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:var(--pad)}
+section{margin-top:52px}
+.stepno{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);display:block;margin-bottom:14px}
+section > .stepno{padding-left:2px}
+
+/* ---------- controls ---------- */
+.controls{display:grid;gap:34px}
+.field label,.legend{
+  display:block;font-size:12.5px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--soft);font-weight:400;
+}
+.rangehead{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:14px}
+.rangeval{font-size:19px;font-weight:700;color:var(--ink);white-space:nowrap}
+.hint{font-size:13.5px;color:var(--faint);margin:12px 0 0;line-height:1.65}
+.hint b{color:var(--soft);font-weight:400}
+
+.amountrow{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.amountbox{display:flex;align-items:center;gap:4px;border:1px solid var(--line2);border-radius:6px;padding:8px 16px;background:var(--card2)}
+.amountbox span{color:var(--green-dim);font-size:20px}
+.amountbox:focus-within{border-color:var(--green)}
+input[type=number]{
+  font-family:var(--mono);font-size:24px;font-weight:700;letter-spacing:-.01em;text-align:right;
+  border:0;outline:0;width:8ch;padding:0;background:transparent;color:var(--green);
+  font-variant-numeric:tabular-nums;
+}
+input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+input[type=number]{-moz-appearance:textfield}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{
+  font-family:var(--mono);font-size:12px;letter-spacing:.08em;cursor:pointer;
+  background:transparent;border:1px solid var(--line2);border-radius:99px;padding:5px 13px;color:var(--faint);
+}
+.chip:hover{border-color:var(--green);color:var(--green)}
+
+input[type=range]{
+  -webkit-appearance:none;appearance:none;width:100%;height:22px;background:transparent;cursor:pointer;margin:0;
+}
+input[type=range]::-webkit-slider-runnable-track{height:2px;background:var(--track);border-radius:2px}
+input[type=range]::-moz-range-track{height:2px;background:var(--track);border-radius:2px}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:15px;height:15px;border-radius:50%;background:var(--green);
+  margin-top:-6.5px;border:0;box-shadow:0 0 12px rgba(74,222,128,.55);
+}
+input[type=range]::-moz-range-thumb{
+  width:15px;height:15px;border-radius:50%;background:var(--green);border:0;box-shadow:0 0 12px rgba(74,222,128,.55);
+}
+
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}
+.seg button{
+  font-family:var(--mono);text-align:left;cursor:pointer;background:var(--card2);color:var(--soft);
+  border:1px solid var(--line2);border-radius:8px;padding:14px;line-height:1.4;
+}
+.seg button strong{display:block;font-size:13.5px;font-weight:700;color:var(--ink)}
+.seg button em{display:block;font-style:normal;font-size:11.5px;color:var(--faint);margin-top:5px;letter-spacing:.04em}
+.seg button:hover{border-color:var(--green-dim)}
+.seg button[aria-pressed=true]{border-color:var(--green);background:var(--green-bg)}
+.seg button[aria-pressed=true] strong{color:var(--green)}
+.seg button[aria-pressed=true] em{color:var(--soft)}
+
+/* ---------- headline answers ---------- */
+.answers{display:grid;grid-template-columns:repeat(3,1fr);gap:28px;margin-top:38px;padding-top:32px;border-top:1px solid var(--line)}
+.answers .k{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);display:block}
+.answers .k b{color:var(--faint);font-weight:400}
+.answers .v{font-weight:700;font-size:clamp(25px,4.4vw,34px);letter-spacing:-.02em;margin-top:10px;display:block;font-variant-numeric:tabular-nums;line-height:1.1}
+.answers .s{font-size:12.5px;color:var(--faint);margin-top:8px;display:block}
+.answers .lead .v,.answers .grow .v{color:var(--green)}
+
+/* ---------- ledger rows ---------- */
+.ledger{margin-top:30px;border-top:1px solid var(--line)}
+.ledger div{
+  display:flex;justify-content:space-between;align-items:baseline;gap:20px;
+  padding:14px 0;border-bottom:1px solid var(--line);font-size:15px;
+}
+.ledger div span:first-child{color:var(--soft)}
+.ledger div span:last-child{font-weight:500;white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--ink)}
+.ledger .total span:first-child{color:var(--ink)}
+.ledger .total span:last-child{font-weight:700;font-size:18px}
+.ledger .out span:last-child{color:var(--gold)}
+.ledger .in span:last-child{color:var(--green)}
+.sub{font-size:12px;color:var(--faint);display:block;font-weight:400}
+
+/* ---------- year strip ---------- */
+.year{display:flex;gap:3px;height:26px;margin-top:10px}
+.year .blk{display:flex;height:100%;border-radius:2px;overflow:hidden;min-width:2px}
+.year i{display:block;height:100%}
+.work{background:var(--green);opacity:.85}
+.wait{background:repeating-linear-gradient(135deg,rgba(201,162,39,.22) 0 4px,rgba(201,162,39,.06) 4px 9px)}
+.yearrow{margin-bottom:24px}
+.yearrow .cap{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);gap:12px}
+.yearrow .cap b{color:var(--ink);font-weight:700;letter-spacing:0}
+.key{display:flex;gap:22px;font-size:12px;color:var(--faint);letter-spacing:.08em;text-transform:uppercase;margin-top:4px}
+.key span{display:flex;align-items:center;gap:8px}
+.key i{width:12px;height:12px;border-radius:2px;display:block}
+
+/* ---------- disclosures ---------- */
+details{border-top:1px solid var(--line);margin-top:26px}
+details summary{
+  cursor:pointer;list-style:none;padding:16px 0;font-size:12.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--soft);
+  display:flex;justify-content:space-between;align-items:center;gap:12px;
+}
+details summary:hover{color:var(--green)}
+details summary::-webkit-details-marker{display:none}
+details summary::after{content:"+";color:var(--faint);font-size:17px}
+details[open] summary::after{content:"–"}
+details .body{padding-bottom:24px}
+.mini{display:grid;gap:30px;grid-template-columns:repeat(2,minmax(0,1fr));margin-top:8px}
+.mini .rangehead{margin-bottom:12px}
+.mini .rangeval{font-size:16px}
+
+/* ---------- table ---------- */
+.tablewrap{overflow-x:auto;margin-top:18px}
+table{width:100%;border-collapse:collapse;font-size:13.5px;min-width:420px}
+th,td{text-align:right;padding:10px 8px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
+th:first-child,td:first-child{text-align:left}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:var(--faint);font-weight:400}
+td{color:var(--soft)}
+td.neg{color:var(--gold)}
+td.pos{color:var(--green)}
+
+/* ---------- message ---------- */
+.msgfields{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:22px 0 18px}
+input[type=text]{
+  font-family:var(--mono);font-size:14px;padding:12px 14px;border:1px solid var(--line2);
+  border-radius:6px;width:100%;background:var(--card2);color:var(--ink);
+}
+input[type=text]::placeholder{color:var(--faint)}
+input[type=text]:focus{outline:0;border-color:var(--green)}
+pre.msg{
+  font-family:var(--mono);font-size:14px;line-height:1.85;white-space:pre-wrap;color:var(--soft);
+  background:var(--card2);border:1px solid var(--line);border-radius:8px;padding:24px;margin:0;
+}
+.actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:18px}
+.btn{
+  font-family:var(--mono);font-size:13px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;cursor:pointer;
+  background:var(--green);color:#000;border:1px solid var(--green);border-radius:6px;padding:13px 22px;display:inline-block;
+}
+.btn:hover{background:#6BE99A;border-color:#6BE99A}
+.btn.ghost{background:transparent;color:var(--green);border-color:var(--line2)}
+.btn.ghost:hover{border-color:var(--green);background:var(--green-bg);color:var(--green)}
+a.btn{border-bottom:1px solid var(--line2)}
+a.btn:hover{border-bottom-color:var(--green)}
+
+.warn{background:var(--gold-bg);border:1px solid rgba(201,162,39,.35);border-radius:8px;padding:16px 18px;font-size:14px;color:var(--soft);margin-top:26px}
+footer{margin-top:64px;padding-top:28px;border-top:1px solid var(--line);font-size:12px;color:var(--faint);line-height:1.85}
+footer a{color:var(--faint);border-bottom-color:var(--line2)}
+footer a:hover{color:var(--green)}
+
+:focus-visible{outline:2px solid var(--green);outline-offset:3px;border-radius:2px}
+
+@media (max-width:700px){
+  body{font-size:15px}
+  .answers,.seg,.mini,.msgfields{grid-template-columns:1fr}
+  .answers{gap:24px}
+  .amountrow{align-items:flex-start}
+}
+@media (prefers-reduced-motion:no-preference){
+  .year .blk,.year i{transition:width .35s ease}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <a class="brand" href="https://stabledrop.me/">Stabledrop <span>· Conduit UCPI</span></a>
+  <span class="eyebrow">Early payment</span>
+</header>
+
+<div class="hero">
+  <h1>Get paid on day one<span class="alt">not day <span class="num" id="h-terms">60</span>.</span></h1>
+  <p class="lede">Your customer pays into escrow when they place the order. You sell most of that escrow for cash the same day and keep the tail. <b>Nothing borrowed. No personal guarantee. Nobody chasing.</b></p>
+</div>
+
+<!-- ============ INPUTS ============ -->
+<section>
+  <div class="card">
+    <div class="controls">
+
+      <div class="field">
+        <div class="amountrow">
+          <label for="amount">What&#39;s the invoice?</label>
+          <div class="amountbox"><span>£</span><input type="number" id="amount" value="100000" min="1000" step="1000" inputmode="numeric"></div>
+        </div>
+        <div class="chips">
+          <button class="chip" data-amt="50000">50k</button>
+          <button class="chip" data-amt="100000">100k</button>
+          <button class="chip" data-amt="250000">250k</button>
+          <button class="chip" data-amt="1000000">1m</button>
+        </div>
+        <p class="hint" id="smallnote">Under £250k no manual funding desk will quote — underwriting one deal costs more than the spread on it. That's why this has to be programmatic.</p>
+      </div>
+
+      <div class="field">
+        <div class="rangehead">
+          <label for="terms">How long do they take to pay?</label>
+          <span class="rangeval" id="termsval">60 days</span>
+        </div>
+        <input type="range" id="terms" min="7" max="120" step="1" value="60">
+        <p class="hint">Due <b id="duedate">—</b>.</p>
+      </div>
+
+      <div class="field">
+        <span class="legend">What a funder charges you</span>
+        <div class="seg" id="profile">
+          <button data-cap="86" data-rate="22" aria-pressed="false"><strong>First deal</strong><em>repaid to 86% · 22%/yr</em></button>
+          <button data-cap="90" data-rate="15" aria-pressed="true"><strong>You take first loss</strong><em>repaid to 90% · 15%/yr</em></button>
+          <button data-cap="93" data-rate="7" aria-pressed="false"><strong>Proven book</strong><em>repaid to 93% · 7%/yr</em></button>
+        </div>
+        <p class="hint">Standing behind the funder for the first slice of any dispute is what buys you the tighter rate. It's how the first deal gets done.</p>
+      </div>
+
+    </div>
+
+    <details id="assumptions">
+      <summary>Change the assumptions</summary>
+      <div class="body">
+        <div class="mini">
+          <div class="field">
+            <div class="rangehead"><label for="borrow">What borrowing costs you now</label><span class="rangeval" id="borrowval">30%</span></div>
+            <input type="range" id="borrow" min="6" max="50" step="0.5" value="30">
+          </div>
+          <div class="field">
+            <div class="rangehead"><label for="bad">What bad payers cost you</label><span class="rangeval" id="badval">2.0%</span></div>
+            <input type="range" id="bad" min="0" max="6" step="0.1" value="2">
+          </div>
+          <div class="field">
+            <div class="rangehead"><label for="rf">What your customer's cash earns</label><span class="rangeval" id="rfval">3.65%</span></div>
+            <input type="range" id="rf" min="0" max="8" step="0.05" value="3.65">
+          </div>
+          <div class="field">
+            <div class="rangehead"><label for="share">Your customer's cut of the saving</label><span class="rangeval" id="shareval">25%</span></div>
+            <input type="range" id="share" min="0" max="80" step="5" value="25">
+          </div>
+          <div class="field">
+            <div class="rangehead"><label for="job">How long a job takes</label><span class="rangeval" id="jobval">30 days</span></div>
+            <input type="range" id="job" min="1" max="120" step="1" value="30">
+          </div>
+          <div class="field">
+            <div class="rangehead"><label for="cap">Funder repaid up to</label><span class="rangeval" id="capval">90%</span></div>
+            <input type="range" id="cap" min="80" max="97" step="0.5" value="90">
+            <div class="rangehead" style="margin-top:14px"><label for="rate">Funder's rate</label><span class="rangeval" id="rateval">15%</span></div>
+            <input type="range" id="rate" min="3.65" max="35" step="0.25" value="15">
+          </div>
+        </div>
+        <p class="hint">Stabledrop's fee is fixed at 1% of the escrow. Everything else here is yours to argue about.</p>
+      </div>
+    </details>
+  </div>
+
+  <div class="answers">
+    <div class="lead"><span class="k">In your account today</span><span class="v num" id="a-cash">—</span><span class="s" id="a-cashpct">—</span></div>
+    <div><span class="k">The rest, on <b id="a-when">—</b></span><span class="v num" id="a-res">—</span><span class="s">if undisputed</span></div>
+    <div class="grow"><span class="k">Extra revenue a year</span><span class="v num" id="a-year">—</span><span class="s">same money, nothing borrowed</span></div>
+  </div>
+
+  <div class="warn" id="nodeal" hidden>At these numbers there's nothing to share. The funder's charge is more than what waiting costs your customer, so no discount makes both of you better off. Lower the funder's rate or check what borrowing really costs you.</div>
+</section>
+
+<!-- ============ STEP 1 ============ -->
+<section class="card">
+  <span class="stepno">Step one — the money is locked before you start</span>
+  <h2>Your customer pays <span class="num" id="s1-escrow">—</span> into escrow up front</h2>
+  <p>It leaves their account and sits locked. On <b id="s1-date">—</b> — the day they'd have paid you anyway — it releases automatically. No invoice, no chasing, no ageing debtor. If you don't deliver, they get it back.</p>
+  <div class="ledger">
+    <div><span>Locked in escrow today</span><span id="s1-a">—</span></div>
+    <div class="out"><span>Stabledrop's fee <span class="sub">flat 1%, taken once</span></span><span id="s1-fee">—</span></div>
+    <div class="total"><span>Yours on release, guaranteed</span><span id="s1-net">—</span></div>
+    <div><span>Bad debt you stop carrying</span><span id="s1-bad">—</span></div>
+  </div>
+</section>
+
+<!-- ============ STEP 2 ============ -->
+<section class="card">
+  <span class="stepno">Step two — you don't wait for it</span>
+  <h2>Sell the escrow for <span class="num" id="s2-cash">—</span> today</h2>
+  <p>A funder buys the right to be repaid first out of your escrow, up to a cap. What's left over is yours when the escrow releases. Because the money is already locked in, the funder isn't betting on whether your customer pays — and prices accordingly: <b><span class="num" id="s2-rate">—</span></b> against the <b><span class="num" id="s2-borrow">—</span></b> you'd pay to borrow.</p>
+  <p>There's no loan here, so there's nothing to secure against your house, and nothing to claw back if the deal later sours.</p>
+  <div class="ledger">
+    <div><span>Your escrow, after the fee</span><span id="s2-net">—</span></div>
+    <div><span>Funder repaid first, up to <span class="num" id="s2-cap">—</span></span><span id="s2-senior">—</span></div>
+    <div class="out"><span>Funder's charge <span class="sub">over <span class="num" id="s2-days">—</span> days</span></span><span id="s2-cut">—</span></div>
+    <div class="total in"><span>In your account today</span><span id="s2-today">—</span></div>
+    <div class="total"><span>The rest, on <b id="s2-date">—</b></span><span id="s2-res">—</span></div>
+  </div>
+
+  <details>
+    <summary>What happens if there's a dispute?</summary>
+    <div class="body">
+      <p>Your tail absorbs the first <b><span class="num" id="d-first">—</span></b> of any refund. The funder's charge covers another <b><span class="num" id="d-second">—</span></b>, because it advanced less than its cap. Past <b><span class="num" id="d-break">—</span></b> the funder is out of pocket — which is why a refund percentage is set by a registered arbitrator, not by either side.</p>
+      <div class="tablewrap"><table>
+        <thead><tr><th>Refund</th><th>Funder</th><th>Your tail</th><th>You keep</th></tr></thead>
+        <tbody id="d-rows"></tbody>
+      </table></div>
+      <p class="hint">Money already advanced to you isn't clawed back.</p>
+    </div>
+  </details>
+</section>
+
+<!-- ============ STEP 3 ============ -->
+<section class="card">
+  <span class="stepno">Step three — why they say yes</span>
+  <h2>Take <span class="num" id="s3-disc">—</span> off their bill</h2>
+  <p>Sitting on your money for <span class="num" id="s3-days">—</span> days earns them <span class="num" id="s3-earn">—</span>. That's the whole reason invoices get paid late. Beat it, and paying today is simply the better trade — and they get buyer protection thrown in for nothing.</p>
+  <div class="ledger">
+    <div class="in"><span>Discount off their bill</span><span id="s3-d">—</span></div>
+    <div><span>What they'd have earned by waiting</span><span id="s3-e">—</span></div>
+    <div class="total"><span>They're better off by <span class="sub">worth <span class="num" id="s3-apr">—</span> a year on the cash</span></span><span id="s3-gain">—</span></div>
+  </div>
+</section>
+
+<!-- ============ WATERFALL ============ -->
+<section class="card">
+  <span class="stepno">All of it together</span>
+  <h2>You end up with <span class="num" id="w-total">—</span></h2>
+  <div class="ledger">
+    <div><span>Your invoice</span><span id="w-inv">—</span></div>
+    <div class="out"><span>Customer's discount</span><span id="w-disc">—</span></div>
+    <div class="out"><span>Stabledrop's fee</span><span id="w-fee">—</span></div>
+    <div class="out"><span>Funder's charge</span><span id="w-cut">—</span></div>
+    <div class="in"><span>In your account today</span><span id="w-cash">—</span></div>
+    <div><span>The rest, on <b id="w-date">—</b></span><span id="w-res">—</span></div>
+    <div class="total"><span>You end up with</span><span id="w-tot2">—</span></div>
+    <div><span>The old way: borrow at <span class="num" id="w-brate">—</span> <span class="sub">plus a personal guarantee</span></span><span id="w-borrow">—</span></div>
+    <div class="total"><span id="w-vslabel">You're ahead by</span><span id="w-vs">—</span></div>
+  </div>
+  <p>You're up, your customer's up, and the bad debt has gone. Nobody paid for that — it's what taking the credit risk <b>out</b> of the deal is worth.</p>
+</section>
+
+<!-- ============ THE YEAR ============ -->
+<section class="card">
+  <span class="stepno">The real prize</span>
+  <h2><span class="num" id="y-mult">—</span> the revenue off the same pot of money</h2>
+  <p>Every job ties up your cash for <span class="num" id="y-old">—</span> days: <span class="num" id="y-job">—</span> doing the work, then <span class="num" id="y-wait">—</span> just waiting to be paid. Get paid on day one and the waiting disappears. The same money starts the next job immediately.</p>
+
+  <div style="margin-top:26px">
+    <div class="yearrow">
+      <div class="cap"><span>As you are now — <b id="y-cycle1">—</b> day cycle</span><span><b id="y-jobs1">—</b> jobs</span></div>
+      <div class="year" id="y-row1"></div>
+    </div>
+    <div class="yearrow">
+      <div class="cap"><span>Paid on day one — <b id="y-cycle2">—</b> day cycle</span><span><b id="y-jobs2">—</b> jobs</span></div>
+      <div class="year" id="y-row2"></div>
+    </div>
+    <div class="key"><span><i class="work"></i>working</span><span><i class="wait"></i>waiting to be paid</span></div>
+  </div>
+
+  <div class="ledger">
+    <div><span>Revenue as you are now</span><span id="y-rev1">—</span></div>
+    <div><span>Revenue paid on day one</span><span id="y-rev2">—</span></div>
+    <div class="total in"><span>Extra capacity a year <span class="sub">same money, nothing borrowed</span></span><span id="y-extra">—</span></div>
+  </div>
+  <p>You still have to win the work. But money is no longer the thing stopping you.</p>
+</section>
+
+<!-- ============ MESSAGE ============ -->
+<section class="card">
+  <span class="stepno">Send it to them</span>
+  <h2>The message that makes the ask</h2>
+  <p>Built from your numbers. It updates as you change them — copy it into an email or WhatsApp and edit freely.</p>
+  <div class="msgfields">
+    <div><input type="text" id="cust" placeholder="Your customer's name"></div>
+    <div><input type="text" id="sign" placeholder="Sign off as"></div>
+  </div>
+  <pre class="msg" id="msg"></pre>
+  <div class="actions">
+    <button class="btn" id="copy">Copy message</button>
+    <a class="btn ghost" href="https://stabledrop.me/merchant">Find out more</a>
+  </div>
+</section>
+
+<footer>
+  <p>The discount is a trade discount, not interest. Nothing is invested — the escrow can always pay out in full. Stabledrop's fee is a flat 1% of the escrowed amount. The funder, not Stabledrop, sets the repayment cap and the rate; your tail is whatever the cap leaves and is paid after the funder. Rate bands are indicative of comparable short-dated collateralised trade paper, not quotes. Nothing prices below the risk-free floor of 3.65% (SOFR, 28 Jul 2026; use SONIA for sterling). Borrowing comparison based on iwoca published rates — from 1.5% a month, representative 40% APR. Simple interest, actual/365. Estimates, not financial advice.</p>
+  <p>© 2026 Conduit UCPI. Secure escrow contracts on blockchain. Company No. SC880319.<br>
+  <a href="https://stabledrop.me/terms-of-service">Terms of Service</a> · <a href="https://stabledrop.me/privacy-policy">Privacy Policy</a> · <a href="mailto:info@conduit-ucpi.com">Contact</a></p>
+</footer>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var $ = function(id){ return document.getElementById(id); };
+  var FEE = 0.01;
+
+  var money = function(n){ return "£" + Math.round(n).toLocaleString("en-GB"); };
+  var pct = function(n,d){ return n.toFixed(d===undefined?1:d) + "%"; };
+
+  function dueDate(days){
+    var d = new Date(); d.setDate(d.getDate() + days);
+    return d.toLocaleDateString("en-GB",{day:"numeric",month:"short"});
+  }
+
+  function read(){
+    return {
+      F:     Math.max(1000, Number($("amount").value) || 0),
+      t:     Number($("terms").value),
+      cap:   Number($("cap").value)/100,
+      r:     Number($("rate").value)/100,
+      bad:   Number($("bad").value)/100,
+      borrow:Number($("borrow").value)/100,
+      rf:    Number($("rf").value)/100,
+      share: Number($("share").value)/100,
+      job:   Number($("job").value)
+    };
+  }
+
+  function model(v){
+    var yf = v.t/365;
+    // spread is measured before the discount exists, then split with the customer
+    var netFull    = v.F * (1-FEE);
+    var seniorFull = v.cap * netFull;
+    var keepFull   = netFull - seniorFull * v.r * yf;
+    var borrowAlt  = v.F - v.F * v.borrow * yf;
+    var spread     = keepFull + v.bad * v.F - borrowAlt;
+
+    var buyerEarns = v.F * v.rf * yf;
+    var discount   = Math.max(0, v.share * spread) + buyerEarns;
+
+    var escrow = v.F - discount;
+    var fee    = escrow * FEE;
+    var net    = escrow - fee;
+    var senior = v.cap * net;
+    var cut    = senior * v.r * yf;
+    var cash   = senior - cut;
+    var res    = net - senior;
+    var total  = cash + res;
+
+    var cycleOld = v.job + v.t, cycleNew = v.job;
+    var jobsOld  = 365/cycleOld, jobsNew = 365/cycleNew;
+    var revOld   = jobsOld * v.F * (1 - v.bad);
+    var revNew   = jobsNew * total;
+
+    return {
+      v:v, spread:spread, discount:discount, escrow:escrow, fee:fee, net:net,
+      senior:senior, cut:cut, cash:cash, res:res, total:total,
+      borrowAlt:borrowAlt, ahead:total - borrowAlt,
+      buyerEarns:buyerEarns, buyerGain:discount - buyerEarns,
+      buyerApr: escrow>0 ? (discount/escrow)*(365/v.t) : 0,
+      firstLoss: net>0 ? res/net : 0,
+      second:    net>0 ? cut/net : 0,
+      cycleOld:cycleOld, cycleNew:cycleNew, jobsOld:jobsOld, jobsNew:jobsNew,
+      revOld:revOld, revNew:revNew, extra:revNew - revOld,
+      mult: revOld>0 ? revNew/revOld : 0,
+      workable: spread > 0
+    };
+  }
+
+  function yearRow(el, cycle, work){
+    el.innerHTML = "";
+    var n = Math.ceil(365/cycle), w = (cycle/365)*100, wp = Math.min(1, work/cycle)*100;
+    for(var i=0;i<n;i++){
+      var b = document.createElement("div");
+      b.className = "blk"; b.style.width = w + "%";
+      b.innerHTML = '<i class="work" style="width:'+wp+'%"></i><i class="wait" style="width:'+(100-wp)+'%"></i>';
+      el.appendChild(b);
+    }
+  }
+
+  function disputeRows(m){
+    var pcts = [0,5,10,15,20,30,50,100], html = "";
+    for(var i=0;i<pcts.length;i++){
+      var p = pcts[i]/100, refund = m.net * p;
+      var tail = Math.max(0, m.res - refund);
+      var recovers = Math.max(0, m.senior - Math.max(0, refund - m.res));
+      var funder = recovers - m.cash;
+      html += "<tr><td>" + pcts[i] + "%</td>" +
+              "<td class='" + (funder<0?"neg":"pos") + "'>" + (funder<0?"− ":"+ ") + money(Math.abs(funder)) + "</td>" +
+              "<td>" + money(tail) + "</td>" +
+              "<td>" + money(m.cash + tail) + "</td></tr>";
+    }
+    $("d-rows").innerHTML = html;
+  }
+
+  function message(m){
+    var v = m.v, cust = $("cust").value.trim() || "[customer name]",
+        sign = $("sign").value.trim() || "[your name]", when = dueDate(v.t);
+    return "Hi " + cust + ",\n\n" +
+      "A proposal on our " + money(v.F) + " invoice, due " + when + ".\n\n" +
+      "As things stand, paying at the end of the terms is the sensible move for you: holding the cash for " + v.t +
+      " days earns you roughly " + money(m.buyerEarns) + ".\n\n" +
+      "We'd like to beat that. Fund the invoice into escrow today and we'll take " + money(m.discount) +
+      " off — you pay " + money(m.escrow) + " instead of " + money(v.F) + ". Over the same period that's worth about " +
+      pct(m.buyerApr*100) + " a year on the cash, so you're better off than holding it.\n\n" +
+      "The money doesn't come to us. It sits locked in a Stabledrop escrow until " + when +
+      " — the day you'd have paid anyway — and only releases to us then if we've delivered. If we haven't, you get it back. Buyer protection and dispute handling are built in.\n\n" +
+      "Paying this way genuinely helps us: it guarantees payment on time and lets us put the capital to work on your next order rather than waiting on this one.\n\n" +
+      "Happy to walk through the numbers.\n\n" + sign;
+  }
+
+  function render(){
+    var m = model(read()), v = m.v, when = dueDate(v.t);
+
+    $("h-terms").textContent = v.t;
+    $("termsval").textContent = v.t + " days";
+    $("duedate").textContent = when;
+    $("smallnote").hidden = v.F >= 250000;
+
+    $("borrowval").textContent = pct(v.borrow*100,0);
+    $("badval").textContent    = pct(v.bad*100);
+    $("rfval").textContent     = pct(v.rf*100,2);
+    $("shareval").textContent  = pct(v.share*100,0);
+    $("jobval").textContent    = v.job + " days";
+    $("capval").textContent    = pct(v.cap*100,0);
+    $("rateval").textContent   = pct(v.r*100,2);
+
+    $("nodeal").hidden = m.workable;
+
+    // headline
+    $("a-cash").textContent = money(m.cash);
+    $("a-cashpct").textContent = pct(m.cash/v.F*100) + " of face, day one";
+    $("a-res").textContent = money(m.res);
+    $("a-when").textContent = when;
+    $("a-year").textContent = (m.extra>=0?"+":"−") + money(Math.abs(m.extra));
+
+    // step 1
+    $("s1-escrow").textContent = money(m.escrow);
+    $("s1-date").textContent = when;
+    $("s1-a").textContent = money(m.escrow);
+    $("s1-fee").textContent = "− " + money(m.fee);
+    $("s1-net").textContent = money(m.net);
+    $("s1-bad").textContent = "≈ " + money(v.bad*v.F) + " an invoice";
+
+    // step 2
+    $("s2-cash").textContent   = money(m.cash);
+    $("s2-rate").textContent   = pct(v.r*100,2);
+    $("s2-borrow").textContent = pct(v.borrow*100,0);
+    $("s2-net").textContent    = money(m.net);
+    $("s2-cap").textContent    = pct(v.cap*100,0);
+    $("s2-senior").textContent = money(m.senior);
+    $("s2-cut").textContent    = "− " + money(m.cut);
+    $("s2-days").textContent   = v.t;
+    $("s2-today").textContent  = money(m.cash);
+    $("s2-date").textContent   = when;
+    $("s2-res").textContent    = money(m.res);
+
+    $("d-first").textContent  = pct(m.firstLoss*100);
+    $("d-second").textContent = pct(m.second*100);
+    $("d-break").textContent  = pct((m.firstLoss+m.second)*100);
+    disputeRows(m);
+
+    // step 3
+    $("s3-disc").textContent = money(m.discount);
+    $("s3-days").textContent = v.t;
+    $("s3-earn").textContent = money(m.buyerEarns);
+    $("s3-d").textContent    = "− " + money(m.discount);
+    $("s3-e").textContent    = money(m.buyerEarns);
+    $("s3-gain").textContent = "+ " + money(m.buyerGain);
+    $("s3-apr").textContent  = pct(m.buyerApr*100);
+
+    // waterfall
+    $("w-total").textContent  = money(m.total);
+    $("w-inv").textContent    = money(v.F);
+    $("w-disc").textContent   = "− " + money(m.discount);
+    $("w-fee").textContent    = "− " + money(m.fee);
+    $("w-cut").textContent    = "− " + money(m.cut);
+    $("w-cash").textContent   = money(m.cash);
+    $("w-date").textContent   = when;
+    $("w-res").textContent    = "+ " + money(m.res);
+    $("w-tot2").textContent   = money(m.total);
+    $("w-brate").textContent  = pct(v.borrow*100,0);
+    $("w-borrow").textContent = money(m.borrowAlt);
+    $("w-vslabel").textContent = m.ahead>=0 ? "You're ahead by" : "You're behind by";
+    $("w-vs").textContent = (m.ahead>=0?"+ ":"− ") + money(Math.abs(m.ahead));
+
+    // year
+    $("y-mult").textContent  = m.mult.toFixed(1) + "×";
+    $("y-old").textContent   = m.cycleOld;
+    $("y-job").textContent   = v.job;
+    $("y-wait").textContent  = v.t;
+    $("y-cycle1").textContent = m.cycleOld;
+    $("y-cycle2").textContent = m.cycleNew;
+    $("y-jobs1").textContent = m.jobsOld.toFixed(1);
+    $("y-jobs2").textContent = m.jobsNew.toFixed(1);
+    $("y-rev1").textContent  = money(m.revOld);
+    $("y-rev2").textContent  = money(m.revNew);
+    $("y-extra").textContent = (m.extra>=0?"+ ":"− ") + money(Math.abs(m.extra));
+    yearRow($("y-row1"), m.cycleOld, v.job);
+    yearRow($("y-row2"), m.cycleNew, v.job);
+
+    $("msg").textContent = message(m);
+  }
+
+  // ---- wiring ----
+  var ids = ["amount","terms","cap","rate","bad","borrow","rf","share","job","cust","sign"];
+  ids.forEach(function(id){
+    $(id).addEventListener("input", function(){
+      if(id==="cap"||id==="rate") syncProfile();
+      render();
+    });
+  });
+
+  Array.prototype.forEach.call(document.querySelectorAll(".chip"), function(c){
+    c.addEventListener("click", function(){ $("amount").value = c.dataset.amt; render(); });
+  });
+
+  var profBtns = Array.prototype.slice.call(document.querySelectorAll("#profile button"));
+  profBtns.forEach(function(b){
+    b.addEventListener("click", function(){
+      profBtns.forEach(function(x){ x.setAttribute("aria-pressed","false"); });
+      b.setAttribute("aria-pressed","true");
+      $("cap").value = b.dataset.cap;
+      $("rate").value = b.dataset.rate;
+      render();
+    });
+  });
+
+  function syncProfile(){
+    var cap = $("cap").value, rate = $("rate").value, hit = false;
+    profBtns.forEach(function(b){
+      var on = (b.dataset.cap === cap && b.dataset.rate === rate);
+      b.setAttribute("aria-pressed", on ? "true" : "false");
+      if(on) hit = true;
+    });
+    return hit;
+  }
+
+  $("copy").addEventListener("click", function(){
+    var btn = this, text = $("msg").textContent;
+    var done = function(){ btn.textContent = "Copied"; setTimeout(function(){ btn.textContent = "Copy message"; }, 1800); };
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(done, function(){ btn.textContent = "Select and copy manually"; });
+    } else {
+      var ta = document.createElement("textarea");
+      ta.value = text; document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy"); done(); } catch(e){ btn.textContent = "Select and copy manually"; }
+      document.body.removeChild(ta);
+    }
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>

@@ -11,6 +11,11 @@ const nextConfig = {
       {
         source: '/.well-known/farcaster.json',
         destination: '/api/farcaster.json'
+      },
+      // Standalone static page — served at a clean path, not linked from anywhere
+      {
+        source: '/early-payment-offer2',
+        destination: '/early-payment-offer2.html'
       }
     ]
   },

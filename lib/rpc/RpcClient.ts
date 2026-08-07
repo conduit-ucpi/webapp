@@ -16,7 +16,7 @@
  */
 
 import { ethers } from 'ethers';
-import { ERC20_ABI, ESCROW_CONTRACT_ABI } from '@/lib/web3';
+import { ERC20_ABI, ESCROW_CONTRACT_ABI, NO_VOTE_SENTINEL, OFFER_VAULT_ABI, OFFER_VAULT_STATUS } from '@/lib/web3';
 
 export interface TokenMetadata {
   address: string;
@@ -43,6 +43,50 @@ export interface EscrowContractState {
   canDeposit: boolean;
   isDisputed: boolean;
   isClaimed: boolean;
+}
+
+/**
+ * Who currently holds which settlement figure on a disputed escrow.
+ *
+ * A `null` figure means that party has not voted. `resolvedBuyerPercentage` being non-null means
+ * the dispute is over and the money has already moved.
+ */
+export interface EscrowSettlementState {
+  buyer: string;
+  /** The CURRENT recipient — after a marketplace sale this is the LP, not the original seller. */
+  recipient: string;
+  /** null while the seat is empty, which is an ordinary mid-life state after a sale (§3.3A). */
+  arbiter: string | null;
+  buyerVote: number | null;
+  recipientVote: number | null;
+  arbiterVote: number | null;
+  resolvedBuyerPercentage: number | null;
+}
+
+/** One offer vault's terms, read straight from the vault itself. */
+export interface OfferVaultState {
+  vaultAddress: string;
+  escrowContract: string;
+  lp: string;
+  seller: string;
+  token: string;
+  offerAmount: bigint;
+  /** What the seller actually receives: `offerAmount − fee − holdback` (§8.5a). */
+  netAmount: bigint;
+  fee: bigint;
+  holdback: bigint;
+  offerExpiry: number;
+  status: string;
+  /**
+   * What the vault actually holds, in base units.
+   *
+   * ⚠️ THE ONLY WITNESS TO A DIRECT-TRANSFER DEPOSIT. Funding is a plain ERC20 transfer, so
+   *    capital can arrive without `fund()` opening the offer — and a bare transfer emits no
+   *    marketplace event at all, so the index cannot see it. A `PENDING` vault with a
+   *    non-zero balance is an LP's parked deposit; the same vault at zero is an offer nobody
+   *    funded. Nothing but this read distinguishes them.
+   */
+  depositedAmount: bigint;
 }
 
 /** Minimal metadata ABI (symbol/decimals/name) for token detail reads. */
@@ -209,5 +253,121 @@ export class RpcClient {
         contract.isClaimed(),
       ]);
     return { isExpired, canClaim, canDispute, isFunded, canDeposit, isDisputed, isClaimed };
+  }
+
+  // ---- Dispute settlement reads (MARKETPLACE_OPENSPEC §15.6b) -------------
+
+  /**
+   * Every standing settlement figure on a disputed escrow, and whether it has already settled.
+   *
+   * ⚠️ READ THIS FROM THE CHAIN, NOT FROM OUR OWN RECORDS. The escrow settles itself the instant
+   *    any two of the three current votes match, in the same transaction as the second vote — so
+   *    "has this settled" is a chain fact that no off-chain record observes. contractservice's
+   *    dispute history is a record of the conversation and may legitimately lag it (§15.3a).
+   *
+   * A figure of `null` means that party has not voted: the contract's sentinel is 255, because 0
+   * is itself a valid settlement (everything to the seller) and could not stand for absence.
+   */
+  async getSettlementState(contractAddress: string): Promise<EscrowSettlementState> {
+    const contract = new ethers.Contract(contractAddress, ESCROW_CONTRACT_ABI, this.provider);
+
+    const [buyer, recipient, arbiter, resolved] = await Promise.all([
+      contract.BUYER(),
+      contract.recipient(),
+      contract.ARBITER(),
+      contract.resolvedBuyerPercentage(),
+    ]);
+
+    const seated = arbiter && arbiter !== ethers.ZeroAddress;
+
+    const [buyerVote, recipientVote, arbiterVote] = await Promise.all([
+      contract.resolutionVotes(buyer),
+      contract.resolutionVotes(recipient),
+      seated ? contract.resolutionVotes(arbiter) : Promise.resolve(NO_VOTE_SENTINEL),
+    ]);
+
+    const asFigure = (raw: unknown): number | null => {
+      const value = Number(raw);
+      return value === NO_VOTE_SENTINEL ? null : value;
+    };
+
+    return {
+      buyer,
+      recipient,
+      arbiter: seated ? arbiter : null,
+      buyerVote: asFigure(buyerVote),
+      recipientVote: asFigure(recipientVote),
+      arbiterVote: asFigure(arbiterVote),
+      resolvedBuyerPercentage: asFigure(resolved),
+    };
+  }
+
+  /**
+   * The net figure the recipient collects at maturity — `AMOUNT − CREATOR_FEE`.
+   *
+   * This, not the gross escrow amount, is what an LP prices against (§3.1). Quoting a discount
+   * off the gross would overstate every offer by the creator fee.
+   */
+  async getPayoutAmount(contractAddress: string): Promise<bigint> {
+    const contract = new ethers.Contract(contractAddress, ESCROW_CONTRACT_ABI, this.provider);
+    return contract.payoutAmount();
+  }
+
+  // ---- Offer vault reads (MARKETPLACE_OPENSPEC §5.0) ---------------------
+
+  /**
+   * One offer vault's terms and current status.
+   *
+   * The offer book comes from contractservice's index; this is for the moment before a party
+   * signs, when the figures on screen are about to become a transaction. The index is a mirror
+   * and may lag the chain by a reconcile — an acceptance elsewhere is exactly the event that
+   * arrives late (§15.6f).
+   */
+  async getOfferVaultState(vaultAddress: string): Promise<OfferVaultState> {
+    const vault = new ethers.Contract(vaultAddress, OFFER_VAULT_ABI, this.provider);
+
+    const [escrowContract, lp, seller, token, offerAmount, netAmount, fee, holdback, offerExpiry, status] =
+      await Promise.all([
+        vault.escrowContract(),
+        vault.lp(),
+        vault.seller(),
+        vault.token(),
+        vault.offerAmount(),
+        vault.netAmount(),
+        vault.fee(),
+        vault.holdback(),
+        vault.offerExpiry(),
+        vault.status(),
+      ]);
+
+    // Sequenced after the token address rather than folded into the batch above: the
+    // balance is read from the token the vault itself names, never a caller-supplied one.
+    const depositedAmount = await this.getVaultDeposit(vaultAddress, token);
+
+    return {
+      vaultAddress,
+      escrowContract,
+      lp,
+      seller,
+      token,
+      offerAmount,
+      netAmount,
+      fee,
+      holdback,
+      offerExpiry: Number(offerExpiry),
+      status: OFFER_VAULT_STATUS[Number(status)] ?? 'UNKNOWN',
+      depositedAmount,
+    };
+  }
+
+  /**
+   * What a vault is holding of its own offer token, in base units.
+   *
+   * Split out because the PENDING case needs only this — enriching a list of offers with a
+   * full `getOfferVaultState` each would be ten calls per row to answer one question.
+   */
+  async getVaultDeposit(vaultAddress: string, tokenAddress: string): Promise<bigint> {
+    const token = new ethers.Contract(tokenAddress, ERC20_ABI, this.provider);
+    return await token.balanceOf(vaultAddress);
   }
 }

@@ -29,13 +29,100 @@ export const ESCROW_CONTRACT_ABI = [
   'function raiseDispute()',
   'function claimFunds()',
   'function submitResolutionVote(uint256 _buyerPercentage)',
+
+  // ── The §3.3 arbiter surface, and the §3.2 sale approval ────────────────────
+  // Present only on marketplace-capable clones. A legacy escrow reverts on these, which is
+  // why the arbiter screens are driven off chainservice's `can*` flags rather than off
+  // whether a call happens to succeed (MARKETPLACE_OPENSPEC §15.6c).
+  'function BUYER() view returns (address)',
+  'function SELLER() view returns (address)',
+  'function ARBITER() view returns (address)',
+  'function recipient() view returns (address)',
+  'function maturity() view returns (uint256)',
+  'function payoutAmount() view returns (uint256)',
+  'function hasActiveDispute() view returns (bool)',
+  'function hasBeenSold() view returns (bool)',
+  'function token() view returns (address)',
+  // 255 is the "has not voted" sentinel — a real vote is 0..100, and 0 is a valid figure
+  // (everything to the seller), so absence cannot be represented by zero.
+  'function resolutionVotes(address) view returns (uint8)',
+  'function resolvedBuyerPercentage() view returns (uint8)',
+  'function nominateArbiter(address candidate)',
+  'function evictArbiter()',
+  'function seatDefaultArbiter()',
+  'function approveRecipientTransfer(address operator, address newRecipient)',
+
   'event FundsDeposited(address buyer, uint256 amount, uint256 timestamp)',
   'event DisputeRaised(uint256 timestamp)',
   'event DisputeResolved(address recipient, uint256 timestamp)',
   'event FundsClaimed(address recipient, uint256 amount, uint256 timestamp)'
 ];
 
+/**
+ * One LP's offer vault (MARKETPLACE_OPENSPEC §5.0).
+ *
+ * Each offer is its own contract, so LP capital is never commingled and every party action is
+ * addressed to the vault that holds their own money. ⚠️ NONE of these five actions is relayed:
+ * `fund`, `accept`, `reject`, `withdraw` and `releaseHoldback` are sent by the party's own
+ * wallet after `fund-wallet` supplies the gas (§15.6a). chainservice only deploys the vault,
+ * pays for gas, and indexes the events.
+ */
+export const OFFER_VAULT_ABI = [
+  'function escrowContract() view returns (address)',
+  'function seller() view returns (address)',
+  'function lp() view returns (address)',
+  'function token() view returns (address)',
+  'function offerAmount() view returns (uint256)',
+  'function netAmount() view returns (uint256)',
+  'function fee() view returns (uint256)',
+  'function holdback() view returns (uint256)',
+  'function offerExpiry() view returns (uint256)',
+  'function owed() view returns (uint256)',
+  // PENDING=0, OPEN=1, ACCEPTED=2, REJECTED=3, WITHDRAWN=4 — see OFFER_VAULT_STATUS.
+  'function status() view returns (uint8)',
+  'function isOpen() view returns (bool)',
+  'function fund()',
+  'function accept()',
+  'function reject()',
+  'function withdraw()',
+  'function releaseHoldback()',
+  'event OfferFunded(address indexed escrowContract, address indexed lp, address token, uint256 amount)',
+  'event OfferAccepted(address indexed escrowContract, address indexed lp, address seller, uint256 netAmount, uint256 fee, uint256 holdback)',
+  'event OfferRejected(address indexed escrowContract, address indexed lp)',
+  'event FundsWithdrawn(address indexed escrowContract, address indexed lp, address token, uint256 amount)',
+  'event HoldbackReleased(address indexed escrowContract, address funder, address beneficiary, uint256 toFunder, uint256 toBeneficiary)'
+];
+
+/** The vault's on-chain status enum, in declaration order. */
+export const OFFER_VAULT_STATUS = ['PENDING', 'OPEN', 'ACCEPTED', 'REJECTED', 'WITHDRAWN'] as const;
+
+/**
+ * The escrow's "this party has not voted" sentinel.
+ *
+ * `submitResolutionVote` accepts 0..100 and 0 is a legitimate settlement (everything to the
+ * seller), so absence needs a value outside that range. Treating 0 as "no vote" would show a
+ * standing offer of 0% as an empty seat — and the number that settles on match would be
+ * invisible.
+ */
+export const NO_VOTE_SENTINEL = 255;
+
 import { formatWeiAsEthForLogging, formatGweiAsEthForLogging } from '@/utils/logging';
+
+/**
+ * `eth_estimateGas` came back with a revert — the chain's verdict that this transaction
+ * cannot succeed, not a failure to estimate it.
+ *
+ * Distinguished from an estimation outage because the two want opposite handling: an
+ * unreachable RPC deserves a fallback gas limit, while a revert deserves to stop the flow.
+ * Conflating them is how a missing token allowance became an unexplained wallet prompt
+ * instead of an error message.
+ */
+export class EstimationRevertedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'EstimationRevertedError';
+  }
+}
 
 export class Web3Service {
   private static instance: Web3Service | null = null;
@@ -907,6 +994,17 @@ export class Web3Service {
 
         if (estimateResponse.ok) {
           const estimateData = await estimateResponse.json();
+          if (estimateData.error) {
+            // ⚠️ THE CHAIN SAID THIS TRANSACTION WILL FAIL. That is not a gas-estimation
+            //    problem to paper over — it is the answer. Falling through to a fallback
+            //    limit here asks the user to sign a transaction we already know reverts,
+            //    and (because a call we could not estimate is usually one the wallet
+            //    cannot decode either) presents it as an opaque native-value transfer.
+            //    Surface it instead: the revert reason is the actual diagnosis.
+            throw new EstimationRevertedError(
+              estimateData.error.message || 'The transaction would fail on-chain.'
+            );
+          }
           if (estimateData.result) {
             gasEstimate = BigInt(estimateData.result);
             console.log(`✅ Gas estimate from Base RPC: ${gasEstimate.toString()} gas`);
@@ -919,6 +1017,13 @@ export class Web3Service {
           throw new Error('RPC gas estimation failed');
         }
       } catch (error) {
+        // A reverting transaction is a real failure and must not be smoothed over. Only
+        // genuine estimation outages (RPC unreachable, malformed response) get a fallback.
+        if (error instanceof EstimationRevertedError) {
+          console.error('❌ Transaction would revert on-chain — refusing to ask for a signature:', error.message);
+          throw error;
+        }
+
         console.warn('RPC gas estimation failed, using safe fallback:', error);
 
         // Check if this is a network connectivity issue

@@ -28,6 +28,27 @@ export type QrActivationStatus = 'idle' | 'checking' | 'success' | 'waiting';
 const COUNTDOWN_SECONDS = 240;
 const POLL_INTERVAL_MS = 10_000;
 
+/**
+ * Which backend call turns a funded address live, and what to send it.
+ *
+ * Defaults to the escrow's `checkAndActivate`. The marketplace overrides it with
+ * `fund-offer` on an OfferVault, because the two flows are the same shape: money arrives by
+ * direct transfer, and a permissionless call then observes the balance and flips the state.
+ * Everything else in this hook — the countdown, the balance poll, the "I have paid" gate —
+ * is identical for both, and duplicating it is how one of them ends up without the
+ * balance-before-gas check below.
+ */
+interface QrActivationTarget {
+  endpoint: string;
+  /** The request body, given the address the money was sent to. */
+  buildBody: (fundedAddress: string) => Record<string, unknown>;
+}
+
+const ESCROW_ACTIVATION: QrActivationTarget = {
+  endpoint: '/api/chain/check-and-activate',
+  buildBody: (contractAddress) => ({ contractAddress }),
+};
+
 interface UseQrPaymentParams {
   authenticatedFetch: ((url: string, init?: RequestInit) => Promise<Response>) | undefined;
   getTokenBalance: (address: string, tokenAddress: string) => Promise<string>;
@@ -37,6 +58,8 @@ interface UseQrPaymentParams {
   requiredAmountMicro: number;
   createContract: () => Promise<string | undefined>;
   onActivated: (contractAddress: string) => void;
+  /** Omit for the escrow flow. */
+  activation?: QrActivationTarget;
 }
 
 interface UseQrPaymentResult {
@@ -63,6 +86,7 @@ export function useQrPayment(params: UseQrPaymentParams): UseQrPaymentResult {
     requiredAmountMicro,
     createContract: createContractImpl,
     onActivated,
+    activation = ESCROW_ACTIVATION,
   } = params;
 
   const [qrContractAddress, setQrContractAddress] = useState<string | null>(null);
@@ -82,18 +106,26 @@ export function useQrPayment(params: UseQrPaymentParams): UseQrPaymentResult {
     getTokenBalanceRef.current = getTokenBalance;
   });
 
+  // Same treatment, same reason: callers pass this as an object literal, so a fresh identity
+  // every render would make checkAndActivate unstable — and checkAndActivate is a dependency
+  // of the countdown effect below, which would then re-create its interval on every render.
+  const activationRef = useRef(activation);
+  useEffect(() => {
+    activationRef.current = activation;
+  });
+
   const checkAndActivate = useCallback(async () => {
     if (!qrContractAddress || !authenticatedFetch) return;
 
     setQrActivationStatus('checking');
 
     try {
-      // /api/chain/check-and-activate is NOT a read. chainservice signs and
-      // submits an on-chain checkAndActivate(), which the escrow reverts with
-      // InsufficientDirectPayment when it has not been funded — and gas is
-      // still burned on the reverting transaction (gas estimation fails, but
-      // chainservice falls back to a configured limit and sends anyway).
-      // balanceOf is free, so confirm the money is actually there first.
+      // The activation endpoint is NOT a read. chainservice signs and submits an on-chain
+      // call — checkAndActivate() on an escrow, fund() on an OfferVault — and BOTH revert
+      // with InsufficientDirectPayment when the money has not arrived, burning gas on the
+      // reverting transaction (gas estimation fails, but chainservice falls back to a
+      // configured limit and sends anyway). balanceOf is free, so confirm the money is
+      // actually there first. This gate is the reason both flows share this hook.
       const funded = await (async () => {
         if (!selectedTokenAddress || requiredAmount <= 0) return false;
         try {
@@ -111,10 +143,11 @@ export function useQrPayment(params: UseQrPaymentParams): UseQrPaymentResult {
         return;
       }
 
-      const response = await authenticatedFetch('/api/chain/check-and-activate', {
+      const target = activationRef.current;
+      const response = await authenticatedFetch(target.endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contractAddress: qrContractAddress }),
+        body: JSON.stringify(target.buildBody(qrContractAddress)),
       });
 
       const data = await response.json();
@@ -128,7 +161,7 @@ export function useQrPayment(params: UseQrPaymentParams): UseQrPaymentResult {
         setQrActivationStatus('waiting');
       }
     } catch (error) {
-      console.error('useQrPayment: check-and-activate failed:', error);
+      console.error(`useQrPayment: ${activationRef.current.endpoint} failed:`, error);
       setQrActivationStatus('waiting');
     }
   }, [qrContractAddress, authenticatedFetch, selectedTokenAddress, requiredAmount, onActivated]);

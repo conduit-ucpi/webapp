@@ -85,6 +85,22 @@ export default function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
           requiresAuth: true,
         },
         {
+          // The seller's side of the marketplace: payments owed to you, and any offers to pay
+          // you early (MARKETPLACE_OPENSPEC §15.6d).
+          href: '/offers',
+          label: 'Get Paid Early',
+          icon: BanknotesIcon,
+          requiresAuth: true,
+        },
+        {
+          // The LP's side. Its "Your offers" tab is where a lapsed or stale offer gets noticed —
+          // nothing on-chain announces that capital became withdrawable (§15.6f).
+          href: '/liquidity',
+          label: 'Liquidity',
+          icon: ArrowTrendingUpIcon,
+          requiresAuth: true,
+        },
+        {
           href: '/wallet',
           label: 'Wallet',
           icon: WalletIcon,

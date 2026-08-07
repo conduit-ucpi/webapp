@@ -3,6 +3,8 @@ import { ReactNode } from 'react';
 interface StatsCardProps {
   title: string;
   value: string | number;
+  /** Small qualifier under the figure — what it covers, or where it came from. */
+  sub?: string;
   icon?: ReactNode;
   trend?: {
     value: number;
@@ -11,27 +13,29 @@ interface StatsCardProps {
   className?: string;
 }
 
-export default function StatsCard({ 
-  title, 
-  value, 
-  icon, 
-  trend, 
-  className = '' 
+export default function StatsCard({
+  title,
+  value,
+  sub,
+  icon,
+  trend,
+  className = ''
 }: StatsCardProps) {
   return (
-    <div className={`bg-white rounded-lg border border-secondary-200 p-4 sm:p-6 ${className}`}>
+    <div className={`bg-white dark:bg-secondary-800 rounded-lg border border-secondary-200 dark:border-secondary-700 p-4 sm:p-6 ${className}`}>
       <div className="flex items-center justify-between">
         <div className="flex-1">
-          <p className="text-sm font-medium text-secondary-600">{title}</p>
-          <p className="mt-2 text-2xl sm:text-3xl font-semibold text-secondary-900">
+          <p className="text-sm font-medium text-secondary-600 dark:text-secondary-300">{title}</p>
+          <p className="mt-2 text-2xl sm:text-3xl font-semibold text-secondary-900 dark:text-white">
             {value}
           </p>
+          {sub && <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">{sub}</p>}
           {trend && (
             <div className="mt-2 flex items-center text-sm">
               <span className={`font-medium ${trend.isPositive ? 'text-success-600' : 'text-error-600'}`}>
                 {trend.isPositive ? '↑' : '↓'} {Math.abs(trend.value)}%
               </span>
-              <span className="text-secondary-500 ml-2">from last month</span>
+              <span className="text-secondary-500 dark:text-secondary-400 ml-2">from last month</span>
             </div>
           )}
         </div>

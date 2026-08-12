@@ -786,28 +786,42 @@ export class ReownWalletConnectProvider {
         return false
       }
 
-      // For embedded wallets (social login), we need to use the EOA address for signing,
-      // not the smart account address. The smart account can't sign messages.
-      const appKitAny = this.appKit as any
-      const accountState = appKitAny.getState?.() || appKitAny.state
+      // Embedded wallets (social login) can present a smart account, which cannot
+      // produce an ECDSA signature. getAccount() is AppKit's public, typed view of
+      // the connected accounts and carries a type discriminator per account.
+      //
+      // This only VALIDATES - it deliberately does not swap in a different address.
+      // The signature has to prove ownership of the wallet registered against the
+      // user in user-service, and that is the address AppKit reports as connected.
+      // Signing with some other EOA would produce a signature the backend cannot
+      // match to the account, so a mismatch is a hard failure, not a silent switch.
+      //
+      // In practice createAppKit() is configured with defaultAccountTypes.eip155 =
+      // 'eoa', so the connected account should already be signable; this catches the
+      // case where that guarantee stops holding.
+      const account = this.appKit.getAccount?.('eip155')
+      const connected = account?.allAccounts?.find(
+        (a: { address: string }) => a.address?.toLowerCase() === address?.toLowerCase()
+      )
 
-      if (accountState?.embeddedWalletInfo?.user) {
-        console.log('🔧 ReownWalletConnect: Embedded wallet detected - using EOA for signing')
-
-        // Try to get the EOA address from the embedded wallet info
-        const eoaAddress = accountState.embeddedWalletInfo.eoaAddress ||
-                          accountState.embeddedWalletInfo.user.address ||
-                          accountState.embeddedWalletInfo.walletAddress
-
-        if (eoaAddress) {
-          console.log('🔧 ReownWalletConnect: Using EOA address for signature', {
-            smartAccount: address,
-            eoa: eoaAddress
-          })
-          address = eoaAddress
-        } else {
-          console.warn('🔧 ReownWalletConnect: Could not find EOA address, using smart account address')
+      if (connected && connected.type === 'smartAccount') {
+        console.error('🔧 ReownWalletConnect: Connected account is a smart account and cannot sign', {
+          address,
+          availableTypes: account?.allAccounts?.map((a: { type: string }) => a.type)
+        })
+        this.lastAuthFailure = {
+          kind: 'wallet-signing',
+          message: 'This wallet cannot sign messages. Reconnect and choose a standard wallet account.'
         }
+        return false
+      }
+
+      if (account?.embeddedWalletInfo) {
+        console.log('🔧 ReownWalletConnect: Embedded wallet signing', {
+          address,
+          accountType: connected?.type ?? 'unknown',
+          authProvider: account.embeddedWalletInfo.authProvider
+        })
       }
 
       // CRITICAL: Verify and switch to correct network BEFORE creating SIWE message

@@ -25,6 +25,12 @@ export class ReownWalletConnectProvider {
   private isConnecting: boolean = false
   private connectionMode: ConnectionMode = 'default'
   private lastAuthFailure: AuthFailure | null = null
+  /* In-flight initialize(). Callers race: connect() and connectWithSocial()
+     both do `if (!this.appKit) await this.initialize()`, and several
+     ConnectWalletEmbedded instances can be mounted at once, so the
+     check-then-act gap is wide enough for two createAppKit() calls to start
+     before either assigns this.appKit. */
+  private initPromise: Promise<boolean> | null = null
 
   getLastAuthFailure(): AuthFailure | null {
     return this.lastAuthFailure
@@ -69,7 +75,27 @@ export class ReownWalletConnectProvider {
     }
   }
 
-  async initialize() {
+  /**
+   * Idempotent. Returns the same in-flight promise to every concurrent caller
+   * so AppKit is built exactly once, no matter how many mounted components
+   * race to connect. A failed attempt clears the latch so a retry can proceed.
+   */
+  async initialize(): Promise<boolean> {
+    if (this.appKit) return true
+    if (this.initPromise) {
+      console.log('🔧 ReownWalletConnect: initialize() already in flight - awaiting the existing AppKit build')
+      return this.initPromise
+    }
+    this.initPromise = this.runInitialize()
+    try {
+      return await this.initPromise
+    } catch (error) {
+      this.initPromise = null
+      throw error
+    }
+  }
+
+  private async runInitialize(): Promise<boolean> {
     try {
       console.log('🔧 ReownWalletConnect: ========================================')
       console.log('🔧 ReownWalletConnect: INITIALIZING - This should only appear once per session')
@@ -571,13 +597,19 @@ export class ReownWalletConnectProvider {
               provider.on('session_event', handleConnect)
               provider.on('session_update', handleConnect)
 
-              // Add cleanup function
+              // Add cleanup function.
+              // EIP-1193 mandates removeListener; off() is an EventEmitter extra
+              // that MetaMask's inpage provider doesn't always expose. Gating
+              // removal on off() alone leaks all three handlers on every connect.
               cleanupFunctions.push(() => {
-                if (provider.off) {
-                  provider.off('connect', handleConnect)
-                  provider.off('session_event', handleConnect)
-                  provider.off('session_update', handleConnect)
+                const remove = (provider.off || provider.removeListener)?.bind(provider)
+                if (!remove) {
+                  console.warn('🔧 ReownWalletConnect: provider exposes neither off() nor removeListener() - listeners will leak')
+                  return
                 }
+                remove('connect', handleConnect)
+                remove('session_event', handleConnect)
+                remove('session_update', handleConnect)
               })
             }
           } catch (error) {

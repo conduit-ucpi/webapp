@@ -48,6 +48,19 @@ export default function MyOffersList({ lpAddress }: MyOffersListProps) {
    */
   const [deposits, setDeposits] = useState<Record<string, string>>({});
 
+  /**
+   * Whether each reserve-bearing escrow has actually paid out.
+   *
+   * ⚠️ THE CONTRACT REFUSES BEFORE THIS. `releaseHoldback` reverts with `EscrowNotSettled`
+   *    unless `escrow.isClaimed()`, so offering the control earlier is offering a guaranteed
+   *    revert — the user pays gas to be told no. Settlement is escrow state, not a marketplace
+   *    event, so no amount of indexing can answer it; it has to be read.
+   *
+   * Keyed by escrow, since several vaults can point at one. Absent means unknown, which keeps
+   * the control disabled rather than guessing it is ready.
+   */
+  const [settled, setSettled] = useState<Record<string, boolean>>({});
+
   const [busyVault, setBusyVault] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -64,6 +77,47 @@ export default function MyOffersList({ lpAddress }: MyOffersListProps) {
         .join(','),
     [offers]
   );
+
+  // Escrows behind an ACCEPTED offer that still carries a reserve — the only rows whose
+  // release control could ever be live.
+  const reserveEscrowKey = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          offers
+            .filter((o) => o.status === 'ACCEPTED' && !!o.holdback && o.holdback !== '0' && o.escrowContract)
+            .map((o) => o.escrowContract as string)
+        )
+      )
+        .sort()
+        .join(','),
+    [offers]
+  );
+
+  useEffect(() => {
+    if (!config?.rpcUrl || !reserveEscrowKey) return;
+    let cancelled = false;
+    (async () => {
+      const client = new RpcClient(config.rpcUrl);
+      const entries = await Promise.all(
+        reserveEscrowKey.split(',').map(async (escrow) => {
+          try {
+            return [escrow, (await client.getContractState(escrow)).isClaimed] as const;
+          } catch (e) {
+            // Unknown, not ready. Leaving it absent keeps the control disabled, which costs
+            // the user a wait; assuming settled would cost them a reverted transaction.
+            console.warn(`MyOffersList: could not read settlement for ${escrow}:`, e);
+            return null;
+          }
+        })
+      );
+      if (cancelled) return;
+      setSettled(Object.fromEntries(entries.filter(Boolean) as (readonly [string, boolean])[]));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [config?.rpcUrl, reserveEscrowKey]);
 
   useEffect(() => {
     if (!config?.rpcUrl || !pendingKey) return;
@@ -162,6 +216,7 @@ export default function MyOffersList({ lpAddress }: MyOffersListProps) {
                   : offer
               }
               tokenSymbol={tokenSymbol}
+              escrowSettled={offer.escrowContract ? settled[offer.escrowContract] : undefined}
               busy={busyVault === offer.vaultAddress}
               onWithdraw={() => act(offer.vaultAddress, () => withdrawOffer(offer.vaultAddress))}
               onOpen={() =>
@@ -187,6 +242,7 @@ export default function MyOffersList({ lpAddress }: MyOffersListProps) {
 function OfferRow({
   offer,
   tokenSymbol,
+  escrowSettled,
   busy,
   onWithdraw,
   onRelease,
@@ -194,6 +250,8 @@ function OfferRow({
 }: {
   offer: OfferView;
   tokenSymbol: string;
+  /** undefined = not read yet. Only `true` unlocks the release. */
+  escrowSettled?: boolean;
   busy: boolean;
   onWithdraw: () => void;
   onRelease: () => void;
@@ -201,6 +259,9 @@ function OfferRow({
 }) {
   const withdrawable = looksWithdrawable(offer);
   const hasReserve = !!offer.holdback && offer.holdback !== '0';
+  // ⚠️ ONLY `true` UNLOCKS IT. `releaseHoldback` reverts with EscrowNotSettled until the escrow
+  //    has paid out, so enabling this on an unread state trades a wait for a paid-for revert.
+  const releasable = offer.status === 'ACCEPTED' && hasReserve && escrowSettled === true;
   // A deposit that landed while the offer never opened. The money is in the vault and the
   // seller cannot see it — one relayed call fixes it, and no transfer is involved.
   const openable = needsOpening(offer);
@@ -242,7 +303,13 @@ function OfferRow({
             parties' behalf. If this prompt is missing, the reserve simply sits in the vault.
           */}
           {offer.status === 'ACCEPTED' && hasReserve && (
-            <Button type="button" size="sm" variant="outline" onClick={onRelease} disabled={busy}>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={onRelease}
+              disabled={busy || !releasable}
+            >
               {busy ? <LoadingSpinner className="w-4 h-4" /> : 'Release the reserve'}
             </Button>
           )}
@@ -269,9 +336,23 @@ function OfferRow({
 
       {offer.status === 'ACCEPTED' && hasReserve && (
         <p className="text-xs text-gray-500 dark:text-secondary-400 mt-3">
-          You are holding {displayCurrency(offer.holdback!, 'microUSDC')} {tokenSymbol} in reserve.
-          Once the escrow settles in full, releasing it returns the reserve to the seller and any
-          balance to you. Nobody can do this on your behalf.
+          You are holding {displayCurrency(offer.holdback!, 'microUSDC')} {tokenSymbol} in reserve.{' '}
+          {releasable ? (
+            <>
+              The escrow has paid out, so releasing now returns the reserve to the seller and any
+              balance to you. Nobody can do this on your behalf.
+            </>
+          ) : escrowSettled === false ? (
+            <>
+              It cannot be released until the escrow pays out — the contract refuses before then,
+              so the button stays disabled rather than spending your gas to be turned down.
+            </>
+          ) : (
+            <>
+              Checking whether the escrow has paid out. Until that is known the release stays
+              disabled, because the contract refuses it before settlement.
+            </>
+          )}
         </p>
       )}
     </div>

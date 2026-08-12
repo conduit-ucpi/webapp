@@ -133,4 +133,12 @@ export interface CreateOfferResponse {
   vaultAddress?: string | null;
   transactionHash?: string | null;
   error?: string | null;
+  /**
+   * Whether the resulting events reached contractservice's durable store.
+   *
+   * ⚠️ `false` DOES NOT MEAN THE ACTION FAILED — it landed on-chain regardless. It means the
+   *    offer will not appear in any offer book until a refresh covers its block. Say that,
+   *    rather than inviting a retry: retrying makes a second offer and commits more capital.
+   */
+  indexed?: boolean;
 }

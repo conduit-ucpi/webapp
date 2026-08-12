@@ -179,6 +179,15 @@ export class AuthManager {
           providerName: provider.getProviderName(),
           capabilities: result.capabilities
         });
+      } else if (result.cancelled) {
+        // User dismissed the connect modal without choosing. Put the page back
+        // the way it was - no error, nothing to retry.
+        this.setState({
+          isLoading: false,
+          error: null
+        });
+
+        mLog.info('AuthManager', 'Connection cancelled by user');
       } else {
         this.setState({
           isLoading: false,

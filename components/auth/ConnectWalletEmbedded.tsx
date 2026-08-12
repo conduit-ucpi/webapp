@@ -314,6 +314,11 @@ export default function ConnectWalletEmbedded({
 
             // Call onSuccess immediately - don't wait for backend auth
             onSuccess?.();
+          } else if (connectionResult.cancelled) {
+            // User closed the connect modal without choosing a wallet. The finally
+            // block below clears the busy state, which drops them back on the page
+            // they started from with the choices still in front of them.
+            mLog.info('ConnectWalletEmbedded', 'Wallet connection cancelled by user');
           } else {
             mLog.error('ConnectWalletEmbedded', 'Wallet connection failed', { error: connectionResult.error });
           }

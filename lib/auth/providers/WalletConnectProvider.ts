@@ -78,8 +78,13 @@ export class WalletConnectProvider implements UnifiedProvider {
         };
       }
 
+      if (result.cancelled) {
+        mLog.info('WalletConnectProvider', 'Connection cancelled by user');
+      }
+
       return {
         success: false,
+        cancelled: result.cancelled,
         error: result.error || 'Connection failed',
         capabilities: this.getCapabilities()
       };

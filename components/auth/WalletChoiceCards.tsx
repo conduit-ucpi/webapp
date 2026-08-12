@@ -5,18 +5,25 @@ const CARD_BUTTON =
   'text-secondary-900 dark:text-white hover:bg-secondary-50 dark:hover:bg-secondary-800 ' +
   'disabled:opacity-50 disabled:cursor-not-allowed transition-colors';
 
+/* Deliberately quiet next to the card button - this is the escape hatch for
+   people who know what a wallet connector is, not the path we steer anyone to. */
+const ADVANCED_BUTTON =
+  'text-sm font-medium text-secondary-600 dark:text-secondary-400 underline underline-offset-4 ' +
+  'hover:text-secondary-900 dark:hover:text-white ' +
+  'disabled:opacity-50 disabled:cursor-not-allowed transition-colors';
+
 interface WalletChoiceCardsProps {
-  /** Forwarded to the "connect existing wallet" path only. */
+  /** Forwarded to the "advanced wallet connection" path only. */
   autoConnect?: boolean;
-  /** Called when any of the three connect paths reports success. */
+  /** Called when either connect path reports success. */
   onSuccess?: () => void;
   className?: string;
 }
 
 /**
- * The signed-out wallet gate: "I have a crypto wallet" beside "No crypto
- * wallet?", with the three ways in (connect a wallet, skip connecting it, or
- * social/email only).
+ * The signed-out wallet gate: email/social sign-in as the way in for everyone,
+ * with "Advanced wallet connection" underneath for people who want to pick a
+ * wallet connector themselves (MetaMask, Coinbase Wallet, WalletConnect QR).
  *
  * Shared by /create (seller getting started) and /contract-pay (buyer about to
  * pay) so the two sides of a request present an identical way in. Everything
@@ -25,58 +32,40 @@ interface WalletChoiceCardsProps {
 export default function WalletChoiceCards({
   autoConnect = false,
   onSuccess,
-  className = 'mt-10 grid gap-5 sm:grid-cols-2',
+  className = 'mt-10 mx-auto w-full max-w-md',
 }: WalletChoiceCardsProps) {
   return (
     <div className={className}>
       <div className="rounded-2xl border-2 border-primary-500 bg-white dark:bg-secondary-900 p-6 flex flex-col">
         <h2 className="text-lg font-semibold text-secondary-900 dark:text-white">
-          I have a crypto wallet
+          Sign in to set up your wallet
         </h2>
-        <p className="mt-2 text-sm text-secondary-500 dark:text-secondary-400 leading-relaxed flex-1">
-          Connect an existing wallet like MetaMask or Coinbase Wallet.
+        <p className="mt-2 text-sm text-secondary-500 dark:text-secondary-400 leading-relaxed">
+          We&apos;ll create a secure wallet that only you control, or reconnect the one you
+          already have. Nothing to install.
         </p>
-        <ConnectWalletEmbedded
-          compact
-          connectionMode="wallet-only"
-          useSmartRouting={false}
-          autoConnect={autoConnect}
-          buttonText="Connect existing wallet"
-          className="mt-6"
-          buttonClassName={CARD_BUTTON}
-          onSuccess={onSuccess}
-        />
-        {/* Escape hatch for people who have a wallet but would rather not
-            connect it - same social/email path as "Continue without wallet". */}
         <ConnectWalletEmbedded
           compact
           connectionMode="social-only"
           useSmartRouting={false}
-          buttonText="Don't connect my wallet"
-          className="mt-3"
+          buttonText="Continue with email or social login"
+          className="mt-6"
           buttonClassName={CARD_BUTTON}
           onSuccess={onSuccess}
         />
       </div>
 
-      <div className="rounded-2xl border border-secondary-200 dark:border-secondary-700 bg-white dark:bg-secondary-900 p-6 flex flex-col">
-        <h2 className="text-lg font-semibold text-secondary-900 dark:text-white">
-          No crypto wallet?
-        </h2>
-        <p className="mt-2 text-sm text-secondary-500 dark:text-secondary-400 leading-relaxed flex-1">
-          Continue with email or social login &ndash; we&apos;ll create a secure wallet for you
-          automatically
-        </p>
-        <ConnectWalletEmbedded
-          compact
-          connectionMode="social-only"
-          useSmartRouting={false}
-          buttonText="Continue without wallet"
-          className="mt-6"
-          buttonClassName={CARD_BUTTON}
-          onSuccess={onSuccess}
-        />
-      </div>
+      {/* Opens the connector modal in wallet-only mode - no social/email tiles. */}
+      <ConnectWalletEmbedded
+        compact
+        connectionMode="wallet-only"
+        useSmartRouting={false}
+        autoConnect={autoConnect}
+        buttonText="Advanced wallet connection"
+        className="mt-5"
+        buttonClassName={ADVANCED_BUTTON}
+        onSuccess={onSuccess}
+      />
     </div>
   );
 }

@@ -173,7 +173,7 @@ export class ReownWalletConnectProvider {
     }
   }
 
-  async connect(): Promise<{ success: boolean; user?: any; provider?: any; error?: string }> {
+  async connect(): Promise<{ success: boolean; user?: any; provider?: any; error?: string; cancelled?: boolean }> {
     // Prevent race conditions for regular connect as well
     if (this.isConnecting) {
       console.log('🔧 ReownWalletConnect: Connection already in progress, waiting...')
@@ -585,8 +585,110 @@ export class ReownWalletConnectProvider {
           }
         }
 
+        // Closing the modal without picking anything is a cancellation, so the
+        // caller can put the page back the way it was instead of sitting on a
+        // dead "Connecting..." button until the 5 minute timeout.
+        //
+        // The subtlety this has to respect is the one checkConnection() warns
+        // about: social login legitimately closes the modal mid-flow while the
+        // OAuth leg completes, and that close must NOT count as a cancel. So we
+        // key off whether the user actually chose something rather than off the
+        // connection mode - a close after SOCIAL_LOGIN_STARTED keeps waiting,
+        // a close with nothing chosen cancels.
+        //
+        // Email/OTP is deliberately absent from this list: that flow keeps the
+        // modal open the whole way through, so closing it really is a cancel.
+        const SOCIAL_CHOICE_EVENTS = new Set([
+          'CONNECT_SUCCESS',
+          'SOCIAL_LOGIN_STARTED',
+          'SOCIAL_LOGIN_REQUEST_USER_DATA',
+          'SOCIAL_LOGIN_SUCCESS'
+        ])
+        // Backing out of a social attempt drops the user back on the picker, so
+        // the next close is a cancel again.
+        const CHOICE_RESET_EVENTS = new Set([
+          'SOCIAL_LOGIN_CANCELED',
+          'SOCIAL_LOGIN_ERROR',
+          'CONNECT_ERROR'
+        ])
+        let socialChoiceMade = false
+        let walletChoiceMade = false
+
+        // Social login blocks the cancel on every platform - the modal closing
+        // is part of its OAuth leg. Picking a wallet only blocks it on mobile,
+        // where the modal closes as the wallet app takes over; on desktop the
+        // flow stays put on a QR screen, so closing that is the user giving up.
+        const choiceBlocksCancel = () =>
+          socialChoiceMade || (isMobile && (walletChoiceMade || hasInitiatedConnection))
+
+        const subscribeToModalDismissal = () => {
+          if (typeof this.appKit.subscribeState !== 'function') return
+
+          // subscribeEvents hands back the whole EventsController state; the
+          // event name lives at state.data.event.
+          if (typeof this.appKit.subscribeEvents === 'function') {
+            const unsubscribeEvents = this.appKit.subscribeEvents((state: any) => {
+              const name = state?.data?.event
+              if (!name) return
+              if (SOCIAL_CHOICE_EVENTS.has(name)) {
+                socialChoiceMade = true
+              } else if (name === 'SELECT_WALLET') {
+                walletChoiceMade = true
+              } else if (CHOICE_RESET_EVENTS.has(name)) {
+                socialChoiceMade = false
+                walletChoiceMade = false
+              }
+            })
+            if (unsubscribeEvents) {
+              cleanupFunctions.push(() => unsubscribeEvents())
+            }
+          }
+
+          // Seed from current state: open() has already been awaited above, but
+          // read it rather than assume, so a close can only follow a real open.
+          let sawOpen = false
+          try {
+            sawOpen = !!this.appKit.getState?.().open
+          } catch {
+            sawOpen = true
+          }
+
+          const unsubscribe = this.appKit.subscribeState((state: any) => {
+            if (state?.open) {
+              sawOpen = true
+              return
+            }
+            if (!sawOpen || isResolved) return
+
+            // The success path closes the modal itself before resolving, so give
+            // that a beat to land before calling this a cancellation.
+            setTimeout(() => {
+              if (isResolved) return
+              // Something was chosen and the connection is still in flight.
+              if (choiceBlocksCancel()) return
+              try {
+                if (this.appKit.getCaipAddress()) return
+              } catch {
+                // Fall through - no address means nothing to keep waiting for.
+              }
+
+              console.log('🔧 ReownWalletConnect: Modal dismissed without choosing - cancelling')
+              resolveOnce({
+                success: false,
+                cancelled: true,
+                error: 'Connection cancelled'
+              })
+            }, 500)
+          })
+
+          if (unsubscribe) {
+            cleanupFunctions.push(() => unsubscribe())
+          }
+        }
+
         // Set up event subscriptions
         subscribeToEvents()
+        subscribeToModalDismissal()
 
         // Start checking
         checkConnection()

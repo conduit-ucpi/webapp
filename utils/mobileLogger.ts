@@ -13,12 +13,28 @@ interface LogEntry {
   url?: string;
 }
 
+/**
+ * Build-time switch for the whole mobile debug pipeline.
+ *
+ * OFF unless NEXT_PUBLIC_MOBILE_DEBUG_LOGGING is exactly 'true'. Production
+ * should not be POSTing debug logs to /api/debug/mobile-logs on every mobile
+ * session, nor monkey-patching console.
+ *
+ * Next inlines NEXT_PUBLIC_* at build time, and this is compared as a whole
+ * literal expression rather than destructured, so when it is off the guarded
+ * branches are statically false and the minifier drops them from the bundle.
+ * That means it must be set at BUILD time - changing it at runtime does
+ * nothing.
+ */
+export const MOBILE_DEBUG_ENABLED = process.env.NEXT_PUBLIC_MOBILE_DEBUG_LOGGING === 'true';
+
 class MobileLogger {
   private logs: LogEntry[] = [];
   private isFlushScheduled = false;
   private maxLogs = 50;
 
   constructor() {
+    if (!MOBILE_DEBUG_ENABLED) return; // no timer when the pipeline is off
     // Auto-flush logs periodically
     setInterval(() => {
       this.flush();
@@ -86,6 +102,12 @@ class MobileLogger {
   }
 
   async flush() {
+    if (!MOBILE_DEBUG_ENABLED) {
+      this.logs = [];
+      this.isFlushScheduled = false;
+      return;
+    }
+
     if (this.logs.length === 0) {
       this.isFlushScheduled = false;
       return;
@@ -148,31 +170,37 @@ export const isMobile = () => {
   return typeof navigator !== 'undefined' && /Mobile|Android|iPhone|iPad/.test(navigator.userAgent);
 };
 
-// Enhanced logging functions that only send to backend on mobile
+/**
+ * Ships to the backend only when the build has debug logging enabled AND we are
+ * on mobile. Otherwise these stay plain console calls, so call sites keep
+ * working and nothing leaves the device.
+ */
+const shipsToBackend = () => MOBILE_DEBUG_ENABLED && isMobile();
+
 export const mLog = {
   debug: (component: string, message: string, data?: any) => {
-    if (isMobile()) {
+    if (shipsToBackend()) {
       mobileLogger.debug(component, message, data);
     } else {
       console.log(`[${component}] ${message}`, data);
     }
   },
   info: (component: string, message: string, data?: any) => {
-    if (isMobile()) {
+    if (shipsToBackend()) {
       mobileLogger.info(component, message, data);
     } else {
       console.info(`[${component}] ${message}`, data);
     }
   },
   warn: (component: string, message: string, data?: any) => {
-    if (isMobile()) {
+    if (shipsToBackend()) {
       mobileLogger.warn(component, message, data);
     } else {
       console.warn(`[${component}] ${message}`, data);
     }
   },
   error: (component: string, message: string, data?: any) => {
-    if (isMobile()) {
+    if (shipsToBackend()) {
       mobileLogger.error(component, message, data);
     } else {
       console.error(`[${component}] ${message}`, data);
@@ -180,5 +208,85 @@ export const mLog = {
   },
   forceFlush: () => mobileLogger.forceFlush()
 };
+
+/**
+ * Mirror console output into the mobile log pipeline.
+ *
+ * Without this, only explicit mLog.* calls reach the backend, so anything a
+ * dependency logs itself is invisible on a phone - which is exactly where the
+ * interesting failures are. AppKit reports SIWX failures via
+ * console.error('SIWXUtil:initializeIfEnabled', err) and then disconnects the
+ * wallet, and none of that was reachable from a device.
+ *
+ * warn/error are always captured. log/info are captured only when they match
+ * NOISE_FILTER, because the buffer holds 50 entries and an unfiltered mirror
+ * would evict the useful lines before a flush.
+ *
+ * Requires NEXT_PUBLIC_MOBILE_DEBUG_LOGGING=true at BUILD time. Off by default,
+ * so production never patches console.
+ */
+const NOISE_FILTER = /SIWX|EmbeddedOnlySIWX|ReownWalletConnect|AppKit|WalletConnect|MetaMask|eip6963/i;
+
+let consoleCaptured = false;
+
+export function captureConsoleForMobile() {
+  if (!MOBILE_DEBUG_ENABLED) return;
+  if (consoleCaptured) return;
+  if (typeof window === 'undefined' || !isMobile()) return;
+
+  consoleCaptured = true;
+
+  /* addLog() mirrors back out to console.*, so without this guard the patched
+     methods would call themselves forever. */
+  let inside = false;
+
+  const describe = (arg: unknown): string => {
+    if (typeof arg === 'string') return arg;
+    if (arg instanceof Error) return `${arg.name}: ${arg.message}\n${arg.stack ?? '(no stack)'}`;
+    try {
+      return JSON.stringify(arg);
+    } catch {
+      return String(arg);
+    }
+  };
+
+  (['log', 'info', 'warn', 'error'] as const).forEach(level => {
+    const original = console[level].bind(console);
+
+    console[level] = (...args: unknown[]) => {
+      original(...args);
+      if (inside) return;
+
+      try {
+        const text = args.map(describe).join(' ');
+        const isProblem = level === 'warn' || level === 'error';
+        if (!isProblem && !NOISE_FILTER.test(text)) return;
+
+        inside = true;
+        mobileLogger[isProblem ? level : 'debug']('console', text.slice(0, 2000));
+      } catch {
+        /* never let logging break the page */
+      } finally {
+        inside = false;
+      }
+    };
+  });
+
+  /* Errors that never reach console.error - unhandled throws and rejected
+     promises. An AppKit SIWX failure can surface as either. */
+  window.addEventListener('error', event => {
+    mobileLogger.error('window.onerror', event.message, {
+      source: `${event.filename}:${event.lineno}:${event.colno}`,
+      stack: event.error?.stack
+    });
+  });
+
+  window.addEventListener('unhandledrejection', event => {
+    const reason: any = event.reason;
+    mobileLogger.error('unhandledrejection', describe(reason), { stack: reason?.stack });
+  });
+
+  mobileLogger.info('mobileLogger', 'Console capture enabled');
+}
 
 export default mobileLogger;

@@ -181,4 +181,83 @@ export const mLog = {
   forceFlush: () => mobileLogger.forceFlush()
 };
 
+/**
+ * Mirror console output into the mobile log pipeline.
+ *
+ * Without this, only explicit mLog.* calls reach the backend, so anything a
+ * dependency logs itself is invisible on a phone - which is exactly where the
+ * interesting failures are. AppKit reports SIWX failures via
+ * console.error('SIWXUtil:initializeIfEnabled', err) and then disconnects the
+ * wallet, and none of that was reachable from a device.
+ *
+ * warn/error are always captured. log/info are captured only when they match
+ * NOISE_FILTER, because the buffer holds 50 entries and an unfiltered mirror
+ * would evict the useful lines before a flush.
+ *
+ * Set NEXT_PUBLIC_MOBILE_CONSOLE_CAPTURE=false to disable.
+ */
+const NOISE_FILTER = /SIWX|EmbeddedOnlySIWX|ReownWalletConnect|AppKit|WalletConnect|MetaMask|eip6963/i;
+
+let consoleCaptured = false;
+
+export function captureConsoleForMobile() {
+  if (consoleCaptured) return;
+  if (typeof window === 'undefined' || !isMobile()) return;
+  if (process.env.NEXT_PUBLIC_MOBILE_CONSOLE_CAPTURE === 'false') return;
+
+  consoleCaptured = true;
+
+  /* addLog() mirrors back out to console.*, so without this guard the patched
+     methods would call themselves forever. */
+  let inside = false;
+
+  const describe = (arg: unknown): string => {
+    if (typeof arg === 'string') return arg;
+    if (arg instanceof Error) return `${arg.name}: ${arg.message}\n${arg.stack ?? '(no stack)'}`;
+    try {
+      return JSON.stringify(arg);
+    } catch {
+      return String(arg);
+    }
+  };
+
+  (['log', 'info', 'warn', 'error'] as const).forEach(level => {
+    const original = console[level].bind(console);
+
+    console[level] = (...args: unknown[]) => {
+      original(...args);
+      if (inside) return;
+
+      try {
+        const text = args.map(describe).join(' ');
+        const isProblem = level === 'warn' || level === 'error';
+        if (!isProblem && !NOISE_FILTER.test(text)) return;
+
+        inside = true;
+        mobileLogger[isProblem ? level : 'debug']('console', text.slice(0, 2000));
+      } catch {
+        /* never let logging break the page */
+      } finally {
+        inside = false;
+      }
+    };
+  });
+
+  /* Errors that never reach console.error - unhandled throws and rejected
+     promises. An AppKit SIWX failure can surface as either. */
+  window.addEventListener('error', event => {
+    mobileLogger.error('window.onerror', event.message, {
+      source: `${event.filename}:${event.lineno}:${event.colno}`,
+      stack: event.error?.stack
+    });
+  });
+
+  window.addEventListener('unhandledrejection', event => {
+    const reason: any = event.reason;
+    mobileLogger.error('unhandledrejection', describe(reason), { stack: reason?.stack });
+  });
+
+  mobileLogger.info('mobileLogger', 'Console capture enabled');
+}
+
 export default mobileLogger;

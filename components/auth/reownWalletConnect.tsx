@@ -252,10 +252,6 @@ export class ReownWalletConnectProvider {
       return { success: false, error: 'Connection already in progress' }
     }
 
-    // Declared out here so the finally block can restore it even if the try
-    // throws before the patch is applied.
-    let originalWindowOpen: typeof window.open | null = null
-
     try {
       console.log('🔧 ReownWalletConnect: Starting connection process...')
 
@@ -352,30 +348,6 @@ export class ReownWalletConnectProvider {
         }
       }
 
-      /* Capture what actually gets deeplinked to the wallet.
-         AppKit hands the wallet a URL via window.open. If that URL carries no
-         wc: pairing URI, MetaMask simply opens with nothing to look up - which
-         looks identical to a delivery failure but has a completely different
-         cause. There is no other way to see this from a phone, and with
-         MetaMask's in-app browser gone the deeplink is the only route on
-         Android, so it is worth knowing exactly what is sent.
-         Restored in the connect promise's cleanup. */
-      originalWindowOpen = window.open
-      const nativeWindowOpen = originalWindowOpen
-      window.open = function (this: Window, url?: string | URL, ...rest: any[]) {
-        try {
-          const href = typeof url === 'string' ? url : url?.toString() ?? '(none)'
-          console.log('🔧 ReownWalletConnect: deeplink opened', {
-            href: href.slice(0, 300),
-            carriesPairingUri: href.includes('wc%3A') || href.includes('wc:'),
-            hasRelayParam: href.includes('relay-protocol') || href.includes('relay-protocol'.replace('-', '%2D'))
-          })
-        } catch {
-          /* never break the open() call over logging */
-        }
-        return nativeWindowOpen.call(this, url as any, ...rest)
-      } as typeof window.open
-
       // Open the connection modal
       console.log('🔧 ReownWalletConnect: Opening connection modal...')
       await this.appKit.open()
@@ -396,7 +368,6 @@ export class ReownWalletConnectProvider {
             isResolved = true
 
             // Clean up all listeners and the poll timer
-            if (originalWindowOpen) window.open = originalWindowOpen
             document.removeEventListener('visibilitychange', handleVisibilityChange)
             if (isMobile) {
               window.removeEventListener('focus', handleFocus)
@@ -893,10 +864,6 @@ export class ReownWalletConnectProvider {
         error: error instanceof Error ? error.message : 'Unknown connection error'
       }
     } finally {
-      /* Backstop for the window.open patch. resolveOnce() restores it on the
-         normal paths, but an early throw (appKit.open() failing) never reaches
-         that, and leaving a patched global behind would outlive the attempt. */
-      if (originalWindowOpen) window.open = originalWindowOpen
       this.isConnecting = false
     }
   }

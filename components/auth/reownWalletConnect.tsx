@@ -422,13 +422,26 @@ export class ReownWalletConnectProvider {
               pairings: provider?.client?.core?.pairing?.getPairings?.().length ?? 'n/a'
             })
 
-            if (!relayer.connected && typeof relayer.restartTransport === 'function') {
-              console.log(`🔧 ReownWalletConnect: [${trigger}] relay is down - restarting transport`)
-              await relayer.restartTransport()
-              console.log(`🔧 ReownWalletConnect: [${trigger}] transport restarted`, {
-                relayerConnected: relayer.connected
-              })
+            /* Only step in when nothing else is trying.
+               relayer.connecting means WalletConnect's own reconnect is already
+               in flight; restartTransport() closes the socket and reopens it,
+               which aborts that attempt and restarts the clock. Firing it on
+               every focus/visibility event - and both fire together on Android -
+               produces competing reconnect loops that cancel each other, so the
+               transport can never settle. Leave an in-progress reconnect alone. */
+            if (relayer.connected) return
+            if (relayer.connecting) {
+              console.log(`🔧 ReownWalletConnect: [${trigger}] reconnect already in flight - leaving it alone`)
+              return
             }
+            if (typeof relayer.restartTransport !== 'function') return
+
+            console.log(`🔧 ReownWalletConnect: [${trigger}] relay is down and idle - restarting transport`)
+            await relayer.restartTransport()
+            console.log(`🔧 ReownWalletConnect: [${trigger}] transport restarted`, {
+              relayerConnected: relayer.connected,
+              relayerConnecting: relayer.connecting
+            })
           } catch (error) {
             console.warn(`🔧 ReownWalletConnect: [${trigger}] relay revive failed`, error)
           }

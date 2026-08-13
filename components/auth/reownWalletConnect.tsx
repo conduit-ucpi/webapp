@@ -321,14 +321,12 @@ export class ReownWalletConnectProvider {
           if (!isResolved) {
             isResolved = true
 
-            // Clean up all listeners and intervals
+            // Clean up all listeners and the poll timer
             document.removeEventListener('visibilitychange', handleVisibilityChange)
             if (isMobile) {
               window.removeEventListener('focus', handleFocus)
-              if (mobilePollingInterval) {
-                clearInterval(mobilePollingInterval)
-              }
             }
+            stopPolling()
 
             // Execute all cleanup functions
             cleanupFunctions.forEach(cleanup => {
@@ -377,9 +375,35 @@ export class ReownWalletConnectProvider {
           window.addEventListener('focus', handleFocus)
         }
 
-        // Mobile-specific: Additional polling when WalletConnect modal is open
-        // Will be started only after connection is initiated
-        let mobilePollingInterval: any = null
+        /* ONE poll chain, never more.
+           checkConnection() re-arms itself on every miss, and it is also called
+           directly from the visibility/focus handlers and from AppKit and
+           provider events. Each of those used to start its own self-scheduling
+           chain, and a 2s mobile interval span­ned yet another chain per tick,
+           so concurrent pollers grew without bound - burning through
+           maxAttempts in a fraction of the intended window and hammering
+           AppKit while it was trying to settle the session.
+
+           schedulePoll() cancels any pending tick before arming the next, so
+           however many callers ask for a check there is only ever one timer
+           outstanding, and maxAttempts once again means what the constant says. */
+        let pollTimer: ReturnType<typeof setTimeout> | null = null
+
+        const schedulePoll = (delayMs: number) => {
+          if (isResolved) return
+          if (pollTimer) clearTimeout(pollTimer)
+          pollTimer = setTimeout(() => {
+            pollTimer = null
+            checkConnection()
+          }, delayMs)
+        }
+
+        const stopPolling = () => {
+          if (pollTimer) {
+            clearTimeout(pollTimer)
+            pollTimer = null
+          }
+        }
 
         const checkConnection = async () => {
           if (isResolved) return // Don't continue if already resolved
@@ -410,18 +434,8 @@ export class ReownWalletConnectProvider {
             if (walletProvider && !hasInitiatedConnection) {
               console.log('🔧 ReownWalletConnect: Wallet provider detected, connection initiated')
               hasInitiatedConnection = true
-
-              // Start mobile polling now that connection is initiated
-              if (isMobile && !mobilePollingInterval) {
-                console.log('🔧 ReownWalletConnect: Starting mobile polling after connection initiation...')
-                mobilePollingInterval = setInterval(() => {
-                  if (!isResolved) {
-                    checkConnection()
-                  } else if (mobilePollingInterval) {
-                    clearInterval(mobilePollingInterval)
-                  }
-                }, 2000) // MOBILE FIX: Check every 2000ms to let WalletConnect sync naturally
-              }
+              // No separate mobile interval - the single poll chain below already
+              // re-checks every second on every platform.
             }
 
             if (caipAddress) {
@@ -511,11 +525,11 @@ export class ReownWalletConnectProvider {
             } else {
               // MOBILE FIX: Slower polling to let WalletConnect sync naturally
               // Check again in 1000ms instead of 500ms to reduce interference
-              setTimeout(checkConnection, 1000)
+              schedulePoll(1000)
             }
           } catch (error) {
             console.log('🔧 ReownWalletConnect: Waiting for connection...', error)
-            setTimeout(checkConnection, 1000)
+            schedulePoll(1000)
           }
         }
 
@@ -536,18 +550,6 @@ export class ReownWalletConnectProvider {
                   console.log('🔧 ReownWalletConnect: Connection initiated event detected')
                   if (!hasInitiatedConnection) {
                     hasInitiatedConnection = true
-
-                    // Start mobile polling now that connection is initiated
-                    if (isMobile && !mobilePollingInterval) {
-                      console.log('🔧 ReownWalletConnect: Starting mobile polling after wallet selection...')
-                      mobilePollingInterval = setInterval(() => {
-                        if (!isResolved) {
-                          checkConnection()
-                        } else if (mobilePollingInterval) {
-                          clearInterval(mobilePollingInterval)
-                        }
-                      }, 2000) // MOBILE FIX: Check every 2000ms to let WalletConnect sync naturally
-                    }
                   }
                 }
 
@@ -577,18 +579,6 @@ export class ReownWalletConnectProvider {
                 if (!hasInitiatedConnection) {
                   console.log('🔧 ReownWalletConnect: Connection initiated via provider event')
                   hasInitiatedConnection = true
-
-                  // Start mobile polling now that connection is initiated
-                  if (isMobile && !mobilePollingInterval) {
-                    console.log('🔧 ReownWalletConnect: Starting mobile polling after provider event...')
-                    mobilePollingInterval = setInterval(() => {
-                      if (!isResolved) {
-                        checkConnection()
-                      } else if (mobilePollingInterval) {
-                        clearInterval(mobilePollingInterval)
-                      }
-                    }, 2000) // MOBILE FIX: Check every 2000ms to let WalletConnect sync naturally
-                  }
                 }
                 checkConnection()
               }

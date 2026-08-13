@@ -13,12 +13,28 @@ interface LogEntry {
   url?: string;
 }
 
+/**
+ * Build-time switch for the whole mobile debug pipeline.
+ *
+ * OFF unless NEXT_PUBLIC_MOBILE_DEBUG_LOGGING is exactly 'true'. Production
+ * should not be POSTing debug logs to /api/debug/mobile-logs on every mobile
+ * session, nor monkey-patching console.
+ *
+ * Next inlines NEXT_PUBLIC_* at build time, and this is compared as a whole
+ * literal expression rather than destructured, so when it is off the guarded
+ * branches are statically false and the minifier drops them from the bundle.
+ * That means it must be set at BUILD time - changing it at runtime does
+ * nothing.
+ */
+export const MOBILE_DEBUG_ENABLED = process.env.NEXT_PUBLIC_MOBILE_DEBUG_LOGGING === 'true';
+
 class MobileLogger {
   private logs: LogEntry[] = [];
   private isFlushScheduled = false;
   private maxLogs = 50;
 
   constructor() {
+    if (!MOBILE_DEBUG_ENABLED) return; // no timer when the pipeline is off
     // Auto-flush logs periodically
     setInterval(() => {
       this.flush();
@@ -86,6 +102,12 @@ class MobileLogger {
   }
 
   async flush() {
+    if (!MOBILE_DEBUG_ENABLED) {
+      this.logs = [];
+      this.isFlushScheduled = false;
+      return;
+    }
+
     if (this.logs.length === 0) {
       this.isFlushScheduled = false;
       return;
@@ -148,31 +170,37 @@ export const isMobile = () => {
   return typeof navigator !== 'undefined' && /Mobile|Android|iPhone|iPad/.test(navigator.userAgent);
 };
 
-// Enhanced logging functions that only send to backend on mobile
+/**
+ * Ships to the backend only when the build has debug logging enabled AND we are
+ * on mobile. Otherwise these stay plain console calls, so call sites keep
+ * working and nothing leaves the device.
+ */
+const shipsToBackend = () => MOBILE_DEBUG_ENABLED && isMobile();
+
 export const mLog = {
   debug: (component: string, message: string, data?: any) => {
-    if (isMobile()) {
+    if (shipsToBackend()) {
       mobileLogger.debug(component, message, data);
     } else {
       console.log(`[${component}] ${message}`, data);
     }
   },
   info: (component: string, message: string, data?: any) => {
-    if (isMobile()) {
+    if (shipsToBackend()) {
       mobileLogger.info(component, message, data);
     } else {
       console.info(`[${component}] ${message}`, data);
     }
   },
   warn: (component: string, message: string, data?: any) => {
-    if (isMobile()) {
+    if (shipsToBackend()) {
       mobileLogger.warn(component, message, data);
     } else {
       console.warn(`[${component}] ${message}`, data);
     }
   },
   error: (component: string, message: string, data?: any) => {
-    if (isMobile()) {
+    if (shipsToBackend()) {
       mobileLogger.error(component, message, data);
     } else {
       console.error(`[${component}] ${message}`, data);
@@ -194,16 +222,17 @@ export const mLog = {
  * NOISE_FILTER, because the buffer holds 50 entries and an unfiltered mirror
  * would evict the useful lines before a flush.
  *
- * Set NEXT_PUBLIC_MOBILE_CONSOLE_CAPTURE=false to disable.
+ * Requires NEXT_PUBLIC_MOBILE_DEBUG_LOGGING=true at BUILD time. Off by default,
+ * so production never patches console.
  */
 const NOISE_FILTER = /SIWX|EmbeddedOnlySIWX|ReownWalletConnect|AppKit|WalletConnect|MetaMask|eip6963/i;
 
 let consoleCaptured = false;
 
 export function captureConsoleForMobile() {
+  if (!MOBILE_DEBUG_ENABLED) return;
   if (consoleCaptured) return;
   if (typeof window === 'undefined' || !isMobile()) return;
-  if (process.env.NEXT_PUBLIC_MOBILE_CONSOLE_CAPTURE === 'false') return;
 
   consoleCaptured = true;
 

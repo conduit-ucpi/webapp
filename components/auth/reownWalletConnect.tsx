@@ -31,6 +31,9 @@ export class ReownWalletConnectProvider {
      check-then-act gap is wide enough for two createAppKit() calls to start
      before either assigns this.appKit. */
   private initPromise: Promise<boolean> | null = null
+  /* Kept so applySiwxForMode() can put it back after a wallet-only connect
+     cleared it. Built once in runInitialize(). */
+  private siwxConfig: any = undefined
 
   getLastAuthFailure(): AuthFailure | null {
     return this.lastAuthFailure
@@ -60,7 +63,41 @@ export class ReownWalletConnectProvider {
       const features = this.getFeaturesForMode()
       console.log(`🔧 ReownWalletConnect: Updating AppKit features for mode: ${mode}`, features)
       this.appKit.updateFeatures(features)
+      this.applySiwxForMode()
     }
+  }
+
+  /**
+   * SIWX has to be OFF for external wallets, and the switch has to happen
+   * before connect() rather than inside the SIWX config.
+   *
+   * AppKit's WalletConnectConnector.connectWalletConnect() does:
+   *
+   *     const isAuthenticated = await this.authenticate()   // one-click auth
+   *     if (!isAuthenticated) { await this.provider.connect(...) }   // plain pairing
+   *
+   * and authenticate() -> SIWXUtil.universalProviderAuthenticate() bails with
+   * `return false` when there is no siwx configured. That false is the path we
+   * want: a normal WalletConnect pairing with no signature at connect time,
+   * which is exactly the "external wallets use lazy auth" design.
+   *
+   * The trap is that universalProviderAuthenticate calls siwx.createMessage()
+   * WITHOUT a try/catch, straight after that gate. So EmbeddedOnlySIWX throwing
+   * for an external wallet does not fall through to plain pairing - the
+   * exception escapes connectWalletConnect() entirely, AppKit reports
+   * CONNECT_ERROR, and the connection dies ~14ms after the user picks their
+   * wallet, before the deeplink even opens.
+   *
+   * Clearing siwx via the public updateOptions() reaches the `return false`
+   * gate instead, so the throw is never reached.
+   */
+  private applySiwxForMode() {
+    if (!this.appKit) return
+    const siwx = this.connectionMode === 'wallet-only' ? undefined : this.siwxConfig
+    console.log(
+      `🔧 ReownWalletConnect: SIWX ${siwx ? 'enabled' : 'disabled'} for mode: ${this.connectionMode}`
+    )
+    this.appKit.updateOptions({ siwx })
   }
 
   private getFeaturesForMode(): Record<string, any> {
@@ -165,6 +202,12 @@ export class ReownWalletConnectProvider {
       mLog.info('ReownWalletConnect', '========================================')
 
       const siwxConfig = embeddedSiwxEnabled ? new EmbeddedOnlySIWX() : undefined
+      this.siwxConfig = siwxConfig
+
+      /* If the caller already chose wallet-only before AppKit existed (the very
+         first connect races setConnectionMode against lazy init), construct
+         without SIWX rather than relying on the post-hoc updateOptions call. */
+      const siwxForMode = this.connectionMode === 'wallet-only' ? undefined : siwxConfig
 
       // Create AppKit instance
       console.log('🔧 ReownWalletConnect: Creating AppKit...')
@@ -176,7 +219,10 @@ export class ReownWalletConnectProvider {
         networks: networks as [any, ...any[]], // Type assertion to fix tuple requirement
         defaultNetwork: networks[0], // CRITICAL: Set default network from env variable
         projectId,
-        siwx: siwxConfig, // Enable SIWX on desktop only (undefined on mobile = disabled)
+        // SIWX runs for embedded (email/social) connects only. External wallets
+        // must have it cleared or AppKit's one-click auth throws - see
+        // applySiwxForMode(). Gated by NEXT_PUBLIC_EMBEDDED_SIWX, not by device.
+        siwx: siwxForMode,
         defaultAccountTypes: {
           eip155: 'eoa' // Force EOA for standard ECDSA signatures (backend compatibility)
         },

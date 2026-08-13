@@ -401,6 +401,12 @@ export class ReownWalletConnectProvider {
          * getUniversalProvider() is a public AppKit method; the relayer beneath it
          * is not, hence the defensive access.
          */
+        /* How long to let WalletConnect's own reconnect run before overriding it.
+           A healthy reopen lands well inside this; the stuck state observed on
+           Android sat at connecting:true for 80s+ without progressing. */
+        const STUCK_RECONNECT_MS = 8000
+        let connectingSince: number | null = null
+
         const reviveRelayIfDropped = async (trigger: string) => {
           try {
             // getUniversalProvider() returns a Promise - without the await this
@@ -422,21 +428,41 @@ export class ReownWalletConnectProvider {
               pairings: provider?.client?.core?.pairing?.getPairings?.().length ?? 'n/a'
             })
 
-            /* Only step in when nothing else is trying.
-               relayer.connecting means WalletConnect's own reconnect is already
-               in flight; restartTransport() closes the socket and reopens it,
-               which aborts that attempt and restarts the clock. Firing it on
-               every focus/visibility event - and both fire together on Android -
-               produces competing reconnect loops that cancel each other, so the
-               transport can never settle. Leave an in-progress reconnect alone. */
-            if (relayer.connected) return
-            if (relayer.connecting) {
-              console.log(`🔧 ReownWalletConnect: [${trigger}] reconnect already in flight - leaving it alone`)
+            if (relayer.connected) {
+              connectingSince = null
               return
             }
+
+            /* Two failure modes, opposite remedies.
+               Barging in on a healthy reconnect breaks it: restartTransport()
+               closes and reopens the socket, aborting the in-flight attempt and
+               restarting the clock. focus and visibility both fire on Android,
+               so that produced competing loops that cancelled each other.
+               But standing back unconditionally is no better - observed on
+               Android Chrome, WalletConnect's own reconnect can sit at
+               connecting:true indefinitely (80s+, no error, no progress) after
+               the tab is suspended, and then nobody ever recovers it.
+               So: give its own attempt a grace period, then take over. */
+            if (relayer.connecting) {
+              const now = Date.now()
+              if (connectingSince === null) connectingSince = now
+              const stuckFor = now - connectingSince
+
+              if (stuckFor < STUCK_RECONNECT_MS) {
+                console.log(
+                  `🔧 ReownWalletConnect: [${trigger}] reconnect in flight for ${stuckFor}ms - leaving it alone`
+                )
+                return
+              }
+              console.log(
+                `🔧 ReownWalletConnect: [${trigger}] reconnect stuck for ${stuckFor}ms - taking over`
+              )
+            }
+
             if (typeof relayer.restartTransport !== 'function') return
 
-            console.log(`🔧 ReownWalletConnect: [${trigger}] relay is down and idle - restarting transport`)
+            console.log(`🔧 ReownWalletConnect: [${trigger}] restarting transport`)
+            connectingSince = null
             await relayer.restartTransport()
             console.log(`🔧 ReownWalletConnect: [${trigger}] transport restarted`, {
               relayerConnected: relayer.connected,
@@ -631,6 +657,13 @@ export class ReownWalletConnectProvider {
                 provider: walletProvider
               })
             } else {
+              /* Watch the relay from the poll loop too, not just on
+                 focus/visibility - otherwise a transport that dies while the
+                 user sits in the wallet is only noticed if they happen to
+                 switch back and forth. Every 5th tick is roughly every 5s. */
+              if (checkAttempts % 5 === 0) {
+                void reviveRelayIfDropped('poll')
+              }
               // MOBILE FIX: Slower polling to let WalletConnect sync naturally
               // Check again in 1000ms instead of 500ms to reduce interference
               schedulePoll(1000)

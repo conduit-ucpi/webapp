@@ -387,11 +387,59 @@ export class ReownWalletConnectProvider {
           }
         }
 
+        /**
+         * Android/iOS suspend a backgrounded tab, which kills the WalletConnect
+         * relay WebSocket. The wallet still publishes its approval, but with the
+         * socket down nothing is subscribed to receive it, and universal-provider
+         * does not always re-subscribe by itself when the tab comes back - so the
+         * dapp waits forever for a message that was delivered while it was asleep.
+         *
+         * Reports the transport state on every return to the foreground, and
+         * restarts it when it is down. Restarting a healthy transport is a no-op,
+         * so this is safe to run on every focus.
+         *
+         * getUniversalProvider() is a public AppKit method; the relayer beneath it
+         * is not, hence the defensive access.
+         */
+        const reviveRelayIfDropped = async (trigger: string) => {
+          try {
+            // getUniversalProvider() returns a Promise - without the await this
+            // reads .client off a Promise and silently finds nothing.
+            const provider: any = await this.appKit?.getUniversalProvider?.()
+            const relayer: any = provider?.client?.core?.relayer
+            if (!relayer) {
+              console.log(`🔧 ReownWalletConnect: [${trigger}] no relayer available yet`, {
+                hasProvider: Boolean(provider)
+              })
+              return
+            }
+
+            console.log(`🔧 ReownWalletConnect: [${trigger}] relay state`, {
+              relayerConnected: relayer.connected,
+              relayerConnecting: relayer.connecting,
+              transportExplicitlyClosed: relayer.transportExplicitlyClosed,
+              hasSession: Boolean(provider?.session),
+              pairings: provider?.client?.core?.pairing?.getPairings?.().length ?? 'n/a'
+            })
+
+            if (!relayer.connected && typeof relayer.restartTransport === 'function') {
+              console.log(`🔧 ReownWalletConnect: [${trigger}] relay is down - restarting transport`)
+              await relayer.restartTransport()
+              console.log(`🔧 ReownWalletConnect: [${trigger}] transport restarted`, {
+                relayerConnected: relayer.connected
+              })
+            }
+          } catch (error) {
+            console.warn(`🔧 ReownWalletConnect: [${trigger}] relay revive failed`, error)
+          }
+        }
+
         // Add visibility change listener to detect when user returns from wallet app
         // SOCIAL LOGIN FIX: Give WalletConnect plenty of time to process OAuth callbacks
         const handleVisibilityChange = () => {
           if (document.visibilityState === 'visible' && !isResolved) {
             console.log('🔧 ReownWalletConnect: App became visible, giving WalletConnect time to process OAuth...')
+            void reviveRelayIfDropped('visibility')
             // Give WalletConnect time to exchange OAuth tokens and establish session
             setTimeout(() => {
               if (!isResolved) {
@@ -408,6 +456,7 @@ export class ReownWalletConnectProvider {
         const handleFocus = () => {
           if (!isResolved) {
             console.log('🔧 ReownWalletConnect: Window focused, giving WalletConnect time to process OAuth...')
+            void reviveRelayIfDropped('focus')
             // Give WalletConnect time to exchange OAuth tokens and establish session
             setTimeout(() => {
               if (!isResolved) {

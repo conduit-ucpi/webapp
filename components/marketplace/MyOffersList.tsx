@@ -2,17 +2,74 @@ import { useEffect, useMemo, useState } from 'react';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import EmptyState from '@/components/ui/EmptyState';
-import { useLpOffers, useRefreshFromChain } from '@/hooks/useMarketplaceData';
+import {
+  useEscrowStates,
+  useLpOffers,
+  useRefreshFromChain,
+  type EscrowState
+} from '@/hooks/useMarketplaceData';
 import { useMarketplaceActions } from '@/hooks/useMarketplaceActions';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { RpcClient } from '@/lib/rpc/RpcClient';
 import { displayCurrency } from '@/utils/currency';
 import { formatTimestamp } from '@/utils/datetime';
 import { hoursUntil, looksWithdrawable, needsOpening, offerStatusLabel } from '@/utils/marketplace';
-import type { OfferView } from '@/types/marketplace';
+import type { OfferStatus, OfferView } from '@/types/marketplace';
 
 interface MyOffersListProps {
   lpAddress?: string;
+}
+
+/**
+ * Statuses in which the LP actually bought the cashflow.
+ *
+ * ⚠️ RELEASED BELONGS HERE. It is not a separate kind of offer - it is an ACCEPTED one that ran
+ *    all the way through: accepted, claimed, holdback returned. Testing for ACCEPTED alone
+ *    makes a completed purchase describe itself as a bid still waiting to be taken up, which is
+ *    the opposite of what happened to it.
+ */
+const PURCHASED: ReadonlySet<OfferStatus> = new Set<OfferStatus>(['ACCEPTED', 'RELEASED']);
+
+/**
+ * What the contract is doing, in the words an LP holding an offer against it would use.
+ *
+ * The record's own vocabulary mixes lifecycle stages with record-keeping states, several of
+ * which mean nothing to someone who did not create the contract: "OK" and "IN-PROCESS"
+ * describe a seller's workflow rather than the cashflow. They are translated rather than
+ * shown raw.
+ */
+function escrowStatusLabel(facts: EscrowState): string {
+  switch (facts.state) {
+    case 'CLAIMED':
+    case 'COMPLETED':
+      return 'Claimed';
+    case 'DISPUTED':
+      return 'Disputed';
+    case 'RESOLVED':
+      return 'Dispute resolved';
+    case 'NEVER_FUNDED':
+      return 'Never funded';
+    case 'EXPIRED':
+      return 'Matured — awaiting claim';
+    case 'ACTIVE':
+    case 'IN-PROCESS':
+      return 'Funded';
+    case 'OK':
+      // The record's default: nothing has happened to it yet.
+      return 'Awaiting funding';
+    default:
+      // A state the record knows and this UI does not. Showing it raw beats inventing a label
+      // or rendering nothing at all.
+      return facts.state;
+  }
+}
+
+function escrowStatusTone(facts: EscrowState): string {
+  if (facts.state === 'DISPUTED') return 'text-amber-700 dark:text-amber-300';
+  if (facts.state === 'CLAIMED' || facts.state === 'COMPLETED') {
+    return 'text-green-700 dark:text-green-400';
+  }
+  return 'text-gray-500 dark:text-secondary-400';
 }
 
 /**
@@ -48,18 +105,6 @@ export default function MyOffersList({ lpAddress }: MyOffersListProps) {
    */
   const [deposits, setDeposits] = useState<Record<string, string>>({});
 
-  /**
-   * Whether each reserve-bearing escrow has actually paid out.
-   *
-   * ⚠️ THE CONTRACT REFUSES BEFORE THIS. `releaseHoldback` reverts with `EscrowNotSettled`
-   *    unless `escrow.isClaimed()`, so offering the control earlier is offering a guaranteed
-   *    revert — the user pays gas to be told no. Settlement is escrow state, not a marketplace
-   *    event, so no amount of indexing can answer it; it has to be read.
-   *
-   * Keyed by escrow, since several vaults can point at one. Absent means unknown, which keeps
-   * the control disabled rather than guessing it is ready.
-   */
-  const [settled, setSettled] = useState<Record<string, boolean>>({});
 
   const [busyVault, setBusyVault] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -78,46 +123,23 @@ export default function MyOffersList({ lpAddress }: MyOffersListProps) {
     [offers]
   );
 
-  // Escrows behind an ACCEPTED offer that still carries a reserve — the only rows whose
-  // release control could ever be live.
-  const reserveEscrowKey = useMemo(
-    () =>
-      Array.from(
-        new Set(
-          offers
-            .filter((o) => o.status === 'ACCEPTED' && !!o.holdback && o.holdback !== '0' && o.escrowContract)
-            .map((o) => o.escrowContract as string)
-        )
-      )
-        .sort()
-        .join(','),
+  /*
+   * The escrows underneath these offers, from resultservice in a single request.
+   *
+   * This was once a chain read per escrow, which turned a twenty-row list into hundreds of RPC
+   * calls. The facts a list needs - what the contract is doing and when it matures - are
+   * already held in our own records, and resultservice is the public read view over them.
+   * That matters here beyond speed: an LP's offers sit on escrows belonging to other people,
+   * so a public view is the correct scope rather than a user's own contract store.
+   *
+   * Every offer is included, finished ones too: "claimed" is exactly the fact that explains
+   * why a completed offer is over, and one batched request costs nothing extra to include it.
+   */
+  const escrowAddresses = useMemo(
+    () => offers.map((o) => o.escrowContract).filter(Boolean) as string[],
     [offers]
   );
-
-  useEffect(() => {
-    if (!config?.rpcUrl || !reserveEscrowKey) return;
-    let cancelled = false;
-    (async () => {
-      const client = new RpcClient(config.rpcUrl);
-      const entries = await Promise.all(
-        reserveEscrowKey.split(',').map(async (escrow) => {
-          try {
-            return [escrow, (await client.getContractState(escrow)).isClaimed] as const;
-          } catch (e) {
-            // Unknown, not ready. Leaving it absent keeps the control disabled, which costs
-            // the user a wait; assuming settled would cost them a reverted transaction.
-            console.warn(`MyOffersList: could not read settlement for ${escrow}:`, e);
-            return null;
-          }
-        })
-      );
-      if (cancelled) return;
-      setSettled(Object.fromEntries(entries.filter(Boolean) as (readonly [string, boolean])[]));
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [config?.rpcUrl, reserveEscrowKey]);
+  const { escrows: escrowFacts } = useEscrowStates(escrowAddresses);
 
   useEffect(() => {
     if (!config?.rpcUrl || !pendingKey) return;
@@ -216,7 +238,7 @@ export default function MyOffersList({ lpAddress }: MyOffersListProps) {
                   : offer
               }
               tokenSymbol={tokenSymbol}
-              escrowSettled={offer.escrowContract ? settled[offer.escrowContract] : undefined}
+              escrow={offer.escrowContract ? escrowFacts[offer.escrowContract] : undefined}
               busy={busyVault === offer.vaultAddress}
               onWithdraw={() => act(offer.vaultAddress, () => withdrawOffer(offer.vaultAddress))}
               onOpen={() =>
@@ -242,7 +264,7 @@ export default function MyOffersList({ lpAddress }: MyOffersListProps) {
 function OfferRow({
   offer,
   tokenSymbol,
-  escrowSettled,
+  escrow,
   busy,
   onWithdraw,
   onRelease,
@@ -250,18 +272,34 @@ function OfferRow({
 }: {
   offer: OfferView;
   tokenSymbol: string;
-  /** undefined = not read yet. Only `true` unlocks the release. */
-  escrowSettled?: boolean;
+  /** undefined = we hold no record for this escrow. Never treat that as "no". */
+  escrow?: EscrowState;
   busy: boolean;
   onWithdraw: () => void;
   onRelease: () => void;
   onOpen: () => void;
 }) {
   const withdrawable = looksWithdrawable(offer);
-  const hasReserve = !!offer.holdback && offer.holdback !== '0';
-  // ⚠️ ONLY `true` UNLOCKS IT. `releaseHoldback` reverts with EscrowNotSettled until the escrow
-  //    has paid out, so enabling this on an unread state trades a wait for a paid-for revert.
-  const releasable = offer.status === 'ACCEPTED' && hasReserve && escrowSettled === true;
+  // Only an accepted offer has a holdback at all: it is withheld out of the sum the seller
+  // receives at acceptance (§8.5a), so before acceptance there is nothing to release.
+  const hasHoldback = offer.status === 'ACCEPTED' && !!offer.holdback && offer.holdback !== '0';
+  /*
+   * ⚠️ ONLY AN AFFIRMATIVE ANSWER UNLOCKS IT. `releaseHoldback` reverts with EscrowNotSettled
+   *    until the escrow has paid out, so enabling this on an escrow we hold no record for
+   *    trades a wait for a paid-for revert. `escrow === undefined` means disabled, not
+   *    permitted.
+   *
+   * ⚠️ AND THIS IS A RECORD, NOT THE CHAIN. It can lag a claim that has already happened, so
+   *    the control appearing late is expected; what must not happen is it appearing early. The
+   *    contract remains the authority and refuses anything this gets wrong in the other
+   *    direction.
+   *
+   * A disputed escrow is excluded whatever stage it reached: the dispute decides where the
+   * holdback goes, and it does not follow the ordinary path.
+   */
+  const claimed = escrow?.state === 'CLAIMED' || escrow?.state === 'COMPLETED';
+  const disputed = escrow?.state === 'DISPUTED' || escrow?.state === 'RESOLVED';
+  const releasable = hasHoldback && claimed && !disputed;
   // A deposit that landed while the offer never opened. The money is in the vault and the
   // seller cannot see it — one relayed call fixes it, and no transfer is involved.
   const openable = needsOpening(offer);
@@ -270,8 +308,19 @@ function OfferRow({
     <div className="rounded-lg border border-gray-200 dark:border-secondary-700 bg-white dark:bg-secondary-800 p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
+          {/*
+            "offered" is a bid still hoping for a yes; "accepted" is money that has changed
+            hands. Reading the same word for both makes a settled purchase look like it is
+            still waiting on someone.
+
+            The maturity rides in the title because it is the figure an LP scans a list for -
+            it is when the capital comes back. It is omitted, rather than guessed at, until the
+            escrow has actually been read.
+          */}
           <div className="text-sm font-medium text-gray-900 dark:text-white">
-            {displayCurrency(offer.offerAmount ?? 0, 'microUSDC')} {tokenSymbol} offered
+            {displayCurrency(offer.offerAmount ?? 0, 'microUSDC')} {tokenSymbol}{' '}
+            {PURCHASED.has(offer.status) ? 'accepted' : 'offered'}
+            {escrow?.maturity ? ` · matures ${formatTimestamp(escrow.maturity).date}` : ''}
           </div>
           <div className="text-xs font-mono text-gray-400 dark:text-secondary-500 mt-0.5 truncate">
             escrow {offer.escrowContract}
@@ -284,6 +333,22 @@ function OfferRow({
             )}
             {offer.lastEventAt ? ` · last activity ${formatTimestamp(offer.lastEventAt).date}` : ''}
           </div>
+
+          {/*
+            The escrow underneath, kept visually distinct from the offer's own status above.
+            The two answer different questions and can disagree in ways that matter: an offer
+            can read "Withdrawn" while its escrow is still live, and "Accepted" while the
+            escrow is disputed. Collapsing them into one line would hide exactly that.
+
+            Nothing is rendered until the escrow has been read - an absent entry means unknown,
+            and a row that says nothing is better than one asserting "Not funded" about an
+            escrow nobody managed to reach.
+          */}
+          {escrow && (
+            <div className={`text-xs mt-1 ${escrowStatusTone(escrow)}`}>
+              Contract: {escrowStatusLabel(escrow)}
+            </div>
+          )}
         </div>
 
         <div className="flex flex-col items-end gap-2">
@@ -299,10 +364,10 @@ function OfferRow({
           )}
           {/*
             ⚠️ `releaseHoldback` is NOT keeper-firable in the per-offer model (§6.7): it answers
-            only to the reserve's funder or the live beneficiary, so nobody can sweep up on the
-            parties' behalf. If this prompt is missing, the reserve simply sits in the vault.
+            only to the holdback's funder or the live beneficiary, so nobody can sweep up on the
+            parties' behalf. If this prompt is missing, the holdback simply sits in the vault.
           */}
-          {offer.status === 'ACCEPTED' && hasReserve && (
+          {hasHoldback && (
             <Button
               type="button"
               size="sm"
@@ -310,7 +375,7 @@ function OfferRow({
               onClick={onRelease}
               disabled={busy || !releasable}
             >
-              {busy ? <LoadingSpinner className="w-4 h-4" /> : 'Release the reserve'}
+              {busy ? <LoadingSpinner className="w-4 h-4" /> : 'Release the holdback'}
             </Button>
           )}
         </div>
@@ -334,23 +399,35 @@ function OfferRow({
         </p>
       )}
 
-      {offer.status === 'ACCEPTED' && hasReserve && (
+      {hasHoldback && (
         <p className="text-xs text-gray-500 dark:text-secondary-400 mt-3">
-          You are holding {displayCurrency(offer.holdback!, 'microUSDC')} {tokenSymbol} in reserve.{' '}
+          You are holding {displayCurrency(offer.holdback!, 'microUSDC')} {tokenSymbol} as a
+          holdback.{' '}
           {releasable ? (
             <>
-              The escrow has paid out, so releasing now returns the reserve to the seller and any
-              balance to you. Nobody can do this on your behalf.
+              The contract was claimed without a dispute, so releasing now returns the holdback to
+              the seller and any balance to you. Nobody can do this on your behalf.
             </>
-          ) : escrowSettled === false ? (
+          ) : escrow?.state === 'RESOLVED' ? (
             <>
-              It cannot be released until the escrow pays out — the contract refuses before then,
-              so the button stays disabled rather than spending your gas to be turned down.
+              This contract was disputed. The dispute decides where the holdback goes, so it is
+              not released the ordinary way — the button stays disabled rather than sending a
+              transaction the contract will refuse.
+            </>
+          ) : escrow?.state === 'DISPUTED' ? (
+            <>
+              This contract is under dispute. Nothing can be released until that resolves and the
+              contract is claimed.
+            </>
+          ) : escrow ? (
+            <>
+              It cannot be released until the contract is claimed — the contract refuses before
+              then, so the button stays disabled rather than spending your gas to be turned down.
             </>
           ) : (
             <>
-              Checking whether the escrow has paid out. Until that is known the release stays
-              disabled, because the contract refuses it before settlement.
+              Checking what the contract has done. Until that is known the release stays disabled,
+              because the contract refuses it before settlement.
             </>
           )}
         </p>

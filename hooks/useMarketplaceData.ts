@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type {
   MarketplaceRefreshResponse,
   OfferBookResponse,
@@ -71,6 +71,71 @@ export function useOfferBook(escrowContract?: string | null): Fetched<OfferBookR
 /** Every offer one LP has made, across escrows. */
 export function useLpOffers(lpAddress?: string | null): Fetched<OfferView[]> {
   return useFetched<OfferView[]>(lpAddress ? `/api/marketplace/lps/${lpAddress}/offers` : null);
+}
+
+export interface EscrowState {
+  /** OK, IN-PROCESS, ACTIVE, DISPUTED, RESOLVED, EXPIRED, CLAIMED, NEVER_FUNDED, COMPLETED. */
+  state: string;
+  /** Unix seconds the cashflow matures. */
+  maturity: number;
+}
+
+/**
+ * What the escrows behind a list of offers are doing, in one request.
+ *
+ * ⚠️ AN ABSENT ENTRY MEANS UNKNOWN, NEVER "NO". An escrow can be traded without ever having
+ *    been created here, and the service can be unreachable. Callers must render nothing for a
+ *    missing escrow rather than asserting "not funded", and must not enable a settlement
+ *    action on the strength of a missing answer.
+ *
+ * Deliberately not a chain read: this is display data for escrows the user does not own, and
+ * reading each one off the chain turned a twenty-row list into hundreds of RPC calls.
+ */
+export function useEscrowStates(escrowAddresses: string[]): {
+  escrows: Record<string, EscrowState>;
+  loading: boolean;
+} {
+  const [escrows, setEscrows] = useState<Record<string, EscrowState>>({});
+  const [loading, setLoading] = useState(false);
+
+  // Stable key so this re-runs when the set of escrows changes, not on every render.
+  const key = useMemo(
+    () => Array.from(new Set(escrowAddresses.map((a) => a.toLowerCase()))).sort().join(','),
+    [escrowAddresses]
+  );
+
+  useEffect(() => {
+    if (!key) {
+      setEscrows({});
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    (async () => {
+      try {
+        const response = await fetch('/api/marketplace/escrow-states', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chainAddresses: key.split(',') })
+        });
+        if (!response.ok) throw new Error(`Request failed (${response.status})`);
+        const body = await response.json();
+        if (!cancelled) setEscrows(body.escrows ?? {});
+      } catch (e) {
+        // Leave the map empty rather than half-filled: the list still renders, just without
+        // the escrow line, which is the documented meaning of a missing entry.
+        console.warn('useEscrowStates: could not read escrow states', e);
+        if (!cancelled) setEscrows({});
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [key]);
+
+  return { escrows, loading };
 }
 
 /**

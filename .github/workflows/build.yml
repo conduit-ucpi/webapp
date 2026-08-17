@@ -48,6 +48,7 @@ jobs:
           USER_SERVICE_URL: ${{ vars.USER_SERVICE_URL }}
           CHAIN_SERVICE_URL: ${{ vars.CHAIN_SERVICE_URL }}
           CONTRACT_SERVICE_URL: ${{ vars.CONTRACT_SERVICE_URL }}
+          RESULTSERVICE_URL: ${{ vars.RESULTSERVICE_URL }}
           MOONPAY_API_KEY: ${{ secrets.MOONPAY_API_KEY }}
           X_API_KEY: ${{ secrets.X_API_KEY }}
           MIN_GAS_WEI: ${{ vars.MIN_GAS_WEI }}
@@ -177,6 +178,7 @@ jobs:
             -e CHAIN_SERVICE_URL="${{ vars.CHAIN_SERVICE_URL }}" \\
             -e USER_SERVICE_URL="${{ vars.USER_SERVICE_URL }}" \\
             -e CONTRACT_SERVICE_URL="${{ vars.CONTRACT_SERVICE_URL }}" \\
+            -e RESULTSERVICE_URL="${{ vars.RESULTSERVICE_URL }}" \\
             -e MOONPAY_API_KEY="${{ secrets.MOONPAY_API_KEY }}" \\
             -e X_API_KEY="${{ secrets.X_API_KEY }}" \\
             -e GIT_TAG="${{ env.GIT_TAG }}" \\

@@ -91,7 +91,10 @@ export function offerStatusLabel(offer: OfferView): string {
     case 'WITHDRAWN':
       return 'Withdrawn';
     case 'RELEASED':
-      return 'Reserve released';
+      // The end of the whole journey: accepted, claimed, holdback returned. Worth saying
+      // "completed" rather than only naming the last step, so a finished purchase reads as
+      // finished instead of as one more piece of housekeeping.
+      return 'Completed — holdback released';
     default:
       return offer.status;
   }

@@ -30,9 +30,11 @@ export interface EscrowContractInfo {
   seller: string;
   amount: string; // formatted USDC (6 decimals)
   expiryTimestamp: number;
-  descriptionHash: string;
   currentState: number;
   currentTimestamp: number;
+  creatorFee: string; // formatted USDC (6 decimals)
+  createdAt: number;
+  tokenAddress: string;
 }
 
 export interface EscrowContractState {
@@ -233,9 +235,11 @@ export class RpcClient {
       seller: info._seller,
       amount: ethers.formatUnits(info._amount, 6), // USDC has 6 decimals
       expiryTimestamp: Number(info._expiryTimestamp),
-      descriptionHash: info._descriptionHash,
       currentState: Number(info._currentState),
       currentTimestamp: Number(info._currentTimestamp),
+      creatorFee: ethers.formatUnits(info._creatorFee, 6),
+      createdAt: Number(info._createdAt),
+      tokenAddress: info._tokenAddress,
     };
   }
 

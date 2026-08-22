@@ -3,7 +3,6 @@ import { ethers } from 'ethers';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { useConfig } from '@/components/auth/ConfigProvider';
-import { RpcClient } from '@/lib/rpc/RpcClient';
 import { useMarketplaceActions } from '@/hooks/useMarketplaceActions';
 import { displayCurrency } from '@/utils/currency';
 import { daysUntil } from '@/utils/marketplace';
@@ -53,9 +52,49 @@ export default function MakeOfferModal({ escrow, lpAddress, onClose, onOfferMade
   const [vaultAddress, setVaultAddress] = useState<string | null>(null);
   const [payout, setPayout] = useState<bigint | null>(null);
   const [payoutUnavailable, setPayoutUnavailable] = useState(false);
+  /* How long an offer stands. Needed to know whether this escrow can be bid on at all — see
+     the maturity guard below. Null until read; the guard stays silent rather than guessing. */
+  const [offerWindowSeconds, setOfferWindowSeconds] = useState<number | null>(null);
 
   const tokenSymbol = config?.tokenSymbol || 'USDC';
   const days = daysUntil(escrow.maturity);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const response = await fetch('/api/chain/marketplace/terms');
+        if (!response.ok) throw new Error(`Request failed (${response.status})`);
+        const body = await response.json();
+        if (!cancelled && body.defaultOfferDurationSeconds != null) {
+          setOfferWindowSeconds(Number(body.defaultOfferDurationSeconds));
+        }
+      } catch (e) {
+        // Unknown window: the guard below stays quiet rather than blocking an offer that
+        // might be perfectly valid. The factory still refuses a genuinely bad one.
+        console.warn('Could not read the marketplace offer window:', e);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  /*
+   * ⚠️ AN ESCROW CLOSER TO MATURITY THAN THE OFFER WINDOW CANNOT BE BID ON.
+   *
+   *    The factory sets the expiry to `block.timestamp + defaultOfferDuration` and reverts if
+   *    that reaches maturity — OfferExpiryExceedsEscrowMaturity. So for an escrow maturing
+   *    inside the window, every offer fails, and it fails AFTER the LP has signed and paid for
+   *    gas. Observed in the wild: an escrow 97 seconds from maturity against a 600 second
+   *    window, reverting 503 seconds past it.
+   *
+   *    Checked here so the answer arrives before the signature rather than after it. The
+   *    contract remains the authority; this only avoids asking the user to pay to be refused.
+   */
+  const secondsToMaturity = escrow.maturity - Math.floor(Date.now() / 1000);
+  const maturesInsideOfferWindow =
+    offerWindowSeconds !== null && secondsToMaturity <= offerWindowSeconds;
 
   // The LP deposits by transferring THIS token to the vault. The escrow's own token is the
   // only correct one — the vault is initialized with `escrow.token()` on-chain, so a deposit
@@ -63,23 +102,33 @@ export default function MakeOfferModal({ escrow, lpAddress, onClose, onOfferMade
   // The configured default is a fallback for discovery rows that did not carry it.
   const tokenAddress = escrow.token || config?.defaultToken?.address || config?.usdcContractAddress || null;
 
-  // The figure the LP is buying, read from the escrow itself at the moment of pricing.
+  /* The figure the LP is buying, at the moment of pricing.
+     Read through chainservice rather than from a node: the webapp does not talk to the chain,
+     and this figure is fixed at the escrow's creation, so chainservice serves it from cache to
+     every LP looking at the same escrow. */
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      if (!config?.rpcUrl) return;
       try {
-        const value = await new RpcClient(config.rpcUrl).getPayoutAmount(escrow.escrowContract);
-        if (!cancelled) setPayout(value);
+        const response = await fetch(
+          `/api/chain/marketplace/escrows/${escrow.escrowContract}/payout-amount`
+        );
+        if (!response.ok) throw new Error(`Request failed (${response.status})`);
+        const body = await response.json();
+        if (cancelled) return;
+        // Null means the escrow could not be read — unknown, not zero. Falling back to the
+        // discovery row's amount would price the offer against a figure nobody confirmed.
+        if (body.payoutAmount == null) setPayoutUnavailable(true);
+        else setPayout(BigInt(body.payoutAmount));
       } catch (e) {
-        console.warn('Could not read payoutAmount from the escrow:', e);
+        console.warn('Could not read payoutAmount for the escrow:', e);
         if (!cancelled) setPayoutUnavailable(true);
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [config?.rpcUrl, escrow.escrowContract]);
+  }, [escrow.escrowContract]);
 
   const basis = payout ?? (escrow.amount ? BigInt(escrow.amount) : BigInt(0));
   const discountRate = parseFloat(discount);
@@ -102,7 +151,8 @@ export default function MakeOfferModal({ escrow, lpAddress, onClose, onOfferMade
   const holdbackAllowed = !escrow.previouslySold;
 
   const canSubmit =
-    ratesValid && offerAmount > BigInt(0) && step === 'compose' && !!lpAddress && !!tokenAddress;
+    ratesValid && offerAmount > BigInt(0) && step === 'compose' && !!lpAddress && !!tokenAddress &&
+    !maturesInsideOfferWindow;
 
   const submit = async () => {
     setError(null);
@@ -236,6 +286,19 @@ export default function MakeOfferModal({ escrow, lpAddress, onClose, onOfferMade
                 </p>
               )}
             </div>
+
+            {/* Said plainly, and before the signature: the transaction cannot succeed. */}
+            {maturesInsideOfferWindow && (
+              <div className="rounded-md border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-3 text-xs text-amber-800 dark:text-amber-200">
+                This payment matures{' '}
+                {secondsToMaturity > 0
+                  ? `in about ${Math.max(1, Math.round(secondsToMaturity / 60))} minute${Math.round(secondsToMaturity / 60) === 1 ? '' : 's'}`
+                  : 'imminently'}
+                , sooner than the {Math.round((offerWindowSeconds ?? 0) / 60)}-minute window an
+                offer stands for. An offer here would outlive the payment it is bidding on, which
+                the contract refuses — so it cannot be made rather than being worth trying.
+              </div>
+            )}
 
             {/*
               The seller's headline is their NET, and it is not the number above: the platform fee

@@ -1,4 +1,4 @@
-import type { OfferView } from '@/types/marketplace';
+import type { LiveOffer, OfferView } from '@/types/marketplace';
 
 /**
  * Small shared rules for the marketplace screens (MARKETPLACE_OPENSPEC §15.6d).
@@ -29,6 +29,31 @@ export function hoursUntil(unixSeconds: number): number {
  */
 export function acceptableOffers(offers: OfferView[]): OfferView[] {
   return offers.filter((offer) => offer.status === 'OPEN' && !offer.expired);
+}
+
+/**
+ * A chainservice live offer in the shape the offer-book screens already render.
+ *
+ * `expired` is computed here rather than trusted from anywhere: chainservice only returns
+ * offers that were live when it looked, but a 600-second offer can lapse between that read and
+ * this render, and a lapsed offer presented as acceptable sends the seller to a revert.
+ */
+export function liveOfferToView(offer: LiveOffer): OfferView {
+  return {
+    vaultAddress: offer.vaultAddress,
+    escrowContract: offer.escrowContract,
+    lp: offer.lp,
+    seller: offer.seller,
+    token: offer.token,
+    offerAmount: offer.offerAmount,
+    netAmount: offer.netAmount,
+    fee: offer.fee,
+    holdback: offer.holdback,
+    offerExpiry: offer.offerExpiry,
+    status: offer.status,
+    expired: offer.offerExpiry <= Math.floor(Date.now() / 1000),
+    lastEventAt: offer.offerExpiry
+  };
 }
 
 /**

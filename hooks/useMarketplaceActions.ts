@@ -55,6 +55,34 @@ export function useMarketplaceActions() {
     [getWeb3Service]
   );
 
+  /**
+   * Tell chainservice this offer is over.
+   *
+   * ⚠️ NEVER ALLOWED TO FAIL THE ACTION. The transaction has already landed on-chain by the
+   *    time this runs; a rejected notification means a cache is briefly stale, while a thrown
+   *    error here would tell a seller their accept did not go through and invite them to sign
+   *    it again. So it is awaited (the next read should see the corrected answer) but its
+   *    failure is swallowed.
+   *
+   * Skipped silently when the escrow is unknown — the notification is keyed on it, and a
+   * guessed key would evict the wrong escrow's offers.
+   */
+  const notifyOfferEnded = useCallback(
+    async (vaultAddress: string, escrowContract: string | null | undefined, accepted: boolean) => {
+      if (!escrowContract) return;
+      try {
+        await fetch('/api/chain/marketplace/offer-ended', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ vaultAddress, escrowContract, accepted })
+        });
+      } catch (e) {
+        console.warn('Could not tell chainservice the offer ended:', e);
+      }
+    },
+    []
+  );
+
   // ── Dispute settlement (§15.6b) ────────────────────────────────────────────
 
   /**
@@ -251,14 +279,24 @@ export function useMarketplaceActions() {
    * nothing is at risk — treat expiry as a retry, never as an error state needing recovery.
    */
   const acceptOffer = useCallback(
-    (vaultAddress: string) => send(vaultAddress, vaultInterface, 'accept'),
-    [send]
+    async (vaultAddress: string, escrowContract?: string | null) => {
+      const hash = await send(vaultAddress, vaultInterface, 'accept');
+      // `accepted` matters: it tells chainservice to drop the WHOLE escrow, because acceptance
+      // rewrites the recipient and makes every other offer on it stale at the same instant.
+      await notifyOfferEnded(vaultAddress, escrowContract, true);
+      return hash;
+    },
+    [send, notifyOfferEnded]
   );
 
   /** Decline an offer. The vault stays put; the LP withdraws their own capital afterwards. */
   const rejectOffer = useCallback(
-    (vaultAddress: string) => send(vaultAddress, vaultInterface, 'reject'),
-    [send]
+    async (vaultAddress: string, escrowContract?: string | null) => {
+      const hash = await send(vaultAddress, vaultInterface, 'reject');
+      await notifyOfferEnded(vaultAddress, escrowContract, false);
+      return hash;
+    },
+    [send, notifyOfferEnded]
   );
 
   /**
@@ -269,8 +307,12 @@ export function useMarketplaceActions() {
    *    conditions the UI must detect and prompt — an LP who is never told simply never withdraws.
    */
   const withdrawOffer = useCallback(
-    (vaultAddress: string) => send(vaultAddress, vaultInterface, 'withdraw'),
-    [send]
+    async (vaultAddress: string, escrowContract?: string | null) => {
+      const hash = await send(vaultAddress, vaultInterface, 'withdraw');
+      await notifyOfferEnded(vaultAddress, escrowContract, false);
+      return hash;
+    },
+    [send, notifyOfferEnded]
   );
 
   /**

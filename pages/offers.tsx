@@ -3,6 +3,8 @@ import { useMemo } from 'react';
 import { useAuth } from '@/components/auth';
 import { useWalletAddress } from '@/hooks/useWalletAddress';
 import { useCombinedContracts, UnifiedContract } from '@/hooks/useCombinedContracts';
+import { useLiveOffers } from '@/hooks/useMarketplaceData';
+import { liveOfferToView } from '@/utils/marketplace';
 import ConnectWalletEmbedded from '@/components/auth/ConnectWalletEmbedded';
 import { SkeletonCard } from '@/components/ui/Skeleton';
 import EmptyState from '@/components/ui/EmptyState';
@@ -45,6 +47,32 @@ export default function OffersPage() {
       return isRecipient || isSellerByEmail;
     });
   }, [contracts, walletAddress, user?.email]);
+
+  /**
+   * The offers standing on these payments, asked of chainservice directly.
+   *
+   * ⚠️ THIS USED TO BE A RECONCILE, AND THAT WAS THE WRONG QUESTION. Asking contractservice to
+   *    reconcile made the seller's screen wait while chainservice walked hundreds of thousands
+   *    of blocks rediscovering offers chainservice had itself created minutes earlier — 276
+   *    sequential log reads to learn something it was told at the time. It answers from its own
+   *    cache now, and decides for itself when that needs a chain read. Whether any given answer
+   *    cost one is not this screen's business.
+   *
+   * ⚠️ AND IT IS A DIFFERENT QUESTION FROM THE OFFER BOOK, NOT A FASTER VERSION OF IT. This is
+   *    what is STANDING; the book is the record of what has HAPPENED — accepted, declined,
+   *    withdrawn — which no cache can hold. Both are on screen: this decides what the seller
+   *    can act on, the book supplies the history and when it was last checked.
+   */
+  const escrowAddresses = useMemo(
+    () => sellable.map((c) => c.contractAddress).filter(Boolean) as string[],
+    [sellable]
+  );
+  const {
+    offersByEscrow,
+    unreadable,
+    loading: offersLoading,
+    refetch: refetchLiveOffers
+  } = useLiveOffers(escrowAddresses);
 
   const totalLocked = useMemo(
     () => sellable.reduce((sum, contract) => sum + (contract.amount || 0), 0),
@@ -90,8 +118,13 @@ export default function OffersPage() {
       <div className="bg-white dark:bg-secondary-900 transition-colors min-h-screen">
         <div className="max-w-4xl mx-auto px-6 sm:px-8 pt-24 lg:pt-32 pb-16">
           <h1 className="text-2xl font-semibold text-secondary-900 dark:text-white mb-1">Your payments</h1>
-          <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-8">
+          <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-2">
             Payments owed to you that are still locked — and any offers to pay you early.
+          </p>
+          {/* Said out loud: "no offers" while still checking is a different answer from "no
+              offers", and this screen is where that difference costs the seller money. */}
+          <p className="text-xs text-secondary-400 dark:text-secondary-500 mb-8 h-4">
+            {offersLoading ? 'Checking for offers…' : ''}
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8">
@@ -145,6 +178,14 @@ export default function OffersPage() {
                   <div className="p-4">
                     <SellerOfferBook
                       escrowContract={contract.contractAddress}
+                      onOffersChanged={refetchLiveOffers}
+                      /* undefined = not yet answered; null = chainservice could not read it, so
+                         the book falls back to the index rather than claiming there are none. */
+                      liveOffers={
+                        unreadable.has(contract.contractAddress.toLowerCase())
+                          ? null
+                          : offersByEscrow[contract.contractAddress.toLowerCase()]?.map(liveOfferToView)
+                      }
                       maturityAmount={contract.amount}
                       maturity={contract.expiryTimestamp}
                       onAccepted={async () => {

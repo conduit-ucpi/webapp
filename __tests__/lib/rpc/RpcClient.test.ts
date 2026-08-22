@@ -126,18 +126,20 @@ describe('RpcClient', () => {
 
   describe('getContractInfo', () => {
     it('decodes the escrow getContractInfo tuple with USDC 6-decimal amount and numeric fields', async () => {
-      // Encode the 7-field tuple the ABI declares.
+      // Encode the 9-field tuple the ABI declares.
       const { ethers } = require('ethers');
       const encoded = ethers.AbiCoder.defaultAbiCoder().encode(
-        ['address', 'address', 'uint256', 'uint256', 'bytes32', 'uint8', 'uint256'],
+        ['address', 'address', 'uint256', 'uint256', 'uint8', 'uint256', 'uint256', 'uint256', 'address'],
         [
           USER,
           SPENDER,
           BigInt(1_500_000), // 1.5 USDC at 6 decimals
           BigInt(1_900_000_000), // expiry
-          '0x' + 'cd'.repeat(32),
           2, // currentState
           BigInt(1_800_000_000), // currentTimestamp
+          BigInt(25_000), // creatorFee = 0.025 USDC
+          BigInt(1_700_000_000), // createdAt
+          TOKEN,
         ]
       );
 
@@ -153,9 +155,11 @@ describe('RpcClient', () => {
       expect(info.seller.toLowerCase()).toBe(SPENDER.toLowerCase());
       expect(info.amount).toBe('1.5');
       expect(info.expiryTimestamp).toBe(1_900_000_000);
-      expect(info.descriptionHash).toBe('0x' + 'cd'.repeat(32));
       expect(info.currentState).toBe(2);
       expect(info.currentTimestamp).toBe(1_800_000_000);
+      expect(info.creatorFee).toBe('0.025');
+      expect(info.createdAt).toBe(1_700_000_000);
+      expect(info.tokenAddress.toLowerCase()).toBe(TOKEN.toLowerCase());
     });
   });
 

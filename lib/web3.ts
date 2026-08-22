@@ -17,7 +17,7 @@ export const ERC20_ABI = [
 
 // Escrow Contract ABI
 export const ESCROW_CONTRACT_ABI = [
-  'function getContractInfo() view returns (address _buyer, address _seller, uint256 _amount, uint256 _expiryTimestamp, bytes32 _descriptionHash, uint8 _currentState, uint256 _currentTimestamp)',
+  'function getContractInfo() view returns (address _buyer, address _seller, uint256 _amount, uint256 _expiryTimestamp, uint8 _currentState, uint256 _currentTimestamp, uint256 _creatorFee, uint256 _createdAt, address _tokenAddress)',
   'function isExpired() view returns (bool)',
   'function canClaim() view returns (bool)',
   'function canDispute() view returns (bool)',
@@ -52,9 +52,9 @@ export const ESCROW_CONTRACT_ABI = [
   'function seatDefaultArbiter()',
   'function approveRecipientTransfer(address operator, address newRecipient)',
 
-  'event FundsDeposited(address buyer, uint256 amount, uint256 timestamp)',
+  'event FundsDeposited(address buyer, uint256 escrowAmount, uint256 timestamp)',
   'event DisputeRaised(uint256 timestamp)',
-  'event DisputeResolved(address recipient, uint256 timestamp)',
+  'event DisputeResolved(uint256 buyerPercentage, uint256 sellerPercentage, uint256 timestamp)',
   'event FundsClaimed(address recipient, uint256 amount, uint256 timestamp)'
 ];
 
@@ -87,10 +87,10 @@ export const OFFER_VAULT_ABI = [
   'function withdraw()',
   'function releaseHoldback()',
   'event OfferFunded(address indexed escrowContract, address indexed lp, address token, uint256 amount)',
-  'event OfferAccepted(address indexed escrowContract, address indexed lp, address seller, uint256 netAmount, uint256 fee, uint256 holdback)',
+  'event OfferAccepted(address indexed escrowContract, address indexed lp, address indexed seller, uint256 netAmount, uint256 fee, uint256 holdback)',
   'event OfferRejected(address indexed escrowContract, address indexed lp)',
   'event FundsWithdrawn(address indexed escrowContract, address indexed lp, address token, uint256 amount)',
-  'event HoldbackReleased(address indexed escrowContract, address funder, address beneficiary, uint256 toFunder, uint256 toBeneficiary)'
+  'event HoldbackReleased(address indexed escrowContract, address indexed funder, address indexed beneficiary, uint256 toFunder, uint256 toBeneficiary)'
 ];
 
 /** The vault's on-chain status enum, in declaration order. */

@@ -10,7 +10,6 @@ import {
 } from '@/hooks/useMarketplaceData';
 import { useMarketplaceActions } from '@/hooks/useMarketplaceActions';
 import { useConfig } from '@/components/auth/ConfigProvider';
-import { RpcClient } from '@/lib/rpc/RpcClient';
 import { displayCurrency } from '@/utils/currency';
 import { formatTimestamp } from '@/utils/datetime';
 import { hoursUntil, looksWithdrawable, needsOpening, offerStatusLabel } from '@/utils/marketplace';
@@ -142,37 +141,72 @@ export default function MyOffersList({ lpAddress }: MyOffersListProps) {
   const { escrows: escrowFacts } = useEscrowStates(escrowAddresses);
 
   useEffect(() => {
-    if (!config?.rpcUrl || !pendingKey) return;
+    if (!pendingKey) return;
     let cancelled = false;
     (async () => {
-      const client = new RpcClient(config.rpcUrl);
-      const entries = await Promise.all(
-        pendingKey.split(',').map(async (pair) => {
-          const [vault, token] = pair.split(':');
-          try {
-            return [vault, (await client.getVaultDeposit(vault, token)).toString()] as const;
-          } catch (e) {
-            // An unreadable balance is not evidence of an empty vault — leave it absent so
-            // the UI stays silent rather than claiming there is nothing to recover.
-            console.warn(`MyOffersList: could not read the deposit in ${vault}:`, e);
-            return null;
-          }
-        })
-      );
-      if (cancelled) return;
-      setDeposits(Object.fromEntries(entries.filter(Boolean) as (readonly [string, string])[]));
+      try {
+        /* chainservice reads and caches these; the browser never talks to a node. One request
+           for the whole PENDING set, not one per vault. */
+        const response = await fetch('/api/chain/marketplace/vault-deposits', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            vaults: pendingKey.split(',').map((pair) => {
+              const [vaultAddress, tokenAddress] = pair.split(':');
+              return { vaultAddress, tokenAddress };
+            })
+          })
+        });
+        if (!response.ok) throw new Error(`Request failed (${response.status})`);
+        const body = await response.json();
+        if (cancelled) return;
+
+        // Keys come back lower-cased; the rows look them up by the address the offer carries.
+        const byVault: Record<string, string> = {};
+        for (const [vault, amount] of Object.entries(body.deposits ?? {})) {
+          byVault[vault as string] = String(amount);
+        }
+        setDeposits(byVault);
+      } catch (e) {
+        // An unreadable balance is not evidence of an empty vault — leave it absent so the UI
+        // stays silent rather than claiming there is nothing to recover.
+        console.warn('MyOffersList: could not read vault deposits:', e);
+      }
     })();
     return () => {
       cancelled = true;
     };
-  }, [config?.rpcUrl, pendingKey]);
+  }, [pendingKey]);
 
-  const act = async (vault: string, action: () => Promise<unknown>) => {
+  /**
+   * Run one action against a vault, then make this list describe the world after it.
+   *
+   * ⚠️ RE-READING THE INDEX ALONE RETURNS THE ROW UNCHANGED. These actions are sent by the LP's
+   *    OWN WALLET (§15.6b), so chainservice never sees the transaction and never indexes its
+   *    event — `FundsWithdrawn` and `HoldbackReleased` reach contractservice only through a
+   *    reconcile. Refetching first therefore re-renders the row exactly as it was: a vault the
+   *    LP has already emptied still offering "withdraw your capital", which reads as a failed
+   *    transaction and invites them to send a second one. A page refresh does not help either,
+   *    since it re-reads the same unchanged index.
+   *
+   *    So the chain is reconciled first, and the list re-read only after. A reconcile that
+   *    fails still falls through to a plain refetch — the action happened either way, and
+   *    stale-but-shown beats a screen frozen on pre-action state.
+   *
+   * `reconcile` is false only for the RELAYED action: chainservice sends `fund()` itself and
+   * indexes that receipt, so the index is already current and a scan would cost its seconds
+   * for nothing.
+   */
+  const act = async (
+    vault: string,
+    action: () => Promise<unknown>,
+    { reconcile = true }: { reconcile?: boolean } = {}
+  ) => {
     setBusyVault(vault);
     setActionError(null);
     try {
       await action();
-      await refetch();
+      if (!reconcile || !(await refresh())) await refetch();
     } catch (e: any) {
       setActionError(e?.message || 'That transaction did not go through.');
     } finally {
@@ -233,14 +267,19 @@ export default function MyOffersList({ lpAddress }: MyOffersListProps) {
             <OfferRow
               key={offer.vaultAddress}
               offer={
-                deposits[offer.vaultAddress] != null
-                  ? { ...offer, depositedAmount: deposits[offer.vaultAddress] }
+                // Keyed lower-case by the service; the offer's own casing may differ.
+                deposits[offer.vaultAddress.toLowerCase()] != null
+                  ? { ...offer, depositedAmount: deposits[offer.vaultAddress.toLowerCase()] }
                   : offer
               }
               tokenSymbol={tokenSymbol}
               escrow={offer.escrowContract ? escrowFacts[offer.escrowContract] : undefined}
               busy={busyVault === offer.vaultAddress}
-              onWithdraw={() => act(offer.vaultAddress, () => withdrawOffer(offer.vaultAddress))}
+              onWithdraw={() =>
+                act(offer.vaultAddress, () =>
+                  withdrawOffer(offer.vaultAddress, offer.escrowContract)
+                )
+              }
               onOpen={() =>
                 act(offer.vaultAddress, async () => {
                   // Unlike the wallet actions, this one reports failure in its result rather
@@ -250,7 +289,7 @@ export default function MyOffersList({ lpAddress }: MyOffersListProps) {
                   if (!result.success) {
                     throw new Error(result.error || 'The offer could not be opened.');
                   }
-                })
+                }, { reconcile: false })
               }
               onRelease={() => act(offer.vaultAddress, () => releaseHoldback(offer.vaultAddress))}
             />

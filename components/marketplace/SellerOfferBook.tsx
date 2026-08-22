@@ -15,6 +15,28 @@ interface SellerOfferBookProps {
   maturityAmount?: number;
   maturity?: number;
   onAccepted?: () => Promise<void> | void;
+  /**
+   * The offers chainservice reports as standing, supplied by the page.
+   *
+   * ⚠️ THREE STATES, AND THEY MEAN DIFFERENT THINGS. `undefined` — not answered yet, so fall
+   *    back to the index. `null` — chainservice could not read this escrow, which is UNKNOWN
+   *    and again a reason to fall back, never a reason to say "no offers". An empty array is
+   *    the only one that means nobody is bidding.
+   *
+   * Preferred over the index when present because it is the fresher answer: chainservice
+   * created these vaults and relayed their funding, so it knows them without waiting for a
+   * reconcile to carry the events into contractservice.
+   */
+  liveOffers?: OfferView[] | null;
+  /**
+   * Re-read the live offers after this seller has changed them.
+   *
+   * ⚠️ WITHOUT THIS THE BOOK REDRAWS THE OFFER IT JUST DISPOSED OF. Accept and reject go from
+   *    the seller's own wallet, so the index cannot know they happened until something
+   *    reconciles. chainservice is TOLD instead (see useMarketplaceActions), which makes the
+   *    correction a re-read rather than a block scan.
+   */
+  onOffersChanged?: () => Promise<void> | void;
 }
 
 /**
@@ -33,7 +55,9 @@ export default function SellerOfferBook({
   escrowContract,
   maturityAmount,
   maturity,
-  onAccepted
+  onAccepted,
+  liveOffers,
+  onOffersChanged
 }: SellerOfferBookProps) {
   const { config } = useConfig();
   const { data, loading, error, refetch } = useOfferBook(escrowContract);
@@ -46,7 +70,9 @@ export default function SellerOfferBook({
   const [confirming, setConfirming] = useState<OfferView | null>(null);
 
   const tokenSymbol = config?.tokenSymbol || 'USDC';
-  const offers = acceptableOffers(data?.offers ?? []);
+  // `acceptableOffers` is applied either way: chainservice returns what was live when it
+  // looked, and a short-lived offer can lapse between that read and this render.
+  const offers = acceptableOffers(liveOffers ?? data?.offers ?? []);
 
   /**
    * The accept flow: two transactions with a five-minute fuse (§3.2, §15.2).
@@ -68,9 +94,17 @@ export default function SellerOfferBook({
       await approveRecipientTransfer(escrowContract, offer.vaultAddress, offer.lp);
 
       setStage('Completing the swap…');
-      await acceptOffer(offer.vaultAddress);
+      await acceptOffer(offer.vaultAddress, escrowContract);
 
       setConfirming(null);
+      /*
+       * ⚠️ RE-READ BEFORE REDRAWING. Both signatures above came from the SELLER'S OWN WALLET
+       *    (§15.6b), so the index cannot know about them — refetching it alone would put the
+       *    offer just accepted straight back on screen, with an Accept button that would now
+       *    revert. `acceptOffer` has already told chainservice, so asking it again is enough;
+       *    this used to require a reconcile, and a reconcile is a block scan.
+       */
+      await onOffersChanged?.();
       await refetch();
       await onAccepted?.();
     } catch (e: any) {
@@ -88,7 +122,10 @@ export default function SellerOfferBook({
     setBusyVault(offer.vaultAddress);
     setActionError(null);
     try {
-      await rejectOffer(offer.vaultAddress);
+      await rejectOffer(offer.vaultAddress, escrowContract);
+      // Sent by the seller's wallet, so chainservice was told rather than having seen it —
+      // see accept() above.
+      await onOffersChanged?.();
       await refetch();
     } catch (e: any) {
       setActionError(e?.message || 'Declining did not go through.');

@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type {
+  LiveOffer,
+  LiveOffersResponse,
   MarketplaceRefreshResponse,
   OfferBookResponse,
   OfferView,
@@ -149,6 +151,61 @@ export function useEscrowStates(escrowAddresses: string[]): {
  * The response reports how many events were found; the data itself arrives by re-reading the
  * offer list afterwards, which is why callers pass what to re-read.
  */
+/**
+ * Which offers are standing on these escrows, straight from chainservice.
+ *
+ * ⚠️ ASKS ONE QUESTION AND DOES NOT SECOND-GUESS THE ANSWER. chainservice decides whether it
+ *    can serve from cache or must read the chain; this hook neither knows nor cares, and must
+ *    not grow a "force fresh" flag — that decision belongs to the service that knows what it
+ *    has already been told.
+ *
+ * ⚠️ AN ESCROW IN `unreadable` IS UNKNOWN, NOT EMPTY. It is kept out of `offersByEscrow`
+ *    entirely so a caller cannot accidentally read absence as "nobody has bid" — the caller
+ *    should fall back to the offer book for those, and say the list may be incomplete.
+ */
+export function useLiveOffers(escrowContracts: string[]) {
+  const [data, setData] = useState<LiveOffersResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  // Stable key so this re-runs when the escrow SET changes, not on every render.
+  const key = useMemo(
+    () => Array.from(new Set(escrowContracts.map((e) => e.toLowerCase()))).sort().join(','),
+    [escrowContracts]
+  );
+
+  const refetch = useCallback(async () => {
+    if (!key) {
+      setData(null);
+      return;
+    }
+    setLoading(true);
+    try {
+      const response = await fetch('/api/chain/marketplace/live-offers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ escrows: key.split(',') })
+      });
+      if (!response.ok) throw new Error(`Request failed (${response.status})`);
+      setData(await response.json());
+    } catch (e) {
+      // Every escrow becomes unknown rather than empty — see the warning above.
+      console.warn('Could not read live offers:', e);
+      setData({ offers: {}, unreadable: key.split(',') });
+    } finally {
+      setLoading(false);
+    }
+  }, [key]);
+
+  useEffect(() => {
+    refetch();
+  }, [refetch]);
+
+  const offersByEscrow: Record<string, LiveOffer[]> = data?.offers ?? {};
+  const unreadable = useMemo(() => new Set(data?.unreadable ?? []), [data]);
+
+  return { offersByEscrow, unreadable, loading, refetch };
+}
+
 export function useRefreshFromChain(onRefreshed?: () => Promise<void> | void) {
   const [refreshing, setRefreshing] = useState(false);
   const [lastResult, setLastResult] = useState<MarketplaceRefreshResponse | null>(null);

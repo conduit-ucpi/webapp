@@ -142,3 +142,37 @@ export interface CreateOfferResponse {
    */
   indexed?: boolean;
 }
+
+/**
+ * An offer chainservice reports as standing right now.
+ *
+ * ⚠️ THIS IS THE FRESHER ANSWER, and deliberately a different source from the offer book.
+ *    chainservice deploys the vault and relays `fund()`, so it knows both transitions the
+ *    moment they happen and serves them from its own cache — no block scan, no waiting for a
+ *    reconcile to carry them into contractservice. The book remains the record of what has
+ *    HAPPENED (accepted, withdrawn, settled); this is the answer to what is standing NOW.
+ */
+export interface LiveOffer {
+  vaultAddress: string;
+  escrowContract: string;
+  lp: string;
+  seller: string;
+  token: string;
+  /** PENDING (deployed, unfunded) or OPEN (funded and standing). */
+  status: 'PENDING' | 'OPEN';
+  offerAmount: string;
+  netAmount: string;
+  fee: string;
+  holdback: string;
+  offerExpiry: number;
+}
+
+/**
+ * ⚠️ AN ESCROW ABSENT FROM `offers` IS UNKNOWN, NEVER "NO OFFERS" — it is in `unreadable`.
+ *    Telling a seller nobody has bid, when the truth is that nothing could be read, is the
+ *    one error this shape exists to prevent.
+ */
+export interface LiveOffersResponse {
+  offers: Record<string, LiveOffer[]>;
+  unreadable: string[];
+}

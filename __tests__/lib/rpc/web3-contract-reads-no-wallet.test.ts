@@ -56,8 +56,8 @@ describe('Phase 1 behavior change: contract reads no longer require a wallet', (
   it('getContractInfo decodes the tuple without a connected wallet', async () => {
     const { ethers } = require('ethers');
     const encoded = ethers.AbiCoder.defaultAbiCoder().encode(
-      ['address', 'address', 'uint256', 'uint256', 'bytes32', 'uint8', 'uint256'],
-      [USER, SPENDER, BigInt(1_500_000), BigInt(1_900_000_000), '0x' + 'cd'.repeat(32), 2, BigInt(1_800_000_000)]
+      ['address', 'address', 'uint256', 'uint256', 'uint8', 'uint256', 'uint256', 'uint256', 'address'],
+      [USER, SPENDER, BigInt(1_500_000), BigInt(1_900_000_000), 2, BigInt(1_800_000_000), BigInt(25_000), BigInt(1_700_000_000), USER]
     );
     mock = installRpcWireMock((req) => (req.method === 'eth_call' ? encoded : undefined));
 
@@ -67,9 +67,10 @@ describe('Phase 1 behavior change: contract reads no longer require a wallet', (
     expect(info.seller.toLowerCase()).toBe(SPENDER.toLowerCase());
     expect(info.amount).toBe('1.5'); // USDC 6-decimal
     expect(info.expiryTimestamp).toBe(1_900_000_000);
-    expect(info.descriptionHash).toBe('0x' + 'cd'.repeat(32));
     expect(info.currentState).toBe(2);
     expect(info.currentTimestamp).toBe(1_800_000_000);
+    expect(info.creatorFee).toBe('0.025');
+    expect(info.createdAt).toBe(1_700_000_000);
   });
 
   it('getContractState reads the seven booleans without a connected wallet', async () => {

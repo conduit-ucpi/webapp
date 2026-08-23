@@ -69,6 +69,17 @@ jest.mock('@/components/onboarding/DashboardTour', () => {
   };
 });
 
+/*
+ * Rendered on the dashboard for suppliers owed a reserve on a payment they sold. Mocked like
+ * every other child here: it reads ConfigProvider and fetches its own data, neither of which
+ * this page-level test supplies (the real app wraps every page in those providers).
+ */
+jest.mock('@/components/marketplace/ReservesOwedList', () => {
+  return function MockReservesOwedList() {
+    return null;
+  };
+});
+
 // Mock ConnectWalletEmbedded
 jest.mock('@/components/auth/ConnectWalletEmbedded', () => {
   return function MockConnectWalletEmbedded() {

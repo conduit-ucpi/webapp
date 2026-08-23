@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import EmptyState from '@/components/ui/EmptyState';
+import MarketplaceCard from '@/components/marketplace/MarketplaceCard';
 import {
   useEscrowStates,
   useLpOffers,
@@ -77,8 +78,12 @@ function escrowStatusTone(facts: EscrowState): string {
  * ⚠️ HOUSEKEEPING IS LAZY, AND NOTHING ON-CHAIN NOTIFIES ANYONE. Expiry, rejection, staleness
  *    after someone else's acceptance, and dispute-triggered withdrawability all become true
  *    silently — expiry emits no event at all, and an acceptance elsewhere emits an event about a
- *    *different* vault. If this screen does not notice and say so, an LP whose capital is
- *    recoverable simply never recovers it.
+ *    *different* vault.
+ *
+ *    A keeper now sweeps the two the index can recognise on its own — lapsed and rejected offers
+ *    — so those come back whether or not the LP ever returns. STALENESS IS NOT ONE OF THEM: the
+ *    index cannot see it, so a losing offer reads as standing here until it lapses. This screen
+ *    prompting is still what makes the difference for anything the sweep cannot select.
  *
  * ⚠️ THIS IS ALSO WHERE "REFRESH FROM CHAIN" BELONGS, and not as a convenience. The staleness
  *    that costs money is a missed ACCEPTANCE: when a seller accepts an offer directly on-chain,
@@ -181,21 +186,21 @@ export default function MyOffersList({ lpAddress }: MyOffersListProps) {
   /**
    * Run one action against a vault, then make this list describe the world after it.
    *
-   * ⚠️ RE-READING THE INDEX ALONE RETURNS THE ROW UNCHANGED. These actions are sent by the LP's
-   *    OWN WALLET (§15.6b), so chainservice never sees the transaction and never indexes its
-   *    event — `FundsWithdrawn` and `HoldbackReleased` reach contractservice only through a
-   *    reconcile. Refetching first therefore re-renders the row exactly as it was: a vault the
-   *    LP has already emptied still offering "withdraw your capital", which reads as a failed
-   *    transaction and invites them to send a second one. A page refresh does not help either,
-   *    since it re-reads the same unchanged index.
+   * ⚠️ FOR A WALLET-SENT ACTION, RE-READING THE INDEX ALONE RETURNS THE ROW UNCHANGED.
+   *    `releaseHoldback` goes from the LP's own wallet (§15.6b), so chainservice never sees the
+   *    transaction and never indexes its event — `HoldbackReleased` reaches contractservice only
+   *    through a reconcile. Refetching first therefore re-renders the row exactly as it was,
+   *    which reads as a failed transaction and invites the LP to send a second one. A page
+   *    refresh does not help either, since it re-reads the same unchanged index.
    *
    *    So the chain is reconciled first, and the list re-read only after. A reconcile that
    *    fails still falls through to a plain refetch — the action happened either way, and
    *    stale-but-shown beats a screen frozen on pre-action state.
    *
-   * `reconcile` is false only for the RELAYED action: chainservice sends `fund()` itself and
-   * indexes that receipt, so the index is already current and a scan would cost its seconds
-   * for nothing.
+   * `reconcile` is false for the RELAYED actions — the open and the withdrawal. chainservice
+   * sends those itself and indexes their receipts as they land, so the index is already current
+   * and a scan would cost its seconds for nothing. It stays true for `releaseHoldback`, which
+   * is the one action here that still goes from the LP's own wallet.
    */
   const act = async (
     vault: string,
@@ -276,9 +281,17 @@ export default function MyOffersList({ lpAddress }: MyOffersListProps) {
               escrow={offer.escrowContract ? escrowFacts[offer.escrowContract] : undefined}
               busy={busyVault === offer.vaultAddress}
               onWithdraw={() =>
-                act(offer.vaultAddress, () =>
-                  withdrawOffer(offer.vaultAddress, offer.escrowContract)
-                )
+                act(offer.vaultAddress, async () => {
+                  // Relayed, like the open below — it reports failure in its result rather than
+                  // throwing, so a refusal has to be raised here or `act` would treat it as a
+                  // success and re-render the same row still offering the withdrawal.
+                  const result = await withdrawOffer(offer.vaultAddress);
+                  if (!result.success) {
+                    throw new Error(
+                      result.error || 'Your capital could not be returned. Try again shortly.'
+                    );
+                  }
+                }, { reconcile: false })
               }
               onOpen={() =>
                 act(offer.vaultAddress, async () => {
@@ -291,7 +304,16 @@ export default function MyOffersList({ lpAddress }: MyOffersListProps) {
                   }
                 }, { reconcile: false })
               }
-              onRelease={() => act(offer.vaultAddress, () => releaseHoldback(offer.vaultAddress))}
+              onRelease={() =>
+                act(offer.vaultAddress, async () => {
+                  // Relayed like the others now, so a refusal arrives in the result rather than
+                  // as a throw and has to be raised here.
+                  const result = await releaseHoldback(offer.vaultAddress);
+                  if (!result.success) {
+                    throw new Error(result.error || 'The reserve could not be released.');
+                  }
+                }, { reconcile: false })
+              }
             />
           ))}
         </div>
@@ -333,78 +355,89 @@ function OfferRow({
    *    contract remains the authority and refuses anything this gets wrong in the other
    *    direction.
    *
-   * A disputed escrow is excluded whatever stage it reached: the dispute decides where the
-   * holdback goes, and it does not follow the ordinary path.
+   * ⚠️ A RESOLVED DISPUTE COUNTS AS SETTLED, AND EXCLUDING IT WAS WRONG. Resolution marks the
+   *    escrow claimed in the same transaction that pays it out, so the reserve is releasable —
+   *    and that is the only case where the split does anything: the buyer's award comes off the
+   *    reserve first, the remainder goes back to the funder. Treating "was disputed" as "leave
+   *    it alone" stranded the reserve precisely when it was doing its job. Only a dispute still
+   *    IN FLIGHT disables this, and it does so by not being settled, not by being a dispute.
    */
-  const claimed = escrow?.state === 'CLAIMED' || escrow?.state === 'COMPLETED';
-  const disputed = escrow?.state === 'DISPUTED' || escrow?.state === 'RESOLVED';
-  const releasable = hasHoldback && claimed && !disputed;
+  const settled =
+    escrow?.state === 'CLAIMED' || escrow?.state === 'COMPLETED' || escrow?.state === 'RESOLVED';
+  const inFlightDispute = escrow?.state === 'DISPUTED';
+  const releasable = hasHoldback && settled && !inFlightDispute;
   // A deposit that landed while the offer never opened. The money is in the vault and the
   // seller cannot see it — one relayed call fixes it, and no transfer is involved.
   const openable = needsOpening(offer);
 
   return (
-    <div className="rounded-lg border border-gray-200 dark:border-secondary-700 bg-white dark:bg-secondary-800 p-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          {/*
-            "offered" is a bid still hoping for a yes; "accepted" is money that has changed
-            hands. Reading the same word for both makes a settled purchase look like it is
-            still waiting on someone.
+    <MarketplaceCard
+      /*
+        "offered" is a bid still hoping for a yes; "accepted" is money that has changed hands.
+        Reading the same word for both makes a settled purchase look like it is still waiting
+        on someone.
 
-            The maturity rides in the title because it is the figure an LP scans a list for -
-            it is when the capital comes back. It is omitted, rather than guessed at, until the
-            escrow has actually been read.
-          */}
-          <div className="text-sm font-medium text-gray-900 dark:text-white">
-            {displayCurrency(offer.offerAmount ?? 0, 'microUSDC')} {tokenSymbol}{' '}
-            {PURCHASED.has(offer.status) ? 'accepted' : 'offered'}
-            {escrow?.maturity ? ` · matures ${formatTimestamp(escrow.maturity).date}` : ''}
-          </div>
-          <div className="text-xs font-mono text-gray-400 dark:text-secondary-500 mt-0.5 truncate">
-            escrow {offer.escrowContract}
-          </div>
-          <div className="text-xs text-gray-500 dark:text-secondary-400 mt-1">
-            {offer.status === 'OPEN' && !offer.expired && offer.offerExpiry ? (
-              <>Standing — lapses in {hoursUntil(offer.offerExpiry)}h</>
-            ) : (
-              offerStatusLabel(offer)
-            )}
-            {offer.lastEventAt ? ` · last activity ${formatTimestamp(offer.lastEventAt).date}` : ''}
-          </div>
-
-          {/*
-            The escrow underneath, kept visually distinct from the offer's own status above.
-            The two answer different questions and can disagree in ways that matter: an offer
-            can read "Withdrawn" while its escrow is still live, and "Accepted" while the
-            escrow is disputed. Collapsing them into one line would hide exactly that.
-
-            Nothing is rendered until the escrow has been read - an absent entry means unknown,
-            and a row that says nothing is better than one asserting "Not funded" about an
-            escrow nobody managed to reach.
-          */}
-          {escrow && (
-            <div className={`text-xs mt-1 ${escrowStatusTone(escrow)}`}>
-              Contract: {escrowStatusLabel(escrow)}
-            </div>
+        The maturity rides in the title because it is the figure an LP scans a list for - it is
+        when the capital comes back. It is omitted, rather than guessed at, until the escrow has
+        actually been read.
+      */
+      headline={
+        <>
+          {displayCurrency(offer.offerAmount ?? 0, 'microUSDC')} {tokenSymbol}{' '}
+          {PURCHASED.has(offer.status) ? 'accepted' : 'offered'}
+          {escrow?.maturity ? ` · matures ${formatTimestamp(escrow.maturity).date}` : ''}
+        </>
+      }
+      identifier={`escrow ${offer.escrowContract}`}
+      status={
+        <>
+          {offer.status === 'OPEN' && !offer.expired && offer.offerExpiry ? (
+            <>Standing — lapses in {hoursUntil(offer.offerExpiry)}h</>
+          ) : (
+            offerStatusLabel(offer)
           )}
-        </div>
+          {offer.lastEventAt ? ` · last activity ${formatTimestamp(offer.lastEventAt).date}` : ''}
+        </>
+      }
+      /*
+        The escrow underneath, kept visually distinct from the offer's own status above. The two
+        answer different questions and can disagree in ways that matter: an offer can read
+        "Withdrawn" while its escrow is still live, and "Accepted" while the escrow is disputed.
+        Collapsing them into one line would hide exactly that.
 
-        <div className="flex flex-col items-end gap-2">
+        Nothing is rendered until the escrow has been read - an absent entry means unknown, and a
+        row that says nothing is better than one asserting "Not funded" about an escrow nobody
+        managed to reach.
+      */
+      footnote={
+        escrow && (
+          <div className={`text-xs mt-1 ${escrowStatusTone(escrow)}`}>
+            Contract: {escrowStatusLabel(escrow)}
+          </div>
+        )
+      }
+      actions={
+        <>
           {openable && (
             <Button type="button" size="sm" onClick={onOpen} disabled={busy}>
               {busy ? <LoadingSpinner className="w-4 h-4" /> : 'Open this offer'}
             </Button>
           )}
+          {/*
+            ⚠️ NO WALLET PROMPT BEHIND THIS ONE. `withdraw()` is permissionless and pays only the
+            vault's own LP, so the platform relays it: the LP presses this and their capital comes
+            back without a signature and without gas. Do not reword it into a "sign to withdraw".
+          */}
           {withdrawable && (
             <Button type="button" size="sm" onClick={onWithdraw} disabled={busy}>
-              {busy ? <LoadingSpinner className="w-4 h-4" /> : 'Withdraw your capital'}
+              {busy ? <LoadingSpinner className="w-4 h-4" /> : 'Return my capital now'}
             </Button>
           )}
           {/*
-            ⚠️ `releaseHoldback` is NOT keeper-firable in the per-offer model (§6.7): it answers
-            only to the holdback's funder or the live beneficiary, so nobody can sweep up on the
-            parties' behalf. If this prompt is missing, the holdback simply sits in the vault.
+            ⚠️ RELAYED, BUT NOT SWEPT. `releaseHoldback` is permissionless (§6.7), so this costs
+            no signature and no gas — but no keeper fires it, because selecting candidates needs
+            a chain read per sold position. If this prompt is missing, the reserve simply sits in
+            the vault, so the detection above is still what gets it paid out.
           */}
           {hasHoldback && (
             <Button
@@ -417,9 +450,9 @@ function OfferRow({
               {busy ? <LoadingSpinner className="w-4 h-4" /> : 'Release the holdback'}
             </Button>
           )}
-        </div>
-      </div>
-
+        </>
+      }
+    >
       {openable && (
         <p className="text-xs text-amber-700 dark:text-amber-300 mt-3">
           Your {displayCurrency(offer.depositedAmount!, 'microUSDC')} {tokenSymbol} arrived, but this
@@ -428,13 +461,19 @@ function OfferRow({
         </p>
       )}
 
+      {/*
+        ⚠️ THE OLD COPY HERE SAID "NOTHING RETURNS IT AUTOMATICALLY", AND THAT IS NO LONGER TRUE.
+        A sweep returns lapsed and rejected offers on the same timer as the batch claim, so the
+        button is now about not waiting for it rather than about the money being stranded. Saying
+        otherwise would frighten an LP into thinking their capital depends on them noticing.
+      */}
       {withdrawable && (
         <p className="text-xs text-amber-700 dark:text-amber-300 mt-3">
           {offer.status === 'REJECTED'
-            ? 'The seller declined this offer. Your capital sits in your vault until you withdraw it — nothing returns it automatically.'
+            ? 'The seller declined this offer. Your capital is being returned to your wallet automatically — press the button if you would rather not wait. It costs you nothing and needs no signature.'
             : offer.status === 'PENDING'
-              ? 'This offer lapsed before it was ever opened, and your deposit is still sitting in the vault. Withdraw to get it back — nothing returns it automatically.'
-              : 'This offer has lapsed and can no longer be accepted. Withdraw to get your capital back.'}
+              ? 'This offer lapsed before it was ever opened, and your deposit is still sitting in the vault. It is returned to your wallet automatically — press the button if you would rather not wait. It costs you nothing and needs no signature.'
+              : 'This offer has lapsed and can no longer be accepted. Your capital is being returned to your wallet automatically — press the button if you would rather not wait. It costs you nothing and needs no signature.'}
         </p>
       )}
 
@@ -442,16 +481,16 @@ function OfferRow({
         <p className="text-xs text-gray-500 dark:text-secondary-400 mt-3">
           You are holding {displayCurrency(offer.holdback!, 'microUSDC')} {tokenSymbol} as a
           holdback.{' '}
-          {releasable ? (
+          {releasable && escrow?.state === 'RESOLVED' ? (
+            <>
+              This contract was disputed and resolved. The award to the customer comes out of your
+              holdback first, and only what is left of it returns to the seller — releasing now
+              settles that split. It costs you nothing and needs no signature.
+            </>
+          ) : releasable ? (
             <>
               The contract was claimed without a dispute, so releasing now returns the holdback to
-              the seller and any balance to you. Nobody can do this on your behalf.
-            </>
-          ) : escrow?.state === 'RESOLVED' ? (
-            <>
-              This contract was disputed. The dispute decides where the holdback goes, so it is
-              not released the ordinary way — the button stays disabled rather than sending a
-              transaction the contract will refuse.
+              the seller. It costs you nothing and needs no signature.
             </>
           ) : escrow?.state === 'DISPUTED' ? (
             <>
@@ -460,8 +499,8 @@ function OfferRow({
             </>
           ) : escrow ? (
             <>
-              It cannot be released until the contract is claimed — the contract refuses before
-              then, so the button stays disabled rather than spending your gas to be turned down.
+              It cannot be released until the contract is claimed — the vault refuses before then,
+              so the button stays disabled rather than sending a transaction that reverts.
             </>
           ) : (
             <>
@@ -471,6 +510,6 @@ function OfferRow({
           )}
         </p>
       )}
-    </div>
+    </MarketplaceCard>
   );
 }

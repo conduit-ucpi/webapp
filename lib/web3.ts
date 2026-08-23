@@ -62,10 +62,14 @@ export const ESCROW_CONTRACT_ABI = [
  * One LP's offer vault (MARKETPLACE_OPENSPEC §5.0).
  *
  * Each offer is its own contract, so LP capital is never commingled and every party action is
- * addressed to the vault that holds their own money. ⚠️ NONE of these five actions is relayed:
- * `fund`, `accept`, `reject`, `withdraw` and `releaseHoldback` are sent by the party's own
- * wallet after `fund-wallet` supplies the gas (§15.6a). chainservice only deploys the vault,
- * pays for gas, and indexes the events.
+ * addressed to the vault that holds their own money.
+ *
+ * ⚠️ WHICH OF THESE IS RELAYED IS DECIDED BY ONE TEST: could the SENDER choose anything?
+ *    `fund`, `withdraw` and `releaseHoldback` take no arguments and have their destinations
+ *    fixed by the vault or read live off the escrow, so chainservice sends them and the party
+ *    signs nothing. `accept` and `reject` stay with the party's own wallet — `accept` pays
+ *    `msg.sender`, and `reject` answers only to the seller — sent after `fund-wallet` supplies
+ *    the gas (§15.6a).
  */
 export const OFFER_VAULT_ABI = [
   'function escrowContract() view returns (address)',
@@ -81,6 +85,10 @@ export const OFFER_VAULT_ABI = [
   // PENDING=0, OPEN=1, ACCEPTED=2, REJECTED=3, WITHDRAWN=4 — see OFFER_VAULT_STATUS.
   'function status() view returns (uint8)',
   'function isOpen() view returns (bool)',
+  // The contract's own answer to whether an exit would land, rather than the UI restating
+  // the conditions and drifting from them (§6.4, §6.7).
+  'function isWithdrawable() view returns (bool)',
+  'function isReleasable() view returns (bool)',
   'function fund()',
   'function accept()',
   'function reject()',

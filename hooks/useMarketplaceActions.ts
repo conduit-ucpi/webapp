@@ -16,9 +16,16 @@ import type { CreateOfferResponse } from '@/types/marketplace';
  *    wallet, and the user's provider broadcasts. Any endpoint asking for a `signedTransaction` is
  *    the wrong shape and should not exist.
  *
- * The two exceptions both go through chainservice, and both are safe to: `seatDefaultArbiter` is
- * permissionless on-chain and seats the DEFAULT_ARBITER Safe rather than the caller, and
- * `createOffer` deploys an empty vault that only the named LP can fund.
+ * The exceptions all go through chainservice, and the test each one passes is the same: could the
+ * SENDER choose anything? `seatDefaultArbiter` seats the DEFAULT_ARBITER Safe rather than the
+ * caller; `createOffer` deploys an empty vault only the named LP can fund; `fund()` takes no
+ * arguments and merely observes a balance; `withdraw()` pays the `lp` fixed at deployment an
+ * amount fixed by state; and `releaseHoldback()` splits the reserve between a funder fixed at
+ * deployment and a beneficiary read live off the escrow. None of them lets a relayer decide
+ * anything, which is why the contracts make them permissionless and why we may send them.
+ *
+ * What is left on the wallet is exactly what has a chooser: `accept` pays `msg.sender`, `reject`
+ * answers only to the seller, and the dispute votes are the caller's own position.
  */
 
 const escrowInterface = new ethers.Interface(ESCROW_CONTRACT_ABI);
@@ -289,7 +296,11 @@ export function useMarketplaceActions() {
     [send, notifyOfferEnded]
   );
 
-  /** Decline an offer. The vault stays put; the LP withdraws their own capital afterwards. */
+  /**
+   * Decline an offer. The vault stays put, holding the LP's capital until it is withdrawn — which
+   * needs nothing from the seller and nothing from the LP either: `withdrawOffer` below is
+   * relayed, and the platform's sweep returns it unprompted.
+   */
   const rejectOffer = useCallback(
     async (vaultAddress: string, escrowContract?: string | null) => {
       const hash = await send(vaultAddress, vaultInterface, 'reject');
@@ -302,30 +313,65 @@ export function useMarketplaceActions() {
   /**
    * Recover an LP's capital from a vault that can no longer be accepted.
    *
+   * ⚠️ RELAYED, AND THE THIRD EXCEPTION TO THE RULE AT THE TOP OF THIS FILE. `withdraw()` is
+   *    permissionless on-chain: it takes no arguments, pays the `lp` fixed when the vault was
+   *    deployed, and the amount is fixed by state — so the sender chooses nothing and there is
+   *    nothing for a signature to authorise. The LP presses a button and their capital comes
+   *    back, with no wallet prompt and no gas of their own.
+   *
    * ⚠️ Nothing on-chain notifies anyone that this became possible. Expiry, rejection, staleness
    *    after someone else's acceptance, and dispute-triggered withdrawability are all lazy
-   *    conditions the UI must detect and prompt — an LP who is never told simply never withdraws.
+   *    conditions the UI must detect and prompt. The platform now sweeps lapsed offers on a
+   *    timer as well, so this button is the LP's way of not waiting for it — which means the
+   *    two can race, and the loser gets a refusal rather than an error.
+   *
+   * ⚠️ NO `offer-ended` CALL, UNLIKE ACCEPT AND REJECT. That notification exists because those
+   *    go from the party's own wallet and chainservice never sees them. This one IS chainservice's
+   *    own transaction: it records the ending and indexes the receipt itself, and telling it
+   *    again would be a second, later claim about a cache it has already corrected.
    */
-  const withdrawOffer = useCallback(
-    async (vaultAddress: string, escrowContract?: string | null) => {
-      const hash = await send(vaultAddress, vaultInterface, 'withdraw');
-      await notifyOfferEnded(vaultAddress, escrowContract, false);
-      return hash;
-    },
-    [send, notifyOfferEnded]
-  );
+  const withdrawOffer = useCallback(async (vaultAddress: string): Promise<RelayedResult> => {
+    const response = await fetch('/api/chain/marketplace/withdraw-offer', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ vaultAddress })
+    });
+    const data = await response.json().catch(() => ({}));
+    return {
+      success: response.ok && data.success !== false,
+      transactionHash: data.transactionHash,
+      error: data.error
+    };
+  }, []);
 
   /**
-   * Return a settled escrow's reserve to its funder and beneficiary.
+   * Settle a finished escrow's reserve between its funder and the position's holder.
    *
-   * ⚠️ NOT KEEPER-FIRABLE. In the per-offer model this answers only to the reserve's funder or
-   *    the live beneficiary, so nobody can sweep up on the parties' behalf. If the UI does not
-   *    detect a settled escrow with a live reserve and tell them, the reserve simply sits there.
+   * ⚠️ RELAYED, on the same test as `withdrawOffer`: the sender chooses nothing. The funder was
+   *    fixed when the vault was deployed, the beneficiary is `escrow.recipient()` read live, and
+   *    the split comes out of the escrow's final state — a dispute's award to the buyer comes off
+   *    the reserve first, and only the remainder returns to the funder. So neither party signs.
+   *
+   * ⚠️ A DISPUTED ESCROW THAT RESOLVED IS RELEASABLE, and that is the case the split exists for.
+   *    Resolution marks the escrow claimed in the same transaction that pays it out. Never gate
+   *    this on "was there a dispute" — that strands the reserve precisely when it is doing work.
+   *
+   * ⚠️ NOBODY SWEEPS IT. Unlike a lapsed offer, no keeper fires this, so the UI detecting a
+   *    settled escrow with a live reserve is still what gets it paid out.
    */
-  const releaseHoldback = useCallback(
-    (vaultAddress: string) => send(vaultAddress, vaultInterface, 'releaseHoldback'),
-    [send]
-  );
+  const releaseHoldback = useCallback(async (vaultAddress: string): Promise<RelayedResult> => {
+    const response = await fetch('/api/chain/marketplace/release-holdback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ vaultAddress })
+    });
+    const data = await response.json().catch(() => ({}));
+    return {
+      success: response.ok && data.success !== false,
+      transactionHash: data.transactionHash,
+      error: data.error
+    };
+  }, []);
 
   return {
     submitSettlementVote,

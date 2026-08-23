@@ -62,7 +62,12 @@ export function liveOfferToView(offer: LiveOffer): OfferView {
  * ⚠️ NOTHING ON-CHAIN ANNOUNCES ANY OF THESE CONDITIONS (§6.4, §15.2). Expiry is a time
  *    condition the contract evaluates lazily; rejection and someone else's acceptance emit events
  *    about a *different* vault. Withdrawability is therefore something the UI must notice and say
- *    out loud — an LP who is never told simply never withdraws, and their capital sits idle.
+ *    out loud.
+ *
+ *    A keeper sweep now returns lapsed and rejected offers unprompted, so being missed here no
+ *    longer means the capital is lost — but it still means an LP staring at a dead offer with no
+ *    control on it, and for STALENESS it does mean lost: the sweep selects on this index, which
+ *    cannot see an acceptance that happened on another vault.
  *
  * This is advisory, as every off-chain read is: the vault re-checks on `withdraw()`.
  */

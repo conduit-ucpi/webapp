@@ -8,6 +8,7 @@ import { SkeletonCard } from '@/components/ui/Skeleton';
 import ExpandableHash from '@/components/ui/ExpandableHash';
 import { useWalletAddress } from '@/hooks/useWalletAddress';
 import DashboardTour from '@/components/onboarding/DashboardTour';
+import ReservesOwedList from '@/components/marketplace/ReservesOwedList';
 import { btnPrimary } from '@/utils/landingStyles';
 
 export default function Dashboard2() {
@@ -279,6 +280,21 @@ export default function Dashboard2() {
           aria-label="Contracts"
         >
           <div className="max-w-5xl mx-auto px-6 sm:px-8 py-6 lg:py-8">
+            {/*
+              Money owed to them on payments they already sold, above their contracts because it
+              is the only thing here they can act on for money.
+
+              ⚠️ IT BELONGS ON THIS PAGE RATHER THAN /liquidity, WHICH IS THE BUYER'S SCREEN. A
+                 reserve is owed to the SUPPLIER — the person who sold a payment early — and the
+                 sale drops that contract out of the list below, so without this they have
+                 nowhere at all to see it.
+
+              Renders nothing for the overwhelming majority who have never sold one, and the
+              `empty:` margin collapses with it rather than leaving a gap.
+            */}
+            <div className="mb-10 empty:mb-0">
+              <ReservesOwedList sellerAddress={walletAddress || undefined} />
+            </div>
             <EnhancedDashboard />
           </div>
         </section>

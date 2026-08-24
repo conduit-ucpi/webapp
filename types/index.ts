@@ -45,6 +45,14 @@ export interface Config {
   resolutionVoteFoundryGas: string;
   raiseDisputeFoundryGas: string;
   claimFundsFoundryGas: string;
+  /**
+   * Marketplace accept, which is TWO transactions from the seller's wallet and needs its own
+   * figures for the same reason every escrow call above has one: when estimation fails, the
+   * fallback decides how much gas the sponsor funds, and the USDC default (100k) is far short
+   * of what `accept()` uses — it rewrites the escrow's recipient and moves the price.
+   */
+  approveRecipientTransferFoundryGas?: string;
+  acceptOfferFoundryGas?: string;
   gasPriceBuffer: string;
   // UI configuration
   basePath: string;

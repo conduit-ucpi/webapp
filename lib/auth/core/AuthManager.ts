@@ -972,14 +972,24 @@ export class AuthManager {
     this.restoreGraceActive = true;
     this.restoreGraceTimer = setTimeout(() => {
       this.restoreGraceTimer = null;
-      // Only flip isLoading=false if no provider connected during the
-      // window. If one did, handleProviderConnectionChange already cleared
-      // the flag as part of its setState.
+      /*
+       * ⚠️ CLEAR isLoading UNCONDITIONALLY. This window exists only to stop the connect prompt
+       *    flashing for ~50-150ms while AppKit restores — a cosmetic delay, never a correctness
+       *    gate, so it must not be able to outlive itself.
+       *
+       *    It used to clear the flag only when nothing had connected, trusting
+       *    handleProviderConnectionChange to do it otherwise. That fails in exactly the case
+       *    that matters: AppKit restores a persisted session, isConnected flips true, but the
+       *    provider never materialises and the handler never completes. The timer then declined
+       *    to help BECAUSE isConnected was true, and isLoading stayed true for the life of the
+       *    page — /create and /contract-pay sit on their loading state forever while /dashboard,
+       *    which does not gate on it, renders perfectly beside them.
+       *
+       *    When the handler did complete, the flag is already false and this is a no-op.
+       */
       if (this.restoreGraceActive) {
         this.restoreGraceActive = false;
-        if (!this.state.isConnected) {
-          this.setState({ isLoading: false });
-        }
+        this.setState({ isLoading: false });
       }
     }, AuthManager.RESTORE_GRACE_MS);
   }

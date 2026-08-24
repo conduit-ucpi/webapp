@@ -2,11 +2,12 @@ import { useState } from 'react';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import MarketplaceCard from '@/components/marketplace/MarketplaceCard';
-import { useSellerReserves } from '@/hooks/useMarketplaceData';
+import { useSellerReserves, useRefreshFromChain } from '@/hooks/useMarketplaceData';
 import { useMarketplaceActions } from '@/hooks/useMarketplaceActions';
 import { useConfig } from '@/components/auth/ConfigProvider';
-import { displayCurrency } from '@/utils/currency';
+import { displayCurrencyPrecise } from '@/utils/currency';
 import { formatTimestamp } from '@/utils/datetime';
+import { timeToMaturity } from '@/utils/marketplace';
 import type { ReserveView } from '@/types/marketplace';
 
 interface ReservesOwedListProps {
@@ -35,6 +36,7 @@ interface ReservesOwedListProps {
 export default function ReservesOwedList({ sellerAddress }: ReservesOwedListProps) {
   const { config } = useConfig();
   const { data, loading, error, refetch } = useSellerReserves(sellerAddress);
+  const { refresh } = useRefreshFromChain(refetch);
   const { releaseHoldback } = useMarketplaceActions();
 
   const [busyVault, setBusyVault] = useState<string | null>(null);
@@ -52,11 +54,22 @@ export default function ReservesOwedList({ sellerAddress }: ReservesOwedListProp
         throw new Error(result.error || 'The reserve could not be released.');
       }
       /*
-       * No reconcile first, unlike the LP's wallet-sent actions: chainservice sent this one and
-       * indexed the `HoldbackReleased` receipt as it landed, so the row already describes the
-       * world after the release — including what it actually paid.
+       * ⚠️ RECONCILE FIRST, NEVER A BARE REFETCH. This row stops offering the release only once
+       *    `HoldbackReleased` is in the folded event history — that is the whole of what turns
+       *    `releasable` off. chainservice pushes the receipt's events as the transaction lands,
+       *    but nothing downstream depends on that push having worked, and when it does not
+       *    arrive the index still reads ACCEPTED. A refetch then returns the identical row,
+       *    still inviting a release that has already happened and already paid.
+       *
+       *    This was the assumption that broke: a release can succeed on-chain and leave the
+       *    button sitting there through a page refresh, because both are reading an index the
+       *    event never reached. Scanning the chain is the only thing that closes the row
+       *    without the push.
+       *
+       *    A reconcile that fails still falls through to a plain refetch — the money moved
+       *    either way, and stale-but-shown beats a screen frozen on pre-action state.
        */
-      await refetch();
+      if (!(await refresh())) await refetch();
     } catch (e: any) {
       setActionError(e?.message || 'That did not go through.');
     } finally {
@@ -100,8 +113,9 @@ export default function ReservesOwedList({ sellerAddress }: ReservesOwedListProp
           Reserves on payments you sold
         </h2>
         <p className="text-sm text-gray-500 dark:text-secondary-400">
-          When you sold these payments early, part of the price was held back until the customer&apos;s
-          contract completed. That money comes back to you.
+          You were paid for these when you sold them. A reserve was held back from that price, and
+          it is the only part still outstanding: it returns once the customer&apos;s contract
+          reaches its payout date, less anything a dispute awards them.
         </p>
       </div>
 
@@ -148,9 +162,17 @@ function ReserveRow({
   busy: boolean;
   onRelease: () => void;
 }) {
-  const held = `${displayCurrency(reserve.holdback, 'microUSDC')} ${tokenSymbol}`;
-  const due = reserve.dueBack ? `${displayCurrency(reserve.dueBack, 'microUSDC')} ${tokenSymbol}` : null;
-  const matures = reserve.maturity ? formatTimestamp(reserve.maturity).date : null;
+  const held = `${displayCurrencyPrecise(reserve.holdback, 'microUSDC')} ${tokenSymbol}`;
+  const due = reserve.dueBack ? `${displayCurrencyPrecise(reserve.dueBack, 'microUSDC')} ${tokenSymbol}` : null;
+  /*
+   * Date AND time. A reserve's payout date is the gate on collecting it, and these routinely
+   * fall due within the hour — "Aug 24, 2026" on a contract maturing in forty minutes tells a
+   * supplier nothing about whether to wait or come back tomorrow.
+   */
+  const matures = reserve.maturity
+    ? `${formatTimestamp(reserve.maturity).date} at ${formatTimestamp(reserve.maturity).time}`
+    : null;
+  const maturesIn = reserve.maturity ? timeToMaturity(reserve.maturity) : null;
 
   const headline =
     reserve.state === 'RELEASED'
@@ -163,7 +185,7 @@ function ReserveRow({
     <MarketplaceCard
       headline={headline}
       identifier={`contract ${reserve.escrowContract ?? 'unknown'}`}
-      status={<ReserveStatus reserve={reserve} held={held} due={due} matures={matures} />}
+      status={<ReserveStatus reserve={reserve} held={held} due={due} matures={matures} maturesIn={maturesIn} />}
       actions={
         reserve.releasable && (
           <Button type="button" size="sm" onClick={onRelease} disabled={busy}>
@@ -197,19 +219,25 @@ function ReserveStatus({
   reserve,
   held,
   due,
-  matures
+  matures,
+  maturesIn
 }: {
   reserve: ReserveView;
   held: string;
   due: string | null;
+  /** Absolute payout date AND time — the gate on collecting the reserve. */
   matures: string | null;
+  /** The same moment expressed as a distance ("40 minutes"), since many fall due within the hour. */
+  maturesIn: string | null;
 }) {
   switch (reserve.state) {
     case 'LIVE':
       return (
         <>
-          The contract is still running{matures ? `, and completes ${matures}` : ''}. You get the
-          full {held} back unless the customer disputes before then.
+          Nothing to collect yet{maturesIn ? ` — the payout date is ${maturesIn} away` : ''}
+          {matures ? `, on ${matures}` : ''}, and the reserve only returns after that. You get the
+          full {held} unless the customer disputes before then; their award would come out of this
+          reserve first.
         </>
       );
     case 'DISPUTED':
@@ -220,7 +248,28 @@ function ReserveStatus({
         </>
       );
     case 'SETTLED':
-      return <>The contract completed without a dispute. The full {held} is yours to collect.</>;
+      /*
+       * ⚠️ ONLY PROMISE COLLECTION WHEN THE VAULT CONFIRMED IT. `releasable` false here does NOT
+       *    mean "not yet": the vault said no, or could not be asked at all. By far the most
+       *    common reason is that the reserve has ALREADY been returned — the platform sweeps
+       *    them, and the HoldbackReleased event may simply not have reached the index yet.
+       *    Telling a supplier that money is "yours to collect" when it is most likely already
+       *    in their wallet, beside no button to collect it with, is the confusing pair.
+       */
+      return reserve.releasable ? (
+        <>
+          Reached its payout date with no dispute, so the whole reserve survives. You were paid
+          the rest of the price when you sold it; this {held} is the remainder, and it is yours
+          to collect.
+        </>
+      ) : (
+        <>
+          Reached its payout date with no dispute, so the whole {held} reserve survives — it is
+          the only part of the price still outstanding, the rest having been paid to you at the
+          sale. It has most likely been returned to your wallet already; we could not reach the
+          vault to confirm, so there is nothing to press here.
+        </>
+      );
     case 'RESOLVED':
       return (
         <>
@@ -228,7 +277,15 @@ function ReserveStatus({
           {reserve.resolvedBuyerPercentage != null
             ? ` — ${reserve.resolvedBuyerPercentage}% of the payment went to the customer`
             : ''}
-          . That came out of the {held} reserve first, leaving {due} for you.
+          . That award came out of the {held} reserve first, so {due} of it survives
+          {due === held ? '' : ' — a partial return, not the whole reserve'}. You were paid the
+          rest of the price at the sale; this is the remainder.
+          {!reserve.releasable && (
+            <>
+              {' '}It has most likely been returned to your wallet already; we could not reach the
+              vault to confirm.
+            </>
+          )}
         </>
       );
     case 'RELEASED':

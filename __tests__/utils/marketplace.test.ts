@@ -27,6 +27,7 @@ function offer(overrides: Partial<OfferView> = {}): OfferView {
     status: 'OPEN',
     expired: false,
     lastEventAt: Math.floor(Date.now() / 1000),
+    releasable: false,
     ...overrides
   };
 }

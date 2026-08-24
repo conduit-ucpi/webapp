@@ -109,6 +109,50 @@ export class RpcClient {
     // throw here, so constructing Web3Service never regresses on empty config.
     this.rpcUrl = rpcUrl;
     this.provider = new ethers.JsonRpcProvider(rpcUrl);
+    RpcClient.installTransientRetry(this.provider);
+  }
+
+  /**
+   * Retry throttled RPC calls instead of letting them surface as fatal errors.
+   *
+   * ⚠️ A THROTTLED READ IS NOT A FAILED CONTRACT CALL, BUT IT ARRIVES LOOKING LIKE ONE. Public
+   *    Base RPC answers a burst with `{code: -32016, "over rate limit"}`; ethers turns the empty
+   *    reply into `CALL_EXCEPTION / missing revert data (data=null)`, which reads as "this
+   *    contract reverted" and reaches the user as a Next.js Runtime Error overlay — most
+   *    memorably mid-payment, on a plain `balanceOf`. The app loads name/symbol/decimals for
+   *    every configured token plus balances on each page, so a burst is the normal case, not an
+   *    edge one.
+   *
+   *    Wrapped at `send` so it covers every read through this client, and applied ONLY to
+   *    transient conditions: a real revert carries revert data and must still fail immediately,
+   *    loudly, and on the first attempt.
+   */
+  private static installTransientRetry(provider: ethers.JsonRpcProvider): void {
+    const DELAYS_MS = [250, 600, 1400, 3000];
+    const isTransient = (e: any): boolean => {
+      const code = e?.error?.code ?? e?.code;
+      if (code === -32016 || code === -32005 || code === 429) return true;
+      const text = `${e?.error?.message ?? ''} ${e?.message ?? ''} ${e?.shortMessage ?? ''}`.toLowerCase();
+      return /over rate limit|rate limit|too many requests|429|timeout|timed out|econnreset|socket hang up|service unavailable|bad gateway/.test(text);
+    };
+
+    const original = provider.send.bind(provider);
+    provider.send = async (method: string, params: Array<any>): Promise<any> => {
+      let lastError: any;
+      for (let attempt = 0; attempt <= DELAYS_MS.length; attempt++) {
+        try {
+          return await original(method, params);
+        } catch (e) {
+          lastError = e;
+          if (!isTransient(e) || attempt === DELAYS_MS.length) throw e;
+          console.warn(
+            `[RpcClient] ${method} throttled (attempt ${attempt + 1}/${DELAYS_MS.length + 1}), retrying in ${DELAYS_MS[attempt]}ms`
+          );
+          await new Promise(resolve => setTimeout(resolve, DELAYS_MS[attempt]));
+        }
+      }
+      throw lastError;
+    };
   }
 
   /** Underlying read-only provider, for the few low-level reads that need it. */

@@ -15,7 +15,15 @@ import type { ReserveView } from '@/types/marketplace';
  */
 
 jest.mock('@/hooks/useMarketplaceData', () => ({
-  useSellerReserves: jest.fn()
+  useSellerReserves: jest.fn(),
+  // Releasing reconciles the chain before re-reading the list, because the row closes only
+  // once `HoldbackReleased` is in the index and nothing guarantees the push put it there.
+  useRefreshFromChain: jest.fn(() => ({
+    refresh: jest.fn(),
+    refreshing: false,
+    lastResult: null,
+    error: null
+  }))
 }));
 
 jest.mock('@/components/auth/ConfigProvider', () => ({

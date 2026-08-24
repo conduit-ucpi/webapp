@@ -285,15 +285,43 @@ export function useMarketplaceActions() {
    * If the window lapses, just re-prompt for the approval. An expired approval is inert and
    * nothing is at risk — treat expiry as a retry, never as an error state needing recovery.
    */
+  /**
+   * Tell contractservice a sale happened, so its index stops describing the escrow as unsold.
+   *
+   * ⚠️ `offer-ended` ABOVE ONLY REACHES CHAINSERVICE, AND THAT IS NOT ENOUGH. Acceptance is
+   *    signed from the SELLER'S OWN WALLET, so chainservice never witnesses it and never pushes
+   *    an `OfferAccepted` to contractservice's index. Everything contractservice derives from
+   *    that index then keeps the pre-sale answer:
+   *      - `sellable` goes on listing the escrow with its ORIGINAL seller, so the LP who just
+   *        bought it is invited to bid on a payment they now own — and the factory rejects that
+   *        with LpCannotBeEscrowParty, after they have paid for the gas;
+   *      - `previouslySold` stays false;
+   *      - the reserve rows never reach ACCEPTED, which is what gates asking the vault whether
+   *        the seller's reserve can be released.
+   *
+   * ⚠️ NEVER ALLOWED TO FAIL THE ACTION, for the same reason as notifyOfferEnded: the swap has
+   *    already landed on-chain by the time this runs. A throw here would tell a seller their
+   *    sale did not go through and invite them to sign it again.
+   */
+  const reconcileAfterSale = useCallback(async () => {
+    try {
+      await fetch('/api/marketplace/refresh', { method: 'POST' });
+    } catch (e) {
+      console.warn('Could not ask contractservice to reconcile after the sale:', e);
+    }
+  }, []);
+
   const acceptOffer = useCallback(
     async (vaultAddress: string, escrowContract?: string | null) => {
       const hash = await send(vaultAddress, vaultInterface, 'accept');
       // `accepted` matters: it tells chainservice to drop the WHOLE escrow, because acceptance
       // rewrites the recipient and makes every other offer on it stale at the same instant.
       await notifyOfferEnded(vaultAddress, escrowContract, true);
+      // ⚠️ AND CONTRACTSERVICE, WHICH THE LINE ABOVE DOES NOT REACH. See reconcileAfterSale.
+      await reconcileAfterSale();
       return hash;
     },
-    [send, notifyOfferEnded]
+    [send, notifyOfferEnded, reconcileAfterSale]
   );
 
   /**

@@ -119,6 +119,18 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
         mLog.debug('AuthProvider', 'Error fetching user data after reconnect', {
           error: error instanceof Error ? error.message : String(error),
         });
+      } finally {
+        /*
+         * ⚠️ THIS IS WHERE A RESTORED SESSION FINISHES LOADING — clear on every path, including
+         *    the 401 one where `user` stays null and lazy auth takes over later.
+         *
+         *    AuthManager.connect() leaves isLoading true deliberately, delegating the clear to
+         *    authenticateBackend — which only runs from the EXPLICIT connect flow. On a cold
+         *    load AppKit restores the session and this effect runs instead, so nothing cleared
+         *    the flag. The grace timer in AuthManager does not cover it either: that is armed
+         *    only when no provider had connected yet, which is not the restore case.
+         */
+        if (!cancelled) authManager.setState({ isLoading: false });
       }
     };
 
@@ -220,7 +232,14 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
       usingConnectionResult: !!connectionResult
     });
 
+    /*
+     * ⚠️ CLEAR isLoading BEFORE THESE EARLY RETURNS. It starts true and is only ever set false
+     *    inside the try block below, so returning here leaves it true for the life of the page.
+     *    Every route gated on `useAuth().isLoading` then renders its loading state forever and
+     *    never falls through to the connect screen a disconnected wallet should reach.
+     */
     if (!isConnected) {
+      authManager.setState({ isLoading: false });
       mLog.error('AuthProvider', 'Cannot authenticate - no wallet connected', {
         connectionResultSuccess: connectionResult?.success,
         reactStateConnected: state.isConnected,
@@ -230,6 +249,7 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
     }
 
     if (!address) {
+      authManager.setState({ isLoading: false });
       mLog.error('AuthProvider', 'Cannot authenticate - no address available', {
         connectionResultAddress: connectionResult?.address,
         reactStateAddress: state.address,

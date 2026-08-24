@@ -1,4 +1,5 @@
-import { displayCurrency } from '@/utils/currency';
+import { timeToMaturity } from '@/utils/marketplace';
+import { displayCurrencyPrecise } from '@/utils/currency';
 
 /**
  * The safety-critical disclosures (MARKETPLACE_OPENSPEC §15.1).
@@ -31,25 +32,25 @@ export function NetProceedsBreakdown({ offerAmount, fee, holdback, netAmount, to
     <div className="rounded-md bg-gray-50 dark:bg-secondary-900/60 p-3 text-sm space-y-1">
       <div className="flex justify-between text-gray-600 dark:text-secondary-300">
         <span>Offer</span>
-        <span>{displayCurrency(offerAmount ?? 0, 'microUSDC')} {tokenSymbol}</span>
+        <span>{displayCurrencyPrecise(offerAmount ?? 0, 'microUSDC')} {tokenSymbol}</span>
       </div>
       <div className="flex justify-between text-gray-600 dark:text-secondary-300">
         <span>Platform fee</span>
-        <span>− {displayCurrency(fee ?? 0, 'microUSDC')} {tokenSymbol}</span>
+        <span>− {displayCurrencyPrecise(fee ?? 0, 'microUSDC')} {tokenSymbol}</span>
       </div>
       {hasHoldback && (
         <div className="flex justify-between text-gray-600 dark:text-secondary-300">
           <span>Held back until settlement</span>
-          <span>− {displayCurrency(holdback!, 'microUSDC')} {tokenSymbol}</span>
+          <span>− {displayCurrencyPrecise(holdback!, 'microUSDC')} {tokenSymbol}</span>
         </div>
       )}
       <div className="flex justify-between font-medium text-gray-900 dark:text-white border-t border-gray-200 dark:border-secondary-700 pt-2 mt-1">
         <span>You receive now</span>
-        <span>{displayCurrency(netAmount ?? 0, 'microUSDC')} {tokenSymbol}</span>
+        <span>{displayCurrencyPrecise(netAmount ?? 0, 'microUSDC')} {tokenSymbol}</span>
       </div>
       {hasHoldback && (
         <p className="text-xs text-gray-500 dark:text-secondary-400 pt-1">
-          The held-back {displayCurrency(holdback!, 'microUSDC')} {tokenSymbol} comes back to you
+          The held-back {displayCurrencyPrecise(holdback!, 'microUSDC')} {tokenSymbol} comes back to you
           when the escrow settles in full. It is a reserve against the payment being disputed, not
           a charge.
         </p>
@@ -66,12 +67,11 @@ export function NetProceedsBreakdown({ offerAmount, fee, holdback, netAmount, to
  *    delivered. Their only levers are care in agreeing an arbiter, the holdback they set, and
  *    buying short-dated — which is why time to maturity leads rather than the discount.
  */
-export function EvidenceAsymmetryNotice({ daysToMaturity }: { daysToMaturity: number }) {
+export function EvidenceAsymmetryNotice({ maturity }: { maturity: number }) {
   return (
     <div className="rounded-md border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-3 text-sm text-amber-800 dark:text-amber-200">
       <div className="font-medium">
-        {daysToMaturity} {daysToMaturity === 1 ? 'day' : 'days'} to maturity — and that is your
-        risk window
+        {timeToMaturity(maturity)} to maturity — and that is your risk window
       </div>
       <p className="mt-1">
         Until then the buyer can dispute this payment, and if they do you inherit a dispute you
@@ -104,7 +104,7 @@ export function ExistingHoldbackNotice({
   return (
     <div className="rounded-md border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 p-3 text-sm text-blue-800 dark:text-blue-200">
       <div className="font-medium">
-        This escrow carries an existing reserve of {displayCurrency(holdback, 'microUSDC')} {tokenSymbol}
+        This escrow carries an existing reserve of {displayCurrencyPrecise(holdback, 'microUSDC')} {tokenSymbol}
       </div>
       <p className="mt-1">
         It was funded by {funder ? <span className="font-mono text-xs">{funder}</span> : 'a previous buyer'} and

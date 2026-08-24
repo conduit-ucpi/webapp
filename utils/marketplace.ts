@@ -13,6 +13,30 @@ export function daysUntil(unixSeconds: number): number {
   return Math.max(0, Math.ceil(seconds / 86_400));
 }
 
+/**
+ * How long until maturity, in a unit that can actually say it.
+ *
+ * ⚠️ DAYS ALONE CANNOT DESCRIBE A SHORT-DATED POSITION. `daysUntil` ceils, so everything from
+ *    two minutes to twenty-three hours reads as "1 day" — and the very copy this feeds tells an
+ *    LP that buying short-dated is one of their few defences. Quoting a risk window an order of
+ *    magnitude longer than the real one makes that advice impossible to act on, and quoting one
+ *    shorter would be worse, so the unit has to follow the number.
+ */
+export function timeToMaturity(unixSeconds: number): string {
+  const seconds = Math.max(0, unixSeconds - Math.floor(Date.now() / 1000));
+  if (seconds < 60) return 'under a minute';
+  if (seconds < 3_600) {
+    const minutes = Math.round(seconds / 60);
+    return `${minutes} ${minutes === 1 ? 'minute' : 'minutes'}`;
+  }
+  if (seconds < 172_800) {
+    const hours = Math.round(seconds / 3_600);
+    return `${hours} ${hours === 1 ? 'hour' : 'hours'}`;
+  }
+  const days = Math.round(seconds / 86_400);
+  return `${days} ${days === 1 ? 'day' : 'days'}`;
+}
+
 /** Hours remaining until a unix timestamp, floored at zero. */
 export function hoursUntil(unixSeconds: number): number {
   const seconds = unixSeconds - Math.floor(Date.now() / 1000);
@@ -52,7 +76,10 @@ export function liveOfferToView(offer: LiveOffer): OfferView {
     offerExpiry: offer.offerExpiry,
     status: offer.status,
     expired: offer.offerExpiry <= Math.floor(Date.now() / 1000),
-    lastEventAt: offer.offerExpiry
+    lastEventAt: offer.offerExpiry,
+    // A live offer is PENDING or OPEN — nobody has accepted it, so no reserve has been withheld
+    // yet and there is nothing a vault could release. Never "unknown" here, simply not applicable.
+    releasable: false
   };
 }
 

@@ -11,7 +11,7 @@ import {
 } from '@/hooks/useMarketplaceData';
 import { useMarketplaceActions } from '@/hooks/useMarketplaceActions';
 import { useConfig } from '@/components/auth/ConfigProvider';
-import { displayCurrency } from '@/utils/currency';
+import { displayCurrencyPrecise } from '@/utils/currency';
 import { formatTimestamp } from '@/utils/datetime';
 import { hoursUntil, looksWithdrawable, needsOpening, offerStatusLabel } from '@/utils/marketplace';
 import type { OfferStatus, OfferView } from '@/types/marketplace';
@@ -186,21 +186,24 @@ export default function MyOffersList({ lpAddress }: MyOffersListProps) {
   /**
    * Run one action against a vault, then make this list describe the world after it.
    *
-   * ⚠️ FOR A WALLET-SENT ACTION, RE-READING THE INDEX ALONE RETURNS THE ROW UNCHANGED.
-   *    `releaseHoldback` goes from the LP's own wallet (§15.6b), so chainservice never sees the
-   *    transaction and never indexes its event — `HoldbackReleased` reaches contractservice only
-   *    through a reconcile. Refetching first therefore re-renders the row exactly as it was,
-   *    which reads as a failed transaction and invites the LP to send a second one. A page
-   *    refresh does not help either, since it re-reads the same unchanged index.
+   * ⚠️ RE-READING THE INDEX ALONE CAN RETURN THE ROW UNCHANGED, which reads as a failed
+   *    transaction and invites the LP to send a second one. A page refresh does not help
+   *    either, since it re-reads the same unchanged index. So the chain is reconciled first and
+   *    the list re-read only after. A reconcile that fails still falls through to a plain
+   *    refetch — the action happened either way, and stale-but-shown beats a screen frozen on
+   *    pre-action state.
    *
-   *    So the chain is reconciled first, and the list re-read only after. A reconcile that
-   *    fails still falls through to a plain refetch — the action happened either way, and
-   *    stale-but-shown beats a screen frozen on pre-action state.
+   * `reconcile` is false for the two RELAYED actions whose rows do not depend on an event
+   * arriving: the open and the withdrawal. chainservice sends those itself and the row is
+   * driven by state it re-reads directly, so a scan would cost its seconds for nothing.
    *
-   * `reconcile` is false for the RELAYED actions — the open and the withdrawal. chainservice
-   * sends those itself and indexes their receipts as they land, so the index is already current
-   * and a scan would cost its seconds for nothing. It stays true for `releaseHoldback`, which
-   * is the one action here that still goes from the LP's own wallet.
+   * ⚠️ IT STAYS TRUE FOR `releaseHoldback`, THOUGH THAT IS RELAYED TOO, and the reason changed.
+   *    It used to be the one action sent from the LP's own wallet. Now it is relayed like the
+   *    others — but this row stops offering the release only once `HoldbackReleased` is in the
+   *    folded event history, and the only thing that puts it there as the transaction lands is
+   *    chainservice's inline push. Nothing downstream checks that the push worked, so when it
+   *    does not arrive the index still reads ACCEPTED and the button survives a release that
+   *    has already paid. Trusting the push here is what left it sitting there.
    */
   const act = async (
     vault: string,
@@ -305,6 +308,7 @@ export default function MyOffersList({ lpAddress }: MyOffersListProps) {
                 }, { reconcile: false })
               }
               onRelease={() =>
+                // Reconciles, unlike the other two relayed actions — see the note on `act`.
                 act(offer.vaultAddress, async () => {
                   // Relayed like the others now, so a refusal arrives in the result rather than
                   // as a throw and has to be raised here.
@@ -312,7 +316,7 @@ export default function MyOffersList({ lpAddress }: MyOffersListProps) {
                   if (!result.success) {
                     throw new Error(result.error || 'The reserve could not be released.');
                   }
-                }, { reconcile: false })
+                })
               }
             />
           ))}
@@ -345,27 +349,18 @@ function OfferRow({
   // receives at acceptance (§8.5a), so before acceptance there is nothing to release.
   const hasHoldback = offer.status === 'ACCEPTED' && !!offer.holdback && offer.holdback !== '0';
   /*
-   * ⚠️ ONLY AN AFFIRMATIVE ANSWER UNLOCKS IT. `releaseHoldback` reverts with EscrowNotSettled
-   *    until the escrow has paid out, so enabling this on an escrow we hold no record for
-   *    trades a wait for a paid-for revert. `escrow === undefined` means disabled, not
-   *    permitted.
+   * ⚠️ THE VAULT'S OWN ANSWER, NOT A CONDITION RESTATED HERE. This used to be derived from the
+   *    escrow's state — settled and not mid-dispute — which is a fact about the ESCROW, and an
+   *    escrow stays settled after its reserve has been paid out. So a release that had already
+   *    happened left every input to this reading "yes", and the button sat there through a page
+   *    refresh offering money that was already in the funder's wallet. `OfferVault.isReleasable()`
+   *    is the one thing that cannot drift from the contract, because it IS the contract.
    *
-   * ⚠️ AND THIS IS A RECORD, NOT THE CHAIN. It can lag a claim that has already happened, so
-   *    the control appearing late is expected; what must not happen is it appearing early. The
-   *    contract remains the authority and refuses anything this gets wrong in the other
-   *    direction.
-   *
-   * ⚠️ A RESOLVED DISPUTE COUNTS AS SETTLED, AND EXCLUDING IT WAS WRONG. Resolution marks the
-   *    escrow claimed in the same transaction that pays it out, so the reserve is releasable —
-   *    and that is the only case where the split does anything: the buyer's award comes off the
-   *    reserve first, the remainder goes back to the funder. Treating "was disputed" as "leave
-   *    it alone" stranded the reserve precisely when it was doing its job. Only a dispute still
-   *    IN FLIGHT disables this, and it does so by not being settled, not by being a dispute.
+   * ⚠️ FALSE COVERS "WE COULD NOT ASK" — an unreadable vault, or one too old to have the
+   *    function. Both must leave this disabled: the honest reading of silence is not "go ahead",
+   *    and a paid-for revert is what the guess costs.
    */
-  const settled =
-    escrow?.state === 'CLAIMED' || escrow?.state === 'COMPLETED' || escrow?.state === 'RESOLVED';
-  const inFlightDispute = escrow?.state === 'DISPUTED';
-  const releasable = hasHoldback && settled && !inFlightDispute;
+  const releasable = hasHoldback && offer.releasable;
   // A deposit that landed while the offer never opened. The money is in the vault and the
   // seller cannot see it — one relayed call fixes it, and no transfer is involved.
   const openable = needsOpening(offer);
@@ -383,7 +378,7 @@ function OfferRow({
       */
       headline={
         <>
-          {displayCurrency(offer.offerAmount ?? 0, 'microUSDC')} {tokenSymbol}{' '}
+          {displayCurrencyPrecise(offer.offerAmount ?? 0, 'microUSDC')} {tokenSymbol}{' '}
           {PURCHASED.has(offer.status) ? 'accepted' : 'offered'}
           {escrow?.maturity ? ` · matures ${formatTimestamp(escrow.maturity).date}` : ''}
         </>
@@ -455,7 +450,7 @@ function OfferRow({
     >
       {openable && (
         <p className="text-xs text-amber-700 dark:text-amber-300 mt-3">
-          Your {displayCurrency(offer.depositedAmount!, 'microUSDC')} {tokenSymbol} arrived, but this
+          Your {displayCurrencyPrecise(offer.depositedAmount!, 'microUSDC')} {tokenSymbol} arrived, but this
           offer was never opened, so no seller can see it. Opening it costs you nothing and moves
           no money — do not send again.
         </p>
@@ -479,7 +474,7 @@ function OfferRow({
 
       {hasHoldback && (
         <p className="text-xs text-gray-500 dark:text-secondary-400 mt-3">
-          You are holding {displayCurrency(offer.holdback!, 'microUSDC')} {tokenSymbol} as a
+          You are holding {displayCurrencyPrecise(offer.holdback!, 'microUSDC')} {tokenSymbol} as a
           holdback.{' '}
           {releasable && escrow?.state === 'RESOLVED' ? (
             <>

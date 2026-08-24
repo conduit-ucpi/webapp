@@ -6,9 +6,9 @@ import EmptyState from '@/components/ui/EmptyState';
 import MakeOfferModal from '@/components/marketplace/MakeOfferModal';
 import { useSellableEscrows } from '@/hooks/useMarketplaceData';
 import { useConfig } from '@/components/auth/ConfigProvider';
-import { displayCurrency } from '@/utils/currency';
+import { displayCurrencyPrecise } from '@/utils/currency';
 import { formatTimestamp } from '@/utils/datetime';
-import { daysUntil } from '@/utils/marketplace';
+import { daysUntil, timeToMaturity } from '@/utils/marketplace';
 import type { SellableEscrow } from '@/types/marketplace';
 
 interface LiquidityExplorerProps {
@@ -56,10 +56,15 @@ export default function LiquidityExplorer({ walletAddress }: LiquidityExplorerPr
 
   const totals = useMemo(() => {
     const locked = escrows.reduce((sum, e) => sum + BigInt(e.amount || '0'), BigInt(0));
-    const avgDays = escrows.length
-      ? Math.round(escrows.reduce((sum, e) => sum + daysUntil(e.maturity), 0) / escrows.length)
+    /*
+     * Averaged as a TIMESTAMP, not as a count of days. Averaging `daysUntil` first rounds every
+     * sub-day position up to 1 before the mean is taken, so a book full of positions maturing
+     * within the hour averages out at "1 days" — wrong number, wrong unit, and wrong grammar.
+     */
+    const avgMaturity = escrows.length
+      ? Math.round(escrows.reduce((sum, e) => sum + e.maturity, 0) / escrows.length)
       : 0;
-    return { locked, avgDays };
+    return { locked, avgMaturity };
   }, [escrows]);
 
   /**
@@ -81,12 +86,12 @@ export default function LiquidityExplorer({ walletAddress }: LiquidityExplorerPr
         />
         <StatsCard
           title="Total locked"
-          value={`${displayCurrency(totals.locked.toString(), 'microUSDC')}`}
+          value={`${displayCurrencyPrecise(totals.locked.toString(), 'microUSDC')}`}
           sub={`${tokenSymbol} across the listed escrows`}
         />
         <StatsCard
           title="Average maturity"
-          value={totals.avgDays ? `${totals.avgDays} days` : '—'}
+          value={totals.avgMaturity ? timeToMaturity(totals.avgMaturity) : '—'}
           sub="Time to maturity is your risk window"
         />
       </div>
@@ -177,12 +182,54 @@ export default function LiquidityExplorer({ walletAddress }: LiquidityExplorerPr
                 className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center px-4 py-3 border-b border-gray-200 dark:border-secondary-700 last:border-b-0"
               >
                 <div className="md:col-span-5">
+                  {/*
+                    Description first: `productName` comes from the platform's PRODUCT_NAME env
+                    var, so it is the SAME string on every row and identifies nothing. The
+                    description is what the seller actually typed.
+                  */}
                   <div className="text-sm font-medium text-gray-900 dark:text-white">
-                    {escrow.productName || escrow.description || 'Escrow payment'}
+                    {escrow.description || escrow.productName || 'Escrow payment'}
                   </div>
+                  {/*
+                    An LP deciding whether to buy wants to see WHO they are buying from and to be
+                    able to go and look at the cashflow itself, so the escrow address links out to
+                    the explorer and the current recipient is named. `seller` is the escrow's
+                    CURRENT recipient, not the original one — after a resale it is the LP who
+                    bought it, which is exactly the party a new offer would be buying from.
+                  */}
                   <div className="text-xs font-mono text-gray-400 dark:text-secondary-500 mt-0.5">
-                    {escrow.escrowContract}
+                    {config?.explorerBaseUrl ? (
+                      <a
+                        href={`${config.explorerBaseUrl}/address/${escrow.escrowContract}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="hover:text-primary-600 dark:hover:text-primary-400 hover:underline"
+                        title="View this payment on the block explorer"
+                      >
+                        {escrow.escrowContract}
+                      </a>
+                    ) : (
+                      escrow.escrowContract
+                    )}
                   </div>
+                  {escrow.seller && (
+                    <div className="text-xs text-gray-500 dark:text-secondary-400 mt-0.5">
+                      Paid to{' '}
+                      {config?.explorerBaseUrl ? (
+                        <a
+                          href={`${config.explorerBaseUrl}/address/${escrow.seller}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-mono hover:text-primary-600 dark:hover:text-primary-400 hover:underline"
+                          title="View the current recipient on the block explorer"
+                        >
+                          {escrow.seller}
+                        </a>
+                      ) : (
+                        <span className="font-mono">{escrow.seller}</span>
+                      )}
+                    </div>
+                  )}
                   {escrow.previouslySold && (
                     <span className="inline-block mt-1 text-[11px] rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-0.5">
                       Previously sold — carries a reserve
@@ -192,17 +239,26 @@ export default function LiquidityExplorer({ walletAddress }: LiquidityExplorerPr
 
                 <div className="md:col-span-2">
                   <div className="text-sm font-medium text-gray-900 dark:text-white">
-                    {displayCurrency(escrow.amount ?? 0, 'microUSDC')}
+                    {displayCurrencyPrecise(escrow.amount ?? 0, 'microUSDC')}
                   </div>
                   <div className="text-xs text-gray-500 dark:text-secondary-400">{escrow.currencySymbol}</div>
                 </div>
 
                 <div className="md:col-span-2">
+                  {/*
+                    Time as well as date: these mature on a specific hour, and short-dated ones
+                    are common enough that "today" or "1 day" leaves an LP unable to tell whether
+                    a payment settles in twenty minutes or twenty hours — which is the whole
+                    basis on which they are pricing the discount.
+                  */}
                   <div className="text-sm text-gray-900 dark:text-white">
                     {formatTimestamp(escrow.maturity).date}
                   </div>
+                  <div className="text-xs text-gray-700 dark:text-secondary-300">
+                    {formatTimestamp(escrow.maturity).time}
+                  </div>
                   <div className="text-xs text-gray-500 dark:text-secondary-400">
-                    {days} {days === 1 ? 'day' : 'days'}
+                    {timeToMaturity(escrow.maturity)}
                   </div>
                 </div>
 

@@ -135,3 +135,27 @@ export function displayCurrency(amount: string | number, currency: string = 'mic
   const result = formatCurrency(amount, currency);
   return `$${result.amount}`;
 }
+
+/**
+ * The same amount, but never rounded into a different number.
+ *
+ * ⚠️ FOUR DECIMALS IS NOT ENOUGH FOR A RESERVE. USDC carries six, and a holdback is a small
+ *    fraction of an already small payment: a 95-microUSDC reserve on a 1000-microUSDC payment is
+ *    0.000095, which `displayCurrency` prints as "$0.0001" — rounded UP, and reading like a round
+ *    figure rather than a fraction. Beside a payment shown as "$0.0010" it looks like most of the
+ *    payment rather than a tenth of it, which is exactly the wrong impression: the supplier was
+ *    paid the rest at the sale and only this remainder is outstanding.
+ *
+ *    Kept as a separate function rather than changing `displayCurrency`, whose 4-decimal output
+ *    is asserted across the test suite and relied on for column alignment.
+ */
+export function displayCurrencyPrecise(amount: string | number, currency: string = 'microUSDC'): string {
+  const result = formatCurrency(amount, currency);
+  const exact = result.numericAmount;
+  if (!Number.isFinite(exact)) return `$${result.amount}`;
+  // Six decimals is USDC's real precision; trim trailing zeros but keep at least two so
+  // ordinary amounts still read as money.
+  let text = exact.toFixed(6).replace(/(\.\d{2}\d*?)0+$/, '$1');
+  if (text.endsWith('.')) text = `${text}00`;
+  return `$${text}`;
+}

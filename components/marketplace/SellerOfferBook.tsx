@@ -4,7 +4,7 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { useOfferBook, useRefreshFromChain } from '@/hooks/useMarketplaceData';
 import { useMarketplaceActions } from '@/hooks/useMarketplaceActions';
 import { useConfig } from '@/components/auth/ConfigProvider';
-import { displayCurrency } from '@/utils/currency';
+import { displayCurrencyPrecise } from '@/utils/currency';
 import { acceptableOffers, hoursUntil, reconciledLabel } from '@/utils/marketplace';
 import { AcceptFlowNotice, NetProceedsBreakdown } from '@/components/marketplace/OfferDisclosures';
 import type { OfferView } from '@/types/marketplace';
@@ -181,15 +181,15 @@ export default function SellerOfferBook({
                   <div className="text-base font-medium text-gray-900 dark:text-white">
                     Get{' '}
                     <span className="text-primary-600 dark:text-primary-400">
-                      {displayCurrency(offer.netAmount ?? 0, 'microUSDC')} {tokenSymbol}
+                      {displayCurrencyPrecise(offer.netAmount ?? 0, 'microUSDC')} {tokenSymbol}
                     </span>{' '}
                     today
                   </div>
                   {givenUp !== null && givenUp > 0 && (
                     <div className="text-sm text-gray-600 dark:text-secondary-300 mt-1">
                       Instead of waiting {maturity ? `until ${new Date(maturity * 1000).toLocaleDateString()}` : 'until maturity'} for{' '}
-                      {displayCurrency(maturityAmount!, 'microUSDC')} {tokenSymbol} — you give up{' '}
-                      {displayCurrency(givenUp, 'microUSDC')} {tokenSymbol}
+                      {displayCurrencyPrecise(maturityAmount!, 'microUSDC')} {tokenSymbol} — you give up{' '}
+                      {displayCurrencyPrecise(givenUp, 'microUSDC')} {tokenSymbol}
                     </div>
                   )}
                   {offer.offerExpiry && (

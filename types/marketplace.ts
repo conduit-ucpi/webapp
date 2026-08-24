@@ -83,6 +83,18 @@ export interface OfferView {
   status: OfferStatus;
   expired: boolean;
   lastEventAt: number;
+  /**
+   * Whether `releaseHoldback()` would succeed on this vault right now — the VAULT'S own answer,
+   * read live rather than inferred here.
+   *
+   * ⚠️ IT CANNOT BE DERIVED FROM THE REST OF THIS TYPE, which is why it is carried. A reserve
+   *    that has already been paid out leaves its escrow settled and this record ACCEPTED, so
+   *    every other field still reads as collectable. Only the vault knows it is empty.
+   *
+   * ⚠️ FALSE ALSO MEANS "COULD NOT ASK". Never present it as "not yet" — an unreadable vault and
+   *    one that has already paid look identical here, and both must leave the release unoffered.
+   */
+  releasable: boolean;
 }
 
 /**

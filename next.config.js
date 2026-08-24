@@ -2,6 +2,20 @@
 const nextConfig = {
   reactStrictMode: false,
   output: 'standalone',
+
+  /*
+   * Dev-only. Next 16.2.6's dev client throws on its own HMR traffic:
+   *   [HMR] Invalid message: {"type":"isrManifest", ...}
+   *   TypeError: Cannot read properties of undefined (reading 'components')
+   *       at handleStaticIndicator (.../node_modules_next_dist_client_....js)
+   *
+   * `handleStaticIndicator` is the dev static indicator and assumes a message shape that
+   * `isrManifest` does not have. The throw lands mid-render and leaves pages stuck on their
+   * loading state — /contract-pay sits on "Loading payment request..." with the server shell
+   * still in place, while auth, the contract API and identity are all healthy and answering 200.
+   * Switching the indicator off keeps that code path out of the page. No effect on builds.
+   */
+  devIndicators: false,
   // No basePath for Farcaster miniapp - needs to be at root domain
   // basePath: process.env.NEXT_PUBLIC_BASE_PATH === 'null' ? undefined : (process.env.NEXT_PUBLIC_BASE_PATH || '/webapp'),
   

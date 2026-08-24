@@ -82,7 +82,7 @@ export const OFFER_VAULT_ABI = [
   'function holdback() view returns (uint256)',
   'function offerExpiry() view returns (uint256)',
   'function owed() view returns (uint256)',
-  // PENDING=0, OPEN=1, ACCEPTED=2, REJECTED=3, WITHDRAWN=4 — see OFFER_VAULT_STATUS.
+  // NONE=0, PENDING=1, OPEN=2, CANCELLED=3, ACCEPTED=4, SETTLED=5 — see OFFER_VAULT_STATUS.
   'function status() view returns (uint8)',
   'function isOpen() view returns (bool)',
   // The contract's own answer to whether an exit would land, rather than the UI restating
@@ -102,7 +102,29 @@ export const OFFER_VAULT_ABI = [
 ];
 
 /** The vault's on-chain status enum, in declaration order. */
-export const OFFER_VAULT_STATUS = ['PENDING', 'OPEN', 'ACCEPTED', 'REJECTED', 'WITHDRAWN'] as const;
+/**
+ * `OfferVault.Status`, in the contract's own order — index IS the on-chain value.
+ *
+ * ⚠️ NONE=0 IS REAL AND MUST STAY FIRST. Solidity enums start at zero and this one opens with a
+ *    NONE member, so dropping it shifts every subsequent name by one. This array used to read
+ *    ['PENDING','OPEN','ACCEPTED','REJECTED','WITHDRAWN'], which mislabelled every vault the app
+ *    ever displayed: a funded, live offer (raw 2 = OPEN) was shown as ACCEPTED, and an accepted
+ *    one still holding its reserve (raw 4 = ACCEPTED) was shown as WITHDRAWN — the worst possible
+ *    pair to confuse, since one is an offer a seller can still take and the other is a completed
+ *    sale. Two of the names were wrong as well: the contract has CANCELLED, not REJECTED, and
+ *    SETTLED was missing entirely, which is why nothing here could recognise a reserve that had
+ *    been paid out.
+ *
+ *    Cross-checked against `contracts/src/OfferVault.sol` and chainservice's `STATUS_SETTLED = 5`.
+ */
+export const OFFER_VAULT_STATUS = [
+  'NONE',
+  'PENDING',
+  'OPEN',
+  'CANCELLED',
+  'ACCEPTED',
+  'SETTLED'
+] as const;
 
 /**
  * The escrow's "this party has not voted" sentinel.
@@ -1060,6 +1082,20 @@ export class Web3Service {
         } else if (transactionType === 'claimFunds') {
           foundryGasEstimate = parseInt(this.config.claimFundsFoundryGas || '150000');
           console.log(`Using Foundry fallback for claimFunds: ${foundryGasEstimate} gas`);
+        } else if (transactionType === 'approveRecipientTransfer') {
+          // Observed on Base: 80k for the first grant on an escrow, 43k to re-grant.
+          foundryGasEstimate = parseInt(this.config.approveRecipientTransferFoundryGas || '150000');
+          console.log(`Using Foundry fallback for approveRecipientTransfer: ${foundryGasEstimate} gas`);
+        } else if (transactionType === 'acceptOffer') {
+          /*
+           * The heaviest call in the flow: it rewrites the escrow's recipient to the vault and
+           * pays the seller in the same transaction. Falling back to the 100k USDC default
+           * funds far too little, and the seller — who may hold no ETH at all, since every
+           * other action they take is sponsored — is then shown a transaction that cannot pay
+           * for itself.
+           */
+          foundryGasEstimate = parseInt(this.config.acceptOfferFoundryGas || '350000');
+          console.log(`Using Foundry fallback for acceptOffer: ${foundryGasEstimate} gas`);
         } else {
           // Default to USDC operations (approve, transfer, etc.)
           foundryGasEstimate = parseInt(this.config.usdcGrantFoundryGas || '100000');
@@ -1745,7 +1781,7 @@ export class Web3Service {
   /**
    * Detect transaction type from encoded function data to choose appropriate Foundry gas fallback
    */
-  private detectTransactionType(data: string): 'depositFunds' | 'approve' | 'transfer' | 'submitResolutionVote' | 'raiseDispute' | 'claimFunds' | 'unknown' {
+  private detectTransactionType(data: string): 'depositFunds' | 'approve' | 'transfer' | 'submitResolutionVote' | 'raiseDispute' | 'claimFunds' | 'approveRecipientTransfer' | 'acceptOffer' | 'unknown' {
     if (!data || data === '0x') {
       return 'unknown';
     }
@@ -1762,7 +1798,10 @@ export class Web3Service {
         'transfer': 'function transfer(address,uint256)',
         'submitResolutionVote': 'function submitResolutionVote(uint256)',
         'raiseDispute': 'function raiseDispute()',
-        'claimFunds': 'function claimFunds()'
+        'claimFunds': 'function claimFunds()',
+        // Selling a payment early: the seller signs BOTH of these, so both need sponsoring.
+        'approveRecipientTransfer': 'function approveRecipientTransfer(address,address)',
+        'acceptOffer': 'function accept()'
       };
 
       // Calculate selectors dynamically
@@ -1773,7 +1812,7 @@ export class Web3Service {
           const calculatedSelector = func.selector;
 
           if (functionSelector === calculatedSelector) {
-            return functionName as 'depositFunds' | 'approve' | 'transfer' | 'submitResolutionVote' | 'raiseDispute' | 'claimFunds';
+            return functionName as 'depositFunds' | 'approve' | 'transfer' | 'submitResolutionVote' | 'raiseDispute' | 'claimFunds' | 'approveRecipientTransfer' | 'acceptOffer';
           }
         }
       }

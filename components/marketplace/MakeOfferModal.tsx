@@ -4,7 +4,7 @@ import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { useMarketplaceActions } from '@/hooks/useMarketplaceActions';
-import { displayCurrency } from '@/utils/currency';
+import { displayCurrencyPrecise } from '@/utils/currency';
 import { daysUntil } from '@/utils/marketplace';
 import { EvidenceAsymmetryNotice, ExistingHoldbackNotice } from '@/components/marketplace/OfferDisclosures';
 import OfferFundingPanel from '@/components/marketplace/OfferFundingPanel';
@@ -182,18 +182,69 @@ export default function MakeOfferModal({ escrow, lpAddress, onClose, onOfferMade
     }
   };
 
+  /*
+   * Dismissing is refused once the vault exists.
+   *
+   * `submit` deploys the vault BEFORE any money moves, so from `creating` onwards there is a
+   * real contract on chain that only this LP can fund. A stray click on the backdrop at that
+   * point leaves it deployed and empty: it holds no capital, but it is listed against the
+   * escrow until it lapses and is swept, and the seller sees it alongside genuine offers with
+   * nothing to tell them apart. Deliberate exits still work — `Cancel` in the compose step, and
+   * the funding panel's own cancel — but a misplaced click no longer strands one.
+   */
+  const dismissable = step === 'compose' || step === 'done';
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50"
+      onClick={dismissable ? onClose : undefined}
+    >
       <div
         className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-lg bg-white dark:bg-secondary-800 border border-transparent dark:border-secondary-700 p-6 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-          Offer on {escrow.productName || escrow.description || 'this payment'}
+          Offer on {escrow.description || escrow.productName || 'this payment'}
         </h3>
+        {/*
+          The LP is committing capital against this specific cashflow, so both facts they need
+          to check it out themselves are here: a link to the escrow on the explorer, and the
+          CURRENT recipient they would be buying from — which after a resale is not the original
+          seller.
+        */}
         <p className="text-sm text-gray-500 dark:text-secondary-400 font-mono mt-1">
-          {escrow.escrowContract}
+          {config?.explorerBaseUrl ? (
+            <a
+              href={`${config.explorerBaseUrl}/address/${escrow.escrowContract}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-primary-600 dark:hover:text-primary-400 hover:underline"
+              title="View this payment on the block explorer"
+            >
+              {escrow.escrowContract}
+            </a>
+          ) : (
+            escrow.escrowContract
+          )}
         </p>
+        {escrow.seller && (
+          <p className="text-sm text-gray-500 dark:text-secondary-400 mt-1">
+            Currently paid to{' '}
+            {config?.explorerBaseUrl ? (
+              <a
+                href={`${config.explorerBaseUrl}/address/${escrow.seller}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-mono hover:text-primary-600 dark:hover:text-primary-400 hover:underline"
+                title="View the current recipient on the block explorer"
+              >
+                {escrow.seller}
+              </a>
+            ) : (
+              <span className="font-mono">{escrow.seller}</span>
+            )}
+          </p>
+        )}
 
         {step === 'done' ? (
           <div className="mt-6 space-y-4">
@@ -208,7 +259,7 @@ export default function MakeOfferModal({ escrow, lpAddress, onClose, onOfferMade
           </div>
         ) : (
           <div className="mt-6 space-y-4">
-            <EvidenceAsymmetryNotice daysToMaturity={days} />
+            <EvidenceAsymmetryNotice maturity={escrow.maturity} />
 
             {escrow.existingHoldback && escrow.existingHoldback !== '0' && (
               <ExistingHoldbackNotice
@@ -269,15 +320,15 @@ export default function MakeOfferModal({ escrow, lpAddress, onClose, onOfferMade
             <div className="rounded-md bg-gray-50 dark:bg-secondary-900/60 p-3 text-sm space-y-1">
               <div className="flex justify-between text-gray-600 dark:text-secondary-300">
                 <span>Collects at maturity</span>
-                <span>{displayCurrency(basis.toString(), 'microUSDC')} {tokenSymbol}</span>
+                <span>{displayCurrencyPrecise(basis.toString(), 'microUSDC')} {tokenSymbol}</span>
               </div>
               <div className="flex justify-between text-gray-600 dark:text-secondary-300">
                 <span>Your discount</span>
-                <span>− {displayCurrency((basis - offerAmount).toString(), 'microUSDC')} {tokenSymbol}</span>
+                <span>− {displayCurrencyPrecise((basis - offerAmount).toString(), 'microUSDC')} {tokenSymbol}</span>
               </div>
               <div className="flex justify-between font-medium text-gray-900 dark:text-white border-t border-gray-200 dark:border-secondary-700 pt-2 mt-1">
                 <span>You deposit now</span>
-                <span>{displayCurrency(offerAmount.toString(), 'microUSDC')} {tokenSymbol}</span>
+                <span>{displayCurrencyPrecise(offerAmount.toString(), 'microUSDC')} {tokenSymbol}</span>
               </div>
               {payoutUnavailable && (
                 <p className="text-xs text-amber-700 dark:text-amber-300 pt-1">

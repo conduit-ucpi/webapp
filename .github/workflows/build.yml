@@ -89,6 +89,8 @@ jobs:
           COINBASE_PROJECT_ID: ${{ vars.COINBASE_PROJECT_ID }}
           COINBASE_API_KEY_ID: ${{ secrets.COINBASE_API_KEY_ID }}
           COINBASE_API_KEY_SECRET: ${{ secrets.COINBASE_API_KEY_SECRET }}
+          FANOUT_CHAIN_SERVICE_URL: ${{ vars.FANOUT_CHAIN_SERVICE_URL }}
+          FANOUT_SERVICE_URL: ${{ vars.FANOUT_SERVICE_URL }}
         run: |
           npm ci --legacy-peer-deps
           

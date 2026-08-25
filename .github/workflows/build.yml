@@ -181,6 +181,8 @@ jobs:
             -e USER_SERVICE_URL="${{ vars.USER_SERVICE_URL }}" \\
             -e CONTRACT_SERVICE_URL="${{ vars.CONTRACT_SERVICE_URL }}" \\
             -e RESULTSERVICE_URL="${{ vars.RESULTSERVICE_URL }}" \\
+            -e FANOUT_SERVICE_URL="${{ vars.FANOUT_SERVICE_URL }}" \\
+            -e FANOUT_CHAIN_SERVICE_URL="${{ vars.FANOUT_CHAIN_SERVICE_URL }}" \\
             -e MOONPAY_API_KEY="${{ secrets.MOONPAY_API_KEY }}" \\
             -e X_API_KEY="${{ secrets.X_API_KEY }}" \\
             -e GIT_TAG="${{ env.GIT_TAG }}" \\

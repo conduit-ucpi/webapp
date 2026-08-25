@@ -41,6 +41,15 @@ export default function ReservesOwedList({ sellerAddress }: ReservesOwedListProp
 
   const [busyVault, setBusyVault] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  /*
+   * ⚠️ DECLARED HERE, ABOVE THE EARLY RETURNS. This component returns null in several cases
+   *    (no seller, still loading, nothing owed), so a hook added lower down runs on some renders
+   *    and not others — React then throws and the ErrorBoundary takes out the whole dashboard.
+   *
+   *    Starts collapsed, and is opened below when something is actually collectable.
+   */
+  const [expanded, setExpanded] = useState(false);
+  const [archiveOpen, setArchiveOpen] = useState(false);
 
   const tokenSymbol = config?.tokenSymbol || 'USDC';
   const reserves = data ?? [];
@@ -100,33 +109,101 @@ export default function ReservesOwedList({ sellerAddress }: ReservesOwedListProp
    * be buried under settled history — a supplier scanning it should meet the money they can take
    * today before anything else.
    */
+  /*
+   * Ordered by payout date, soonest first.
+   *
+   * The payout date is what governs a reserve: nothing returns before it, and after it the whole
+   * reserve is due. Sorting by it puts what is due now, or due next, at the top and lets the
+   * supplier read the list as a timeline. Reserves whose maturity could not be read sort last —
+   * unknown is not the same as far off, and it should not push a known date down the page.
+   */
   const ordered = [...reserves].sort((a, b) => {
-    if (a.releasable !== b.releasable) return a.releasable ? -1 : 1;
-    if ((a.state === 'RELEASED') !== (b.state === 'RELEASED')) return a.state === 'RELEASED' ? 1 : -1;
-    return b.lastEventAt - a.lastEventAt;
+    if (!a.maturity && !b.maturity) return b.lastEventAt - a.lastEventAt;
+    if (!a.maturity) return 1;
+    if (!b.maturity) return -1;
+    return a.maturity - b.maturity;
   });
+
+  /*
+   * Collapsed by default — this list only grows, and on a busy dashboard it pushes the contracts
+   * off the screen.
+   *
+   * ⚠️ BUT NEVER HIDE MONEY THAT NEEDS A PRESS. A reserve is collected by pressing a button here
+   *    and nothing returns it automatically, so folding away a collectable one loses the supplier
+   *    real money silently. Open when anything is claimable, and say so on the header either way.
+   */
+  /*
+   * A reserve that has already been paid out is history, not a to-do: there is no figure still
+   * owed and no button to press. Left in the main list it just accumulates, burying the ones
+   * that still matter — so it goes to the archive, kept rather than dropped because a supplier
+   * told a reserve exists and then shown it vanish has been shown a disappearance, not a payment.
+   */
+  const finished = (r: ReserveView) => r.state === 'RELEASED';
+  const claimable = reserves.filter((r) => r.releasable);
+  const totalDue = claimable.reduce((sum, r) => sum + BigInt(r.dueBack || r.holdback || '0'), BigInt(0));
 
   return (
     <div className="space-y-4">
-      <div>
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-          Reserves on payments you sold
-        </h2>
-        <p className="text-sm text-gray-500 dark:text-secondary-400">
+      {/*
+        Collapsed by default: this list only grows, and it was pushing the contracts off the
+        dashboard. The closed state therefore has to carry its own summary — how many reserves
+        there are, and whether any need a press — because nothing else on the page says so and a
+        reserve is never returned automatically.
+      */}
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        aria-expanded={expanded}
+        className={`w-full flex items-center justify-between gap-3 text-left rounded-lg border px-4 py-3 transition-colors ${
+          claimable.length > 0
+            ? 'border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/30'
+            : 'border-gray-200 dark:border-secondary-700 bg-gray-50 dark:bg-secondary-800/60 hover:bg-gray-100 dark:hover:bg-secondary-800'
+        }`}
+      >
+        <span className="flex items-center gap-3 min-w-0">
+          <svg
+            className={`w-4 h-4 shrink-0 text-gray-500 dark:text-secondary-400 transition-transform ${expanded ? 'rotate-90' : ''}`}
+            viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"
+          >
+            <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+          </svg>
+          <span className="min-w-0">
+            <span className="block text-sm font-semibold text-gray-900 dark:text-white truncate">
+              Reserves on payments you sold ({reserves.filter((r) => !finished(r)).length})
+            </span>
+            <span className="block text-xs text-gray-600 dark:text-secondary-400 mt-0.5">
+              {claimable.length > 0
+                ? `${displayCurrencyPrecise(totalDue.toString(), 'microUSDC')} ${tokenSymbol} ready to collect — nothing returns it automatically`
+                : 'Money held back when you sold a payment, returned after its payout date'}
+            </span>
+          </span>
+        </span>
+        <span className="shrink-0 flex items-center gap-2">
+          {claimable.length > 0 && (
+            <span className="text-xs font-medium rounded-full bg-amber-200 dark:bg-amber-800 text-amber-900 dark:text-amber-100 px-2 py-0.5">
+              {claimable.length} to collect
+            </span>
+          )}
+          <span className="text-xs text-gray-500 dark:text-secondary-400">{expanded ? 'Hide' : 'Show'}</span>
+        </span>
+      </button>
+
+      {expanded && (
+        <p className="text-sm text-gray-500 dark:text-secondary-400 px-1">
           You were paid for these when you sold them. A reserve was held back from that price, and
           it is the only part still outstanding: it returns once the customer&apos;s contract
           reaches its payout date, less anything a dispute awards them.
         </p>
-      </div>
+      )}
 
-      {actionError && (
+      {expanded && actionError && (
         <div className="rounded-md border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-3 text-sm text-red-700 dark:text-red-300">
           {actionError}
         </div>
       )}
 
-      <div className="space-y-3">
-        {ordered.map((reserve) => (
+      <div className={expanded ? 'space-y-3' : 'hidden'}>
+        {ordered.filter((r) => !finished(r)).map((reserve) => (
           <ReserveRow
             key={reserve.vaultAddress}
             reserve={reserve}
@@ -135,6 +212,45 @@ export default function ReservesOwedList({ sellerAddress }: ReservesOwedListProp
             onRelease={() => release(reserve.vaultAddress)}
           />
         ))}
+
+        {/* Finished reserves, folded away one level deeper. */}
+        {ordered.some(finished) && (
+          <div className="pt-1">
+            <button
+              type="button"
+              onClick={() => setArchiveOpen((v) => !v)}
+              aria-expanded={archiveOpen}
+              className="w-full flex items-center justify-between gap-3 text-left rounded-lg border border-dashed border-gray-200 dark:border-secondary-700 px-4 py-2 hover:bg-gray-50 dark:hover:bg-secondary-800/60 transition-colors"
+            >
+              <span className="flex items-center gap-2 min-w-0">
+                <svg
+                  className={`w-3.5 h-3.5 shrink-0 text-gray-400 transition-transform ${archiveOpen ? 'rotate-90' : ''}`}
+                  viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"
+                >
+                  <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                </svg>
+                <span className="text-xs text-gray-500 dark:text-secondary-400">
+                  Archive ({ordered.filter(finished).length}) — already returned, nothing to do
+                </span>
+              </span>
+              <span className="text-xs text-gray-400 dark:text-secondary-500">
+                {archiveOpen ? 'Hide' : 'Show'}
+              </span>
+            </button>
+
+            <div className={archiveOpen ? 'space-y-3 mt-3' : 'hidden'}>
+              {ordered.filter(finished).map((reserve) => (
+                <ReserveRow
+                  key={reserve.vaultAddress}
+                  reserve={reserve}
+                  tokenSymbol={tokenSymbol}
+                  busy={busyVault === reserve.vaultAddress}
+                  onRelease={() => release(reserve.vaultAddress)}
+                />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -184,7 +300,17 @@ function ReserveRow({
   return (
     <MarketplaceCard
       headline={headline}
-      identifier={`contract ${reserve.escrowContract ?? 'unknown'}`}
+      identifier={
+        <>
+          contract {reserve.escrowContract ?? 'unknown'}
+          {/*
+            The payout date belongs on every row, not only in the prose of the live ones: it is
+            the single fact that decides whether a reserve can be collected, and the list is
+            ordered by it.
+          */}
+          {matures && <span className="font-sans"> · matures {matures}</span>}
+        </>
+      }
       status={<ReserveStatus reserve={reserve} held={held} due={due} matures={matures} maturesIn={maturesIn} />}
       actions={
         reserve.releasable && (

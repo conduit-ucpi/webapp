@@ -6,6 +6,7 @@ import { SubcontractContext } from '@/hooks/useProjectCreation';
 import ConnectWalletEmbedded from '@/components/auth/ConnectWalletEmbedded';
 import Skeleton from '@/components/ui/Skeleton';
 import { ProjectTreeView } from '@/types/projects';
+import { projectsPageGate } from '@/utils/featureFlags';
 
 type Intent = 'create' | 'clone' | 'subcontract';
 
@@ -157,3 +158,6 @@ function buildSubcontractPrefill(
     sliceIndex,
   };
 }
+
+// Behind the PROJECTS_LIVE release flag: 404s unless the flag is on.
+export const getServerSideProps = projectsPageGate;

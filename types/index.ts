@@ -51,6 +51,8 @@ export interface Config {
   explorerBaseUrl: string;
   serviceLink: string;
   siteName?: string; // Site branding name (e.g., "Instant Escrow", "USDCBAY")
+  // Release flags
+  projectsLive?: boolean; // Projects (fan-out) feature; false/absent = hidden
   // Optional wallet services configuration
   walletServicesShowWidget?: string;
   walletServicesButtonPosition?: string;

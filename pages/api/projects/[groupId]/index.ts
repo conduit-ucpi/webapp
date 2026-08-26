@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { requireAuth } from '@/utils/api-auth';
 import { buildTreeView, fanoutServiceUrl, serviceHeaders } from '@/utils/projectsServer';
+import { blockedByProjectsFlag } from '@/utils/featureFlags';
 
 /**
  * GET /api/projects/[groupId]?viewer=0x...
@@ -11,6 +12,9 @@ import { buildTreeView, fanoutServiceUrl, serviceHeaders } from '@/utils/project
  * The client renders this verbatim.
  */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  // Behind the PROJECTS_LIVE release flag: 404s unless the flag is on.
+  if (blockedByProjectsFlag(req, res)) return;
+
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }

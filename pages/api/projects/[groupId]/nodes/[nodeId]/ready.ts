@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { requireAuth } from '@/utils/api-auth';
 import { fanoutServiceUrl, serviceHeaders } from '@/utils/projectsServer';
+import { blockedByProjectsFlag } from '@/utils/featureFlags';
 
 /**
  * PUT /api/projects/[groupId]/nodes/[nodeId]/ready — the verifier's sign-off
@@ -9,6 +10,9 @@ import { fanoutServiceUrl, serviceHeaders } from '@/utils/projectsServer';
  * and refuses to deploy any chain containing an unapproved contract.
  */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  // Behind the PROJECTS_LIVE release flag: 404s unless the flag is on.
+  if (blockedByProjectsFlag(req, res)) return;
+
   if (req.method !== 'PUT') {
     return res.status(405).json({ error: 'Method not allowed' });
   }

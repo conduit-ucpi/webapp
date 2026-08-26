@@ -2,6 +2,7 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { TokenDetails } from '../../types';
 import { TokenConfig, parseTokensFromEnv } from '../../types/tokens';
 import { RpcClient } from '../../lib/rpc/RpcClient';
+import { isProjectsLive } from '../../utils/featureFlags';
 
 // In-memory cache for config response
 let cachedConfig: { data: any; timestamp: number } | null = null;
@@ -186,6 +187,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       gasPriceBuffer: process.env.GAS_PRICE_BUFFER || '1',
       // UI configuration
       basePath,
+      // Release flags (see utils/featureFlags.ts) — the client reads them from here
+      projectsLive: isProjectsLive(),
       explorerBaseUrl: process.env.EXPLORER_BASE_URL,
       serviceLink: process.env.SERVICE_LINK || 'http://localhost:3000',
       // Optional wallet services configuration

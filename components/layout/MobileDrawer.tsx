@@ -57,6 +57,7 @@ export default function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
   const isAuthenticated = isConnected;
   const isAdmin = (user as any)?.isAdmin;
   const canSwitchWallet = state?.providerName === 'web3auth';
+  const projectsLive = config?.projectsLive === true;
 
   const navSections: NavSection[] = [
     {
@@ -78,12 +79,17 @@ export default function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
           icon: RectangleStackIcon,
           requiresAuth: true,
         },
-        {
-          href: '/projects',
-          label: 'Projects',
-          icon: Squares2X2Icon,
-          requiresAuth: true,
-        },
+        // Behind the PROJECTS_LIVE release flag (served by /api/config).
+        ...(projectsLive
+          ? [
+              {
+                href: '/projects',
+                label: 'Projects',
+                icon: Squares2X2Icon,
+                requiresAuth: true,
+              },
+            ]
+          : []),
         {
           // The seller's side of the marketplace: payments owed to you, and any offers to pay
           // you early (MARKETPLACE_OPENSPEC §15.6d).

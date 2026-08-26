@@ -7,6 +7,7 @@ import Skeleton from '@/components/ui/Skeleton';
 import ConnectWalletEmbedded from '@/components/auth/ConnectWalletEmbedded';
 import ProjectDetail from '@/components/projects/ProjectDetail';
 import { ProjectTreeView } from '@/types/projects';
+import { projectsPageGate } from '@/utils/featureFlags';
 
 export default function ProjectDetailPage() {
   const router = useRouter();
@@ -87,3 +88,6 @@ export default function ProjectDetailPage() {
     </div>
   );
 }
+
+// Behind the PROJECTS_LIVE release flag: 404s unless the flag is on.
+export const getServerSideProps = projectsPageGate;

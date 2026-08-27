@@ -41,6 +41,15 @@ export default function EmailVerificationPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Could not start verification');
 
+      // A live verification that has already been signed is waiting on the
+      // mailbox, not on the wallet. Signing its message again goes nowhere:
+      // the server only ever looks for one that is still awaiting a signature.
+      if (data.status && data.status !== 'awaiting_signature') {
+        setMaskedEmail('');
+        setStage('sent');
+        return;
+      }
+
       setStage('signing');
 
       // Sign the string exactly as returned. Any trimming or re-encoding here
@@ -73,6 +82,7 @@ export default function EmailVerificationPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Could not resend');
       setResent(true);
+      setMaskedEmail(data.email || maskedEmail);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not resend');
     } finally {
@@ -160,8 +170,8 @@ export default function EmailVerificationPage() {
             finish linking this email to your wallet.
           </p>
           <div className="flex items-center gap-3">
-            <Button variant="ghost" onClick={resend} disabled={busy || resent}>
-              {resent ? 'Sent again' : 'Resend email'}
+            <Button variant="ghost" onClick={resend} disabled={busy}>
+              {busy ? 'Sending…' : resent ? 'Send again' : 'Resend email'}
             </Button>
           </div>
         </div>

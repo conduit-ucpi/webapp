@@ -2,7 +2,7 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { TokenDetails } from '../../types';
 import { TokenConfig, parseTokensFromEnv } from '../../types/tokens';
 import { RpcClient } from '../../lib/rpc/RpcClient';
-import { isProjectsLive } from '../../utils/featureFlags';
+import { isProjectsLive, isEmailVerificationLive } from '../../utils/featureFlags';
 
 // In-memory cache for config response
 let cachedConfig: { data: any; timestamp: number } | null = null;
@@ -189,6 +189,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       basePath,
       // Release flags (see utils/featureFlags.ts) — the client reads them from here
       projectsLive: isProjectsLive(),
+      emailVerificationLive: isEmailVerificationLive(),
       explorerBaseUrl: process.env.EXPLORER_BASE_URL,
       serviceLink: process.env.SERVICE_LINK || 'http://localhost:3000',
       // Optional wallet services configuration

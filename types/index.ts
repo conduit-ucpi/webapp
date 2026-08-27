@@ -53,6 +53,7 @@ export interface Config {
   siteName?: string; // Site branding name (e.g., "Instant Escrow", "USDCBAY")
   // Release flags
   projectsLive?: boolean; // Projects (fan-out) feature; false/absent = hidden
+  emailVerificationLive?: boolean; // Email <-> wallet verification; false/absent = hidden
   // Optional wallet services configuration
   walletServicesShowWidget?: string;
   walletServicesButtonPosition?: string;

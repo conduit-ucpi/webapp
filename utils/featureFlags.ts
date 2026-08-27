@@ -38,3 +38,25 @@ export function blockedByProjectsFlag(_req: NextApiRequest, res: NextApiResponse
   res.status(404).json({ error: 'Not found' });
   return true;
 }
+
+/**
+ * Email <-> wallet verification. Off unless EMAIL_VERIFICATION_LIVE is exactly
+ * 'true'. Must stay in step with the userservice's own EMAIL_VERIFICATION_LIVE —
+ * the screens are useless if its endpoints are dark, and vice versa.
+ */
+export function isEmailVerificationLive(): boolean {
+  return process.env.EMAIL_VERIFICATION_LIVE === 'true';
+}
+
+/** Page gate for the email-verification screens. */
+export const emailVerificationPageGate: GetServerSideProps = async () => {
+  if (!isEmailVerificationLive()) return { notFound: true };
+  return { props: {} };
+};
+
+/** Returns true when the request was already answered with a 404. */
+export function blockedByEmailVerificationFlag(_req: NextApiRequest, res: NextApiResponse): boolean {
+  if (isEmailVerificationLive()) return false;
+  res.status(404).json({ error: 'Not found' });
+  return true;
+}

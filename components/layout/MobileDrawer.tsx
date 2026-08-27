@@ -22,6 +22,7 @@ import {
   BanknotesIcon,
   ArrowsRightLeftIcon,
   ArrowTrendingUpIcon,
+  EnvelopeIcon,
 } from '@heroicons/react/24/outline';
 import { useAuth } from '@/components/auth';
 import { useConfig } from '@/components/auth/ConfigProvider';
@@ -58,6 +59,7 @@ export default function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
   const isAdmin = (user as any)?.isAdmin;
   const canSwitchWallet = state?.providerName === 'web3auth';
   const projectsLive = config?.projectsLive === true;
+  const emailVerificationLive = config?.emailVerificationLive === true;
 
   const navSections: NavSection[] = [
     {
@@ -112,6 +114,17 @@ export default function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
           icon: WalletIcon,
           requiresAuth: true,
         },
+        // Behind the EMAIL_VERIFICATION_LIVE release flag (served by /api/config).
+        ...(emailVerificationLive
+          ? [
+              {
+                href: '/email-verification',
+                label: 'Verify Email',
+                icon: EnvelopeIcon,
+                requiresAuth: true,
+              },
+            ]
+          : []),
       ],
     },
     {

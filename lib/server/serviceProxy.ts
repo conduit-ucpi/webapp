@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { requireAuth } from '@/utils/api-auth';
+import { extractAuthToken, requireAuth } from '@/utils/api-auth';
 
 /**
  * Forward an authenticated API call to one of the backend services.
@@ -14,7 +14,7 @@ import { requireAuth } from '@/utils/api-auth';
  *    wallet, funded by it) and you READ marketplace state from contractservice. The UI never
  *    reads the chain for marketplace data, and never asks chainservice for an offer book.
  */
-type Service = 'chain' | 'contract';
+type Service = 'chain' | 'contract' | 'user';
 
 interface ProxyOptions {
   /** Which backend answers this — chainservice does things, contractservice serves reads. */
@@ -24,10 +24,23 @@ interface ProxyOptions {
   method?: 'GET' | 'POST';
   /** Forwarded verbatim as the request body; omit for GETs. */
   body?: unknown;
+  /**
+   * Defaults to true. Set false only for a route that is genuinely public — the
+   * email verification confirm link is opened from a mailbox, in a browser that
+   * has no session and never had one.
+   */
+  requiresAuth?: boolean;
 }
 
 function baseUrlFor(service: Service): string | undefined {
-  return service === 'chain' ? process.env.CHAIN_SERVICE_URL : process.env.CONTRACT_SERVICE_URL;
+  switch (service) {
+    case 'chain':
+      return process.env.CHAIN_SERVICE_URL;
+    case 'contract':
+      return process.env.CONTRACT_SERVICE_URL;
+    case 'user':
+      return process.env.USER_SERVICE_URL;
+  }
 }
 
 export async function proxyToService(
@@ -44,14 +57,19 @@ export async function proxyToService(
   }
 
   try {
-    const authToken = requireAuth(req);
+    const authToken = options.requiresAuth === false ? extractAuthToken(req) : requireAuth(req);
 
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
-      'Authorization': `Bearer ${authToken}`,
       'Cookie': req.headers.cookie || ''
     };
+
+    // A public route may still carry a session — forward it when there is one, so
+    // the service can attribute the call, but never demand it.
+    if (authToken) {
+      headers['Authorization'] = `Bearer ${authToken}`;
+    }
 
     // Server-side only: the key authenticates this app to the service and must never be
     // reachable from the browser.

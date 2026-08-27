@@ -205,6 +205,7 @@ jobs:
             -e WALLETCONNECT_PROJECT_ID="${{ secrets.WALLETCONNECT_PROJECT_ID }}" \\
             -e ALLOWED_FRAME_ANCESTORS="${{ vars.ALLOWED_FRAME_ANCESTORS }}" \\
             -e PROJECTS_LIVE="${{ vars.PROJECTS_LIVE }}" \\
+            -e EMAIL_VERIFICATION_LIVE="${{ vars.EMAIL_VERIFICATION_LIVE }}" \\
             -e SHOPIFY_CLIENT_ID="${{ secrets.SHOPIFY_CLIENT_ID }}" \\
             -e SHOPIFY_CLIENT_SECRET="${{ secrets.SHOPIFY_CLIENT_SECRET }}" \\
             -e SHOPIFY_NAME="${{ vars.SHOPIFY_NAME }}" \\

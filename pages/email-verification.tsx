@@ -16,6 +16,31 @@ type Stage = 'enter' | 'signing' | 'sent' | 'unsent';
  * trusting us. It is collected in the app, where the wallet already is, and the
  * email goes out only afterwards.
  */
+/**
+ * Turn a failed response into something a person can act on.
+ *
+ * The generic fallbacks that used to live at each call site hid the server's own
+ * reason whenever the body was shaped differently than expected, which is
+ * exactly when you most need to see it.
+ */
+async function describeFailure(res: Response, fallback: string): Promise<string> {
+  let body: unknown;
+  try {
+    body = await res.json();
+  } catch {
+    body = null;
+  }
+
+  const record = (body ?? {}) as Record<string, unknown>;
+  const detail =
+    (typeof record.error === 'string' && record.error) ||
+    (typeof record.message === 'string' && record.message) ||
+    (typeof record.reason === 'string' && record.reason) ||
+    '';
+
+  return detail ? `${detail} (${res.status})` : `${fallback} (${res.status})`;
+}
+
 export default function EmailVerificationPage() {
   const { isLoading, isConnected, address, user } = useAuth();
   const { signMessage } = useWallet();
@@ -38,8 +63,8 @@ export default function EmailVerificationPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
       });
+      if (!res.ok) throw new Error(await describeFailure(res, 'Could not start verification'));
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Could not start verification');
 
       // A live verification that has already been signed is waiting on the
       // mailbox, not on the wallet. Signing its message again goes nowhere:
@@ -64,8 +89,8 @@ export default function EmailVerificationPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ signature }),
       });
+      if (!signRes.ok) throw new Error(await describeFailure(signRes, 'Could not verify the signature'));
       const signData = await signRes.json();
-      if (!signRes.ok) throw new Error(signData.error || 'Could not verify the signature');
 
       setMaskedEmail(signData.email || '');
       setStage('sent');
@@ -81,9 +106,13 @@ export default function EmailVerificationPage() {
     setError(null);
     setBusy(true);
     try {
-      const res = await fetch('/api/email-verification/resend', { method: 'POST' });
+      const res = await fetch('/api/email-verification/resend', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{}',
+      });
+      if (!res.ok) throw new Error(await describeFailure(res, 'Could not resend'));
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Could not resend');
       setResent(true);
       setMaskedEmail(data.email || maskedEmail);
       setStage('sent');

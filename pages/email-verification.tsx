@@ -6,7 +6,7 @@ import ConnectWalletEmbedded from '@/components/auth/ConnectWalletEmbedded';
 import Skeleton from '@/components/ui/Skeleton';
 import { emailVerificationPageGate } from '@/utils/featureFlags';
 
-type Stage = 'enter' | 'signing' | 'sent';
+type Stage = 'enter' | 'signing' | 'sent' | 'unsent';
 
 /**
  * Bind an email address to the connected wallet.
@@ -44,9 +44,12 @@ export default function EmailVerificationPage() {
       // A live verification that has already been signed is waiting on the
       // mailbox, not on the wallet. Signing its message again goes nowhere:
       // the server only ever looks for one that is still awaiting a signature.
+      //
+      // Signed does not mean sent. A send that failed leaves the row signed with
+      // nothing delivered, and telling someone to check an inbox that will never
+      // receive anything is worse than the error it replaced.
       if (data.status && data.status !== 'awaiting_signature') {
-        setMaskedEmail('');
-        setStage('sent');
+        setStage(data.emailSent ? 'sent' : 'unsent');
         return;
       }
 
@@ -83,6 +86,7 @@ export default function EmailVerificationPage() {
       if (!res.ok) throw new Error(data.error || 'Could not resend');
       setResent(true);
       setMaskedEmail(data.email || maskedEmail);
+      setStage('sent');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not resend');
     } finally {
@@ -157,6 +161,21 @@ export default function EmailVerificationPage() {
           <p className="text-sm text-secondary-600 dark:text-secondary-400">
             Approve the signature request to confirm you control this wallet.
           </p>
+        </div>
+      )}
+
+      {stage === 'unsent' && (
+        <div className="space-y-4">
+          <h2 className="text-lg font-medium text-secondary-900 dark:text-white">
+            We couldn&apos;t send the email
+          </h2>
+          <p className="text-secondary-600 dark:text-secondary-400">
+            Your wallet signature went through, but the email didn&apos;t get out. Nothing
+            is lost — try sending it again.
+          </p>
+          <Button onClick={resend} disabled={busy}>
+            {busy ? 'Sending…' : 'Try again'}
+          </Button>
         </div>
       )}
 

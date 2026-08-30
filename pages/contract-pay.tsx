@@ -691,6 +691,10 @@ export default function ContractPay() {
                 // Come back on the "I have paid" panel — the funds will have
                 // landed but still need sweeping in, and that button is here.
                 addFundsReturnPath={`/contract-pay?contractId=${contractId}&method=qr`}
+                // Reuses the QR route's resolver, so Coinbase is sent to the
+                // address contractservice considers authoritative and no second
+                // escrow is ever deployed.
+                resolveEscrowAddress={async () => qr.qrContractAddress ?? (await qr.createContract()) ?? null}
               />
             </>
           )}

@@ -2,6 +2,8 @@ import { useState } from 'react';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import AddFundsModal from '@/components/contracts/AddFundsModal';
+import { openCoinbaseOnramp } from '@/lib/coinbaseOnramp';
+import { useConfig } from '@/components/auth/ConfigProvider';
 
 interface PaymentActionPanelProps {
   /** Formatted for display, e.g. "1.0000 USDC". */
@@ -25,6 +27,12 @@ interface PaymentActionPanelProps {
   onPayFromExternalWallet: () => void;
   /** Where Coinbase should return the user; see AddFundsModal. */
   addFundsReturnPath?: string;
+  /**
+   * Resolves (creating if needed) the escrow this payment funds. Present only
+   * where paying straight into the contract makes sense; without it the
+   * "Pay with Coinbase" option is not offered.
+   */
+  resolveEscrowAddress?: () => Promise<string | null>;
 }
 
 /**
@@ -62,8 +70,48 @@ export default function PaymentActionPanel({
   onPay,
   onPayFromExternalWallet,
   addFundsReturnPath,
+  resolveEscrowAddress,
 }: PaymentActionPanelProps) {
+  const { config } = useConfig();
+  // Same gate AddFundsModal uses: no project id, no Coinbase.
+  const showCoinbasePay = !!config?.coinbaseProjectId;
   const [showAddFunds, setShowAddFunds] = useState(false);
+  const [cbPayLoading, setCbPayLoading] = useState(false);
+  const [cbPayError, setCbPayError] = useState<string | null>(null);
+
+  /**
+   * Buy the stablecoin and have Coinbase send it straight to the escrow.
+   *
+   * Distinct from "Add from Coinbase", which tops up the user's own wallet by
+   * the shortfall: this funds the contract with the whole amount, because the
+   * payer's wallet balance is not part of the journey at all. The escrow takes
+   * a plain transfer, which the "I have paid" panel then sweeps in — the same
+   * settlement the QR route uses.
+   */
+  const handlePayWithCoinbase = async () => {
+    if (!resolveEscrowAddress) return;
+    setCbPayError(null);
+    setCbPayLoading(true);
+    try {
+      // The escrow has to exist before Coinbase can send to it.
+      const escrowAddress = await resolveEscrowAddress();
+      if (!escrowAddress) throw new Error('Could not prepare the escrow contract');
+
+      await openCoinbaseOnramp({
+        destinationAddress: escrowAddress,
+        asset: tokenSymbol,
+        // The full amount owed, not a shortfall — nothing is coming from the
+        // payer's wallet. Rounded up to the cent so the panel's >= balance
+        // check cannot fail on dust.
+        presetCryptoAmount: Math.ceil(amountInTokens * 100) / 100,
+        returnPath: addFundsReturnPath,
+      });
+    } catch (e) {
+      setCbPayError(e instanceof Error ? e.message : 'Could not open Coinbase');
+    } finally {
+      setCbPayLoading(false);
+    }
+  };
   const [copied, setCopied] = useState(false);
 
   const shortfall = Math.max(amountInTokens - balanceFloat, 0);
@@ -191,7 +239,20 @@ export default function PaymentActionPanel({
         >
           Pay from external wallet
         </Button>
+
+        {resolveEscrowAddress && showCoinbasePay && (
+          <Button
+            variant="outline"
+            onClick={handlePayWithCoinbase}
+            disabled={isPaymentInProgress || cbPayLoading}
+            className={actionButton}
+          >
+            {cbPayLoading ? 'Opening Coinbase…' : 'Pay with Coinbase'}
+          </Button>
+        )}
       </div>
+
+      {cbPayError && <p className="mt-2 text-sm text-red-600">{cbPayError}</p>}
 
       <AddFundsModal
         isOpen={showAddFunds}

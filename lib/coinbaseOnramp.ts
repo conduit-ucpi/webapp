@@ -5,7 +5,12 @@ const POPUP_WIDTH = 500;
 const POPUP_HEIGHT = 700;
 
 interface OpenCoinbaseOnrampParams {
-  walletAddress: string;
+  /**
+   * Where Coinbase sends the crypto. Usually the user's wallet, but it can be a
+   * contract — the escrow accepts a plain transfer that is swept in afterwards.
+   * Named for what it is, so nobody reads a contract address as a wallet bug.
+   */
+  destinationAddress: string;
   asset?: string;
   network?: string;
   /**
@@ -50,7 +55,7 @@ async function fetchSessionToken(params: OpenCoinbaseOnrampParams): Promise<stri
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      address: params.walletAddress,
+      address: params.destinationAddress,
       asset: params.asset ?? 'USDC',
       blockchain: params.network ?? 'base',
     }),

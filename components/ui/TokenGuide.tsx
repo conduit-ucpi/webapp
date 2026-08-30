@@ -30,7 +30,7 @@ export default function TokenGuide({ currency }: TokenGuideProps) {
     setCoinbaseLoading(true);
     setCoinbaseError(null);
     try {
-      await openCoinbaseOnramp({ walletAddress });
+      await openCoinbaseOnramp({ destinationAddress: walletAddress });
     } catch (error) {
       console.error('Failed to open Coinbase Onramp:', error);
       setCoinbaseError(error instanceof Error ? error.message : 'Failed to open Coinbase. Use the manual instructions below.');

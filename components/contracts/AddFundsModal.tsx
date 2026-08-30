@@ -98,7 +98,7 @@ export default function AddFundsModal({
     setOnrampLoading(true);
     try {
       await openCoinbaseOnramp({
-        walletAddress,
+        destinationAddress: walletAddress,
         asset: tokenSymbol,
         // Ask for the tokens needed, not the dollars spent. Coinbase's fee comes
         // out of a fiat amount, so presetting fiat delivered a few percent less

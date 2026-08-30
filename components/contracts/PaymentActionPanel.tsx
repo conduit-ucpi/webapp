@@ -23,6 +23,8 @@ interface PaymentActionPanelProps {
   onPay: () => void;
   /** Switches to the direct-to-contract route (link + QR). */
   onPayFromExternalWallet: () => void;
+  /** Where Coinbase should return the user; see AddFundsModal. */
+  addFundsReturnPath?: string;
 }
 
 /**
@@ -59,6 +61,7 @@ export default function PaymentActionPanel({
   loadingMessage,
   onPay,
   onPayFromExternalWallet,
+  addFundsReturnPath,
 }: PaymentActionPanelProps) {
   const [showAddFunds, setShowAddFunds] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -200,6 +203,7 @@ export default function PaymentActionPanel({
         chainId={chainId}
         networkName={networkName}
         shortfall={shortfall}
+        returnPath={addFundsReturnPath}
       />
     </div>
   );

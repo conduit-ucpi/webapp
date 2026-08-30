@@ -53,6 +53,19 @@ export default function ContractPay() {
   const [isPaymentInProgress, setIsPaymentInProgress] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(null);
+
+  /**
+   * Restore the panel from the URL.
+   *
+   * Payment method is local state, so any step that leaves the page — the
+   * Coinbase onramp, most obviously — comes back to the method chooser with the
+   * user's progress apparently lost. Carrying it in the query means they land
+   * back on the "I have paid" panel, where the sweep is one button away.
+   */
+  useEffect(() => {
+    if (!router.isReady) return;
+    if (router.query.method === 'qr') setPaymentMethod('qr');
+  }, [router.isReady, router.query.method]);
   // The intro is a landing step, not a stage: it shows once on arrival, and
   // "Change payment method" returns to the chooser rather than back to here.
   const [introDismissed, setIntroDismissed] = useState(false);
@@ -675,6 +688,9 @@ export default function ContractPay() {
                 loadingMessage={loadingMessage}
                 onPay={handlePayFromConnectedWallet}
                 onPayFromExternalWallet={() => setPaymentMethod('qr')}
+                // Come back on the "I have paid" panel — the funds will have
+                // landed but still need sweeping in, and that button is here.
+                addFundsReturnPath={`/contract-pay?contractId=${contractId}&method=qr`}
               />
             </>
           )}

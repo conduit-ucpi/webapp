@@ -26,6 +26,12 @@ interface AddFundsModalProps {
   networkName: string;
   /** How much more the wallet needs, in whole tokens. */
   shortfall: number;
+  /**
+   * Where to put the user when Coinbase is done. Defaults to the page they left,
+   * which loses the panel they were on — pass the "I have paid" URL so they come
+   * back able to finish, rather than to the payment-method chooser.
+   */
+  returnPath?: string;
 }
 
 /**
@@ -47,6 +53,7 @@ export default function AddFundsModal({
   chainId,
   networkName,
   shortfall,
+  returnPath,
 }: AddFundsModalProps) {
   const { config } = useConfig();
   const [showTransfer, setShowTransfer] = useState(false);
@@ -99,6 +106,7 @@ export default function AddFundsModal({
         // >= check on the token balance, which then never passes.
         // Rounded up to the cent so the gate cannot fail on dust.
         presetCryptoAmount: Math.max(Math.ceil(shortfall * 100) / 100, ONRAMP_MIN_CRYPTO),
+        returnPath,
       });
     } catch (e) {
       setOnrampError(e instanceof Error ? e.message : 'Could not open Coinbase');

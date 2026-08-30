@@ -10,7 +10,9 @@ import { ONRAMP_RETURN_MESSAGE, openCoinbaseOnramp } from '@/lib/coinbaseOnramp'
  * shortfall bounces on small payments (a $1 request would preset $1). Ask for
  * the shortfall or this floor, whichever is larger.
  */
-const ONRAMP_MIN_FIAT = 5;
+// Coinbase enforces a minimum purchase. Expressed in tokens because that is what
+// we now ask for, and USDC tracks the dollar closely enough for the floor.
+const ONRAMP_MIN_CRYPTO = 5;
 
 interface AddFundsModalProps {
   isOpen: boolean;
@@ -91,7 +93,12 @@ export default function AddFundsModal({
       await openCoinbaseOnramp({
         walletAddress,
         asset: tokenSymbol,
-        presetFiatAmount: Math.max(Math.ceil(shortfall), ONRAMP_MIN_FIAT),
+        // Ask for the tokens needed, not the dollars spent. Coinbase's fee comes
+        // out of a fiat amount, so presetting fiat delivered a few percent less
+        // USDC than the shortfall - and the escrow's activation gate is a
+        // >= check on the token balance, which then never passes.
+        // Rounded up to the cent so the gate cannot fail on dust.
+        presetCryptoAmount: Math.max(Math.ceil(shortfall * 100) / 100, ONRAMP_MIN_CRYPTO),
       });
     } catch (e) {
       setOnrampError(e instanceof Error ? e.message : 'Could not open Coinbase');

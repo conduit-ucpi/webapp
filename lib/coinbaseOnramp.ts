@@ -8,6 +8,14 @@ interface OpenCoinbaseOnrampParams {
   walletAddress: string;
   asset?: string;
   network?: string;
+  /**
+   * Amount of crypto the user RECEIVES. Prefer this over a fiat amount whenever
+   * a downstream check is denominated in tokens: Coinbase's fee comes out of the
+   * fiat sum, so presetting fiat delivers less crypto than asked for.
+   * Coinbase ignores presetFiatAmount when this is set.
+   */
+  presetCryptoAmount?: number;
+  /** Amount of fiat the user SPENDS, fees included. */
   presetFiatAmount?: number;
   /**
    * Where to put the user once Coinbase is done. Defaults to the page they left,
@@ -63,7 +71,12 @@ function buildOnrampUrl(token: string, params: OpenCoinbaseOnrampParams): string
   url.searchParams.set('defaultNetwork', params.network ?? 'base');
   url.searchParams.set('defaultAsset', params.asset ?? 'USDC');
   url.searchParams.set('redirectUrl', buildReturnUrl(params.returnPath));
-  if (params.presetFiatAmount) {
+
+  // Coinbase ignores presetFiatAmount when presetCryptoAmount is present, so
+  // send one or the other rather than both.
+  if (params.presetCryptoAmount) {
+    url.searchParams.set('presetCryptoAmount', String(params.presetCryptoAmount));
+  } else if (params.presetFiatAmount) {
     url.searchParams.set('presetFiatAmount', String(params.presetFiatAmount));
   }
   return url.toString();

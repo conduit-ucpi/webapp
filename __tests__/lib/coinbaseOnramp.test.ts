@@ -158,4 +158,31 @@ describe('openCoinbaseOnramp', () => {
 
     expect(redirect.searchParams.get('return')).toBe('/contract-pay?id=42');
   });
+
+  it('asks for the crypto amount received, not the fiat spent', async () => {
+    await openCoinbaseOnramp({ walletAddress: '0xabc', presetCryptoAmount: 42.5 });
+
+    const url = new URL(openSpy.mock.calls[0][0]);
+    expect(url.searchParams.get('presetCryptoAmount')).toBe('42.5');
+    // Coinbase's fee comes out of a fiat sum, so presetting fiat delivers less
+    // crypto than asked for — and the escrow gate is a >= on the token balance.
+    expect(url.searchParams.get('presetFiatAmount')).toBeNull();
+  });
+
+  it('sends only one preset amount when both are supplied', async () => {
+    // Coinbase ignores presetFiatAmount when presetCryptoAmount is present;
+    // sending both invites a mismatch between what we asked and what we show.
+    await openCoinbaseOnramp({ walletAddress: '0xabc', presetCryptoAmount: 10, presetFiatAmount: 99 });
+
+    const url = new URL(openSpy.mock.calls[0][0]);
+    expect(url.searchParams.get('presetCryptoAmount')).toBe('10');
+    expect(url.searchParams.get('presetFiatAmount')).toBeNull();
+  });
+
+  it('still supports a fiat amount when no crypto amount is given', async () => {
+    await openCoinbaseOnramp({ walletAddress: '0xabc', presetFiatAmount: 25 });
+
+    const url = new URL(openSpy.mock.calls[0][0]);
+    expect(url.searchParams.get('presetFiatAmount')).toBe('25');
+  });
 });

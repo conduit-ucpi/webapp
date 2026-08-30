@@ -185,4 +185,34 @@ describe('openCoinbaseOnramp', () => {
     const url = new URL(openSpy.mock.calls[0][0]);
     expect(url.searchParams.get('presetFiatAmount')).toBe('25');
   });
+
+  it('reports the popup closing so the caller can move the user on', async () => {
+    jest.useFakeTimers();
+    const fakePopup = { closed: false } as Window;
+    openSpy.mockReturnValue(fakePopup);
+    const onPopupClosed = jest.fn();
+
+    await openCoinbaseOnramp({ destinationAddress: VALID_ADDRESS, onPopupClosed });
+    expect(onPopupClosed).not.toHaveBeenCalled();
+
+    // However it closed — completed, cancelled, or dismissed — the money may
+    // have landed, so the caller needs to know.
+    (fakePopup as { closed: boolean }).closed = true;
+    jest.advanceTimersByTime(600);
+
+    expect(onPopupClosed).toHaveBeenCalledTimes(1);
+    jest.useRealTimers();
+  });
+
+  it('does not report a close while the popup is still open', async () => {
+    jest.useFakeTimers();
+    openSpy.mockReturnValue({ closed: false } as Window);
+    const onPopupClosed = jest.fn();
+
+    await openCoinbaseOnramp({ destinationAddress: VALID_ADDRESS, onPopupClosed });
+    jest.advanceTimersByTime(5000);
+
+    expect(onPopupClosed).not.toHaveBeenCalled();
+    jest.useRealTimers();
+  });
 });

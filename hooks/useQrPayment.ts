@@ -60,6 +60,13 @@ interface UseQrPaymentParams {
   onActivated: (contractAddress: string) => void;
   /** Omit for the escrow flow. */
   activation?: QrActivationTarget;
+  /**
+   * An escrow that already exists on chain. Supplied when the payer returns to
+   * a request whose contract was deployed on an earlier visit — funds may
+   * already be sitting in it, waiting to be swept — so there is nothing to
+   * create and the balance poll should start against this address immediately.
+   */
+  existingContractAddress?: string | null;
 }
 
 interface UseQrPaymentResult {
@@ -87,9 +94,16 @@ export function useQrPayment(params: UseQrPaymentParams): UseQrPaymentResult {
     createContract: createContractImpl,
     onActivated,
     activation = ESCROW_ACTIVATION,
+    existingContractAddress = null,
   } = params;
 
-  const [qrContractAddress, setQrContractAddress] = useState<string | null>(null);
+  const [qrContractAddress, setQrContractAddress] = useState<string | null>(existingContractAddress);
+
+  // The address arrives with the contract fetch, which resolves after mount.
+  useEffect(() => {
+    if (!existingContractAddress) return;
+    setQrContractAddress((current) => current ?? existingContractAddress);
+  }, [existingContractAddress]);
   const [qrCountdown, setQrCountdown] = useState(COUNTDOWN_SECONDS);
   const [qrPaymentDetected, setQrPaymentDetected] = useState(false);
   const [qrActivationStatus, setQrActivationStatus] = useState<QrActivationStatus>('idle');

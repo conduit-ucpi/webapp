@@ -76,8 +76,29 @@ describe('usePayableContract', () => {
     expect(result.current.isLoadingContract).toBe(false);
   });
 
-  it('reports "already been paid" when the contract has a chain address', async () => {
+  it('lets a deployed contract through while it is still awaiting funds', async () => {
+    // The escrow exists but the money is not in it yet, or is in it unswept —
+    // both routes deploy first and fund after. Calling that "paid" stranded the
+    // payer with funds sitting in a contract and no way to reach the sweep.
+    const awaitingFunding = { ...validContract, contractAddress: '0xdeployed', status: 'AWAITING_FUNDING' };
+    authenticatedFetch.mockResolvedValue(ok(awaitingFunding));
+
+    const { result } = renderHook(() => usePayableContract(params()));
+
+    await waitFor(() => expect(result.current.contract).toEqual(awaitingFunding));
+    expect(result.current.contractError).toBeNull();
+  });
+
+  it('keeps the old behaviour when a deployed contract has no status', async () => {
+    // Unrecognised state errs towards "paid": sending someone back to the
+    // dashboard is recoverable, inviting a second payment is not.
     authenticatedFetch.mockResolvedValue(ok({ ...validContract, contractAddress: '0xdeployed' }));
+    const { result } = renderHook(() => usePayableContract(params()));
+    await waitFor(() => expect(result.current.contractError).toBe('This payment request has already been paid.'));
+  });
+
+  it('reports "already been paid" when a deployed contract is not awaiting funds', async () => {
+    authenticatedFetch.mockResolvedValue(ok({ ...validContract, contractAddress: '0xdeployed', status: 'ACTIVE' }));
     const { result } = renderHook(() => usePayableContract(params()));
     await waitFor(() => expect(result.current.contractError).toBe('This payment request has already been paid.'));
     expect(result.current.contract).toBeNull();

@@ -3,6 +3,7 @@ import { detectDevice } from '@/utils/deviceDetection';
 const COINBASE_ONRAMP_URL = 'https://pay.coinbase.com/buy/select-asset';
 const POPUP_WIDTH = 500;
 const POPUP_HEIGHT = 700;
+const POPUP_POLL_MS = 500;
 
 interface OpenCoinbaseOnrampParams {
   /**
@@ -27,6 +28,19 @@ interface OpenCoinbaseOnrampParams {
    * which is almost always what you want — they were part-way through paying.
    */
   returnPath?: string;
+  /**
+   * Called when the desktop popup closes, however it closed — completed,
+   * cancelled, or dismissed.
+   *
+   * This is the reliable signal, not redirectUrl: that only fires on a
+   * successful completion, needs the domain allowlisted in the CDP portal, and
+   * never fires at all if the user closes the window by hand. Polling `closed`
+   * is cross-origin safe — it is the one property readable on a foreign window.
+   *
+   * Never called on mobile, where the whole tab navigates away and there is no
+   * opener left to run it.
+   */
+  onPopupClosed?: () => void;
 }
 
 /** Message the return page posts to its opener when the popup finishes. */
@@ -97,7 +111,7 @@ export function _setRedirectForTesting(fn: (url: string) => void): void {
   redirectFn = fn;
 }
 
-function openPopup(url: string): void {
+function openPopup(url: string, onClosed?: () => void): void {
   const left = Math.max(0, Math.round((window.screen.width - POPUP_WIDTH) / 2));
   const top = Math.max(0, Math.round((window.screen.height - POPUP_HEIGHT) / 2));
   const features = `width=${POPUP_WIDTH},height=${POPUP_HEIGHT},left=${left},top=${top},resizable=yes,scrollbars=yes`;
@@ -106,7 +120,16 @@ function openPopup(url: string): void {
   if (!popup || popup.closed) {
     // Popup blocked — fall back to a full-page navigation so the user still gets there.
     redirectFn(url);
+    return;
   }
+
+  if (!onClosed) return;
+
+  const poll = window.setInterval(() => {
+    if (!popup.closed) return;
+    window.clearInterval(poll);
+    onClosed();
+  }, POPUP_POLL_MS);
 }
 
 /**
@@ -121,6 +144,6 @@ export async function openCoinbaseOnramp(params: OpenCoinbaseOnrampParams): Prom
   if (device.isMobile) {
     redirectFn(url);
   } else {
-    openPopup(url);
+    openPopup(url, params.onPopupClosed);
   }
 }

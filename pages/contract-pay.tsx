@@ -66,6 +66,7 @@ export default function ContractPay() {
     if (!router.isReady) return;
     if (router.query.method === 'qr') setPaymentMethod('qr');
   }, [router.isReady, router.query.method]);
+
   // The intro is a landing step, not a stage: it shows once on arrival, and
   // "Change payment method" returns to the chooser rather than back to here.
   const [introDismissed, setIntroDismissed] = useState(false);
@@ -89,6 +90,17 @@ export default function ContractPay() {
     address,
     authenticatedFetch,
   });
+
+  /**
+   * An escrow that already exists has nothing left to choose: the money either
+   * is in it or is on its way, and the only remaining action is the sweep. Drop
+   * the payer straight on that panel rather than asking them how they would
+   * like to pay a request they have already started paying.
+   */
+  useEffect(() => {
+    if (!contract?.contractAddress) return;
+    setPaymentMethod((current) => current ?? 'qr');
+  }, [contract?.contractAddress]);
 
   // Payment step state + update algorithm live in usePaymentSteps; the initial
   // (wallet-flow) labels are page-specific.
@@ -144,6 +156,9 @@ export default function ContractPay() {
     chainId: config?.chainId,
     requiredAmount: contract ? contract.amount / 1000000 : 0,
     requiredAmountMicro: contract?.amount ?? 0,
+    // Deployed on an earlier visit: no need to create one, and the balance poll
+    // should start against it immediately in case the money is already there.
+    existingContractAddress: contract?.contractAddress ?? null,
     createContract: useCallback(async () => {
       if (!contract || !config || !address || !authenticatedFetch) return undefined;
       try {

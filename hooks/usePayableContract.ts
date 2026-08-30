@@ -82,7 +82,22 @@ export function usePayableContract(params: UsePayableContractParams): UsePayable
         const contractData = await response.json();
 
         // Validate contract state.
-        if (contractData.contractAddress) {
+        //
+        // A deployed escrow used to mean "paid", because one was only ever
+        // deployed as part of paying. The QR and Coinbase routes broke that: both
+        // create the escrow first and fund it afterwards, so an address now also
+        // describes a payment in progress with money possibly sitting in it,
+        // waiting to be swept.
+        //
+        // Deliberately an allowlist of states that are definitely NOT yet funded,
+        // rather than a list of funded ones. Getting this wrong in the permissive
+        // direction shows a pay screen for something already paid, which invites a
+        // double payment; getting it wrong the strict way only sends someone back
+        // to the dashboard. So anything unrecognised keeps the old behaviour.
+        const NOT_YET_FUNDED = ['AWAITING_FUNDING', 'PENDING', 'CREATED', 'PENDING_ACCEPTANCE'];
+        const awaitingFunds = NOT_YET_FUNDED.includes(contractData.status);
+
+        if (contractData.contractAddress && !awaitingFunds) {
           setContractError('This payment request has already been paid.');
           setIsLoadingContract(false);
           return;

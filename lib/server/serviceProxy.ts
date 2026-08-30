@@ -21,7 +21,7 @@ interface ProxyOptions {
   service: Service;
   /** Path on that service, including the leading slash. */
   path: string;
-  method?: 'GET' | 'POST';
+  method?: 'GET' | 'POST' | 'PATCH';
   /** Forwarded verbatim as the request body; omit for GETs. */
   body?: unknown;
   /**
@@ -80,7 +80,7 @@ export async function proxyToService(
     const response = await fetch(`${baseUrl}${options.path}`, {
       method,
       headers,
-      body: method === 'POST' ? JSON.stringify(options.body ?? {}) : undefined
+      body: method === 'GET' ? undefined : JSON.stringify(options.body ?? {})
     });
 
     const text = await response.text();
@@ -108,7 +108,7 @@ export async function proxyToService(
 }
 
 /** Reject anything but the one method a route supports. */
-export function methodGuard(req: NextApiRequest, res: NextApiResponse, allowed: 'GET' | 'POST'): boolean {
+export function methodGuard(req: NextApiRequest, res: NextApiResponse, allowed: 'GET' | 'POST' | 'PATCH'): boolean {
   if (req.method !== allowed) {
     res.status(405).json({ error: 'Method not allowed' });
     return false;

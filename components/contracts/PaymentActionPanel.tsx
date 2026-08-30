@@ -105,6 +105,11 @@ export default function PaymentActionPanel({
         // check cannot fail on dust.
         presetCryptoAmount: Math.ceil(amountInTokens * 100) / 100,
         returnPath: addFundsReturnPath,
+        // Desktop: the popup closing is the signal, not Coinbase's redirect —
+        // that needs the domain allowlisted and never fires if the window is
+        // closed by hand. Either way the money may have landed, so show the
+        // panel that can check the balance and sweep.
+        onPopupClosed: onPayFromExternalWallet,
       });
     } catch (e) {
       setCbPayError(e instanceof Error ? e.message : 'Could not open Coinbase');

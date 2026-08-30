@@ -137,4 +137,25 @@ describe('openCoinbaseOnramp', () => {
     const url = openSpy.mock.calls[0][0];
     expect(url).toContain('presetFiatAmount=50');
   });
+
+  it('sends the user back to StableDrop via the return page, not straight to the app', async () => {
+    await openCoinbaseOnramp({ walletAddress: '0xabc' });
+
+    const url = new URL(openSpy.mock.calls[0][0]);
+    const redirect = new URL(url.searchParams.get('redirectUrl') as string);
+
+    // Landing directly on an app page would leave desktop users looking at
+    // StableDrop inside a 500x700 popup with no way back to their payment.
+    expect(redirect.pathname).toBe('/onramp-return');
+    expect(redirect.origin).toBe(window.location.origin);
+  });
+
+  it('carries the page the user left so they are returned to their payment', async () => {
+    await openCoinbaseOnramp({ walletAddress: '0xabc', returnPath: '/contract-pay?id=42' });
+
+    const url = new URL(openSpy.mock.calls[0][0]);
+    const redirect = new URL(url.searchParams.get('redirectUrl') as string);
+
+    expect(redirect.searchParams.get('return')).toBe('/contract-pay?id=42');
+  });
 });

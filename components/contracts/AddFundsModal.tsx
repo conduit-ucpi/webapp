@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import Modal from '@/components/ui/Modal';
 import Button from '@/components/ui/Button';
 import { useConfig } from '@/components/auth/ConfigProvider';
-import { openCoinbaseOnramp } from '@/lib/coinbaseOnramp';
+import { ONRAMP_RETURN_MESSAGE, openCoinbaseOnramp } from '@/lib/coinbaseOnramp';
 
 /**
  * Coinbase's on-ramp enforces a fiat minimum, so presetting the literal
@@ -68,6 +68,21 @@ export default function AddFundsModal({
       // Clipboard can be blocked; both values are on screen to copy by hand.
     }
   };
+
+  // The desktop popup posts back here when Coinbase is done. Closing returns the
+  // user to the payment panel, which re-reads the balance - otherwise they come
+  // back to a modal still telling them they are short.
+  useEffect(() => {
+    const onMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+      if (event.data?.type !== ONRAMP_RETURN_MESSAGE) return;
+      setOnrampLoading(false);
+      onClose();
+    };
+
+    window.addEventListener('message', onMessage);
+    return () => window.removeEventListener('message', onMessage);
+  }, [onClose]);
 
   const handleOnramp = async () => {
     setOnrampError(null);

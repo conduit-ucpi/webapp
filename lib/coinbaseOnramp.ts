@@ -9,6 +9,26 @@ interface OpenCoinbaseOnrampParams {
   asset?: string;
   network?: string;
   presetFiatAmount?: number;
+  /**
+   * Where to put the user once Coinbase is done. Defaults to the page they left,
+   * which is almost always what you want — they were part-way through paying.
+   */
+  returnPath?: string;
+}
+
+/** Message the return page posts to its opener when the popup finishes. */
+export const ONRAMP_RETURN_MESSAGE = 'coinbase-onramp-return';
+
+/**
+ * Coinbase always sends the user to redirectUrl in whichever context it was
+ * opened, so both routes land on /onramp-return: in a popup it closes itself and
+ * tells the opener, and on mobile it forwards to the page they came from.
+ * Sending them straight back to the app would leave desktop users looking at
+ * StableDrop rendered inside a 500x700 popup with no way back to their payment.
+ */
+function buildReturnUrl(returnPath?: string): string {
+  const target = returnPath ?? `${window.location.pathname}${window.location.search}`;
+  return `${window.location.origin}/onramp-return?return=${encodeURIComponent(target)}`;
 }
 
 interface SessionTokenResponse {
@@ -42,6 +62,7 @@ function buildOnrampUrl(token: string, params: OpenCoinbaseOnrampParams): string
   url.searchParams.set('sessionToken', token);
   url.searchParams.set('defaultNetwork', params.network ?? 'base');
   url.searchParams.set('defaultAsset', params.asset ?? 'USDC');
+  url.searchParams.set('redirectUrl', buildReturnUrl(params.returnPath));
   if (params.presetFiatAmount) {
     url.searchParams.set('presetFiatAmount', String(params.presetFiatAmount));
   }

@@ -456,7 +456,16 @@ export default function ContractPay() {
   // Loading screen for initialization. The auth half of this is time-bounded so
   // a stalled rehydration falls through to the signed-out screens rather than
   // spinning forever; config is not, since without it nothing can render.
-  if (!config || (authLoading && !isConnected && !address && !authWaitElapsed)) {
+  //
+  // Arriving back from the onramp counts as "auth is coming" even when
+  // authLoading has already gone false: the wallet provider reconnects
+  // asynchronously after the session is restored, and in that window someone who
+  // is signed in was being shown the connect-wallet screen. Deliberately not
+  // waiting for everyone — a genuinely signed-out visitor should not stare at a
+  // spinner for the full rehydration timeout before being asked to connect.
+  const returningFromPayment = router.query.method === 'qr';
+
+  if (!config || ((authLoading || returningFromPayment) && !isConnected && !address && !authWaitElapsed)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white dark:bg-secondary-900 transition-colors">
         <Head><title>{pageTitle}</title><meta name="viewport" content="width=device-width, initial-scale=1" /></Head>

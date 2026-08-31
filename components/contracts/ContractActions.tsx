@@ -279,6 +279,28 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
       return null; // No callback and no contractservice id to pay against
 
     case 'AWAITING_FUNDING':
+      // To the seller this is a status: they are waiting to be paid. To the
+      // BUYER it is the outstanding action — the escrow exists and is either
+      // unfunded or holds funds that were never swept in. Showing them a label
+      // leaves no route to the pay page, so a payment already sent sits
+      // unclaimable with no way to finish it.
+      if (isBuyer && contract.id) {
+        return (
+          <Button
+            size="sm"
+            onClick={() => router.push(`/contract-pay?contractId=${contract.id}`)}
+            className="w-full"
+          >
+            {contract.ctaLabel || 'Complete Payment'}
+          </Button>
+        );
+      }
+      return (
+        <div className="text-center py-2">
+          <span className="text-sm text-gray-600">{contract.ctaLabel || 'Status'}</span>
+        </div>
+      );
+
     case 'PENDING_ACCEPTANCE':
       return (
         <div className="text-center py-2">

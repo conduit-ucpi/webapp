@@ -252,28 +252,32 @@ export default function PaymentActionPanel({
         </Button>
 
         {resolveEscrowAddress && showCoinbasePay && (
-          <Button
-            variant="outline"
-            onClick={handlePayWithCoinbase}
-            disabled={isPaymentInProgress || cbPayLoading}
-            className={actionButton}
-          >
-            {cbPayLoading ? 'Opening Coinbase…' : 'Pay by card or bank transfer'}
-          </Button>
+          // Button and its note wrapped together: as a sibling of the other
+          // buttons the note read as a footnote for all of them, and it only
+          // describes this one.
+          <div>
+            <Button
+              variant="outline"
+              onClick={handlePayWithCoinbase}
+              disabled={isPaymentInProgress || cbPayLoading}
+              className={actionButton}
+            >
+              {cbPayLoading ? 'Opening Coinbase…' : 'Pay by card or bank transfer'}
+            </Button>
+
+            {!cbPayError && (
+              // Names Coinbase here rather than in the button label, where it
+              // reads as "this needs crypto" to exactly the people this route is
+              // for. "New to Coinbase?" rather than "the first time", because
+              // someone with an account has nothing to verify at all.
+              <p className="mt-1.5 text-sm text-secondary-500 dark:text-secondary-400">
+                You&apos;ll finish on Coinbase. New to Coinbase? They&apos;ll verify your ID once —
+                after that it&apos;s a few taps.
+              </p>
+            )}
+          </div>
         )}
       </div>
-
-      {resolveEscrowAddress && showCoinbasePay && !cbPayError && (
-        // Names Coinbase here rather than in the button, where it would read as
-        // "this needs crypto" — the exact fear this route removes. Phrased as
-        // "new to Coinbase" instead of "the first time", because someone with an
-        // existing account has nothing to verify at all, which is good news
-        // worth telling them rather than a caveat.
-        <p className="mt-2 text-sm text-secondary-500 dark:text-secondary-400">
-          You&apos;ll finish on Coinbase. New to Coinbase? They&apos;ll verify your ID once — after
-          that it&apos;s a few taps.
-        </p>
-      )}
 
       {cbPayError && <p className="mt-2 text-sm text-red-600">{cbPayError}</p>}
 

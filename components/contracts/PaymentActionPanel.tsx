@@ -252,30 +252,26 @@ export default function PaymentActionPanel({
         </Button>
 
         {resolveEscrowAddress && showCoinbasePay && (
-          // Button and its note wrapped together: as a sibling of the other
-          // buttons the note read as a footnote for all of them, and it only
-          // describes this one.
-          <div>
-            <Button
-              variant="outline"
-              onClick={handlePayWithCoinbase}
-              disabled={isPaymentInProgress || cbPayLoading}
-              className={actionButton}
-            >
+          // The note lives INSIDE the button. Beneath it — even tightly spaced —
+          // it read as a footnote for the whole group, and it is untrue of the
+          // other options: you do not finish on Coinbase when paying from a
+          // wallet. Inside the border there is nothing else it could describe.
+          //
+          // h-auto/py-3/flex-col override the fixed single-line height; twMerge
+          // resolves them against the size classes.
+          <Button
+            variant="outline"
+            onClick={handlePayWithCoinbase}
+            disabled={isPaymentInProgress || cbPayLoading}
+            className={`${actionButton} h-auto flex-col gap-1 py-3 text-center`}
+          >
+            <span className="font-medium">
               {cbPayLoading ? 'Opening Coinbase…' : 'Pay by card or bank transfer'}
-            </Button>
-
-            {!cbPayError && (
-              // Names Coinbase here rather than in the button label, where it
-              // reads as "this needs crypto" to exactly the people this route is
-              // for. "New to Coinbase?" rather than "the first time", because
-              // someone with an account has nothing to verify at all.
-              <p className="mt-1.5 text-sm text-secondary-500 dark:text-secondary-400">
-                You&apos;ll finish on Coinbase. New to Coinbase? They&apos;ll verify your ID once —
-                after that it&apos;s a few taps.
-              </p>
-            )}
-          </div>
+            </span>
+            <span className="text-xs font-normal leading-snug text-secondary-500 dark:text-secondary-400">
+              You&apos;ll finish on Coinbase. New to Coinbase? They&apos;ll verify your ID once.
+            </span>
+          </Button>
         )}
       </div>
 

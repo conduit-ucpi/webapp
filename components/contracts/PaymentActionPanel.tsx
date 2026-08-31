@@ -30,7 +30,7 @@ interface PaymentActionPanelProps {
   /**
    * Resolves (creating if needed) the escrow this payment funds. Present only
    * where paying straight into the contract makes sense; without it the
-   * "Pay with Coinbase" option is not offered.
+   * "Pay by card or bank transfer" option is not offered.
    */
   resolveEscrowAddress?: () => Promise<string | null>;
 }
@@ -81,6 +81,12 @@ export default function PaymentActionPanel({
 
   /**
    * Buy the stablecoin and have Coinbase send it straight to the escrow.
+   *
+   * Labelled for what the payer does, not for who processes it. Beside "Pay from
+   * external wallet" the pair explains itself: someone holding no crypto can see
+   * at a glance which one is theirs. Coinbase is the processor and appears when
+   * the window opens — leading with its name signals "this needs crypto", which
+   * is the fear this route exists to remove.
    *
    * Distinct from "Add from Coinbase", which tops up the user's own wallet by
    * the shortfall: this funds the contract with the whole amount, because the
@@ -252,7 +258,7 @@ export default function PaymentActionPanel({
             disabled={isPaymentInProgress || cbPayLoading}
             className={actionButton}
           >
-            {cbPayLoading ? 'Opening Coinbase…' : 'Pay with Coinbase'}
+            {cbPayLoading ? 'Opening Coinbase…' : 'Pay by card or bank transfer'}
           </Button>
         )}
       </div>

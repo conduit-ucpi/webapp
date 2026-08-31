@@ -263,6 +263,18 @@ export default function PaymentActionPanel({
         )}
       </div>
 
+      {resolveEscrowAddress && showCoinbasePay && !cbPayError && (
+        // Names Coinbase here rather than in the button, where it would read as
+        // "this needs crypto" — the exact fear this route removes. Phrased as
+        // "new to Coinbase" instead of "the first time", because someone with an
+        // existing account has nothing to verify at all, which is good news
+        // worth telling them rather than a caveat.
+        <p className="mt-2 text-sm text-secondary-500 dark:text-secondary-400">
+          You&apos;ll finish on Coinbase. New to Coinbase? They&apos;ll verify your ID once — after
+          that it&apos;s a few taps.
+        </p>
+      )}
+
       {cbPayError && <p className="mt-2 text-sm text-red-600">{cbPayError}</p>}
 
       <AddFundsModal

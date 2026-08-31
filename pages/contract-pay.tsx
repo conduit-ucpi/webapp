@@ -53,6 +53,7 @@ export default function ContractPay() {
   const [isPaymentInProgress, setIsPaymentInProgress] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(null);
+  const [alreadyFunded, setAlreadyFunded] = useState(false);
 
   /**
    * Restore the panel from the URL.
@@ -160,6 +161,19 @@ export default function ContractPay() {
     let cancelled = false;
     (async () => {
       try {
+        // The escrow's own view first. isFunded() is true once a deposit has been
+        // swept in, which is the only reliable way to tell a completed payment
+        // from one whose money is sitting in the contract untouched — the stored
+        // record cannot distinguish them.
+        const web3 = await getWeb3Service();
+        const state = await web3?.getContractState(escrowAddress);
+        if (cancelled) return;
+
+        if (state?.isFunded) {
+          setAlreadyFunded(true);
+          return;
+        }
+
         const balance = await getTokenBalance(escrowAddress, selectedTokenAddress);
         if (cancelled) return;
 
@@ -614,6 +628,22 @@ export default function ContractPay() {
         <div className="text-center p-6">
           <LoadingSpinner size="lg" />
           <p className="mt-4 text-secondary-600 dark:text-secondary-300">Loading payment request...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // The escrow reports the deposit already swept in: there is nothing to pay.
+  if (alreadyFunded) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-secondary-900 transition-colors">
+        <Head><title>{pageTitle}</title><meta name="viewport" content="width=device-width, initial-scale=1" /></Head>
+        <div className="text-center p-6 max-w-md mx-auto">
+          <h2 className="text-xl font-semibold text-secondary-900 dark:text-white mb-4">This payment is complete</h2>
+          <p className="text-secondary-600 dark:text-secondary-300 mb-6">
+            The funds are already held in escrow for this request.
+          </p>
+          <Button onClick={() => router.push('/dashboard')} variant="outline">Go to Dashboard</Button>
         </div>
       </div>
     );

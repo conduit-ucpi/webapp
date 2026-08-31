@@ -76,6 +76,21 @@ describe('usePayableContract', () => {
     expect(result.current.isLoadingContract).toBe(false);
   });
 
+  it('does not decide whether a deployed contract is already paid', async () => {
+    // This endpoint returns the stored record, which has no status field — only
+    // `state`, which is "OK" for everything. Guessing from the presence of a
+    // chain address called a funded-but-unswept escrow "paid" and hid the only
+    // route to the sweep. Whether the money landed is a chain fact, read by the
+    // page from the escrow itself.
+    const deployed = { ...validContract, chainAddress: '0xdeployed' };
+    authenticatedFetch.mockResolvedValue(ok(deployed));
+
+    const { result } = renderHook(() => usePayableContract(params()));
+
+    await waitFor(() => expect(result.current.contract).toEqual(deployed));
+    expect(result.current.contractError).toBeNull();
+  });
+
   it('lets a deployed contract through while it is still awaiting funds', async () => {
     // The escrow exists but the money is not in it yet, or is in it unswept —
     // both routes deploy first and fund after. Calling that "paid" stranded the
@@ -89,20 +104,7 @@ describe('usePayableContract', () => {
     expect(result.current.contractError).toBeNull();
   });
 
-  it('keeps the old behaviour when a deployed contract has no status', async () => {
-    // Unrecognised state errs towards "paid": sending someone back to the
-    // dashboard is recoverable, inviting a second payment is not.
-    authenticatedFetch.mockResolvedValue(ok({ ...validContract, chainAddress: '0xdeployed' }));
-    const { result } = renderHook(() => usePayableContract(params()));
-    await waitFor(() => expect(result.current.contractError).toBe('This payment request has already been paid.'));
-  });
 
-  it('reports "already been paid" when a deployed contract is not awaiting funds', async () => {
-    authenticatedFetch.mockResolvedValue(ok({ ...validContract, chainAddress: '0xdeployed', status: 'ACTIVE' }));
-    const { result } = renderHook(() => usePayableContract(params()));
-    await waitFor(() => expect(result.current.contractError).toBe('This payment request has already been paid.'));
-    expect(result.current.contract).toBeNull();
-  });
 
   it('reports "expired" when expiryTimestamp is in the past', async () => {
     authenticatedFetch.mockResolvedValue(ok({ ...validContract, expiryTimestamp: past }));

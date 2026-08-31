@@ -20,7 +20,8 @@ interface UsePayableContractResult {
  * connected, and validates it. Verbatim extraction of the prior inline effect.
  *
  * Returns a contractError (and leaves contract null) when the request is already
- * deployed ("already been paid"), expired, or the fetch fails. A zero
+ * expired, or the fetch fails. Whether it is already paid is a chain fact and
+ * is decided by the page, not here. A zero
  * expiryTimestamp is an instant payment and is NOT treated as expired.
  *
  * IMPORTANT: authenticatedFetch is intentionally NOT an effect dependency. Its
@@ -83,29 +84,16 @@ export function usePayableContract(params: UsePayableContractParams): UsePayable
 
         // Validate contract state.
         //
-        // The escrow address on a pending contract is chainAddress; contractAddress
-        // is the field on a deployed Contract and is absent here, so the original
-        // check read undefined and never fired.
+        // Deliberately NOT deciding here whether the request is already paid.
+        // This endpoint returns the stored PendingContract, which carries no
+        // status field at all — only `state`, which is "OK" for everything. An
+        // earlier version read contractData.status, got undefined, and concluded
+        // from the presence of a chain address alone that the request was paid,
+        // which is exactly wrong for the case that matters: an escrow deployed
+        // and funded but not yet swept in.
         //
-        // A deployed escrow used to mean "paid", because one was only ever
-        // deployed as part of paying. The QR and Coinbase routes broke that: both
-        // create the escrow first and fund it afterwards, so an address now also
-        // describes a payment in progress with money possibly sitting in it,
-        // waiting to be swept.
-        //
-        // Deliberately an allowlist of states that are definitely NOT yet funded,
-        // rather than a list of funded ones. Getting this wrong in the permissive
-        // direction shows a pay screen for something already paid, which invites a
-        // double payment; getting it wrong the strict way only sends someone back
-        // to the dashboard. So anything unrecognised keeps the old behaviour.
-        const NOT_YET_FUNDED = ['AWAITING_FUNDING', 'PENDING', 'CREATED', 'PENDING_ACCEPTANCE'];
-        const awaitingFunds = NOT_YET_FUNDED.includes(contractData.status);
-
-        if (contractData.chainAddress && !awaitingFunds) {
-          setContractError('This payment request has already been paid.');
-          setIsLoadingContract(false);
-          return;
-        }
+        // Whether the money has actually landed is a chain fact, so contract-pay
+        // reads it from the escrow itself.
 
         if (contractData.expiryTimestamp && contractData.expiryTimestamp !== 0) {
           const now = Math.floor(Date.now() / 1000);

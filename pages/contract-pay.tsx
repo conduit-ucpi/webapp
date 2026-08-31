@@ -91,16 +91,7 @@ export default function ContractPay() {
     authenticatedFetch,
   });
 
-  /**
-   * An escrow that already exists has nothing left to choose: the money either
-   * is in it or is on its way, and the only remaining action is the sweep. Drop
-   * the payer straight on that panel rather than asking them how they would
-   * like to pay a request they have already started paying.
-   */
-  useEffect(() => {
-    if (!contract?.contractAddress) return;
-    setPaymentMethod((current) => current ?? 'qr');
-  }, [contract?.contractAddress]);
+
 
   // Payment step state + update algorithm live in usePaymentSteps; the initial
   // (wallet-flow) labels are page-specific.
@@ -133,6 +124,65 @@ export default function ContractPay() {
     availableTokens
   } = useTokenSelection(config, contractTokenSymbol);
 
+  /**
+   * The contract amount in whole tokens.
+   *
+   * The denominator is the SELECTED TOKEN's decimals, from SUPPORTED_TOKENS —
+   * not a hardcoded 1e6. That happens to be right for USDC and USDT and wrong
+   * for anything else: an 18-decimal token divided by a million reads as a
+   * balance twelve orders of magnitude too large, so every comparison against
+   * it silently passes. Undefined while the token is still resolving, so
+   * callers can tell "not yet" from "zero".
+   */
+  const requiredAmount = useMemo(() => {
+    if (!contract || typeof selectedToken?.decimals !== 'number') return undefined;
+    return contract.amount / 10 ** selectedToken.decimals;
+  }, [contract, selectedToken?.decimals]);
+
+  /**
+   * Skip the payment-method chooser only when the money is already there.
+   *
+   * A deployed escrow does not mean funded: both the QR and Coinbase routes
+   * create it first and fund it afterwards, and an abandoned attempt leaves an
+   * empty one behind. So ask the chain. If the escrow already holds what the
+   * contract needs, the only outstanding action is the sweep and the payer
+   * should land on the button that runs it - that is the case where funds sit
+   * unclaimable with nothing in the UI to finish them. If it is short, they
+   * still have a payment to make, and choosing how is the right first step.
+   *
+   * Only ever runs for a contract that already has an address, so a first-time
+   * payer costs no RPC call.
+   */
+  useEffect(() => {
+    const escrowAddress = contract?.contractAddress;
+    if (!escrowAddress || !selectedTokenAddress || requiredAmount === undefined) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const balance = await getTokenBalance(escrowAddress, selectedTokenAddress);
+        if (cancelled) return;
+
+        // Same >= comparison the activation gate uses, so the panel we land on
+        // cannot disagree with the reason we landed there.
+        if (parseFloat(balance) >= requiredAmount) {
+          setPaymentMethod((current) => current ?? 'qr');
+        }
+      } catch (error) {
+        // An unreadable balance is not a reason to guess. Leaving the chooser up
+        // costs a click; asserting funds that are not there strands the payer.
+        console.error('ContractPay: could not read escrow balance:', error);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // getTokenBalance comes from useSimpleEthers, which returns a fresh object
+    // each render — depending on it here re-fires the effect every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contract?.contractAddress, selectedTokenAddress, requiredAmount]);
+
   // Lazy-auth one-shot user-data fetch (triggers SIWX if no session exists).
   useLazyUserData({ isConnected, address, user, refreshUserData });
 
@@ -154,7 +204,7 @@ export default function ContractPay() {
     getTokenBalance,
     selectedTokenAddress,
     chainId: config?.chainId,
-    requiredAmount: contract ? contract.amount / 1000000 : 0,
+    requiredAmount: requiredAmount ?? 0,
     requiredAmountMicro: contract?.amount ?? 0,
     // Deployed on an earlier visit: no need to create one, and the balance poll
     // should start against it immediately in case the money is already there.
@@ -264,7 +314,7 @@ export default function ContractPay() {
       {
         selectedTokenSymbol,
         tokenBalance,
-        requiredAmount: contract.amount / 1000000,
+        requiredAmount: requiredAmount ?? 0,
         authenticatedFetch,
         transferToContract,
         approveUSDC,
@@ -321,7 +371,7 @@ export default function ContractPay() {
       {
         selectedTokenSymbol,
         tokenBalance,
-        requiredAmount: contract.amount / 1000000,
+        requiredAmount: requiredAmount ?? 0,
         authenticatedFetch,
         transferToContract,
         approveUSDC,
@@ -602,7 +652,7 @@ export default function ContractPay() {
   // ================================================================
 
   // Contract data derived values
-  const amountInTokens = contract.amount / 1000000;
+  const amountInTokens = requiredAmount ?? 0;
   const balanceFloat = parseFloat(tokenBalance);
   const hasInsufficientBalance = balanceFloat < amountInTokens;
   const isInstantPayment = contract.expiryTimestamp === 0;

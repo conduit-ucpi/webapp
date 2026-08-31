@@ -140,6 +140,51 @@ describe('useQrPayment', () => {
       expect(mockGetTokenBalance).toHaveBeenCalledWith('0xEscrow', '0xToken');
     });
 
+    it('sweeps automatically when the escrow is already funded on arrival', async () => {
+      // Someone returning to a contract they funded earlier should not have to
+      // press a button to claim money the chain already shows is theirs.
+      mockGetTokenBalance.mockResolvedValue('10');
+      mockAuthenticatedFetch.mockResolvedValue({ ok: true, json: async () => ({ success: true }) });
+
+      const { result } = renderHook(() => useQrPayment(baseParams()));
+      await act(async () => {
+        await result.current.createContract();
+      });
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      await waitFor(() => {
+        expect(mockAuthenticatedFetch).toHaveBeenCalledWith(
+          '/api/chain/check-and-activate',
+          expect.objectContaining({ method: 'POST' })
+        );
+      });
+    });
+
+    it('does not sweep repeatedly while the same funded balance keeps polling', async () => {
+      mockGetTokenBalance.mockResolvedValue('10');
+      mockAuthenticatedFetch.mockResolvedValue({ ok: true, json: async () => ({ success: true }) });
+
+      const { result } = renderHook(() => useQrPayment(baseParams()));
+      await act(async () => {
+        await result.current.createContract();
+      });
+      await act(async () => {
+        await Promise.resolve();
+      });
+      await waitFor(() => expect(mockAuthenticatedFetch).toHaveBeenCalled());
+
+      const callsAfterFirst = mockAuthenticatedFetch.mock.calls.length;
+      await act(async () => {
+        jest.advanceTimersByTime(30000); // three more poll intervals
+        await Promise.resolve();
+      });
+
+      // Resubmitting spends gas on a sweep already in flight.
+      expect(mockAuthenticatedFetch.mock.calls.length).toBe(callsAfterFirst);
+    });
+
     it('does not set paymentDetected when balance is below required', async () => {
       mockGetTokenBalance.mockResolvedValue('5');
       const { result } = renderHook(() => useQrPayment(baseParams()));

@@ -124,6 +124,14 @@ export function useQrPayment(params: UseQrPaymentParams): UseQrPaymentResult {
   // every render would make checkAndActivate unstable — and checkAndActivate is a dependency
   // of the countdown effect below, which would then re-create its interval on every render.
   const activationRef = useRef(activation);
+
+  // Held in a ref for the same reason as getTokenBalance: naming it as a
+  // dependency of the polling effect would rebuild the interval every render.
+  const checkAndActivateRef = useRef<() => Promise<void>>(async () => {});
+
+  // Fires the sweep at most once per mounted verification, so a poll that keeps
+  // seeing the same funded balance does not resubmit while the first is in flight.
+  const autoActivatedRef = useRef(false);
   useEffect(() => {
     activationRef.current = activation;
   });
@@ -179,6 +187,12 @@ export function useQrPayment(params: UseQrPaymentParams): UseQrPaymentResult {
       setQrActivationStatus('waiting');
     }
   }, [qrContractAddress, authenticatedFetch, selectedTokenAddress, requiredAmount, onActivated]);
+
+  // Keep the ref pointing at the current closure without making the polling
+  // effect depend on it.
+  useEffect(() => {
+    checkAndActivateRef.current = checkAndActivate;
+  }, [checkAndActivate]);
 
   // Returns the resolved escrow address as well as storing it, so a caller that
   // needs to act on it immediately — signing a transfer to it from the
@@ -237,6 +251,20 @@ export function useQrPayment(params: UseQrPaymentParams): UseQrPaymentResult {
         if (balanceNum >= requiredAmount && requiredAmount > 0) {
           console.log('useQrPayment: QR payment detected! Balance:', balance);
           setQrPaymentDetected(true);
+
+          // The money is already in the escrow, so the only step left is the
+          // sweep. Run it rather than asking the payer to confirm something the
+          // chain has already told us — this is the case where someone arrives
+          // at a contract funded on an earlier visit and would otherwise have to
+          // press a button to claim funds they had already sent. The countdown
+          // fires the same call at zero; this just does not make them wait.
+          //
+          // checkAndActivate re-reads the balance before spending any gas, so
+          // there is no risk in calling it on the strength of this poll.
+          if (!autoActivatedRef.current) {
+            autoActivatedRef.current = true;
+            void checkAndActivateRef.current();
+          }
         }
       } catch (error) {
         console.error('useQrPayment: Failed to poll contract balance:', error);

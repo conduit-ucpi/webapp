@@ -54,6 +54,16 @@ export default function ContractPay() {
   const [loadingMessage, setLoadingMessage] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(null);
   const [alreadyFunded, setAlreadyFunded] = useState(false);
+  /**
+   * True while the escrow is being read on arrival.
+   *
+   * Someone returning from Coinbase lands here before that read resolves, and
+   * without this they are shown the payment-method chooser — which reads as "it
+   * didn't work" for the several seconds until the funds are noticed and they
+   * are moved on. Starts true whenever a chain address exists, so the chooser is
+   * never the first thing a returning payer sees.
+   */
+  const [isCheckingEscrow, setIsCheckingEscrow] = useState(false);
 
   /**
    * Restore the panel from the URL.
@@ -159,6 +169,7 @@ export default function ContractPay() {
     if (!escrowAddress || !selectedTokenAddress || requiredAmount === undefined) return;
 
     let cancelled = false;
+    setIsCheckingEscrow(true);
     (async () => {
       try {
         // The escrow's own view first. isFunded() is true once a deposit has been
@@ -186,6 +197,8 @@ export default function ContractPay() {
         // An unreadable balance is not a reason to guess. Leaving the chooser up
         // costs a click; asserting funds that are not there strands the payer.
         console.error('ContractPay: could not read escrow balance:', error);
+      } finally {
+        if (!cancelled) setIsCheckingEscrow(false);
       }
     })();
 
@@ -476,6 +489,21 @@ export default function ContractPay() {
   // in — so someone who is already signed in has nothing to gain here and goes
   // straight through to the payment screen instead.
   // ================================================================
+  // Reading the escrow: say so rather than offering to take a payment that may
+  // already have been made. This is what a payer sees on returning from
+  // Coinbase, and the chooser here reads as "that failed".
+  if (paymentMethod === null && isCheckingEscrow) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-secondary-900 transition-colors">
+        <Head><title>{pageTitle}</title><meta name="viewport" content="width=device-width, initial-scale=1" /></Head>
+        <div className="text-center p-6">
+          <LoadingSpinner className="w-8 h-8 mx-auto mb-4" />
+          <p className="text-secondary-600 dark:text-secondary-300">Checking for your payment…</p>
+        </div>
+      </div>
+    );
+  }
+
   if (paymentMethod === null && !introDismissed && !isConnected && !address) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white dark:bg-secondary-900 transition-colors">

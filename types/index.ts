@@ -128,11 +128,6 @@ export interface Contract {
 
 export interface PendingContract {
   id: string;
-  /**
-   * The on-chain escrow, once one has been deployed for this request. Present
-   * means the escrow exists — not that it has been funded or swept.
-   */
-  contractAddress?: string;
   sellerEmail: string;
   buyerEmail?: string;
   amount: number;

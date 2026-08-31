@@ -154,7 +154,7 @@ export default function ContractPay() {
    * payer costs no RPC call.
    */
   useEffect(() => {
-    const escrowAddress = contract?.contractAddress;
+    const escrowAddress = contract?.chainAddress;
     if (!escrowAddress || !selectedTokenAddress || requiredAmount === undefined) return;
 
     let cancelled = false;
@@ -181,7 +181,7 @@ export default function ContractPay() {
     // getTokenBalance comes from useSimpleEthers, which returns a fresh object
     // each render — depending on it here re-fires the effect every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [contract?.contractAddress, selectedTokenAddress, requiredAmount]);
+  }, [contract?.chainAddress, selectedTokenAddress, requiredAmount]);
 
   // Lazy-auth one-shot user-data fetch (triggers SIWX if no session exists).
   useLazyUserData({ isConnected, address, user, refreshUserData });
@@ -208,7 +208,7 @@ export default function ContractPay() {
     requiredAmountMicro: contract?.amount ?? 0,
     // Deployed on an earlier visit: no need to create one, and the balance poll
     // should start against it immediately in case the money is already there.
-    existingContractAddress: contract?.contractAddress ?? null,
+    existingContractAddress: contract?.chainAddress ?? null,
     createContract: useCallback(async () => {
       if (!contract || !config || !address || !authenticatedFetch) return undefined;
       try {

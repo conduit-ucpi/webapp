@@ -83,6 +83,10 @@ export function usePayableContract(params: UsePayableContractParams): UsePayable
 
         // Validate contract state.
         //
+        // The escrow address on a pending contract is chainAddress; contractAddress
+        // is the field on a deployed Contract and is absent here, so the original
+        // check read undefined and never fired.
+        //
         // A deployed escrow used to mean "paid", because one was only ever
         // deployed as part of paying. The QR and Coinbase routes broke that: both
         // create the escrow first and fund it afterwards, so an address now also
@@ -97,7 +101,7 @@ export function usePayableContract(params: UsePayableContractParams): UsePayable
         const NOT_YET_FUNDED = ['AWAITING_FUNDING', 'PENDING', 'CREATED', 'PENDING_ACCEPTANCE'];
         const awaitingFunds = NOT_YET_FUNDED.includes(contractData.status);
 
-        if (contractData.contractAddress && !awaitingFunds) {
+        if (contractData.chainAddress && !awaitingFunds) {
           setContractError('This payment request has already been paid.');
           setIsLoadingContract(false);
           return;

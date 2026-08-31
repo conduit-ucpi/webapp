@@ -140,6 +140,43 @@ describe('useQrPayment', () => {
       expect(mockGetTokenBalance).toHaveBeenCalledWith('0xEscrow', '0xToken');
     });
 
+    it('reports the balance unchecked until the first read lands', async () => {
+      // The panel holds itself back on this, so that an escrow which is about to
+      // sweep itself never flashes a payment screen at the user.
+      let resolveBalance: (v: string) => void = () => {};
+      mockGetTokenBalance.mockReturnValue(new Promise<string>((r) => { resolveBalance = r; }));
+
+      const { result } = renderHook(() => useQrPayment(baseParams()));
+      await act(async () => {
+        await result.current.createContract();
+      });
+
+      expect(result.current.hasCheckedBalance).toBe(false);
+
+      await act(async () => {
+        resolveBalance('0');
+        await Promise.resolve();
+      });
+
+      await waitFor(() => expect(result.current.hasCheckedBalance).toBe(true));
+    });
+
+    it('reports the balance checked even when the read fails', async () => {
+      // An unreadable balance must not hold the panel back forever — it only
+      // means we cannot skip showing it.
+      mockGetTokenBalance.mockRejectedValue(new Error('rpc down'));
+
+      const { result } = renderHook(() => useQrPayment(baseParams()));
+      await act(async () => {
+        await result.current.createContract();
+      });
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      await waitFor(() => expect(result.current.hasCheckedBalance).toBe(true));
+    });
+
     it('sweeps automatically when the escrow is already funded on arrival', async () => {
       // Someone returning to a contract they funded earlier should not have to
       // press a button to claim money the chain already shows is theirs.

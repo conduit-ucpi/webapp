@@ -8,6 +8,7 @@ interface QrController {
   qrPaymentDetected: boolean;
   qrActivationStatus: 'idle' | 'checking' | 'success' | 'waiting';
   isCreatingContract: boolean;
+  hasCheckedBalance: boolean;
   createContract: () => void;
   checkAndActivate: () => void;
   buildEip681Uri: () => string;
@@ -51,6 +52,31 @@ export default function QrPaymentPanel({
   onCancel,
   successMessage,
 }: QrPaymentPanelProps) {
+  /**
+   * Hold everything back until the escrow has been read.
+   *
+   * An escrow that already holds the funds sweeps itself as soon as that read
+   * lands, so showing the payment screen first means flashing a QR code and an
+   * "I have paid" button at someone whose payment is completing on its own —
+   * asking them to act on something already in hand. The wait is one RPC call.
+   *
+   * Also covers the sweep that read triggers, so the screen never appears
+   * between detection and activation.
+   */
+  const isSettling =
+    !!qr.qrContractAddress && (!qr.hasCheckedBalance || qr.qrActivationStatus === 'checking');
+
+  if (isSettling) {
+    return (
+      <div className="text-center py-12">
+        <LoadingSpinner className="w-8 h-8 mx-auto mb-4" />
+        <p className="text-sm text-secondary-600 dark:text-secondary-300">
+          Checking for your payment…
+        </p>
+      </div>
+    );
+  }
+
   return (
     <>
       {/* Step 1: Create the contract first */}

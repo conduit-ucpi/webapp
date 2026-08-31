@@ -75,6 +75,15 @@ interface UseQrPaymentResult {
   qrPaymentDetected: boolean;
   qrActivationStatus: QrActivationStatus;
   isCreatingContract: boolean;
+  /**
+   * False until the first balance read for the current escrow has resolved.
+   *
+   * Callers should hold the panel back until this is true: an escrow that was
+   * already funded sweeps itself the moment that read lands, so rendering
+   * beforehand shows a payment screen for a payment that is about to complete
+   * on its own.
+   */
+  hasCheckedBalance: boolean;
   /** Resolves the escrow address and also returns it, for callers that need to
    *  act on it immediately rather than wait for the state update. */
   createContract: () => Promise<string | undefined>;
@@ -107,6 +116,7 @@ export function useQrPayment(params: UseQrPaymentParams): UseQrPaymentResult {
   const [qrCountdown, setQrCountdown] = useState(COUNTDOWN_SECONDS);
   const [qrPaymentDetected, setQrPaymentDetected] = useState(false);
   const [qrActivationStatus, setQrActivationStatus] = useState<QrActivationStatus>('idle');
+  const [hasCheckedBalance, setHasCheckedBalance] = useState(false);
   const [isCreatingContract, setIsCreatingContract] = useState(false);
   const qrPollingRef = useRef<NodeJS.Timeout | null>(null);
   const qrCountdownRef = useRef<NodeJS.Timeout | null>(null);
@@ -268,9 +278,14 @@ export function useQrPayment(params: UseQrPaymentParams): UseQrPaymentResult {
         }
       } catch (error) {
         console.error('useQrPayment: Failed to poll contract balance:', error);
+      } finally {
+        // Resolved either way: an unreadable balance must not hold the panel
+        // back forever, it just means we cannot skip it.
+        setHasCheckedBalance(true);
       }
     };
 
+    setHasCheckedBalance(false);
     qrPollingRef.current = setInterval(pollBalance, POLL_INTERVAL_MS);
     pollBalance();
 
@@ -301,6 +316,7 @@ export function useQrPayment(params: UseQrPaymentParams): UseQrPaymentResult {
     qrPaymentDetected,
     qrActivationStatus,
     isCreatingContract,
+    hasCheckedBalance,
     createContract,
     checkAndActivate,
     buildEip681Uri,

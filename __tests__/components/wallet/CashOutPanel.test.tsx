@@ -78,7 +78,8 @@ function pendingOrder(overrides: Record<string, unknown> = {}) {
     currency: 'USDC',
     createdAt: new Date(Date.now() - 60_000).toISOString(),
     expiresAt: new Date(Date.now() + 29 * 60_000).toISOString(),
-    paymentMethod: 'ACH_BANK_ACCOUNT',
+    paymentMethod: 'FIAT_WALLET',
+    fiatCurrency: 'GBP',
     ...overrides,
   };
 }
@@ -425,6 +426,37 @@ describe('CashOutPanel', () => {
 
       await waitFor(() => expect(screen.queryAllByText(/finish your cash-out/i)).toHaveLength(0));
       expect(mockFundAndSend).not.toHaveBeenCalled();
+    });
+
+    it('hands the user to Coinbase for the withdrawal it cannot do for them', async () => {
+      // Coinbase's API has no withdrawal call. Outside the US the money stops at
+      // the Coinbase cash balance, so the panel must say so and point onward
+      // rather than implying the bank transfer is already under way.
+      renderPanel();
+      mockPendingResponse(pendingOrder());
+
+      await fireReturnFromCoinbase();
+      await waitFor(() => expect(mockFundAndSend).toHaveBeenCalledTimes(1));
+
+      await screen.findByText(/hold it as cash in your Coinbase account/i);
+      expect(screen.getByText(/cannot do it for you/i)).toBeInTheDocument();
+      const link = screen.getByRole('link', { name: /open coinbase to withdraw/i });
+      expect(link).toHaveAttribute('href', 'https://www.coinbase.com');
+    });
+
+    it('does not send a US bank payout to the withdraw step — it is already going', async () => {
+      renderPanel();
+      mockPendingResponse(
+        pendingOrder({ paymentMethod: 'ACH_BANK_ACCOUNT', fiatCurrency: 'USD' })
+      );
+
+      await fireReturnFromCoinbase();
+      await waitFor(() => expect(mockFundAndSend).toHaveBeenCalledTimes(1));
+
+      await screen.findByText(/into your linked bank account/i);
+      expect(
+        screen.queryByRole('link', { name: /open coinbase to withdraw/i })
+      ).not.toBeInTheDocument();
     });
 
     it('refreshes balances after a successful send', async () => {

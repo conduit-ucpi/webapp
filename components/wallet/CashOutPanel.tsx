@@ -54,6 +54,17 @@ const POLL_ATTEMPTS = 24;
 const MIN_WINDOW_TO_SEND_MS = 2 * 60 * 1000;
 
 /**
+ * Where we send a user to finish the withdrawal.
+ *
+ * Deliberately the site root. Coinbase's help describes the path (My Assets →
+ * balance → Cash out) but publishes no stable deep link, and the candidates all
+ * sit behind an SPA that returns 200 for any path — so a "verified" deep link
+ * would just be a guess that breaks silently. The instruction next to this link
+ * does the navigating instead.
+ */
+const COINBASE_APP_URL = 'https://www.coinbase.com';
+
+/**
  * Orders this browser has already broadcast a transfer for.
  *
  * Coinbase leaves an order at STARTED for a while after our tokens land, so the
@@ -106,6 +117,7 @@ interface PendingOrder {
   createdAt: string;
   expiresAt: string;
   paymentMethod?: string;
+  fiatCurrency?: string;
 }
 
 /** One fiat Coinbase will pay this user in, and how the money reaches them. */
@@ -164,6 +176,10 @@ export default function CashOutPanel({ walletAddress, balances, onSent }: CashOu
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sentTxHash, setSentTxHash] = useState<string | null>(null);
+  // Captured at send time: the form's currency selection can change afterwards,
+  // and the success message must describe the order that actually went.
+  const [sentCurrency, setSentCurrency] = useState<string>('');
+  const [sentRoute, setSentRoute] = useState<{ reachesBank: boolean } | null>(null);
   const [gaveUp, setGaveUp] = useState<{ seen: SeenOrder[]; failed: boolean } | null>(null);
   // Where Coinbase thinks the user is, and what it will therefore pay them in.
   // Detected, then editable: the locale guess is wrong often enough that a user
@@ -361,6 +377,9 @@ export default function CashOutPanel({ walletAddress, balances, onSent }: CashOu
         const txHash = await fundAndSendTransaction({ to: token.address, data, value: '0' });
 
         rememberSentOrder(order.transactionId);
+        // Describe the order that actually went, using Coinbase's own view of it.
+        setSentCurrency(order.fiatCurrency || 'cash');
+        setSentRoute({ reachesBank: order.paymentMethod === 'ACH_BANK_ACCOUNT' });
         setSentTxHash(txHash);
         setPending(null);
         setAmount('');
@@ -793,10 +812,37 @@ export default function CashOutPanel({ walletAddress, balances, onSent }: CashOu
 
       {sentTxHash && (
         <div className="mt-4 rounded-md border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 p-4">
-          <p className="text-sm text-green-700 dark:text-green-300">
-            Sent to Coinbase. They will pay out to your bank once it confirms.
+          <p className="text-sm font-semibold text-green-800 dark:text-green-200">
+            Sent to Coinbase
           </p>
-          <div className="mt-1 text-sm text-green-700 dark:text-green-300">
+          <p className="mt-1 text-sm text-green-700 dark:text-green-300">
+            {sentRoute?.reachesBank
+              ? `Coinbase will sell your tokens and pay ${sentCurrency} into your linked bank account. That usually takes a few days.`
+              : `Coinbase will sell your tokens for ${sentCurrency} and hold it as cash in your Coinbase account.`}
+          </p>
+
+          {/* The last leg is Coinbase's alone. Their API has no withdrawal call,
+              so the honest thing is to say so and hand the user over, rather
+              than leave them believing the money is already on its way. */}
+          {!sentRoute?.reachesBank && (
+            <div className="mt-3">
+              <p className="text-sm text-green-700 dark:text-green-300">
+                Moving that cash to your bank is done in Coinbase — we cannot do it for you.
+                Go to <span className="font-medium">My Assets</span>, pick your {sentCurrency}{' '}
+                balance, then <span className="font-medium">Cash out</span>.
+              </p>
+              <a
+                href={COINBASE_APP_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-3 inline-flex items-center justify-center h-10 px-4 rounded-md border border-green-300 dark:border-green-700 text-sm font-medium text-green-800 dark:text-green-200 hover:bg-green-100 dark:hover:bg-green-900/40"
+              >
+                Open Coinbase to withdraw
+              </a>
+            </div>
+          )}
+
+          <div className="mt-3 text-sm text-green-700 dark:text-green-300">
             <ExpandableHash hash={sentTxHash} />
           </div>
         </div>

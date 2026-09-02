@@ -89,6 +89,12 @@ export interface PendingOfframpOrder {
   expiresAt: string;
   /** Where the proceeds go. The panel refuses to send into a CRYPTO_ACCOUNT. */
   paymentMethod: string;
+  /**
+   * The fiat Coinbase will pay out, per the order itself rather than per our
+   * form. Matters on a cold-load resume, where the page has no idea what the
+   * user chose in a session that has since ended.
+   */
+  fiatCurrency: string;
 }
 
 /**
@@ -138,6 +144,7 @@ export function selectPendingOrder(
     createdAt: tx.created_at!,
     expiresAt: new Date(createdMs + OFFRAMP_WINDOW_MS).toISOString(),
     paymentMethod: tx.payment_method || '',
+    fiatCurrency: tx.cashout_total?.currency || '',
   };
 }
 

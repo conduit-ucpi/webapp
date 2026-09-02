@@ -1,9 +1,15 @@
-import { detectDevice } from '@/utils/deviceDetection';
+import {
+  buildCoinbaseReturnUrl,
+  openCoinbasePayUrl,
+  _setRedirectForTesting,
+} from '@/lib/coinbasePayWindow';
 
 const COINBASE_ONRAMP_URL = 'https://pay.coinbase.com/buy/select-asset';
-const POPUP_WIDTH = 500;
-const POPUP_HEIGHT = 700;
-const POPUP_POLL_MS = 500;
+const ONRAMP_RETURN_ROUTE = '/onramp-return';
+
+// Re-exported so existing tests (and callers) keep importing the seam from here;
+// the implementation moved to coinbasePayWindow when the offramp needed it too.
+export { _setRedirectForTesting };
 
 interface OpenCoinbaseOnrampParams {
   /**
@@ -30,33 +36,13 @@ interface OpenCoinbaseOnrampParams {
   returnPath?: string;
   /**
    * Called when the desktop popup closes, however it closed — completed,
-   * cancelled, or dismissed.
-   *
-   * This is the reliable signal, not redirectUrl: that only fires on a
-   * successful completion, needs the domain allowlisted in the CDP portal, and
-   * never fires at all if the user closes the window by hand. Polling `closed`
-   * is cross-origin safe — it is the one property readable on a foreign window.
-   *
-   * Never called on mobile, where the whole tab navigates away and there is no
-   * opener left to run it.
+   * cancelled, or dismissed. Never called on mobile. See openCoinbasePayUrl.
    */
   onPopupClosed?: () => void;
 }
 
 /** Message the return page posts to its opener when the popup finishes. */
 export const ONRAMP_RETURN_MESSAGE = 'coinbase-onramp-return';
-
-/**
- * Coinbase always sends the user to redirectUrl in whichever context it was
- * opened, so both routes land on /onramp-return: in a popup it closes itself and
- * tells the opener, and on mobile it forwards to the page they came from.
- * Sending them straight back to the app would leave desktop users looking at
- * StableDrop rendered inside a 500x700 popup with no way back to their payment.
- */
-function buildReturnUrl(returnPath?: string): string {
-  const target = returnPath ?? `${window.location.pathname}${window.location.search}`;
-  return `${window.location.origin}/onramp-return?return=${encodeURIComponent(target)}`;
-}
 
 interface SessionTokenResponse {
   token?: string;
@@ -89,7 +75,7 @@ function buildOnrampUrl(token: string, params: OpenCoinbaseOnrampParams): string
   url.searchParams.set('sessionToken', token);
   url.searchParams.set('defaultNetwork', params.network ?? 'base');
   url.searchParams.set('defaultAsset', params.asset ?? 'USDC');
-  url.searchParams.set('redirectUrl', buildReturnUrl(params.returnPath));
+  url.searchParams.set('redirectUrl', buildCoinbaseReturnUrl(ONRAMP_RETURN_ROUTE, params.returnPath));
 
   // Coinbase ignores presetFiatAmount when presetCryptoAmount is present, so
   // send one or the other rather than both.
@@ -101,37 +87,6 @@ function buildOnrampUrl(token: string, params: OpenCoinbaseOnrampParams): string
   return url.toString();
 }
 
-// Test seam: redirect is overridable so jsdom-based tests can capture it without
-// monkey-patching the non-configurable `window.location` property.
-let redirectFn: (url: string) => void = (url) => {
-  window.location.assign(url);
-};
-
-export function _setRedirectForTesting(fn: (url: string) => void): void {
-  redirectFn = fn;
-}
-
-function openPopup(url: string, onClosed?: () => void): void {
-  const left = Math.max(0, Math.round((window.screen.width - POPUP_WIDTH) / 2));
-  const top = Math.max(0, Math.round((window.screen.height - POPUP_HEIGHT) / 2));
-  const features = `width=${POPUP_WIDTH},height=${POPUP_HEIGHT},left=${left},top=${top},resizable=yes,scrollbars=yes`;
-  const popup = window.open(url, 'coinbase-onramp', features);
-
-  if (!popup || popup.closed) {
-    // Popup blocked — fall back to a full-page navigation so the user still gets there.
-    redirectFn(url);
-    return;
-  }
-
-  if (!onClosed) return;
-
-  const poll = window.setInterval(() => {
-    if (!popup.closed) return;
-    window.clearInterval(poll);
-    onClosed();
-  }, POPUP_POLL_MS);
-}
-
 /**
  * Opens Coinbase Onramp using the right strategy for the device.
  * Desktop: centered popup. Mobile: full-page redirect (Apple Pay / KYC need a top-level browsing context).
@@ -140,10 +95,5 @@ export async function openCoinbaseOnramp(params: OpenCoinbaseOnrampParams): Prom
   const token = await fetchSessionToken(params);
   const url = buildOnrampUrl(token, params);
 
-  const device = detectDevice();
-  if (device.isMobile) {
-    redirectFn(url);
-  } else {
-    openPopup(url, params.onPopupClosed);
-  }
+  openCoinbasePayUrl(url, 'coinbase-onramp', params.onPopupClosed);
 }

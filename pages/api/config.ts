@@ -173,6 +173,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Third-party services
       moonPayApiKey: process.env.MOONPAY_API_KEY,
       coinbaseProjectId: process.env.COINBASE_PROJECT_ID,
+      // Coinbase's own name for the chain, which is not derivable from chainId.
+      // Deliberately undefaulted: the cash-out UI hides itself rather than send a
+      // user to a Coinbase flow pointed at a chain we only guessed.
+      coinbaseNetwork: process.env.COINBASE_NETWORK,
       walletConnectProjectId: process.env.WALLETCONNECT_PROJECT_ID,
       neynarApiKey: process.env.NEYNAR_API_KEY,
       // Gas configuration

@@ -34,6 +34,7 @@ export interface Config {
   // Third-party services
   moonPayApiKey: string;
   coinbaseProjectId?: string;
+  coinbaseNetwork?: string; // Coinbase's network slug (e.g. "base") - see COINBASE_NETWORK
   walletConnectProjectId?: string;
   neynarApiKey?: string;
   // Gas configuration

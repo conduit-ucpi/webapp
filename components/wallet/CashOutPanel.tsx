@@ -22,9 +22,21 @@ import { OFFRAMP_RETURN_MESSAGE, openCoinbaseOfframp } from '@/lib/coinbaseOffra
 const RETURN_QUERY_KEY = 'cashout';
 const RETURN_QUERY_VALUE = 'return';
 
-/** The order is not on Coinbase's side the instant they redirect us back. */
-const POLL_INTERVAL_MS = 2000;
-const POLL_ATTEMPTS = 15;
+/**
+ * The order is not on Coinbase's side the instant they redirect us back, and how
+ * long it takes them to register it is not documented. Five seconds for two
+ * minutes: long enough to outlast a slow write, short of the 30 minute window in
+ * which the user could still finish by hand.
+ */
+const POLL_INTERVAL_MS = 5000;
+const POLL_ATTEMPTS = 24;
+
+/** An order Coinbase reported that we did not act on, and why we can say so. */
+interface SeenOrder {
+  status?: string;
+  createdAt?: string;
+  ageSeconds?: number | null;
+}
 
 interface PendingOrder {
   transactionId: string;
@@ -43,6 +55,15 @@ interface CashOutPanelProps {
   balances: Record<string, string>;
   /** Called after a successful send so the page can refresh balances. */
   onSent?: () => void;
+}
+
+/** The distinct statuses Coinbase reported, for the "nothing to send" message. */
+function seenStatuses(seen: SeenOrder[]): string {
+  const statuses: string[] = [];
+  for (const s of seen) {
+    if (s.status && !statuses.includes(s.status)) statuses.push(s.status);
+  }
+  return statuses.join(', ');
 }
 
 function formatTimeLeft(ms: number): string {
@@ -71,6 +92,7 @@ export default function CashOutPanel({ walletAddress, balances, onSent }: CashOu
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sentTxHash, setSentTxHash] = useState<string | null>(null);
+  const [gaveUp, setGaveUp] = useState<{ seen: SeenOrder[]; failed: boolean } | null>(null);
   const [now, setNow] = useState(() => Date.now());
 
   // Orders we have already raised a signature prompt for. Auto-firing is armed
@@ -88,11 +110,29 @@ export default function CashOutPanel({ walletAddress, balances, onSent }: CashOu
   const selectedToken = supportedTokens.find(t => t.symbol === symbol);
   const availableBalance = parseFloat(balances[symbol] || '0');
 
-  const fetchPending = useCallback(async (): Promise<PendingOrder | null> => {
-    const response = await fetch('/api/coinbase/offramp/pending', { credentials: 'include' });
-    if (!response.ok) return null;
-    const data = await response.json().catch(() => ({}));
-    return (data?.pending as PendingOrder | undefined) || null;
+  /**
+   * Asks the server whether Coinbase is waiting on a send.
+   *
+   * Returns the orders it *did* see when there is nothing actionable, so a failed
+   * search can explain itself rather than looking like a hang.
+   */
+  const fetchPending = useCallback(async (): Promise<{
+    order: PendingOrder | null;
+    seen: SeenOrder[];
+    failed: boolean;
+  }> => {
+    try {
+      const response = await fetch('/api/coinbase/offramp/pending', { credentials: 'include' });
+      if (!response.ok) return { order: null, seen: [], failed: true };
+      const data = await response.json().catch(() => ({}));
+      return {
+        order: (data?.pending as PendingOrder | undefined) || null,
+        seen: (data?.seen as SeenOrder[] | undefined) || [],
+        failed: false,
+      };
+    } catch {
+      return { order: null, seen: [], failed: true };
+    }
   }, []);
 
   /**
@@ -185,11 +225,12 @@ export default function CashOutPanel({ walletAddress, balances, onSent }: CashOu
   const pollForOrder = useCallback(
     (autoSend: boolean) => {
       let attempts = 0;
+      setGaveUp(null);
       setIsWaitingForOrder(true);
 
       const tick = async () => {
         attempts += 1;
-        const order = await fetchPending().catch(() => null);
+        const { order, seen, failed } = await fetchPending();
 
         if (order) {
           setIsWaitingForOrder(false);
@@ -202,6 +243,10 @@ export default function CashOutPanel({ walletAddress, balances, onSent }: CashOu
 
         if (attempts >= POLL_ATTEMPTS) {
           setIsWaitingForOrder(false);
+          // Never leave the user on a spinner that has quietly stopped. Say what
+          // Coinbase reported, so "nothing happened" becomes something they can
+          // act on — retry, or go back and finish the order.
+          setGaveUp({ seen, failed });
           return;
         }
 
@@ -235,14 +280,11 @@ export default function CashOutPanel({ walletAddress, balances, onSent }: CashOu
       return;
     }
 
-    void fetchPending()
-      .then(order => {
-        if (order) setPending(order);
-      })
-      .catch(() => {
-        // A failed check is not worth an error banner: the user has not asked for
-        // anything yet, and the panel still works for starting a new cash-out.
-      });
+    // A failed check here is not worth an error banner: the user has not asked
+    // for anything yet, and the panel still works for starting a new cash-out.
+    void fetchPending().then(({ order }) => {
+      if (order) setPending(order);
+    });
     // Runs once the router is ready; pollForOrder/fetchPending are stable enough
     // that re-running on their identity would re-poll on every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -284,6 +326,7 @@ export default function CashOutPanel({ walletAddress, balances, onSent }: CashOu
 
     setError(null);
     setSentTxHash(null);
+    setGaveUp(null);
     setIsOpening(true);
 
     try {
@@ -294,6 +337,14 @@ export default function CashOutPanel({ walletAddress, balances, onSent }: CashOu
         presetCryptoAmount: parseFloat(amount),
         // Carries the marker that tells the mobile round-trip apart from a reload.
         returnPath: `/wallet?${RETURN_QUERY_KEY}=${RETURN_QUERY_VALUE}`,
+        // Fires however the popup closed, including the user dismissing it. The
+        // return page's message only arrives when Coinbase completes, so without
+        // this a cancelled popup leaves the button stuck on "Opening Coinbase…"
+        // forever. Poll anyway: they may have confirmed and closed it by hand.
+        onPopupClosed: () => {
+          setIsOpening(false);
+          pollForOrder(true);
+        },
       });
     } catch (e: any) {
       setError(e?.message || 'Could not open Coinbase');
@@ -345,8 +396,29 @@ export default function CashOutPanel({ walletAddress, balances, onSent }: CashOu
         </div>
       ) : isWaitingForOrder ? (
         <p className="mt-6 text-sm text-secondary-600 dark:text-secondary-300">
-          Checking your cash-out with Coinbase…
+          Checking your cash-out with Coinbase… this can take a moment.
         </p>
+      ) : gaveUp ? (
+        <div className="mt-6 rounded-lg border border-secondary-200 dark:border-secondary-700 p-4">
+          <p className="font-semibold text-secondary-900 dark:text-white">
+            No cash-out is waiting to be sent
+          </p>
+          <p className="mt-1 text-sm text-secondary-700 dark:text-secondary-200">
+            {gaveUp.failed
+              ? 'We could not reach Coinbase to check. Nothing has left your wallet.'
+              : gaveUp.seen.length === 0
+                ? 'Coinbase has no record of a cash-out for you. If you did not get as far as "Cash out now" — for example it asked you to add a bank account or verify your ID — the order was never created.'
+                : `Coinbase has ${gaveUp.seen.length} order${gaveUp.seen.length === 1 ? '' : 's'} on file for you, but ${gaveUp.seen.length === 1 ? 'it is' : 'none are'} waiting on a transfer (${seenStatuses(gaveUp.seen)}).`}
+          </p>
+          <div className="mt-4 flex gap-2">
+            <Button variant="outline" onClick={() => pollForOrder(false)}>
+              Check again
+            </Button>
+            <Button variant="outline" onClick={() => setGaveUp(null)}>
+              Start a new cash-out
+            </Button>
+          </div>
+        </div>
       ) : (
         <div className="mt-6 space-y-5">
           <div>

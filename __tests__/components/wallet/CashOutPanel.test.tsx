@@ -54,6 +54,9 @@ const USDC_ADDRESS = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
 
 const mockFundAndSend = jest.fn();
 
+/** Mirrors the panel's poll cadence (5s x 24 attempts). */
+const POLL_INTERVAL_MS = 5000;
+
 const baseConfig: any = {
   chainId: 8453,
   rpcUrl: 'https://mainnet.base.org',
@@ -241,6 +244,50 @@ describe('CashOutPanel', () => {
 
       await screen.findByText(/nothing has been sent/i);
       expect(mockFundAndSend).not.toHaveBeenCalled();
+    });
+
+    it('explains itself instead of spinning forever when no order turns up', async () => {
+      jest.useFakeTimers({ advanceTimers: true });
+      renderPanel();
+      mockPendingResponse(null);
+
+      await fireReturnFromCoinbase();
+      expect(screen.getByText(/checking your cash-out with coinbase/i)).toBeInTheDocument();
+
+      // Exhaust the poll window (24 attempts, 5s apart).
+      // Each advance needs its own act() so the awaited fetch inside the tick
+      // resolves before the next timer is scheduled.
+      for (let i = 0; i < 26; i++) {
+        await act(async () => {
+          jest.advanceTimersByTime(POLL_INTERVAL_MS);
+        });
+      }
+
+      expect(screen.getByText(/no cash-out is waiting to be sent/i)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /check again/i })).toBeInTheDocument();
+      jest.useRealTimers();
+    });
+
+    it('names the statuses Coinbase reported when none are actionable', async () => {
+      jest.useFakeTimers({ advanceTimers: true });
+      renderPanel();
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ pending: null, seen: [{ status: 'SUCCESS', ageSeconds: 400 }] }),
+      });
+
+      await fireReturnFromCoinbase();
+      // Each advance needs its own act() so the awaited fetch inside the tick
+      // resolves before the next timer is scheduled.
+      for (let i = 0; i < 26; i++) {
+        await act(async () => {
+          jest.advanceTimersByTime(POLL_INTERVAL_MS);
+        });
+      }
+
+      expect(screen.getByText(/SUCCESS/)).toBeInTheDocument();
+      jest.useRealTimers();
     });
 
     it('refreshes balances after a successful send', async () => {

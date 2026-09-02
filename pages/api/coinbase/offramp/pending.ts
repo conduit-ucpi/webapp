@@ -79,9 +79,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const data: CoinbaseSellTransactionsResponse = JSON.parse(responseText);
-    const pending = selectPendingOrder(data.transactions || [], Date.now());
+    const transactions = data.transactions || [];
+    const pending = selectPendingOrder(transactions, Date.now());
 
-    return res.status(200).json({ pending });
+    // When we find nothing, say what we did see. Without this the UI can only
+    // report "no cash-out found", which is indistinguishable from a wrong user
+    // ref, an order in a status we do not act on, or one that timed out — and
+    // the user is left staring at a spinner with no way to tell which.
+    const seen = pending
+      ? undefined
+      : transactions.map(tx => ({
+          status: tx.status,
+          createdAt: tx.created_at,
+          ageSeconds: tx.created_at
+            ? Math.round((Date.now() - Date.parse(tx.created_at)) / 1000)
+            : null,
+        }));
+
+    if (!pending) {
+      console.log('No actionable Coinbase sell order', {
+        partnerUserRef,
+        transactionCount: transactions.length,
+        seen,
+      });
+    }
+
+    return res.status(200).json({ pending, ...(seen ? { seen } : {}) });
   } catch (error) {
     console.error('Offramp pending lookup error:', error);
     return res.status(500).json({ error: 'Internal server error' });

@@ -75,7 +75,10 @@ export function selectPendingOrder(
     .filter(tx => !!tx.to_address && !!tx.created_at && !!tx.sell_amount?.value)
     .map(tx => ({ tx, createdMs: Date.parse(tx.created_at!) }))
     .filter(({ createdMs }) => Number.isFinite(createdMs))
-    .filter(({ createdMs }) => now - createdMs < OFFRAMP_WINDOW_MS && createdMs <= now)
+    // Only an upper bound on age. There is deliberately no "not in the future"
+    // check: Coinbase's clock and ours can disagree by seconds, and dropping a
+    // live order over skew would strand the user with no way to finish.
+    .filter(({ createdMs }) => now - createdMs < OFFRAMP_WINDOW_MS)
     .sort((a, b) => b.createdMs - a.createdMs);
 
   const newest = candidates[0];

@@ -230,7 +230,35 @@ describe('/api/coinbase/offramp/pending', () => {
     await handler(req, res);
 
     expect(res._getStatusCode()).toBe(200);
-    expect(JSON.parse(res._getData())).toEqual({ pending: null });
+    expect(JSON.parse(res._getData())).toEqual({ pending: null, seen: [] });
+  });
+
+  it('reports what it did see when no order is actionable, so a miss can explain itself', async () => {
+    mockCoinbase({ userId: 'u1', walletAddress: WALLET }, [
+      tx({ status: 'SUCCESS', created_at: new Date(Date.now() - 120_000).toISOString() }),
+    ]);
+    const { req, res } = makeReq({ cookie: 'AUTH-TOKEN=valid' });
+
+    await handler(req, res);
+
+    const body = JSON.parse(res._getData());
+    expect(body.pending).toBeNull();
+    expect(body.seen).toHaveLength(1);
+    expect(body.seen[0].status).toBe('SUCCESS');
+    expect(body.seen[0].ageSeconds).toBeGreaterThanOrEqual(119);
+  });
+
+  it('omits the diagnostic when there is a real order to act on', async () => {
+    mockCoinbase({ userId: 'u1', walletAddress: WALLET }, [
+      tx({ created_at: new Date(Date.now() - 30_000).toISOString() }),
+    ]);
+    const { req, res } = makeReq({ cookie: 'AUTH-TOKEN=valid' });
+
+    await handler(req, res);
+
+    const body = JSON.parse(res._getData());
+    expect(body.pending).not.toBeNull();
+    expect(body.seen).toBeUndefined();
   });
 
   it('returns 502 when Coinbase fails, rather than claiming there is nothing pending', async () => {

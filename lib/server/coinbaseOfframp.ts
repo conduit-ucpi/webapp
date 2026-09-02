@@ -39,7 +39,33 @@ export interface CoinbaseSellTransaction {
   network?: string;
   sell_amount?: CoinbaseAmount;
   created_at?: string;
+  /** Set once Coinbase has seen our transfer. Its presence means: already sent. */
+  tx_hash?: string;
 }
+
+/**
+ * Coinbase's status strings, minus the prefix it actually sends.
+ *
+ * The API reference documents the enum as bare values (CREATED, STARTED, …) but
+ * the live API returns them prefixed — `TRANSACTION_STATUS_STARTED`. Comparing
+ * against the documented spelling silently matches nothing, which is exactly how
+ * this shipped broken: every order was filtered out and the UI reported "no
+ * cash-out found" while five real orders sat there.
+ */
+export function normalizeStatus(status: string | undefined): string {
+  if (!status) return '';
+  return status.replace(/^TRANSACTION_STATUS_/, '');
+}
+
+/**
+ * Statuses that mean "Coinbase is waiting for the crypto".
+ *
+ * Observed rather than assumed: a freshly confirmed order arrives as STARTED and
+ * decays to FAILED when nothing is sent inside the window, so STARTED is the
+ * live state, not a sign that funds were already seen. CREATED is accepted too —
+ * it is in the documented enum and would mean the same thing.
+ */
+const AWAITING_SEND = new Set(['CREATED', 'STARTED']);
 
 /** What the browser gets: camelCase, and only what the send actually needs. */
 export interface PendingOfframpOrder {
@@ -56,10 +82,11 @@ export interface PendingOfframpOrder {
 /**
  * The newest order still waiting on us to send crypto, or null.
  *
- * Only CREATED qualifies. STARTED means Coinbase has already seen funds arrive,
- * and sending again on top of it would be a second, unpaid transfer — the exact
- * mistake a naive "not finished yet" filter makes. SUCCESS, FAILED and EXPIRED
- * are all done with.
+ * CREATED and STARTED qualify — both mean Coinbase is waiting on the crypto.
+ * SUCCESS, FAILED and EXPIRED are done with. What actually protects against
+ * sending twice is tx_hash, not the status: Coinbase leaves an order at STARTED
+ * for a while after our transfer lands, so status alone would invite a second
+ * payment from anyone who reloaded the page in that gap.
  *
  * Age is checked against the same 30 minute window Coinbase enforces, because an
  * order can sit at CREATED forever after timing out: without this an abandoned
@@ -71,7 +98,11 @@ export function selectPendingOrder(
   now: number
 ): PendingOfframpOrder | null {
   const candidates = transactions
-    .filter(tx => tx.status === 'CREATED')
+    .filter(tx => AWAITING_SEND.has(normalizeStatus(tx.status)))
+    // A recorded tx_hash means Coinbase has already seen our transfer. Sending
+    // again would be a second, unrefunded payment — the one mistake here that
+    // costs the user real money, so it is checked before anything else.
+    .filter(tx => !tx.tx_hash)
     .filter(tx => !!tx.to_address && !!tx.created_at && !!tx.sell_amount?.value)
     .map(tx => ({ tx, createdMs: Date.parse(tx.created_at!) }))
     .filter(({ createdMs }) => Number.isFinite(createdMs))

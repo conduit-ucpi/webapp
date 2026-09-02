@@ -1,8 +1,9 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { requireAuth } from '@/utils/api-auth';
-import { cdpRequest, fetchIdentity, getCdpCredentials } from '@/lib/server/coinbaseCdp';
+import { cdpRequest, cdpUrl, fetchIdentity, getCdpCredentials } from '@/lib/server/coinbaseCdp';
 import {
   CoinbaseSellTransaction,
+  normalizeStatus,
   partnerUserRefFor,
   selectPendingOrder,
 } from '@/lib/server/coinbaseOfframp';
@@ -55,12 +56,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const coinbaseResponse = await cdpRequest({
-      credentials,
-      method: 'GET',
-      path: `/onramp/v1/sell/user/${encodeURIComponent(partnerUserRef)}/transactions`,
-      query: { pageSize: String(PAGE_SIZE) },
-    });
+    const path = `/onramp/v1/sell/user/${encodeURIComponent(partnerUserRef)}/transactions`;
+    const query = { pageSize: String(PAGE_SIZE) };
+    const requestUrl = cdpUrl(path, query);
+
+    const coinbaseResponse = await cdpRequest({ credentials, method: 'GET', path, query });
 
     const responseText = await coinbaseResponse.text();
 
@@ -89,7 +89,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const seen = pending
       ? undefined
       : transactions.map(tx => ({
-          status: tx.status,
+          status: normalizeStatus(tx.status),
+          rawStatus: tx.status,
+          alreadySent: !!tx.tx_hash,
           createdAt: tx.created_at,
           ageSeconds: tx.created_at
             ? Math.round((Date.now() - Date.parse(tx.created_at)) / 1000)
@@ -98,13 +100,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (!pending) {
       console.log('No actionable Coinbase sell order', {
+        request: requestUrl,
         partnerUserRef,
         transactionCount: transactions.length,
         seen,
       });
     }
 
-    return res.status(200).json({ pending, ...(seen ? { seen } : {}) });
+    // The upstream call is echoed back so the browser console can show exactly
+    // what was asked of Coinbase. It contains only the user's own ref — the JWT
+    // travels in a header and never appears here.
+    return res.status(200).json({
+      pending,
+      ...(seen ? { seen } : {}),
+      request: requestUrl,
+    });
   } catch (error) {
     console.error('Offramp pending lookup error:', error);
     return res.status(500).json({ error: 'Internal server error' });

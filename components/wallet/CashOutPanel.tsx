@@ -39,6 +39,39 @@ const RETURN_QUERY_VALUE = 'return';
 const POLL_INTERVAL_MS = 5000;
 const POLL_ATTEMPTS = 24;
 
+/**
+ * Orders this browser has already broadcast a transfer for.
+ *
+ * Coinbase leaves an order at STARTED for a while after our tokens land, so the
+ * server's tx_hash check has a window where it cannot yet tell "waiting for you"
+ * from "already paid". Anyone reloading /wallet inside that window would be
+ * shown the order again and could pay twice. This is the local belt to that
+ * braces — per-browser and lossy, which is why it is the second line of defence
+ * and not the only one.
+ */
+const SENT_ORDERS_KEY = 'coinbase-offramp-sent';
+
+function loadSentOrders(): Set<string> {
+  try {
+    const raw = window.localStorage.getItem(SENT_ORDERS_KEY);
+    return new Set(raw ? (JSON.parse(raw) as string[]) : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function rememberSentOrder(transactionId: string): void {
+  try {
+    const all = loadSentOrders();
+    all.add(transactionId);
+    // Keep it bounded; only recent orders can still be live.
+    const trimmed = Array.from(all).slice(-20);
+    window.localStorage.setItem(SENT_ORDERS_KEY, JSON.stringify(trimmed));
+  } catch {
+    // Private mode or blocked storage. The server's tx_hash check still applies.
+  }
+}
+
 /** An order Coinbase reported that we did not act on, and why we can say so. */
 interface SeenOrder {
   status?: string;
@@ -108,6 +141,8 @@ export default function CashOutPanel({ walletAddress, balances, onSent }: CashOu
   // re-poll that returns the same order does not prompt twice.
   const autoSentRef = useRef<Set<string>>(new Set());
   const pollTimerRef = useRef<number | null>(null);
+  /** True while a poll loop is in flight, so two triggers cannot start two loops. */
+  const isPollingRef = useRef(false);
 
   const isConfigured = !!config?.coinbaseProjectId && !!config?.coinbaseNetwork;
 
@@ -136,11 +171,15 @@ export default function CashOutPanel({ walletAddress, balances, onSent }: CashOu
         return { order: null, seen: [], failed: true };
       }
       const data = await response.json().catch(() => ({}));
-      console.log(`${LOG} pending check:`, {
-        found: !!data?.pending,
-        pending: data?.pending ?? null,
-        seen: data?.seen ?? [],
-      });
+      const seen: SeenOrder[] = data?.seen ?? [];
+      // Flattened to a string on purpose: an Array(5) in the console collapses,
+      // and the statuses are the whole point of this log.
+      console.log(
+        `${LOG} pending check: found=${!!data?.pending} seen=[${seen
+          .map(s => `${s.status}@${s.ageSeconds}s`)
+          .join(', ')}]\n  upstream: ${data?.request ?? '(not reported)'}`,
+        data?.pending ?? ''
+      );
       return {
         order: (data?.pending as PendingOrder | undefined) || null,
         seen: (data?.seen as SeenOrder[] | undefined) || [],
@@ -215,6 +254,7 @@ export default function CashOutPanel({ walletAddress, balances, onSent }: CashOu
 
         const txHash = await fundAndSendTransaction({ to: token.address, data, value: '0' });
 
+        rememberSentOrder(order.transactionId);
         setSentTxHash(txHash);
         setPending(null);
         setAmount('');
@@ -247,6 +287,15 @@ export default function CashOutPanel({ walletAddress, balances, onSent }: CashOu
    */
   const pollForOrder = useCallback(
     (autoSend: boolean) => {
+      // Closing the popup fires two signals: the return page's postMessage AND
+      // onPopupClosed. Both mean "go look", and without this guard both start a
+      // loop, doubling every request to Coinbase for two minutes.
+      if (isPollingRef.current) {
+        console.log(`${LOG} already polling, ignoring duplicate trigger`);
+        return;
+      }
+      isPollingRef.current = true;
+
       let attempts = 0;
       setGaveUp(null);
       setIsWaitingForOrder(true);
@@ -257,7 +306,17 @@ export default function CashOutPanel({ walletAddress, balances, onSent }: CashOu
         console.log(`${LOG} poll attempt ${attempts}/${POLL_ATTEMPTS}`);
         const { order, seen, failed } = await fetchPending();
 
+        if (order && loadSentOrders().has(order.transactionId)) {
+          // Already paid from this browser; Coinbase just has not caught up.
+          console.log(`${LOG} order ${order.transactionId} already sent, ignoring`);
+          isPollingRef.current = false;
+          setIsWaitingForOrder(false);
+          setGaveUp({ seen, failed: false });
+          return;
+        }
+
         if (order) {
+          isPollingRef.current = false;
           setIsWaitingForOrder(false);
           setPending(order);
           if (autoSend && !autoSentRef.current.has(order.transactionId)) {
@@ -267,6 +326,7 @@ export default function CashOutPanel({ walletAddress, balances, onSent }: CashOu
         }
 
         if (attempts >= POLL_ATTEMPTS) {
+          isPollingRef.current = false;
           setIsWaitingForOrder(false);
           // Never leave the user on a spinner that has quietly stopped. Say what
           // Coinbase reported, so "nothing happened" becomes something they can
@@ -286,6 +346,7 @@ export default function CashOutPanel({ walletAddress, balances, onSent }: CashOu
   useEffect(() => {
     return () => {
       if (pollTimerRef.current) window.clearTimeout(pollTimerRef.current);
+      isPollingRef.current = false;
     };
   }, []);
 
@@ -321,7 +382,7 @@ export default function CashOutPanel({ walletAddress, balances, onSent }: CashOu
     // A failed check here is not worth an error banner: the user has not asked
     // for anything yet, and the panel still works for starting a new cash-out.
     void fetchPending().then(({ order }) => {
-      if (order) setPending(order);
+      if (order && !loadSentOrders().has(order.transactionId)) setPending(order);
     });
     // Runs once the router is ready; pollForOrder/fetchPending are stable enough
     // that re-running on their identity would re-poll on every render.

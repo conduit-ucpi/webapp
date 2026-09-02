@@ -38,6 +38,16 @@ interface CdpRequestOptions {
 }
 
 /**
+ * The exact URL a cdpRequest will hit. Exported so callers can log precisely what
+ * they asked Coinbase for — "we got nothing back" is unanswerable without it.
+ * Carries no credentials; the JWT travels in the Authorization header.
+ */
+export function cdpUrl(path: string, query?: Record<string, string>): string {
+  const search = query ? `?${new URLSearchParams(query).toString()}` : '';
+  return `https://${COINBASE_API_HOST}${path}${search}`;
+}
+
+/**
  * Calls the CDP API with a freshly minted JWT.
  *
  * The JWT is signed over the method and path, so it cannot be reused across
@@ -61,9 +71,7 @@ export async function cdpRequest({
     expiresIn: 120,
   });
 
-  const search = query ? `?${new URLSearchParams(query).toString()}` : '';
-
-  return fetch(`https://${COINBASE_API_HOST}${path}${search}`, {
+  return fetch(cdpUrl(path, query), {
     method,
     headers: {
       'Authorization': `Bearer ${jwt}`,

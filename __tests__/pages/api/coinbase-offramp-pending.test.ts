@@ -2,10 +2,11 @@
  * Test: /api/coinbase/offramp/pending and the order-selection rule behind it.
  *
  * This route decides whether the app is about to move a user's money, so the
- * selection rule gets tested directly as well as through the handler. Two
- * mistakes it exists to prevent: sending a second time against an order Coinbase
- * has already seen funds for (STARTED), and sending into a dead deposit address
- * belonging to an order that timed out but still reads as CREATED.
+ * selection rule gets tested directly as well as through the handler. Three
+ * mistakes it exists to prevent: missing a live order because the live API
+ * prefixes its statuses (TRANSACTION_STATUS_STARTED) unlike the documented enum;
+ * paying twice against an order whose transfer already landed; and sending into
+ * the dead deposit address of an order that timed out.
  */
 
 import { createMocks } from 'node-mocks-http';
@@ -31,7 +32,8 @@ const NOW = Date.parse('2026-09-02T12:00:00.000Z');
 function tx(overrides: Record<string, unknown> = {}) {
   return {
     transaction_id: 'tx-1',
-    status: 'CREATED',
+    // The live API prefixes every status; the docs' bare enum is wrong.
+    status: 'TRANSACTION_STATUS_STARTED',
     to_address: COINBASE_DEPOSIT,
     asset: 'USDC',
     network: 'base',
@@ -61,12 +63,30 @@ describe('selectPendingOrder', () => {
     expect(Date.parse(order!.expiresAt)).toBe(Date.parse(createdAt) + OFFRAMP_WINDOW_MS);
   });
 
-  it('ignores STARTED — Coinbase already saw funds, sending again would pay twice', () => {
-    expect(selectPendingOrder([tx({ status: 'STARTED' })], NOW)).toBeNull();
+  it('accepts the prefixed status the live API actually returns', () => {
+    // Regression: filtering on the documented bare 'CREATED' matched nothing, so
+    // every real order was invisible and the UI reported "no cash-out found".
+    expect(selectPendingOrder([tx({ status: 'TRANSACTION_STATUS_STARTED' })], NOW)).not.toBeNull();
+    expect(selectPendingOrder([tx({ status: 'TRANSACTION_STATUS_CREATED' })], NOW)).not.toBeNull();
   });
 
-  it.each(['SUCCESS', 'FAILED', 'EXPIRED'])('ignores %s orders', status => {
+  it('still accepts the bare statuses the docs describe', () => {
+    expect(selectPendingOrder([tx({ status: 'STARTED' })], NOW)).not.toBeNull();
+    expect(selectPendingOrder([tx({ status: 'CREATED' })], NOW)).not.toBeNull();
+  });
+
+  it.each([
+    'TRANSACTION_STATUS_SUCCESS',
+    'TRANSACTION_STATUS_FAILED',
+    'TRANSACTION_STATUS_EXPIRED',
+  ])('ignores %s orders', status => {
     expect(selectPendingOrder([tx({ status })], NOW)).toBeNull();
+  });
+
+  it('ignores an order that already has a tx_hash — we have paid it', () => {
+    // Coinbase leaves the order at STARTED for a while after our transfer lands,
+    // so tx_hash, not status, is what stops a second payment.
+    expect(selectPendingOrder([tx({ tx_hash: '0xabc' })], NOW)).toBeNull();
   });
 
   it('ignores an order older than the 30 minute window even if it still reads CREATED', () => {
@@ -230,12 +250,14 @@ describe('/api/coinbase/offramp/pending', () => {
     await handler(req, res);
 
     expect(res._getStatusCode()).toBe(200);
-    expect(JSON.parse(res._getData())).toEqual({ pending: null, seen: [] });
+    const body = JSON.parse(res._getData());
+    expect(body.pending).toBeNull();
+    expect(body.seen).toEqual([]);
   });
 
   it('reports what it did see when no order is actionable, so a miss can explain itself', async () => {
     mockCoinbase({ userId: 'u1', walletAddress: WALLET }, [
-      tx({ status: 'SUCCESS', created_at: new Date(Date.now() - 120_000).toISOString() }),
+      tx({ status: 'TRANSACTION_STATUS_SUCCESS', created_at: new Date(Date.now() - 120_000).toISOString() }),
     ]);
     const { req, res } = makeReq({ cookie: 'AUTH-TOKEN=valid' });
 
@@ -245,6 +267,7 @@ describe('/api/coinbase/offramp/pending', () => {
     expect(body.pending).toBeNull();
     expect(body.seen).toHaveLength(1);
     expect(body.seen[0].status).toBe('SUCCESS');
+    expect(body.seen[0].rawStatus).toBe('TRANSACTION_STATUS_SUCCESS');
     expect(body.seen[0].ageSeconds).toBeGreaterThanOrEqual(119);
   });
 

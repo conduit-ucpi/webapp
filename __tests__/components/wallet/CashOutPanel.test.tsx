@@ -111,6 +111,10 @@ async function fireReturnFromCoinbase() {
 describe('CashOutPanel', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // The panel remembers sent orders in localStorage so a reload cannot pay
+    // twice. Every test here reuses transaction id 'tx-1', so without this the
+    // first send would suppress all the later ones.
+    window.localStorage.clear();
     mockRouter.query = {};
     mockUseConfig.mockReturnValue({ config: baseConfig, isLoading: false });
     mockUseSimpleEthers.mockReturnValue({ fundAndSendTransaction: mockFundAndSend } as any);
@@ -288,6 +292,24 @@ describe('CashOutPanel', () => {
 
       expect(screen.getByText(/SUCCESS/)).toBeInTheDocument();
       jest.useRealTimers();
+    });
+
+    it('never re-sends an order this browser already paid', async () => {
+      // Coinbase leaves an order at STARTED for a while after our transfer lands,
+      // so it comes back from the API looking live. Reloading in that window must
+      // not pay a second time.
+      mockPendingResponse(pendingOrder());
+      renderPanel();
+      await screen.findByText(/finish your cash-out/i);
+      await userEvent.click(screen.getByRole('button', { name: /send 25\.00 usdc to coinbase/i }));
+      await waitFor(() => expect(mockFundAndSend).toHaveBeenCalledTimes(1));
+
+      // Same order, still reported as live — as if the page were reloaded.
+      mockFundAndSend.mockClear();
+      renderPanel();
+
+      await waitFor(() => expect(screen.queryAllByText(/finish your cash-out/i)).toHaveLength(0));
+      expect(mockFundAndSend).not.toHaveBeenCalled();
     });
 
     it('refreshes balances after a successful send', async () => {

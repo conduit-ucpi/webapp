@@ -7,6 +7,8 @@ import ExpandableHash from '@/components/ui/ExpandableHash';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { useSimpleEthers } from '@/hooks/useSimpleEthers';
 import { OFFRAMP_RETURN_MESSAGE, openCoinbaseOfframp } from '@/lib/coinbaseOfframp';
+import { detectUserCountry, knownCountryCodes } from '@/utils/currencyDetection';
+import { US_STATES } from '@/utils/usStates';
 
 /**
  * Cash out to a bank account, via Coinbase.
@@ -38,6 +40,18 @@ const RETURN_QUERY_VALUE = 'return';
  */
 const POLL_INTERVAL_MS = 5000;
 const POLL_ATTEMPTS = 24;
+
+/**
+ * Refuse to start a transfer with less than this left on the order.
+ *
+ * Missing the window is not a near miss. Coinbase does not return tokens that
+ * arrive against a dead order — they are credited to the user's Coinbase account
+ * as crypto, unsold, and getting them back means selling or withdrawing by hand
+ * inside Coinbase. Signing, broadcasting and confirming on Base takes real time,
+ * so anything under a couple of minutes is a gamble taken with someone's money.
+ * Better to send them round again for a fresh order.
+ */
+const MIN_WINDOW_TO_SEND_MS = 2 * 60 * 1000;
 
 /**
  * Orders this browser has already broadcast a transfer for.
@@ -77,6 +91,9 @@ interface SeenOrder {
   status?: string;
   createdAt?: string;
   ageSeconds?: number | null;
+  /** Where Coinbase pays out. CRYPTO_ACCOUNT means it never reaches a bank. */
+  paymentMethod?: string;
+  alreadySent?: boolean;
 }
 
 interface PendingOrder {
@@ -88,6 +105,14 @@ interface PendingOrder {
   currency: string;
   createdAt: string;
   expiresAt: string;
+  paymentMethod?: string;
+}
+
+/** One fiat Coinbase will pay this user in, and how the money reaches them. */
+interface CashOutCurrency {
+  code: string;
+  methods: string[];
+  route: { method: string; reachesBank: boolean } | null;
 }
 
 interface CashOutPanelProps {
@@ -106,6 +131,12 @@ function seenStatuses(seen: SeenOrder[]): string {
   }
   return statuses.join(', ');
 }
+
+/** Matches the Input component's field styling, which has no select variant. */
+const selectClass =
+  'flex h-10 w-full rounded-md border border-gray-300 bg-white text-secondary-900 px-3 py-2 text-sm ' +
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 ' +
+  'disabled:cursor-not-allowed disabled:opacity-50 dark:border-secondary-600 dark:bg-secondary-800 dark:text-white';
 
 function formatTimeLeft(ms: number): string {
   const total = Math.max(0, Math.floor(ms / 1000));
@@ -134,6 +165,14 @@ export default function CashOutPanel({ walletAddress, balances, onSent }: CashOu
   const [error, setError] = useState<string | null>(null);
   const [sentTxHash, setSentTxHash] = useState<string | null>(null);
   const [gaveUp, setGaveUp] = useState<{ seen: SeenOrder[]; failed: boolean } | null>(null);
+  // Where Coinbase thinks the user is, and what it will therefore pay them in.
+  // Detected, then editable: the locale guess is wrong often enough that a user
+  // who cannot correct it would be stuck cashing out in the wrong currency.
+  const [country, setCountry] = useState<string>('');
+  const [subdivision, setSubdivision] = useState<string>('');
+  const [currencies, setCurrencies] = useState<CashOutCurrency[] | null>(null);
+  const [fiatCurrency, setFiatCurrency] = useState<string>('');
+  const [optionsError, setOptionsError] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
 
   // Orders we have already raised a signature prompt for. Auto-firing is armed
@@ -149,6 +188,60 @@ export default function CashOutPanel({ walletAddress, balances, onSent }: CashOu
   useEffect(() => {
     if (!symbol && defaultSymbol) setSymbol(defaultSymbol);
   }, [defaultSymbol, symbol]);
+
+  // Seed the country from the browser locale, once. The user can change it.
+  useEffect(() => {
+    if (country) return;
+    setCountry(detectUserCountry() || 'US');
+  }, [country]);
+
+  // Ask Coinbase what it will pay this country in, and how. Re-runs when the
+  // user corrects the country or picks a US state.
+  useEffect(() => {
+    if (!isConfigured || !country) return;
+    if (country === 'US' && !subdivision) {
+      // Coinbase needs a state before it will answer for the US.
+      setCurrencies(null);
+      return;
+    }
+
+    let cancelled = false;
+    setOptionsError(null);
+
+    const params = new URLSearchParams({ country });
+    if (subdivision) params.set('subdivision', subdivision);
+
+    void fetch(`/api/coinbase/offramp/options?${params.toString()}`, { credentials: 'include' })
+      .then(async r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
+      .then((data: { currencies?: CashOutCurrency[] }) => {
+        if (cancelled) return;
+        const list = (data.currencies || []).filter(c => !!c.route);
+        console.log(
+          `${LOG} payout options for ${country}${subdivision ? '/' + subdivision : ''}:`,
+          list.map(c => `${c.code}->${c.route?.method}`).join(', ') || '(none)'
+        );
+        setCurrencies(list);
+        setFiatCurrency(prev => {
+          if (prev && list.some(c => c.code === prev)) return prev;
+          // Prefer a route that actually reaches a bank, then the local currency.
+          const bank = list.find(c => c.route?.reachesBank);
+          return bank?.code || list[0]?.code || '';
+        });
+      })
+      .catch(e => {
+        if (cancelled) return;
+        console.log(`${LOG} could not read payout options:`, e);
+        setCurrencies([]);
+        setOptionsError('Could not read your Coinbase payout options.');
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isConfigured, country, subdivision]);
 
   const selectedToken = supportedTokens.find(t => t.symbol === symbol);
   const availableBalance = parseFloat(balances[symbol] || '0');
@@ -176,7 +269,7 @@ export default function CashOutPanel({ walletAddress, balances, onSent }: CashOu
       // and the statuses are the whole point of this log.
       console.log(
         `${LOG} pending check: found=${!!data?.pending} seen=[${seen
-          .map(s => `${s.status}@${s.ageSeconds}s`)
+          .map(s => `${s.status}/${s.paymentMethod ?? 'no-method'}@${s.ageSeconds}s`)
           .join(', ')}]\n  upstream: ${data?.request ?? '(not reported)'}`,
         data?.pending ?? ''
       );
@@ -214,6 +307,19 @@ export default function CashOutPanel({ walletAddress, balances, onSent }: CashOu
 
       if (!/^0x[a-fA-F0-9]{40}$/.test(order.toAddress)) {
         return 'Coinbase returned an address we could not read. Nothing has been sent.';
+      }
+
+      // A CRYPTO_ACCOUNT order is not a sale. Coinbase would take the tokens
+      // into the user's own Coinbase balance and no money would ever reach a
+      // bank — indistinguishable, from here, from a cash-out that worked.
+      // Observed in the wild, which is why it is a hard stop rather than a note.
+      const msRemaining = Date.parse(order.expiresAt) - Date.now();
+      if (Number.isFinite(msRemaining) && msRemaining < MIN_WINDOW_TO_SEND_MS) {
+        return 'There is not enough time left on this cash-out to send it safely. Tokens that arrive after Coinbase closes the order are not returned — they land in your Coinbase account as crypto. Nothing has been sent; start a new cash-out.';
+      }
+
+      if (order.paymentMethod === 'CRYPTO_ACCOUNT') {
+        return 'This cash-out would move your tokens into your Coinbase account, not your bank. Nothing has been sent — start again and choose your bank account as the destination in Coinbase.';
       }
 
       return null;
@@ -421,8 +527,11 @@ export default function CashOutPanel({ walletAddress, balances, onSent }: CashOu
     }
   }, [pending, msLeft, isSending]);
 
+  const selectedCurrency = currencies?.find(c => c.code === fiatCurrency) || null;
+  const payoutRoute = selectedCurrency?.route || null;
+
   const handleStart = async () => {
-    if (!config?.coinbaseNetwork || !selectedToken) return;
+    if (!config?.coinbaseNetwork || !selectedToken || !payoutRoute) return;
 
     setError(null);
     setSentTxHash(null);
@@ -435,6 +544,8 @@ export default function CashOutPanel({ walletAddress, balances, onSent }: CashOu
         asset: selectedToken.symbol,
         network: config.coinbaseNetwork,
         presetCryptoAmount: parseFloat(amount),
+        fiatCurrency,
+        cashoutMethod: payoutRoute.method,
         // Carries the marker that tells the mobile round-trip apart from a reload.
         returnPath: `/wallet?${RETURN_QUERY_KEY}=${RETURN_QUERY_VALUE}`,
         // Fires however the popup closed, including the user dismissing it. The
@@ -456,13 +567,14 @@ export default function CashOutPanel({ walletAddress, balances, onSent }: CashOu
 
   const amountValue = parseFloat(amount);
   const amountIsValid = !isNaN(amountValue) && amountValue > 0 && amountValue <= availableBalance;
-  const canStart = !!selectedToken && amountIsValid && !isOpening && !pending;
+  const canStart = !!selectedToken && !!payoutRoute && amountIsValid && !isOpening && !pending;
 
   return (
     <div className="bg-white dark:bg-secondary-900 rounded-lg shadow-sm dark:shadow-none border border-secondary-200 dark:border-secondary-700 p-6 mb-8">
-      <h2 className="text-lg font-semibold text-secondary-900 dark:text-white">Cash out to your bank</h2>
+      <h2 className="text-lg font-semibold text-secondary-900 dark:text-white">Cash out your tokens</h2>
       <p className="mt-1 text-sm text-secondary-600 dark:text-secondary-300">
-        Sell your tokens through Coinbase and have the money paid out to your bank account or card.
+        Sell your tokens for cash through Coinbase. Where that cash lands depends on your
+        country — the line below the currency says which.
       </p>
 
       {pending ? (
@@ -545,6 +657,104 @@ export default function CashOutPanel({ walletAddress, balances, onSent }: CashOu
             </div>
           </div>
 
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label
+                htmlFor="cashOutCountry"
+                className="block text-sm font-medium text-secondary-700 dark:text-secondary-200 mb-2"
+              >
+                Your country
+              </label>
+              <select
+                id="cashOutCountry"
+                value={country}
+                onChange={e => {
+                  setCountry(e.target.value);
+                  setSubdivision('');
+                }}
+                className={selectClass}
+              >
+                {knownCountryCodes().map(code => (
+                  <option key={code} value={code}>
+                    {code}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {country === 'US' && (
+              <div>
+                <label
+                  htmlFor="cashOutState"
+                  className="block text-sm font-medium text-secondary-700 dark:text-secondary-200 mb-2"
+                >
+                  State
+                </label>
+                <select
+                  id="cashOutState"
+                  value={subdivision}
+                  onChange={e => setSubdivision(e.target.value)}
+                  className={selectClass}
+                >
+                  <option value="">Choose…</option>
+                  {US_STATES.map(code => (
+                    <option key={code} value={code}>
+                      {code}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div>
+              <label
+                htmlFor="cashOutCurrency"
+                className="block text-sm font-medium text-secondary-700 dark:text-secondary-200 mb-2"
+              >
+                Paid out in
+              </label>
+              <select
+                id="cashOutCurrency"
+                value={fiatCurrency}
+                onChange={e => setFiatCurrency(e.target.value)}
+                disabled={!currencies || currencies.length === 0}
+                className={selectClass}
+              >
+                {!currencies && <option value="">Loading…</option>}
+                {currencies?.length === 0 && <option value="">Unavailable</option>}
+                {currencies?.map(c => (
+                  <option key={c.code} value={c.code}>
+                    {c.code}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Say where the money actually lands. Outside the US, Coinbase pays
+              into its own cash balance and the bank transfer is a separate step
+              the user takes there — promising "to your bank" would be a lie. */}
+          {payoutRoute && (
+            <p className="text-sm text-secondary-600 dark:text-secondary-300">
+              {payoutRoute.reachesBank
+                ? `Coinbase pays ${fiatCurrency} into your linked bank account.`
+                : `Coinbase pays ${fiatCurrency} into your Coinbase cash balance. Moving it to your bank is a separate step in Coinbase.`}
+            </p>
+          )}
+          {country === 'US' && !subdivision && (
+            <p className="text-sm text-secondary-600 dark:text-secondary-300">
+              Choose your state — Coinbase's payout options differ by state.
+            </p>
+          )}
+          {currencies?.length === 0 && !optionsError && (
+            <p className="text-sm text-red-600 dark:text-red-400">
+              Coinbase does not offer cash-out in {country}.
+            </p>
+          )}
+          {optionsError && (
+            <p className="text-sm text-red-600 dark:text-red-400">{optionsError}</p>
+          )}
+
           <div>
             <label
               htmlFor="cashOutAmount"
@@ -573,8 +783,8 @@ export default function CashOutPanel({ walletAddress, balances, onSent }: CashOu
           </Button>
 
           <p className="text-xs text-secondary-500 dark:text-secondary-400">
-            Coinbase handles the payout and any ID checks. You come back here to approve the
-            transfer — we cover the gas.
+            Coinbase handles the sale, the payout and any ID checks. You come back here to
+            approve the transfer — we cover the gas.
           </p>
         </div>
       )}

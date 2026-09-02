@@ -78,15 +78,45 @@ function pendingOrder(overrides: Record<string, unknown> = {}) {
     currency: 'USDC',
     createdAt: new Date(Date.now() - 60_000).toISOString(),
     expiresAt: new Date(Date.now() + 29 * 60_000).toISOString(),
+    paymentMethod: 'ACH_BANK_ACCOUNT',
     ...overrides,
   };
 }
 
+/** GB: FIAT_WALLET only, as the live API reports. */
+const GB_CURRENCIES = [
+  { code: 'GBP', methods: ['FIAT_WALLET'], route: { method: 'FIAT_WALLET', reachesBank: false } },
+  { code: 'EUR', methods: ['FIAT_WALLET'], route: { method: 'FIAT_WALLET', reachesBank: false } },
+];
+
+/** US/USD is the only combination that offers a real bank payout. */
+const US_CURRENCIES = [
+  {
+    code: 'USD',
+    methods: ['FIAT_WALLET', 'ACH_BANK_ACCOUNT'],
+    route: { method: 'ACH_BANK_ACCOUNT', reachesBank: true },
+  },
+  { code: 'GBP', methods: ['FIAT_WALLET'], route: { method: 'FIAT_WALLET', reachesBank: false } },
+];
+
+let currencyOptions: unknown[] = GB_CURRENCIES;
+
+/** The panel seeds the country from the browser locale. */
+function setLocale(language: string) {
+  Object.defineProperty(window.navigator, 'language', { value: language, configurable: true });
+}
+
+/** Routes both endpoints the panel calls, since it needs payout options to arm. */
 function mockPendingResponse(pending: unknown) {
-  global.fetch = jest.fn().mockResolvedValue({
-    ok: true,
-    status: 200,
-    json: async () => ({ pending }),
+  global.fetch = jest.fn().mockImplementation((url: string) => {
+    if (String(url).includes('/offramp/options')) {
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: async () => ({ currencies: currencyOptions }),
+      });
+    }
+    return Promise.resolve({ ok: true, status: 200, json: async () => ({ pending }) });
   });
 }
 
@@ -115,6 +145,10 @@ describe('CashOutPanel', () => {
     // twice. Every test here reuses transaction id 'tx-1', so without this the
     // first send would suppress all the later ones.
     window.localStorage.clear();
+    // jsdom reports en-US, which puts the panel in its "pick a state first"
+    // branch. Most tests here want the simpler non-US path.
+    setLocale('en-GB');
+    currencyOptions = GB_CURRENCIES;
     mockRouter.query = {};
     mockUseConfig.mockReturnValue({ config: baseConfig, isLoading: false });
     mockUseSimpleEthers.mockReturnValue({ fundAndSendTransaction: mockFundAndSend } as any);
@@ -151,6 +185,7 @@ describe('CashOutPanel', () => {
       const user = userEvent.setup();
       renderPanel();
 
+      await screen.findByRole('option', { name: 'GBP' });
       await user.type(screen.getByLabelText(/amount/i), '25');
       await user.click(screen.getByRole('button', { name: /cash out usdc/i }));
 
@@ -161,8 +196,49 @@ describe('CashOutPanel', () => {
           asset: 'USDC',
           network: 'base',
           presetCryptoAmount: 25,
+          fiatCurrency: 'GBP',
+          // Never left unset: an unset method lets the widget default to the
+          // user's crypto account, which sells nothing.
+          cashoutMethod: 'FIAT_WALLET',
         })
       );
+    });
+
+    it('tells a non-US user the money lands in Coinbase, not their bank', async () => {
+      renderPanel();
+
+      await screen.findByText(/into your Coinbase cash balance/i);
+      expect(screen.queryByText(/into your linked bank account/i)).not.toBeInTheDocument();
+    });
+
+    it('prefers a real bank payout when Coinbase offers one', async () => {
+      setLocale('en-US');
+      currencyOptions = US_CURRENCIES;
+      const user = userEvent.setup();
+      renderPanel();
+
+      // Coinbase varies US payout methods by state, so it will not answer
+      // without one — the panel says so rather than guessing.
+      await screen.findByText(/choose your state/i);
+      await user.selectOptions(screen.getByLabelText(/state/i), 'NY');
+
+      await screen.findByText(/into your linked bank account/i);
+
+      await user.type(screen.getByLabelText(/amount/i), '25');
+      await user.click(screen.getByRole('button', { name: /cash out usdc/i }));
+
+      await waitFor(() => expect(mockOpenOfframp).toHaveBeenCalled());
+      expect(mockOpenOfframp).toHaveBeenCalledWith(
+        expect.objectContaining({ fiatCurrency: 'USD', cashoutMethod: 'ACH_BANK_ACCOUNT' })
+      );
+    });
+
+    it('will not start a cash-out where Coinbase offers no payout route', async () => {
+      currencyOptions = [];
+      renderPanel();
+
+      await screen.findByText(/does not offer cash-out/i);
+      expect(screen.getByRole('button', { name: /cash out usdc/i })).toBeDisabled();
     });
 
     it('will not start a cash-out for more than the wallet holds', async () => {
@@ -238,6 +314,45 @@ describe('CashOutPanel', () => {
 
       await screen.findByText(/nothing has been sent/i);
       expect(mockFundAndSend).not.toHaveBeenCalled();
+    });
+
+    it('refuses an order that would land in the Coinbase account, not a bank', async () => {
+      // Observed in the wild: the widget can default the destination to the
+      // user's Coinbase balance, which performs no sale at all. The tokens leave
+      // the wallet and simply sit in Coinbase as crypto.
+      renderPanel();
+      mockPendingResponse(pendingOrder({ paymentMethod: 'CRYPTO_ACCOUNT' }));
+
+      await fireReturnFromCoinbase();
+
+      await screen.findByText(/not your bank/i);
+      expect(mockFundAndSend).not.toHaveBeenCalled();
+    });
+
+    it('refuses to send when too little of the window is left', async () => {
+      // Tokens arriving after the order closes are NOT returned — Coinbase
+      // credits them as unsold crypto. A transfer needs time to confirm, so a
+      // nearly-expired order is not worth the risk.
+      renderPanel();
+      mockPendingResponse(
+        pendingOrder({ expiresAt: new Date(Date.now() + 45_000).toISOString() })
+      );
+
+      await fireReturnFromCoinbase();
+
+      await screen.findByText(/not enough time left/i);
+      expect(mockFundAndSend).not.toHaveBeenCalled();
+    });
+
+    it('still sends when there is comfortable time left', async () => {
+      renderPanel();
+      mockPendingResponse(
+        pendingOrder({ expiresAt: new Date(Date.now() + 10 * 60_000).toISOString() })
+      );
+
+      await fireReturnFromCoinbase();
+
+      await waitFor(() => expect(mockFundAndSend).toHaveBeenCalledTimes(1));
     });
 
     it('refuses an order whose deposit address is not a valid address', async () => {

@@ -12,7 +12,11 @@
 import { createMocks } from 'node-mocks-http';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import handler from '@/pages/api/coinbase/offramp/pending';
-import { selectPendingOrder, OFFRAMP_WINDOW_MS } from '@/lib/server/coinbaseOfframp';
+import {
+  selectPendingOrder,
+  payoutRouteFor,
+  OFFRAMP_WINDOW_MS,
+} from '@/lib/server/coinbaseOfframp';
 
 type RequestMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'OPTIONS' | 'HEAD';
 
@@ -296,5 +300,30 @@ describe('/api/coinbase/offramp/pending', () => {
     await handler(req, res);
 
     expect(res._getStatusCode()).toBe(502);
+  });
+});
+
+describe('payoutRouteFor', () => {
+  it('prefers a bank payout when Coinbase offers one', () => {
+    expect(payoutRouteFor(['FIAT_WALLET', 'ACH_BANK_ACCOUNT'])).toEqual({
+      method: 'ACH_BANK_ACCOUNT',
+      reachesBank: true,
+    });
+  });
+
+  it('falls back to the Coinbase cash balance, flagged as not reaching a bank', () => {
+    // The only option outside the US, verified against the live sell/options API.
+    expect(payoutRouteFor(['FIAT_WALLET'])).toEqual({
+      method: 'FIAT_WALLET',
+      reachesBank: false,
+    });
+  });
+
+  it('never routes to CRYPTO_ACCOUNT, which performs no sale at all', () => {
+    expect(payoutRouteFor(['CRYPTO_ACCOUNT'])).toBeNull();
+  });
+
+  it('returns null when Coinbase offers nothing we will steer into', () => {
+    expect(payoutRouteFor([])).toBeNull();
   });
 });

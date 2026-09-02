@@ -23,6 +23,19 @@ interface OpenCoinbaseOfframpParams {
   network: string;
   /** Amount of crypto to sell, pre-filled into the widget. */
   presetCryptoAmount?: number;
+  /**
+   * The fiat the user gets paid in (GBP, USD, EUR...). Asked for on our side
+   * rather than left to the widget, because it decides which payout methods
+   * Coinbase will even offer.
+   */
+  fiatCurrency?: string;
+  /**
+   * Where Coinbase pays out: ACH_BANK_ACCOUNT where it is on offer, otherwise
+   * FIAT_WALLET. Preset deliberately — left unset, the widget can default to
+   * the user's crypto account, which performs no sale and silently parks the
+   * tokens in their Coinbase balance.
+   */
+  cashoutMethod?: string;
   /** Where to put the user when Coinbase is done. Defaults to the page they left. */
   returnPath?: string;
   /**
@@ -77,10 +90,13 @@ function buildOfframpUrl(
   if (params.presetCryptoAmount) {
     url.searchParams.set('presetCryptoAmount', String(params.presetCryptoAmount));
   }
+  if (params.fiatCurrency) {
+    url.searchParams.set('fiatCurrency', params.fiatCurrency);
+  }
+  if (params.cashoutMethod) {
+    url.searchParams.set('defaultCashoutMethod', params.cashoutMethod);
+  }
 
-  // defaultCashoutMethod is deliberately left unset. Presetting it would pick a
-  // payout route for the user, and hide the "add a bank account" path from anyone
-  // who has not configured one yet — which is most first-time cashers-out.
   return url.toString();
 }
 
@@ -88,9 +104,9 @@ function buildOfframpUrl(
  * Opens Coinbase's cash-out widget with everything we already know filled in.
  *
  * The user only confirms: the source wallet rides in on the session token, and
- * the token, chain and amount are all preset. What they still do on Coinbase's
- * side is choose or add a bank account and pass KYC, which is the whole reason
- * this is a hosted flow rather than one of our screens.
+ * the token, chain, amount, payout currency and payout method are all preset.
+ * What they still do on Coinbase's side is pass KYC and confirm, which is the
+ * whole reason this is a hosted flow rather than one of our screens.
  *
  * Note what this does NOT do: move any money. Coinbase creates a sell order and
  * hands back an address, and the app has to send the tokens itself afterwards —

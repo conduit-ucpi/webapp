@@ -41,6 +41,16 @@ export interface CoinbaseSellTransaction {
   created_at?: string;
   /** Set once Coinbase has seen our transfer. Its presence means: already sent. */
   tx_hash?: string;
+  /**
+   * Where Coinbase pays the proceeds: ACH_BANK_ACCOUNT, PAYPAL, FIAT_WALLET,
+   * CRYPTO_ACCOUNT, ... Chosen by the user inside the widget, and worth reading
+   * back — a CRYPTO_ACCOUNT order does not sell anything, it just moves tokens
+   * into their Coinbase balance, which looks identical to a failed cash-out from
+   * the outside.
+   */
+  payment_method?: string;
+  /** Fiat the user receives, when the order actually sells. */
+  cashout_total?: CoinbaseAmount;
 }
 
 /**
@@ -77,6 +87,8 @@ export interface PendingOfframpOrder {
   currency: string;
   createdAt: string;
   expiresAt: string;
+  /** Where the proceeds go. The panel refuses to send into a CRYPTO_ACCOUNT. */
+  paymentMethod: string;
 }
 
 /**
@@ -125,5 +137,46 @@ export function selectPendingOrder(
     currency: tx.sell_amount?.currency || tx.asset || '',
     createdAt: tx.created_at!,
     expiresAt: new Date(createdMs + OFFRAMP_WINDOW_MS).toISOString(),
+    paymentMethod: tx.payment_method || '',
   };
+}
+
+/** Shape of GET /onramp/v1/sell/options, trimmed to what we read. */
+export interface CoinbaseSellOptions {
+  cashout_currencies?: Array<{
+    id?: string;
+    limits?: Array<{ id?: string; min?: string; max?: string }>;
+  }>;
+}
+
+/** Where the money ends up, once Coinbase has sold the tokens. */
+export interface PayoutRoute {
+  /** The value to pass as defaultCashoutMethod. */
+  method: string;
+  /** True only when the proceeds land in a bank, not a Coinbase balance. */
+  reachesBank: boolean;
+}
+
+/**
+ * The best payout Coinbase offers for a currency, given its available methods.
+ *
+ * Verified against the live API: US/USD offers FIAT_WALLET and ACH_BANK_ACCOUNT;
+ * everywhere else, and every other currency, offers FIAT_WALLET alone. So "cash
+ * out to your bank" is a US-only proposition and the UI must not promise it
+ * elsewhere — outside the US the money reaches the user's Coinbase cash balance
+ * and withdrawing it onward is a separate step they take in Coinbase.
+ *
+ * CRYPTO_ACCOUNT is never chosen: it performs no sale at all, just moving tokens
+ * into the user's Coinbase balance, which is the failure this whole function
+ * exists to stop happening by accident.
+ */
+export function payoutRouteFor(methods: string[]): PayoutRoute | null {
+  if (methods.includes('ACH_BANK_ACCOUNT')) {
+    return { method: 'ACH_BANK_ACCOUNT', reachesBank: true };
+  }
+  if (methods.includes('FIAT_WALLET')) {
+    return { method: 'FIAT_WALLET', reachesBank: false };
+  }
+  // Anything left is a route we will not steer a user into unprompted.
+  return null;
 }

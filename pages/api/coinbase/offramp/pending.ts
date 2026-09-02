@@ -82,6 +82,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const transactions = data.transactions || [];
     const pending = selectPendingOrder(transactions, Date.now());
 
+    // Always log the full picture, found or not. A cash-out can "succeed" and
+    // still not reach the user's bank — an order whose payment_method is
+    // CRYPTO_ACCOUNT just parks tokens in their Coinbase balance — and that is
+    // invisible unless the payout route is written down somewhere.
+    console.log('Coinbase sell orders', {
+      request: requestUrl,
+      partnerUserRef,
+      orders: transactions.map(tx => ({
+        id: tx.transaction_id,
+        status: normalizeStatus(tx.status),
+        paymentMethod: tx.payment_method,
+        cashoutTotal: tx.cashout_total,
+        txHash: tx.tx_hash || null,
+        createdAt: tx.created_at,
+      })),
+    });
+
     // When we find nothing, say what we did see. Without this the UI can only
     // report "no cash-out found", which is indistinguishable from a wrong user
     // ref, an order in a status we do not act on, or one that timed out — and
@@ -92,6 +109,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           status: normalizeStatus(tx.status),
           rawStatus: tx.status,
           alreadySent: !!tx.tx_hash,
+          paymentMethod: tx.payment_method,
           createdAt: tx.created_at,
           ageSeconds: tx.created_at
             ? Math.round((Date.now() - Date.parse(tx.created_at)) / 1000)

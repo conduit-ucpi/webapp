@@ -3,6 +3,7 @@ import { TokenDetails } from '../../types';
 import { TokenConfig, parseTokensFromEnv } from '../../types/tokens';
 import { RpcClient } from '../../lib/rpc/RpcClient';
 import { isProjectsLive, isEmailVerificationLive } from '../../utils/featureFlags';
+import { coinbaseNetworkForChainId } from '../../utils/coinbaseNetworks';
 
 // In-memory cache for config response
 let cachedConfig: { data: any; timestamp: number } | null = null;
@@ -149,8 +150,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const usdcDetails = supportedTokens.find(t => t.symbol === 'USDC') || null;
     const usdtDetails = supportedTokens.find(t => t.symbol === 'USDT') || null;
 
+    const chainId = parseInt(process.env.CHAIN_ID || '8453'); // Default: Base Mainnet
+
     const config = {
-      chainId: parseInt(process.env.CHAIN_ID || '8453'), // Default: Base Mainnet
+      chainId,
       rpcUrl: process.env.RPC_URL?.trim(),
       // New centralized token configuration
       supportedTokens: supportedTokens,
@@ -173,10 +176,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Third-party services
       moonPayApiKey: process.env.MOONPAY_API_KEY,
       coinbaseProjectId: process.env.COINBASE_PROJECT_ID,
-      // Coinbase's own name for the chain, which is not derivable from chainId.
-      // Deliberately undefaulted: the cash-out UI hides itself rather than send a
-      // user to a Coinbase flow pointed at a chain we only guessed.
-      coinbaseNetwork: process.env.COINBASE_NETWORK,
+      // Derived from CHAIN_ID so there is one place to set the chain. The env var
+      // is an escape hatch only — for a chain we have not mapped yet, or if
+      // Coinbase renames one. Undefined for chains Coinbase does not support
+      // (including every testnet), which hides the cash-out UI.
+      coinbaseNetwork: process.env.COINBASE_NETWORK || coinbaseNetworkForChainId(chainId),
       walletConnectProjectId: process.env.WALLETCONNECT_PROJECT_ID,
       neynarApiKey: process.env.NEYNAR_API_KEY,
       // Gas configuration

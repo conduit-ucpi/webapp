@@ -18,6 +18,14 @@ import { OFFRAMP_RETURN_MESSAGE, openCoinbaseOfframp } from '@/lib/coinbaseOffra
  * start an order, and settle one.
  */
 
+/**
+ * Console prefix. The cash-out spans a popup, a redirect and a wallet prompt, so
+ * when it stalls there is nothing on screen to say which leg it stalled on —
+ * these logs are the only way to tell "Coinbase has no order" from "we never
+ * asked".
+ */
+const LOG = '💷 CashOut:';
+
 /** How we know the user has just come back from Coinbase rather than reloading. */
 const RETURN_QUERY_KEY = 'cashout';
 const RETURN_QUERY_VALUE = 'return';
@@ -123,14 +131,23 @@ export default function CashOutPanel({ walletAddress, balances, onSent }: CashOu
   }> => {
     try {
       const response = await fetch('/api/coinbase/offramp/pending', { credentials: 'include' });
-      if (!response.ok) return { order: null, seen: [], failed: true };
+      if (!response.ok) {
+        console.log(`${LOG} pending check failed: HTTP ${response.status}`);
+        return { order: null, seen: [], failed: true };
+      }
       const data = await response.json().catch(() => ({}));
+      console.log(`${LOG} pending check:`, {
+        found: !!data?.pending,
+        pending: data?.pending ?? null,
+        seen: data?.seen ?? [],
+      });
       return {
         order: (data?.pending as PendingOrder | undefined) || null,
         seen: (data?.seen as SeenOrder[] | undefined) || [],
         failed: false,
       };
-    } catch {
+    } catch (e) {
+      console.log(`${LOG} pending check threw:`, e);
       return { order: null, seen: [], failed: true };
     }
   }, []);
@@ -169,9 +186,15 @@ export default function CashOutPanel({ walletAddress, balances, onSent }: CashOu
     async (order: PendingOrder) => {
       const problem = validateOrder(order);
       if (problem) {
+        console.log(`${LOG} refusing to send:`, problem, order);
         setError(problem);
         return;
       }
+      console.log(`${LOG} sending to Coinbase`, {
+        to: order.toAddress,
+        amount: order.amount,
+        currency: order.currency,
+      });
 
       const token = supportedTokens.find(t => t.symbol === order.currency)!;
 
@@ -227,9 +250,11 @@ export default function CashOutPanel({ walletAddress, balances, onSent }: CashOu
       let attempts = 0;
       setGaveUp(null);
       setIsWaitingForOrder(true);
+      console.log(`${LOG} polling for an order (autoSend=${autoSend})`);
 
       const tick = async () => {
         attempts += 1;
+        console.log(`${LOG} poll attempt ${attempts}/${POLL_ATTEMPTS}`);
         const { order, seen, failed } = await fetchPending();
 
         if (order) {
@@ -268,9 +293,22 @@ export default function CashOutPanel({ walletAddress, balances, onSent }: CashOu
   // Mobile sends the whole tab to Coinbase and back, so the return marker on the
   // URL is the only way to tell that case apart from a plain page load.
   useEffect(() => {
-    if (!isConfigured || !router.isReady) return;
+    if (!isConfigured || !router.isReady) {
+      console.log(`${LOG} not checking yet`, {
+        isConfigured,
+        routerReady: router.isReady,
+        coinbaseProjectId: !!config?.coinbaseProjectId,
+        coinbaseNetwork: config?.coinbaseNetwork,
+      });
+      return;
+    }
 
     const justReturned = router.query[RETURN_QUERY_KEY] === RETURN_QUERY_VALUE;
+    console.log(`${LOG} mounted`, {
+      justReturned,
+      network: config?.coinbaseNetwork,
+      query: router.query,
+    });
 
     if (justReturned) {
       // Strip the marker so a later refresh is treated as the cold load it is.
@@ -297,6 +335,7 @@ export default function CashOutPanel({ walletAddress, balances, onSent }: CashOu
     const onMessage = (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return;
       if (event.data?.type !== OFFRAMP_RETURN_MESSAGE) return;
+      console.log(`${LOG} back from Coinbase (popup)`);
       setIsOpening(false);
       pollForOrder(true);
     };

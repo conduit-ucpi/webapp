@@ -154,16 +154,85 @@ jobs:
       # Deploy step
       - name: Deploy to GCP
         run: |
+          set -o pipefail
+
+          # The key is held in an agent, never written to disk. `ssh -i` takes a
+          # path and has no way to accept a key as a string, so the choice is a
+          # file or an agent — and a file left in ~/.ssh stays readable by every
+          # later step in the job, including any third-party action.
+          # printf, not echo: ssh-add rejects a key without a trailing newline.
+          eval "$(ssh-agent -s)" > /dev/null
+          trap 'ssh-agent -k > /dev/null 2>&1 || true' EXIT
+          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" | ssh-add - 2>/dev/null \
+            || { echo "Could not load SSH_PRIVATE_KEY into the agent" >&2; exit 1; }
+
           mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H ${{ vars.VM_IP }} >> ~/.ssh/known_hosts
-          
+
+          SSH="ssh -o BatchMode=yes -o ServerAliveInterval=15 -l gituser ${{ vars.VM_IP }}"
+          IMAGE="ghcr.io/${{ env.REPO_LOWER }}:${{ env.SHA_TAG }}"
+
+          # Run a command up to N times with linear backoff.
+          retry() {
+            attempts=$1; shift
+            n=1
+            until "$@"; do
+              if [ "$n" -ge "$attempts" ]; then
+                echo "FAILED after $n attempts: $*" >&2
+                return 1
+              fi
+              echo "Attempt $n failed; retrying in $((n * 10))s: $*" >&2
+              sleep $((n * 10))
+              n=$((n + 1))
+            done
+          }
+
+          # ---------------------------------------------------------------
+          # Ship the image over SSH instead of having the box pull it.
+          #
+          # The production box's egress IP is intermittently refused by
+          # GitHub's edge: measured at 5 failures in 20 TLS handshakes to
+          # ghcr.io, while Google, Cloudflare and Docker Hub were 0 in 20 from
+          # the same host at the same time. DNS and local networking are clean,
+          # so there is nothing to fix on the box — the deploy simply cannot
+          # rely on it reaching ghcr.io. The runner's GitHub connectivity is
+          # fine and SSH to the box is reliable, so we push the bytes down the
+          # connection that works.
+          # ---------------------------------------------------------------
+
+          # The image is multi-platform, so save the one the box can actually
+          # run rather than whichever the runner happens to be.
+          REMOTE_ARCH=$($SSH 'dpkg --print-architecture 2>/dev/null || uname -m')
+          case "$REMOTE_ARCH" in
+            amd64|x86_64)  PLATFORM=linux/amd64 ;;
+            arm64|aarch64) PLATFORM=linux/arm64 ;;
+            *) echo "Unsupported remote architecture: $REMOTE_ARCH" >&2; exit 1 ;;
+          esac
+          echo "Remote architecture: $REMOTE_ARCH -> $PLATFORM"
+
+          # buildx --push uploads straight to the registry without leaving the
+          # image in the runner's local store, so fetch it back before saving.
+          retry 5 docker pull --platform "$PLATFORM" "$IMAGE"
+
+          ship_image() {
+            docker save "$IMAGE" | gzip -1 | $SSH 'gunzip | docker load'
+          }
+
+          if $SSH "docker image inspect '$IMAGE' >/dev/null 2>&1"; then
+            echo "Box already has $IMAGE; skipping transfer."
+          else
+            retry 3 ship_image
+          fi
+
+          # Prove the image is on the box BEFORE the deploy script stops the
+          # running container. Without this a failed transfer would take the
+          # site down and leave nothing to start again.
+          $SSH "docker image inspect '$IMAGE' >/dev/null" \
+            || { echo "Image missing on the box after transfer" >&2; exit 1; }
+
           # Create deployment script with all values populated
           cat > /tmp/deploy_script.sh << EOF
           set -e
-          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-          docker pull ghcr.io/${{ env.REPO_LOWER }}:${{ env.SHA_TAG }}
           docker stop ${{ vars.SERVICE_NAME }} || true
           docker rm ${{ vars.SERVICE_NAME }} || true
           docker run -d \\
@@ -219,8 +288,11 @@ jobs:
             -e COINBASE_API_KEY_ID="${{ secrets.COINBASE_API_KEY_ID }}" \\
             -e COINBASE_API_KEY_SECRET="${{ secrets.COINBASE_API_KEY_SECRET }}" \\
             ghcr.io/${{ env.REPO_LOWER }}:${{ env.SHA_TAG }}
+          # Loaded images accumulate now that nothing is pulling and pruning
+          # implicitly; drop only untagged layers, never a tagged image.
+          docker image prune -f
           EOF
-          
+
           # Copy script to remote tmpfs and execute
-          scp -i ~/.ssh/deploy_key /tmp/deploy_script.sh gituser@${{ vars.VM_IP }}:/dev/shm/deploy_script.sh
-          ssh -i ~/.ssh/deploy_key -l gituser ${{ vars.VM_IP }} "chmod +x /dev/shm/deploy_script.sh && /dev/shm/deploy_script.sh && rm /dev/shm/deploy_script.sh"
+          retry 3 scp -o BatchMode=yes /tmp/deploy_script.sh gituser@${{ vars.VM_IP }}:/dev/shm/deploy_script.sh
+          $SSH "chmod +x /dev/shm/deploy_script.sh && /dev/shm/deploy_script.sh && rm /dev/shm/deploy_script.sh"

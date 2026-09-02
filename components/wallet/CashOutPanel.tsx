@@ -56,13 +56,15 @@ const MIN_WINDOW_TO_SEND_MS = 2 * 60 * 1000;
 /**
  * Where we send a user to finish the withdrawal.
  *
- * Deliberately the site root. Coinbase's help describes the path (My Assets →
- * balance → Cash out) but publishes no stable deep link, and the candidates all
- * sit behind an SPA that returns 200 for any path — so a "verified" deep link
- * would just be a guess that breaks silently. The instruction next to this link
- * does the navigating instead.
+ * Observed in the Coinbase web app while signed in — it is not a documented or
+ * supported URL, and Coinbase's site is a SPA behind bot protection that answers
+ * 403 to anything but a browser, so it cannot be checked from a test or CI. It
+ * may therefore rot silently, and an unauthenticated visit will bounce through
+ * login and may not come back to this path. The written click-path beside the
+ * link is what makes that survivable: if the deep link lands on the home page
+ * instead, the user still knows where to go.
  */
-const COINBASE_APP_URL = 'https://www.coinbase.com';
+const COINBASE_APP_URL = 'https://www.coinbase.com/cash';
 
 /**
  * Orders this browser has already broadcast a transfer for.
@@ -828,8 +830,10 @@ export default function CashOutPanel({ walletAddress, balances, onSent }: CashOu
             <div className="mt-3">
               <p className="text-sm text-green-700 dark:text-green-300">
                 Moving that cash to your bank is done in Coinbase — we cannot do it for you.
-                Go to <span className="font-medium">My Assets</span>, pick your {sentCurrency}{' '}
-                balance, then <span className="font-medium">Cash out</span>.
+                The button below opens your cash balance; choose{' '}
+                <span className="font-medium">Cash out</span> there. If it lands on the Coinbase
+                home page instead, go to <span className="font-medium">My Assets</span> and pick
+                your {sentCurrency} balance.
               </p>
               <a
                 href={COINBASE_APP_URL}
@@ -837,7 +841,7 @@ export default function CashOutPanel({ walletAddress, balances, onSent }: CashOu
                 rel="noopener noreferrer"
                 className="mt-3 inline-flex items-center justify-center h-10 px-4 rounded-md border border-green-300 dark:border-green-700 text-sm font-medium text-green-800 dark:text-green-200 hover:bg-green-100 dark:hover:bg-green-900/40"
               >
-                Open Coinbase to withdraw
+                Open Coinbase to cash out
               </a>
             </div>
           )}

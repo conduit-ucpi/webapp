@@ -440,8 +440,8 @@ describe('CashOutPanel', () => {
 
       await screen.findByText(/hold it as cash in your Coinbase account/i);
       expect(screen.getByText(/cannot do it for you/i)).toBeInTheDocument();
-      const link = screen.getByRole('link', { name: /open coinbase to withdraw/i });
-      expect(link).toHaveAttribute('href', 'https://www.coinbase.com');
+      const link = screen.getByRole('link', { name: /open coinbase to cash out/i });
+      expect(link).toHaveAttribute('href', 'https://www.coinbase.com/cash');
     });
 
     it('does not send a US bank payout to the withdraw step — it is already going', async () => {
@@ -455,7 +455,7 @@ describe('CashOutPanel', () => {
 
       await screen.findByText(/into your linked bank account/i);
       expect(
-        screen.queryByRole('link', { name: /open coinbase to withdraw/i })
+        screen.queryByRole('link', { name: /open coinbase to cash out/i })
       ).not.toBeInTheDocument();
     });
 

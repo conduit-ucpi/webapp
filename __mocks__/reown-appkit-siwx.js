@@ -24,6 +24,23 @@ class DefaultSIWX {
   }
 }
 
+// Mock ReownAuthentication class (base of EmbeddedOnlySIWX)
+class ReownAuthentication {
+  constructor(config) {
+    this.config = config || {}
+  }
+
+  async getSessions() {
+    return []
+  }
+
+  async createMessage(input) {
+    return { ...input, toString: () => 'siwx-message' }
+  }
+
+  async addSession() {}
+}
+
 // Mock storage
 class LocalStorage {
   constructor(options) {
@@ -47,5 +64,6 @@ module.exports = {
   InformalMessenger,
   SIWXVerifier,
   DefaultSIWX,
+  ReownAuthentication,
   LocalStorage,
 }

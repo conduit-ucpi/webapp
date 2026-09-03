@@ -141,11 +141,13 @@ export class WalletConnectProvider implements UnifiedProvider {
         hexLength: hexMessage.length
       });
 
-      // Use personal_sign directly - works with both regular wallets and embedded wallets
-      const signature = await walletProvider.request({
+      // Use personal_sign directly - works with both regular wallets and embedded wallets.
+      // withApprovalPrompt keeps AppKit's modal open while the embedded wallet
+      // asks the user to approve - see ReownWalletConnectProvider.connect().
+      const signature = await this.reownProvider.withApprovalPrompt<string>(() => walletProvider.request({
         method: 'personal_sign',
         params: [hexMessage, address]
-      });
+      }));
 
       return signature;
     } catch (error) {

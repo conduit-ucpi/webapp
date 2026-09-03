@@ -35,6 +35,30 @@ export class ReownWalletConnectProvider {
      cleared it. Built once in runInitialize(). */
   private siwxConfig: any = undefined
 
+  /* Wallet requests that AppKit surfaces as an on-screen prompt (personal_sign
+     on an embedded wallet opens its ApproveTransaction view). Closing the modal
+     while one is outstanding aborts it, so connect() checks this before it
+     tidies the modal away. A counter rather than a flag because nothing stops
+     two callers asking for a signature at once. */
+  private pendingApprovalRequests = 0
+
+  hasPendingApprovalPrompt(): boolean {
+    return this.pendingApprovalRequests > 0
+  }
+
+  /**
+   * Run a wallet request that needs the user to approve it in AppKit's own UI.
+   * Marks the prompt as on screen for as long as the request is in flight.
+   */
+  async withApprovalPrompt<T>(request: () => Promise<T>): Promise<T> {
+    this.pendingApprovalRequests++
+    try {
+      return await request()
+    } finally {
+      this.pendingApprovalRequests--
+    }
+  }
+
   getLastAuthFailure(): AuthFailure | null {
     return this.lastAuthFailure
   }
@@ -647,9 +671,30 @@ export class ReownWalletConnectProvider {
                 // Continue anyway
               }
 
-              // Close the modal after network verification/switch completes
-              console.log('🔧 ReownWalletConnect: Closing modal - connection and network setup complete')
-              await this.appKit.close()
+              /* Close the modal after network verification/switch completes -
+                 UNLESS the embedded wallet is currently asking the user to
+                 approve something.
+
+                 The app does not wait for connect() to resolve before it starts
+                 working: AuthManager's subscribeAccount listener flips
+                 isConnected as soon as AppKit publishes the address, /create
+                 renders the wizard, its first API call 401s and lazy auth asks
+                 the embedded wallet to sign - all while this poll loop is still
+                 running. AppKit answers that personal_sign by opening its own
+                 modal on the ApproveTransaction view, and closing the modal
+                 while an unsafe RPC request is in flight makes AppKit abort it
+                 (appkit: PublicStateController.subscribeOpen -> rejectRpcRequests),
+                 so the prompt vanishes before the user can press Sign and the
+                 signature rejects with "Request was aborted".
+
+                 AppKit closes the modal itself once the request settles, so
+                 skipping the close here costs nothing. */
+              if (this.hasPendingApprovalPrompt()) {
+                console.log('🔧 ReownWalletConnect: Leaving modal open - wallet approval prompt is on screen')
+              } else {
+                console.log('🔧 ReownWalletConnect: Closing modal - connection and network setup complete')
+                await this.appKit.close()
+              }
 
               resolveOnce({
                 success: true,
@@ -1048,10 +1093,10 @@ Issued At: ${issuedAt}`
 
       // Step 3: Sign the message
       const hexMessage = '0x' + Buffer.from(message, 'utf8').toString('hex')
-      const signature = await walletProvider.request({
+      const signature = await this.withApprovalPrompt(() => walletProvider.request({
         method: 'personal_sign',
         params: [hexMessage, address]
-      }) as string
+      })) as string
 
       console.log('🔧 ReownWalletConnect: Message signed by wallet')
 
@@ -1443,7 +1488,7 @@ Issued At: ${issuedAt}`
       }
 
       console.log('🔧 ReownWalletConnect: Requesting signature from wallet...')
-      const signature = await signer.signMessage(message)
+      const signature = await this.withApprovalPrompt(() => signer.signMessage(message))
 
       // Create auth token
       const authToken = btoa(JSON.stringify({

@@ -7,7 +7,7 @@ import { detectDevice } from '@/utils/deviceDetection'
 import { wrapProviderWithMobileDeepLinks } from '@/utils/mobileDeepLinkProvider'
 import { createAppKitSIWXConfig } from '@/lib/auth/siwx-config'
 import { EmbeddedOnlySIWX } from '@/lib/auth/EmbeddedOnlySIWX'
-import { SIWE_STATEMENT } from '@/lib/auth/siwe-statement'
+import { SIWE_STATEMENT, buildAuthTokenMessage } from '@/lib/auth/siwe-statement'
 import { mLog } from '@/utils/mobileLogger'
 import { classifyAuthError, type AuthFailure } from '@/lib/auth/classifyAuthError'
 import { reportAuthFailure } from '@/lib/auth/reportAuthFailure'
@@ -1345,7 +1345,7 @@ Issued At: ${issuedAt}`
       // Create message to sign
       const timestamp = Date.now()
       const nonce = Math.random().toString(36).substring(2, 15)
-      const message = `Authenticate wallet ${address} at ${timestamp} with nonce ${nonce}`
+      const message = buildAuthTokenMessage({ address, timestamp, nonce })
 
       console.log('🔧 ReownWalletConnect: Testing batched request support...')
 
@@ -1464,7 +1464,7 @@ Issued At: ${issuedAt}`
       // Create message to sign
       const timestamp = Date.now()
       const nonce = Math.random().toString(36).substring(2, 15)
-      const message = `Authenticate wallet ${address} at ${timestamp} with nonce ${nonce}`
+      const message = buildAuthTokenMessage({ address, timestamp, nonce })
 
       console.log('🔧 ReownWalletConnect: Signing auth message:', message)
 

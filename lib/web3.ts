@@ -4,6 +4,7 @@ import { Config } from '@/types';
 import { toHex, toHexString, ensureHexPrefix } from '@/utils/hexUtils';
 import { mLog } from '@/utils/mobileLogger';
 import { RpcClient } from '@/lib/rpc/RpcClient';
+import { buildAuthTokenMessage } from '@/lib/auth/siwe-statement';
 
 // ERC20 ABI for USDC interactions
 export const ERC20_ABI = [
@@ -580,7 +581,7 @@ export class Web3Service {
       // This prevents replay attacks and proves wallet ownership
       const timestamp = Date.now();
       const nonce = Math.random().toString(36).substring(2, 15);
-      const message = `Authenticate wallet ${walletAddress} at ${timestamp} with nonce ${nonce}`;
+      const message = buildAuthTokenMessage({ address: walletAddress, timestamp, nonce });
 
       console.log('[Web3Service.generateSignatureAuthToken] Signing message:', message);
 

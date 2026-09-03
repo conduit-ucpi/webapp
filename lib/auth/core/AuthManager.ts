@@ -10,6 +10,7 @@ import {
   AuthState,
   AuthUser
 } from '../types/unified-provider';
+import { buildAuthTokenMessage } from '../siwe-statement';
 import { ProviderRegistry } from './ProviderRegistry';
 import { TokenManager } from './TokenManager';
 import { mLog } from '../../../utils/mobileLogger';
@@ -249,7 +250,7 @@ export class AuthManager {
     // Generate authentication message with timestamp and nonce
     const timestamp = Date.now();
     const nonce = Math.random().toString(36).substring(2, 15);
-    const message = `Authenticate wallet ${this.state.address} at ${timestamp} with nonce ${nonce}`;
+    const message = buildAuthTokenMessage({ address: this.state.address, timestamp, nonce });
 
     mLog.info('AuthManager', 'Signing message for backend authentication', {
       address: this.state.address,

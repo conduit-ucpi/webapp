@@ -13,8 +13,13 @@
  *
  * Kept to one line on purpose: wallets truncate long statements, and this one
  * has to survive that intact.
+ *
+ * Funds first, ownership second. AppKit collapses the message box and cuts it
+ * off a line or two in, having already said "prove you own this wallet" twice
+ * in its own chrome above — so ownership-first spent the only visible line
+ * repeating AppKit, and the part it never states got hidden behind the chevron.
  */
-export const SIWE_STATEMENT = 'Signing proves you own this wallet. It cannot move funds or approve payments.';
+export const SIWE_STATEMENT = 'No funds move and no payments are approved. Signing only proves you own this wallet.';
 
 /**
  * Chain names as a person would say them, not as the network calls itself.
@@ -45,7 +50,7 @@ export function siweStatement(chainId?: number): string {
   const chain = chainId === undefined ? undefined : CHAIN_DISPLAY_NAMES[chainId];
   if (!chain) return SIWE_STATEMENT;
 
-  return `Signing proves you own this wallet on ${chain}. It cannot move funds or approve payments.`;
+  return `No funds move and no payments are approved. Signing only proves you own this wallet on ${chain}.`;
 }
 
 /**

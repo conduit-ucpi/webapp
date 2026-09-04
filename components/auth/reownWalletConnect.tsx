@@ -264,7 +264,7 @@ export class ReownWalletConnectProvider {
           name: getSiteNameFromDomain(),
           description: 'Escrow for stablecoin payments',
           url: origin,
-          icons: [`${origin}/favicon.ico`]
+          icons: [`${origin}/icon-512.png`]
         },
         features: this.getFeaturesForMode(),
         allowUnsupportedChain: false // Only allow the configured chain from env

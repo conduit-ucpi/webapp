@@ -7,7 +7,8 @@ import { detectDevice } from '@/utils/deviceDetection'
 import { wrapProviderWithMobileDeepLinks } from '@/utils/mobileDeepLinkProvider'
 import { createAppKitSIWXConfig } from '@/lib/auth/siwx-config'
 import { EmbeddedOnlySIWX } from '@/lib/auth/EmbeddedOnlySIWX'
-import { SIWE_STATEMENT, buildAuthTokenMessage } from '@/lib/auth/siwe-statement'
+import { siweStatement, buildAuthTokenMessage } from '@/lib/auth/siwe-statement'
+import { getSiteNameFromDomain } from '@/utils/siteName'
 import { mLog } from '@/utils/mobileLogger'
 import { classifyAuthError, type AuthFailure } from '@/lib/auth/classifyAuthError'
 import { reportAuthFailure } from '@/lib/auth/reportAuthFailure'
@@ -238,6 +239,8 @@ export class ReownWalletConnectProvider {
       console.log('🔧 ReownWalletConnect: Default chain ID:', chainId)
       console.log('🔧 ReownWalletConnect: Default network:', networks[0].name)
 
+      const origin = typeof window !== 'undefined' ? window.location.origin : 'https://stabledrop.me'
+
       this.appKit = createAppKit({
         adapters: [ethersAdapter],
         networks: networks as [any, ...any[]], // Type assertion to fix tuple requirement
@@ -250,11 +253,18 @@ export class ReownWalletConnectProvider {
         defaultAccountTypes: {
           eip155: 'eoa' // Force EOA for standard ECDSA signatures (backend compatibility)
         },
+        // Shown by AppKit above every signature prompt ("<name> requests a
+        // signature"). The app is white-labelled across domains, so a hardcoded
+        // name here announces the wrong brand — and an icon pinned to another
+        // domain makes the wallet fetch it cross-origin. Both follow the host,
+        // the same way Header and MobileDrawer already do. The chain stays out
+        // of the description because it is configurable per deployment and
+        // AppKit renders it as its own field anyway.
         metadata: {
-          name: 'Conduit UCPI',
-          description: 'Time-delayed escrow contracts on Base',
-          url: typeof window !== 'undefined' ? window.location.origin : 'https://conduit-ucpi.com',
-          icons: ['https://conduit-ucpi.com/favicon.ico']
+          name: getSiteNameFromDomain(),
+          description: 'Escrow for stablecoin payments',
+          url: origin,
+          icons: [`${origin}/favicon.ico`]
         },
         features: this.getFeaturesForMode(),
         allowUnsupportedChain: false // Only allow the configured chain from env
@@ -1076,7 +1086,7 @@ export class ReownWalletConnectProvider {
       const message = `${domain} wants you to sign in with your Ethereum account:
 ${address}
 
-${SIWE_STATEMENT}
+${siweStatement(chainId)}
 
 URI: ${uri}
 Version: 1

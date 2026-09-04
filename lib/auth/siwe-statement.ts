@@ -17,6 +17,38 @@
 export const SIWE_STATEMENT = 'Signing proves you own this wallet. It cannot move funds or approve payments.';
 
 /**
+ * Chain names as a person would say them, not as the network calls itself.
+ * Kept here beside the copy rather than reusing getNetworkName(), which says
+ * "Base Mainnet"/"Sepolia Testnet" for logs and would read as jargon in a
+ * wallet prompt.
+ */
+const CHAIN_DISPLAY_NAMES: Record<number, string> = {
+  1: 'Ethereum',
+  8453: 'Base',
+  11155111: 'Sepolia',
+  84532: 'Base Sepolia'
+};
+
+/**
+ * The statement, naming the chain when we can.
+ *
+ * EIP-4361 fixes the header line above it as "...sign in with your Ethereum
+ * account:", which reads oddly to someone who came here to use Base. That
+ * literal cannot be reworded — user-service parses the message, and wallets
+ * render their friendly sign-in view only while it parses — so the chain is
+ * named here instead, on the one line that is ours.
+ *
+ * An unrecognised chain falls back to the chain-less statement: "on Chain
+ * 12345" would be worse than saying nothing.
+ */
+export function siweStatement(chainId?: number): string {
+  const chain = chainId === undefined ? undefined : CHAIN_DISPLAY_NAMES[chainId];
+  if (!chain) return SIWE_STATEMENT;
+
+  return `Signing proves you own this wallet on ${chain}. It cannot move funds or approve payments.`;
+}
+
+/**
  * Message signed to mint a `signature_auth` token (the fallback auth path used
  * when the SIWE route isn't taken — batched-connect failure, the Web3Service
  * path, Farcaster).

@@ -8,6 +8,7 @@ import { AuthenticationExpiredError } from '@/lib/auth/errors/AuthenticationExpi
 import { WalletSigningError } from '@/lib/auth/errors/WalletSigningError';
 import { useConfig } from './ConfigProvider';
 import WalletSignaturePrompt from './WalletSignaturePrompt';
+import { subscribeWalletPrompt, withWalletPrompt, type WalletPrompt } from '@/lib/auth/walletPromptChannel';
 import { toUSDCForWeb3 } from '@/utils/validation';
 
 // Create a default auth context value to prevent "context not found" errors
@@ -62,9 +63,12 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
   const [isLoadingUserData, setIsLoadingUserData] = useState(false);
   const [backendUserData, setBackendUserData] = useState<any>(null);
 
-  // Drives the in-app notice while the wallet prompt is open. The wallet
-  // cannot show this reassurance itself — see WalletSignaturePrompt.
-  const [isAwaitingSignature, setIsAwaitingSignature] = useState(false);
+  // Drives the in-app notice while the wallet prompt is open. The wallet cannot
+  // show this itself — see WalletSignaturePrompt. Transactions announce
+  // themselves on the same channel from Web3Service, so this covers both.
+  const [walletPrompt, setWalletPrompt] = useState<WalletPrompt | null>(null);
+
+  useEffect(() => subscribeWalletPrompt(setWalletPrompt), []);
 
   // Dedup guard: if multiple fetchWithAuth calls hit 401 concurrently,
   // only the first one triggers requestAuthentication(); the rest wait for
@@ -95,25 +99,21 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
           // The notice is shown for waiters too — the prompt they are waiting on
           // is on screen either way, and hiding it on the first resolution while
           // another is still open would be worse than showing it twice.
-          let success: boolean;
-          setIsAwaitingSignature(true);
-          try {
+          const success: boolean = await withWalletPrompt({ kind: 'signature' }, async () => {
             if (authInFlightRef.current) {
               console.log('🔐 SimpleAuthProvider: Authentication already in progress, waiting for it...');
-              success = await authInFlightRef.current;
-            } else {
-              // Trigger SIWX to request a new signature (wallet stays connected)
-              const authPromise = newAuth.requestAuthentication();
-              authInFlightRef.current = authPromise;
-              try {
-                success = await authPromise;
-              } finally {
-                authInFlightRef.current = null;
-              }
+              return await authInFlightRef.current;
             }
-          } finally {
-            setIsAwaitingSignature(false);
-          }
+
+            // Trigger SIWX to request a new signature (wallet stays connected)
+            const authPromise = newAuth.requestAuthentication();
+            authInFlightRef.current = authPromise;
+            try {
+              return await authPromise;
+            } finally {
+              authInFlightRef.current = null;
+            }
+          });
 
           if (success) {
             console.log('🔐 SimpleAuthProvider: ✅ Fresh signature obtained');
@@ -398,7 +398,7 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider value={authValue}>
-      {isAwaitingSignature && <WalletSignaturePrompt />}
+      {walletPrompt && <WalletSignaturePrompt prompt={walletPrompt} />}
       {children}
     </AuthContext.Provider>
   );

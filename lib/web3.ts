@@ -4,6 +4,7 @@ import { Config } from '@/types';
 import { toHex, toHexString, ensureHexPrefix } from '@/utils/hexUtils';
 import { mLog } from '@/utils/mobileLogger';
 import { RpcClient } from '@/lib/rpc/RpcClient';
+import { withWalletPrompt } from '@/lib/auth/walletPromptChannel';
 import { buildAuthTokenMessage } from '@/lib/auth/siwe-statement';
 
 // ERC20 ABI for USDC interactions
@@ -1402,22 +1403,31 @@ export class Web3Service {
         dataLength: tx.data?.length || 0
       });
 
-      let returnedHash: string;
+      // The wallet prompt AppKit shows for this says "to prove you own this
+      // wallet and to continue" — the same line it uses for sign-ins, above a
+      // transfer of real money. Announce what is actually being approved while
+      // the prompt is open; see lib/auth/walletPromptChannel.ts.
+      const returnedHash: string = await withWalletPrompt(
+        { kind: 'transaction', summary: this.describeTransactionForPrompt(rpcTxParams) },
+        async () => {
+          if (provider.request && typeof provider.request === 'function') {
+            // EIP-1193 interface
+            mLog.info('Web3Service', '🔄 Calling provider.request({ method: eth_sendTransaction })...');
+            return await provider.request({
+              method: 'eth_sendTransaction',
+              params: [rpcTxParams]
+            });
+          }
 
-      if (provider.request && typeof provider.request === 'function') {
-        // EIP-1193 interface
-        mLog.info('Web3Service', '🔄 Calling provider.request({ method: eth_sendTransaction })...');
-        returnedHash = await provider.request({
-          method: 'eth_sendTransaction',
-          params: [rpcTxParams]
-        });
-      } else if (provider.send && typeof provider.send === 'function') {
-        // ethers JsonRpcProvider interface
-        mLog.info('Web3Service', '🔄 Calling provider.send(eth_sendTransaction)...');
-        returnedHash = await provider.send('eth_sendTransaction', [rpcTxParams]);
-      } else {
-        throw new Error('Provider does not support request() or send() methods');
-      }
+          if (provider.send && typeof provider.send === 'function') {
+            // ethers JsonRpcProvider interface
+            mLog.info('Web3Service', '🔄 Calling provider.send(eth_sendTransaction)...');
+            return await provider.send('eth_sendTransaction', [rpcTxParams]);
+          }
+
+          throw new Error('Provider does not support request() or send() methods');
+        }
+      );
 
       mLog.info('Web3Service', `📥 eth_sendTransaction returned: ${returnedHash}`);
       console.log('📥 eth_sendTransaction returned hash:', returnedHash);
@@ -1738,6 +1748,56 @@ export class Web3Service {
   /**
    * Detect transaction type from encoded function data to choose appropriate Foundry gas fallback
    */
+  /**
+   * One clause describing what the user is about to approve, for the in-app
+   * notice that runs alongside the wallet prompt.
+   *
+   * Reads the calldata rather than trusting the call site, so it cannot drift
+   * from what is actually being submitted. Anything it cannot decode falls back
+   * to a warning without figures — a vague warning is safe, a wrong figure is
+   * not.
+   */
+  private describeTransactionForPrompt(tx: { to?: string; data?: string }): string {
+    const decimals = this.config.usdcDetails?.decimals ?? 6;
+    const type = this.detectTransactionType(tx.data || '0x');
+
+    const shorten = (address?: string) =>
+      address && address.length > 10 ? `${address.slice(0, 6)}…${address.slice(-4)}` : address || 'the contract';
+
+    const amountFrom = (data: string) => {
+      try {
+        // transfer(address,uint256) and approve(address,uint256) share a layout:
+        // 4-byte selector, 32-byte address, 32-byte amount.
+        const [, amount] = ethers.AbiCoder.defaultAbiCoder().decode(
+          ['address', 'uint256'],
+          '0x' + data.slice(10)
+        );
+        return ethers.formatUnits(amount, decimals);
+      } catch {
+        return null;
+      }
+    };
+
+    if (type === 'transfer' || type === 'approve') {
+      const amount = amountFrom(tx.data || '0x');
+      if (amount) {
+        return type === 'transfer'
+          ? `sending ${amount} USDC to ${shorten(tx.to)}`
+          : `approving ${amount} USDC to be spent by ${shorten(tx.to)}`;
+      }
+    }
+
+    if (type === 'depositFunds') {
+      return `depositing funds into the contract at ${shorten(tx.to)}`;
+    }
+
+    if (type === 'claimFunds') {
+      return `claiming funds from the contract at ${shorten(tx.to)}`;
+    }
+
+    return `submitting a transaction to ${shorten(tx.to)}`;
+  }
+
   private detectTransactionType(data: string): 'depositFunds' | 'approve' | 'transfer' | 'submitResolutionVote' | 'raiseDispute' | 'claimFunds' | 'unknown' {
     if (!data || data === '0x') {
       return 'unknown';

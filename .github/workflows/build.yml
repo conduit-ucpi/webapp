@@ -416,6 +416,19 @@ jobs:
             exit 1
           fi
 
+          # The escrow trust anchor. Empty here means the bundle cannot verify
+          # any contract address and refuses every signature — a build that looks
+          # fine and breaks at the worst moment. Note `vars` resolves against
+          # THIS job's environment (github-pages), not cherry: the value has to
+          # be set on github-pages specifically.
+          if [ -z "${NEXT_PUBLIC_ESCROW_IMPLEMENTATION_ADDRESS}" ]; then
+            echo "NEXT_PUBLIC_ESCROW_IMPLEMENTATION_ADDRESS is not set." >&2
+            echo "Set ESCROW_IMPLEMENTATION_ADDRESS on the github-pages environment." >&2
+            echo "Without it every escrow verification fails closed and no contract" >&2
+            echo "can be created from the published site." >&2
+            exit 1
+          fi
+
           npm ci --legacy-peer-deps
           npm run build:static
 

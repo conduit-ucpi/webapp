@@ -325,6 +325,17 @@ jobs:
   # the Team plan.
   # ---------------------------------------------------------------------------
   deploy-github-pages:
+    # cherry tags only (plus manual runs).
+    #
+    # api.stabledrop.me proxies webapp-prod, and cherry-v* is the tag that
+    # deploys webapp-prod — so shipping Pages on the same trigger keeps the
+    # static frontend and the API it talks to on the same commit. Deploying
+    # Pages on test*/farcaster-test* would push the client ahead of an API that
+    # those tags do not touch (they deploy webapp-test), which is exactly the
+    # drift the Client/API version rows were added to expose.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      startsWith(github.ref, 'refs/tags/cherry')
     runs-on: ubuntu-latest
     environment:
       name: github-pages

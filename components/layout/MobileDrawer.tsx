@@ -372,29 +372,21 @@ export default function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
                   ))}
                 </div>
 
-                {/* Version Info — the frontend and the API deploy separately
-                    once the frontend is static, so report both. Collapsed to a
-                    single row while they match, which is the case whenever one
-                    box serves both. */}
+                {/* Version Info — the frontend and the API are separate
+                    deployments and can drift, so both are always shown. Not
+                    collapsed when they agree: the point is being able to read
+                    off which half is which without having to remember whether a
+                    single row means "both" or "the API only". */}
                 {(clientVersion || apiVersion) && (
                   <div className="mb-3 px-2 py-1.5 bg-secondary-50 dark:bg-secondary-800 rounded text-xs text-secondary-500 dark:text-secondary-400">
-                    {clientVersion === apiVersion ? (
-                      <div className="flex items-center justify-between">
-                        <span className="font-medium">Version</span>
-                        <span className="font-mono">{clientVersion}</span>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="flex items-center justify-between">
-                          <span className="font-medium">Client</span>
-                          <span className="font-mono">{clientVersion || 'unknown'}</span>
-                        </div>
-                        <div className="flex items-center justify-between mt-0.5">
-                          <span className="font-medium">API</span>
-                          <span className="font-mono">{apiVersion || 'unknown'}</span>
-                        </div>
-                      </>
-                    )}
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium">Client</span>
+                      <span className="font-mono">{clientVersion || 'unknown'}</span>
+                    </div>
+                    <div className="flex items-center justify-between mt-0.5">
+                      <span className="font-medium">API</span>
+                      <span className="font-mono">{apiVersion || 'unknown'}</span>
+                    </div>
                   </div>
                 )}
 

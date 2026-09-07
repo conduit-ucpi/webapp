@@ -125,23 +125,18 @@ jobs:
           COINBASE_API_KEY_SECRET: ${{ secrets.COINBASE_API_KEY_SECRET }}
         run: |
           npm ci --legacy-peer-deps
-          
-          # Generate Farcaster manifest with correct domain
-          echo "=== Generating Farcaster manifest ==="
-          mkdir -p public/.well-known
-          cat > public/.well-known/farcaster.json << EOF
-          {
-            "name": "Conduit Escrow",
-            "version": "1.0.0",
-            "iconUrl": "https://farcaster.conduit-ucpi.com/icon.png",
-            "splashImageUrl": "https://farcaster.conduit-ucpi.com/preview.png",
-            "homeUrl": "https://farcaster.conduit-ucpi.com"
-          }
-          EOF
-          
-          echo "=== Generated manifest content ==="
+
+          # The Farcaster manifest is NOT generated here any more. It is a
+          # committed file, public/.well-known/farcaster.json.
+          #
+          # It used to be written by a heredoc at this point, which meant the box
+          # build and the Pages build could disagree about it: Pages has no such
+          # step and always shipped the committed file, while this job silently
+          # overwrote it. Two builds, two manifests, one of them invisible in the
+          # repo. One committed file is the whole fix.
+          echo "=== Farcaster manifest (committed) ==="
           cat public/.well-known/farcaster.json
-          
+
           npm run build
           mkdir -p .next/standalone
           # Debug: Check what files exist before copying

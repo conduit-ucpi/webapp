@@ -35,6 +35,16 @@ export interface EscrowContractInfo {
   currentTimestamp: number;
 }
 
+/** Deal terms exactly as stored on-chain, unformatted. */
+export interface EscrowTerms {
+  buyer: string;
+  seller: string;
+  /** Raw token base units (micro-USDC for 6-decimal tokens). */
+  amount: bigint;
+  token: string;
+  expiryTimestamp: bigint;
+}
+
 export interface EscrowContractState {
   isExpired: boolean;
   canClaim: boolean;
@@ -236,6 +246,29 @@ export class RpcClient {
    */
   async getCode(address: string): Promise<string> {
     return this.provider.getCode(address);
+  }
+
+  /**
+   * The deal terms as deployed, RAW and unformatted.
+   *
+   * Deliberately separate from getContractInfo(), which formats the amount with
+   * 6 decimals for display. Verification must compare exactly against what was
+   * submitted, and a formatting round-trip is precisely where a real mismatch
+   * could be rounded away.
+   */
+  async getEscrowTerms(contractAddress: string): Promise<EscrowTerms> {
+    const contract = new ethers.Contract(contractAddress, ESCROW_CONTRACT_ABI, this.provider);
+    const [info, token] = await Promise.all([
+      contract.getContractInfo(),
+      contract.token(),
+    ]);
+    return {
+      buyer: info._buyer,
+      seller: info._seller,
+      amount: BigInt(info._amount),
+      token,
+      expiryTimestamp: BigInt(info._expiryTimestamp),
+    };
   }
 
   /** getContractInfo() tuple, with USDC 6-decimal amount and numeric fields. */

@@ -709,6 +709,12 @@ export class Web3Service {
     return await this.rpcClient.getCode(address);
   }
 
+  // Raw, unformatted deal terms, for verifying a deployed escrow holds the deal
+  // the user agreed to. See lib/escrow/verifyEscrowTerms.ts.
+  async getEscrowTerms(contractAddress: string) {
+    return await this.rpcClient.getEscrowTerms(contractAddress);
+  }
+
   /**
    * Generic method for signing any contract transaction
    * This is the ONLY method that should be used for contract interactions

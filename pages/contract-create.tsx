@@ -27,7 +27,7 @@ import { getNetworkName } from '@/utils/networkUtils';
 import { detectDevice } from '@/utils/deviceDetection';
 import { buildWordPressStatusUrl as buildWpStatusUrl } from '@/utils/wordpressStatusUrl';
 import { safeRedirectUrl } from '@/utils/safeRedirect';
-import { verifyEscrowAddress } from '@/lib/escrow/verifyEscrowClone';
+import { verifyEscrow } from '@/lib/escrow/verifyEscrow';
 
 interface ContractCreateForm {
   seller: string;
@@ -227,11 +227,17 @@ export default function ContractCreate() {
         }
 
         // The address came from the API. Before it is used for anything, check
-        // against the chain that it really is an ERC-1167 clone of our own
-        // implementation — a compromised API could otherwise hand back an
-        // address it controls. Read via our RPC, never via the API, or the
-        // check would be circular. Fails closed.
-        const verdict = await verifyEscrowAddress(createData.contractAddress, web3Service);
+        // it against the chain — a compromised API could hand back an address it
+        // controls, or a genuine clone deployed with someone else's terms. Both
+        // halves are checked: that the code is our implementation, and that the
+        // buyer/seller/amount/token match what the user filled in. Read via our
+        // RPC, never via the API, or the check would be circular. Fails closed.
+        const verdict = await verifyEscrow(createData.contractAddress, web3Service, {
+          buyer: address,
+          seller: form.seller,
+          amount: toMicroUSDC(parseFloat(form.amount.trim())),
+          token: selectedTokenAddress,
+        });
         if (!verdict.ok) {
           console.error('ContractCreate: escrow verification FAILED', verdict);
           throw new Error(`Refusing to continue: ${verdict.detail}`);

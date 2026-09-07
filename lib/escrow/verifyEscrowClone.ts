@@ -144,9 +144,18 @@ export function assertVerifiableAddress(address: string): CloneVerdict | null {
   return null;
 }
 
-/** Build-time constant. Deliberately NOT read from /api/config — see header. */
-export const EXPECTED_ESCROW_IMPLEMENTATION =
-  process.env.NEXT_PUBLIC_ESCROW_IMPLEMENTATION_ADDRESS || '';
+/**
+ * The build-time trust anchor. Deliberately NOT read from /api/config — see the
+ * header for why that would be circular.
+ *
+ * A function, not a module-level const: Next inlines `process.env.NEXT_PUBLIC_*`
+ * textually wherever it appears, so this is still fixed at build time, but it
+ * does not freeze at import time — which made the value depend on module load
+ * order under test.
+ */
+export function expectedEscrowImplementation(): string {
+  return process.env.NEXT_PUBLIC_ESCROW_IMPLEMENTATION_ADDRESS || '';
+}
 
 /** Minimal surface needed for verification, so tests need no real provider. */
 export interface CodeReader {
@@ -160,7 +169,7 @@ export interface CodeReader {
 export async function verifyEscrowAddress(
   address: string,
   rpc: CodeReader,
-  expectedImplementation: string = EXPECTED_ESCROW_IMPLEMENTATION
+  expectedImplementation: string = expectedEscrowImplementation()
 ): Promise<CloneVerdict> {
   const malformed = assertVerifiableAddress(address);
   if (malformed) return malformed;

@@ -28,6 +28,7 @@ import { useAuth } from '@/components/auth';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { getSiteNameFromDomain } from '@/utils/siteName';
 import ThemeToggle from '@/components/theme/ThemeToggle';
+import { CLIENT_GIT_TAG, CLIENT_GIT_SHA, formatVersion } from '@/lib/buildVersion';
 
 interface MobileDrawerProps {
   isOpen: boolean;
@@ -58,6 +59,8 @@ export default function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
   const isAuthenticated = isConnected;
   const isAdmin = (user as any)?.isAdmin;
   const canSwitchWallet = state?.providerName === 'web3auth';
+  const clientVersion = formatVersion(CLIENT_GIT_TAG, CLIENT_GIT_SHA);
+  const apiVersion = formatVersion(config?.gitTag, config?.gitSha);
   const projectsLive = config?.projectsLive === true;
   const emailVerificationLive = config?.emailVerificationLive === true;
 
@@ -369,17 +372,29 @@ export default function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
                   ))}
                 </div>
 
-                {/* Version Info */}
-                {config && (config.gitTag || config.gitSha) && (
+                {/* Version Info — the frontend and the API deploy separately
+                    once the frontend is static, so report both. Collapsed to a
+                    single row while they match, which is the case whenever one
+                    box serves both. */}
+                {(clientVersion || apiVersion) && (
                   <div className="mb-3 px-2 py-1.5 bg-secondary-50 dark:bg-secondary-800 rounded text-xs text-secondary-500 dark:text-secondary-400">
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium">Version</span>
-                      <span className="font-mono">
-                        {config.gitTag && config.gitTag !== 'unknown' ? config.gitTag : ''}
-                        {config.gitTag && config.gitTag !== 'unknown' && config.gitSha && config.gitSha !== 'unknown' && ' • '}
-                        {config.gitSha && config.gitSha !== 'unknown' ? config.gitSha : ''}
-                      </span>
-                    </div>
+                    {clientVersion === apiVersion ? (
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium">Version</span>
+                        <span className="font-mono">{clientVersion}</span>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium">Client</span>
+                          <span className="font-mono">{clientVersion || 'unknown'}</span>
+                        </div>
+                        <div className="flex items-center justify-between mt-0.5">
+                          <span className="font-medium">API</span>
+                          <span className="font-mono">{apiVersion || 'unknown'}</span>
+                        </div>
+                      </>
+                    )}
                   </div>
                 )}
 

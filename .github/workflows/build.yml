@@ -72,6 +72,11 @@ jobs:
           BUILD_VERSION: ${{ env.BUILD_VERSION }}
           GIT_TAG: ${{ env.GIT_TAG }}
           GIT_SHA: ${{ env.GIT_SHA }}
+          # Same values again as NEXT_PUBLIC_*, so the bundle can report its own
+          # version rather than only the API's. Next inlines NEXT_PUBLIC_* at
+          # build time; GIT_TAG/GIT_SHA above stay server-side for /api/config.
+          NEXT_PUBLIC_GIT_TAG: ${{ env.GIT_TAG }}
+          NEXT_PUBLIC_GIT_SHA: ${{ env.GIT_SHA }}
           NEXT_PUBLIC_BASE_PATH: ${{ vars.NEXT_PUBLIC_BASE_PATH }}
           PRODUCT_NAME: ${{ vars.PRODUCT_NAME }}
           SERVICE_LINK: ${{ vars.SERVICE_LINK }}
@@ -371,6 +376,14 @@ jobs:
           NEXT_PUBLIC_EMBEDDED_SIWX: ${{ vars.NEXT_PUBLIC_EMBEDDED_SIWX }}
         run: |
           set -euo pipefail
+
+          # Stamp this bundle with its own version. The API reports its own
+          # separately via /api/config, and the two are different deployments —
+          # showing only the API's is what made a current Pages build look weeks
+          # stale in the UI.
+          export NEXT_PUBLIC_GIT_TAG="$(git describe --tags --abbrev=0 2>/dev/null || echo '')"
+          export NEXT_PUBLIC_GIT_SHA="$(git rev-parse --short HEAD)"
+          echo "Building client version: ${NEXT_PUBLIC_GIT_TAG:-<no tag>} ${NEXT_PUBLIC_GIT_SHA}"
 
           if [ -z "${NEXT_PUBLIC_API_BASE_URL}" ]; then
             echo "NEXT_PUBLIC_API_BASE_URL is not set — the published site would" >&2

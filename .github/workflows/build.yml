@@ -75,6 +75,13 @@ jobs:
           # Same values again as NEXT_PUBLIC_*, so the bundle can report its own
           # version rather than only the API's. Next inlines NEXT_PUBLIC_* at
           # build time; GIT_TAG/GIT_SHA above stay server-side for /api/config.
+          # The trust anchor for escrow verification. MUST be build-time
+          # (NEXT_PUBLIC_*, inlined into the bundle) and MUST NOT be served from
+          # /api/config: if the same API that supplies a clone address also
+          # supplied the implementation to check it against, a compromised API
+          # would return a matching pair and the check would compare its own
+          # answer to itself. See lib/escrow/verifyEscrowClone.ts.
+          NEXT_PUBLIC_ESCROW_IMPLEMENTATION_ADDRESS: ${{ vars.ESCROW_IMPLEMENTATION_ADDRESS }}
           NEXT_PUBLIC_GIT_TAG: ${{ env.GIT_TAG }}
           NEXT_PUBLIC_GIT_SHA: ${{ env.GIT_SHA }}
           NEXT_PUBLIC_BASE_PATH: ${{ vars.NEXT_PUBLIC_BASE_PATH }}
@@ -385,6 +392,13 @@ jobs:
           NEXT_PUBLIC_EXCHANGE_RATE_API_URL: ${{ vars.NEXT_PUBLIC_EXCHANGE_RATE_API_URL }}
           NEXT_PUBLIC_MOBILE_DEBUG_LOGGING: ${{ vars.NEXT_PUBLIC_MOBILE_DEBUG_LOGGING }}
           NEXT_PUBLIC_EMBEDDED_SIWX: ${{ vars.NEXT_PUBLIC_EMBEDDED_SIWX }}
+          # The trust anchor for escrow verification. MUST be build-time
+          # (NEXT_PUBLIC_*, inlined into the bundle) and MUST NOT be served from
+          # /api/config: if the same API that supplies a clone address also
+          # supplied the implementation to check it against, a compromised API
+          # would return a matching pair and the check would compare its own
+          # answer to itself. See lib/escrow/verifyEscrowClone.ts.
+          NEXT_PUBLIC_ESCROW_IMPLEMENTATION_ADDRESS: ${{ vars.ESCROW_IMPLEMENTATION_ADDRESS }}
         run: |
           set -euo pipefail
 

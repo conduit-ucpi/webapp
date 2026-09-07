@@ -700,6 +700,15 @@ export class Web3Service {
     return await this.rpcClient.getContractState(contractAddress);
   }
 
+  // Runtime bytecode at an address, via the read-only RPC owner.
+  // Used to verify an API-supplied escrow address really is an ERC-1167 clone
+  // of our implementation before the user signs anything — the check must read
+  // the chain, not ask the API, or it would be circular.
+  // See lib/escrow/verifyEscrowClone.ts.
+  async getCode(address: string) {
+    return await this.rpcClient.getCode(address);
+  }
+
   /**
    * Generic method for signing any contract transaction
    * This is the ONLY method that should be used for contract interactions

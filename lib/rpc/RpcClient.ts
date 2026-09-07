@@ -224,6 +224,20 @@ export class RpcClient {
 
   // ---- Escrow contract reads --------------------------------------------
 
+  /**
+   * Runtime bytecode at an address, via the client's own RPC.
+   *
+   * Used to verify that an API-supplied escrow address really is an ERC-1167
+   * clone of our implementation. It has to be read from the chain rather than
+   * asked of the API, or the check would be circular — see
+   * lib/escrow/verifyEscrowClone.ts.
+   *
+   * Returns '0x' for an EOA or an address with nothing deployed.
+   */
+  async getCode(address: string): Promise<string> {
+    return this.provider.getCode(address);
+  }
+
   /** getContractInfo() tuple, with USDC 6-decimal amount and numeric fields. */
   async getContractInfo(contractAddress: string): Promise<EscrowContractInfo> {
     const contract = new ethers.Contract(contractAddress, ESCROW_CONTRACT_ABI, this.provider);

@@ -1,5 +1,7 @@
 import { ReactNode } from 'react';
-import { formatDateTimeWithTZ } from '@/utils/validation';
+import { lastTextChange } from '@/lib/server/lastTextChange';
+
+
 
 /** A numbered part heading within Schedule 1 (e.g. "3. United Kingdom"). */
 function Clause({ n, heading }: { n: string; heading: string }) {
@@ -20,7 +22,17 @@ function Sub({ n, children }: { n: string; children: ReactNode }) {
   );
 }
 
-export default function TermsOfService() {
+/**
+ * Build-time only. `lastTextChange` shells out to git, and Next strips
+ * getStaticProps and everything it imports from the client bundle — which is
+ * what keeps child_process out of the browser. The fallback covers a build with
+ * no git history; that path warns.
+ */
+export async function getStaticProps() {
+  return { props: { lastUpdated: lastTextChange('pages/terms-of-service.tsx', '29 July 2026') } };
+}
+
+export default function TermsOfService({ lastUpdated }: { lastUpdated: string }) {
   return (
     <div className="py-10 bg-white dark:bg-secondary-900 transition-colors">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -28,7 +40,7 @@ export default function TermsOfService() {
           <h1 className="text-3xl font-bold text-secondary-900 dark:text-white mb-8">Terms of Service</h1>
           
           <p className="text-secondary-600 dark:text-secondary-300 mb-6">
-            <strong>Last Updated:</strong> {formatDateTimeWithTZ(Date.now())}
+            <strong>Last Updated:</strong> {lastUpdated}
           </p>
 
           <section className="mb-8">

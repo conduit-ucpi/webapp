@@ -1,6 +1,15 @@
-import { formatDate } from '@/utils/validation';
+import { lastTextChange } from '@/lib/server/lastTextChange';
 
-export default function PrivacyPolicy() {
+/**
+ * Build-time only; Next strips getStaticProps and its imports from the client
+ * bundle. Replaces `formatDate(Date.now())`, which reported the build date as
+ * the policy's revision date. See lib/server/lastTextChange.ts.
+ */
+export async function getStaticProps() {
+  return { props: { lastUpdated: lastTextChange('pages/privacy-policy.tsx', '25 February 2026') } };
+}
+
+export default function PrivacyPolicy({ lastUpdated }: { lastUpdated: string }) {
   return (
     <div className="py-10 bg-white dark:bg-secondary-900 transition-colors">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -8,7 +17,7 @@ export default function PrivacyPolicy() {
           <h1 className="text-3xl font-bold text-secondary-900 dark:text-white mb-8">Privacy Policy</h1>
           
           <p className="text-secondary-600 dark:text-secondary-300 mb-6">
-            <strong>Last Updated:</strong> {formatDate(Date.now())}
+            <strong>Last Updated:</strong> {lastUpdated}
           </p>
 
           <section className="mb-8">

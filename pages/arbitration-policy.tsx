@@ -2,8 +2,9 @@ import Layout from '@/components/layout/Layout'
 import SEO from '@/components/SEO'
 import { GetStaticProps } from 'next'
 import { isr } from '@/utils/isr';
+import { lastTextChangeISO } from '@/lib/server/lastTextChange';
 
-export default function ArbitrationPolicy() {
+export default function ArbitrationPolicy({ dateModified }: { dateModified: string }) {
   // Comprehensive structured data for SEO and AI bots
   const structuredData = {
     "@context": "https://schema.org",
@@ -26,7 +27,7 @@ export default function ArbitrationPolicy() {
       }
     },
     "datePublished": "2024-01-01",
-    "dateModified": new Date().toISOString().split('T')[0],
+    "dateModified": dateModified,
     "keywords": "crypto escrow disputes, blockchain arbitration, escrow dispute resolution, USDC refund process, buyer seller negotiation, smart contract disputes, automatic arbitration, chargeback alternative, cryptocurrency buyer protection, escrow mediation, automated negotiation, frozen funds, dispute management, refund agreements",
     "about": {
       "@type": "Thing",
@@ -335,10 +336,17 @@ export default function ArbitrationPolicy() {
   )
 }
 
-// Static generation for SEO
+// Static generation for SEO.
+//
+// `dateModified` was `new Date().toISOString().split('T')[0]` in the component
+// body, so the JSON-LD told search engines this policy was revised on whatever
+// day the build ran. Derived from git instead — see lib/server/lastTextChange.ts
+// for why, and for the file-granularity caveat.
 export const getStaticProps: GetStaticProps = async () => {
   return {
-    props: {},
+    props: {
+      dateModified: lastTextChangeISO('pages/arbitration-policy.tsx', '2026-09-07'),
+    },
     ...isr(86400), // Revalidate daily
   };
 };

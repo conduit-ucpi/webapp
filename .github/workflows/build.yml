@@ -407,8 +407,18 @@ jobs:
           # Only NEXT_PUBLIC_* vars are passed. Everything server-side stays out
           # of this build on purpose: its output is published as world-readable
           # static files, and Next inlines NEXT_PUBLIC_* into the client bundle.
-          # (Safe today because every getStaticProps here returns `props: {}`, so
-          # no build-time data reaches the HTML — keep it that way.)
+          #
+          # This used to add "every getStaticProps here returns `props: {}`, so no
+          # build-time data reaches the HTML — keep it that way." That is no longer
+          # literally true: the legal pages now pass a `lastUpdated` / `dateModified`
+          # derived from git (lib/server/lastTextChange.ts). Deliberate, and the
+          # rule it was protecting is intact — a commit date is already public in
+          # the repo, so nothing secret reaches the HTML.
+          #
+          # The rule, stated as what it actually guards: NEVER return anything from
+          # getStaticProps that is not already public. Server-side env vars and
+          # secrets in particular — they would be baked into world-readable static
+          # files, and unlike a NEXT_PUBLIC_ name, nothing in the name warns you.
           NEXT_PUBLIC_APP_URL: ${{ vars.NEXT_PUBLIC_APP_URL }}
           NEXT_PUBLIC_REDDIT_PIXEL_ID: ${{ vars.NEXT_PUBLIC_REDDIT_PIXEL_ID }}
           NEXT_PUBLIC_EXCHANGE_RATE_API_URL: ${{ vars.NEXT_PUBLIC_EXCHANGE_RATE_API_URL }}

@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 
+
 // Static-export mode, used only by the GitHub Pages build. Unset everywhere else,
 // so the production box keeps building exactly as before while both deployments
 // run in parallel (STATIC_FRONTEND_MIGRATION_PLAN.md, Phase 2 step 8).
@@ -120,6 +121,28 @@ const staticExportConfig = {
 
 const nextConfig = {
   reactStrictMode: false,
+
+  // Derive the build ID from the commit instead of letting Next generate a
+  // random one. Two reasons, both about being able to check what is live:
+  //
+  //  1. Reproducibility. The build ID names the asset directory
+  //     (_next/static/<buildId>/...), so a random one means two builds of the
+  //     SAME commit produce different paths and cannot be compared. Pinning it
+  //     to the sha is what makes "rebuild the tagged commit and diff it against
+  //     what stabledrop.me is serving" a check that can actually run — the
+  //     tamper-detection monitor depends on this.
+  //  2. Identifiability. The live asset path now states which commit built it,
+  //     without having to grep the bundle for an inlined version string.
+  //
+  // NEXT_PUBLIC_GIT_SHA is exported by both CI jobs (the box build sets it from
+  // env vars, the Pages build from `git rev-parse`). Returning null locally
+  // tells Next to fall back to its own random ID, so dev is unaffected.
+  //
+  // This puts the commit sha in asset URLs. It was already inlined in the
+  // bundle as NEXT_PUBLIC_GIT_SHA and reported by /api/config, so nothing new
+  // is disclosed.
+  generateBuildId: () => process.env.NEXT_PUBLIC_GIT_SHA || null,
+
   ...(isStaticExport ? staticExportConfig : serverOnlyConfig),
 };
 

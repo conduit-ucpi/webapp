@@ -152,3 +152,52 @@ When Phase 3 starts: move `factoryAddress` / `implementationAddress` out of
 `/api/config` and into build-time constants baked in by CI. Everything else in that
 endpoint (flags, gas settings, network params, token metadata) is fine to keep serving
 at runtime — worst case on compromise is a degraded UI, not a spoofed signature.
+
+---
+
+# Appendix B — Phase 2 validation result (2026-09-07)
+
+`https://pages.stabledrop.me` (GitHub Pages, static export) verified working
+against `https://api.stabledrop.me` (the box, via Caddy), end to end:
+
+- static assets, routing, SPA fallback for dynamic routes
+- CORS preflight and credentialed cross-origin calls
+- SIWE nonce → verify → AUTH-TOKEN cookie set by api.stabledrop.me
+- authenticated API calls from the Pages origin
+
+## Bugs this shook out
+
+1. **basePath.** `PAGES_BASE_PATH=/webapp` was still set when the custom domain
+   went live; the deployed HTML asked for `/webapp/_next/...` from a site served
+   at the root. Also: Next rejects `basePath: '/'`, which is the only way to say
+   "no prefix" in a GitHub Actions variable (empty values are refused), so
+   next.config.js normalises `/`, `null`, `NULL` and trailing slashes.
+2. **Reown CSP.** `secure.walletconnect.org` sends `frame-ancestors` built from
+   the project's domain allowlist. A new origin has to be added there and takes
+   time to propagate.
+3. **Relative fetch, two shapes.** Literal `fetch('/api/...')` (54 sites), and —
+   the one that actually bit — helpers taking a caller-supplied path and issuing
+   `fetch(url)`. The latter made `/api/auth/identity` 404 instead of 401, so the
+   "JWT expired, request a fresh signature" branch never ran and SIWE silently
+   never happened. Enforced now by
+   `__tests__/architecture/api-fetch-chokepoint.test.ts`.
+4. **Version reporting.** The drawer showed only the API's version, so a current
+   Pages build looked weeks stale. Client and API are now reported separately.
+
+## Known-not-working, and why it does not block cutover
+
+**Social login** (`secure.walletconnect.org` OAuth popup) times out on
+pages.stabledrop.me — the origin is not registered for Reown's OAuth callback.
+`stabledrop.me` has been allowlisted there for nine months, so this leg returns
+to a known-good origin at cutover. Wallet connection ("Advanced wallet
+connection") works on Pages and is what validated the API chain above.
+
+## Still to do before cutover
+
+- `api.stabledrop.me` proxies `webapp-prod`; `farcaster-test-*` tags deploy
+  `webapp-test`. Deploy the box with `cherry-v*`/`v*` so the API is current, or
+  repoint the Caddy block while testing.
+- Merge and deploy the caddy `api-stabledrop-me` branch (not yet on main).
+- Phase 3: factoryAddress/implementationAddress still come from /api/config
+  (see Appendix A) — the bytecode check is circular until they are build-time
+  constants.

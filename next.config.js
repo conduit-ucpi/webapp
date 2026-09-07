@@ -17,7 +17,11 @@ function normaliseBasePath(value) {
   // store an empty variable. Next rejects basePath '/' outright ("should not end
   // with /"), so it has to normalise to undefined, same as the repo's existing
   // 'null' convention.
-  if (!v || v === 'null' || v === 'undefined' || v === '/') return undefined;
+  // Case-insensitive: the repo's convention is lowercase 'null', but the value is
+  // typed by hand into a GitHub variable and 'NULL' would otherwise become a
+  // literal basePath of '/NULL'.
+  const lowered = v.toLowerCase();
+  if (!v || lowered === 'null' || lowered === 'undefined' || v === '/') return undefined;
   const withLeadingSlash = v.startsWith('/') ? v : `/${v}`;
   // A trailing slash is rejected for the same reason.
   return withLeadingSlash.replace(/\/+$/, '') || undefined;

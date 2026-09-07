@@ -7,6 +7,9 @@ on:
       - 'test*'
       - 'farcaster-test*'
       - 'cherry*'
+      # Client-only release: builds and publishes GitHub Pages WITHOUT touching
+      # any box. See the deploy-github-pages job for when to reach for it.
+      - 'pagesRelease-v*'
   # Manual runs deploy ONLY to GitHub Pages: the box job below is skipped for
   # workflow_dispatch. Lets the Pages build be exercised without shipping to
   # production, which a tag push would do (plan Phase 2 step 9).
@@ -16,7 +19,15 @@ jobs:
   build-and-deploy:
     # Tag pushes only. A manual run is for validating Pages in isolation and
     # must never touch the production box.
-    if: github.event_name != 'workflow_dispatch'
+    #
+    # pagesRelease-* is excluded for a sharper reason than "it is a client tag":
+    # the `environment:` expression below has no case for that prefix, so it
+    # would fall through to its `'test'` default and a client release would
+    # silently redeploy the TEST box. Excluding the tag here is what makes the
+    # client lane client-only.
+    if: >-
+      github.event_name != 'workflow_dispatch' &&
+      !startsWith(github.ref, 'refs/tags/pagesRelease-')
     runs-on: ubuntu-latest
     environment: ${{ startsWith(github.ref, 'refs/tags/v') && 'production' || startsWith(github.ref, 'refs/tags/cherry') && 'cherry' || startsWith(github.ref, 'refs/tags/test') && 'test' || startsWith(github.ref, 'refs/tags/farcaster-test') && 'test_on_prod' || 'test' }}
     permissions:
@@ -322,14 +333,15 @@ jobs:
           $SSH "chmod +x /dev/shm/deploy_script.sh && /dev/shm/deploy_script.sh && rm /dev/shm/deploy_script.sh"
 
   # ---------------------------------------------------------------------------
-  # GitHub Pages deploy — runs ALONGSIDE the box deploy above, not instead of it
-  # (STATIC_FRONTEND_MIGRATION_PLAN.md, Phase 2 step 8). Publishes the static
-  # export to the repo's Pages URL while stabledrop.me keeps being served from
-  # the box, so the two can be compared before any DNS change.
+  # GitHub Pages deploy — the client release, on its own tag. Publishes the
+  # static export to the repo's Pages URL while stabledrop.me keeps being served
+  # from the box, so the two can be compared before any DNS change
+  # (STATIC_FRONTEND_MIGRATION_PLAN.md, Phase 2 step 8).
   #
-  # Deliberately has no `needs:` on build-and-deploy: the two paths are
-  # independent, and a box deploy failure should not hide a Pages regression or
-  # vice versa.
+  # No `needs:` on build-and-deploy, and none is possible: the two jobs no longer
+  # share a trigger, so on any given run exactly one of them is live. Ordering
+  # between a client and an API release is now the tagger's, not the workflow's —
+  # see the `if:` below.
   #
   # The `github-pages` environment is what gates this on manual approval — add a
   # required reviewer to it in Settings > Environments. Required reviewers work
@@ -337,17 +349,27 @@ jobs:
   # the Team plan.
   # ---------------------------------------------------------------------------
   deploy-github-pages:
-    # cherry tags only (plus manual runs).
+    # pagesRelease-v* only (plus manual runs). The client and the box are now
+    # separate releases: pagesRelease-v* publishes Pages and touches no box,
+    # cherry-v* deploys webapp-prod and publishes nothing.
     #
-    # api.stabledrop.me proxies webapp-prod, and cherry-v* is the tag that
-    # deploys webapp-prod — so shipping Pages on the same trigger keeps the
-    # static frontend and the API it talks to on the same commit. Deploying
-    # Pages on test*/farcaster-test* would push the client ahead of an API that
-    # those tags do not touch (they deploy webapp-test), which is exactly the
-    # drift the Client/API version rows were added to expose.
+    # Pages deliberately does NOT ride cherry-v* any more. What it must not ride
+    # is test*/farcaster-test*, which deploy webapp-test: publishing the client
+    # on those would push it ahead of the webapp-prod API that api.stabledrop.me
+    # actually proxies. That is the drift the Client/API version rows expose, and
+    # a dedicated client tag cannot cause it — this job simply never runs on a
+    # box tag.
+    #
+    # The discipline this hands back to the release, since one tag no longer
+    # moves both: a change spanning client and API is TWO tags, API first.
+    # Tag cherry-v* and let webapp-prod come up serving the new endpoint, then
+    # tag pagesRelease-v* to publish the client that calls it. Reversing the
+    # order puts a bundle on Pages calling something that 404s until the box
+    # deploy lands. A client-only change (copy, styling, a fix inside the
+    # bundle) is just the one pagesRelease-v* tag.
     if: >-
       github.event_name == 'workflow_dispatch' ||
-      startsWith(github.ref, 'refs/tags/cherry')
+      startsWith(github.ref, 'refs/tags/pagesRelease-')
     runs-on: ubuntu-latest
     environment:
       name: github-pages

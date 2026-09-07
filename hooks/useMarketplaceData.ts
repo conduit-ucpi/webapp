@@ -1,4 +1,4 @@
-import { apiFetch } from '@/lib/apiFetch';
+import { apiFetch, apiUrl } from '@/lib/apiFetch';
 import { useCallback, useEffect, useState } from 'react';
 import type {
   MarketplaceRefreshResponse,
@@ -23,7 +23,7 @@ interface Fetched<T> {
 }
 
 async function getJson<T>(url: string): Promise<T> {
-  const response = await fetch(url);
+  const response = await fetch(apiUrl(url));
   const body = await response.json().catch(() => ({}));
   if (!response.ok) {
     throw new Error(body.error || `Request failed (${response.status})`);

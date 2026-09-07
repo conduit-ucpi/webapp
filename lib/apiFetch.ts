@@ -15,8 +15,14 @@
 /** '' on the box; the API origin for the static build. No trailing slash. */
 export const API_BASE = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
 
-/** Absolute URL for an API path. Pass paths beginning with '/api/'. */
+/**
+ * Absolute URL for an API path. Pass paths beginning with '/api/'.
+ *
+ * Already-absolute URLs pass through untouched, so this is safe to apply in
+ * helpers that take a caller-supplied url and may be handed either form.
+ */
 export function apiUrl(path: string): string {
+  if (/^https?:\/\//i.test(path)) return path;
   return `${API_BASE}${path}`;
 }
 

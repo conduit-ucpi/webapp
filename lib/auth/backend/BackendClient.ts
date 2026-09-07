@@ -2,7 +2,7 @@
  * Unified backend API client
  * Handles all HTTP communication with backend services
  */
-import { apiFetch } from '@/lib/apiFetch';
+import { apiFetch, apiUrl } from '@/lib/apiFetch';
 
 import { BackendAuthResult, AuthUser } from '../types';
 import { TokenManager } from '../core/TokenManager';
@@ -181,7 +181,7 @@ export class BackendClient {
       headers
     };
 
-    const response = await fetch(url, fetchOptions);
+    const response = await fetch(apiUrl(url), fetchOptions);
 
     // Detect expired JWT (backend session expired)
     if (response.status === 401) {

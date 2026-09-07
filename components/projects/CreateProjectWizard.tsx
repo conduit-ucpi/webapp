@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/apiFetch';
 import { useState } from 'react';
 import { useRouter } from 'next/router';
 import { useConfig } from '@/components/auth/ConfigProvider';
@@ -128,9 +129,8 @@ export default function CreateProjectWizard({ prefill, subcontract, intent = 'cr
   async function loadFeeQuote() {
     setFeeLoading(true);
     try {
-      const res = await fetch(
-        `/api/projects/fee-quote?amount=${encodeURIComponent(totalAmount)}&decimals=${decimals}`,
-        { credentials: 'include' }
+      const res = await apiFetch(
+        `/api/projects/fee-quote?amount=${encodeURIComponent(totalAmount)}&decimals=${decimals}`
       );
       if (res.ok) setFeeQuote(await res.json());
       else setFeeQuote(null);

@@ -7,7 +7,7 @@
  * - Web browsers: Use http-only cookies (secure, automatic)
  * - Farcaster frames: May need to use Authorization header with token if cookies don't work
  */
-import { apiFetch } from '@/lib/apiFetch';
+import { apiFetch, apiUrl } from '@/lib/apiFetch';
 
 import { mLog } from '../../utils/mobileLogger';
 
@@ -292,7 +292,7 @@ export class BackendAuth {
       headers
     };
     
-    return fetch(url, fetchOptions);
+    return fetch(apiUrl(url), fetchOptions);
   }
   
   /**

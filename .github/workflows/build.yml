@@ -7,9 +7,16 @@ on:
       - 'test*'
       - 'farcaster-test*'
       - 'cherry*'
+  # Manual runs deploy ONLY to GitHub Pages: the box job below is skipped for
+  # workflow_dispatch. Lets the Pages build be exercised without shipping to
+  # production, which a tag push would do (plan Phase 2 step 9).
+  workflow_dispatch:
 
 jobs:
   build-and-deploy:
+    # Tag pushes only. A manual run is for validating Pages in isolation and
+    # must never touch the production box.
+    if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
     environment: ${{ startsWith(github.ref, 'refs/tags/v') && 'production' || startsWith(github.ref, 'refs/tags/cherry') && 'cherry' || startsWith(github.ref, 'refs/tags/test') && 'test' || startsWith(github.ref, 'refs/tags/farcaster-test') && 'test_on_prod' || 'test' }}
     permissions:

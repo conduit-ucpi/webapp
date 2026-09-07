@@ -126,8 +126,18 @@ export class ReownWalletConnectProvider {
     this.appKit.updateOptions({ siwx })
   }
 
+  /*
+   * onramp is ON so AppKit's Account view (opened from /wallet via
+   * showWalletUI()) offers a Buy button for general top-ups. It is NOT the
+   * onramp used on any payment-critical path: paying a contract and "Add funds
+   * to this wallet" go through lib/coinbaseOnramp.ts instead, because that
+   * route presets a CRYPTO amount rather than fiat (Coinbase's fee comes out
+   * of a fiat preset, which then lands short of the escrow's >= activation
+   * gate) and hands the buyer back to the step they left via returnPath.
+   * AppKit's Buy does neither, so it stays out of those flows.
+   */
   private getFeaturesForMode(): Record<string, any> {
-    const base = { analytics: false, swaps: false, onramp: false }
+    const base = { analytics: false, swaps: false, onramp: true }
     switch (this.connectionMode) {
       case 'wallet-only':
         return { ...base, email: false, socials: false, allWallets: true, connectMethodsOrder: ['wallet'] }

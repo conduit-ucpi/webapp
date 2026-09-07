@@ -1,6 +1,7 @@
 /**
  * Simple Auth Provider that wraps the new auth system with config handling
  */
+import { apiFetch } from '@/lib/apiFetch';
 
 import React, { useState, useEffect } from 'react';
 import { AuthProvider as NewAuthProvider, useAuth as useNewAuth, BackendClient } from '@/lib/auth';
@@ -134,7 +135,7 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
               while (!userData && attempts < maxAttempts) {
                 attempts++;
                 try {
-                  const identityResponse = await fetch('/api/auth/identity', {
+                  const identityResponse = await apiFetch('/api/auth/identity', {
                     credentials: 'include' // Include cookies
                   });
 

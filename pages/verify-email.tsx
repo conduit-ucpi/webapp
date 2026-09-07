@@ -1,8 +1,9 @@
+import { apiFetch } from '@/lib/apiFetch';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import Skeleton from '@/components/ui/Skeleton';
-import { emailVerificationPageGate } from '@/utils/featureFlags';
+import { withFeatureGate } from '@/components/FeatureGate';
 
 type State = 'checking' | 'verified' | 'invalid' | 'expired' | 'error';
 
@@ -16,7 +17,7 @@ type State = 'checking' | 'verified' | 'invalid' | 'expired' | 'error';
  * Deliberately minimal and free of third-party resources, so the token in the
  * URL cannot leak through a referrer header to anyone else.
  */
-export default function VerifyEmailPage() {
+function VerifyEmailPage() {
   const router = useRouter();
   const [state, setState] = useState<State>('checking');
   const [message, setMessage] = useState('');
@@ -33,7 +34,7 @@ export default function VerifyEmailPage() {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch(`/api/email-verification/confirm?t=${encodeURIComponent(token)}`);
+        const res = await apiFetch(`/api/email-verification/confirm?t=${encodeURIComponent(token)}`);
         const data = await res.json();
         if (cancelled) return;
 
@@ -126,4 +127,5 @@ export default function VerifyEmailPage() {
 }
 
 // Behind the EMAIL_VERIFICATION_LIVE release flag: 404s unless the flag is on.
-export const getServerSideProps = emailVerificationPageGate;
+
+export default withFeatureGate('emailVerificationLive', VerifyEmailPage);

@@ -602,7 +602,7 @@ describe('AdminContractList', () => {
     });
 
     // Verify fetch was called with relative path for combined contracts
-    expect(mockFetch).toHaveBeenCalledWith('/api/admin/combined-contracts');
+    expect(mockFetch).toHaveBeenCalledWith('/api/admin/combined-contracts', expect.objectContaining({ credentials: 'include' }));
   });
 
   it('handles sorting by clicking on column headers', async () => {

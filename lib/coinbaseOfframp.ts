@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/apiFetch';
 import { buildCoinbaseReturnUrl, openCoinbasePayUrl } from '@/lib/coinbasePayWindow';
 
 const COINBASE_OFFRAMP_URL = 'https://pay.coinbase.com/v3/sell/input';
@@ -54,7 +55,7 @@ interface OfframpSessionResponse {
 async function fetchOfframpSession(
   params: OpenCoinbaseOfframpParams
 ): Promise<{ token: string; partnerUserRef: string }> {
-  const response = await fetch('/api/coinbase/offramp/session', {
+  const response = await apiFetch('/api/coinbase/offramp/session', {
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },

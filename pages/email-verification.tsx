@@ -1,10 +1,11 @@
+import { apiFetch } from '@/lib/apiFetch';
 import { useState } from 'react';
 import { useAuth } from '@/components/auth';
 import { useWallet } from '@/lib/auth/react/hooks/useWallet';
 import Button from '@/components/ui/Button';
 import ConnectWalletEmbedded from '@/components/auth/ConnectWalletEmbedded';
 import Skeleton from '@/components/ui/Skeleton';
-import { emailVerificationPageGate } from '@/utils/featureFlags';
+import { withFeatureGate } from '@/components/FeatureGate';
 
 type Stage = 'enter' | 'signing' | 'sent' | 'unsent';
 
@@ -41,7 +42,7 @@ async function describeFailure(res: Response, fallback: string): Promise<string>
   return detail ? `${detail} (${res.status})` : `${fallback} (${res.status})`;
 }
 
-export default function EmailVerificationPage() {
+function EmailVerificationPage() {
   const { isLoading, isConnected, address, user } = useAuth();
   const { signMessage } = useWallet();
 
@@ -58,7 +59,7 @@ export default function EmailVerificationPage() {
     setError(null);
     setBusy(true);
     try {
-      const res = await fetch('/api/email-verification/request', {
+      const res = await apiFetch('/api/email-verification/request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
@@ -84,7 +85,7 @@ export default function EmailVerificationPage() {
       // recovers a different address, which reads as a mismatched signer.
       const signature = await signMessage(data.message);
 
-      const signRes = await fetch('/api/email-verification/sign', {
+      const signRes = await apiFetch('/api/email-verification/sign', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ signature }),
@@ -106,7 +107,7 @@ export default function EmailVerificationPage() {
     setError(null);
     setBusy(true);
     try {
-      const res = await fetch('/api/email-verification/resend', {
+      const res = await apiFetch('/api/email-verification/resend', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: '{}',
@@ -229,4 +230,5 @@ export default function EmailVerificationPage() {
 }
 
 // Behind the EMAIL_VERIFICATION_LIVE release flag: 404s unless the flag is on.
-export const getServerSideProps = emailVerificationPageGate;
+
+export default withFeatureGate('emailVerificationLive', EmailVerificationPage);

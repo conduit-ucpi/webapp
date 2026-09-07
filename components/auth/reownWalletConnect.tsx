@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/apiFetch';
 import { createAppKit } from '@reown/appkit'
 import { EthersAdapter } from '@reown/appkit-adapter-ethers'
 import { mainnet, base, sepolia, baseSepolia } from '@reown/appkit/networks'
@@ -1066,7 +1067,7 @@ export class ReownWalletConnectProvider {
       console.log('🔧 ReownWalletConnect: Creating SIWE message manually', { address })
 
       // Step 1: Get a nonce from the backend
-      const nonceResponse = await fetch('/api/auth/siwe/nonce')
+      const nonceResponse = await apiFetch('/api/auth/siwe/nonce')
       if (!nonceResponse.ok) {
         console.error('🔧 ReownWalletConnect: Failed to get nonce')
         return false
@@ -1111,7 +1112,7 @@ Issued At: ${issuedAt}`
       console.log('🔧 ReownWalletConnect: Message signed by wallet')
 
       // Step 4: Send to backend for verification
-      const verifyResponse = await fetch('/api/auth/siwe/verify', {
+      const verifyResponse = await apiFetch('/api/auth/siwe/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

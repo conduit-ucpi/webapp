@@ -2,6 +2,8 @@
  * Mobile debugging logger that sends logs to backend
  * Used to debug mobile authentication flow issues
  */
+import { apiFetch } from '@/lib/apiFetch';
+
 
 interface LogEntry {
   timestamp: number;
@@ -119,7 +121,7 @@ class MobileLogger {
 
     try {
       // Send logs to backend
-      const response = await fetch('/api/debug/mobile-logs', {
+      const response = await apiFetch('/api/debug/mobile-logs', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

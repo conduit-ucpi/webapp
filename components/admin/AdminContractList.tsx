@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/apiFetch';
 import { useState, useEffect, useMemo } from 'react';
 import { PendingContract } from '@/types';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
@@ -52,7 +53,7 @@ export default function AdminContractList({ onContractSelect }: AdminContractLis
   const fetchContracts = async () => {
     try {
       // Fetch contracts from the new combined admin endpoint
-      const combinedResponse = await fetch('/api/admin/combined-contracts');
+      const combinedResponse = await apiFetch('/api/admin/combined-contracts');
       if (!combinedResponse.ok) {
         throw new Error('Failed to fetch contracts');
       }

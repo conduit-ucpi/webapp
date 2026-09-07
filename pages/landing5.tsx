@@ -7,6 +7,7 @@ import { GetStaticProps } from 'next';
 import { getSiteNameFromDomain } from '@/utils/siteName';
 import { motion } from 'framer-motion';
 import Fade from '@/components/ui/Fade';
+import { isr } from '@/utils/isr';
 
 // ---------------------------------------------------------------------------
 // Page-local button styles — protocol / terminal aesthetic
@@ -471,6 +472,6 @@ export default function Landing5() {
 export const getStaticProps: GetStaticProps = async () => {
   return {
     props: {},
-    revalidate: 3600,
+    ...isr(3600),
   };
 };

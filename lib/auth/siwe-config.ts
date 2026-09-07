@@ -6,6 +6,7 @@
  * - Works with ALL wallet types (MetaMask, WalletConnect, social login)
  * - Industry standard (EIP-4361) with better security
  */
+import { apiFetch } from '@/lib/apiFetch';
 
 import { createSIWEConfig } from '@reown/appkit-siwe'
 import { SIWE_STATEMENT } from './siwe-statement'
@@ -21,7 +22,7 @@ export function createAppKitSIWEConfig() {
     getNonce: async () => {
       try {
         console.log('🔐 SIWE: getNonce() called - fetching nonce from backend')
-        const response = await fetch('/api/auth/siwe/nonce')
+        const response = await apiFetch('/api/auth/siwe/nonce')
         if (!response.ok) {
           throw new Error(`Failed to get nonce: ${response.statusText}`)
         }
@@ -72,7 +73,7 @@ Issued At: ${issuedAt}`
           signaturePreview: signature.substring(0, 20) + '...'
         })
 
-        const response = await fetch('/api/auth/siwe/verify', {
+        const response = await apiFetch('/api/auth/siwe/verify', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ message, signature })
@@ -97,7 +98,7 @@ Issued At: ${issuedAt}`
     getSession: async () => {
       try {
         console.log('🔐 SIWE: getSession() called - checking for existing session')
-        const response = await fetch('/api/auth/siwe/session')
+        const response = await apiFetch('/api/auth/siwe/session')
         if (!response.ok) {
           console.log('🔐 SIWE: ℹ️  No active session found (status:', response.status + ')')
           return null
@@ -118,7 +119,7 @@ Issued At: ${issuedAt}`
       try {
         console.log('🔐 SIWE: signOut() called - clearing session')
 
-        await fetch('/api/auth/siwe/signout', { method: 'POST' })
+        await apiFetch('/api/auth/siwe/signout', { method: 'POST' })
 
         console.log('🔐 SIWE: ✅ Signed out successfully')
         return true

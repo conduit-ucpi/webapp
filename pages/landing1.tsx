@@ -5,6 +5,7 @@ import Button from '@/components/ui/Button';
 import SEO from '@/components/SEO';
 import { GetStaticProps } from 'next';
 import { getSiteNameFromDomain } from '@/utils/siteName';
+import { isr } from '@/utils/isr';
 
 export default function Landing1() {
   let user = null;
@@ -428,6 +429,6 @@ export default function Landing1() {
 export const getStaticProps: GetStaticProps = async () => {
   return {
     props: {},
-    revalidate: 3600, // Revalidate every hour
+    ...isr(3600), // Revalidate every hour
   };
 };

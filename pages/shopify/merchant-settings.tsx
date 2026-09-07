@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/apiFetch';
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import toast from 'react-hot-toast';
@@ -19,7 +20,7 @@ export default function MerchantSettings() {
   useEffect(() => {
     if (shop) {
       // Fetch existing settings
-      fetch(`/api/shopify/settings?shop=${encodeURIComponent(shop as string)}`)
+      apiFetch(`/api/shopify/settings?shop=${encodeURIComponent(shop as string)}`)
         .then(res => res.json())
         .then(data => {
           if (data.walletAddress) {
@@ -45,7 +46,7 @@ export default function MerchantSettings() {
     setIsLoading(true);
 
     try {
-      const response = await fetch(`/api/shopify/settings?shop=${encodeURIComponent(shop as string)}`, {
+      const response = await apiFetch(`/api/shopify/settings?shop=${encodeURIComponent(shop as string)}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

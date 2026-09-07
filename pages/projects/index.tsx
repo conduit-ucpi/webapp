@@ -10,9 +10,9 @@ import { StatusBadge, RoleBadges } from '@/components/projects/ProjectBadges';
 import ApprovalMeter from '@/components/projects/ApprovalMeter';
 import { ProjectNodeView } from '@/types/projects';
 import { formatTokenAmount } from '@/utils/projectMath';
-import { projectsPageGate } from '@/utils/featureFlags';
+import { withFeatureGate } from '@/components/FeatureGate';
 
-export default function ProjectsListPage() {
+function ProjectsListPage() {
   const { isLoading, isConnected, address, user, authenticatedFetch } = useAuth();
   const { config } = useConfig();
   const router = useRouter();
@@ -163,4 +163,5 @@ export default function ProjectsListPage() {
 }
 
 // Behind the PROJECTS_LIVE release flag: 404s unless the flag is on.
-export const getServerSideProps = projectsPageGate;
+
+export default withFeatureGate('projectsLive', ProjectsListPage);

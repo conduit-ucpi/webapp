@@ -4,8 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "prebuild": "npm run test-api-conformance || true",
+    "prebuild": "node scripts/generate-sitemap.js && (npm run test-api-conformance || true)",
     "build": "next build",
+    "prebuild:static": "npm run prebuild",
+    "build:static": "STATIC_EXPORT=true next build",
     "start": "next start",
     "lint": "next lint",
     "type-check": "tsc --noEmit",

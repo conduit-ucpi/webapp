@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/apiFetch';
 import { useState, useCallback } from 'react';
 
 export interface FarcasterUser {
@@ -53,7 +54,7 @@ export function useUserSearch(options: UseUserSearchOptions = {}): UseUserSearch
 
       setIsSearching(true);
       try {
-        const response = await fetch(`/api/users/search?q=${encodeURIComponent(query)}`);
+        const response = await apiFetch(`/api/users/search?q=${encodeURIComponent(query)}`);
         if (response.ok) {
           const data = await response.json();
           setResults(data.users || []);

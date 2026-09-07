@@ -6,6 +6,7 @@
  * - Better integration with AppKit
  * - Custom verifier calls our backend for authentication
  */
+import { apiFetch } from '@/lib/apiFetch';
 
 import { SIWXVerifier, DefaultSIWX } from '@reown/appkit-siwx'
 import type { SIWXSession } from '@reown/appkit-controllers'
@@ -114,7 +115,7 @@ class CustomBackendVerifier extends SIWXVerifier {
       })
 
       // Call our backend to verify the signature
-      const response = await fetch('/api/auth/siwe/verify', {
+      const response = await apiFetch('/api/auth/siwe/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message, signature })

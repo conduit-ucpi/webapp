@@ -296,3 +296,100 @@ jobs:
           # Copy script to remote tmpfs and execute
           retry 3 scp -o BatchMode=yes /tmp/deploy_script.sh gituser@${{ vars.VM_IP }}:/dev/shm/deploy_script.sh
           $SSH "chmod +x /dev/shm/deploy_script.sh && /dev/shm/deploy_script.sh && rm /dev/shm/deploy_script.sh"
+
+  # ---------------------------------------------------------------------------
+  # GitHub Pages deploy — runs ALONGSIDE the box deploy above, not instead of it
+  # (STATIC_FRONTEND_MIGRATION_PLAN.md, Phase 2 step 8). Publishes the static
+  # export to the repo's Pages URL while stabledrop.me keeps being served from
+  # the box, so the two can be compared before any DNS change.
+  #
+  # Deliberately has no `needs:` on build-and-deploy: the two paths are
+  # independent, and a box deploy failure should not hide a Pages regression or
+  # vice versa.
+  #
+  # The `github-pages` environment is what gates this on manual approval — add a
+  # required reviewer to it in Settings > Environments. Required reviewers work
+  # here because this repo is public; they are unavailable on private repos under
+  # the Team plan.
+  # ---------------------------------------------------------------------------
+  deploy-github-pages:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    # One Pages deployment at a time; never cancel a run that is mid-publish.
+    concurrency:
+      group: github-pages
+      cancel-in-progress: false
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build static export
+        env:
+          # STATIC_EXPORT flips next.config.js to `output: 'export'`. Without it
+          # this would build the standalone server bundle and there would be
+          # nothing in out/ to publish.
+          STATIC_EXPORT: 'true'
+
+          # The static bundle has no API of its own — every apiFetch() call is
+          # rewritten against this. Must point at the box (see the
+          # api.stabledrop.me block in the caddy repo). If unset the calls fall
+          # back to relative paths and 404 against Pages.
+          NEXT_PUBLIC_API_BASE_URL: ${{ vars.NEXT_PUBLIC_API_BASE_URL }}
+
+          # '/webapp' while validating on the default <org>.github.io/webapp URL;
+          # empty once a custom domain serves the site from its root.
+          NEXT_PUBLIC_BASE_PATH: ${{ vars.PAGES_BASE_PATH }}
+
+          # Only NEXT_PUBLIC_* vars are passed. Everything server-side stays out
+          # of this build on purpose: its output is published as world-readable
+          # static files, and Next inlines NEXT_PUBLIC_* into the client bundle.
+          # (Safe today because every getStaticProps here returns `props: {}`, so
+          # no build-time data reaches the HTML — keep it that way.)
+          NEXT_PUBLIC_APP_URL: ${{ vars.NEXT_PUBLIC_APP_URL }}
+          NEXT_PUBLIC_REDDIT_PIXEL_ID: ${{ vars.NEXT_PUBLIC_REDDIT_PIXEL_ID }}
+          NEXT_PUBLIC_EXCHANGE_RATE_API_URL: ${{ vars.NEXT_PUBLIC_EXCHANGE_RATE_API_URL }}
+          NEXT_PUBLIC_MOBILE_DEBUG_LOGGING: ${{ vars.NEXT_PUBLIC_MOBILE_DEBUG_LOGGING }}
+          NEXT_PUBLIC_EMBEDDED_SIWX: ${{ vars.NEXT_PUBLIC_EMBEDDED_SIWX }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${NEXT_PUBLIC_API_BASE_URL}" ]; then
+            echo "NEXT_PUBLIC_API_BASE_URL is not set — the published site would" >&2
+            echo "issue relative /api/* calls against Pages and every one would 404." >&2
+            exit 1
+          fi
+
+          npm ci --legacy-peer-deps
+          npm run build:static
+
+          # Client-side routing fallback. Pages serves 404.html for any path it
+          # has no file for; making it the app shell lets the router resolve
+          # dynamic routes such as /projects/<groupId>, which the export can only
+          # emit as a literal "[groupId]" directory.
+          cp out/index.html out/404.html
+
+          # Tells Pages to serve _next/* verbatim rather than running the paths
+          # through Jekyll, which ignores underscore-prefixed directories.
+          touch out/.nojekyll
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: out
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

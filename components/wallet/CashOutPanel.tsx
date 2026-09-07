@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/apiFetch';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import { ethers } from 'ethers';
@@ -229,7 +230,7 @@ export default function CashOutPanel({ walletAddress, balances, onSent }: CashOu
     const params = new URLSearchParams({ country });
     if (subdivision) params.set('subdivision', subdivision);
 
-    void fetch(`/api/coinbase/offramp/options?${params.toString()}`, { credentials: 'include' })
+    void apiFetch(`/api/coinbase/offramp/options?${params.toString()}`, { credentials: 'include' })
       .then(async r => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.json();
@@ -276,7 +277,7 @@ export default function CashOutPanel({ walletAddress, balances, onSent }: CashOu
     failed: boolean;
   }> => {
     try {
-      const response = await fetch('/api/coinbase/offramp/pending', { credentials: 'include' });
+      const response = await apiFetch('/api/coinbase/offramp/pending', { credentials: 'include' });
       if (!response.ok) {
         console.log(`${LOG} pending check failed: HTTP ${response.status}`);
         return { order: null, seen: [], failed: true };

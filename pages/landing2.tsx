@@ -8,6 +8,7 @@ import { getSiteNameFromDomain } from '@/utils/siteName';
 import { motion, useInView } from 'framer-motion';
 import { useRef, useEffect, useState, ReactNode } from 'react';
 import { ChevronDownIcon } from '@heroicons/react/24/outline';
+import { isr } from '@/utils/isr';
 
 // ---------------------------------------------------------------------------
 // Local helpers
@@ -435,6 +436,6 @@ export default function Landing2() {
 export const getStaticProps: GetStaticProps = async () => {
   return {
     props: {},
-    revalidate: 3600,
+    ...isr(3600),
   };
 };

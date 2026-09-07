@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/apiFetch';
 import { useState, useEffect, useMemo } from 'react';
 import { PendingContract } from '@/types';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
@@ -96,7 +97,7 @@ export default function AdminDatabaseList({ onContractSelect }: AdminDatabaseLis
     try {
       const { from, to } = getDateRange(dateRangeFilter);
       
-      const response = await fetch('/api/contracts/admin/database', {
+      const response = await apiFetch('/api/contracts/admin/database', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

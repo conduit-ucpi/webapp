@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/apiFetch';
 import {
   buildCoinbaseReturnUrl,
   openCoinbasePayUrl,
@@ -50,7 +51,7 @@ interface SessionTokenResponse {
 }
 
 async function fetchSessionToken(params: OpenCoinbaseOnrampParams): Promise<string> {
-  const response = await fetch('/api/coinbase/session-token', {
+  const response = await apiFetch('/api/coinbase/session-token', {
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },

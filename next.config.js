@@ -1,10 +1,23 @@
 /** @type {import('next').NextConfig} */
-const nextConfig = {
-  reactStrictMode: false,
+
+// Static-export mode, used only by the GitHub Pages build. Unset everywhere else,
+// so the production box keeps building exactly as before while both deployments
+// run in parallel (STATIC_FRONTEND_MIGRATION_PLAN.md, Phase 2 step 8).
+//
+// rewrites/redirects/headers are all server features: Next cannot apply them to a
+// static export, and GitHub Pages cannot set response headers at all. They are
+// omitted rather than left in place so the build fails loudly if that changes,
+// instead of silently dropping the frame-ancestors CSP.
+const isStaticExport = process.env.STATIC_EXPORT === 'true';
+
+function normaliseBasePath(value) {
+  if (!value || value === 'null' || value === 'undefined') return undefined;
+  return value.startsWith('/') ? value : `/${value}`;
+}
+
+const serverOnlyConfig = {
   output: 'standalone',
-  // No basePath for Farcaster miniapp - needs to be at root domain
-  // basePath: process.env.NEXT_PUBLIC_BASE_PATH === 'null' ? undefined : (process.env.NEXT_PUBLIC_BASE_PATH || '/webapp'),
-  
+
   // Rewrite .well-known/farcaster.json to dynamic API route
   async rewrites() {
     return [
@@ -35,14 +48,14 @@ const nextConfig = {
   async headers() {
     // Default frame ancestors for development and basic functionality
     const defaultFrameAncestors = "'self' https://warpcast.com https://*.farcaster.xyz https://farcaster.xyz";
-    
+
     // Check environment variable for additional allowed domains
     // Can be set to:
     // - Specific domains: "https://merchant1.com https://merchant2.com"
     // - Wildcard patterns: "https://*.wordpress.com https://*.shopify.com"
     // - '*' to allow all domains (use with caution)
     const allowedFrameAncestors = process.env.ALLOWED_FRAME_ANCESTORS;
-    
+
     let frameAncestorsValue;
     if (allowedFrameAncestors === '*') {
       // Allow all domains - removes frame-ancestors restriction entirely
@@ -71,6 +84,31 @@ const nextConfig = {
       }
     ]
   }
-}
+};
+
+const staticExportConfig = {
+  output: 'export',
+
+  // GitHub Pages resolves /foo by looking for /foo/index.html, which is what
+  // trailingSlash produces. Without it the export emits /foo.html and every
+  // route 404s on Pages.
+  trailingSlash: true,
+
+  // The export has no server, so there is no image optimiser to call.
+  images: { unoptimized: true },
+
+  // Empty for a custom domain (stabledrop.me); '/webapp' while validating on the
+  // default conduit-ucpi.github.io/webapp URL (Phase 2 step 9).
+  //
+  // The repo's convention is the literal string 'null' for "no basePath" (see
+  // .env.local and .env.example), which Next rejects as a path — normalise it and
+  // the empty string back to undefined.
+  basePath: normaliseBasePath(process.env.NEXT_PUBLIC_BASE_PATH),
+};
+
+const nextConfig = {
+  reactStrictMode: false,
+  ...(isStaticExport ? staticExportConfig : serverOnlyConfig),
+};
 
 module.exports = nextConfig

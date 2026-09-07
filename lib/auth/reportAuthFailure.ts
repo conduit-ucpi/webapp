@@ -5,6 +5,8 @@
  * report telemetry is non-fatal and intentionally swallowed — the user
  * already has bigger problems if telemetry can't reach the server.
  */
+import { apiFetch } from '@/lib/apiFetch';
+
 
 export type AuthFailureKindForTelemetry =
   | 'wallet-signing'
@@ -24,7 +26,7 @@ export function reportAuthFailure(
 ): void {
   if (typeof fetch === 'undefined') return;
   try {
-    void fetch('/api/telemetry/auth-failure', {
+    void apiFetch('/api/telemetry/auth-failure', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ kind, context, message }),

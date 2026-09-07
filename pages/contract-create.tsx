@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/apiFetch';
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
@@ -311,7 +312,7 @@ export default function ContractCreate() {
     if (shop) {
       console.log('ContractCreate: Creating Shopify order for shop:', shop);
       try {
-        const orderResponse = await fetch('/api/shopify/create-order', {
+        const orderResponse = await apiFetch('/api/shopify/create-order', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

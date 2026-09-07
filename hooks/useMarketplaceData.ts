@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/apiFetch';
 import { useCallback, useEffect, useState } from 'react';
 import type {
   MarketplaceRefreshResponse,
@@ -93,7 +94,7 @@ export function useRefreshFromChain(onRefreshed?: () => Promise<void> | void) {
     setRefreshing(true);
     setError(null);
     try {
-      const response = await fetch('/api/marketplace/refresh', { method: 'POST' });
+      const response = await apiFetch('/api/marketplace/refresh', { method: 'POST' });
       const body = (await response.json().catch(() => ({}))) as MarketplaceRefreshResponse;
       if (!response.ok || !body.success) {
         throw new Error(body.error || `Refresh failed (${response.status})`);

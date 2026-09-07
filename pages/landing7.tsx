@@ -7,6 +7,7 @@ import { financialServiceSchema, articleSchema } from '@/utils/structuredData';
 import { GetStaticProps } from 'next';
 import { getSiteNameFromDomain } from '@/utils/siteName';
 import { motion } from 'framer-motion';
+import { isr } from '@/utils/isr';
 
 // ---------------------------------------------------------------------------
 // Page
@@ -472,6 +473,6 @@ export default function Landing7() {
 export const getStaticProps: GetStaticProps = async () => {
   return {
     props: {},
-    revalidate: 3600,
+    ...isr(3600),
   };
 };

@@ -1,6 +1,7 @@
 /**
  * React Auth Provider - Main context provider for the reorganized auth system
  */
+import { apiFetch } from '@/lib/apiFetch';
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { AuthConfig, ProviderType } from '../types';
@@ -251,7 +252,7 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
 
       // SIWE handles authentication automatically during connection
       // Check if we have an active SIWE session
-      const sessionResponse = await fetch('/api/auth/siwe/session');
+      const sessionResponse = await apiFetch('/api/auth/siwe/session');
 
       if (sessionResponse.ok) {
         const sessionData = await sessionResponse.json();
@@ -308,7 +309,7 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
       }
 
       // Sign out from SIWE session (clears AUTH-TOKEN cookie)
-      await fetch('/api/auth/siwe/signout', { method: 'POST' });
+      await apiFetch('/api/auth/siwe/signout', { method: 'POST' });
 
       // Then disconnect auth manager
       await authManager.disconnect();
@@ -374,7 +375,7 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
         await new Promise(resolve => setTimeout(resolve, 2000));
 
         // Check if session was created
-        const sessionResponse = await fetch('/api/auth/siwe/session');
+        const sessionResponse = await apiFetch('/api/auth/siwe/session');
         if (sessionResponse.ok) {
           const sessionData = await sessionResponse.json();
           if (sessionData.address) {

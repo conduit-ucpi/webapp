@@ -167,7 +167,7 @@ describe('BackendSIWXMessenger - Mobile Device Detection', () => {
     expect(nonce).toBe('desktop-nonce-12345')
 
     // Verify backend was called
-    expect(global.fetch).toHaveBeenCalledWith('/api/auth/siwe/nonce')
+    expect(global.fetch).toHaveBeenCalledWith('/api/auth/siwe/nonce', expect.objectContaining({ credentials: 'include' }))
 
     console.log('✅ TEST PASSED: Desktop with embedded wallet uses SIWX headless signing')
 

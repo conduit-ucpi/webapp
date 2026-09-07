@@ -2,6 +2,7 @@
  * Unified backend API client
  * Handles all HTTP communication with backend services
  */
+import { apiFetch } from '@/lib/apiFetch';
 
 import { BackendAuthResult, AuthUser } from '../types';
 import { TokenManager } from '../core/TokenManager';
@@ -32,7 +33,7 @@ export class BackendClient {
     try {
       console.log('🔧 BackendClient: Attempting login with token');
 
-      const response = await fetch('/api/auth/login', {
+      const response = await apiFetch('/api/auth/login', {
         method: 'POST',
         credentials: 'include',
         headers: {
@@ -85,7 +86,7 @@ export class BackendClient {
       const token = this.tokenManager.getToken();
 
       if (token) {
-        await fetch('/api/auth/logout', {
+        await apiFetch('/api/auth/logout', {
           method: 'POST',
           credentials: 'include',
           headers: {
@@ -124,7 +125,7 @@ export class BackendClient {
         headers['Authorization'] = `Bearer ${token}`;
       }
 
-      const response = await fetch('/api/auth/identity', {
+      const response = await apiFetch('/api/auth/identity', {
         credentials: 'include', // Important: includes cookies (AUTH-TOKEN for SIWE)
         headers
       });

@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/apiFetch';
 import { useCallback } from 'react';
 import { ethers } from 'ethers';
 import { ERC20_ABI, ESCROW_CONTRACT_ABI, OFFER_VAULT_ABI } from '@/lib/web3';
@@ -99,7 +100,7 @@ export function useMarketplaceActions() {
    * until this executes. Re-read the state and re-render.
    */
   const seatDefaultArbiter = useCallback(async (escrowAddress: string): Promise<RelayedResult> => {
-    const response = await fetch('/api/chain/seat-default-arbiter', {
+    const response = await apiFetch('/api/chain/seat-default-arbiter', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ contractAddress: escrowAddress })
@@ -127,7 +128,7 @@ export function useMarketplaceActions() {
       holdback?: string;
       offerDurationSeconds?: number;
     }): Promise<CreateOfferResponse> => {
-      const response = await fetch('/api/chain/marketplace/create-offer', {
+      const response = await apiFetch('/api/chain/marketplace/create-offer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -193,7 +194,7 @@ export function useMarketplaceActions() {
 
       // 2. Open the offer. Moves nothing — see above. Relayed so the LP pays for one
       //    transaction rather than two.
-      const response = await fetch('/api/chain/marketplace/fund-offer', {
+      const response = await apiFetch('/api/chain/marketplace/fund-offer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ vaultAddress })
@@ -217,7 +218,7 @@ export function useMarketplaceActions() {
    * second half of `fundOffer` alone. Sending the transfer again would double the deposit.
    */
   const openFundedOffer = useCallback(async (vaultAddress: string): Promise<RelayedResult> => {
-    const response = await fetch('/api/chain/marketplace/fund-offer', {
+    const response = await apiFetch('/api/chain/marketplace/fund-offer', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ vaultAddress })

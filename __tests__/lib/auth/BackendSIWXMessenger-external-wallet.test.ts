@@ -105,7 +105,7 @@ describe('BackendSIWXMessenger - External Wallet Handling', () => {
     const nonce = await getNonceFn(mockInput)
 
     // ASSERT: Should call backend and return real nonce
-    expect(global.fetch).toHaveBeenCalledWith('/api/auth/siwe/nonce')
+    expect(global.fetch).toHaveBeenCalledWith('/api/auth/siwe/nonce', expect.objectContaining({ credentials: 'include' }))
     expect(nonce).toBe('real-backend-nonce-12345')
 
     // Cleanup
@@ -142,7 +142,7 @@ describe('BackendSIWXMessenger - External Wallet Handling', () => {
     const nonce = await getNonceFn(mockInput)
 
     // ASSERT: Should detect as embedded wallet and fetch real nonce
-    expect(global.fetch).toHaveBeenCalledWith('/api/auth/siwe/nonce')
+    expect(global.fetch).toHaveBeenCalledWith('/api/auth/siwe/nonce', expect.objectContaining({ credentials: 'include' }))
     expect(nonce).toBe('backend-nonce-from-storage-detection')
   })
 })

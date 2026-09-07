@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/apiFetch';
 import { useState, useEffect } from 'react';
 import Modal from '@/components/ui/Modal';
 import Button from '@/components/ui/Button';
@@ -86,7 +87,7 @@ export default function DisputeResolutionModal({
     setIsLoading(true);
     setError('');
     try {
-      const response = await fetch(`/api/admin/contracts/${contractId}/notes`, {
+      const response = await apiFetch(`/api/admin/contracts/${contractId}/notes`, {
         method: 'GET',
         credentials: 'include',
       });
@@ -131,7 +132,7 @@ export default function DisputeResolutionModal({
 
     try {
       // Add the note first
-      const noteResponse = await fetch(`/api/admin/contracts/${contractId}/notes`, {
+      const noteResponse = await apiFetch(`/api/admin/contracts/${contractId}/notes`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -154,7 +155,7 @@ export default function DisputeResolutionModal({
         const buyerActualAmount = Math.floor(totalAmount * buyerPercent / 100).toString();
         const sellerActualAmount = Math.floor(totalAmount * sellerPercent / 100).toString();
         
-        const resolutionResponse = await fetch(`/api/admin/contracts/${contractId}/resolve`, {
+        const resolutionResponse = await apiFetch(`/api/admin/contracts/${contractId}/resolve`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

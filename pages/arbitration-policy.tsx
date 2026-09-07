@@ -1,6 +1,7 @@
 import Layout from '@/components/layout/Layout'
 import SEO from '@/components/SEO'
 import { GetStaticProps } from 'next'
+import { isr } from '@/utils/isr';
 
 export default function ArbitrationPolicy() {
   // Comprehensive structured data for SEO and AI bots
@@ -338,6 +339,6 @@ export default function ArbitrationPolicy() {
 export const getStaticProps: GetStaticProps = async () => {
   return {
     props: {},
-    revalidate: 86400, // Revalidate daily
+    ...isr(86400), // Revalidate daily
   };
 };

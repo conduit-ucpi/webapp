@@ -6,11 +6,11 @@ import { SubcontractContext } from '@/hooks/useProjectCreation';
 import ConnectWalletEmbedded from '@/components/auth/ConnectWalletEmbedded';
 import Skeleton from '@/components/ui/Skeleton';
 import { ProjectTreeView } from '@/types/projects';
-import { projectsPageGate } from '@/utils/featureFlags';
+import { withFeatureGate } from '@/components/FeatureGate';
 
 type Intent = 'create' | 'clone' | 'subcontract';
 
-export default function CreateProjectPage() {
+function CreateProjectPage() {
   const { isLoading, isConnected, address, user, authenticatedFetch } = useAuth();
   const router = useRouter();
   const autoConnect = router.query.autoConnect === 'true';
@@ -160,4 +160,5 @@ function buildSubcontractPrefill(
 }
 
 // Behind the PROJECTS_LIVE release flag: 404s unless the flag is on.
-export const getServerSideProps = projectsPageGate;
+
+export default withFeatureGate('projectsLive', CreateProjectPage);

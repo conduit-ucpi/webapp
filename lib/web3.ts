@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/apiFetch';
 import { ethers } from 'ethers';
 import { Config } from '@/types';
 // WalletProvider removed - using ethers.BrowserProvider directly
@@ -1165,7 +1166,7 @@ export class Web3Service {
 
     // Step 4: Call chainservice to fund wallet
     console.log('Requesting wallet funding from chainservice...');
-    const fundResponse = await fetch('/api/chain/fund-wallet', {
+    const fundResponse = await apiFetch('/api/chain/fund-wallet', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',

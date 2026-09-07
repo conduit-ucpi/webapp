@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/apiFetch';
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from './SimpleAuthProvider';
@@ -53,7 +54,7 @@ export default function EmailPromptManager({ children }: { children: React.React
             try {
               setIsSubmitting(true);
 
-              const response = await fetch('/api/auth/update-email', {
+              const response = await apiFetch('/api/auth/update-email', {
                 method: 'PUT',
                 headers: {
                   'Content-Type': 'application/json',
@@ -112,7 +113,7 @@ export default function EmailPromptManager({ children }: { children: React.React
   const handleEmailSubmit = async (email: string) => {
     setIsSubmitting(true);
     try {
-      const response = await fetch('/api/auth/update-email', {
+      const response = await apiFetch('/api/auth/update-email', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

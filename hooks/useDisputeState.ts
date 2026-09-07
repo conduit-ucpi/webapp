@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/apiFetch';
 import { useCallback, useEffect, useState } from 'react';
 import { RpcClient, EscrowSettlementState } from '@/lib/rpc/RpcClient';
 import { useConfig } from '@/components/auth/ConfigProvider';
@@ -45,7 +46,7 @@ export function useArbiterState(contractAddress?: string | null): Fetched<Arbite
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`/api/chain/contract/${contractAddress}/arbiter`);
+      const response = await apiFetch(`/api/chain/contract/${contractAddress}/arbiter`);
       const body = await response.json();
       if (!response.ok) throw new Error(body.error || `Failed to read arbiter state (${response.status})`);
       setData(body as ArbiterState);

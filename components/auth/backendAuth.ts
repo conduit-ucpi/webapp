@@ -7,6 +7,7 @@
  * - Web browsers: Use http-only cookies (secure, automatic)
  * - Farcaster frames: May need to use Authorization header with token if cookies don't work
  */
+import { apiFetch } from '@/lib/apiFetch';
 
 import { mLog } from '../../utils/mobileLogger';
 
@@ -89,7 +90,7 @@ export class BackendAuth {
       this.authToken = token;
       mLog.debug('BackendAuth', 'Token stored for future requests');
 
-      const response = await fetch('/api/auth/login', {
+      const response = await apiFetch('/api/auth/login', {
         method: 'POST',
         credentials: 'include', // Include cookies if they work
         headers: {
@@ -169,7 +170,7 @@ export class BackendAuth {
   async logout(): Promise<void> {
     try {
       if (this.authToken) {
-        await fetch('/api/auth/logout', { 
+        await apiFetch('/api/auth/logout', { 
           method: 'POST',
           credentials: 'include',
           headers: {
@@ -228,7 +229,7 @@ export class BackendAuth {
     }
     
     try {
-      const response = await fetch('/api/auth/identity', {
+      const response = await apiFetch('/api/auth/identity', {
         credentials: 'include',
         headers: {
           'Authorization': `Bearer ${this.authToken}`

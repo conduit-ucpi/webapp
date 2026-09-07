@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/apiFetch';
 import { Fragment, useState } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { Contract, SubmitDisputeEntryRequest } from '@/types';
@@ -104,7 +105,7 @@ export default function DisputeManagementModal({ isOpen, onClose, contract, onRe
         refundPercent: figure
       };
 
-      const response = await fetch(`/api/contracts/${contract.id}/dispute`, {
+      const response = await apiFetch(`/api/contracts/${contract.id}/dispute`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(disputeEntry)

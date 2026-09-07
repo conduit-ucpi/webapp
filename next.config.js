@@ -11,8 +11,16 @@
 const isStaticExport = process.env.STATIC_EXPORT === 'true';
 
 function normaliseBasePath(value) {
-  if (!value || value === 'null' || value === 'undefined') return undefined;
-  return value.startsWith('/') ? value : `/${value}`;
+  if (!value) return undefined;
+  const v = value.trim();
+  // '/' is the value GitHub accepts when you mean "no prefix" — it refuses to
+  // store an empty variable. Next rejects basePath '/' outright ("should not end
+  // with /"), so it has to normalise to undefined, same as the repo's existing
+  // 'null' convention.
+  if (!v || v === 'null' || v === 'undefined' || v === '/') return undefined;
+  const withLeadingSlash = v.startsWith('/') ? v : `/${v}`;
+  // A trailing slash is rejected for the same reason.
+  return withLeadingSlash.replace(/\/+$/, '') || undefined;
 }
 
 const serverOnlyConfig = {

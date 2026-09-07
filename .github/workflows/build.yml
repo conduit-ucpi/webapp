@@ -82,6 +82,11 @@ jobs:
           # would return a matching pair and the check would compare its own
           # answer to itself. See lib/escrow/verifyEscrowClone.ts.
           NEXT_PUBLIC_ESCROW_IMPLEMENTATION_ADDRESS: ${{ vars.ESCROW_IMPLEMENTATION_ADDRESS }}
+          # The RPC escrow verification reads through. MUST be build-time: the
+          # app's own RPC endpoint comes from /api/config, so a compromised API
+          # could point verification at a node it controls and have it confirm
+          # whatever it liked. See lib/escrow/verificationRpc.ts.
+          NEXT_PUBLIC_RPC_URL: ${{ vars.RPC_URL }}
           NEXT_PUBLIC_GIT_TAG: ${{ env.GIT_TAG }}
           NEXT_PUBLIC_GIT_SHA: ${{ env.GIT_SHA }}
           NEXT_PUBLIC_BASE_PATH: ${{ vars.NEXT_PUBLIC_BASE_PATH }}
@@ -392,6 +397,11 @@ jobs:
           NEXT_PUBLIC_EXCHANGE_RATE_API_URL: ${{ vars.NEXT_PUBLIC_EXCHANGE_RATE_API_URL }}
           NEXT_PUBLIC_MOBILE_DEBUG_LOGGING: ${{ vars.NEXT_PUBLIC_MOBILE_DEBUG_LOGGING }}
           NEXT_PUBLIC_EMBEDDED_SIWX: ${{ vars.NEXT_PUBLIC_EMBEDDED_SIWX }}
+          # The RPC escrow verification reads through. MUST be build-time: the
+          # app's own RPC endpoint comes from /api/config, so a compromised API
+          # could point verification at a node it controls and have it confirm
+          # whatever it liked. See lib/escrow/verificationRpc.ts.
+          NEXT_PUBLIC_RPC_URL: ${{ vars.RPC_URL }}
           # The trust anchor for escrow verification. MUST be build-time
           # (NEXT_PUBLIC_*, inlined into the bundle) and MUST NOT be served from
           # /api/config: if the same API that supplies a clone address also
@@ -421,6 +431,15 @@ jobs:
           # fine and breaks at the worst moment. Note `vars` resolves against
           # THIS job's environment (github-pages), not cherry: the value has to
           # be set on github-pages specifically.
+          # Same reasoning: without a build-time RPC, verification has no
+          # independent view of the chain and refuses everything.
+          if [ -z "${NEXT_PUBLIC_RPC_URL}" ]; then
+            echo "NEXT_PUBLIC_RPC_URL is not set." >&2
+            echo "Set RPC_URL on the github-pages environment. Verification must" >&2
+            echo "read the chain through an endpoint the API cannot choose." >&2
+            exit 1
+          fi
+
           if [ -z "${NEXT_PUBLIC_ESCROW_IMPLEMENTATION_ADDRESS}" ]; then
             echo "NEXT_PUBLIC_ESCROW_IMPLEMENTATION_ADDRESS is not set." >&2
             echo "Set ESCROW_IMPLEMENTATION_ADDRESS on the github-pages environment." >&2

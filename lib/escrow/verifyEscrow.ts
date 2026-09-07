@@ -14,6 +14,7 @@
  * Fails closed throughout — a read error is a refusal, never a pass.
  */
 import { verifyEscrowAddress, CloneVerdict, CodeReader } from './verifyEscrowClone';
+import { getVerificationReader } from './verificationRpc';
 import {
   verifyEscrowTerms,
   ExpectedTerms,
@@ -29,17 +30,33 @@ export type EscrowVerdict =
   | { ok: true }
   | { ok: false; stage: 'bytecode' | 'terms'; detail: string };
 
+/**
+ * `reader` defaults to the build-time verification RPC. Pass one only in tests —
+ * handing in the application's RPC client would reintroduce the circularity
+ * described in verificationRpc.ts, since the API chooses that endpoint.
+ */
 export async function verifyEscrow(
   address: string,
-  reader: EscrowReader,
-  expected: ExpectedTerms
+  expected: ExpectedTerms,
+  reader?: EscrowReader
 ): Promise<EscrowVerdict> {
-  const code: CloneVerdict = await verifyEscrowAddress(address, reader);
+  const rpc = reader ?? getVerificationReader();
+  if (!rpc) {
+    return {
+      ok: false,
+      stage: 'bytecode',
+      detail:
+        'No build-time RPC endpoint is configured (NEXT_PUBLIC_RPC_URL), so the ' +
+        'contract cannot be independently verified. Refusing to proceed.',
+    };
+  }
+
+  const code: CloneVerdict = await verifyEscrowAddress(address, rpc);
   if (!code.ok) return { ok: false, stage: 'bytecode', detail: code.detail };
 
   let onChain: OnChainTerms;
   try {
-    onChain = await reader.getEscrowTerms(address);
+    onChain = await rpc.getEscrowTerms(address);
   } catch (error: any) {
     return {
       ok: false,

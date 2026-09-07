@@ -232,7 +232,9 @@ export default function ContractCreate() {
         // halves are checked: that the code is our implementation, and that the
         // buyer/seller/amount/token match what the user filled in. Read via our
         // RPC, never via the API, or the check would be circular. Fails closed.
-        const verdict = await verifyEscrow(createData.contractAddress, web3Service, {
+        // No reader passed: verification uses its own build-time RPC, not the
+        // application's, whose endpoint the API supplies.
+        const verdict = await verifyEscrow(createData.contractAddress, {
           buyer: address,
           seller: form.seller,
           amount: toMicroUSDC(parseFloat(form.amount.trim())),

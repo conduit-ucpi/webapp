@@ -31,13 +31,13 @@ beforeAll(() => {
 describe('verifyEscrow', () => {
   it('passes when the code is ours and the terms match', async () => {
     const r = readerWith(cloneOf(IMPL), goodTerms);
-    await expect(verifyEscrow(ADDR, r, expected)).resolves.toEqual({ ok: true });
+    await expect(verifyEscrow(ADDR, expected, r)).resolves.toEqual({ ok: true });
   });
 
   it('rejects a genuine clone carrying a swapped seller', async () => {
     // The attack bytecode verification alone cannot see.
     const r = readerWith(cloneOf(IMPL), { ...goodTerms, seller: ATTACKER });
-    const v = await verifyEscrow(ADDR, r, expected);
+    const v = await verifyEscrow(ADDR, expected, r);
     expect(v.ok).toBe(false);
     if (v.ok) throw new Error('unreachable');
     expect(v.stage).toBe('terms');
@@ -47,14 +47,14 @@ describe('verifyEscrow', () => {
   it('rejects correct terms on a contract that is not ours', async () => {
     // The attack terms verification alone cannot see.
     const r = readerWith(cloneOf(ATTACKER), goodTerms);
-    const v = await verifyEscrow(ADDR, r, expected);
+    const v = await verifyEscrow(ADDR, expected, r);
     expect(v.ok).toBe(false);
     if (!v.ok) expect(v.stage).toBe('bytecode');
   });
 
   it('does not read terms from a contract that failed bytecode verification', async () => {
     const r = readerWith('0x', goodTerms);
-    const v = await verifyEscrow(ADDR, r, expected);
+    const v = await verifyEscrow(ADDR, expected, r);
     expect(v.ok).toBe(false);
     expect(r.getEscrowTerms).not.toHaveBeenCalled();
   });
@@ -64,11 +64,28 @@ describe('verifyEscrow', () => {
       getCode: jest.fn().mockResolvedValue(cloneOf(IMPL)),
       getEscrowTerms: jest.fn().mockRejectedValue(new Error('rpc down')),
     };
-    const v = await verifyEscrow(ADDR, r, expected);
+    const v = await verifyEscrow(ADDR, expected, r);
     expect(v.ok).toBe(false);
     if (!v.ok) {
       expect(v.stage).toBe('terms');
       expect(v.detail).toContain('Refusing to proceed');
+    }
+  });
+
+  it('refuses when no build-time RPC is configured, rather than falling back', async () => {
+    // The fallback that must never exist: using the application's RPC, whose
+    // endpoint the API supplies, would make verification circular again.
+    const { __resetVerificationReader } = require('@/lib/escrow/verificationRpc');
+    const saved = process.env.NEXT_PUBLIC_RPC_URL;
+    delete process.env.NEXT_PUBLIC_RPC_URL;
+    __resetVerificationReader();
+    try {
+      const v = await verifyEscrow(ADDR, expected);
+      expect(v.ok).toBe(false);
+      if (!v.ok) expect(v.detail).toContain('NEXT_PUBLIC_RPC_URL');
+    } finally {
+      if (saved !== undefined) process.env.NEXT_PUBLIC_RPC_URL = saved;
+      __resetVerificationReader();
     }
   });
 });

@@ -1,10 +1,28 @@
+import { apiFetch } from '@/lib/apiFetch';
 import React, { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/router';
 import { useAuth } from './SimpleAuthProvider';
 import EmailCollection from './EmailCollection';
 import { isValidEmail } from '../../utils/validation';
 
+// Marketing pages are the visitor's first impression — the notification opt-in
+// is noise there. It still runs everywhere else (dashboard, contract flows),
+// where the user has context for what they'd be subscribing to.
+const NO_EMAIL_PROMPT_ROUTES = new Set([
+  '/',
+  '/landing1',
+  '/landing2',
+  '/landing3',
+  '/landing5',
+  '/landing6',
+  '/landing7',
+  '/merchant',
+]);
+
 export default function EmailPromptManager({ children }: { children: React.ReactNode }) {
   const { user, isLoading, refreshUserData, getProviderUserInfo } = useAuth();
+  const router = useRouter();
+  const suppressPrompt = NO_EMAIL_PROMPT_ROUTES.has(router.pathname);
   const [showEmailPrompt, setShowEmailPrompt] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const hasAttemptedAutoCollect = useRef(false);
@@ -36,7 +54,7 @@ export default function EmailPromptManager({ children }: { children: React.React
             try {
               setIsSubmitting(true);
 
-              const response = await fetch('/api/auth/update-email', {
+              const response = await apiFetch('/api/auth/update-email', {
                 method: 'PUT',
                 headers: {
                   'Content-Type': 'application/json',
@@ -95,7 +113,7 @@ export default function EmailPromptManager({ children }: { children: React.React
   const handleEmailSubmit = async (email: string) => {
     setIsSubmitting(true);
     try {
-      const response = await fetch('/api/auth/update-email', {
+      const response = await apiFetch('/api/auth/update-email', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -124,7 +142,7 @@ export default function EmailPromptManager({ children }: { children: React.React
 
   return (
     <>
-      {showEmailPrompt && (
+      {showEmailPrompt && !suppressPrompt && (
         <EmailCollection
           onEmailSubmit={handleEmailSubmit}
           onSkip={handleSkip}

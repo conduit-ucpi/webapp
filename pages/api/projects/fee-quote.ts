@@ -2,6 +2,7 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { requireAuth } from '@/utils/api-auth';
 import { fanoutChainServiceUrl, serviceHeaders } from '@/utils/projectsServer';
 import { toBaseUnits } from '@/utils/projectMath';
+import { blockedByProjectsFlag } from '@/utils/featureFlags';
 
 /**
  * GET /api/projects/fee-quote?amount=<human amount>&decimals=6
@@ -11,6 +12,9 @@ import { toBaseUnits } from '@/utils/projectMath';
  * only converts units. Returns { fee, netAmount } in base units.
  */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  // Behind the PROJECTS_LIVE release flag: 404s unless the flag is on.
+  if (blockedByProjectsFlag(req, res)) return;
+
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }

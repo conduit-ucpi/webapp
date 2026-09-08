@@ -98,6 +98,31 @@ export function detectUserCurrency(): string {
 }
 
 /**
+ * The user's ISO country code, guessed from the browser locale.
+ *
+ * A guess, not a fact — an expat with an en-US browser in London gets US. Every
+ * caller must therefore let the user correct it. It exists because Coinbase's
+ * cash-out options differ by country (only the US can pay out to a bank), and
+ * starting from the likely answer beats starting from a blank dropdown.
+ */
+export function detectUserCountry(): string | null {
+  if (typeof navigator === 'undefined') return null;
+
+  try {
+    const locale = navigator.language || (navigator as any).userLanguage || '';
+    const match = locale.match(/[-_]([A-Za-z]{2})$/);
+    return match ? match[1].toUpperCase() : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Every country the currency table knows about, for a "correct me" dropdown. */
+export function knownCountryCodes(): string[] {
+  return Object.keys(COUNTRY_TO_CURRENCY).sort();
+}
+
+/**
  * Get currency info by code
  */
 export function getCurrencyInfo(code: string): CurrencyInfo | undefined {

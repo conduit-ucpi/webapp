@@ -17,6 +17,25 @@ export function isValidWalletAddress(address: string): boolean {
 }
 
 /**
+ * Normalize an address to its EIP-55 checksummed form.
+ *
+ * Session/backend wallet addresses come back lower-cased, and downstream
+ * services (fanOutChainService) validate the checksum casing — so any address
+ * we send on must be re-checksummed first. Returns the input untouched if it
+ * isn't a valid address, leaving validation to isValidWalletAddress.
+ */
+export function toChecksumAddress(address: string): string;
+export function toChecksumAddress(address: string | null | undefined): string | null | undefined;
+export function toChecksumAddress(address: string | null | undefined): string | null | undefined {
+  if (!address) return address;
+  try {
+    return ethers.getAddress(address.trim());
+  } catch {
+    return address;
+  }
+}
+
+/**
  * Format wallet address for display (truncated with ellipsis)
  */
 export function formatWalletAddress(address: string): string {

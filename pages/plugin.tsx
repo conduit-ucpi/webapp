@@ -1,8 +1,8 @@
+import { lastTextChange } from '@/lib/server/lastTextChange';
 import { useState } from 'react'
 import Head from 'next/head'
 import { useConfig } from '../components/auth/ConfigProvider'
 import { getChainName } from '../utils/chainNames'
-import { formatDateTimeWithTZ, formatDate } from '../utils/validation'
 
 const sections = {
   faq: 'FAQ',
@@ -72,7 +72,18 @@ We've used https://solidityscan.com/quickscan to audit our contracts - you can t
   }
 ]
 
-export default function PluginPage() {
+/**
+ * Build-time only; Next strips getStaticProps and its imports from the client
+ * bundle. Both dated sections below shared one bug: `Date.now()` in the
+ * component body reported the build time as the revision date. One date for the
+ * page, because both sections live in this one file — see
+ * lib/server/lastTextChange.ts for the granularity caveat.
+ */
+export async function getStaticProps() {
+  return { props: { lastUpdated: lastTextChange('pages/plugin.tsx', '25 February 2026') } };
+}
+
+export default function PluginPage({ lastUpdated }: { lastUpdated: string }) {
   const [activeSection, setActiveSection] = useState<keyof typeof sections>('faq')
 
   return (
@@ -114,8 +125,8 @@ export default function PluginPage() {
             {/* Content */}
             <div className="px-6 py-8">
               {activeSection === 'faq' && <FAQSection />}
-              {activeSection === 'terms' && <TermsSection />}
-              {activeSection === 'privacy' && <PrivacySection />}
+              {activeSection === 'terms' && <TermsSection lastUpdated={lastUpdated} />}
+              {activeSection === 'privacy' && <PrivacySection lastUpdated={lastUpdated} />}
               {activeSection === 'arbitration' && <ArbitrationSection />}
             </div>
           </div>
@@ -162,13 +173,13 @@ function FAQSection() {
   )
 }
 
-function TermsSection() {
+function TermsSection({ lastUpdated }: { lastUpdated: string }) {
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold text-secondary-900 dark:text-white">Terms of Service</h2>
       <div className="prose max-w-none text-secondary-600 dark:text-secondary-300">
         <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-6">
-          <strong>Last Updated:</strong> {formatDateTimeWithTZ(Date.now())}
+          <strong>Last Updated:</strong> {lastUpdated}
         </p>
 
         <section className="mb-8">
@@ -249,13 +260,13 @@ function TermsSection() {
   )
 }
 
-function PrivacySection() {
+function PrivacySection({ lastUpdated }: { lastUpdated: string }) {
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold text-secondary-900 dark:text-white">Privacy Policy</h2>
       <div className="prose max-w-none text-secondary-600 dark:text-secondary-300">
         <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-6">
-          <strong>Last Updated:</strong> {formatDate(Date.now())}
+          <strong>Last Updated:</strong> {lastUpdated}
         </p>
 
         <section className="mb-8">

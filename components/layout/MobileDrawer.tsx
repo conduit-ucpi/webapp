@@ -20,11 +20,15 @@ import {
   PlayCircleIcon,
   Squares2X2Icon,
   BanknotesIcon,
+  ArrowsRightLeftIcon,
+  ArrowTrendingUpIcon,
+  EnvelopeIcon,
 } from '@heroicons/react/24/outline';
 import { useAuth } from '@/components/auth';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { getSiteNameFromDomain } from '@/utils/siteName';
 import ThemeToggle from '@/components/theme/ThemeToggle';
+import { CLIENT_GIT_TAG, CLIENT_GIT_SHA, formatVersion } from '@/lib/buildVersion';
 
 interface MobileDrawerProps {
   isOpen: boolean;
@@ -42,6 +46,8 @@ interface NavItem {
   icon: React.ComponentType<{ className?: string }>;
   requiresAuth?: boolean;
   isAdmin?: boolean;
+  // Static pages served from /public — need a full page load, not client-side routing
+  isStatic?: boolean;
 }
 
 export default function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
@@ -53,6 +59,10 @@ export default function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
   const isAuthenticated = isConnected;
   const isAdmin = (user as any)?.isAdmin;
   const canSwitchWallet = state?.providerName === 'web3auth';
+  const clientVersion = formatVersion(CLIENT_GIT_TAG, CLIENT_GIT_SHA);
+  const apiVersion = formatVersion(config?.gitTag, config?.gitSha);
+  const projectsLive = config?.projectsLive === true;
+  const emailVerificationLive = config?.emailVerificationLive === true;
 
   const navSections: NavSection[] = [
     {
@@ -74,10 +84,31 @@ export default function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
           icon: RectangleStackIcon,
           requiresAuth: true,
         },
+        // Behind the PROJECTS_LIVE release flag (served by /api/config).
+        ...(projectsLive
+          ? [
+              {
+                href: '/projects',
+                label: 'Projects',
+                icon: Squares2X2Icon,
+                requiresAuth: true,
+              },
+            ]
+          : []),
         {
-          href: '/projects',
-          label: 'Projects',
-          icon: Squares2X2Icon,
+          // The seller's side of the marketplace: payments owed to you, and any offers to pay
+          // you early (MARKETPLACE_OPENSPEC §15.6d).
+          href: '/offers',
+          label: 'Get Paid Early',
+          icon: BanknotesIcon,
+          requiresAuth: true,
+        },
+        {
+          // The LP's side. Its "Your offers" tab is where a lapsed or stale offer gets noticed —
+          // nothing on-chain announces that capital became withdrawable (§15.6f).
+          href: '/liquidity',
+          label: 'Liquidity',
+          icon: ArrowTrendingUpIcon,
           requiresAuth: true,
         },
         {
@@ -86,6 +117,17 @@ export default function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
           icon: WalletIcon,
           requiresAuth: true,
         },
+        // Behind the EMAIL_VERIFICATION_LIVE release flag (served by /api/config).
+        ...(emailVerificationLive
+          ? [
+              {
+                href: '/email-verification',
+                label: 'Verify Email',
+                icon: EnvelopeIcon,
+                requiresAuth: true,
+              },
+            ]
+          : []),
       ],
     },
     {
@@ -95,6 +137,18 @@ export default function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
           href: '/how-it-works',
           label: 'How It Works',
           icon: PlayCircleIcon,
+        },
+        {
+          href: '/stabledrop-payment-flow.html',
+          label: 'How a Payment Works',
+          icon: ArrowsRightLeftIcon,
+          isStatic: true,
+        },
+        {
+          href: '/stabledrop-liquid-flow.html',
+          label: 'How Liquid Funding Works',
+          icon: ArrowTrendingUpIcon,
+          isStatic: true,
         },
         {
           href: '/merchant-savings-calculator',
@@ -152,8 +206,12 @@ export default function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
     },
   ];
 
-  const handleNavigation = (href: string) => {
-    router.push(href);
+  const handleNavigation = (href: string, isStatic?: boolean) => {
+    if (isStatic) {
+      window.location.href = href;
+    } else {
+      router.push(href);
+    }
     onClose();
   };
 
@@ -185,13 +243,14 @@ export default function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
       return null;
     }
 
-    const active = isActive(item.href);
+    // Static pages live outside the Next router, so they never match a pathname
+    const active = !item.isStatic && isActive(item.href);
     const Icon = item.icon;
-    
+
     return (
       <button
         key={item.href}
-        onClick={() => handleNavigation(item.href)}
+        onClick={() => handleNavigation(item.href, item.isStatic)}
         className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors rounded-lg ${
           active
             ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300'
@@ -313,16 +372,20 @@ export default function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
                   ))}
                 </div>
 
-                {/* Version Info */}
-                {config && (config.gitTag || config.gitSha) && (
+                {/* Version Info — the frontend and the API are separate
+                    deployments and can drift, so both are always shown. Not
+                    collapsed when they agree: the point is being able to read
+                    off which half is which without having to remember whether a
+                    single row means "both" or "the API only". */}
+                {(clientVersion || apiVersion) && (
                   <div className="mb-3 px-2 py-1.5 bg-secondary-50 dark:bg-secondary-800 rounded text-xs text-secondary-500 dark:text-secondary-400">
                     <div className="flex items-center justify-between">
-                      <span className="font-medium">Version</span>
-                      <span className="font-mono">
-                        {config.gitTag && config.gitTag !== 'unknown' ? config.gitTag : ''}
-                        {config.gitTag && config.gitTag !== 'unknown' && config.gitSha && config.gitSha !== 'unknown' && ' • '}
-                        {config.gitSha && config.gitSha !== 'unknown' ? config.gitSha : ''}
-                      </span>
+                      <span className="font-medium">Client</span>
+                      <span className="font-mono">{clientVersion || 'unknown'}</span>
+                    </div>
+                    <div className="flex items-center justify-between mt-0.5">
+                      <span className="font-medium">API</span>
+                      <span className="font-mono">{apiVersion || 'unknown'}</span>
                     </div>
                   </div>
                 )}

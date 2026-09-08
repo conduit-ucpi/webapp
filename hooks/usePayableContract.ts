@@ -20,7 +20,8 @@ interface UsePayableContractResult {
  * connected, and validates it. Verbatim extraction of the prior inline effect.
  *
  * Returns a contractError (and leaves contract null) when the request is already
- * deployed ("already been paid"), expired, or the fetch fails. A zero
+ * expired, or the fetch fails. Whether it is already paid is a chain fact and
+ * is decided by the page, not here. A zero
  * expiryTimestamp is an instant payment and is NOT treated as expired.
  *
  * IMPORTANT: authenticatedFetch is intentionally NOT an effect dependency. Its
@@ -82,11 +83,17 @@ export function usePayableContract(params: UsePayableContractParams): UsePayable
         const contractData = await response.json();
 
         // Validate contract state.
-        if (contractData.contractAddress) {
-          setContractError('This payment request has already been paid.');
-          setIsLoadingContract(false);
-          return;
-        }
+        //
+        // Deliberately NOT deciding here whether the request is already paid.
+        // This endpoint returns the stored PendingContract, which carries no
+        // status field at all — only `state`, which is "OK" for everything. An
+        // earlier version read contractData.status, got undefined, and concluded
+        // from the presence of a chain address alone that the request was paid,
+        // which is exactly wrong for the case that matters: an escrow deployed
+        // and funded but not yet swept in.
+        //
+        // Whether the money has actually landed is a chain fact, so contract-pay
+        // reads it from the escrow itself.
 
         if (contractData.expiryTimestamp && contractData.expiryTimestamp !== 0) {
           const now = Math.floor(Date.now() / 1000);

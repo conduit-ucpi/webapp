@@ -12,6 +12,7 @@ import {
   Squares2X2Icon,
 } from '@heroicons/react/24/outline';
 import { useAuth } from '@/components/auth';
+import { useConfig } from '@/components/auth/ConfigProvider';
 
 interface FABAction {
   label: string;
@@ -24,6 +25,8 @@ export default function FloatingActionButton() {
   const [isOpen, setIsOpen] = useState(false);
   const router = useRouter();
   const { isConnected } = useAuth();
+  const { config } = useConfig();
+  const projectsLive = config?.projectsLive === true;
   // Show logged-in UI based ONLY on wallet connection (ignore backend auth entirely)
   const isAuthenticated = isConnected;
 
@@ -45,12 +48,17 @@ export default function FloatingActionButton() {
       icon: RectangleStackIcon,
       requiresAuth: true,
     },
-    {
-      label: 'Projects',
-      href: '/projects',
-      icon: Squares2X2Icon,
-      requiresAuth: true,
-    },
+    // Behind the PROJECTS_LIVE release flag (served by /api/config).
+    ...(projectsLive
+      ? [
+          {
+            label: 'Projects',
+            href: '/projects',
+            icon: Squares2X2Icon,
+            requiresAuth: true,
+          },
+        ]
+      : []),
     {
       label: 'Wallet',
       href: '/wallet',

@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/apiFetch';
 import { useState } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/components/auth';
@@ -43,7 +44,7 @@ export default function AdminPage() {
   const fetchDetailedContract = async (contractId: string) => {
     setIsLoadingDetails(true);
     try {
-      const response = await fetch(`/api/contracts/${contractId}`);
+      const response = await apiFetch(`/api/contracts/${contractId}`);
       if (!response.ok) {
         throw new Error('Failed to fetch contract details');
       }
@@ -60,7 +61,7 @@ export default function AdminPage() {
   const fetchRawContractData = async (contractId: string) => {
     setIsLoadingRawData(true);
     try {
-      const response = await fetch(`/api/admin/contracts/raw?contractId=${contractId}`);
+      const response = await apiFetch(`/api/admin/contracts/raw?contractId=${contractId}`);
       if (!response.ok) {
         throw new Error('Failed to fetch raw contract data');
       }

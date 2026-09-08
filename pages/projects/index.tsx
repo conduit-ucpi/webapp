@@ -7,14 +7,18 @@ import Button from '@/components/ui/Button';
 import Skeleton from '@/components/ui/Skeleton';
 import ConnectWalletEmbedded from '@/components/auth/ConnectWalletEmbedded';
 import { StatusBadge, RoleBadges } from '@/components/projects/ProjectBadges';
+import ApprovalMeter from '@/components/projects/ApprovalMeter';
 import { ProjectNodeView } from '@/types/projects';
+import { formatTokenAmount } from '@/utils/projectMath';
+import { withFeatureGate } from '@/components/FeatureGate';
 
-export default function ProjectsListPage() {
+function ProjectsListPage() {
   const { isLoading, isConnected, address, user, authenticatedFetch } = useAuth();
   const { config } = useConfig();
   const router = useRouter();
   const wallet = user?.walletAddress || address || '';
   const symbol = config?.tokenSymbol || 'USDC';
+  const decimals = config?.usdcDetails?.decimals ?? 6;
 
   const [projects, setProjects] = useState<ProjectNodeView[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -43,7 +47,13 @@ export default function ProjectsListPage() {
     return () => {
       cancelled = true;
     };
-  }, [isConnected, wallet, authenticatedFetch]);
+    // NOTE: authenticatedFetch is intentionally NOT a dependency. It comes from
+    // useSimpleEthers, which returns a fresh object each render; including the
+    // function identity re-fires this effect every render (refetch loop). The
+    // primitive deps below already capture every input that should re-trigger
+    // the fetch.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isConnected, wallet]);
 
   if (isLoading) {
     return (
@@ -58,8 +68,8 @@ export default function ProjectsListPage() {
   if (!isConnected || !address) {
     return (
       <div className="max-w-md mx-auto text-center py-20">
-        <h1 className="text-2xl font-bold text-secondary-900 mb-4">Connect Your Wallet</h1>
-        <p className="text-secondary-600 mb-6">Connect your wallet to see your projects.</p>
+        <h1 className="text-2xl font-bold text-secondary-900 dark:text-secondary-100 mb-4">Connect Your Wallet</h1>
+        <p className="text-secondary-600 dark:text-secondary-400 mb-6">Connect your wallet to see your projects.</p>
         <ConnectWalletEmbedded useSmartRouting={true} />
       </div>
     );
@@ -84,6 +94,17 @@ export default function ProjectsListPage() {
           {error}
         </div>
       )}
+
+      {(() => {
+        const needsYou = (projects ?? []).reduce((n, p) => n + (p.awaitingYouCount ?? 0), 0);
+        return needsYou > 0 ? (
+          <div className="mb-4 rounded-md border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 p-3 text-sm text-amber-800 dark:text-amber-200">
+            {needsYou} contract{needsYou === 1 ? '' : 's'} across your projects{' '}
+            {needsYou === 1 ? 'is' : 'are'} waiting for you to approve the terms. Nothing deploys
+            until every contract in a chain is approved.
+          </div>
+        ) : null;
+      })()}
 
       {projects === null ? (
         <div className="space-y-4">
@@ -110,10 +131,22 @@ export default function ProjectsListPage() {
                     <p className="font-medium text-secondary-900 dark:text-secondary-100 truncate">
                       {p.description || 'Untitled project'}
                     </p>
-                    <p className="text-sm text-secondary-500 mt-1">
-                      {symbol} {p.amount.toFixed(2)} · {p.recipients.length} recipient
+                    <p className="text-sm text-secondary-500 dark:text-secondary-400 mt-1">
+                      {symbol} {formatTokenAmount(p.amount, decimals)} · {p.recipients.length} recipient
                       {p.recipients.length === 1 ? '' : 's'}
+                      {((p.nodeCount ?? 1) > 1 || p.recipients.some((r) => r.childId || r.childGroupId)) && (
+                        <span className="ml-2 inline-flex items-center rounded bg-secondary-100 dark:bg-secondary-800 px-1.5 py-0.5 text-xs text-secondary-600 dark:text-secondary-300">
+                          ⑂ {(p.nodeCount ?? 1) > 1 ? `${p.nodeCount} contracts` : 'multi-tier'}
+                        </span>
+                      )}
                     </p>
+                    <ApprovalMeter
+                      className="mt-2"
+                      total={p.nodeCount}
+                      approved={p.approvedCount}
+                      deployed={p.deployedCount}
+                      awaitingYou={p.awaitingYouCount}
+                    />
                   </div>
                   <div className="flex flex-col items-end gap-2 shrink-0">
                     <StatusBadge status={p.chainState?.status ?? null} />
@@ -128,3 +161,7 @@ export default function ProjectsListPage() {
     </div>
   );
 }
+
+// Behind the PROJECTS_LIVE release flag: 404s unless the flag is on.
+
+export default withFeatureGate('projectsLive', ProjectsListPage);

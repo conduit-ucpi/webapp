@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/apiFetch';
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
@@ -26,6 +27,7 @@ import { getNetworkName } from '@/utils/networkUtils';
 import { detectDevice } from '@/utils/deviceDetection';
 import { buildWordPressStatusUrl as buildWpStatusUrl } from '@/utils/wordpressStatusUrl';
 import { safeRedirectUrl } from '@/utils/safeRedirect';
+import { verifyEscrow } from '@/lib/escrow/verifyEscrow';
 
 interface ContractCreateForm {
   seller: string;
@@ -219,10 +221,30 @@ export default function ContractCreate() {
         }
         const createData = await createResponse.json();
         console.log('ContractCreate: QR contract created:', createData);
+        const web3Service = await getWeb3Service();
         if (createData.transactionHash) {
-          const web3Service = await getWeb3Service();
           await web3Service.waitForTransaction(createData.transactionHash, 120000, contractId);
         }
+
+        // The address came from the API. Before it is used for anything, check
+        // it against the chain — a compromised API could hand back an address it
+        // controls, or a genuine clone deployed with someone else's terms. Both
+        // halves are checked: that the code is our implementation, and that the
+        // buyer/seller/amount/token match what the user filled in. Read via our
+        // RPC, never via the API, or the check would be circular. Fails closed.
+        // No reader passed: verification uses its own build-time RPC, not the
+        // application's, whose endpoint the API supplies.
+        const verdict = await verifyEscrow(createData.contractAddress, {
+          buyer: address,
+          seller: form.seller,
+          amount: toMicroUSDC(parseFloat(form.amount.trim())),
+          token: selectedTokenAddress,
+        });
+        if (!verdict.ok) {
+          console.error('ContractCreate: escrow verification FAILED', verdict);
+          throw new Error(`Refusing to continue: ${verdict.detail}`);
+        }
+
         return createData.contractAddress;
       } catch (error: any) {
         console.error('ContractCreate: Failed to create contract for QR:', error);
@@ -311,7 +333,7 @@ export default function ContractCreate() {
     if (shop) {
       console.log('ContractCreate: Creating Shopify order for shop:', shop);
       try {
-        const orderResponse = await fetch('/api/shopify/create-order', {
+        const orderResponse = await apiFetch('/api/shopify/create-order', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

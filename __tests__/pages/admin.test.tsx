@@ -494,7 +494,7 @@ describe('Contract Selection and Details', () => {
 
     // Wait for the error to be handled
     await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledWith('/api/admin/contracts/raw?contractId=test-contract');
+      expect(mockFetch).toHaveBeenCalledWith('/api/admin/contracts/raw?contractId=test-contract', expect.objectContaining({ credentials: 'include' }));
     });
   });
 
@@ -510,7 +510,7 @@ describe('Contract Selection and Details', () => {
 
     // Wait for the error to be handled
     await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledWith('/api/admin/contracts/raw?contractId=test-contract');
+      expect(mockFetch).toHaveBeenCalledWith('/api/admin/contracts/raw?contractId=test-contract', expect.objectContaining({ credentials: 'include' }));
     });
   });
 });

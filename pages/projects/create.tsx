@@ -6,10 +6,11 @@ import { SubcontractContext } from '@/hooks/useProjectCreation';
 import ConnectWalletEmbedded from '@/components/auth/ConnectWalletEmbedded';
 import Skeleton from '@/components/ui/Skeleton';
 import { ProjectTreeView } from '@/types/projects';
+import { withFeatureGate } from '@/components/FeatureGate';
 
 type Intent = 'create' | 'clone' | 'subcontract';
 
-export default function CreateProjectPage() {
+function CreateProjectPage() {
   const { isLoading, isConnected, address, user, authenticatedFetch } = useAuth();
   const router = useRouter();
   const autoConnect = router.query.autoConnect === 'true';
@@ -54,7 +55,13 @@ export default function CreateProjectPage() {
     return () => {
       cancelled = true;
     };
-  }, [cloneId, subGroupId, subNodeId, wallet, isConnected, authenticatedFetch]);
+    // NOTE: authenticatedFetch is intentionally NOT a dependency. It comes from
+    // useSimpleEthers, which returns a fresh object each render; including the
+    // function identity re-fires this effect every render (prefill reload loop).
+    // The primitive deps below already capture every input that should
+    // re-trigger the prefill fetch.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cloneId, subGroupId, subNodeId, wallet, isConnected]);
 
   if (isLoading) {
     return (
@@ -68,8 +75,8 @@ export default function CreateProjectPage() {
   if (!isConnected || !address) {
     return (
       <div className="max-w-md mx-auto text-center py-20">
-        <h1 className="text-2xl font-bold text-secondary-900 mb-4">Connect Your Wallet</h1>
-        <p className="text-secondary-600 mb-6">Connect your wallet to create a project.</p>
+        <h1 className="text-2xl font-bold text-secondary-900 dark:text-secondary-100 mb-4">Connect Your Wallet</h1>
+        <p className="text-secondary-600 dark:text-secondary-400 mb-6">Connect your wallet to create a project.</p>
         <ConnectWalletEmbedded useSmartRouting={true} autoConnect={autoConnect} />
       </div>
     );
@@ -107,14 +114,21 @@ export default function CreateProjectPage() {
 /** Clone: copy parties + splits (as percentages) from the source root. */
 function buildClonePrefill(tree: ProjectTreeView): ProjectPrefill {
   const root = tree.nodes.find((n) => n.depth === 0) || tree.nodes[0];
+  // The supplier's own slice (if any) feeds the wizard's fixed supplier row;
+  // everything else becomes an additional-recipient row.
+  const supplierSliceIndex = root.recipients.findIndex(
+    (r) => r.address?.toLowerCase() === root.sellerAddress.toLowerCase()
+  );
   return {
     sellerAddress: root.sellerAddress,
     verifierAddress: root.verifierAddress || undefined,
     description: root.description,
     totalAmount: String(root.amount),
     splitMode: 'percent',
+    supplierShare:
+      supplierSliceIndex >= 0 ? (root.recipients[supplierSliceIndex].bps / 100).toString() : undefined,
     recipients: root.recipients
-      .filter((r) => !!r.address)
+      .filter((r, i) => !!r.address && i !== supplierSliceIndex)
       .map((r) => ({ address: r.address as string, value: (r.bps / 100).toString(), email: '' })),
   };
 }
@@ -139,8 +153,12 @@ function buildSubcontractPrefill(
       description: `Subcontract of: ${node.description}`,
       totalAmount: sliceAmount.toFixed(2),
       splitMode: 'amount',
-      recipients: [{ address: '', value: '', email: '' }],
+      recipients: [],
     },
     sliceIndex,
   };
 }
+
+// Behind the PROJECTS_LIVE release flag: 404s unless the flag is on.
+
+export default withFeatureGate('projectsLive', CreateProjectPage);

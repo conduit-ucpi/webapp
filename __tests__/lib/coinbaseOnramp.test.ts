@@ -56,7 +56,7 @@ describe('openCoinbaseOnramp', () => {
 
   it('fetches a session token from the backend with credentials', async () => {
     mockDetectDevice.mockReturnValue(desktopDevice);
-    await openCoinbaseOnramp({ walletAddress: VALID_ADDRESS });
+    await openCoinbaseOnramp({ destinationAddress: VALID_ADDRESS });
 
     const fetchCall = (global.fetch as jest.Mock).mock.calls[0];
     expect(fetchCall[0]).toBe('/api/coinbase/session-token');
@@ -71,7 +71,7 @@ describe('openCoinbaseOnramp', () => {
 
   it('opens a popup on desktop with the sessionToken in the URL', async () => {
     mockDetectDevice.mockReturnValue(desktopDevice);
-    await openCoinbaseOnramp({ walletAddress: VALID_ADDRESS });
+    await openCoinbaseOnramp({ destinationAddress: VALID_ADDRESS });
 
     expect(openSpy).toHaveBeenCalledTimes(1);
     const [url, target, features] = openSpy.mock.calls[0];
@@ -87,7 +87,7 @@ describe('openCoinbaseOnramp', () => {
 
   it('redirects (not popup) on mobile to satisfy Apple Pay / KYC top-level context requirement', async () => {
     mockDetectDevice.mockReturnValue(mobileDevice);
-    await openCoinbaseOnramp({ walletAddress: VALID_ADDRESS });
+    await openCoinbaseOnramp({ destinationAddress: VALID_ADDRESS });
 
     expect(openSpy).not.toHaveBeenCalled();
     expect(assignSpy).toHaveBeenCalledTimes(1);
@@ -100,7 +100,7 @@ describe('openCoinbaseOnramp', () => {
     mockDetectDevice.mockReturnValue(desktopDevice);
     openSpy.mockReturnValue(null); // simulate blocked popup
 
-    await openCoinbaseOnramp({ walletAddress: VALID_ADDRESS });
+    await openCoinbaseOnramp({ destinationAddress: VALID_ADDRESS });
 
     expect(openSpy).toHaveBeenCalledTimes(1);
     expect(assignSpy).toHaveBeenCalledTimes(1);
@@ -115,7 +115,7 @@ describe('openCoinbaseOnramp', () => {
       json: async () => ({ error: 'Invalid session' }),
     });
 
-    await expect(openCoinbaseOnramp({ walletAddress: VALID_ADDRESS })).rejects.toThrow('Invalid session');
+    await expect(openCoinbaseOnramp({ destinationAddress: VALID_ADDRESS })).rejects.toThrow('Invalid session');
     expect(openSpy).not.toHaveBeenCalled();
   });
 
@@ -127,14 +127,92 @@ describe('openCoinbaseOnramp', () => {
       json: async () => ({}),
     });
 
-    await expect(openCoinbaseOnramp({ walletAddress: VALID_ADDRESS })).rejects.toThrow();
+    await expect(openCoinbaseOnramp({ destinationAddress: VALID_ADDRESS })).rejects.toThrow();
   });
 
   it('appends presetFiatAmount when provided', async () => {
     mockDetectDevice.mockReturnValue(desktopDevice);
-    await openCoinbaseOnramp({ walletAddress: VALID_ADDRESS, presetFiatAmount: 50 });
+    await openCoinbaseOnramp({ destinationAddress: VALID_ADDRESS, presetFiatAmount: 50 });
 
     const url = openSpy.mock.calls[0][0];
     expect(url).toContain('presetFiatAmount=50');
+  });
+
+  it('sends the user back to StableDrop via the return page, not straight to the app', async () => {
+    await openCoinbaseOnramp({ destinationAddress: '0xabc' });
+
+    const url = new URL(openSpy.mock.calls[0][0]);
+    const redirect = new URL(url.searchParams.get('redirectUrl') as string);
+
+    // Landing directly on an app page would leave desktop users looking at
+    // StableDrop inside a 500x700 popup with no way back to their payment.
+    expect(redirect.pathname).toBe('/onramp-return');
+    expect(redirect.origin).toBe(window.location.origin);
+  });
+
+  it('carries the page the user left so they are returned to their payment', async () => {
+    await openCoinbaseOnramp({ destinationAddress: '0xabc', returnPath: '/contract-pay?id=42' });
+
+    const url = new URL(openSpy.mock.calls[0][0]);
+    const redirect = new URL(url.searchParams.get('redirectUrl') as string);
+
+    expect(redirect.searchParams.get('return')).toBe('/contract-pay?id=42');
+  });
+
+  it('asks for the crypto amount received, not the fiat spent', async () => {
+    await openCoinbaseOnramp({ destinationAddress: '0xabc', presetCryptoAmount: 42.5 });
+
+    const url = new URL(openSpy.mock.calls[0][0]);
+    expect(url.searchParams.get('presetCryptoAmount')).toBe('42.5');
+    // Coinbase's fee comes out of a fiat sum, so presetting fiat delivers less
+    // crypto than asked for — and the escrow gate is a >= on the token balance.
+    expect(url.searchParams.get('presetFiatAmount')).toBeNull();
+  });
+
+  it('sends only one preset amount when both are supplied', async () => {
+    // Coinbase ignores presetFiatAmount when presetCryptoAmount is present;
+    // sending both invites a mismatch between what we asked and what we show.
+    await openCoinbaseOnramp({ destinationAddress: '0xabc', presetCryptoAmount: 10, presetFiatAmount: 99 });
+
+    const url = new URL(openSpy.mock.calls[0][0]);
+    expect(url.searchParams.get('presetCryptoAmount')).toBe('10');
+    expect(url.searchParams.get('presetFiatAmount')).toBeNull();
+  });
+
+  it('still supports a fiat amount when no crypto amount is given', async () => {
+    await openCoinbaseOnramp({ destinationAddress: '0xabc', presetFiatAmount: 25 });
+
+    const url = new URL(openSpy.mock.calls[0][0]);
+    expect(url.searchParams.get('presetFiatAmount')).toBe('25');
+  });
+
+  it('reports the popup closing so the caller can move the user on', async () => {
+    jest.useFakeTimers();
+    const fakePopup = { closed: false } as Window;
+    openSpy.mockReturnValue(fakePopup);
+    const onPopupClosed = jest.fn();
+
+    await openCoinbaseOnramp({ destinationAddress: VALID_ADDRESS, onPopupClosed });
+    expect(onPopupClosed).not.toHaveBeenCalled();
+
+    // However it closed — completed, cancelled, or dismissed — the money may
+    // have landed, so the caller needs to know.
+    (fakePopup as { closed: boolean }).closed = true;
+    jest.advanceTimersByTime(600);
+
+    expect(onPopupClosed).toHaveBeenCalledTimes(1);
+    jest.useRealTimers();
+  });
+
+  it('does not report a close while the popup is still open', async () => {
+    jest.useFakeTimers();
+    openSpy.mockReturnValue({ closed: false } as Window);
+    const onPopupClosed = jest.fn();
+
+    await openCoinbaseOnramp({ destinationAddress: VALID_ADDRESS, onPopupClosed });
+    jest.advanceTimersByTime(5000);
+
+    expect(onPopupClosed).not.toHaveBeenCalled();
+    jest.useRealTimers();
   });
 });

@@ -76,12 +76,35 @@ describe('usePayableContract', () => {
     expect(result.current.isLoadingContract).toBe(false);
   });
 
-  it('reports "already been paid" when the contract has a chain address', async () => {
-    authenticatedFetch.mockResolvedValue(ok({ ...validContract, contractAddress: '0xdeployed' }));
+  it('does not decide whether a deployed contract is already paid', async () => {
+    // This endpoint returns the stored record, which has no status field — only
+    // `state`, which is "OK" for everything. Guessing from the presence of a
+    // chain address called a funded-but-unswept escrow "paid" and hid the only
+    // route to the sweep. Whether the money landed is a chain fact, read by the
+    // page from the escrow itself.
+    const deployed = { ...validContract, chainAddress: '0xdeployed' };
+    authenticatedFetch.mockResolvedValue(ok(deployed));
+
     const { result } = renderHook(() => usePayableContract(params()));
-    await waitFor(() => expect(result.current.contractError).toBe('This payment request has already been paid.'));
-    expect(result.current.contract).toBeNull();
+
+    await waitFor(() => expect(result.current.contract).toEqual(deployed));
+    expect(result.current.contractError).toBeNull();
   });
+
+  it('lets a deployed contract through while it is still awaiting funds', async () => {
+    // The escrow exists but the money is not in it yet, or is in it unswept —
+    // both routes deploy first and fund after. Calling that "paid" stranded the
+    // payer with funds sitting in a contract and no way to reach the sweep.
+    const awaitingFunding = { ...validContract, chainAddress: '0xdeployed', status: 'AWAITING_FUNDING' };
+    authenticatedFetch.mockResolvedValue(ok(awaitingFunding));
+
+    const { result } = renderHook(() => usePayableContract(params()));
+
+    await waitFor(() => expect(result.current.contract).toEqual(awaitingFunding));
+    expect(result.current.contractError).toBeNull();
+  });
+
+
 
   it('reports "expired" when expiryTimestamp is in the past', async () => {
     authenticatedFetch.mockResolvedValue(ok({ ...validContract, expiryTimestamp: past }));

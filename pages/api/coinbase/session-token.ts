@@ -1,8 +1,13 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { generateJwt } from '@coinbase/cdp-sdk/auth';
 import { requireAuth } from '@/utils/api-auth';
+import {
+  cdpRequest,
+  extractClientIp,
+  fetchIdentity,
+  getCdpCredentials,
+  isValidEvmAddress,
+} from '@/lib/server/coinbaseCdp';
 
-const COINBASE_HOST = 'api.developer.coinbase.com';
 const COINBASE_PATH = '/onramp/v1/token';
 
 interface SessionTokenRequest {
@@ -16,60 +21,13 @@ interface CoinbaseTokenResponse {
   channel_id?: string;
 }
 
-function isValidEvmAddress(address: unknown): address is string {
-  return typeof address === 'string' && /^0x[a-fA-F0-9]{40}$/.test(address);
-}
-
-// Coinbase requires the originating user's IP for security validation:
-// the quote can only be redeemed by the same client. Behind Caddy, the socket
-// address is the proxy, so we must read forwarded headers first.
-function extractClientIp(req: NextApiRequest): string | null {
-  const forwardedFor = req.headers['x-forwarded-for'];
-  const xff = Array.isArray(forwardedFor) ? forwardedFor[0] : forwardedFor;
-  if (xff) {
-    const first = xff.split(',')[0]?.trim();
-    if (first) return normalizeIp(first);
-  }
-
-  const realIp = req.headers['x-real-ip'];
-  const xri = Array.isArray(realIp) ? realIp[0] : realIp;
-  if (xri) return normalizeIp(xri.trim());
-
-  const socketAddr = req.socket?.remoteAddress;
-  if (socketAddr) return normalizeIp(socketAddr);
-
-  return null;
-}
-
-function normalizeIp(ip: string): string {
-  return ip.startsWith('::ffff:') ? ip.slice('::ffff:'.length) : ip;
-}
-
-async function validateUserSession(req: NextApiRequest, authToken: string): Promise<boolean> {
-  if (!process.env.USER_SERVICE_URL) {
-    console.error('USER_SERVICE_URL not configured');
-    return false;
-  }
-
-  const response = await fetch(`${process.env.USER_SERVICE_URL}/api/user/identity`, {
-    headers: {
-      'Cookie': req.headers.cookie || '',
-      'Authorization': `Bearer ${authToken}`,
-    },
-  });
-
-  return response.ok;
-}
-
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const apiKeyId = process.env.COINBASE_API_KEY_ID;
-  const apiKeySecret = process.env.COINBASE_API_KEY_SECRET;
-
-  if (!apiKeyId || !apiKeySecret) {
+  const credentials = getCdpCredentials();
+  if (!credentials) {
     console.error('Coinbase API credentials not configured');
     return res.status(503).json({ error: 'Coinbase Onramp is not configured on this server' });
   }
@@ -81,8 +39,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(401).json({ error: 'Authentication required' });
   }
 
-  const sessionValid = await validateUserSession(req, authToken);
-  if (!sessionValid) {
+  const identity = await fetchIdentity(req, authToken);
+  if (!identity) {
     return res.status(401).json({ error: 'Invalid session' });
   }
 
@@ -99,26 +57,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const jwt = await generateJwt({
-      apiKeyId,
-      apiKeySecret,
-      requestMethod: 'POST',
-      requestHost: COINBASE_HOST,
-      requestPath: COINBASE_PATH,
-      expiresIn: 120,
-    });
-
-    const coinbaseResponse = await fetch(`https://${COINBASE_HOST}${COINBASE_PATH}`, {
+    const coinbaseResponse = await cdpRequest({
+      credentials,
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${jwt}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
+      path: COINBASE_PATH,
+      body: {
         addresses: [{ address, blockchains: [blockchain] }],
         assets: [asset],
         clientIp,
-      }),
+      },
     });
 
     const responseText = await coinbaseResponse.text();

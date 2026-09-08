@@ -1,2 +1,2 @@
-export { default } from './merchant';
-export { getStaticProps } from './merchant';
+export { default } from './landing7';
+export { getStaticProps } from './landing7';

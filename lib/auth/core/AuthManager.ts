@@ -10,6 +10,7 @@ import {
   AuthState,
   AuthUser
 } from '../types/unified-provider';
+import { buildAuthTokenMessage } from '../siwe-statement';
 import { ProviderRegistry } from './ProviderRegistry';
 import { TokenManager } from './TokenManager';
 import { mLog } from '../../../utils/mobileLogger';
@@ -179,6 +180,15 @@ export class AuthManager {
           providerName: provider.getProviderName(),
           capabilities: result.capabilities
         });
+      } else if (result.cancelled) {
+        // User dismissed the connect modal without choosing. Put the page back
+        // the way it was - no error, nothing to retry.
+        this.setState({
+          isLoading: false,
+          error: null
+        });
+
+        mLog.info('AuthManager', 'Connection cancelled by user');
       } else {
         this.setState({
           isLoading: false,
@@ -240,7 +250,7 @@ export class AuthManager {
     // Generate authentication message with timestamp and nonce
     const timestamp = Date.now();
     const nonce = Math.random().toString(36).substring(2, 15);
-    const message = `Authenticate wallet ${this.state.address} at ${timestamp} with nonce ${nonce}`;
+    const message = buildAuthTokenMessage({ address: this.state.address, timestamp, nonce });
 
     mLog.info('AuthManager', 'Signing message for backend authentication', {
       address: this.state.address,

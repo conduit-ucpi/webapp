@@ -2,6 +2,8 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { TokenDetails } from '../../types';
 import { TokenConfig, parseTokensFromEnv } from '../../types/tokens';
 import { RpcClient } from '../../lib/rpc/RpcClient';
+import { isProjectsLive, isEmailVerificationLive } from '../../utils/featureFlags';
+import { coinbaseNetworkForChainId } from '../../utils/coinbaseNetworks';
 
 // In-memory cache for config response
 let cachedConfig: { data: any; timestamp: number } | null = null;
@@ -148,8 +150,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const usdcDetails = supportedTokens.find(t => t.symbol === 'USDC') || null;
     const usdtDetails = supportedTokens.find(t => t.symbol === 'USDT') || null;
 
+    const chainId = parseInt(process.env.CHAIN_ID || '8453'); // Default: Base Mainnet
+
     const config = {
-      chainId: parseInt(process.env.CHAIN_ID || '8453'), // Default: Base Mainnet
+      chainId,
       rpcUrl: process.env.RPC_URL?.trim(),
       // New centralized token configuration
       supportedTokens: supportedTokens,
@@ -171,8 +175,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       contractServiceUrl: process.env.CONTRACT_SERVICE_URL,
       // Third-party services
       moonPayApiKey: process.env.MOONPAY_API_KEY,
-      onrampAppId: process.env.ONRAMP_APP_ID,
       coinbaseProjectId: process.env.COINBASE_PROJECT_ID,
+      // Derived from CHAIN_ID so there is one place to set the chain. The env var
+      // is an escape hatch only — for a chain we have not mapped yet, or if
+      // Coinbase renames one. Undefined for chains Coinbase does not support
+      // (including every testnet), which hides the cash-out UI.
+      coinbaseNetwork: process.env.COINBASE_NETWORK || coinbaseNetworkForChainId(chainId),
       walletConnectProjectId: process.env.WALLETCONNECT_PROJECT_ID,
       neynarApiKey: process.env.NEYNAR_API_KEY,
       // Gas configuration
@@ -187,6 +195,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       gasPriceBuffer: process.env.GAS_PRICE_BUFFER || '1',
       // UI configuration
       basePath,
+      // Release flags (see utils/featureFlags.ts) — the client reads them from here
+      projectsLive: isProjectsLive(),
+      emailVerificationLive: isEmailVerificationLive(),
       explorerBaseUrl: process.env.EXPLORER_BASE_URL,
       serviceLink: process.env.SERVICE_LINK || 'http://localhost:3000',
       // Optional wallet services configuration

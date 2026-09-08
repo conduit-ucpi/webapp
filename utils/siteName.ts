@@ -3,7 +3,7 @@
  */
 export function getSiteNameFromDomain(): string {
   if (typeof window === 'undefined') {
-    return 'Instant Escrow'; // Server-side default
+    return 'Stabledrop.me'; // Server-side default
   }
 
   const hostname = window.location.hostname.toLowerCase();
@@ -26,5 +26,5 @@ export function getSiteNameFromDomain(): string {
   }
 
   // Default fallback
-  return 'Instant Escrow';
+  return 'Stabledrop.me';
 }

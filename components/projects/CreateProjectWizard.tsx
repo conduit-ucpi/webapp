@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { apiFetch } from '@/lib/apiFetch';
+import { useState } from 'react';
 import { useRouter } from 'next/router';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { useAuth } from '@/components/auth';
@@ -11,20 +12,15 @@ import { useProjectCreation, SubcontractContext } from '@/hooks/useProjectCreati
 import { ProjectDraft } from '@/types/projects';
 import {
   isValidWalletAddress,
+  toChecksumAddress,
   isValidDescription,
   isValidAmount,
-  datetimeLocalToTimestamp,
-  timestampToDatetimeLocal,
-  getDefaultTimestamp,
-  getCurrentLocalDatetime,
-  formatDateTimeWithTZ,
-  getRelativeTime,
 } from '@/utils/validation';
 
 const steps: Step[] = [
-  { id: 'details', title: 'Project details', description: 'Supplier, verifier, deadline' },
+  { id: 'details', title: 'Project details', description: 'Supplier, verifier, description' },
   { id: 'recipients', title: 'Recipients & split', description: 'Who gets paid what' },
-  { id: 'review', title: 'Review & fund', description: 'Confirm and deposit' },
+  { id: 'review', title: 'Review & save', description: 'Save — deploy and fund later' },
 ];
 
 interface FeeQuote {
@@ -39,6 +35,9 @@ export interface ProjectPrefill {
   description?: string;
   totalAmount?: string;
   splitMode?: 'amount' | 'percent';
+  /** The supplier's own share of the split; empty = supplier not paid directly. */
+  supplierShare?: string;
+  /** Additional recipients beyond the supplier. */
   recipients?: RecipientRow[];
 }
 
@@ -55,11 +54,12 @@ export default function CreateProjectWizard({ prefill, subcontract, intent = 'cr
   const { config } = useConfig();
   const { user, address } = useAuth();
   const { showToast } = useToast();
-  const { state, createAndFund } = useProjectCreation();
+  const { state, createDraft } = useProjectCreation();
 
-  const buyerAddress = user?.walletAddress || address || '';
+  // Session wallet addresses arrive lower-cased; checksum them so anything we
+  // pass on (verifier default, on-chain calls) survives downstream validation.
+  const buyerAddress = toChecksumAddress(user?.walletAddress || address || '');
   const decimals = config?.usdcDetails?.decimals ?? 6;
-  const tokenAddress = config?.usdcContractAddress || '';
   const chainId = config?.chainId ? String(config.chainId) : '';
   const currencySymbol = config?.tokenSymbol || 'USDC';
 
@@ -67,24 +67,20 @@ export default function CreateProjectWizard({ prefill, subcontract, intent = 'cr
   const [sellerAddress, setSellerAddress] = useState(prefill?.sellerAddress || '');
   const [verifierAddress, setVerifierAddress] = useState(prefill?.verifierAddress || '');
   const [description, setDescription] = useState(prefill?.description || '');
-  const [expiryLocal, setExpiryLocal] = useState(timestampToDatetimeLocal(getDefaultTimestamp()));
   const [totalAmount, setTotalAmount] = useState(prefill?.totalAmount || '');
   const [splitMode, setSplitMode] = useState<'amount' | 'percent'>(prefill?.splitMode || 'amount');
-  const [rows, setRows] = useState<RecipientRow[]>(
-    prefill?.recipients || [{ address: '', value: '', email: '' }]
-  );
+  const [supplierShare, setSupplierShare] = useState(prefill?.supplierShare || '');
+  const [rows, setRows] = useState<RecipientRow[]>(prefill?.recipients || []);
   const [sellerEmail, setSellerEmail] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [rowErrors, setRowErrors] = useState<Record<number, string>>({});
   const [feeQuote, setFeeQuote] = useState<FeeQuote | null>(null);
   const [feeLoading, setFeeLoading] = useState(false);
 
-  // Default the verifier to the buyer (matches on-chain default; editable).
-  useEffect(() => {
-    if (!verifierAddress && buyerAddress) setVerifierAddress(buyerAddress);
-  }, [buyerAddress, verifierAddress]);
-
-  const expiryTimestamp = useMemo(() => datetimeLocalToTimestamp(expiryLocal), [expiryLocal]);
+  // The verifier is deliberately NOT pre-filled with the buyer. On-chain an unset
+  // verifier already defaults to the buyer, so pre-filling changes nothing mechanically
+  // but hides a real choice: nominating someone else is what keeps the escrow
+  // completable if the buyer goes silent.
 
   function validateDetails(): boolean {
     const e: Record<string, string> = {};
@@ -96,8 +92,6 @@ export default function CreateProjectWizard({ prefill, subcontract, intent = 'cr
     else if (verifierAddress && verifierAddress.toLowerCase() === sellerAddress.toLowerCase())
       e.verifierAddress = 'Verifier cannot be the supplier';
     if (!isValidDescription(description)) e.description = 'Enter a short description';
-    if (!expiryTimestamp || expiryTimestamp * 1000 <= Date.now())
-      e.expiry = 'Dispute deadline must be in the future';
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -108,14 +102,19 @@ export default function CreateProjectWizard({ prefill, subcontract, intent = 'cr
       if (!isValidWalletAddress(r.address)) re[i] = 'Invalid wallet address';
       else if (!(parseFloat(r.value) > 0)) re[i] = 'Share must be positive';
     });
+    const supplierPaid = parseFloat(supplierShare) > 0;
+    const e: Record<string, string> = {};
+    if (supplierShare && !supplierPaid) e.supplierShare = 'Share must be positive (or leave it empty)';
+    if (!supplierPaid && rows.length === 0)
+      e.supplierShare = 'Give the supplier a share or add a recipient';
+    if (rows.some((r) => r.address.toLowerCase() === sellerAddress.toLowerCase()))
+      showToast({ type: 'warning', title: 'Duplicate recipient', message: 'The supplier already has their own row above.' });
     const dupes = rows.filter((r, i) => rows.findIndex((o) => o.address.toLowerCase() === r.address.toLowerCase()) !== i);
     if (dupes.length) showToast({ type: 'warning', title: 'Duplicate recipient', message: 'The same wallet appears more than once.' });
     setRowErrors(re);
-    if (!isValidAmount(totalAmount)) {
-      setErrors((s) => ({ ...s, totalAmount: 'Enter a valid total amount' }));
-      return false;
-    }
-    return Object.keys(re).length === 0;
+    if (!isValidAmount(totalAmount)) e.totalAmount = 'Enter a valid total amount';
+    setErrors((s) => ({ ...s, totalAmount: '', supplierShare: '', ...e }));
+    return Object.keys(re).length === 0 && Object.keys(e).length === 0;
   }
 
   async function goNext() {
@@ -130,9 +129,8 @@ export default function CreateProjectWizard({ prefill, subcontract, intent = 'cr
   async function loadFeeQuote() {
     setFeeLoading(true);
     try {
-      const res = await fetch(
-        `/api/projects/fee-quote?amount=${encodeURIComponent(totalAmount)}&decimals=${decimals}`,
-        { credentials: 'include' }
+      const res = await apiFetch(
+        `/api/projects/fee-quote?amount=${encodeURIComponent(totalAmount)}&decimals=${decimals}`
       );
       if (res.ok) setFeeQuote(await res.json());
       else setFeeQuote(null);
@@ -145,56 +143,73 @@ export default function CreateProjectWizard({ prefill, subcontract, intent = 'cr
 
   function buildDraft(): ProjectDraft {
     return {
-      sellerAddress,
+      sellerAddress: toChecksumAddress(sellerAddress),
       sellerEmail: sellerEmail || null,
       buyerEmail: user?.email || null,
-      verifierAddress: verifierAddress || null,
+      buyerAddress,
+      // Blank means "the buyer verifies" — send the buyer's address explicitly rather
+      // than null. On-chain it makes no difference (an unset verifier defaults to the
+      // buyer), but contractfanoutservice's isParty() matches the caller's wallet
+      // against sellerAddress/buyerAddress/verifierAddress/recipients, and buyerAddress
+      // is null on a node until deploy. Sending null here locks the buyer out of their
+      // own tree with a 403 unless their account happens to carry a matching email.
+      verifierAddress: toChecksumAddress(verifierAddress || buyerAddress),
       totalAmount: parseFloat(totalAmount),
       currency: currencySymbol,
       currencySymbol,
-      expiryTimestamp,
       chainId,
       description,
       splitMode,
-      recipients: rows.map((r) => ({
-        address: r.address,
-        value: parseFloat(r.value),
-        email: r.email || null,
-      })),
+      // The supplier is the first payout slice whenever they take a share.
+      recipients: [
+        ...(parseFloat(supplierShare) > 0
+          ? [{ address: toChecksumAddress(sellerAddress), value: parseFloat(supplierShare), email: sellerEmail || null }]
+          : []),
+        ...rows.map((r) => ({
+          address: toChecksumAddress(r.address),
+          value: parseFloat(r.value),
+          email: r.email || null,
+        })),
+      ],
       serviceLink: typeof window !== 'undefined' ? window.location.origin : '',
     };
   }
 
-  async function handleFund() {
+  async function handleSave() {
     try {
-      const amountBaseUnits = toBaseUnitsClient(parseFloat(totalAmount), decimals);
-      const groupId = await createAndFund(
-        buildDraft(),
-        { tokenAddress, chainId, buyerAddress, tokenDecimals: decimals, amountBaseUnits },
-        subcontract
-      );
-      showToast({ type: 'success', title: 'Project funded', message: 'Your project is live.' });
+      const groupId = await createDraft(buildDraft(), subcontract);
+      showToast({
+        type: 'success',
+        title: 'Project saved',
+        message: 'Deploy it on-chain when you are ready.',
+      });
       router.push(`/projects/${groupId}`);
     } catch (e) {
-      showToast({ type: 'error', title: 'Could not complete', message: e instanceof Error ? e.message : 'Unknown error' });
+      showToast({ type: 'error', title: 'Could not save', message: e instanceof Error ? e.message : 'Unknown error' });
     }
   }
 
-  const busy = ['creating', 'deploying', 'approving', 'funding'].includes(state.stage);
+  const busy = state.stage === 'creating';
 
   return (
     <Wizard steps={steps} currentStep={currentStep} className="px-4">
       {intent !== 'create' && (
         <div className="max-w-2xl mx-auto mb-6 rounded-md bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 p-3 text-sm text-blue-800 dark:text-blue-200">
           {intent === 'clone'
-            ? 'Cloning an existing project — parties and splits are pre-filled. Set a new amount (try a small "test run" first to prove the flow) and a new dispute deadline.'
+            ? 'Cloning an existing project — parties and splits are pre-filled. Set a new amount (try a small "test run" first to prove the flow).'
             : 'Subcontracting a slice — this creates a new linked project you fund yourself. The parent payout is unchanged.'}
         </div>
       )}
 
       {currentStep === 0 && (
-        <WizardStep>
+        <WizardStep className="dark:bg-secondary-900 dark:border-secondary-700">
           <div className="space-y-5 max-w-2xl mx-auto">
+            <div className="rounded-md bg-secondary-50 dark:bg-secondary-800/50 border border-secondary-200 dark:border-secondary-700 p-3 text-sm text-secondary-700 dark:text-secondary-300">
+              You are the <strong>buyer</strong>: this project will be funded from your connected
+              wallet ({buyerAddress.slice(0, 6)}…{buyerAddress.slice(-4)}). Nothing is committed
+              yet — this wizard saves the project, and you deploy it on-chain and deposit the funds
+              afterwards, from the project&apos;s own page.
+            </div>
             <Input
               label="Supplier (seller) wallet address"
               placeholder="0x… — who does or coordinates the work"
@@ -203,8 +218,9 @@ export default function CreateProjectWizard({ prefill, subcontract, intent = 'cr
               error={errors.sellerAddress}
             />
             <Input
-              label="Verifier wallet address"
-              helpText="Confirms completion on your behalf. Defaults to you; cannot be the supplier."
+              label="Verifier wallet address (optional)"
+              placeholder={`Defaults to you (${buyerAddress.slice(0, 6)}…${buyerAddress.slice(-4)})`}
+              helpText="Who signs off that the work is done. Leave blank to do it yourself. Naming someone else means the project can still complete if you are unavailable. Cannot be the supplier."
               value={verifierAddress}
               onChange={(e) => setVerifierAddress(e.target.value)}
               error={errors.verifierAddress}
@@ -216,26 +232,12 @@ export default function CreateProjectWizard({ prefill, subcontract, intent = 'cr
               onChange={(e) => setDescription(e.target.value)}
               error={errors.description}
             />
-            <Input
-              label="Dispute deadline"
-              type="datetime-local"
-              helpText="Your only window to raise a dispute. Funds do NOT auto-release at this time — after it, you can no longer dispute."
-              value={expiryLocal}
-              min={getCurrentLocalDatetime()}
-              onChange={(e) => setExpiryLocal(e.target.value)}
-              error={errors.expiry}
-            />
-            {expiryTimestamp > 0 && (
-              <p className="text-sm text-secondary-500">
-                {formatDateTimeWithTZ(expiryTimestamp)} ({getRelativeTime(expiryTimestamp)})
-              </p>
-            )}
           </div>
         </WizardStep>
       )}
 
       {currentStep === 1 && (
-        <WizardStep>
+        <WizardStep className="dark:bg-secondary-900 dark:border-secondary-700">
           <div className="space-y-5 max-w-3xl mx-auto">
             <Input
               label={`Total amount (${currencySymbol})`}
@@ -250,6 +252,10 @@ export default function CreateProjectWizard({ prefill, subcontract, intent = 'cr
               onModeChange={setSplitMode}
               total={totalAmount}
               currencySymbol={currencySymbol}
+              supplierAddress={sellerAddress}
+              supplierValue={supplierShare}
+              onSupplierValueChange={setSupplierShare}
+              supplierError={errors.supplierShare || undefined}
               rows={rows}
               onChange={setRows}
               errors={rowErrors}
@@ -265,14 +271,14 @@ export default function CreateProjectWizard({ prefill, subcontract, intent = 'cr
       )}
 
       {currentStep === 2 && (
-        <WizardStep>
+        <WizardStep className="dark:bg-secondary-900 dark:border-secondary-700">
           <div className="space-y-4 max-w-2xl mx-auto">
             <h3 className="text-lg font-semibold">Review</h3>
             <dl className="divide-y divide-secondary-200 dark:divide-secondary-700 text-sm">
+              <Row label="Funded by" value={`You (buyer) — ${buyerAddress}`} />
               <Row label="Supplier" value={sellerAddress} />
               <Row label="Verifier" value={verifierAddress || buyerAddress} />
               <Row label="Description" value={description} />
-              <Row label="Dispute deadline" value={`${formatDateTimeWithTZ(expiryTimestamp)}`} />
               <Row label="Total" value={`${currencySymbol} ${parseFloat(totalAmount || '0').toFixed(2)}`} />
               <Row
                 label="Platform fee (1%)"
@@ -285,12 +291,17 @@ export default function CreateProjectWizard({ prefill, subcontract, intent = 'cr
                 }
               />
             </dl>
+            <div className="rounded-md bg-secondary-50 dark:bg-secondary-800/50 border border-secondary-200 dark:border-secondary-700 p-3 text-sm text-secondary-700 dark:text-secondary-300">
+              Saving records this project off-chain only — no gas, no deposit, nothing on-chain
+              yet. From the project page you can then deploy the escrow and fund it.
+            </div>
             <div className="rounded-md bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 p-3 text-sm text-amber-800 dark:text-amber-200">
-              Funds are released only when the verifier confirms completion. If the supplier goes
-              silent after the dispute deadline, you can no longer dispute — set a comfortable deadline.
+              Once funded, money is released only when the verifier confirms completion — never
+              automatically, and never on a timer. You can raise a dispute at any point until that
+              happens.
             </div>
             {state.stage !== 'idle' && (
-              <p className="text-sm text-secondary-500">Status: {stageLabel(state.stage)}</p>
+              <p className="text-sm text-secondary-500 dark:text-secondary-400">Status: {stageLabel(state.stage)}</p>
             )}
           </div>
         </WizardStep>
@@ -301,8 +312,8 @@ export default function CreateProjectWizard({ prefill, subcontract, intent = 'cr
           currentStep={currentStep}
           totalSteps={steps.length}
           onPrevious={() => setCurrentStep((s) => Math.max(s - 1, 0))}
-          onNext={currentStep < steps.length - 1 ? goNext : handleFund}
-          nextLabel={currentStep < steps.length - 1 ? 'Continue' : 'Create & fund'}
+          onNext={currentStep < steps.length - 1 ? goNext : handleSave}
+          nextLabel={currentStep < steps.length - 1 ? 'Continue' : 'Save project'}
           isNextLoading={busy || feeLoading}
           isNextDisabled={busy}
         />
@@ -314,7 +325,7 @@ export default function CreateProjectWizard({ prefill, subcontract, intent = 'cr
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between gap-4 py-2">
-      <dt className="text-secondary-500">{label}</dt>
+      <dt className="text-secondary-500 dark:text-secondary-400">{label}</dt>
       <dd className="text-secondary-900 dark:text-secondary-100 text-right break-all">{value}</dd>
     </div>
   );
@@ -323,22 +334,14 @@ function Row({ label, value }: { label: string; value: string }) {
 function stageLabel(stage: string): string {
   switch (stage) {
     case 'creating': return 'Saving project…';
-    case 'deploying': return 'Deploying on-chain…';
-    case 'approving': return 'Awaiting your approval signature…';
-    case 'funding': return 'Depositing funds…';
-    case 'done': return 'Done';
+    case 'done': return 'Saved';
     case 'error': return 'Error — you can retry';
     default: return stage;
   }
 }
 
-// Client-side unit helpers: DISPLAY ONLY (approval amount + review figures).
-// The authoritative conversions run server-side in projectMath.
-function toBaseUnitsClient(amount: number, decimals: number): string {
-  const fixed = amount.toFixed(decimals);
-  const [whole, frac = ''] = fixed.split('.');
-  return (BigInt(whole + frac.padEnd(decimals, '0'))).toString();
-}
+// Client-side unit helper: DISPLAY ONLY (review figures). The authoritative
+// conversions run server-side in projectMath.
 function fromBaseUnitsClient(units: string, decimals: number): string {
   const s = units.padStart(decimals + 1, '0');
   const whole = s.slice(0, -decimals);

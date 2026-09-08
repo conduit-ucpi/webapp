@@ -36,6 +36,8 @@ export interface ConnectionResult {
   success: boolean;
   address?: string;
   error?: string;
+  /** User dismissed the connect modal without choosing - not a failure to report. */
+  cancelled?: boolean;
   capabilities: ProviderCapabilities;
 }
 

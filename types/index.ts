@@ -33,8 +33,8 @@ export interface Config {
   contractServiceUrl?: string;
   // Third-party services
   moonPayApiKey: string;
-  onrampAppId?: string;
   coinbaseProjectId?: string;
+  coinbaseNetwork?: string; // Coinbase's network slug (e.g. "base") - see COINBASE_NETWORK
   walletConnectProjectId?: string;
   neynarApiKey?: string;
   // Gas configuration
@@ -52,6 +52,9 @@ export interface Config {
   explorerBaseUrl: string;
   serviceLink: string;
   siteName?: string; // Site branding name (e.g., "Instant Escrow", "USDCBAY")
+  // Release flags
+  projectsLive?: boolean; // Projects (fan-out) feature; false/absent = hidden
+  emailVerificationLive?: boolean; // Email <-> wallet verification; false/absent = hidden
   // Optional wallet services configuration
   walletServicesShowWidget?: string;
   walletServicesButtonPosition?: string;

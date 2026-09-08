@@ -6,6 +6,7 @@ import { GetStaticProps } from 'next'
 import { useConfig } from '@/components/auth/ConfigProvider'
 import { motion, AnimatePresence } from 'framer-motion';
 import Fade from '@/components/ui/Fade';
+import { isr } from '@/utils/isr';
 
 // ---------------------------------------------------------------------------
 // Collapsible FAQ item — question as clickable heading, answer toggles
@@ -1885,6 +1886,6 @@ export default function FAQ() {
 export const getStaticProps: GetStaticProps = async () => {
   return {
     props: {},
-    revalidate: 86400, // Revalidate daily
+    ...isr(86400), // Revalidate daily
   };
 };

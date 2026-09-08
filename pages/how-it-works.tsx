@@ -3,6 +3,7 @@ import Button from '@/components/ui/Button';
 import InteractiveDemo from '@/components/landing/InteractiveDemo';
 import SEO from '@/components/SEO';
 import { GetStaticProps } from 'next';
+import { isr } from '@/utils/isr';
 
 export default function HowItWorks() {
   return (
@@ -43,6 +44,6 @@ export default function HowItWorks() {
 export const getStaticProps: GetStaticProps = async () => {
   return {
     props: {},
-    revalidate: 3600,
+    ...isr(3600),
   };
 };

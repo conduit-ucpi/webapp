@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { requireAuth } from '@/utils/api-auth';
 import { fanoutChainServiceUrl, serviceHeaders } from '@/utils/projectsServer';
+import { blockedByProjectsFlag } from '@/utils/featureFlags';
 
 /**
  * POST /api/projects/chain/[action] — lifecycle operations on a project's
@@ -17,6 +18,9 @@ const ACTION_PATHS: Record<string, string> = {
 };
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  // Behind the PROJECTS_LIVE release flag: 404s unless the flag is on.
+  if (blockedByProjectsFlag(req, res)) return;
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }

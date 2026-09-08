@@ -1,3 +1,4 @@
+import { apiUrl } from '@/lib/apiFetch';
 import { useState, useEffect, useCallback } from 'react';
 import { Contract, PendingContract } from '@/types';
 
@@ -138,7 +139,7 @@ export function useCombinedContracts(
   const [error, setError] = useState('');
 
   const refetch = useCallback(async () => {
-    const doFetch: Fetcher = fetcher ?? ((url) => fetch(url));
+    const doFetch: Fetcher = fetcher ?? ((url) => fetch(apiUrl(url)));
     try {
       const response = await doFetch('/api/combined-contracts');
 

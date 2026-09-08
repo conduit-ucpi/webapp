@@ -6,6 +6,7 @@
  */
 
 import type { NextApiRequest, NextApiResponse } from 'next'
+import { forwardSetCookie } from '@/lib/auth/forwardSetCookie'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -25,11 +26,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       body: JSON.stringify({ message, signature })
     })
 
-    // Forward Set-Cookie header from backend
-    const setCookie = response.headers.get('set-cookie')
-    if (setCookie) {
-      res.setHeader('Set-Cookie', setCookie)
-    }
+    // Forward Set-Cookie header from backend (host-only on localhost)
+    forwardSetCookie(response, req, res)
 
     if (!response.ok) {
       const error = await response.text()

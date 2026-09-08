@@ -1,0 +1,857 @@
+import { apiFetch } from '@/lib/apiFetch';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useRouter } from 'next/router';
+import { ethers } from 'ethers';
+import Button from '@/components/ui/Button';
+import Input from '@/components/ui/Input';
+import ExpandableHash from '@/components/ui/ExpandableHash';
+import { useConfig } from '@/components/auth/ConfigProvider';
+import { useSimpleEthers } from '@/hooks/useSimpleEthers';
+import { OFFRAMP_RETURN_MESSAGE, openCoinbaseOfframp } from '@/lib/coinbaseOfframp';
+import { detectUserCountry, knownCountryCodes } from '@/utils/currencyDetection';
+import { US_STATES } from '@/utils/usStates';
+
+/**
+ * Cash out to a bank account, via Coinbase.
+ *
+ * The flow is a handshake, not a single hop, and that shapes this whole
+ * component. Coinbase's widget only CREATES a sell order — it never pulls the
+ * crypto. We then read the order back, learn the Coinbase-managed address, and
+ * send the tokens ourselves inside a 30 minute window. Two states, therefore:
+ * start an order, and settle one.
+ */
+
+/**
+ * Console prefix. The cash-out spans a popup, a redirect and a wallet prompt, so
+ * when it stalls there is nothing on screen to say which leg it stalled on —
+ * these logs are the only way to tell "Coinbase has no order" from "we never
+ * asked".
+ */
+const LOG = '💷 CashOut:';
+
+/** How we know the user has just come back from Coinbase rather than reloading. */
+const RETURN_QUERY_KEY = 'cashout';
+const RETURN_QUERY_VALUE = 'return';
+
+/**
+ * The order is not on Coinbase's side the instant they redirect us back, and how
+ * long it takes them to register it is not documented. Five seconds for two
+ * minutes: long enough to outlast a slow write, short of the 30 minute window in
+ * which the user could still finish by hand.
+ */
+const POLL_INTERVAL_MS = 5000;
+const POLL_ATTEMPTS = 24;
+
+/**
+ * Refuse to start a transfer with less than this left on the order.
+ *
+ * Missing the window is not a near miss. Coinbase does not return tokens that
+ * arrive against a dead order — they are credited to the user's Coinbase account
+ * as crypto, unsold, and getting them back means selling or withdrawing by hand
+ * inside Coinbase. Signing, broadcasting and confirming on Base takes real time,
+ * so anything under a couple of minutes is a gamble taken with someone's money.
+ * Better to send them round again for a fresh order.
+ */
+const MIN_WINDOW_TO_SEND_MS = 2 * 60 * 1000;
+
+/**
+ * Where we send a user to finish the withdrawal.
+ *
+ * Observed in the Coinbase web app while signed in — it is not a documented or
+ * supported URL, and Coinbase's site is a SPA behind bot protection that answers
+ * 403 to anything but a browser, so it cannot be checked from a test or CI. It
+ * may therefore rot silently, and an unauthenticated visit will bounce through
+ * login and may not come back to this path. The written click-path beside the
+ * link is what makes that survivable: if the deep link lands on the home page
+ * instead, the user still knows where to go.
+ */
+const COINBASE_APP_URL = 'https://www.coinbase.com/cash';
+
+/**
+ * Orders this browser has already broadcast a transfer for.
+ *
+ * Coinbase leaves an order at STARTED for a while after our tokens land, so the
+ * server's tx_hash check has a window where it cannot yet tell "waiting for you"
+ * from "already paid". Anyone reloading /wallet inside that window would be
+ * shown the order again and could pay twice. This is the local belt to that
+ * braces — per-browser and lossy, which is why it is the second line of defence
+ * and not the only one.
+ */
+const SENT_ORDERS_KEY = 'coinbase-offramp-sent';
+
+function loadSentOrders(): Set<string> {
+  try {
+    const raw = window.localStorage.getItem(SENT_ORDERS_KEY);
+    return new Set(raw ? (JSON.parse(raw) as string[]) : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function rememberSentOrder(transactionId: string): void {
+  try {
+    const all = loadSentOrders();
+    all.add(transactionId);
+    // Keep it bounded; only recent orders can still be live.
+    const trimmed = Array.from(all).slice(-20);
+    window.localStorage.setItem(SENT_ORDERS_KEY, JSON.stringify(trimmed));
+  } catch {
+    // Private mode or blocked storage. The server's tx_hash check still applies.
+  }
+}
+
+/** An order Coinbase reported that we did not act on, and why we can say so. */
+interface SeenOrder {
+  status?: string;
+  createdAt?: string;
+  ageSeconds?: number | null;
+  /** Where Coinbase pays out. CRYPTO_ACCOUNT means it never reaches a bank. */
+  paymentMethod?: string;
+  alreadySent?: boolean;
+}
+
+interface PendingOrder {
+  transactionId: string;
+  toAddress: string;
+  asset: string;
+  network: string;
+  amount: string;
+  currency: string;
+  createdAt: string;
+  expiresAt: string;
+  paymentMethod?: string;
+  fiatCurrency?: string;
+}
+
+/** One fiat Coinbase will pay this user in, and how the money reaches them. */
+interface CashOutCurrency {
+  code: string;
+  methods: string[];
+  route: { method: string; reachesBank: boolean } | null;
+}
+
+interface CashOutPanelProps {
+  walletAddress: string;
+  /** Token balances keyed by symbol, as /wallet already loaded them. */
+  balances: Record<string, string>;
+  /** Called after a successful send so the page can refresh balances. */
+  onSent?: () => void;
+}
+
+/** The distinct statuses Coinbase reported, for the "nothing to send" message. */
+function seenStatuses(seen: SeenOrder[]): string {
+  const statuses: string[] = [];
+  for (const s of seen) {
+    if (s.status && !statuses.includes(s.status)) statuses.push(s.status);
+  }
+  return statuses.join(', ');
+}
+
+/** Matches the Input component's field styling, which has no select variant. */
+const selectClass =
+  'flex h-10 w-full rounded-md border border-gray-300 bg-white text-secondary-900 px-3 py-2 text-sm ' +
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 ' +
+  'disabled:cursor-not-allowed disabled:opacity-50 dark:border-secondary-600 dark:bg-secondary-800 dark:text-white';
+
+function formatTimeLeft(ms: number): string {
+  const total = Math.max(0, Math.floor(ms / 1000));
+  const minutes = Math.floor(total / 60);
+  const seconds = total % 60;
+  return `${minutes}m ${String(seconds).padStart(2, '0')}s`;
+}
+
+export default function CashOutPanel({ walletAddress, balances, onSent }: CashOutPanelProps) {
+  const router = useRouter();
+  const { config } = useConfig();
+  const { fundAndSendTransaction } = useSimpleEthers();
+
+  // Memoised because the fallback literal would otherwise be a new array every
+  // render, churning the identity of everything downstream of it — including the
+  // callback the message listener effect depends on.
+  const supportedTokens = useMemo(() => config?.supportedTokens || [], [config?.supportedTokens]);
+  const defaultSymbol = config?.defaultToken?.symbol || config?.defaultTokenSymbol || '';
+
+  const [symbol, setSymbol] = useState(defaultSymbol);
+  const [amount, setAmount] = useState('');
+  const [isOpening, setIsOpening] = useState(false);
+  const [isWaitingForOrder, setIsWaitingForOrder] = useState(false);
+  const [pending, setPending] = useState<PendingOrder | null>(null);
+  const [isSending, setIsSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [sentTxHash, setSentTxHash] = useState<string | null>(null);
+  // Captured at send time: the form's currency selection can change afterwards,
+  // and the success message must describe the order that actually went.
+  const [sentCurrency, setSentCurrency] = useState<string>('');
+  const [sentRoute, setSentRoute] = useState<{ reachesBank: boolean } | null>(null);
+  const [gaveUp, setGaveUp] = useState<{ seen: SeenOrder[]; failed: boolean } | null>(null);
+  // Where Coinbase thinks the user is, and what it will therefore pay them in.
+  // Detected, then editable: the locale guess is wrong often enough that a user
+  // who cannot correct it would be stuck cashing out in the wrong currency.
+  const [country, setCountry] = useState<string>('');
+  const [subdivision, setSubdivision] = useState<string>('');
+  const [currencies, setCurrencies] = useState<CashOutCurrency[] | null>(null);
+  const [fiatCurrency, setFiatCurrency] = useState<string>('');
+  const [optionsError, setOptionsError] = useState<string | null>(null);
+  const [now, setNow] = useState(() => Date.now());
+
+  // Orders we have already raised a signature prompt for. Auto-firing is armed
+  // once per order so a rejected prompt does not immediately re-appear, and a
+  // re-poll that returns the same order does not prompt twice.
+  const autoSentRef = useRef<Set<string>>(new Set());
+  const pollTimerRef = useRef<number | null>(null);
+  /** True while a poll loop is in flight, so two triggers cannot start two loops. */
+  const isPollingRef = useRef(false);
+
+  const isConfigured = !!config?.coinbaseProjectId && !!config?.coinbaseNetwork;
+
+  useEffect(() => {
+    if (!symbol && defaultSymbol) setSymbol(defaultSymbol);
+  }, [defaultSymbol, symbol]);
+
+  // Seed the country from the browser locale, once. The user can change it.
+  useEffect(() => {
+    if (country) return;
+    setCountry(detectUserCountry() || 'US');
+  }, [country]);
+
+  // Ask Coinbase what it will pay this country in, and how. Re-runs when the
+  // user corrects the country or picks a US state.
+  useEffect(() => {
+    if (!isConfigured || !country) return;
+    if (country === 'US' && !subdivision) {
+      // Coinbase needs a state before it will answer for the US.
+      setCurrencies(null);
+      return;
+    }
+
+    let cancelled = false;
+    setOptionsError(null);
+
+    const params = new URLSearchParams({ country });
+    if (subdivision) params.set('subdivision', subdivision);
+
+    void apiFetch(`/api/coinbase/offramp/options?${params.toString()}`, { credentials: 'include' })
+      .then(async r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
+      .then((data: { currencies?: CashOutCurrency[] }) => {
+        if (cancelled) return;
+        const list = (data.currencies || []).filter(c => !!c.route);
+        console.log(
+          `${LOG} payout options for ${country}${subdivision ? '/' + subdivision : ''}:`,
+          list.map(c => `${c.code}->${c.route?.method}`).join(', ') || '(none)'
+        );
+        setCurrencies(list);
+        setFiatCurrency(prev => {
+          if (prev && list.some(c => c.code === prev)) return prev;
+          // Prefer a route that actually reaches a bank, then the local currency.
+          const bank = list.find(c => c.route?.reachesBank);
+          return bank?.code || list[0]?.code || '';
+        });
+      })
+      .catch(e => {
+        if (cancelled) return;
+        console.log(`${LOG} could not read payout options:`, e);
+        setCurrencies([]);
+        setOptionsError('Could not read your Coinbase payout options.');
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isConfigured, country, subdivision]);
+
+  const selectedToken = supportedTokens.find(t => t.symbol === symbol);
+  const availableBalance = parseFloat(balances[symbol] || '0');
+
+  /**
+   * Asks the server whether Coinbase is waiting on a send.
+   *
+   * Returns the orders it *did* see when there is nothing actionable, so a failed
+   * search can explain itself rather than looking like a hang.
+   */
+  const fetchPending = useCallback(async (): Promise<{
+    order: PendingOrder | null;
+    seen: SeenOrder[];
+    failed: boolean;
+  }> => {
+    try {
+      const response = await apiFetch('/api/coinbase/offramp/pending', { credentials: 'include' });
+      if (!response.ok) {
+        console.log(`${LOG} pending check failed: HTTP ${response.status}`);
+        return { order: null, seen: [], failed: true };
+      }
+      const data = await response.json().catch(() => ({}));
+      const seen: SeenOrder[] = data?.seen ?? [];
+      // Flattened to a string on purpose: an Array(5) in the console collapses,
+      // and the statuses are the whole point of this log.
+      console.log(
+        `${LOG} pending check: found=${!!data?.pending} seen=[${seen
+          .map(s => `${s.status}/${s.paymentMethod ?? 'no-method'}@${s.ageSeconds}s`)
+          .join(', ')}]\n  upstream: ${data?.request ?? '(not reported)'}`,
+        data?.pending ?? ''
+      );
+      return {
+        order: (data?.pending as PendingOrder | undefined) || null,
+        seen: (data?.seen as SeenOrder[] | undefined) || [],
+        failed: false,
+      };
+    } catch (e) {
+      console.log(`${LOG} pending check threw:`, e);
+      return { order: null, seen: [], failed: true };
+    }
+  }, []);
+
+  /**
+   * Everything that has to be true before we move a user's money.
+   *
+   * The order comes back from Coinbase, so its chain and asset are not ours to
+   * assume. A sell order on a chain we are not on, or in a token we do not know,
+   * is a bug somewhere upstream — the correct response is to refuse and say so,
+   * not to sign it through and hope.
+   */
+  const validateOrder = useCallback(
+    (order: PendingOrder): string | null => {
+      if (!config?.coinbaseNetwork) return 'Cash-out is not configured on this server.';
+
+      if (order.network.toLowerCase() !== config.coinbaseNetwork.toLowerCase()) {
+        return `This cash-out is for ${order.network}, but this wallet is on ${config.coinbaseNetwork}. Nothing has been sent.`;
+      }
+
+      const token = supportedTokens.find(t => t.symbol === order.currency);
+      if (!token) {
+        return `This cash-out is in ${order.currency}, which this wallet does not hold. Nothing has been sent.`;
+      }
+
+      if (!/^0x[a-fA-F0-9]{40}$/.test(order.toAddress)) {
+        return 'Coinbase returned an address we could not read. Nothing has been sent.';
+      }
+
+      // A CRYPTO_ACCOUNT order is not a sale. Coinbase would take the tokens
+      // into the user's own Coinbase balance and no money would ever reach a
+      // bank — indistinguishable, from here, from a cash-out that worked.
+      // Observed in the wild, which is why it is a hard stop rather than a note.
+      const msRemaining = Date.parse(order.expiresAt) - Date.now();
+      if (Number.isFinite(msRemaining) && msRemaining < MIN_WINDOW_TO_SEND_MS) {
+        return 'There is not enough time left on this cash-out to send it safely. Tokens that arrive after Coinbase closes the order are not returned — they land in your Coinbase account as crypto. Nothing has been sent; start a new cash-out.';
+      }
+
+      if (order.paymentMethod === 'CRYPTO_ACCOUNT') {
+        return 'This cash-out would move your tokens into your Coinbase account, not your bank. Nothing has been sent — start again and choose your bank account as the destination in Coinbase.';
+      }
+
+      return null;
+    },
+    [config?.coinbaseNetwork, supportedTokens]
+  );
+
+  const sendToCoinbase = useCallback(
+    async (order: PendingOrder) => {
+      const problem = validateOrder(order);
+      if (problem) {
+        console.log(`${LOG} refusing to send:`, problem, order);
+        setError(problem);
+        return;
+      }
+      console.log(`${LOG} sending to Coinbase`, {
+        to: order.toAddress,
+        amount: order.amount,
+        currency: order.currency,
+      });
+
+      const token = supportedTokens.find(t => t.symbol === order.currency)!;
+
+      setError(null);
+      setIsSending(true);
+      autoSentRef.current.add(order.transactionId);
+
+      try {
+        // Same ERC20 transfer the Send Funds form makes, with the gas sponsored by
+        // fundAndSendTransaction so the user needs no native balance to cash out.
+        const erc20 = new ethers.Interface([
+          'function transfer(address to, uint256 amount) returns (bool)',
+        ]);
+        const data = erc20.encodeFunctionData('transfer', [
+          order.toAddress,
+          ethers.parseUnits(order.amount, token.decimals),
+        ]);
+
+        const txHash = await fundAndSendTransaction({ to: token.address, data, value: '0' });
+
+        rememberSentOrder(order.transactionId);
+        // Describe the order that actually went, using Coinbase's own view of it.
+        setSentCurrency(order.fiatCurrency || 'cash');
+        setSentRoute({ reachesBank: order.paymentMethod === 'ACH_BANK_ACCOUNT' });
+        setSentTxHash(txHash);
+        setPending(null);
+        setAmount('');
+        onSent?.();
+      } catch (e: any) {
+        setError(e?.message || 'The transfer to Coinbase failed');
+      } finally {
+        setIsSending(false);
+      }
+    },
+    [fundAndSendTransaction, onSent, supportedTokens, validateOrder]
+  );
+
+  // fundAndSendTransaction comes from useSimpleEthers, which hands back a fresh
+  // object every render, so sendToCoinbase's identity churns. Reading it through
+  // a ref keeps pollForOrder stable — otherwise the message listener below would
+  // detach and re-attach on every single render.
+  const sendRef = useRef(sendToCoinbase);
+  useEffect(() => {
+    sendRef.current = sendToCoinbase;
+  }, [sendToCoinbase]);
+
+  /**
+   * Poll until Coinbase has registered the order, then raise the prompt.
+   *
+   * Only used on the path back from the widget. `autoSend` is what separates
+   * "they just confirmed a cash-out and expect to sign" from "we found an old
+   * order on page load", where an unheralded wallet prompt would read as an
+   * ambush.
+   */
+  const pollForOrder = useCallback(
+    (autoSend: boolean) => {
+      // Closing the popup fires two signals: the return page's postMessage AND
+      // onPopupClosed. Both mean "go look", and without this guard both start a
+      // loop, doubling every request to Coinbase for two minutes.
+      if (isPollingRef.current) {
+        console.log(`${LOG} already polling, ignoring duplicate trigger`);
+        return;
+      }
+      isPollingRef.current = true;
+
+      let attempts = 0;
+      setGaveUp(null);
+      setIsWaitingForOrder(true);
+      console.log(`${LOG} polling for an order (autoSend=${autoSend})`);
+
+      const tick = async () => {
+        attempts += 1;
+        console.log(`${LOG} poll attempt ${attempts}/${POLL_ATTEMPTS}`);
+        const { order, seen, failed } = await fetchPending();
+
+        if (order && loadSentOrders().has(order.transactionId)) {
+          // Already paid from this browser; Coinbase just has not caught up.
+          console.log(`${LOG} order ${order.transactionId} already sent, ignoring`);
+          isPollingRef.current = false;
+          setIsWaitingForOrder(false);
+          setGaveUp({ seen, failed: false });
+          return;
+        }
+
+        if (order) {
+          isPollingRef.current = false;
+          setIsWaitingForOrder(false);
+          setPending(order);
+          if (autoSend && !autoSentRef.current.has(order.transactionId)) {
+            await sendRef.current(order);
+          }
+          return;
+        }
+
+        if (attempts >= POLL_ATTEMPTS) {
+          isPollingRef.current = false;
+          setIsWaitingForOrder(false);
+          // Never leave the user on a spinner that has quietly stopped. Say what
+          // Coinbase reported, so "nothing happened" becomes something they can
+          // act on — retry, or go back and finish the order.
+          setGaveUp({ seen, failed });
+          return;
+        }
+
+        pollTimerRef.current = window.setTimeout(tick, POLL_INTERVAL_MS);
+      };
+
+      void tick();
+    },
+    [fetchPending]
+  );
+
+  useEffect(() => {
+    return () => {
+      if (pollTimerRef.current) window.clearTimeout(pollTimerRef.current);
+      isPollingRef.current = false;
+    };
+  }, []);
+
+  // Cold load: surface an order the user abandoned, but wait for them to ask.
+  // Mobile sends the whole tab to Coinbase and back, so the return marker on the
+  // URL is the only way to tell that case apart from a plain page load.
+  useEffect(() => {
+    if (!isConfigured || !router.isReady) {
+      console.log(`${LOG} not checking yet`, {
+        isConfigured,
+        routerReady: router.isReady,
+        coinbaseProjectId: !!config?.coinbaseProjectId,
+        coinbaseNetwork: config?.coinbaseNetwork,
+      });
+      return;
+    }
+
+    const justReturned = router.query[RETURN_QUERY_KEY] === RETURN_QUERY_VALUE;
+    console.log(`${LOG} mounted`, {
+      justReturned,
+      network: config?.coinbaseNetwork,
+      query: router.query,
+    });
+
+    if (justReturned) {
+      // Strip the marker so a later refresh is treated as the cold load it is.
+      const { [RETURN_QUERY_KEY]: _consumed, ...rest } = router.query;
+      void router.replace({ pathname: router.pathname, query: rest }, undefined, { shallow: true });
+      pollForOrder(true);
+      return;
+    }
+
+    // A failed check here is not worth an error banner: the user has not asked
+    // for anything yet, and the panel still works for starting a new cash-out.
+    void fetchPending().then(({ order }) => {
+      if (order && !loadSentOrders().has(order.transactionId)) setPending(order);
+    });
+    // Runs once the router is ready; pollForOrder/fetchPending are stable enough
+    // that re-running on their identity would re-poll on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isConfigured, router.isReady]);
+
+  // Desktop popup: the return page tells us Coinbase is done.
+  useEffect(() => {
+    if (!isConfigured) return;
+
+    const onMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+      if (event.data?.type !== OFFRAMP_RETURN_MESSAGE) return;
+      console.log(`${LOG} back from Coinbase (popup)`);
+      setIsOpening(false);
+      pollForOrder(true);
+    };
+
+    window.addEventListener('message', onMessage);
+    return () => window.removeEventListener('message', onMessage);
+  }, [isConfigured, pollForOrder]);
+
+  // Drives the countdown, and clears an order once its window has closed.
+  useEffect(() => {
+    if (!pending) return;
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [pending]);
+
+  const msLeft = pending ? Date.parse(pending.expiresAt) - now : 0;
+
+  useEffect(() => {
+    if (pending && msLeft <= 0 && !isSending) {
+      setPending(null);
+      setError('That cash-out expired before it was sent. Nothing left your wallet — start again.');
+    }
+  }, [pending, msLeft, isSending]);
+
+  const selectedCurrency = currencies?.find(c => c.code === fiatCurrency) || null;
+  const payoutRoute = selectedCurrency?.route || null;
+
+  const handleStart = async () => {
+    if (!config?.coinbaseNetwork || !selectedToken || !payoutRoute) return;
+
+    setError(null);
+    setSentTxHash(null);
+    setGaveUp(null);
+    setIsOpening(true);
+
+    try {
+      await openCoinbaseOfframp({
+        walletAddress,
+        asset: selectedToken.symbol,
+        network: config.coinbaseNetwork,
+        presetCryptoAmount: parseFloat(amount),
+        fiatCurrency,
+        cashoutMethod: payoutRoute.method,
+        // Carries the marker that tells the mobile round-trip apart from a reload.
+        returnPath: `/wallet?${RETURN_QUERY_KEY}=${RETURN_QUERY_VALUE}`,
+        // Fires however the popup closed, including the user dismissing it. The
+        // return page's message only arrives when Coinbase completes, so without
+        // this a cancelled popup leaves the button stuck on "Opening Coinbase…"
+        // forever. Poll anyway: they may have confirmed and closed it by hand.
+        onPopupClosed: () => {
+          setIsOpening(false);
+          pollForOrder(true);
+        },
+      });
+    } catch (e: any) {
+      setError(e?.message || 'Could not open Coinbase');
+      setIsOpening(false);
+    }
+  };
+
+  if (!isConfigured || supportedTokens.length === 0) return null;
+
+  const amountValue = parseFloat(amount);
+  const amountIsValid = !isNaN(amountValue) && amountValue > 0 && amountValue <= availableBalance;
+  const canStart = !!selectedToken && !!payoutRoute && amountIsValid && !isOpening && !pending;
+
+  return (
+    <div className="bg-white dark:bg-secondary-900 rounded-lg shadow-sm dark:shadow-none border border-secondary-200 dark:border-secondary-700 p-6 mb-8">
+      <h2 className="text-lg font-semibold text-secondary-900 dark:text-white">Cash out your tokens</h2>
+      <p className="mt-1 text-sm text-secondary-600 dark:text-secondary-300">
+        Sell your tokens for cash through Coinbase. Where that cash lands depends on your
+        country — the line below the currency says which.
+      </p>
+
+      {pending ? (
+        <div className="mt-6 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-4">
+          <p className="font-semibold text-secondary-900 dark:text-white">
+            {isSending ? 'Confirm the transfer in your wallet' : 'Finish your cash-out'}
+          </p>
+          <p className="mt-1 text-sm text-secondary-700 dark:text-secondary-200">
+            Coinbase is waiting for{' '}
+            <span className="font-semibold">
+              {pending.amount} {pending.currency}
+            </span>
+            . Sending it completes the cash-out — {formatTimeLeft(msLeft)} left.
+          </p>
+
+          <div className="mt-3 text-sm text-secondary-600 dark:text-secondary-300">
+            <span className="mr-2">To Coinbase at</span>
+            <ExpandableHash hash={pending.toAddress} />
+          </div>
+
+          {!isSending && (
+            <Button className="mt-4" onClick={() => sendToCoinbase(pending)}>
+              Send {pending.amount} {pending.currency} to Coinbase
+            </Button>
+          )}
+          {isSending && (
+            <p className="mt-4 text-sm text-secondary-600 dark:text-secondary-300">
+              Sending… gas is covered for you.
+            </p>
+          )}
+        </div>
+      ) : isWaitingForOrder ? (
+        <p className="mt-6 text-sm text-secondary-600 dark:text-secondary-300">
+          Checking your cash-out with Coinbase… this can take a moment.
+        </p>
+      ) : gaveUp ? (
+        <div className="mt-6 rounded-lg border border-secondary-200 dark:border-secondary-700 p-4">
+          <p className="font-semibold text-secondary-900 dark:text-white">
+            No cash-out is waiting to be sent
+          </p>
+          <p className="mt-1 text-sm text-secondary-700 dark:text-secondary-200">
+            {gaveUp.failed
+              ? 'We could not reach Coinbase to check. Nothing has left your wallet.'
+              : gaveUp.seen.length === 0
+                ? 'Coinbase has no record of a cash-out for you. If you did not get as far as "Cash out now" — for example it asked you to add a bank account or verify your ID — the order was never created.'
+                : `Coinbase has ${gaveUp.seen.length} order${gaveUp.seen.length === 1 ? '' : 's'} on file for you, but ${gaveUp.seen.length === 1 ? 'it is' : 'none are'} waiting on a transfer (${seenStatuses(gaveUp.seen)}).`}
+          </p>
+          <div className="mt-4 flex gap-2">
+            <Button variant="outline" onClick={() => pollForOrder(false)}>
+              Check again
+            </Button>
+            <Button variant="outline" onClick={() => setGaveUp(null)}>
+              Start a new cash-out
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="mt-6 space-y-5">
+          <div>
+            <label className="block text-sm font-medium text-secondary-700 dark:text-secondary-200 mb-2">
+              Token
+            </label>
+            <div className="flex flex-wrap gap-4">
+              {supportedTokens.map(token => (
+                <label
+                  key={token.symbol}
+                  className="flex items-center text-secondary-700 dark:text-secondary-200"
+                >
+                  <input
+                    type="radio"
+                    name="cashOutToken"
+                    value={token.symbol}
+                    checked={symbol === token.symbol}
+                    onChange={e => setSymbol(e.target.value)}
+                    className="mr-2"
+                  />
+                  {token.symbol}
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label
+                htmlFor="cashOutCountry"
+                className="block text-sm font-medium text-secondary-700 dark:text-secondary-200 mb-2"
+              >
+                Your country
+              </label>
+              <select
+                id="cashOutCountry"
+                value={country}
+                onChange={e => {
+                  setCountry(e.target.value);
+                  setSubdivision('');
+                }}
+                className={selectClass}
+              >
+                {knownCountryCodes().map(code => (
+                  <option key={code} value={code}>
+                    {code}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {country === 'US' && (
+              <div>
+                <label
+                  htmlFor="cashOutState"
+                  className="block text-sm font-medium text-secondary-700 dark:text-secondary-200 mb-2"
+                >
+                  State
+                </label>
+                <select
+                  id="cashOutState"
+                  value={subdivision}
+                  onChange={e => setSubdivision(e.target.value)}
+                  className={selectClass}
+                >
+                  <option value="">Choose…</option>
+                  {US_STATES.map(code => (
+                    <option key={code} value={code}>
+                      {code}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div>
+              <label
+                htmlFor="cashOutCurrency"
+                className="block text-sm font-medium text-secondary-700 dark:text-secondary-200 mb-2"
+              >
+                Paid out in
+              </label>
+              <select
+                id="cashOutCurrency"
+                value={fiatCurrency}
+                onChange={e => setFiatCurrency(e.target.value)}
+                disabled={!currencies || currencies.length === 0}
+                className={selectClass}
+              >
+                {!currencies && <option value="">Loading…</option>}
+                {currencies?.length === 0 && <option value="">Unavailable</option>}
+                {currencies?.map(c => (
+                  <option key={c.code} value={c.code}>
+                    {c.code}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Say where the money actually lands. Outside the US, Coinbase pays
+              into its own cash balance and the bank transfer is a separate step
+              the user takes there — promising "to your bank" would be a lie. */}
+          {payoutRoute && (
+            <p className="text-sm text-secondary-600 dark:text-secondary-300">
+              {payoutRoute.reachesBank
+                ? `Coinbase pays ${fiatCurrency} into your linked bank account.`
+                : `Coinbase pays ${fiatCurrency} into your Coinbase cash balance. Moving it to your bank is a separate step in Coinbase.`}
+            </p>
+          )}
+          {country === 'US' && !subdivision && (
+            <p className="text-sm text-secondary-600 dark:text-secondary-300">
+              Choose your state — Coinbase's payout options differ by state.
+            </p>
+          )}
+          {currencies?.length === 0 && !optionsError && (
+            <p className="text-sm text-red-600 dark:text-red-400">
+              Coinbase does not offer cash-out in {country}.
+            </p>
+          )}
+          {optionsError && (
+            <p className="text-sm text-red-600 dark:text-red-400">{optionsError}</p>
+          )}
+
+          <div>
+            <label
+              htmlFor="cashOutAmount"
+              className="block text-sm font-medium text-secondary-700 dark:text-secondary-200 mb-2"
+            >
+              Amount
+            </label>
+            <Input
+              id="cashOutAmount"
+              type="number"
+              step="any"
+              value={amount}
+              onChange={e => setAmount(e.target.value)}
+              placeholder="0.00"
+              error={
+                amount && !amountIsValid
+                  ? 'Amount must be greater than 0 and not exceed your balance'
+                  : undefined
+              }
+              helpText={`Available: ${balances[symbol] || '0.0000'} ${symbol}`}
+            />
+          </div>
+
+          <Button onClick={handleStart} disabled={!canStart} className="w-full">
+            {isOpening ? 'Opening Coinbase…' : `Cash out ${symbol}`}
+          </Button>
+
+          <p className="text-xs text-secondary-500 dark:text-secondary-400">
+            Coinbase handles the sale, the payout and any ID checks. You come back here to
+            approve the transfer — we cover the gas.
+          </p>
+        </div>
+      )}
+
+      {error && <p className="mt-4 text-sm text-red-600 dark:text-red-400">{error}</p>}
+
+      {sentTxHash && (
+        <div className="mt-4 rounded-md border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 p-4">
+          <p className="text-sm font-semibold text-green-800 dark:text-green-200">
+            Sent to Coinbase
+          </p>
+          <p className="mt-1 text-sm text-green-700 dark:text-green-300">
+            {sentRoute?.reachesBank
+              ? `Coinbase will sell your tokens and pay ${sentCurrency} into your linked bank account. That usually takes a few days.`
+              : `Coinbase will sell your tokens for ${sentCurrency} and hold it as cash in your Coinbase account.`}
+          </p>
+
+          {/* The last leg is Coinbase's alone. Their API has no withdrawal call,
+              so the honest thing is to say so and hand the user over, rather
+              than leave them believing the money is already on its way. */}
+          {!sentRoute?.reachesBank && (
+            <div className="mt-3">
+              <p className="text-sm text-green-700 dark:text-green-300">
+                Moving that cash to your bank is done in Coinbase — we cannot do it for you.
+                The button below opens your cash balance; choose{' '}
+                <span className="font-medium">Cash out</span> there. If it lands on the Coinbase
+                home page instead, go to <span className="font-medium">My Assets</span> and pick
+                your {sentCurrency} balance.
+              </p>
+              <a
+                href={COINBASE_APP_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-3 inline-flex items-center justify-center h-10 px-4 rounded-md border border-green-300 dark:border-green-700 text-sm font-medium text-green-800 dark:text-green-200 hover:bg-green-100 dark:hover:bg-green-900/40"
+              >
+                Open Coinbase to cash out
+              </a>
+            </div>
+          )}
+
+          <div className="mt-3 text-sm text-green-700 dark:text-green-300">
+            <ExpandableHash hash={sentTxHash} />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

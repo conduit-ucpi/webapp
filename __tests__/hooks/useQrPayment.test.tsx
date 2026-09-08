@@ -103,6 +103,7 @@ describe('useQrPayment', () => {
     });
 
     it('fires checkAndActivate when the countdown reaches zero', async () => {
+      mockGetTokenBalance.mockResolvedValue('10'); // funded, so the check proceeds
       mockAuthenticatedFetch.mockResolvedValue({ json: async () => ({ success: false }) });
       const { result } = renderHook(() => useQrPayment(baseParams()));
       await act(async () => {
@@ -139,6 +140,88 @@ describe('useQrPayment', () => {
       expect(mockGetTokenBalance).toHaveBeenCalledWith('0xEscrow', '0xToken');
     });
 
+    it('reports the balance unchecked until the first read lands', async () => {
+      // The panel holds itself back on this, so that an escrow which is about to
+      // sweep itself never flashes a payment screen at the user.
+      let resolveBalance: (v: string) => void = () => {};
+      mockGetTokenBalance.mockReturnValue(new Promise<string>((r) => { resolveBalance = r; }));
+
+      const { result } = renderHook(() => useQrPayment(baseParams()));
+      await act(async () => {
+        await result.current.createContract();
+      });
+
+      expect(result.current.hasCheckedBalance).toBe(false);
+
+      await act(async () => {
+        resolveBalance('0');
+        await Promise.resolve();
+      });
+
+      await waitFor(() => expect(result.current.hasCheckedBalance).toBe(true));
+    });
+
+    it('reports the balance checked even when the read fails', async () => {
+      // An unreadable balance must not hold the panel back forever — it only
+      // means we cannot skip showing it.
+      mockGetTokenBalance.mockRejectedValue(new Error('rpc down'));
+
+      const { result } = renderHook(() => useQrPayment(baseParams()));
+      await act(async () => {
+        await result.current.createContract();
+      });
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      await waitFor(() => expect(result.current.hasCheckedBalance).toBe(true));
+    });
+
+    it('sweeps automatically when the escrow is already funded on arrival', async () => {
+      // Someone returning to a contract they funded earlier should not have to
+      // press a button to claim money the chain already shows is theirs.
+      mockGetTokenBalance.mockResolvedValue('10');
+      mockAuthenticatedFetch.mockResolvedValue({ ok: true, json: async () => ({ success: true }) });
+
+      const { result } = renderHook(() => useQrPayment(baseParams()));
+      await act(async () => {
+        await result.current.createContract();
+      });
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      await waitFor(() => {
+        expect(mockAuthenticatedFetch).toHaveBeenCalledWith(
+          '/api/chain/check-and-activate',
+          expect.objectContaining({ method: 'POST' })
+        );
+      });
+    });
+
+    it('does not sweep repeatedly while the same funded balance keeps polling', async () => {
+      mockGetTokenBalance.mockResolvedValue('10');
+      mockAuthenticatedFetch.mockResolvedValue({ ok: true, json: async () => ({ success: true }) });
+
+      const { result } = renderHook(() => useQrPayment(baseParams()));
+      await act(async () => {
+        await result.current.createContract();
+      });
+      await act(async () => {
+        await Promise.resolve();
+      });
+      await waitFor(() => expect(mockAuthenticatedFetch).toHaveBeenCalled());
+
+      const callsAfterFirst = mockAuthenticatedFetch.mock.calls.length;
+      await act(async () => {
+        jest.advanceTimersByTime(30000); // three more poll intervals
+        await Promise.resolve();
+      });
+
+      // Resubmitting spends gas on a sweep already in flight.
+      expect(mockAuthenticatedFetch.mock.calls.length).toBe(callsAfterFirst);
+    });
+
     it('does not set paymentDetected when balance is below required', async () => {
       mockGetTokenBalance.mockResolvedValue('5');
       const { result } = renderHook(() => useQrPayment(baseParams()));
@@ -152,7 +235,101 @@ describe('useQrPayment', () => {
     });
   });
 
+  // check-and-activate submits a real on-chain checkAndActivate() transaction,
+  // which reverts with InsufficientDirectPayment and still burns platform gas
+  // when the escrow is empty. Nothing may reach it unless the escrow is funded.
+  describe('gas safety: balance gate in front of activation', () => {
+    it('sends nothing when the user presses "I have paid" but no payment arrived', async () => {
+      mockGetTokenBalance.mockResolvedValue('0');
+      mockAuthenticatedFetch.mockResolvedValue({ json: async () => ({ success: true }) });
+      const { result } = renderHook(() => useQrPayment(baseParams()));
+      await act(async () => {
+        await result.current.createContract();
+      });
+
+      await act(async () => {
+        await result.current.checkAndActivate();
+      });
+
+      expect(mockAuthenticatedFetch).not.toHaveBeenCalled();
+      // The user pressed a button, so they still get an answer.
+      expect(result.current.qrActivationStatus).toBe('waiting');
+      expect(mockOnActivated).not.toHaveBeenCalled();
+    });
+
+    it('sends nothing on a partial payment', async () => {
+      mockGetTokenBalance.mockResolvedValue('9.99');
+      mockAuthenticatedFetch.mockResolvedValue({ json: async () => ({ success: true }) });
+      const { result } = renderHook(() => useQrPayment(baseParams()));
+      await act(async () => {
+        await result.current.createContract();
+      });
+
+      await act(async () => {
+        await result.current.checkAndActivate();
+      });
+
+      expect(mockAuthenticatedFetch).not.toHaveBeenCalled();
+    });
+
+    it('sends nothing when the balance cannot be read', async () => {
+      mockGetTokenBalance.mockRejectedValue(new Error('rpc down'));
+      mockAuthenticatedFetch.mockResolvedValue({ json: async () => ({ success: true }) });
+      const { result } = renderHook(() => useQrPayment(baseParams()));
+      await act(async () => {
+        await result.current.createContract();
+      });
+
+      await act(async () => {
+        await result.current.checkAndActivate();
+      });
+
+      expect(mockAuthenticatedFetch).not.toHaveBeenCalled();
+      expect(result.current.qrActivationStatus).toBe('waiting');
+    });
+
+    it('sends nothing when the countdown auto-fires on an unfunded escrow', async () => {
+      mockGetTokenBalance.mockResolvedValue('0');
+      mockAuthenticatedFetch.mockResolvedValue({ json: async () => ({ success: true }) });
+      const { result } = renderHook(() => useQrPayment(baseParams()));
+      await act(async () => {
+        await result.current.createContract();
+      });
+
+      await act(async () => {
+        jest.advanceTimersByTime(240_000);
+      });
+
+      expect(mockAuthenticatedFetch).not.toHaveBeenCalled();
+    });
+
+    it('sends once the escrow is funded', async () => {
+      mockGetTokenBalance.mockResolvedValue('10');
+      mockAuthenticatedFetch.mockResolvedValue({ json: async () => ({ success: true }) });
+      const { result } = renderHook(() => useQrPayment(baseParams()));
+      await act(async () => {
+        await result.current.createContract();
+      });
+
+      await act(async () => {
+        await result.current.checkAndActivate();
+      });
+
+      expect(mockAuthenticatedFetch).toHaveBeenCalledWith(
+        '/api/chain/check-and-activate',
+        expect.objectContaining({ method: 'POST' })
+      );
+      expect(result.current.qrActivationStatus).toBe('success');
+    });
+  });
+
   describe('checkAndActivate', () => {
+    // Activation only reaches the backend on a funded escrow; the unfunded
+    // paths are covered by the gas-safety block above.
+    beforeEach(() => {
+      mockGetTokenBalance.mockResolvedValue('10');
+    });
+
     it('sets status to success and calls onActivated when the backend reports success', async () => {
       mockAuthenticatedFetch.mockResolvedValue({ json: async () => ({ success: true }) });
       const { result } = renderHook(() => useQrPayment(baseParams()));

@@ -8,6 +8,7 @@ import Input from '@/components/ui/Input';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import ExpandableHash from '@/components/ui/ExpandableHash';
 import TokenGuide from '@/components/ui/TokenGuide';
+import CashOutPanel from '@/components/wallet/CashOutPanel';
 import { ethers } from 'ethers';
 import { RpcClient } from '@/lib/rpc/RpcClient';
 import { useFarcaster } from '@/components/farcaster/FarcasterDetectionProvider';
@@ -469,6 +470,13 @@ export default function Wallet() {
         <div className="mb-8">
           <TokenGuide />
         </div>
+
+        {/* Cash out (Coinbase offramp) — hides itself when Coinbase is unconfigured */}
+        <CashOutPanel
+          walletAddress={walletAddress}
+          balances={balances.tokens}
+          onSent={loadBalances}
+        />
 
         {/* Send Funds */}
         <div className="bg-white dark:bg-secondary-900 rounded-lg shadow-sm dark:shadow-none border border-secondary-200 dark:border-secondary-700 p-6">

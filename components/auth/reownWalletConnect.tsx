@@ -1,3 +1,4 @@
+import { apiFetch } from '@/lib/apiFetch';
 import { createAppKit } from '@reown/appkit'
 import { EthersAdapter } from '@reown/appkit-adapter-ethers'
 import { mainnet, base, sepolia, baseSepolia } from '@reown/appkit/networks'
@@ -6,7 +7,9 @@ import { toHex } from '@/utils/hexUtils'
 import { detectDevice } from '@/utils/deviceDetection'
 import { wrapProviderWithMobileDeepLinks } from '@/utils/mobileDeepLinkProvider'
 import { createAppKitSIWXConfig } from '@/lib/auth/siwx-config'
-import { SIWE_STATEMENT } from '@/lib/auth/siwe-statement'
+import { EmbeddedOnlySIWX } from '@/lib/auth/EmbeddedOnlySIWX'
+import { siweStatement, buildAuthTokenMessage } from '@/lib/auth/siwe-statement'
+import { getSiteNameFromDomain } from '@/utils/siteName'
 import { mLog } from '@/utils/mobileLogger'
 import { classifyAuthError, type AuthFailure } from '@/lib/auth/classifyAuthError'
 import { reportAuthFailure } from '@/lib/auth/reportAuthFailure'
@@ -24,6 +27,39 @@ export class ReownWalletConnectProvider {
   private isConnecting: boolean = false
   private connectionMode: ConnectionMode = 'default'
   private lastAuthFailure: AuthFailure | null = null
+  /* In-flight initialize(). Callers race: connect() and connectWithSocial()
+     both do `if (!this.appKit) await this.initialize()`, and several
+     ConnectWalletEmbedded instances can be mounted at once, so the
+     check-then-act gap is wide enough for two createAppKit() calls to start
+     before either assigns this.appKit. */
+  private initPromise: Promise<boolean> | null = null
+  /* Kept so applySiwxForMode() can put it back after a wallet-only connect
+     cleared it. Built once in runInitialize(). */
+  private siwxConfig: any = undefined
+
+  /* Wallet requests that AppKit surfaces as an on-screen prompt (personal_sign
+     on an embedded wallet opens its ApproveTransaction view). Closing the modal
+     while one is outstanding aborts it, so connect() checks this before it
+     tidies the modal away. A counter rather than a flag because nothing stops
+     two callers asking for a signature at once. */
+  private pendingApprovalRequests = 0
+
+  hasPendingApprovalPrompt(): boolean {
+    return this.pendingApprovalRequests > 0
+  }
+
+  /**
+   * Run a wallet request that needs the user to approve it in AppKit's own UI.
+   * Marks the prompt as on screen for as long as the request is in flight.
+   */
+  async withApprovalPrompt<T>(request: () => Promise<T>): Promise<T> {
+    this.pendingApprovalRequests++
+    try {
+      return await request()
+    } finally {
+      this.pendingApprovalRequests--
+    }
+  }
 
   getLastAuthFailure(): AuthFailure | null {
     return this.lastAuthFailure
@@ -53,11 +89,55 @@ export class ReownWalletConnectProvider {
       const features = this.getFeaturesForMode()
       console.log(`🔧 ReownWalletConnect: Updating AppKit features for mode: ${mode}`, features)
       this.appKit.updateFeatures(features)
+      this.applySiwxForMode()
     }
   }
 
+  /**
+   * SIWX has to be OFF for external wallets, and the switch has to happen
+   * before connect() rather than inside the SIWX config.
+   *
+   * AppKit's WalletConnectConnector.connectWalletConnect() does:
+   *
+   *     const isAuthenticated = await this.authenticate()   // one-click auth
+   *     if (!isAuthenticated) { await this.provider.connect(...) }   // plain pairing
+   *
+   * and authenticate() -> SIWXUtil.universalProviderAuthenticate() bails with
+   * `return false` when there is no siwx configured. That false is the path we
+   * want: a normal WalletConnect pairing with no signature at connect time,
+   * which is exactly the "external wallets use lazy auth" design.
+   *
+   * The trap is that universalProviderAuthenticate calls siwx.createMessage()
+   * WITHOUT a try/catch, straight after that gate. So EmbeddedOnlySIWX throwing
+   * for an external wallet does not fall through to plain pairing - the
+   * exception escapes connectWalletConnect() entirely, AppKit reports
+   * CONNECT_ERROR, and the connection dies ~14ms after the user picks their
+   * wallet, before the deeplink even opens.
+   *
+   * Clearing siwx via the public updateOptions() reaches the `return false`
+   * gate instead, so the throw is never reached.
+   */
+  private applySiwxForMode() {
+    if (!this.appKit) return
+    const siwx = this.connectionMode === 'wallet-only' ? undefined : this.siwxConfig
+    console.log(
+      `🔧 ReownWalletConnect: SIWX ${siwx ? 'enabled' : 'disabled'} for mode: ${this.connectionMode}`
+    )
+    this.appKit.updateOptions({ siwx })
+  }
+
+  /*
+   * onramp is ON so AppKit's Account view (opened from /wallet via
+   * showWalletUI()) offers a Buy button for general top-ups. It is NOT the
+   * onramp used on any payment-critical path: paying a contract and "Add funds
+   * to this wallet" go through lib/coinbaseOnramp.ts instead, because that
+   * route presets a CRYPTO amount rather than fiat (Coinbase's fee comes out
+   * of a fiat preset, which then lands short of the escrow's >= activation
+   * gate) and hands the buyer back to the step they left via returnPath.
+   * AppKit's Buy does neither, so it stays out of those flows.
+   */
   private getFeaturesForMode(): Record<string, any> {
-    const base = { analytics: false, swaps: false, onramp: false }
+    const base = { analytics: false, swaps: false, onramp: true }
     switch (this.connectionMode) {
       case 'wallet-only':
         return { ...base, email: false, socials: false, allWallets: true, connectMethodsOrder: ['wallet'] }
@@ -68,7 +148,27 @@ export class ReownWalletConnectProvider {
     }
   }
 
-  async initialize() {
+  /**
+   * Idempotent. Returns the same in-flight promise to every concurrent caller
+   * so AppKit is built exactly once, no matter how many mounted components
+   * race to connect. A failed attempt clears the latch so a retry can proceed.
+   */
+  async initialize(): Promise<boolean> {
+    if (this.appKit) return true
+    if (this.initPromise) {
+      console.log('🔧 ReownWalletConnect: initialize() already in flight - awaiting the existing AppKit build')
+      return this.initPromise
+    }
+    this.initPromise = this.runInitialize()
+    try {
+      return await this.initPromise
+    } catch (error) {
+      this.initPromise = null
+      throw error
+    }
+  }
+
+  private async runInitialize(): Promise<boolean> {
     try {
       console.log('🔧 ReownWalletConnect: ========================================')
       console.log('🔧 ReownWalletConnect: INITIALIZING - This should only appear once per session')
@@ -115,48 +215,67 @@ export class ReownWalletConnectProvider {
       // Create ethers adapter
       const ethersAdapter = new EthersAdapter()
 
-      // UNIVERSAL LAZY AUTH: Disable SIWX entirely for all devices
-      // Problem: SIWX prompts for signature even with SKIP nonce (both mobile and desktop external wallets)
-      // Solution: Disable SIWX universally, use lazy auth for all wallet types
+      // SIWX FOR EMBEDDED WALLETS ONLY (email OTP, Apple, Google)
       //
-      // Benefits:
-      // - No signature prompts immediately after connection (better UX)
-      // - Consistent behavior across all devices and wallet types
-      // - Signature only requested when actually needed (first API call)
+      // Previously SIWX was disabled for everyone, because it prompted for a
+      // signature even with a SKIP nonce. That also meant Reown Authentication
+      // never ran, so Reown never recorded how the user connected — leaving
+      // appKitAccount.connection_method "unknown" and email null, which is why
+      // verified emails never reached the backend.
       //
-      // Trade-off:
-      // - Embedded wallets on desktop lose headless signing during connection
-      // - They'll get signature prompt on first API call instead
-      // - But it's clearer to users what they're signing (actual data request, not just connection)
+      // EmbeddedOnlySIWX runs Reown Authentication for embedded wallets (where
+      // signing is headless and Reown holds a verified email) and short-circuits
+      // for external wallets, which keep lazy auth and get no connect-time
+      // prompt. See lib/auth/EmbeddedOnlySIWX.ts.
+      //
+      // Kill switch: set NEXT_PUBLIC_EMBEDDED_SIWX=false to restore the previous
+      // disabled-for-everyone behaviour.
+      const embeddedSiwxEnabled = process.env.NEXT_PUBLIC_EMBEDDED_SIWX !== 'false'
 
       mLog.info('ReownWalletConnect', '========================================')
-      mLog.info('ReownWalletConnect', 'SIWX COMPLETELY DISABLED (universal lazy auth)')
-      mLog.info('ReownWalletConnect', 'All wallets use lazy auth pattern')
-      mLog.info('ReownWalletConnect', 'NO signature prompts after connection')
-      mLog.info('ReownWalletConnect', 'Signature only when needed (first API call)')
+      mLog.info('ReownWalletConnect', `SIWX: ${embeddedSiwxEnabled ? 'EMBEDDED WALLETS ONLY' : 'DISABLED'}`)
+      mLog.info('ReownWalletConnect', 'External wallets always use lazy auth (no connect-time prompt)')
       mLog.info('ReownWalletConnect', '========================================')
 
-      const siwxConfig = undefined // Disable SIWX for everyone
+      const siwxConfig = embeddedSiwxEnabled ? new EmbeddedOnlySIWX() : undefined
+      this.siwxConfig = siwxConfig
+
+      /* If the caller already chose wallet-only before AppKit existed (the very
+         first connect races setConnectionMode against lazy init), construct
+         without SIWX rather than relying on the post-hoc updateOptions call. */
+      const siwxForMode = this.connectionMode === 'wallet-only' ? undefined : siwxConfig
 
       // Create AppKit instance
       console.log('🔧 ReownWalletConnect: Creating AppKit...')
       console.log('🔧 ReownWalletConnect: Default chain ID:', chainId)
       console.log('🔧 ReownWalletConnect: Default network:', networks[0].name)
 
+      const origin = typeof window !== 'undefined' ? window.location.origin : 'https://stabledrop.me'
+
       this.appKit = createAppKit({
         adapters: [ethersAdapter],
         networks: networks as [any, ...any[]], // Type assertion to fix tuple requirement
         defaultNetwork: networks[0], // CRITICAL: Set default network from env variable
         projectId,
-        siwx: siwxConfig, // Enable SIWX on desktop only (undefined on mobile = disabled)
+        // SIWX runs for embedded (email/social) connects only. External wallets
+        // must have it cleared or AppKit's one-click auth throws - see
+        // applySiwxForMode(). Gated by NEXT_PUBLIC_EMBEDDED_SIWX, not by device.
+        siwx: siwxForMode,
         defaultAccountTypes: {
           eip155: 'eoa' // Force EOA for standard ECDSA signatures (backend compatibility)
         },
+        // Shown by AppKit above every signature prompt ("<name> requests a
+        // signature"). The app is white-labelled across domains, so a hardcoded
+        // name here announces the wrong brand — and an icon pinned to another
+        // domain makes the wallet fetch it cross-origin. Both follow the host,
+        // the same way Header and MobileDrawer already do. The chain stays out
+        // of the description because it is configurable per deployment and
+        // AppKit renders it as its own field anyway.
         metadata: {
-          name: 'Conduit UCPI',
-          description: 'Time-delayed escrow contracts on Base',
-          url: typeof window !== 'undefined' ? window.location.origin : 'https://conduit-ucpi.com',
-          icons: ['https://conduit-ucpi.com/favicon.ico']
+          name: getSiteNameFromDomain(),
+          description: 'Escrow for stablecoin payments',
+          url: origin,
+          icons: [`${origin}/icon-512.png`]
         },
         features: this.getFeaturesForMode(),
         allowUnsupportedChain: false // Only allow the configured chain from env
@@ -171,7 +290,7 @@ export class ReownWalletConnectProvider {
     }
   }
 
-  async connect(): Promise<{ success: boolean; user?: any; provider?: any; error?: string }> {
+  async connect(): Promise<{ success: boolean; user?: any; provider?: any; error?: string; cancelled?: boolean }> {
     // Prevent race conditions for regular connect as well
     if (this.isConnecting) {
       console.log('🔧 ReownWalletConnect: Connection already in progress, waiting...')
@@ -293,14 +412,12 @@ export class ReownWalletConnectProvider {
           if (!isResolved) {
             isResolved = true
 
-            // Clean up all listeners and intervals
+            // Clean up all listeners and the poll timer
             document.removeEventListener('visibilitychange', handleVisibilityChange)
             if (isMobile) {
               window.removeEventListener('focus', handleFocus)
-              if (mobilePollingInterval) {
-                clearInterval(mobilePollingInterval)
-              }
             }
+            stopPolling()
 
             // Execute all cleanup functions
             cleanupFunctions.forEach(cleanup => {
@@ -315,11 +432,98 @@ export class ReownWalletConnectProvider {
           }
         }
 
+        /**
+         * Android/iOS suspend a backgrounded tab, which kills the WalletConnect
+         * relay WebSocket. The wallet still publishes its approval, but with the
+         * socket down nothing is subscribed to receive it, and universal-provider
+         * does not always re-subscribe by itself when the tab comes back - so the
+         * dapp waits forever for a message that was delivered while it was asleep.
+         *
+         * Reports the transport state on every return to the foreground, and
+         * restarts it when it is down. Restarting a healthy transport is a no-op,
+         * so this is safe to run on every focus.
+         *
+         * getUniversalProvider() is a public AppKit method; the relayer beneath it
+         * is not, hence the defensive access.
+         */
+        /* How long to let WalletConnect's own reconnect run before overriding it.
+           A healthy reopen lands well inside this; the stuck state observed on
+           Android sat at connecting:true for 80s+ without progressing. */
+        const STUCK_RECONNECT_MS = 8000
+        let connectingSince: number | null = null
+
+        const reviveRelayIfDropped = async (trigger: string) => {
+          try {
+            // getUniversalProvider() returns a Promise - without the await this
+            // reads .client off a Promise and silently finds nothing.
+            const provider: any = await this.appKit?.getUniversalProvider?.()
+            const relayer: any = provider?.client?.core?.relayer
+            if (!relayer) {
+              console.log(`🔧 ReownWalletConnect: [${trigger}] no relayer available yet`, {
+                hasProvider: Boolean(provider)
+              })
+              return
+            }
+
+            console.log(`🔧 ReownWalletConnect: [${trigger}] relay state`, {
+              relayerConnected: relayer.connected,
+              relayerConnecting: relayer.connecting,
+              transportExplicitlyClosed: relayer.transportExplicitlyClosed,
+              hasSession: Boolean(provider?.session),
+              pairings: provider?.client?.core?.pairing?.getPairings?.().length ?? 'n/a'
+            })
+
+            if (relayer.connected) {
+              connectingSince = null
+              return
+            }
+
+            /* Two failure modes, opposite remedies.
+               Barging in on a healthy reconnect breaks it: restartTransport()
+               closes and reopens the socket, aborting the in-flight attempt and
+               restarting the clock. focus and visibility both fire on Android,
+               so that produced competing loops that cancelled each other.
+               But standing back unconditionally is no better - observed on
+               Android Chrome, WalletConnect's own reconnect can sit at
+               connecting:true indefinitely (80s+, no error, no progress) after
+               the tab is suspended, and then nobody ever recovers it.
+               So: give its own attempt a grace period, then take over. */
+            if (relayer.connecting) {
+              const now = Date.now()
+              if (connectingSince === null) connectingSince = now
+              const stuckFor = now - connectingSince
+
+              if (stuckFor < STUCK_RECONNECT_MS) {
+                console.log(
+                  `🔧 ReownWalletConnect: [${trigger}] reconnect in flight for ${stuckFor}ms - leaving it alone`
+                )
+                return
+              }
+              console.log(
+                `🔧 ReownWalletConnect: [${trigger}] reconnect stuck for ${stuckFor}ms - taking over`
+              )
+            }
+
+            if (typeof relayer.restartTransport !== 'function') return
+
+            console.log(`🔧 ReownWalletConnect: [${trigger}] restarting transport`)
+            connectingSince = null
+            await relayer.restartTransport()
+            console.log(`🔧 ReownWalletConnect: [${trigger}] transport restarted`, {
+              relayerConnected: relayer.connected,
+              relayerConnecting: relayer.connecting
+            })
+          } catch (error) {
+            console.warn(`🔧 ReownWalletConnect: [${trigger}] relay revive failed`, error)
+          }
+        }
+
         // Add visibility change listener to detect when user returns from wallet app
         // SOCIAL LOGIN FIX: Give WalletConnect plenty of time to process OAuth callbacks
         const handleVisibilityChange = () => {
           if (document.visibilityState === 'visible' && !isResolved) {
             console.log('🔧 ReownWalletConnect: App became visible, giving WalletConnect time to process OAuth...')
+            void reviveRelayIfDropped('visibility')
             // Give WalletConnect time to exchange OAuth tokens and establish session
             setTimeout(() => {
               if (!isResolved) {
@@ -336,6 +540,7 @@ export class ReownWalletConnectProvider {
         const handleFocus = () => {
           if (!isResolved) {
             console.log('🔧 ReownWalletConnect: Window focused, giving WalletConnect time to process OAuth...')
+            void reviveRelayIfDropped('focus')
             // Give WalletConnect time to exchange OAuth tokens and establish session
             setTimeout(() => {
               if (!isResolved) {
@@ -349,9 +554,35 @@ export class ReownWalletConnectProvider {
           window.addEventListener('focus', handleFocus)
         }
 
-        // Mobile-specific: Additional polling when WalletConnect modal is open
-        // Will be started only after connection is initiated
-        let mobilePollingInterval: any = null
+        /* ONE poll chain, never more.
+           checkConnection() re-arms itself on every miss, and it is also called
+           directly from the visibility/focus handlers and from AppKit and
+           provider events. Each of those used to start its own self-scheduling
+           chain, and a 2s mobile interval span­ned yet another chain per tick,
+           so concurrent pollers grew without bound - burning through
+           maxAttempts in a fraction of the intended window and hammering
+           AppKit while it was trying to settle the session.
+
+           schedulePoll() cancels any pending tick before arming the next, so
+           however many callers ask for a check there is only ever one timer
+           outstanding, and maxAttempts once again means what the constant says. */
+        let pollTimer: ReturnType<typeof setTimeout> | null = null
+
+        const schedulePoll = (delayMs: number) => {
+          if (isResolved) return
+          if (pollTimer) clearTimeout(pollTimer)
+          pollTimer = setTimeout(() => {
+            pollTimer = null
+            checkConnection()
+          }, delayMs)
+        }
+
+        const stopPolling = () => {
+          if (pollTimer) {
+            clearTimeout(pollTimer)
+            pollTimer = null
+          }
+        }
 
         const checkConnection = async () => {
           if (isResolved) return // Don't continue if already resolved
@@ -382,18 +613,8 @@ export class ReownWalletConnectProvider {
             if (walletProvider && !hasInitiatedConnection) {
               console.log('🔧 ReownWalletConnect: Wallet provider detected, connection initiated')
               hasInitiatedConnection = true
-
-              // Start mobile polling now that connection is initiated
-              if (isMobile && !mobilePollingInterval) {
-                console.log('🔧 ReownWalletConnect: Starting mobile polling after connection initiation...')
-                mobilePollingInterval = setInterval(() => {
-                  if (!isResolved) {
-                    checkConnection()
-                  } else if (mobilePollingInterval) {
-                    clearInterval(mobilePollingInterval)
-                  }
-                }, 2000) // MOBILE FIX: Check every 2000ms to let WalletConnect sync naturally
-              }
+              // No separate mobile interval - the single poll chain below already
+              // re-checks every second on every platform.
             }
 
             if (caipAddress) {
@@ -471,9 +692,30 @@ export class ReownWalletConnectProvider {
                 // Continue anyway
               }
 
-              // Close the modal after network verification/switch completes
-              console.log('🔧 ReownWalletConnect: Closing modal - connection and network setup complete')
-              await this.appKit.close()
+              /* Close the modal after network verification/switch completes -
+                 UNLESS the embedded wallet is currently asking the user to
+                 approve something.
+
+                 The app does not wait for connect() to resolve before it starts
+                 working: AuthManager's subscribeAccount listener flips
+                 isConnected as soon as AppKit publishes the address, /create
+                 renders the wizard, its first API call 401s and lazy auth asks
+                 the embedded wallet to sign - all while this poll loop is still
+                 running. AppKit answers that personal_sign by opening its own
+                 modal on the ApproveTransaction view, and closing the modal
+                 while an unsafe RPC request is in flight makes AppKit abort it
+                 (appkit: PublicStateController.subscribeOpen -> rejectRpcRequests),
+                 so the prompt vanishes before the user can press Sign and the
+                 signature rejects with "Request was aborted".
+
+                 AppKit closes the modal itself once the request settles, so
+                 skipping the close here costs nothing. */
+              if (this.hasPendingApprovalPrompt()) {
+                console.log('🔧 ReownWalletConnect: Leaving modal open - wallet approval prompt is on screen')
+              } else {
+                console.log('🔧 ReownWalletConnect: Closing modal - connection and network setup complete')
+                await this.appKit.close()
+              }
 
               resolveOnce({
                 success: true,
@@ -481,13 +723,20 @@ export class ReownWalletConnectProvider {
                 provider: walletProvider
               })
             } else {
+              /* Watch the relay from the poll loop too, not just on
+                 focus/visibility - otherwise a transport that dies while the
+                 user sits in the wallet is only noticed if they happen to
+                 switch back and forth. Every 5th tick is roughly every 5s. */
+              if (checkAttempts % 5 === 0) {
+                void reviveRelayIfDropped('poll')
+              }
               // MOBILE FIX: Slower polling to let WalletConnect sync naturally
               // Check again in 1000ms instead of 500ms to reduce interference
-              setTimeout(checkConnection, 1000)
+              schedulePoll(1000)
             }
           } catch (error) {
             console.log('🔧 ReownWalletConnect: Waiting for connection...', error)
-            setTimeout(checkConnection, 1000)
+            schedulePoll(1000)
           }
         }
 
@@ -508,18 +757,6 @@ export class ReownWalletConnectProvider {
                   console.log('🔧 ReownWalletConnect: Connection initiated event detected')
                   if (!hasInitiatedConnection) {
                     hasInitiatedConnection = true
-
-                    // Start mobile polling now that connection is initiated
-                    if (isMobile && !mobilePollingInterval) {
-                      console.log('🔧 ReownWalletConnect: Starting mobile polling after wallet selection...')
-                      mobilePollingInterval = setInterval(() => {
-                        if (!isResolved) {
-                          checkConnection()
-                        } else if (mobilePollingInterval) {
-                          clearInterval(mobilePollingInterval)
-                        }
-                      }, 2000) // MOBILE FIX: Check every 2000ms to let WalletConnect sync naturally
-                    }
                   }
                 }
 
@@ -549,18 +786,6 @@ export class ReownWalletConnectProvider {
                 if (!hasInitiatedConnection) {
                   console.log('🔧 ReownWalletConnect: Connection initiated via provider event')
                   hasInitiatedConnection = true
-
-                  // Start mobile polling now that connection is initiated
-                  if (isMobile && !mobilePollingInterval) {
-                    console.log('🔧 ReownWalletConnect: Starting mobile polling after provider event...')
-                    mobilePollingInterval = setInterval(() => {
-                      if (!isResolved) {
-                        checkConnection()
-                      } else if (mobilePollingInterval) {
-                        clearInterval(mobilePollingInterval)
-                      }
-                    }, 2000) // MOBILE FIX: Check every 2000ms to let WalletConnect sync naturally
-                  }
                 }
                 checkConnection()
               }
@@ -569,13 +794,19 @@ export class ReownWalletConnectProvider {
               provider.on('session_event', handleConnect)
               provider.on('session_update', handleConnect)
 
-              // Add cleanup function
+              // Add cleanup function.
+              // EIP-1193 mandates removeListener; off() is an EventEmitter extra
+              // that MetaMask's inpage provider doesn't always expose. Gating
+              // removal on off() alone leaks all three handlers on every connect.
               cleanupFunctions.push(() => {
-                if (provider.off) {
-                  provider.off('connect', handleConnect)
-                  provider.off('session_event', handleConnect)
-                  provider.off('session_update', handleConnect)
+                const remove = (provider.off || provider.removeListener)?.bind(provider)
+                if (!remove) {
+                  console.warn('🔧 ReownWalletConnect: provider exposes neither off() nor removeListener() - listeners will leak')
+                  return
                 }
+                remove('connect', handleConnect)
+                remove('session_event', handleConnect)
+                remove('session_update', handleConnect)
               })
             }
           } catch (error) {
@@ -583,8 +814,110 @@ export class ReownWalletConnectProvider {
           }
         }
 
+        // Closing the modal without picking anything is a cancellation, so the
+        // caller can put the page back the way it was instead of sitting on a
+        // dead "Connecting..." button until the 5 minute timeout.
+        //
+        // The subtlety this has to respect is the one checkConnection() warns
+        // about: social login legitimately closes the modal mid-flow while the
+        // OAuth leg completes, and that close must NOT count as a cancel. So we
+        // key off whether the user actually chose something rather than off the
+        // connection mode - a close after SOCIAL_LOGIN_STARTED keeps waiting,
+        // a close with nothing chosen cancels.
+        //
+        // Email/OTP is deliberately absent from this list: that flow keeps the
+        // modal open the whole way through, so closing it really is a cancel.
+        const SOCIAL_CHOICE_EVENTS = new Set([
+          'CONNECT_SUCCESS',
+          'SOCIAL_LOGIN_STARTED',
+          'SOCIAL_LOGIN_REQUEST_USER_DATA',
+          'SOCIAL_LOGIN_SUCCESS'
+        ])
+        // Backing out of a social attempt drops the user back on the picker, so
+        // the next close is a cancel again.
+        const CHOICE_RESET_EVENTS = new Set([
+          'SOCIAL_LOGIN_CANCELED',
+          'SOCIAL_LOGIN_ERROR',
+          'CONNECT_ERROR'
+        ])
+        let socialChoiceMade = false
+        let walletChoiceMade = false
+
+        // Social login blocks the cancel on every platform - the modal closing
+        // is part of its OAuth leg. Picking a wallet only blocks it on mobile,
+        // where the modal closes as the wallet app takes over; on desktop the
+        // flow stays put on a QR screen, so closing that is the user giving up.
+        const choiceBlocksCancel = () =>
+          socialChoiceMade || (isMobile && (walletChoiceMade || hasInitiatedConnection))
+
+        const subscribeToModalDismissal = () => {
+          if (typeof this.appKit.subscribeState !== 'function') return
+
+          // subscribeEvents hands back the whole EventsController state; the
+          // event name lives at state.data.event.
+          if (typeof this.appKit.subscribeEvents === 'function') {
+            const unsubscribeEvents = this.appKit.subscribeEvents((state: any) => {
+              const name = state?.data?.event
+              if (!name) return
+              if (SOCIAL_CHOICE_EVENTS.has(name)) {
+                socialChoiceMade = true
+              } else if (name === 'SELECT_WALLET') {
+                walletChoiceMade = true
+              } else if (CHOICE_RESET_EVENTS.has(name)) {
+                socialChoiceMade = false
+                walletChoiceMade = false
+              }
+            })
+            if (unsubscribeEvents) {
+              cleanupFunctions.push(() => unsubscribeEvents())
+            }
+          }
+
+          // Seed from current state: open() has already been awaited above, but
+          // read it rather than assume, so a close can only follow a real open.
+          let sawOpen = false
+          try {
+            sawOpen = !!this.appKit.getState?.().open
+          } catch {
+            sawOpen = true
+          }
+
+          const unsubscribe = this.appKit.subscribeState((state: any) => {
+            if (state?.open) {
+              sawOpen = true
+              return
+            }
+            if (!sawOpen || isResolved) return
+
+            // The success path closes the modal itself before resolving, so give
+            // that a beat to land before calling this a cancellation.
+            setTimeout(() => {
+              if (isResolved) return
+              // Something was chosen and the connection is still in flight.
+              if (choiceBlocksCancel()) return
+              try {
+                if (this.appKit.getCaipAddress()) return
+              } catch {
+                // Fall through - no address means nothing to keep waiting for.
+              }
+
+              console.log('🔧 ReownWalletConnect: Modal dismissed without choosing - cancelling')
+              resolveOnce({
+                success: false,
+                cancelled: true,
+                error: 'Connection cancelled'
+              })
+            }, 500)
+          })
+
+          if (unsubscribe) {
+            cleanupFunctions.push(() => unsubscribe())
+          }
+        }
+
         // Set up event subscriptions
         subscribeToEvents()
+        subscribeToModalDismissal()
 
         // Start checking
         checkConnection()
@@ -650,28 +983,42 @@ export class ReownWalletConnectProvider {
         return false
       }
 
-      // For embedded wallets (social login), we need to use the EOA address for signing,
-      // not the smart account address. The smart account can't sign messages.
-      const appKitAny = this.appKit as any
-      const accountState = appKitAny.getState?.() || appKitAny.state
+      // Embedded wallets (social login) can present a smart account, which cannot
+      // produce an ECDSA signature. getAccount() is AppKit's public, typed view of
+      // the connected accounts and carries a type discriminator per account.
+      //
+      // This only VALIDATES - it deliberately does not swap in a different address.
+      // The signature has to prove ownership of the wallet registered against the
+      // user in user-service, and that is the address AppKit reports as connected.
+      // Signing with some other EOA would produce a signature the backend cannot
+      // match to the account, so a mismatch is a hard failure, not a silent switch.
+      //
+      // In practice createAppKit() is configured with defaultAccountTypes.eip155 =
+      // 'eoa', so the connected account should already be signable; this catches the
+      // case where that guarantee stops holding.
+      const account = this.appKit.getAccount?.('eip155')
+      const connected = account?.allAccounts?.find(
+        (a: { address: string }) => a.address?.toLowerCase() === address?.toLowerCase()
+      )
 
-      if (accountState?.embeddedWalletInfo?.user) {
-        console.log('🔧 ReownWalletConnect: Embedded wallet detected - using EOA for signing')
-
-        // Try to get the EOA address from the embedded wallet info
-        const eoaAddress = accountState.embeddedWalletInfo.eoaAddress ||
-                          accountState.embeddedWalletInfo.user.address ||
-                          accountState.embeddedWalletInfo.walletAddress
-
-        if (eoaAddress) {
-          console.log('🔧 ReownWalletConnect: Using EOA address for signature', {
-            smartAccount: address,
-            eoa: eoaAddress
-          })
-          address = eoaAddress
-        } else {
-          console.warn('🔧 ReownWalletConnect: Could not find EOA address, using smart account address')
+      if (connected && connected.type === 'smartAccount') {
+        console.error('🔧 ReownWalletConnect: Connected account is a smart account and cannot sign', {
+          address,
+          availableTypes: account?.allAccounts?.map((a: { type: string }) => a.type)
+        })
+        this.lastAuthFailure = {
+          kind: 'wallet-signing',
+          message: 'This wallet cannot sign messages. Reconnect and choose a standard wallet account.'
         }
+        return false
+      }
+
+      if (account?.embeddedWalletInfo) {
+        console.log('🔧 ReownWalletConnect: Embedded wallet signing', {
+          address,
+          accountType: connected?.type ?? 'unknown',
+          authProvider: account.embeddedWalletInfo.authProvider
+        })
       }
 
       // CRITICAL: Verify and switch to correct network BEFORE creating SIWE message
@@ -730,7 +1077,7 @@ export class ReownWalletConnectProvider {
       console.log('🔧 ReownWalletConnect: Creating SIWE message manually', { address })
 
       // Step 1: Get a nonce from the backend
-      const nonceResponse = await fetch('/api/auth/siwe/nonce')
+      const nonceResponse = await apiFetch('/api/auth/siwe/nonce')
       if (!nonceResponse.ok) {
         console.error('🔧 ReownWalletConnect: Failed to get nonce')
         return false
@@ -750,7 +1097,7 @@ export class ReownWalletConnectProvider {
       const message = `${domain} wants you to sign in with your Ethereum account:
 ${address}
 
-${SIWE_STATEMENT}
+${siweStatement(chainId)}
 
 URI: ${uri}
 Version: 1
@@ -767,15 +1114,15 @@ Issued At: ${issuedAt}`
 
       // Step 3: Sign the message
       const hexMessage = '0x' + Buffer.from(message, 'utf8').toString('hex')
-      const signature = await walletProvider.request({
+      const signature = await this.withApprovalPrompt(() => walletProvider.request({
         method: 'personal_sign',
         params: [hexMessage, address]
-      }) as string
+      })) as string
 
       console.log('🔧 ReownWalletConnect: Message signed by wallet')
 
       // Step 4: Send to backend for verification
-      const verifyResponse = await fetch('/api/auth/siwe/verify', {
+      const verifyResponse = await apiFetch('/api/auth/siwe/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1019,7 +1366,7 @@ Issued At: ${issuedAt}`
       // Create message to sign
       const timestamp = Date.now()
       const nonce = Math.random().toString(36).substring(2, 15)
-      const message = `Authenticate wallet ${address} at ${timestamp} with nonce ${nonce}`
+      const message = buildAuthTokenMessage({ address, timestamp, nonce })
 
       console.log('🔧 ReownWalletConnect: Testing batched request support...')
 
@@ -1138,7 +1485,7 @@ Issued At: ${issuedAt}`
       // Create message to sign
       const timestamp = Date.now()
       const nonce = Math.random().toString(36).substring(2, 15)
-      const message = `Authenticate wallet ${address} at ${timestamp} with nonce ${nonce}`
+      const message = buildAuthTokenMessage({ address, timestamp, nonce })
 
       console.log('🔧 ReownWalletConnect: Signing auth message:', message)
 
@@ -1162,7 +1509,7 @@ Issued At: ${issuedAt}`
       }
 
       console.log('🔧 ReownWalletConnect: Requesting signature from wallet...')
-      const signature = await signer.signMessage(message)
+      const signature = await this.withApprovalPrompt(() => signer.signMessage(message))
 
       // Create auth token
       const authToken = btoa(JSON.stringify({

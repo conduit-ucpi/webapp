@@ -46,9 +46,12 @@ gtag('config', 'G-C5RP49B2R8');`
         <meta name="google" content="notranslate" />
 
         {/* Favicons */}
-        <link rel="icon" type="image/png" href="/favicon.png" />
+        {/* favicon.png is the 383KB hero illustration, unreadable at tab size
+            and wasteful to ship as an icon. icon-512.png is the mark cropped
+            out of it. */}
+        <link rel="icon" type="image/png" href="/icon-512.png" />
         <link rel="shortcut icon" href="/favicon.ico" />
-        <link rel="apple-touch-icon" href="/favicon.png" />
+        <link rel="apple-touch-icon" href="/icon-512.png" />
 
         {/* Farcaster mini-app configuration */}
         <meta name="fc:miniapp" content={`{"version": "next", "imageUrl": "${farcasterBaseUrl}/preview.png", "button": {"title": "🚩 Start", "action": {"type": "launch_frame", "name": "Instant Escrow", "url": "${farcasterBaseUrl}"}}}`} />

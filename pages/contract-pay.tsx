@@ -12,8 +12,10 @@ import { useContractPayment } from '@/hooks/useContractPayment';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import ConnectPaymentStage from '@/components/contracts/ConnectPaymentStage';
-import WalletInfo from '@/components/ui/WalletInfo';
-import TokenGuide from '@/components/ui/TokenGuide';
+import PaymentRequestIntro from '@/components/contracts/PaymentRequestIntro';
+import PaymentActionPanel from '@/components/contracts/PaymentActionPanel';
+import WalletChoiceCards from '@/components/auth/WalletChoiceCards';
+import CreateProgressSteps, { PAY_JOURNEY_STEPS } from '@/components/contracts/CreateProgressSteps';
 import CustomArbiterNotice from '@/components/contracts/CustomArbiterNotice';
 import PaymentProgress from '@/components/contracts/PaymentProgress';
 import QrPaymentPanel from '@/components/contracts/QrPaymentPanel';
@@ -25,6 +27,16 @@ import { getNetworkName } from '@/utils/networkUtils';
 import { detectDevice } from '@/utils/deviceDetection';
 
 type PaymentMethod = 'wallet' | 'qr' | null;
+
+/**
+ * AppKit's AUTH (embedded wallet) connector rehydrates through an auth iframe.
+ * Until that round-trip finishes, isConnected is false while authLoading is
+ * true — and on a flaky connection it may never finish. An unbounded wait
+ * leaves a buyer who followed an email link staring at a spinner, so give up
+ * after this and render the signed-out screens instead. Connecting from there
+ * is harmless if the session does rehydrate later.
+ */
+const AUTH_REHYDRATE_TIMEOUT_MS = 5000;
 
 export default function ContractPay() {
   const router = useRouter();
@@ -41,7 +53,40 @@ export default function ContractPay() {
   const [isPaymentInProgress, setIsPaymentInProgress] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(null);
-  const [showTokenGuide, setShowTokenGuide] = useState(false);
+  const [alreadyFunded, setAlreadyFunded] = useState(false);
+  /**
+   * True while the escrow is being read on arrival.
+   *
+   * Someone returning from Coinbase lands here before that read resolves, and
+   * without this they are shown the payment-method chooser — which reads as "it
+   * didn't work" for the several seconds until the funds are noticed and they
+   * are moved on. Starts true whenever a chain address exists, so the chooser is
+   * never the first thing a returning payer sees.
+   */
+  const [isCheckingEscrow, setIsCheckingEscrow] = useState(false);
+
+  /**
+   * Restore the panel from the URL.
+   *
+   * Payment method is local state, so any step that leaves the page — the
+   * Coinbase onramp, most obviously — comes back to the method chooser with the
+   * user's progress apparently lost. Carrying it in the query means they land
+   * back on the "I have paid" panel, where the sweep is one button away.
+   */
+  useEffect(() => {
+    if (!router.isReady) return;
+    if (router.query.method === 'qr') setPaymentMethod('qr');
+  }, [router.isReady, router.query.method]);
+
+  // The intro is a landing step, not a stage: it shows once on arrival, and
+  // "Change payment method" returns to the chooser rather than back to here.
+  const [introDismissed, setIntroDismissed] = useState(false);
+  // Bounds the wait on wallet rehydration — see AUTH_REHYDRATE_TIMEOUT_MS.
+  const [authWaitElapsed, setAuthWaitElapsed] = useState(false);
+  // "Choose how to pay" is no longer part of arriving at the page: someone who
+  // follows a payment link already signed in goes straight to the payment
+  // screen. It is only reachable by asking for it via "Change payment method".
+  const [methodChoiceRequested, setMethodChoiceRequested] = useState(false);
 
   // QR flow state. The QR-payment subsystem (countdown, balance polling,
   // activation) lives in useQrPayment; the page keeps only the bits that are
@@ -56,6 +101,8 @@ export default function ContractPay() {
     address,
     authenticatedFetch,
   });
+
+
 
   // Payment step state + update algorithm live in usePaymentSteps; the initial
   // (wallet-flow) labels are page-specific.
@@ -88,6 +135,81 @@ export default function ContractPay() {
     availableTokens
   } = useTokenSelection(config, contractTokenSymbol);
 
+  /**
+   * The contract amount in whole tokens.
+   *
+   * The denominator is the SELECTED TOKEN's decimals, from SUPPORTED_TOKENS —
+   * not a hardcoded 1e6. That happens to be right for USDC and USDT and wrong
+   * for anything else: an 18-decimal token divided by a million reads as a
+   * balance twelve orders of magnitude too large, so every comparison against
+   * it silently passes. Undefined while the token is still resolving, so
+   * callers can tell "not yet" from "zero".
+   */
+  const requiredAmount = useMemo(() => {
+    if (!contract || typeof selectedToken?.decimals !== 'number') return undefined;
+    return contract.amount / 10 ** selectedToken.decimals;
+  }, [contract, selectedToken?.decimals]);
+
+  /**
+   * Skip the payment-method chooser only when the money is already there.
+   *
+   * A deployed escrow does not mean funded: both the QR and Coinbase routes
+   * create it first and fund it afterwards, and an abandoned attempt leaves an
+   * empty one behind. So ask the chain. If the escrow already holds what the
+   * contract needs, the only outstanding action is the sweep and the payer
+   * should land on the button that runs it - that is the case where funds sit
+   * unclaimable with nothing in the UI to finish them. If it is short, they
+   * still have a payment to make, and choosing how is the right first step.
+   *
+   * Only ever runs for a contract that already has an address, so a first-time
+   * payer costs no RPC call.
+   */
+  useEffect(() => {
+    const escrowAddress = contract?.chainAddress;
+    if (!escrowAddress || !selectedTokenAddress || requiredAmount === undefined) return;
+
+    let cancelled = false;
+    setIsCheckingEscrow(true);
+    (async () => {
+      try {
+        // The escrow's own view first. isFunded() is true once a deposit has been
+        // swept in, which is the only reliable way to tell a completed payment
+        // from one whose money is sitting in the contract untouched — the stored
+        // record cannot distinguish them.
+        const web3 = await getWeb3Service();
+        const state = await web3?.getContractState(escrowAddress);
+        if (cancelled) return;
+
+        if (state?.isFunded) {
+          setAlreadyFunded(true);
+          return;
+        }
+
+        const balance = await getTokenBalance(escrowAddress, selectedTokenAddress);
+        if (cancelled) return;
+
+        // Same >= comparison the activation gate uses, so the panel we land on
+        // cannot disagree with the reason we landed there.
+        if (parseFloat(balance) >= requiredAmount) {
+          setPaymentMethod((current) => current ?? 'qr');
+        }
+      } catch (error) {
+        // An unreadable balance is not a reason to guess. Leaving the chooser up
+        // costs a click; asserting funds that are not there strands the payer.
+        console.error('ContractPay: could not read escrow balance:', error);
+      } finally {
+        if (!cancelled) setIsCheckingEscrow(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // getTokenBalance comes from useSimpleEthers, which returns a fresh object
+    // each render — depending on it here re-fires the effect every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contract?.chainAddress, selectedTokenAddress, requiredAmount]);
+
   // Lazy-auth one-shot user-data fetch (triggers SIWX if no session exists).
   useLazyUserData({ isConnected, address, user, refreshUserData });
 
@@ -109,8 +231,11 @@ export default function ContractPay() {
     getTokenBalance,
     selectedTokenAddress,
     chainId: config?.chainId,
-    requiredAmount: contract ? contract.amount / 1000000 : 0,
+    requiredAmount: requiredAmount ?? 0,
     requiredAmountMicro: contract?.amount ?? 0,
+    // Deployed on an earlier visit: no need to create one, and the balance poll
+    // should start against it immediately in case the money is already there.
+    existingContractAddress: contract?.chainAddress ?? null,
     createContract: useCallback(async () => {
       if (!contract || !config || !address || !authenticatedFetch) return undefined;
       try {
@@ -145,6 +270,45 @@ export default function ContractPay() {
     }, [router]),
   });
 
+  /**
+   * Pay from the connected wallet.
+   *
+   * Settlement is identical to the external-wallet route: a plain ERC-20
+   * transfer to the escrow address, which is then swept in. The only difference
+   * is how the transfer is originated — signed here rather than scanned — so
+   * this reuses the same two calls the QR route makes (qr.createContract to
+   * resolve the escrow, then transferToContract) and hands off to the same
+   * panel, where the sweep can be waited out or triggered by hand.
+   */
+  const handlePayFromConnectedWallet = async () => {
+    if (!contract || !config || !address) {
+      console.error('ContractPay: Missing required data for payment');
+      return;
+    }
+
+    setIsPaymentInProgress(true);
+    try {
+      setLoadingMessage('Preparing escrow contract...');
+      // Reuses the QR route's creator, so the address is the one contractservice
+      // considers authoritative and no second escrow is ever deployed.
+      const escrowAddress = qr.qrContractAddress ?? (await qr.createContract());
+      if (!escrowAddress) return;
+
+      setLoadingMessage('Confirm the transfer in your wallet...');
+      await transferToContract(selectedTokenAddress, escrowAddress, String(contract.amount));
+
+      // Same destination as the QR, so the same panel picks it up from here:
+      // it polls the escrow balance and offers manual activation.
+      setPaymentMethod('qr');
+    } catch (error: any) {
+      console.error('ContractPay: Transfer to escrow failed:', error);
+      alert(error?.message || 'Payment failed');
+    } finally {
+      setIsPaymentInProgress(false);
+      setLoadingMessage('');
+    }
+  };
+
   // Handle wallet-connected payment (direct transfer)
   const handleWalletPayment = async () => {
     if (!contract || !config || !address) {
@@ -177,7 +341,7 @@ export default function ContractPay() {
       {
         selectedTokenSymbol,
         tokenBalance,
-        requiredAmount: contract.amount / 1000000,
+        requiredAmount: requiredAmount ?? 0,
         authenticatedFetch,
         transferToContract,
         approveUSDC,
@@ -234,7 +398,7 @@ export default function ContractPay() {
       {
         selectedTokenSymbol,
         tokenBalance,
-        requiredAmount: contract.amount / 1000000,
+        requiredAmount: requiredAmount ?? 0,
         authenticatedFetch,
         transferToContract,
         approveUSDC,
@@ -277,14 +441,31 @@ export default function ContractPay() {
     setIsMobileDevice(device.isMobile || device.isTablet);
   }, []);
 
+  // Bound the wait on wallet rehydration — see AUTH_REHYDRATE_TIMEOUT_MS.
+  useEffect(() => {
+    const timer = setTimeout(() => setAuthWaitElapsed(true), AUTH_REHYDRATE_TIMEOUT_MS);
+    return () => clearTimeout(timer);
+  }, []);
+
   // ================================================================
   // RENDER SECTION
   // ================================================================
 
   const pageTitle = 'Pay Contract - Conduit UCPI';
 
-  // Loading screen for initialization
-  if (!config || (authLoading && !isConnected && !address)) {
+  // Loading screen for initialization. The auth half of this is time-bounded so
+  // a stalled rehydration falls through to the signed-out screens rather than
+  // spinning forever; config is not, since without it nothing can render.
+  //
+  // Arriving back from the onramp counts as "auth is coming" even when
+  // authLoading has already gone false: the wallet provider reconnects
+  // asynchronously after the session is restored, and in that window someone who
+  // is signed in was being shown the connect-wallet screen. Deliberately not
+  // waiting for everyone — a genuinely signed-out visitor should not stare at a
+  // spinner for the full rehydration timeout before being asked to connect.
+  const returningFromPayment = router.query.method === 'qr';
+
+  if (!config || ((authLoading || returningFromPayment) && !isConnected && !address && !authWaitElapsed)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white dark:bg-secondary-900 transition-colors">
         <Head><title>{pageTitle}</title><meta name="viewport" content="width=device-width, initial-scale=1" /></Head>
@@ -311,34 +492,110 @@ export default function ContractPay() {
   }
 
   // ================================================================
+  // STAGE 0: Payment Request Intro
+  // The landing step for a signed-out buyer arriving from an email link or QR
+  // code. It shows no contract detail because none is readable until they sign
+  // in — so someone who is already signed in has nothing to gain here and goes
+  // straight through to the payment screen instead.
+  // ================================================================
+  // Reading the escrow: say so rather than offering to take a payment that may
+  // already have been made. This is what a payer sees on returning from
+  // Coinbase, and the chooser here reads as "that failed".
+  if (paymentMethod === null && isCheckingEscrow) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-secondary-900 transition-colors">
+        <Head><title>{pageTitle}</title><meta name="viewport" content="width=device-width, initial-scale=1" /></Head>
+        <div className="text-center p-6">
+          <LoadingSpinner className="w-8 h-8 mx-auto mb-4" />
+          <p className="text-secondary-600 dark:text-secondary-300">Checking for your payment…</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (paymentMethod === null && !introDismissed && !isConnected && !address) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-secondary-900 transition-colors">
+        <Head><title>{pageTitle}</title><meta name="viewport" content="width=device-width, initial-scale=1" /></Head>
+        <PaymentRequestIntro onContinue={() => setIntroDismissed(true)} />
+      </div>
+    );
+  }
+
+  // ================================================================
   // STAGE 1: Payment Method Choice
   // Shown whenever no method is selected — including after the user
   // clicks "Change payment method" while already connected.
   // ================================================================
-  if (paymentMethod === null) {
+  // Not connected yet: the wallet gate, presented exactly as /create presents it.
+  // The payment summary only renders once a contract has been loaded, which
+  // cannot happen before the buyer is authenticated.
+  if (paymentMethod === null && !isConnected && !address) {
+    return (
+      <div className="min-h-screen bg-white dark:bg-secondary-900 transition-colors">
+        <Head><title>{pageTitle}</title><meta name="viewport" content="width=device-width, initial-scale=1" /></Head>
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12 sm:py-16">
+          <CreateProgressSteps current={0} steps={PAY_JOURNEY_STEPS} />
+
+          <h1 className="text-center text-3xl sm:text-4xl font-bold text-secondary-900 dark:text-white tracking-tight">
+            Complete Your Payment
+          </h1>
+
+          {contract && (
+            <div className="mt-8 rounded-2xl bg-white dark:bg-secondary-800 border border-secondary-200 dark:border-secondary-700 p-6 flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <p className="text-lg font-semibold text-secondary-900 dark:text-white">
+                  Pay to {contract.sellerEmail}
+                </p>
+                {contract.description && (
+                  <p className="mt-1 text-sm text-secondary-500 dark:text-secondary-400">
+                    &ldquo;{contract.description}&rdquo;
+                  </p>
+                )}
+              </div>
+              <div className="text-right">
+                <p className="text-lg font-bold text-secondary-900 dark:text-white">
+                  {displayCurrency(contract.amount, contract.currency || 'microUSDC')}
+                </p>
+                <p className="mt-1 text-sm text-secondary-500 dark:text-secondary-400">
+                  {config ? getNetworkName(config.chainId) : ''}
+                </p>
+              </div>
+            </div>
+          )}
+
+          <hr className="mt-10 border-secondary-200 dark:border-secondary-700" />
+
+          <p className="mt-8 text-center text-lg text-secondary-600 dark:text-secondary-300">
+            Connect a wallet to continue or we&apos;ll create one for you
+          </p>
+
+          {/* This is the pay journey, not /create: connecting here must drop the
+              buyer straight into the payment stage rather than back to a choice
+              screen. Selecting the method as part of success does that, and also
+              stops the "Choose how to pay" branch below flashing up in the gap
+              between isConnected flipping and this callback running. */}
+          <WalletChoiceCards onSuccess={() => setPaymentMethod('wallet')} />
+        </div>
+      </div>
+    );
+  }
+
+  // Reached only by asking for it via "Change payment method" — never on
+  // arrival. The wallet gate above is meaningless once connected, so this stays
+  // the method choice it always was.
+  if (paymentMethod === null && methodChoiceRequested) {
     return (
         <div className="min-h-screen flex items-center justify-center bg-white dark:bg-secondary-900 transition-colors">
           <Head><title>{pageTitle}</title><meta name="viewport" content="width=device-width, initial-scale=1" /></Head>
           <div className="p-6 max-w-md mx-auto">
-            {/* Buyer protection callout */}
-            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6 text-left">
-              <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-200 mb-2">
-                You have received a secure payment request
-              </h3>
-              <ul className="text-sm text-blue-800 dark:text-blue-300 space-y-1">
-                <li>Your payment is protected by escrow</li>
-                <li>Can dispute if there is a problem</li>
-                <li>No gas fees - we cover blockchain costs</li>
-              </ul>
-            </div>
-
             <h2 className="text-lg font-semibold text-secondary-900 dark:text-white mb-2 text-center">Choose how to pay</h2>
             <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-4 text-center">Not sure? If you don&apos;t already hold USDC in a crypto wallet, choose the first option.</p>
 
             <div className="space-y-3">
               {/* Wallet / sign-in option */}
               <button
-                onClick={() => setPaymentMethod('wallet')}
+                onClick={() => { setPaymentMethod('wallet'); setMethodChoiceRequested(false); }}
                 className="w-full text-left p-4 rounded-lg border-2 border-secondary-200 dark:border-secondary-700 hover:border-blue-500 dark:hover:border-blue-400 transition-colors bg-white dark:bg-secondary-800"
               >
                 <div className="flex items-start">
@@ -356,7 +613,7 @@ export default function ContractPay() {
 
               {/* Own wallet / QR option */}
               <button
-                onClick={() => setPaymentMethod('qr')}
+                onClick={() => { setPaymentMethod('qr'); setMethodChoiceRequested(false); }}
                 className="w-full text-left p-4 rounded-lg border-2 border-secondary-200 dark:border-secondary-700 hover:border-blue-500 dark:hover:border-blue-400 transition-colors bg-white dark:bg-secondary-800"
               >
                 <div className="flex items-start">
@@ -385,8 +642,8 @@ export default function ContractPay() {
       <div className="min-h-screen flex items-center justify-center bg-white dark:bg-secondary-900 transition-colors">
         <Head><title>{pageTitle}</title><meta name="viewport" content="width=device-width, initial-scale=1" /></Head>
         <ConnectPaymentStage
-          paymentMethod={paymentMethod}
-          onBack={() => setPaymentMethod(null)}
+          paymentMethod={paymentMethod ?? 'wallet'}
+          onBack={() => { setPaymentMethod(null); setMethodChoiceRequested(true); }}
           onConnectSuccess={() => {
             console.log('ContractPay: Auth success callback triggered');
           }}
@@ -408,6 +665,22 @@ export default function ContractPay() {
         <div className="text-center p-6">
           <LoadingSpinner size="lg" />
           <p className="mt-4 text-secondary-600 dark:text-secondary-300">Loading payment request...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // The escrow reports the deposit already swept in: there is nothing to pay.
+  if (alreadyFunded) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-secondary-900 transition-colors">
+        <Head><title>{pageTitle}</title><meta name="viewport" content="width=device-width, initial-scale=1" /></Head>
+        <div className="text-center p-6 max-w-md mx-auto">
+          <h2 className="text-xl font-semibold text-secondary-900 dark:text-white mb-4">This payment is complete</h2>
+          <p className="text-secondary-600 dark:text-secondary-300 mb-6">
+            The funds are already held in escrow for this request.
+          </p>
+          <Button onClick={() => router.push('/dashboard')} variant="outline">Go to Dashboard</Button>
         </div>
       </div>
     );
@@ -446,12 +719,11 @@ export default function ContractPay() {
   // ================================================================
 
   // Contract data derived values
-  const amountInTokens = contract.amount / 1000000;
+  const amountInTokens = requiredAmount ?? 0;
   const balanceFloat = parseFloat(tokenBalance);
   const hasInsufficientBalance = balanceFloat < amountInTokens;
   const isInstantPayment = contract.expiryTimestamp === 0;
   const isSameAddress = address?.toLowerCase() === contract.sellerAddress?.toLowerCase();
-  const cannotPay = hasInsufficientBalance || isSameAddress;
   const networkName = config ? getNetworkName(config.chainId) : 'Unknown Network';
 
   // If user connected without choosing a method (e.g., already connected), default to wallet
@@ -462,13 +734,8 @@ export default function ContractPay() {
       <Head><title>{pageTitle}</title><meta name="viewport" content="width=device-width, initial-scale=1" /></Head>
 
       <div className="container mx-auto p-6 max-w-md mx-auto">
-        {/* Wallet Info Section */}
-        <WalletInfo
-          className="mb-4"
-          tokenSymbol={selectedTokenSymbol}
-          tokenAddress={selectedTokenAddress}
-        />
-
+        {/* Wallet address and balance are no longer repeated here — they live in
+            the connected-wallet box inside PaymentActionPanel below. */}
         <div className="bg-white dark:bg-secondary-900 rounded-lg shadow-sm dark:shadow-none border border-secondary-200 dark:border-secondary-700 p-6">
           <h2 className="text-xl font-semibold text-secondary-900 dark:text-white mb-4">Payment Request</h2>
 
@@ -480,18 +747,6 @@ export default function ContractPay() {
                 {displayCurrency(contract.amount, contract.currency || 'microUSDC')}
               </span>
             </div>
-            {effectiveMethod === 'wallet' && (
-              <div className="flex justify-between">
-                <span className="text-secondary-600 dark:text-secondary-300">Your Balance:</span>
-                <span className={`font-medium ${hasInsufficientBalance ? 'text-red-600' : 'text-green-600'}`}>
-                  {isLoadingBalance ? (
-                    <span className="animate-pulse">Loading...</span>
-                  ) : (
-                    `${balanceFloat.toFixed(4)} ${selectedTokenSymbol}`
-                  )}
-                </span>
-              </div>
-            )}
             <div className="flex justify-between">
               <span className="text-secondary-600 dark:text-secondary-300">Seller:</span>
               <span className="text-sm font-mono text-secondary-900 dark:text-white">{contract.sellerAddress.slice(0, 6)}...{contract.sellerAddress.slice(-4)}</span>
@@ -516,7 +771,7 @@ export default function ContractPay() {
           {!isPaymentInProgress && !qr.qrContractAddress && (
             <div className="mb-6 text-right">
               <button
-                onClick={() => setPaymentMethod(null)}
+                onClick={() => { setPaymentMethod(null); setMethodChoiceRequested(true); }}
                 className="text-sm text-primary-600 dark:text-primary-400 hover:underline"
               >
                 Change payment method
@@ -534,39 +789,10 @@ export default function ContractPay() {
                 <PaymentProgress steps={paymentSteps} loadingMessage={loadingMessage} />
               )}
 
-              {/* Warnings */}
-              {isSameAddress ? (
-                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-4 mb-6">
-                  <p className="text-sm text-red-800 dark:text-red-300 font-medium">Cannot Pay Yourself</p>
-                  <p className="text-sm text-red-700 dark:text-red-400 mt-1">
-                    You cannot pay this contract because your wallet address matches the seller's address. The buyer and seller must be different accounts.
-                  </p>
-                </div>
-              ) : hasInsufficientBalance ? (
-                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md mb-6">
-                  <div className="p-4">
-                    <p className="text-sm text-red-800 dark:text-red-300 font-medium">Insufficient Balance</p>
-                    <p className="text-sm text-red-700 dark:text-red-400 mt-1">
-                      You need {amountInTokens.toFixed(4)} {selectedTokenSymbol} but only have {balanceFloat.toFixed(4)} {selectedTokenSymbol}.
-                      Please add {(amountInTokens - balanceFloat).toFixed(4)} {selectedTokenSymbol} to your wallet before proceeding.
-                    </p>
-                  </div>
-                  <div className="border-t border-red-200 dark:border-red-800 p-3">
-                    <Button
-                      onClick={() => setShowTokenGuide(!showTokenGuide)}
-                      variant="outline"
-                      className="w-full"
-                    >
-                      {showTokenGuide ? `Hide guide` : `Show me how to add ${selectedTokenSymbol} to my wallet`}
-                    </Button>
-                    {showTokenGuide && (
-                      <div className="mt-3">
-                        <TokenGuide />
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ) : !isPaymentInProgress && (
+              {/* Escrow reassurance. Stated once for the whole screen: the
+                  signed-in wallet is the contract's buyer whichever route the
+                  funds take, so this holds for all three. */}
+              {!isPaymentInProgress && !hasInsufficientBalance && !isSameAddress && (
                 <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md p-4 mb-6">
                   <p className="text-sm text-yellow-800 dark:text-yellow-300">
                     {isInstantPayment
@@ -577,38 +803,31 @@ export default function ContractPay() {
                 </div>
               )}
 
-              {/* Action Buttons */}
-              <div className="flex space-x-3">
-                <Button
-                  onClick={() => router.push('/dashboard')}
-                  variant="outline"
-                  className="flex-1"
-                  disabled={isPaymentInProgress}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleWalletPayment}
-                  disabled={isPaymentInProgress || isLoadingBalance || cannotPay}
-                  className="flex-1"
-                  title={
-                    isSameAddress
-                      ? 'Cannot pay yourself - buyer and seller must be different accounts'
-                      : hasInsufficientBalance
-                      ? `Insufficient balance: need ${amountInTokens.toFixed(4)} ${selectedTokenSymbol}, have ${balanceFloat.toFixed(4)} ${selectedTokenSymbol}`
-                      : ''
-                  }
-                >
-                  {isPaymentInProgress ? (
-                    <>
-                      <LoadingSpinner className="w-4 h-4 mr-2" />
-                      {loadingMessage?.match(/Step \d+/)?.[0] || 'Processing...'}
-                    </>
-                  ) : (
-                    `Pay ${displayCurrency(contract.amount, contract.currency || 'microUSDC')}`
-                  )}
-                </Button>
-              </div>
+              <PaymentActionPanel
+                amountLabel={displayCurrency(contract.amount, contract.currency || 'microUSDC')}
+                amountInTokens={amountInTokens}
+                balanceFloat={balanceFloat}
+                tokenSymbol={selectedTokenSymbol}
+                tokenAddress={selectedTokenAddress}
+                tokenDecimals={selectedToken?.decimals ?? 6}
+                chainId={config?.chainId}
+                walletAddress={address || ''}
+                networkName={networkName}
+                isLoadingBalance={isLoadingBalance}
+                hasInsufficientBalance={hasInsufficientBalance}
+                isSameAddress={isSameAddress}
+                isPaymentInProgress={isPaymentInProgress}
+                loadingMessage={loadingMessage}
+                onPay={handlePayFromConnectedWallet}
+                onPayFromExternalWallet={() => setPaymentMethod('qr')}
+                // Come back on the "I have paid" panel — the funds will have
+                // landed but still need sweeping in, and that button is here.
+                addFundsReturnPath={`/contract-pay?contractId=${contractId}&method=qr`}
+                // Reuses the QR route's resolver, so Coinbase is sent to the
+                // address contractservice considers authoritative and no second
+                // escrow is ever deployed.
+                resolveEscrowAddress={async () => qr.qrContractAddress ?? (await qr.createContract()) ?? null}
+              />
             </>
           )}
 

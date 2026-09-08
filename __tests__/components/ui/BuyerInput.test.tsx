@@ -48,7 +48,8 @@ describe('BuyerInput — Farcaster user search fetch behavior', () => {
     await waitFor(
       () => {
         expect(global.fetch).toHaveBeenCalledWith(
-          `/api/users/search?q=${encodeURIComponent('@alice')}`
+          `/api/users/search?q=${encodeURIComponent('@alice')}`,
+          expect.objectContaining({ credentials: 'include' })
         );
       },
       { timeout: 2000 }

@@ -32,6 +32,9 @@ const makeQr = (overrides = {}) => ({
   qrPaymentDetected: false,
   qrActivationStatus: 'idle' as const,
   isCreatingContract: false,
+  // The escrow has been read: these cases are about what the panel renders once
+  // it is allowed to render at all.
+  hasCheckedBalance: true,
   createContract: jest.fn(),
   checkAndActivate: jest.fn(),
   buildEip681Uri: jest.fn(() => 'ethereum:0xToken@8453/transfer?address=0xEscrow&uint256=10000000'),
@@ -55,6 +58,36 @@ const baseProps = (qr: any) => ({
 });
 
 describe('QrPaymentPanel', () => {
+  describe('holding back until the escrow has been read', () => {
+    it('shows a spinner instead of the payment screen while the balance is unknown', () => {
+      // An escrow that already holds the funds sweeps itself the moment that read
+      // lands. Rendering first flashes a QR code and an "I have paid" button at
+      // someone whose payment is completing on its own.
+      const qr = makeQr({ qrContractAddress: '0xEscrow', hasCheckedBalance: false });
+      render(<QrPaymentPanel {...baseProps(qr)} />);
+
+      expect(screen.queryByTestId('qr-code')).toBeNull();
+      expect(screen.queryByText('I have paid')).toBeNull();
+      expect(screen.getByText(/checking for your payment/i)).toBeInTheDocument();
+    });
+
+    it('stays hidden while the sweep it triggered is in flight', () => {
+      const qr = makeQr({ qrContractAddress: '0xEscrow', qrActivationStatus: 'checking' });
+      render(<QrPaymentPanel {...baseProps(qr)} />);
+
+      expect(screen.queryByTestId('qr-code')).toBeNull();
+      expect(screen.getByText(/checking for your payment/i)).toBeInTheDocument();
+    });
+
+    it('does not hold back before an escrow exists', () => {
+      // Nothing to check yet — this is the create step, not a payment screen.
+      const qr = makeQr({ qrContractAddress: null, hasCheckedBalance: false });
+      render(<QrPaymentPanel {...baseProps(qr)} />);
+
+      expect(screen.queryByText(/checking for your payment/i)).toBeNull();
+    });
+  });
+
   describe('step 1: create contract', () => {
     it('shows the create button with the supplied label and fires createContract', () => {
       const qr = makeQr();
@@ -108,12 +141,21 @@ describe('QrPaymentPanel', () => {
       expect(screen.getAllByText(/10\.0000 USDC/).length).toBeGreaterThan(0);
     });
 
-    it('shows the countdown and fires checkAndActivate from "I have paid"', () => {
+    it('fires checkAndActivate from "I have paid"', () => {
       const q = qr();
       render(<QrPaymentPanel {...baseProps(q)} />);
-      expect(screen.getByText(/4:00/)).toBeInTheDocument();
       fireEvent.click(screen.getByText('I have paid'));
       expect(q.checkAndActivate).toHaveBeenCalled();
+    });
+
+    // The panel used to show "Auto-checking in 4:00" and "Checking payment
+    // status...", which read as though a check were already running when in
+    // fact nothing happened until the countdown expired.
+    it('does not claim to be checking when it is not', () => {
+      render(<QrPaymentPanel {...baseProps(qr())} />);
+      expect(screen.queryByText(/Auto-checking/)).toBeNull();
+      expect(screen.queryByText(/4:00/)).toBeNull();
+      expect(screen.queryByText(/Checking payment status/)).toBeNull();
     });
 
     it('fires onCancel from the cancel button', () => {
@@ -125,7 +167,7 @@ describe('QrPaymentPanel', () => {
 
     it('shows the payment-detected banner when qrPaymentDetected', () => {
       render(<QrPaymentPanel {...baseProps(makeQr({ qrContractAddress: '0xEscrow', qrPaymentDetected: true }))} />);
-      expect(screen.getByText('Payment detected! Verifying...')).toBeInTheDocument();
+      expect(screen.getByText(/Payment detected!/)).toBeInTheDocument();
     });
   });
 

@@ -1,3 +1,4 @@
+import { apiUrl } from '@/lib/apiFetch';
 import React, { useState, useEffect, createContext, useContext } from 'react';
 import { useAccount, useConnect, useDisconnect, useEnsName, useSignMessage, useWalletClient, useSendCalls } from 'wagmi';
 import { WagmiProvider, createConfig, http } from 'wagmi';
@@ -1224,7 +1225,7 @@ function FarcasterAuthProviderInner({ children, AuthContext }: {
 
     // Authenticated fetch with proper cookie handling
     authenticatedFetch: (url: string, options?: RequestInit) => {
-      return fetch(url, {
+      return fetch(apiUrl(url), {
         ...options,
         credentials: 'include', // Ensure cookies are sent
         headers: {

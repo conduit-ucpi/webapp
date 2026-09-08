@@ -8,6 +8,7 @@ import { GetStaticProps } from 'next';
 import { getSiteNameFromDomain } from '@/utils/siteName';
 import { motion, useInView, AnimatePresence } from 'framer-motion';
 import { useRef, useEffect, useState, ReactNode } from 'react';
+import { isr } from '@/utils/isr';
 
 // ---------------------------------------------------------------------------
 // Color & typography system — completely different from the rest of the app.
@@ -655,6 +656,6 @@ export default function Landing3() {
 export const getStaticProps: GetStaticProps = async () => {
   return {
     props: {},
-    revalidate: 3600,
+    ...isr(3600),
   };
 };

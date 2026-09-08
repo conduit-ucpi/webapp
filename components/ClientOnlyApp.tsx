@@ -10,6 +10,7 @@ import FarcasterReady from '@/components/farcaster/FarcasterReady';
 import { FarcasterDetectionProvider } from '@/components/farcaster/FarcasterDetectionProvider';
 import { NavigationProvider } from '@/components/navigation/NavigationProvider';
 import { EthersProvider } from '@/components/providers/EthersProvider';
+import { captureConsoleForMobile } from '@/utils/mobileLogger';
 
 interface ClientOnlyAppProps {
   Component: any;
@@ -20,6 +21,10 @@ export default function ClientOnlyApp({ Component, pageProps }: ClientOnlyAppPro
   const [mounted, setMounted] = React.useState(false);
 
   React.useEffect(() => {
+    /* Mirror console output into the mobile log pipeline before anything else
+       runs, so a dependency's own console.error (notably AppKit's SIWX
+       failures) is visible from a phone. No-op off mobile. */
+    captureConsoleForMobile();
     setMounted(true);
   }, []);
 

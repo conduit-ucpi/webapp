@@ -1,6 +1,8 @@
 /**
  * Utility functions for Farcaster integration
  */
+import { apiFetch } from '@/lib/apiFetch';
+
 
 export interface FarcasterUser {
   fid: number;
@@ -41,7 +43,7 @@ export function formatFarcasterEmail(fid: number): string {
  */
 export async function fetchFarcasterUserByFid(fid: number): Promise<FarcasterUser | null> {
   try {
-    const response = await fetch(`/api/users/fid/${fid}`);
+    const response = await apiFetch(`/api/users/fid/${fid}`);
     if (response.ok) {
       const data = await response.json();
       return data.user;
@@ -61,7 +63,7 @@ export async function fetchFarcasterUsersByFids(fids: number[]): Promise<Map<num
   if (fids.length === 0) return users;
   
   try {
-    const response = await fetch('/api/users/batch', {
+    const response = await apiFetch('/api/users/batch', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ fids })

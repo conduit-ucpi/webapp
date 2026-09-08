@@ -30,6 +30,18 @@ export function fromBaseUnits(units: bigint, decimals: number = 6): string {
 }
 
 /**
+ * Display a human token amount: always at least 2 decimals, and as many more as
+ * the value needs (up to the token's precision) so small test amounts such as
+ * 0.001 don't render as "0.00".
+ */
+export function formatTokenAmount(amount: number, decimals: number = 6): string {
+  const fixed = amount.toFixed(decimals);
+  const trimmed = fixed.replace(/(\.\d*?[1-9])0+$/, '$1').replace(/\.0+$/, '');
+  const [whole, frac = ''] = trimmed.split('.');
+  return frac.length >= 2 ? trimmed : `${whole}.${frac.padEnd(2, '0')}`;
+}
+
+/**
  * Per-recipient payouts of an escrow amount by basis points, exactly as the
  * contract distributes: floor division for every slice except the last, which
  * receives the remainder (all rounding dust).

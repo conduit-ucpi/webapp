@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { requireAuth } from '@/utils/api-auth';
 import { buildRootViews, draftToCreateRequest, fanoutServiceUrl, serviceHeaders } from '@/utils/projectsServer';
+import { blockedByProjectsFlag } from '@/utils/featureFlags';
 
 /**
  * GET  /api/projects — root node of every project tree the caller is a party to.
@@ -9,6 +10,9 @@ import { buildRootViews, draftToCreateRequest, fanoutServiceUrl, serviceHeaders 
  *   server-side, then forwarded to contractfanoutservice /api/fanouts.
  */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  // Behind the PROJECTS_LIVE release flag: 404s unless the flag is on.
+  if (blockedByProjectsFlag(req, res)) return;
+
   if (req.method !== 'GET' && req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }

@@ -19,14 +19,35 @@ import { useState, useEffect, useCallback, useRef } from 'react';
  *                        (create: postMessage + WordPress/iframe/popup redirect;
  *                        pay: router.push('/dashboard')).
  *
- * Behavior is a verbatim extraction of the prior inline implementation in both
- * pages; nothing about the timing, polling cadence, or status transitions
- * changed.
+ * checkAndActivate reads the escrow's token balance before it will spend
+ * anything — see the comment on the call itself. Both callers (the "I have
+ * paid" button and the countdown auto-fire) get that gate.
  */
 export type QrActivationStatus = 'idle' | 'checking' | 'success' | 'waiting';
 
 const COUNTDOWN_SECONDS = 240;
 const POLL_INTERVAL_MS = 10_000;
+
+/**
+ * Which backend call turns a funded address live, and what to send it.
+ *
+ * Defaults to the escrow's `checkAndActivate`. The marketplace overrides it with
+ * `fund-offer` on an OfferVault, because the two flows are the same shape: money arrives by
+ * direct transfer, and a permissionless call then observes the balance and flips the state.
+ * Everything else in this hook — the countdown, the balance poll, the "I have paid" gate —
+ * is identical for both, and duplicating it is how one of them ends up without the
+ * balance-before-gas check below.
+ */
+interface QrActivationTarget {
+  endpoint: string;
+  /** The request body, given the address the money was sent to. */
+  buildBody: (fundedAddress: string) => Record<string, unknown>;
+}
+
+const ESCROW_ACTIVATION: QrActivationTarget = {
+  endpoint: '/api/chain/check-and-activate',
+  buildBody: (contractAddress) => ({ contractAddress }),
+};
 
 interface UseQrPaymentParams {
   authenticatedFetch: ((url: string, init?: RequestInit) => Promise<Response>) | undefined;
@@ -37,6 +58,15 @@ interface UseQrPaymentParams {
   requiredAmountMicro: number;
   createContract: () => Promise<string | undefined>;
   onActivated: (contractAddress: string) => void;
+  /** Omit for the escrow flow. */
+  activation?: QrActivationTarget;
+  /**
+   * An escrow that already exists on chain. Supplied when the payer returns to
+   * a request whose contract was deployed on an earlier visit — funds may
+   * already be sitting in it, waiting to be swept — so there is nothing to
+   * create and the balance poll should start against this address immediately.
+   */
+  existingContractAddress?: string | null;
 }
 
 interface UseQrPaymentResult {
@@ -45,7 +75,18 @@ interface UseQrPaymentResult {
   qrPaymentDetected: boolean;
   qrActivationStatus: QrActivationStatus;
   isCreatingContract: boolean;
-  createContract: () => Promise<void>;
+  /**
+   * False until the first balance read for the current escrow has resolved.
+   *
+   * Callers should hold the panel back until this is true: an escrow that was
+   * already funded sweeps itself the moment that read lands, so rendering
+   * beforehand shows a payment screen for a payment that is about to complete
+   * on its own.
+   */
+  hasCheckedBalance: boolean;
+  /** Resolves the escrow address and also returns it, for callers that need to
+   *  act on it immediately rather than wait for the state update. */
+  createContract: () => Promise<string | undefined>;
   checkAndActivate: () => Promise<void>;
   buildEip681Uri: () => string;
   formatCountdown: (seconds: number) => string;
@@ -61,15 +102,49 @@ export function useQrPayment(params: UseQrPaymentParams): UseQrPaymentResult {
     requiredAmountMicro,
     createContract: createContractImpl,
     onActivated,
+    activation = ESCROW_ACTIVATION,
+    existingContractAddress = null,
   } = params;
 
-  const [qrContractAddress, setQrContractAddress] = useState<string | null>(null);
+  const [qrContractAddress, setQrContractAddress] = useState<string | null>(existingContractAddress);
+
+  // The address arrives with the contract fetch, which resolves after mount.
+  useEffect(() => {
+    if (!existingContractAddress) return;
+    setQrContractAddress((current) => current ?? existingContractAddress);
+  }, [existingContractAddress]);
   const [qrCountdown, setQrCountdown] = useState(COUNTDOWN_SECONDS);
   const [qrPaymentDetected, setQrPaymentDetected] = useState(false);
   const [qrActivationStatus, setQrActivationStatus] = useState<QrActivationStatus>('idle');
+  const [hasCheckedBalance, setHasCheckedBalance] = useState(false);
   const [isCreatingContract, setIsCreatingContract] = useState(false);
   const qrPollingRef = useRef<NodeJS.Timeout | null>(null);
   const qrCountdownRef = useRef<NodeJS.Timeout | null>(null);
+
+  // getTokenBalance comes from useSimpleEthers, which returns a fresh object
+  // each render. Held in a ref so checkAndActivate below does not have to take
+  // it as a dependency — checkAndActivate is itself a dependency of the
+  // countdown effect, which would then re-create its interval every render.
+  const getTokenBalanceRef = useRef(getTokenBalance);
+  useEffect(() => {
+    getTokenBalanceRef.current = getTokenBalance;
+  });
+
+  // Same treatment, same reason: callers pass this as an object literal, so a fresh identity
+  // every render would make checkAndActivate unstable — and checkAndActivate is a dependency
+  // of the countdown effect below, which would then re-create its interval on every render.
+  const activationRef = useRef(activation);
+
+  // Held in a ref for the same reason as getTokenBalance: naming it as a
+  // dependency of the polling effect would rebuild the interval every render.
+  const checkAndActivateRef = useRef<() => Promise<void>>(async () => {});
+
+  // Fires the sweep at most once per mounted verification, so a poll that keeps
+  // seeing the same funded balance does not resubmit while the first is in flight.
+  const autoActivatedRef = useRef(false);
+  useEffect(() => {
+    activationRef.current = activation;
+  });
 
   const checkAndActivate = useCallback(async () => {
     if (!qrContractAddress || !authenticatedFetch) return;
@@ -77,10 +152,34 @@ export function useQrPayment(params: UseQrPaymentParams): UseQrPaymentResult {
     setQrActivationStatus('checking');
 
     try {
-      const response = await authenticatedFetch('/api/chain/check-and-activate', {
+      // The activation endpoint is NOT a read. chainservice signs and submits an on-chain
+      // call — checkAndActivate() on an escrow, fund() on an OfferVault — and BOTH revert
+      // with InsufficientDirectPayment when the money has not arrived, burning gas on the
+      // reverting transaction (gas estimation fails, but chainservice falls back to a
+      // configured limit and sends anyway). balanceOf is free, so confirm the money is
+      // actually there first. This gate is the reason both flows share this hook.
+      const funded = await (async () => {
+        if (!selectedTokenAddress || requiredAmount <= 0) return false;
+        try {
+          const balance = await getTokenBalanceRef.current(qrContractAddress, selectedTokenAddress);
+          return parseFloat(balance) >= requiredAmount;
+        } catch (error) {
+          // An unreadable balance is not permission to spend gas on a guess.
+          console.error('useQrPayment: balance read before activation failed:', error);
+          return false;
+        }
+      })();
+
+      if (!funded) {
+        setQrActivationStatus('waiting');
+        return;
+      }
+
+      const target = activationRef.current;
+      const response = await authenticatedFetch(target.endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contractAddress: qrContractAddress }),
+        body: JSON.stringify(target.buildBody(qrContractAddress)),
       });
 
       const data = await response.json();
@@ -94,12 +193,21 @@ export function useQrPayment(params: UseQrPaymentParams): UseQrPaymentResult {
         setQrActivationStatus('waiting');
       }
     } catch (error) {
-      console.error('useQrPayment: check-and-activate failed:', error);
+      console.error(`useQrPayment: ${activationRef.current.endpoint} failed:`, error);
       setQrActivationStatus('waiting');
     }
-  }, [qrContractAddress, authenticatedFetch, onActivated]);
+  }, [qrContractAddress, authenticatedFetch, selectedTokenAddress, requiredAmount, onActivated]);
 
-  const createContract = useCallback(async () => {
+  // Keep the ref pointing at the current closure without making the polling
+  // effect depend on it.
+  useEffect(() => {
+    checkAndActivateRef.current = checkAndActivate;
+  }, [checkAndActivate]);
+
+  // Returns the resolved escrow address as well as storing it, so a caller that
+  // needs to act on it immediately — signing a transfer to it from the
+  // connected wallet — does not have to wait for the state round-trip.
+  const createContract = useCallback(async (): Promise<string | undefined> => {
     setIsCreatingContract(true);
     try {
       const resolved = await createContractImpl();
@@ -107,6 +215,7 @@ export function useQrPayment(params: UseQrPaymentParams): UseQrPaymentResult {
         setQrContractAddress(resolved);
         setQrCountdown(COUNTDOWN_SECONDS);
       }
+      return resolved;
     } finally {
       setIsCreatingContract(false);
     }
@@ -152,12 +261,31 @@ export function useQrPayment(params: UseQrPaymentParams): UseQrPaymentResult {
         if (balanceNum >= requiredAmount && requiredAmount > 0) {
           console.log('useQrPayment: QR payment detected! Balance:', balance);
           setQrPaymentDetected(true);
+
+          // The money is already in the escrow, so the only step left is the
+          // sweep. Run it rather than asking the payer to confirm something the
+          // chain has already told us — this is the case where someone arrives
+          // at a contract funded on an earlier visit and would otherwise have to
+          // press a button to claim funds they had already sent. The countdown
+          // fires the same call at zero; this just does not make them wait.
+          //
+          // checkAndActivate re-reads the balance before spending any gas, so
+          // there is no risk in calling it on the strength of this poll.
+          if (!autoActivatedRef.current) {
+            autoActivatedRef.current = true;
+            void checkAndActivateRef.current();
+          }
         }
       } catch (error) {
         console.error('useQrPayment: Failed to poll contract balance:', error);
+      } finally {
+        // Resolved either way: an unreadable balance must not hold the panel
+        // back forever, it just means we cannot skip it.
+        setHasCheckedBalance(true);
       }
     };
 
+    setHasCheckedBalance(false);
     qrPollingRef.current = setInterval(pollBalance, POLL_INTERVAL_MS);
     pollBalance();
 
@@ -188,6 +316,7 @@ export function useQrPayment(params: UseQrPaymentParams): UseQrPaymentResult {
     qrPaymentDetected,
     qrActivationStatus,
     isCreatingContract,
+    hasCheckedBalance,
     createContract,
     checkAndActivate,
     buildEip681Uri,

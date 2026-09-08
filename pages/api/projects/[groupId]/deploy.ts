@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { requireAuth } from '@/utils/api-auth';
 import { fanoutServiceUrl, serviceHeaders } from '@/utils/projectsServer';
+import { blockedByProjectsFlag } from '@/utils/featureFlags';
 
 /**
  * POST /api/projects/[groupId]/deploy — deploy the whole tree on-chain,
@@ -8,6 +9,9 @@ import { fanoutServiceUrl, serviceHeaders } from '@/utils/projectsServer';
  * relayer signs and pays gas; node addresses are recorded automatically.
  */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  // Behind the PROJECTS_LIVE release flag: 404s unless the flag is on.
+  if (blockedByProjectsFlag(req, res)) return;
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }

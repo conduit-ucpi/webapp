@@ -3,7 +3,7 @@ import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/components/auth';
 import EnhancedDashboard from '@/components/dashboard/EnhancedDashboard';
-import ConnectWalletEmbedded from '@/components/auth/ConnectWalletEmbedded';
+import WalletChoiceCards from '@/components/auth/WalletChoiceCards';
 import { SkeletonCard } from '@/components/ui/Skeleton';
 import ExpandableHash from '@/components/ui/ExpandableHash';
 import { useWalletAddress } from '@/hooks/useWalletAddress';
@@ -61,7 +61,9 @@ export default function Dashboard2() {
             <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-10 max-w-md mx-auto">
               You need to connect your wallet to view your contracts.
             </p>
-            <ConnectWalletEmbedded useSmartRouting={true} autoConnect={autoConnect} />
+            {/* Same wallet gate as /create and /contract-pay - signing in is the
+                same decision wherever you hit it, so it looks the same too. */}
+            <WalletChoiceCards autoConnect={autoConnect} className="mx-auto w-full max-w-md text-left" />
           </div>
         </div>
       </>

@@ -20,6 +20,24 @@ interface CurrencyAmountInputProps {
   helpText?: string;
   /** Label for the payment amount field (defaults to "Payment amount") */
   paymentLabel?: string;
+  /**
+   * 'stacked' (default) keeps the original vertical layout.
+   * 'split' renders the two amounts side by side with a swap control between
+   * them, per the Request a Payment design. Both share the same conversion
+   * state and handlers - only the presentation differs.
+   */
+  layout?: 'stacked' | 'split';
+  /** split only: network caption shown after the rate, e.g. "Base network" */
+  networkLabel?: string;
+  /** split only: right-hand caption, e.g. "Balance: 342.10 USDC" */
+  balanceText?: string;
+  /**
+   * split only: when the app supports more than one stablecoin, pass the
+   * symbols here to turn the receiving-side token into a picker. Omit (or pass
+   * a single entry) and it stays static text.
+   */
+  tokenOptions?: string[];
+  onTokenChange?: (symbol: string) => void;
 }
 
 export default function CurrencyAmountInput({
@@ -30,7 +48,12 @@ export default function CurrencyAmountInput({
   disabled = false,
   label = 'Amount',
   helpText,
-  paymentLabel = "Payment amount"
+  paymentLabel = "Payment amount",
+  layout = 'stacked',
+  networkLabel,
+  balanceText,
+  tokenOptions,
+  onTokenChange
 }: CurrencyAmountInputProps) {
   // Detect user's currency on mount
   const [localCurrency, setLocalCurrency] = useState<string>('USD');
@@ -105,6 +128,125 @@ export default function CurrencyAmountInput({
   const currencyInfo = getCurrencyInfo(localCurrency);
   const rateUnavailable = !rateLoading && rate === null && localCurrency !== tokenSymbol;
   const showRateInfo = rate !== null && rate !== 1.0 && localCurrency !== tokenSymbol;
+
+  if (layout === 'split') {
+    const boxClass = `rounded-xl border p-4 bg-white dark:bg-secondary-900 transition-colors ${
+      error ? 'border-error-300 dark:border-error-500' : 'border-secondary-200 dark:border-secondary-700'
+    }`;
+    const amountInputClass =
+      'w-full bg-transparent text-3xl font-semibold text-secondary-900 dark:text-white ' +
+      'placeholder:text-secondary-300 dark:placeholder:text-secondary-600 focus:outline-none ' +
+      'disabled:opacity-50 disabled:cursor-not-allowed';
+
+    return (
+      <div className="w-full">
+        <div className="relative grid gap-3 sm:grid-cols-2">
+          {/* Requested - in the user's own currency */}
+          <div className={boxClass}>
+            <p className="text-sm text-secondary-500 dark:text-secondary-400">Requested Amount</p>
+            <div className="mt-2 flex items-baseline gap-2">
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={localAmount}
+                onChange={handleLocalAmountChange}
+                onFocus={() => setLastEdited('local')}
+                disabled={disabled || rateLoading || rateUnavailable}
+                placeholder={rateUnavailable ? 'Rate unavailable' : '0.00'}
+                aria-label="Requested amount"
+                className={amountInputClass}
+              />
+              <select
+                value={localCurrency}
+                onChange={handleCurrencyChange}
+                disabled={rateLoading}
+                aria-label="Requested currency"
+                className="shrink-0 bg-transparent text-sm font-medium text-secondary-500 dark:text-secondary-400 focus:outline-none disabled:opacity-50"
+              >
+                {SUPPORTED_CURRENCIES.map((currency) => (
+                  <option key={currency.code} value={currency.code}>
+                    {currency.code}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Swap moves the "driving" side, so the highlighted field is the one
+              the user is typing into. Conversion itself is bidirectional. */}
+          <button
+            type="button"
+            onClick={() => setLastEdited(prev => (prev === 'local' ? 'token' : 'local'))}
+            aria-label="Swap which amount you enter"
+            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 hidden sm:grid place-items-center w-9 h-9 rounded-full border border-secondary-200 dark:border-secondary-700 bg-white dark:bg-secondary-900 text-secondary-500 dark:text-secondary-400 hover:text-secondary-900 dark:hover:text-white transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4M16 17H4m0 0l4 4m-4-4l4-4" />
+            </svg>
+          </button>
+
+          {/* Receiving - the token actually escrowed */}
+          <div className={boxClass}>
+            <p className="text-sm text-secondary-500 dark:text-secondary-400">Receiving Amount</p>
+            <div className="mt-2 flex items-baseline gap-2">
+              <input
+                type="number"
+                step="0.0001"
+                min="0"
+                value={value}
+                onChange={handleTokenAmountChange}
+                onFocus={() => setLastEdited('token')}
+                disabled={disabled}
+                placeholder="0.0000"
+                aria-label="Receiving amount"
+                className={amountInputClass}
+              />
+              {tokenOptions && tokenOptions.length > 1 && onTokenChange ? (
+                <select
+                  value={tokenSymbol}
+                  onChange={(e) => onTokenChange(e.target.value)}
+                  disabled={disabled}
+                  aria-label="Receiving token"
+                  className="shrink-0 bg-transparent text-sm font-medium text-secondary-500 dark:text-secondary-400 focus:outline-none disabled:opacity-50"
+                >
+                  {tokenOptions.map((symbol) => (
+                    <option key={symbol} value={symbol}>
+                      {symbol}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <span className="shrink-0 text-sm font-medium text-secondary-500 dark:text-secondary-400">
+                  {tokenSymbol}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-3 flex flex-wrap justify-between gap-2 text-xs text-secondary-500 dark:text-secondary-400">
+          <span>
+            {showRateInfo && rate
+              ? `1 ${tokenSymbol} ≈ ${currencyInfo?.symbol ?? ''}${(1 / rate).toFixed(2)} ${localCurrency}`
+              : `1 ${tokenSymbol} ≈ ${currencyInfo?.symbol ?? ''}1.00`}
+            {networkLabel ? ` · ${networkLabel}` : ''}
+          </span>
+          {balanceText && <span>{balanceText}</span>}
+        </div>
+
+        {error && <p className="mt-2 text-sm text-error-600 dark:text-error-400">{error}</p>}
+        {rateError && (
+          <p className="mt-2 text-xs text-warning-600 dark:text-warning-400">
+            Exchange rate unavailable for {tokenSymbol}. Enter the {tokenSymbol} amount directly.
+          </p>
+        )}
+        {helpText && !error && (
+          <p className="mt-2 text-xs text-secondary-500 dark:text-secondary-400">{helpText}</p>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="w-full">

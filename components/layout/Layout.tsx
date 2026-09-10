@@ -2,6 +2,7 @@ import { useRouter } from 'next/router';
 import Header from './Header';
 import Footer from './Footer';
 import EmailPromptManager from '../auth/EmailPromptManager';
+import { WHITE_LABEL_ROUTES } from '@/utils/brand';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -13,6 +14,16 @@ export default function Layout({ children }: LayoutProps) {
   // Shopify embedded app - no layout at all
   if (router.pathname === '/shopify/embedded') {
     return <>{children}</>;
+  }
+
+  // White-labelled routes carry a partner's branding, so none of ours can
+  // appear alongside it — no header, no footer. The page supplies its own.
+  if (WHITE_LABEL_ROUTES.has(router.pathname)) {
+    return (
+      <div className="min-h-screen">
+        <EmailPromptManager children={children} />
+      </div>
+    );
   }
 
   // Don't use main layout for plugin pages

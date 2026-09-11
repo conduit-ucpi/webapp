@@ -12,7 +12,7 @@ import { NavigationProvider } from '@/components/navigation/NavigationProvider';
 import { EthersProvider } from '@/components/providers/EthersProvider';
 import { captureConsoleForMobile } from '@/utils/mobileLogger';
 import { BrandProvider } from '@conduit-ucpi/whitelabel-sdk';
-import brand from '@/config/brand';
+import { BRANDS, DEFAULT_BRAND_ID } from '@/config/brands';
 
 interface ClientOnlyAppProps {
   Component: any;
@@ -35,7 +35,7 @@ export default function ClientOnlyApp({ Component, pageProps }: ClientOnlyAppPro
   
   return (
     <ErrorBoundary children={
-      <BrandProvider brand={brand} children={
+      <BrandProvider brands={BRANDS} defaultBrandId={DEFAULT_BRAND_ID} children={
       <ThemeProvider children={
         <>
           <FarcasterReady />

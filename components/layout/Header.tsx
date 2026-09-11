@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useNavigation } from '@/components/navigation/NavigationProvider';
 import { getSiteNameFromDomain } from '@/utils/siteName';
+import { useOptionalBrand, useBrandSource } from '@conduit-ucpi/whitelabel-sdk';
 import MobileDrawer from './MobileDrawer';
 import {
   Bars3Icon,
@@ -18,6 +19,17 @@ export default function Header() {
   useEffect(() => {
     setSiteName(getSiteNameFromDomain());
   }, []);
+
+  // A partner brand overrides the wordmark; the hostname still decides it
+  // otherwise, so instantescrow.nz and usdcbay.com keep naming themselves. Only
+  // an explicitly selected brand ('query' | 'session' | 'contract') counts as a
+  // partner — the default resolution must not override the domain.
+  const brand = useOptionalBrand();
+  const brandSource = useBrandSource();
+  const partnerBrand = brand && brandSource && brandSource !== 'default' ? brand : null;
+  const displayName = partnerBrand ? partnerBrand.name : siteName;
+  const displaySubtitle = partnerBrand?.tagline ?? 'Conduit UCPI';
+  const partnerLogo = partnerBrand?.assets.logo;
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { canGoBack, goBack } = useNavigation();
 
@@ -48,11 +60,21 @@ export default function Header() {
               )}
 
               <Link href="/" className="flex flex-col">
-                <span className="text-lg font-bold italic text-secondary-900 dark:text-white">
-                  {siteName}
-                </span>
+                {partnerLogo ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={partnerLogo}
+                    alt={displayName}
+                    style={{ height: partnerBrand?.assets.logoHeight ?? '1.75rem' }}
+                    className="w-auto"
+                  />
+                ) : (
+                  <span className="text-lg font-bold italic text-secondary-900 dark:text-white">
+                    {displayName}
+                  </span>
+                )}
                 <span className="text-xs text-primary-600 dark:text-primary-400 -mt-1">
-                  Conduit UCPI
+                  {displaySubtitle}
                 </span>
               </Link>
             </div>

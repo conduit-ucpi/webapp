@@ -1,3 +1,3 @@
-export { BrandProvider, useBrand, useOptionalBrand } from './BrandProvider';
-export type { BrandProviderProps } from './BrandProvider';
+export { BrandProvider, useBrand, useOptionalBrand, useBrandSource } from './BrandProvider';
+export { useBrandResolution } from './useBrandResolution';
 export { themeToVars, brandToVars, varsToCssBlock, applyVars, VAR_PREFIX } from './cssVars';

@@ -181,6 +181,8 @@ export const en = {
   'terms.arbiterAddress': 'Arbiter Wallet Address',
   'terms.arbiterHelp':
     'Optional override for the dispute resolver. Leave blank to use the system default.',
+  'review.nextBody':
+    "You'll get a QR code and link to share. Once the buyer pays, funds are held in escrow and release to your wallet automatically — no extra step from you.",
 } as const;
 
 export type MessageKey = keyof typeof en;

@@ -196,4 +196,6 @@ export const es: Catalogue = {
   'terms.arbiterAddress': 'Dirección de billetera del árbitro',
   'terms.arbiterHelp':
     'Opcional: reemplaza al resolutor de disputas. Déjalo en blanco para usar el predeterminado.',
+  'review.nextBody':
+    'Recibirás un código QR y un enlace para compartir. Cuando el comprador pague, los fondos quedan en depósito en garantía y se liberan a tu billetera automáticamente, sin que tengas que hacer nada más.',
 };

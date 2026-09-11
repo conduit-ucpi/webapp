@@ -90,8 +90,7 @@ export default function ReviewRequest({
           {t('review.next')}
         </h3>
         <p className="mt-2 text-sm text-secondary-600 dark:text-secondary-300 leading-relaxed">
-          You&apos;ll get a QR code and link to share. Once the buyer pays, funds are held in
-          escrow and release to your wallet automatically &mdash; no extra step from you.
+          {t('review.nextBody')}
         </p>
       </div>
     </div>

@@ -856,7 +856,7 @@ export default function ContractPay() {
                 isMobileDevice={isMobileDevice}
                 copiedAddress={copiedAddress}
                 onCopyAddress={handleCopyAddress}
-                createButtonLabel="Pay"
+                createButtonLabel={t('pay.payButton')}
                 createDisabled={isSameAddress}
                 createNote={isSameAddress ? t('err.payYourself') : undefined}
                 onCancel={() => router.push('/dashboard')}

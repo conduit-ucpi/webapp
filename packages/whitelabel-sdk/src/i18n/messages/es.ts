@@ -186,4 +186,14 @@ export const es: Catalogue = {
   'checkout.payWithConnected': 'Pagar con la billetera conectada',
   'checkout.generateLink': 'Generar enlace de pago',
   'amount.paymentAmount': 'Monto del pago',
+  'common.continue': 'Continuar',
+  'common.back': 'Atrás',
+  'common.skip': 'Omitir',
+  'common.optional': 'Opcional',
+  'terms.advancedOptions': 'Opciones avanzadas',
+  'common.progress': 'Progreso',
+  'pay.payButton': 'Pagar',
+  'terms.arbiterAddress': 'Dirección de billetera del árbitro',
+  'terms.arbiterHelp':
+    'Opcional: reemplaza al resolutor de disputas. Déjalo en blanco para usar el predeterminado.',
 };

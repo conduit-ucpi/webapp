@@ -10,6 +10,8 @@ import { render, screen } from '@testing-library/react';
 import { I18nProvider } from '@conduit-ucpi/whitelabel-sdk';
 import ReleaseDateField from '@/components/contracts/ReleaseDateField';
 import AmountGuidance from '@/components/contracts/AmountGuidance';
+import AdvancedOptions from '@/components/contracts/AdvancedOptions';
+import { WizardNavigation } from '@/components/ui/Wizard';
 
 const inSpanish = (ui: React.ReactElement) =>
   render(<I18nProvider brandLocale="es">{ui}</I18nProvider>);
@@ -59,5 +61,36 @@ describe('the create form in Spanish', () => {
       inSpanish(<AmountGuidance amount="50" onUseTestAmount={jest.fn()} />);
       expect(screen.getByText(/\$49\.50/)).toBeInTheDocument();
     });
+  });
+});
+
+/**
+ * The navigation and disclosure controls.
+ *
+ * Both were missed by an earlier scan: the scanner needed two words and eight
+ * characters, so single-word labels like "Continue" were invisible to it. These
+ * pin them by rendering, which is the only check that would have caught it.
+ */
+describe('controls in Spanish', () => {
+  it('translates the wizard navigation buttons', () => {
+    inSpanish(
+      <WizardNavigation currentStep={0} totalSteps={2} onNext={jest.fn()} onPrevious={jest.fn()} />
+    );
+
+    expect(screen.getByRole('button', { name: 'Continuar' })).toBeInTheDocument();
+  });
+
+  it('falls back to Continue in English', () => {
+    inEnglish(
+      <WizardNavigation currentStep={0} totalSteps={2} onNext={jest.fn()} onPrevious={jest.fn()} />
+    );
+
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeInTheDocument();
+  });
+
+  it('translates the advanced options disclosure', () => {
+    inSpanish(<AdvancedOptions arbiterAddress="" onArbiterChange={jest.fn()} />);
+
+    expect(screen.getByText('Opciones avanzadas')).toBeInTheDocument();
   });
 });

@@ -1,5 +1,6 @@
 import { ReactNode, useState } from 'react';
 import Button from './Button';
+import { useT } from '../../i18n';
 
 export interface WizardStep {
   id: string;
@@ -29,6 +30,7 @@ export function Wizard({
   className = '',
   hideProgress = false
 }: WizardProps) {
+  const t = useT();
   return (
     <div className={`w-full max-w-4xl mx-auto ${className}`}>
       {/* Progress indicator */}
@@ -51,8 +53,9 @@ interface WizardProgressProps {
 }
 
 function WizardProgress({ steps, currentStep, onStepChange }: WizardProgressProps) {
+  const t = useT();
   return (
-    <nav aria-label="Progress">
+    <nav aria-label={t('common.progress')}>
       {/* Mobile progress bar */}
       <div className="sm:hidden">
         <div className="flex items-center justify-between mb-4">
@@ -141,7 +144,7 @@ function WizardProgress({ steps, currentStep, onStepChange }: WizardProgressProp
                     </p>
                   )}
                   {step.isOptional && (
-                    <p className="text-xs text-secondary-500 dark:text-secondary-400 mt-1">Optional</p>
+                    <p className="text-xs text-secondary-500 dark:text-secondary-400 mt-1">{t('common.optional')}</p>
                   )}
                 </div>
               </button>
@@ -187,14 +190,15 @@ export function WizardNavigation({
   onNext,
   onPrevious,
   onSkip,
-  nextLabel = 'Continue',
-  previousLabel = 'Back',
-  skipLabel = 'Skip',
+  nextLabel,
+  previousLabel,
+  skipLabel,
   isNextDisabled = false,
   isNextLoading = false,
   canSkip = false,
   className = ''
 }: WizardNavigationProps) {
+  const t = useT();
   const isFirstStep = currentStep === 0;
   const isLastStep = currentStep === totalSteps - 1;
 
@@ -207,7 +211,7 @@ export function WizardNavigation({
           onClick={onPrevious}
           className="order-2 sm:order-1 w-full sm:w-auto min-h-[44px]"
         >
-          {previousLabel}
+          {previousLabel ?? t('common.back')}
         </Button>
       )}
       
@@ -218,7 +222,7 @@ export function WizardNavigation({
           onClick={onSkip}
           className="order-3 sm:order-2 w-full sm:w-auto min-h-[44px]"
         >
-          {skipLabel}
+          {skipLabel ?? t('common.skip')}
         </Button>
       )}
       
@@ -238,7 +242,7 @@ export function WizardNavigation({
               Processing...
             </>
           ) : (
-            isLastStep ? 'Create Payment Request' : nextLabel
+            isLastStep ? t('wizard.submit') : (nextLabel ?? t('common.continue'))
           )}
         </Button>
       )}

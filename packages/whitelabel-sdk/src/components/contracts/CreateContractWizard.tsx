@@ -591,7 +591,7 @@ export default function CreateContractWizard() {
                   onPrevious={currentStep > 0 ? handlePrevious : undefined}
                   isNextDisabled={!canProceed()}
                   isNextLoading={isLoading}
-                  nextLabel="Continue"
+                  nextLabel={t('common.continue')}
                 />
               )}
             </div>

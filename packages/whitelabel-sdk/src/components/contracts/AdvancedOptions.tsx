@@ -11,6 +11,7 @@
 
 import { useState } from 'react';
 import Input from '@/components/ui/Input';
+import { useT } from '../../i18n';
 
 interface AdvancedOptionsProps {
   /** Optional arbiter wallet address override */
@@ -26,6 +27,7 @@ export default function AdvancedOptions({
   arbiterError,
   className = 'border-t border-secondary-200 dark:border-secondary-700 pt-4',
 }: AdvancedOptionsProps) {
+  const t = useT();
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   return (
@@ -36,7 +38,7 @@ export default function AdvancedOptions({
         aria-expanded={showAdvanced}
         className="flex items-center justify-between w-full text-left text-sm font-medium text-secondary-700 dark:text-secondary-200 hover:text-secondary-900 dark:hover:text-white focus:outline-none"
       >
-        <span>Advanced Options</span>
+        <span>{t('terms.advancedOptions')}</span>
         <svg
           className={`h-4 w-4 text-secondary-500 dark:text-secondary-400 transform transition-transform ${showAdvanced ? 'rotate-180' : ''}`}
           fill="none"
@@ -52,7 +54,7 @@ export default function AdvancedOptions({
         <div className="mt-4">
           <div className="flex items-center gap-2 mb-2">
             <label className="text-sm font-medium text-secondary-700 dark:text-secondary-200">
-              Arbiter Wallet Address
+              {t('terms.arbiterAddress')}
             </label>
             <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-secondary-100 dark:bg-secondary-700 text-secondary-700 dark:text-secondary-200">
               Advanced &middot; Optional
@@ -64,7 +66,7 @@ export default function AdvancedOptions({
             onChange={(e) => onArbiterChange(e.target.value)}
             placeholder="0x..."
             error={arbiterError}
-            helpText="Optional override for the dispute resolver. Leave blank to use the system default."
+            helpText={t('terms.arbiterHelp')}
           />
         </div>
       )}

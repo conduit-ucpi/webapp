@@ -171,6 +171,16 @@ export const en = {
   'checkout.payWithConnected': 'Pay with connected wallet',
   'checkout.generateLink': 'Generate Payment Link',
   'amount.paymentAmount': 'Payment amount',
+  'common.continue': 'Continue',
+  'common.back': 'Back',
+  'common.skip': 'Skip',
+  'common.optional': 'Optional',
+  'terms.advancedOptions': 'Advanced Options',
+  'common.progress': 'Progress',
+  'pay.payButton': 'Pay',
+  'terms.arbiterAddress': 'Arbiter Wallet Address',
+  'terms.arbiterHelp':
+    'Optional override for the dispute resolver. Leave blank to use the system default.',
 } as const;
 
 export type MessageKey = keyof typeof en;

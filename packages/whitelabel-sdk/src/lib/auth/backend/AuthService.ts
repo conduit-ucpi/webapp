@@ -4,7 +4,7 @@
  */
 
 import { BackendClient } from './BackendClient';
-import { BackendAuthResult, AuthUser } from '../types';
+import { BackendAuthResult, AuthUser } from '@/lib/auth/types';
 
 export class AuthService {
   private static instance: AuthService;

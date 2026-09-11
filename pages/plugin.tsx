@@ -1,8 +1,8 @@
 import { lastTextChange } from '@/lib/server/lastTextChange';
 import { useState } from 'react'
 import Head from 'next/head'
-import { useConfig } from '../components/auth/ConfigProvider'
-import { getChainName } from '../utils/chainNames'
+import { useConfig } from '@/components/auth/ConfigProvider'
+import { getChainName } from '@/utils/chainNames'
 
 const sections = {
   faq: 'FAQ',

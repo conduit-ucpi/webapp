@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { getMerchantSettings } from '../../../lib/mongodb';
+import { getMerchantSettings } from '@/lib/mongodb';
 
 interface CreateOrderRequest {
   shop: string;

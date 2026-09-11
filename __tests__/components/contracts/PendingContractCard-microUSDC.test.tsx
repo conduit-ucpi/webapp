@@ -1,17 +1,17 @@
 import { render } from '@testing-library/react';
 import { screen } from '@testing-library/dom';
-import PendingContractCard from '../../../components/contracts/PendingContractCard';
-import { PendingContract } from '../../../types';
+import PendingContractCard from '@/components/contracts/PendingContractCard';
+import { PendingContract } from '@/types';
 
 // Mock the displayCurrency function to verify it's called correctly
-jest.mock('../../../utils/validation', () => ({
-  ...jest.requireActual('../../../utils/validation'),
+jest.mock('@/utils/validation', () => ({
+  ...jest.requireActual('@/utils/validation'),
   displayCurrency: jest.fn(),
   formatExpiryDate: jest.fn().mockReturnValue('01 Jan 2025, 12:00 GMT'),
 }));
 
 // Mock ConfigProvider
-jest.mock('../../../components/auth/ConfigProvider', () => ({
+jest.mock('@/components/auth/ConfigProvider', () => ({
   useConfig: jest.fn(() => ({
     config: {
       tokenSymbol: 'USDC',
@@ -22,7 +22,7 @@ jest.mock('../../../components/auth/ConfigProvider', () => ({
   }))
 }));
 
-import { displayCurrency } from '../../../utils/validation';
+import { displayCurrency } from '@/utils/validation';
 const mockDisplayCurrency = displayCurrency as jest.MockedFunction<typeof displayCurrency>;
 
 describe('PendingContractCard - microUSDC Amount Display', () => {

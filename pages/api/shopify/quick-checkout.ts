@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { getMerchantSettings } from '../../../lib/mongodb';
+import { getMerchantSettings } from '@/lib/mongodb';
 
 /**
  * Shopify quick-checkout entry point.

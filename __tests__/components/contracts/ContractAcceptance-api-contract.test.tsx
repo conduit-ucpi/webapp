@@ -8,6 +8,7 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import ContractAcceptance from '@/components/contracts/ContractAcceptance';
 import { PendingContract } from '@/types';
+import { sourceFile } from '@/test-utils/sourceFile';
 
 // Mock fetch to capture and validate API calls
 const mockFetch = jest.fn();
@@ -300,7 +301,7 @@ describe('ContractAcceptance API Contract Validation', () => {
     const fs = require('fs');
     const path = require('path');
 
-    const componentPath = path.join(process.cwd(), 'components/contracts/ContractAcceptance.tsx');
+    const componentPath = sourceFile('components/contracts/ContractAcceptance.tsx');
     const componentSource = fs.readFileSync(componentPath, 'utf8');
 
     // Ensure the dangerous spread pattern is NOT used

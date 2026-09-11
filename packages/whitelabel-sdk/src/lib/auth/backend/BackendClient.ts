@@ -4,9 +4,9 @@
  */
 import { apiFetch, apiUrl } from '@/lib/apiFetch';
 
-import { BackendAuthResult, AuthUser } from '../types';
-import { TokenManager } from '../core/TokenManager';
-import { AuthenticationExpiredError } from '../errors/AuthenticationExpiredError';
+import { BackendAuthResult, AuthUser } from '@/lib/auth/types';
+import { TokenManager } from '@/lib/auth/core/TokenManager';
+import { AuthenticationExpiredError } from '@/lib/auth/errors/AuthenticationExpiredError';
 
 // Storage key for SIWX session cache (must match BackendSIWXStorage)
 const SIWX_SESSION_STORAGE_KEY = 'conduit_siwx_session';

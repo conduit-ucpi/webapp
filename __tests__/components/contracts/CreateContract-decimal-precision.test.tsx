@@ -5,15 +5,15 @@ import { screen, fireEvent } from '@testing-library/dom';
 jest.mock('next/router', () => ({
   useRouter: jest.fn(),
 }));
-jest.mock('../../../components/auth/ConfigProvider');
-jest.mock('../../../components/auth');
+jest.mock('@/components/auth/ConfigProvider');
+jest.mock('@/components/auth');
 // jest.mock('../../../components/auth/Web3AuthContextProvider'); // Not needed
-jest.mock('../../../lib/web3');
+jest.mock('@/lib/web3');
 
 import { useRouter } from 'next/router';
-import CreateContract from '../../../components/contracts/CreateContract';
-import { useConfig } from '../../../components/auth/ConfigProvider';
-import { useAuth } from '../../../components/auth';
+import CreateContract from '@/components/contracts/CreateContract';
+import { useConfig } from '@/components/auth/ConfigProvider';
+import { useAuth } from '@/components/auth';
 // import { useWeb3AuthInstance } from '../../../components/auth/Web3AuthContextProvider'; // Not needed
 
 const mockPush = jest.fn();
@@ -103,7 +103,7 @@ describe('CreateContract Decimal Precision', () => {
       getUserAddress: jest.fn().mockResolvedValue('0x123'),
     };
 
-    const { Web3Service } = require('../../../lib/web3');
+    const { Web3Service } = require('@/lib/web3');
     Web3Service.mockImplementation(() => mockWeb3Service);
   });
 

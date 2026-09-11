@@ -1,9 +1,9 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { TokenDetails } from '../../types';
-import { TokenConfig, parseTokensFromEnv } from '../../types/tokens';
-import { RpcClient } from '../../lib/rpc/RpcClient';
-import { isProjectsLive, isEmailVerificationLive } from '../../utils/featureFlags';
-import { coinbaseNetworkForChainId } from '../../utils/coinbaseNetworks';
+import { TokenDetails } from '@/types';
+import { TokenConfig, parseTokensFromEnv } from '@/types/tokens';
+import { RpcClient } from '@/lib/rpc/RpcClient';
+import { isProjectsLive, isEmailVerificationLive } from '@/utils/featureFlags';
+import { coinbaseNetworkForChainId } from '@/utils/coinbaseNetworks';
 
 // In-memory cache for config response
 let cachedConfig: { data: any; timestamp: number } | null = null;

@@ -4,13 +4,13 @@
  * Note: This is an auth-only provider with no blockchain capabilities
  */
 
-import { AuthConfig } from '../types';
+import { AuthConfig } from '@/lib/auth/types';
 import {
   UnifiedProvider,
   ConnectionResult,
   ProviderCapabilities,
   TransactionRequest
-} from '../types/unified-provider';
+} from '@/lib/auth/types/unified-provider';
 import { ethers } from 'ethers';
 
 export class FarcasterProvider implements UnifiedProvider {

@@ -1,7 +1,7 @@
 import { useRouter } from 'next/router';
 import Header from './Header';
 import Footer from './Footer';
-import EmailPromptManager from '../auth/EmailPromptManager';
+import EmailPromptManager from '@/components/auth/EmailPromptManager';
 
 interface LayoutProps {
   children: React.ReactNode;

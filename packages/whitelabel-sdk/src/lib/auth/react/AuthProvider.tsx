@@ -4,12 +4,12 @@
 import { apiFetch } from '@/lib/apiFetch';
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { AuthConfig, ProviderType } from '../types';
-import { AuthState, AuthUser, ConnectionResult } from '../types/unified-provider';
-import { AuthManager } from '../core/AuthManager';
-import { AuthService } from '../backend/AuthService';
+import { AuthConfig, ProviderType } from '@/lib/auth/types';
+import { AuthState, AuthUser, ConnectionResult } from '@/lib/auth/types/unified-provider';
+import { AuthManager } from '@/lib/auth/core/AuthManager';
+import { AuthService } from '@/lib/auth/backend/AuthService';
 import { ethers } from 'ethers';
-import { mLog } from '../../../utils/mobileLogger';
+import { mLog } from '@/utils/mobileLogger';
 
 interface AuthContextValue {
   // State

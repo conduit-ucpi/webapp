@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { getMerchantSettings, saveMerchantSettings, MerchantSettings } from '../../../lib/mongodb';
+import { getMerchantSettings, saveMerchantSettings, MerchantSettings } from '@/lib/mongodb';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { shop } = req.query;

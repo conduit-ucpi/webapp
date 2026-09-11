@@ -3,16 +3,16 @@
  * Direct WalletConnect integration for wallets that work better without Dynamic abstraction
  */
 
-import { AuthConfig } from '../types';
+import { AuthConfig } from '@/lib/auth/types';
 import {
   UnifiedProvider,
   ConnectionResult,
   ProviderCapabilities,
   TransactionRequest
-} from '../types/unified-provider';
-import { ReownWalletConnectProvider, ConnectionMode } from '../../../components/auth/reownWalletConnect';
+} from '@/lib/auth/types/unified-provider';
+import { ReownWalletConnectProvider, ConnectionMode } from '@/components/auth/reownWalletConnect';
 import { ethers } from "ethers";
-import { mLog } from '../../../utils/mobileLogger';
+import { mLog } from '@/utils/mobileLogger';
 
 export class WalletConnectProvider implements UnifiedProvider {
   private reownProvider: ReownWalletConnectProvider;
@@ -45,7 +45,7 @@ export class WalletConnectProvider implements UnifiedProvider {
     mLog.info('WalletConnectProvider', 'Connect called - opening WalletConnect modal');
 
     // Reset SIWX verification state for new connection attempt
-    const { SIWXVerificationState } = await import('../siwx-config');
+    const { SIWXVerificationState } = await import('@/lib/auth/siwx-config');
     SIWXVerificationState.getInstance().reset();
     mLog.info('WalletConnectProvider', 'Reset SIWX verification state for new connection');
 

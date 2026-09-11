@@ -2,7 +2,7 @@
  * Token management (storage, validation, etc.)
  */
 
-import { mLog } from '../../../utils/mobileLogger';
+import { mLog } from '@/utils/mobileLogger';
 
 export class TokenManager {
   private static instance: TokenManager;

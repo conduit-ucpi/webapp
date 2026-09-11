@@ -1,5 +1,5 @@
 import { createMocks } from 'node-mocks-http';
-import handler from '../../../pages/api/chain/create-contract';
+import handler from '@/pages/api/chain/create-contract';
 
 // Mock fetch globally
 const mockFetch = jest.fn();

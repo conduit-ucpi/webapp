@@ -1,6 +1,6 @@
 import { render, screen, act } from '@testing-library/react';
 import { fireEvent } from '@testing-library/dom';
-import CustomArbiterNotice from '../../../components/contracts/CustomArbiterNotice';
+import CustomArbiterNotice from '@/components/contracts/CustomArbiterNotice';
 
 const VALID_ARBITER = '0x4f11cEf6E89CB7F4050E89BA88A5f2Fe1e53482d';
 

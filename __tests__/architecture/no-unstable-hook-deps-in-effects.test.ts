@@ -43,12 +43,15 @@ function collectSourceFiles(): string[] {
     }
   };
   scan('pages');
+  // Components and hooks moved into the white-label SDK. Scanning the app-side
+  // dirs alone would leave this rule policing almost nothing.
   scan('components');
+  scan('packages/whitelabel-sdk/src/components');
   // The payment-flow effects (token balance, lazy-auth user fetch, QR polling)
   // were extracted from the pages into custom hooks. The unstable-dep rule must
   // follow them there, so scan hooks/ too — that is now where getTokenBalance /
   // refreshUserData are consumed inside effects.
-  scan('hooks');
+  scan('packages/whitelabel-sdk/src/hooks');
   return out;
 }
 
@@ -157,7 +160,10 @@ describe('Architecture: no unstable useSimpleEthers method in useEffect deps', (
     // And specifically: the extracted hooks must be present in the scan, so the
     // unstable-dep rule actually polices where those effects now live.
     expect(FILES).toEqual(
-      expect.arrayContaining(['hooks/useTokenBalance.ts', 'hooks/useQrPayment.ts'])
+      expect.arrayContaining([
+        'packages/whitelabel-sdk/src/hooks/useTokenBalance.ts',
+        'packages/whitelabel-sdk/src/hooks/useQrPayment.ts',
+      ])
     );
   });
 });

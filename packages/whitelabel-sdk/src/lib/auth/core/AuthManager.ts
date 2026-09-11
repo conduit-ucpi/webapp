@@ -3,19 +3,19 @@
  * Orchestrates the entire auth flow using unified providers
  */
 
-import { AuthConfig, ProviderType } from '../types';
+import { AuthConfig, ProviderType } from '@/lib/auth/types';
 import {
   UnifiedProvider,
   ConnectionResult,
   AuthState,
   AuthUser
-} from '../types/unified-provider';
-import { buildAuthTokenMessage } from '../siwe-statement';
+} from '@/lib/auth/types/unified-provider';
+import { buildAuthTokenMessage } from '@/lib/auth/siwe-statement';
 import { ProviderRegistry } from './ProviderRegistry';
 import { TokenManager } from './TokenManager';
-import { mLog } from '../../../utils/mobileLogger';
+import { mLog } from '@/utils/mobileLogger';
 import { ethers } from 'ethers';
-import type { ConnectionMode } from '../../../components/auth/reownWalletConnect';
+import type { ConnectionMode } from '@/components/auth/reownWalletConnect';
 
 export class AuthManager {
   private static instance: AuthManager;
@@ -373,7 +373,7 @@ export class AuthManager {
 
       // Clear Web3Service state to prevent stale provider data
       try {
-        const { Web3Service } = await import('../../web3');
+        const { Web3Service } = await import('@/lib/web3');
         // Check if instance exists (don't create a new one if it doesn't)
         if ((Web3Service as any).instance) {
           const web3Service = (Web3Service as any).instance;

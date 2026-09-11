@@ -8,6 +8,19 @@ import path from 'path';
 
 describe('Currency Conversion Architecture Boundaries', () => {
   const webappRoot = process.cwd();
+  const sdkRoot = path.join(webappRoot, 'packages/whitelabel-sdk/src');
+
+  /**
+   * Files under a logical directory, wherever it now lives.
+   *
+   * utils/, lib/ and hooks/ moved into the white-label SDK, leaving only a few
+   * server-side files behind. Scanning the app root alone would let these rules
+   * pass by finding nothing to check, which is worse than failing.
+   */
+  const filesInBothRoots = (rel: string): string[] =>
+    [path.join(webappRoot, rel), path.join(sdkRoot, rel)]
+      .filter(dir => fs.existsSync(dir))
+      .flatMap(dir => getAllTsxTsFiles(dir));
 
   // Define what we consider "display/UI components"
   const allowedDisplayPaths = [
@@ -209,7 +222,8 @@ describe('Currency Conversion Architecture Boundaries', () => {
 
   describe('Specific architectural rules', () => {
     it('should NEVER convert currency in utils/ directory', () => {
-      const utilsFiles = getAllTsxTsFiles(path.join(webappRoot, 'utils'));
+      const utilsFiles = filesInBothRoots('utils');
+      expect(utilsFiles.length).toBeGreaterThan(0);
       const utilsViolations: string[] = [];
 
       utilsFiles.forEach(filePath => {
@@ -227,12 +241,8 @@ describe('Currency Conversion Architecture Boundaries', () => {
     });
 
     it('should NEVER convert currency in lib/ directory', () => {
-      const libPath = path.join(webappRoot, 'lib');
-      if (!fs.existsSync(libPath)) {
-        return; // Skip if lib directory doesn't exist
-      }
-
-      const libFiles = getAllTsxTsFiles(libPath);
+      const libFiles = filesInBothRoots('lib');
+      expect(libFiles.length).toBeGreaterThan(0);
       const libViolations: string[] = [];
 
       libFiles.forEach(filePath => {
@@ -246,12 +256,8 @@ describe('Currency Conversion Architecture Boundaries', () => {
     });
 
     it('should NEVER convert currency in hooks/ directory', () => {
-      const hooksPath = path.join(webappRoot, 'hooks');
-      if (!fs.existsSync(hooksPath)) {
-        return; // Skip if hooks directory doesn't exist
-      }
-
-      const hookFiles = getAllTsxTsFiles(hooksPath);
+      const hookFiles = filesInBothRoots('hooks');
+      expect(hookFiles.length).toBeGreaterThan(0);
       const hookViolations: string[] = [];
 
       hookFiles.forEach(filePath => {

@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from './SimpleAuthProvider';
 import EmailCollection from './EmailCollection';
-import { isValidEmail } from '../../utils/validation';
+import { isValidEmail } from '@/utils/validation';
 
 // Marketing pages are the visitor's first impression — the notification opt-in
 // is noise there. It still runs everywhere else (dashboard, contract flows),

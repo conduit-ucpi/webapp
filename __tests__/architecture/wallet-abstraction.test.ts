@@ -8,6 +8,9 @@
 import fs from 'fs';
 import path from 'path';
 
+/** The product tree now lives in the SDK workspace. */
+const SDK_SRC = path.join(__dirname, '../../packages/whitelabel-sdk/src');
+
 describe('Wallet Provider Abstraction', () => {
   let componentFiles: string[] = [];
   let pageFiles: string[] = [];
@@ -45,10 +48,11 @@ describe('Wallet Provider Abstraction', () => {
   beforeAll(() => {
     const baseDir = path.join(__dirname, '../../');
 
-    // Get all TypeScript/JSX files that might use wallet functionality
-    componentFiles = findFiles(path.join(baseDir, 'components'), ['.ts', '.tsx']);
+    // Components and hooks moved into the white-label SDK; pages stayed in the
+    // app. The rule has to follow the code, or it quietly polices an empty set.
+    componentFiles = findFiles(path.join(SDK_SRC, 'components'), ['.ts', '.tsx']);
     pageFiles = findFiles(path.join(baseDir, 'pages'), ['.ts', '.tsx']);
-    hookFiles = findFiles(path.join(baseDir, 'hooks'), ['.ts', '.tsx']);
+    hookFiles = findFiles(path.join(SDK_SRC, 'hooks'), ['.ts', '.tsx']);
   });
 
   describe('No Direct Web3Auth Access', () => {
@@ -97,7 +101,7 @@ describe('Wallet Provider Abstraction', () => {
         return;
       }
 
-      const fullPath = path.join(__dirname, '../../components', file);
+      const fullPath = path.join(SDK_SRC, 'components', file);
 
       // Skip if file doesn't exist
       if (!fs.existsSync(fullPath)) {
@@ -135,7 +139,7 @@ describe('Wallet Provider Abstraction', () => {
     ];
 
     test.each(walletUsingComponents)('%s should use auth context for wallet operations', (file) => {
-      const fullPath = path.join(__dirname, '../../components', file);
+      const fullPath = path.join(SDK_SRC, 'components', file);
 
       if (!fs.existsSync(fullPath)) {
         return;
@@ -174,7 +178,7 @@ describe('Wallet Provider Abstraction', () => {
 
   describe('Web3Service Usage', () => {
     test('Web3Service should use unified provider architecture', () => {
-      const web3ServicePath = path.join(__dirname, '../../lib/web3.ts');
+      const web3ServicePath = path.join(__dirname, '../../packages/whitelabel-sdk/src/lib/web3.ts');
       const content = fs.readFileSync(web3ServicePath, 'utf-8');
 
       // Should use ethers.BrowserProvider for unified provider pattern
@@ -217,7 +221,7 @@ describe('Wallet Provider Abstraction', () => {
         return;
       }
 
-      const fullPath = path.join(__dirname, '../../components', file);
+      const fullPath = path.join(SDK_SRC, 'components', file);
 
       if (!fs.existsSync(fullPath)) {
         return;
@@ -241,7 +245,7 @@ describe('Wallet Provider Abstraction', () => {
 
   describe('Architecture Consistency', () => {
     test('Unified provider architecture should be in place', () => {
-      const unifiedProviderPath = path.join(__dirname, '../../lib/auth/types/unified-provider.ts');
+      const unifiedProviderPath = path.join(__dirname, '../../packages/whitelabel-sdk/src/lib/auth/types/unified-provider.ts');
 
       if (!fs.existsSync(unifiedProviderPath)) {
         throw new Error('UnifiedProvider types file should exist');
@@ -270,7 +274,7 @@ describe('Wallet Provider Abstraction', () => {
     });
 
     test('Provider implementations should use UnifiedProvider interface', () => {
-      const providersDir = path.join(__dirname, '../../lib/auth/providers');
+      const providersDir = path.join(SDK_SRC, 'lib/auth/providers');
 
       if (!fs.existsSync(providersDir)) {
         return;

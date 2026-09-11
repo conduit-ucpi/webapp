@@ -15,7 +15,7 @@ import {
   toMicroUSDC,
   fromMicroUSDC,
   toUSDCForWeb3
-} from '../../utils/validation';
+} from '@/utils/validation';
 
 describe('validation utils', () => {
   describe('normalizeTimestamp', () => {

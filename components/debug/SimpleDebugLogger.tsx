@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useFarcaster } from '../farcaster/FarcasterDetectionProvider';
+import { useFarcaster } from '@/components/farcaster/FarcasterDetectionProvider';
 
 interface LogEntry {
   id: string | number;

@@ -14,7 +14,7 @@ import {
   AuthContextType,
   AuthEvent
 } from './authInterface';
-import { useConfig } from '../auth/ConfigProvider';
+import { useConfig } from '@/components/auth/ConfigProvider';
 import { ethers, formatUnits } from 'ethers';
 import { RpcClient } from '@/lib/rpc/RpcClient';
 // Contract methods are now deprecated - use API endpoints instead

@@ -4,7 +4,7 @@
 
 import { useCallback } from 'react';
 import { useAuth } from './useAuth';
-import { AuthService } from '../../backend/AuthService';
+import { AuthService } from '@/lib/auth/backend/AuthService';
 
 export function useBackendAuth() {
   const { user } = useAuth();

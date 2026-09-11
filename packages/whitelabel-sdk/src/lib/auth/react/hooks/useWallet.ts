@@ -5,7 +5,7 @@
 
 import { useCallback } from 'react';
 import { useAuth } from './useAuth';
-import { TransactionManager, TransactionResult, TransactionOptions } from '../../blockchain/TransactionManager';
+import { TransactionManager, TransactionResult, TransactionOptions } from '@/lib/auth/blockchain/TransactionManager';
 import { ethers } from 'ethers';
 
 export function useWallet() {

@@ -35,7 +35,14 @@ import path from 'path';
 const ROOT = path.join(__dirname, '../../');
 
 // Directories that contain application source we want to police.
-const SCAN_DIRS = ['components', 'pages', 'hooks', 'lib', 'utils', 'types'];
+const SCAN_DIRS = [
+  // App-side code.
+  'components', 'pages', 'utils', 'lib',
+  // The product surfaces moved into the white-label SDK. The rule has to
+  // follow them: a bare fetch() there is exactly as broken on the static
+  // build as it was when these files lived in the app.
+  'packages/whitelabel-sdk/src',
+];
 
 // Server-side code: not shipped to a browser, so a relative path is meaningless
 // rather than wrong. pages/api/** is the API itself.
@@ -50,10 +57,10 @@ const SERVER_PREFIXES = ['pages/api/', 'lib/server/'];
  * "fetch need not name apiUrl", never "this file may use relative /api paths".
  */
 const EXTERNAL_FETCH_EXCEPTIONS = [
-  'lib/web3.ts',                    // this.config.rpcUrl — blockchain node
-  'lib/rpc/RpcClient.ts',           // this.rpcUrl — blockchain node
-  'lib/auth/magicReachability.ts',  // MAGIC_PROBE_URL — third-party probe
-  'hooks/useExchangeRate.ts',       // exchangeRateApiUrl — third-party rates
+  'packages/whitelabel-sdk/src/lib/web3.ts',                    // this.config.rpcUrl — blockchain node
+  'packages/whitelabel-sdk/src/lib/rpc/RpcClient.ts',           // this.rpcUrl — blockchain node
+  'packages/whitelabel-sdk/src/lib/auth/magicReachability.ts',  // MAGIC_PROBE_URL — third-party probe
+  'packages/whitelabel-sdk/src/hooks/useExchangeRate.ts',       // exchangeRateApiUrl — third-party rates
   'utils/projectsServer.ts',        // fanout chain service, server-side
 ];
 
@@ -195,10 +202,10 @@ describe('Architecture: single API chokepoint (lib/apiFetch)', () => {
 
   it('the external-fetch exception list stays small and deliberate', () => {
     expect(EXTERNAL_FETCH_EXCEPTIONS).toEqual([
-      'lib/web3.ts',
-      'lib/rpc/RpcClient.ts',
-      'lib/auth/magicReachability.ts',
-      'hooks/useExchangeRate.ts',
+      'packages/whitelabel-sdk/src/lib/web3.ts',
+      'packages/whitelabel-sdk/src/lib/rpc/RpcClient.ts',
+      'packages/whitelabel-sdk/src/lib/auth/magicReachability.ts',
+      'packages/whitelabel-sdk/src/hooks/useExchangeRate.ts',
       'utils/projectsServer.ts',
     ]);
   });

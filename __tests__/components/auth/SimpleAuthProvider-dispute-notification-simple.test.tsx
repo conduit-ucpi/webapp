@@ -7,7 +7,7 @@
 const mockFundAndSendTransaction = jest.fn();
 const mockAuthenticatedFetch = jest.fn();
 
-jest.mock('../../../hooks/useSimpleEthers', () => ({
+jest.mock('@/hooks/useSimpleEthers', () => ({
   useSimpleEthers: () => ({
     fundAndSendTransaction: mockFundAndSendTransaction
   })
@@ -33,7 +33,7 @@ describe('SimpleAuthProvider - Dispute Notification (Unit Test)', () => {
     };
 
     // Import and create the authValue directly
-    const { SimpleAuthProvider } = await import('../../../components/auth/SimpleAuthProvider');
+    const { SimpleAuthProvider } = await import('@/components/auth/SimpleAuthProvider');
 
     // Create a mock authValue with raiseDispute function
     const authValue = {

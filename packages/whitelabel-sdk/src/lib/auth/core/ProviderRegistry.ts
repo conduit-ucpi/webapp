@@ -2,9 +2,9 @@
  * Provider registry for managing available auth providers
  */
 
-import { AuthConfig, ProviderType } from '../types';
-import { UnifiedProvider } from '../types/unified-provider';
-import { mLog } from '../../../utils/mobileLogger';
+import { AuthConfig, ProviderType } from '@/lib/auth/types';
+import { UnifiedProvider } from '@/lib/auth/types/unified-provider';
+import { mLog } from '@/utils/mobileLogger';
 
 export class ProviderRegistry {
   private providers: Map<ProviderType, UnifiedProvider> = new Map();
@@ -91,7 +91,7 @@ export class ProviderRegistry {
     try {
       mLog.info('ProviderRegistry', 'Registering WalletConnect provider');
       // Dynamic import to avoid bundle size
-      const { WalletConnectProvider } = await import('../providers/WalletConnectProvider');
+      const { WalletConnectProvider } = await import('@/lib/auth/providers/WalletConnectProvider');
       mLog.debug('ProviderRegistry', 'WalletConnectProvider imported successfully');
 
       const provider = new WalletConnectProvider(config);
@@ -114,7 +114,7 @@ export class ProviderRegistry {
     try {
       mLog.info('ProviderRegistry', 'Registering Farcaster provider');
       // Dynamic import to avoid bundle size
-      const { FarcasterProvider } = await import('../providers/FarcasterProvider');
+      const { FarcasterProvider } = await import('@/lib/auth/providers/FarcasterProvider');
       mLog.debug('ProviderRegistry', 'FarcasterProvider imported successfully');
 
       const provider = new FarcasterProvider(config);

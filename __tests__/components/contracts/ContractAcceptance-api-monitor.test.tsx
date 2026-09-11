@@ -5,6 +5,7 @@
  */
 
 import { createHash } from 'crypto';
+import { sourceFile } from '@/test-utils/sourceFile';
 
 describe('ContractAcceptance API Call Monitoring', () => {
   it('should detect any changes to the create-contract API call structure', () => {
@@ -13,7 +14,7 @@ describe('ContractAcceptance API Call Monitoring', () => {
 
     // The API call lives in resolveOrCreateOnChainContract (in the shared utility).
     // The body uses `createBody`, which is `params` with optional arbiter rewriting.
-    const utilityPath = path.join(process.cwd(), 'utils/contractTransactionSequence.ts');
+    const utilityPath = sourceFile('utils/contractTransactionSequence.ts');
     const utilitySource = fs.readFileSync(utilityPath, 'utf8');
 
     const createContractCallMatch = utilitySource.match(
@@ -43,7 +44,7 @@ describe('ContractAcceptance API Call Monitoring', () => {
     expect(createContractCall).toContain('POST');
 
     // Also verify that ContractAcceptance passes the correct params to the utility
-    const componentPath = path.join(process.cwd(), 'components/contracts/ContractAcceptance.tsx');
+    const componentPath = sourceFile('components/contracts/ContractAcceptance.tsx');
     const componentSource = fs.readFileSync(componentPath, 'utf8');
 
     expect(componentSource).toContain('contractserviceId: contract.id');
@@ -59,7 +60,7 @@ describe('ContractAcceptance API Call Monitoring', () => {
     const fs = require('fs');
     const path = require('path');
 
-    const componentPath = path.join(process.cwd(), 'components/contracts/ContractAcceptance.tsx');
+    const componentPath = sourceFile('components/contracts/ContractAcceptance.tsx');
     const componentSource = fs.readFileSync(componentPath, 'utf8');
 
     // Count occurrences of each required field in the API call
@@ -92,7 +93,7 @@ describe('ContractAcceptance API Call Monitoring', () => {
     const fs = require('fs');
     const path = require('path');
 
-    const componentPath = path.join(process.cwd(), 'components/contracts/ContractAcceptance.tsx');
+    const componentPath = sourceFile('components/contracts/ContractAcceptance.tsx');
     const componentSource = fs.readFileSync(componentPath, 'utf8');
 
     // Define dangerous patterns that have caused issues before
@@ -141,7 +142,7 @@ describe('ContractAcceptance API Call Monitoring', () => {
     const fs = require('fs');
     const path = require('path');
 
-    const componentPath = path.join(process.cwd(), 'components/contracts/ContractAcceptance.tsx');
+    const componentPath = sourceFile('components/contracts/ContractAcceptance.tsx');
     const componentSource = fs.readFileSync(componentPath, 'utf8');
 
     // Verify each mapping exists in the code
@@ -162,7 +163,7 @@ describe('ContractAcceptance API Call Monitoring', () => {
     const path = require('path');
 
     // Check that the ContractAcceptance component passes the correct field structure
-    const componentPath = path.join(process.cwd(), 'components/contracts/ContractAcceptance.tsx');
+    const componentPath = sourceFile('components/contracts/ContractAcceptance.tsx');
     const componentSource = fs.readFileSync(componentPath, 'utf8');
 
     // Look for the params object passed to executeContractTransactionSequence
@@ -204,7 +205,7 @@ describe('ContractAcceptance API Call Monitoring', () => {
     });
 
     // Also verify the interface definition in the utility matches
-    const utilityPath = path.join(process.cwd(), 'utils/contractTransactionSequence.ts');
+    const utilityPath = sourceFile('utils/contractTransactionSequence.ts');
     const utilitySource = fs.readFileSync(utilityPath, 'utf8');
 
     expectedFieldNames.forEach((fieldName: string) => {
@@ -217,7 +218,7 @@ describe('ContractAcceptance API Call Monitoring', () => {
     const path = require('path');
 
     // Check error handling in the shared utility where the API call now lives
-    const utilityPath = path.join(process.cwd(), 'utils/contractTransactionSequence.ts');
+    const utilityPath = sourceFile('utils/contractTransactionSequence.ts');
     const utilitySource = fs.readFileSync(utilityPath, 'utf8');
 
     // Verify error handling exists for the create-contract call in the utility
@@ -227,7 +228,7 @@ describe('ContractAcceptance API Call Monitoring', () => {
     expect(utilitySource).toContain('Contract creation failed');
 
     // Also verify that ContractAcceptance handles errors from the utility
-    const componentPath = path.join(process.cwd(), 'components/contracts/ContractAcceptance.tsx');
+    const componentPath = sourceFile('components/contracts/ContractAcceptance.tsx');
     const componentSource = fs.readFileSync(componentPath, 'utf8');
 
     // Verify the component catches and handles errors from executeContractTransactionSequence

@@ -8,13 +8,14 @@
 
 import fs from 'fs';
 import path from 'path';
+import { sourceFile } from '@/test-utils/sourceFile';
 
 describe('ContractAcceptance Regression Protection', () => {
 
   describe('MicroUSDC Conversion Regression Protection', () => {
 
     it('should verify ContractAcceptance uses contract.amount directly (not toMicroUSDC)', () => {
-      const componentPath = path.join(process.cwd(), 'components/contracts/ContractAcceptance.tsx');
+      const componentPath = sourceFile('components/contracts/ContractAcceptance.tsx');
       const componentSource = fs.readFileSync(componentPath, 'utf8');
 
       // CRITICAL: Must use contract.amount directly (already in microUSDC)
@@ -33,7 +34,7 @@ describe('ContractAcceptance Regression Protection', () => {
 
     it('should verify approveUSDC call uses params.amount directly', () => {
       // The approveUSDC call has moved to the shared utility
-      const utilityPath = path.join(process.cwd(), 'utils/contractTransactionSequence.ts');
+      const utilityPath = sourceFile('utils/contractTransactionSequence.ts');
       const utilitySource = fs.readFileSync(utilityPath, 'utf8');
 
       // CRITICAL: approveUSDC should receive params.amount.toString()
@@ -45,7 +46,7 @@ describe('ContractAcceptance Regression Protection', () => {
       expect(utilitySource).not.toContain('toMicroUSDC(params.amount)');
 
       // Also verify ContractAcceptance passes amount correctly to the utility
-      const componentPath = path.join(process.cwd(), 'components/contracts/ContractAcceptance.tsx');
+      const componentPath = sourceFile('components/contracts/ContractAcceptance.tsx');
       const componentSource = fs.readFileSync(componentPath, 'utf8');
 
       expect(componentSource).toContain('amount: contract.amount, // Already in microUSDC format');
@@ -60,7 +61,7 @@ describe('ContractAcceptance Regression Protection', () => {
       ];
 
       testFiles.forEach(testFile => {
-        const testPath = path.join(process.cwd(), testFile);
+        const testPath = sourceFile(testFile);
         if (fs.existsSync(testPath)) {
           const testSource = fs.readFileSync(testPath, 'utf8');
 
@@ -85,7 +86,7 @@ describe('ContractAcceptance Regression Protection', () => {
       ];
 
       authFiles.forEach(authFile => {
-        const authPath = path.join(process.cwd(), authFile);
+        const authPath = sourceFile(authFile);
         if (fs.existsSync(authPath)) {
           const authSource = fs.readFileSync(authPath, 'utf8');
 
@@ -130,7 +131,7 @@ describe('ContractAcceptance Regression Protection', () => {
       // The API call has moved to the shared utility (resolveOrCreateOnChainContract).
       // The body is built from `params` with optional arbiter rewriting only —
       // no other field manipulation, no double conversion.
-      const utilityPath = path.join(process.cwd(), 'utils/contractTransactionSequence.ts');
+      const utilityPath = sourceFile('utils/contractTransactionSequence.ts');
       const utilitySource = fs.readFileSync(utilityPath, 'utf8');
 
       const apiCallMatch = utilitySource.match(
@@ -155,7 +156,7 @@ describe('ContractAcceptance Regression Protection', () => {
       );
 
       // Verify ContractAcceptance passes correct structure to utility
-      const componentPath = path.join(process.cwd(), 'components/contracts/ContractAcceptance.tsx');
+      const componentPath = sourceFile('components/contracts/ContractAcceptance.tsx');
       const componentSource = fs.readFileSync(componentPath, 'utf8');
 
       // Verify all required fields are passed correctly to executeContractTransactionSequence
@@ -215,7 +216,7 @@ describe('ContractAcceptance Regression Protection', () => {
   describe('Comment and Documentation Protection', () => {
 
     it('should verify critical comments are present to prevent future bugs', () => {
-      const componentPath = path.join(process.cwd(), 'components/contracts/ContractAcceptance.tsx');
+      const componentPath = sourceFile('components/contracts/ContractAcceptance.tsx');
       const componentSource = fs.readFileSync(componentPath, 'utf8');
 
       // Look for protective comments that explain the microUSDC usage
@@ -226,7 +227,7 @@ describe('ContractAcceptance Regression Protection', () => {
     });
 
     it('should verify test files document the expected behavior', () => {
-      const testPath = path.join(process.cwd(), '__tests__/components/contracts/ContractAcceptance-api-contract.test.tsx');
+      const testPath = sourceFile('__tests__/components/contracts/ContractAcceptance-api-contract.test.tsx');
       if (fs.existsSync(testPath)) {
         const testSource = fs.readFileSync(testPath, 'utf8');
 

@@ -5,11 +5,11 @@ import { screen, fireEvent, waitFor } from '@testing-library/dom';
 jest.mock('next/router', () => ({
   useRouter: jest.fn(),
 }));
-jest.mock('../../../components/auth/ConfigProvider');
-jest.mock('../../../components/auth');
+jest.mock('@/components/auth/ConfigProvider');
+jest.mock('@/components/auth');
 
 // Override the global SDK mock with test-specific values
-jest.mock('../../../hooks/useSimpleEthers', () => ({
+jest.mock('@/hooks/useSimpleEthers', () => ({
   useSimpleEthers: () => ({
     provider: null,
     isReady: true,
@@ -22,7 +22,7 @@ jest.mock('../../../hooks/useSimpleEthers', () => ({
 }));
 
 // Simplify BuyerInput so we can drive the form with fireEvent
-jest.mock('../../../components/ui/BuyerInput', () => {
+jest.mock('@/components/ui/BuyerInput', () => {
   return function MockBuyerInput({ value, onChange, placeholder, label, error }: any) {
     return (
       <div>
@@ -40,21 +40,21 @@ jest.mock('../../../components/ui/BuyerInput', () => {
 });
 
 // Simplify Toast — the real one renders a portal and we don't care about it here
-jest.mock('../../../components/ui/Toast', () => ({
+jest.mock('@/components/ui/Toast', () => ({
   useToast: () => ({ showToast: jest.fn() }),
   ToastProvider: ({ children }: any) => <>{children}</>,
 }));
 
 // WalletInfo hits lots of hooks — not relevant to this validation test
-jest.mock('../../../components/ui/WalletInfo', () => ({
+jest.mock('@/components/ui/WalletInfo', () => ({
   __esModule: true,
   default: () => <div data-testid="wallet-info-stub" />,
 }));
 
 import { useRouter } from 'next/router';
-import CreateContractWizard from '../../../components/contracts/CreateContractWizard';
-import { useConfig } from '../../../components/auth/ConfigProvider';
-import { useAuth } from '../../../components/auth';
+import CreateContractWizard from '@/components/contracts/CreateContractWizard';
+import { useConfig } from '@/components/auth/ConfigProvider';
+import { useAuth } from '@/components/auth';
 
 const mockPush = jest.fn();
 const mockUseRouter = useRouter as jest.MockedFunction<typeof useRouter>;

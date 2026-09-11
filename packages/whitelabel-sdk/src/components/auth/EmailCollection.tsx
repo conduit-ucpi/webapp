@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { isValidEmail } from '../../utils/validation';
+import { isValidEmail } from '@/utils/validation';
 
 interface EmailCollectionProps {
   onEmailSubmit: (email: string) => Promise<void>;

@@ -2,13 +2,13 @@ import { render } from '@testing-library/react';
 import { screen } from '@testing-library/dom';
 
 jest.mock('next/router', () => ({ useRouter: jest.fn() }));
-jest.mock('../../../components/auth/ConfigProvider');
-jest.mock('../../../components/auth');
+jest.mock('@/components/auth/ConfigProvider');
+jest.mock('@/components/auth');
 
 import { useRouter } from 'next/router';
-import ContractActions from '../../../components/contracts/ContractActions';
-import { useConfig } from '../../../components/auth/ConfigProvider';
-import { useAuth } from '../../../components/auth';
+import ContractActions from '@/components/contracts/ContractActions';
+import { useConfig } from '@/components/auth/ConfigProvider';
+import { useAuth } from '@/components/auth';
 
 const mockUseRouter = useRouter as jest.MockedFunction<typeof useRouter>;
 const mockUseConfig = useConfig as jest.MockedFunction<typeof useConfig>;

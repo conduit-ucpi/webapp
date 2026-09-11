@@ -9,7 +9,7 @@
  */
 import { apiFetch, apiUrl } from '@/lib/apiFetch';
 
-import { mLog } from '../../utils/mobileLogger';
+import { mLog } from '@/utils/mobileLogger';
 
 export interface BackendUser {
   userId: string;

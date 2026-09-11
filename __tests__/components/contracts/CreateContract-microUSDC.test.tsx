@@ -6,12 +6,12 @@ import userEvent from '@testing-library/user-event';
 jest.mock('next/router', () => ({
   useRouter: jest.fn(),
 }));
-jest.mock('../../../components/auth/ConfigProvider');
-jest.mock('../../../components/auth');
+jest.mock('@/components/auth/ConfigProvider');
+jest.mock('@/components/auth');
 // jest.mock('../../../components/auth/Web3AuthContextProvider'); // Not needed
 
 // Override the global SDK mock with test-specific values
-jest.mock('../../../hooks/useSimpleEthers', () => ({
+jest.mock('@/hooks/useSimpleEthers', () => ({
   useSimpleEthers: () => ({
     provider: null,
     isReady: true,
@@ -24,9 +24,9 @@ jest.mock('../../../hooks/useSimpleEthers', () => ({
 }));
 
 import { useRouter } from 'next/router';
-import CreateContract from '../../../components/contracts/CreateContract';
-import { useConfig } from '../../../components/auth/ConfigProvider';
-import { useAuth } from '../../../components/auth';
+import CreateContract from '@/components/contracts/CreateContract';
+import { useConfig } from '@/components/auth/ConfigProvider';
+import { useAuth } from '@/components/auth';
 // import { useWeb3AuthInstance } from '../../../components/auth/Web3AuthContextProvider'; // Not needed
 
 const mockPush = jest.fn();
@@ -51,7 +51,7 @@ Object.defineProperty(window, 'web3authProvider', {
 global.alert = jest.fn();
 
 // Mock BuyerInput component to simplify form interaction in tests
-jest.mock('../../../components/ui/BuyerInput', () => {
+jest.mock('@/components/ui/BuyerInput', () => {
   return function MockBuyerInput({ value, onChange, placeholder, label }: any) {
     return (
       <div>

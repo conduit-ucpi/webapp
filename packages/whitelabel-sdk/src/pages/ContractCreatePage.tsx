@@ -28,6 +28,9 @@ import { detectDevice } from '@/utils/deviceDetection';
 import { buildWordPressStatusUrl as buildWpStatusUrl } from '@/utils/wordpressStatusUrl';
 import { safeRedirectUrl } from '@/utils/safeRedirect';
 import { verifyEscrow } from '@/lib/escrow/verifyEscrow';
+import { useT } from '../i18n';
+import { useOptionalBrand, useBrandSource } from '../theme/BrandProvider';
+import { getSiteNameFromDomain } from '@/utils/siteName';
 
 interface ContractCreateForm {
   seller: string;
@@ -47,6 +50,14 @@ interface PostMessageEvent {
 type PaymentMethod = 'wallet' | 'qr' | null;
 
 export default function ContractCreate() {
+  const t = useT();
+
+  // The tab title is the partner's too — a COBRO customer should not see our
+  // name in their browser chrome.
+  const brand = useOptionalBrand();
+  const brandSource = useBrandSource();
+  const brandName =
+    brand && brandSource && brandSource !== 'default' ? brand.name : getSiteNameFromDomain();
 
   const router = useRouter();
   const { config } = useConfig();
@@ -82,7 +93,7 @@ export default function ContractCreate() {
     availableTokens
   } = useTokenSelection(config, queryTokenSymbol as string | undefined);
 
-  const networkName = config ? getNetworkName(config.chainId) : 'Unknown Network';
+  const networkName = config ? getNetworkName(config.chainId) : t('common.unknownNetwork');
 
   // Check if we're in an iframe or popup
   const [isInIframe, setIsInIframe] = useState(false);
@@ -108,11 +119,11 @@ export default function ContractCreate() {
     setSteps: setPaymentSteps,
     getActiveStep,
   } = usePaymentSteps([
-    { id: 'verify', label: 'Verifying wallet connection', status: 'pending' },
+    { id: 'verify', label: t('status.verifying'), status: 'pending' },
     { id: 'transfer', label: `Transferring ${selectedTokenSymbol} to escrow`, status: 'pending' },
-    { id: 'confirm', label: 'Confirming transaction on blockchain', status: 'pending' },
-    { id: 'activate', label: 'Activating contract', status: 'pending' },
-    { id: 'complete', label: 'Payment complete', status: 'pending' }
+    { id: 'confirm', label: t('status.confirming'), status: 'pending' },
+    { id: 'activate', label: t('status.activating'), status: 'pending' },
+    { id: 'complete', label: t('status.complete'), status: 'pending' }
   ]);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(null);
   const [showTokenGuide, setShowTokenGuide] = useState(false);
@@ -217,7 +228,7 @@ export default function ContractCreate() {
         });
         if (!createResponse.ok) {
           const errorData = await createResponse.json().catch(() => ({}));
-          throw new Error(errorData.error || 'Contract creation failed');
+          throw new Error(errorData.error || t('err.creationFailed'));
         }
         const createData = await createResponse.json();
         console.log('ContractCreate: QR contract created:', createData);
@@ -248,7 +259,7 @@ export default function ContractCreate() {
         return createData.contractAddress;
       } catch (error: any) {
         console.error('ContractCreate: Failed to create contract for QR:', error);
-        alert(error.message || 'Failed to create contract');
+        alert(error.message || t('err.createFailed'));
         return undefined;
       }
     }, [contractId, config, address, authenticatedFetch, selectedTokenAddress, form, pendingExpiryTimestamp, getWeb3Service]),
@@ -370,7 +381,7 @@ export default function ContractCreate() {
       }
     });
 
-    setLoadingMessage('Payment completed! Redirecting...');
+    setLoadingMessage(t('status.completedRedirect'));
 
     // Handle redirect (same logic as existing handlePayment)
     if (isInIframe) {
@@ -401,13 +412,13 @@ export default function ContractCreate() {
 
     sendPostMessage({
       type: 'payment_error',
-      error: error.message || 'Payment failed'
+      error: error.message || t('err.paymentFailed')
     });
 
     // WordPress error redirect
     if (wordpress_source === 'true' && returnUrl && typeof returnUrl === 'string') {
       const errorUrl = buildWordPressStatusUrl('error', {
-        error: encodeURIComponent(error.message || 'Payment failed')
+        error: encodeURIComponent(error.message || t('err.paymentFailed'))
       });
 
       if (isInPopup && window.opener) {
@@ -420,7 +431,7 @@ export default function ContractCreate() {
       if (isInPopup) {
         setTimeout(() => window.close(), 2000);
       } else if (!isInIframe) {
-        alert(error.message || 'Payment failed');
+        alert(error.message || t('err.paymentFailed'));
       }
     }
   };
@@ -439,11 +450,11 @@ export default function ContractCreate() {
 
     // Reset payment steps (labels are page-specific; the hook drives statuses).
     setPaymentSteps([
-      { id: 'verify', label: 'Verifying wallet connection', status: 'pending' },
+      { id: 'verify', label: t('status.verifying'), status: 'pending' },
       { id: 'transfer', label: `Transferring ${selectedTokenSymbol} to escrow`, status: 'pending' },
-      { id: 'confirm', label: 'Confirming transaction on blockchain', status: 'pending' },
-      { id: 'activate', label: 'Activating contract', status: 'pending' },
-      { id: 'complete', label: 'Payment complete', status: 'pending' }
+      { id: 'confirm', label: t('status.confirming'), status: 'pending' },
+      { id: 'activate', label: t('status.activating'), status: 'pending' },
+      { id: 'complete', label: t('status.complete'), status: 'pending' }
     ]);
 
     await runDirectPayment(
@@ -516,11 +527,11 @@ export default function ContractCreate() {
       setLoadingMessage('Initializing...');
 
       if (!address) {
-        throw new Error('Please connect your wallet first.');
+        throw new Error(t('err.connectFirst'));
       }
       
       // Create pending contract via Contract Service
-      setLoadingMessage('Creating secure escrow contract...');
+      setLoadingMessage(t('status.creatingEscrow'));
       
       // Parse epoch_expiry from query params if provided and valid
       let expiryTimestamp = Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60); // Default to 7 days
@@ -562,7 +573,7 @@ export default function ContractCreate() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Failed to create contract');
+        throw new Error(errorData.error || t('err.createFailed'));
       }
 
       const result = await response.json();
@@ -590,9 +601,9 @@ export default function ContractCreate() {
       console.error('Contract creation failed:', error);
       sendPostMessage({
         type: 'payment_error',
-        error: error.message || 'Failed to create contract'
+        error: error.message || t('err.createFailed')
       });
-      alert(error.message || 'Failed to create contract');
+      alert(error.message || t('err.createFailed'));
     } finally {
       setIsLoading(false);
       setLoadingMessage('');
@@ -611,11 +622,11 @@ export default function ContractCreate() {
 
     // Reset payment steps (labels are page-specific; the hook drives statuses).
     setPaymentSteps([
-      { id: 'verify', label: 'Verifying wallet connection', status: 'pending' },
+      { id: 'verify', label: t('status.verifying'), status: 'pending' },
       { id: 'approve', label: `Approving ${selectedTokenSymbol} payment`, status: 'pending' },
-      { id: 'escrow', label: 'Securing funds in escrow', status: 'pending' },
-      { id: 'confirm', label: 'Confirming transaction on blockchain', status: 'pending' },
-      { id: 'complete', label: 'Payment complete', status: 'pending' }
+      { id: 'escrow', label: t('status.securing'), status: 'pending' },
+      { id: 'confirm', label: t('status.confirming'), status: 'pending' },
+      { id: 'complete', label: t('status.complete'), status: 'pending' }
     ]);
 
     await runLegacyPayment(
@@ -681,13 +692,13 @@ export default function ContractCreate() {
       <div className={`min-h-screen flex items-center justify-center transition-colors ${isInIframe || isInPopup ? 'bg-secondary-50 dark:bg-secondary-800' : 'bg-white dark:bg-secondary-900'}`}>
         <Head children={
           <>
-            <title>Create Contract - Conduit UCPI</title>
+            <title>{t('checkout.docTitle', { brand: brandName })}</title>
             <meta name="viewport" content="width=device-width, initial-scale=1" />
           </>
         } />
         <div className="text-center p-6">
           <LoadingSpinner size="lg" />
-          <p className="mt-4 text-secondary-600 dark:text-secondary-300">Initializing secure payment system...</p>
+          <p className="mt-4 text-secondary-600 dark:text-secondary-300">{t('checkout.initializing')}</p>
         </div>
       </div>
     );
@@ -704,7 +715,7 @@ export default function ContractCreate() {
         <div className={`min-h-screen flex items-center justify-center transition-colors ${isInIframe || isInPopup ? 'bg-secondary-50 dark:bg-secondary-800' : 'bg-white dark:bg-secondary-900'}`}>
           <Head children={
             <>
-              <title>Create Contract - Conduit UCPI</title>
+              <title>{t('checkout.docTitle', { brand: brandName })}</title>
               <meta name="viewport" content="width=device-width, initial-scale=1" />
             </>
           } />
@@ -712,20 +723,20 @@ export default function ContractCreate() {
             {/* Buyer protection callout */}
             <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6 text-left">
               <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-200 mb-2">
-                Secure escrow payment
+                {t('checkout.secureEscrow')}
               </h3>
               <ul className="text-sm text-blue-800 dark:text-blue-300 space-y-1">
-                <li>Your payment is protected by escrow</li>
-                <li>Can dispute if there is a problem</li>
-                <li>No gas fees - we cover blockchain costs</li>
+                <li>{t('checkout.protected')}</li>
+                <li>{t('checkout.canDispute')}</li>
+                <li>{t('checkout.noGas')}</li>
               </ul>
             </div>
 
-            <h2 className="text-lg font-semibold text-secondary-900 dark:text-white mb-4 text-center">How would you like to pay?</h2>
+            <h2 className="text-lg font-semibold text-secondary-900 dark:text-white mb-4 text-center">{t('checkout.howPay')}</h2>
 
             <PaymentMethodChoice
-              walletTitle="Connect my wallet"
-              walletSubtitle="Pay directly from your crypto wallet (MetaMask, Coinbase, etc.)"
+              walletTitle={t('checkout.connectMyWallet')}
+              walletSubtitle={t('checkout.payDirectly')}
               onSelect={setPaymentMethod}
             />
           </div>
@@ -740,7 +751,7 @@ export default function ContractCreate() {
       <div className={`min-h-screen flex items-center justify-center transition-colors ${isInIframe || isInPopup ? 'bg-secondary-50 dark:bg-secondary-800' : 'bg-white dark:bg-secondary-900'}`}>
         <Head children={
           <>
-            <title>Create Contract - Conduit UCPI</title>
+            <title>{t('checkout.docTitle', { brand: brandName })}</title>
             <meta name="viewport" content="width=device-width, initial-scale=1" />
           </>
         } />
@@ -759,7 +770,7 @@ export default function ContractCreate() {
     <div className={`transition-colors ${isInIframe || isInPopup ? 'min-h-screen bg-secondary-50 dark:bg-secondary-800' : 'min-h-screen bg-white dark:bg-secondary-900'}`}>
       <Head children={
         <>
-          <title>Create Contract - Conduit UCPI</title>
+          <title>{t('checkout.docTitle', { brand: brandName })}</title>
           <meta name="viewport" content="width=device-width, initial-scale=1" />
         </>
       } />
@@ -788,19 +799,19 @@ export default function ContractCreate() {
                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                 </svg>
-                Logout
+                {t('checkout.logout')}
               </Button>
             </div>
 
             <div className="bg-white dark:bg-secondary-900 rounded-lg shadow-sm dark:shadow-none border border-secondary-200 dark:border-secondary-700 p-6">
               <h2 className="text-xl font-semibold text-secondary-900 dark:text-white mb-4">
-                {isInIframe || isInPopup ? 'Stablecoin payment protected by escrow, no gas fees' : 'Payment Agreement'}
+                {isInIframe || isInPopup ? t('checkout.escrowProtected') : t('checkout.paymentAgreement')}
               </h2>
               
               <div className="space-y-4">
               <div>
                 <Input
-                  label="Seller Wallet Address"
+                  label={t('checkout.sellerWalletAddress')}
                   type="text"
                   value={form.seller}
                   onChange={(e) => setForm(prev => ({ ...prev, seller: e.target.value }))}
@@ -818,7 +829,7 @@ export default function ContractCreate() {
                   tokenSymbol={selectedTokenSymbol}
                   error={errors.amount}
                   disabled={isLoading || !!amount} // Disable if provided via query param
-                  helpText={isInIframe || isInPopup ? 'Secure escrow payment' : 'Amount includes $1 fee, minimum $1.001'}
+                  helpText={isInIframe || isInPopup ? t('checkout.secureEscrow') : t('checkout.feeNote')}
                 />
               </div>
 
@@ -832,7 +843,7 @@ export default function ContractCreate() {
                   maxLength={160}
                   value={form.description}
                   onChange={(e) => setForm(prev => ({ ...prev, description: e.target.value }))}
-                  placeholder="Brief description of the purchase..."
+                  placeholder={t('checkout.descPlaceholder')}
                   disabled={isLoading || !!description} // Disable if provided via query param
                 />
                 {errors.description && <p className="text-sm text-red-600 mt-1">{errors.description}</p>}
@@ -840,7 +851,7 @@ export default function ContractCreate() {
 
               <div className="bg-secondary-50 dark:bg-secondary-800 border border-secondary-200 dark:border-secondary-700 rounded-md p-3">
                 <p className="text-sm text-secondary-700 dark:text-secondary-200">
-                  <strong>Payout Date:</strong>
+                  <strong>{t('common.payoutDate')}</strong>
                 </p>
                 <p className="text-sm text-secondary-900 dark:text-white">
                   {(() => {
@@ -858,8 +869,8 @@ export default function ContractCreate() {
                 </p>
                 <p className="text-xs text-secondary-500 dark:text-secondary-400 mt-1">
                   {epoch_expiry === '0' || parseInt(epoch_expiry as string || '') === 0
-                    ? 'Funds will be released immediately after payment'
-                    : 'Funds will be released to the seller after this date if not disputed'
+                    ? t('checkout.releaseImmediate')
+                    : t('checkout.releaseNote')
                   }
                 </p>
               </div>
@@ -867,7 +878,7 @@ export default function ContractCreate() {
               {order_id && (
                 <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md p-3">
                   <p className="text-sm text-blue-800 dark:text-blue-300">
-                    <strong>Order ID:</strong> {order_id}
+                    <strong>{t('checkout.orderId')}</strong> {order_id}
                   </p>
                 </div>
               )}
@@ -910,14 +921,14 @@ export default function ContractCreate() {
                   className="flex-1"
                   disabled={isLoading}
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </Button>
                 <Button
                   onClick={handleCreateContract}
                   disabled={isLoading || !address}
                   className="flex-1"
                   title={
-                    !address ? 'Please connect your wallet first' :
+                    !address ? t('err.connectFirst') :
                     ''
                   }
                 >
@@ -927,7 +938,7 @@ export default function ContractCreate() {
                       {loadingMessage?.match(/Step \d+/)?.[0] || 'Processing...'}
                     </>
                   ) : (
-                    isInIframe || isInPopup ? 'Create Payment' : 'Pay'
+                    isInIframe || isInPopup ? t('checkout.createPayment') : 'Pay'
                   )}
                 </Button>
               </div>
@@ -936,22 +947,22 @@ export default function ContractCreate() {
           </>
         ) : (
           <div className="bg-white dark:bg-secondary-900 rounded-lg shadow-sm dark:shadow-none border border-secondary-200 dark:border-secondary-700 p-6">
-            <h2 className="text-xl font-semibold text-secondary-900 dark:text-white mb-4">Complete Payment</h2>
+            <h2 className="text-xl font-semibold text-secondary-900 dark:text-white mb-4">{t('checkout.completePayment')}</h2>
 
             {/* Contract summary - always shown */}
             <div className="space-y-3 mb-6">
               {/* Amount */}
               <div className="flex justify-between">
-                <span className="text-secondary-600 dark:text-secondary-300">Amount:</span>
+                <span className="text-secondary-600 dark:text-secondary-300">{t('common.amount')}</span>
                 <span className="font-medium text-secondary-900 dark:text-white">${form.amount} {selectedTokenSymbol}</span>
               </div>
               {/* Balance - only shown for wallet method */}
               {(paymentMethod === null || paymentMethod === 'wallet') && (
                 <div className="flex justify-between">
-                  <span className="text-secondary-600 dark:text-secondary-300">Your Balance:</span>
+                  <span className="text-secondary-600 dark:text-secondary-300">{t('checkout.yourBalance')}</span>
                   <span className={`font-medium ${parseFloat(tokenBalance) < parseFloat(form.amount) ? 'text-red-600' : 'text-green-600'}`}>
                     {isLoadingBalance ? (
-                      <span className="animate-pulse">Loading...</span>
+                      <span className="animate-pulse">{t('common.loading')}</span>
                     ) : (
                       `${parseFloat(tokenBalance).toFixed(4)} ${selectedTokenSymbol}`
                     )}
@@ -960,12 +971,12 @@ export default function ContractCreate() {
               )}
               {/* Seller */}
               <div className="flex justify-between">
-                <span className="text-secondary-600 dark:text-secondary-300">Seller:</span>
+                <span className="text-secondary-600 dark:text-secondary-300">{t('common.seller')}</span>
                 <span className="text-sm font-mono text-secondary-900 dark:text-white">{form.seller.slice(0, 6)}...{form.seller.slice(-4)}</span>
               </div>
               {/* Payout Date */}
               <div className="flex justify-between">
-                <span className="text-secondary-600 dark:text-secondary-300">Payout Date:</span>
+                <span className="text-secondary-600 dark:text-secondary-300">{t('common.payoutDate')}</span>
                 <span className="font-medium text-secondary-900 dark:text-white">
                   {(() => {
                     let expiryTimestamp = Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60);
@@ -981,12 +992,12 @@ export default function ContractCreate() {
               </div>
               {/* Description */}
               <div className="flex justify-between">
-                <span className="text-secondary-600 dark:text-secondary-300">Description:</span>
+                <span className="text-secondary-600 dark:text-secondary-300">{t('common.descriptionLabel')}</span>
                 <span className="text-right max-w-xs text-sm text-secondary-900 dark:text-white">{form.description}</span>
               </div>
               {order_id && (
                 <div className="flex justify-between">
-                  <span className="text-secondary-600 dark:text-secondary-300">Order ID:</span>
+                  <span className="text-secondary-600 dark:text-secondary-300">{t('checkout.orderId')}</span>
                   <span className="text-sm text-secondary-900 dark:text-white">{order_id}</span>
                 </div>
               )}
@@ -995,10 +1006,10 @@ export default function ContractCreate() {
             {/* PAYMENT METHOD CHOICE (when paymentMethod === null) */}
             {paymentMethod === null && (
               <>
-                <h3 className="text-lg font-semibold text-secondary-900 dark:text-white mb-4 text-center">How would you like to pay?</h3>
+                <h3 className="text-lg font-semibold text-secondary-900 dark:text-white mb-4 text-center">{t('checkout.howPay')}</h3>
                 <PaymentMethodChoice
-                  walletTitle="Pay with connected wallet"
-                  walletSubtitle="Transfer directly from your connected wallet"
+                  walletTitle={t('checkout.payWithConnected')}
+                  walletSubtitle={t('checkout.transferDirectly')}
                   onSelect={setPaymentMethod}
                 />
               </>
@@ -1014,13 +1025,13 @@ export default function ContractCreate() {
                       onClick={() => setPaymentMethod('wallet')}
                       className="flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors bg-white dark:bg-secondary-700 text-secondary-900 dark:text-white shadow-sm"
                     >
-                      Wallet Transfer
+                      {t('checkout.walletTransfer')}
                     </button>
                     <button
                       onClick={() => setPaymentMethod('qr')}
                       className="flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors text-secondary-500 dark:text-secondary-400 hover:text-secondary-700 dark:hover:text-secondary-200"
                     >
-                      QR Code
+                      {t('checkout.qrCode')}
                     </button>
                   </div>
                 )}
@@ -1034,7 +1045,7 @@ export default function ContractCreate() {
                 {parseFloat(tokenBalance) < parseFloat(form.amount) ? (
                   <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md mb-6">
                     <div className="p-4">
-                      <p className="text-sm text-red-800 dark:text-red-300 font-medium">Insufficient Balance</p>
+                      <p className="text-sm text-red-800 dark:text-red-300 font-medium">{t('checkout.insufficientBalance')}</p>
                       <p className="text-sm text-red-700 dark:text-red-400 mt-1">
                         You need {parseFloat(form.amount).toFixed(4)} {selectedTokenSymbol} but only have {parseFloat(tokenBalance).toFixed(4)} {selectedTokenSymbol}.
                         Please add {(parseFloat(form.amount) - parseFloat(tokenBalance)).toFixed(4)} {selectedTokenSymbol} to your wallet before proceeding.
@@ -1079,7 +1090,7 @@ export default function ContractCreate() {
                     className="flex-1"
                     disabled={isLoading}
                   >
-                    Cancel
+                    {t('common.cancel')}
                   </Button>
                   <Button
                     onClick={handleWalletPayment}
@@ -1114,13 +1125,13 @@ export default function ContractCreate() {
                       onClick={() => setPaymentMethod('wallet')}
                       className="flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors text-secondary-500 dark:text-secondary-400 hover:text-secondary-700 dark:hover:text-secondary-200"
                     >
-                      Wallet Transfer
+                      {t('checkout.walletTransfer')}
                     </button>
                     <button
                       onClick={() => setPaymentMethod('qr')}
                       className="flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors bg-white dark:bg-secondary-700 text-secondary-900 dark:text-white shadow-sm"
                     >
-                      QR Code
+                      {t('checkout.qrCode')}
                     </button>
                   </div>
                 )}
@@ -1134,10 +1145,10 @@ export default function ContractCreate() {
                   isMobileDevice={isMobileDevice}
                   copiedAddress={copiedAddress}
                   onCopyAddress={handleCopyAddress}
-                  createButtonLabel="Generate Payment Link"
+                  createButtonLabel={t('checkout.generateLink')}
                   createDisabled={false}
                   onCancel={handleCancel}
-                  successMessage="Your payment has been verified and the contract is now active. Redirecting..."
+                  successMessage={t('pay.verifiedRedirect')}
                 />
               </>
             )}

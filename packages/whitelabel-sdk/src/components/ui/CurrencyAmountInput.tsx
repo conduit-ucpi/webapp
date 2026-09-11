@@ -49,7 +49,7 @@ export default function CurrencyAmountInput({
   disabled = false,
   label,
   helpText,
-  paymentLabel = "Payment amount",
+  paymentLabel,
   layout = 'stacked',
   networkLabel,
   balanceText,
@@ -155,7 +155,7 @@ export default function CurrencyAmountInput({
                 onChange={handleLocalAmountChange}
                 onFocus={() => setLastEdited('local')}
                 disabled={disabled || rateLoading || rateUnavailable}
-                placeholder={rateUnavailable ? 'Rate unavailable' : '0.00'}
+                placeholder={rateUnavailable ? t('err.rateUnavailable') : '0.00'}
                 aria-label={t('amount.requestedAria')}
                 className={amountInputClass}
               />
@@ -294,7 +294,7 @@ export default function CurrencyAmountInput({
               value={localAmount}
               onChange={handleLocalAmountChange}
               disabled={disabled || rateLoading || rateUnavailable}
-              placeholder={rateUnavailable ? 'Rate unavailable' : '0.00'}
+              placeholder={rateUnavailable ? t('err.rateUnavailable') : '0.00'}
               readOnly={disabled || rateUnavailable}
               className={`
                 flex-1 min-w-0 px-2 sm:px-3 py-2.5 text-base
@@ -337,7 +337,7 @@ export default function CurrencyAmountInput({
         {/* Token Amount Input */}
         <div className="mt-1">
           <label className="block text-xs font-medium text-secondary-600 dark:text-secondary-300 mb-1.5">
-            {paymentLabel}:
+            {paymentLabel ?? t('amount.paymentAmount')}:
           </label>
           <div className="flex items-center gap-1.5 sm:gap-2">
             <input

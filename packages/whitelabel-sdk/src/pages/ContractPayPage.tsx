@@ -25,6 +25,9 @@ import { toMicroUSDC, toUSDCForWeb3, formatDateTimeWithTZ, displayCurrency } fro
 import { resolveOrCreateOnChainContract } from '@/utils/contractTransactionSequence';
 import { getNetworkName } from '@/utils/networkUtils';
 import { detectDevice } from '@/utils/deviceDetection';
+import { useT } from '../i18n';
+import { useOptionalBrand, useBrandSource } from '../theme/BrandProvider';
+import { getSiteNameFromDomain } from '@/utils/siteName';
 
 type PaymentMethod = 'wallet' | 'qr' | null;
 
@@ -39,6 +42,15 @@ type PaymentMethod = 'wallet' | 'qr' | null;
 const AUTH_REHYDRATE_TIMEOUT_MS = 5000;
 
 export default function ContractPay() {
+  const t = useT();
+
+  // A selected partner names itself on the pay button; otherwise the hostname
+  // does, so the other first-party domains keep their own names.
+  const brand = useOptionalBrand();
+  const brandSource = useBrandSource();
+  const payBrandName =
+    brand && brandSource && brandSource !== 'default' ? brand.name : getSiteNameFromDomain();
+
   const router = useRouter();
   const { contractId } = router.query;
   const { config } = useConfig();
@@ -112,11 +124,11 @@ export default function ContractPay() {
     setSteps: setPaymentSteps,
     getActiveStep,
   } = usePaymentSteps([
-    { id: 'verify', label: 'Verifying wallet connection', status: 'pending' },
-    { id: 'transfer', label: 'Transferring funds to escrow', status: 'pending' },
-    { id: 'confirm', label: 'Confirming transaction on blockchain', status: 'pending' },
-    { id: 'activate', label: 'Activating contract', status: 'pending' },
-    { id: 'complete', label: 'Payment complete', status: 'pending' }
+    { id: 'verify', label: t('status.verifying'), status: 'pending' },
+    { id: 'transfer', label: t('status.transferring'), status: 'pending' },
+    { id: 'confirm', label: t('status.confirming'), status: 'pending' },
+    { id: 'activate', label: t('status.activating'), status: 'pending' },
+    { id: 'complete', label: t('status.complete'), status: 'pending' }
   ]);
 
   console.log('ContractPay: Query params', { contractId });
@@ -259,7 +271,7 @@ export default function ContractPay() {
         return resolvedAddress;
       } catch (error: any) {
         console.error('ContractPay: Failed to resolve contract for QR:', error);
-        alert(error.message || 'Failed to prepare contract');
+        alert(error.message || t('err.prepareFailed'));
         return undefined;
       }
     }, [contract, config, address, authenticatedFetch, selectedTokenAddress, getWeb3Service]),
@@ -288,13 +300,13 @@ export default function ContractPay() {
 
     setIsPaymentInProgress(true);
     try {
-      setLoadingMessage('Preparing escrow contract...');
+      setLoadingMessage(t('status.preparing'));
       // Reuses the QR route's creator, so the address is the one contractservice
       // considers authoritative and no second escrow is ever deployed.
       const escrowAddress = qr.qrContractAddress ?? (await qr.createContract());
       if (!escrowAddress) return;
 
-      setLoadingMessage('Confirm the transfer in your wallet...');
+      setLoadingMessage(t('status.confirmInWallet'));
       await transferToContract(selectedTokenAddress, escrowAddress, String(contract.amount));
 
       // Same destination as the QR, so the same panel picks it up from here:
@@ -302,7 +314,7 @@ export default function ContractPay() {
       setPaymentMethod('qr');
     } catch (error: any) {
       console.error('ContractPay: Transfer to escrow failed:', error);
-      alert(error?.message || 'Payment failed');
+      alert(error?.message || t('err.paymentFailed'));
     } finally {
       setIsPaymentInProgress(false);
       setLoadingMessage('');
@@ -320,11 +332,11 @@ export default function ContractPay() {
 
     // Reset to the wallet-flow steps (labels are page-specific; the hook drives statuses).
     setPaymentSteps([
-      { id: 'verify', label: 'Verifying wallet connection', status: 'pending' },
-      { id: 'transfer', label: 'Transferring funds to escrow', status: 'pending' },
-      { id: 'confirm', label: 'Confirming transaction on blockchain', status: 'pending' },
-      { id: 'activate', label: 'Activating contract', status: 'pending' },
-      { id: 'complete', label: 'Payment complete', status: 'pending' }
+      { id: 'verify', label: t('status.verifying'), status: 'pending' },
+      { id: 'transfer', label: t('status.transferring'), status: 'pending' },
+      { id: 'confirm', label: t('status.confirming'), status: 'pending' },
+      { id: 'activate', label: t('status.activating'), status: 'pending' },
+      { id: 'complete', label: t('status.complete'), status: 'pending' }
     ]);
 
     await runDirectPayment(
@@ -354,14 +366,14 @@ export default function ContractPay() {
         getActiveStep,
         onSuccess: (result) => {
           console.log('ContractPay: Wallet payment completed successfully:', result);
-          setLoadingMessage('Payment completed! Redirecting...');
+          setLoadingMessage(t('status.completedRedirect'));
           setTimeout(() => {
             router.push('/dashboard');
           }, 2000);
         },
         onError: (error) => {
           console.error('ContractPay: Wallet payment failed:', error);
-          alert(error.message || 'Payment failed');
+          alert(error.message || t('err.paymentFailed'));
         },
       }
     );
@@ -378,11 +390,11 @@ export default function ContractPay() {
 
     // Reset payment steps to legacy steps (labels are page-specific).
     setPaymentSteps([
-      { id: 'verify', label: 'Verifying wallet connection', status: 'pending' },
+      { id: 'verify', label: t('status.verifying'), status: 'pending' },
       { id: 'approve', label: `Approving ${selectedTokenSymbol} payment`, status: 'pending' },
-      { id: 'escrow', label: 'Securing funds in escrow', status: 'pending' },
-      { id: 'confirm', label: 'Confirming transaction on blockchain', status: 'pending' },
-      { id: 'complete', label: 'Payment complete', status: 'pending' }
+      { id: 'escrow', label: t('status.securing'), status: 'pending' },
+      { id: 'confirm', label: t('status.confirming'), status: 'pending' },
+      { id: 'complete', label: t('status.complete'), status: 'pending' }
     ]);
 
     await runLegacyPayment(
@@ -411,14 +423,14 @@ export default function ContractPay() {
         getActiveStep,
         onSuccess: (result) => {
           console.log('ContractPay: Legacy payment completed successfully:', result);
-          setLoadingMessage('Payment completed! Redirecting...');
+          setLoadingMessage(t('status.completedRedirect'));
           setTimeout(() => {
             router.push('/dashboard');
           }, 2000);
         },
         onError: (error) => {
           console.error('ContractPay: Legacy payment failed:', error);
-          alert(error.message || 'Payment failed');
+          alert(error.message || t('err.paymentFailed'));
         },
       }
     );
@@ -451,7 +463,7 @@ export default function ContractPay() {
   // RENDER SECTION
   // ================================================================
 
-  const pageTitle = 'Pay Contract - Conduit UCPI';
+  const pageTitle = t('pay.docTitle', { brand: payBrandName });
 
   // Loading screen for initialization. The auth half of this is time-bounded so
   // a stalled rehydration falls through to the signed-out screens rather than
@@ -471,7 +483,7 @@ export default function ContractPay() {
         <Head><title>{pageTitle}</title><meta name="viewport" content="width=device-width, initial-scale=1" /></Head>
         <div className="text-center p-6">
           <LoadingSpinner size="lg" />
-          <p className="mt-4 text-secondary-600 dark:text-secondary-300">Loading payment request...</p>
+          <p className="mt-4 text-secondary-600 dark:text-secondary-300">{t('pay.loading')}</p>
         </div>
       </div>
     );
@@ -483,9 +495,9 @@ export default function ContractPay() {
       <div className="min-h-screen flex items-center justify-center bg-white dark:bg-secondary-900 transition-colors">
         <Head><title>{pageTitle}</title><meta name="viewport" content="width=device-width, initial-scale=1" /></Head>
         <div className="text-center p-6 max-w-md mx-auto">
-          <h2 className="text-xl font-semibold text-red-600 mb-4">Invalid Payment Link</h2>
-          <p className="text-secondary-600 dark:text-secondary-300 mb-6">No payment request ID was provided.</p>
-          <Button onClick={() => router.push('/dashboard')} variant="outline">Go to Dashboard</Button>
+          <h2 className="text-xl font-semibold text-red-600 mb-4">{t('pay.invalidLink')}</h2>
+          <p className="text-secondary-600 dark:text-secondary-300 mb-6">{t('pay.noId')}</p>
+          <Button onClick={() => router.push('/dashboard')} variant="outline">{t('common.goToDashboard')}</Button>
         </div>
       </div>
     );
@@ -507,7 +519,7 @@ export default function ContractPay() {
         <Head><title>{pageTitle}</title><meta name="viewport" content="width=device-width, initial-scale=1" /></Head>
         <div className="text-center p-6">
           <LoadingSpinner className="w-8 h-8 mx-auto mb-4" />
-          <p className="text-secondary-600 dark:text-secondary-300">Checking for your payment…</p>
+          <p className="text-secondary-600 dark:text-secondary-300">{t('pay.checking')}</p>
         </div>
       </div>
     );
@@ -538,7 +550,7 @@ export default function ContractPay() {
           <CreateProgressSteps current={0} steps={PAY_JOURNEY_STEPS} />
 
           <h1 className="text-center text-3xl sm:text-4xl font-bold text-secondary-900 dark:text-white tracking-tight">
-            Complete Your Payment
+            {t('pay.title')}
           </h1>
 
           {contract && (
@@ -567,7 +579,7 @@ export default function ContractPay() {
           <hr className="mt-10 border-secondary-200 dark:border-secondary-700" />
 
           <p className="mt-8 text-center text-lg text-secondary-600 dark:text-secondary-300">
-            Connect a wallet to continue or we&apos;ll create one for you
+            {t('pay.connectBlurb')}
           </p>
 
           {/* This is the pay journey, not /create: connecting here must drop the
@@ -589,8 +601,8 @@ export default function ContractPay() {
         <div className="min-h-screen flex items-center justify-center bg-white dark:bg-secondary-900 transition-colors">
           <Head><title>{pageTitle}</title><meta name="viewport" content="width=device-width, initial-scale=1" /></Head>
           <div className="p-6 max-w-md mx-auto">
-            <h2 className="text-lg font-semibold text-secondary-900 dark:text-white mb-2 text-center">Choose how to pay</h2>
-            <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-4 text-center">Not sure? If you don&apos;t already hold USDC in a crypto wallet, choose the first option.</p>
+            <h2 className="text-lg font-semibold text-secondary-900 dark:text-white mb-2 text-center">{t('pay.chooseHow')}</h2>
+            <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-4 text-center">{t('pay.notSure')}</p>
 
             <div className="space-y-3">
               {/* Wallet / sign-in option */}
@@ -605,8 +617,8 @@ export default function ContractPay() {
                     </svg>
                   </div>
                   <div>
-                    <p className="font-medium text-secondary-900 dark:text-white">Pay with Stabledrop</p>
-                    <p className="text-sm text-secondary-500 dark:text-secondary-400 mt-0.5">Sign in with Google, email, or connect a wallet like MetaMask. We&apos;ll help you get USDC if you don&apos;t have any yet.</p>
+                    <p className="font-medium text-secondary-900 dark:text-white">{t('pay.withBrand', { brand: payBrandName })}</p>
+                    <p className="text-sm text-secondary-500 dark:text-secondary-400 mt-0.5">{t('pay.withBrandDetail')}</p>
                   </div>
                 </div>
               </button>
@@ -623,8 +635,8 @@ export default function ContractPay() {
                     </svg>
                   </div>
                   <div>
-                    <p className="font-medium text-secondary-900 dark:text-white">Pay from my own wallet</p>
-                    <p className="text-sm text-secondary-500 dark:text-secondary-400 mt-0.5">Send USDC directly from your wallet app using a payment link or QR code.</p>
+                    <p className="font-medium text-secondary-900 dark:text-white">{t('pay.ownWallet')}</p>
+                    <p className="text-sm text-secondary-500 dark:text-secondary-400 mt-0.5">{t('pay.ownWalletDetail')}</p>
                   </div>
                 </div>
               </button>
@@ -664,7 +676,7 @@ export default function ContractPay() {
         <Head><title>{pageTitle}</title><meta name="viewport" content="width=device-width, initial-scale=1" /></Head>
         <div className="text-center p-6">
           <LoadingSpinner size="lg" />
-          <p className="mt-4 text-secondary-600 dark:text-secondary-300">Loading payment request...</p>
+          <p className="mt-4 text-secondary-600 dark:text-secondary-300">{t('pay.loading')}</p>
         </div>
       </div>
     );
@@ -676,11 +688,11 @@ export default function ContractPay() {
       <div className="min-h-screen flex items-center justify-center bg-white dark:bg-secondary-900 transition-colors">
         <Head><title>{pageTitle}</title><meta name="viewport" content="width=device-width, initial-scale=1" /></Head>
         <div className="text-center p-6 max-w-md mx-auto">
-          <h2 className="text-xl font-semibold text-secondary-900 dark:text-white mb-4">This payment is complete</h2>
+          <h2 className="text-xl font-semibold text-secondary-900 dark:text-white mb-4">{t('pay.alreadyComplete')}</h2>
           <p className="text-secondary-600 dark:text-secondary-300 mb-6">
-            The funds are already held in escrow for this request.
+            {t('pay.alreadyCompleteDetail')}
           </p>
-          <Button onClick={() => router.push('/dashboard')} variant="outline">Go to Dashboard</Button>
+          <Button onClick={() => router.push('/dashboard')} variant="outline">{t('common.goToDashboard')}</Button>
         </div>
       </div>
     );
@@ -692,9 +704,9 @@ export default function ContractPay() {
       <div className="min-h-screen flex items-center justify-center bg-white dark:bg-secondary-900 transition-colors">
         <Head><title>{pageTitle}</title><meta name="viewport" content="width=device-width, initial-scale=1" /></Head>
         <div className="text-center p-6 max-w-md mx-auto">
-          <h2 className="text-xl font-semibold text-red-600 mb-4">Unable to Process Payment</h2>
+          <h2 className="text-xl font-semibold text-red-600 mb-4">{t('pay.unableToProcess')}</h2>
           <p className="text-secondary-600 dark:text-secondary-300 mb-6">{contractError}</p>
-          <Button onClick={() => router.push('/dashboard')} variant="outline">Go to Dashboard</Button>
+          <Button onClick={() => router.push('/dashboard')} variant="outline">{t('common.goToDashboard')}</Button>
         </div>
       </div>
     );
@@ -706,9 +718,9 @@ export default function ContractPay() {
       <div className="min-h-screen flex items-center justify-center bg-white dark:bg-secondary-900 transition-colors">
         <Head><title>{pageTitle}</title><meta name="viewport" content="width=device-width, initial-scale=1" /></Head>
         <div className="text-center p-6 max-w-md mx-auto">
-          <h2 className="text-xl font-semibold text-red-600 mb-4">Payment Request Not Found</h2>
-          <p className="text-secondary-600 dark:text-secondary-300 mb-6">The payment request could not be found.</p>
-          <Button onClick={() => router.push('/dashboard')} variant="outline">Go to Dashboard</Button>
+          <h2 className="text-xl font-semibold text-red-600 mb-4">{t('pay.notFound')}</h2>
+          <p className="text-secondary-600 dark:text-secondary-300 mb-6">{t('pay.notFoundDetail')}</p>
+          <Button onClick={() => router.push('/dashboard')} variant="outline">{t('common.goToDashboard')}</Button>
         </div>
       </div>
     );
@@ -724,7 +736,7 @@ export default function ContractPay() {
   const hasInsufficientBalance = balanceFloat < amountInTokens;
   const isInstantPayment = contract.expiryTimestamp === 0;
   const isSameAddress = address?.toLowerCase() === contract.sellerAddress?.toLowerCase();
-  const networkName = config ? getNetworkName(config.chainId) : 'Unknown Network';
+  const networkName = config ? getNetworkName(config.chainId) : t('common.unknownNetwork');
 
   // If user connected without choosing a method (e.g., already connected), default to wallet
   const effectiveMethod = paymentMethod || 'wallet';
@@ -737,28 +749,28 @@ export default function ContractPay() {
         {/* Wallet address and balance are no longer repeated here — they live in
             the connected-wallet box inside PaymentActionPanel below. */}
         <div className="bg-white dark:bg-secondary-900 rounded-lg shadow-sm dark:shadow-none border border-secondary-200 dark:border-secondary-700 p-6">
-          <h2 className="text-xl font-semibold text-secondary-900 dark:text-white mb-4">Payment Request</h2>
+          <h2 className="text-xl font-semibold text-secondary-900 dark:text-white mb-4">{t('pay.requestHeading')}</h2>
 
           {/* Contract Details */}
           <div className="space-y-3 mb-6">
             <div className="flex justify-between">
-              <span className="text-secondary-600 dark:text-secondary-300">Amount:</span>
+              <span className="text-secondary-600 dark:text-secondary-300">{t('common.amount')}</span>
               <span className="font-medium text-lg text-secondary-900 dark:text-white">
                 {displayCurrency(contract.amount, contract.currency || 'microUSDC')}
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-secondary-600 dark:text-secondary-300">Seller:</span>
+              <span className="text-secondary-600 dark:text-secondary-300">{t('common.seller')}</span>
               <span className="text-sm font-mono text-secondary-900 dark:text-white">{contract.sellerAddress.slice(0, 6)}...{contract.sellerAddress.slice(-4)}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-secondary-600 dark:text-secondary-300">Payout Date:</span>
+              <span className="text-secondary-600 dark:text-secondary-300">{t('common.payoutDate')}</span>
               <span className="font-medium text-secondary-900 dark:text-white">
-                {isInstantPayment ? 'Instant (no delay)' : formatDateTimeWithTZ(contract.expiryTimestamp)}
+                {isInstantPayment ? t('pay.instantNoDelay') : formatDateTimeWithTZ(contract.expiryTimestamp)}
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-secondary-600 dark:text-secondary-300">Description:</span>
+              <span className="text-secondary-600 dark:text-secondary-300">{t('common.descriptionLabel')}</span>
               <span className="text-right max-w-xs text-sm text-secondary-900 dark:text-white">{contract.description}</span>
             </div>
           </div>
@@ -774,7 +786,7 @@ export default function ContractPay() {
                 onClick={() => { setPaymentMethod(null); setMethodChoiceRequested(true); }}
                 className="text-sm text-primary-600 dark:text-primary-400 hover:underline"
               >
-                Change payment method
+                {t('pay.changeMethod')}
               </button>
             </div>
           )}
@@ -846,9 +858,9 @@ export default function ContractPay() {
                 onCopyAddress={handleCopyAddress}
                 createButtonLabel="Pay"
                 createDisabled={isSameAddress}
-                createNote={isSameAddress ? 'Cannot pay yourself - buyer and seller must be different accounts.' : undefined}
+                createNote={isSameAddress ? t('err.payYourself') : undefined}
                 onCancel={() => router.push('/dashboard')}
-                successMessage="Your payment has been verified and the contract is now active. Redirecting to dashboard..."
+                successMessage={t('pay.verifiedRedirectDashboard')}
               />
             </>
           )}

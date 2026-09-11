@@ -72,7 +72,7 @@ export default function ReviewRequest({
             <span className="text-sm text-secondary-500 dark:text-secondary-400">{t('review.release')}</span>
             <span className="text-sm font-semibold text-secondary-900 dark:text-white text-right">
               {isInstantPayment
-                ? 'Instant, on confirmation'
+                ? t('pay.instantOnConfirm')
                 : formatDateTimeWithTZ(payoutTimestamp)}
             </span>
           </div>

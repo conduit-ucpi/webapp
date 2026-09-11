@@ -251,7 +251,7 @@ export default function CreateContractWizard() {
           // Validate buyer identifier (email or Farcaster handle)
           const buyerValidation = isValidBuyerIdentifier(form.buyerEmail);
           if (!buyerValidation.isValid) {
-            newErrors.buyerEmail = buyerValidation.error || 'Invalid buyer identifier';
+            newErrors.buyerEmail = buyerValidation.error || t('err.invalidBuyer');
           } else {
             // Check if buyer and seller are the same person
             const buyerIdentifier = form.buyerEmail.trim();
@@ -348,7 +348,7 @@ export default function CreateContractWizard() {
     
     try {
       if (availableTokens.length === 0) {
-        throw new Error('No tokens configured');
+        throw new Error(t('err.noTokens'));
       }
 
       const selectedToken = availableTokens.find(t => t.symbol === selectedTokenSymbol);
@@ -357,7 +357,7 @@ export default function CreateContractWizard() {
       }
 
       if (!user.walletAddress) {
-        throw new Error('User wallet address not available. Please try logging in again.');
+        throw new Error(t('err.noWalletAddress'));
       }
       
       const pendingContractRequest = {
@@ -377,7 +377,7 @@ export default function CreateContractWizard() {
       };
 
       if (!authenticatedFetch) {
-        throw new Error('Not authenticated');
+        throw new Error(t('err.notAuthenticated'));
       }
       const response = await authenticatedFetch('/api/contracts', {
         method: 'POST',
@@ -387,7 +387,7 @@ export default function CreateContractWizard() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Failed to create contract');
+        throw new Error(errorData.error || t('err.createFailed'));
       }
 
       const responseData = await response.json();

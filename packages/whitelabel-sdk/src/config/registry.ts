@@ -18,9 +18,13 @@ import { BrandConfig } from './types';
  *
  *     https://stabledrop.me/create?b=cobro
  *
- * The parameter is only read once. It is then held for the session, because the
- * visitor navigates, signs in off-origin and comes back, and moves through
- * several wizard steps — all of which lose the query string.
+ * The URL is authoritative: no parameter means our own brand. An earlier
+ * version also held the brand in sessionStorage so it would survive an auth
+ * round-trip, which turned out to be unnecessary and actively confusing — the
+ * auth callback strips only `code`, `state` and `access_token` and preserves
+ * everything else via history.replaceState, so `?b=` already survives sign-in,
+ * and the wizard steps are client-side on one URL. All the stickiness achieved
+ * was making a deliberately clean URL keep showing a partner.
  *
  * ⚠️ An id in a URL is trivially forged, so this is styling only and must never
  *    gate anything. Two things keep that honest: an unknown id falls back to the
@@ -34,9 +38,10 @@ export type BrandRegistry = Record<string, BrandConfig>;
 /** `?b=` is the short form; `?brand=` reads better in documentation. */
 export const BRAND_QUERY_KEYS = ['b', 'brand'] as const;
 
+/** Only still referenced so a previously stuck tab can be cleared. */
 export const BRAND_STORAGE_KEY = 'wl:brand';
 
-export type BrandSource = 'query' | 'session' | 'contract' | 'default';
+export type BrandSource = 'query' | 'contract' | 'default';
 
 export interface BrandResolution {
   id: string;
@@ -46,8 +51,6 @@ export interface BrandResolution {
 export interface ResolveBrandInput {
   /** `window.location.search`, or any query string. */
   search?: string;
-  /** Previously persisted id, if any. */
-  stored?: string | null;
   /** The partner recorded against the contract being viewed, if any. */
   contractBrandId?: string | null;
   registry: BrandRegistry;
@@ -67,15 +70,13 @@ function firstQueryValue(search: string | undefined): string | null {
 /**
  * Pure resolution, so the precedence is testable without a browser.
  *
- * Order: the contract's own partner, then the URL, then the session, then the
- * default. The contract wins because it is the only one of the four a visitor
- * cannot edit — and on a payment page it is also the only one that is right,
- * since the payer arrives from a link days later with no session and no
- * parameter.
+ * Order: the contract's own partner, then the URL, then the default. The
+ * contract wins because it is the one signal a visitor cannot edit — and on a
+ * payment page it is the only one that is right, since the payer arrives from a
+ * link days later with nothing else to go on.
  */
 export function resolveBrandId({
   search,
-  stored,
   contractBrandId,
   registry,
   fallbackId,
@@ -87,9 +88,6 @@ export function resolveBrandId({
 
   const fromQuery = firstQueryValue(search);
   if (known(fromQuery)) return { id: fromQuery, source: 'query' };
-
-  const normalisedStored = stored ? stored.trim().toLowerCase() : null;
-  if (known(normalisedStored)) return { id: normalisedStored, source: 'session' };
 
   return { id: fallbackId, source: 'default' };
 }

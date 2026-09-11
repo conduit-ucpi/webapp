@@ -1,10 +1,12 @@
 /**
  * Precedence rules for which brand a visitor sees.
  *
- * This is pure so the order can be pinned without a browser. The order is the
- * whole design: a payer arriving from a link days later has no session and no
- * query parameter, and must still see the partner's branding — which only the
- * contract can tell us.
+ * This is pure so the order can be pinned without a browser.
+ *
+ * The URL is authoritative and nothing is persisted, so a clean URL always
+ * means our own brand. The contract outranks the URL because a payer arriving
+ * from a link days later has nothing else to go on, and because it is the one
+ * signal a visitor cannot forge.
  */
 
 import { resolveBrandId, BrandRegistry } from '@conduit-ucpi/whitelabel-sdk';
@@ -35,24 +37,15 @@ describe('brand resolution', () => {
       expect(resolve({ search: '?b=%20CoBrO%20' }).id).toBe('cobro');
     });
 
-    it('beats a different brand held in the session', () => {
-      expect(resolve({ search: '?b=cobro', stored: 'stabledrop' })).toEqual({
-        id: 'cobro',
-        source: 'query',
-      });
-    });
   });
 
-  describe('the session', () => {
-    it('carries the brand once the parameter is gone', () => {
-      expect(resolve({ search: '', stored: 'cobro' })).toEqual({
-        id: 'cobro',
-        source: 'session',
-      });
-    });
-
-    it('is ignored when it holds a brand we do not have', () => {
-      expect(resolve({ stored: 'deleted-partner' })).toEqual({
+  describe('a clean URL', () => {
+    // The regression this guards: the brand used to be held in sessionStorage,
+    // so reloading a bare /create kept showing the last partner until the tab
+    // was closed. Nothing persists now — no parameter means our own brand.
+    it('always means the default brand, whatever was shown before', () => {
+      expect(resolve({ search: '' })).toEqual({ id: 'stabledrop', source: 'default' });
+      expect(resolve({ search: '?amount=40&tokenSymbol=USDC' })).toEqual({
         id: 'stabledrop',
         source: 'default',
       });
@@ -62,7 +55,7 @@ describe('brand resolution', () => {
   describe('the contract', () => {
     // The case that matters: the payer opens a link days later, on another
     // device, with no session and no parameter.
-    it('brands a payment page with no other signal present', () => {
+    it('brands a payment page with no parameter present', () => {
       expect(resolve({ contractBrandId: 'cobro' })).toEqual({
         id: 'cobro',
         source: 'contract',

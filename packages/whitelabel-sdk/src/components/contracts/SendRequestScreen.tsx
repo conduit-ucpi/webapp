@@ -65,7 +65,10 @@ export default function SendRequestScreen({
 
   const [qrCopied, setQrCopied] = useState(false);
   const [pdfBusy, setPdfBusy] = useState(false);
-  const [showInPerson, setShowInPerson] = useState(false);
+  // Open by default: the QR is a primary way to hand the request over in
+  // person, and hiding it behind a disclosure meant most people never found
+  // it. The toggle stays, so it can still be collapsed.
+  const [showInPerson, setShowInPerson] = useState(true);
 
   // Probed after mount rather than during render: navigator is absent on the
   // server, and branching layout on it directly would risk a hydration gap.

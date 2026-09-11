@@ -47,9 +47,8 @@ const serverOnlyConfig = {
       // header, providers or any of our chrome. There is deliberately no page
       // component behind this — a page would be wrapped by Layout.
       //
-      // Production-safe twice over: rewrites are a server feature the static
-      // export drops entirely, and the route it points at 404s unless
-      // NODE_ENV is 'development'. See design-references/README.md.
+      // Rewrites are a server feature, so this exists on the box build only;
+      // the static export has no equivalent. See design-references/README.md.
       {
         source: '/cobro-demo',
         destination: '/api/design-reference/cobro/index.html'

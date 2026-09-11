@@ -8,9 +8,10 @@ pulled apart. **Reference material only.**
 - **Never move these into `public/`.** Anything under `public/` is emitted by the
   static export and served from stabledrop.me. Publishing one of these would put
   another company's branding, copy and product claims on our domain.
-- They are reachable in local development only, via `/cobro-demo` or
-  `/api/design-reference/<name>/index.html` directly. Both 404 outside
-  `NODE_ENV=development`.
+- Served by `pages/api/design-reference/[...path].ts`, a server route, so they
+  are reachable on the box build at `/cobro-demo` (or
+  `/api/design-reference/<name>/index.html` directly) and absent from the static
+  GitHub Pages export, which only emits from `public/`.
 - Take the layout, the spacing, the type scale. Do not take the copy, the brand,
   the logo, or claims about what a product does.
 

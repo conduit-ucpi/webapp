@@ -5,17 +5,26 @@ import WalletChoiceCards from '@/components/auth/WalletChoiceCards';
 import Skeleton from '@/components/ui/Skeleton';
 import { getSiteNameFromDomain } from '@/utils/siteName';
 import CreateProgressSteps from '@/components/contracts/CreateProgressSteps';
+import { useT } from '../i18n';
+import { useOptionalBrand, useBrandSource } from '../theme/BrandProvider';
 
+// Keys rather than sentences: the catalogue owns the wording.
 const HOW_IT_WORKS = [
-  'You set the amount, stablecoin, and release terms',
-  'The buyer pays into escrow – funds are held but not sent to you yet',
-  'Funds release to your wallet automatically on the release terms you set',
-];
+  'create.step.amount',
+  'create.step.escrow',
+  'create.step.release',
+] as const;
 
 export default function CreatePage() {
   const { isLoading, isConnected, address } = useAuth();
   const router = useRouter();
   const autoConnect = router.query.autoConnect === 'true';
+  const t = useT();
+
+  // A selected partner names itself; otherwise the hostname decides, so
+  // instantescrow.nz and usdcbay.com keep their own names.
+  const brand = useOptionalBrand();
+  const brandSource = useBrandSource();
 
   if (isLoading) {
     return (
@@ -44,6 +53,8 @@ export default function CreatePage() {
   // Backend auth (SIWE) is not required - lazy auth will trigger on first API call
   if (!isConnected || !address) {
     const siteName = getSiteNameFromDomain();
+    const displayName =
+      brand && brandSource && brandSource !== 'default' ? brand.name : siteName;
 
     return (
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12 sm:py-16">
@@ -54,10 +65,10 @@ export default function CreatePage() {
 
         <div className="text-center">
           <h1 className="text-3xl sm:text-4xl font-bold text-secondary-900 dark:text-white tracking-tight">
-            Get Started with {siteName}
+            {t('create.getStarted', { brand: displayName })}
           </h1>
           <p className="mt-3 text-secondary-500 dark:text-secondary-400">
-            We use a wallet to securely send and receive your payments.
+            {t('create.walletBlurb')}
           </p>
         </div>
 
@@ -65,16 +76,16 @@ export default function CreatePage() {
 
         <div className="mt-6 rounded-2xl border border-secondary-200 dark:border-secondary-700 bg-white dark:bg-secondary-900 p-6 sm:p-7">
           <h2 className="text-lg font-semibold text-secondary-900 dark:text-white">
-            How this works
+            {t('create.howThisWorks')}
           </h2>
           <ol className="mt-5 space-y-4">
-            {HOW_IT_WORKS.map((text, i) => (
-              <li key={i} className="flex gap-4">
+            {HOW_IT_WORKS.map((key, i) => (
+              <li key={key} className="flex gap-4">
                 <span className="shrink-0 w-7 h-7 rounded-full bg-secondary-200 dark:bg-secondary-700 text-secondary-600 dark:text-secondary-300 grid place-items-center text-xs font-semibold">
                   {i + 1}
                 </span>
                 <p className="text-sm text-secondary-500 dark:text-secondary-400 leading-relaxed pt-1">
-                  {text}
+                  {t(key)}
                 </p>
               </li>
             ))}
@@ -88,9 +99,9 @@ export default function CreatePage() {
     <div className="py-10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-10">
-          <h1 className="text-3xl font-bold text-secondary-900">Time-locked payment request</h1>
+          <h1 className="text-3xl font-bold text-secondary-900">{t('create.title')}</h1>
           <p className="mt-2 text-secondary-600">
-            Set up a secure time-delayed escrow with automatic dispute resolution
+            {t('create.subtitle')}
           </p>
         </div>
 

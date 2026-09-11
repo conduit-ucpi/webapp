@@ -11,7 +11,7 @@ import { FarcasterDetectionProvider } from '@/components/farcaster/FarcasterDete
 import { NavigationProvider } from '@/components/navigation/NavigationProvider';
 import { EthersProvider } from '@/components/providers/EthersProvider';
 import { captureConsoleForMobile } from '@/utils/mobileLogger';
-import { BrandProvider } from '@conduit-ucpi/whitelabel-sdk';
+import { BrandProvider, BrandI18nProvider } from '@conduit-ucpi/whitelabel-sdk';
 import { BRANDS, DEFAULT_BRAND_ID } from '@/config/brands';
 
 interface ClientOnlyAppProps {
@@ -36,6 +36,7 @@ export default function ClientOnlyApp({ Component, pageProps }: ClientOnlyAppPro
   return (
     <ErrorBoundary children={
       <BrandProvider brands={BRANDS} defaultBrandId={DEFAULT_BRAND_ID} children={
+      <BrandI18nProvider children={
       <ThemeProvider children={
         <>
           <FarcasterReady />
@@ -57,6 +58,7 @@ export default function ClientOnlyApp({ Component, pageProps }: ClientOnlyAppPro
               } />
             } />
         </>
+      } />
       } />
       } />
     } />

@@ -1,4 +1,5 @@
 import ConnectWalletEmbedded from '@/components/auth/ConnectWalletEmbedded';
+import { useT } from '../../i18n';
 
 const CARD_BUTTON =
   'w-full rounded-lg border border-secondary-300 dark:border-secondary-600 px-6 py-3 text-sm font-semibold ' +
@@ -34,21 +35,22 @@ export default function WalletChoiceCards({
   onSuccess,
   className = 'mt-10 mx-auto w-full max-w-md',
 }: WalletChoiceCardsProps) {
+  const t = useT();
+
   return (
     <div className={className}>
       <div className="rounded-2xl border-2 border-primary-500 bg-white dark:bg-secondary-900 p-6 flex flex-col">
         <h2 className="text-lg font-semibold text-secondary-900 dark:text-white">
-          Sign in to set up your wallet
+          {t('wallet.signInTitle')}
         </h2>
         <p className="mt-2 text-sm text-secondary-500 dark:text-secondary-400 leading-relaxed">
-          We&apos;ll create a secure wallet that only you control, or reconnect the one you
-          already have. Nothing to install.
+          {t('wallet.signInBlurb')}
         </p>
         <ConnectWalletEmbedded
           compact
           connectionMode="social-only"
           useSmartRouting={false}
-          buttonText="Continue with email or social login"
+          buttonText={t('wallet.continueSocial')}
           className="mt-6"
           buttonClassName={CARD_BUTTON}
           onSuccess={onSuccess}
@@ -61,7 +63,7 @@ export default function WalletChoiceCards({
         connectionMode="wallet-only"
         useSmartRouting={false}
         autoConnect={autoConnect}
-        buttonText="Advanced wallet connection"
+        buttonText={t('wallet.advanced')}
         className="mt-5"
         buttonClassName={ADVANCED_BUTTON}
         onSuccess={onSuccess}

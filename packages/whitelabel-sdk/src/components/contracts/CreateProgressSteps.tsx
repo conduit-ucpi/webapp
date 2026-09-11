@@ -9,26 +9,28 @@
  * Wizard component's own progress bar, which tracks the wizard's internal steps
  * rather than the whole journey.
  */
+import { useT } from '../../i18n';
+import type { MessageKey } from '../../i18n';
 
 export interface JourneyStep {
-  title: string;
-  detail: string;
+  // Catalogue keys rather than sentences: these are module constants, so they
+  // cannot call a hook. The component translates them at render time, which is
+  // also the only point at which the locale is known.
+  titleKey: MessageKey;
+  detailKey: MessageKey;
 }
 
 export const CREATE_JOURNEY_STEPS: JourneyStep[] = [
-  { title: 'Connect', detail: 'Securely connect your wallet or continue with email' },
-  { title: 'Payment Terms', detail: 'Enter the payment details' },
-  { title: 'Complete & Send', detail: "Choose how you'd like to send your payment request" },
+  { titleKey: 'steps.connect.title', detailKey: 'steps.connect.detail' },
+  { titleKey: 'steps.terms.title', detailKey: 'steps.terms.detail' },
+  { titleKey: 'steps.complete.title', detailKey: 'steps.complete.detail' },
 ];
 
 /** The buyer's side of the same journey, used by contract-pay. */
 export const PAY_JOURNEY_STEPS: JourneyStep[] = [
-  { title: 'Add Funds', detail: 'Add USDC to your wallet' },
-  { title: 'Confirm & Send', detail: 'Confirm the payment, it will be held securely in escrow' },
-  {
-    title: 'Complete Payment',
-    detail: 'Funds in escrow release to the seller once your payment is confirmed',
-  },
+  { titleKey: 'steps.addFunds.title', detailKey: 'steps.addFunds.detail' },
+  { titleKey: 'steps.confirmSend.title', detailKey: 'steps.confirmSend.detail' },
+  { titleKey: 'steps.completePayment.title', detailKey: 'steps.completePayment.detail' },
 ];
 
 interface CreateProgressStepsProps {
@@ -44,6 +46,8 @@ export default function CreateProgressSteps({
   className = 'mb-14',
   steps = CREATE_JOURNEY_STEPS,
 }: CreateProgressStepsProps) {
+  const t = useT();
+
   return (
     <ol className={`flex items-start justify-center gap-4 sm:gap-10 ${className}`}>
       {steps.map((step, i) => {
@@ -51,7 +55,7 @@ export default function CreateProgressSteps({
         const isActive = i === current;
 
         return (
-          <li key={step.title} className="flex-1 max-w-[15rem] text-center">
+          <li key={step.titleKey} className="flex-1 max-w-[15rem] text-center">
             <div className="flex items-center">
               <div
                 className="flex-1 h-px bg-secondary-200 dark:bg-secondary-700"
@@ -88,10 +92,10 @@ export default function CreateProgressSteps({
                   : 'text-secondary-500 dark:text-secondary-400'
               }`}
             >
-              {step.title}
+              {t(step.titleKey)}
             </p>
             <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400 leading-snug">
-              {step.detail}
+              {t(step.detailKey)}
             </p>
           </li>
         );

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useExchangeRate, convertCurrency, formatCurrencyAmount } from '@/hooks/useExchangeRate';
 import { detectUserCurrency, SUPPORTED_CURRENCIES, getCurrencyInfo } from '@/utils/currencyDetection';
 import { formatDateTimeWithTZ } from '@/utils/validation';
+import { useT } from '../../i18n';
 
 interface CurrencyAmountInputProps {
   /** USDC/USDT amount (source of truth) */
@@ -46,7 +47,7 @@ export default function CurrencyAmountInput({
   tokenSymbol,
   error,
   disabled = false,
-  label = 'Amount',
+  label,
   helpText,
   paymentLabel = "Payment amount",
   layout = 'stacked',
@@ -55,6 +56,7 @@ export default function CurrencyAmountInput({
   tokenOptions,
   onTokenChange
 }: CurrencyAmountInputProps) {
+  const t = useT();
   // Detect user's currency on mount
   const [localCurrency, setLocalCurrency] = useState<string>('USD');
   const [localAmount, setLocalAmount] = useState<string>('');
@@ -143,7 +145,7 @@ export default function CurrencyAmountInput({
         <div className="relative grid gap-3 sm:grid-cols-2">
           {/* Requested - in the user's own currency */}
           <div className={boxClass}>
-            <p className="text-sm text-secondary-500 dark:text-secondary-400">Requested Amount</p>
+            <p className="text-sm text-secondary-500 dark:text-secondary-400">{t('amount.requested')}</p>
             <div className="mt-2 flex items-baseline gap-2">
               <input
                 type="number"
@@ -154,14 +156,14 @@ export default function CurrencyAmountInput({
                 onFocus={() => setLastEdited('local')}
                 disabled={disabled || rateLoading || rateUnavailable}
                 placeholder={rateUnavailable ? 'Rate unavailable' : '0.00'}
-                aria-label="Requested amount"
+                aria-label={t('amount.requestedAria')}
                 className={amountInputClass}
               />
               <select
                 value={localCurrency}
                 onChange={handleCurrencyChange}
                 disabled={rateLoading}
-                aria-label="Requested currency"
+                aria-label={t('amount.requestedCurrencyAria')}
                 className="shrink-0 bg-transparent text-sm font-medium text-secondary-500 dark:text-secondary-400 focus:outline-none disabled:opacity-50"
               >
                 {SUPPORTED_CURRENCIES.map((currency) => (
@@ -178,7 +180,7 @@ export default function CurrencyAmountInput({
           <button
             type="button"
             onClick={() => setLastEdited(prev => (prev === 'local' ? 'token' : 'local'))}
-            aria-label="Swap which amount you enter"
+            aria-label={t('amount.swapAria')}
             className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 hidden sm:grid place-items-center w-9 h-9 rounded-full border border-secondary-200 dark:border-secondary-700 bg-white dark:bg-secondary-900 text-secondary-500 dark:text-secondary-400 hover:text-secondary-900 dark:hover:text-white transition-colors"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -188,7 +190,7 @@ export default function CurrencyAmountInput({
 
           {/* Receiving - the token actually escrowed */}
           <div className={boxClass}>
-            <p className="text-sm text-secondary-500 dark:text-secondary-400">Receiving Amount</p>
+            <p className="text-sm text-secondary-500 dark:text-secondary-400">{t('amount.receiving')}</p>
             <div className="mt-2 flex items-baseline gap-2">
               <input
                 type="number"
@@ -199,7 +201,7 @@ export default function CurrencyAmountInput({
                 onFocus={() => setLastEdited('token')}
                 disabled={disabled}
                 placeholder="0.0000"
-                aria-label="Receiving amount"
+                aria-label={t('amount.receivingAria')}
                 className={amountInputClass}
               />
               {tokenOptions && tokenOptions.length > 1 && onTokenChange ? (
@@ -207,7 +209,7 @@ export default function CurrencyAmountInput({
                   value={tokenSymbol}
                   onChange={(e) => onTokenChange(e.target.value)}
                   disabled={disabled}
-                  aria-label="Receiving token"
+                  aria-label={t('amount.receivingTokenAria')}
                   className="shrink-0 bg-transparent text-sm font-medium text-secondary-500 dark:text-secondary-400 focus:outline-none disabled:opacity-50"
                 >
                   {tokenOptions.map((symbol) => (
@@ -252,7 +254,7 @@ export default function CurrencyAmountInput({
     <div className="w-full">
       {label && (
         <label className="block text-sm font-medium text-secondary-700 dark:text-secondary-200 mb-2">
-          {label}
+          {label ?? t('amount.label')}
         </label>
       )}
 
@@ -264,7 +266,7 @@ export default function CurrencyAmountInput({
         {/* Local Currency Input */}
         <div className="mb-1">
           <label className="block text-xs font-medium text-secondary-600 dark:text-secondary-300 mb-1.5">
-            Your currency (for reference):
+            {t('amount.yourCurrency')}
           </label>
           <div className="flex items-center gap-1.5 sm:gap-2">
             <select

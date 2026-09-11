@@ -8,6 +8,7 @@
 
 import { useExchangeRate } from '@/hooks/useExchangeRate';
 import { formatDateTimeWithTZ } from '@/utils/validation';
+import { useT } from '../../i18n';
 
 interface ReviewRequestProps {
   amount: string;
@@ -30,6 +31,7 @@ export default function ReviewRequest({
   isInstantPayment,
   onEdit,
 }: ReviewRequestProps) {
+  const t = useT();
   const { rate } = useExchangeRate('USD', tokenSymbol);
 
   const parsedAmount = parseFloat(amount || '0');
@@ -41,7 +43,7 @@ export default function ReviewRequest({
         <button
           type="button"
           onClick={onEdit}
-          aria-label="Back to payment terms"
+          aria-label={t('review.backAria')}
           className="text-secondary-500 dark:text-secondary-400 hover:text-secondary-900 dark:hover:text-white transition-colors"
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -49,7 +51,7 @@ export default function ReviewRequest({
           </svg>
         </button>
         <h2 className="text-2xl sm:text-3xl font-semibold text-secondary-900 dark:text-white">
-          Confirm Request Details
+          {t('review.title')}
         </h2>
       </div>
 
@@ -67,7 +69,7 @@ export default function ReviewRequest({
 
         <div className="mt-7 pt-6 border-t border-secondary-200 dark:border-secondary-700 space-y-4">
           <div className="flex items-start justify-between gap-6">
-            <span className="text-sm text-secondary-500 dark:text-secondary-400">Release</span>
+            <span className="text-sm text-secondary-500 dark:text-secondary-400">{t('review.release')}</span>
             <span className="text-sm font-semibold text-secondary-900 dark:text-white text-right">
               {isInstantPayment
                 ? 'Instant, on confirmation'
@@ -75,7 +77,7 @@ export default function ReviewRequest({
             </span>
           </div>
           <div className="flex items-start justify-between gap-6">
-            <span className="text-sm text-secondary-500 dark:text-secondary-400">Description</span>
+            <span className="text-sm text-secondary-500 dark:text-secondary-400">{t('review.description')}</span>
             <span className="text-sm font-semibold text-secondary-900 dark:text-white text-right break-words">
               {description}
             </span>
@@ -85,7 +87,7 @@ export default function ReviewRequest({
 
       <div className="mt-5 rounded-2xl border-2 border-primary-500 bg-white dark:bg-secondary-900 p-5 sm:p-6">
         <h3 className="text-base font-semibold text-secondary-900 dark:text-white">
-          What happens next?
+          {t('review.next')}
         </h3>
         <p className="mt-2 text-sm text-secondary-600 dark:text-secondary-300 leading-relaxed">
           You&apos;ll get a QR code and link to share. Once the buyer pays, funds are held in

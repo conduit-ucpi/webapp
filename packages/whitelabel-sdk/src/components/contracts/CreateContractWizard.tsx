@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { ethers } from 'ethers';
 import { useConfig } from '@/components/auth/ConfigProvider';
@@ -36,6 +36,8 @@ import { useTokenBalance } from '@/hooks/useTokenBalance';
 import { getNetworkName } from '@/utils/networkUtils';
 import { useSimpleEthers } from '@/hooks/useSimpleEthers';
 import { emailsEqual } from '@/utils/address';
+import { useT } from '../../i18n';
+import type { MessageKey } from '../../i18n';
 
 interface CreateContractForm {
   buyerEmail: string;
@@ -57,20 +59,31 @@ interface FormErrors {
 
 // Amount, timing and description now share one screen ("Request a Payment"),
 // matching the Connect / Payment Terms / Complete & Send journey.
-const steps: Step[] = [
+// Catalogue keys, not sentences — a module constant cannot call a hook. They are
+// translated below before being handed to Wizard, which stays locale-agnostic
+// and simply renders the strings it is given.
+const stepKeys: { id: string; title: MessageKey; description: MessageKey }[] = [
   {
     id: 'payment',
-    title: 'Payment Terms',
-    description: 'Amount, timing and description'
+    title: 'wizard.stepTerms',
+    description: 'wizard.stepTermsDetail'
   },
   {
     id: 'review',
-    title: 'Review & Send',
-    description: 'Confirm details'
+    title: 'wizard.stepReview',
+    description: 'wizard.stepReviewDetail'
   }
 ];
 
 export default function CreateContractWizard() {
+  const t = useT();
+
+  // Translated here rather than inside Wizard: Wizard is shared with callers
+  // that pass their own already-worded steps, so it must not assume keys.
+  const steps: Step[] = useMemo(
+    () => stepKeys.map((s) => ({ ...s, title: t(s.title), description: t(s.description) })),
+    [t]
+  );
   const router = useRouter();
   const { config } = useConfig();
   const { user, authenticatedFetch, refreshUserData, isConnected, address } = useAuth();
@@ -200,18 +213,18 @@ export default function CreateContractWizard() {
       setTimeout(() => setPaymentLinkCopied(false), 3000);
       showToast({
         type: 'success',
-        title: kind === 'message' ? 'Message copied!' : 'Link copied!',
+        title: kind === 'message' ? t('wizard.messageCopied') : t('wizard.linkCopied'),
         message:
           kind === 'message'
-            ? 'Paste it to your buyer — it includes the link and what the payment is for'
-            : 'Payment link copied to clipboard'
+            ? t('wizard.messageCopiedDetail')
+            : t('wizard.linkCopiedDetail')
       });
     } catch (error) {
       console.error('Failed to copy link:', error);
       showToast({
         type: 'error',
-        title: 'Copy failed',
-        message: 'Could not copy to clipboard'
+        title: t('wizard.copyFailed'),
+        message: t('wizard.copyFailedDetail')
       });
     }
   };
@@ -258,7 +271,7 @@ export default function CreateContractWizard() {
         }
 
         if (!descriptionValidator(form.description)) {
-          newErrors.description = 'Description must be 1-160 characters';
+          newErrors.description = t('wizard.errDescription');
         }
 
         // Validate optional arbiter wallet address (advanced field)
@@ -267,7 +280,7 @@ export default function CreateContractWizard() {
         {
           const trimmedArbiter = form.arbiterAddress.trim();
           if (trimmedArbiter.length > 0 && !isValidWalletAddress(trimmedArbiter)) {
-            newErrors.arbiterAddress = 'Invalid arbiter wallet address';
+            newErrors.arbiterAddress = t('wizard.errArbiter');
           }
         }
         // Falls through: amount and timing are on this same screen now.
@@ -276,7 +289,7 @@ export default function CreateContractWizard() {
         const amountValidator = isValidAmount;
 
         if (!amountValidator(form.amount)) {
-          newErrors.amount = 'Please enter a valid amount';
+          newErrors.amount = t('wizard.errAmount');
         } else {
           // isValidAmount only checks "> 0". The contract also enforces a
           // floor, with the test amount as the sole exemption — without this
@@ -293,11 +306,11 @@ export default function CreateContractWizard() {
           const oneYearFromNow = now + (365 * 24 * 60 * 60);
 
           if (!form.payoutTimestamp || form.payoutTimestamp <= 0) {
-            newErrors.expiry = 'Please select a valid date and time';
+            newErrors.expiry = t('wizard.errDate');
           } else if (form.payoutTimestamp <= now) {
-            newErrors.expiry = 'Payout time must be in the future';
+            newErrors.expiry = t('wizard.errPast');
           } else if (form.payoutTimestamp > oneYearFromNow) {
-            newErrors.expiry = 'Payout time must be within 1 year';
+            newErrors.expiry = t('wizard.errTooFar');
           }
         }
         break;
@@ -385,19 +398,19 @@ export default function CreateContractWizard() {
 
       showToast({
         type: 'success',
-        title: 'Payment request created!',
+        title: t('wizard.created'),
         message: isInstantPayment
-          ? 'QR code ready!'
+          ? t('wizard.qrReady')
           : noBuyerEmail
-            ? 'Payment link ready to share!'
-            : `${form.buyerEmail} will receive an email notification.`
+            ? t('wizard.linkReady')
+            : t('wizard.emailWillReceive', { email: form.buyerEmail })
       });
     } catch (error: any) {
       console.error('Contract creation failed:', error);
       showToast({
         type: 'error',
-        title: 'Failed to create payment request',
-        message: error.message || 'An error occurred. Please try again.'
+        title: t('wizard.createFailed'),
+        message: error.message || t('wizard.genericError')
       });
     } finally {
       setIsLoading(false);
@@ -412,7 +425,7 @@ export default function CreateContractWizard() {
           <WizardStep children={
             <>
               <h2 className="text-2xl sm:text-3xl font-semibold text-secondary-900 dark:text-white mb-6 text-center">
-                Request a Payment
+                {t('wizard.title')}
               </h2>
               <PaymentTermsForm
                 amount={form.amount}
@@ -545,7 +558,7 @@ export default function CreateContractWizard() {
                         variant="outline"
                         disabled={isLoading}
                       >
-                        Previous
+                        {t('wizard.previous')}
                       </Button>
                     </div>
                   )}
@@ -565,7 +578,7 @@ export default function CreateContractWizard() {
                       disabled={!canProceed() || isLoading}
                       className="w-full sm:w-auto px-8"
                     >
-                      {isLoading ? 'Creating...' : 'Create Payment Request'}
+                      {isLoading ? t('wizard.creating') : t('wizard.submit')}
                     </Button>
                   </div>
                 </div>

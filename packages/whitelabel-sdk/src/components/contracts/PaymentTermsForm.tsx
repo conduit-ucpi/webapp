@@ -14,6 +14,7 @@ import AmountGuidance from '@/components/contracts/AmountGuidance';
 import ReleaseDateField from '@/components/contracts/ReleaseDateField';
 import AdvancedOptions from '@/components/contracts/AdvancedOptions';
 import { TEST_AMOUNT } from '@/utils/escrowFees';
+import { useT } from '../../i18n';
 
 interface PaymentTermsFormProps {
   amount: string;
@@ -57,6 +58,7 @@ export default function PaymentTermsForm({
   networkLabel,
   balanceText,
 }: PaymentTermsFormProps) {
+  const t = useT();
   return (
     <div className="rounded-2xl border border-secondary-200 dark:border-secondary-700 bg-white dark:bg-secondary-900 p-5 sm:p-6 space-y-6">
       {/* Grouped so the parent's space-y-6 treats input and guidance as one
@@ -95,7 +97,7 @@ export default function PaymentTermsForm({
             htmlFor="payment-description"
             className="block text-sm font-medium text-secondary-700 dark:text-secondary-200"
           >
-            Description
+            {t('terms.description')}
           </label>
           <span className="text-xs text-secondary-400 dark:text-secondary-500">
             {description.length}/{DESCRIPTION_MAX}
@@ -107,7 +109,7 @@ export default function PaymentTermsForm({
           value={description}
           onChange={(e) => onDescriptionChange(e.target.value)}
           maxLength={DESCRIPTION_MAX}
-          placeholder="What's this payment for?"
+          placeholder={t('terms.descriptionPlaceholder')}
           className="mt-2 w-full rounded-lg border border-secondary-300 dark:border-secondary-600 bg-white dark:bg-secondary-800 px-3 py-2.5 text-sm text-secondary-900 dark:text-white placeholder:text-secondary-400 dark:placeholder:text-secondary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
         />
         {errors.description && (

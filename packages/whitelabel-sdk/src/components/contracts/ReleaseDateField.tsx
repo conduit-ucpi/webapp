@@ -22,6 +22,7 @@ import {
   getMaxLocalDatetime,
   getRelativeTime,
 } from '@/utils/validation';
+import { useT } from '../../i18n';
 
 /**
  * Short name of the browser's current timezone, e.g. "GMT", "PDT".
@@ -48,15 +49,17 @@ export default function ReleaseDateField({
   value,
   onChange,
   error,
-  label = 'When should funds be released?',
+  label,
   className = '',
 }: ReleaseDateFieldProps) {
+  const t = useT();
+
   return (
     <div className={className}>
       <label className="block text-sm font-medium text-secondary-700 dark:text-secondary-200 mb-2">
-        {label}
+        {label ?? t('release.label')}
         <span className="ml-2 text-xs font-normal text-secondary-500 dark:text-secondary-400">
-          (Your timezone: {getUserTimezone()})
+          {t('release.timezone', { tz: getUserTimezone() })}
         </span>
       </label>
       <input
@@ -70,7 +73,7 @@ export default function ReleaseDateField({
       {error && <p className="text-sm text-error-600 dark:text-error-400 mt-1">{error}</p>}
       <div className="flex justify-between items-center mt-2">
         <p className="text-xs text-secondary-500 dark:text-secondary-400">
-          Funds will be released automatically at this time
+          {t('release.auto')}
         </p>
         {value && !error && (
           <p className="text-xs font-medium text-primary-600 dark:text-primary-400">

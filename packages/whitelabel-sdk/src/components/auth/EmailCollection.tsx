@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { isValidEmail } from '@/utils/validation';
+import { useT } from '../../i18n';
 
 interface EmailCollectionProps {
   onEmailSubmit: (email: string) => Promise<void>;
@@ -8,6 +9,7 @@ interface EmailCollectionProps {
 }
 
 export default function EmailCollection({ onEmailSubmit, onSkip, isLoading = false }: EmailCollectionProps) {
+  const t = useT();
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -16,12 +18,12 @@ export default function EmailCollection({ onEmailSubmit, onSkip, isLoading = fal
     e.preventDefault();
     
     if (!email.trim()) {
-      setError('Please enter an email address');
+      setError(t('emailPrompt.errRequired'));
       return;
     }
 
     if (!isValidEmail(email)) {
-      setError('Please enter a valid email address');
+      setError(t('emailPrompt.errInvalid'));
       return;
     }
 
@@ -31,7 +33,7 @@ export default function EmailCollection({ onEmailSubmit, onSkip, isLoading = fal
     try {
       await onEmailSubmit(email.trim());
     } catch (err) {
-      setError('Failed to save email. Please try again.');
+      setError(t('emailPrompt.errSave'));
     } finally {
       setIsSubmitting(false);
     }
@@ -58,10 +60,10 @@ export default function EmailCollection({ onEmailSubmit, onSkip, isLoading = fal
     <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
       <div className="mb-3">
         <h3 className="text-blue-900 font-medium text-sm mb-1">
-          Want notifications about your contracts? (Optional)
+          {t('emailPrompt.title')}
         </h3>
         <p className="text-blue-700 text-xs">
-          Your email stays private and is never shared. Add it to receive updates about contract activities, disputes, and expirations.
+          {t('emailPrompt.body')}
         </p>
       </div>
 
@@ -74,7 +76,7 @@ export default function EmailCollection({ onEmailSubmit, onSkip, isLoading = fal
               setEmail(e.target.value);
               if (error) setError('');
             }}
-            placeholder="Enter your email address"
+            placeholder={t('emailPrompt.placeholder')}
             className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             disabled={isSubmitting}
           />
@@ -89,7 +91,7 @@ export default function EmailCollection({ onEmailSubmit, onSkip, isLoading = fal
             disabled={isSubmitting || !email.trim()}
             className="flex-1 bg-blue-600 text-white px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isSubmitting ? 'Saving...' : 'Add Email'}
+            {isSubmitting ? t('emailPrompt.saving') : t('emailPrompt.submit')}
           </button>
           <button
             type="button"
@@ -97,7 +99,7 @@ export default function EmailCollection({ onEmailSubmit, onSkip, isLoading = fal
             disabled={isSubmitting}
             className="px-3 py-2 text-blue-600 text-sm font-medium hover:text-blue-800 focus:outline-none disabled:opacity-50"
           >
-            Skip
+            {t('emailPrompt.skip')}
           </button>
         </div>
       </form>

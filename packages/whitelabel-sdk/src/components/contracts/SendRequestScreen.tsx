@@ -7,6 +7,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { QRCodeCanvas, QRCodeSVG } from 'qrcode.react';
 import { getSiteNameFromDomain } from '@/utils/siteName';
+import { useT } from '../../i18n';
+import { useOptionalBrand, useBrandSource } from '../../theme/BrandProvider';
 
 interface SendRequestScreenProps {
   paymentLink: string;
@@ -36,6 +38,7 @@ export default function SendRequestScreen({
   onCopy,
   onDone,
 }: SendRequestScreenProps) {
+  const t = useT();
   // Trailing zeros read badly in a message to a human: "25 USDC", not "25.0000".
   const formattedAmount = `${parseFloat(amount || '0')
     .toFixed(4)
@@ -45,16 +48,16 @@ export default function SendRequestScreen({
 
   // The description is what the recipient recognises in a crowded inbox, so it
   // leads the subject line.
-  const subject = description ? `Payment request: ${description}` : `Payment request for ${formattedAmount}`;
+  const subject = description
+    ? t('msg.subjectWithDesc', { description })
+    : t('msg.subjectAmount', { amount: formattedAmount });
 
   const buildMessage = (withQr: boolean) =>
     [
-      `I've requested a payment of ${formattedAmount} from you through StableDrop (stabledrop.me).`,
-      description ? `What it's for: ${description}` : null,
-      withQr
-        ? `To pay, open the link below or scan the attached QR code:\n${paymentLink}`
-        : `To pay, open this link:\n${paymentLink}`,
-      "Your payment is held in escrow until the agreed payout date — if something goes wrong, you can raise a dispute before then to freeze the funds.",
+      t('msg.intro', { amount: formattedAmount, brand: siteName }),
+      description ? t('msg.whatFor', { description }) : null,
+      `${withQr ? t('msg.payWithQr') : t('msg.payLink')}\n${paymentLink}`,
+      t('msg.escrowNote'),
     ]
       .filter(Boolean)
       .join('\n\n');
@@ -77,7 +80,10 @@ export default function SendRequestScreen({
     setCanWebShare(typeof navigator !== 'undefined' && typeof navigator.share === 'function');
   }, []);
 
-  const siteName = getSiteNameFromDomain();
+  const brand = useOptionalBrand();
+  const brandSource = useBrandSource();
+  const siteName =
+    brand && brandSource && brandSource !== 'default' ? brand.name : getSiteNameFromDomain();
 
   const downloadPdf = async () => {
     setPdfBusy(true);
@@ -203,7 +209,7 @@ export default function SendRequestScreen({
     <div>
       <div className="text-center mb-6">
         <h2 className="text-2xl sm:text-3xl font-semibold text-secondary-900 dark:text-white">
-          Now send this to your buyer
+          {t('send.title')}
         </h2>
         <p className="mt-2 text-sm text-secondary-500 dark:text-secondary-400">{summary}</p>
       </div>
@@ -215,11 +221,10 @@ export default function SendRequestScreen({
           tints this palette doesn't define. */}
       <div className="mb-6 rounded-xl border border-warning-500/40 bg-warning-50 dark:bg-warning-500/10 px-4 py-3.5">
         <p className="text-sm font-semibold text-warning-600 dark:text-warning-500">
-          Your buyer hasn&apos;t been notified yet
+          {t('send.notNotified')}
         </p>
         <p className="mt-1 text-sm text-warning-600/90 dark:text-warning-500/90 leading-relaxed">
-          We don&apos;t contact them for you. Send the link below by email, text or
-          however you normally reach them &mdash; they can&apos;t pay until they have it.
+          {t('send.notNotifiedBody')}
         </p>
       </div>
 
@@ -242,19 +247,19 @@ export default function SendRequestScreen({
           <div className="flex items-start gap-3">
             <Marker n={1} />
             <div>
-              <h3 className={groupHeading}>Send it now</h3>
-              <p className={groupHint}>Opens the app with the message already written.</p>
+              <h3 className={groupHeading}>{t('send.step1')}</h3>
+              <p className={groupHint}>{t('send.step1Hint')}</p>
             </div>
           </div>
 
           <div className="mt-5 flex flex-wrap items-start justify-center gap-6 sm:gap-9">
             <div className="text-center">
-              <a href={mailtoHref} className={actionClass} aria-label="Email payment request">
+              <a href={mailtoHref} className={actionClass} aria-label={t('send.emailAria')}>
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                 </svg>
               </a>
-              <p className={actionLabel}>Email</p>
+              <p className={actionLabel}>{t('send.email')}</p>
             </div>
 
             <div className="text-center">
@@ -263,23 +268,23 @@ export default function SendRequestScreen({
                 target="_blank"
                 rel="noopener noreferrer"
                 className={actionClass}
-                aria-label="Send payment request on WhatsApp"
+                aria-label={t('send.whatsappAria')}
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M12 21a9 9 0 10-7.94-4.73L3 21l4.9-1.03A8.96 8.96 0 0012 21z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M8.8 9.2c0 3.31 2.69 6 6 6" />
                 </svg>
               </a>
-              <p className={actionLabel}>WhatsApp</p>
+              <p className={actionLabel}>{t('send.whatsapp')}</p>
             </div>
 
             <div className="text-center">
-              <a href={smsHref} className={actionClass} aria-label="Send payment request by text message">
+              <a href={smsHref} className={actionClass} aria-label={t('send.textAria')}>
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M8 10.5h8M8 14h5M21 12a8 8 0 01-8 8H7l-4 3v-5.5A8 8 0 0111 4h2a8 8 0 018 8z" />
                 </svg>
               </a>
-              <p className={actionLabel}>Text</p>
+              <p className={actionLabel}>{t('send.text')}</p>
             </div>
 
             {/* Only where the share sheet genuinely exists. On desktop Firefox
@@ -287,12 +292,12 @@ export default function SendRequestScreen({
                 which is a button that does something other than it says. */}
             {canWebShare && (
               <div className="text-center">
-                <button type="button" onClick={handleShare} className={actionClass} aria-label="Share payment request">
+                <button type="button" onClick={handleShare} className={actionClass} aria-label={t('send.shareAria')}>
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.769-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z" />
                   </svg>
                 </button>
-                <p className={actionLabel}>Share</p>
+                <p className={actionLabel}>{t('send.share')}</p>
               </div>
             )}
           </div>
@@ -302,10 +307,9 @@ export default function SendRequestScreen({
           <div className="flex items-start gap-3">
             <Marker n={2} />
             <div>
-              <h3 className={groupHeading}>Or paste it yourself</h3>
+              <h3 className={groupHeading}>{t('send.step2')}</h3>
               <p className={groupHint}>
-                For any app not listed above. The message includes the amount, what it&apos;s
-                for and the link.
+                {t('send.step2Hint')}
               </p>
             </div>
           </div>
@@ -316,14 +320,14 @@ export default function SendRequestScreen({
               onClick={() => onCopy(buildMessage(false), 'message')}
               className={btnFilled}
             >
-              Copy message
+              {t('send.copyMessage')}
             </button>
             <button
               type="button"
               onClick={() => onCopy(paymentLink, 'link')}
               className={btnOutlined}
             >
-              {copied ? 'Copied' : 'Copy link only'}
+              {copied ? t('send.copied') : t('send.copyLinkOnly')}
             </button>
           </div>
 
@@ -341,9 +345,9 @@ export default function SendRequestScreen({
           >
             <Marker n={3} />
             <span className="flex-1">
-              <span className={`${groupHeading} block`}>In person, or on paper</span>
+              <span className={`${groupHeading} block`}>{t('send.step3')}</span>
               <span className={`${groupHint} block`}>
-                QR code to scan, or a PDF you can attach or print.
+                {t('send.step3Hint')}
               </span>
             </span>
             <svg
@@ -371,14 +375,14 @@ export default function SendRequestScreen({
                   onClick={copyQr}
                   className="text-secondary-500 dark:text-secondary-400 underline underline-offset-2 hover:no-underline"
                 >
-                  {qrCopied ? 'QR copied' : 'Copy QR image'}
+                  {qrCopied ? t('send.qrCopied') : t('send.copyQr')}
                 </button>
                 <button
                   type="button"
                   onClick={downloadQr}
                   className="text-secondary-500 dark:text-secondary-400 underline underline-offset-2 hover:no-underline"
                 >
-                  Download QR
+                  {t('send.downloadQr')}
                 </button>
               </div>
 
@@ -389,11 +393,10 @@ export default function SendRequestScreen({
                   disabled={pdfBusy}
                   className={btnOutlined}
                 >
-                  {pdfBusy ? 'Preparing…' : 'Download PDF'}
+                  {pdfBusy ? t('send.preparing') : t('send.downloadPdf')}
                 </button>
                 <p className="mt-3 text-center text-xs text-secondary-400 dark:text-secondary-500 max-w-xs">
-                  A one-page request with the amount, link and QR &mdash; and an explanation
-                  of escrow for buyers who haven&apos;t used {siteName} before. Not a tax invoice.
+                  {t('send.pdfHint', { brand: siteName })}
                 </p>
               </div>
             </div>
@@ -410,10 +413,10 @@ export default function SendRequestScreen({
           onClick={onDone}
           className="w-full sm:w-72 rounded-lg bg-secondary-900 dark:bg-white text-white dark:text-secondary-900 px-8 py-3 text-sm font-semibold hover:bg-secondary-700 dark:hover:bg-secondary-100 transition-colors"
         >
-          I&apos;ve sent it
+          {t('send.done')}
         </button>
         <p className="mt-3 text-xs text-secondary-400 dark:text-secondary-500 text-center max-w-sm">
-          Haven&apos;t sent it yet? Copy the link above before you leave this screen.
+          {t('send.doneHint')}
         </p>
       </div>
     </div>

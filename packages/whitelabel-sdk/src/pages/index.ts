@@ -6,5 +6,9 @@
  * under stable names regardless of what the underlying component is called.
  */
 export { default as CreatePage } from './CreatePage';
+// The embed surface: what the WordPress/Shopify plugins and the one-line JS
+// redirect point at. Layout renders it without chrome, so it drops cleanly into
+// a tenant's own checkout.
+export { default as ContractCreatePage } from './ContractCreatePage';
 export { default as DashboardPage } from './DashboardPage';
 export { default as ContractPayPage } from './ContractPayPage';

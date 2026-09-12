@@ -37,6 +37,7 @@ import { useSimpleEthers } from '@/hooks/useSimpleEthers';
 import { emailsEqual } from '@/utils/address';
 import { useT } from '../../i18n';
 import type { MessageKey } from '../../i18n';
+import { useBrandedHref } from '../../theme';
 
 interface CreateContractForm {
   buyerEmail: string;
@@ -76,6 +77,7 @@ const stepKeys: { id: string; title: MessageKey; description: MessageKey }[] = [
 
 export default function CreateContractWizard() {
   const t = useT();
+  const brandedHref = useBrandedHref();
 
   // Translated here rather than inside Wizard: Wizard is shared with callers
   // that pass their own already-worded steps, so it must not assume keys.
@@ -178,7 +180,7 @@ export default function CreateContractWizard() {
   const generateContractPaymentLink = (): string => {
     if (!createdContractId) return '';
     const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
-    return `${baseUrl}/contract-pay?contractId=${createdContractId}`;
+    return `${baseUrl}${brandedHref(`/contract-pay?contractId=${createdContractId}`)}`;
   };
 
   // Copy to clipboard. `kind` only affects wording — the send screen decides

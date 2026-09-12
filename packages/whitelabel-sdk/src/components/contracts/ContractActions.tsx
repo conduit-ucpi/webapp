@@ -9,6 +9,7 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import DisputeModal from './DisputeModal';
 import DisputeManagementModal from './DisputeManagementModal';
 import { formatDateTimeWithTZ } from '@/utils/validation';
+import { useBrandedHref } from '../../theme';
 
 interface ContractActionsProps {
   contract: Contract | PendingContract;
@@ -23,6 +24,7 @@ interface ContractActionsProps {
 
 export default function ContractActions({ contract, isBuyer, isSeller, onAction, onAccept, isClaimingInProgress, onClaimStart, onClaimComplete }: ContractActionsProps) {
   const router = useRouter();
+  const brandedHref = useBrandedHref();
   const { config } = useConfig();
   const { user, claimFunds, raiseDispute } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
@@ -269,7 +271,7 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
         return (
           <Button
             size="sm"
-            onClick={() => router.push(`/contract-pay?contractId=${contract.id}`)}
+            onClick={() => router.push(brandedHref(`/contract-pay?contractId=${contract.id}`))}
             className="w-full"
           >
             {contract.ctaLabel || 'Complete Payment'}
@@ -288,7 +290,7 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
         return (
           <Button
             size="sm"
-            onClick={() => router.push(`/contract-pay?contractId=${contract.id}`)}
+            onClick={() => router.push(brandedHref(`/contract-pay?contractId=${contract.id}`))}
             className="w-full"
           >
             {contract.ctaLabel || 'Complete Payment'}

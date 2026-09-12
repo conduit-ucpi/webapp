@@ -26,11 +26,13 @@ import { useToast } from '@/components/ui/Toast';
 import { buildReportCsv, ReportRow } from '@/components/dashboard/reportExport';
 import { WalletSigningError } from '@/lib/auth/errors/WalletSigningError';
 import { useT } from '../../i18n';
+import { useBrandedHref } from '../../theme';
 
 type StatusFilter = 'ALL' | 'ACTION_NEEDED' | 'ACTIVE' | 'COMPLETED' | 'DISPUTED';
 
 export default function EnhancedDashboard() {
   const t = useT();
+  const brandedHref = useBrandedHref();
   // Track renders
   const renderCount = React.useRef(0);
   renderCount.current++;
@@ -408,7 +410,7 @@ export default function EnhancedDashboard() {
     // backend's ctaType on a pending contract, which would otherwise open the details
     // modal instead of paying.
     if ((action === 'accept' || (isPending && action === 'view-details')) && contract.id) {
-      router.push(`/contract-pay?contractId=${contract.id}`);
+      router.push(brandedHref(`/contract-pay?contractId=${contract.id}`));
     } else if (action === 'manage' && 'contractAddress' in contract) {
       setContractToManage(contract as Contract);
       setShowManageDispute(true);

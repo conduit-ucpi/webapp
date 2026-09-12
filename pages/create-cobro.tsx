@@ -8,6 +8,7 @@ import WalletChoiceCards from '@/components/auth/WalletChoiceCards';
 import Skeleton from '@/components/ui/Skeleton';
 import SEO from '@/components/SEO';
 import { useBrand } from '@conduit-ucpi/whitelabel-sdk';
+import { usePageT } from '@/config/locales';
 
 // ---------------------------------------------------------------------------
 // /create-cobro — white-labelled payment-request page
@@ -45,17 +46,21 @@ import { useBrand } from '@conduit-ucpi/whitelabel-sdk';
 const rgb = (triple: string, alpha?: number) =>
   alpha === undefined ? `rgb(${triple})` : `rgb(${triple} / ${alpha})`;
 
-const HOW_IT_WORKS = [
-  'You set the amount, stablecoin, and release terms',
-  'The buyer pays into escrow – funds are held but not sent to you yet',
-  'Funds release to your wallet automatically on the release terms you set',
-];
+const HOW_IT_WORKS = ['wl.howStep1', 'wl.howStep2', 'wl.howStep3'] as const;
+
+const ASSURANCES = [
+  'wl.assuranceFee',
+  'wl.assuranceChargebacks',
+  'wl.assuranceGas',
+  'wl.assuranceCustody',
+] as const;
 
 export default function CreateWhiteLabelPage() {
   const { isLoading, isConnected, address } = useAuth();
   const router = useRouter();
   const autoConnect = router.query.autoConnect === 'true';
   const brand = useBrand();
+  const t = usePageT();
 
   const accent = rgb(brand.theme.primary[500]);
   const ink = rgb(brand.theme.secondary[900]);
@@ -86,7 +91,7 @@ export default function CreateWhiteLabelPage() {
           )}
         </div>
         <Link href="/dashboard" className="text-sm text-white/50 hover:text-white transition-colors">
-          Dashboard
+          {t('wl.dashboard')}
         </Link>
       </div>
 
@@ -96,7 +101,7 @@ export default function CreateWhiteLabelPage() {
           style={{ backgroundColor: rgb(brand.theme.primary[500], 0.12), color: accent }}
         >
           <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: accent }} />
-          Escrow-backed · settled in USDC on Base
+          {t('wl.badge')}
         </span>
         <h1 className="mt-6 text-[2.1rem] sm:text-5xl font-extrabold text-white leading-[1.05] tracking-[-0.03em]">
           {title}
@@ -111,9 +116,9 @@ export default function CreateWhiteLabelPage() {
       <div className="max-w-5xl mx-auto px-6 sm:px-10 py-8 flex flex-wrap items-center gap-x-6 gap-y-2">
         <p className="text-xs text-white/30">{brand.copy.operatorNote}</p>
         <span className="ml-auto flex gap-5 text-xs text-white/40">
-          <Link href="/terms-of-service" className="hover:text-white transition-colors">Terms</Link>
-          <Link href="/privacy-policy" className="hover:text-white transition-colors">Privacy</Link>
-          <Link href="/arbitration-policy" className="hover:text-white transition-colors">Disputes</Link>
+          <Link href="/terms-of-service" className="hover:text-white transition-colors">{t('wl.footerTerms')}</Link>
+          <Link href="/privacy-policy" className="hover:text-white transition-colors">{t('wl.footerPrivacy')}</Link>
+          <Link href="/arbitration-policy" className="hover:text-white transition-colors">{t('wl.footerDisputes')}</Link>
         </span>
       </div>
     </footer>
@@ -122,8 +127,8 @@ export default function CreateWhiteLabelPage() {
   const shell = (children: React.ReactNode) => (
     <>
       <SEO
-        title={`${brand.name} — create a payment request`}
-        description="Set an amount and a payout date. The buyer pays into escrow, and the funds release automatically on the date you both agreed."
+        title={t('wl.seoTitle', { brand: brand.name })}
+        description={t('wl.seoDescription')}
         canonical="/create-cobro"
         noindex
       />
@@ -146,7 +151,7 @@ export default function CreateWhiteLabelPage() {
   if (isLoading) {
     return shell(
       <>
-        {banner('Create a payment request', 'Setting things up…')}
+        {banner(t('wl.loadingTitle'), t('wl.loadingSubtitle'))}
         <div className="max-w-2xl mx-auto px-6 sm:px-10 py-10">
           <div className="rounded-2xl bg-white dark:bg-secondary-800 border border-secondary-900/[0.06] dark:border-white/10 p-8">
             <div className="space-y-6">
@@ -167,8 +172,8 @@ export default function CreateWhiteLabelPage() {
     return shell(
       <>
         {banner(
-          `Get started with ${brand.name}`,
-          'We use a wallet to securely send and receive your payments. Sign in with Google or an email address and one is created for you.'
+          t('wl.connectTitle', { brand: brand.name }),
+          t('wl.connectSubtitle')
         )}
 
         <div className="max-w-4xl mx-auto px-6 sm:px-10 py-10 sm:py-12">
@@ -177,9 +182,9 @@ export default function CreateWhiteLabelPage() {
           <WalletChoiceCards autoConnect={autoConnect} />
 
           <div className="mt-8 rounded-2xl p-7 sm:p-8" style={{ backgroundColor: ink }}>
-            <h2 className="text-xl font-extrabold tracking-tight text-white mb-6">How this works</h2>
+            <h2 className="text-xl font-extrabold tracking-tight text-white mb-6">{t('wl.howTitle')}</h2>
             <ol className="space-y-5">
-              {HOW_IT_WORKS.map((text, i) => (
+              {HOW_IT_WORKS.map((key, i) => (
                 <li key={i} className="flex gap-4">
                   <span
                     className="shrink-0 w-8 h-8 rounded-xl grid place-items-center text-xs font-bold"
@@ -187,16 +192,16 @@ export default function CreateWhiteLabelPage() {
                   >
                     {i + 1}
                   </span>
-                  <p className="text-sm text-white/60 leading-relaxed pt-1.5">{text}</p>
+                  <p className="text-sm text-white/60 leading-relaxed pt-1.5">{t(key)}</p>
                 </li>
               ))}
             </ol>
 
             <div className="mt-7 pt-6 border-t border-white/10 flex flex-wrap gap-x-6 gap-y-2 text-xs text-white/40">
-              {['1% flat fee', 'No chargebacks', 'Gas paid for you', 'Non-custodial'].map((t) => (
-                <span key={t} className="inline-flex items-center gap-2">
+              {ASSURANCES.map((key) => (
+                <span key={key} className="inline-flex items-center gap-2">
                   <span style={{ color: accent }} aria-hidden="true">&#10003;</span>
-                  {t}
+                  {t(key)}
                 </span>
               ))}
             </div>
@@ -208,10 +213,7 @@ export default function CreateWhiteLabelPage() {
 
   return shell(
     <>
-      {banner(
-        'Time-locked payment request',
-        'Set an amount and a release date. The buyer pays into escrow, disputes stay open until that date, and the funds then move to you automatically.'
-      )}
+      {banner(t('wl.createTitle'), t('wl.createSubtitle'))}
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-12">
         <div className="flex justify-center">

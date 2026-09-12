@@ -7,6 +7,7 @@ import { useMemo, useState } from 'react';
 import FarcasterNameDisplay from '@/components/ui/FarcasterNameDisplay';
 import { emailsEqual } from '@/utils/address';
 import { useT } from '../../i18n';
+import { useBrandedHref } from '../../theme';
 
 interface EnhancedContractCardProps {
   contract: Contract | PendingContract;
@@ -26,6 +27,7 @@ export default function EnhancedContractCard({
   onViewDetails 
 }: EnhancedContractCardProps) {
   const t = useT();
+  const brandedHref = useBrandedHref();
   const { user } = useAuth();
   
   // Calculate time remaining
@@ -76,7 +78,7 @@ export default function EnhancedContractCard({
     if (!contract.id || typeof window === 'undefined') return;
     try {
       await navigator.clipboard.writeText(
-        `${window.location.origin}/contract-pay?contractId=${contract.id}`
+        `${window.location.origin}${brandedHref(`/contract-pay?contractId=${contract.id}`)}`
       );
       setLinkCopied(true);
       setTimeout(() => setLinkCopied(false), 3000);

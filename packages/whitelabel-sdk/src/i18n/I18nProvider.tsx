@@ -6,6 +6,7 @@ import {
   resolveLocale,
 } from './resolveLocale';
 import { CATALOGUES, MessageKey } from './messages';
+import { interpolate } from './interpolate';
 
 /**
  * Locale resolution and message lookup.
@@ -29,13 +30,6 @@ interface I18nContextValue {
 }
 
 const I18nContext = createContext<I18nContextValue | null>(null);
-
-function interpolate(template: string, vars?: Record<string, string | number>): string {
-  if (!vars) return template;
-  return template.replace(/\{(\w+)\}/g, (match, name) =>
-    name in vars ? String(vars[name]) : match
-  );
-}
 
 export interface I18nProviderProps {
   children: React.ReactNode;

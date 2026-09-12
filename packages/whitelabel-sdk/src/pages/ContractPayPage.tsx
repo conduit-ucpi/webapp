@@ -28,6 +28,7 @@ import { detectDevice } from '@/utils/deviceDetection';
 import { useT } from '../i18n';
 import { useOptionalBrand, useBrandSource } from '../theme/BrandProvider';
 import { getSiteNameFromDomain } from '@/utils/siteName';
+import { useBrandedHref } from '../theme';
 
 type PaymentMethod = 'wallet' | 'qr' | null;
 
@@ -43,6 +44,7 @@ const AUTH_REHYDRATE_TIMEOUT_MS = 5000;
 
 export default function ContractPay() {
   const t = useT();
+  const brandedHref = useBrandedHref();
 
   // A selected partner names itself on the pay button; otherwise the hostname
   // does, so the other first-party domains keep their own names.
@@ -834,7 +836,7 @@ export default function ContractPay() {
                 onPayFromExternalWallet={() => setPaymentMethod('qr')}
                 // Come back on the "I have paid" panel — the funds will have
                 // landed but still need sweeping in, and that button is here.
-                addFundsReturnPath={`/contract-pay?contractId=${contractId}&method=qr`}
+                addFundsReturnPath={brandedHref(`/contract-pay?contractId=${contractId}&method=qr`)}
                 // Reuses the QR route's resolver, so Coinbase is sent to the
                 // address contractservice considers authoritative and no second
                 // escrow is ever deployed.

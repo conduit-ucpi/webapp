@@ -12,7 +12,8 @@ import { NavigationProvider } from '@/components/navigation/NavigationProvider';
 import { EthersProvider } from '@/components/providers/EthersProvider';
 import { captureConsoleForMobile } from '@/utils/mobileLogger';
 import { BrandProvider, BrandI18nProvider } from '@conduit-ucpi/whitelabel-sdk';
-import { BRANDS, DEFAULT_BRAND_ID } from '@/config/brands';
+import { BRANDS, DEFAULT_BRAND_ID, WHITE_LABEL_ROUTES } from '@/config/brands';
+import { useRouter } from 'next/router';
 
 interface ClientOnlyAppProps {
   Component: any;
@@ -21,6 +22,11 @@ interface ClientOnlyAppProps {
 
 export default function ClientOnlyApp({ Component, pageProps }: ClientOnlyAppProps) {
   const [mounted, setMounted] = React.useState(false);
+  const router = useRouter();
+  // A white-label route is that partner's page whatever the query says. The
+  // resolution still happens after hydration, so this cannot desync the
+  // server-rendered markup.
+  const routeBrandId = WHITE_LABEL_ROUTES[router.pathname] ?? null;
 
   React.useEffect(() => {
     /* Mirror console output into the mobile log pipeline before anything else
@@ -35,7 +41,7 @@ export default function ClientOnlyApp({ Component, pageProps }: ClientOnlyAppPro
   
   return (
     <ErrorBoundary children={
-      <BrandProvider brands={BRANDS} defaultBrandId={DEFAULT_BRAND_ID} children={
+      <BrandProvider brands={BRANDS} defaultBrandId={DEFAULT_BRAND_ID} routeBrandId={routeBrandId} children={
       <BrandI18nProvider children={
       <ThemeProvider children={
         <>

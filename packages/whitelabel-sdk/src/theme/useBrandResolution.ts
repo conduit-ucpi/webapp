@@ -27,12 +27,15 @@ export interface UseBrandResolutionOptions {
   fallbackId: string;
   /** The partner recorded on the contract being viewed, when there is one. */
   contractBrandId?: string | null;
+  /** A brand fixed by the route, for pages dedicated to one partner. */
+  routeBrandId?: string | null;
 }
 
 export function useBrandResolution({
   registry,
   fallbackId,
   contractBrandId,
+  routeBrandId,
 }: UseBrandResolutionOptions): BrandResolution {
   // Starts at the fallback, matching what the server rendered, and only moves
   // after hydration.
@@ -63,6 +66,7 @@ export function useBrandResolution({
     const next = resolveBrandId({
       search: window.location.search,
       contractBrandId,
+      routeBrandId,
       registry,
       fallbackId,
     });
@@ -70,7 +74,7 @@ export function useBrandResolution({
     setResolution((prev) =>
       prev.id === next.id && prev.source === next.source ? prev : next
     );
-  }, [registry, fallbackId, contractBrandId]);
+  }, [registry, fallbackId, contractBrandId, routeBrandId]);
 
   return resolution;
 }

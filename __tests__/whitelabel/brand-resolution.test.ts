@@ -70,6 +70,37 @@ describe('brand resolution', () => {
     });
   });
 
+  describe('a pinned route', () => {
+    // /create-cobro is COBRO's page by construction, not by parameter. It has
+    // to stay theirs even on a bare URL.
+    it('brands a dedicated white-label route with no parameter present', () => {
+      expect(resolve({ routeBrandId: 'cobro' })).toEqual({ id: 'cobro', source: 'route' });
+    });
+
+    // The reason route outranks query rather than the other way round: a
+    // partner's own page must not be turned back into ours by editing the URL.
+    it('outranks the query string', () => {
+      expect(resolve({ search: '?b=stabledrop', routeBrandId: 'cobro' })).toEqual({
+        id: 'cobro',
+        source: 'route',
+      });
+    });
+
+    it('outranks a contract brand too', () => {
+      expect(resolve({ contractBrandId: 'stabledrop', routeBrandId: 'cobro' })).toEqual({
+        id: 'cobro',
+        source: 'route',
+      });
+    });
+
+    it('falls through when the route pins nothing', () => {
+      expect(resolve({ routeBrandId: null, search: '?b=cobro' })).toEqual({
+        id: 'cobro',
+        source: 'query',
+      });
+    });
+  });
+
   describe('unknown ids', () => {
     // The registry is the allowlist. Anyone can put anything in a query string,
     // so an id we do not hold must fall all the way back rather than produce a
@@ -83,6 +114,12 @@ describe('brand resolution', () => {
 
     it('do not leak through as a contract id either', () => {
       expect(resolve({ contractBrandId: 'not-a-partner' }).id).toBe('stabledrop');
+    });
+
+    // A route pin is ours rather than a visitor's, so a bad one is a config
+    // mistake — but it must still not strand the page half-branded.
+    it('do not leak through as a route id either', () => {
+      expect(resolve({ routeBrandId: 'not-a-partner' }).id).toBe('stabledrop');
     });
   });
 

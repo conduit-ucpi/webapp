@@ -7,7 +7,7 @@ import CreateProgressSteps from '@/components/contracts/CreateProgressSteps';
 import WalletChoiceCards from '@/components/auth/WalletChoiceCards';
 import Skeleton from '@/components/ui/Skeleton';
 import SEO from '@/components/SEO';
-import { getBrand } from '@/utils/brand';
+import { useBrand } from '@conduit-ucpi/whitelabel-sdk';
 
 // ---------------------------------------------------------------------------
 // /create-cobro — white-labelled payment-request page
@@ -18,15 +18,32 @@ import { getBrand } from '@/utils/brand';
 // autoConnect query handling. None of those is forked or modified, so escrow
 // behaviour cannot drift between the two pages — only the chrome differs.
 //
-// This route is in WHITE_LABEL_ROUTES, so Layout renders no header or footer.
-// Everything visible therefore comes from the brand config, and the page draws
-// its own minimal chrome below. Change the brand by changing BRAND_ID.
+// This route is in WHITE_LABEL_ROUTES (config/brands), which does two things:
+// Layout renders no header or footer, and BrandProvider pins the brand to
+// COBRO regardless of `?b=`. So useBrand() here is COBRO's resolved config,
+// the same object /create?b=cobro gets, and the CSS variables driving the
+// wizard below are already COBRO's. To rebrand this page, change the entry in
+// WHITE_LABEL_ROUTES — there is nothing brand-specific left in this file.
 //
 // The wizard keeps its own light styling on a white panel, the way the
 // reference alternates dark and light bands. Nothing inside it is restyled
 // from out here — that would mean reaching into a shared component.
 
-const BRAND_ID = 'cobro';
+/**
+ * Theme colours as CSS colour strings.
+ *
+ * The theme stores RGB triples ("0 200 150") so Tailwind can keep `/50` alpha
+ * modifiers working through a custom property. Out here we are writing inline
+ * styles rather than classes, so the triple has to be wrapped — and the same
+ * form takes an alpha, which is what the old `${accent}1a` hex suffixes were
+ * doing less legibly.
+ *
+ * These bands stay inline rather than becoming bg-secondary-900: in dark mode
+ * the page background is already secondary-900, and the banner would stop
+ * reading as a band against it.
+ */
+const rgb = (triple: string, alpha?: number) =>
+  alpha === undefined ? `rgb(${triple})` : `rgb(${triple} / ${alpha})`;
 
 const HOW_IT_WORKS = [
   'You set the amount, stablecoin, and release terms',
@@ -38,14 +55,17 @@ export default function CreateWhiteLabelPage() {
   const { isLoading, isConnected, address } = useAuth();
   const router = useRouter();
   const autoConnect = router.query.autoConnect === 'true';
-  const brand = getBrand(BRAND_ID);
+  const brand = useBrand();
+
+  const accent = rgb(brand.theme.primary[500]);
+  const ink = rgb(brand.theme.secondary[900]);
 
   const banner = (title: string, sub: string) => (
-    <section className="relative overflow-hidden" style={{ backgroundColor: brand.ink }}>
+    <section className="relative overflow-hidden" style={{ backgroundColor: ink }}>
       <div
         aria-hidden="true"
         className="absolute -top-32 right-0 h-[28rem] w-[28rem] rounded-full blur-[130px]"
-        style={{ backgroundColor: `${brand.accent}1a` }}
+        style={{ backgroundColor: rgb(brand.theme.primary[500], 0.1) }}
       />
 
       {/* The brand's own header, since ours is suppressed on this route. */}
@@ -55,14 +75,14 @@ export default function CreateWhiteLabelPage() {
               eslint-disable-next-line @next/next/no-img-element — the asset is a
               partner-supplied file of unknown dimensions, not something to run
               through the image optimiser. */}
-          {brand.logoSrc ? (
+          {brand.assets.logo ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={brand.logoSrc} alt={brand.name} className="h-7 w-auto" />
+            <img src={brand.assets.logo} alt={brand.name} className="h-7 w-auto" />
           ) : (
             <p className="text-lg font-extrabold tracking-tight text-white leading-none">{brand.name}</p>
           )}
           {brand.tagline && (
-            <p className="text-[11px] mt-1" style={{ color: brand.accent }}>{brand.tagline}</p>
+            <p className="text-[11px] mt-1" style={{ color: accent }}>{brand.tagline}</p>
           )}
         </div>
         <Link href="/dashboard" className="text-sm text-white/50 hover:text-white transition-colors">
@@ -73,9 +93,9 @@ export default function CreateWhiteLabelPage() {
       <div className="relative max-w-4xl mx-auto px-6 sm:px-10 py-10 sm:py-14 text-center">
         <span
           className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-medium"
-          style={{ backgroundColor: `${brand.accent}1f`, color: brand.accent }}
+          style={{ backgroundColor: rgb(brand.theme.primary[500], 0.12), color: accent }}
         >
-          <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: brand.accent }} />
+          <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: accent }} />
           Escrow-backed · settled in USDC on Base
         </span>
         <h1 className="mt-6 text-[2.1rem] sm:text-5xl font-extrabold text-white leading-[1.05] tracking-[-0.03em]">
@@ -87,9 +107,9 @@ export default function CreateWhiteLabelPage() {
   );
 
   const footer = (
-    <footer className="mt-4" style={{ backgroundColor: brand.ink }}>
+    <footer className="mt-4" style={{ backgroundColor: ink }}>
       <div className="max-w-5xl mx-auto px-6 sm:px-10 py-8 flex flex-wrap items-center gap-x-6 gap-y-2">
-        <p className="text-xs text-white/30">{brand.operatorNote}</p>
+        <p className="text-xs text-white/30">{brand.copy.operatorNote}</p>
         <span className="ml-auto flex gap-5 text-xs text-white/40">
           <Link href="/terms-of-service" className="hover:text-white transition-colors">Terms</Link>
           <Link href="/privacy-policy" className="hover:text-white transition-colors">Privacy</Link>
@@ -114,7 +134,7 @@ export default function CreateWhiteLabelPage() {
         />
       </Head>
       <div
-        style={{ fontFamily: brand.font }}
+        style={{ fontFamily: brand.theme.fontFamily }}
         className="bg-secondary-50 dark:bg-secondary-900 min-h-screen flex flex-col"
       >
         <div className="flex-1">{children}</div>
@@ -156,14 +176,14 @@ export default function CreateWhiteLabelPage() {
 
           <WalletChoiceCards autoConnect={autoConnect} />
 
-          <div className="mt-8 rounded-2xl p-7 sm:p-8" style={{ backgroundColor: brand.ink }}>
+          <div className="mt-8 rounded-2xl p-7 sm:p-8" style={{ backgroundColor: ink }}>
             <h2 className="text-xl font-extrabold tracking-tight text-white mb-6">How this works</h2>
             <ol className="space-y-5">
               {HOW_IT_WORKS.map((text, i) => (
                 <li key={i} className="flex gap-4">
                   <span
                     className="shrink-0 w-8 h-8 rounded-xl grid place-items-center text-xs font-bold"
-                    style={{ backgroundColor: `${brand.accent}24`, color: brand.accent }}
+                    style={{ backgroundColor: rgb(brand.theme.primary[500], 0.14), color: accent }}
                   >
                     {i + 1}
                   </span>
@@ -175,7 +195,7 @@ export default function CreateWhiteLabelPage() {
             <div className="mt-7 pt-6 border-t border-white/10 flex flex-wrap gap-x-6 gap-y-2 text-xs text-white/40">
               {['1% flat fee', 'No chargebacks', 'Gas paid for you', 'Non-custodial'].map((t) => (
                 <span key={t} className="inline-flex items-center gap-2">
-                  <span style={{ color: brand.accent }} aria-hidden="true">&#10003;</span>
+                  <span style={{ color: accent }} aria-hidden="true">&#10003;</span>
                   {t}
                 </span>
               ))}

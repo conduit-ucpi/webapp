@@ -17,4 +17,20 @@ export const BRANDS: BrandRegistry = {
 
 export const DEFAULT_BRAND_ID = stabledrop.id;
 
+/**
+ * Routes that exist to carry one partner's branding, mapped to that brand.
+ *
+ * Two things read this, and they have to agree or the page is incoherent:
+ * Layout drops our header and footer on these paths, and BrandProvider pins
+ * the brand so the page is that partner's without needing `?b=`. Keeping both
+ * off one map is what stops a route losing our chrome while still rendering
+ * our colours.
+ *
+ * A pinned route beats the query string, so `/create-cobro?b=stabledrop`
+ * stays COBRO's page.
+ */
+export const WHITE_LABEL_ROUTES: Record<string, string> = {
+  '/create-cobro': cobro.id,
+};
+
 export { stabledrop, cobro };

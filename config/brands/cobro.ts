@@ -16,9 +16,22 @@ const cobro = defineBrand({
   tagline: 'Cobra con protección',
   locale: 'es',
 
+  // Colours are RGB triples so Tailwind's `/50` alpha modifiers keep working
+  // through the CSS custom properties. Radius, and every step not named here,
+  // come from the SDK defaults.
   theme: {
-    // Their mint, as RGB triples. Only the accent ramp is supplied; the neutral
-    // scale, radius and type come from the SDK defaults.
+    // Their near-black, a touch warmer than the default slate. Only the darkest
+    // neutral step is overridden — body copy and borders read from the rest of
+    // the SDK's ramp.
+    secondary: {
+      900: '17 17 17',
+    },
+
+    // Their typeface. The face itself is loaded by whoever renders the page;
+    // the fallbacks carry it where it is not.
+    fontFamily: "'Manrope', ui-sans-serif, system-ui, sans-serif",
+
+    // Their mint.
     primary: {
       50: '230 250 244',
       100: '196 243 228',

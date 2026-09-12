@@ -2,7 +2,7 @@ import { useRouter } from 'next/router';
 import Header from './Header';
 import Footer from './Footer';
 import EmailPromptManager from '@/components/auth/EmailPromptManager';
-import { WHITE_LABEL_ROUTES } from '@/utils/brand';
+import { WHITE_LABEL_ROUTES } from '@/config/brands';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -18,7 +18,7 @@ export default function Layout({ children }: LayoutProps) {
 
   // White-labelled routes carry a partner's branding, so none of ours can
   // appear alongside it — no header, no footer. The page supplies its own.
-  if (WHITE_LABEL_ROUTES.has(router.pathname)) {
+  if (router.pathname in WHITE_LABEL_ROUTES) {
     return (
       <div className="min-h-screen">
         <EmailPromptManager children={children} />

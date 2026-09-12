@@ -34,13 +34,21 @@ const BrandContext = createContext<BrandContextValue | null>(null);
 type BrandProviderProps = {
   children: React.ReactNode;
 } & (
-  | { brand: BrandConfig; brands?: never; defaultBrandId?: never; contractBrandId?: never }
+  | {
+      brand: BrandConfig;
+      brands?: never;
+      defaultBrandId?: never;
+      contractBrandId?: never;
+      routeBrandId?: never;
+    }
   | {
       brand?: never;
       brands: BrandRegistry;
       defaultBrandId: string;
       /** Partner recorded on the contract in view, when there is one. */
       contractBrandId?: string | null;
+      /** Partner this route is dedicated to, when it is one. */
+      routeBrandId?: string | null;
     }
 );
 
@@ -59,6 +67,7 @@ export function BrandProvider(props: BrandProviderProps) {
     registry,
     fallbackId,
     contractBrandId: props.brand ? undefined : props.contractBrandId,
+    routeBrandId: props.brand ? undefined : props.routeBrandId,
   });
 
   const value = useMemo<BrandContextValue>(() => {
@@ -97,7 +106,7 @@ export function useOptionalBrand(): ResolvedBrand | null {
   return useContext(BrandContext)?.brand ?? null;
 }
 
-/** Where the active brand came from — query, session, contract or default. */
+/** Where the active brand came from — route, contract, query or default. */
 export function useBrandSource(): BrandSource | null {
   return useContext(BrandContext)?.source ?? null;
 }

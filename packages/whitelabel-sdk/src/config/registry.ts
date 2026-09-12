@@ -41,7 +41,7 @@ export const BRAND_QUERY_KEYS = ['b', 'brand'] as const;
 /** Only still referenced so a previously stuck tab can be cleared. */
 export const BRAND_STORAGE_KEY = 'wl:brand';
 
-export type BrandSource = 'query' | 'contract' | 'default';
+export type BrandSource = 'route' | 'query' | 'contract' | 'default';
 
 export interface BrandResolution {
   id: string;
@@ -53,6 +53,11 @@ export interface ResolveBrandInput {
   search?: string;
   /** The partner recorded against the contract being viewed, if any. */
   contractBrandId?: string | null;
+  /**
+   * A brand fixed by the route itself, for pages that exist only to carry one
+   * partner's branding (see WHITE_LABEL_ROUTES in config/brands).
+   */
+  routeBrandId?: string | null;
   registry: BrandRegistry;
   fallbackId: string;
 }
@@ -70,19 +75,27 @@ function firstQueryValue(search: string | undefined): string | null {
 /**
  * Pure resolution, so the precedence is testable without a browser.
  *
- * Order: the contract's own partner, then the URL, then the default. The
- * contract wins because it is the one signal a visitor cannot edit — and on a
- * payment page it is the only one that is right, since the payer arrives from a
- * link days later with nothing else to go on.
+ * Order: a route pinned to one brand, then the contract's own partner, then
+ * the URL, then the default. The contract outranks the URL because it is the
+ * one signal a visitor cannot edit — and on a payment page it is the only one
+ * that is right, since the payer arrives from a link days later with nothing
+ * else to go on. A pinned route outranks even that, because such a page exists
+ * only to be that brand.
  */
 export function resolveBrandId({
   search,
   contractBrandId,
+  routeBrandId,
   registry,
   fallbackId,
 }: ResolveBrandInput): BrandResolution {
   const known = (id: string | null | undefined): id is string =>
     !!id && Object.prototype.hasOwnProperty.call(registry, id);
+
+  // A pinned route outranks everything, including the query. /create-cobro is
+  // COBRO's page; `?b=stabledrop` on it would otherwise hand a partner's URL
+  // back to us, which is the one thing a dedicated brand route must not do.
+  if (known(routeBrandId)) return { id: routeBrandId, source: 'route' };
 
   if (known(contractBrandId)) return { id: contractBrandId, source: 'contract' };
 

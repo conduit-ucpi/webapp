@@ -1,6 +1,7 @@
 import { QRCodeSVG } from 'qrcode.react';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import { useT } from '../../i18n';
 
 /** The subset of useQrPayment's return that this panel renders. */
 interface QrController {
@@ -52,6 +53,7 @@ export default function QrPaymentPanel({
   onCancel,
   successMessage,
 }: QrPaymentPanelProps) {
+  const t = useT();
   /**
    * Hold everything back until the escrow has been read.
    *
@@ -70,9 +72,7 @@ export default function QrPaymentPanel({
     return (
       <div className="text-center py-12">
         <LoadingSpinner className="w-8 h-8 mx-auto mb-4" />
-        <p className="text-sm text-secondary-600 dark:text-secondary-300">
-          Checking for your payment…
-        </p>
+        <p className="text-sm text-secondary-600 dark:text-secondary-300">{t('qrPaymentPanel.checkingForYourPayment')}</p>
       </div>
     );
   }
@@ -92,9 +92,7 @@ export default function QrPaymentPanel({
           >
             {qr.isCreatingContract ? (
               <>
-                <LoadingSpinner className="w-4 h-4 mr-2" />
-                Creating contract...
-              </>
+                <LoadingSpinner className="w-4 h-4 mr-2" />{t('qrPaymentPanel.creatingContract')}</>
             ) : (
               createButtonLabel
             )}
@@ -123,12 +121,8 @@ export default function QrPaymentPanel({
               <Button
                 onClick={() => { window.location.href = qr.buildEip681Uri(); }}
                 className="w-full"
-              >
-                Open in Wallet App
-              </Button>
-              <p className="text-xs text-center text-secondary-500 dark:text-secondary-400">
-                Tap to open your wallet app with the payment pre-filled
-              </p>
+              >{t('qrPaymentPanel.openInWalletApp')}</Button>
+              <p className="text-xs text-center text-secondary-500 dark:text-secondary-400">{t('qrPaymentPanel.tapToOpenYour')}</p>
             </div>
           ) : (
             <div className="flex justify-center mb-4">
@@ -145,9 +139,7 @@ export default function QrPaymentPanel({
 
           {/* Contract address with copy */}
           <div className="mb-4">
-            <label className="block text-xs font-medium text-secondary-500 dark:text-secondary-400 mb-1">
-              Pay-to Address
-            </label>
+            <label className="block text-xs font-medium text-secondary-500 dark:text-secondary-400 mb-1">{t('qrPaymentPanel.payToAddress')}</label>
             <div className="flex gap-2">
               <input
                 type="text"
@@ -168,7 +160,7 @@ export default function QrPaymentPanel({
 
           {/* Payment instructions */}
           <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md p-4 mb-4">
-            <h4 className="font-medium text-blue-900 dark:text-blue-200 text-sm mb-2">Payment Instructions</h4>
+            <h4 className="font-medium text-blue-900 dark:text-blue-200 text-sm mb-2">{t('qrPaymentPanel.paymentInstructions')}</h4>
             <ul className="text-xs text-blue-800 dark:text-blue-300 space-y-1.5">
               <li>Network: <span className="font-medium">{networkName}</span></li>
               <li>Token: <span className="font-medium">{tokenSymbol}</span></li>
@@ -194,9 +186,7 @@ export default function QrPaymentPanel({
             >
               {qr.qrActivationStatus === 'checking' ? (
                 <>
-                  <LoadingSpinner className="w-4 h-4 mr-2" />
-                  Checking...
-                </>
+                  <LoadingSpinner className="w-4 h-4 mr-2" />{t('qrPaymentPanel.checking')}</>
               ) : (
                 'I have paid'
               )}
@@ -212,9 +202,7 @@ export default function QrPaymentPanel({
               onClick={onCancel}
               variant="outline"
               className="w-full"
-            >
-              Cancel
-            </Button>
+            >{t('disputeManagementModal.cancel')}</Button>
           </div>
         </div>
       )}
@@ -227,7 +215,7 @@ export default function QrPaymentPanel({
               <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
             </svg>
           </div>
-          <h3 className="text-lg font-semibold text-green-700 dark:text-green-400 mb-2">Payment Confirmed!</h3>
+          <h3 className="text-lg font-semibold text-green-700 dark:text-green-400 mb-2">{t('qrPaymentPanel.paymentConfirmed')}</h3>
           <p className="text-sm text-secondary-600 dark:text-secondary-300">{successMessage}</p>
         </div>
       )}

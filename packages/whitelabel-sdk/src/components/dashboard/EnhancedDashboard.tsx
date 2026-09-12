@@ -25,10 +25,12 @@ import { displayCurrency } from '@/utils/validation';
 import { useToast } from '@/components/ui/Toast';
 import { buildReportCsv, ReportRow } from '@/components/dashboard/reportExport';
 import { WalletSigningError } from '@/lib/auth/errors/WalletSigningError';
+import { useT } from '../../i18n';
 
 type StatusFilter = 'ALL' | 'ACTION_NEEDED' | 'ACTIVE' | 'COMPLETED' | 'DISPUTED';
 
 export default function EnhancedDashboard() {
+  const t = useT();
   // Track renders
   const renderCount = React.useRef(0);
   renderCount.current++;
@@ -450,8 +452,8 @@ export default function EnhancedDashboard() {
                 />
               </svg>
               <div>
-                <h4 className="text-sm font-medium text-amber-800">Demo Mode Active</h4>
-                <p className="text-xs text-amber-700">You're viewing sample data to explore the interface.</p>
+                <h4 className="text-sm font-medium text-amber-800">{t('enhancedDashboard.demoModeActive')}</h4>
+                <p className="text-xs text-amber-700">{t('enhancedDashboard.youReViewingSample')}</p>
               </div>
             </div>
             <Button
@@ -459,9 +461,7 @@ export default function EnhancedDashboard() {
               size="sm"
               onClick={handleExitDemo}
               className="text-amber-700 border-amber-300 hover:bg-amber-100"
-            >
-              Exit Demo
-            </Button>
+            >{t('enhancedDashboard.exitDemo')}</Button>
           </div>
         </div>
       )}
@@ -472,7 +472,7 @@ export default function EnhancedDashboard() {
       {/* Stats Cards - Mobile responsive grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8" data-tour="stats-cards">
         <StatsCard
-          title="Active"
+          title={t('enhancedDashboard.active')}
           value={stats.active}
           icon={
             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -483,7 +483,7 @@ export default function EnhancedDashboard() {
           }
         />
         <StatsCard
-          title="Pending"
+          title={t('enhancedDashboard.pending')}
           value={stats.pending}
           icon={
             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -494,7 +494,7 @@ export default function EnhancedDashboard() {
           }
         />
         <StatsCard
-          title="Completed"
+          title={t('enhancedDashboard.completed')}
           value={stats.completed}
           icon={
             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -505,7 +505,7 @@ export default function EnhancedDashboard() {
           }
         />
         <StatsCard
-          title="Total Value"
+          title={t('enhancedDashboard.totalValue')}
           value={displayCurrency(stats.totalValue, 'microUSDC')}
           icon={
             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -523,7 +523,7 @@ export default function EnhancedDashboard() {
         <div className="relative">
           <input
             type="text"
-            placeholder="Search payment agreements..."
+            placeholder={t('enhancedDashboard.searchPaymentAgreements')}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-10 pr-4 py-2 border border-secondary-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
@@ -543,7 +543,7 @@ export default function EnhancedDashboard() {
 
       {/* Section Header with Refresh Button */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6">
-        <h2 className="text-xl font-semibold text-secondary-900 dark:text-white mb-4 sm:mb-0">Your payment agreements</h2>
+        <h2 className="text-xl font-semibold text-secondary-900 dark:text-white mb-4 sm:mb-0">{t('enhancedDashboard.yourPaymentAgreements')}</h2>
         <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
           <Button
             onClick={handleRefresh}
@@ -554,16 +554,12 @@ export default function EnhancedDashboard() {
           >
             {isRefreshing ? (
               <>
-                <LoadingSpinner size="sm" className="w-4 h-4 mr-2" />
-                Refreshing...
-              </>
+                <LoadingSpinner size="sm" className="w-4 h-4 mr-2" />{t('enhancedDashboard.refreshing')}</>
             ) : (
               <>
                 <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                Refresh
-              </>
+                </svg>{t('enhancedDashboard.refresh')}</>
             )}
           </Button>
           <Button
@@ -575,16 +571,12 @@ export default function EnhancedDashboard() {
           >
             {isExporting ? (
               <>
-                <LoadingSpinner size="sm" className="w-4 h-4 mr-2" />
-                Exporting...
-              </>
+                <LoadingSpinner size="sm" className="w-4 h-4 mr-2" />{t('enhancedDashboard.exporting')}</>
             ) : (
               <>
                 <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3" />
-                </svg>
-                Export Report
-              </>
+                </svg>{t('enhancedDashboard.exportReport')}</>
             )}
           </Button>
         </div>

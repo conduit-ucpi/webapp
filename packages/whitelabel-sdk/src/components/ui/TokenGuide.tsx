@@ -5,12 +5,14 @@ import { useWalletAddress } from '@/hooks/useWalletAddress';
 import { getChainName } from '@/utils/chainNames';
 import { detectUserCurrency } from '@/utils/currencyDetection';
 import { openCoinbaseOnramp } from '@/lib/coinbaseOnramp';
+import { useT } from '../../i18n';
 
 interface TokenGuideProps {
   currency?: string;
 }
 
 export default function TokenGuide({ currency }: TokenGuideProps) {
+  const t = useT();
   const { user } = useAuth();
   const { config } = useConfig();
   const { walletAddress } = useWalletAddress();
@@ -94,10 +96,8 @@ export default function TokenGuide({ currency }: TokenGuideProps) {
       {/* Coinbase Onramp button for non-Nigerian users */}
       {showCoinbase && (
         <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-indigo-900 mb-3">Buy USDC with Card or Bank</h3>
-          <p className="text-sm text-indigo-800 mb-4">
-            Purchase USDC via Coinbase using a card, bank transfer, or Apple Pay — no fees on USDC. Funds are sent directly to your connected wallet.
-          </p>
+          <h3 className="text-lg font-semibold text-indigo-900 mb-3">{t('tokenGuide.buyUsdcWithCard')}</h3>
+          <p className="text-sm text-indigo-800 mb-4">{t('tokenGuide.purchaseUsdcViaCoinbase')}</p>
           <p className="text-sm text-indigo-800 mb-4">
             If you're doing this for the first time, setting up KYC on Coinbase (or any other exchange) is an unavoidable and painful process. You may also need to speak to your bank as they sometimes block payments to exchanges. The upside is that you only have to do it once.
           </p>
@@ -116,11 +116,9 @@ export default function TokenGuide({ currency }: TokenGuideProps) {
                 <svg className="animate-spin -ml-1 mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                </svg>
-                Opening Coinbase...
-              </>
+                </svg>{t('tokenGuide.openingCoinbase')}</>
             ) : (
-              <>Buy with Coinbase</>
+              <>{t('tokenGuide.buyWithCoinbase')}</>
             )}
           </button>
         </div>
@@ -135,13 +133,13 @@ export default function TokenGuide({ currency }: TokenGuideProps) {
           <div className="flex items-start">
             <span className="font-semibold mr-2">1.</span>
             <div>
-              <span className="font-semibold">Check your network:</span> You're currently on {getNetworkName()}.
+              <span className="font-semibold">{t('tokenGuide.checkYourNetwork')}</span> You're currently on {getNetworkName()}.
               Make sure to deposit {tokenSymbol} on the same network.
             </div>
           </div>
           <div>
             <div className="flex items-center gap-1">
-              <span className="font-semibold">2. Your wallet address:</span>
+              <span className="font-semibold">{t('tokenGuide.yourWalletAddress')}</span>
               <button
                 onClick={copyToClipboard}
                 className="p-1 hover:bg-blue-100 rounded transition-colors flex-shrink-0"
@@ -164,23 +162,23 @@ export default function TokenGuide({ currency }: TokenGuideProps) {
           <div className="flex items-start">
             <span className="font-semibold mr-2">3.</span>
             <div className="flex-1 min-w-0">
-              <span className="font-semibold">Fund your wallet using:</span>
+              <span className="font-semibold">{t('tokenGuide.fundYourWalletUsing')}</span>
               <ul className="mt-2 ml-4 space-y-1 break-words">
-                <li>• <strong>MetaMask/Coinbase:</strong> Transfer {tokenSymbol} to/from another wallet</li>
-                <li>• <strong>Major Exchanges:</strong>{' '}
-                  <a href={`https://www.coinbase.com/price/${(currency || config.defaultToken?.symbol || config.defaultTokenSymbol || 'usdc').toLowerCase()}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-500 underline mx-1">Coinbase</a>,{' '}
-                  <a href="https://www.binance.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-500 underline mx-1">Binance</a>,{' '}
-                  <a href="https://www.kraken.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-500 underline mx-1">Kraken</a>,{' '}
-                  <a href="https://crypto.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-500 underline mx-1">Crypto.com</a>,{' '}
-                  <a href="https://easycrypto.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-500 underline mx-1">EasyCrypto</a>
+                <li>• <strong>{t('tokenGuide.metamaskCoinbase')}</strong> Transfer {tokenSymbol} to/from another wallet</li>
+                <li>• <strong>{t('tokenGuide.majorExchanges')}</strong>{' '}
+                  <a href={`https://www.coinbase.com/price/${(currency || config.defaultToken?.symbol || config.defaultTokenSymbol || 'usdc').toLowerCase()}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-500 underline mx-1">{t('tokenGuide.coinbase')}</a>,{' '}
+                  <a href="https://www.binance.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-500 underline mx-1">{t('tokenGuide.binance')}</a>,{' '}
+                  <a href="https://www.kraken.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-500 underline mx-1">{t('tokenGuide.kraken')}</a>,{' '}
+                  <a href="https://crypto.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-500 underline mx-1">{t('tokenGuide.cryptoCom')}</a>,{' '}
+                  <a href="https://easycrypto.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-500 underline mx-1">{t('tokenGuide.easycrypto')}</a>
                 </li>
-                <li>• <strong>Cash Conversion:</strong> Use the exchanges above to convert {tokenSymbol} to fiat currency</li>
+                <li>• <strong>{t('tokenGuide.cashConversion')}</strong> Use the exchanges above to convert {tokenSymbol} to fiat currency</li>
               </ul>
             </div>
           </div>
           <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
             <p className="text-yellow-800 text-xs">
-              <strong>Important:</strong> Ensure you're depositing {tokenSymbol} on the {getNetworkName()} network.
+              <strong>{t('tokenGuide.important')}</strong> Ensure you're depositing {tokenSymbol} on the {getNetworkName()} network.
               Wrong network deposits may result in lost funds.
             </p>
           </div>

@@ -5,6 +5,7 @@ import { getNetworkName } from '@/utils/networkUtils';
 import { formatWalletAddress } from '@/utils/validation';
 import { useSimpleEthers } from '@/hooks/useSimpleEthers';
 import Button from '@/components/ui/Button';
+import { useT } from '../../i18n';
 
 interface WalletInfoProps {
   className?: string;
@@ -17,6 +18,7 @@ export default function WalletInfo({
   tokenSymbol,
   tokenAddress
 }: WalletInfoProps) {
+  const t = useT();
   const { user, address } = useAuth(); // Get address for lazy auth support
   const { config } = useConfig();
   const { getTokenBalance } = useSimpleEthers();
@@ -126,13 +128,13 @@ export default function WalletInfo({
 
   return (
     <div className={`bg-secondary-50 rounded-lg p-4 border border-secondary-200 ${className}`}>
-      <h3 className="text-sm font-medium text-secondary-900 mb-3">YOUR wallet information</h3>
+      <h3 className="text-sm font-medium text-secondary-900 mb-3">{t('walletInfo.yourWalletInformation')}</h3>
 
       <div className="space-y-3">
         {/* Wallet Address */}
         <div>
           <div className="flex items-center justify-between">
-            <span className="text-xs text-secondary-600">Wallet Address:</span>
+            <span className="text-xs text-secondary-600">{t('walletInfo.walletAddress')}</span>
             <div className="flex items-center space-x-2">
               <span className="text-xs font-mono text-secondary-900">
                 {formatWalletAddress(address)}
@@ -158,7 +160,7 @@ export default function WalletInfo({
             <span className="text-xs text-secondary-600">{displayTokenSymbol} Balance:</span>
             <span className="text-xs font-medium text-secondary-900">
               {isLoadingBalance ? (
-                <span className="animate-pulse">Loading...</span>
+                <span className="animate-pulse">{t('walletInfo.loading')}</span>
               ) : (
                 `${balance} ${displayTokenSymbol}`
               )}
@@ -169,7 +171,7 @@ export default function WalletInfo({
         {/* Network */}
         <div>
           <div className="flex items-center justify-between">
-            <span className="text-xs text-secondary-600">Network:</span>
+            <span className="text-xs text-secondary-600">{t('walletInfo.network')}</span>
             <span className="text-xs font-medium text-secondary-900">
               {networkName}
             </span>

@@ -4,6 +4,7 @@ import Button from '@/components/ui/Button';
 import ExpandableHash from '@/components/ui/ExpandableHash';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { emailsEqual } from '@/utils/address';
+import { useT } from '../../i18n';
 
 interface PendingContractCardProps {
   contract: PendingContract;
@@ -16,6 +17,7 @@ export default function PendingContractCard({
   currentUserEmail,
   onAccept
 }: PendingContractCardProps) {
+  const t = useT();
   const { config } = useConfig();
   const isExpired = Date.now() / 1000 > contract.expiryTimestamp;
   const isBuyer = emailsEqual(contract.buyerEmail, currentUserEmail);
@@ -56,7 +58,7 @@ export default function PendingContractCard({
 
       <div className="space-y-2 mb-4">
         <div className="flex justify-between text-sm">
-          <span className="text-gray-600">Buyer:</span>
+          <span className="text-gray-600">{t('contractCard.buyer')}</span>
           <div className={`${isBuyer ? 'font-semibold text-primary-600' : ''}`}>
             {contract.buyerEmail ? (
               <span>{contract.buyerEmail}</span>
@@ -67,14 +69,14 @@ export default function PendingContractCard({
           </div>
         </div>
         <div className="flex justify-between text-sm">
-          <span className="text-gray-600">Seller:</span>
+          <span className="text-gray-600">{t('contractAcceptance.seller')}</span>
           <div className={`${isSeller ? 'font-semibold text-primary-600' : ''}`}>
             <span>{contract.sellerEmail}</span>
             {isSeller && <span className="ml-1">(You)</span>}
           </div>
         </div>
         <div className="flex justify-between text-sm">
-          <span className="text-gray-600">Payout at:</span>
+          <span className="text-gray-600">{t('contractCard.payoutAt')}</span>
           <span className="font-semibold">
             {formatDateTimeWithTZ(contract.expiryTimestamp)}
           </span>
@@ -92,9 +94,7 @@ export default function PendingContractCard({
           <Button 
             onClick={() => onAccept(contract.id)}
             className="w-full"
-          >
-            Make Payment
-          </Button>
+          >{t('pendingContractCard.makePayment')}</Button>
         </div>
       )}
     </div>

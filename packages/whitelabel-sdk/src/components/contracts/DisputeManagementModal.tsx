@@ -12,6 +12,7 @@ import { useMarketplaceActions } from '@/hooks/useMarketplaceActions';
 import { useArbiterState, useSettlementState } from '@/hooks/useDisputeState';
 import StandingFiguresPanel from '@/components/contracts/StandingFiguresPanel';
 import ArbiterPanel from '@/components/contracts/ArbiterPanel';
+import { useT } from '../../i18n';
 
 interface DisputeManagementModalProps {
   isOpen: boolean;
@@ -40,6 +41,7 @@ interface DisputeManagementModalProps {
  *    of what happened, not of what was intended — must hold nothing suggesting otherwise.
  */
 export default function DisputeManagementModal({ isOpen, onClose, contract, onRefresh }: DisputeManagementModalProps) {
+  const t = useT();
   const { config } = useConfig();
   const { user } = useAuth();
   const { submitSettlementVote } = useMarketplaceActions();
@@ -175,7 +177,7 @@ export default function DisputeManagementModal({ isOpen, onClose, contract, onRe
               <Dialog.Panel className="w-full max-w-4xl max-h-[90vh] overflow-y-auto transform rounded-lg bg-white dark:bg-secondary-800 text-left align-middle shadow-2xl border border-transparent dark:border-secondary-700 transition-all">
                 <div className="p-6">
                   <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Settle this dispute</h2>
+                    <h2 className="text-xl font-semibold text-gray-900 dark:text-white">{t('disputeManagementModal.settleThisDispute')}</h2>
                     <button
                       onClick={onClose}
                       className="text-gray-400 hover:text-gray-600 dark:text-secondary-400 dark:hover:text-secondary-200 transition-colors"
@@ -188,15 +190,15 @@ export default function DisputeManagementModal({ isOpen, onClose, contract, onRe
 
                   {/* Contract Info */}
                   <div className="bg-gray-50 dark:bg-secondary-900/60 border border-transparent dark:border-secondary-700 rounded-lg p-4 mb-6">
-                    <h3 className="font-medium text-gray-900 dark:text-white mb-2">Contract Details</h3>
+                    <h3 className="font-medium text-gray-900 dark:text-white mb-2">{t('contractDetailsModal.contractDetails')}</h3>
                     <div className="text-sm text-gray-600 dark:text-secondary-300 space-y-1">
-                      <div><span className="font-medium">Description:</span> {contract.description}</div>
+                      <div><span className="font-medium">{t('contractAcceptance.description')}</span> {contract.description}</div>
                       {contract.productName && (
-                        <div><span className="font-medium">Product:</span> {contract.productName}</div>
+                        <div><span className="font-medium">{t('disputeManagementModal.product')}</span> {contract.productName}</div>
                       )}
-                      <div><span className="font-medium">Amount:</span> {displayCurrency(contract.amount, 'microUSDC')} {tokenSymbol}</div>
-                      <div><span className="font-medium">Buyer:</span> <FarcasterNameDisplay identifier={contract.buyerEmail} fallbackToAddress={true} walletAddress={contract.buyerAddress} /></div>
-                      <div><span className="font-medium">Seller:</span> <FarcasterNameDisplay identifier={contract.sellerEmail} fallbackToAddress={true} walletAddress={contract.sellerAddress} /></div>
+                      <div><span className="font-medium">{t('contractAcceptance.amount')}</span> {displayCurrency(contract.amount, 'microUSDC')} {tokenSymbol}</div>
+                      <div><span className="font-medium">{t('contractCard.buyer')}</span> <FarcasterNameDisplay identifier={contract.buyerEmail} fallbackToAddress={true} walletAddress={contract.buyerAddress} /></div>
+                      <div><span className="font-medium">{t('contractAcceptance.seller')}</span> <FarcasterNameDisplay identifier={contract.sellerEmail} fallbackToAddress={true} walletAddress={contract.sellerAddress} /></div>
                     </div>
                   </div>
 
@@ -227,11 +229,9 @@ export default function DisputeManagementModal({ isOpen, onClose, contract, onRe
 
                   {/* Dispute Audit Trail — the conversation, kept off-chain. */}
                   <div className="mb-6">
-                    <h3 className="font-medium text-gray-900 dark:text-white mb-4">Discussion</h3>
+                    <h3 className="font-medium text-gray-900 dark:text-white mb-4">{t('disputeManagementModal.discussion')}</h3>
                     {sortedDisputes.length === 0 ? (
-                      <div className="text-center py-8 text-gray-500 dark:text-secondary-400">
-                        No dispute entries yet
-                      </div>
+                      <div className="text-center py-8 text-gray-500 dark:text-secondary-400">{t('disputeManagementModal.noDisputeEntriesYet')}</div>
                     ) : (
                       <div className="space-y-4">
                         {sortedDisputes.map((dispute, index) => (
@@ -257,7 +257,7 @@ export default function DisputeManagementModal({ isOpen, onClose, contract, onRe
                   {/* Admin Notes */}
                   {contract.adminNotes && contract.adminNotes.length > 0 && (
                     <div className="mb-6">
-                      <h3 className="font-medium text-gray-900 dark:text-white mb-4">Admin Notes</h3>
+                      <h3 className="font-medium text-gray-900 dark:text-white mb-4">{t('disputeManagementModal.adminNotes')}</h3>
                       <div className="space-y-2">
                         {contract.adminNotes.map((note, index) => (
                           <div key={index} className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3">
@@ -277,7 +277,7 @@ export default function DisputeManagementModal({ isOpen, onClose, contract, onRe
                   {/* Submit a settlement figure */}
                   {!alreadySettled && (
                     <div className="border-t border-gray-200 dark:border-secondary-700 pt-6">
-                      <h3 className="font-medium text-gray-900 dark:text-white mb-2">Submit your settlement figure</h3>
+                      <h3 className="font-medium text-gray-900 dark:text-white mb-2">{t('disputeManagementModal.submitYourSettlementFigure')}</h3>
 
                       {/*
                         ⚠️ THE SINGLE MOST IMPORTANT THING ON THIS SCREEN (§15.6b). The contract
@@ -286,20 +286,16 @@ export default function DisputeManagementModal({ isOpen, onClose, contract, onRe
                         they are the same transaction.
                       */}
                       <div className="rounded-md border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-3 mb-4 text-sm text-amber-800 dark:text-amber-200">
-                        <strong>Whatever you submit is a binding offer, not a proposal.</strong> It
+                        <strong>{t('disputeManagementModal.whateverYouSubmitIs')}</strong> It
                         goes on-chain immediately. If it matches a figure another party is already
                         holding, the escrow pays out at that number in the same transaction, and it
                         cannot be undone.
-                        <div className="mt-2">
-                          You can revise your own figure as often as you like until two match.
-                        </div>
+                        <div className="mt-2">{t('disputeManagementModal.youCanReviseYour')}</div>
                       </div>
 
                       <form onSubmit={startSubmission} className="space-y-4">
                         <div>
-                          <label htmlFor="reason" className="block text-sm font-medium text-gray-700 dark:text-secondary-200 mb-1">
-                            Your comment (max 160 characters)
-                          </label>
+                          <label htmlFor="reason" className="block text-sm font-medium text-gray-700 dark:text-secondary-200 mb-1">{t('disputeManagementModal.yourCommentMaxCharacters')}</label>
                           <textarea
                             id="reason"
                             value={reason}
@@ -308,7 +304,7 @@ export default function DisputeManagementModal({ isOpen, onClose, contract, onRe
                             required
                             rows={3}
                             className="w-full px-3 py-2 border border-gray-300 dark:border-secondary-700 bg-white dark:bg-secondary-900 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-secondary-500 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-                            placeholder="Explain your position in the dispute..."
+                            placeholder={t('disputeManagementModal.explainYourPositionIn')}
                           />
                           <div className="text-xs text-gray-500 dark:text-secondary-400 mt-1">
                             {reason.length}/160 characters — kept off-chain, alongside the figure
@@ -316,9 +312,7 @@ export default function DisputeManagementModal({ isOpen, onClose, contract, onRe
                         </div>
 
                         <div>
-                          <label htmlFor="refundPercent" className="block text-sm font-medium text-gray-700 dark:text-secondary-200 mb-1">
-                            Settlement figure — percentage to the buyer (0-100%)
-                          </label>
+                          <label htmlFor="refundPercent" className="block text-sm font-medium text-gray-700 dark:text-secondary-200 mb-1">{t('disputeManagementModal.settlementFigurePercentageTo')}</label>
                           <div className="flex items-center space-x-4">
                             <input
                               type="range"
@@ -360,9 +354,7 @@ export default function DisputeManagementModal({ isOpen, onClose, contract, onRe
                         {outcome && <p className="text-sm text-green-700 dark:text-green-300">{outcome}</p>}
 
                         <div className="flex justify-end space-x-3">
-                          <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
-                            Close
-                          </Button>
+                          <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>{t('contractDetailsModal.close')}</Button>
                           <Button
                             type="submit"
                             disabled={isSubmitting || confirming || !reason.trim()}
@@ -382,7 +374,7 @@ export default function DisputeManagementModal({ isOpen, onClose, contract, onRe
                           <p className="text-sm text-gray-700 dark:text-secondary-200">
                             {wouldSettleWith ? (
                               <>
-                                <strong>This settles the dispute.</strong> {wouldSettleWith.role} is
+                                <strong>{t('disputeManagementModal.thisSettlesTheDispute')}</strong> {wouldSettleWith.role} is
                                 already holding {figure}%, so the escrow pays out{' '}
                                 {displayCurrency((contract.amount * figure) / 100, 'microUSDC')} {tokenSymbol} to
                                 the buyer and the remainder to the seller, in this transaction.
@@ -401,15 +393,11 @@ export default function DisputeManagementModal({ isOpen, onClose, contract, onRe
                               variant="outline"
                               onClick={() => setConfirming(false)}
                               disabled={isSubmitting}
-                            >
-                              Cancel
-                            </Button>
+                            >{t('disputeManagementModal.cancel')}</Button>
                             <Button type="button" onClick={submitFigure} disabled={isSubmitting}>
                               {isSubmitting ? (
                                 <>
-                                  <LoadingSpinner className="w-4 h-4 mr-2" />
-                                  Sending…
-                                </>
+                                  <LoadingSpinner className="w-4 h-4 mr-2" />{t('disputeManagementModal.sending')}</>
                               ) : (
                                 'Confirm and sign'
                               )}

@@ -1,4 +1,5 @@
 import ConnectWalletEmbedded from '@/components/auth/ConnectWalletEmbedded';
+import { useT } from '../../i18n';
 
 interface ConnectPaymentStageProps {
   /** Which payment method the user picked; drives copy + connection mode. */
@@ -21,13 +22,12 @@ export default function ConnectPaymentStage({
   onBack,
   onConnectSuccess,
 }: ConnectPaymentStageProps) {
+  const t = useT();
   return (
     <div className="text-center p-6 max-w-md mx-auto">
       {paymentMethod === 'qr' && (
         <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6 text-left">
-          <p className="text-sm text-blue-800 dark:text-blue-300">
-            Sign in to protect your payment -- if there is ever a problem, you will be able to raise a dispute.
-          </p>
+          <p className="text-sm text-blue-800 dark:text-blue-300">{t('connectPaymentStage.signInToProtect')}</p>
         </div>
       )}
 
@@ -50,9 +50,7 @@ export default function ConnectPaymentStage({
       <button
         onClick={onBack}
         className="mt-4 text-sm text-secondary-500 dark:text-secondary-400 hover:text-secondary-700 dark:hover:text-secondary-200 underline"
-      >
-        Back to payment options
-      </button>
+      >{t('connectPaymentStage.backToPaymentOptions')}</button>
     </div>
   );
 }

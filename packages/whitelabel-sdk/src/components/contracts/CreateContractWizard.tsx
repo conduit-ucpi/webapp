@@ -6,7 +6,6 @@ import { useAuth } from '@/components/auth';
 import { useToast } from '@/components/ui/Toast';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
-import PaymentQRModal from '@/components/ui/PaymentQRModal';
 import { Wizard, WizardStep, WizardNavigation, WizardStep as Step } from '@/components/ui/Wizard';
 import {
   isValidEmail,
@@ -106,7 +105,6 @@ export default function CreateContractWizard() {
     arbiterAddress: ''
   });
   const [errors, setErrors] = useState<FormErrors>({});
-  const [showQRModal, setShowQRModal] = useState(false);
   const [isInstantPayment, setIsInstantPayment] = useState(false);
   // The buyer is no longer identified by email on the create screen - the
   // request is delivered by share link instead - so this defaults on. The
@@ -176,21 +174,6 @@ export default function CreateContractWizard() {
   }, [isConnected, address, user, hasAttemptedUserFetch]);
 
   // Generate payment URL for in-person QR code
-  const generatePaymentUrl = (): string => {
-    if (!user || !config) return '';
-
-    const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
-    const params = new URLSearchParams({
-      seller: user.walletAddress || '',
-      amount: form.amount,
-      description: form.description,
-      epoch_expiry: form.payoutTimestamp.toString(),
-      tokenSymbol: selectedTokenSymbol
-    });
-
-    return `${baseUrl}/contract-create?${params.toString()}`;
-  };
-
   // Generate payment link for created contract
   const generateContractPaymentLink = (): string => {
     if (!createdContractId) return '';
@@ -230,13 +213,6 @@ export default function CreateContractWizard() {
   };
 
   // Handle in-person QR code generation
-  const handleGenerateQR = () => {
-    if (!validateStep(0)) {
-      return;
-    }
-    setShowQRModal(true);
-  };
-
   // Validation for each step
   const validateStep = (step: number): boolean => {
     const newErrors: FormErrors = {};
@@ -371,7 +347,9 @@ export default function CreateContractWizard() {
         currency: `micro${selectedTokenSymbol}`,
         currencySymbol: selectedTokenSymbol,
         description: form.description,
-        expiryTimestamp: form.payoutTimestamp,
+        // Zero is EscrowContract's instant-transfer sentinel: the deposit pays
+        // the seller in the same transaction instead of funding an escrow.
+        expiryTimestamp: isInstantPayment ? 0 : form.payoutTimestamp,
         serviceLink: config.serviceLink,
         ...(form.arbiterAddress.trim() ? { arbiterAddress: ethers.getAddress(form.arbiterAddress.trim()) } : {})
       };
@@ -432,6 +410,8 @@ export default function CreateContractWizard() {
                 onAmountChange={(amount) => setForm(prev => ({ ...prev, amount }))}
                 payoutTimestamp={form.payoutTimestamp}
                 onPayoutTimestampChange={(payoutTimestamp) => setForm(prev => ({ ...prev, payoutTimestamp }))}
+                instantPayment={isInstantPayment}
+                onInstantPaymentChange={setIsInstantPayment}
                 description={form.description}
                 onDescriptionChange={(description) => setForm(prev => ({ ...prev, description }))}
                 arbiterAddress={form.arbiterAddress}
@@ -566,15 +546,7 @@ export default function CreateContractWizard() {
                   {/* Single action button - behavior depends on payment type */}
                   <div className="flex flex-col items-center gap-3">
                     <Button
-                      onClick={() => {
-                        if (isInstantPayment) {
-                          // Instant payment: Open QR modal
-                          handleGenerateQR();
-                        } else {
-                          // Normal payment: Submit and send email
-                          handleNext();
-                        }
-                      }}
+                      onClick={handleNext}
                       disabled={!canProceed() || isLoading}
                       className="w-full sm:w-auto px-8"
                     >
@@ -598,18 +570,6 @@ export default function CreateContractWizard() {
           </>
         }
       />
-
-      {/* Payment QR Modal */}
-      {showQRModal && (
-        <PaymentQRModal
-          isOpen={showQRModal}
-          onClose={() => setShowQRModal(false)}
-          url={generatePaymentUrl()}
-          amount={form.amount}
-          description={form.description}
-          tokenSymbol={selectedTokenSymbol}
-        />
-      )}
     </div>
   );
 }

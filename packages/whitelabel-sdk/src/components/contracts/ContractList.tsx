@@ -7,10 +7,12 @@ import ContractCard from './ContractCard';
 import ContractAcceptance from './ContractAcceptance';
 import ContractListView from './ContractListView';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import { useT } from '../../i18n';
 
 type StatusFilter = 'ALL' | 'PENDING' | 'CREATED' | 'ACTIVE' | 'EXPIRED' | 'DISPUTED' | 'RESOLVED' | 'CLAIMED';
 
 export default function ContractList() {
+  const t = useT();
   const { user } = useAuth();
   const router = useRouter();
   // Fetch + transform live in the single-source-of-truth hook. Gated on auth:
@@ -89,9 +91,7 @@ export default function ContractList() {
         <button 
           onClick={fetchContracts}
           className="text-primary-600 hover:text-primary-500"
-        >
-          Try Again
-        </button>
+        >{t('contractList.tryAgain')}</button>
       </div>
     );
   }
@@ -99,8 +99,8 @@ export default function ContractList() {
   if (allContracts.length === 0) {
     return (
       <div className="text-center py-20">
-        <div className="text-gray-600 mb-4">No contracts found</div>
-        <p className="text-gray-500">No contracts are currently available in the system.</p>
+        <div className="text-gray-600 mb-4">{t('contractList.noContractsFound')}</div>
+        <p className="text-gray-500">{t('contractList.noContractsAreCurrently')}</p>
       </div>
     );
   }
@@ -115,8 +115,8 @@ export default function ContractList() {
         <>
           {filteredContracts.length === 0 ? (
             <div className="text-center py-20">
-              <div className="text-gray-600 mb-4">No contracts match your filters</div>
-              <p className="text-gray-500">Try adjusting your filter settings.</p>
+              <div className="text-gray-600 mb-4">{t('contractList.noContractsMatchYour')}</div>
+              <p className="text-gray-500">{t('contractList.tryAdjustingYourFilter')}</p>
             </div>
           ) : showListView ? (
             /* List View for >4 contracts */
@@ -135,23 +135,21 @@ export default function ContractList() {
               {/* Status Filter for Card View */}
               <div className="mb-6 flex justify-between items-center">
                 <div>
-                  <label htmlFor="status-filter" className="block text-sm font-medium text-gray-700 mb-1">
-                    Filter by Status
-                  </label>
+                  <label htmlFor="status-filter" className="block text-sm font-medium text-gray-700 mb-1">{t('contractList.filterByStatus')}</label>
                   <select
                     id="status-filter"
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
                     className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md"
                   >
-                    <option value="ALL">All Statuses</option>
-                    <option value="PENDING">Pending</option>
-                    <option value="CREATED">Created</option>
-                    <option value="ACTIVE">Active</option>
-                    <option value="EXPIRED">Expired</option>
-                    <option value="DISPUTED">Disputed</option>
-                    <option value="RESOLVED">Resolved</option>
-                    <option value="CLAIMED">Claimed</option>
+                    <option value="ALL">{t('contractList.allStatuses')}</option>
+                    <option value="PENDING">{t('contractList.pending')}</option>
+                    <option value="CREATED">{t('contractDetailsModal.created')}</option>
+                    <option value="ACTIVE">{t('contractList.active')}</option>
+                    <option value="EXPIRED">{t('contractList.expired')}</option>
+                    <option value="DISPUTED">{t('contractList.disputed')}</option>
+                    <option value="RESOLVED">{t('contractList.resolved')}</option>
+                    <option value="CLAIMED">{t('contractList.claimed')}</option>
                   </select>
                 </div>
 

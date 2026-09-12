@@ -1,4 +1,5 @@
 import Button from '@/components/ui/Button';
+import { useT } from '../../i18n';
 
 interface PaymentRequestIntroProps {
   /** Advances to the payment-method choice. */
@@ -17,6 +18,7 @@ interface PaymentRequestIntroProps {
  * hand-off to sign-in doesn't feel like a demand from a stranger.
  */
 export default function PaymentRequestIntro({ onContinue }: PaymentRequestIntroProps) {
+  const t = useT();
   const steps = [
     'Add stablecoin to your wallet, or connect one you already have',
     "Confirm the payment — it's held securely in escrow, not sent directly",
@@ -43,15 +45,13 @@ export default function PaymentRequestIntro({ onContinue }: PaymentRequestIntroP
       </div>
 
       <p className="mt-6 text-sm text-secondary-500 dark:text-secondary-400">You&apos;ve received a</p>
-      <h1 className="mt-1 text-3xl sm:text-4xl font-bold text-secondary-900 dark:text-white">
-        Payment request
-      </h1>
+      <h1 className="mt-1 text-3xl sm:text-4xl font-bold text-secondary-900 dark:text-white">{t('paymentRequestIntro.paymentRequest')}</h1>
       <p className="mt-3 text-sm text-secondary-500 dark:text-secondary-400">
         Continue to see who sent it, how much they&apos;ve asked for, and what it&apos;s for.
       </p>
 
       <div className="mt-8 rounded-2xl border border-secondary-200 dark:border-secondary-700 bg-white dark:bg-secondary-800 p-6 text-left">
-        <h2 className="text-base font-semibold text-secondary-900 dark:text-white">How this works</h2>
+        <h2 className="text-base font-semibold text-secondary-900 dark:text-white">{t('paymentRequestIntro.howThisWorks')}</h2>
         <ol className="mt-4 space-y-4">
           {steps.map((step, i) => (
             <li key={i} className="flex items-start gap-3">

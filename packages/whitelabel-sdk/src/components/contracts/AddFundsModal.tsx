@@ -4,6 +4,7 @@ import Modal from '@/components/ui/Modal';
 import Button from '@/components/ui/Button';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { ONRAMP_RETURN_MESSAGE, openCoinbaseOnramp } from '@/lib/coinbaseOnramp';
+import { useT } from '../../i18n';
 
 /**
  * Coinbase's on-ramp enforces a fiat minimum, so presetting the literal
@@ -55,6 +56,7 @@ export default function AddFundsModal({
   shortfall,
   returnPath,
 }: AddFundsModalProps) {
+  const t = useT();
   const { config } = useConfig();
   const [showTransfer, setShowTransfer] = useState(false);
   const [copied, setCopied] = useState<'address' | 'link' | null>(null);
@@ -146,7 +148,7 @@ export default function AddFundsModal({
           )}
 
           <button type="button" onClick={() => setShowTransfer(true)} className={choiceBox}>
-            <p className="font-semibold text-secondary-900">Transfer from another wallet</p>
+            <p className="font-semibold text-secondary-900">{t('addFundsModal.transferFromAnotherWallet')}</p>
             <p className="mt-1 text-sm text-secondary-500">
               Scan a QR code or use a link to send {tokenSymbol} you already hold
             </p>
@@ -170,9 +172,7 @@ export default function AddFundsModal({
             </div>
           </div>
 
-          <label className="mt-5 block text-sm font-medium text-secondary-700">
-            Or send manually to this address
-          </label>
+          <label className="mt-5 block text-sm font-medium text-secondary-700">{t('addFundsModal.orSendManuallyTo')}</label>
           <div className="mt-2 flex gap-2">
             <input
               readOnly
@@ -189,9 +189,7 @@ export default function AddFundsModal({
             <Button variant="outline" onClick={() => copy(transferUri, 'link')} className="flex-1">
               {copied === 'link' ? 'Link copied' : 'Copy payment link'}
             </Button>
-            <Button variant="outline" onClick={() => setShowTransfer(false)} className="flex-1">
-              Back
-            </Button>
+            <Button variant="outline" onClick={() => setShowTransfer(false)} className="flex-1">{t('addFundsModal.back')}</Button>
           </div>
 
           <p className="mt-4 text-xs text-secondary-500">

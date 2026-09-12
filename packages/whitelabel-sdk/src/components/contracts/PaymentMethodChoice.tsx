@@ -1,3 +1,4 @@
+import { useT } from '../../i18n';
 interface PaymentMethodChoiceProps {
   /** Title for the wallet card. Differs between the pre-auth and post-create
    *  copies ("Connect my wallet" vs "Pay with connected wallet"). */
@@ -20,6 +21,7 @@ export default function PaymentMethodChoice({
   walletSubtitle,
   onSelect,
 }: PaymentMethodChoiceProps) {
+  const t = useT();
   return (
     <div className="space-y-3">
       {/* Wallet option */}
@@ -52,8 +54,8 @@ export default function PaymentMethodChoice({
             </svg>
           </div>
           <div>
-            <p className="font-medium text-secondary-900 dark:text-white">Pay by link / QR code</p>
-            <p className="text-sm text-secondary-500 dark:text-secondary-400 mt-0.5">Send from any wallet -- no wallet connection needed</p>
+            <p className="font-medium text-secondary-900 dark:text-white">{t('paymentMethodChoice.payByLinkQr')}</p>
+            <p className="text-sm text-secondary-500 dark:text-secondary-400 mt-0.5">{t('paymentMethodChoice.sendFromAnyWallet')}</p>
           </div>
         </div>
       </button>

@@ -6,6 +6,7 @@ import { useAuth } from '@/components/auth';
 import { useMemo, useState } from 'react';
 import FarcasterNameDisplay from '@/components/ui/FarcasterNameDisplay';
 import { emailsEqual } from '@/utils/address';
+import { useT } from '../../i18n';
 
 interface EnhancedContractCardProps {
   contract: Contract | PendingContract;
@@ -24,6 +25,7 @@ export default function EnhancedContractCard({
   onClick,
   onViewDetails 
 }: EnhancedContractCardProps) {
+  const t = useT();
   const { user } = useAuth();
   
   // Calculate time remaining
@@ -229,27 +231,27 @@ export default function EnhancedContractCard({
       {/* Contract details - Mobile optimized */}
       <div className="grid grid-cols-2 gap-3 mb-4 text-sm">
         <div>
-          <p className="text-secondary-500">Your Role</p>
+          <p className="text-secondary-500">{t('enhancedContractCard.yourRole')}</p>
           <p className="font-medium text-secondary-900">
             {isSeller ? 'Seller' : isBuyer ? 'Buyer' : 'Observer'}
           </p>
         </div>
         <div>
-          <p className="text-secondary-500">Status</p>
+          <p className="text-secondary-500">{t('contractListView.status')}</p>
           <p className="font-medium text-secondary-900">
             {statusDisplay.label}
           </p>
         </div>
         {!isPending && (contract.funded !== undefined || status === 'CLAIMED') && (
           <div>
-            <p className="text-secondary-500">Funded</p>
+            <p className="text-secondary-500">{t('enhancedContractCard.funded')}</p>
             <p className="font-medium text-secondary-900">
               {contract.funded || status === 'CLAIMED' ? 'Yes ✓' : 'No ✗'}
             </p>
           </div>
         )}
         <div>
-          <p className="text-secondary-500">Created</p>
+          <p className="text-secondary-500">{t('contractDetailsModal.created')}</p>
           <p className="font-medium text-secondary-900">
             {formatDateTimeWithTZ(isPending ? contract.createdAt : contract.createdAt)}
           </p>
@@ -277,9 +279,7 @@ export default function EnhancedContractCard({
           }}
           variant="outline"
           className="w-full sm:w-auto min-h-[44px]"
-        >
-          View Details
-        </Button>
+        >{t('enhancedContractCard.viewDetails')}</Button>
         {canReshare && (
           <Button
             onClick={(e) => {

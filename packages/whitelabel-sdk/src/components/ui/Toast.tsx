@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
 import { useEffect } from 'react';
+import { useT } from '../../i18n';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
 
@@ -88,6 +89,7 @@ interface ToastItemProps {
 }
 
 function ToastItem({ toast, onDismiss }: ToastItemProps) {
+  const t = useT();
   const [isVisible, setIsVisible] = useState(false);
   
   useEffect(() => {
@@ -186,7 +188,7 @@ function ToastItem({ toast, onDismiss }: ToastItemProps) {
               onClick={handleDismiss}
               className="inline-flex rounded-md hover:opacity-70 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-transparent focus:ring-current"
             >
-              <span className="sr-only">Close</span>
+              <span className="sr-only">{t('toast.close')}</span>
               <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" 
                   d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" 

@@ -21,6 +21,9 @@ interface PaymentTermsFormProps {
   onAmountChange: (value: string) => void;
   payoutTimestamp: number;
   onPayoutTimestampChange: (timestamp: number) => void;
+  /** Release on payment rather than at a date - maps to a zero expiry on-chain */
+  instantPayment?: boolean;
+  onInstantPaymentChange?: (instant: boolean) => void;
   description: string;
   onDescriptionChange: (value: string) => void;
   arbiterAddress: string;
@@ -47,6 +50,8 @@ export default function PaymentTermsForm({
   onAmountChange,
   payoutTimestamp,
   onPayoutTimestampChange,
+  instantPayment,
+  onInstantPaymentChange,
   description,
   onDescriptionChange,
   arbiterAddress,
@@ -87,6 +92,8 @@ export default function PaymentTermsForm({
         <ReleaseDateField
           value={payoutTimestamp}
           onChange={onPayoutTimestampChange}
+          instant={instantPayment}
+          onInstantChange={onInstantPaymentChange}
           error={errors.expiry}
         />
       </div>

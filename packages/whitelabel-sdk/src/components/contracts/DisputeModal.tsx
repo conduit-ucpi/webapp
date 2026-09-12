@@ -2,6 +2,7 @@ import { Fragment, useState } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
+import { useT } from '../../i18n';
 
 interface DisputeModalProps {
   isOpen: boolean;
@@ -11,6 +12,7 @@ interface DisputeModalProps {
 }
 
 export default function DisputeModal({ isOpen, onClose, onSubmit, isSubmitting = false }: DisputeModalProps) {
+  const t = useT();
   const [reason, setReason] = useState('');
   const [refundPercent, setRefundPercent] = useState(50);
   const [errors, setErrors] = useState<{ reason?: string; split?: string }>({});
@@ -84,21 +86,17 @@ export default function DisputeModal({ isOpen, onClose, onSubmit, isSubmitting =
                 <Dialog.Title
                   as="h3"
                   className="text-lg font-medium leading-6 text-gray-900 dark:text-white mb-4"
-                >
-                  Raise a Dispute
-                </Dialog.Title>
+                >{t('disputeModal.raiseADispute')}</Dialog.Title>
 
                 <div className="space-y-4">
                   <div>
-                    <label htmlFor="reason" className="block text-sm font-medium text-gray-700 dark:text-secondary-200 mb-1">
-                      Dispute Reason
-                    </label>
+                    <label htmlFor="reason" className="block text-sm font-medium text-gray-700 dark:text-secondary-200 mb-1">{t('disputeModal.disputeReason')}</label>
                     <textarea
                       id="reason"
                       className="w-full px-3 py-2 border border-gray-300 dark:border-secondary-600 bg-white dark:bg-secondary-900 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-secondary-400 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                       rows={3}
                       maxLength={160}
-                      placeholder="Please describe the reason for this dispute..."
+                      placeholder={t('disputeModal.pleaseDescribeTheReason')}
                       value={reason}
                       onChange={(e) => {
                         setReason(e.target.value);
@@ -119,9 +117,7 @@ export default function DisputeModal({ isOpen, onClose, onSubmit, isSubmitting =
                   </div>
 
                   <div>
-                    <label htmlFor="split" className="block text-sm font-medium text-gray-700 dark:text-secondary-200 mb-1">
-                      Suggested Split (% to buyer)
-                    </label>
+                    <label htmlFor="split" className="block text-sm font-medium text-gray-700 dark:text-secondary-200 mb-1">{t('disputeModal.suggestedSplitToBuyer')}</label>
                     <div className="flex items-center space-x-3">
                       <Input
                         id="split"
@@ -158,9 +154,7 @@ export default function DisputeModal({ isOpen, onClose, onSubmit, isSubmitting =
                     onClick={handleClose}
                     disabled={isSubmitting}
                     className="flex-1"
-                  >
-                    Cancel
-                  </Button>
+                  >{t('disputeManagementModal.cancel')}</Button>
                   <Button
                     onClick={handleSubmit}
                     disabled={isSubmitting}

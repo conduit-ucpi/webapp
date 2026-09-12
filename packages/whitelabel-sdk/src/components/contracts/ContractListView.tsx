@@ -7,6 +7,7 @@ import Button from '@/components/ui/Button';
 import { useAuth } from '@/components/auth';
 import { useWalletAddress } from '@/hooks/useWalletAddress';
 import FarcasterNameDisplay, { prefetchFarcasterNames } from '@/components/ui/FarcasterNameDisplay';
+import { useT } from '../../i18n';
 
 interface UnifiedContract {
   id: string;
@@ -50,6 +51,7 @@ export default function ContractListView({
   onClaimStart,
   onClaimComplete
 }: ContractListViewProps) {
+  const t = useT();
   const { user } = useAuth();
   const { walletAddress } = useWalletAddress();
   const [sortField, setSortField] = useState<SortField>('createdAt');
@@ -220,37 +222,33 @@ export default function ContractListView({
       {/* Filters and Search */}
       <div className="flex flex-col sm:flex-row gap-4 bg-gray-50 p-4 rounded-lg">
         <div className="flex-1">
-          <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-1">
-            Search
-          </label>
+          <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-1">{t('contractListView.search')}</label>
           <input
             type="text"
             id="search"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search by description, email, or address..."
+            placeholder={t('contractListView.searchByDescriptionEmail')}
             className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
           />
         </div>
         
         <div className="flex-shrink-0">
-          <label htmlFor="status-filter" className="block text-sm font-medium text-gray-700 mb-1">
-            Status
-          </label>
+          <label htmlFor="status-filter" className="block text-sm font-medium text-gray-700 mb-1">{t('contractListView.status')}</label>
           <select
             id="status-filter"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
             className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
           >
-            <option value="ALL">All Statuses</option>
-            <option value="PENDING">Pending</option>
-            <option value="CREATED">Created</option>
-            <option value="ACTIVE">Active</option>
-            <option value="EXPIRED">Expired</option>
-            <option value="DISPUTED">Disputed</option>
-            <option value="RESOLVED">Resolved</option>
-            <option value="CLAIMED">Claimed</option>
+            <option value="ALL">{t('contractList.allStatuses')}</option>
+            <option value="PENDING">{t('contractList.pending')}</option>
+            <option value="CREATED">{t('contractDetailsModal.created')}</option>
+            <option value="ACTIVE">{t('contractList.active')}</option>
+            <option value="EXPIRED">{t('contractList.expired')}</option>
+            <option value="DISPUTED">{t('contractList.disputed')}</option>
+            <option value="RESOLVED">{t('contractList.resolved')}</option>
+            <option value="CLAIMED">{t('contractList.claimed')}</option>
           </select>
         </div>
 
@@ -285,9 +283,7 @@ export default function ContractListView({
                 >
                   Description {getSortIcon('description')}
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Participants
-                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t('contractDetailsModal.participants')}</th>
                 <th
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                   onClick={() => handleSort('expiryTimestamp')}
@@ -409,7 +405,7 @@ export default function ContractListView({
 
         {filteredAndSortedContracts.length === 0 && (
           <div className="text-center py-12">
-            <div className="text-gray-500">No contracts match your filters</div>
+            <div className="text-gray-500">{t('contractList.noContractsMatchYour')}</div>
             <Button
               onClick={() => {
                 setStatusFilter('ALL');
@@ -418,9 +414,7 @@ export default function ContractListView({
               variant="outline"
               size="sm"
               className="mt-2"
-            >
-              Clear Filters
-            </Button>
+            >{t('contractListView.clearFilters')}</Button>
           </div>
         )}
       </div>

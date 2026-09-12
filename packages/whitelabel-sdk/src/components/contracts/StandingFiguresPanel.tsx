@@ -1,5 +1,6 @@
 import { EscrowSettlementState } from '@/lib/rpc/RpcClient';
 import { displayCurrency } from '@/utils/validation';
+import { useT } from '../../i18n';
 
 interface StandingFiguresPanelProps {
   state: EscrowSettlementState | null;
@@ -38,20 +39,16 @@ export default function StandingFiguresPanel({
   tokenSymbol,
   walletAddress
 }: StandingFiguresPanelProps) {
+  const t = useT();
   if (loading && !state) {
     return (
-      <div className="text-sm text-gray-500 dark:text-secondary-400">
-        Reading the current figures from the chain…
-      </div>
+      <div className="text-sm text-gray-500 dark:text-secondary-400">{t('standingFiguresPanel.readingTheCurrentFigures')}</div>
     );
   }
 
   if (!state) {
     return (
-      <div className="text-sm text-gray-500 dark:text-secondary-400">
-        The standing figures could not be read from the chain. Submitting is still safe — the
-        contract checks for a match itself — but you cannot see what the other party is holding.
-      </div>
+      <div className="text-sm text-gray-500 dark:text-secondary-400">{t('standingFiguresPanel.theStandingFiguresCould')}</div>
     );
   }
 
@@ -61,10 +58,7 @@ export default function StandingFiguresPanel({
         <div className="font-medium text-green-800 dark:text-green-200">
           This dispute has settled at {state.resolvedBuyerPercentage}% to the buyer
         </div>
-        <div className="text-sm text-green-700 dark:text-green-300 mt-1">
-          Two figures matched and the funds moved in that same transaction. Nothing further is
-          needed, and nothing here can be changed.
-        </div>
+        <div className="text-sm text-green-700 dark:text-green-300 mt-1">{t('standingFiguresPanel.twoFiguresMatchedAnd')}</div>
       </div>
     );
   }
@@ -84,16 +78,11 @@ export default function StandingFiguresPanel({
 
   return (
     <div className="rounded-lg border border-gray-200 dark:border-secondary-700 p-4">
-      <h4 className="font-medium text-gray-900 dark:text-white mb-1">Figures standing on-chain</h4>
-      <p className="text-sm text-gray-600 dark:text-secondary-300 mb-3">
-        Any two of these matching settles the dispute immediately. Submitting a figure that equals
-        one below pays the escrow out in that transaction.
-      </p>
+      <h4 className="font-medium text-gray-900 dark:text-white mb-1">{t('standingFiguresPanel.figuresStandingOnChain')}</h4>
+      <p className="text-sm text-gray-600 dark:text-secondary-300 mb-3">{t('standingFiguresPanel.anyTwoOfThese')}</p>
 
       {standing.length === 0 ? (
-        <div className="text-sm text-gray-500 dark:text-secondary-400">
-          Nobody has submitted a figure yet.
-        </div>
+        <div className="text-sm text-gray-500 dark:text-secondary-400">{t('standingFiguresPanel.nobodyHasSubmittedA')}</div>
       ) : (
         <ul className="space-y-2">
           {figures.map((figure) => (
@@ -108,7 +97,7 @@ export default function StandingFiguresPanel({
                 )}
               </span>
               {figure.percent === null ? (
-                <span className="text-gray-400 dark:text-secondary-500">No figure submitted</span>
+                <span className="text-gray-400 dark:text-secondary-500">{t('standingFiguresPanel.noFigureSubmitted')}</span>
               ) : (
                 <span className="font-medium text-gray-900 dark:text-white">
                   {figure.percent}% to buyer
@@ -123,9 +112,7 @@ export default function StandingFiguresPanel({
       )}
 
       {!state.arbiter && (
-        <p className="text-xs text-gray-500 dark:text-secondary-400 mt-3">
-          No arbiter is seated, so only the buyer and recipient can settle this between them.
-        </p>
+        <p className="text-xs text-gray-500 dark:text-secondary-400 mt-3">{t('standingFiguresPanel.noArbiterIsSeated')}</p>
       )}
     </div>
   );

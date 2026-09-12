@@ -1,4 +1,5 @@
 import { ReactNode, useState, useEffect } from 'react';
+import { useT } from '../../i18n';
 
 export interface Tab {
   id: string;
@@ -14,6 +15,7 @@ interface TabsProps {
 }
 
 export function Tabs({ tabs, activeTab, onTabChange, className = '' }: TabsProps) {
+  const t = useT();
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
 
@@ -53,7 +55,7 @@ export function Tabs({ tabs, activeTab, onTabChange, className = '' }: TabsProps
     <div className={`${className}`}>
       {/* Desktop tabs */}
       <div className="hidden sm:block border-b border-secondary-200">
-        <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+        <nav className="-mb-px flex space-x-8" aria-label={t('tabs.tabs')}>
           {tabs.map((tab) => (
             <button
               key={tab.id}

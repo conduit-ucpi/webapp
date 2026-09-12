@@ -4,8 +4,10 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import BuyerInput from '@/components/ui/BuyerInput';
 import { useCreateContract } from '@/hooks/useCreateContract';
 import { useConfig } from '@/components/auth/ConfigProvider';
+import { useT } from '../../i18n';
 
 export default function CreateContract() {
+  const t = useT();
   const { config } = useConfig();
   const {
     // Form state
@@ -40,12 +42,12 @@ export default function CreateContract() {
     <div className="max-w-md mx-auto bg-white rounded-lg shadow-md p-6">
       <form onSubmit={handleSubmit} className="space-y-4">
         <BuyerInput
-          label="Request payment from buyer:"
+          label={t('createContract.requestPaymentFromBuyer')}
           value={form.buyerEmail}
           onChange={updateBuyerInput}
           error={errors.buyerEmail}
-          placeholder="Search Farcaster user or enter email"
-          helpText="You can search for Farcaster users or enter an email address"
+          placeholder={t('createContract.searchFarcasterUserOr')}
+          helpText={t('createContract.youCanSearchFor')}
         />
 
         <div>
@@ -60,15 +62,13 @@ export default function CreateContract() {
             error={errors.amount}
             disabled={isLoading}
           />
-          <p className="text-xs text-gray-500 mt-1">(includes $1 fee, amount must be over $1, or exactly 0.001 for your testing)</p>
+          <p className="text-xs text-gray-500 mt-1">{t('createContract.includesFeeAmountMust')}</p>
         </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Payout Date & Time
-            <span className="ml-2 text-xs font-normal text-gray-500">
-              (Your local time)
-            </span>
+            <span className="ml-2 text-xs font-normal text-gray-500">{t('createContract.yourLocalTime')}</span>
           </label>
           <input
             type="datetime-local"
@@ -81,9 +81,7 @@ export default function CreateContract() {
           />
           {errors.expiry && <p className="text-sm text-red-600 mt-1">{errors.expiry}</p>}
           <div className="flex justify-between items-center mt-1">
-            <p className="text-xs text-gray-500">
-              Funds will be released at this time (your local timezone)
-            </p>
+            <p className="text-xs text-gray-500">{t('createContract.fundsWillBeReleased')}</p>
             {form.payoutTimestamp && !errors.expiry && (
               <p className="text-xs font-medium text-primary-600">
                 {getRelativeTime(form.payoutTimestamp)}
@@ -102,7 +100,7 @@ export default function CreateContract() {
             maxLength={160}
             value={form.description}
             onChange={(e) => updateForm({ description: e.target.value })}
-            placeholder="Brief description of the escrow agreement..."
+            placeholder={t('createContract.briefDescriptionOfThe')}
             disabled={isLoading}
           />
           {errors.description && <p className="text-sm text-red-600 mt-1">{errors.description}</p>}

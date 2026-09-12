@@ -6,6 +6,7 @@ import { getSiteNameFromDomain } from '@/utils/siteName';
 import { useCombinedContracts } from '@/hooks/useCombinedContracts';
 import Button from '@/components/ui/Button';
 import TransactionWalkthrough from './TransactionWalkthrough';
+import { useT } from '../../i18n';
 
 interface ChecklistItem {
   id: string;
@@ -21,6 +22,7 @@ interface ProgressChecklistProps {
 }
 
 export default function ProgressChecklist({ onClose }: ProgressChecklistProps) {
+  const t = useT();
   const { user } = useAuth();
   const router = useRouter();
   const siteName = getSiteNameFromDomain();
@@ -170,7 +172,7 @@ export default function ProgressChecklist({ onClose }: ProgressChecklistProps) {
           </div>
           <div>
             <h3 className="text-lg font-semibold text-gray-900">Welcome to {siteName}!</h3>
-            <p className="text-sm text-gray-600">Complete these steps to get the most out of your escrow platform</p>
+            <p className="text-sm text-gray-600">{t('progressChecklist.completeTheseStepsTo')}</p>
           </div>
         </div>
         <div className="flex items-center space-x-2">
@@ -202,7 +204,7 @@ export default function ProgressChecklist({ onClose }: ProgressChecklistProps) {
           {/* Progress bar */}
           <div className="mb-6">
             <div className="flex justify-between items-center mb-2">
-              <span className="text-sm font-medium text-gray-700">Progress</span>
+              <span className="text-sm font-medium text-gray-700">{t('progressChecklist.progress')}</span>
               <span className="text-sm text-gray-500">{completedCount} of {totalCount} completed</span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2">
@@ -265,18 +267,14 @@ export default function ProgressChecklist({ onClose }: ProgressChecklistProps) {
                 clipRule="evenodd" 
               />
             </svg>
-            <span className="text-sm font-medium text-success-800">
-              Congratulations! You've completed the onboarding checklist.
-            </span>
+            <span className="text-sm font-medium text-success-800">{t('progressChecklist.congratulationsYouVeCompleted')}</span>
           </div>
           <Button
             size="sm"
             variant="outline"
             onClick={handleDismiss}
             className="mt-3 border-success-300 text-success-700 hover:bg-success-100"
-          >
-            Dismiss Checklist
-          </Button>
+          >{t('progressChecklist.dismissChecklist')}</Button>
           </div>
           )}
         </>

@@ -5,6 +5,7 @@ import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import { useAuth } from '@/components/auth';
 import { useConfig } from '@/components/auth/ConfigProvider';
+import { useT } from '../../i18n';
 
 interface WalkthroughStep {
   id: string;
@@ -21,6 +22,7 @@ interface TransactionWalkthroughProps {
 }
 
 export default function TransactionWalkthrough({ isOpen, onClose, onComplete }: TransactionWalkthroughProps) {
+  const t = useT();
   const { user } = useAuth();
   const { config } = useConfig();
   const router = useRouter();
@@ -47,18 +49,11 @@ export default function TransactionWalkthrough({ isOpen, onClose, onComplete }: 
               />
             </svg>
           </div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">
-            Let's Create a Sample Payment Request
-          </h3>
-          <p className="text-gray-600 mb-6">
-            We'll create a practice payment request to show you how escrow protection works. 
-            This is just for learning - you won't send any real emails.
-          </p>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">{t('transactionWalkthrough.letSCreateA')}</h3>
+          <p className="text-gray-600 mb-6">{t('transactionWalkthrough.weLlCreateA')}</p>
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <p className="text-sm text-blue-800">
-              💡 <strong>Tip:</strong> An escrow payment protects both buyer and seller by holding 
-              funds safely until delivery is confirmed.
-            </p>
+              💡 <strong>{t('transactionWalkthrough.tip')}</strong>{t('transactionWalkthrough.anEscrowPaymentProtects')}</p>
           </div>
         </div>
       ),
@@ -71,9 +66,7 @@ export default function TransactionWalkthrough({ isOpen, onClose, onComplete }: 
       content: (
         <div className="py-4">
           <div className="mb-6">
-            <label htmlFor="buyer-email" className="block text-sm font-medium text-gray-700 mb-2">
-              Buyer's Email Address
-            </label>
+            <label htmlFor="buyer-email" className="block text-sm font-medium text-gray-700 mb-2">{t('transactionWalkthrough.buyerSEmailAddress')}</label>
             <Input
               id="buyer-email"
               type="email"
@@ -82,17 +75,15 @@ export default function TransactionWalkthrough({ isOpen, onClose, onComplete }: 
               onChange={(e) => setSampleData(prev => ({ ...prev, buyerEmail: e.target.value }))}
               className="w-full"
             />
-            <p className="text-xs text-gray-500 mt-1">
-              The buyer will receive an email with payment instructions
-            </p>
+            <p className="text-xs text-gray-500 mt-1">{t('transactionWalkthrough.theBuyerWillReceive')}</p>
           </div>
           
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-            <h4 className="font-medium text-amber-800 mb-2">💡 How This Works:</h4>
+            <h4 className="font-medium text-amber-800 mb-2">{t('transactionWalkthrough.howThisWorks')}</h4>
             <ul className="text-sm text-amber-700 space-y-1">
-              <li>• The buyer gets a secure link to fund the escrow</li>
-              <li>• Funds are held safely until you deliver</li>
-              <li>• Once delivered, funds are automatically released to you</li>
+              <li>{t('transactionWalkthrough.theBuyerGetsA')}</li>
+              <li>{t('transactionWalkthrough.fundsAreHeldSafely')}</li>
+              <li>{t('transactionWalkthrough.onceDeliveredFundsAre')}</li>
             </ul>
           </div>
         </div>
@@ -106,26 +97,20 @@ export default function TransactionWalkthrough({ isOpen, onClose, onComplete }: 
       content: (
         <div className="py-4 space-y-6">
           <div>
-            <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">
-              Service/Product Description
-            </label>
+            <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">{t('transactionWalkthrough.serviceProductDescription')}</label>
             <textarea
               id="description"
               rows={3}
-              placeholder="Website design for small business..."
+              placeholder={t('transactionWalkthrough.websiteDesignForSmall')}
               value={sampleData.description}
               onChange={(e) => setSampleData(prev => ({ ...prev, description: e.target.value }))}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
             />
-            <p className="text-xs text-gray-500 mt-1">
-              Be specific - this helps prevent disputes later
-            </p>
+            <p className="text-xs text-gray-500 mt-1">{t('transactionWalkthrough.beSpecificThisHelps')}</p>
           </div>
 
           <div>
-            <label htmlFor="amount" className="block text-sm font-medium text-gray-700 mb-2">
-              Payment Amount (USD)
-            </label>
+            <label htmlFor="amount" className="block text-sm font-medium text-gray-700 mb-2">{t('transactionWalkthrough.paymentAmountUsd')}</label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
               <Input
@@ -143,11 +128,11 @@ export default function TransactionWalkthrough({ isOpen, onClose, onComplete }: 
           </div>
 
           <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-            <h4 className="font-medium text-green-800 mb-2">✅ Your Protection:</h4>
+            <h4 className="font-medium text-green-800 mb-2">{t('transactionWalkthrough.yourProtection')}</h4>
             <ul className="text-sm text-green-700 space-y-1">
-              <li>• Funds are guaranteed once buyer pays</li>
-              <li>• No chargebacks or payment reversals</li>
-              <li>• Automatic release when time expires</li>
+              <li>{t('transactionWalkthrough.fundsAreGuaranteedOnce')}</li>
+              <li>{t('transactionWalkthrough.noChargebacksOrPayment')}</li>
+              <li>{t('transactionWalkthrough.automaticReleaseWhenTime')}</li>
             </ul>
           </div>
         </div>
@@ -161,12 +146,10 @@ export default function TransactionWalkthrough({ isOpen, onClose, onComplete }: 
       content: (
         <div className="py-4">
           <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Delivery Window
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">{t('transactionWalkthrough.deliveryWindow')}</label>
             <div className="flex space-x-4">
               <div className="flex-1">
-                <label htmlFor="hours" className="block text-xs text-gray-500 mb-1">Hours</label>
+                <label htmlFor="hours" className="block text-xs text-gray-500 mb-1">{t('transactionWalkthrough.hours')}</label>
                 <Input
                   id="hours"
                   type="number"
@@ -177,7 +160,7 @@ export default function TransactionWalkthrough({ isOpen, onClose, onComplete }: 
                 />
               </div>
               <div className="flex-1">
-                <label htmlFor="minutes" className="block text-xs text-gray-500 mb-1">Minutes</label>
+                <label htmlFor="minutes" className="block text-xs text-gray-500 mb-1">{t('transactionWalkthrough.minutes')}</label>
                 <Input
                   id="minutes"
                   type="number"
@@ -188,25 +171,23 @@ export default function TransactionWalkthrough({ isOpen, onClose, onComplete }: 
                 />
               </div>
             </div>
-            <p className="text-xs text-gray-500 mt-2">
-              After this time, you can claim the payment even if the buyer disputes
-            </p>
+            <p className="text-xs text-gray-500 mt-2">{t('transactionWalkthrough.afterThisTimeYou')}</p>
           </div>
 
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <h4 className="font-medium text-blue-800 mb-2">⏰ Timeline Example:</h4>
+            <h4 className="font-medium text-blue-800 mb-2">{t('transactionWalkthrough.timelineExample')}</h4>
             <div className="text-sm text-blue-700 space-y-2">
               <div className="flex justify-between">
-                <span>1. Buyer pays:</span>
-                <span className="font-medium">Funds locked in escrow</span>
+                <span>{t('transactionWalkthrough.buyerPays')}</span>
+                <span className="font-medium">{t('transactionWalkthrough.fundsLockedInEscrow')}</span>
               </div>
               <div className="flex justify-between">
-                <span>2. You deliver:</span>
+                <span>{t('transactionWalkthrough.youDeliver')}</span>
                 <span className="font-medium">Within {sampleData.hours}h {sampleData.minutes}m</span>
               </div>
               <div className="flex justify-between">
-                <span>3. Time expires:</span>
-                <span className="font-medium">You can claim payment</span>
+                <span>{t('transactionWalkthrough.timeExpires')}</span>
+                <span className="font-medium">{t('transactionWalkthrough.youCanClaimPayment')}</span>
               </div>
             </div>
           </div>
@@ -222,25 +203,25 @@ export default function TransactionWalkthrough({ isOpen, onClose, onComplete }: 
         <div className="py-4">
           <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
             <div className="border-b border-gray-200 pb-4 mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Payment Request</h3>
+              <h3 className="text-lg font-semibold text-gray-900">{t('transactionWalkthrough.paymentRequest')}</h3>
               <p className="text-sm text-gray-600">From: {user?.email}</p>
             </div>
             
             <div className="space-y-3">
               <div className="flex justify-between">
-                <span className="text-gray-600">Service:</span>
+                <span className="text-gray-600">{t('transactionWalkthrough.service')}</span>
                 <span className="font-medium">{sampleData.description}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">Amount:</span>
+                <span className="text-gray-600">{t('transactionWalkthrough.amount')}</span>
                 <span className="font-medium text-lg">${sampleData.amount} {config?.tokenSymbol || 'USDC'}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">Delivery Window:</span>
+                <span className="text-gray-600">{t('transactionWalkthrough.deliveryWindow2')}</span>
                 <span className="font-medium">{sampleData.hours}h {sampleData.minutes}m</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">Buyer:</span>
+                <span className="text-gray-600">{t('transactionWalkthrough.buyer')}</span>
                 <span className="font-medium">{sampleData.buyerEmail}</span>
               </div>
             </div>
@@ -248,7 +229,7 @@ export default function TransactionWalkthrough({ isOpen, onClose, onComplete }: 
 
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
             <p className="text-sm text-yellow-800">
-              📧 <strong>Next step:</strong> The buyer will receive an email with secure payment
+              📧 <strong>{t('transactionWalkthrough.nextStep')}</strong> The buyer will receive an email with secure payment
               instructions. They'll connect their wallet and pay with {config?.tokenSymbol || 'USDC'}.
             </p>
           </div>
@@ -271,21 +252,16 @@ export default function TransactionWalkthrough({ isOpen, onClose, onComplete }: 
             </svg>
           </div>
           
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">
-            Great Job! You're Ready for Real Payments
-          </h3>
-          <p className="text-gray-600 mb-6">
-            You've learned how escrow protection works. Now you can create real payment 
-            requests with confidence.
-          </p>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">{t('transactionWalkthrough.greatJobYouRe')}</h3>
+          <p className="text-gray-600 mb-6">{t('transactionWalkthrough.youVeLearnedHow')}</p>
 
           <div className="bg-gray-50 rounded-lg p-6 mb-6">
-            <h4 className="font-medium text-gray-900 mb-3">What You Learned:</h4>
+            <h4 className="font-medium text-gray-900 mb-3">{t('transactionWalkthrough.whatYouLearned')}</h4>
             <ul className="text-sm text-gray-700 space-y-2 text-left">
-              <li>✅ How to create secure payment requests</li>
-              <li>✅ Setting appropriate delivery timelines</li>
-              <li>✅ How escrow protection works for both parties</li>
-              <li>✅ The payment and delivery process</li>
+              <li>{t('transactionWalkthrough.howToCreateSecure')}</li>
+              <li>{t('transactionWalkthrough.settingAppropriateDeliveryTimelines')}</li>
+              <li>{t('transactionWalkthrough.howEscrowProtectionWorks')}</li>
+              <li>{t('transactionWalkthrough.thePaymentAndDelivery')}</li>
             </ul>
           </div>
 
@@ -293,16 +269,12 @@ export default function TransactionWalkthrough({ isOpen, onClose, onComplete }: 
             <Button
               onClick={() => router.push('/create')}
               className="px-6"
-            >
-              Create Real Payment Request
-            </Button>
+            >{t('transactionWalkthrough.createRealPaymentRequest')}</Button>
             <Button
               variant="outline"
               onClick={() => router.push('/dashboard')}
               className="px-6"
-            >
-              Go to Dashboard
-            </Button>
+            >{t('transactionWalkthrough.goToDashboard')}</Button>
           </div>
         </div>
       ),
@@ -364,9 +336,7 @@ export default function TransactionWalkthrough({ isOpen, onClose, onComplete }: 
               <button
                 onClick={handleSkip}
                 className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
-              >
-                Skip Tutorial
-              </button>
+              >{t('transactionWalkthrough.skipTutorial')}</button>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2">
               <div 
@@ -388,9 +358,7 @@ export default function TransactionWalkthrough({ isOpen, onClose, onComplete }: 
             variant="outline"
             onClick={handlePrev}
             disabled={currentStep === 0}
-          >
-            Previous
-          </Button>
+          >{t('transactionWalkthrough.previous')}</Button>
           
           <Button
             onClick={handleNext}

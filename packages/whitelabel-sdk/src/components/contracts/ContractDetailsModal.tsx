@@ -9,6 +9,7 @@ import { useAuth } from '@/components/auth';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import ContractActions from './ContractActions';
 import FarcasterNameDisplay from '@/components/ui/FarcasterNameDisplay';
+import { useT } from '../../i18n';
 
 interface ContractDetailsModalProps {
   isOpen: boolean;
@@ -22,6 +23,7 @@ function isPendingContract(contract: Contract | PendingContract): contract is Pe
 }
 
 export default function ContractDetailsModal({ isOpen, onClose, contract, onRefresh }: ContractDetailsModalProps) {
+  const t = useT();
   const { user } = useAuth();
   const { config } = useConfig();
   const [paymentLinkCopied, setPaymentLinkCopied] = useState(false);
@@ -94,7 +96,7 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
     <Modal 
       isOpen={isOpen} 
       onClose={onClose}
-      title="Contract Details"
+      title={t('contractDetailsModal.contractDetails')}
       size="large"
       children={
       <div className="space-y-6">
@@ -130,11 +132,11 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <div className="flex items-center justify-between">
               <div>
-                <h4 className="font-semibold text-blue-900">Time Remaining</h4>
+                <h4 className="font-semibold text-blue-900">{t('contractDetailsModal.timeRemaining')}</h4>
                 <p className="text-blue-800">{timeInfo.text} remaining until expiry</p>
               </div>
               <div className="text-right">
-                <p className="text-sm text-blue-600">Expires</p>
+                <p className="text-sm text-blue-600">{t('contractDetailsModal.expires')}</p>
                 <p className="font-medium text-blue-900">
                   {formatDateTimeWithTZ(contract.expiryTimestamp)}
                 </p>
@@ -147,7 +149,7 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Participants */}
           <div className="space-y-4">
-            <h4 className="font-semibold text-secondary-900 text-lg">Participants</h4>
+            <h4 className="font-semibold text-secondary-900 text-lg">{t('contractDetailsModal.participants')}</h4>
             
             <div className="space-y-3">
               <div>
@@ -191,7 +193,7 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
                       showYouLabel={false}
                     />
                   </p>
-                  <p className="text-sm text-secondary-500">Pending acceptance</p>
+                  <p className="text-sm text-secondary-500">{t('contractDetailsModal.pendingAcceptance')}</p>
                 </div>
               )}
             </div>
@@ -199,11 +201,11 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
 
           {/* Contract Details */}
           <div className="space-y-4">
-            <h4 className="font-semibold text-secondary-900 text-lg">Contract Information</h4>
+            <h4 className="font-semibold text-secondary-900 text-lg">{t('contractDetailsModal.contractInformation')}</h4>
             
             <div className="space-y-3">
               <div>
-                <p className="text-sm font-medium text-secondary-700">Created</p>
+                <p className="text-sm font-medium text-secondary-700">{t('contractDetailsModal.created')}</p>
                 <p className="text-secondary-900">
                   {formatDateTimeWithTZ(contract.createdAt)}
                 </p>
@@ -213,19 +215,19 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
               </div>
               
               <div>
-                <p className="text-sm font-medium text-secondary-700">Expiry Date</p>
+                <p className="text-sm font-medium text-secondary-700">{t('contractDetailsModal.expiryDate')}</p>
                 <p className="text-secondary-900">
                   {formatDateTimeWithTZ(contract.expiryTimestamp)}
                 </p>
                 {timeInfo?.isExpired && (
-                  <p className="text-sm text-error-600 font-medium">⚠️ Expired</p>
+                  <p className="text-sm text-error-600 font-medium">{t('contractDetailsModal.expired')}</p>
                 )}
               </div>
               
               {!isPending && (
                 <>
                   <div>
-                    <p className="text-sm font-medium text-secondary-700">Contract Address</p>
+                    <p className="text-sm font-medium text-secondary-700">{t('contractDetailsModal.contractAddress')}</p>
                     <ExpandableHash hash={(contract as Contract).contractAddress} />
                     {config?.explorerBaseUrl && (contract as Contract).contractAddress && (
                       <a
@@ -234,21 +236,19 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
                         rel="noopener noreferrer"
                         className="text-sm text-primary-600 hover:text-primary-700 mt-1 inline-block"
                         onClick={() => console.log('Explorer URL:', `${config.explorerBaseUrl}/address/${(contract as Contract).contractAddress}`)}
-                      >
-                        View on Explorer ↗
-                      </a>
+                      >{t('contractDetailsModal.viewOnExplorer')}</a>
                     )}
                   </div>
 
                   <div>
-                    <p className="text-sm font-medium text-secondary-700">Funding Status</p>
+                    <p className="text-sm font-medium text-secondary-700">{t('contractDetailsModal.fundingStatus')}</p>
                     <p className="text-secondary-900">
                       {contract.funded || status === 'CLAIMED' ? (
-                        <span className="text-success-600 font-medium">✓ Funded</span>
+                        <span className="text-success-600 font-medium">{t('contractDetailsModal.funded')}</span>
                       ) : contract.funded === false ? (
-                        <span className="text-warning-600 font-medium">⚠️ Not Funded</span>
+                        <span className="text-warning-600 font-medium">{t('contractDetailsModal.notFunded')}</span>
                       ) : (
-                        <span className="text-secondary-500 font-medium">— Status Unknown</span>
+                        <span className="text-secondary-500 font-medium">{t('contractDetailsModal.statusUnknown')}</span>
                       )}
                     </p>
                   </div>
@@ -257,7 +257,7 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
 
               {isPending && (contract as PendingContract).chainAddress && (
                 <div>
-                  <p className="text-sm font-medium text-secondary-700">Contract Address</p>
+                  <p className="text-sm font-medium text-secondary-700">{t('contractDetailsModal.contractAddress')}</p>
                   <ExpandableHash hash={(contract as PendingContract).chainAddress || ''} />
                   {config?.explorerBaseUrl && (contract as PendingContract).chainAddress && (
                     <a
@@ -265,16 +265,14 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-sm text-primary-600 hover:text-primary-700 mt-1 inline-block"
-                    >
-                      View on Explorer ↗
-                    </a>
+                    >{t('contractDetailsModal.viewOnExplorer')}</a>
                   )}
                 </div>
               )}
               
               {isPending && (
                 <div>
-                  <p className="text-sm font-medium text-secondary-700">State</p>
+                  <p className="text-sm font-medium text-secondary-700">{t('contractDetailsModal.state')}</p>
                   <p className="text-secondary-900 capitalize">{(contract as PendingContract).state}</p>
                 </div>
               )}
@@ -285,7 +283,7 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
         {/* Disputes Section */}
         {!isPending && (contract as Contract).disputes && (contract as Contract).disputes!.length > 0 && (
           <div className="bg-error-50 border border-error-200 rounded-lg p-4">
-            <h4 className="font-semibold text-error-900 mb-3">Dispute Information</h4>
+            <h4 className="font-semibold text-error-900 mb-3">{t('contractDetailsModal.disputeInformation')}</h4>
             <div className="space-y-3">
               {(contract as Contract).disputes!.map((dispute, index) => (
                 <div key={index} className="bg-white rounded p-3 border border-error-200">
@@ -299,7 +297,7 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
                   {/* Show refund information if available */}
                   {dispute.refundPercent !== null && dispute.refundPercent !== undefined && (
                     <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-sm">
-                      <p className="font-medium text-blue-900 mb-1">Refund Details:</p>
+                      <p className="font-medium text-blue-900 mb-1">{t('contractDetailsModal.refundDetails')}</p>
                       <div className="text-xs text-blue-800">
                         <div>Refund Percentage: {dispute.refundPercent}%</div>
                         {/* Calculate refund amount from contract total */}
@@ -316,7 +314,7 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
                   {/* Show when no refund percentage set */}
                   {(dispute.refundPercent === null || dispute.refundPercent === undefined) && (
                     <div className="mt-2 p-2 bg-gray-50 border border-gray-200 rounded text-sm">
-                      <p className="text-xs text-gray-600">Refund percentage not yet determined</p>
+                      <p className="text-xs text-gray-600">{t('contractDetailsModal.refundPercentageNotYet')}</p>
                     </div>
                   )}
                 </div>
@@ -328,7 +326,7 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
         {/* Dispute Resolution Notes */}
         {!isPending && (contract as Contract).adminNotes && (contract as Contract).adminNotes!.length > 0 && (
           <div className="bg-secondary-50 border border-secondary-200 rounded-lg p-4">
-            <h4 className="font-semibold text-secondary-900 mb-3">Dispute Resolution Notes</h4>
+            <h4 className="font-semibold text-secondary-900 mb-3">{t('contractDetailsModal.disputeResolutionNotes')}</h4>
             <div className="space-y-3">
               {(contract as Contract).adminNotes!.map((note, index) => {
                 // Handle different possible structures of admin notes
@@ -356,7 +354,7 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
                     {/* Show refund amounts if available */}
                     {(buyerActualAmount || sellerActualAmount || buyerPercentage !== undefined || sellerPercentage !== undefined || refundAmount || refundPercent !== undefined) && (
                       <div className="mb-2 p-2 bg-blue-50 border border-blue-200 rounded text-sm">
-                        <p className="font-medium text-blue-900 mb-1">Resolution Details:</p>
+                        <p className="font-medium text-blue-900 mb-1">{t('contractDetailsModal.resolutionDetails')}</p>
                         <div className="space-y-1 text-xs text-blue-800">
                           {/* Buyer/Seller breakdown */}
                           {(buyerPercentage !== undefined || sellerPercentage !== undefined) && (
@@ -403,10 +401,8 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
         {/* Payment Link Section for Pending Contracts */}
         {isPending && isSeller && (
           <div className="bg-primary-50 border border-primary-200 rounded-lg p-4 mb-4">
-            <h4 className="font-semibold text-primary-900 mb-2">Share Payment Link</h4>
-            <p className="text-sm text-primary-800 mb-3">
-              Send this link to the buyer for instant payment:
-            </p>
+            <h4 className="font-semibold text-primary-900 mb-2">{t('contractDetailsModal.sharePaymentLink')}</h4>
+            <p className="text-sm text-primary-800 mb-3">{t('contractDetailsModal.sendThisLinkTo')}</p>
             <div className="flex items-center gap-2">
               <input
                 type="text"
@@ -427,16 +423,12 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
                   <>
                     <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                    Copied!
-                  </>
+                    </svg>{t('contractDetailsModal.copied')}</>
                 ) : (
                   <>
                     <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                    </svg>
-                    Copy
-                  </>
+                    </svg>{t('contractDetailsModal.copy')}</>
                 )}
               </Button>
             </div>
@@ -461,18 +453,14 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
             onClick={onClose}
             variant="outline"
             className="w-full sm:w-auto"
-          >
-            Close
-          </Button>
+          >{t('contractDetailsModal.close')}</Button>
 
           {!isPending && config?.explorerBaseUrl && (contract as Contract).contractAddress && (
             <Button
               onClick={() => window.open(`${config.explorerBaseUrl}/address/${(contract as Contract).contractAddress}`, '_blank')}
               variant="outline"
               className="w-full sm:w-auto"
-            >
-              View on Blockchain ↗
-            </Button>
+            >{t('contractDetailsModal.viewOnBlockchain')}</Button>
           )}
 
           {/* Copy Contract ID */}
@@ -483,9 +471,7 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
             }}
             variant="outline"
             className="w-full sm:w-auto"
-          >
-            Copy Contract ID
-          </Button>
+          >{t('contractDetailsModal.copyContractId')}</Button>
         </div>
       </div>
       }

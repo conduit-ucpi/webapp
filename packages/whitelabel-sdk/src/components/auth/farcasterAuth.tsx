@@ -19,6 +19,7 @@ import { ethers, formatUnits } from 'ethers';
 import { RpcClient } from '@/lib/rpc/RpcClient';
 // Contract methods are now deprecated - use API endpoints instead
 import { BackendAuth } from './backendAuth';
+import { useT } from '../../i18n';
 
 // Minimal ERC20 ABI for balance checking
 const ERC20_ABI = [
@@ -568,6 +569,7 @@ function FarcasterAuthProviderInner({ children, AuthContext }: {
   children: React.ReactNode;
   AuthContext?: React.Context<any>;
 }) {
+  const t = useT();
   // Track this instance
   const innerInstanceId = React.useRef(Math.random().toString(36).substr(2, 9));
   const renderCount = React.useRef(0);
@@ -1269,6 +1271,7 @@ export function FarcasterAuthProvider({ children, AuthContext }: {
   children: React.ReactNode;
   AuthContext?: React.Context<any>;
 }) {
+  const t = useT();
   const { config, isLoading } = useConfig();
   
   // Track instances for debugging (must be before any conditional returns)
@@ -1288,7 +1291,7 @@ export function FarcasterAuthProvider({ children, AuthContext }: {
   
   // Wait for config to load before proceeding
   if (isLoading) {
-    return <div>Loading configuration...</div>;
+    return <div>{t('farcasterAuth.loadingConfiguration')}</div>;
   }
   
   // Get chain ID from config - MUST be provided
@@ -1328,13 +1331,14 @@ export function useFarcasterAuth(): AuthContextType {
  * Useful for debugging and testing
  */
 export function FarcasterAuthDebug() {
+  const t = useT();
   const auth = useFarcasterAuth();
 
   if (auth.isLoading) {
     return (
       <div className="p-4 border rounded bg-gray-50">
         <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600 mx-auto"></div>
-        <p className="text-center mt-2">Loading Farcaster auth...</p>
+        <p className="text-center mt-2">{t('farcasterAuth.loadingFarcasterAuth')}</p>
       </div>
     );
   }
@@ -1349,15 +1353,15 @@ export function FarcasterAuthDebug() {
 
   return (
     <div className="p-4 border rounded bg-white space-y-2">
-      <h3 className="font-bold">Farcaster Auth Data:</h3>
+      <h3 className="font-bold">{t('farcasterAuth.farcasterAuthData')}</h3>
       <div className="text-sm space-y-1">
-        <p><strong>Wallet:</strong> {auth.user?.walletAddress || 'Not connected'}</p>
-        <p><strong>FID:</strong> {auth.user?.fid || 'N/A'}</p>
-        <p><strong>Username:</strong> @{auth.user?.username || 'N/A'}</p>
-        <p><strong>Display Name:</strong> {auth.user?.displayName || 'N/A'}</p>
-        <p><strong>ENS Name:</strong> {auth.user?.ensName || 'None'}</p>
-        <p><strong>Profile Image:</strong> {auth.user?.profileImageUrl ? '✓' : '✗'}</p>
-        <p><strong>Auth Token:</strong> {auth.token ? '✓ Valid JWT' : '✗ No token'}</p>
+        <p><strong>{t('farcasterAuth.wallet')}</strong> {auth.user?.walletAddress || 'Not connected'}</p>
+        <p><strong>{t('farcasterAuth.fid')}</strong> {auth.user?.fid || 'N/A'}</p>
+        <p><strong>{t('farcasterAuth.username')}</strong> @{auth.user?.username || 'N/A'}</p>
+        <p><strong>{t('farcasterAuth.displayName')}</strong> {auth.user?.displayName || 'N/A'}</p>
+        <p><strong>{t('farcasterAuth.ensName')}</strong> {auth.user?.ensName || 'None'}</p>
+        <p><strong>{t('farcasterAuth.profileImage')}</strong> {auth.user?.profileImageUrl ? '✓' : '✗'}</p>
+        <p><strong>{t('farcasterAuth.authToken')}</strong> {auth.token ? '✓ Valid JWT' : '✗ No token'}</p>
       </div>
     </div>
   );

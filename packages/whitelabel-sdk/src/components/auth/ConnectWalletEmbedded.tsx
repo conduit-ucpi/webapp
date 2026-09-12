@@ -4,6 +4,7 @@ import Button from '@/components/ui/Button';
 import { mLog } from '@/utils/mobileLogger';
 import { isMagicReachable } from '@/lib/auth/magicReachability';
 import { reportAuthFailure } from '@/lib/auth/reportAuthFailure';
+import { useT } from '../../i18n';
 
 interface ConnectWalletEmbeddedProps {
   buttonText?: string;
@@ -30,6 +31,7 @@ export default function ConnectWalletEmbedded({
   preferredProvider,
   connectionMode
 }: ConnectWalletEmbeddedProps) {
+  const t = useT();
   const { user, isLoading, connect, isConnected, address, requestAuthentication, setConnectionMode } = useAuth();
   const [isAuthenticating, setIsAuthenticating] = useState(false);
 
@@ -377,13 +379,10 @@ export default function ConnectWalletEmbedded({
           role="status"
           className="mt-3 mx-auto max-w-md rounded-md border border-amber-300 bg-amber-50 p-3 text-left text-xs text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200"
         >
-          <p className="font-semibold">Email & social sign-in unavailable</p>
+          <p className="font-semibold">{t('connectWalletEmbedded.emailSocialSignIn')}</p>
           <p className="mt-1">
             Your network appears to be blocking{' '}
-            <span className="font-mono">magiclabs.com</span>, which our
-            email/social sign-in depends on. You can still connect with
-            MetaMask, Coinbase Wallet, or WalletConnect QR.
-          </p>
+            <span className="font-mono">magiclabs.com</span>{t('connectWalletEmbedded.whichOurEmailSocial')}</p>
           <p className="mt-1">
             To restore email/social sign-in, try a different network, disable
             ad blockers, or switch your DNS to <span className="font-mono">1.1.1.1</span>.

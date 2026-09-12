@@ -66,6 +66,11 @@ export const es: Catalogue = {
   'release.label': '¿Cuándo deben liberarse los fondos?',
   'release.timezone': '(Tu zona horaria: {tz})',
   'release.auto': 'Los fondos se liberarán automáticamente a esta hora',
+  'release.onDate': 'En una fecha',
+  'release.instant': 'Al instante',
+  'release.instantSummary': 'Se libera en cuanto el comprador paga',
+  'release.instantNote':
+    'Los fondos van directo a tu billetera en la misma transacción. No queda nada en depósito en garantía, así que ninguna de las partes puede abrir una disputa.',
   'terms.description': 'Descripción',
   'terms.descriptionPlaceholder': '¿Para qué es este pago?',
   'wizard.title': 'Solicitar un pago',
@@ -247,4 +252,373 @@ export const es: Catalogue = {
   'emailPrompt.errRequired': 'Ingresa un correo electrónico',
   'emailPrompt.errInvalid': 'Ingresa un correo electrónico válido',
   'emailPrompt.errSave': 'No se pudo guardar el correo. Inténtalo de nuevo.',
+
+  'emptyState.noMatchesFound': 'No se encontraron coincidencias',
+  'emptyState.connectionTrouble': 'Problemas de conexión',
+  'emptyState.noActiveContracts': 'No hay contratos activos',
+  'emptyState.allCaughtUp': '¡Todo al día!',
+  'emptyState.noCompletedContractsYet': 'Todavía no hay contratos completados',
+  'emptyState.noDisputedContracts': 'No hay contratos en disputa',
+
+  'expandableHash.copyToClipboard': 'Copiar al portapapeles',
+
+  'mobileWalletPrompt.actionRequiredOnMobile': 'Acción requerida en el móvil',
+  'mobileWalletPrompt.whenConnectingViaQr':
+    'Al conectar con un código QR, la app de la billetera no se abre automáticamente para las siguientes acciones.',
+  'mobileWalletPrompt.iVeCompletedThe': 'Ya completé la acción',
+  'mobileWalletPrompt.cancel': 'Cancelar',
+
+  'paymentQRModal.haveTheCustomerScan':
+    'Pide al cliente que escanee este código QR para completar el pago',
+  'paymentQRModal.paymentDetails': 'Detalles del pago',
+  'paymentQRModal.amount': 'Monto:',
+  'paymentQRModal.description': 'Descripción:',
+  'paymentQRModal.paymentLinkForManual': 'Enlace de pago (para compartir manualmente)',
+  'paymentQRModal.copy': 'Copiar',
+  'paymentQRModal.howItWorks': 'Cómo funciona',
+  'paymentQRModal.customerScansTheQr':
+    'El cliente escanea el código QR con la cámara de su teléfono o su billetera',
+  'paymentQRModal.theyLlBeTaken': 'Llegará a la página de pago con todos los datos ya completados',
+  'paymentQRModal.customerConnectsTheirWallet':
+    'El cliente conecta su billetera y confirma el pago',
+  'paymentQRModal.paymentIsSecuredIn':
+    'El pago queda protegido en depósito en garantía hasta la fecha de liberación',
+  'paymentQRModal.youLlReceiveAn': 'Recibirás un correo cuando el pago se complete',
+  'paymentQRModal.done': 'Listo',
+  'paymentQRModal.inPersonPaymentQr': 'Código QR para pago en persona',
+
+  'qRCodeModal.scanThisQrCode':
+    'Escanea este código QR con tu billetera compatible con WalletConnect',
+  'qRCodeModal.orCopyTheConnection': 'O copia el enlace de conexión:',
+  'qRCodeModal.connectWithWalletconnect': 'Conectar con WalletConnect',
+  'qRCodeModal.walletconnectQrCode': 'Código QR de WalletConnect',
+
+  'statsCard.fromLastMonth': 'respecto al mes pasado',
+
+  'tabs.tabs': 'Pestañas',
+
+  'toast.close': 'Cerrar',
+
+  'tokenGuide.buyUsdcWithCard': 'Compra USDC con tarjeta o banco',
+  'tokenGuide.purchaseUsdcViaCoinbase':
+    'Compra USDC con Coinbase usando tarjeta, transferencia bancaria o Apple Pay, sin comisiones sobre el USDC. Los fondos van directo a tu billetera conectada.',
+  'tokenGuide.openingCoinbase': 'Abriendo Coinbase...',
+  'tokenGuide.buyWithCoinbase': 'Comprar con Coinbase',
+  'tokenGuide.checkYourNetwork': 'Verifica tu red:',
+  'tokenGuide.yourWalletAddress': '2. Tu dirección de billetera:',
+  'tokenGuide.fundYourWalletUsing': 'Agrega fondos a tu billetera con:',
+  'tokenGuide.metamaskCoinbase': 'MetaMask/Coinbase:',
+  'tokenGuide.majorExchanges': 'Exchanges principales:',
+  'tokenGuide.coinbase': 'Coinbase',
+  'tokenGuide.binance': 'Binance',
+  'tokenGuide.kraken': 'Kraken',
+  'tokenGuide.cryptoCom': 'Crypto.com',
+  'tokenGuide.easycrypto': 'EasyCrypto',
+  'tokenGuide.cashConversion': 'Conversión a efectivo:',
+  'tokenGuide.important': 'Importante:',
+
+  'walletInfo.yourWalletInformation': 'Datos de TU billetera',
+  'walletInfo.walletAddress': 'Dirección de billetera:',
+  'walletInfo.loading': 'Cargando...',
+  'walletInfo.network': 'Red:',
+
+  'walletRegistrationPrereq.prerequisites': 'Requisitos previos',
+  'walletRegistrationPrereq.registerADifferentAddress': 'Registrar otra dirección',
+  'walletRegistrationPrereq.firstTransactionsFree': 'Las primeras 100 transacciones son gratis',
+  'walletRegistrationPrereq.registerMyWallet': 'Registrar mi billetera',
+  'walletRegistrationPrereq.walletRegistration': 'Registro de billetera',
+
+  'wizard.processing': 'Procesando...',
+
+  'addFundsModal.transferFromAnotherWallet': 'Transferir desde otra billetera',
+  'addFundsModal.orSendManuallyTo': 'O envía manualmente a esta dirección',
+  'addFundsModal.back': 'Atrás',
+
+  'arbiterPanel.readingTheArbiterSeat': 'Consultando el puesto de árbitro…',
+  'arbiterPanel.arbiterSeat': 'Puesto de árbitro',
+  'arbiterPanel.nominateAnArbiter': 'Nominar un árbitro',
+  'arbiterPanel.namingTheSameAddress':
+    'Nombrar la misma dirección que la otra parte lo designa de inmediato.',
+  'arbiterPanel.thatIsNotA': 'Esa no es una dirección de billetera válida.',
+
+  'connectPaymentStage.signInToProtect':
+    'Inicia sesión para proteger tu pago: si alguna vez hay un problema, podrás abrir una disputa.',
+  'connectPaymentStage.backToPaymentOptions': 'Volver a las opciones de pago',
+
+  'contractAcceptance.contractAcceptedSuccessfully': '¡Contrato aceptado correctamente!',
+  'contractAcceptance.contractBeingProcessed': 'Procesando el contrato',
+  'contractAcceptance.amount': 'Monto:',
+  'contractAcceptance.seller': 'Vendedor:',
+  'contractAcceptance.description': 'Descripción:',
+  'contractAcceptance.thisContractIsCurrently':
+    'Este contrato se está procesando. Espera y actualiza la página para ver los cambios.',
+  'contractAcceptance.processing': 'Procesando...',
+  'contractAcceptance.makeTimeLockPayment': 'Realizar el pago con liberación programada',
+  'contractAcceptance.yourBalance': 'Tu saldo:',
+  'contractAcceptance.insufficientBalance': 'Saldo insuficiente:',
+
+  'contractCard.blockchainError': 'Error de blockchain',
+  'contractCard.buyer': 'Comprador:',
+  'contractCard.payoutAt': 'Liberación:',
+  'contractCard.viewContractOnExplorer': 'Ver el contrato en el explorador',
+
+  'contractDetailsModal.timeRemaining': 'Tiempo restante',
+  'contractDetailsModal.expires': 'Vence',
+  'contractDetailsModal.participants': 'Participantes',
+  'contractDetailsModal.pendingAcceptance': 'Pendiente de aceptación',
+  'contractDetailsModal.contractInformation': 'Información del contrato',
+  'contractDetailsModal.created': 'Creado',
+  'contractDetailsModal.expiryDate': 'Fecha de vencimiento',
+  'contractDetailsModal.expired': '⚠️ Vencido',
+  'contractDetailsModal.contractAddress': 'Dirección del contrato',
+  'contractDetailsModal.viewOnExplorer': 'Ver en el explorador ↗',
+  'contractDetailsModal.fundingStatus': 'Estado de los fondos',
+  'contractDetailsModal.funded': '✓ Con fondos',
+  'contractDetailsModal.notFunded': '⚠️ Sin fondos',
+  'contractDetailsModal.statusUnknown': '— Estado desconocido',
+  'contractDetailsModal.state': 'Estado',
+  'contractDetailsModal.disputeInformation': 'Información de la disputa',
+  'contractDetailsModal.refundDetails': 'Detalles del reembolso:',
+  'contractDetailsModal.refundPercentageNotYet':
+    'Todavía no se determinó el porcentaje de reembolso',
+  'contractDetailsModal.disputeResolutionNotes': 'Notas de la resolución de la disputa',
+  'contractDetailsModal.resolutionDetails': 'Detalles de la resolución:',
+  'contractDetailsModal.sharePaymentLink': 'Compartir el enlace de pago',
+  'contractDetailsModal.sendThisLinkTo':
+    'Envía este enlace al comprador para que pague de inmediato:',
+  'contractDetailsModal.copied': '¡Copiado!',
+  'contractDetailsModal.copy': 'Copiar',
+  'contractDetailsModal.close': 'Cerrar',
+  'contractDetailsModal.viewOnBlockchain': 'Ver en la blockchain ↗',
+  'contractDetailsModal.copyContractId': 'Copiar el ID del contrato',
+  'contractDetailsModal.contractDetails': 'Detalles del contrato',
+
+  'contractList.tryAgain': 'Reintentar',
+  'contractList.noContractsFound': 'No se encontraron contratos',
+  'contractList.noContractsAreCurrently': 'Por ahora no hay contratos disponibles en el sistema.',
+  'contractList.noContractsMatchYour': 'Ningún contrato coincide con tus filtros',
+  'contractList.tryAdjustingYourFilter': 'Prueba ajustando los filtros.',
+  'contractList.filterByStatus': 'Filtrar por estado',
+  'contractList.allStatuses': 'Todos los estados',
+  'contractList.pending': 'Pendiente',
+  'contractList.active': 'Activo',
+  'contractList.expired': 'Vencido',
+  'contractList.disputed': 'En disputa',
+  'contractList.resolved': 'Resuelto',
+  'contractList.claimed': 'Reclamado',
+
+  'contractListView.search': 'Buscar',
+  'contractListView.status': 'Estado',
+  'contractListView.clearFilters': 'Limpiar filtros',
+  'contractListView.searchByDescriptionEmail': 'Busca por descripción, correo o dirección...',
+
+  'createContract.includesFeeAmountMust':
+    '(incluye la comisión de $1; el monto debe superar $1, o ser exactamente 0.001 para tus pruebas)',
+  'createContract.yourLocalTime': '(Tu hora local)',
+  'createContract.fundsWillBeReleased':
+    'Los fondos se liberarán a esta hora (tu zona horaria local)',
+  'createContract.requestPaymentFromBuyer': 'Solicitar el pago al comprador:',
+  'createContract.searchFarcasterUserOr': 'Busca un usuario de Farcaster o ingresa un correo',
+  'createContract.youCanSearchFor':
+    'Puedes buscar usuarios de Farcaster o ingresar una dirección de correo',
+  'createContract.briefDescriptionOfThe':
+    'Breve descripción del acuerdo de depósito en garantía...',
+
+  'customArbiterNotice.customDisputeResolver': 'Resolutor de disputas personalizado',
+  'customArbiterNotice.thisContractUsesA':
+    'Este contrato usa un árbitro no estándar elegido por el vendedor. Si surge una disputa, será él, y no el administrador de la aplicación, quien decida el resultado. Verifica que confías en este árbitro antes de pagar.',
+  'customArbiterNotice.copyArbiterAddress': 'Copiar la dirección del árbitro',
+
+  'disputeManagementModal.settleThisDispute': 'Resolver esta disputa',
+  'disputeManagementModal.product': 'Producto:',
+  'disputeManagementModal.discussion': 'Conversación',
+  'disputeManagementModal.noDisputeEntriesYet': 'Todavía no hay mensajes en la disputa',
+  'disputeManagementModal.adminNotes': 'Notas del administrador',
+  'disputeManagementModal.submitYourSettlementFigure': 'Envía tu propuesta de acuerdo',
+  'disputeManagementModal.whateverYouSubmitIs':
+    'Lo que envíes es una oferta vinculante, no una propuesta.',
+  'disputeManagementModal.youCanReviseYour':
+    'Puedes cambiar tu cifra las veces que quieras hasta que dos coincidan.',
+  'disputeManagementModal.yourCommentMaxCharacters': 'Tu comentario (máximo 160 caracteres)',
+  'disputeManagementModal.settlementFigurePercentageTo':
+    'Cifra del acuerdo: porcentaje para el comprador (0-100 %)',
+  'disputeManagementModal.thisSettlesTheDispute': 'Esto resuelve la disputa.',
+  'disputeManagementModal.cancel': 'Cancelar',
+  'disputeManagementModal.sending': 'Enviando…',
+  'disputeManagementModal.explainYourPositionIn': 'Explica tu posición en la disputa...',
+
+  'disputeModal.raiseADispute': 'Abrir una disputa',
+  'disputeModal.disputeReason': 'Motivo de la disputa',
+  'disputeModal.suggestedSplitToBuyer': 'Reparto sugerido (% para el comprador)',
+  'disputeModal.pleaseDescribeTheReason': 'Describe el motivo de esta disputa...',
+
+  'enhancedContractCard.yourRole': 'Tu rol',
+  'enhancedContractCard.funded': 'Con fondos',
+  'enhancedContractCard.viewDetails': 'Ver detalles',
+
+  'paymentActionPanel.connectedWallet': 'Billetera conectada',
+  'paymentActionPanel.copied': 'Copiado',
+  'paymentActionPanel.loading': 'Cargando…',
+  'paymentActionPanel.addFundsToThis': 'Agregar fondos a esta billetera',
+  'paymentActionPanel.payFromExternalWallet': 'Pagar desde una billetera externa',
+  'paymentActionPanel.copyFullWalletAddress': 'Copiar la dirección completa de la billetera',
+
+  'paymentMethodChoice.payByLinkQr': 'Pagar por enlace o código QR',
+  'paymentMethodChoice.sendFromAnyWallet':
+    'Envía desde cualquier billetera; no hace falta conectarla',
+
+  'paymentProgress.paymentProgress': 'Progreso del pago',
+
+  'paymentRequestIntro.paymentRequest': 'Solicitud de pago',
+  'paymentRequestIntro.howThisWorks': 'Cómo funciona',
+
+  'pendingContractCard.makePayment': 'Realizar el pago',
+
+  'qrPaymentPanel.checkingForYourPayment': 'Buscando tu pago…',
+  'qrPaymentPanel.creatingContract': 'Creando el contrato...',
+  'qrPaymentPanel.openInWalletApp': 'Abrir en la app de la billetera',
+  'qrPaymentPanel.tapToOpenYour': 'Toca para abrir tu app de billetera con el pago ya cargado',
+  'qrPaymentPanel.payToAddress': 'Dirección de pago',
+  'qrPaymentPanel.paymentInstructions': 'Instrucciones de pago',
+  'qrPaymentPanel.checking': 'Comprobando...',
+  'qrPaymentPanel.paymentConfirmed': '¡Pago confirmado!',
+
+  'standingFiguresPanel.readingTheCurrentFigures': 'Leyendo las cifras actuales desde la cadena…',
+  'standingFiguresPanel.theStandingFiguresCould':
+    'No se pudieron leer las cifras vigentes desde la cadena. Enviar la tuya sigue siendo seguro (el contrato mismo comprueba si coinciden), pero no puedes ver qué cifra mantiene la otra parte.',
+  'standingFiguresPanel.twoFiguresMatchedAnd':
+    'Dos cifras coincidieron y los fondos se movieron en esa misma transacción. No hace falta nada más y aquí ya no se puede cambiar nada.',
+  'standingFiguresPanel.figuresStandingOnChain': 'Cifras vigentes en la cadena',
+  'standingFiguresPanel.anyTwoOfThese':
+    'Si dos de estas cifras coinciden, la disputa se resuelve de inmediato. Enviar una cifra igual a alguna de las de abajo paga el depósito en esa misma transacción.',
+  'standingFiguresPanel.nobodyHasSubmittedA': 'Todavía nadie ha enviado una cifra.',
+  'standingFiguresPanel.noFigureSubmitted': 'Sin cifra enviada',
+  'standingFiguresPanel.noArbiterIsSeated':
+    'No hay árbitro designado, así que solo el comprador y el destinatario pueden resolverlo entre ellos.',
+
+  'connectWalletEmbedded.emailSocialSignIn': 'Inicio de sesión con correo y redes no disponible',
+  'connectWalletEmbedded.whichOurEmailSocial':
+    ', del que depende nuestro inicio de sesión con correo o redes. Aún puedes conectarte con MetaMask, Coinbase Wallet o el QR de WalletConnect.',
+
+  'emailCollection.settingUpYourAccount': 'Configurando tu cuenta...',
+
+  'providerSelector.connectToGetStarted': 'Conéctate para empezar',
+  'providerSelector.chooseHowYouD': 'Elige cómo quieres conectarte',
+  'providerSelector.emailSocialLogin': 'Correo / redes sociales',
+  'providerSelector.googleEmailOrMetamask': 'Google, correo o MetaMask',
+  'providerSelector.connectWallet': 'Conectar billetera',
+  'providerSelector.trustWalletCoinbaseAnd': 'Trust Wallet, Coinbase y más',
+
+  'walletSignaturePrompt.checkYourWallet': 'Revisa tu billetera.',
+  'walletSignaturePrompt.approveTheSignatureTo':
+    'Aprueba la firma para mantener la sesión iniciada. No se mueven fondos ni se autoriza ningún pago.',
+  'walletSignaturePrompt.thisOneMovesFunds': 'Esta sí mueve fondos.',
+
+  'farcasterAuth.loadingConfiguration': 'Cargando la configuración...',
+  'farcasterAuth.loadingFarcasterAuth': 'Cargando la autenticación de Farcaster...',
+  'farcasterAuth.farcasterAuthData': 'Datos de autenticación de Farcaster:',
+  'farcasterAuth.wallet': 'Billetera:',
+  'farcasterAuth.fid': 'FID:',
+  'farcasterAuth.username': 'Nombre de usuario:',
+  'farcasterAuth.displayName': 'Nombre para mostrar:',
+  'farcasterAuth.ensName': 'Nombre ENS:',
+  'farcasterAuth.profileImage': 'Imagen de perfil:',
+  'farcasterAuth.authToken': 'Token de autenticación:',
+
+  'enhancedDashboard.demoModeActive': 'Modo demostración activo',
+  'enhancedDashboard.youReViewingSample':
+    'Estás viendo datos de ejemplo para explorar la interfaz.',
+  'enhancedDashboard.exitDemo': 'Salir de la demostración',
+  'enhancedDashboard.yourPaymentAgreements': 'Tus acuerdos de pago',
+  'enhancedDashboard.refreshing': 'Actualizando...',
+  'enhancedDashboard.refresh': 'Actualizar',
+  'enhancedDashboard.exporting': 'Exportando...',
+  'enhancedDashboard.exportReport': 'Exportar informe',
+  'enhancedDashboard.active': 'Activos',
+  'enhancedDashboard.pending': 'Pendientes',
+  'enhancedDashboard.completed': 'Completados',
+  'enhancedDashboard.totalValue': 'Valor total',
+  'enhancedDashboard.searchPaymentAgreements': 'Buscar acuerdos de pago...',
+
+  'progressChecklist.completeTheseStepsTo':
+    'Completa estos pasos para aprovechar al máximo tu plataforma de depósito en garantía',
+  'progressChecklist.progress': 'Progreso',
+  'progressChecklist.congratulationsYouVeCompleted':
+    '¡Felicidades! Has completado la lista de bienvenida.',
+  'progressChecklist.dismissChecklist': 'Ocultar la lista',
+
+  'tourProvider.skipTour': 'Saltar el recorrido',
+  'tourProvider.back': 'Atrás',
+
+  'transactionWalkthrough.letSCreateA': 'Vamos a crear una solicitud de pago de ejemplo',
+  'transactionWalkthrough.weLlCreateA':
+    'Crearemos una solicitud de pago de práctica para mostrarte cómo funciona la protección del depósito en garantía. Es solo para aprender: no se enviará ningún correo real.',
+  'transactionWalkthrough.tip': 'Consejo:',
+  'transactionWalkthrough.anEscrowPaymentProtects':
+    'Un pago en depósito en garantía protege al comprador y al vendedor porque retiene los fondos de forma segura hasta que se confirma la entrega.',
+  'transactionWalkthrough.buyerSEmailAddress': 'Correo electrónico del comprador',
+  'transactionWalkthrough.theBuyerWillReceive':
+    'El comprador recibirá un correo con las instrucciones de pago',
+  'transactionWalkthrough.howThisWorks': '💡 Cómo funciona:',
+  'transactionWalkthrough.theBuyerGetsA':
+    '• El comprador recibe un enlace seguro para depositar los fondos',
+  'transactionWalkthrough.fundsAreHeldSafely':
+    '• Los fondos quedan retenidos de forma segura hasta que entregues',
+  'transactionWalkthrough.onceDeliveredFundsAre':
+    '• Una vez entregado, los fondos se liberan automáticamente a tu favor',
+  'transactionWalkthrough.serviceProductDescription': 'Descripción del servicio o producto',
+  'transactionWalkthrough.beSpecificThisHelps':
+    'Sé específico: ayuda a evitar disputas más adelante',
+  'transactionWalkthrough.paymentAmountUsd': 'Monto del pago (USD)',
+  'transactionWalkthrough.yourProtection': '✅ Tu protección:',
+  'transactionWalkthrough.fundsAreGuaranteedOnce':
+    '• Los fondos están garantizados en cuanto paga el comprador',
+  'transactionWalkthrough.noChargebacksOrPayment': '• Sin contracargos ni reversiones de pago',
+  'transactionWalkthrough.automaticReleaseWhenTime':
+    '• Liberación automática cuando vence el plazo',
+  'transactionWalkthrough.deliveryWindow': 'Plazo de entrega',
+  'transactionWalkthrough.hours': 'Horas',
+  'transactionWalkthrough.minutes': 'Minutos',
+  'transactionWalkthrough.afterThisTimeYou':
+    'Pasado este plazo, puedes reclamar el pago aunque el comprador lo dispute',
+  'transactionWalkthrough.timelineExample': '⏰ Ejemplo de cronología:',
+  'transactionWalkthrough.buyerPays': '1. El comprador paga:',
+  'transactionWalkthrough.fundsLockedInEscrow': 'Fondos bloqueados en el depósito en garantía',
+  'transactionWalkthrough.youDeliver': '2. Tú entregas:',
+  'transactionWalkthrough.timeExpires': '3. Vence el plazo:',
+  'transactionWalkthrough.youCanClaimPayment': 'Puedes reclamar el pago',
+  'transactionWalkthrough.paymentRequest': 'Solicitud de pago',
+  'transactionWalkthrough.service': 'Servicio:',
+  'transactionWalkthrough.amount': 'Monto:',
+  'transactionWalkthrough.deliveryWindow2': 'Plazo de entrega:',
+  'transactionWalkthrough.buyer': 'Comprador:',
+  'transactionWalkthrough.nextStep': 'Siguiente paso:',
+  'transactionWalkthrough.greatJobYouRe': '¡Bien hecho! Ya puedes recibir pagos reales',
+  'transactionWalkthrough.youVeLearnedHow':
+    'Ya sabes cómo funciona la protección del depósito en garantía. Ahora puedes crear solicitudes de pago reales con confianza.',
+  'transactionWalkthrough.whatYouLearned': 'Lo que aprendiste:',
+  'transactionWalkthrough.howToCreateSecure': '✅ Cómo crear solicitudes de pago seguras',
+  'transactionWalkthrough.settingAppropriateDeliveryTimelines':
+    '✅ Cómo fijar plazos de entrega adecuados',
+  'transactionWalkthrough.howEscrowProtectionWorks':
+    '✅ Cómo protege el depósito en garantía a ambas partes',
+  'transactionWalkthrough.thePaymentAndDelivery': '✅ El proceso de pago y entrega',
+  'transactionWalkthrough.createRealPaymentRequest': 'Crear una solicitud de pago real',
+  'transactionWalkthrough.goToDashboard': 'Ir al panel',
+  'transactionWalkthrough.skipTutorial': 'Saltar el tutorial',
+  'transactionWalkthrough.previous': 'Anterior',
+  'transactionWalkthrough.websiteDesignForSmall': 'Diseño de sitio web para una pequeña empresa...',
+
+  'dashboardPage.dashboard': 'Panel',
+  'dashboardPage.connectYourWalletTo': 'Conecta tu billetera para continuar.',
+  'dashboardPage.youNeedToConnect': 'Necesitas conectar tu billetera para ver tus contratos.',
+  'dashboardPage.yourContracts': 'Tus contratos.',
+  'dashboardPage.manageEscrowContractsAnd':
+    'Administra los contratos de depósito en garantía y consulta el historial de transacciones.',
+  'dashboardPage.requestPayment': 'Solicitar un pago',
+  'dashboardPage.manageWallet': 'Administrar la billetera',
+  'dashboardPage.buyUsdc': 'Comprar USDC',
+  'dashboardPage.dashboardHeader': 'Encabezado del panel',
+  'dashboardPage.wallet': 'Billetera',
+  'dashboardPage.contracts': 'Contratos',
 };

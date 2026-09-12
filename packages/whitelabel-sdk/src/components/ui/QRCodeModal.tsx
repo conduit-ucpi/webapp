@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import Modal from './Modal';
 import Button from './Button';
+import { useT } from '../../i18n';
 
 interface QRCodeModalProps {
   uri: string;
@@ -8,6 +9,7 @@ interface QRCodeModalProps {
 }
 
 export default function QRCodeModal({ uri, onClose }: QRCodeModalProps) {
+  const t = useT();
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
   const [copied, setCopied] = useState(false);
 
@@ -28,18 +30,16 @@ export default function QRCodeModal({ uri, onClose }: QRCodeModalProps) {
   };
 
   return (
-    <Modal isOpen={true} onClose={onClose} title="Connect with WalletConnect" children={
+    <Modal isOpen={true} onClose={onClose} title={t('qRCodeModal.connectWithWalletconnect')} children={
       <div className="space-y-4">
         <div className="text-center">
-          <p className="text-sm text-gray-600 mb-4">
-            Scan this QR code with your WalletConnect-compatible wallet
-          </p>
+          <p className="text-sm text-gray-600 mb-4">{t('qRCodeModal.scanThisQrCode')}</p>
           
           {qrCodeUrl && (
             <div className="inline-block p-4 bg-white rounded-lg border border-gray-200">
               <img
                 src={qrCodeUrl}
-                alt="WalletConnect QR Code"
+                alt={t('qRCodeModal.walletconnectQrCode')}
                 className="w-64 h-64"
               />
             </div>
@@ -47,7 +47,7 @@ export default function QRCodeModal({ uri, onClose }: QRCodeModalProps) {
         </div>
 
         <div className="space-y-2">
-          <p className="text-xs text-gray-500 text-center">Or copy the connection link:</p>
+          <p className="text-xs text-gray-500 text-center">{t('qRCodeModal.orCopyTheConnection')}</p>
           
           <div className="flex space-x-2">
             <input
@@ -72,9 +72,7 @@ export default function QRCodeModal({ uri, onClose }: QRCodeModalProps) {
             onClick={onClose}
             variant="secondary"
             className="w-full"
-          >
-            Cancel
-          </Button>
+          >{t('mobileWalletPrompt.cancel')}</Button>
         </div>
       </div>
     } />

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useT } from '../../i18n';
 
 interface CustomArbiterNoticeProps {
   arbiterAddress?: string | null;
@@ -19,6 +20,7 @@ interface CustomArbiterNoticeProps {
  * address to the clipboard.
  */
 export default function CustomArbiterNotice({ arbiterAddress }: CustomArbiterNoticeProps) {
+  const t = useT();
   const [isCopied, setIsCopied] = useState(false);
 
   // Only render when a non-empty arbiter address is set. Presence of the
@@ -43,12 +45,8 @@ export default function CustomArbiterNotice({ arbiterAddress }: CustomArbiterNot
       data-testid="custom-arbiter-notice"
       className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md p-4 mb-6"
     >
-      <p className="text-sm font-medium text-yellow-800 dark:text-yellow-300">
-        Custom dispute resolver
-      </p>
-      <p className="text-sm text-yellow-800 dark:text-yellow-300 mt-1">
-        This contract uses a non-standard arbiter chosen by the seller. If a dispute arises, they — not the application admin — will decide the outcome. Verify you trust this arbiter before paying.
-      </p>
+      <p className="text-sm font-medium text-yellow-800 dark:text-yellow-300">{t('customArbiterNotice.customDisputeResolver')}</p>
+      <p className="text-sm text-yellow-800 dark:text-yellow-300 mt-1">{t('customArbiterNotice.thisContractUsesA')}</p>
       <p className="text-sm text-yellow-800 dark:text-yellow-300 mt-2">
         Arbiter:{' '}
         <span
@@ -61,7 +59,7 @@ export default function CustomArbiterNotice({ arbiterAddress }: CustomArbiterNot
         <button
           type="button"
           onClick={handleCopy}
-          aria-label="Copy arbiter address"
+          aria-label={t('customArbiterNotice.copyArbiterAddress')}
           data-testid="custom-arbiter-copy-button"
           className="inline-flex items-center text-xs font-medium text-yellow-800 dark:text-yellow-300 underline decoration-dotted hover:decoration-solid focus:outline-none focus:ring-1 focus:ring-yellow-500 rounded"
         >

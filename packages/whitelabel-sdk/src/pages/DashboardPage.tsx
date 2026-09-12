@@ -9,8 +9,10 @@ import ExpandableHash from '@/components/ui/ExpandableHash';
 import { useWalletAddress } from '@/hooks/useWalletAddress';
 import DashboardTour from '@/components/onboarding/DashboardTour';
 import { btnPrimary } from '@/utils/landingStyles';
+import { useT } from '../i18n';
 
 export default function Dashboard2() {
+  const t = useT();
   const { user, isLoading, isConnected } = useAuth();
   const { walletAddress, isLoading: isWalletAddressLoading } = useWalletAddress();
   const router = useRouter();
@@ -49,18 +51,12 @@ export default function Dashboard2() {
         </Head>
         <div className="bg-white dark:bg-secondary-900 transition-colors min-h-[80vh] flex items-center">
           <div className="max-w-5xl mx-auto px-6 sm:px-8 w-full text-center">
-            <p className="text-xs tracking-[0.2em] uppercase text-secondary-400 dark:text-secondary-500 mb-6">
-              Dashboard
-            </p>
+            <p className="text-xs tracking-[0.2em] uppercase text-secondary-400 dark:text-secondary-500 mb-6">{t('dashboardPage.dashboard')}</p>
             <h1
               className="text-3xl sm:text-4xl font-light text-secondary-900 dark:text-white leading-snug mb-4"
               style={{ fontFamily: "'Newsreader', Georgia, serif" }}
-            >
-              Connect your wallet to continue.
-            </h1>
-            <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-10 max-w-md mx-auto">
-              You need to connect your wallet to view your contracts.
-            </p>
+            >{t('dashboardPage.connectYourWalletTo')}</h1>
+            <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-10 max-w-md mx-auto">{t('dashboardPage.youNeedToConnect')}</p>
             {/* Same wallet gate as /create and /contract-pay - signing in is the
                 same decision wherever you hit it, so it looks the same too. */}
             <WalletChoiceCards autoConnect={autoConnect} className="mx-auto w-full max-w-md text-left" />
@@ -205,28 +201,22 @@ export default function Dashboard2() {
       <div className="bg-white dark:bg-secondary-900 transition-colors dashboard2-flat">
 
         {/* Header */}
-        <section className="flex items-center" aria-label="Dashboard header">
+        <section className="flex items-center" aria-label={t('dashboardPage.dashboardHeader')}>
           <div className="max-w-5xl mx-auto px-6 sm:px-8 pt-24 lg:pt-32 pb-10 lg:pb-12 w-full">
             <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6" data-tour="dashboard-header">
               <div>
-                <p className="text-xs tracking-[0.2em] uppercase text-secondary-400 dark:text-secondary-500 mb-3">
-                  Dashboard
-                </p>
+                <p className="text-xs tracking-[0.2em] uppercase text-secondary-400 dark:text-secondary-500 mb-3">{t('dashboardPage.dashboard')}</p>
                 <h1
                   className="text-3xl sm:text-4xl lg:text-5xl font-semibold text-secondary-900 dark:text-white leading-[1.1] tracking-tight"
-                >
-                  Your contracts.
-                </h1>
+                >{t('dashboardPage.yourContracts')}</h1>
                 <p
                   className="mt-4 text-sm text-secondary-500 dark:text-secondary-400 max-w-md leading-relaxed"
                   style={{ fontFamily: "'Newsreader', Georgia, serif" }}
-                >
-                  Manage escrow contracts and track transaction history.
-                </p>
+                >{t('dashboardPage.manageEscrowContractsAnd')}</p>
               </div>
 
               <Link href="/create" data-tour="create-button">
-                <button className={btnPrimary}>Request Payment</button>
+                <button className={btnPrimary}>{t('dashboardPage.requestPayment')}</button>
               </Link>
             </div>
           </div>
@@ -235,7 +225,7 @@ export default function Dashboard2() {
         {/* Wallet bar */}
         <section
           className="border-t border-secondary-100 dark:border-secondary-800"
-          aria-label="Wallet"
+          aria-label={t('dashboardPage.wallet')}
         >
           <div className="max-w-5xl mx-auto px-6 sm:px-8 py-4" data-tour="wallet-section">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -259,15 +249,11 @@ export default function Dashboard2() {
                 <Link
                   href="/wallet"
                   className="text-xs text-secondary-500 dark:text-secondary-400 hover:text-secondary-700 dark:hover:text-secondary-300 transition-colors"
-                >
-                  Manage wallet
-                </Link>
+                >{t('dashboardPage.manageWallet')}</Link>
                 <Link
                   href="/wallet"
                   className="text-xs text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-colors"
-                >
-                  Buy USDC
-                </Link>
+                >{t('dashboardPage.buyUsdc')}</Link>
               </div>
             </div>
           </div>
@@ -276,7 +262,7 @@ export default function Dashboard2() {
         {/* Main content */}
         <section
           className="border-t border-secondary-100 dark:border-secondary-800"
-          aria-label="Contracts"
+          aria-label={t('dashboardPage.contracts')}
         >
           <div className="max-w-5xl mx-auto px-6 sm:px-8 py-6 lg:py-8">
             <EnhancedDashboard />

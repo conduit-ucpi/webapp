@@ -5,6 +5,7 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { useMarketplaceActions } from '@/hooks/useMarketplaceActions';
 import { formatTimestamp } from '@/utils/validation';
 import type { ArbiterState } from '@/types/marketplace';
+import { useT } from '../../i18n';
 
 interface ArbiterPanelProps {
   contractAddress: string;
@@ -28,6 +29,7 @@ interface ArbiterPanelProps {
  *    only accepts clones matching the new codehash.
  */
 export default function ArbiterPanel({ contractAddress, state, loading, onChanged }: ArbiterPanelProps) {
+  const t = useT();
   const { nominateArbiter, evictArbiter, seatDefaultArbiter } = useMarketplaceActions();
   const [candidate, setCandidate] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
@@ -35,7 +37,7 @@ export default function ArbiterPanel({ contractAddress, state, loading, onChange
   const [notice, setNotice] = useState<string | null>(null);
 
   if (loading && !state) {
-    return <div className="text-sm text-gray-500 dark:text-secondary-400">Reading the arbiter seat…</div>;
+    return <div className="text-sm text-gray-500 dark:text-secondary-400">{t('arbiterPanel.readingTheArbiterSeat')}</div>;
   }
 
   // Nothing to offer: either not a marketplace-capable escrow, or no action is currently live.
@@ -71,7 +73,7 @@ export default function ArbiterPanel({ contractAddress, state, loading, onChange
   return (
     <div className="rounded-lg border border-gray-200 dark:border-secondary-700 p-4 space-y-4">
       <div>
-        <h4 className="font-medium text-gray-900 dark:text-white">Arbiter seat</h4>
+        <h4 className="font-medium text-gray-900 dark:text-white">{t('arbiterPanel.arbiterSeat')}</h4>
         <p className="text-sm text-gray-600 dark:text-secondary-300 mt-1">
           {state.seated ? (
             <>
@@ -90,9 +92,7 @@ export default function ArbiterPanel({ contractAddress, state, loading, onChange
       {/* Nominate — matching names seat that candidate instantly, in the nominating transaction. */}
       {state.canNominate && (
         <div className="space-y-2">
-          <label htmlFor="arbiter-candidate" className="block text-sm font-medium text-gray-700 dark:text-secondary-200">
-            Nominate an arbiter
-          </label>
+          <label htmlFor="arbiter-candidate" className="block text-sm font-medium text-gray-700 dark:text-secondary-200">{t('arbiterPanel.nominateAnArbiter')}</label>
 
           {/*
             ⚠️ SAFETY-CRITICAL, AND THE ONLY PROTECTION THERE IS (§15.1, §3.3B). The arbiter
@@ -101,7 +101,7 @@ export default function ArbiterPanel({ contractAddress, state, loading, onChange
             if this warning is omitted, nothing else catches it.
           */}
           <div className="rounded-md border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-3 text-sm text-amber-800 dark:text-amber-200">
-            <strong>Naming the same address as the other party seats them immediately.</strong> It
+            <strong>{t('arbiterPanel.namingTheSameAddress')}</strong> It
             happens in this transaction and cannot be undone. There is no register of approved
             arbiters and no check on who this address belongs to — only that they are not the buyer
             or recipient.
@@ -149,7 +149,7 @@ export default function ArbiterPanel({ contractAddress, state, loading, onChange
           </div>
 
           {candidate && !candidateIsValid && (
-            <p className="text-xs text-red-600 dark:text-red-400">That is not a valid wallet address.</p>
+            <p className="text-xs text-red-600 dark:text-red-400">{t('arbiterPanel.thatIsNotA')}</p>
           )}
         </div>
       )}

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useConfig } from '@/components/auth/ConfigProvider';
+import { useT } from '../../i18n';
 
 interface ExpandableHashProps {
   hash: string;
@@ -12,6 +13,7 @@ export default function ExpandableHash({
   className = '', 
   showCopyButton = true 
 }: ExpandableHashProps) {
+  const t = useT();
   const { config } = useConfig();
   const [isExpanded, setIsExpanded] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
@@ -75,7 +77,7 @@ export default function ExpandableHash({
           type="button"
           onClick={handleCopy}
           className="p-1 hover:bg-gray-100 rounded transition-colors"
-          title="Copy to clipboard"
+          title={t('expandableHash.copyToClipboard')}
         >
           {isCopied ? (
             <svg className="h-3 w-3 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">

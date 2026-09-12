@@ -1,4 +1,5 @@
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import { useT } from '../../i18n';
 
 export type PaymentStep = {
   id: string;
@@ -20,9 +21,10 @@ interface PaymentProgressProps {
  * Extracted verbatim — the markup was byte-for-byte identical in both pages.
  */
 export default function PaymentProgress({ steps, loadingMessage }: PaymentProgressProps) {
+  const t = useT();
   return (
     <div className="mb-6 p-4 bg-secondary-50 dark:bg-secondary-800 rounded-lg">
-      <h3 className="text-sm font-medium text-secondary-700 dark:text-secondary-200 mb-3">Payment Progress</h3>
+      <h3 className="text-sm font-medium text-secondary-700 dark:text-secondary-200 mb-3">{t('paymentProgress.paymentProgress')}</h3>
       <div className="space-y-2">
         {steps.map((step) => (
           <div key={step.id} className="flex items-center">

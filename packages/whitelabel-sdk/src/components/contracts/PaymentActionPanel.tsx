@@ -4,6 +4,7 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import AddFundsModal from '@/components/contracts/AddFundsModal';
 import { openCoinbaseOnramp } from '@/lib/coinbaseOnramp';
 import { useConfig } from '@/components/auth/ConfigProvider';
+import { useT } from '../../i18n';
 
 interface PaymentActionPanelProps {
   /** Formatted for display, e.g. "1.0000 USDC". */
@@ -72,6 +73,7 @@ export default function PaymentActionPanel({
   addFundsReturnPath,
   resolveEscrowAddress,
 }: PaymentActionPanelProps) {
+  const t = useT();
   const { config } = useConfig();
   // Same gate AddFundsModal uses: no project id, no Coinbase.
   const showCoinbasePay = !!config?.coinbaseProjectId;
@@ -152,9 +154,7 @@ export default function PaymentActionPanel({
     <div className="rounded-xl border border-secondary-200 dark:border-secondary-700 bg-white dark:bg-secondary-800 p-5">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
-          <p className="text-sm font-semibold text-secondary-900 dark:text-white">
-            Connected wallet
-          </p>
+          <p className="text-sm font-semibold text-secondary-900 dark:text-white">{t('paymentActionPanel.connectedWallet')}</p>
           <div className="mt-1 flex items-center gap-2">
             <p className="text-sm font-mono text-secondary-500 dark:text-secondary-400">
               {shortAddress}
@@ -163,11 +163,11 @@ export default function PaymentActionPanel({
               type="button"
               onClick={handleCopyAddress}
               disabled={!walletAddress}
-              aria-label="Copy full wallet address"
+              aria-label={t('paymentActionPanel.copyFullWalletAddress')}
               className="text-secondary-400 hover:text-secondary-900 dark:hover:text-white transition-colors disabled:opacity-40"
             >
               {copied ? (
-                <span className="text-xs font-medium text-green-600 dark:text-green-400">Copied</span>
+                <span className="text-xs font-medium text-green-600 dark:text-green-400">{t('paymentActionPanel.copied')}</span>
               ) : (
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path
@@ -190,7 +190,7 @@ export default function PaymentActionPanel({
             }`}
           >
             {isLoadingBalance ? (
-              <span className="animate-pulse text-secondary-500">Loading…</span>
+              <span className="animate-pulse text-secondary-500">{t('paymentActionPanel.loading')}</span>
             ) : (
               `${balanceFloat.toFixed(4)} ${tokenSymbol}`
             )}
@@ -235,9 +235,7 @@ export default function PaymentActionPanel({
           onClick={() => setShowAddFunds(true)}
           disabled={!canAddFunds || isPaymentInProgress}
           className={actionButton}
-        >
-          Add funds to this wallet
-        </Button>
+        >{t('paymentActionPanel.addFundsToThis')}</Button>
 
         {/* Never gated on balance: this route bypasses the connected wallet. */}
         <Button
@@ -247,9 +245,7 @@ export default function PaymentActionPanel({
           onClick={onPayFromExternalWallet}
           disabled={isPaymentInProgress || isSameAddress}
           className={actionButton}
-        >
-          Pay from external wallet
-        </Button>
+        >{t('paymentActionPanel.payFromExternalWallet')}</Button>
 
         {resolveEscrowAddress && showCoinbasePay && (
           // The note lives INSIDE the button. Beneath it — even tightly spaced —

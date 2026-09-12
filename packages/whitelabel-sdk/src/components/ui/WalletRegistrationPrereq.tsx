@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { useAuth } from '@/components/auth';
 import { btnPrimary, btnOutline } from '@/utils/landingStyles';
+import { useT } from '../../i18n';
 
 export default function WalletRegistrationPrereq() {
+  const t = useT();
   const { config } = useConfig();
   const { connect, disconnect, isConnected, address } = useAuth();
   const [copied, setCopied] = useState(false);
@@ -41,12 +43,10 @@ export default function WalletRegistrationPrereq() {
   return (
     <section
       className="border-t border-secondary-100 dark:border-secondary-800"
-      aria-label="Wallet registration"
+      aria-label={t('walletRegistrationPrereq.walletRegistration')}
     >
       <div className="max-w-5xl mx-auto px-6 sm:px-8 py-16 lg:py-20">
-        <p className="text-xs tracking-[0.2em] uppercase text-secondary-400 dark:text-secondary-500 mb-6">
-          Prerequisites
-        </p>
+        <p className="text-xs tracking-[0.2em] uppercase text-secondary-400 dark:text-secondary-500 mb-6">{t('walletRegistrationPrereq.prerequisites')}</p>
         <h2
           className="text-3xl sm:text-4xl font-light text-secondary-900 dark:text-white leading-snug max-w-2xl mb-4"
           style={{ fontFamily: "'Newsreader', Georgia, serif" }}
@@ -84,14 +84,10 @@ export default function WalletRegistrationPrereq() {
             <button
               onClick={() => disconnect()}
               className={`${btnOutline} mt-4`}
-            >
-              Register a different address
-            </button>
+            >{t('walletRegistrationPrereq.registerADifferentAddress')}</button>
 
             <div className="mt-6 bg-primary-50 dark:bg-primary-900/30 border border-primary-200 dark:border-primary-800 rounded-md px-4 py-3">
-              <p className="text-sm font-medium text-primary-700 dark:text-primary-300 mb-1">
-                First 100 transactions free
-              </p>
+              <p className="text-sm font-medium text-primary-700 dark:text-primary-300 mb-1">{t('walletRegistrationPrereq.firstTransactionsFree')}</p>
               <p className="text-sm text-primary-600 dark:text-primary-400">
                 Email{' '}
                 <a
@@ -105,9 +101,7 @@ export default function WalletRegistrationPrereq() {
             </div>
           </div>
         ) : (
-          <button onClick={handleRegister} className={btnPrimary}>
-            Register My Wallet
-          </button>
+          <button onClick={handleRegister} className={btnPrimary}>{t('walletRegistrationPrereq.registerMyWallet')}</button>
         )}
       </div>
     </section>

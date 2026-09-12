@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Dialog } from '@headlessui/react';
 import { XMarkIcon, DevicePhoneMobileIcon, ArrowRightIcon } from '@heroicons/react/24/outline';
+import { useT } from '../../i18n';
 
 interface MobileWalletPromptProps {
   isOpen: boolean;
@@ -15,6 +16,7 @@ export const MobileWalletPrompt: React.FC<MobileWalletPromptProps> = ({
   walletName = 'your wallet',
   actionType
 }) => {
+  const t = useT();
   const [autoCloseTimer, setAutoCloseTimer] = useState<NodeJS.Timeout | null>(null);
   const actionText = actionType === 'sign' ? 'sign the authentication message' : 'approve the transaction';
 
@@ -52,9 +54,7 @@ export const MobileWalletPrompt: React.FC<MobileWalletPromptProps> = ({
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span>
                 </span>
-              </div>
-              Action Required on Mobile
-            </Dialog.Title>
+              </div>{t('mobileWalletPrompt.actionRequiredOnMobile')}</Dialog.Title>
             <button
               onClick={onClose}
               className="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 transition-colors"
@@ -81,9 +81,7 @@ export const MobileWalletPrompt: React.FC<MobileWalletPromptProps> = ({
             <div className="space-y-2 px-2">
               <div className="flex items-start gap-2">
                 <span className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">💡</span>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  When connecting via QR code, the wallet app doesn't open automatically for subsequent actions.
-                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{t('mobileWalletPrompt.whenConnectingViaQr')}</p>
               </div>
               <div className="flex items-start gap-2">
                 <span className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">📱</span>
@@ -97,15 +95,11 @@ export const MobileWalletPrompt: React.FC<MobileWalletPromptProps> = ({
               <button
                 onClick={onClose}
                 className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
-              >
-                I've completed the action
-              </button>
+              >{t('mobileWalletPrompt.iVeCompletedThe')}</button>
               <button
                 onClick={onClose}
                 className="px-4 py-2.5 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors text-sm font-medium"
-              >
-                Cancel
-              </button>
+              >{t('mobileWalletPrompt.cancel')}</button>
             </div>
           </div>
         </Dialog.Panel>

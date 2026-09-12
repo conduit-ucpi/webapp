@@ -1,6 +1,7 @@
 import { ReactNode } from 'react';
 import Button from './Button';
 import Link from 'next/link';
+import { useT } from '../../i18n';
 
 interface EmptyStateProps {
   illustration?: ReactNode;
@@ -187,10 +188,11 @@ export function NoContractsEmptyState({
 }
 
 export function SearchEmptyState({ searchTerm }: { searchTerm: string }) {
+  const t = useT();
   return (
     <EmptyState
       illustration={<SearchIllustration />}
-      title="No matches found"
+      title={t('emptyState.noMatchesFound')}
       description={`We couldn't find any contracts matching "${searchTerm}". Try adjusting your search terms or browse all contracts instead.`}
       secondaryAction={{
         label: "Clear Search",
@@ -207,10 +209,11 @@ export function SearchEmptyState({ searchTerm }: { searchTerm: string }) {
 }
 
 export function ErrorEmptyState({ onRetry }: { onRetry: () => void }) {
+  const t = useT();
   return (
     <EmptyState
       illustration={<ErrorIllustration />}
-      title="Connection trouble"
+      title={t('emptyState.connectionTrouble')}
       description="We're having trouble loading your contracts right now. This could be due to a temporary network issue or server maintenance."
       action={{
         label: "Try Again",
@@ -226,10 +229,11 @@ export function ErrorEmptyState({ onRetry }: { onRetry: () => void }) {
 
 // New filtered view empty states
 export function ActiveContractsEmptyState() {
+  const t = useT();
   return (
     <EmptyState
       illustration={<FilterEmptyIllustration />}
-      title="No active contracts"
+      title={t('emptyState.noActiveContracts')}
       description="You don't have any active payment contracts right now. Active contracts are those where funds have been deposited and are awaiting completion or dispute."
       action={{
         label: "Create Payment Request",
@@ -247,10 +251,11 @@ export function ActiveContractsEmptyState() {
 }
 
 export function ActionNeededEmptyState() {
+  const t = useT();
   return (
     <EmptyState
       illustration={<FilterEmptyIllustration />}
-      title="All caught up!"
+      title={t('emptyState.allCaughtUp')}
       description="Great news! You don't have any contracts requiring immediate action. No expired contracts to claim, no active contracts to dispute."
       secondaryAction={{
         label: "View All Contracts",
@@ -264,10 +269,11 @@ export function ActionNeededEmptyState() {
 }
 
 export function CompletedContractsEmptyState() {
+  const t = useT();
   return (
     <EmptyState
       illustration={<FilterEmptyIllustration />}
-      title="No completed contracts yet"
+      title={t('emptyState.noCompletedContractsYet')}
       description="Once your payment contracts are successfully fulfilled (either claimed by sellers or resolved through disputes), they'll appear here."
       action={{
         label: "Create Payment Request",
@@ -285,10 +291,11 @@ export function CompletedContractsEmptyState() {
 }
 
 export function DisputedContractsEmptyState() {
+  const t = useT();
   return (
     <EmptyState
       illustration={<FilterEmptyIllustration />}
-      title="No disputed contracts"
+      title={t('emptyState.noDisputedContracts')}
       description="That's a good thing! None of your contracts are currently in dispute. This means all parties are satisfied with their transactions."
       secondaryAction={{
         label: "Learn About Disputes",

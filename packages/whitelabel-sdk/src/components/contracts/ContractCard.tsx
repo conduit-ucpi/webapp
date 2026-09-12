@@ -8,6 +8,7 @@ import ExpandableHash from '@/components/ui/ExpandableHash';
 import StatusBadge from '@/components/ui/StatusBadge';
 import FarcasterNameDisplay from '@/components/ui/FarcasterNameDisplay';
 import { emailsEqual } from '@/utils/address';
+import { useT } from '../../i18n';
 
 interface ContractCardProps {
   contract: Contract | PendingContract;
@@ -19,6 +20,7 @@ interface ContractCardProps {
 }
 
 export default function ContractCard({ contract, onAction, onAccept, isClaimingInProgress, onClaimStart, onClaimComplete }: ContractCardProps) {
+  const t = useT();
   const { user } = useAuth();
   const { config } = useConfig();
   const { walletAddress } = useWalletAddress();
@@ -58,7 +60,7 @@ export default function ContractCard({ contract, onAction, onAccept, isClaimingI
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-primary-600 hover:text-primary-800 transition-colors"
-                title="View contract on Explorer"
+                title={t('contractCard.viewContractOnExplorer')}
               >
                 <ExpandableHash hash={contractAddress} />
               </a>
@@ -79,9 +81,7 @@ export default function ContractCard({ contract, onAction, onAccept, isClaimingI
               size="sm"
             />
             {!isPending && (contract as Contract).blockchainQueryError && (
-              <span className="inline-flex px-2 py-1 text-xs font-medium rounded bg-error-50 text-error-600 border border-error-200" title={(contract as Contract).blockchainQueryError}>
-                Blockchain Error
-              </span>
+              <span className="inline-flex px-2 py-1 text-xs font-medium rounded bg-error-50 text-error-600 border border-error-200" title={(contract as Contract).blockchainQueryError}>{t('contractCard.blockchainError')}</span>
             )}
           </div>
         </div>
@@ -95,7 +95,7 @@ export default function ContractCard({ contract, onAction, onAccept, isClaimingI
 
       <div className="space-y-2 mb-4">
         <div className="flex justify-between text-sm">
-          <span className="text-gray-600">Buyer:</span>
+          <span className="text-gray-600">{t('contractCard.buyer')}</span>
           <div className={`${isBuyer ? 'font-semibold text-primary-600' : ''}`}>
             {isPending ? (
               <FarcasterNameDisplay 
@@ -114,7 +114,7 @@ export default function ContractCard({ contract, onAction, onAccept, isClaimingI
           </div>
         </div>
         <div className="flex justify-between text-sm">
-          <span className="text-gray-600">Seller:</span>
+          <span className="text-gray-600">{t('contractAcceptance.seller')}</span>
           <div className={`${isSeller ? 'font-semibold text-primary-600' : ''}`}>
             {isPending ? (
               <FarcasterNameDisplay 
@@ -133,7 +133,7 @@ export default function ContractCard({ contract, onAction, onAccept, isClaimingI
           </div>
         </div>
         <div className="flex justify-between text-sm">
-          <span className="text-gray-600">Payout at:</span>
+          <span className="text-gray-600">{t('contractCard.payoutAt')}</span>
           <span className="font-semibold">
             {formatTimestamp(contract.expiryTimestamp).date} {formatTimestamp(contract.expiryTimestamp).time}
           </span>

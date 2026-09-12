@@ -1,5 +1,6 @@
 import React from 'react';
 import type { WalletPrompt } from '@/lib/auth/walletPromptChannel';
+import { useT } from '../../i18n';
 
 /**
  * Shown while the wallet has a prompt open.
@@ -23,6 +24,7 @@ import type { WalletPrompt } from '@/lib/auth/walletPromptChannel';
  * renders behind the wallet prompt and is never seen.
  */
 export default function WalletSignaturePrompt({ prompt }: { prompt: WalletPrompt }) {
+  const t = useT();
   return (
     <div
       role="status"
@@ -30,19 +32,12 @@ export default function WalletSignaturePrompt({ prompt }: { prompt: WalletPrompt
       className="fixed inset-x-0 top-4 z-[1000000] flex justify-center px-4 pointer-events-none"
     >
       <div className="max-w-sm rounded-lg border border-secondary-200 dark:border-secondary-700 bg-white dark:bg-secondary-900 px-4 py-3 shadow-lg">
-        <p className="text-sm font-medium text-secondary-900 dark:text-white">
-          Check your wallet.
-        </p>
+        <p className="text-sm font-medium text-secondary-900 dark:text-white">{t('walletSignaturePrompt.checkYourWallet')}</p>
         {prompt.kind === 'signature' ? (
-          <p className="mt-1 text-sm text-secondary-600 dark:text-secondary-400">
-            Approve the signature to stay signed in. No funds move and no payments are
-            approved.
-          </p>
+          <p className="mt-1 text-sm text-secondary-600 dark:text-secondary-400">{t('walletSignaturePrompt.approveTheSignatureTo')}</p>
         ) : (
           <p className="mt-1 text-sm text-secondary-600 dark:text-secondary-400">
-            <span className="font-medium text-secondary-900 dark:text-white">
-              This one moves funds.
-            </span>{' '}
+            <span className="font-medium text-secondary-900 dark:text-white">{t('walletSignaturePrompt.thisOneMovesFunds')}</span>{' '}
             You are {prompt.summary}. Approving is final.
           </p>
         )}

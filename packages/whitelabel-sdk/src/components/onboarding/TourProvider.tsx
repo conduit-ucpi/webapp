@@ -2,6 +2,7 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Button from '@/components/ui/Button';
+import { useT } from '../../i18n';
 
 interface TourStep {
   id: string;
@@ -26,6 +27,7 @@ interface TourContextType {
 const TourContext = createContext<TourContextType | undefined>(undefined);
 
 export function TourProvider({ children }: { children: React.ReactNode }) {
+  const t = useT();
   const [isActive, setIsActive] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [steps, setSteps] = useState<TourStep[]>([]);
@@ -196,9 +198,7 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
                         size="sm"
                         onClick={skipTour}
                         className="text-xs"
-                      >
-                        Skip Tour
-                      </Button>
+                      >{t('tourProvider.skipTour')}</Button>
                     )}
                     {currentStep > 0 && (
                       <Button
@@ -206,9 +206,7 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
                         size="sm"
                         onClick={prevStep}
                         className="text-xs"
-                      >
-                        Back
-                      </Button>
+                      >{t('tourProvider.back')}</Button>
                     )}
                     <Button
                       size="sm"

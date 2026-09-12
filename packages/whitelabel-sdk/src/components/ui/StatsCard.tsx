@@ -1,4 +1,5 @@
 import { ReactNode } from 'react';
+import { useT } from '../../i18n';
 
 interface StatsCardProps {
   title: string;
@@ -21,6 +22,7 @@ export default function StatsCard({
   trend,
   className = ''
 }: StatsCardProps) {
+  const t = useT();
   return (
     <div className={`bg-white dark:bg-secondary-800 rounded-lg border border-secondary-200 dark:border-secondary-700 p-4 sm:p-6 ${className}`}>
       <div className="flex items-center justify-between">
@@ -35,7 +37,7 @@ export default function StatsCard({
               <span className={`font-medium ${trend.isPositive ? 'text-success-600' : 'text-error-600'}`}>
                 {trend.isPositive ? '↑' : '↓'} {Math.abs(trend.value)}%
               </span>
-              <span className="text-secondary-500 dark:text-secondary-400 ml-2">from last month</span>
+              <span className="text-secondary-500 dark:text-secondary-400 ml-2">{t('statsCard.fromLastMonth')}</span>
             </div>
           )}
         </div>

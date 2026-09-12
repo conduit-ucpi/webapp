@@ -129,8 +129,8 @@ export default function DisputeManagementModal({ isOpen, onClose, contract, onRe
       setReason('');
       setOutcome(
         fresh?.resolvedBuyerPercentage != null
-          ? `Settled at ${fresh.resolvedBuyerPercentage}% to the buyer — the funds have moved.`
-          : 'Your figure is on-chain and standing. It settles the moment another party submits the same number.'
+          ? t('disputeManagementModal.settledAt', { percent: fresh.resolvedBuyerPercentage })
+          : t('disputeManagementModal.figureStanding')
       );
       onRefresh();
     } catch (e: any) {
@@ -399,7 +399,7 @@ export default function DisputeManagementModal({ isOpen, onClose, contract, onRe
                                 <>
                                   <LoadingSpinner className="w-4 h-4 mr-2" />{t('disputeManagementModal.sending')}</>
                               ) : (
-                                'Confirm and sign'
+                                t('disputeManagementModal.confirmAndSign')
                               )}
                             </Button>
                           </div>

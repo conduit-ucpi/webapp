@@ -471,6 +471,18 @@ export const es: Catalogue = {
 
   'paymentRequestIntro.paymentRequest': 'Solicitud de pago',
   'paymentRequestIntro.howThisWorks': 'Cómo funciona',
+  'paymentRequestIntro.youveReceived': 'Recibiste una',
+  'paymentRequestIntro.continueToSee':
+    'Continúa para ver quién la envió, cuánto te pide y para qué es.',
+  'paymentRequestIntro.step1':
+    'Agrega stablecoins a tu billetera, o conecta una que ya tengas',
+  'paymentRequestIntro.step2':
+    'Confirma el pago: queda retenido de forma segura en depósito en garantía, no se envía directamente',
+  'paymentRequestIntro.step3':
+    'Los fondos se liberan al vendedor automáticamente; no necesitas hacer nada más',
+  'paymentRequestIntro.seeDetails': 'Ver detalles y pagar',
+  'paymentRequestIntro.noWallet':
+    '¿No tienes una billetera cripto? Creamos una por ti, sin descargar nada.',
 
   'pendingContractCard.makePayment': 'Realizar el pago',
 
@@ -621,4 +633,68 @@ export const es: Catalogue = {
   'dashboardPage.dashboardHeader': 'Encabezado del panel',
   'dashboardPage.wallet': 'Billetera',
   'dashboardPage.contracts': 'Contratos',
+  'qrPaymentPanel.paymentDetected': 'Pago detectado. Presiona "Ya pagué" para completar.',
+  'qrPaymentPanel.noPaymentFound':
+    'Todavía no encontramos el pago. Cuando tu transferencia se haya procesado, vuelve a presionar "Ya pagué".',
+  'paymentActionPanel.sameAddress':
+    'La dirección de tu billetera es la misma que la del vendedor. El comprador y el vendedor deben ser cuentas distintas.',
+  'paymentActionPanel.openingCoinbase': 'Abriendo Coinbase…',
+  'paymentActionPanel.payByCard': 'Pagar con tarjeta o transferencia bancaria',
+  'paymentActionPanel.coinbaseNote':
+    'Terminarás en Coinbase. ¿Es tu primera vez en Coinbase? Verificarán tu identidad una sola vez.',
+  'arbiterPanel.seated': 'Designado:',
+  'arbiterPanel.seatEmpty':
+    'El puesto está vacío. El flujo de fondos de este depósito en garantía se vendió, lo que deja al árbitro sin su puesto automáticamente. El comprador y el destinatario pueden acordar un reemplazo, o esperar al árbitro predeterminado.',
+  'arbiterPanel.nominationWarningBody':
+    'Ocurre en esta transacción y no se puede deshacer. No existe un registro de árbitros aprobados ni comprobación de a quién pertenece esta dirección; solo se verifica que no sea el comprador ni el destinatario.',
+  'arbiterPanel.decliningIsSafe':
+    'No nominar a nadie siempre es seguro: si nadie se pone de acuerdo, el árbitro predeterminado de la plataforma toma el puesto cuando se cierra el plazo.',
+  'arbiterPanel.alreadyNominated': 'Ya se nominó:',
+  'pay.payFromThisWallet': 'Pagar {amount} desde esta billetera',
+  'pay.processing': 'Procesando…',
+  'pay.escrowInstant':
+    'Tus {amount} se liberarán al vendedor inmediatamente después de confirmarse el pago.',
+  'pay.escrowHeld':
+    'Tus {amount} quedarán retenidos de forma segura en depósito en garantía y se liberarán al vendedor en la fecha de pago, salvo que abras una disputa.',
+  'addFunds.title': 'Agregar {amount} {token} a esta billetera',
+  'arbiterPanel.actionFailed': '{action} falló. Vuelve a leer el estado e inténtalo de nuevo.',
+  'contractAcceptance.cannotAccept': 'No se puede aceptar el contrato. Estado: {state}',
+  'contractAcceptance.wrongAccount':
+    'Este contrato es para {expected}, pero iniciaste sesión como {actual}. Inicia sesión con la cuenta correcta.',
+  'contractAcceptance.connectWalletFirst': 'Primero conecta tu billetera.',
+  'contractAcceptance.initializing': 'Inicializando...',
+  'contractAcceptance.insufficientBalanceShort': 'Saldo insuficiente',
+  'contractAcceptance.checkingBalance': 'Comprobando el saldo...',
+  'contractAcceptance.makePaymentOf': 'Pagar ${amount} {token}',
+  'expandableHash.viewOnExplorer': 'Ver en el explorador: {hash}',
+  'validation.payToYourself':
+    'No puedes crearte una solicitud de pago a ti mismo. El correo del comprador ({buyer}) coincide con el de tu cuenta ({seller}).',
+  'validation.payToOwnWallet':
+    'No puedes hacerte un pago a ti mismo. La dirección de la billetera del vendedor ({seller}) coincide con tu billetera conectada ({buyer}).',
+  'validation.amountRange':
+    'Ingresa {min} o más, o exactamente {test} para una prueba gratis',
+  'err.tokenNotConfigured': 'No está configurada la dirección del token {token}',
+  'disputeManagementModal.settledAt':
+    'Se resolvió con {percent} % para el comprador; los fondos ya se movieron.',
+  'disputeManagementModal.figureStanding':
+    'Tu cifra está en la cadena y sigue vigente. Se resolverá en cuanto otra parte envíe el mismo número.',
+  'qrPaymentPanel.iHavePaid': 'Ya pagué',
+  'qrPaymentPanel.copied': '¡Copiado!',
+  'qrPaymentPanel.copy': 'Copiar',
+  'qrPaymentPanel.network': 'Red:',
+  'qrPaymentPanel.token': 'Token:',
+  'qrPaymentPanel.amount': 'Monto:',
+  'qrPaymentPanel.sendExactly': 'Envía exactamente {amount} {token}: ni más ni menos.',
+  'status.checkingContract': 'Comprobando el estado del contrato...',
+  'status.successRedirecting': '¡Listo! Redirigiendo...',
+  'status.raisingDispute': 'Abriendo la disputa...',
+  'status.claimingFunds': 'Reclamando los fondos...',
+  'status.initializing': 'Inicializando...',
+  'status.creatingPending': 'Creando el contrato pendiente...',
+  'status.approvingToken': 'Autorizando el pago en {token}',
+  'connectPaymentStage.connectYourWallet': 'Conecta tu billetera',
+  'connectPaymentStage.signInToContinue': 'Inicia sesión para continuar',
+  'connectPaymentStage.connectToComplete': 'Conecta tu billetera para completar el pago.',
+  'connectPaymentStage.signInToProceed': 'Inicia sesión con tu correo o tu billetera para continuar.',
+  'disputeManagementModal.confirmAndSign': 'Confirmar y firmar',
 };

@@ -32,12 +32,14 @@ export default function ConnectPaymentStage({
       )}
 
       <h2 className="text-xl font-semibold text-secondary-900 dark:text-white mb-4">
-        {paymentMethod === 'wallet' ? 'Connect Your Wallet' : 'Sign In to Continue'}
+        {paymentMethod === 'wallet'
+          ? t('connectPaymentStage.connectYourWallet')
+          : t('connectPaymentStage.signInToContinue')}
       </h2>
       <p className="text-secondary-600 dark:text-secondary-300 mb-6">
         {paymentMethod === 'wallet'
-          ? 'Connect your wallet to complete the payment.'
-          : 'Sign in with your email or wallet to proceed.'}
+          ? t('connectPaymentStage.connectToComplete')
+          : t('connectPaymentStage.signInToProceed')}
       </p>
       <ConnectWalletEmbedded
         compact={true}

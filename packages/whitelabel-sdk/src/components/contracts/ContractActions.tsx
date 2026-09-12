@@ -10,6 +10,7 @@ import DisputeModal from './DisputeModal';
 import DisputeManagementModal from './DisputeManagementModal';
 import { formatDateTimeWithTZ } from '@/utils/validation';
 import { useBrandedHref } from '../../theme';
+import { useT } from '../../i18n';
 
 interface ContractActionsProps {
   contract: Contract | PendingContract;
@@ -25,6 +26,7 @@ interface ContractActionsProps {
 export default function ContractActions({ contract, isBuyer, isSeller, onAction, onAccept, isClaimingInProgress, onClaimStart, onClaimComplete }: ContractActionsProps) {
   const router = useRouter();
   const brandedHref = useBrandedHref();
+  const t = useT();
   const { config } = useConfig();
   const { user, claimFunds, raiseDispute } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
@@ -80,7 +82,7 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
     if (!config || !isBuyer || isPending || !allowedStatuses.includes(contractStatus) || !user || isLoading) return;
 
     setIsLoading(true);
-    setLoadingMessage('Raising dispute...');
+    setLoadingMessage(t('status.raisingDispute'));
     setHasError(false);
     
     try {
@@ -154,7 +156,7 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
 
     console.log('🟢 Starting claim funds process');
     setIsLoading(true);
-    setLoadingMessage('Claiming funds...');
+    setLoadingMessage(t('status.claimingFunds'));
     setHasError(false);
     onClaimStart?.(); // Disable all claim buttons
     

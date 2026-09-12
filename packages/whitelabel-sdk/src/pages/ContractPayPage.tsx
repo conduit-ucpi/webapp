@@ -393,7 +393,7 @@ export default function ContractPay() {
     // Reset payment steps to legacy steps (labels are page-specific).
     setPaymentSteps([
       { id: 'verify', label: t('status.verifying'), status: 'pending' },
-      { id: 'approve', label: `Approving ${selectedTokenSymbol} payment`, status: 'pending' },
+      { id: 'approve', label: t('status.approvingToken', { token: selectedTokenSymbol }), status: 'pending' },
       { id: 'escrow', label: t('status.securing'), status: 'pending' },
       { id: 'confirm', label: t('status.confirming'), status: 'pending' },
       { id: 'complete', label: t('status.complete'), status: 'pending' }
@@ -809,10 +809,9 @@ export default function ContractPay() {
               {!isPaymentInProgress && !hasInsufficientBalance && !isSameAddress && (
                 <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md p-4 mb-6">
                   <p className="text-sm text-yellow-800 dark:text-yellow-300">
-                    {isInstantPayment
-                      ? `Your ${displayCurrency(contract.amount, contract.currency || 'microUSDC')} will be released to the seller immediately after payment confirmation.`
-                      : `Your ${displayCurrency(contract.amount, contract.currency || 'microUSDC')} will be held securely in escrow and released to the seller on the payout date unless you raise a dispute.`
-                    }
+                    {t(isInstantPayment ? 'pay.escrowInstant' : 'pay.escrowHeld', {
+                      amount: displayCurrency(contract.amount, contract.currency || 'microUSDC'),
+                    })}
                   </p>
                 </div>
               )}

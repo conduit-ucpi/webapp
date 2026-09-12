@@ -119,7 +119,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
     if (isLoading || isSuccess) return;
 
     setIsLoading(true);
-    setLoadingMessage('Checking contract status...');
+    setLoadingMessage(t('status.checkingContract'));
     setHasError(false);
 
     try {
@@ -146,14 +146,14 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
 
       // Only proceed if state is OK
       if (freshContract.state && freshContract.state !== 'OK') {
-        throw new Error(`Contract cannot be accepted. State: ${freshContract.state}`);
+        throw new Error(t('contractAcceptance.cannotAccept', { state: freshContract.state }));
       }
 
-      setLoadingMessage('Initializing...');
+      setLoadingMessage(t('contractAcceptance.initializing'));
       
       // Check if user is authenticated and has wallet address
       if (!user?.walletAddress) {
-        throw new Error('Please connect your wallet first.');
+        throw new Error(t('contractAcceptance.connectWalletFirst'));
       }
       
       // Use the wallet address from the authenticated user directly
@@ -164,7 +164,12 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
       
       // Verify that the current user's email matches the contract's buyer email (if specified)
       if (contract.buyerEmail && !emailsEqual(user?.email, contract.buyerEmail)) {
-        throw new Error(`This contract is for ${contract.buyerEmail}, but you are logged in as ${user?.email}. Please log in with the correct account.`);
+        throw new Error(
+          t('contractAcceptance.wrongAccount', {
+            expected: contract.buyerEmail,
+            actual: user?.email ?? '',
+          })
+        );
       }
 
       try {
@@ -207,7 +212,7 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
 
       // Mark as success to prevent double-clicks during redirect
       setIsSuccess(true);
-      setLoadingMessage('Success! Redirecting...');
+      setLoadingMessage(t('status.successRedirecting'));
 
       // Notify parent component
       onAcceptComplete();
@@ -339,10 +344,13 @@ export default function ContractAcceptance({ contract, onAcceptComplete }: Contr
         className={`w-full ${hasInsufficientBalance() ? 'bg-gray-400' : ''} ${(isLoading || isSuccess || hasInsufficientBalance() || isLoadingBalance) ? 'opacity-50 cursor-not-allowed' : ''}`}
       >
         {hasInsufficientBalance()
-          ? 'Insufficient Balance'
+          ? t('contractAcceptance.insufficientBalanceShort')
           : isLoadingBalance
-          ? 'Checking balance...'
-          : `Make Payment of $${formatCurrency(contract.amount, 'microUSDC').amount} ${selectedTokenSymbol}`
+          ? t('contractAcceptance.checkingBalance')
+          : t('contractAcceptance.makePaymentOf', {
+              amount: formatCurrency(contract.amount, 'microUSDC').amount,
+              token: selectedTokenSymbol,
+            })
         }
       </Button>
     </div>

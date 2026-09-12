@@ -57,7 +57,7 @@ export default function ExpandableHash({
           target="_blank"
           rel="noopener noreferrer"
           className="font-mono text-left hover:text-primary-600 transition-colors cursor-pointer underline decoration-transparent hover:decoration-current"
-          title={`View on Explorer: ${hash}`}
+          title={t('expandableHash.viewOnExplorer', { hash })}
         >
           {formatHash(hash, isExpanded)}
         </a>

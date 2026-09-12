@@ -20,9 +20,9 @@ interface PaymentRequestIntroProps {
 export default function PaymentRequestIntro({ onContinue }: PaymentRequestIntroProps) {
   const t = useT();
   const steps = [
-    'Add stablecoin to your wallet, or connect one you already have',
-    "Confirm the payment — it's held securely in escrow, not sent directly",
-    'Funds release to the seller automatically — nothing else needed from you',
+    t('paymentRequestIntro.step1'),
+    t('paymentRequestIntro.step2'),
+    t('paymentRequestIntro.step3'),
   ];
 
   return (
@@ -44,10 +44,10 @@ export default function PaymentRequestIntro({ onContinue }: PaymentRequestIntroP
         </svg>
       </div>
 
-      <p className="mt-6 text-sm text-secondary-500 dark:text-secondary-400">You&apos;ve received a</p>
+      <p className="mt-6 text-sm text-secondary-500 dark:text-secondary-400">{t('paymentRequestIntro.youveReceived')}</p>
       <h1 className="mt-1 text-3xl sm:text-4xl font-bold text-secondary-900 dark:text-white">{t('paymentRequestIntro.paymentRequest')}</h1>
       <p className="mt-3 text-sm text-secondary-500 dark:text-secondary-400">
-        Continue to see who sent it, how much they&apos;ve asked for, and what it&apos;s for.
+        {t('paymentRequestIntro.continueToSee')}
       </p>
 
       <div className="mt-8 rounded-2xl border border-secondary-200 dark:border-secondary-700 bg-white dark:bg-secondary-800 p-6 text-left">
@@ -65,11 +65,11 @@ export default function PaymentRequestIntro({ onContinue }: PaymentRequestIntroP
       </div>
 
       <Button type="button" onClick={onContinue} size="lg" className="mt-6 w-full rounded-lg">
-        See details &amp; pay
+        {t('paymentRequestIntro.seeDetails')}
       </Button>
 
       <p className="mt-4 text-xs text-secondary-400 dark:text-secondary-500">
-        Don&apos;t have a crypto wallet? We&apos;ll create one for you — no download needed.
+        {t('paymentRequestIntro.noWallet')}
       </p>
     </div>
   );

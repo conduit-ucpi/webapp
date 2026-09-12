@@ -524,7 +524,7 @@ export default function ContractCreate() {
       }
       
       // Check if wallet is connected and has address
-      setLoadingMessage('Initializing...');
+      setLoadingMessage(t('status.initializing'));
 
       if (!address) {
         throw new Error(t('err.connectFirst'));
@@ -623,7 +623,7 @@ export default function ContractCreate() {
     // Reset payment steps (labels are page-specific; the hook drives statuses).
     setPaymentSteps([
       { id: 'verify', label: t('status.verifying'), status: 'pending' },
-      { id: 'approve', label: `Approving ${selectedTokenSymbol} payment`, status: 'pending' },
+      { id: 'approve', label: t('status.approvingToken', { token: selectedTokenSymbol }), status: 'pending' },
       { id: 'escrow', label: t('status.securing'), status: 'pending' },
       { id: 'confirm', label: t('status.confirming'), status: 'pending' },
       { id: 'complete', label: t('status.complete'), status: 'pending' }
@@ -1072,11 +1072,8 @@ export default function ContractCreate() {
                       {(() => {
                         const parsedExpiry = epoch_expiry !== undefined ? parseInt(epoch_expiry as string, 10) : -1;
                         const isInstant = parsedExpiry === 0;
-                        if (isInstant) {
-                          return `Your $${form.amount} ${selectedTokenSymbol} will be released to the seller immediately after payment confirmation.`;
-                        } else {
-                          return `Your $${form.amount} ${selectedTokenSymbol} will be held securely in escrow and released to the seller on the payout date unless you raise a dispute.`;
-                        }
+                        const amount = `$${form.amount} ${selectedTokenSymbol}`;
+                        return t(isInstant ? 'pay.escrowInstant' : 'pay.escrowHeld', { amount });
                       })()}
                     </p>
                   </div>

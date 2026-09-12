@@ -131,7 +131,7 @@ export default function AddFundsModal({
     <Modal
       isOpen={isOpen}
       onClose={handleClose}
-      title={`Add ${shortfall.toFixed(4)} ${tokenSymbol} to this wallet`}
+      title={t('addFunds.title', { amount: shortfall.toFixed(4), token: tokenSymbol })}
       size="medium"
     >
       {!showTransfer ? (

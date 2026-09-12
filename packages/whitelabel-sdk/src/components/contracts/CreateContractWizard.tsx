@@ -236,7 +236,10 @@ export default function CreateContractWizard() {
 
             // Check if buyer email matches seller email (case-insensitive)
             if (user?.email && emailsEqual(buyerIdentifier, user.email)) {
-              newErrors.buyerEmail = `You cannot create a payment request to yourself. The buyer email (${buyerIdentifier}) matches your account email (${user.email}).`;
+              newErrors.buyerEmail = t('validation.payToYourself', {
+                buyer: buyerIdentifier,
+                seller: user.email,
+              });
             }
 
             // Check if buyer looks like a wallet address and matches seller wallet (case-insensitive)
@@ -274,7 +277,10 @@ export default function CreateContractWizard() {
           // the guidance under the field would state a rule the form ignores.
           const parsedAmount = parseAmount(form.amount);
           if (parsedAmount !== null && !isAllowedAmount(parsedAmount)) {
-            newErrors.amount = `Enter ${formatUsd(MIN_AMOUNT)} or more, or exactly ${TEST_AMOUNT} for a free test`;
+            newErrors.amount = t('validation.amountRange', {
+              min: formatUsd(MIN_AMOUNT),
+              test: TEST_AMOUNT,
+            });
           }
         }
 
@@ -331,7 +337,7 @@ export default function CreateContractWizard() {
 
       const selectedToken = availableTokens.find(t => t.symbol === selectedTokenSymbol);
       if (!selectedToken?.address) {
-        throw new Error(`Token ${selectedTokenSymbol} address not configured`);
+        throw new Error(t('err.tokenNotConfigured', { token: selectedTokenSymbol }));
       }
 
       if (!user.walletAddress) {

@@ -60,7 +60,7 @@ export default function ArbiterPanel({ contractAddress, state, loading, onChange
     } catch (e: any) {
       // A nomination racing a seat-default is an ordinary race, not a fault: a late match still
       // wins right up until the fallback transaction actually executes.
-      setError(e?.message || `${label} failed. Re-read the state and try again.`);
+      setError(e?.message || t('arbiterPanel.actionFailed', { action: label }));
       await onChanged();
     } finally {
       setBusy(null);
@@ -77,13 +77,11 @@ export default function ArbiterPanel({ contractAddress, state, loading, onChange
         <p className="text-sm text-gray-600 dark:text-secondary-300 mt-1">
           {state.seated ? (
             <>
-              Seated: <span className="font-mono text-xs">{state.arbiter}</span>
+              {t('arbiterPanel.seated')} <span className="font-mono text-xs">{state.arbiter}</span>
             </>
           ) : (
             <>
-              The seat is empty. This escrow&apos;s cashflow was sold, which unseats the arbiter
-              automatically. Buyer and recipient can agree a replacement, or wait for the default
-              arbiter.
+              {t('arbiterPanel.seatEmpty')}
             </>
           )}
         </p>
@@ -101,19 +99,16 @@ export default function ArbiterPanel({ contractAddress, state, loading, onChange
             if this warning is omitted, nothing else catches it.
           */}
           <div className="rounded-md border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-3 text-sm text-amber-800 dark:text-amber-200">
-            <strong>{t('arbiterPanel.namingTheSameAddress')}</strong> It
-            happens in this transaction and cannot be undone. There is no register of approved
-            arbiters and no check on who this address belongs to — only that they are not the buyer
-            or recipient.
+            <strong>{t('arbiterPanel.namingTheSameAddress')}</strong>{' '}
+            {t('arbiterPanel.nominationWarningBody')}
             <div className="mt-2">
-              Declining to nominate is always safe: if nobody agrees, the platform&apos;s default
-              arbiter takes the seat once the window closes.
+              {t('arbiterPanel.decliningIsSafe')}
             </div>
           </div>
 
           {otherPartyNomination && (
             <div className="text-sm text-gray-700 dark:text-secondary-200">
-              Already nominated —{' '}
+              {t('arbiterPanel.alreadyNominated')}{' '}
               {state.nominatedByBuyer && (
                 <>buyer: <span className="font-mono text-xs">{state.nominatedByBuyer}</span>{' '}</>
               )}

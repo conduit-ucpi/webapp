@@ -12,6 +12,7 @@ import {
   getRelativeTime
 } from '@/utils/validation';
 import { useCreateContractValidation } from './useContractValidation';
+import { useT } from '../i18n';
 
 interface CreateContractForm {
   buyerEmail: string;
@@ -22,6 +23,7 @@ interface CreateContractForm {
 }
 
 export function useCreateContract() {
+  const t = useT();
   const router = useRouter();
   const { config } = useConfig();
   const { user, authenticatedFetch } = useAuth();
@@ -75,7 +77,7 @@ export function useCreateContract() {
       }
 
       // Check if user is authenticated and has wallet address
-      setLoadingMessage('Initializing...');
+      setLoadingMessage(t('status.initializing'));
 
       if (!user?.walletAddress) {
         console.error('🔧 CreateContract: No wallet address found in user object');
@@ -86,7 +88,7 @@ export function useCreateContract() {
       const userAddress = user.walletAddress;
 
       // Create pending contract via Contract Service
-      setLoadingMessage('Creating pending contract...');
+      setLoadingMessage(t('status.creatingPending'));
 
       const pendingContractRequest = {
         buyerEmail: form.buyerType === 'email' ? form.buyerEmail : '',

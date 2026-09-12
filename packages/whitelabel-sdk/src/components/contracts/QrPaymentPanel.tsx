@@ -110,7 +110,7 @@ export default function QrPaymentPanel({
           {qr.qrPaymentDetected && (
             <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-md p-3 mb-4">
               <p className="text-sm font-medium text-green-800 dark:text-green-300">
-                Payment detected! Press &quot;I have paid&quot; to complete.
+                {t('qrPaymentPanel.paymentDetected')}
               </p>
             </div>
           )}
@@ -153,7 +153,7 @@ export default function QrPaymentPanel({
                 onClick={() => onCopyAddress(qr.qrContractAddress || '')}
                 className="whitespace-nowrap flex-shrink-0 text-xs"
               >
-                {copiedAddress ? 'Copied!' : 'Copy'}
+                {copiedAddress ? t('qrPaymentPanel.copied') : t('qrPaymentPanel.copy')}
               </Button>
             </div>
           </div>
@@ -162,16 +162,16 @@ export default function QrPaymentPanel({
           <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md p-4 mb-4">
             <h4 className="font-medium text-blue-900 dark:text-blue-200 text-sm mb-2">{t('qrPaymentPanel.paymentInstructions')}</h4>
             <ul className="text-xs text-blue-800 dark:text-blue-300 space-y-1.5">
-              <li>Network: <span className="font-medium">{networkName}</span></li>
-              <li>Token: <span className="font-medium">{tokenSymbol}</span></li>
-              <li>Amount: <span className="font-medium">{amountInTokens.toFixed(4)} {tokenSymbol}</span></li>
+              <li>{t('qrPaymentPanel.network')} <span className="font-medium">{networkName}</span></li>
+              <li>{t('qrPaymentPanel.token')} <span className="font-medium">{tokenSymbol}</span></li>
+              <li>{t('qrPaymentPanel.amount')} <span className="font-medium">{amountInTokens.toFixed(4)} {tokenSymbol}</span></li>
             </ul>
           </div>
 
           {/* Warning */}
           <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md p-3 mb-4">
             <p className="text-xs text-yellow-800 dark:text-yellow-300 font-medium">
-              Send exactly {amountInTokens.toFixed(4)} {tokenSymbol} -- do not send more or less.
+              {t('qrPaymentPanel.sendExactly', { amount: amountInTokens.toFixed(4), token: tokenSymbol })}
             </p>
           </div>
 
@@ -188,13 +188,13 @@ export default function QrPaymentPanel({
                 <>
                   <LoadingSpinner className="w-4 h-4 mr-2" />{t('qrPaymentPanel.checking')}</>
               ) : (
-                'I have paid'
+                t('qrPaymentPanel.iHavePaid')
               )}
             </Button>
 
             {qr.qrActivationStatus === 'waiting' && (
               <p className="text-center text-sm text-yellow-600 dark:text-yellow-400">
-                No payment found yet. Once your transfer has gone through, press &quot;I have paid&quot; again.
+                {t('qrPaymentPanel.noPaymentFound')}
               </p>
             )}
 

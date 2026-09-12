@@ -205,8 +205,7 @@ export default function PaymentActionPanel({
 
       {isSameAddress && (
         <p className="mt-4 rounded-md bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-3 text-sm text-red-700 dark:text-red-400">
-          Your wallet address matches the seller&apos;s. The buyer and seller must be different
-          accounts.
+          {t('paymentActionPanel.sameAddress')}
         </p>
       )}
 
@@ -221,10 +220,10 @@ export default function PaymentActionPanel({
           {isPaymentInProgress ? (
             <>
               <LoadingSpinner className="w-4 h-4 mr-2" />
-              {loadingMessage?.match(/Step \d+/)?.[0] || 'Processing…'}
+              {loadingMessage?.match(/Step \d+/)?.[0] || t('pay.processing')}
             </>
           ) : (
-            `Pay ${amountLabel} from this wallet`
+            t('pay.payFromThisWallet', { amount: amountLabel })
           )}
         </Button>
 
@@ -262,10 +261,10 @@ export default function PaymentActionPanel({
             className={`${actionButton} h-auto flex-col gap-1 py-3 text-center`}
           >
             <span className="font-medium">
-              {cbPayLoading ? 'Opening Coinbase…' : 'Pay by card or bank transfer'}
+              {cbPayLoading ? t('paymentActionPanel.openingCoinbase') : t('paymentActionPanel.payByCard')}
             </span>
             <span className="text-xs font-normal leading-snug text-secondary-500 dark:text-secondary-400">
-              You&apos;ll finish on Coinbase. New to Coinbase? They&apos;ll verify your ID once.
+              {t('paymentActionPanel.coinbaseNote')}
             </span>
           </Button>
         )}

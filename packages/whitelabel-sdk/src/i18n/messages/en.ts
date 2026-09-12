@@ -406,6 +406,17 @@ export const en = {
   'paymentProgress.paymentProgress': 'Payment Progress',
   'paymentRequestIntro.paymentRequest': 'Payment request',
   'paymentRequestIntro.howThisWorks': 'How this works',
+  'paymentRequestIntro.youveReceived': "You've received a",
+  'paymentRequestIntro.continueToSee':
+    "Continue to see who sent it, how much they've asked for, and what it's for.",
+  'paymentRequestIntro.step1': 'Add stablecoin to your wallet, or connect one you already have',
+  'paymentRequestIntro.step2':
+    "Confirm the payment — it's held securely in escrow, not sent directly",
+  'paymentRequestIntro.step3':
+    'Funds release to the seller automatically — nothing else needed from you',
+  'paymentRequestIntro.seeDetails': 'See details & pay',
+  'paymentRequestIntro.noWallet':
+    "Don't have a crypto wallet? We'll create one for you — no download needed.",
   'pendingContractCard.makePayment': 'Make Payment',
   'qrPaymentPanel.checkingForYourPayment': 'Checking for your payment…',
   'qrPaymentPanel.creatingContract': 'Creating contract...',
@@ -520,6 +531,69 @@ export const en = {
   'dashboardPage.dashboardHeader': 'Dashboard header',
   'dashboardPage.wallet': 'Wallet',
   'dashboardPage.contracts': 'Contracts',
+  'qrPaymentPanel.paymentDetected': 'Payment detected! Press "I have paid" to complete.',
+  'qrPaymentPanel.noPaymentFound':
+    'No payment found yet. Once your transfer has gone through, press "I have paid" again.',
+  'paymentActionPanel.sameAddress':
+    "Your wallet address matches the seller's. The buyer and seller must be different accounts.",
+  'paymentActionPanel.openingCoinbase': 'Opening Coinbase…',
+  'paymentActionPanel.payByCard': 'Pay by card or bank transfer',
+  'paymentActionPanel.coinbaseNote':
+    "You'll finish on Coinbase. New to Coinbase? They'll verify your ID once.",
+  'arbiterPanel.seated': 'Seated:',
+  'arbiterPanel.seatEmpty':
+    "The seat is empty. This escrow's cashflow was sold, which unseats the arbiter automatically. Buyer and recipient can agree a replacement, or wait for the default arbiter.",
+  'arbiterPanel.nominationWarningBody':
+    'It happens in this transaction and cannot be undone. There is no register of approved arbiters and no check on who this address belongs to — only that they are not the buyer or recipient.',
+  'arbiterPanel.decliningIsSafe':
+    "Declining to nominate is always safe: if nobody agrees, the platform's default arbiter takes the seat once the window closes.",
+  'arbiterPanel.alreadyNominated': 'Already nominated —',
+  'pay.payFromThisWallet': 'Pay {amount} from this wallet',
+  'pay.processing': 'Processing…',
+  'pay.escrowInstant':
+    'Your {amount} will be released to the seller immediately after payment confirmation.',
+  'pay.escrowHeld':
+    'Your {amount} will be held securely in escrow and released to the seller on the payout date unless you raise a dispute.',
+  'addFunds.title': 'Add {amount} {token} to this wallet',
+  'arbiterPanel.actionFailed': '{action} failed. Re-read the state and try again.',
+  'contractAcceptance.cannotAccept': 'Contract cannot be accepted. State: {state}',
+  'contractAcceptance.wrongAccount':
+    'This contract is for {expected}, but you are logged in as {actual}. Please log in with the correct account.',
+  'contractAcceptance.connectWalletFirst': 'Please connect your wallet first.',
+  'contractAcceptance.initializing': 'Initializing...',
+  'contractAcceptance.insufficientBalanceShort': 'Insufficient Balance',
+  'contractAcceptance.checkingBalance': 'Checking balance...',
+  'contractAcceptance.makePaymentOf': 'Make Payment of ${amount} {token}',
+  'expandableHash.viewOnExplorer': 'View on Explorer: {hash}',
+  'validation.payToYourself':
+    'You cannot create a payment request to yourself. The buyer email ({buyer}) matches your account email ({seller}).',
+  'validation.payToOwnWallet':
+    'You cannot make a payment to yourself. The seller wallet address ({seller}) matches your connected wallet ({buyer}).',
+  'validation.amountRange': 'Enter {min} or more, or exactly {test} for a free test',
+  'err.tokenNotConfigured': 'Token {token} address not configured',
+  'disputeManagementModal.settledAt':
+    'Settled at {percent}% to the buyer — the funds have moved.',
+  'disputeManagementModal.figureStanding':
+    'Your figure is on-chain and standing. It settles the moment another party submits the same number.',
+  'qrPaymentPanel.iHavePaid': 'I have paid',
+  'qrPaymentPanel.copied': 'Copied!',
+  'qrPaymentPanel.copy': 'Copy',
+  'qrPaymentPanel.network': 'Network:',
+  'qrPaymentPanel.token': 'Token:',
+  'qrPaymentPanel.amount': 'Amount:',
+  'qrPaymentPanel.sendExactly': 'Send exactly {amount} {token} -- do not send more or less.',
+  'status.checkingContract': 'Checking contract status...',
+  'status.successRedirecting': 'Success! Redirecting...',
+  'status.raisingDispute': 'Raising dispute...',
+  'status.claimingFunds': 'Claiming funds...',
+  'status.initializing': 'Initializing...',
+  'status.creatingPending': 'Creating pending contract...',
+  'status.approvingToken': 'Approving {token} payment',
+  'connectPaymentStage.connectYourWallet': 'Connect Your Wallet',
+  'connectPaymentStage.signInToContinue': 'Sign In to Continue',
+  'connectPaymentStage.connectToComplete': 'Connect your wallet to complete the payment.',
+  'connectPaymentStage.signInToProceed': 'Sign in with your email or wallet to proceed.',
+  'disputeManagementModal.confirmAndSign': 'Confirm and sign',
 } as const;
 
 export type MessageKey = keyof typeof en;

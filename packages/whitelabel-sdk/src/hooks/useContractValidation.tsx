@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { useT } from '../i18n';
 import {
   isValidAmount,
   isValidDescription,
@@ -51,6 +52,7 @@ export interface WordPressValidationContext {
  * Handles business validation logic separate from UI components
  */
 export function useCreateContractValidation() {
+  const t = useT();
   const [errors, setErrors] = useState<CreateContractErrors>({});
 
   const validateForm = useCallback((
@@ -71,7 +73,10 @@ export function useCreateContractValidation() {
 
       // Check if buyer email matches seller email (case-insensitive)
       if (sellerInfo.email && emailsEqual(buyerIdentifier, sellerInfo.email)) {
-        newErrors.buyerEmail = `You cannot create a payment request to yourself. The buyer email (${buyerIdentifier}) matches your account email (${sellerInfo.email}).`;
+        newErrors.buyerEmail = t('validation.payToYourself', {
+          buyer: buyerIdentifier,
+          seller: sellerInfo.email,
+        });
       }
 
       // Check if buyer looks like a wallet address and matches seller wallet (case-insensitive)
@@ -124,6 +129,7 @@ export function useCreateContractValidation() {
  * Handles business validation logic separate from UI components
  */
 export function useContractCreateValidation() {
+  const t = useT();
   const [errors, setErrors] = useState<ContractCreateErrors>({});
 
   const validateForm = useCallback((
@@ -141,7 +147,10 @@ export function useContractCreateValidation() {
     // Check if buyer and seller are the same person (if buyer info provided)
     if (buyerInfo?.walletAddress && isValidWalletAddress(form.seller)) {
       if (addressesEqual(form.seller, buyerInfo.walletAddress)) {
-        newErrors.seller = `You cannot make a payment to yourself. The seller wallet address (${form.seller}) matches your connected wallet (${buyerInfo.walletAddress}).`;
+        newErrors.seller = t('validation.payToOwnWallet', {
+          seller: form.seller,
+          buyer: buyerInfo.walletAddress,
+        });
       }
     }
 

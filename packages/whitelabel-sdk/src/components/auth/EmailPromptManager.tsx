@@ -16,6 +16,8 @@ const NO_EMAIL_PROMPT_ROUTES = new Set([
   '/landing5',
   '/landing6',
   '/landing7',
+  '/create-cobro',
+  '/cobro-demo',
   '/merchant',
 ]);
 

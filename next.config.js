@@ -42,6 +42,16 @@ const serverOnlyConfig = {
       {
         source: '/early-payment-offer2',
         destination: '/early-payment-offer2.html'
+      },
+      // Captured design reference, served raw so it renders without the app's
+      // header, providers or any of our chrome. There is deliberately no page
+      // component behind this — a page would be wrapped by Layout.
+      //
+      // Rewrites are a server feature, so this exists on the box build only;
+      // the static export has no equivalent. See design-references/README.md.
+      {
+        source: '/cobro-demo',
+        destination: '/api/design-reference/cobro/index.html'
       }
     ]
   },

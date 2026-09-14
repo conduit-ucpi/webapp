@@ -41,7 +41,7 @@ describe('/api/moonpay/sign', () => {
     jest.clearAllMocks();
     process.env.CONTRACT_SERVICE_URL = 'http://localhost:8976';
     process.env.MOONPAY_API_KEY = 'pk_test_key';
-    process.env.MOONPAY_SECRET_KEY = 'sk_test_secret';
+    process.env.MOONPAY_API_SECRET_KEY = 'sk_test_secret';
     delete process.env.MOONPAY_ENVIRONMENT;
     delete process.env.MOONPAY_CURRENCY_CODE;
   });
@@ -211,7 +211,7 @@ describe('/api/moonpay/sign', () => {
       // Degrading silently in production would take real money from a buyer,
       // deliver it to their own wallet, and leave the escrow unfunded — the
       // payment looks successful and the seller is never paid.
-      delete process.env.MOONPAY_SECRET_KEY;
+      delete process.env.MOONPAY_API_SECRET_KEY;
       process.env.MOONPAY_ENVIRONMENT = 'production';
 
       const { req, res } = post({ contractId: 'contract-123' });
@@ -224,7 +224,7 @@ describe('/api/moonpay/sign', () => {
 
   describe('preview mode, for seeing the widget before the secret exists', () => {
     beforeEach(() => {
-      delete process.env.MOONPAY_SECRET_KEY;
+      delete process.env.MOONPAY_API_SECRET_KEY;
     });
 
     it('opens unsigned, which means dropping the destination', async () => {
@@ -260,7 +260,7 @@ describe('/api/moonpay/sign', () => {
     it('is never what the real flow looks like', async () => {
       // Guards the inverse: with a secret present, preview must be false and
       // the destination must be back.
-      process.env.MOONPAY_SECRET_KEY = 'sk_test_secret';
+      process.env.MOONPAY_API_SECRET_KEY = 'sk_test_secret';
       mockFetch.mockResolvedValueOnce(contractResponse());
 
       const { req, res } = post({ contractId: 'contract-123' });

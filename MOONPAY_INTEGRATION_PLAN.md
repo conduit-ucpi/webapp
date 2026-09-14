@@ -71,13 +71,20 @@ window or warn the seller at creation. Not yet decided which.
 
 ## Key handling
 
-Split the single ambiguous `MOONPAY_API_KEY` before writing integration code:
+Two keys, named to match what MoonPay's dashboard calls them:
 
-- `MOONPAY_PUBLISHABLE_KEY` — belongs in `/api/config`, public, fine. It travels
-  in the widget URL and is visible in any browser's network tab by design.
-  Hiding it is not a goal and is not achievable.
-- `MOONPAY_SECRET_KEY` — read only inside the signing endpoint on the box.
-  Never added to the config blob.
+- `MOONPAY_API_KEY` — the PUBLISHABLE key (`pk_…`). Belongs in `/api/config`,
+  public, fine. It travels in the widget URL and is visible in any browser's
+  network tab by design; hiding it is not a goal and is not achievable. Its
+  presence is also the client-side feature flag.
+- `MOONPAY_API_SECRET_KEY` — the SECRET key (`sk_…`). Read only inside the
+  signing endpoint on the box. Never added to the config blob.
+
+The publishable key keeps the plain `MOONPAY_API_KEY` name rather than being
+renamed to something explicit. That is a deliberate choice, but it is the same
+ambiguity that put a Neynar secret in the public config blob (below), so the
+guard is the `pk_`/`sk_` prefixes: anything starting `sk_` must never be in a
+variable that `/api/config` reads.
 
 What protects the integration is the URL signature and domain allowlisting, not
 secrecy of the publishable key. MoonPay require `signature` whenever `email` or

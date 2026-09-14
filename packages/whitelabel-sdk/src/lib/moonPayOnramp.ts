@@ -23,7 +23,7 @@ interface SignedWidget {
   escrowAddress: string | null;
   environment: 'sandbox' | 'production';
   /**
-   * True when MOONPAY_SECRET_KEY is unset and the URL is therefore unsigned and
+   * True when MOONPAY_API_SECRET_KEY is unset and the URL is therefore unsigned and
    * carries no destination. The widget opens, but MoonPay asks the buyer for
    * their own address and the escrow is NOT funded. Sandbox only — the endpoint
    * refuses to do this in production.
@@ -76,7 +76,7 @@ export async function openMoonPayOnramp(params: OpenMoonPayParams): Promise<void
     // unfunded. Anyone testing needs to know which of the two they just saw.
     console.warn(
       '[MoonPay] PREVIEW MODE — unsigned URL, no destination address. The widget ' +
-        'will open but the escrow will NOT be funded. Set MOONPAY_SECRET_KEY to ' +
+        'will open but the escrow will NOT be funded. Set MOONPAY_API_SECRET_KEY to ' +
         'enable the real payment flow.'
     );
   }

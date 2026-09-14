@@ -49,7 +49,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const publishableKey = process.env.MOONPAY_API_KEY;
-  const secretKey = process.env.MOONPAY_SECRET_KEY;
+  const secretKey = process.env.MOONPAY_API_SECRET_KEY;
 
   // The same variable the client flags on, so the button and the endpoint can
   // never disagree about whether MoonPay is switched on.
@@ -183,7 +183,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       escrowAddress: preview ? null : escrowAddress,
       environment,
       /**
-       * True when the widget will NOT fund the escrow. Set MOONPAY_SECRET_KEY
+       * True when the widget will NOT fund the escrow. Set MOONPAY_API_SECRET_KEY
        * to turn the real flow on; see MOONPAY_INTEGRATION_PLAN.md.
        */
       preview,

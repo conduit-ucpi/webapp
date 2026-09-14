@@ -115,7 +115,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // The escrow has to be deployed before anyone can send to it. The client
     // resolves/creates it first; if it has not, say so plainly rather than
     // signing a URL pointing at nothing.
-    const escrowAddress: string | undefined = contract?.contractAddress;
+    //
+    // The field is `chainAddress` — that is what contractservice's
+    // PendingContract holds and what ContractPayPage reads. `contractAddress`
+    // is the CHAINSERVICE spelling of the same thing and appears on its
+    // responses, so it is accepted as a fallback rather than left as a trap for
+    // whoever next passes a chainservice payload through here.
+    const escrowAddress: string | undefined =
+      contract?.chainAddress || contract?.contractAddress;
     if (!escrowAddress) {
       return res.status(409).json({ error: 'Escrow contract is not deployed yet' });
     }

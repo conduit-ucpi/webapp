@@ -24,7 +24,7 @@ const contractResponse = (overrides: Record<string, unknown> = {}) =>
     status: 200,
     json: async () => ({
       id: 'contract-123',
-      contractAddress: ESCROW,
+      chainAddress: ESCROW,
       amount: 1_500_000, // microUSDC -> 1.50
       currency: 'microUSDC',
       ...overrides,
@@ -273,9 +273,37 @@ describe('/api/moonpay/sign', () => {
   });
 
   describe('escrow readiness', () => {
+    // The bug this pins: the endpoint originally read `contractAddress`, which
+    // is chainservice's spelling. contractservice's PendingContract holds
+    // `chainAddress`, so every real request 409'd while the tests passed —
+    // because the fixture had the same wrong field as the code. A fixture that
+    // mirrors the implementation's mistake proves nothing, so these assert the
+    // two shapes explicitly.
+    it('reads chainAddress, which is what contractservice actually returns', async () => {
+      mockFetch.mockResolvedValueOnce(contractResponse());
+
+      const { req, res } = post({ contractId: 'contract-123' });
+      await handler(req as any, res);
+
+      expect(res._getStatusCode()).toBe(200);
+      expect(paramsOf(JSON.parse(res._getData()).url).get('walletAddress')).toBe(ESCROW);
+    });
+
+    it('also accepts a chainservice-shaped contractAddress', async () => {
+      mockFetch.mockResolvedValueOnce(
+        contractResponse({ chainAddress: undefined, contractAddress: ESCROW })
+      );
+
+      const { req, res } = post({ contractId: 'contract-123' });
+      await handler(req as any, res);
+
+      expect(res._getStatusCode()).toBe(200);
+      expect(paramsOf(JSON.parse(res._getData()).url).get('walletAddress')).toBe(ESCROW);
+    });
+
     it('refuses to sign for an escrow that is not deployed', async () => {
       // Signing a URL pointing at nothing would send a payer's money nowhere.
-      mockFetch.mockResolvedValueOnce(contractResponse({ contractAddress: undefined }));
+      mockFetch.mockResolvedValueOnce(contractResponse({ chainAddress: undefined }));
 
       const { req, res } = post({ contractId: 'contract-123' });
       await handler(req as any, res);

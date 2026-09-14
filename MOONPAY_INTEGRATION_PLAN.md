@@ -1,0 +1,144 @@
+# MoonPay integration plan
+
+Fiat on-ramp that funds an escrow directly, so a buyer with no crypto can pay a
+payment request with a card or a bank transfer.
+
+Nothing is built yet. `@moonpay/moonpay-js@^0.7.3` is in `dependencies` but is
+imported nowhere; `MOONPAY_API_KEY` is the placeholder string in both
+`.env.example` and `.env.local`, and the live `api.stabledrop.me/api/config`
+returns `moonPayApiKey: ""`. `README.md` is accurate when it says
+"MoonPay SDK (coming soon)".
+
+## Decisions taken
+
+**Hosted widget, not headless.** MoonPay Ramps does offer a headless API —
+sessions, quotes, transactions, KYC via the Customer API, with card entry and
+identity in single-use frames — but headless capabilities are enabled per
+partner and the hosted widget is what carries bank transfers. Bank transfer
+coverage is the reason to add MoonPay next to Coinbase at all, so the widget
+wins. Revisit only if headless gains the same payment methods.
+
+**The crypto amount is authoritative; fiat is derived.** Pass
+`quoteCurrencyAmount` (exact USDC) and let the widget quote the customer their
+local currency. Do not pass `baseCurrencyAmount`.
+
+This is forced by the contract, not a preference. `EscrowContract.deposit`
+reverts with `TransferAmountMismatch` unless exactly `AMOUNT` arrives — it
+compares the balance delta against `AMOUNT` precisely so fee-on-transfer tokens
+cannot half-fund an escrow. Any design that fixes the fiat side and lets the
+USDC float produces underfunded escrows as a matter of routine.
+
+Side effect: `lockAmount` is useless here. It locks `baseCurrencyAmount` only
+and is skipped when that is absent, so the prefilled USDC figure stays editable
+by the buyer. An edited figure means `deposit` reverts. Reconciliation on
+arrival is required regardless — see below, which handles it for free.
+
+**Deliver straight to the escrow address.** `walletAddress` is the escrow
+contract, not the buyer's wallet. This needs no new on-chain work because it is
+exactly how the QR path already funds escrows — from `useQrPayment.ts`: "money
+arrives by direct transfer, and a permissionless call then observes the balance
+and flips the state." `checkAndActivate` reads the escrow's token balance and
+calls `/api/chain/check-and-activate`.
+
+So MoonPay becomes a third funding route beside connected-wallet and QR,
+sharing the same confirmation mechanism. The escrow must exist first, which
+`createContract` already guarantees before the QR is shown.
+
+**Confirm asynchronously. Do not reuse the polling screen.** `useQrPayment`
+runs `COUNTDOWN_SECONDS = 240` with `POLL_INTERVAL_MS = 10_000` — a four-minute
+live-waiting screen. That is right for a wallet transfer and wrong for every
+on-ramp timing:
+
+| method | time to arrive |
+| --- | --- |
+| open banking (UK/EEA) | minutes |
+| manual bank transfer, GBP Faster Payments | MoonPay say "up to 2 working days" |
+| card | minutes, plus first-time KYC |
+
+Best case already overruns 240s once KYC is in the path; worst case on the same
+method is two working days. Release the buyer from the page and confirm by
+MoonPay webhook plus email, with the balance-observing `checkAndActivate` as
+the thing that flips state whenever the money lands. That path is correct at
+two minutes and at two days, so there is no per-country timing assumption to
+get wrong — which matters because the target market is Venezuela via COBRO,
+where none of the UK timings apply.
+
+**Guard the payout window.** An escrow whose release date passes before funding
+is a reachable state: `deposit` does not check the clock. A seller setting
+release 24h out, with a buyer paying by a method that settles in 48h, produces
+an escrow funded after its own release time. Either enforce a minimum release
+window or warn the seller at creation. Not yet decided which.
+
+## Key handling
+
+Split the single ambiguous `MOONPAY_API_KEY` before writing integration code:
+
+- `MOONPAY_PUBLISHABLE_KEY` — belongs in `/api/config`, public, fine. It travels
+  in the widget URL and is visible in any browser's network tab by design.
+  Hiding it is not a goal and is not achievable.
+- `MOONPAY_SECRET_KEY` — read only inside the signing endpoint on the box.
+  Never added to the config blob.
+
+What protects the integration is the URL signature and domain allowlisting, not
+secrecy of the publishable key. MoonPay require `signature` whenever `email` or
+`walletAddress` is passed, or the widget refuses to load.
+
+### The signing endpoint must not be a signing oracle
+
+`signature = HMAC(secret, query_string)` is computed server-side and only the
+digest reaches the browser; the secret never leaves the box. The signature
+covers a **specific parameter set**, which is what stops someone with the
+publishable key pointing the widget at their own address.
+
+That property is lost if the endpoint signs what it is handed. It must derive
+the parameters itself:
+
+```
+POST /api/moonpay/sign  { contractId }
+  -> load the contract, read its chain address and AMOUNT
+  -> build the query string from those, never from the request body
+  -> return { url, signature }
+```
+
+Accepting `walletAddress` or `quoteCurrencyAmount` from the body would let
+anyone have our server authorise a payout to any address — a valid signature,
+issued by us, without the secret ever leaking.
+
+This is the same mistake shape as `pages/api/admin/contracts/[id]/resolve.ts`,
+which takes `chainAddress` from the body and acts on it while ignoring the
+`[id]` in the path. There the damage is bounded by the chainservice admin
+check; behind a signing endpoint there would be nothing.
+
+## Open questions — confirm with MoonPay before building
+
+Headless capability enablement and these all go through the same commercial
+conversation (`team@moonpay.com`), so ask together.
+
+- **Can a quote be driven by the destination amount?** The widget supports
+  `quoteCurrencyAmount` as an input and states it takes precedence over
+  `baseCurrencyAmount`. Whether the Quotes API accepts it as an input rather
+  than only returning it was not confirmed from public docs. The whole
+  "exact USDC in, local fiat quoted" design hinges on this.
+- **Is USDC-on-Base a supported destination asset in the target markets?**
+  `currencyCode` must name the Base variant. Wrong chain means funds gone.
+- **Per-country payment methods**, especially Venezuela. Card and bank
+  transfer breadth is the entire argument for MoonPay over Coinbase; if the
+  local methods are not there for COBRO's market, there is no reason to build
+  this.
+- **Minimums.** MoonPay minimums are typically ~$20–30. The `0.001` test amount
+  and small requests cannot be funded this way at all, so the on-ramp option
+  has to hide itself below the threshold.
+
+## Unrelated cleanup, same file
+
+`pages/api/config.ts:185` publishes `NEYNAR_API_KEY` to unauthenticated
+browsers and a live value is readable right now. It is a real server-side
+credential, billed per call. Its only client use is
+`BuyerInput.tsx:36` — `const hasNeynarKey = !!config?.neynarApiKey` — a
+presence check that never reads the value. Replace with
+`hasNeynarSearch: !!process.env.NEYNAR_API_KEY` and rotate the key.
+
+It got there the same way a MoonPay secret would: a generic `*_API_KEY` added
+to a public blob without the name saying which kind it was. Rule of thumb for
+that file — nothing goes in `/api/config` unless it would be safe printed on
+the landing page.

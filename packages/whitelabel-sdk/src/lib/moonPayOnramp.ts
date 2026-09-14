@@ -9,24 +9,39 @@ import { apiFetch } from '@/lib/apiFetch';
  * MoonPay's URL must be signed server-side, and that MoonPay renders in an
  * overlay on our page rather than a popup.
  *
- * We never build the URL here. The signature covers the query string, so the
- * parameters have to be decided and signed by the box (see
- * pages/api/moonpay/sign.ts) — a URL assembled in the browser could not be
- * signed without shipping the secret key, which is the thing that must not
- * happen.
+ * The signing dance is MoonPay's, not ours. Their signature covers the query
+ * string exactly as transmitted, and only the SDK knows what it will transmit —
+ * so the SDK builds the URL (generateUrlForSigning), the box signs that exact
+ * string, and the SDK applies it (updateSignature). Building the URL ourselves
+ * and handing the parts to the SDK looks equivalent and is not: the SDK
+ * re-serialises, the bytes differ, and MoonPay answers 400 on
+ * verify_widget_signature.
+ *
+ * We never choose the parameters here. They come from the box, which reads the
+ * destination and the amount off the contract and re-checks them before
+ * signing — a URL assembled in the browser could not be signed without
+ * shipping the secret key, which is the thing that must not happen.
  */
 
-interface SignedWidget {
-  url: string;
+interface WidgetParams {
+  apiKey: string;
+  currencyCode: string;
+  quoteCurrencyAmount: string;
+  externalTransactionId: string;
+  walletAddress?: string;
+}
+
+interface PreparedWidget {
+  params: WidgetParams;
+  environment: 'sandbox' | 'production';
   quoteCurrencyAmount: string;
   /** Null in preview, where nothing is being sent anywhere. */
   escrowAddress: string | null;
-  environment: 'sandbox' | 'production';
   /**
-   * True when MOONPAY_API_SECRET_KEY is unset and the URL is therefore unsigned and
-   * carries no destination. The widget opens, but MoonPay asks the buyer for
-   * their own address and the escrow is NOT funded. Sandbox only — the endpoint
-   * refuses to do this in production.
+   * True when MOONPAY_API_SECRET_KEY is unset, so the widget is unsigned and
+   * carries no destination. It opens, but MoonPay asks the buyer for their own
+   * address and the escrow is NOT funded. Sandbox only — the endpoint refuses
+   * to do this in production.
    */
   preview: boolean;
 }
@@ -42,21 +57,19 @@ interface OpenMoonPayParams {
   onClose?: () => void;
 }
 
-async function fetchSignedWidget(contractId: string): Promise<SignedWidget> {
+async function post<T>(body: Record<string, unknown>): Promise<T> {
   const response = await apiFetch('/api/moonpay/sign', {
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ contractId }),
+    body: JSON.stringify(body),
   });
 
   const data = await response.json().catch(() => ({}));
-
-  if (!response.ok || !data?.url) {
-    throw new Error(data?.error || `Failed to prepare MoonPay (HTTP ${response.status})`);
+  if (!response.ok) {
+    throw new Error(data?.error || `MoonPay request failed (HTTP ${response.status})`);
   }
-
-  return data as SignedWidget;
+  return data as T;
 }
 
 /**
@@ -68,16 +81,16 @@ async function fetchSignedWidget(contractId: string): Promise<SignedWidget> {
  * load.
  */
 export async function openMoonPayOnramp(params: OpenMoonPayParams): Promise<void> {
-  const signed = await fetchSignedWidget(params.contractId);
+  const prepared = await post<PreparedWidget>({ contractId: params.contractId });
 
-  if (signed.preview) {
+  if (prepared.preview) {
     // Loud, because the flow looks identical from here and ends somewhere
     // completely different: the buyer's own wallet, with the escrow left
     // unfunded. Anyone testing needs to know which of the two they just saw.
     console.warn(
       '[MoonPay] PREVIEW MODE — unsigned URL, no destination address. The widget ' +
-        'will open but the escrow will NOT be funded. Set MOONPAY_API_SECRET_KEY to ' +
-        'enable the real payment flow.'
+        'will open but the escrow will NOT be funded. Set MOONPAY_API_SECRET_KEY ' +
+        'to enable the real payment flow.'
     );
   }
 
@@ -85,25 +98,32 @@ export async function openMoonPayOnramp(params: OpenMoonPayParams): Promise<void
   const moonPay = await loadMoonPay();
   if (!moonPay) throw new Error('Could not load MoonPay');
 
-  // The signed URL already carries every parameter, so it is parsed back out
-  // rather than restated here: anything added, removed or reordered at this
-  // point would no longer match the signature and MoonPay would refuse to load.
-  const query = Object.fromEntries(new URL(signed.url).searchParams.entries());
-
   const widget = moonPay({
     flow: 'buy',
-    environment: signed.environment,
+    environment: prepared.environment,
     variant: 'overlay',
-    params: query as any,
+    params: prepared.params as any,
     handlers: {
       async onCloseOverlay() {
         // Nothing can have reached the escrow in preview, so do not send the
         // caller to a panel that offers to check for it.
-        if (!signed.preview) params.onClose?.();
+        if (!prepared.preview) params.onClose?.();
       },
     },
   });
 
   if (!widget) throw new Error('Could not open MoonPay');
+
+  if (!prepared.preview) {
+    // The SDK's own URL, signed by the box, applied back to the SDK.
+    // Round-tripping the string it built is what makes the signature match the
+    // one it sends.
+    const { signature } = await post<{ signature: string }>({
+      contractId: params.contractId,
+      url: widget.generateUrlForSigning(),
+    });
+    widget.updateSignature(signature);
+  }
+
   widget.show();
 }

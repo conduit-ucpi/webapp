@@ -171,12 +171,28 @@ describe('secrets stay server-side', () => {
       expect(everywhere).not.toMatch(/NEXT_PUBLIC_MOONPAY/);
     });
 
-    it('keeps the publishable key public and the secret key out of the response', () => {
+    it('uses the signing key only as an HMAC key, never as a value', () => {
+      // Structural rather than textual: every mention of the secret should be
+      // reading it from the environment, testing whether it exists, or handing
+      // it to createHmac. Anything else — putting it in a response, a URL, a
+      // log line — is a leak. sign.test.ts asserts the same property on real
+      // output; this one catches it at the shape level, where a refactor that
+      // moves the response around cannot quietly disarm it.
       const src = fs.readFileSync(path.join(ROOT, signPath), 'utf8');
 
-      // The response object must carry the URL, never the raw key.
-      const responseBlock = src.slice(src.indexOf('return res.status(200).json('));
-      expect(responseBlock).not.toMatch(/secretKey/);
+      const allowed = [
+        /const secretKey = process\.env\.MOONPAY_API_SECRET_KEY;/,
+        /!secretKey/,           // presence checks and the preview flag
+        /createHmac\('sha256', secretKey as string\)/,
+      ];
+
+      const mentions = src
+        .split('\n')
+        .map((line, i) => ({ line: line.trim(), n: i + 1 }))
+        .filter(({ line }) => /\bsecretKey\b/.test(line) && !line.startsWith('*') && !line.startsWith('//'))
+        .filter(({ line }) => !allowed.some((ok) => ok.test(line)));
+
+      expect(mentions).toEqual([]);
     });
   });
 });

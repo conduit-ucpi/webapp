@@ -2,10 +2,14 @@
  * The MoonPay signing endpoint.
  *
  * This endpoint holds the secret key, so the property that matters is not
- * "does it produce a URL" but "whose address does it sign". A signing endpoint
- * that signs a caller-supplied wallet address issues our valid signatures for
- * anybody's payout — the secret never leaks, and it does not need to. Most of
- * what is below exists to pin that.
+ * "does it produce a signature" but "what will it sign". It has two phases:
+ * phase 1 hands the client the parameters, phase 2 signs the URL the SDK built
+ * from them.
+ *
+ * Phase 2 is the dangerous one, because it accepts a URL from the browser. An
+ * endpoint that signs whatever it is handed issues our valid signatures for
+ * anybody's payout — the secret never leaks and does not need to. Most of what
+ * is below exists to pin that it verifies first.
  */
 
 import crypto from 'crypto';
@@ -17,6 +21,7 @@ const mockFetch = global.fetch as jest.MockedFunction<typeof fetch>;
 
 const ESCROW = '0x1111111111111111111111111111111111111111';
 const ATTACKER = '0x2222222222222222222222222222222222222222';
+const HOST = 'https://buy-sandbox.moonpay.com';
 
 const contractResponse = (overrides: Record<string, unknown> = {}) =>
   ({
@@ -31,10 +36,30 @@ const contractResponse = (overrides: Record<string, unknown> = {}) =>
     }),
   }) as Response;
 
-const post = (body: unknown, headers: Record<string, string> = { cookie: 'AUTH-TOKEN=test-token' }) =>
-  createMocks({ method: 'POST', headers, body });
+const call = async (body: unknown, headers: Record<string, string> = { cookie: 'AUTH-TOKEN=test-token' }) => {
+  const { req, res } = createMocks({ method: 'POST', headers, body });
+  await handler(req as any, res);
+  return {
+    status: res._getStatusCode(),
+    body: JSON.parse(res._getData() || '{}'),
+    raw: res._getData(),
+  };
+};
 
-const paramsOf = (url: string) => new URL(url).searchParams;
+/** A URL of the shape the SDK would produce for this contract. */
+const sdkUrl = (overrides: Record<string, string | null> = {}) => {
+  const merged: Record<string, string | null> = {
+    apiKey: 'pk_test_key',
+    currencyCode: 'usdc_base',
+    quoteCurrencyAmount: '1.5',
+    externalTransactionId: 'contract-123',
+    walletAddress: ESCROW,
+    ...overrides,
+  };
+  const p = new URLSearchParams();
+  for (const [k, v] of Object.entries(merged)) if (v !== null) p.set(k, v);
+  return `${HOST}?${p.toString()}`;
+};
 
 describe('/api/moonpay/sign', () => {
   beforeEach(() => {
@@ -46,137 +71,187 @@ describe('/api/moonpay/sign', () => {
     delete process.env.MOONPAY_CURRENCY_CODE;
   });
 
-  describe('what it signs', () => {
-    it('takes the destination from the contract, never from the body', async () => {
+  describe('phase 1: the parameters', () => {
+    it('derives the destination and amount from the contract', async () => {
       mockFetch.mockResolvedValueOnce(contractResponse());
 
-      // The attack: name someone else's address and hope it is signed.
-      const { req, res } = post({
+      const { status, body } = await call({ contractId: 'contract-123' });
+
+      expect(status).toBe(200);
+      expect(body.params.walletAddress).toBe(ESCROW);
+      expect(body.params.quoteCurrencyAmount).toBe('1.5');
+    });
+
+    it('ignores a destination named in the request body', async () => {
+      // The attack: ask for parameters while naming someone else's address.
+      mockFetch.mockResolvedValueOnce(contractResponse());
+
+      const { body } = await call({
         contractId: 'contract-123',
         walletAddress: ATTACKER,
         quoteCurrencyAmount: '9999',
       });
-      await handler(req as any, res);
 
-      expect(res._getStatusCode()).toBe(200);
-      const params = paramsOf(JSON.parse(res._getData()).url);
-      expect(params.get('walletAddress')).toBe(ESCROW);
-      expect(params.get('quoteCurrencyAmount')).toBe('1.5');
+      expect(body.params.walletAddress).toBe(ESCROW);
+      expect(body.params.quoteCurrencyAmount).toBe('1.5');
     });
 
-    it('sends the crypto amount, not a fiat amount', async () => {
+    it('sends the crypto amount, never a fiat one', async () => {
       // EscrowContract.deposit reverts unless exactly AMOUNT arrives, so the
-      // crypto side has to be the fixed one. A baseCurrencyAmount here would
-      // mean fees come out of the delivered USDC and the escrow underfunds.
+      // crypto side has to be fixed. A baseCurrencyAmount would mean fees come
+      // out of the delivered USDC and the escrow underfunds.
       mockFetch.mockResolvedValueOnce(contractResponse());
 
-      const { req, res } = post({ contractId: 'contract-123' });
-      await handler(req as any, res);
+      const { body } = await call({ contractId: 'contract-123' });
 
-      const params = paramsOf(JSON.parse(res._getData()).url);
-      expect(params.get('quoteCurrencyAmount')).toBe('1.5');
-      expect(params.has('baseCurrencyAmount')).toBe(false);
-    });
-
-    it('leaves the fiat currency for MoonPay to geo-detect', async () => {
-      // Guessing from a browser locale is worse than their detection, and wrong
-      // exactly where it matters — a Venezuelan payer on an en-US profile.
-      mockFetch.mockResolvedValueOnce(contractResponse());
-
-      const { req, res } = post({ contractId: 'contract-123' });
-      await handler(req as any, res);
-
-      expect(paramsOf(JSON.parse(res._getData()).url).has('baseCurrencyCode')).toBe(false);
+      expect(body.params).not.toHaveProperty('baseCurrencyAmount');
+      expect(body.params).not.toHaveProperty('baseCurrencyCode');
     });
 
     it('names USDC on Base, not bare usdc', async () => {
-      // A bare code can deliver on the wrong chain, and those funds are gone.
+      // A bare code delivers on Ethereum, and those funds are gone.
       mockFetch.mockResolvedValueOnce(contractResponse());
 
-      const { req, res } = post({ contractId: 'contract-123' });
-      await handler(req as any, res);
+      const { body } = await call({ contractId: 'contract-123' });
 
-      expect(paramsOf(JSON.parse(res._getData()).url).get('currencyCode')).toBe('usdc_base');
+      expect(body.params.currencyCode).toBe('usdc_base');
     });
 
     it('rounds the amount up, never down', async () => {
       // 1.234567 USDC must not be sent as 1.23 — short of AMOUNT is a revert.
       mockFetch.mockResolvedValueOnce(contractResponse({ amount: 1_234_567 }));
 
-      const { req, res } = post({ contractId: 'contract-123' });
-      await handler(req as any, res);
+      const { body } = await call({ contractId: 'contract-123' });
 
-      expect(paramsOf(JSON.parse(res._getData()).url).get('quoteCurrencyAmount')).toBe('1.24');
+      expect(body.params.quoteCurrencyAmount).toBe('1.24');
+    });
+
+    it('reads chainAddress, which is what contractservice actually returns', async () => {
+      // The bug this pins: the endpoint once read `contractAddress`, which is
+      // chainservice's spelling, so every real request 409'd while the tests
+      // passed — the fixture had the same wrong field as the code.
+      mockFetch.mockResolvedValueOnce(contractResponse());
+
+      const { status } = await call({ contractId: 'contract-123' });
+
+      expect(status).toBe(200);
+    });
+
+    it('also accepts a chainservice-shaped contractAddress', async () => {
+      mockFetch.mockResolvedValueOnce(
+        contractResponse({ chainAddress: undefined, contractAddress: ESCROW })
+      );
+
+      const { status, body } = await call({ contractId: 'contract-123' });
+
+      expect(status).toBe(200);
+      expect(body.params.walletAddress).toBe(ESCROW);
     });
   });
 
-  describe('the signature itself', () => {
-    it('is an HMAC of the query string with the secret key', async () => {
+  describe("phase 2: signing the SDK's URL", () => {
+    it('signs the query string exactly as given, including the leading ?', async () => {
+      // The regression this exists for: the URL used to be built server-side
+      // and then rebuilt by the SDK, so the signature covered a string that was
+      // never transmitted and MoonPay answered 400 on
+      // verify_widget_signature. Signing the SDK's own URL is the fix.
       mockFetch.mockResolvedValueOnce(contractResponse());
+      const url = sdkUrl();
 
-      const { req, res } = post({ contractId: 'contract-123' });
-      await handler(req as any, res);
+      const { status, body } = await call({ contractId: 'contract-123', url });
 
-      const { url } = JSON.parse(res._getData());
-      const signature = new URL(url).searchParams.get('signature');
-      // Everything before &signature=, which is what was signed.
-      const signed = url.slice(url.indexOf('?'), url.indexOf('&signature='));
-
+      expect(status).toBe(200);
       const expected = crypto
         .createHmac('sha256', 'sk_test_secret')
-        .update(signed)
+        .update(url.slice(url.indexOf('?')))
         .digest('base64');
-
-      expect(signature).toBe(expected);
-    });
-
-    it('does not verify against a different address', async () => {
-      // The point of signing: swapping the destination invalidates it.
-      mockFetch.mockResolvedValueOnce(contractResponse());
-
-      const { req, res } = post({ contractId: 'contract-123' });
-      await handler(req as any, res);
-
-      const { url } = JSON.parse(res._getData());
-      const signature = new URL(url).searchParams.get('signature');
-      const tampered = url
-        .slice(url.indexOf('?'), url.indexOf('&signature='))
-        .replace(ESCROW, ATTACKER);
-
-      const recomputed = crypto
-        .createHmac('sha256', 'sk_test_secret')
-        .update(tampered)
-        .digest('base64');
-
-      expect(recomputed).not.toBe(signature);
+      expect(body.signature).toBe(expected);
     });
 
     it('never returns the secret key', async () => {
       mockFetch.mockResolvedValueOnce(contractResponse());
 
-      const { req, res } = post({ contractId: 'contract-123' });
-      await handler(req as any, res);
+      const { raw } = await call({ contractId: 'contract-123', url: sdkUrl() });
 
-      expect(res._getData()).not.toContain('sk_test_secret');
+      expect(raw).not.toContain('sk_test_secret');
+    });
+  });
+
+  describe('phase 2 refuses to be an oracle', () => {
+    const refuses = async (url: string) => {
+      mockFetch.mockResolvedValueOnce(contractResponse());
+      const { status, body } = await call({ contractId: 'contract-123', url });
+      expect(status).toBe(422);
+      expect(body.signature).toBeUndefined();
+      return body.error as string;
+    };
+
+    it('will not sign a URL pointing at another address', async () => {
+      expect(await refuses(sdkUrl({ walletAddress: ATTACKER }))).toMatch(/not the escrow/);
+    });
+
+    it('will not sign a URL with no destination at all', async () => {
+      expect(await refuses(sdkUrl({ walletAddress: null }))).toMatch(/not the escrow/);
+    });
+
+    it('will not sign a different amount', async () => {
+      expect(await refuses(sdkUrl({ quoteCurrencyAmount: '9999' }))).toMatch(/does not match/);
+    });
+
+    it('will not sign a different currency, which could mean a different chain', async () => {
+      expect(await refuses(sdkUrl({ currencyCode: 'usdc' }))).toMatch(/currencyCode/);
+    });
+
+    it("will not sign for somebody else's MoonPay account", async () => {
+      expect(await refuses(sdkUrl({ apiKey: 'pk_test_someone_else' }))).toMatch(/apiKey/);
+    });
+
+    it('rejects walletAddresses, which outranks walletAddress', async () => {
+      // MoonPay document that the plural form takes precedence. A URL carrying
+      // the verified escrow AND a plural override would pass a naive check and
+      // still pay someone else.
+      const url = `${sdkUrl()}&walletAddresses=${encodeURIComponent(`{"eth":"${ATTACKER}"}`)}`;
+      expect(await refuses(url)).toMatch(/walletAddresses/);
+    });
+
+    it('rejects a URL that already carries a signature', async () => {
+      expect(await refuses(`${sdkUrl()}&signature=abc`)).toMatch(/signature/);
+    });
+
+    it('rejects a fiat amount being driven alongside the crypto one', async () => {
+      expect(await refuses(`${sdkUrl()}&baseCurrencyAmount=100`)).toMatch(/baseCurrencyAmount/);
+    });
+
+    it('will not sign for a host that is not MoonPay', async () => {
+      const url = sdkUrl().replace('buy-sandbox.moonpay.com', 'evil.example.com');
+      expect(await refuses(url)).toMatch(/unexpected host/);
+    });
+
+    it('will not sign a non-https URL', async () => {
+      expect(await refuses(sdkUrl().replace('https:', 'http:'))).toMatch(
+        /not https|unexpected host/
+      );
+    });
+
+    it('rejects a url that is not a URL', async () => {
+      expect(await refuses('not a url at all')).toMatch(/not a valid URL/);
     });
   });
 
   describe('access', () => {
     it('requires authentication', async () => {
-      const { req, res } = post({ contractId: 'contract-123' }, {});
-      await handler(req as any, res);
+      const { status } = await call({ contractId: 'contract-123' }, {});
 
-      expect(res._getStatusCode()).toBe(401);
+      expect(status).toBe(401);
       expect(mockFetch).not.toHaveBeenCalled();
     });
 
-    it('passes the caller\'s own token upstream', async () => {
+    it("passes the caller's own token upstream", async () => {
       // So contractservice applies its normal rules: someone who cannot read
       // this contract cannot get a signed URL for its escrow either.
       mockFetch.mockResolvedValueOnce(contractResponse());
 
-      const { req, res } = post({ contractId: 'contract-123' });
-      await handler(req as any, res);
+      await call({ contractId: 'contract-123' });
 
       const [, init] = mockFetch.mock.calls[0];
       expect((init as any).headers.Authorization).toBe('Bearer test-token');
@@ -189,10 +264,9 @@ describe('/api/moonpay/sign', () => {
         text: async () => 'not found',
       } as Response);
 
-      const { req, res } = post({ contractId: 'nope' });
-      await handler(req as any, res);
+      const { status } = await call({ contractId: 'nope' });
 
-      expect(res._getStatusCode()).toBe(404);
+      expect(status).toBe(404);
     });
   });
 
@@ -200,24 +274,22 @@ describe('/api/moonpay/sign', () => {
     it('refuses when MOONPAY_API_KEY is unset, like the button being hidden', async () => {
       delete process.env.MOONPAY_API_KEY;
 
-      const { req, res } = post({ contractId: 'contract-123' });
-      await handler(req as any, res);
+      const { status } = await call({ contractId: 'contract-123' });
 
-      expect(res._getStatusCode()).toBe(503);
+      expect(status).toBe(503);
       expect(mockFetch).not.toHaveBeenCalled();
     });
 
     it('refuses in production when the signing key is missing', async () => {
       // Degrading silently in production would take real money from a buyer,
-      // deliver it to their own wallet, and leave the escrow unfunded — the
-      // payment looks successful and the seller is never paid.
+      // deliver it to their own wallet, and leave the seller unpaid — with
+      // every screen reporting success.
       delete process.env.MOONPAY_API_SECRET_KEY;
       process.env.MOONPAY_ENVIRONMENT = 'production';
 
-      const { req, res } = post({ contractId: 'contract-123' });
-      await handler(req as any, res);
+      const { status } = await call({ contractId: 'contract-123' });
 
-      expect(res._getStatusCode()).toBe(500);
+      expect(status).toBe(500);
       expect(mockFetch).not.toHaveBeenCalled();
     });
   });
@@ -227,97 +299,54 @@ describe('/api/moonpay/sign', () => {
       delete process.env.MOONPAY_API_SECRET_KEY;
     });
 
-    it('opens unsigned, which means dropping the destination', async () => {
+    it('drops the destination, which is what lets it open unsigned', async () => {
       // MoonPay reject an unsigned URL carrying walletAddress outright, so the
-      // address has to go for the widget to load at all. Both must be absent
-      // together — an unsigned URL that still named the escrow would just 400.
+      // address has to go for the widget to load at all.
       mockFetch.mockResolvedValueOnce(contractResponse());
 
-      const { req, res } = post({ contractId: 'contract-123' });
-      await handler(req as any, res);
+      const { status, body } = await call({ contractId: 'contract-123' });
 
-      expect(res._getStatusCode()).toBe(200);
-      const data = JSON.parse(res._getData());
-      const params = paramsOf(data.url);
-      expect(params.has('walletAddress')).toBe(false);
-      expect(params.has('signature')).toBe(false);
-      expect(data.preview).toBe(true);
+      expect(status).toBe(200);
+      expect(body.params).not.toHaveProperty('walletAddress');
+      expect(body.preview).toBe(true);
+      expect(body.escrowAddress).toBeNull();
     });
 
-    it('says plainly that it is not a payment route', async () => {
-      // The caller cannot tell from the URL, and the two flows look identical
-      // to the buyer right up until the money lands somewhere else.
+    it('refuses to sign anything, since there is no destination to vouch for', async () => {
       mockFetch.mockResolvedValueOnce(contractResponse());
 
-      const { req, res } = post({ contractId: 'contract-123' });
-      await handler(req as any, res);
+      const { status } = await call({ contractId: 'contract-123', url: sdkUrl() });
 
-      const data = JSON.parse(res._getData());
-      expect(data.preview).toBe(true);
-      expect(data.escrowAddress).toBeNull();
+      expect(status).toBe(409);
     });
 
     it('is never what the real flow looks like', async () => {
-      // Guards the inverse: with a secret present, preview must be false and
-      // the destination must be back.
       process.env.MOONPAY_API_SECRET_KEY = 'sk_test_secret';
       mockFetch.mockResolvedValueOnce(contractResponse());
 
-      const { req, res } = post({ contractId: 'contract-123' });
-      await handler(req as any, res);
+      const { body } = await call({ contractId: 'contract-123' });
 
-      const data = JSON.parse(res._getData());
-      expect(data.preview).toBe(false);
-      expect(paramsOf(data.url).get('walletAddress')).toBe(ESCROW);
+      expect(body.preview).toBe(false);
+      expect(body.params.walletAddress).toBe(ESCROW);
     });
   });
 
   describe('escrow readiness', () => {
-    // The bug this pins: the endpoint originally read `contractAddress`, which
-    // is chainservice's spelling. contractservice's PendingContract holds
-    // `chainAddress`, so every real request 409'd while the tests passed —
-    // because the fixture had the same wrong field as the code. A fixture that
-    // mirrors the implementation's mistake proves nothing, so these assert the
-    // two shapes explicitly.
-    it('reads chainAddress, which is what contractservice actually returns', async () => {
-      mockFetch.mockResolvedValueOnce(contractResponse());
-
-      const { req, res } = post({ contractId: 'contract-123' });
-      await handler(req as any, res);
-
-      expect(res._getStatusCode()).toBe(200);
-      expect(paramsOf(JSON.parse(res._getData()).url).get('walletAddress')).toBe(ESCROW);
-    });
-
-    it('also accepts a chainservice-shaped contractAddress', async () => {
-      mockFetch.mockResolvedValueOnce(
-        contractResponse({ chainAddress: undefined, contractAddress: ESCROW })
-      );
-
-      const { req, res } = post({ contractId: 'contract-123' });
-      await handler(req as any, res);
-
-      expect(res._getStatusCode()).toBe(200);
-      expect(paramsOf(JSON.parse(res._getData()).url).get('walletAddress')).toBe(ESCROW);
-    });
-
-    it('refuses to sign for an escrow that is not deployed', async () => {
+    it('refuses when the escrow is not deployed', async () => {
       // Signing a URL pointing at nothing would send a payer's money nowhere.
       mockFetch.mockResolvedValueOnce(contractResponse({ chainAddress: undefined }));
 
-      const { req, res } = post({ contractId: 'contract-123' });
-      await handler(req as any, res);
+      const { status } = await call({ contractId: 'contract-123' });
 
-      expect(res._getStatusCode()).toBe(409);
+      expect(status).toBe(409);
     });
 
     it('refuses a contract with no payable amount', async () => {
       mockFetch.mockResolvedValueOnce(contractResponse({ amount: 0 }));
 
-      const { req, res } = post({ contractId: 'contract-123' });
-      await handler(req as any, res);
+      const { status } = await call({ contractId: 'contract-123' });
 
-      expect(res._getStatusCode()).toBe(422);
+      expect(status).toBe(422);
     });
   });
 
@@ -329,9 +358,8 @@ describe('/api/moonpay/sign', () => {
   });
 
   it('requires a contract id', async () => {
-    const { req, res } = post({});
-    await handler(req as any, res);
+    const { status } = await call({});
 
-    expect(res._getStatusCode()).toBe(400);
+    expect(status).toBe(400);
   });
 });

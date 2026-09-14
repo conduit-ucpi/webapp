@@ -126,8 +126,16 @@ conversation (`team@moonpay.com`), so ask together.
   `baseCurrencyAmount`. Whether the Quotes API accepts it as an input rather
   than only returning it was not confirmed from public docs. The whole
   "exact USDC in, local fiat quoted" design hinges on this.
-- **Is USDC-on-Base a supported destination asset in the target markets?**
-  `currencyCode` must name the Base variant. Wrong chain means funds gone.
+- **BLOCKER: get USDC enabled on the account.** `usdc_base` is valid on
+  MoonPay's global currency list (`net=base`, not suspended), but it is not
+  enabled on our sandbox account. Probing `/v3/currencies/{code}/limits` with
+  our publishable key: `eth` 200, `btc` 200, and 404 for `usdc_base`, `usdc`,
+  `usdc_polygon`, `usdc_sol`, `weth_base`. No USDC on any chain.
+
+  Nothing in the integration can be tested end to end until that changes, and
+  if the PRODUCTION account is provisioned the same way the whole thing is
+  blocked — we settle in USDC and the escrow accepts nothing else. Ask about
+  sandbox and production together.
 - **Per-country payment methods**, especially Venezuela. Card and bank
   transfer breadth is the entire argument for MoonPay over Coinbase; if the
   local methods are not there for COBRO's market, there is no reason to build

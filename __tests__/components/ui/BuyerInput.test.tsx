@@ -21,7 +21,7 @@ describe('BuyerInput — Farcaster user search fetch behavior', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     // Default: Neynar key present so Farcaster search is enabled.
-    (useConfig as jest.Mock).mockReturnValue({ config: { neynarApiKey: 'test-key' } });
+    (useConfig as jest.Mock).mockReturnValue({ config: { hasNeynarSearch: true } });
   });
 
   afterEach(() => {
@@ -96,7 +96,7 @@ describe('BuyerInput — Farcaster user search fetch behavior', () => {
   });
 
   it('does not call the search endpoint when no Neynar key is configured', async () => {
-    (useConfig as jest.Mock).mockReturnValue({ config: { neynarApiKey: undefined } });
+    (useConfig as jest.Mock).mockReturnValue({ config: { hasNeynarSearch: false } });
 
     render(<BuyerInput value="" onChange={onChange} />);
     const input = screen.getByPlaceholderText('Search Farcaster user or enter email');

@@ -46,6 +46,9 @@ const SERVER_ONLY = [
   `${path.sep}pages${path.sep}api${path.sep}`,
 ];
 
+/** Server-only by naming convention, the same one api-fetch-chokepoint uses. */
+const isServerByName = (file: string) => /Server\.tsx?$/.test(file);
+
 /**
  * Env var names that must never be read in client code.
  *
@@ -54,8 +57,31 @@ const SERVER_ONLY = [
  */
 const SECRET_NAME = /(SECRET|PRIVATE_KEY|PASSWORD|_TOKEN$|MNEMONIC|SEED_PHRASE)/;
 
-/** `process.env.FOO` and `process.env['FOO']`. */
-const ENV_READ = /process\.env(?:\.([A-Z0-9_]+)|\[\s*['"]([A-Z0-9_]+)['"]\s*\])/g;
+/**
+ * Secrets whose names do not look like secrets.
+ *
+ * NEYNAR_API_KEY is a billed server credential called `*_API_KEY`, which is
+ * indistinguishable by name from MOONPAY_API_KEY — a publishable key that
+ * BELONGS in the public config. The naming rule above cannot separate them, and
+ * that ambiguity is precisely how the Neynar key came to be served to every
+ * visitor. So the ones we know about are named here.
+ *
+ * Add to this list when a credential arrives whose name does not announce
+ * itself. The cost of a wrong omission is a published credential.
+ */
+const KNOWN_SECRETS = ['NEYNAR_API_KEY', 'X_API_KEY'];
+
+const isSecret = (name: string) => SECRET_NAME.test(name) || KNOWN_SECRETS.includes(name);
+
+/**
+ * `process.env.FOO` and `process.env['FOO']`, capturing any `!!` in front.
+ *
+ * The coercion matters: `hasNeynarSearch: !!process.env.NEYNAR_API_KEY` tells
+ * the client a capability exists and publishes nothing, which is exactly how a
+ * secret SHOULD be used here. `neynarApiKey: process.env.NEYNAR_API_KEY`
+ * publishes the credential. Only the second is a leak.
+ */
+const ENV_READ = /(!!\s*)?process\.env(?:\.([A-Z0-9_]+)|\[\s*['"]([A-Z0-9_]+)['"]\s*\])/g;
 
 function walk(dir: string, out: string[] = []): string[] {
   const full = path.join(ROOT, dir);
@@ -73,7 +99,7 @@ function walk(dir: string, out: string[] = []): string[] {
 }
 
 const clientFiles = CLIENT_DIRS.flatMap((d) => walk(d)).filter(
-  (f) => !SERVER_ONLY.some((s) => path.join(ROOT, f).includes(s))
+  (f) => !SERVER_ONLY.some((s) => path.join(ROOT, f).includes(s)) && !isServerByName(f)
 );
 
 describe('secrets stay server-side', () => {
@@ -90,10 +116,13 @@ describe('secrets stay server-side', () => {
 
     for (const file of clientFiles) {
       const src = fs.readFileSync(path.join(ROOT, file), 'utf8');
-      for (const match of src.matchAll(ENV_READ)) {
-        const name = match[1] ?? match[2];
-        if (name && SECRET_NAME.test(name)) {
-          offences.push(`${file}: process.env.${name}`);
+      for (const match of Array.from(src.matchAll(ENV_READ))) {
+        const [, coerced, dotName, bracketName] = match;
+        const name = dotName ?? bracketName;
+        // Even a presence check does not belong in bundled code — the value is
+        // inlined at build time whether or not it is then coerced.
+        if (name && isSecret(name)) {
+          offences.push(`${file}: ${coerced ? '!!' : ''}process.env.${name}`);
         }
       }
     }
@@ -107,9 +136,11 @@ describe('secrets stay server-side', () => {
     const src = fs.readFileSync(path.join(ROOT, 'pages/api/config.ts'), 'utf8');
 
     const exposed: string[] = [];
-    for (const match of src.matchAll(ENV_READ)) {
-      const name = match[1] ?? match[2];
-      if (name && SECRET_NAME.test(name)) exposed.push(name);
+    for (const match of Array.from(src.matchAll(ENV_READ))) {
+      const [, coerced, dotName, bracketName] = match;
+      const name = dotName ?? bracketName;
+      // A `!!` read publishes a boolean capability flag, not the credential.
+      if (name && isSecret(name) && !coerced) exposed.push(name);
     }
 
     expect(exposed).toEqual([]);

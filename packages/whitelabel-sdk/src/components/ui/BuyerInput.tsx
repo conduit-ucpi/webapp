@@ -33,7 +33,7 @@ export default function BuyerInput({
   const [showDropdown, setShowDropdown] = useState(false);
 
   const debouncedSearch = useDebounce(inputValue, 300);
-  const hasNeynarKey = !!config?.neynarApiKey;
+  const hasNeynarKey = !!config?.hasNeynarSearch;
 
   // Farcaster user search (fetch + parsing) lives in the shared hook; the
   // component still owns dropdown visibility (presentation state).

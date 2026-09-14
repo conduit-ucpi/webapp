@@ -36,7 +36,8 @@ export interface Config {
   coinbaseProjectId?: string;
   coinbaseNetwork?: string; // Coinbase's network slug (e.g. "base") - see COINBASE_NETWORK
   walletConnectProjectId?: string;
-  neynarApiKey?: string;
+  /** Farcaster search is configured. The key itself stays on the server. */
+  hasNeynarSearch?: boolean;
   // Gas configuration
   minGasWei: string;
   maxGasPriceGwei: string;

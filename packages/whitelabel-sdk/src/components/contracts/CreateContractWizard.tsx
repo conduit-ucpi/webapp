@@ -473,19 +473,6 @@ export default function CreateContractWizard() {
       default:
         result = false;
     }
-    console.log('🔧 canProceed', {
-      step: currentStep,
-      result: !!result,
-      isInstantPayment,
-      noBuyerEmail,
-      hasBuyerEmail: !!form.buyerEmail,
-      hasDescription: !!form.description,
-      hasAmount: !!form.amount,
-      payoutTimestamp: form.payoutTimestamp,
-      hasUser: !!user,
-      hasWallet: !!user?.walletAddress,
-      isLoading,
-    });
     return result;
   };
 

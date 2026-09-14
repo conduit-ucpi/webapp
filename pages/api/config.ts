@@ -182,7 +182,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // (including every testnet), which hides the cash-out UI.
       coinbaseNetwork: process.env.COINBASE_NETWORK || coinbaseNetworkForChainId(chainId),
       walletConnectProjectId: process.env.WALLETCONNECT_PROJECT_ID,
-      neynarApiKey: process.env.NEYNAR_API_KEY,
+      // Whether Farcaster user search is available — NOT the key itself.
+      // /api/config is public and unauthenticated, so anything here is
+      // published; NEYNAR_API_KEY is a billed server credential and the only
+      // thing the client ever did with it was test it for presence. The real
+      // calls are server-side in pages/api/users/search.ts and
+      // pages/api/users/fid/[fid].ts, which read the env var directly.
+      hasNeynarSearch: !!process.env.NEYNAR_API_KEY,
       // Gas configuration
       minGasWei: process.env.MIN_GAS_WEI || '5',
       maxGasPriceGwei: process.env.MAX_GAS_PRICE_GWEI || '0.001',

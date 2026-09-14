@@ -136,16 +136,22 @@ conversation (`team@moonpay.com`), so ask together.
   and small requests cannot be funded this way at all, so the on-ramp option
   has to hide itself below the threshold.
 
-## Unrelated cleanup, same file
+## Neynar key — fixed
 
-`pages/api/config.ts:185` publishes `NEYNAR_API_KEY` to unauthenticated
-browsers and a live value is readable right now. It is a real server-side
-credential, billed per call. Its only client use is
-`BuyerInput.tsx:36` — `const hasNeynarKey = !!config?.neynarApiKey` — a
-presence check that never reads the value. Replace with
-`hasNeynarSearch: !!process.env.NEYNAR_API_KEY` and rotate the key.
+`pages/api/config.ts` published `NEYNAR_API_KEY` to unauthenticated browsers.
+It is a billed server credential, and the only client use was
+`BuyerInput.tsx` testing it for presence. It now publishes
+`hasNeynarSearch: !!process.env.NEYNAR_API_KEY` — a capability flag — and the
+real calls stay server-side in `pages/api/users/search.ts` and
+`pages/api/users/fid/[fid].ts`.
 
-It got there the same way a MoonPay secret would: a generic `*_API_KEY` added
-to a public blob without the name saying which kind it was. Rule of thumb for
-that file — nothing goes in `/api/config` unless it would be safe printed on
-the landing page.
+⚠️ **The key still needs rotating.** It was publicly readable for as long as it
+was in that response, so it must be treated as compromised regardless of the
+code fix.
+
+`__tests__/architecture/secrets-stay-server-side.test.ts` now enforces the rule
+that let this happen: no secret-shaped env var may be read in bundled code or
+returned by `/api/config`. Because `NEYNAR_API_KEY` does not *look* like a
+secret — it is `*_API_KEY`, exactly like the publishable `MOONPAY_API_KEY` that
+belongs there — it is listed explicitly in that test's `KNOWN_SECRETS`. Add to
+that list whenever a credential arrives whose name does not announce itself.

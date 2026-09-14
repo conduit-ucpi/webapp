@@ -133,8 +133,6 @@ export default function ContractPay() {
     { id: 'complete', label: t('status.complete'), status: 'pending' }
   ]);
 
-  console.log('ContractPay: Query params', { contractId });
-
   // Extract token symbol from contract's currency field
   const contractTokenSymbol = useMemo(() => {
     if (!contract?.currency) return undefined;

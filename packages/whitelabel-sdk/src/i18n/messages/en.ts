@@ -594,6 +594,10 @@ export const en = {
   'connectPaymentStage.connectToComplete': 'Connect your wallet to complete the payment.',
   'connectPaymentStage.signInToProceed': 'Sign in with your email or wallet to proceed.',
   'disputeManagementModal.confirmAndSign': 'Confirm and sign',
+  'paymentActionPanel.payWithMoonPay': 'Pay by bank transfer or card',
+  'paymentActionPanel.openingMoonPay': 'Opening MoonPay…',
+  'paymentActionPanel.moonPayNote':
+    "You'll finish on MoonPay. Bank transfers may take a while to arrive — you can close this page once you've paid.",
 } as const;
 
 export type MessageKey = keyof typeof en;

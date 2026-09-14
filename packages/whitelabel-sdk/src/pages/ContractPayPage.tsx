@@ -840,6 +840,7 @@ export default function ContractPay() {
                 // address contractservice considers authoritative and no second
                 // escrow is ever deployed.
                 resolveEscrowAddress={async () => qr.qrContractAddress ?? (await qr.createContract()) ?? null}
+                contractId={typeof contractId === 'string' ? contractId : undefined}
               />
             </>
           )}

@@ -697,4 +697,8 @@ export const es: Catalogue = {
   'connectPaymentStage.connectToComplete': 'Conecta tu billetera para completar el pago.',
   'connectPaymentStage.signInToProceed': 'Inicia sesión con tu correo o tu billetera para continuar.',
   'disputeManagementModal.confirmAndSign': 'Confirmar y firmar',
+  'paymentActionPanel.payWithMoonPay': 'Pagar por transferencia bancaria o tarjeta',
+  'paymentActionPanel.openingMoonPay': 'Abriendo MoonPay…',
+  'paymentActionPanel.moonPayNote':
+    'Terminarás en MoonPay. Las transferencias bancarias pueden tardar en llegar; puedes cerrar esta página cuando hayas pagado.',
 };

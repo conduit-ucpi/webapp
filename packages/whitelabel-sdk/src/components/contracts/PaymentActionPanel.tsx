@@ -3,6 +3,7 @@ import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import AddFundsModal from '@/components/contracts/AddFundsModal';
 import { openCoinbaseOnramp } from '@/lib/coinbaseOnramp';
+import { openMoonPayOnramp } from '@/lib/moonPayOnramp';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { useT } from '../../i18n';
 
@@ -34,6 +35,12 @@ interface PaymentActionPanelProps {
    * "Pay by card or bank transfer" option is not offered.
    */
   resolveEscrowAddress?: () => Promise<string | null>;
+  /**
+   * The payment request being funded. Needed for the MoonPay route, which asks
+   * the box to sign a widget URL for this contract's escrow; without it that
+   * option is not offered.
+   */
+  contractId?: string;
 }
 
 /**
@@ -72,14 +79,21 @@ export default function PaymentActionPanel({
   onPayFromExternalWallet,
   addFundsReturnPath,
   resolveEscrowAddress,
+  contractId,
 }: PaymentActionPanelProps) {
   const t = useT();
   const { config } = useConfig();
   // Same gate AddFundsModal uses: no project id, no Coinbase.
   const showCoinbasePay = !!config?.coinbaseProjectId;
+  // MoonPay's feature flag. MOONPAY_API_KEY reaches the client as
+  // config.moonPayApiKey; unset means the whole route stays hidden, and the
+  // signing endpoint refuses on the same variable so the two cannot disagree.
+  const showMoonPay = !!config?.moonPayApiKey;
   const [showAddFunds, setShowAddFunds] = useState(false);
   const [cbPayLoading, setCbPayLoading] = useState(false);
   const [cbPayError, setCbPayError] = useState<string | null>(null);
+  const [moonPayLoading, setMoonPayLoading] = useState(false);
+  const [moonPayError, setMoonPayError] = useState<string | null>(null);
 
   /**
    * Buy the stablecoin and have Coinbase send it straight to the escrow.
@@ -125,6 +139,41 @@ export default function PaymentActionPanel({
       setCbPayLoading(false);
     }
   };
+  /**
+   * Buy the stablecoin through MoonPay and have it delivered to the escrow.
+   *
+   * Sits beside the Coinbase route rather than replacing it: MoonPay carries
+   * bank transfers, which is the reason it exists here, while Coinbase covers
+   * cards well. The payer picks by what they want to pay WITH.
+   *
+   * The escrow is resolved first for the same reason as Coinbase — it has to
+   * exist before anyone can send to it — but the address is not passed to the
+   * signer. /api/moonpay/sign reads it off the contract itself, so a tampered
+   * body cannot redirect the funds. Resolving here just guarantees the escrow
+   * is deployed by the time the signer looks for it.
+   */
+  const handlePayWithMoonPay = async () => {
+    if (!resolveEscrowAddress || !contractId) return;
+    setMoonPayError(null);
+    setMoonPayLoading(true);
+    try {
+      const escrowAddress = await resolveEscrowAddress();
+      if (!escrowAddress) throw new Error('Could not prepare the escrow contract');
+
+      await openMoonPayOnramp({
+        contractId,
+        // However the widget closed, the money may have landed — MoonPay's bank
+        // transfers can settle long after the payer has gone. Show the panel
+        // that can check the balance and sweep.
+        onClose: onPayFromExternalWallet,
+      });
+    } catch (e) {
+      setMoonPayError(e instanceof Error ? e.message : 'Could not open MoonPay');
+    } finally {
+      setMoonPayLoading(false);
+    }
+  };
+
   const [copied, setCopied] = useState(false);
 
   const shortfall = Math.max(amountInTokens - balanceFloat, 0);
@@ -268,9 +317,30 @@ export default function PaymentActionPanel({
             </span>
           </Button>
         )}
+
+        {resolveEscrowAddress && contractId && showMoonPay && (
+          // Same two-line shape as the Coinbase button, and the note is inside
+          // the border for the same reason: it describes this route only.
+          // Bank transfer is the word that earns this button its place, so it
+          // leads.
+          <Button
+            variant="outline"
+            onClick={handlePayWithMoonPay}
+            disabled={isPaymentInProgress || moonPayLoading}
+            className={`${actionButton} h-auto flex-col gap-1 py-3 text-center`}
+          >
+            <span className="font-medium">
+              {moonPayLoading ? t('paymentActionPanel.openingMoonPay') : t('paymentActionPanel.payWithMoonPay')}
+            </span>
+            <span className="text-xs font-normal leading-snug text-secondary-500 dark:text-secondary-400">
+              {t('paymentActionPanel.moonPayNote')}
+            </span>
+          </Button>
+        )}
       </div>
 
       {cbPayError && <p className="mt-2 text-sm text-red-600">{cbPayError}</p>}
+      {moonPayError && <p className="mt-2 text-sm text-red-600">{moonPayError}</p>}
 
       <AddFundsModal
         isOpen={showAddFunds}

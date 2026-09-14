@@ -207,15 +207,68 @@ describe('/api/moonpay/sign', () => {
       expect(mockFetch).not.toHaveBeenCalled();
     });
 
-    it('distinguishes a missing signing key from the feature being off', async () => {
-      // The key is set but signing is impossible: a deployment mistake, not a
-      // switched-off feature, and it should not look like one.
+    it('refuses in production when the signing key is missing', async () => {
+      // Degrading silently in production would take real money from a buyer,
+      // deliver it to their own wallet, and leave the escrow unfunded — the
+      // payment looks successful and the seller is never paid.
       delete process.env.MOONPAY_SECRET_KEY;
+      process.env.MOONPAY_ENVIRONMENT = 'production';
 
       const { req, res } = post({ contractId: 'contract-123' });
       await handler(req as any, res);
 
       expect(res._getStatusCode()).toBe(500);
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('preview mode, for seeing the widget before the secret exists', () => {
+    beforeEach(() => {
+      delete process.env.MOONPAY_SECRET_KEY;
+    });
+
+    it('opens unsigned, which means dropping the destination', async () => {
+      // MoonPay reject an unsigned URL carrying walletAddress outright, so the
+      // address has to go for the widget to load at all. Both must be absent
+      // together — an unsigned URL that still named the escrow would just 400.
+      mockFetch.mockResolvedValueOnce(contractResponse());
+
+      const { req, res } = post({ contractId: 'contract-123' });
+      await handler(req as any, res);
+
+      expect(res._getStatusCode()).toBe(200);
+      const data = JSON.parse(res._getData());
+      const params = paramsOf(data.url);
+      expect(params.has('walletAddress')).toBe(false);
+      expect(params.has('signature')).toBe(false);
+      expect(data.preview).toBe(true);
+    });
+
+    it('says plainly that it is not a payment route', async () => {
+      // The caller cannot tell from the URL, and the two flows look identical
+      // to the buyer right up until the money lands somewhere else.
+      mockFetch.mockResolvedValueOnce(contractResponse());
+
+      const { req, res } = post({ contractId: 'contract-123' });
+      await handler(req as any, res);
+
+      const data = JSON.parse(res._getData());
+      expect(data.preview).toBe(true);
+      expect(data.escrowAddress).toBeNull();
+    });
+
+    it('is never what the real flow looks like', async () => {
+      // Guards the inverse: with a secret present, preview must be false and
+      // the destination must be back.
+      process.env.MOONPAY_SECRET_KEY = 'sk_test_secret';
+      mockFetch.mockResolvedValueOnce(contractResponse());
+
+      const { req, res } = post({ contractId: 'contract-123' });
+      await handler(req as any, res);
+
+      const data = JSON.parse(res._getData());
+      expect(data.preview).toBe(false);
+      expect(paramsOf(data.url).get('walletAddress')).toBe(ESCROW);
     });
   });
 

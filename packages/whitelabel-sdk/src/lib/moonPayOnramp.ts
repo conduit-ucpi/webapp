@@ -19,8 +19,16 @@ import { apiFetch } from '@/lib/apiFetch';
 interface SignedWidget {
   url: string;
   quoteCurrencyAmount: string;
-  escrowAddress: string;
+  /** Null in preview, where nothing is being sent anywhere. */
+  escrowAddress: string | null;
   environment: 'sandbox' | 'production';
+  /**
+   * True when MOONPAY_SECRET_KEY is unset and the URL is therefore unsigned and
+   * carries no destination. The widget opens, but MoonPay asks the buyer for
+   * their own address and the escrow is NOT funded. Sandbox only — the endpoint
+   * refuses to do this in production.
+   */
+  preview: boolean;
 }
 
 interface OpenMoonPayParams {
@@ -62,6 +70,17 @@ async function fetchSignedWidget(contractId: string): Promise<SignedWidget> {
 export async function openMoonPayOnramp(params: OpenMoonPayParams): Promise<void> {
   const signed = await fetchSignedWidget(params.contractId);
 
+  if (signed.preview) {
+    // Loud, because the flow looks identical from here and ends somewhere
+    // completely different: the buyer's own wallet, with the escrow left
+    // unfunded. Anyone testing needs to know which of the two they just saw.
+    console.warn(
+      '[MoonPay] PREVIEW MODE — unsigned URL, no destination address. The widget ' +
+        'will open but the escrow will NOT be funded. Set MOONPAY_SECRET_KEY to ' +
+        'enable the real payment flow.'
+    );
+  }
+
   const { loadMoonPay } = await import('@moonpay/moonpay-js');
   const moonPay = await loadMoonPay();
   if (!moonPay) throw new Error('Could not load MoonPay');
@@ -78,7 +97,9 @@ export async function openMoonPayOnramp(params: OpenMoonPayParams): Promise<void
     params: query as any,
     handlers: {
       async onCloseOverlay() {
-        params.onClose?.();
+        // Nothing can have reached the escrow in preview, so do not send the
+        // caller to a panel that offers to check for it.
+        if (!signed.preview) params.onClose?.();
       },
     },
   });

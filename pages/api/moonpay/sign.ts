@@ -56,9 +56,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!publishableKey) {
     return res.status(503).json({ error: 'MoonPay is not configured' });
   }
-  // Deliberately a different failure: the key is set but signing is impossible,
-  // which is a deployment mistake rather than a feature being off.
-  if (!secretKey) {
+  const environment = process.env.MOONPAY_ENVIRONMENT === 'production' ? 'production' : 'sandbox';
+
+  // Without the secret we cannot sign, and MoonPay reject an unsigned URL that
+  // carries a wallet address: HTTP 400, "Missing signature", widget does not
+  // load. So there is no way to keep the real flow and skip signing.
+  //
+  // In sandbox we fall back to a PREVIEW: no walletAddress, no signature. The
+  // widget opens and the UI can be checked, but MoonPay will ask the buyer for
+  // their own address and the escrow is NOT funded. That is a demo, not a
+  // payment route, and the response says so.
+  //
+  // Never in production. Degrading silently there would take real money from a
+  // buyer, deliver it to their own wallet, and leave the escrow unfunded — the
+  // payment would appear to succeed and the seller would never be paid.
+  if (!secretKey && environment === 'production') {
     return res.status(500).json({ error: 'MoonPay signing key is not configured' });
   }
 
@@ -119,7 +131,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Rounded up to the cent so rounding can never deliver a hair under.
     const quoteCurrencyAmount = (Math.ceil((microAmount / MICRO) * 100) / 100).toString();
 
-    const environment = process.env.MOONPAY_ENVIRONMENT === 'production' ? 'production' : 'sandbox';
+    const preview = !secretKey;
 
     // baseCurrencyCode is deliberately absent: MoonPay geo-detect the payer's
     // local currency, which beats guessing from a browser locale. A Venezuelan
@@ -128,32 +140,46 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const params = new URLSearchParams({
       apiKey: publishableKey,
       currencyCode: CURRENCY_CODE,
-      walletAddress: escrowAddress,
       quoteCurrencyAmount,
       // Echoed back on the webhook, so a completed purchase can be tied to the
       // escrow it was meant to fund.
       externalTransactionId: contractId,
+      // The destination is what makes a signature mandatory, so the preview
+      // cannot carry it. Dropping it is what lets the widget open unsigned.
+      ...(preview ? {} : { walletAddress: escrowAddress }),
     });
+
+    const query = `?${params.toString()}`;
+    const host = WIDGET_HOST[environment];
 
     // Signed over the query string exactly as it will be sent, including the
     // leading '?', per MoonPay's URL-signing rules. Any difference in order or
     // encoding between what is signed and what is sent fails verification.
-    const query = `?${params.toString()}`;
-    const signature = crypto
-      .createHmac('sha256', secretKey)
-      .update(query)
-      .digest('base64');
-
-    const host = WIDGET_HOST[environment];
-    const url = `${host}${query}&signature=${encodeURIComponent(signature)}`;
+    //
+    // URLSearchParams percent-encodes values, which satisfies MoonPay's rule
+    // that parameter VALUES are encoded before signing. Its encoding is not
+    // identical to encodeURIComponent in every case; today every value here is
+    // alphanumeric (address, decimal, currency code, object id) so the two
+    // agree. Adding an email or a free-text description would need checking.
+    const url = preview
+      ? `${host}${query}`
+      : `${host}${query}&signature=${encodeURIComponent(
+          crypto.createHmac('sha256', secretKey as string).update(query).digest('base64')
+        )}`;
 
     return res.status(200).json({
       url,
       // Returned so the client can render the figure it is about to send the
       // payer to pay, without recomputing it from a different source.
       quoteCurrencyAmount,
-      escrowAddress,
+      // Absent in preview, because nothing is being sent there.
+      escrowAddress: preview ? null : escrowAddress,
       environment,
+      /**
+       * True when the widget will NOT fund the escrow. Set MOONPAY_SECRET_KEY
+       * to turn the real flow on; see MOONPAY_INTEGRATION_PLAN.md.
+       */
+      preview,
     });
   } catch (error) {
     console.error('MoonPay sign: unexpected error', error);

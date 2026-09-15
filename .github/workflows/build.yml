@@ -519,7 +519,7 @@ jobs:
       #    Delete the GitHub Pages steps above once Cloudflare has served real traffic.
       - name: Deploy to Cloudflare Pages
         if: vars.CLOUDFLARE_PAGES_PROJECT != ''
-        id: deployment
+        id: cloudflare
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}

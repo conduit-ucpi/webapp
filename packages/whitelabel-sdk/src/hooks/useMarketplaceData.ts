@@ -4,7 +4,8 @@ import type {
   MarketplaceRefreshResponse,
   OfferBookResponse,
   OfferView,
-  SellableEscrowsResponse
+  SellableEscrowsResponse,
+  ReserveView,
 } from '@/types/marketplace';
 
 /**
@@ -111,4 +112,17 @@ export function useRefreshFromChain(onRefreshed?: () => Promise<void> | void) {
   }, [onRefreshed]);
 
   return { refresh, refreshing, lastResult, error };
+}
+
+/**
+ * Reserves on positions this supplier sold — outstanding and already returned.
+ *
+ * ⚠️ NOT DERIVABLE FROM THE SUPPLIER'S OWN CONTRACTS. A sold escrow leaves their list: they are
+ *    no longer its recipient. This is keyed on the seller recorded at the sale, which is the only
+ *    thing that still connects them to the reserve.
+ */
+export function useSellerReserves(sellerAddress?: string | null): Fetched<ReserveView[]> {
+  return useFetched<ReserveView[]>(
+    sellerAddress ? `/api/marketplace/sellers/${sellerAddress}/reserves` : null
+  );
 }

@@ -168,12 +168,11 @@ export default function Dashboard2({ beforeContracts }: DashboardPageProps = {})
           color: var(--d-badge-fg) !important;
         }
 
-        /* ── Icon circles (StatsCard bg-primary-50, ProgressChecklist bg-primary-100) ── */
+        /* ── Icon circles (StatsCard bg-primary-50) ── */
         .dashboard2-flat .bg-primary-50 {
           background-color: var(--d-icon-bg) !important;
         }
-        .dashboard2-flat .bg-primary-50 .text-primary-600,
-        .dashboard2-flat .bg-primary-100 .text-primary-600 {
+        .dashboard2-flat .bg-primary-50 .text-primary-600 {
           color: var(--d-icon-fg) !important;
         }
 
@@ -188,12 +187,6 @@ export default function Dashboard2({ beforeContracts }: DashboardPageProps = {})
           color: var(--d-input-placeholder) !important;
         }
 
-        /* ── ProgressChecklist container ── */
-        .dashboard2-flat .bg-white.border.border-primary-200 {
-          background: var(--d-card-bg) !important;
-          border-color: var(--d-divider) !important;
-          border-radius: 0 !important;
-        }
 
         /* ── Progress bar (non-button bg-primary-500) ── */
         .dashboard2-flat div.bg-primary-500 {

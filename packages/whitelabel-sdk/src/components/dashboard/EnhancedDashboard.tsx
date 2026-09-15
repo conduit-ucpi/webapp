@@ -20,7 +20,6 @@ import {
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import ContractDetailsModal from '@/components/contracts/ContractDetailsModal';
 import DisputeManagementModal from '@/components/contracts/DisputeManagementModal';
-import ProgressChecklist from '@/components/onboarding/ProgressChecklist';
 import { displayCurrency } from '@/utils/validation';
 import { useToast } from '@/components/ui/Toast';
 import { buildReportCsv, ReportRow } from '@/components/dashboard/reportExport';
@@ -467,9 +466,6 @@ export default function EnhancedDashboard() {
           </div>
         </div>
       )}
-
-      {/* Progress Checklist for new users */}
-      <ProgressChecklist />
 
       {/* Stats Cards - Mobile responsive grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8" data-tour="stats-cards">

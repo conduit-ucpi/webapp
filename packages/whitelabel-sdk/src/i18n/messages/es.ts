@@ -552,12 +552,6 @@ export const es: Catalogue = {
   'enhancedDashboard.totalValue': 'Valor total',
   'enhancedDashboard.searchPaymentAgreements': 'Buscar acuerdos de pago...',
 
-  'progressChecklist.completeTheseStepsTo':
-    'Completa estos pasos para aprovechar al máximo tu plataforma de depósito en garantía',
-  'progressChecklist.progress': 'Progreso',
-  'progressChecklist.congratulationsYouVeCompleted':
-    '¡Felicidades! Has completado la lista de bienvenida.',
-  'progressChecklist.dismissChecklist': 'Ocultar la lista',
 
   'tourProvider.skipTour': 'Saltar el recorrido',
   'tourProvider.back': 'Atrás',

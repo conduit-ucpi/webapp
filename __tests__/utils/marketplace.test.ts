@@ -192,6 +192,18 @@ describe('escrowTitle', () => {
     expect(escrowTitle(escrow('   '))).toBe('Escrow payment');
   });
 
+  it('titles a contract from any shape that carries a description', () => {
+    // The same position appears as a SellableEscrow in the explorer and as a
+    // UnifiedContract on /offers, where description is optional rather than nullable. One
+    // rule has to cover both or the two screens title the same thing differently — which is
+    // exactly what happened: /liquidity was fixed and /offers was not.
+    expect(escrowTitle({ description: 'Oak dining table' })).toBe('Oak dining table');
+    expect(escrowTitle({ description: undefined })).toBe('Escrow payment');
+    expect(escrowTitle({})).toBe('Escrow payment');
+    // useCombinedContracts maps a missing description to '' rather than leaving it unset.
+    expect(escrowTitle({ description: '' })).toBe('Escrow payment');
+  });
+
   it('takes a fallback that reads naturally in a sentence', () => {
     // The modal says "Offer on ...", where "Offer on Escrow payment" is wrong.
     expect(escrowTitle(escrow(null), 'this payment')).toBe('this payment');

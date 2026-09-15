@@ -93,7 +93,10 @@ export function annualisedYield(
  * explorer and the heading of the offer modal opened from that row.
  */
 export function escrowTitle(
-  escrow: Pick<SellableEscrow, 'description'>,
+  // Structural rather than tied to SellableEscrow: the same position shows up as a
+  // SellableEscrow in the explorer and a UnifiedContract on /offers, and both must be titled
+  // by the same rule. Anything carrying a description qualifies.
+  escrow: { description?: string | null },
   fallback = 'Escrow payment'
 ): string {
   return escrow.description?.trim() || fallback;

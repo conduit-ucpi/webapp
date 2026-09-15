@@ -10,7 +10,7 @@ import StatsCard from '@/components/ui/StatsCard';
 import SellerOfferBook from '@/components/marketplace/SellerOfferBook';
 import { displayCurrency } from '@/utils/currency';
 import { formatTimestamp } from '@/utils/datetime';
-import { daysUntil } from '@/utils/marketplace';
+import { daysUntil, escrowTitle } from '@/utils/marketplace';
 import type { Contract } from '@/types';
 
 /**
@@ -127,7 +127,7 @@ export default function OffersPage() {
                   <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 bg-gray-50 dark:bg-secondary-900/60 border-b border-gray-200 dark:border-secondary-700">
                     <div>
                       <div className="text-sm font-medium text-gray-900 dark:text-white">
-                        {contract.productName || contract.description || 'Escrow payment'}
+                        {escrowTitle(contract)}
                       </div>
                       <div className="text-xs text-gray-500 dark:text-secondary-400 mt-0.5">
                         Matures {formatTimestamp(contract.expiryTimestamp).date} ·{' '}

@@ -367,15 +367,19 @@ jobs:
       startsWith(github.ref, 'refs/tags/pagesRelease-')
     runs-on: ubuntu-latest
     environment:
+      # Kept as `github-pages` because every NEXT_PUBLIC_* var below resolves
+      # against THIS environment. Renaming it means moving all of them, so that
+      # is a separate change from switching host.
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      url: ${{ steps.deployment.outputs.deployment-url }}
     permissions:
+      # `pages: write` and `id-token: write` were for GitHub Pages' OIDC upload.
+      # Cloudflare authenticates with an API token, so the job needs nothing
+      # beyond reading the repo.
       contents: read
-      pages: write
-      id-token: write
-    # One Pages deployment at a time; never cancel a run that is mid-publish.
+    # One deployment at a time; never cancel a run that is mid-publish.
     concurrency:
-      group: github-pages
+      group: cloudflare-pages
       cancel-in-progress: false
 
     steps:
@@ -478,22 +482,26 @@ jobs:
           npm ci --legacy-peer-deps
           npm run build:static
 
-          # Client-side routing fallback. Pages serves 404.html for any path it
-          # has no file for; making it the app shell lets the router resolve
-          # dynamic routes such as /projects/<groupId>, which the export can only
-          # emit as a literal "[groupId]" directory.
+          # Client-side routing fallback. Cloudflare Pages serves 404.html for
+          # any path it has no file for, so making it the app shell lets the
+          # router resolve dynamic routes such as /projects/<groupId>, which the
+          # export can only emit as a literal "[groupId]" directory.
+          #
+          # It is served with a 404 STATUS, which browsers ignore and crawlers
+          # and uptime monitors do not. Cloudflare supports a _redirects file
+          # (`/* /index.html 200`) that does this properly; worth switching to
+          # once the host move itself is proven.
           cp out/index.html out/404.html
 
-          # Tells Pages to serve _next/* verbatim rather than running the paths
-          # through Jekyll, which ignores underscore-prefixed directories.
-          touch out/.nojekyll
-
-      - uses: actions/configure-pages@v5
-
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: out
-
-      - name: Deploy to GitHub Pages
+      - name: Deploy to Cloudflare Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          # --branch decides production vs preview, and it is NOT the git ref.
+          # This job runs on a pagesRelease-v* TAG, so letting wrangler infer the
+          # branch would publish every release as a preview on a URL nobody
+          # visits, leaving the live site on the previous build with the run
+          # still green. It must name the project's production branch.
+          command: pages deploy out --project-name=${{ vars.CLOUDFLARE_PAGES_PROJECT }} --branch=main

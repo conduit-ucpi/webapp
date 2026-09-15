@@ -211,3 +211,54 @@ describe('the collapse', () => {
     expect(screen.getByText(/part of the price was held back/i)).toBeInTheDocument();
   });
 });
+
+/**
+ * Which payment a reserve came from.
+ *
+ * ⚠️ NOTHING ELSE ON THE ROW IDENTIFIES IT. Selling hands the recipient role to the LP, so the
+ *    escrow drops out of the supplier's own contract list — this row is the last trace of it.
+ *    Owed two reserves, they otherwise have a vault address and an amount, and the amounts can
+ *    easily be identical.
+ */
+describe('telling one reserve from another', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockUseConfig.mockReturnValue({ config: { tokenSymbol: 'USDC' } } as any);
+  });
+
+  it('shows what the payment was for', () => {
+    showing([reserve({ description: 'Oak dining table' })]);
+
+    expect(screen.getByText('Oak dining table')).toBeInTheDocument();
+  });
+
+  it('distinguishes two reserves of the identical amount', () => {
+    // The case the address alone fails: same figure, same state, two different jobs.
+    showing([
+      reserve({ vaultAddress: '0xv1', description: 'Oak dining table' }),
+      reserve({ vaultAddress: '0xv2', description: 'Walnut sideboard' })
+    ]);
+
+    expect(screen.getByText('Oak dining table')).toBeInTheDocument();
+    expect(screen.getByText('Walnut sideboard')).toBeInTheDocument();
+  });
+
+  it('falls back rather than rendering an empty line when no record matches', () => {
+    // description is null when contractservice holds no local record for the escrow.
+    showing([reserve({ description: null })]);
+
+    expect(screen.getByText('Payment you sold')).toBeInTheDocument();
+  });
+
+  it('falls back on a description that is only whitespace', () => {
+    showing([reserve({ description: '   ' })]);
+
+    expect(screen.getByText('Payment you sold')).toBeInTheDocument();
+  });
+
+  it('still shows the escrow address, which is what links the row to the chain', () => {
+    showing([reserve({ description: 'Oak dining table' })]);
+
+    expect(screen.getByText(/contract 0xescrow/)).toBeInTheDocument();
+  });
+});

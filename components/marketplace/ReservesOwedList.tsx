@@ -8,6 +8,7 @@ import { useMarketplaceActions } from '@/hooks/useMarketplaceActions';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { displayCurrency } from '@/utils/currency';
 import { formatTimestamp } from '@/utils/datetime';
+import { escrowTitle } from '@/utils/marketplace';
 import type { ReserveView } from '@/types/marketplace';
 
 interface ReservesOwedListProps {
@@ -236,7 +237,20 @@ function ReserveRow({
 
   return (
     <MarketplaceCard
-      headline={headline}
+      headline={
+        <>
+          {headline}
+          {/*
+            ⚠️ WHAT THE PAYMENT WAS FOR, not just what it was worth. Selling hands the recipient
+               role to the LP, so this escrow has dropped out of the supplier's own contract list
+               and this row is the last trace of it. Owed two reserves, they otherwise have only
+               two vault addresses to tell them apart — and the amounts can easily match.
+          */}
+          <div className="text-xs font-normal text-gray-500 dark:text-secondary-400 mt-0.5 truncate">
+            {escrowTitle(reserve, 'Payment you sold')}
+          </div>
+        </>
+      }
       identifier={`contract ${reserve.escrowContract ?? 'unknown'}`}
       status={<ReserveStatus reserve={reserve} held={held} due={due} matures={matures} />}
       actions={

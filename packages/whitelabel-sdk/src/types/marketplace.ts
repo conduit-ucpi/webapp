@@ -192,4 +192,15 @@ export interface ReserveView {
   /** The buyer's share of a resolved dispute, 0-100. Null when never disputed. */
   resolvedBuyerPercentage: number | null;
   lastEventAt: number;
+  /**
+   * What the original payment was for, from the contract record.
+   *
+   * ⚠️ THE ONLY THING THAT IDENTIFIES THE PAYMENT TO THE PERSON OWED. Selling hands the recipient
+   *    role to the LP, so the escrow drops out of the supplier's own contract list and this row
+   *    is all that is left of it — a supplier owed several reserves otherwise has nothing to tell
+   *    them apart but vault addresses.
+   *
+   * Null when no local record matches the escrow; render a fallback rather than an empty line.
+   */
+  description?: string | null;
 }

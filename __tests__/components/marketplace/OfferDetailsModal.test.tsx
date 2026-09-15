@@ -61,6 +61,28 @@ const renderModal = (props: Partial<React.ComponentProps<typeof OfferDetailsModa
   );
 
 describe('OfferDetailsModal', () => {
+  describe('how it reads', () => {
+    it('states plainly that an offer exists', () => {
+      // "Offer to buy this payment" scanned as an instruction — an action the seller might be
+      // about to take — rather than as a report of something that has happened to them.
+      renderModal();
+
+      expect(screen.getByText('There is an offer to buy this payment')).toBeInTheDocument();
+    });
+
+    it('uses no dark: variants, which the shared Modal cannot support', () => {
+      // Modal paints bg-white and carries no dark surface, so a dark: panel renders dark grey
+      // on a white sheet whenever the theme is dark. That is how this shipped unreadable.
+      const { container } = renderModal();
+
+      const withDark = Array.from(container.querySelectorAll('[class]')).filter((el) =>
+        el.getAttribute('class')!.includes('dark:')
+      );
+
+      expect(withDark.map((el) => el.getAttribute('class'))).toEqual([]);
+    });
+  });
+
   describe('what waiting is worth', () => {
     it('names the escrow fee and the marketplace fee separately', () => {
       // Both appear in this modal and they are different charges. One label for both would

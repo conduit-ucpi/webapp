@@ -43,12 +43,12 @@ function Row({
   note?: string;
 }) {
   return (
-    <div className={divider ? 'border-t border-secondary-200 dark:border-secondary-700 pt-2 mt-1' : ''}>
+    <div className={divider ? 'border-t border-secondary-200 pt-2 mt-1' : ''}>
       <div
         className={`flex justify-between ${
           strong
-            ? 'font-medium text-secondary-900 dark:text-white'
-            : 'text-secondary-600 dark:text-secondary-300'
+            ? 'font-medium text-secondary-900'
+            : 'text-secondary-700'
         }`}
       >
         <span>{label}</span>
@@ -57,7 +57,7 @@ function Row({
           {displayCurrency(value, 'microUSDC')} {tokenSymbol}
         </span>
       </div>
-      {note && <p className="text-xs text-secondary-500 dark:text-secondary-400 mt-1">{note}</p>}
+      {note && <p className="text-xs text-secondary-500 mt-1">{note}</p>}
     </div>
   );
 }
@@ -78,6 +78,12 @@ function Row({
  * The figures come from the offer as the contracts recorded it — `netAmount`, `fee` and
  * `holdback` are separate fields on OfferCreated precisely so an offer can be judged on all
  * three. A smaller offer with no residual can be the better one.
+ *
+ * ⚠️ NO `dark:` VARIANTS IN HERE. The shared Modal paints `bg-white` and carries no dark
+ *    surface of its own, so a `dark:bg-secondary-900` panel renders dark grey on a white
+ *    sheet whenever the theme is dark — which is how this shipped unreadable the first time.
+ *    MakeOfferModal can use them because it paints its own `bg-white dark:bg-secondary-800`;
+ *    anything inside Modal cannot. ContractDetailsModal, which this follows, uses none.
  */
 export default function OfferDetailsModal({
   isOpen,
@@ -120,25 +126,25 @@ export default function OfferDetailsModal({
       children={
         <div className="space-y-6">
           {/* Header — the headline is what lands in their wallet today. */}
-          <div className="flex flex-col sm:flex-row sm:items-start justify-between pb-4 border-b border-secondary-200 dark:border-secondary-700 gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between pb-4 border-b border-secondary-200 gap-3">
             <div>
-              <h3 className="text-xl font-semibold text-secondary-900 dark:text-white">
-                Offer to buy this payment
+              <h3 className="text-xl font-semibold text-secondary-900">
+                There is an offer to buy this payment
               </h3>
-              <div className="text-sm text-secondary-600 dark:text-secondary-300 mt-1">
+              <div className="text-sm text-secondary-600 mt-1">
                 From <ExpandableHash hash={offer.lp || ''} />
               </div>
               {offer.offerExpiry && (
-                <p className="text-sm text-secondary-500 dark:text-secondary-400 mt-1">
+                <p className="text-sm text-secondary-500 mt-1">
                   Lapses in {hoursUntil(offer.offerExpiry)}h
                 </p>
               )}
             </div>
             <div className="text-right">
-              <p className="text-3xl font-bold text-secondary-900 dark:text-white">
+              <p className="text-3xl font-bold text-secondary-900">
                 {displayCurrency(netNow, 'microUSDC')}
               </p>
-              <p className="text-sm text-secondary-500 dark:text-secondary-400 mt-1">
+              <p className="text-sm text-secondary-500 mt-1">
                 paid to you today
               </p>
             </div>
@@ -147,10 +153,10 @@ export default function OfferDetailsModal({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* ── What waiting is worth ── */}
             <div className="space-y-3">
-              <h4 className="font-semibold text-secondary-900 dark:text-white text-lg">
+              <h4 className="font-semibold text-secondary-900 text-lg">
                 If you wait
               </h4>
-              <div className="rounded-lg bg-secondary-50 dark:bg-secondary-900/60 p-3 text-sm space-y-1">
+              <div className="rounded-lg bg-secondary-50 p-3 text-sm space-y-1">
                 {nominalAmount !== undefined ? (
                   <>
                     <Row label="Payment amount" value={nominalAmount} tokenSymbol={tokenSymbol} />
@@ -176,7 +182,7 @@ export default function OfferDetailsModal({
                     />
                   </>
                 ) : (
-                  <p className="text-secondary-500 dark:text-secondary-400">
+                  <p className="text-secondary-500">
                     The payment's own figures could not be read just now.
                   </p>
                 )}
@@ -185,10 +191,10 @@ export default function OfferDetailsModal({
 
             {/* ── What the offer is worth ── */}
             <div className="space-y-3">
-              <h4 className="font-semibold text-secondary-900 dark:text-white text-lg">
+              <h4 className="font-semibold text-secondary-900 text-lg">
                 If you accept
               </h4>
-              <div className="rounded-lg bg-secondary-50 dark:bg-secondary-900/60 p-3 text-sm space-y-1">
+              <div className="rounded-lg bg-secondary-50 p-3 text-sm space-y-1">
                 <Row label="Offer" value={deposit} tokenSymbol={tokenSymbol} />
                 <Row label="Marketplace fee" value={venueFee} tokenSymbol={tokenSymbol} negative />
                 {residual > 0 && (
@@ -224,29 +230,29 @@ export default function OfferDetailsModal({
 
           {/* The comparison, stated once, with both sides net. */}
           {givenUp !== null && givenUp > 0 && (
-            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <div className="flex items-center justify-between gap-4">
                 <div>
-                  <h4 className="font-semibold text-blue-900 dark:text-blue-200">
+                  <h4 className="font-semibold text-blue-900">
                     What this costs you
                   </h4>
-                  <p className="text-blue-800 dark:text-blue-300 text-sm mt-1">
+                  <p className="text-blue-800 text-sm mt-1">
                     Getting paid today instead of waiting
                     {maturity ? ` until ${new Date(maturity * 1000).toLocaleDateString()}` : ' until maturity'}.
                   </p>
                 </div>
                 <div className="text-right flex-shrink-0">
-                  <p className="text-2xl font-bold text-blue-900 dark:text-blue-200">
+                  <p className="text-2xl font-bold text-blue-900">
                     {displayCurrency(givenUp, 'microUSDC')}
                   </p>
-                  <p className="text-xs text-blue-700 dark:text-blue-300">{tokenSymbol}</p>
+                  <p className="text-xs text-blue-600">{tokenSymbol}</p>
                 </div>
               </div>
             </div>
           )}
 
           {residual > 0 && (
-            <p className="text-sm text-secondary-600 dark:text-secondary-300">
+            <p className="text-sm text-secondary-600">
               If the payment is disputed and the buyer is refunded, the residual covers that loss
               first and you receive less than the{' '}
               {displayCurrency(residual, 'microUSDC')} {tokenSymbol} above — that is what it is
@@ -257,13 +263,13 @@ export default function OfferDetailsModal({
           <AcceptFlowNotice />
 
           {stage && (
-            <p className="text-sm text-secondary-600 dark:text-secondary-300">
+            <p className="text-sm text-secondary-600">
               <LoadingSpinner className="w-4 h-4 mr-2 inline" />
               {stage}
             </p>
           )}
 
-          <div className="flex flex-wrap gap-2 justify-end border-t border-secondary-200 dark:border-secondary-700 pt-4">
+          <div className="flex flex-wrap gap-2 justify-end border-t border-secondary-200 pt-4">
             <Button type="button" variant="ghost" onClick={onClose} disabled={busy}>
               Close
             </Button>

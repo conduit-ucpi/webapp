@@ -6,7 +6,7 @@ import { useConfig } from '@/components/auth/ConfigProvider';
 import { RpcClient } from '@/lib/rpc/RpcClient';
 import { useMarketplaceActions } from '@/hooks/useMarketplaceActions';
 import { displayCurrency } from '@/utils/currency';
-import { daysUntil, escrowTitle, priceOffer } from '@/utils/marketplace';
+import { annualisedYield, daysUntil, escrowTitle, priceOffer } from '@/utils/marketplace';
 import { EvidenceAsymmetryNotice, ExistingHoldbackNotice } from '@/components/marketplace/OfferDisclosures';
 import OfferFundingPanel from '@/components/marketplace/OfferFundingPanel';
 import type { SellableEscrow } from '@/types/marketplace';
@@ -89,9 +89,14 @@ export default function MakeOfferModal({ escrow, lpAddress, onClose, onOfferMade
     Number.isFinite(residualRate) && residualRate >= 0 && residualRate < 100;
 
   // Priced by the shared rule so this screen and any other that quotes an offer cannot drift.
-  const { funded: fundedAmount, residual: residualAmount, offer: offerAmount } = ratesValid
+  const { offer: offerAmount, residual: residualAmount, supplierNow } = ratesValid
     ? priceOffer(basis, discountRate, residualRate)
-    : { funded: BigInt(0), residual: BigInt(0), offer: BigInt(0) };
+    : { offer: BigInt(0), residual: BigInt(0), supplierNow: BigInt(0) };
+
+  // The LP deposits `offerAmount` and collects the whole cashflow at maturity, so the residual
+  // does not enter this: it is withheld from the SUPPLIER, not from the LP. Only the discount
+  // and the time to maturity move it.
+  const yieldPercent = annualisedYield(offerAmount, basis, days);
 
   // A residual may only be set on an escrow that has never been sold — the escrow holds exactly
   // one holdback record, and the contract rejects a second at acceptance (§0.4c H-1).
@@ -225,10 +230,10 @@ export default function MakeOfferModal({ escrow, lpAddress, onClose, onOfferMade
               <p className="text-xs text-gray-500 dark:text-secondary-400 mt-1">
                 {residualAllowed ? (
                   <>
-                    Withheld from the seller at acceptance and claimed by them once the escrow
-                    settles in full. It comes out of your deposit, not on top of it, and covers
-                    your loss first if the payment is disputed — one of the few levers you have.
-                    Your discount is applied to the cashflow less this.
+                    A share of your deposit withheld from the seller at acceptance and paid to
+                    them at maturity instead. It does not change what you deposit or what you
+                    collect — so it costs you no yield — but it covers your loss first if the
+                    payment is disputed. One of the few levers you have.
                   </>
                 ) : (
                   <>
@@ -244,47 +249,54 @@ export default function MakeOfferModal({ escrow, lpAddress, onClose, onOfferMade
                 <span>You collect at maturity</span>
                 <span>{displayCurrency(basis.toString(), 'microUSDC')} {tokenSymbol}</span>
               </div>
-              {/*
-                Shown as a chain rather than one combined deduction, because the two rates act on
-                DIFFERENT numbers and a single "your discount" line hid that: the residual comes
-                off the cashflow, the discount comes off what is left. The intermediate subtotal
-                is the number that makes the second percentage legible.
-              */}
-              {holdbackAmount > BigInt(0) && (
-                <>
-                  <div className="flex justify-between text-gray-600 dark:text-secondary-300">
-                    <span>Residual ({residualPercent}%)</span>
-                    <span>− {displayCurrency(holdbackAmount.toString(), 'microUSDC')} {tokenSymbol}</span>
-                  </div>
-                  <div className="flex justify-between text-gray-600 dark:text-secondary-300 border-t border-gray-200 dark:border-secondary-700 pt-2 mt-1">
-                    <span>Priced against</span>
-                    <span>{displayCurrency(fundedAmount.toString(), 'microUSDC')} {tokenSymbol}</span>
-                  </div>
-                </>
-              )}
               <div className="flex justify-between text-gray-600 dark:text-secondary-300">
                 <span>Your discount ({discount}%)</span>
-                <span>− {displayCurrency((fundedAmount - offerAmount).toString(), 'microUSDC')} {tokenSymbol}</span>
+                <span>− {displayCurrency((basis - offerAmount).toString(), 'microUSDC')} {tokenSymbol}</span>
               </div>
               <div className="flex justify-between font-medium text-gray-900 dark:text-white border-t border-gray-200 dark:border-secondary-700 pt-2 mt-1">
                 <span>You deposit now</span>
                 <span>{displayCurrency(offerAmount.toString(), 'microUSDC')} {tokenSymbol}</span>
               </div>
+
               {/*
-                The residual is INSIDE the deposit, not alongside it: acceptance splits the
-                deposit into netAmount + fee + holdback, and releaseHoldback pays the holdback
-                to the original supplier once the escrow settles clean. Saying so here because
-                the row above it reads as a deduction, and the two together would otherwise
-                suggest the LP pays the residual on top.
+                The yield is the LP's actual question, and it is a function of the discount and
+                the time alone. The residual is absent on purpose: it is withheld from the
+                SUPPLIER, so it moves no money on the LP's side and changes no yield. Showing it
+                here would imply otherwise.
               */}
-              {holdbackAmount > BigInt(0) && (
-                <p className="text-xs text-gray-500 dark:text-secondary-400 pt-1">
-                  Your deposit includes the{' '}
-                  {displayCurrency(holdbackAmount.toString(), 'microUSDC')} {tokenSymbol} residual.
-                  The seller receives the rest, less the fee, when they accept — and claims the
-                  residual when the escrow settles in full.
-                </p>
+              {yieldPercent !== null && (
+                <div className="flex justify-between font-medium text-gray-900 dark:text-white">
+                  <span>Annualised yield</span>
+                  <span>
+                    {yieldPercent.toFixed(1)}%
+                    <span className="font-normal text-gray-500 dark:text-secondary-400">
+                      {' '}over {days} {days === 1 ? 'day' : 'days'}
+                    </span>
+                  </span>
+                </div>
               )}
+
+              {/*
+                How the deposit splits. The residual is INSIDE it: acceptance divides the
+                deposit into netAmount + fee + holdback (OfferVaultFactory._quote), and
+                releaseHoldback pays the holdback to the original supplier once the escrow
+                settles clean. Shown as a breakdown rather than a deduction because the LP does
+                not pay it on top — and because the supplier's immediate figure is the one they
+                will be comparing offers on.
+              */}
+              {holdbackAmount > BigInt(0) && supplierNow >= BigInt(0) && (
+                <div className="pt-2 mt-1 border-t border-gray-200 dark:border-secondary-700 space-y-1">
+                  <div className="flex justify-between text-xs text-gray-500 dark:text-secondary-400">
+                    <span>↳ to the seller on acceptance, before the fee</span>
+                    <span>{displayCurrency(supplierNow.toString(), 'microUSDC')} {tokenSymbol}</span>
+                  </div>
+                  <div className="flex justify-between text-xs text-gray-500 dark:text-secondary-400">
+                    <span>↳ residual, to the seller at maturity</span>
+                    <span>{displayCurrency(holdbackAmount.toString(), 'microUSDC')} {tokenSymbol}</span>
+                  </div>
+                </div>
+              )}
+
               {residualExceedsDeposit && (
                 <p className="text-xs text-red-600 dark:text-red-400 pt-1">
                   The residual plus the venue fee would exceed your deposit, so there would be

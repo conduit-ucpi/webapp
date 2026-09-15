@@ -376,9 +376,13 @@ function OfferRow({
             </Button>
           )}
           {/*
-            ⚠️ `releaseHoldback` is NOT keeper-firable in the per-offer model (§6.7): it answers
-            only to the residual's funder or the live beneficiary, so nobody can sweep up on the
-            parties' behalf. If this prompt is missing, the residual simply sits in the vault.
+            `releaseHoldback` IS permissionless (§6.7) — the funder and the live beneficiary are
+            where the MONEY goes, not who may call, and the note that used to sit here had that
+            backwards. BatchClaimScheduler now sweeps settled reserves on a timer, so a residual
+            no longer depends on this button being pressed.
+
+            The button stays because the sweep runs every thirty minutes and an LP looking at a
+            settled position should not have to wait for it.
           */}
           {offer.status === 'ACCEPTED' && hasResidual && (
             <Button

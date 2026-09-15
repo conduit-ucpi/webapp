@@ -21,9 +21,9 @@ interface SellerOfferBookProps {
  * The offers standing on one escrow, from the seller's side (MARKETPLACE_OPENSPEC §15.6d).
  *
  * ⚠️ THE HEADLINE FIGURE IS THE SELLER'S NET, NOT THE OFFER (§8.5a, §13.10). The platform fee and
- *    any reserve come out of the LP's deposit before the seller sees it, so a seller shown
+ *    any residual come out of the LP's deposit before the seller sees it, so a seller shown
  *    "10,000" who receives 8,900 reads it as theft. Fee and holdback are separate fields on
- *    `OfferCreated` precisely so offers can be compared on both — a smaller offer with no reserve
+ *    `OfferCreated` precisely so offers can be compared on both — a smaller offer with no residual
  *    can be the better one.
  *
  * ⚠️ PENDING VAULTS ARE NOT OFFERS and never appear here (§5.0): the vault exists but the LP has

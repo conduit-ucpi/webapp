@@ -6,7 +6,7 @@ import { useConfig } from '@/components/auth/ConfigProvider';
 import { RpcClient } from '@/lib/rpc/RpcClient';
 import { useMarketplaceActions } from '@/hooks/useMarketplaceActions';
 import { displayCurrency } from '@/utils/currency';
-import { daysUntil, escrowTitle } from '@/utils/marketplace';
+import { daysUntil, escrowTitle, priceOffer } from '@/utils/marketplace';
 import { EvidenceAsymmetryNotice, ExistingHoldbackNotice } from '@/components/marketplace/OfferDisclosures';
 import OfferFundingPanel from '@/components/marketplace/OfferFundingPanel';
 import type { SellableEscrow } from '@/types/marketplace';
@@ -47,7 +47,7 @@ export default function MakeOfferModal({ escrow, lpAddress, onClose, onOfferMade
   const { createOfferVault } = useMarketplaceActions();
 
   const [discount, setDiscount] = useState('1.5');
-  const [holdbackPercent, setHoldbackPercent] = useState('0');
+  const [residualPercent, setResidualPercent] = useState('0');
   const [step, setStep] = useState<Step>('compose');
   const [error, setError] = useState<string | null>(null);
   const [vaultAddress, setVaultAddress] = useState<string | null>(null);
@@ -83,26 +83,32 @@ export default function MakeOfferModal({ escrow, lpAddress, onClose, onOfferMade
 
   const basis = payout ?? (escrow.amount ? BigInt(escrow.amount) : BigInt(0));
   const discountRate = parseFloat(discount);
-  const holdbackRate = parseFloat(holdbackPercent);
+  const residualRate = parseFloat(residualPercent);
   const ratesValid =
     Number.isFinite(discountRate) && discountRate >= 0 && discountRate < 100 &&
-    Number.isFinite(holdbackRate) && holdbackRate >= 0 && holdbackRate < 100;
+    Number.isFinite(residualRate) && residualRate >= 0 && residualRate < 100;
 
-  // Integer arithmetic in base units — basis points keep this exact rather than round-tripping
-  // through a float and paying out a dust discrepancy.
-  const offerAmount = ratesValid && basis > BigInt(0)
-    ? (basis * BigInt(Math.round((100 - discountRate) * 100))) / BigInt(10_000)
-    : BigInt(0);
-  const holdbackAmount = ratesValid && offerAmount > BigInt(0)
-    ? (offerAmount * BigInt(Math.round(holdbackRate * 100))) / BigInt(10_000)
-    : BigInt(0);
+  // Priced by the shared rule so this screen and any other that quotes an offer cannot drift.
+  const { funded: fundedAmount, residual: residualAmount, offer: offerAmount } = ratesValid
+    ? priceOffer(basis, discountRate, residualRate)
+    : { funded: BigInt(0), residual: BigInt(0), offer: BigInt(0) };
 
-  // A holdback may only be set on an escrow that has never been sold — the escrow holds exactly
-  // one reserve record, and the contract rejects a second at acceptance (§0.4c H-1).
-  const holdbackAllowed = !escrow.previouslySold;
+  // A residual may only be set on an escrow that has never been sold — the escrow holds exactly
+  // one holdback record, and the contract rejects a second at acceptance (§0.4c H-1).
+  const residualAllowed = !escrow.previouslySold;
+  const holdbackAmount = residualAllowed ? residualAmount : BigInt(0);
+
+  // The holdback is retained out of the LP's deposit, and the seller receives
+  // `offerAmount − fee − holdback` (§5.1). Now that the residual is a share of the CASHFLOW
+  // rather than of the offer, it can exceed the deposit it is taken from — a 50% residual at a
+  // 50% discount deposits 25 against a residual of 50. On-chain that pays the seller zero
+  // (audit L-1) rather than reverting, so nothing downstream catches it: the offer is placed,
+  // looks funded, and quietly offers the seller nothing at all.
+  const residualExceedsDeposit = holdbackAmount >= offerAmount && holdbackAmount > BigInt(0);
 
   const canSubmit =
-    ratesValid && offerAmount > BigInt(0) && step === 'compose' && !!lpAddress && !!tokenAddress;
+    ratesValid && offerAmount > BigInt(0) && !residualExceedsDeposit &&
+    step === 'compose' && !!lpAddress && !!tokenAddress;
 
   const submit = async () => {
     setError(null);
@@ -118,7 +124,7 @@ export default function MakeOfferModal({ escrow, lpAddress, onClose, onOfferMade
         escrowContract: escrow.escrowContract,
         lp: lpAddress,
         offerAmount: offerAmount.toString(),
-        holdback: holdbackAllowed ? holdbackAmount.toString() : '0'
+        holdback: holdbackAmount.toString()
       });
 
       if (!created.success || !created.vaultAddress) {
@@ -186,30 +192,31 @@ export default function MakeOfferModal({ escrow, lpAddress, onClose, onOfferMade
             </div>
 
             <div>
-              <label htmlFor="holdback" className="block text-sm font-medium text-gray-700 dark:text-secondary-200 mb-1">
-                Reserve to hold back (% of your offer)
+              <label htmlFor="residual" className="block text-sm font-medium text-gray-700 dark:text-secondary-200 mb-1">
+                Residual (% of the cashflow)
               </label>
               <input
-                id="holdback"
+                id="residual"
                 type="number"
                 min="0"
                 max="99"
                 step="0.5"
-                value={holdbackAllowed ? holdbackPercent : '0'}
-                onChange={(e) => setHoldbackPercent(e.target.value)}
-                disabled={!holdbackAllowed || step !== 'compose'}
+                value={residualAllowed ? residualPercent : '0'}
+                onChange={(e) => setResidualPercent(e.target.value)}
+                disabled={!residualAllowed || step !== 'compose'}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-secondary-700 bg-white dark:bg-secondary-900 text-gray-900 dark:text-white rounded-md disabled:opacity-50"
               />
               <p className="text-xs text-gray-500 dark:text-secondary-400 mt-1">
-                {holdbackAllowed ? (
+                {residualAllowed ? (
                   <>
-                    Withheld from the seller until the escrow settles in full, then returned to
-                    them. It is your buffer if the payment is disputed — and one of the few levers
-                    you have.
+                    The share of the cashflow you are NOT advancing against. It is withheld from
+                    the seller until the escrow settles in full and then returned to them, so it
+                    is your buffer if the payment is disputed — and one of the few levers you
+                    have. Your discount is applied to what is left.
                   </>
                 ) : (
                   <>
-                    This escrow already carries a reserve from an earlier sale, and an escrow can
+                    This escrow already carries a residual from an earlier sale, and an escrow can
                     hold only one. You cannot set another.
                   </>
                 )}
@@ -221,14 +228,39 @@ export default function MakeOfferModal({ escrow, lpAddress, onClose, onOfferMade
                 <span>Collects at maturity</span>
                 <span>{displayCurrency(basis.toString(), 'microUSDC')} {tokenSymbol}</span>
               </div>
+              {/*
+                Shown as a chain rather than one combined deduction, because the two rates act on
+                DIFFERENT numbers and a single "your discount" line hid that: the residual comes
+                off the cashflow, the discount comes off what is left. The intermediate subtotal
+                is the number that makes the second percentage legible.
+              */}
+              {holdbackAmount > BigInt(0) && (
+                <>
+                  <div className="flex justify-between text-gray-600 dark:text-secondary-300">
+                    <span>Residual, not advanced ({residualPercent}%)</span>
+                    <span>− {displayCurrency(holdbackAmount.toString(), 'microUSDC')} {tokenSymbol}</span>
+                  </div>
+                  <div className="flex justify-between text-gray-600 dark:text-secondary-300 border-t border-gray-200 dark:border-secondary-700 pt-2 mt-1">
+                    <span>You are funding</span>
+                    <span>{displayCurrency(fundedAmount.toString(), 'microUSDC')} {tokenSymbol}</span>
+                  </div>
+                </>
+              )}
               <div className="flex justify-between text-gray-600 dark:text-secondary-300">
-                <span>Your discount</span>
-                <span>− {displayCurrency((basis - offerAmount).toString(), 'microUSDC')} {tokenSymbol}</span>
+                <span>Your discount ({discount}%)</span>
+                <span>− {displayCurrency((fundedAmount - offerAmount).toString(), 'microUSDC')} {tokenSymbol}</span>
               </div>
               <div className="flex justify-between font-medium text-gray-900 dark:text-white border-t border-gray-200 dark:border-secondary-700 pt-2 mt-1">
                 <span>You deposit now</span>
                 <span>{displayCurrency(offerAmount.toString(), 'microUSDC')} {tokenSymbol}</span>
               </div>
+              {residualExceedsDeposit && (
+                <p className="text-xs text-red-600 dark:text-red-400 pt-1">
+                  The residual is larger than your deposit, so there would be nothing left to pay
+                  the seller — the contract would send them zero rather than refuse. Lower the
+                  residual, the discount, or both.
+                </p>
+              )}
               {payoutUnavailable && (
                 <p className="text-xs text-amber-700 dark:text-amber-300 pt-1">
                   The escrow&apos;s exact payout could not be read, so this is priced off the gross
@@ -239,10 +271,10 @@ export default function MakeOfferModal({ escrow, lpAddress, onClose, onOfferMade
 
             {/*
               The seller's headline is their NET, and it is not the number above: the platform fee
-              and any reserve come out of the LP's deposit before they see it (§8.5a).
+              and any residual come out of the LP's deposit before they see it (§8.5a).
             */}
             <p className="text-xs text-gray-500 dark:text-secondary-400">
-              The seller sees what they would receive after the platform fee and any reserve — a
+              The seller sees what they would receive after the platform fee and any residual — a
               smaller number than your deposit. They accept or decline; nothing moves until they do.
             </p>
 

@@ -8,6 +8,41 @@ import type { OfferView, SellableEscrow } from '@/types/marketplace';
  */
 
 /**
+ * What an LP actually funds and pays, from the two rates they quote.
+ *
+ * The rates do different jobs and compound in this order (§5.3, invoice-factoring semantics:
+ * "the LP advances part of the agreed price and retains a holdback"):
+ *
+ *   residual — the share of the cashflow NOT being advanced against
+ *   discount — the price paid for the share that IS
+ *
+ * So 100 at a 10% residual is 90 funded, and a 10% discount on that is 81 deposited. Applying
+ * the discount to the gross and taking the residual out of the resulting offer — which is what
+ * the modal did — charges the LP for cashflow they are not advancing against, and makes the two
+ * percentages read as though they act on the same number.
+ *
+ * Integer arithmetic in base units. Basis points keep it exact rather than round-tripping
+ * through a float and paying out a dust discrepancy, and `residual` is derived by subtraction
+ * so the two parts always sum back to the cashflow whatever the rounding did.
+ */
+export function priceOffer(
+  cashflow: bigint,
+  discountRate: number,
+  residualRate: number
+): { funded: bigint; residual: bigint; offer: bigint } {
+  const remaining = (rate: number) => BigInt(Math.round((100 - rate) * 100));
+
+  const funded = cashflow > BigInt(0)
+    ? (cashflow * remaining(residualRate)) / BigInt(10_000)
+    : BigInt(0);
+  const offer = funded > BigInt(0)
+    ? (funded * remaining(discountRate)) / BigInt(10_000)
+    : BigInt(0);
+
+  return { funded, residual: cashflow - funded, offer };
+}
+
+/**
  * What to call the position being traded.
  *
  * The description, and only the description. `productName` is not a name for
@@ -110,7 +145,7 @@ export function offerStatusLabel(offer: OfferView): string {
     case 'WITHDRAWN':
       return 'Withdrawn';
     case 'RELEASED':
-      return 'Reserve released';
+      return 'Residual released';
     default:
       return offer.status;
   }

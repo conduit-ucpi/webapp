@@ -49,7 +49,7 @@ export default function MyOffersList({ lpAddress }: MyOffersListProps) {
   const [deposits, setDeposits] = useState<Record<string, string>>({});
 
   /**
-   * Whether each reserve-bearing escrow has actually paid out.
+   * Whether each residual-bearing escrow has actually paid out.
    *
    * ⚠️ THE CONTRACT REFUSES BEFORE THIS. `releaseHoldback` reverts with `EscrowNotSettled`
    *    unless `escrow.isClaimed()`, so offering the control earlier is offering a guaranteed
@@ -78,9 +78,9 @@ export default function MyOffersList({ lpAddress }: MyOffersListProps) {
     [offers]
   );
 
-  // Escrows behind an ACCEPTED offer that still carries a reserve — the only rows whose
+  // Escrows behind an ACCEPTED offer that still carries a residual — the only rows whose
   // release control could ever be live.
-  const reserveEscrowKey = useMemo(
+  const residualEscrowKey = useMemo(
     () =>
       Array.from(
         new Set(
@@ -95,12 +95,12 @@ export default function MyOffersList({ lpAddress }: MyOffersListProps) {
   );
 
   useEffect(() => {
-    if (!config?.rpcUrl || !reserveEscrowKey) return;
+    if (!config?.rpcUrl || !residualEscrowKey) return;
     let cancelled = false;
     (async () => {
       const client = new RpcClient(config.rpcUrl);
       const entries = await Promise.all(
-        reserveEscrowKey.split(',').map(async (escrow) => {
+        residualEscrowKey.split(',').map(async (escrow) => {
           try {
             return [escrow, (await client.getContractState(escrow)).isClaimed] as const;
           } catch (e) {
@@ -117,7 +117,7 @@ export default function MyOffersList({ lpAddress }: MyOffersListProps) {
     return () => {
       cancelled = true;
     };
-  }, [config?.rpcUrl, reserveEscrowKey]);
+  }, [config?.rpcUrl, residualEscrowKey]);
 
   useEffect(() => {
     if (!config?.rpcUrl || !pendingKey) return;
@@ -258,10 +258,10 @@ function OfferRow({
   onOpen: () => void;
 }) {
   const withdrawable = looksWithdrawable(offer);
-  const hasReserve = !!offer.holdback && offer.holdback !== '0';
+  const hasResidual = !!offer.holdback && offer.holdback !== '0';
   // ⚠️ ONLY `true` UNLOCKS IT. `releaseHoldback` reverts with EscrowNotSettled until the escrow
   //    has paid out, so enabling this on an unread state trades a wait for a paid-for revert.
-  const releasable = offer.status === 'ACCEPTED' && hasReserve && escrowSettled === true;
+  const releasable = offer.status === 'ACCEPTED' && hasResidual && escrowSettled === true;
   // A deposit that landed while the offer never opened. The money is in the vault and the
   // seller cannot see it — one relayed call fixes it, and no transfer is involved.
   const openable = needsOpening(offer);
@@ -299,10 +299,10 @@ function OfferRow({
           )}
           {/*
             ⚠️ `releaseHoldback` is NOT keeper-firable in the per-offer model (§6.7): it answers
-            only to the reserve's funder or the live beneficiary, so nobody can sweep up on the
-            parties' behalf. If this prompt is missing, the reserve simply sits in the vault.
+            only to the residual's funder or the live beneficiary, so nobody can sweep up on the
+            parties' behalf. If this prompt is missing, the residual simply sits in the vault.
           */}
-          {offer.status === 'ACCEPTED' && hasReserve && (
+          {offer.status === 'ACCEPTED' && hasResidual && (
             <Button
               type="button"
               size="sm"
@@ -310,7 +310,7 @@ function OfferRow({
               onClick={onRelease}
               disabled={busy || !releasable}
             >
-              {busy ? <LoadingSpinner className="w-4 h-4" /> : 'Release the reserve'}
+              {busy ? <LoadingSpinner className="w-4 h-4" /> : 'Release the residual'}
             </Button>
           )}
         </div>
@@ -334,12 +334,12 @@ function OfferRow({
         </p>
       )}
 
-      {offer.status === 'ACCEPTED' && hasReserve && (
+      {offer.status === 'ACCEPTED' && hasResidual && (
         <p className="text-xs text-gray-500 dark:text-secondary-400 mt-3">
-          You are holding {displayCurrency(offer.holdback!, 'microUSDC')} {tokenSymbol} in reserve.{' '}
+          You are holding {displayCurrency(offer.holdback!, 'microUSDC')} {tokenSymbol} as a residual.{' '}
           {releasable ? (
             <>
-              The escrow has paid out, so releasing now returns the reserve to the seller and any
+              The escrow has paid out, so releasing now returns the residual to the seller and any
               balance to you. Nobody can do this on your behalf.
             </>
           ) : escrowSettled === false ? (

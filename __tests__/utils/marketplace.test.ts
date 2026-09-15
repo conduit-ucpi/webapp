@@ -1,4 +1,4 @@
-import { acceptableOffers, escrowTitle, looksWithdrawable, needsOpening, offerStatusLabel } from '@/utils/marketplace';
+import { acceptableOffers, escrowTitle, looksWithdrawable, needsOpening, offerStatusLabel, priceOffer } from '@/utils/marketplace';
 import type { OfferView, SellableEscrow } from '@/types/marketplace';
 
 /**
@@ -195,5 +195,92 @@ describe('escrowTitle', () => {
   it('takes a fallback that reads naturally in a sentence', () => {
     // The modal says "Offer on ...", where "Offer on Escrow payment" is wrong.
     expect(escrowTitle(escrow(null), 'this payment')).toBe('this payment');
+  });
+});
+
+
+/**
+ * Pricing an offer from the two rates.
+ *
+ * The rates act on DIFFERENT numbers and compound in one specific order — residual off the
+ * cashflow, discount off what is left (§5.3). The screen previously applied the discount to the
+ * gross and then took the residual out of the resulting offer, which charged the LP for cashflow
+ * they were not advancing against and made the two percentages look like they acted on the same
+ * base. Every number below is money, so they are pinned exactly.
+ *
+ * Amounts are microUSDC: 100_000_000 is $100.
+ */
+describe('priceOffer', () => {
+  const HUNDRED = BigInt(100_000_000);
+
+  it('funds the cashflow less the residual, then discounts what is left', () => {
+    // The worked example: $100 cashflow, 10% residual, 10% discount.
+    // Funding $90 of it, paying 90% of that = $81.
+    const { funded, residual, offer } = priceOffer(HUNDRED, 10, 10);
+
+    expect(funded).toBe(BigInt(90_000_000));
+    expect(residual).toBe(BigInt(10_000_000));
+    expect(offer).toBe(BigInt(81_000_000));
+  });
+
+  it('does not charge the LP for the residual', () => {
+    // The regression: discounting the gross gave $90 for a position only $90 of which is
+    // being advanced against. The difference is exactly the discount on the residual.
+    const { offer } = priceOffer(HUNDRED, 10, 10);
+
+    expect(offer).not.toBe(BigInt(90_000_000));
+    expect(HUNDRED - offer).toBe(BigInt(19_000_000));
+  });
+
+  it('is just the discount when there is no residual', () => {
+    // The default path, and the one that must not have moved.
+    const { funded, residual, offer } = priceOffer(HUNDRED, 1.5, 0);
+
+    expect(funded).toBe(HUNDRED);
+    expect(residual).toBe(BigInt(0));
+    expect(offer).toBe(BigInt(98_500_000));
+  });
+
+  it('is just the residual when the discount is zero', () => {
+    const { funded, offer } = priceOffer(HUNDRED, 0, 10);
+
+    expect(funded).toBe(BigInt(90_000_000));
+    expect(offer).toBe(BigInt(90_000_000));
+  });
+
+  it('splits the cashflow exactly, whatever the rounding did', () => {
+    // funded + residual must reconstruct the cashflow to the base unit. An amount and a rate
+    // chosen to not divide cleanly.
+    const odd = BigInt(33_333_333);
+    const { funded, residual } = priceOffer(odd, 7.5, 12.5);
+
+    expect(funded + residual).toBe(odd);
+  });
+
+  it('handles fractional rates without drifting', () => {
+    const { offer } = priceOffer(HUNDRED, 2.5, 7.5);
+
+    // 100 × 0.925 = 92.5 funded; × 0.975 = 90.1875
+    expect(offer).toBe(BigInt(90_187_500));
+  });
+
+  it('prices nothing from nothing', () => {
+    const { funded, residual, offer } = priceOffer(BigInt(0), 10, 10);
+
+    expect(funded).toBe(BigInt(0));
+    expect(residual).toBe(BigInt(0));
+    expect(offer).toBe(BigInt(0));
+  });
+
+  it('can produce a residual larger than the deposit, which the caller must catch', () => {
+    // Now that the residual is a share of the CASHFLOW rather than of the offer, it can exceed
+    // the deposit it is retained from. On-chain that pays the seller zero rather than
+    // reverting (audit L-1), so the UI has to refuse it — this pins that the arithmetic really
+    // does reach that state, so the guard is not dead code.
+    const { residual, offer } = priceOffer(HUNDRED, 50, 50);
+
+    expect(offer).toBe(BigInt(25_000_000));
+    expect(residual).toBe(BigInt(50_000_000));
+    expect(residual > offer).toBe(true);
   });
 });

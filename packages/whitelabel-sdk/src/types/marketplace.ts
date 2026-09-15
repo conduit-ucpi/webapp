@@ -77,7 +77,7 @@ export interface OfferView {
   /** What the seller receives at acceptance: `offerAmount − fee − holdback` (§8.5a). */
   netAmount: string | null;
   fee: string | null;
-  /** Reserve withheld until settlement; it returns to the seller if the cashflow collects in full. */
+  /** Residual withheld until settlement; it returns to the seller if the cashflow collects in full. */
   holdback: string | null;
   offerExpiry: number | null;
   status: OfferStatus;
@@ -108,7 +108,7 @@ export interface SellableEscrow {
   currencySymbol: string;
   openOffers: number;
   previouslySold: boolean;
-  /** A reserve that travels with the position: the next buyer becomes its beneficiary (§5.3). */
+  /** A residual that travels with the position: the next buyer becomes its beneficiary (§5.3). */
   existingHoldback: string | null;
   existingHoldbackFunder: string | null;
 }

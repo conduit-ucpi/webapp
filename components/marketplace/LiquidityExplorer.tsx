@@ -185,7 +185,7 @@ export default function LiquidityExplorer({ walletAddress }: LiquidityExplorerPr
                   </div>
                   {escrow.previouslySold && (
                     <span className="inline-block mt-1 text-[11px] rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-0.5">
-                      Previously sold — carries a reserve
+                      Previously sold — carries a residual
                     </span>
                   )}
                 </div>

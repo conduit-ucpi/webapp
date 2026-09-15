@@ -69,10 +69,7 @@ export default function EnhancedContractCard({
   // once they leave the send screen is a dead end. Offer it back until the
   // buyer has actually paid, after which re-sending is meaningless.
   const [linkCopied, setLinkCopied] = useState(false);
-  // A pending contract isn't on chain yet, so it's unfunded by definition;
-  // only a live Contract carries a `funded` flag to check.
-  const isUnfunded = isPendingContract(contract) ? true : !contract.funded;
-  const canReshare = isSeller && isUnfunded && !!contract.id;
+
 
   const copyPaymentLink = async () => {
     if (!contract.id || typeof window === 'undefined') return;
@@ -127,6 +124,28 @@ export default function EnhancedContractCard({
   const status = useMemo(() => {
     return 'status' in contract ? contract.status : 'PENDING';
   }, [contract]);
+
+  /*
+   * ⚠️ GATED ON THE STATUS, NOT ON THE `funded` FLAG. That flag is
+   *    `item.blockchainFunded || false` (useCombinedContracts), so a row whose chain read did
+   *    not land reads as UNFUNDED rather than as unknown — and the escrow's own isFunded() is
+   *    `_state >= 1`, which stays true after a claim, so the flag cannot mean "still awaiting
+   *    payment" even when it is present. Between the two, CLAIMED contracts were offering to
+   *    re-send a payment link for money already collected, on exactly the rows whose chain read
+   *    had failed. Which is why it was some of them and not others.
+   *
+   * An allowlist rather than excluding the terminal states: a status we do not recognise, or
+   * one added later, must not inherit the offer. A missing status counts as unrecognised —
+   * re-sending a paid request is worse than a missing button.
+   *
+   * It also means the button asks the chain nothing. CLAIMED is the end of the story, and the
+   * record already says so; consulting a chain flag to re-derive that is how a failed read
+   * turned a finished contract back into one awaiting payment.
+   */
+  const canReshare =
+    isSeller &&
+    !!contract.id &&
+    ['PENDING', 'PENDING_ACCEPTANCE', 'CREATED', 'AWAITING_FUNDING'].includes(status ?? '');
 
   // Use backend-provided status display only
   const statusDisplay = useMemo(() => {

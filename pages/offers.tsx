@@ -172,6 +172,7 @@ export default function OffersPage() {
                     <SellerOfferBook
                       escrowContract={contract.contractAddress}
                       maturityAmount={payoutFor(contract).amount}
+                      nominalAmount={contract.amount}
                       maturity={contract.expiryTimestamp}
                       onAccepted={async () => {
                         await refetch();

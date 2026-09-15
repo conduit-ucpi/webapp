@@ -225,10 +225,10 @@ export default function MakeOfferModal({ escrow, lpAddress, onClose, onOfferMade
               <p className="text-xs text-gray-500 dark:text-secondary-400 mt-1">
                 {residualAllowed ? (
                   <>
-                    The share of the cashflow you are NOT advancing against. It is withheld from
-                    the seller until the escrow settles in full and then returned to them, so it
-                    is your buffer if the payment is disputed — and one of the few levers you
-                    have. Your discount is applied to what is left.
+                    Withheld from the seller at acceptance and claimed by them once the escrow
+                    settles in full. It comes out of your deposit, not on top of it, and covers
+                    your loss first if the payment is disputed — one of the few levers you have.
+                    Your discount is applied to the cashflow less this.
                   </>
                 ) : (
                   <>
@@ -241,7 +241,7 @@ export default function MakeOfferModal({ escrow, lpAddress, onClose, onOfferMade
 
             <div className="rounded-md bg-gray-50 dark:bg-secondary-900/60 p-3 text-sm space-y-1">
               <div className="flex justify-between text-gray-600 dark:text-secondary-300">
-                <span>Collects at maturity</span>
+                <span>You collect at maturity</span>
                 <span>{displayCurrency(basis.toString(), 'microUSDC')} {tokenSymbol}</span>
               </div>
               {/*
@@ -253,11 +253,11 @@ export default function MakeOfferModal({ escrow, lpAddress, onClose, onOfferMade
               {holdbackAmount > BigInt(0) && (
                 <>
                   <div className="flex justify-between text-gray-600 dark:text-secondary-300">
-                    <span>Residual, not advanced ({residualPercent}%)</span>
+                    <span>Residual ({residualPercent}%)</span>
                     <span>− {displayCurrency(holdbackAmount.toString(), 'microUSDC')} {tokenSymbol}</span>
                   </div>
                   <div className="flex justify-between text-gray-600 dark:text-secondary-300 border-t border-gray-200 dark:border-secondary-700 pt-2 mt-1">
-                    <span>You are funding</span>
+                    <span>Priced against</span>
                     <span>{displayCurrency(fundedAmount.toString(), 'microUSDC')} {tokenSymbol}</span>
                   </div>
                 </>
@@ -270,6 +270,21 @@ export default function MakeOfferModal({ escrow, lpAddress, onClose, onOfferMade
                 <span>You deposit now</span>
                 <span>{displayCurrency(offerAmount.toString(), 'microUSDC')} {tokenSymbol}</span>
               </div>
+              {/*
+                The residual is INSIDE the deposit, not alongside it: acceptance splits the
+                deposit into netAmount + fee + holdback, and releaseHoldback pays the holdback
+                to the original supplier once the escrow settles clean. Saying so here because
+                the row above it reads as a deduction, and the two together would otherwise
+                suggest the LP pays the residual on top.
+              */}
+              {holdbackAmount > BigInt(0) && (
+                <p className="text-xs text-gray-500 dark:text-secondary-400 pt-1">
+                  Your deposit includes the{' '}
+                  {displayCurrency(holdbackAmount.toString(), 'microUSDC')} {tokenSymbol} residual.
+                  The seller receives the rest, less the fee, when they accept — and claims the
+                  residual when the escrow settles in full.
+                </p>
+              )}
               {residualExceedsDeposit && (
                 <p className="text-xs text-red-600 dark:text-red-400 pt-1">
                   The residual plus the venue fee would exceed your deposit, so there would be

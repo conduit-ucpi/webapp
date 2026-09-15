@@ -77,7 +77,7 @@ export interface OfferView {
   /** What the seller receives at acceptance: `offerAmount − fee − holdback` (§8.5a). */
   netAmount: string | null;
   fee: string | null;
-  /** Reserve withheld until settlement; it returns to the seller if the cashflow collects in full. */
+  /** Residual withheld until settlement; it returns to the seller if the cashflow collects in full. */
   holdback: string | null;
   offerExpiry: number | null;
   status: OfferStatus;
@@ -108,7 +108,7 @@ export interface SellableEscrow {
   currencySymbol: string;
   openOffers: number;
   previouslySold: boolean;
-  /** A reserve that travels with the position: the next buyer becomes its beneficiary (§5.3). */
+  /** A residual that travels with the position: the next buyer becomes its beneficiary (§5.3). */
   existingHoldback: string | null;
   existingHoldbackFunder: string | null;
 }
@@ -141,4 +141,42 @@ export interface CreateOfferResponse {
    *    rather than inviting a retry: retrying makes a second offer and commits more capital.
    */
   indexed?: boolean;
+}
+
+/**
+ * A reserve on a position this supplier sold (§6.7).
+ *
+ * ⚠️ SELLING DOES NOT END THEIR INTEREST, AND EVERY OTHER VIEW ASSUMES IT DOES. `accept()` moves
+ *    the recipient role to the LP, so the escrow leaves the seller's list entirely — but they
+ *    remain the reserve's funder, and the release pays them. Without this view they never learn.
+ */
+export type ReserveState = 'LIVE' | 'DISPUTED' | 'SETTLED' | 'RESOLVED' | 'RELEASED' | 'UNKNOWN';
+
+export interface ReserveView {
+  vaultAddress: string;
+  escrowContract: string | null;
+  /** The LP holding the position the reserve rides on. */
+  lp: string | null;
+  token: string | null;
+  /** The reserve as agreed at the sale — the ceiling on what can come back. */
+  holdback: string;
+  state: ReserveState;
+  /**
+   * What comes back to the supplier, in token units.
+   *
+   * ⚠️ PROVISIONAL WHILE `LIVE`: the buyer can dispute right up to maturity, so this is the
+   *    outcome if nothing further happens, not an amount owed. Say so when rendering it.
+   *
+   * ⚠️ NULL WHILE `DISPUTED` OR `UNKNOWN`, and no figure may be substituted. The split turns on
+   *    votes that have not matched, or on an escrow nobody could read — a number would be a
+   *    guess about the supplier's money.
+   */
+  dueBack: string | null;
+  /** Whether the vault would accept a release now. Advisory — the vault re-checks. */
+  releasable: boolean;
+  /** When the contract matures, i.e. when the dispute window closes. */
+  maturity: number | null;
+  /** The buyer's share of a resolved dispute, 0-100. Null when never disputed. */
+  resolvedBuyerPercentage: number | null;
+  lastEventAt: number;
 }

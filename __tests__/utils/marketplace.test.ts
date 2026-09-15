@@ -1,4 +1,4 @@
-import { acceptableOffers, escrowTitle, looksWithdrawable, needsOpening, offerStatusLabel } from '@/utils/marketplace';
+import { acceptableOffers, annualisedYield, escrowTitle, looksWithdrawable, needsOpening, offerStatusLabel, priceOffer } from '@/utils/marketplace';
 import type { OfferView, SellableEscrow } from '@/types/marketplace';
 
 /**
@@ -192,8 +192,163 @@ describe('escrowTitle', () => {
     expect(escrowTitle(escrow('   '))).toBe('Escrow payment');
   });
 
+  it('titles a contract from any shape that carries a description', () => {
+    // The same position appears as a SellableEscrow in the explorer and as a
+    // UnifiedContract on /offers, where description is optional rather than nullable. One
+    // rule has to cover both or the two screens title the same thing differently — which is
+    // exactly what happened: /liquidity was fixed and /offers was not.
+    expect(escrowTitle({ description: 'Oak dining table' })).toBe('Oak dining table');
+    expect(escrowTitle({ description: undefined })).toBe('Escrow payment');
+    expect(escrowTitle({})).toBe('Escrow payment');
+    // useCombinedContracts maps a missing description to '' rather than leaving it unset.
+    expect(escrowTitle({ description: '' })).toBe('Escrow payment');
+  });
+
   it('takes a fallback that reads naturally in a sentence', () => {
     // The modal says "Offer on ...", where "Offer on Escrow payment" is wrong.
     expect(escrowTitle(escrow(null), 'this payment')).toBe('this payment');
+  });
+});
+
+
+/**
+ * Pricing an offer from the two rates.
+ *
+ * Both rates are shares of the CASHFLOW and they do different jobs: the discount is the LP's
+ * return, the residual is a slice of the deposit that reaches the supplier at maturity rather
+ * than at acceptance. The screen originally took the residual as a share of the OFFER, which
+ * made the two percentages look like they acted on the same base. They do not.
+ *
+ * This maps one-to-one onto the deployed contracts — offer is `offerAmount`, residual is
+ * `holdback`, supplierNow is `netAmount` before the venue fee — so every number here is money
+ * that moves, and they are pinned exactly.
+ *
+ * Amounts are microUSDC: 100_000_000 is $100.
+ */
+describe('priceOffer', () => {
+  const HUNDRED = BigInt(100_000_000);
+
+  it('deposits the cashflow less the discount', () => {
+    // The worked example: $100 cashflow, 10% discount, 10% residual.
+    // Deposit $90; $10 of it is the residual; the supplier sees $80 now.
+    const { offer, residual, supplierNow } = priceOffer(HUNDRED, 10, 10);
+
+    expect(offer).toBe(BigInt(90_000_000));
+    expect(residual).toBe(BigInt(10_000_000));
+    expect(supplierNow).toBe(BigInt(80_000_000));
+  });
+
+  it('takes the residual off the cashflow, not off the offer', () => {
+    // The regression: 10% of the OFFER is $9, not $10. A percentage point of difference
+    // between the two bases, on every offer that carries a residual.
+    const { residual } = priceOffer(HUNDRED, 10, 10);
+
+    expect(residual).toBe(BigInt(10_000_000));
+    expect(residual).not.toBe(BigInt(9_000_000));
+  });
+
+  it('leaves the deposit untouched by the residual', () => {
+    // The residual is withheld from the SUPPLIER, not from the LP: it moves money between
+    // acceptance and maturity without changing what the LP puts in.
+    const none = priceOffer(HUNDRED, 10, 0);
+    const heavy = priceOffer(HUNDRED, 10, 40);
+
+    expect(none.offer).toBe(heavy.offer);
+    expect(none.supplierNow).toBe(BigInt(90_000_000));
+    expect(heavy.supplierNow).toBe(BigInt(50_000_000));
+  });
+
+  it('pays the supplier the whole deposit when there is no residual', () => {
+    const { offer, residual, supplierNow } = priceOffer(HUNDRED, 1.5, 0);
+
+    expect(offer).toBe(BigInt(98_500_000));
+    expect(residual).toBe(BigInt(0));
+    expect(supplierNow).toBe(offer);
+  });
+
+  it('handles fractional rates without drifting', () => {
+    const { offer, residual } = priceOffer(HUNDRED, 2.5, 7.5);
+
+    expect(offer).toBe(BigInt(97_500_000));
+    expect(residual).toBe(BigInt(7_500_000));
+  });
+
+  it('prices nothing from nothing', () => {
+    const { offer, residual, supplierNow } = priceOffer(BigInt(0), 10, 10);
+
+    expect(offer).toBe(BigInt(0));
+    expect(residual).toBe(BigInt(0));
+    expect(supplierNow).toBe(BigInt(0));
+  });
+
+  it('reports a negative supplier payment rather than clamping it', () => {
+    // A 60% residual against a 50% discount leaves the supplier owed less than nothing.
+    // OfferVaultFactory._quote reverts on `fee + holdback > offerAmount`, so the caller has
+    // to refuse this — clamping to zero here would hide it from the guard.
+    const { offer, residual, supplierNow } = priceOffer(HUNDRED, 50, 60);
+
+    expect(offer).toBe(BigInt(50_000_000));
+    expect(residual).toBe(BigInt(60_000_000));
+    expect(supplierNow).toBe(BigInt(-10_000_000));
+  });
+});
+
+/**
+ * Annualised yield.
+ *
+ * Simple rather than compounded, because compounding assumes the LP can roll into another
+ * position at the same rate and this venue often has nothing to roll into. The number an LP
+ * compares against other venues, so a wrong one here misprices their whole book.
+ */
+describe('annualisedYield', () => {
+  const HUNDRED = BigInt(100_000_000);
+
+  it('annualises the period return', () => {
+    // Deposit 90, collect 100 in 30 days: 11.11% over the period, ~135% annualised.
+    const y = annualisedYield(BigInt(90_000_000), HUNDRED, 30);
+
+    expect(y).toBeCloseTo((10 / 90) * (365 / 30) * 100, 6);
+    expect(y).toBeCloseTo(135.19, 1);
+  });
+
+  it('ignores the residual entirely', () => {
+    // The residual never touches the LP's side: same deposit, same collection, same yield.
+    const { offer } = priceOffer(HUNDRED, 10, 40);
+
+    expect(annualisedYield(offer, HUNDRED, 30)).toBeCloseTo(
+      annualisedYield(priceOffer(HUNDRED, 10, 0).offer, HUNDRED, 30)!,
+      6
+    );
+  });
+
+  it('falls as the discount narrows', () => {
+    const thin = annualisedYield(priceOffer(HUNDRED, 1, 0).offer, HUNDRED, 30)!;
+    const fat = annualisedYield(priceOffer(HUNDRED, 10, 0).offer, HUNDRED, 30)!;
+
+    expect(thin).toBeLessThan(fat);
+  });
+
+  it('is longer-dated means lower annualised, for the same discount', () => {
+    const short = annualisedYield(BigInt(90_000_000), HUNDRED, 30)!;
+    const long = annualisedYield(BigInt(90_000_000), HUNDRED, 180)!;
+
+    expect(long).toBeLessThan(short);
+  });
+
+  describe('when it cannot be stated', () => {
+    // Null rather than 0 or Infinity: a yield of zero is a claim, and an absent one is not.
+    it('has no value at or past maturity', () => {
+      expect(annualisedYield(BigInt(90_000_000), HUNDRED, 0)).toBeNull();
+      expect(annualisedYield(BigInt(90_000_000), HUNDRED, -3)).toBeNull();
+    });
+
+    it('has no value with nothing deposited', () => {
+      expect(annualisedYield(BigInt(0), HUNDRED, 30)).toBeNull();
+    });
+
+    it('has no value when the offer does not discount', () => {
+      expect(annualisedYield(HUNDRED, HUNDRED, 30)).toBeNull();
+      expect(annualisedYield(BigInt(110_000_000), HUNDRED, 30)).toBeNull();
+    });
   });
 });

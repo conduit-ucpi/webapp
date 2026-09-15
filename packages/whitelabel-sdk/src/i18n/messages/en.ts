@@ -469,10 +469,6 @@ export const en = {
   'enhancedDashboard.completed': 'Completed',
   'enhancedDashboard.totalValue': 'Total Value',
   'enhancedDashboard.searchPaymentAgreements': 'Search payment agreements...',
-  'progressChecklist.completeTheseStepsTo': 'Complete these steps to get the most out of your escrow platform',
-  'progressChecklist.progress': 'Progress',
-  'progressChecklist.congratulationsYouVeCompleted': "Congratulations! You've completed the onboarding checklist.",
-  'progressChecklist.dismissChecklist': 'Dismiss Checklist',
   'tourProvider.skipTour': 'Skip Tour',
   'tourProvider.back': 'Back',
   'transactionWalkthrough.letSCreateA': "Let's Create a Sample Payment Request",
@@ -594,6 +590,7 @@ export const en = {
   'connectPaymentStage.connectToComplete': 'Connect your wallet to complete the payment.',
   'connectPaymentStage.signInToProceed': 'Sign in with your email or wallet to proceed.',
   'disputeManagementModal.confirmAndSign': 'Confirm and sign',
+  'enhancedContractCard.sendPaymentLink': 'Send payment link',
 } as const;
 
 export type MessageKey = keyof typeof en;

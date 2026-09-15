@@ -6,6 +6,7 @@ import EmptyState from '@/components/ui/EmptyState';
 import MakeOfferModal from '@/components/marketplace/MakeOfferModal';
 import { useSellableEscrows } from '@/hooks/useMarketplaceData';
 import { useConfig } from '@/components/auth/ConfigProvider';
+import { usePayoutAmounts } from '@/hooks/useEscrowReads';
 import { displayCurrency } from '@/utils/currency';
 import { formatTimestamp } from '@/utils/datetime';
 import { daysUntil, escrowTitle } from '@/utils/marketplace';
@@ -54,13 +55,36 @@ export default function LiquidityExplorer({ walletAddress }: LiquidityExplorerPr
     );
   }, [escrows, search]);
 
+  // ⚠️ `amount` IS THE GROSS. The recipient — and after a sale, the LP — collects
+  //    AMOUNT − CREATOR_FEE, which the escrow exposes as payoutAmount(). Listing the gross
+  //    overstates every position on the board, and it is the figure an LP prices a discount
+  //    against: MakeOfferModal already reads payoutAmount for exactly that reason and says so
+  //    in its header. The book has to agree with the modal it opens.
+  const { payouts } = usePayoutAmounts(
+    useMemo(() => escrows.map((e) => e.escrowContract), [escrows]),
+    config?.rpcUrl
+  );
+
+  /** What this position actually pays, falling back to the gross where it could not be read. */
+  const collectible = (escrow: SellableEscrow): { amount: bigint; isNet: boolean } => {
+    const read = payouts[escrow.escrowContract];
+    return read !== undefined
+      ? { amount: read, isNet: true }
+      : { amount: BigInt(escrow.amount || '0'), isNet: false };
+  };
+
   const totals = useMemo(() => {
-    const locked = escrows.reduce((sum, e) => sum + BigInt(e.amount || '0'), BigInt(0));
+    const locked = escrows.reduce(
+      (sum, e) => sum + (payouts[e.escrowContract] ?? BigInt(e.amount || '0')),
+      BigInt(0)
+    );
     const avgDays = escrows.length
       ? Math.round(escrows.reduce((sum, e) => sum + daysUntil(e.maturity), 0) / escrows.length)
       : 0;
     return { locked, avgDays };
-  }, [escrows]);
+    // payouts arrives a tick after escrows, so it has to be a dependency or the headline stays
+    // on the gross until the list itself changes.
+  }, [escrows, payouts]);
 
   /**
    * An LP may not be the escrow's buyer — the vault rejects it, because the buyer controls
@@ -80,7 +104,7 @@ export default function LiquidityExplorer({ walletAddress }: LiquidityExplorerPr
           sub={data?.unreadable ? `${data.unreadable} could not be read` : 'Verified against the chain'}
         />
         <StatsCard
-          title="Total locked"
+          title="Collectible at maturity"
           value={`${displayCurrency(totals.locked.toString(), 'microUSDC')}`}
           sub={`${tokenSymbol} across the listed escrows`}
         />
@@ -185,16 +209,19 @@ export default function LiquidityExplorer({ walletAddress }: LiquidityExplorerPr
                   </div>
                   {escrow.previouslySold && (
                     <span className="inline-block mt-1 text-[11px] rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-0.5">
-                      Previously sold — carries a reserve
+                      Previously sold — carries a residual
                     </span>
                   )}
                 </div>
 
                 <div className="md:col-span-2">
                   <div className="text-sm font-medium text-gray-900 dark:text-white">
-                    {displayCurrency(escrow.amount ?? 0, 'microUSDC')}
+                    {displayCurrency(collectible(escrow).amount.toString(), 'microUSDC')}
                   </div>
-                  <div className="text-xs text-gray-500 dark:text-secondary-400">{escrow.currencySymbol}</div>
+                  <div className="text-xs text-gray-500 dark:text-secondary-400">
+                    {escrow.currencySymbol}
+                    {collectible(escrow).isNet ? ' at maturity' : ' before fees'}
+                  </div>
                 </div>
 
                 <div className="md:col-span-2">

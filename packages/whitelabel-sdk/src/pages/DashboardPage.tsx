@@ -1,3 +1,4 @@
+import { ReactNode } from 'react';
 import Link from 'next/link';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
@@ -11,7 +12,15 @@ import DashboardTour from '@/components/onboarding/DashboardTour';
 import { btnPrimary } from '@/utils/landingStyles';
 import { useT } from '../i18n';
 
-export default function Dashboard2() {
+interface DashboardPageProps {
+  /**
+   * Rendered above the contract list. A slot rather than a fixed component, so a host can put
+   * its own surfaces here without the SDK depending on them.
+   */
+  beforeContracts?: ReactNode;
+}
+
+export default function Dashboard2({ beforeContracts }: DashboardPageProps = {}) {
   const t = useT();
   const { user, isLoading, isConnected } = useAuth();
   const { walletAddress, isLoading: isWalletAddressLoading } = useWalletAddress();
@@ -159,12 +168,11 @@ export default function Dashboard2() {
           color: var(--d-badge-fg) !important;
         }
 
-        /* ── Icon circles (StatsCard bg-primary-50, ProgressChecklist bg-primary-100) ── */
+        /* ── Icon circles (StatsCard bg-primary-50) ── */
         .dashboard2-flat .bg-primary-50 {
           background-color: var(--d-icon-bg) !important;
         }
-        .dashboard2-flat .bg-primary-50 .text-primary-600,
-        .dashboard2-flat .bg-primary-100 .text-primary-600 {
+        .dashboard2-flat .bg-primary-50 .text-primary-600 {
           color: var(--d-icon-fg) !important;
         }
 
@@ -179,12 +187,6 @@ export default function Dashboard2() {
           color: var(--d-input-placeholder) !important;
         }
 
-        /* ── ProgressChecklist container ── */
-        .dashboard2-flat .bg-white.border.border-primary-200 {
-          background: var(--d-card-bg) !important;
-          border-color: var(--d-divider) !important;
-          border-radius: 0 !important;
-        }
 
         /* ── Progress bar (non-button bg-primary-500) ── */
         .dashboard2-flat div.bg-primary-500 {
@@ -265,6 +267,18 @@ export default function Dashboard2() {
           aria-label={t('dashboardPage.contracts')}
         >
           <div className="max-w-5xl mx-auto px-6 sm:px-8 py-6 lg:py-8">
+            {/*
+              A slot above the contracts, for anything the host wants to put in front of them.
+              Our site fills it with the reserves a supplier is owed on payments they already
+              sold — money that belongs on this page and nowhere else, because the sale drops
+              that contract out of the list below.
+
+              A slot rather than the component itself: the marketplace lives host-side, and an
+              SDK page reaching into components/marketplace would hand every tenant a dependency
+              on code they do not have.
+            */}
+            {beforeContracts && <div className="mb-10 empty:mb-0">{beforeContracts}</div>}
+
             <EnhancedDashboard />
           </div>
         </section>

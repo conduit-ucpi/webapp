@@ -7,12 +7,19 @@ import { useConfig } from '@/components/auth/ConfigProvider';
 import { displayCurrency } from '@/utils/currency';
 import { acceptableOffers, hoursUntil, reconciledLabel } from '@/utils/marketplace';
 import { AcceptFlowNotice, NetProceedsBreakdown } from '@/components/marketplace/OfferDisclosures';
+import OfferDetailsModal from '@/components/marketplace/OfferDetailsModal';
 import type { OfferView } from '@/types/marketplace';
 
 interface SellerOfferBookProps {
   escrowContract: string;
   /** What the escrow would pay at maturity, for the "instead of waiting" comparison. */
   maturityAmount?: number;
+  /**
+   * The escrow's gross amount. Only the detail view needs it — to show the platform fee as the
+   * difference between it and the payout, rather than asserting a fee rate the escrow may not
+   * have been created under.
+   */
+  nominalAmount?: number;
   maturity?: number;
   onAccepted?: () => Promise<void> | void;
 }
@@ -21,9 +28,9 @@ interface SellerOfferBookProps {
  * The offers standing on one escrow, from the seller's side (MARKETPLACE_OPENSPEC §15.6d).
  *
  * ⚠️ THE HEADLINE FIGURE IS THE SELLER'S NET, NOT THE OFFER (§8.5a, §13.10). The platform fee and
- *    any reserve come out of the LP's deposit before the seller sees it, so a seller shown
+ *    any residual come out of the LP's deposit before the seller sees it, so a seller shown
  *    "10,000" who receives 8,900 reads it as theft. Fee and holdback are separate fields on
- *    `OfferCreated` precisely so offers can be compared on both — a smaller offer with no reserve
+ *    `OfferCreated` precisely so offers can be compared on both — a smaller offer with no residual
  *    can be the better one.
  *
  * ⚠️ PENDING VAULTS ARE NOT OFFERS and never appear here (§5.0): the vault exists but the LP has
@@ -32,6 +39,7 @@ interface SellerOfferBookProps {
 export default function SellerOfferBook({
   escrowContract,
   maturityAmount,
+  nominalAmount,
   maturity,
   onAccepted
 }: SellerOfferBookProps) {
@@ -44,6 +52,7 @@ export default function SellerOfferBook({
   const [stage, setStage] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<OfferView | null>(null);
+  const [viewing, setViewing] = useState<OfferView | null>(null);
 
   const tokenSymbol = config?.tokenSymbol || 'USDC';
   const offers = acceptableOffers(data?.offers ?? []);
@@ -71,6 +80,7 @@ export default function SellerOfferBook({
       await acceptOffer(offer.vaultAddress);
 
       setConfirming(null);
+      setViewing(null);
       await refetch();
       await onAccepted?.();
     } catch (e: any) {
@@ -89,6 +99,7 @@ export default function SellerOfferBook({
     setActionError(null);
     try {
       await rejectOffer(offer.vaultAddress);
+      setViewing(null);
       await refetch();
     } catch (e: any) {
       setActionError(e?.message || 'Declining did not go through.');
@@ -163,6 +174,9 @@ export default function SellerOfferBook({
                 </div>
 
                 <div className="flex gap-2 flex-shrink-0">
+                  <Button type="button" size="sm" variant="ghost" onClick={() => setViewing(offer)} disabled={isBusy}>
+                    View details
+                  </Button>
                   <Button type="button" size="sm" variant="outline" onClick={() => decline(offer)} disabled={isBusy}>
                     Decline
                   </Button>
@@ -211,6 +225,23 @@ export default function SellerOfferBook({
             </div>
           );
         })
+      )}
+
+      {/* One modal for whichever offer is being looked at, rather than one per row. */}
+      {viewing && (
+        <OfferDetailsModal
+          isOpen
+          onClose={() => setViewing(null)}
+          offer={viewing}
+          nominalAmount={nominalAmount}
+          payoutAmount={maturityAmount}
+          maturity={maturity}
+          tokenSymbol={tokenSymbol}
+          busy={busyVault === viewing.vaultAddress}
+          stage={busyVault === viewing.vaultAddress ? stage : null}
+          onAccept={() => accept(viewing)}
+          onDecline={() => decline(viewing)}
+        />
       )}
     </div>
   );

@@ -8,6 +8,79 @@ import type { OfferView, SellableEscrow } from '@/types/marketplace';
  */
 
 /**
+ * What an LP deposits, and how that deposit splits, from the two rates they quote.
+ *
+ * Both rates are shares of the CASHFLOW, and they do different jobs:
+ *
+ *   discount — the LP's return. They deposit the cashflow less this, and collect the
+ *              cashflow in full at maturity, so the discount IS the profit.
+ *   residual — a slice of that deposit withheld from the supplier at acceptance and paid to
+ *              them at maturity instead. It does not change what the supplier ends up with,
+ *              only when they get it and on what condition.
+ *
+ * So $100 at a 10% discount is $90 deposited; a 10% residual holds $10 of that back, the
+ * supplier takes $80 less the fee now and the $10 at maturity, and the LP collects $100.
+ *
+ * This mirrors the contracts exactly, which is why it needs none of them changed:
+ * `offerAmount` is the deposit, `holdback` is the residual, and
+ * `netAmount = offerAmount − fee − holdback` is what the supplier sees at acceptance
+ * (OfferVaultFactory._quote). `releaseHoldback` pays the residual to the original supplier
+ * once the escrow settles clean.
+ *
+ * Integer arithmetic in base units; basis points keep it exact rather than round-tripping
+ * through a float and paying out a dust discrepancy.
+ */
+export function priceOffer(
+  cashflow: bigint,
+  discountRate: number,
+  residualRate: number
+): { offer: bigint; residual: bigint; supplierNow: bigint } {
+  const share = (rate: number) => BigInt(Math.round(rate * 100));
+
+  const offer = cashflow > BigInt(0)
+    ? (cashflow * (BigInt(10_000) - share(discountRate))) / BigInt(10_000)
+    : BigInt(0);
+  const residual = cashflow > BigInt(0)
+    ? (cashflow * share(residualRate)) / BigInt(10_000)
+    : BigInt(0);
+
+  // Before the venue fee, which the client is not told. Can go negative when the residual
+  // outruns the deposit — the caller must refuse that rather than clamp it, because the
+  // contract reverts on `fee + holdback > offerAmount`.
+  return { offer, residual, supplierNow: offer - residual };
+}
+
+/**
+ * Annualised yield on a position, as a percentage.
+ *
+ * Simple (not compounded), which is the convention for discounted receivables and the honest
+ * one here: compounding assumes the LP can roll straight into another position at the same
+ * rate, and on a venue with a handful of escrows that assumption is usually false. A 30-day
+ * 11% return shown as a ~250% APY would be an invented number.
+ *
+ * Note what does NOT appear: the residual. The LP deposits `offer` and collects the whole
+ * cashflow at maturity whatever the residual is — it is withheld from the SUPPLIER, not from
+ * the LP. So the residual buys protection (it covers the LP's loss first in a dispute,
+ * OfferVault.releaseHoldback) and changes the yield not at all. Only the discount does.
+ *
+ * Null when it cannot be stated rather than shown as zero or infinity: nothing deposited, or
+ * a position at or past maturity, where dividing by the remaining days is meaningless.
+ */
+export function annualisedYield(
+  offer: bigint,
+  cashflow: bigint,
+  daysToMaturity: number
+): number | null {
+  if (offer <= BigInt(0) || cashflow <= offer) return null;
+  if (!Number.isFinite(daysToMaturity) || daysToMaturity <= 0) return null;
+
+  // Ratio in floating point only after the division, so the bigints carry the precision that
+  // matters and the float only ever handles a small dimensionless number.
+  const periodReturn = Number(cashflow - offer) / Number(offer);
+  return periodReturn * (365 / daysToMaturity) * 100;
+}
+
+/**
  * What to call the position being traded.
  *
  * The description, and only the description. `productName` is not a name for
@@ -20,7 +93,10 @@ import type { OfferView, SellableEscrow } from '@/types/marketplace';
  * explorer and the heading of the offer modal opened from that row.
  */
 export function escrowTitle(
-  escrow: Pick<SellableEscrow, 'description'>,
+  // Structural rather than tied to SellableEscrow: the same position shows up as a
+  // SellableEscrow in the explorer and a UnifiedContract on /offers, and both must be titled
+  // by the same rule. Anything carrying a description qualifies.
+  escrow: { description?: string | null },
   fallback = 'Escrow payment'
 ): string {
   return escrow.description?.trim() || fallback;
@@ -110,7 +186,7 @@ export function offerStatusLabel(offer: OfferView): string {
     case 'WITHDRAWN':
       return 'Withdrawn';
     case 'RELEASED':
-      return 'Reserve released';
+      return 'Residual released';
     default:
       return offer.status;
   }

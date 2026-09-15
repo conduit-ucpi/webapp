@@ -6,7 +6,7 @@ import { useConfig } from '@/components/auth/ConfigProvider';
 import { RpcClient } from '@/lib/rpc/RpcClient';
 import { useMarketplaceActions } from '@/hooks/useMarketplaceActions';
 import { displayCurrency } from '@/utils/currency';
-import { daysUntil, escrowTitle } from '@/utils/marketplace';
+import { annualisedYield, daysUntil, escrowTitle, priceOffer } from '@/utils/marketplace';
 import { EvidenceAsymmetryNotice, ExistingHoldbackNotice } from '@/components/marketplace/OfferDisclosures';
 import OfferFundingPanel from '@/components/marketplace/OfferFundingPanel';
 import type { SellableEscrow } from '@/types/marketplace';
@@ -47,7 +47,7 @@ export default function MakeOfferModal({ escrow, lpAddress, onClose, onOfferMade
   const { createOfferVault } = useMarketplaceActions();
 
   const [discount, setDiscount] = useState('1.5');
-  const [holdbackPercent, setHoldbackPercent] = useState('0');
+  const [residualPercent, setResidualPercent] = useState('0');
   const [step, setStep] = useState<Step>('compose');
   const [error, setError] = useState<string | null>(null);
   const [vaultAddress, setVaultAddress] = useState<string | null>(null);
@@ -83,26 +83,53 @@ export default function MakeOfferModal({ escrow, lpAddress, onClose, onOfferMade
 
   const basis = payout ?? (escrow.amount ? BigInt(escrow.amount) : BigInt(0));
   const discountRate = parseFloat(discount);
-  const holdbackRate = parseFloat(holdbackPercent);
+  const residualRate = parseFloat(residualPercent);
   const ratesValid =
     Number.isFinite(discountRate) && discountRate >= 0 && discountRate < 100 &&
-    Number.isFinite(holdbackRate) && holdbackRate >= 0 && holdbackRate < 100;
+    Number.isFinite(residualRate) && residualRate >= 0 && residualRate < 100;
 
-  // Integer arithmetic in base units — basis points keep this exact rather than round-tripping
-  // through a float and paying out a dust discrepancy.
-  const offerAmount = ratesValid && basis > BigInt(0)
-    ? (basis * BigInt(Math.round((100 - discountRate) * 100))) / BigInt(10_000)
-    : BigInt(0);
-  const holdbackAmount = ratesValid && offerAmount > BigInt(0)
-    ? (offerAmount * BigInt(Math.round(holdbackRate * 100))) / BigInt(10_000)
-    : BigInt(0);
+  // Priced by the shared rule so this screen and any other that quotes an offer cannot drift.
+  const { offer: offerAmount, residual: residualAmount, supplierNow } = ratesValid
+    ? priceOffer(basis, discountRate, residualRate)
+    : { offer: BigInt(0), residual: BigInt(0), supplierNow: BigInt(0) };
 
-  // A holdback may only be set on an escrow that has never been sold — the escrow holds exactly
-  // one reserve record, and the contract rejects a second at acceptance (§0.4c H-1).
-  const holdbackAllowed = !escrow.previouslySold;
+  // The LP deposits `offerAmount` and collects the whole cashflow at maturity, so the residual
+  // does not enter this: it is withheld from the SUPPLIER, not from the LP. Only the discount
+  // and the time to maturity move it.
+  const yieldPercent = annualisedYield(offerAmount, basis, days);
+
+  // A residual may only be set on an escrow that has never been sold — the escrow holds exactly
+  // one holdback record, and the contract rejects a second at acceptance (§0.4c H-1).
+  const residualAllowed = !escrow.previouslySold;
+  const holdbackAmount = residualAllowed ? residualAmount : BigInt(0);
+
+  // The holdback is retained out of the LP's deposit and the seller receives
+  // `offerAmount − fee − holdback`. Now that the residual is a share of the CASHFLOW rather
+  // than of the offer, it can exceed the deposit it is taken from — a 50% residual at a 50%
+  // discount deposits 25 against a residual of 50.
+  //
+  // The contract REVERTS on that, it does not pay the seller zero:
+  //
+  //     if (q.fee + holdback > offerAmount) revert HoldbackExceedsOffer(...)
+  //         — OfferVaultFactory._quote, step 7
+  //
+  // Zero-to-the-seller is the narrower case where fee + holdback lands exactly on
+  // offerAmount, which OfferVault.acceptOffer anticipates by skipping the transfer.
+  //
+  // So the real limit is `offerAmount − fee`, and the fee is `offerAmount * feeRateBps`. The
+  // client is never told feeRateBps — offers go through /api/chain/marketplace/create-offer
+  // and the factory address stays server-side — so this checks against MAX_FEE_BPS, the 10%
+  // ceiling the factory enforces on itself. It can therefore refuse a quote a lower-fee venue
+  // would accept, which is the right way to be wrong: the alternative is letting the LP submit
+  // a transaction that reverts.
+  const MAX_VENUE_FEE_BPS = BigInt(1_000); // OfferVaultFactory.MAX_FEE_BPS
+  const worstCaseFee = (offerAmount * MAX_VENUE_FEE_BPS) / BigInt(10_000);
+  const residualExceedsDeposit =
+    holdbackAmount > BigInt(0) && worstCaseFee + holdbackAmount > offerAmount;
 
   const canSubmit =
-    ratesValid && offerAmount > BigInt(0) && step === 'compose' && !!lpAddress && !!tokenAddress;
+    ratesValid && offerAmount > BigInt(0) && !residualExceedsDeposit &&
+    step === 'compose' && !!lpAddress && !!tokenAddress;
 
   const submit = async () => {
     setError(null);
@@ -118,7 +145,7 @@ export default function MakeOfferModal({ escrow, lpAddress, onClose, onOfferMade
         escrowContract: escrow.escrowContract,
         lp: lpAddress,
         offerAmount: offerAmount.toString(),
-        holdback: holdbackAllowed ? holdbackAmount.toString() : '0'
+        holdback: holdbackAmount.toString()
       });
 
       if (!created.success || !created.vaultAddress) {
@@ -186,30 +213,31 @@ export default function MakeOfferModal({ escrow, lpAddress, onClose, onOfferMade
             </div>
 
             <div>
-              <label htmlFor="holdback" className="block text-sm font-medium text-gray-700 dark:text-secondary-200 mb-1">
-                Reserve to hold back (% of your offer)
+              <label htmlFor="residual" className="block text-sm font-medium text-gray-700 dark:text-secondary-200 mb-1">
+                Residual (% of the cashflow)
               </label>
               <input
-                id="holdback"
+                id="residual"
                 type="number"
                 min="0"
                 max="99"
                 step="0.5"
-                value={holdbackAllowed ? holdbackPercent : '0'}
-                onChange={(e) => setHoldbackPercent(e.target.value)}
-                disabled={!holdbackAllowed || step !== 'compose'}
+                value={residualAllowed ? residualPercent : '0'}
+                onChange={(e) => setResidualPercent(e.target.value)}
+                disabled={!residualAllowed || step !== 'compose'}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-secondary-700 bg-white dark:bg-secondary-900 text-gray-900 dark:text-white rounded-md disabled:opacity-50"
               />
               <p className="text-xs text-gray-500 dark:text-secondary-400 mt-1">
-                {holdbackAllowed ? (
+                {residualAllowed ? (
                   <>
-                    Withheld from the seller until the escrow settles in full, then returned to
-                    them. It is your buffer if the payment is disputed — and one of the few levers
-                    you have.
+                    A share of your deposit withheld from the seller at acceptance and paid to
+                    them at maturity instead. It does not change what you deposit or what you
+                    collect — so it costs you no yield — but it covers your loss first if the
+                    payment is disputed. One of the few levers you have.
                   </>
                 ) : (
                   <>
-                    This escrow already carries a reserve from an earlier sale, and an escrow can
+                    This escrow already carries a residual from an earlier sale, and an escrow can
                     hold only one. You cannot set another.
                   </>
                 )}
@@ -218,17 +246,64 @@ export default function MakeOfferModal({ escrow, lpAddress, onClose, onOfferMade
 
             <div className="rounded-md bg-gray-50 dark:bg-secondary-900/60 p-3 text-sm space-y-1">
               <div className="flex justify-between text-gray-600 dark:text-secondary-300">
-                <span>Collects at maturity</span>
+                <span>You collect at maturity</span>
                 <span>{displayCurrency(basis.toString(), 'microUSDC')} {tokenSymbol}</span>
               </div>
               <div className="flex justify-between text-gray-600 dark:text-secondary-300">
-                <span>Your discount</span>
+                <span>Your discount ({discount}%)</span>
                 <span>− {displayCurrency((basis - offerAmount).toString(), 'microUSDC')} {tokenSymbol}</span>
               </div>
               <div className="flex justify-between font-medium text-gray-900 dark:text-white border-t border-gray-200 dark:border-secondary-700 pt-2 mt-1">
                 <span>You deposit now</span>
                 <span>{displayCurrency(offerAmount.toString(), 'microUSDC')} {tokenSymbol}</span>
               </div>
+
+              {/*
+                The yield is the LP's actual question, and it is a function of the discount and
+                the time alone. The residual is absent on purpose: it is withheld from the
+                SUPPLIER, so it moves no money on the LP's side and changes no yield. Showing it
+                here would imply otherwise.
+              */}
+              {yieldPercent !== null && (
+                <div className="flex justify-between font-medium text-gray-900 dark:text-white">
+                  <span>Annualised yield</span>
+                  <span>
+                    {yieldPercent.toFixed(1)}%
+                    <span className="font-normal text-gray-500 dark:text-secondary-400">
+                      {' '}over {days} {days === 1 ? 'day' : 'days'}
+                    </span>
+                  </span>
+                </div>
+              )}
+
+              {/*
+                How the deposit splits. The residual is INSIDE it: acceptance divides the
+                deposit into netAmount + fee + holdback (OfferVaultFactory._quote), and
+                releaseHoldback pays the holdback to the original supplier once the escrow
+                settles clean. Shown as a breakdown rather than a deduction because the LP does
+                not pay it on top — and because the supplier's immediate figure is the one they
+                will be comparing offers on.
+              */}
+              {holdbackAmount > BigInt(0) && supplierNow >= BigInt(0) && (
+                <div className="pt-2 mt-1 border-t border-gray-200 dark:border-secondary-700 space-y-1">
+                  <div className="flex justify-between text-xs text-gray-500 dark:text-secondary-400">
+                    <span>↳ to the seller on acceptance, before the fee</span>
+                    <span>{displayCurrency(supplierNow.toString(), 'microUSDC')} {tokenSymbol}</span>
+                  </div>
+                  <div className="flex justify-between text-xs text-gray-500 dark:text-secondary-400">
+                    <span>↳ residual, to the seller at maturity</span>
+                    <span>{displayCurrency(holdbackAmount.toString(), 'microUSDC')} {tokenSymbol}</span>
+                  </div>
+                </div>
+              )}
+
+              {residualExceedsDeposit && (
+                <p className="text-xs text-red-600 dark:text-red-400 pt-1">
+                  The residual plus the venue fee would exceed your deposit, so there would be
+                  nothing left to pay the seller and the contract would reject this offer. Lower
+                  the residual, the discount, or both.
+                </p>
+              )}
               {payoutUnavailable && (
                 <p className="text-xs text-amber-700 dark:text-amber-300 pt-1">
                   The escrow&apos;s exact payout could not be read, so this is priced off the gross
@@ -239,10 +314,10 @@ export default function MakeOfferModal({ escrow, lpAddress, onClose, onOfferMade
 
             {/*
               The seller's headline is their NET, and it is not the number above: the platform fee
-              and any reserve come out of the LP's deposit before they see it (§8.5a).
+              and any residual come out of the LP's deposit before they see it (§8.5a).
             */}
             <p className="text-xs text-gray-500 dark:text-secondary-400">
-              The seller sees what they would receive after the platform fee and any reserve — a
+              The seller sees what they would receive after the platform fee and any residual — a
               smaller number than your deposit. They accept or decline; nothing moves until they do.
             </p>
 

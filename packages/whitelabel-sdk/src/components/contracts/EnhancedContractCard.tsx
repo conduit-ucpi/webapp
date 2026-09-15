@@ -8,6 +8,10 @@ import FarcasterNameDisplay from '@/components/ui/FarcasterNameDisplay';
 import { emailsEqual } from '@/utils/address';
 import { useT } from '../../i18n';
 import { useBrandedHref } from '../../theme';
+import Modal from '@/components/ui/Modal';
+import SendRequestScreen from '@/components/contracts/SendRequestScreen';
+import { useConfig } from '@/components/auth/ConfigProvider';
+import { getNetworkName } from '@/utils/networkUtils';
 
 interface EnhancedContractCardProps {
   contract: Contract | PendingContract;
@@ -69,23 +73,32 @@ export default function EnhancedContractCard({
   // once they leave the send screen is a dead end. Offer it back until the
   // buyer has actually paid, after which re-sending is meaningless.
   const [linkCopied, setLinkCopied] = useState(false);
-  // A pending contract isn't on chain yet, so it's unfunded by definition;
-  // only a live Contract carries a `funded` flag to check.
-  const isUnfunded = isPendingContract(contract) ? true : !contract.funded;
-  const canReshare = isSeller && isUnfunded && !!contract.id;
+  const [sending, setSending] = useState(false);
 
-  const copyPaymentLink = async () => {
-    if (!contract.id || typeof window === 'undefined') return;
+
+  /*
+   * The same screen the create flow ends on, reopened.
+   *
+   * Copying the link silently was the whole of this button, and it threw away everything else
+   * that screen carries — the QR code, the attachable PDF, the written message explaining what
+   * the link is. A seller chasing an unpaid request needs those more than a bare URL: the URL
+   * on its own is what they had, and it did not get paid.
+   */
+  const copyToClipboard = async (text: string) => {
+    if (typeof window === 'undefined') return;
     try {
-      await navigator.clipboard.writeText(
-        `${window.location.origin}${brandedHref(`/contract-pay?contractId=${contract.id}`)}`
-      );
+      await navigator.clipboard.writeText(text);
       setLinkCopied(true);
       setTimeout(() => setLinkCopied(false), 3000);
     } catch (error) {
       console.error('Failed to copy payment link:', error);
     }
   };
+
+  const paymentLink =
+    typeof window !== 'undefined' && contract.id
+      ? `${window.location.origin}${brandedHref(`/contract-pay?contractId=${contract.id}`)}`
+      : '';
 
   // Use backend-provided CTA information only
   const primaryAction = useMemo(() => {
@@ -127,6 +140,28 @@ export default function EnhancedContractCard({
   const status = useMemo(() => {
     return 'status' in contract ? contract.status : 'PENDING';
   }, [contract]);
+
+  /*
+   * ⚠️ GATED ON THE STATUS, NOT ON THE `funded` FLAG. That flag is
+   *    `item.blockchainFunded || false` (useCombinedContracts), so a row whose chain read did
+   *    not land reads as UNFUNDED rather than as unknown — and the escrow's own isFunded() is
+   *    `_state >= 1`, which stays true after a claim, so the flag cannot mean "still awaiting
+   *    payment" even when it is present. Between the two, CLAIMED contracts were offering to
+   *    re-send a payment link for money already collected, on exactly the rows whose chain read
+   *    had failed. Which is why it was some of them and not others.
+   *
+   * An allowlist rather than excluding the terminal states: a status we do not recognise, or
+   * one added later, must not inherit the offer. A missing status counts as unrecognised —
+   * re-sending a paid request is worse than a missing button.
+   *
+   * It also means the button asks the chain nothing. CLAIMED is the end of the story, and the
+   * record already says so; consulting a chain flag to re-derive that is how a failed read
+   * turned a finished contract back into one awaiting payment.
+   */
+  const canReshare =
+    isSeller &&
+    !!contract.id &&
+    ['PENDING', 'PENDING_ACCEPTANCE', 'CREATED', 'AWAITING_FUNDING'].includes(status ?? '');
 
   // Use backend-provided status display only
   const statusDisplay = useMemo(() => {
@@ -286,17 +321,81 @@ export default function EnhancedContractCard({
           <Button
             onClick={(e) => {
               e.stopPropagation();
-              copyPaymentLink();
+              setSending(true);
             }}
             variant="outline"
             className="w-full sm:w-auto min-h-[44px]"
           >
-            {linkCopied ? 'Link copied' : 'Copy payment link'}
+            {t('enhancedContractCard.sendPaymentLink')}
           </Button>
         )}
       </div>
 
+      {/*
+        The create flow's final screen, reopened for a request that has not been paid. Rendered
+        here rather than navigated to, so the seller keeps their place in the list.
+      */}
+      {sending && (
+        <SendPaymentLinkModal
+          contract={contract}
+          paymentLink={paymentLink}
+          copied={linkCopied}
+          onCopy={copyToClipboard}
+          onClose={() => setSending(false)}
+        />
+      )}
+
       {/* Backend will provide all status information via the status field and CTA labels */}
     </div>
+  );
+}
+
+/**
+ * The create flow's final screen, reopened for a request that has not been paid.
+ *
+ * A separate component purely so the config read lives here rather than in the card. The card is
+ * rendered in a dozen places and by several tests that have no ConfigProvider; making all of them
+ * supply one, for a token symbol and a network label only this modal uses, would be the tail
+ * wagging the dog. Mounted only while open, so the hook only runs when the values are wanted.
+ */
+function SendPaymentLinkModal({
+  contract,
+  paymentLink,
+  copied,
+  onCopy,
+  onClose,
+}: {
+  contract: Contract | PendingContract;
+  paymentLink: string;
+  copied: boolean;
+  onCopy: (text: string) => void;
+  onClose: () => void;
+}) {
+  const t = useT();
+  const { config } = useConfig();
+
+  return (
+    <Modal
+      isOpen
+      onClose={onClose}
+      title={t('enhancedContractCard.sendPaymentLink')}
+      size="large"
+      children={
+        <SendRequestScreen
+          paymentLink={paymentLink}
+          // The screen wants token units; the record stores microUSDC.
+          amount={(contract.amount / 1_000_000).toString()}
+          tokenSymbol={config?.tokenSymbol || 'USDC'}
+          networkLabel={config ? getNetworkName(config.chainId) : undefined}
+          description={contract.description || ''}
+          payoutLabel={
+            contract.expiryTimestamp ? formatDateTimeWithTZ(contract.expiryTimestamp) : undefined
+          }
+          copied={copied}
+          onCopy={(text) => onCopy(text)}
+          onDone={onClose}
+        />
+      }
+    />
   );
 }

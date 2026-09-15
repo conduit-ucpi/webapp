@@ -41,7 +41,6 @@ jest.mock('@/components/auth', () => ({
   useAuth: jest.fn(),
 }));
 
-jest.mock('@/components/onboarding/ProgressChecklist', () => () => null);
 jest.mock('@/components/contracts/ContractDetailsModal', () => () => (
   <div data-testid="contract-details-modal" />
 ));

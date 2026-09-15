@@ -1,5 +1,5 @@
-import { acceptableOffers, looksWithdrawable, needsOpening, offerStatusLabel } from '@/utils/marketplace';
-import type { OfferView } from '@/types/marketplace';
+import { acceptableOffers, escrowTitle, looksWithdrawable, needsOpening, offerStatusLabel } from '@/utils/marketplace';
+import type { OfferView, SellableEscrow } from '@/types/marketplace';
 
 /**
  * MARKETPLACE_OPENSPEC §5.0, §6.4, §15.6d.
@@ -151,5 +151,49 @@ describe('PENDING vaults holding a direct-transfer deposit', () => {
     const offer = pending({ depositedAmount: null, expired: true });
     expect(needsOpening(offer)).toBe(false);
     expect(looksWithdrawable(offer)).toBe(false);
+  });
+});
+
+
+/**
+ * What a position is called in the book.
+ *
+ * `productName` is not a name for the thing being bought. ContractCreatePage
+ * sets it to `Order #<id>` for plugin orders and leaves it unset otherwise, so
+ * titling rows with it produced a book of order numbers — and, where it was
+ * unset, rows that silently fell through to the description anyway. Two screens
+ * show this title and they have to agree, which is why it is one function.
+ */
+describe('escrowTitle', () => {
+  const escrow = (description: string | null) => ({ description }) as SellableEscrow;
+
+  it('names the position from its description', () => {
+    expect(escrowTitle(escrow('Oak dining table'))).toBe('Oak dining table');
+  });
+
+  it('ignores productName entirely', () => {
+    // The regression: an order number is not a name for a thing. Passing one
+    // alongside a description must change nothing.
+    const withOrderNumber = {
+      description: 'Oak dining table',
+      productName: 'Order #4471',
+    } as SellableEscrow;
+
+    expect(escrowTitle(withOrderNumber)).toBe('Oak dining table');
+  });
+
+  it('falls back when there is no description, rather than to productName', () => {
+    const noDescription = { description: null, productName: 'Order #4471' } as SellableEscrow;
+
+    expect(escrowTitle(noDescription)).toBe('Escrow payment');
+  });
+
+  it('treats whitespace as no description', () => {
+    expect(escrowTitle(escrow('   '))).toBe('Escrow payment');
+  });
+
+  it('takes a fallback that reads naturally in a sentence', () => {
+    // The modal says "Offer on ...", where "Offer on Escrow payment" is wrong.
+    expect(escrowTitle(escrow(null), 'this payment')).toBe('this payment');
   });
 });

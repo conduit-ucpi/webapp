@@ -8,7 +8,7 @@ import { useSellableEscrows } from '@/hooks/useMarketplaceData';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { displayCurrency } from '@/utils/currency';
 import { formatTimestamp } from '@/utils/datetime';
-import { daysUntil } from '@/utils/marketplace';
+import { daysUntil, escrowTitle } from '@/utils/marketplace';
 import type { SellableEscrow } from '@/types/marketplace';
 
 interface LiquidityExplorerProps {
@@ -178,7 +178,7 @@ export default function LiquidityExplorer({ walletAddress }: LiquidityExplorerPr
               >
                 <div className="md:col-span-5">
                   <div className="text-sm font-medium text-gray-900 dark:text-white">
-                    {escrow.productName || escrow.description || 'Escrow payment'}
+                    {escrowTitle(escrow)}
                   </div>
                   <div className="text-xs font-mono text-gray-400 dark:text-secondary-500 mt-0.5">
                     {escrow.escrowContract}

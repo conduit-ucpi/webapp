@@ -6,7 +6,7 @@ import { useConfig } from '@/components/auth/ConfigProvider';
 import { RpcClient } from '@/lib/rpc/RpcClient';
 import { useMarketplaceActions } from '@/hooks/useMarketplaceActions';
 import { displayCurrency } from '@/utils/currency';
-import { daysUntil } from '@/utils/marketplace';
+import { daysUntil, escrowTitle } from '@/utils/marketplace';
 import { EvidenceAsymmetryNotice, ExistingHoldbackNotice } from '@/components/marketplace/OfferDisclosures';
 import OfferFundingPanel from '@/components/marketplace/OfferFundingPanel';
 import type { SellableEscrow } from '@/types/marketplace';
@@ -139,7 +139,7 @@ export default function MakeOfferModal({ escrow, lpAddress, onClose, onOfferMade
         onClick={(e) => e.stopPropagation()}
       >
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-          Offer on {escrow.productName || escrow.description || 'this payment'}
+          Offer on {escrowTitle(escrow, 'this payment')}
         </h3>
         <p className="text-sm text-gray-500 dark:text-secondary-400 font-mono mt-1">
           {escrow.escrowContract}

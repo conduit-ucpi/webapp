@@ -1,4 +1,4 @@
-import type { OfferView } from '@/types/marketplace';
+import type { OfferView, SellableEscrow } from '@/types/marketplace';
 
 /**
  * Small shared rules for the marketplace screens (MARKETPLACE_OPENSPEC §15.6d).
@@ -6,6 +6,25 @@ import type { OfferView } from '@/types/marketplace';
  * These live together because getting one of them subtly wrong on one screen and right on another
  * is how two views of the same offer come to disagree.
  */
+
+/**
+ * What to call the position being traded.
+ *
+ * The description, and only the description. `productName` is not a name for
+ * the thing an LP is buying: it is set from whatever the integration had to
+ * hand — ContractCreatePage fills it with `Order #<id>` for plugin orders and
+ * leaves it unset otherwise — so titling rows with it gives a book of order
+ * numbers rather than a book of goods.
+ *
+ * Shared because two screens show this title and they must agree: a row in the
+ * explorer and the heading of the offer modal opened from that row.
+ */
+export function escrowTitle(
+  escrow: Pick<SellableEscrow, 'description'>,
+  fallback = 'Escrow payment'
+): string {
+  return escrow.description?.trim() || fallback;
+}
 
 /** Whole days from now until a unix timestamp, floored at zero. */
 export function daysUntil(unixSeconds: number): number {

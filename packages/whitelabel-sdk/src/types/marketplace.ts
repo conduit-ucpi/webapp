@@ -83,6 +83,19 @@ export interface OfferView {
   status: OfferStatus;
   expired: boolean;
   lastEventAt: number;
+  /**
+   * Whether this offer's escrow has already been sold — a property of the ESCROW, carried here
+   * because the offer is the only thing the caller is holding.
+   *
+   * ⚠️ NOT DERIVABLE FROM `status`, and that is the whole point. Accepting one offer sells the
+   *    cashflow, so every OTHER offer on that escrow is dead — `accept()` reverts `OfferStale`
+   *    once the sale has moved the recipient. But the chain emits no event naming the LOSING
+   *    vault, so the loser folds to `OPEN` for ever and reads as perfectly live.
+   *
+   * Optional: an older index omits it, and `undefined` must read as "not sold" rather than
+   * silently closing every book served by a service that has not been redeployed yet.
+   */
+  escrowSold?: boolean;
 }
 
 export interface OfferBookResponse {

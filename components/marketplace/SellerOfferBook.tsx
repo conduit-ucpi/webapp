@@ -81,7 +81,27 @@ export default function SellerOfferBook({
 
       setConfirming(null);
       setViewing(null);
-      await refetch();
+
+      /*
+       * ⚠️ RECONCILE, DON'T REFETCH. The book is contractservice's index, and `OfferAccepted`
+       *    has to travel chain → chainservice → contractservice before that index stops
+       *    calling this offer OPEN. A bare refetch re-reads a record that does not know about
+       *    the acceptance yet, so the offer comes back acceptable and the seller presses it
+       *    again — the second swap reverts, because the escrow has already changed hands, but
+       *    they have signed two more transactions to learn that.
+       *
+       *    `refresh` makes contractservice read the chain for this seller's escrows and ingest
+       *    what it finds, and only returns once that has happened — so the refetch it triggers
+       *    afterwards sees the acceptance. `acceptableOffers` then drops the offer for the
+       *    right reason: the index says ACCEPTED, not because the UI is hiding it.
+       *
+       *    It closes the losing offers in the same pass, which matters just as much: accepting
+       *    one sells the cashflow, so every other offer standing on it is dead in that moment.
+       */
+      // A failed reconcile calls no refetch of its own, so the book would otherwise sit
+      // un-re-read on exactly the path where it is most stale. Falling back keeps the screen
+      // honest: still showing the offer means the index genuinely has not caught up yet.
+      if (!(await refresh())) await refetch();
       await onAccepted?.();
     } catch (e: any) {
       setActionError(
@@ -100,7 +120,19 @@ export default function SellerOfferBook({
     try {
       await rejectOffer(offer.vaultAddress);
       setViewing(null);
-      await refetch();
+
+      /*
+       * Same staleness as accepting, and for the same reason: `reject()` goes from the
+       * seller's own wallet — the contract requires it — so chainservice never sees the
+       * transaction and `OfferRejected` reaches the index only when someone reconciles. A bare
+       * refetch brings the offer back OPEN, and the seller is looking at a bid they have
+       * already killed.
+       *
+       * It matters on the LP's side too: a rejection is what makes their capital withdrawable
+       * (§6.4), and nothing on-chain announces that. Until the rejection is indexed there is
+       * nothing to tell them from, so the money simply sits in the vault.
+       */
+      if (!(await refresh())) await refetch();
     } catch (e: any) {
       setActionError(e?.message || 'Declining did not go through.');
     } finally {

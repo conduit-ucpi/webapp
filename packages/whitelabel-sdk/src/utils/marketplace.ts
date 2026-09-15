@@ -123,7 +123,12 @@ export function hoursUntil(unixSeconds: number): number {
  *    it, so presenting it as acceptable sets the seller up for a revert.
  */
 export function acceptableOffers(offers: OfferView[]): OfferView[] {
-  return offers.filter((offer) => offer.status === 'OPEN' && !offer.expired);
+  // ⚠️ A SOLD ESCROW OFFERS NOTHING, whatever the losing offers' own status says. Accepting one
+  //    offer moves the recipient, and `accept()` checks `recipientNonce()` against the one it
+  //    recorded — so every other vault on that escrow now reverts `OfferStale`. Their own event
+  //    streams never learn this (nothing on-chain names the loser), so without the escrow's
+  //    answer the seller is shown an Accept that costs gas and achieves nothing.
+  return offers.filter((offer) => offer.status === 'OPEN' && !offer.expired && !offer.escrowSold);
 }
 
 /**
@@ -138,6 +143,16 @@ export function acceptableOffers(offers: OfferView[]): OfferView[] {
  */
 export function looksWithdrawable(offer: OfferView): boolean {
   if (offer.status === 'REJECTED') return true;
+  // Losing to another offer is the "staleness after someone else's acceptance" above, and an
+  // OPEN offer is withdrawable the moment the sale lands: the vault's own isWithdrawable()
+  // reports it via `escrow.recipientNonce() != sellerNonce`. Without this the LP waits out
+  // offerExpiry for capital the vault would return today, on an offer that can never be
+  // accepted again.
+  //
+  // ⚠️ OPEN ONLY, to match the vault. Its PENDING branch is `expired && balance > 0` and does
+  //    not consult the sale at all, so a PENDING vault on a sold escrow is NOT withdrawable
+  //    yet — prompting one would send the LP into a `NothingToWithdraw` revert they pay for.
+  if (offer.status === 'OPEN' && offer.escrowSold) return true;
   // A PENDING vault can hold money: funding is a direct transfer, so capital arrives before
   // `fund()` opens the offer — and if that second step never lands, it sits there. The
   // contract lets the LP recover it (partial deposits included) once the offer lapses, but
@@ -168,6 +183,9 @@ export function needsOpening(offer: OfferView): boolean {
 
 /** Human label for an offer's state, from the LP's point of view. */
 export function offerStatusLabel(offer: OfferView): string {
+  // Losing to another bid, before lapsing: both end in a withdrawal, but they are different
+  // things to be told, and "Standing" beside a withdraw button reads as a bug in the page.
+  if (offer.status === 'OPEN' && offer.escrowSold) return 'Not taken — withdraw';
   if (offer.status === 'OPEN' && offer.expired) return 'Lapsed — withdraw';
   switch (offer.status) {
     case 'PENDING':

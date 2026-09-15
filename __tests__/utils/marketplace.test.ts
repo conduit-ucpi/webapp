@@ -352,3 +352,68 @@ describe('annualisedYield', () => {
     });
   });
 });
+
+/**
+ * A sold escrow is not for sale.
+ *
+ * ⚠️ THE ONE CASE `status` CANNOT EXPRESS. Accepting one offer moves the escrow's recipient, and
+ *    `accept()` checks `recipientNonce()` against the one it recorded — so every OTHER vault on
+ *    that escrow now reverts `OfferStale`. Nothing on-chain names the loser, so its own event
+ *    stream folds it to OPEN for ever and it reads as perfectly live. The escrow has to say so.
+ */
+describe('When the escrow has already been sold', () => {
+  it('offers the seller nothing on it, whatever the losing offer says about itself', () => {
+    // The loser is OPEN, unexpired, fully funded — and completely unacceptable.
+    expect(acceptableOffers([offer({ escrowSold: true })])).toHaveLength(0);
+  });
+
+  it('closes the whole book, not just the offer that was taken', () => {
+    const book = [
+      offer({ vaultAddress: '0xwinner', status: 'ACCEPTED', escrowSold: true }),
+      offer({ vaultAddress: '0xloser', escrowSold: true })
+    ];
+
+    expect(acceptableOffers(book)).toHaveLength(0);
+  });
+
+  it('lets the losing LP withdraw now rather than at expiry', () => {
+    // The vault's own isWithdrawable() already says yes, via the moved recipient nonce. Waiting
+    // out offerExpiry strands capital the vault would return today on an offer that can never
+    // be accepted again.
+    expect(looksWithdrawable(offer({ escrowSold: true }))).toBe(true);
+  });
+
+  it('does not invent withdrawability for an unfunded vault', () => {
+    // ⚠️ The vault's PENDING branch is `expired && balance > 0` and does not consult the sale at
+    //    all. Prompting here sends the LP into a NothingToWithdraw revert they pay for.
+    const unfunded = offer({ status: 'PENDING', depositedAmount: '1000000', escrowSold: true });
+
+    expect(looksWithdrawable(unfunded)).toBe(false);
+  });
+
+  it('tells the LP their offer lost, rather than that it is standing', () => {
+    // "Standing" beside a withdraw button reads as a bug in the page, and it is the one status
+    // the offer's own record will never correct.
+    expect(offerStatusLabel(offer({ escrowSold: true }))).toBe('Not taken — withdraw');
+  });
+
+  it('leaves an already-settled offer alone', () => {
+    // The winner is on a sold escrow by definition. Its capital is spent, not recoverable.
+    expect(looksWithdrawable(offer({ status: 'ACCEPTED', escrowSold: true }))).toBe(false);
+  });
+});
+
+/**
+ * An index that has not been redeployed omits the field entirely, and `undefined` must read as
+ * "not sold" — otherwise the first deploy of this UI against an older service closes every
+ * offer book in the marketplace.
+ */
+describe('When the index does not report a sale either way', () => {
+  it('treats a missing answer as not sold', () => {
+    expect(acceptableOffers([offer({ escrowSold: undefined })])).toHaveLength(1);
+  });
+
+  it('does not prompt a withdrawal on a missing answer', () => {
+    expect(looksWithdrawable(offer({ escrowSold: undefined }))).toBe(false);
+  });
+});

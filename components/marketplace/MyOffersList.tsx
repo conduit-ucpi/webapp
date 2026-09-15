@@ -9,8 +9,8 @@ import { RpcClient } from '@/lib/rpc/RpcClient';
 import { displayCurrency } from '@/utils/currency';
 import { formatTimestamp } from '@/utils/datetime';
 import { formatDateTimeWithTZ } from '@/utils/validation';
-import { useEscrowMaturities } from '@/hooks/useEscrowReads';
-import { hoursUntil, looksWithdrawable, needsOpening, offerStatusLabel } from '@/utils/marketplace';
+import { useEscrowMaturities, usePayoutAmounts } from '@/hooks/useEscrowReads';
+import { annualisedYield, daysUntil, hoursUntil, looksWithdrawable, needsOpening, offerStatusLabel } from '@/utils/marketplace';
 import type { OfferView } from '@/types/marketplace';
 
 interface MyOffersListProps {
@@ -99,16 +99,17 @@ export default function MyOffersList({ lpAddress }: MyOffersListProps) {
   // Maturity is the LP's primary risk metric — the remaining dispute window — and it is not on
   // OfferView, because the book indexes the offer while maturity belongs to the escrow under
   // it. Read for every row, not just the ones with a residual.
-  const { maturities } = useEscrowMaturities(
-    useMemo(
-      () =>
-        Array.from(
-          new Set(offers.map((o) => o.escrowContract).filter(Boolean) as string[])
-        ).sort(),
-      [offers]
-    ),
-    config?.rpcUrl
+  const escrowAddresses = useMemo(
+    () =>
+      Array.from(new Set(offers.map((o) => o.escrowContract).filter(Boolean) as string[])).sort(),
+    [offers]
   );
+
+  const { maturities } = useEscrowMaturities(escrowAddresses, config?.rpcUrl);
+
+  // What the LP collects if the offer is accepted and the escrow settles: the escrow's payout,
+  // not its gross. Same figure the explorer and the offer modal price against.
+  const { payouts } = usePayoutAmounts(escrowAddresses, config?.rpcUrl);
 
   useEffect(() => {
     if (!config?.rpcUrl || !residualEscrowKey) return;
@@ -234,6 +235,7 @@ export default function MyOffersList({ lpAddress }: MyOffersListProps) {
               tokenSymbol={tokenSymbol}
               escrowSettled={offer.escrowContract ? settled[offer.escrowContract] : undefined}
               maturity={offer.escrowContract ? maturities[offer.escrowContract] : undefined}
+              payout={offer.escrowContract ? payouts[offer.escrowContract] : undefined}
               busy={busyVault === offer.vaultAddress}
               onWithdraw={() => act(offer.vaultAddress, () => withdrawOffer(offer.vaultAddress))}
               onOpen={() =>
@@ -261,6 +263,7 @@ function OfferRow({
   tokenSymbol,
   escrowSettled,
   maturity,
+  payout,
   busy,
   onWithdraw,
   onRelease,
@@ -272,11 +275,25 @@ function OfferRow({
   escrowSettled?: boolean;
   /** Unix seconds. undefined = not read; never rendered as an epoch date. */
   maturity?: number;
+  /** What the escrow pays at maturity. undefined = not read. */
+  payout?: bigint;
   busy: boolean;
   onWithdraw: () => void;
   onRelease: () => void;
   onOpen: () => void;
 }) {
+  // "Live" means capital is committed to this position and its return is still in play:
+  // standing, or accepted and waiting on the escrow. A withdrawn or declined offer has no
+  // yield to quote, and quoting one would suggest money is still working.
+  const isLive =
+    (offer.status === 'OPEN' && !offer.expired) || offer.status === 'ACCEPTED';
+  const deposit = BigInt(offer.offerAmount || '0');
+  const daysLeft = maturity !== undefined ? daysUntil(maturity) : null;
+  const effectiveYield =
+    isLive && payout !== undefined && daysLeft !== null
+      ? annualisedYield(deposit, payout, daysLeft)
+      : null;
+
   const withdrawable = looksWithdrawable(offer);
   const hasResidual = !!offer.holdback && offer.holdback !== '0';
   // ⚠️ ONLY `true` UNLOCKS IT. `releaseHoldback` reverts with EscrowNotSettled until the escrow
@@ -291,7 +308,14 @@ function OfferRow({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="text-sm font-medium text-gray-900 dark:text-white">
-            {displayCurrency(offer.offerAmount ?? 0, 'microUSDC')} {tokenSymbol} offered
+            {displayCurrency(offer.offerAmount ?? 0, 'microUSDC')} {tokenSymbol}{' '}
+            {/*
+              Once accepted the money has moved — it left the vault for the seller in the same
+              transaction that handed over the cashflow. Still calling it "offered" describes a
+              bid that is no longer outstanding, on the one row where the LP is looking for
+              confirmation that their capital actually went.
+            */}
+            {offer.status === 'ACCEPTED' ? 'paid' : 'offered'}
           </div>
           <div className="text-xs font-mono text-gray-400 dark:text-secondary-500 mt-0.5 truncate">
             escrow {offer.escrowContract}
@@ -313,6 +337,29 @@ function OfferRow({
           {maturity !== undefined && (
             <div className="text-xs text-gray-500 dark:text-secondary-400 mt-0.5">
               Cashflow matures {formatDateTimeWithTZ(maturity)}
+            </div>
+          )}
+          {/*
+            The two figures that decide whether this position was worth taking: what it pays
+            and what that is as a rate. Only while it is live — see isLive. The yield is simple
+            rather than compounded, for the reason annualisedYield gives.
+          */}
+          {isLive && payout !== undefined && (
+            <div className="text-xs text-gray-600 dark:text-secondary-300 mt-1">
+              Collects{' '}
+              <span className="font-medium text-gray-900 dark:text-white">
+                {displayCurrency(payout.toString(), 'microUSDC')} {tokenSymbol}
+              </span>{' '}
+              at maturity
+              {effectiveYield !== null && (
+                <>
+                  {' · '}
+                  <span className="font-medium text-gray-900 dark:text-white">
+                    {effectiveYield.toFixed(1)}%
+                  </span>{' '}
+                  annualised
+                </>
+              )}
             </div>
           )}
         </div>

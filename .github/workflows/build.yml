@@ -367,19 +367,20 @@ jobs:
       startsWith(github.ref, 'refs/tags/pagesRelease-')
     runs-on: ubuntu-latest
     environment:
-      # Kept as `github-pages` because every NEXT_PUBLIC_* var below resolves
-      # against THIS environment. Renaming it means moving all of them, so that
-      # is a separate change from switching host.
+      # Every NEXT_PUBLIC_* var below resolves against THIS environment, so the name stays
+      # even while it publishes to two hosts. Renaming means moving all of them.
       name: github-pages
-      url: ${{ steps.deployment.outputs.deployment-url }}
+      # Pages is still the live site, so its URL is the one worth surfacing on the run.
+      url: ${{ steps.deployment.outputs.page_url }}
     permissions:
-      # `pages: write` and `id-token: write` were for GitHub Pages' OIDC upload.
-      # Cloudflare authenticates with an API token, so the job needs nothing
-      # beyond reading the repo.
       contents: read
+      # GitHub Pages' OIDC upload. Cloudflare authenticates with an API token and needs
+      # neither, but both deploys run from this job.
+      pages: write
+      id-token: write
     # One deployment at a time; never cancel a run that is mid-publish.
     concurrency:
-      group: cloudflare-pages
+      group: github-pages
       cancel-in-progress: false
 
     steps:
@@ -493,12 +494,40 @@ jobs:
           # once the host move itself is proven.
           cp out/index.html out/404.html
 
+          # Tells Pages to serve _next/* verbatim rather than running the paths
+          # through Jekyll, which ignores underscore-prefixed directories.
+          touch out/.nojekyll
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: out
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      # ── Cloudflare Pages, in parallel with the above while it is validated ──
+      #
+      # ⚠️ SECOND, AND SKIPPED UNTIL IT IS CONFIGURED. Pages is the live site; a Cloudflare
+      #    misconfiguration must not fail a release that has already published successfully.
+      #    The `if` means the step does not exist until CLOUDFLARE_PAGES_PROJECT is set, so
+      #    the run is green rather than red-with-a-skip while the account is still being set
+      #    up — and turning it on is one variable, with no workflow edit.
+      #
+      #    Delete the GitHub Pages steps above once Cloudflare has served real traffic.
       - name: Deploy to Cloudflare Pages
+        if: vars.CLOUDFLARE_PAGES_PROJECT != ''
         id: deployment
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          # Pinned so a deploy cannot change underneath a release. The action otherwise
+          # resolves its own version at run time, which is how the same tag can behave
+          # differently a week apart.
+          wranglerVersion: '3.90.0'
           # --branch decides production vs preview, and it is NOT the git ref.
           # This job runs on a pagesRelease-v* TAG, so letting wrangler infer the
           # branch would publish every release as a preview on a URL nobody

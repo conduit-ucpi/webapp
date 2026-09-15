@@ -200,6 +200,42 @@ describe('Architecture: single API chokepoint (lib/apiFetch)', () => {
     }
   );
 
+  /*
+   * Rule 3 — the one the /liquidity 401 got through.
+   *
+   * Naming apiUrl fixes the ORIGIN; it does nothing about the SESSION. apiFetch is what sets
+   * `credentials: 'include'`, and without it the AUTH-TOKEN cookie does not travel: on the box
+   * the request is same-origin so cookies go anyway, but from the static host it is
+   * stabledrop.me → api.stabledrop.me and the cookie is dropped. requireAuth then finds
+   * nothing, and every authenticated read 401s — in production only, having passed every
+   * check in dev.
+   *
+   * A `fetch(apiUrl(x))` with no second argument is the exact shape: no options object means
+   * no credentials, with no judgement required. Calls that build their own options — the two
+   * auth clients do, deliberately — are left alone, because they set credentials there.
+   */
+  it.each(files)('%s never calls fetch(apiUrl(...)) without options', (relPath) => {
+    const content = fs.readFileSync(path.join(ROOT, relPath), 'utf-8');
+    const offenders: string[] = [];
+
+    content.split('\n').forEach((line, i) => {
+      // fetch(apiUrl(...)) closing immediately: no options object can follow.
+      if (/fetch\(\s*apiUrl\([^()]*\)\s*\)/.test(line)) {
+        offenders.push(`  Line ${i + 1}: ${line.trim().slice(0, 90)}`);
+      }
+    });
+
+    if (offenders.length) {
+      throw new Error(
+        `${relPath} calls fetch(apiUrl(...)) with no options, so it sends no cookies:\n` +
+          offenders.join('\n') +
+          `\n\nUse apiFetch(path), which sets credentials: 'include'. Without it the ` +
+          `session cookie is dropped cross-origin and the call 401s on the static host ` +
+          `while working perfectly on the box.`
+      );
+    }
+  });
+
   it('the external-fetch exception list stays small and deliberate', () => {
     expect(EXTERNAL_FETCH_EXCEPTIONS).toEqual([
       'packages/whitelabel-sdk/src/lib/web3.ts',

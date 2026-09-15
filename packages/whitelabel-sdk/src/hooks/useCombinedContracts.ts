@@ -1,4 +1,4 @@
-import { apiUrl } from '@/lib/apiFetch';
+import { apiFetch } from '@/lib/apiFetch';
 import { useState, useEffect, useCallback } from 'react';
 import { Contract, PendingContract } from '@/types';
 
@@ -139,7 +139,10 @@ export function useCombinedContracts(
   const [error, setError] = useState('');
 
   const refetch = useCallback(async () => {
-    const doFetch: Fetcher = fetcher ?? ((url) => fetch(apiUrl(url)));
+    // apiFetch for the same reason getJson uses it: the fallback has to carry the session
+    // cookie cross-origin, which bare fetch does not. Callers normally pass
+    // authenticatedFetch, so this default is the path that would fail quietly.
+    const doFetch: Fetcher = fetcher ?? ((url) => apiFetch(url));
     try {
       const response = await doFetch('/api/combined-contracts');
 

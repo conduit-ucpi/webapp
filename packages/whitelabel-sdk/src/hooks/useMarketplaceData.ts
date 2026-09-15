@@ -1,4 +1,4 @@
-import { apiFetch, apiUrl } from '@/lib/apiFetch';
+import { apiFetch } from '@/lib/apiFetch';
 import { useCallback, useEffect, useState } from 'react';
 import type {
   MarketplaceRefreshResponse,
@@ -24,7 +24,15 @@ interface Fetched<T> {
 }
 
 async function getJson<T>(url: string): Promise<T> {
-  const response = await fetch(apiUrl(url));
+  /*
+   * ⚠️ apiFetch, NOT bare fetch. It is apiFetch that sets `credentials: 'include'`, and
+   *    without it the AUTH-TOKEN cookie does not travel: on the box the request is
+   *    same-origin and cookies go anyway, but from the static host it is
+   *    stabledrop.me → api.stabledrop.me and the cookie is dropped. requireAuth then finds
+   *    nothing and every marketplace read 401s — invisibly in dev, on every page in
+   *    production.
+   */
+  const response = await apiFetch(url);
   const body = await response.json().catch(() => ({}));
   if (!response.ok) {
     throw new Error(body.error || `Request failed (${response.status})`);

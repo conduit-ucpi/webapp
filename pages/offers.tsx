@@ -11,7 +11,7 @@ import SellerOfferBook from '@/components/marketplace/SellerOfferBook';
 import { displayCurrency } from '@/utils/currency';
 import { formatTimestamp } from '@/utils/datetime';
 import { daysUntil, escrowTitle } from '@/utils/marketplace';
-import { usePayoutAmounts } from '@/hooks/usePayoutAmounts';
+import { usePayoutAmounts } from '@/hooks/useEscrowReads';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import type { Contract } from '@/types';
 

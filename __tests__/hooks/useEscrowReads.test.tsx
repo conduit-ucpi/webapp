@@ -14,11 +14,12 @@
 import { renderHook, waitFor } from '@testing-library/react';
 
 const getPayoutAmount = jest.fn();
+const getEscrowTerms = jest.fn();
 jest.mock('@/lib/rpc/RpcClient', () => ({
-  RpcClient: jest.fn().mockImplementation(() => ({ getPayoutAmount })),
+  RpcClient: jest.fn().mockImplementation(() => ({ getPayoutAmount, getEscrowTerms })),
 }));
 
-import { usePayoutAmounts } from '@/hooks/usePayoutAmounts';
+import { usePayoutAmounts, useEscrowMaturities } from '@/hooks/useEscrowReads';
 import { RpcClient } from '@/lib/rpc/RpcClient';
 
 const A = '0xaaa1111111111111111111111111111111111111';
@@ -115,5 +116,43 @@ describe('usePayoutAmounts', () => {
     rerender({ addresses: [A, B] });
 
     await waitFor(() => expect(getPayoutAmount).toHaveBeenCalledTimes(3));
+  });
+});
+
+
+/**
+ * Maturity per escrow.
+ *
+ * It is the LP's primary risk metric — the remaining dispute window, during which the position
+ * can still be taken from them — and it is not on OfferView, because the book indexes the offer
+ * and maturity belongs to the escrow underneath.
+ */
+describe('useEscrowMaturities', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+
+  it('reads the expiry off each escrow', async () => {
+    getEscrowTerms.mockImplementation(async (address: string) => ({
+      expiryTimestamp: address === A ? BigInt(1_800_000_000) : BigInt(1_900_000_000),
+    }));
+
+    const { result } = renderHook(() => useEscrowMaturities([A, B], RPC));
+
+    await waitFor(() => expect(Object.keys(result.current.maturities)).toHaveLength(2));
+    expect(result.current.maturities[A]).toBe(1_800_000_000);
+    expect(result.current.maturities[B]).toBe(1_900_000_000);
+  });
+
+  it('omits an escrow it could not read rather than dating it to the epoch', async () => {
+    // A zero here renders as 01/01/1970 — a maturity date that looks like data rather than
+    // like an error, on the field an LP prices risk with.
+    getEscrowTerms.mockRejectedValue(new Error('rpc down'));
+
+    const { result } = renderHook(() => useEscrowMaturities([A], RPC));
+
+    await waitFor(() => expect(result.current.unavailable).toEqual([A]));
+    expect(result.current.maturities).toEqual({});
   });
 });

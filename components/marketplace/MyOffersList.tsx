@@ -8,6 +8,8 @@ import { useConfig } from '@/components/auth/ConfigProvider';
 import { RpcClient } from '@/lib/rpc/RpcClient';
 import { displayCurrency } from '@/utils/currency';
 import { formatTimestamp } from '@/utils/datetime';
+import { formatDateTimeWithTZ } from '@/utils/validation';
+import { useEscrowMaturities } from '@/hooks/useEscrowReads';
 import { hoursUntil, looksWithdrawable, needsOpening, offerStatusLabel } from '@/utils/marketplace';
 import type { OfferView } from '@/types/marketplace';
 
@@ -92,6 +94,20 @@ export default function MyOffersList({ lpAddress }: MyOffersListProps) {
         .sort()
         .join(','),
     [offers]
+  );
+
+  // Maturity is the LP's primary risk metric — the remaining dispute window — and it is not on
+  // OfferView, because the book indexes the offer while maturity belongs to the escrow under
+  // it. Read for every row, not just the ones with a residual.
+  const { maturities } = useEscrowMaturities(
+    useMemo(
+      () =>
+        Array.from(
+          new Set(offers.map((o) => o.escrowContract).filter(Boolean) as string[])
+        ).sort(),
+      [offers]
+    ),
+    config?.rpcUrl
   );
 
   useEffect(() => {
@@ -217,6 +233,7 @@ export default function MyOffersList({ lpAddress }: MyOffersListProps) {
               }
               tokenSymbol={tokenSymbol}
               escrowSettled={offer.escrowContract ? settled[offer.escrowContract] : undefined}
+              maturity={offer.escrowContract ? maturities[offer.escrowContract] : undefined}
               busy={busyVault === offer.vaultAddress}
               onWithdraw={() => act(offer.vaultAddress, () => withdrawOffer(offer.vaultAddress))}
               onOpen={() =>
@@ -243,6 +260,7 @@ function OfferRow({
   offer,
   tokenSymbol,
   escrowSettled,
+  maturity,
   busy,
   onWithdraw,
   onRelease,
@@ -252,6 +270,8 @@ function OfferRow({
   tokenSymbol: string;
   /** undefined = not read yet. Only `true` unlocks the release. */
   escrowSettled?: boolean;
+  /** Unix seconds. undefined = not read; never rendered as an epoch date. */
+  maturity?: number;
   busy: boolean;
   onWithdraw: () => void;
   onRelease: () => void;
@@ -284,6 +304,17 @@ function OfferRow({
             )}
             {offer.lastEventAt ? ` · last activity ${formatTimestamp(offer.lastEventAt).date}` : ''}
           </div>
+          {/*
+            Two different clocks, and confusing them is expensive: the offer LAPSES on one date
+            and the cashflow MATURES on another. The lapse is above because it is the one with a
+            deadline attached; maturity sits on its own line because it is what the capital is
+            committed until. Absent rather than an epoch date when the read failed.
+          */}
+          {maturity !== undefined && (
+            <div className="text-xs text-gray-500 dark:text-secondary-400 mt-0.5">
+              Cashflow matures {formatDateTimeWithTZ(maturity)}
+            </div>
+          )}
         </div>
 
         <div className="flex flex-col items-end gap-2">

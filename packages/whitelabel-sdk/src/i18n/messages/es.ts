@@ -242,16 +242,6 @@ export const es: Catalogue = {
   'msg.payLink': 'Para pagar, abre este enlace:',
   'msg.escrowNote':
     'Tu pago queda retenido en depósito en garantía hasta la fecha acordada. Si algo sale mal, puedes abrir una disputa antes de esa fecha para congelar los fondos.',
-  'emailPrompt.title': '¿Quieres notificaciones sobre tus contratos? (Opcional)',
-  'emailPrompt.body':
-    'Tu correo es privado y nunca se comparte. Agrégalo para recibir avisos sobre la actividad de tus contratos, disputas y vencimientos.',
-  'emailPrompt.placeholder': 'Ingresa tu correo electrónico',
-  'emailPrompt.submit': 'Agregar correo',
-  'emailPrompt.saving': 'Guardando...',
-  'emailPrompt.skip': 'Omitir',
-  'emailPrompt.errRequired': 'Ingresa un correo electrónico',
-  'emailPrompt.errInvalid': 'Ingresa un correo electrónico válido',
-  'emailPrompt.errSave': 'No se pudo guardar el correo. Inténtalo de nuevo.',
 
   'emptyState.noMatchesFound': 'No se encontraron coincidencias',
   'emptyState.connectionTrouble': 'Problemas de conexión',
@@ -512,7 +502,6 @@ export const es: Catalogue = {
   'connectWalletEmbedded.whichOurEmailSocial':
     ', del que depende nuestro inicio de sesión con correo o redes. Aún puedes conectarte con MetaMask, Coinbase Wallet o el QR de WalletConnect.',
 
-  'emailCollection.settingUpYourAccount': 'Configurando tu cuenta...',
 
   'providerSelector.connectToGetStarted': 'Conéctate para empezar',
   'providerSelector.chooseHowYouD': 'Elige cómo quieres conectarte',

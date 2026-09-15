@@ -1,32 +1,24 @@
 import { apiFetch } from '@/lib/apiFetch';
-import React, { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/router';
+import React, { useEffect, useRef } from 'react';
 import { useAuth } from './SimpleAuthProvider';
-import EmailCollection from './EmailCollection';
 import { isValidEmail } from '@/utils/validation';
 
-// Marketing pages are the visitor's first impression — the notification opt-in
-// is noise there. It still runs everywhere else (dashboard, contract flows),
-// where the user has context for what they'd be subscribing to.
-const NO_EMAIL_PROMPT_ROUTES = new Set([
-  '/',
-  '/landing1',
-  '/landing2',
-  '/landing3',
-  '/landing5',
-  '/landing6',
-  '/landing7',
-  '/create-cobro',
-  '/cobro-demo',
-  '/merchant',
-]);
-
+/**
+ * Collects a user's email from their auth provider, silently.
+ *
+ * ⚠️ THE MANUAL PROMPT IS GONE. This used to fall back to a banner across the top of every
+ *    signed-in screen when the provider had no email to give — an interruption on every page,
+ *    asking for something optional, from users who had arrived to do something else. The
+ *    auto-collection below is the half that was worth keeping: a social or email login already
+ *    knows the address, so most users were never the ones being asked.
+ *
+ *    Anyone who wants notifications and was not auto-collected now has no way to opt in. That
+ *    is the deliberate trade — say so rather than let it be discovered.
+ *
+ * Renders its children untouched; everything it does is a side effect.
+ */
 export default function EmailPromptManager({ children }: { children: React.ReactNode }) {
   const { user, isLoading, refreshUserData, getProviderUserInfo } = useAuth();
-  const router = useRouter();
-  const suppressPrompt = NO_EMAIL_PROMPT_ROUTES.has(router.pathname);
-  const [showEmailPrompt, setShowEmailPrompt] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const hasAttemptedAutoCollect = useRef(false);
 
   useEffect(() => {
@@ -54,8 +46,6 @@ export default function EmailPromptManager({ children }: { children: React.React
             console.log('📧 EmailPromptManager: Email is valid, auto-submitting to backend...');
 
             try {
-              setIsSubmitting(true);
-
               const response = await apiFetch('/api/auth/update-email', {
                 method: 'PUT',
                 headers: {
@@ -71,7 +61,6 @@ export default function EmailPromptManager({ children }: { children: React.React
                 await refreshUserData();
 
                 // Don't show the prompt - email was saved automatically
-                setShowEmailPrompt(false);
                 return;
               } else {
                 console.error('📧 EmailPromptManager: Failed to auto-save email', {
@@ -80,8 +69,6 @@ export default function EmailPromptManager({ children }: { children: React.React
               }
             } catch (error) {
               console.error('📧 EmailPromptManager: Error auto-saving email:', error);
-            } finally {
-              setIsSubmitting(false);
             }
           } else {
             console.warn('📧 EmailPromptManager: Email from provider failed validation', {
@@ -92,66 +79,20 @@ export default function EmailPromptManager({ children }: { children: React.React
           console.log('📧 EmailPromptManager: No email available from provider (likely external wallet)');
         }
 
-        // If we get here, auto-collection failed - show the manual prompt
-        setShowEmailPrompt(true);
-      } else if (!isLoading && user && !user.email) {
-        // We've already attempted auto-collection, just show the prompt
-        setShowEmailPrompt(true);
-      } else {
-        setShowEmailPrompt(false);
+        // Auto-collection failed. Nothing further to do: there is no prompt to fall back to.
       }
     };
 
     autoCollectEmail();
     // NOTE: getProviderUserInfo and refreshUserData are intentionally NOT
     // dependencies — both are unstable closures recreated on every auth step,
-    // so including them re-runs this effect (and its setShowEmailPrompt calls)
-    // on every auth change, contributing to the re-render/re-auth churn. The
-    // real triggers are user/isLoading; the heavy path is guarded by the
-    // hasAttemptedAutoCollect ref.
+    // so including them re-runs this effect on every auth change, contributing
+    // to the re-render/re-auth churn. The real triggers are user/isLoading; the
+    // heavy path is guarded by the hasAttemptedAutoCollect ref.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, isLoading]);
 
-  const handleEmailSubmit = async (email: string) => {
-    setIsSubmitting(true);
-    try {
-      const response = await apiFetch('/api/auth/update-email', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email }),
-      });
 
-      if (!response.ok) {
-        throw new Error('Failed to update email');
-      }
 
-      // Email was successfully saved, refresh user data and hide the prompt
-      await refreshUserData();
-      setShowEmailPrompt(false);
-    } catch (error) {
-      console.error('Failed to save email:', error);
-      throw error; // Re-throw so EmailCollection can show the error
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleSkip = () => {
-    setShowEmailPrompt(false);
-  };
-
-  return (
-    <>
-      {showEmailPrompt && !suppressPrompt && (
-        <EmailCollection
-          onEmailSubmit={handleEmailSubmit}
-          onSkip={handleSkip}
-          isLoading={isSubmitting}
-        />
-      )}
-      {children}
-    </>
-  );
+  return <>{children}</>;
 }

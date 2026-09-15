@@ -2,7 +2,7 @@ import Head from 'next/head';
 import { useMemo } from 'react';
 import { useAuth } from '@/components/auth';
 import { useWalletAddress } from '@/hooks/useWalletAddress';
-import { useCombinedContracts, UnifiedContract } from '@/hooks/useCombinedContracts';
+import { useCombinedContracts } from '@/hooks/useCombinedContracts';
 import ConnectWalletEmbedded from '@/components/auth/ConnectWalletEmbedded';
 import { SkeletonCard } from '@/components/ui/Skeleton';
 import EmptyState from '@/components/ui/EmptyState';
@@ -11,6 +11,8 @@ import SellerOfferBook from '@/components/marketplace/SellerOfferBook';
 import { displayCurrency } from '@/utils/currency';
 import { formatTimestamp } from '@/utils/datetime';
 import { daysUntil, escrowTitle } from '@/utils/marketplace';
+import { usePayoutAmounts } from '@/hooks/usePayoutAmounts';
+import { useConfig } from '@/components/auth/ConfigProvider';
 import type { Contract } from '@/types';
 
 /**
@@ -46,9 +48,29 @@ export default function OffersPage() {
     });
   }, [contracts, walletAddress, user?.email]);
 
-  const totalLocked = useMemo(
-    () => sellable.reduce((sum, contract) => sum + (contract.amount || 0), 0),
-    [sellable]
+  // What each escrow will actually pay out. `contract.amount` is the GROSS — the recipient
+  // collects AMOUNT − CREATOR_FEE — so the stored figure overstates what the seller is owed,
+  // and it is the number they weigh an early-payment offer against.
+  const { config } = useConfig();
+  const { payouts } = usePayoutAmounts(
+    useMemo(() => sellable.map((c) => c.contractAddress), [sellable]),
+    config?.rpcUrl
+  );
+
+  /** The payout where it could be read, the gross where it could not. */
+  const payoutFor = (contract: Contract): { amount: number; isNet: boolean } => {
+    const read = payouts[contract.contractAddress];
+    return read !== undefined
+      ? { amount: Number(read), isNet: true }
+      : { amount: contract.amount || 0, isNet: false };
+  };
+
+  const totalOwed = useMemo(
+    () => sellable.reduce((sum, contract) => {
+      const read = payouts[contract.contractAddress];
+      return sum + (read !== undefined ? Number(read) : (contract.amount || 0));
+    }, 0),
+    [sellable, payouts]
   );
 
   if (isLoading) {
@@ -96,8 +118,8 @@ export default function OffersPage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8">
             <StatsCard
-              title="Total locked"
-              value={displayCurrency(totalLocked, 'microUSDC')}
+              title="Owed to you"
+              value={displayCurrency(totalOwed, 'microUSDC')}
               sub={`Across ${sellable.length} payment${sellable.length === 1 ? '' : 's'}`}
             />
             <StatsCard
@@ -136,16 +158,20 @@ export default function OffersPage() {
                     </div>
                     <div className="text-right">
                       <div className="text-base font-medium text-gray-900 dark:text-white">
-                        {displayCurrency(contract.amount, 'microUSDC')}
+                        {displayCurrency(payoutFor(contract).amount, 'microUSDC')}
                       </div>
-                      <div className="text-xs text-gray-500 dark:text-secondary-400">locked in escrow</div>
+                      <div className="text-xs text-gray-500 dark:text-secondary-400">
+                        {payoutFor(contract).isNet
+                          ? 'you receive at maturity'
+                          : 'locked in escrow, before the platform fee'}
+                      </div>
                     </div>
                   </div>
 
                   <div className="p-4">
                     <SellerOfferBook
                       escrowContract={contract.contractAddress}
-                      maturityAmount={contract.amount}
+                      maturityAmount={payoutFor(contract).amount}
                       maturity={contract.expiryTimestamp}
                       onAccepted={async () => {
                         await refetch();

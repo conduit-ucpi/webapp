@@ -2,6 +2,7 @@ import { useState } from 'react';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import MarketplaceCard from '@/components/marketplace/MarketplaceCard';
+import ReserveDetailsModal from '@/components/marketplace/ReserveDetailsModal';
 import { useSellerReserves } from '@/hooks/useMarketplaceData';
 import { useMarketplaceActions } from '@/hooks/useMarketplaceActions';
 import { useConfig } from '@/components/auth/ConfigProvider';
@@ -40,6 +41,7 @@ export default function ReservesOwedList({ sellerAddress }: ReservesOwedListProp
   const { releaseHoldback } = useMarketplaceActions();
 
   const [busyVault, setBusyVault] = useState<string | null>(null);
+  const [viewing, setViewing] = useState<ReserveView | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
   const tokenSymbol = config?.tokenSymbol || 'USDC';
@@ -56,6 +58,7 @@ export default function ReservesOwedList({ sellerAddress }: ReservesOwedListProp
        * lands in the catch below.
        */
       await releaseHoldback(vaultAddress);
+      setViewing(null);
       await refetch();
     } catch (e: any) {
       setActionError(e?.message || 'That did not go through.');
@@ -119,9 +122,22 @@ export default function ReservesOwedList({ sellerAddress }: ReservesOwedListProp
             tokenSymbol={tokenSymbol}
             busy={busyVault === reserve.vaultAddress}
             onRelease={() => release(reserve.vaultAddress)}
+            onViewDetails={() => setViewing(reserve)}
           />
         ))}
       </div>
+
+      {/* One modal for whichever reserve is being looked at, rather than one per row. */}
+      {viewing && (
+        <ReserveDetailsModal
+          isOpen
+          onClose={() => setViewing(null)}
+          reserve={viewing}
+          tokenSymbol={tokenSymbol}
+          busy={busyVault === viewing.vaultAddress}
+          onRelease={() => release(viewing.vaultAddress)}
+        />
+      )}
     </div>
   );
 }
@@ -141,12 +157,14 @@ function ReserveRow({
   reserve,
   tokenSymbol,
   busy,
-  onRelease
+  onRelease,
+  onViewDetails
 }: {
   reserve: ReserveView;
   tokenSymbol: string;
   busy: boolean;
   onRelease: () => void;
+  onViewDetails: () => void;
 }) {
   const held = `${displayCurrency(reserve.holdback, 'microUSDC')} ${tokenSymbol}`;
   const due = reserve.dueBack ? `${displayCurrency(reserve.dueBack, 'microUSDC')} ${tokenSymbol}` : null;
@@ -165,11 +183,18 @@ function ReserveRow({
       identifier={`contract ${reserve.escrowContract ?? 'unknown'}`}
       status={<ReserveStatus reserve={reserve} held={held} due={due} matures={matures} />}
       actions={
-        reserve.releasable && (
-          <Button type="button" size="sm" onClick={onRelease} disabled={busy}>
-            {busy ? <LoadingSpinner className="w-4 h-4" /> : 'Return my reserve'}
+        <>
+          {/* Offered on every row, including RELEASED ones: "what did I actually get, and
+              why that much" is exactly the question a settled row raises. */}
+          <Button type="button" size="sm" variant="ghost" onClick={onViewDetails} disabled={busy}>
+            View details
           </Button>
-        )
+          {reserve.releasable && (
+            <Button type="button" size="sm" onClick={onRelease} disabled={busy}>
+              {busy ? <LoadingSpinner className="w-4 h-4" /> : 'Return my reserve'}
+            </Button>
+          )}
+        </>
       }
     >
       {reserve.releasable && (

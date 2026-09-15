@@ -42,6 +42,17 @@ export default function ReservesOwedList({ sellerAddress }: ReservesOwedListProp
 
   const [busyVault, setBusyVault] = useState<string | null>(null);
   const [viewing, setViewing] = useState<ReserveView | null>(null);
+
+  /*
+   * Collapsed by default. This section sits above the contract list on the dashboard, and for
+   * most suppliers most of the time it is a record rather than a task — the money returns on
+   * its own within half an hour of the contract completing. Open by default it would push the
+   * contracts down the page to report something nobody has to act on.
+   *
+   * The count in the header is what makes that safe: collapsed does not mean hidden, because
+   * the heading still says how many and whether any can be collected now.
+   */
+  const [open, setOpen] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
   const tokenSymbol = config?.tokenSymbol || 'USDC';
@@ -96,25 +107,71 @@ export default function ReservesOwedList({ sellerAddress }: ReservesOwedListProp
     return b.lastEventAt - a.lastEventAt;
   });
 
+  // Said in the heading so a collapsed section still carries the one fact worth acting on.
+  const collectable = ordered.filter((r) => r.releasable).length;
+
   return (
     <div className="space-y-4">
-      <div>
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-          Reserves on payments you sold
-        </h2>
-        <p className="text-sm text-gray-500 dark:text-secondary-400">
-          When you sold these payments early, part of the price was held back until the customer&apos;s
-          contract completed. That money comes back to you.
-        </p>
-      </div>
+      {/*
+        A real button spanning the header, not a chevron glyph beside it: the whole heading is
+        the target, and aria-expanded/aria-controls make the state audible rather than only
+        visible.
+      */}
+      <button
+        type="button"
+        onClick={() => setOpen((wasOpen) => !wasOpen)}
+        aria-expanded={open}
+        aria-controls="reserves-owed-panel"
+        className="w-full flex items-start justify-between gap-3 text-left group"
+      >
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+            Reserves on payments you sold
+            <span className="ml-2 text-sm font-normal text-gray-500 dark:text-secondary-400">
+              ({ordered.length})
+            </span>
+          </h2>
+          <p className="text-sm text-gray-500 dark:text-secondary-400">
+            {collectable > 0 ? (
+              <>
+                {collectable === 1
+                  ? '1 reserve is ready to collect'
+                  : `${collectable} reserves are ready to collect`}
+                . They return to you automatically — opening this only lets you take them sooner.
+              </>
+            ) : (
+              <>
+                When you sold these payments early, part of the price was held back until the
+                customer&apos;s contract completed. That money comes back to you.
+              </>
+            )}
+          </p>
+        </div>
+        <svg
+          className={`w-5 h-5 mt-1 flex-shrink-0 text-gray-400 dark:text-secondary-500 transition-transform group-hover:text-gray-600 dark:group-hover:text-secondary-300 ${
+            open ? 'rotate-180' : ''
+          }`}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
 
+      {/*
+        The error escapes the collapse deliberately. A failed release is the one thing here the
+        supplier has to see whether or not they have the section open — and they can only have
+        caused it from inside it, so hiding it would make the button appear to do nothing.
+      */}
       {actionError && (
         <div className="rounded-md border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-3 text-sm text-red-700 dark:text-red-300">
           {actionError}
         </div>
       )}
 
-      <div className="space-y-3">
+      <div id="reserves-owed-panel" hidden={!open} className="space-y-3">
         {ordered.map((reserve) => (
           <ReserveRow
             key={reserve.vaultAddress}

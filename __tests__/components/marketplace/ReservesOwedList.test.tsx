@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import ReservesOwedList from '@/components/marketplace/ReservesOwedList';
 import { useSellerReserves } from '@/hooks/useMarketplaceData';
 import { useConfig } from '@/components/auth/ConfigProvider';
@@ -53,7 +53,17 @@ function showing(reserves: ReserveView[], { error = null }: { error?: string | n
     error,
     refetch: jest.fn()
   });
-  return render(<ReservesOwedList sellerAddress={SELLER} />);
+  const result = render(<ReservesOwedList sellerAddress={SELLER} />);
+
+  /*
+   * The section is collapsed by default, so every test about a ROW has to open it first —
+   * otherwise it is asserting against hidden content and a role query finds nothing. The
+   * collapse itself is covered separately below.
+   */
+  const toggle = screen.queryByRole('button', { name: /reserves on payments you sold/i });
+  if (toggle) fireEvent.click(toggle);
+
+  return result;
 }
 
 describe('reserves owed to a supplier', () => {
@@ -134,5 +144,70 @@ describe('reserves owed to a supplier', () => {
   it('admits it could not check, rather than showing an empty list', () => {
     showing([], { error: 'boom' });
     expect(screen.getByText(/couldn’t check|couldn't check/i)).toBeInTheDocument();
+  });
+});
+
+/**
+ * The section collapses.
+ *
+ * It sits above the contract list on the dashboard and, for most suppliers most of the time, it
+ * is a record rather than a task — the sweeper returns the money within half an hour of the
+ * contract completing. Open by default it would push the contracts down the page to report
+ * something nobody has to act on.
+ *
+ * Which makes the heading load-bearing: collapsed must not mean hidden, so it still has to say
+ * how many there are and whether any can be taken now.
+ */
+describe('the collapse', () => {
+  const settled = () => reserve({ state: 'SETTLED', dueBack: '100000000', releasable: true });
+
+  function render_(reserves: ReserveView[]) {
+    mockUseSellerReserves.mockReturnValue({
+      data: reserves,
+      loading: false,
+      error: null,
+      refetch: jest.fn()
+    });
+    return render(<ReservesOwedList sellerAddress={SELLER} />);
+  }
+
+  it('starts closed', () => {
+    render_([settled()]);
+
+    expect(screen.getByRole('button', { name: /reserves on payments you sold/i }))
+      .toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('button', { name: /return my reserve/i })).not.toBeInTheDocument();
+  });
+
+  it('opens and closes on the heading', () => {
+    render_([settled()]);
+    const toggle = screen.getByRole('button', { name: /reserves on payments you sold/i });
+
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('button', { name: /return my reserve/i })).toBeInTheDocument();
+
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('says how many there are while closed', () => {
+    render_([settled(), reserve({ vaultAddress: '0xv2', state: 'LIVE', dueBack: '100000000' })]);
+
+    expect(screen.getByText('(2)')).toBeInTheDocument();
+  });
+
+  it('says when something can be collected, so closed is not the same as hidden', () => {
+    // The one fact worth acting on has to survive the collapse.
+    render_([settled()]);
+
+    expect(screen.getByText(/1 reserve is ready to collect/i)).toBeInTheDocument();
+  });
+
+  it('says nothing about collecting when nothing can be', () => {
+    render_([reserve({ state: 'LIVE', dueBack: '100000000' })]);
+
+    expect(screen.queryByText(/ready to collect/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/part of the price was held back/i)).toBeInTheDocument();
   });
 });

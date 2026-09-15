@@ -274,13 +274,31 @@ describe('priceOffer', () => {
 
   it('can produce a residual larger than the deposit, which the caller must catch', () => {
     // Now that the residual is a share of the CASHFLOW rather than of the offer, it can exceed
-    // the deposit it is retained from. On-chain that pays the seller zero rather than
-    // reverting (audit L-1), so the UI has to refuse it — this pins that the arithmetic really
-    // does reach that state, so the guard is not dead code.
+    // the deposit it is retained from — which a share of the offer never could.
+    //
+    // OfferVaultFactory._quote reverts on `fee + holdback > offerAmount`
+    // (HoldbackExceedsOffer), so the UI must refuse it rather than submit a doomed
+    // transaction. This pins that the arithmetic really does reach that state, so the guard
+    // in MakeOfferModal is not dead code.
     const { residual, offer } = priceOffer(HUNDRED, 50, 50);
 
     expect(offer).toBe(BigInt(25_000_000));
     expect(residual).toBe(BigInt(50_000_000));
     expect(residual > offer).toBe(true);
+  });
+
+  it('reaches the band where only the fee decides, which is why the guard is conservative', () => {
+    // 45% residual at a 10% discount: residual 45, deposit 49.5. Under the offerAmount limit,
+    // so the naive check passes — but a venue fee above 4.5/49.5 ≈ 9.09% would revert. The
+    // client is not told feeRateBps, so the modal checks against MAX_FEE_BPS (10%) and
+    // refuses this. Pinned because it is the case that makes the conservative bound visible.
+    const { residual, offer } = priceOffer(HUNDRED, 10, 45);
+
+    expect(offer).toBe(BigInt(49_500_000));
+    expect(residual).toBe(BigInt(45_000_000));
+    expect(residual < offer).toBe(true);
+
+    const worstCaseFee = (offer * BigInt(1_000)) / BigInt(10_000);
+    expect(worstCaseFee + residual > offer).toBe(true);
   });
 });

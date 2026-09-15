@@ -98,13 +98,29 @@ export default function MakeOfferModal({ escrow, lpAddress, onClose, onOfferMade
   const residualAllowed = !escrow.previouslySold;
   const holdbackAmount = residualAllowed ? residualAmount : BigInt(0);
 
-  // The holdback is retained out of the LP's deposit, and the seller receives
-  // `offerAmount − fee − holdback` (§5.1). Now that the residual is a share of the CASHFLOW
-  // rather than of the offer, it can exceed the deposit it is taken from — a 50% residual at a
-  // 50% discount deposits 25 against a residual of 50. On-chain that pays the seller zero
-  // (audit L-1) rather than reverting, so nothing downstream catches it: the offer is placed,
-  // looks funded, and quietly offers the seller nothing at all.
-  const residualExceedsDeposit = holdbackAmount >= offerAmount && holdbackAmount > BigInt(0);
+  // The holdback is retained out of the LP's deposit and the seller receives
+  // `offerAmount − fee − holdback`. Now that the residual is a share of the CASHFLOW rather
+  // than of the offer, it can exceed the deposit it is taken from — a 50% residual at a 50%
+  // discount deposits 25 against a residual of 50.
+  //
+  // The contract REVERTS on that, it does not pay the seller zero:
+  //
+  //     if (q.fee + holdback > offerAmount) revert HoldbackExceedsOffer(...)
+  //         — OfferVaultFactory._quote, step 7
+  //
+  // Zero-to-the-seller is the narrower case where fee + holdback lands exactly on
+  // offerAmount, which OfferVault.acceptOffer anticipates by skipping the transfer.
+  //
+  // So the real limit is `offerAmount − fee`, and the fee is `offerAmount * feeRateBps`. The
+  // client is never told feeRateBps — offers go through /api/chain/marketplace/create-offer
+  // and the factory address stays server-side — so this checks against MAX_FEE_BPS, the 10%
+  // ceiling the factory enforces on itself. It can therefore refuse a quote a lower-fee venue
+  // would accept, which is the right way to be wrong: the alternative is letting the LP submit
+  // a transaction that reverts.
+  const MAX_VENUE_FEE_BPS = BigInt(1_000); // OfferVaultFactory.MAX_FEE_BPS
+  const worstCaseFee = (offerAmount * MAX_VENUE_FEE_BPS) / BigInt(10_000);
+  const residualExceedsDeposit =
+    holdbackAmount > BigInt(0) && worstCaseFee + holdbackAmount > offerAmount;
 
   const canSubmit =
     ratesValid && offerAmount > BigInt(0) && !residualExceedsDeposit &&
@@ -256,9 +272,9 @@ export default function MakeOfferModal({ escrow, lpAddress, onClose, onOfferMade
               </div>
               {residualExceedsDeposit && (
                 <p className="text-xs text-red-600 dark:text-red-400 pt-1">
-                  The residual is larger than your deposit, so there would be nothing left to pay
-                  the seller — the contract would send them zero rather than refuse. Lower the
-                  residual, the discount, or both.
+                  The residual plus the venue fee would exceed your deposit, so there would be
+                  nothing left to pay the seller and the contract would reject this offer. Lower
+                  the residual, the discount, or both.
                 </p>
               )}
               {payoutUnavailable && (

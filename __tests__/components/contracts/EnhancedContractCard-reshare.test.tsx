@@ -1,5 +1,5 @@
 /**
- * When the dashboard offers to re-send a payment link.
+ * When the dashboard offers to re-send a payment link, and what pressing it does.
  *
  * ⚠️ THE BUG THIS PINS: it used to be gated on `funded`, which is
  *    `item.blockchainFunded || false` — so a row whose chain read did not land read as UNFUNDED
@@ -14,6 +14,7 @@
  */
 
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 const mockUser = { walletAddress: '0xSELLER', email: 'seller@test.com' };
 jest.mock('@/components/auth', () => ({ useAuth: () => ({ user: mockUser }) }));
@@ -44,7 +45,7 @@ const contract = (overrides: Partial<Contract> = {}): Contract =>
 const show = (overrides: Partial<Contract> = {}) =>
   render(<EnhancedContractCard contract={contract(overrides)} />);
 
-const reshareButton = () => screen.queryByRole('button', { name: /copy payment link/i });
+const reshareButton = () => screen.queryByRole('button', { name: /send payment link/i });
 
 describe('EnhancedContractCard — re-sending the payment link', () => {
   describe('while the request is still awaiting payment', () => {
@@ -107,5 +108,36 @@ describe('EnhancedContractCard — re-sending the payment link', () => {
     show({ status: 'PENDING', funded: true });
 
     expect(reshareButton()).toBeInTheDocument();
+  });
+});
+
+/**
+ * Pressing it opens the create flow's final screen.
+ *
+ * Copying the link silently was the whole of this button, and it threw away everything else
+ * that screen carries — the QR code, the attachable PDF, the written message explaining what the
+ * link is. A seller chasing an unpaid request needs those more than a bare URL: the URL alone is
+ * what they already had, and it did not get paid.
+ */
+describe('what the button opens', () => {
+  it('shows the send screen rather than copying silently', async () => {
+    show({ status: 'PENDING' });
+
+    await userEvent.click(reshareButton()!);
+
+    // The screen's own heading — it exists to be sent, which a clipboard write never said.
+    expect(await screen.findByText('Now send this to your buyer')).toBeInTheDocument();
+  });
+
+  it('carries the brand on the link it offers', async () => {
+    // A COBRO seller's buyer must not land on a Stabledrop page. The link goes through
+    // brandedHref, so this is the regression guard for that staying true.
+    show({ status: 'PENDING' });
+
+    await userEvent.click(reshareButton()!);
+
+    // Rendered as text beneath the QR, not in an input.
+    const shown = await screen.findByText(/\/contract-pay\?contractId=contract-123/);
+    expect(shown).toBeInTheDocument();
   });
 });

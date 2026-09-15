@@ -691,4 +691,5 @@ export const es: Catalogue = {
   'connectPaymentStage.connectToComplete': 'Conecta tu billetera para completar el pago.',
   'connectPaymentStage.signInToProceed': 'Inicia sesión con tu correo o tu billetera para continuar.',
   'disputeManagementModal.confirmAndSign': 'Confirmar y firmar',
+  'enhancedContractCard.sendPaymentLink': 'Enviar el enlace de pago',
 };

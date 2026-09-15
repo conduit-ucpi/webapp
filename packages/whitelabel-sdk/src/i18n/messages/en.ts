@@ -590,6 +590,7 @@ export const en = {
   'connectPaymentStage.connectToComplete': 'Connect your wallet to complete the payment.',
   'connectPaymentStage.signInToProceed': 'Sign in with your email or wallet to proceed.',
   'disputeManagementModal.confirmAndSign': 'Confirm and sign',
+  'enhancedContractCard.sendPaymentLink': 'Send payment link',
 } as const;
 
 export type MessageKey = keyof typeof en;

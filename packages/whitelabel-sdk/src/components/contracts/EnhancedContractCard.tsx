@@ -8,6 +8,10 @@ import FarcasterNameDisplay from '@/components/ui/FarcasterNameDisplay';
 import { emailsEqual } from '@/utils/address';
 import { useT } from '../../i18n';
 import { useBrandedHref } from '../../theme';
+import Modal from '@/components/ui/Modal';
+import SendRequestScreen from '@/components/contracts/SendRequestScreen';
+import { useConfig } from '@/components/auth/ConfigProvider';
+import { getNetworkName } from '@/utils/networkUtils';
 
 interface EnhancedContractCardProps {
   contract: Contract | PendingContract;
@@ -69,20 +73,32 @@ export default function EnhancedContractCard({
   // once they leave the send screen is a dead end. Offer it back until the
   // buyer has actually paid, after which re-sending is meaningless.
   const [linkCopied, setLinkCopied] = useState(false);
+  const [sending, setSending] = useState(false);
 
 
-  const copyPaymentLink = async () => {
-    if (!contract.id || typeof window === 'undefined') return;
+  /*
+   * The same screen the create flow ends on, reopened.
+   *
+   * Copying the link silently was the whole of this button, and it threw away everything else
+   * that screen carries — the QR code, the attachable PDF, the written message explaining what
+   * the link is. A seller chasing an unpaid request needs those more than a bare URL: the URL
+   * on its own is what they had, and it did not get paid.
+   */
+  const copyToClipboard = async (text: string) => {
+    if (typeof window === 'undefined') return;
     try {
-      await navigator.clipboard.writeText(
-        `${window.location.origin}${brandedHref(`/contract-pay?contractId=${contract.id}`)}`
-      );
+      await navigator.clipboard.writeText(text);
       setLinkCopied(true);
       setTimeout(() => setLinkCopied(false), 3000);
     } catch (error) {
       console.error('Failed to copy payment link:', error);
     }
   };
+
+  const paymentLink =
+    typeof window !== 'undefined' && contract.id
+      ? `${window.location.origin}${brandedHref(`/contract-pay?contractId=${contract.id}`)}`
+      : '';
 
   // Use backend-provided CTA information only
   const primaryAction = useMemo(() => {
@@ -305,17 +321,81 @@ export default function EnhancedContractCard({
           <Button
             onClick={(e) => {
               e.stopPropagation();
-              copyPaymentLink();
+              setSending(true);
             }}
             variant="outline"
             className="w-full sm:w-auto min-h-[44px]"
           >
-            {linkCopied ? 'Link copied' : 'Copy payment link'}
+            {t('enhancedContractCard.sendPaymentLink')}
           </Button>
         )}
       </div>
 
+      {/*
+        The create flow's final screen, reopened for a request that has not been paid. Rendered
+        here rather than navigated to, so the seller keeps their place in the list.
+      */}
+      {sending && (
+        <SendPaymentLinkModal
+          contract={contract}
+          paymentLink={paymentLink}
+          copied={linkCopied}
+          onCopy={copyToClipboard}
+          onClose={() => setSending(false)}
+        />
+      )}
+
       {/* Backend will provide all status information via the status field and CTA labels */}
     </div>
+  );
+}
+
+/**
+ * The create flow's final screen, reopened for a request that has not been paid.
+ *
+ * A separate component purely so the config read lives here rather than in the card. The card is
+ * rendered in a dozen places and by several tests that have no ConfigProvider; making all of them
+ * supply one, for a token symbol and a network label only this modal uses, would be the tail
+ * wagging the dog. Mounted only while open, so the hook only runs when the values are wanted.
+ */
+function SendPaymentLinkModal({
+  contract,
+  paymentLink,
+  copied,
+  onCopy,
+  onClose,
+}: {
+  contract: Contract | PendingContract;
+  paymentLink: string;
+  copied: boolean;
+  onCopy: (text: string) => void;
+  onClose: () => void;
+}) {
+  const t = useT();
+  const { config } = useConfig();
+
+  return (
+    <Modal
+      isOpen
+      onClose={onClose}
+      title={t('enhancedContractCard.sendPaymentLink')}
+      size="large"
+      children={
+        <SendRequestScreen
+          paymentLink={paymentLink}
+          // The screen wants token units; the record stores microUSDC.
+          amount={(contract.amount / 1_000_000).toString()}
+          tokenSymbol={config?.tokenSymbol || 'USDC'}
+          networkLabel={config ? getNetworkName(config.chainId) : undefined}
+          description={contract.description || ''}
+          payoutLabel={
+            contract.expiryTimestamp ? formatDateTimeWithTZ(contract.expiryTimestamp) : undefined
+          }
+          copied={copied}
+          onCopy={(text) => onCopy(text)}
+          onDone={onClose}
+        />
+      }
+    />
   );
 }

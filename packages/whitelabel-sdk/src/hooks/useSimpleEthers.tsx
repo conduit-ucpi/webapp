@@ -225,6 +225,21 @@ export function useSimpleEthers() {
     },
 
     // Direct ERC20 transfer to a contract address (no approve step needed)
+    /**
+     * Get the unavoidable preliminaries out of the way before the user asks to pay.
+     *
+     * Same transaction the button will send, estimated early. Safe to call speculatively and
+     * safe to call repeatedly: it never throws, and a wrong guess simply goes unused.
+     */
+    prewarmTransferToContract: async (tokenAddress: string, contractAddress: string, amount: string) => {
+      const tokenInterface = new ethers.Interface([
+        'function transfer(address to, uint256 amount) external returns (bool)'
+      ]);
+      const data = tokenInterface.encodeFunctionData('transfer', [contractAddress, amount]);
+      const web3Service = await getWeb3Service();
+      await web3Service.prewarmTransaction({ to: tokenAddress, data, value: '0' });
+    },
+
     transferToContract: async (tokenAddress: string, contractAddress: string, amount: string) => {
       console.log('');
       console.log('='.repeat(80));

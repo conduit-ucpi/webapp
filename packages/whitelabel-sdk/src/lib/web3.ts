@@ -965,6 +965,112 @@ export class Web3Service {
    * @param txParams Transaction parameters (to, data, value, etc.)
    * @returns Transaction hash
    */
+  /**
+   * Gas estimates worked out ahead of time, keyed by the exact transaction they belong to.
+   *
+   * Only ever read for an identical destination and calldata, so a stale entry cannot be
+   * applied to a different transaction. Cleared once used, because an estimate is only as
+   * good as the chain state it was taken against.
+   */
+  private prewarmedGas = new Map<string, bigint>();
+
+  private static gasKey(to: string, data: string): string {
+    return `${to.toLowerCase()}:${data.toLowerCase()}`;
+  }
+
+  /**
+   * The wallet's native balance, or null if it could not be read.
+   *
+   * Null is deliberately not zero. Callers use this to decide whether a gas top-up can be
+   * skipped, and an unreadable balance must fall through to topping up rather than be taken
+   * as "empty" or, worse, as "funded".
+   *
+   * Goes to our own RPC rather than the wallet provider, for the same reason the gas estimate
+   * does: an embedded wallet's provider interposes its own validation.
+   */
+  private async readNativeBalance(address: string): Promise<bigint | null> {
+    try {
+      const response = await fetch(this.config.rpcUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'eth_getBalance',
+          params: [address, 'latest'],
+          id: 1
+        })
+      });
+      if (!response.ok) return null;
+      const body = await response.json();
+      if (body.error || !body.result) return null;
+      return BigInt(body.result);
+    } catch (error) {
+      console.warn('[Web3Service.readNativeBalance] could not read balance:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Do the work that does not need the user, before the user asks for it.
+   *
+   * Sending a transaction begins with three things that have nothing to do with the user's
+   * decision: confirming the network, resolving their address, and asking the chain what the
+   * transaction will cost. They ran at the moment the button was pressed, so the user waited
+   * through all three before their wallet even opened.
+   *
+   * They can run earlier because the transaction is fully determined in advance - the escrow
+   * address is computed from the deal's terms rather than discovered by deploying something,
+   * so the destination and calldata are known as soon as the page has loaded.
+   *
+   * Best-effort by design: a failure here is not the user's problem, and the send path will
+   * simply do the work itself as before. Never throws.
+   */
+  async prewarmTransaction(txParams: { to: string; data: string; value?: string }): Promise<void> {
+    try {
+      if (!this.provider) return;
+      await this.verifyAndSwitchNetwork();
+      const userAddress = await this.getUserAddress();
+
+      const response = await fetch(this.config.rpcUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'eth_estimateGas',
+          params: [{
+            from: userAddress,
+            to: txParams.to,
+            data: txParams.data,
+            value: txParams.value || '0x0'
+          }],
+          id: 1
+        })
+      });
+      if (!response.ok) return;
+
+      const body = await response.json();
+      // A revert is deliberately NOT surfaced here. This runs unprompted, long before the
+      // user has committed to anything, and the send path raises it properly with the revert
+      // reason attached. Failing a page load over it would be noise.
+      if (body.error || !body.result) return;
+
+      this.prewarmedGas.set(Web3Service.gasKey(txParams.to, txParams.data), BigInt(body.result));
+      console.log(`[Web3Service.prewarmTransaction] Estimated ahead of time: ${body.result}`);
+
+      // Read the gas balance too. Not cached — the send path takes its own reading, because a
+      // balance can change between a page loading and a button being pressed, and being wrong
+      // optimistically means asking the user to sign a transaction that cannot pay for
+      // itself. This is here to warm the connection and to put the number in the console
+      // while there is still time to do something about it.
+      const balance = await this.readNativeBalance(userAddress);
+      if (balance !== null) {
+        console.log(`[Web3Service.prewarmTransaction] Wallet gas balance: ${Number(balance) / 1e18} ETH`);
+      }
+    } catch (error) {
+      console.debug('[Web3Service.prewarmTransaction] skipped:', error);
+    }
+  }
+
   async fundAndSendTransaction(txParams: {
     to: string;
     data: string;
@@ -986,9 +1092,19 @@ export class Web3Service {
 
     // Step 1: Estimate gas using our RPC directly to avoid Web3Auth pre-validation issues
     let gasEstimate: bigint = BigInt(0);
+    const prewarmed = this.prewarmedGas.get(Web3Service.gasKey(txParams.to, txParams.data));
     if (txParams.gasLimit) {
       gasEstimate = txParams.gasLimit;
       console.log(`Using provided gas limit: ${gasEstimate.toString()} gas`);
+    } else if (prewarmed) {
+      // Estimated while the page was loading. The transaction was fully determined by then -
+      // destination, amount and calldata all known - so there was nothing left to discover
+      // at the moment the user pressed the button, and no reason to make them wait for it.
+      gasEstimate = prewarmed;
+      // Spend it once. An estimate is only as good as the chain state it was taken against,
+      // and a retry after a failure deserves a fresh look rather than the same stale number.
+      this.prewarmedGas.delete(Web3Service.gasKey(txParams.to, txParams.data));
+      console.log(`Using pre-warmed gas estimate: ${gasEstimate.toString()} gas`);
     } else {
       try {
         // Use our Base RPC directly instead of the provider to avoid Web3Auth's internal validation
@@ -1179,29 +1295,50 @@ export class Web3Service {
     console.log('─'.repeat(60));
     console.log('');
 
-    // Step 4: Call chainservice to fund wallet
-    console.log('Requesting wallet funding from chainservice...');
-    const fundResponse = await apiFetch('/api/chain/fund-wallet', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({
-        walletAddress: userAddress,
-        totalAmountNeededWei: totalGasNeeded.toString()
-      })
-    });
+    // Step 4: Top the wallet up for gas — but only if it actually needs it.
+    //
+    // This was unconditional, which made every payment two sequential on-chain transactions:
+    // chainservice sending ETH, confirming, and only then the user's own transfer. Paying
+    // three times in a row bought three top-ups, even though the first left change behind.
+    //
+    // A balance read is one cheap call against the same RPC the estimate used, and it is
+    // taken HERE rather than during the page-load prewarm on purpose: a balance can change
+    // between loading a page and pressing a button, and being wrong in the optimistic
+    // direction means asking the user to sign a transaction that cannot pay for itself.
+    const existingBalance = await this.readNativeBalance(userAddress);
+    const alreadyFunded = existingBalance !== null && existingBalance >= totalGasNeeded;
 
-    if (!fundResponse.ok) {
-      const errorData = await fundResponse.json().catch(() => ({}));
-      throw new Error(`Failed to fund wallet: ${errorData.error || fundResponse.statusText}`);
+    if (alreadyFunded) {
+      console.log(
+        `⛽ Wallet already holds ${Number(existingBalance) / 1e18} ETH, covering the ` +
+          `${totalGasNeededEth.toExponential(4)} ETH needed — skipping the top-up.`
+      );
     }
 
-    const fundResult = await fundResponse.json();
-    if (!fundResult.success) {
-      throw new Error(`Wallet funding failed: ${fundResult.error || 'Unknown error'}`);
-    }
+    if (!alreadyFunded) {
+      console.log('Requesting wallet funding from chainservice...');
+      const fundResponse = await apiFetch('/api/chain/fund-wallet', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          walletAddress: userAddress,
+          totalAmountNeededWei: totalGasNeeded.toString()
+        })
+      });
 
-    console.log('Wallet funded successfully:', fundResult.message || 'Ready to send transaction');
+      if (!fundResponse.ok) {
+        const errorData = await fundResponse.json().catch(() => ({}));
+        throw new Error(`Failed to fund wallet: ${errorData.error || fundResponse.statusText}`);
+      }
+
+      const fundResult = await fundResponse.json();
+      if (!fundResult.success) {
+        throw new Error(`Wallet funding failed: ${fundResult.error || 'Unknown error'}`);
+      }
+
+      console.log('Wallet funded successfully:', fundResult.message || 'Ready to send transaction');
+    }
 
     // Step 5: Send transaction using the same unified ethers provider approach
     console.log('[Web3Service.fundAndSendTransaction] Sending transaction via unified ethers provider...');

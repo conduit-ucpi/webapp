@@ -23,6 +23,7 @@ import { usePaymentSteps } from '@/hooks/usePaymentSteps';
 import { usePayableContract } from '@/hooks/usePayableContract';
 import { toMicroUSDC, toUSDCForWeb3, formatDateTimeWithTZ, displayCurrency } from '@/utils/validation';
 import { reserveCounterfactualAddress } from '@/utils/contractTransactionSequence';
+import { predictEscrowAddress } from '@/lib/counterfactualAddress';
 import { resolveEscrowAddressSources } from '@/lib/escrow/escrowAddressSources';
 import { getNetworkName } from '@/utils/networkUtils';
 import { detectDevice } from '@/utils/deviceDetection';
@@ -60,7 +61,7 @@ export default function ContractPay() {
   const { user, authenticatedFetch, isLoading: authLoading, isConnected, address, refreshUserData } = useAuth();
   const {
     approveUSDC, depositToContract, depositFundsAsProxy,
-    getWeb3Service, transferToContract, getTokenBalance
+    getWeb3Service, transferToContract, prewarmTransferToContract, getTokenBalance
   } = useSimpleEthers();
   const { runDirectPayment } = useContractPayment();
 
@@ -240,6 +241,53 @@ export default function ContractPay() {
     tokenAddress: selectedTokenAddress,
     getTokenBalance,
   });
+
+  /**
+   * Estimate the payment while the page is still settling, so the user does not wait for it.
+   *
+   * Pressing pay used to begin with three things that have nothing to do with the decision:
+   * confirming the network, resolving the wallet address, and asking the chain what the
+   * transfer will cost. All three can happen now, because the transaction is already fully
+   * determined — the escrow address is computed from the deal's terms rather than discovered
+   * by deploying something, so where the money goes is known before anyone asks to send it.
+   *
+   * Entirely speculative. It never throws, the estimate is only used for the exact
+   * destination and calldata it was taken against, and if the user never pays it is simply
+   * discarded.
+   */
+  useEffect(() => {
+    if (!contract || !config || !address || !selectedTokenAddress) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const sources = resolveEscrowAddressSources({
+          factoryAddress: config.contractFactoryAddress,
+          implementationAddress: config.contractAddress,
+          defaultArbiterAddress: config.defaultArbiterAddress
+        });
+        const escrowAddress = contract.chainAddress ?? predictEscrowAddress(
+          sources.factoryAddress,
+          sources.implementationAddress,
+          {
+            tokenAddress: selectedTokenAddress,
+            buyer: address,
+            seller: contract.sellerAddress,
+            amount: contract.amount,
+            expiryTimestamp: contract.expiryTimestamp,
+            arbiter: contract.arbiterAddress || sources.defaultArbiterAddress,
+            contractserviceId: contract.id
+          }
+        );
+        if (cancelled) return;
+        await prewarmTransferToContract(selectedTokenAddress, escrowAddress, String(contract.amount));
+      } catch {
+        // Nothing to report: this is work brought forward, not work required.
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [contract, config, address, selectedTokenAddress, prewarmTransferToContract]);
 
   // QR-payment subsystem (countdown, balance polling, activation). The
   // page-specific creator (resolveOrCreateOnChainContract) and the on-activated

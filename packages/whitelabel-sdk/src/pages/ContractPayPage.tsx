@@ -82,17 +82,26 @@ export default function ContractPay() {
   const [isCheckingEscrow, setIsCheckingEscrow] = useState(false);
 
   /**
-   * Restore the panel from the URL.
+   * Someone coming back mid-payment, most obviously from the Coinbase onramp.
    *
-   * Payment method is local state, so any step that leaves the page — the
-   * Coinbase onramp, most obviously — comes back to the method chooser with the
-   * user's progress apparently lost. Carrying it in the query means they land
-   * back on the "I have paid" panel, where the sweep is one button away.
+   * Anything that leaves the page loses local state, so without a marker in the URL they
+   * return to the intro and the connect screen with their progress apparently lost — which
+   * reads as "that failed" to someone who has just spent money.
+   *
+   * It used to say `method=qr`, because returning meant landing on the QR stage. There is no
+   * QR stage now, and the marker never really meant "show the QR" — it meant "this person is
+   * already paying". `method=qr` is still honoured so that anyone mid-onramp when this
+   * deployed comes back to the right place.
    */
+  const isResumingPayment =
+    router.query.resuming === '1' || router.query.method === 'qr';
+
   useEffect(() => {
     if (!router.isReady) return;
-    if (router.query.method === 'qr') setPaymentMethod('qr');
-  }, [router.isReady, router.query.method]);
+    // Any non-null value skips the pre-payment screens; 'qr' is the honest one, since money
+    // arriving from an onramp did not come from the connected wallet.
+    if (isResumingPayment) setPaymentMethod('qr');
+  }, [router.isReady, isResumingPayment]);
 
   // The intro is a landing step, not a stage: it shows once on arrival, and
   // "Change payment method" returns to the chooser rather than back to here.
@@ -500,7 +509,7 @@ export default function ContractPay() {
   // is signed in was being shown the connect-wallet screen. Deliberately not
   // waiting for everyone — a genuinely signed-out visitor should not stare at a
   // spinner for the full rehydration timeout before being asked to connect.
-  const returningFromPayment = router.query.method === 'qr';
+  const returningFromPayment = isResumingPayment;
 
   if (!config || ((authLoading || returningFromPayment) && !isConnected && !address && !authWaitElapsed)) {
     return (
@@ -874,9 +883,9 @@ export default function ContractPay() {
                 onPayFromExternalWallet={() => {
                   document.getElementById('pay-from-elsewhere')?.scrollIntoView({ behavior: 'smooth' });
                 }}
-                // Come back on the "I have paid" panel — the funds will have
-                // landed but still need sweeping in, and that button is here.
-                addFundsReturnPath={brandedHref(`/contract-pay?contractId=${contractId}&method=qr`)}
+                // Come back onto the payment screen rather than the intro: the funds will
+                // have landed but still need sweeping in, and that button is here.
+                addFundsReturnPath={brandedHref(`/contract-pay?contractId=${contractId}&resuming=1`)}
                 // Reuses the QR route's resolver, so Coinbase is sent to the
                 // address contractservice considers authoritative and no second
                 // escrow is ever deployed.

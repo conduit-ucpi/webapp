@@ -893,9 +893,23 @@ export default function ContractPay() {
               />
 
               {/* Paying from somewhere else: the address, a QR for it, and the button that
-                  sweeps the funds in once they arrive. Previously a screen of its own. */}
+                  sweeps the funds in once they arrive. Previously a screen of its own.
+
+                  Framed as one block on purpose. Both methods inside it are fire-and-forget
+                  from our side — we cannot see an external transfer land — so pressing "I
+                  have paid" is what actually secures the money. Left loose beneath the other
+                  options, that button reads as unrelated to the code and address above it. */}
               {!isPaymentInProgress && !isSameAddress && (
-                <div id="pay-from-elsewhere" className="mt-6 pt-6 border-t border-secondary-200 dark:border-secondary-700">
+                <div
+                  id="pay-from-elsewhere"
+                  className="mt-8 rounded-lg border border-secondary-300 dark:border-secondary-600 bg-secondary-50 dark:bg-secondary-800/50 p-5"
+                >
+                  <h3 className="text-base font-semibold text-secondary-900 dark:text-white mb-1">
+                    {t('pay.elsewhereHeading')}
+                  </h3>
+                  <p className="text-sm text-secondary-600 dark:text-secondary-300 mb-4">
+                    {t('pay.elsewhereLead')}
+                  </p>
                   <QrPaymentPanel
                     qr={qr}
                     networkName={networkName}
@@ -907,7 +921,6 @@ export default function ContractPay() {
                     createButtonLabel={t('pay.payButton')}
                     createDisabled={isSameAddress}
                     createNote={isSameAddress ? t('err.payYourself') : undefined}
-                    onCancel={() => router.push('/dashboard')}
                     successMessage={t('pay.verifiedRedirectDashboard')}
                   />
                 </div>

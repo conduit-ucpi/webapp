@@ -105,6 +105,8 @@ export const en = {
   'status.complete': 'Payment complete',
   'status.securing': 'Securing funds in escrow',
   'status.securingNow': 'Securing your funds in escrow',
+  'pay.elsewhereHeading': 'Or pay from another wallet',
+  'pay.elsewhereLead': 'Scan the code or copy the address below and send the exact amount. Then come back and press “I have paid” — your funds are only secured in escrow once you do.',
   'status.derivingAddress': 'Preparing your escrow address',
   'pay.loading': 'Loading payment request...',
   'pay.invalidLink': 'Invalid Payment Link',

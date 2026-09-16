@@ -120,6 +120,8 @@ export const es: Catalogue = {
   'status.complete': 'Pago completado',
   'status.securing': 'Asegurando los fondos en depósito en garantía',
   'status.securingNow': 'Asegurando tus fondos en depósito en garantía',
+  'pay.elsewhereHeading': 'O paga desde otra billetera',
+  'pay.elsewhereLead': 'Escanea el código o copia la dirección de abajo y envía el importe exacto. Después vuelve y pulsa «He pagado»: tus fondos solo quedan asegurados en depósito en garantía cuando lo hagas.',
   'status.derivingAddress': 'Preparando tu dirección de depósito en garantía',
   'pay.loading': 'Cargando la solicitud de pago...',
   'pay.invalidLink': 'Enlace de pago inválido',

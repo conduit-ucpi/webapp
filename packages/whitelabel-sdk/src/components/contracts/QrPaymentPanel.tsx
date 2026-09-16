@@ -29,7 +29,12 @@ interface QrPaymentPanelProps {
   createDisabled: boolean;
   /** Optional note under the create button (pay's same-address warning). */
   createNote?: string;
-  onCancel: () => void;
+  /**
+   * Optional. The panel was once a screen of its own, where leaving needed a way out. Inline
+   * among the other payment options there is nothing to cancel — the page is still right
+   * there — and a button offering to is one more thing to weigh up mid-payment.
+   */
+  onCancel?: () => void;
   successMessage: string;
 }
 
@@ -198,11 +203,13 @@ export default function QrPaymentPanel({
               </p>
             )}
 
-            <Button
-              onClick={onCancel}
-              variant="outline"
-              className="w-full"
-            >{t('disputeManagementModal.cancel')}</Button>
+            {onCancel && (
+              <Button
+                onClick={onCancel}
+                variant="outline"
+                className="w-full"
+              >{t('disputeManagementModal.cancel')}</Button>
+            )}
           </div>
         </div>
       )}

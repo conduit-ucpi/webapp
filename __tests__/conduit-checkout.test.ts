@@ -182,30 +182,55 @@ describe('ConduitCheckout SDK', () => {
       expect(result.currencyRaw).toBe('microUSDC'); // Original currency
     });
 
-    it('should accept any non-failed state when chainAddress exists', async () => {
-      const validStates = ['ACTIVE', 'COMPLETED', 'CLAIMED', 'RESOLVED', 'DISPUTED', 'OK', 'PENDING', 'UNKNOWN'];
+    const fundedResult = (state: string) => ({
+      ok: true,
+      json: async () => ({
+        count: 1,
+        results: [{
+          contractid: 'abc123',
+          chainAddress: '0xcontract123',
+          sellerWalletId: '0x1234567890abcdef1234567890abcdef12345678',
+          amount: 50.0,
+          currency: 'USDC',
+          state,
+        }],
+      }),
+    });
 
-      for (const state of validStates) {
-        mockFetch.mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({
-            count: 1,
-            results: [{
-              contractid: 'abc123',
-              chainAddress: '0xcontract123', // Key: has chainAddress
-              sellerWalletId: '0x1234567890abcdef1234567890abcdef12345678',
-              amount: 50.0,
-              currency: 'USDC',
-              state, // Any state is OK if chainAddress exists and not FAILED
-            }],
-          }),
-        });
+    it('verifies a payment in any state that means the money arrived', async () => {
+      for (const state of ['ACTIVE', 'DISPUTED', 'RESOLVED', 'CLAIMED', 'COMPLETED']) {
+        mockFetch.mockResolvedValueOnce(fundedResult(state));
 
         const result = await ConduitCheckout.verifyPayment('abc123');
         expect(result.state).toBe(state);
         expect(result.verified).toBe(true);
       }
     });
+
+    /**
+     * The regression this guards against is a merchant shipping goods for money that never
+     * arrived.
+     *
+     * chainAddress used to mean "it reached the chain", so anything holding one that was not
+     * a known failure counted as paid. An escrow's address is now computed from its terms and
+     * recorded when the buyer opens the payment page — before they send anything — so that
+     * test would clear an order the moment somebody looked at it.
+     *
+     * UNKNOWN is in here deliberately: a state this file has never heard of must read as "not
+     * yet", not as payment.
+     */
+    it.each(['OK', 'IN-PROCESS', 'PENDING', 'UNKNOWN', 'EXPIRED'])(
+      'does not verify an order in state %s just because it has an escrow address',
+      async (state) => {
+        mockFetch.mockResolvedValue(fundedResult(state));
+
+        // Attach the expectation BEFORE advancing: the rejection lands while the timers run,
+        // and an unhandled one fails the test on its own.
+        const assertion = expect(ConduitCheckout.verifyPayment('abc123')).rejects.toThrow(/timeout/i);
+        await jest.advanceTimersByTimeAsync(11000);
+        await assertion;
+      }
+    );
 
     it('should poll when contract not found initially', async () => {
       mockFetch

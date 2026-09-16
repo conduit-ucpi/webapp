@@ -27,6 +27,20 @@
   // Error states that indicate payment failed
   const FAILED_STATES = ['NEVER_FUNDED', 'ERROR', 'FAILED'];
 
+  /**
+   * The states in which the money is genuinely in the escrow.
+   *
+   * An allowlist on purpose. The obvious alternative — accept anything that is not a known
+   * failure — treats every state nobody here has heard of as a completed payment, including
+   * ones added after a merchant last updated this file. Waiting on a state that turns out to
+   * be fine costs another poll; clearing one that is not costs goods shipped for money that
+   * never arrived.
+   *
+   * EXPIRED is deliberately absent: it covers both an escrow that matured with funds in it
+   * and a quote that simply lapsed, and those must not be confused.
+   */
+  const FUNDED_STATES = ['ACTIVE', 'DISPUTED', 'RESOLVED', 'CLAIMED', 'COMPLETED'];
+
   const ConduitCheckout = {
     config: {
       sellerAddress: null,
@@ -260,14 +274,24 @@
             throw new Error('Payment verification failed: Contract was never funded or encountered an error');
           }
 
-          // 2. Check if contract is on blockchain (has chainAddress)
-          if (!result.chainAddress) {
-            console.log('⏳ Contract not yet on blockchain (no chainAddress), polling again in', interval, 'ms');
+          // 2. Check the money actually arrived.
+          //
+          // ⚠️ chainAddress IS NOT THAT SIGNAL, though it used to be. An escrow's address is
+          //    now worked out from its terms and recorded when the buyer opens the payment
+          //    page, before they send anything — so waiting for it to appear would clear an
+          //    order the moment someone looked at it.
+          //
+          // `state` is the signal, and it is tested as an allowlist rather than by ruling out
+          // the failures. A state nobody here has heard of must not be read as payment: the
+          // cost of waiting for one that is fine is a slower poll, the cost of clearing one
+          // that is not is goods shipped for money that never arrived.
+          if (!FUNDED_STATES.includes(result.state)) {
+            console.log('⏳ Not funded yet (state: ' + result.state + '), polling again in', interval, 'ms');
             await this.sleep(interval);
             continue;
           }
 
-          console.log('✅ Contract found on blockchain:', result.chainAddress);
+          console.log('✅ Escrow funded:', result.chainAddress, '(' + result.state + ')');
 
           // 3. Security check: Seller address must match
           if (result.sellerWalletId.toLowerCase() !== this.config.sellerAddress.toLowerCase()) {

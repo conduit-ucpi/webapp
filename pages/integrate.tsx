@@ -604,20 +604,23 @@ app.post('/api/conduit-webhook', async (req, res) => {
     // 2. CHECK IT IS THE PAYMENT YOU WERE EXPECTING
     const order = await db.orders.findUnique({ where: { id: orderId } });
 
-    // \`state\` tracks the escrow's life — CLAIMED, ACTIVE and so on are all real
-    // payments, so test for the states that mean it FAILED rather than for one
-    // that means it worked. No chainAddress yet means it has not reached the
-    // chain; poll again rather than rejecting it.
-    const FAILED_STATES = ['NEVER_FUNDED', 'ERROR', 'FAILED'];
+    // \`state\` is what says the money arrived. List the states that mean it did,
+    // rather than ruling out the ones that mean it did not: a state you have not
+    // heard of must not be read as payment. Waiting on one that turns out to be
+    // fine costs another poll; clearing one that is not costs you the goods.
+    //
+    // ⚠️ chainAddress is NOT that signal. An escrow's address is worked out from
+    // its terms and recorded when the buyer opens the payment page, before they
+    // send anything — so it is present on unpaid orders too.
+    const FUNDED_STATES = ['ACTIVE', 'DISPUTED', 'RESOLVED', 'CLAIMED', 'COMPLETED'];
 
     const paidToYou = payment.sellerWalletId.toLowerCase() === YOUR_WALLET.toLowerCase();
     const amount = payment.currency.toLowerCase().startsWith('micro')
       ? Number(payment.amount) / 1000000
       : Number(payment.amount);
 
-    if (!paidToYou)                          return res.status(400).json({ error: 'Not your wallet' });
-    if (FAILED_STATES.includes(payment.state)) return res.status(409).json({ error: 'Payment failed' });
-    if (!payment.chainAddress)               return res.status(409).json({ error: 'Not on chain yet' });
+    if (!paidToYou)                           return res.status(400).json({ error: 'Not your wallet' });
+    if (!FUNDED_STATES.includes(payment.state)) return res.status(409).json({ error: 'Not funded yet' });
     if (Math.abs(amount - order.total) > 0.001) {
       return res.status(400).json({ error: 'Amount mismatch' });
     }
@@ -731,12 +734,12 @@ app.post('/api/conduit-webhook', async (req, res) => {
                       <tbody className="divide-y divide-secondary-200 dark:divide-secondary-700">
                         {[
                           { f: 'contractid', t: 'string', d: 'The contract id' },
-                          { f: 'chainAddress', t: 'string', d: 'Escrow address on chain. Absent means it has not reached the chain yet — poll again, do not reject' },
+                          { f: 'chainAddress', t: 'string', d: 'The escrow address. Assigned when the buyer opens the payment page, so its presence says nothing about whether they paid — read state for that' },
                           { f: 'sellerWalletId', t: 'string', d: 'Who gets paid. Compare against your own wallet' },
                           { f: 'amount', t: 'number', d: 'In the units of currency below, so divide by 1,000,000 for a micro currency' },
                           { f: 'description', t: 'string', d: 'What the payment was for' },
                           { f: 'currency', t: 'string', d: 'e.g. microUSDC. There is no separate currencySymbol field' },
-                          { f: 'state', t: 'string', d: 'Lifecycle, not pass/fail — a completed payment reads CLAIMED. Test for NEVER_FUNDED, ERROR and FAILED rather than for one success value' },
+                          { f: 'state', t: 'string', d: 'Whether the money arrived. ACTIVE, DISPUTED, RESOLVED, CLAIMED and COMPLETED all mean it did; treat anything else as not yet paid, including states you do not recognise' },
                           { f: 'chainId', t: 'string', d: 'e.g. 8453 for Base' },
                           { f: 'createdate', t: 'number', d: 'Unix seconds when the record was made' },
                           { f: 'maturity', t: 'number', d: 'Unix seconds when the cashflow unlocks. Distinct from createdate' },

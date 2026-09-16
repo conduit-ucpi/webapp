@@ -105,6 +105,7 @@ export const en = {
   'status.complete': 'Payment complete',
   'status.securing': 'Securing funds in escrow',
   'status.securingNow': 'Securing your funds in escrow',
+  'status.derivingAddress': 'Preparing your escrow address',
   'pay.loading': 'Loading payment request...',
   'pay.invalidLink': 'Invalid Payment Link',
   'pay.noId': 'No payment request ID was provided.',

@@ -122,6 +122,7 @@ export default function ContractCreate() {
     getActiveStep,
   } = usePaymentSteps([
     { id: 'verify', label: t('status.verifying'), status: 'pending' },
+    { id: 'address', label: t('status.derivingAddress'), status: 'pending' },
     { id: 'transfer', label: `Transferring ${selectedTokenSymbol} to escrow`, status: 'pending' },
     { id: 'confirm', label: t('status.confirming'), status: 'pending' },
     { id: 'activate', label: t('status.securingNow'), status: 'pending' },
@@ -451,6 +452,7 @@ export default function ContractCreate() {
     // Reset payment steps (labels are page-specific; the hook drives statuses).
     setPaymentSteps([
       { id: 'verify', label: t('status.verifying'), status: 'pending' },
+      { id: 'address', label: t('status.derivingAddress'), status: 'pending' },
       { id: 'transfer', label: `Transferring ${selectedTokenSymbol} to escrow`, status: 'pending' },
       { id: 'confirm', label: t('status.confirming'), status: 'pending' },
       { id: 'activate', label: t('status.securingNow'), status: 'pending' },

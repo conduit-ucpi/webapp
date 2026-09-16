@@ -128,6 +128,10 @@ export default function ContractPay() {
     getActiveStep,
   } = usePaymentSteps([
     { id: 'verify', label: t('status.verifying'), status: 'pending' },
+    // Worked out before anything is signed, so it is a step the user passes through rather
+    // than waits on. Listed because the next one sends real money to it, and "transferring to
+    // escrow" reads oddly with nothing before it.
+    { id: 'address', label: t('status.derivingAddress'), status: 'pending' },
     { id: 'transfer', label: t('status.transferring'), status: 'pending' },
     { id: 'confirm', label: t('status.confirming'), status: 'pending' },
     { id: 'activate', label: t('status.securingNow'), status: 'pending' },
@@ -323,22 +327,37 @@ export default function ContractPay() {
       return;
     }
 
+    // This route owns three of the five steps and then hands over to the QR panel, which
+    // shows the escrow being created around the funds. Listing all five here would leave two
+    // of them sitting unticked at the moment the panel replaces them.
+    setPaymentSteps([
+      { id: 'address', label: t('status.derivingAddress'), status: 'pending' },
+      { id: 'transfer', label: t('status.transferring'), status: 'pending' },
+      { id: 'confirm', label: t('status.confirming'), status: 'pending' }
+    ]);
     setIsPaymentInProgress(true);
     try {
+      updatePaymentStep('address', 'active');
       setLoadingMessage(t('status.preparing'));
       // Reuses the QR route's creator, so the address is the one contractservice
       // considers authoritative and no second escrow is ever deployed.
       const escrowAddress = qr.qrContractAddress ?? (await qr.createContract());
       if (!escrowAddress) return;
+      updatePaymentStep('address', 'completed');
 
+      updatePaymentStep('transfer', 'active');
       setLoadingMessage(t('status.confirmInWallet'));
       await transferToContract(selectedTokenAddress, escrowAddress, String(contract.amount));
+      updatePaymentStep('transfer', 'completed');
+
+      updatePaymentStep('confirm', 'completed');
 
       // Same destination as the QR, so the same panel picks it up from here:
       // it polls the escrow balance and offers manual activation.
       setPaymentMethod('qr');
     } catch (error: any) {
       console.error('ContractPay: Transfer to escrow failed:', error);
+      getActiveStep() && updatePaymentStep(getActiveStep()!.id, 'error');
       alert(error?.message || t('err.paymentFailed'));
     } finally {
       setIsPaymentInProgress(false);
@@ -358,6 +377,10 @@ export default function ContractPay() {
     // Reset to the wallet-flow steps (labels are page-specific; the hook drives statuses).
     setPaymentSteps([
       { id: 'verify', label: t('status.verifying'), status: 'pending' },
+      // The escrow address is worked out before anything is signed, so it is a step the user
+      // passes through rather than one they wait on. It is listed because the next step sends
+      // real money to it — "transferring to escrow" reads oddly with nothing before it.
+      { id: 'address', label: t('status.derivingAddress'), status: 'pending' },
       { id: 'transfer', label: t('status.transferring'), status: 'pending' },
       { id: 'confirm', label: t('status.confirming'), status: 'pending' },
       { id: 'activate', label: t('status.securingNow'), status: 'pending' },

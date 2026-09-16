@@ -123,7 +123,7 @@ export function useContractPayment() {
               // transaction to announce or wait on. Its address is computed instead, which
               // takes no time worth reporting.
               case 'address_reserved':
-                deps.setLoadingMessage('Step 1: Escrow address reserved');
+                deps.updatePaymentStep('address', 'completed');
                 break;
               case 'transfer':
                 deps.updatePaymentStep('transfer', 'active');

@@ -120,6 +120,7 @@ export const es: Catalogue = {
   'status.complete': 'Pago completado',
   'status.securing': 'Asegurando los fondos en depósito en garantía',
   'status.securingNow': 'Asegurando tus fondos en depósito en garantía',
+  'status.derivingAddress': 'Preparando tu dirección de depósito en garantía',
   'pay.loading': 'Cargando la solicitud de pago...',
   'pay.invalidLink': 'Enlace de pago inválido',
   'pay.noId': 'No se proporcionó un identificador de solicitud de pago.',

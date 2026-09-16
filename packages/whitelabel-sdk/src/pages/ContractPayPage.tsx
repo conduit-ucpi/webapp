@@ -396,60 +396,6 @@ export default function ContractPay() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contract, config, address, authenticatedFetch, qr.qrContractAddress, qr.createContract]);
 
-  /**
-   * Pay from the connected wallet.
-   *
-   * Settlement is identical to the external-wallet route: a plain ERC-20
-   * transfer to the escrow address, which is then swept in. The only difference
-   * is how the transfer is originated — signed here rather than scanned — so
-   * this reuses the same two calls the QR route makes (qr.createContract to
-   * resolve the escrow, then transferToContract) and hands off to the same
-   * panel, where the sweep can be waited out or triggered by hand.
-   */
-  const handlePayFromConnectedWallet = async () => {
-    if (!contract || !config || !address) {
-      console.error('ContractPay: Missing required data for payment');
-      return;
-    }
-
-    // This route owns three of the five steps and then hands over to the QR panel, which
-    // shows the escrow being created around the funds. Listing all five here would leave two
-    // of them sitting unticked at the moment the panel replaces them.
-    setPaymentSteps([
-      { id: 'address', label: t('status.derivingAddress'), status: 'pending' },
-      { id: 'transfer', label: t('status.transferring'), status: 'pending' },
-      { id: 'confirm', label: t('status.confirming'), status: 'pending' }
-    ]);
-    setIsPaymentInProgress(true);
-    try {
-      updatePaymentStep('address', 'active');
-      setLoadingMessage(t('status.preparing'));
-      // Reuses the QR route's creator, so the address is the one contractservice
-      // considers authoritative and no second escrow is ever deployed.
-      const escrowAddress = qr.qrContractAddress ?? (await qr.createContract());
-      if (!escrowAddress) return;
-      updatePaymentStep('address', 'completed');
-
-      updatePaymentStep('transfer', 'active');
-      setLoadingMessage(t('status.confirmInWallet'));
-      await transferToContract(selectedTokenAddress, escrowAddress, String(contract.amount));
-      updatePaymentStep('transfer', 'completed');
-
-      updatePaymentStep('confirm', 'completed');
-
-      // Same destination as the QR, so the same panel picks it up from here:
-      // it polls the escrow balance and offers manual activation.
-      setPaymentMethod('qr');
-    } catch (error: any) {
-      console.error('ContractPay: Transfer to escrow failed:', error);
-      getActiveStep() && updatePaymentStep(getActiveStep()!.id, 'error');
-      alert(error?.message || t('err.paymentFailed'));
-    } finally {
-      setIsPaymentInProgress(false);
-      setLoadingMessage('');
-    }
-  };
-
   // Handle wallet-connected payment (direct transfer)
   const handleWalletPayment = async () => {
     if (!contract || !config || !address) {
@@ -817,8 +763,14 @@ export default function ContractPay() {
   const isSameAddress = address?.toLowerCase() === contract.sellerAddress?.toLowerCase();
   const networkName = config ? getNetworkName(config.chainId) : t('common.unknownNetwork');
 
-  // If user connected without choosing a method (e.g., already connected), default to wallet
-  const effectiveMethod = paymentMethod || 'wallet';
+  /**
+   * There is no longer a payment *method* to be on.
+   *
+   * The page used to render one of two stages, because the QR could not be shown until an
+   * escrow had been deployed to point it at. Every option is on one screen now, so the method
+   * no longer decides what renders — `paymentMethod` survives only to carry someone back to
+   * the right place after leaving for the onramp.
+   */
 
 
   return (
@@ -881,7 +833,7 @@ export default function ContractPay() {
               from the deal's terms now, so there is nothing to generate and nothing to wait
               for, and no reason for the options to be on separate screens.
           */}
-          {effectiveMethod === 'wallet' && (
+          {(
             <>
               {/* Payment Progress Steps */}
               {isPaymentInProgress && (
@@ -916,8 +868,12 @@ export default function ContractPay() {
                 isSameAddress={isSameAddress}
                 isPaymentInProgress={isPaymentInProgress}
                 loadingMessage={loadingMessage}
-                onPay={handlePayFromConnectedWallet}
-                onPayFromExternalWallet={() => setPaymentMethod('qr')}
+                onPay={handleWalletPayment}
+                // The QR is already below; nothing to switch to. Used by the onramp popup
+                // handler as its "closed" callback, so it must stay callable.
+                onPayFromExternalWallet={() => {
+                  document.getElementById('pay-from-elsewhere')?.scrollIntoView({ behavior: 'smooth' });
+                }}
                 // Come back on the "I have paid" panel — the funds will have
                 // landed but still need sweeping in, and that button is here.
                 addFundsReturnPath={brandedHref(`/contract-pay?contractId=${contractId}&method=qr`)}
@@ -930,7 +886,7 @@ export default function ContractPay() {
               {/* Paying from somewhere else: the address, a QR for it, and the button that
                   sweeps the funds in once they arrive. Previously a screen of its own. */}
               {!isPaymentInProgress && !isSameAddress && (
-                <div className="mt-6 pt-6 border-t border-secondary-200 dark:border-secondary-700">
+                <div id="pay-from-elsewhere" className="mt-6 pt-6 border-t border-secondary-200 dark:border-secondary-700">
                   <QrPaymentPanel
                     qr={qr}
                     networkName={networkName}
@@ -950,27 +906,10 @@ export default function ContractPay() {
             </>
           )}
 
-          {/* ============================================================ */}
-          {/* STAGE 3b: QR Code Payment */}
-          {/* ============================================================ */}
-          {effectiveMethod === 'qr' && (
-            <>
-              <QrPaymentPanel
-                qr={qr}
-                networkName={networkName}
-                tokenSymbol={selectedTokenSymbol}
-                amountInTokens={amountInTokens}
-                isMobileDevice={isMobileDevice}
-                copiedAddress={copiedAddress}
-                onCopyAddress={handleCopyAddress}
-                createButtonLabel={t('pay.payButton')}
-                createDisabled={isSameAddress}
-                createNote={isSameAddress ? t('err.payYourself') : undefined}
-                onCancel={() => router.push('/dashboard')}
-                successMessage={t('pay.verifiedRedirectDashboard')}
-              />
-            </>
-          )}
+          {/* There is no separate QR screen any more. It existed because the escrow had to be
+              deployed before an address could be shown, so paying from elsewhere meant a
+              round trip through its own stage. The address is computed now, so the QR is on
+              the screen above alongside every other way of paying. */}
         </div>
       </div>
     </div>

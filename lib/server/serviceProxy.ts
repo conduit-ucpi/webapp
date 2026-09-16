@@ -14,7 +14,7 @@ import { extractAuthToken, requireAuth } from '@/utils/api-auth';
  *    wallet, funded by it) and you READ marketplace state from contractservice. The UI never
  *    reads the chain for marketplace data, and never asks chainservice for an offer book.
  */
-type Service = 'chain' | 'contract' | 'user';
+type Service = 'chain' | 'contract' | 'user' | 'ap2';
 
 interface ProxyOptions {
   /** Which backend answers this — chainservice does things, contractservice serves reads. */
@@ -40,6 +40,8 @@ function baseUrlFor(service: Service): string | undefined {
       return process.env.CONTRACT_SERVICE_URL;
     case 'user':
       return process.env.USER_SERVICE_URL;
+    case 'ap2':
+      return process.env.AP2_SERVICE_URL;
   }
 }
 

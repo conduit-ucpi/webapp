@@ -4,6 +4,10 @@ import { methodGuard, proxyToService } from '@/lib/server/serviceProxy';
 /**
  * Settle an AP2 Payment Mandate into an escrow with a dispute window.
  *
+ * Note what a caller does NOT supply: anything that decides the escrow's address. That is
+ * derived from the verified mandate's own terms, including the checkout hash, so a request
+ * cannot steer where the payment lands.
+ *
  * A PURE PROXY. Mandate verification is SD-JWT over a chain of ES256 signatures bound to a
  * checkout hash, and it happens exactly once — in ap2service, behind this. Re-checking any of
  * it here would mean a second implementation of the thing that decides whether money moves,
@@ -26,8 +30,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     'checkout_jwt_hash',
     'open_checkout_hash',
     'eip3009',
-    'seller',
-    'contractservice_id'
+    'seller'
   ];
   const missing = required.filter((field) => req.body?.[field] === undefined || req.body?.[field] === null);
   if (missing.length > 0) {

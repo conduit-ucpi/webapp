@@ -23,8 +23,6 @@ const BODY = {
   open_checkout_hash: 'open',
   eip3009: { authorization: { from: '0x1', to: '0x2' }, signature: '0x3' },
   seller: '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC',
-  contractserviceId: undefined,
-  contractservice_id: '507f1f77bcf86cd799439011',
   dispute_window_seconds: 604800
 };
 
@@ -77,8 +75,7 @@ describe('POST /api/ap2/settle', () => {
     'checkout_jwt_hash',
     'open_checkout_hash',
     'eip3009',
-    'seller',
-    'contractservice_id'
+    'seller'
   ])('rejects a request with no %s, naming the field', async (field) => {
     const body = { ...BODY, [field]: undefined };
     const { req, res } = createMocks({ method: 'POST', body });
@@ -88,6 +85,20 @@ describe('POST /api/ap2/settle', () => {
     expect(res._getStatusCode()).toBe(400);
     expect(JSON.parse(res._getData()).error).toContain(field);
     expect(proxyToService).not.toHaveBeenCalled();
+  });
+
+  /**
+   * Everything deciding where the money goes comes off the verified mandate. A request that
+   * could name the escrow's address, or any term feeding it, could steer somebody's payment.
+   */
+  it('has no field that could steer the escrow address', async () => {
+    const { req, res } = createMocks({ method: 'POST', body: BODY });
+
+    await handler(req as any, res as any);
+
+    const body = proxyToService.mock.calls[0][2].body;
+    expect(Object.keys(body)).not.toContain('contractservice_id');
+    expect(Object.keys(body)).not.toContain('escrow_address');
   });
 
   it('rejects anything but POST', async () => {

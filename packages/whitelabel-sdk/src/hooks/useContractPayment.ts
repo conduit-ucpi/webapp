@@ -54,6 +54,17 @@ interface PaymentDeps {
   getActiveStep: () => { id: string } | undefined;
   onSuccess: (result: any) => void;
   onError: (error: Error) => void;
+  /**
+   * The factory, implementation and default arbiter an escrow's address is derived from,
+   * as published by /api/config.
+   *
+   * Injected rather than read from ConfigProvider so this hook stays usable wherever the
+   * pages are — the rest of its inputs arrive the same way, and reaching into context here
+   * would tie every consumer to a provider it does not otherwise need.
+   */
+  contractFactoryAddress?: string;
+  implementationAddress?: string;
+  defaultArbiterAddress?: string;
 }
 
 function assertSufficientBalance(deps: PaymentDeps): void {
@@ -95,20 +106,27 @@ export function useContractPayment() {
         deps.updatePaymentStep('transfer', 'active');
         deps.setLoadingMessage('Creating contract and transferring funds...');
 
+        // The escrow address is computed from these, so a missing one is not something to
+        // paper over with a default: it would produce an address the factory can never deploy
+        // to, and funds sent there could not be recovered by anyone.
+        if (!deps.contractFactoryAddress || !deps.implementationAddress || !deps.defaultArbiterAddress) {
+          throw new Error('Contract configuration is not loaded yet — cannot determine the escrow address');
+        }
+
         const result = await executeDirectPaymentSequence(params, {
           authenticatedFetch: deps.authenticatedFetch as any,
           transferToContract: deps.transferToContract,
           getWeb3Service: deps.getWeb3Service,
+          factoryAddress: deps.contractFactoryAddress,
+          implementationAddress: deps.implementationAddress,
+          defaultArbiterAddress: deps.defaultArbiterAddress,
           onProgress: (step, _message, _contractAddr) => {
             switch (step) {
-              case 'contract_creation':
-                deps.setLoadingMessage('Step 1: Creating secure escrow...');
-                break;
-              case 'contract_confirmation':
-                deps.setLoadingMessage('Step 1.5: Waiting for contract creation...');
-                break;
-              case 'contract_created':
-                deps.setLoadingMessage('Step 1 complete: Contract created');
+              // The escrow is no longer deployed before payment, so there is no creation
+              // transaction to announce or wait on. Its address is computed instead, which
+              // takes no time worth reporting.
+              case 'address_reserved':
+                deps.setLoadingMessage('Step 1: Escrow address reserved');
                 break;
               case 'transfer':
                 deps.updatePaymentStep('transfer', 'active');
@@ -122,7 +140,7 @@ export function useContractPayment() {
               case 'activation':
                 deps.updatePaymentStep('confirm', 'completed');
                 deps.updatePaymentStep('activate', 'active');
-                deps.setLoadingMessage('Step 3: Activating contract...');
+                deps.setLoadingMessage('Step 3: Creating escrow around your funds...');
                 break;
               case 'complete':
                 deps.updatePaymentStep('activate', 'completed');

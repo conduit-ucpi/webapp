@@ -373,6 +373,11 @@ export default function ContractPay() {
             router.push('/dashboard');
           }, 2000);
         },
+        // The escrow's address is computed from these, so they travel with the payment
+        // rather than being looked up inside the hook.
+        contractFactoryAddress: config?.contractFactoryAddress,
+        implementationAddress: config?.contractAddress,
+        defaultArbiterAddress: config?.defaultArbiterAddress,
         onError: (error) => {
           console.error('ContractPay: Wallet payment failed:', error);
           alert(error.message || t('err.paymentFailed'));

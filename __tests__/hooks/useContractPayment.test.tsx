@@ -64,6 +64,10 @@ describe('useContractPayment', () => {
     getActiveStep: () => getPaymentSteps(),
     onSuccess,
     onError,
+    // The escrow address is computed from these, so the hook refuses to pay without them.
+    contractFactoryAddress: '0x2e234DAe75C793f67A35089C9d99245E1C58470b',
+    implementationAddress: '0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f',
+    defaultArbiterAddress: '0x9bB8e809EA6F5A74f46027D8016641D9cE9A149C',
   });
 
   beforeEach(() => {
@@ -103,6 +107,28 @@ describe('useContractPayment', () => {
       expect(onSuccess).toHaveBeenCalledWith({ contractAddress: '0xEscrow', transferTxHash: '0xtx' });
       expect(onError).not.toHaveBeenCalled();
     });
+
+    /**
+     * Without the factory, implementation and arbiter there is no way to know where the
+     * escrow lives. Guessing would hand the buyer an address the factory can never deploy
+     * to, and anything sent there would be beyond anyone's reach — so refuse to sign at all.
+     */
+    it.each(['contractFactoryAddress', 'implementationAddress', 'defaultArbiterAddress'])(
+      'refuses to pay when %s is missing',
+      async (missing) => {
+        const { result } = renderHook(() => useContractPayment());
+        const deps: any = { ...baseDeps(), [missing]: undefined };
+
+        await act(async () => {
+          const p = result.current.runDirectPayment(params, deps);
+          await jest.runAllTimersAsync();
+          await p;
+        });
+
+        expect(mockDirect).not.toHaveBeenCalled();
+        expect(onError).toHaveBeenCalled();
+      }
+    );
 
     it('throws before signing when balance is insufficient, with the exact message, and calls onError', async () => {
       const { result } = renderHook(() => useContractPayment());

@@ -482,6 +482,11 @@ export default function ContractCreate() {
         setLoadingMessage,
         setBusy: setIsLoading,
         getActiveStep,
+        // The escrow's address is computed from these, so they travel with the payment
+        // rather than being looked up inside the hook.
+        contractFactoryAddress: config?.contractFactoryAddress,
+        implementationAddress: config?.contractAddress,
+        defaultArbiterAddress: config?.defaultArbiterAddress,
         onSuccess: handlePaymentSuccess,
         onError: handlePaymentError,
       }

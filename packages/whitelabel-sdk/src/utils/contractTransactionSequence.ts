@@ -464,6 +464,14 @@ interface DirectPaymentOptions {
   transferToContract: (tokenAddress: string, contractAddress: string, amount: string) => Promise<string>;
   getWeb3Service: () => Promise<any>;
   onProgress?: (step: string, message: string, contractAddress?: string) => void;
+  /**
+   * The factory, implementation and default arbiter the escrow address is derived from — all
+   * three come from /api/config, so the browser computes exactly the address chainservice
+   * will deploy to.
+   */
+  factoryAddress: string;
+  implementationAddress: string;
+  defaultArbiterAddress: string;
 }
 
 export async function executeDirectPaymentSequence(
@@ -474,83 +482,82 @@ export async function executeDirectPaymentSequence(
     authenticatedFetch,
     transferToContract,
     getWeb3Service,
-    onProgress
+    onProgress,
+    factoryAddress,
+    implementationAddress,
+    defaultArbiterAddress
   } = options;
 
-  // Step 1: Resolve the on-chain escrow address. Skips deploy if one already exists
-  // for this pending contract; trusts contractservice's stored address as the source
-  // of truth (chainservice can return an orphan address if its post-create
-  // notification to contractservice fails).
-  const { contractAddress, contractCreationTxHash } = await resolveOrCreateOnChainContract(
-    params,
-    { authenticatedFetch, getWeb3Service, onProgress }
-  );
+  // Step 1: work out where the escrow will live, and tell contractservice before sending
+  // anything. A pure computation - no deployment, no receipt to wait for, and no round trip
+  // to discover an address that used to exist only once something had been deployed.
+  const { contractAddress } = await reserveCounterfactualAddress(params, {
+    authenticatedFetch,
+    factoryAddress,
+    implementationAddress,
+    defaultArbiterAddress,
+    onProgress
+  });
 
-  // Brief settle so the buyer's nonce is up to date before signing the transfer
-  if (contractCreationTxHash) {
-    await new Promise(resolve => setTimeout(resolve, 2000));
-  }
-
-  // Step 2: Transfer tokens directly to the contract (simple ERC20 push transfer)
+  // Step 2: the buyer's single signature. Nothing is deployed at this address yet, and that
+  // is fine - an ERC20 transfer is a ledger entry inside the TOKEN contract, which does not
+  // care whether the destination holds any code.
   onProgress?.('transfer', 'Transferring funds to escrow...');
-  console.log('🔧 DirectPayment: Executing direct ERC20 transfer to contract');
-
   const transferTxHash = await transferToContract(
     params.tokenAddress,
     contractAddress,
     params.amount.toString()
   );
 
-  console.log('🔧 DirectPayment: Transfer transaction:', transferTxHash);
-
-  // Step 2.5: Wait for transfer to be confirmed
   if (transferTxHash) {
-    console.log('🔧 DirectPayment: Waiting for transfer to be confirmed:', transferTxHash);
     onProgress?.('transfer_confirmation', 'Waiting for transfer to be confirmed...');
-
-    try {
-      const web3Service = await getWeb3Service();
-      const receipt = await web3Service.waitForTransaction(transferTxHash, 120000, params.contractserviceId);
-
-      if (receipt) {
-        console.log('🔧 DirectPayment: Transfer confirmed. Block:', receipt.blockNumber);
-      } else {
-        console.warn('🔧 DirectPayment: Transfer confirmation timed out - may still be pending');
-      }
-    } catch (waitError) {
-      console.error('🔧 DirectPayment: Transfer confirmation failed:', waitError);
-      throw new Error(`Transfer confirmation failed: ${waitError instanceof Error ? waitError.message : 'Unknown error'}`);
+    const web3Service = await getWeb3Service();
+    const receipt = await web3Service.waitForTransaction(transferTxHash, 120000, params.contractserviceId);
+    if (!receipt) {
+      // Not fatal. The money may well have landed, and the address is already recorded, so
+      // the sweep can still deploy onto it. Timing out is worth saying; calling it a failure
+      // would not be true.
+      console.warn('🔧 DirectPayment: transfer confirmation timed out - may still be pending');
     }
   }
 
-  // Step 3: Call check-and-activate to verify balance and activate the contract
-  onProgress?.('activation', 'Activating contract...');
-  console.log('🔧 DirectPayment: Calling check-and-activate');
-
-  const activateResponse = await authenticatedFetch('/api/chain/check-and-activate', {
+  // Step 3: create the escrow on top of those funds and activate it, in one transaction.
+  //
+  // This is the step that makes the money reachable. Until it lands, the tokens sit at an
+  // address with no code and nothing can move them. If it fails, or this browser dies first,
+  // the scheduled sweep finishes the job instead - which is exactly why the address was
+  // recorded in step 1 rather than here.
+  onProgress?.('activation', 'Creating and activating escrow...');
+  const activateResponse = await authenticatedFetch('/api/chain/deploy-and-activate', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ contractAddress })
+    body: JSON.stringify({
+      tokenAddress: params.tokenAddress,
+      buyer: params.buyer,
+      seller: params.seller,
+      amount: params.amount.toString(),
+      expiryTimestamp: params.expiryTimestamp,
+      description: params.description,
+      ...(params.arbiterAddress ? { arbiter: params.arbiterAddress } : {}),
+      contractserviceId: params.contractserviceId,
+      factoryAddress
+    })
   });
 
-  if (!activateResponse.ok) {
-    const errorData = await activateResponse.json().catch(() => ({}));
-    console.error('🔧 DirectPayment: check-and-activate failed:', errorData);
-    throw new Error(errorData.error || 'Contract activation failed');
-  }
+  const activateData = await activateResponse.json().catch(() => ({}));
 
-  const activateData = await activateResponse.json();
-  console.log('🔧 DirectPayment: check-and-activate response:', activateData);
-
-  if (!activateData.success) {
-    throw new Error(activateData.error || 'Contract activation returned unsuccessful');
+  if (!activateResponse.ok || !activateData.success) {
+    throw new Error(
+      activateData.error ||
+        'The transfer went through but the escrow could not be created on top of it. The funds ' +
+          'are at the escrow address and will be picked up automatically.'
+    );
   }
 
   onProgress?.('complete', 'Payment completed successfully');
 
   return {
     contractAddress,
-    contractCreationTxHash,
     transferTxHash
   };
 }

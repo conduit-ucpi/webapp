@@ -27,6 +27,14 @@ export interface Config {
   // Contract addresses
   contractAddress?: string;
   contractFactoryAddress?: string;
+  /**
+   * The arbiter every escrow is created with when none is named.
+   *
+   * Needed in the browser because the arbiter is one of the terms an escrow's address is
+   * derived from — computing that address with a different value yields somewhere the factory
+   * will never deploy to.
+   */
+  defaultArbiterAddress?: string;
   // Service URLs
   userServiceUrl?: string;
   chainServiceUrl?: string;

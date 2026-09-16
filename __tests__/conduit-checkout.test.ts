@@ -315,6 +315,109 @@ describe('ConduitCheckout SDK', () => {
     });
   });
 
+  /**
+   * The payout-date check, and why it had never once run.
+   *
+   * ⚠️ IT FAILED OPEN, SILENTLY. resultservice returns `maturity`; this read
+   *    `result.expiryTimestamp`, kept asking for the old name after the rename, and got
+   *    undefined. parseInt(undefined) is NaN, every comparison against NaN is false, so
+   *    `Math.abs(expected - NaN) > 60` evaluated false and the check announced success
+   *    without ever having seen a date. A merchant asking for the payout date to be verified
+   *    got no verification at all, and nothing said so.
+   */
+  describe('Payout date verification', () => {
+    const record = (overrides: Record<string, unknown> = {}) => ({
+      contractid: 'abc123',
+      chainAddress: '0xcontract123',
+      sellerWalletId: '0x1234567890abcdef1234567890abcdef12345678',
+      amount: 50000000,
+      currency: 'microUSDC',
+      description: 'Test Product',
+      state: 'CLAIMED',
+      ...overrides,
+    });
+
+    const answerWith = (result: Record<string, unknown>) =>
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ count: 1, results: [result] }),
+      });
+
+    beforeEach(() => {
+      ConduitCheckout.init({
+        sellerAddress: '0x1234567890abcdef1234567890abcdef12345678',
+        baseUrl: 'https://app.example.com',
+        verificationTimeout: 10000,
+        verificationInterval: 1000,
+      });
+      ConduitCheckout.currentPayment = {
+        amount: 50.0,
+        description: 'Test Product',
+        tokenSymbol: 'USDC',
+        expiryTimestamp: 1767745061,
+      };
+    });
+
+    it('reads the date from maturity, which is what the service returns', async () => {
+      answerWith(record({ maturity: 1767745061 }));
+
+      const result = await ConduitCheckout.verifyPayment('abc123');
+
+      expect(result.verified).toBe(true);
+      expect(result.expiryTimestamp).toBe(1767745061);
+    });
+
+    it('catches a payout date that does not match', async () => {
+      // The whole point of the check: the contract would release on a different day from the
+      // one the merchant quoted. Previously this passed.
+      answerWith(record({ maturity: 1767745061 + 86_400 }));
+
+      await expect(ConduitCheckout.verifyPayment('abc123')).rejects.toThrow(
+        /Payout date mismatch/
+      );
+    });
+
+    it('allows the 60-second tolerance', async () => {
+      answerWith(record({ maturity: 1767745061 + 30 }));
+
+      await expect(ConduitCheckout.verifyPayment('abc123')).resolves.toMatchObject({
+        verified: true,
+      });
+    });
+
+    it('refuses to call a date verified when there is no date', async () => {
+      // ⚠️ THE REGRESSION GUARD. A record with no payout date at all used to sail through on
+      //    the NaN comparison. The merchant asked for this to be checked, so being unable to
+      //    check it is a failure, never a pass.
+      answerWith(record());
+
+      await expect(ConduitCheckout.verifyPayment('abc123')).rejects.toThrow(
+        /Payout date could not be verified/
+      );
+    });
+
+    it('still reads the old field name, for a service that has not been redeployed', async () => {
+      // The fallback is for OLD data, not for absence — a deployment still returning
+      // expiryTimestamp must keep verifying rather than start rejecting payments.
+      answerWith(record({ expiryTimestamp: 1767745061 }));
+
+      await expect(ConduitCheckout.verifyPayment('abc123')).resolves.toMatchObject({
+        verified: true,
+      });
+    });
+
+    it('checks nothing when the merchant did not ask for a date', async () => {
+      // No expiryTimestamp on the payment means no expectation to test against, so a record
+      // without one is fine.
+      ConduitCheckout.currentPayment = { amount: 50.0, description: 'Test Product', tokenSymbol: 'USDC' };
+      answerWith(record());
+
+      await expect(ConduitCheckout.verifyPayment('abc123')).resolves.toMatchObject({
+        verified: true,
+      });
+    });
+  });
+
   describe('Security Checks', () => {
     beforeEach(() => {
       ConduitCheckout.init({

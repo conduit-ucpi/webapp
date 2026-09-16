@@ -79,6 +79,9 @@ export default function ReserveDetailsModal({
   const held = reserve.holdback;
   const due = reserve.dueBack;
   const pct = reserve.resolvedBuyerPercentage;
+  // Trimmed rather than passed through escrowTitle: the fallback here is a different heading,
+  // not a placeholder name, so this needs to know whether there IS one.
+  const title = reserve.description?.trim();
 
   // Only where the contract has actually decided it. Deriving it while LIVE would state an award
   // that has not happened, and while DISPUTED one that is still being voted on.
@@ -104,9 +107,29 @@ export default function ReserveDetailsModal({
         <div className="space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-start justify-between pb-4 border-b border-secondary-200 gap-3">
             <div>
-              <h3 className="text-xl font-semibold text-secondary-900">
-                Reserve on a payment you sold
-              </h3>
+              {/*
+                ⚠️ THE DESCRIPTION IS THE HEADING WHEN THERE IS ONE. "Reserve on a payment you
+                   sold" describes every row in the list identically, so a supplier who opened
+                   this to find out WHICH payment learns nothing from it — and selling dropped
+                   the escrow out of their contract list, so there is nowhere else to go and
+                   look. Demoted to a caption above the name rather than deleted: it is still
+                   what the screen is, just not which one.
+
+                   Falls back to the generic heading when contractservice has no record for the
+                   escrow, instead of captioning a placeholder with its own synonym.
+              */}
+              {title ? (
+                <>
+                  <p className="text-xs font-medium uppercase tracking-wide text-secondary-500">
+                    Reserve on a payment you sold
+                  </p>
+                  <h3 className="text-xl font-semibold text-secondary-900 mt-0.5">{title}</h3>
+                </>
+              ) : (
+                <h3 className="text-xl font-semibold text-secondary-900">
+                  Reserve on a payment you sold
+                </h3>
+              )}
               <div className="text-sm text-secondary-600 mt-1">
                 Contract <ExpandableHash hash={reserve.escrowContract || ''} />
               </div>

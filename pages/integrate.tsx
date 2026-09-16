@@ -9,6 +9,7 @@ import { btnPrimary, btnOutline } from '@/utils/landingStyles';
 import { getSiteNameFromDomain } from '@/utils/siteName';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import WalletRegistrationPrereq from '@/components/ui/WalletRegistrationPrereq';
+import { API_BASE } from '@/lib/apiFetch';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -70,6 +71,13 @@ export default function IntegratePage() {
   const { config } = useConfig();
   const siteName = getSiteNameFromDomain();
   const origin = typeof window !== 'undefined' ? window.location.origin : 'https://app.instantescrow.nz';
+  /*
+   * ⚠️ THE API HOST, NOT THE APP HOST. `/api/results` on the app origin is the Next proxy, and
+   *    that one calls requireAuth — a merchant's server has no session and gets 401. Caddy routes
+   *    the API host straight to resultservice, which is public and is what these examples must
+   *    show. Falls back to the deployed host for the box build, where API_BASE is empty.
+   */
+  const apiOrigin = API_BASE || 'https://api.stabledrop.me';
 
   const currencyList = config?.supportedTokens?.length
     ? config.supportedTokens.map(t => t.symbol).join('/')
@@ -180,7 +188,7 @@ export default function IntegratePage() {
 
     // RECOMMENDED: Auto-send verified payment to your backend
     webhookUrl: 'https://yoursite.com/api/conduit-webhook',
-    webhookSecret: 'your-secret-key',  // For HMAC signature verification
+    webhookSecret: 'your-secret-key',  // Optional. Not the check that matters — see below.
 
     // Optional: Default token ('USDC' or 'USDT')
     tokenSymbol: 'USDC',
@@ -435,7 +443,7 @@ export default function IntegratePage() {
                         { opt: 'sellerAddress', type: 'string', req: true, def: '-', desc: 'Your wallet address to receive payments' },
                         { opt: 'baseUrl', type: 'string', req: true, def: '-', desc: 'Base URL of checkout page' },
                         { opt: 'webhookUrl', type: 'string', req: false, def: '-', desc: 'Webhook URL for payment verification' },
-                        { opt: 'webhookSecret', type: 'string', req: false, def: '-', desc: 'HMAC secret for webhook signatures' },
+                        { opt: 'webhookSecret', type: 'string', req: false, def: '-', desc: 'Optional HMAC secret for webhook signatures. Set in the browser, so confirm against /api/results before fulfilling' },
                         { opt: 'tokenSymbol', type: 'string', req: false, def: "'USDC'", desc: "'USDC' or 'USDT'" },
                         { opt: 'expiryDays', type: 'number', req: false, def: '7', desc: 'Days until auto-release to seller' },
                         { opt: 'mode', type: 'string', req: false, def: "'popup'", desc: "'popup' or 'redirect'" },
@@ -522,7 +530,10 @@ export default function IntegratePage() {
                 Webhook-based order fulfillment.
               </h2>
               <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-12 max-w-md">
-                Receive server-to-server notifications when payments complete. The SDK sends verified payment data to your webhook automatically.
+                Get told when a payment completes, then confirm it yourself. The webhook says
+                something happened; <code className="bg-secondary-100 dark:bg-secondary-800 px-1 rounded text-xs">/api/results</code>{' '}
+                is the source of truth, and it is a public endpoint you can query from your server
+                with no key and no setup.
               </p>
             </Fade>
 
@@ -541,7 +552,9 @@ export default function IntegratePage() {
 
   // Webhook config
   webhookUrl: 'https://yoursite.com/api/conduit-webhook',
-  webhookSecret: 'your-secret-key',  // Store securely!
+  // Optional. It signs the POST, but this file is served to every visitor, so treat
+  // the signature as a hint and let the /api/results lookup below decide.
+  webhookSecret: 'your-secret-key',
 
   onSuccess: function(verifiedData) {
     // Webhook already sent! Just show UI confirmation
@@ -560,62 +573,70 @@ export default function IntegratePage() {
               <Fade delay={0.1}>
                 <div>
                   <StepNumber n={2} />
-                  <h3 className="text-lg font-medium text-secondary-900 dark:text-white mb-2">Create webhook endpoint</h3>
+                  <h3 className="text-lg font-medium text-secondary-900 dark:text-white mb-2">Confirm it, then fulfil</h3>
                   <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-4">
-                    One endpoint handles verification, order processing, and fulfillment.
+                    Ask <code className="bg-secondary-100 dark:bg-secondary-800 px-1 rounded text-xs">/api/results</code>{' '}
+                    what really happened before you ship anything. It reads the same record the
+                    checkout polls, so it settles the amount, the currency and who was paid — and a
+                    request that never arrives changes nothing.
                   </p>
                   <CodeBlock id="webhook-handler">
-                    {`const crypto = require('crypto');
-
-// POST /api/conduit-webhook
+                    {`// POST /api/conduit-webhook
 app.post('/api/conduit-webhook', async (req, res) => {
   try {
-    // 1. VERIFY HMAC SIGNATURE (prevents spoofing)
-    const signature = req.headers['x-conduit-signature'];
-    const payload = JSON.stringify(req.body);
+    const { contractId, orderId } = req.body;
 
-    const expectedSig = crypto
-      .createHmac('sha256', process.env.WEBHOOK_SECRET)
-      .update(payload)
-      .digest('hex');
+    // 1. ASK THE SOURCE OF TRUTH. Never fulfil on the request body alone —
+    //    this is the only thing here that your own server has checked.
+    const lookup = await fetch('${apiOrigin}/api/results', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contractid: contractId })
+    });
+    const { count, results } = await lookup.json();
 
-    if (signature !== expectedSig) {
-      return res.status(401).json({ error: 'Invalid signature' });
+    if (count === 0) {
+      return res.status(404).json({ error: 'No such payment' });
     }
 
-    // 2. EXTRACT VERIFIED DATA
-    const {
-      contractId,
-      chainAddress,
-      amount,
-      currencySymbol,
-      state,
-      verified,
-      verifiedAt,
-      orderId,
-      email,
-      metadata
-    } = req.body;
+    const payment = results[0];
 
-    console.log('Payment verified:', contractId, amount, currencySymbol);
+    // 2. CHECK IT IS THE PAYMENT YOU WERE EXPECTING
+    const order = await db.orders.findUnique({ where: { id: orderId } });
 
-    // 3. PROCESS PAYMENT IN YOUR SYSTEM
+    // \`state\` tracks the escrow's life — CLAIMED, ACTIVE and so on are all real
+    // payments, so test for the states that mean it FAILED rather than for one
+    // that means it worked. No chainAddress yet means it has not reached the
+    // chain; poll again rather than rejecting it.
+    const FAILED_STATES = ['NEVER_FUNDED', 'ERROR', 'FAILED'];
+
+    const paidToYou = payment.sellerWalletId.toLowerCase() === YOUR_WALLET.toLowerCase();
+    const amount = payment.currency.toLowerCase().startsWith('micro')
+      ? Number(payment.amount) / 1000000
+      : Number(payment.amount);
+
+    if (!paidToYou)                          return res.status(400).json({ error: 'Not your wallet' });
+    if (FAILED_STATES.includes(payment.state)) return res.status(409).json({ error: 'Payment failed' });
+    if (!payment.chainAddress)               return res.status(409).json({ error: 'Not on chain yet' });
+    if (Math.abs(amount - order.total) > 0.001) {
+      return res.status(400).json({ error: 'Amount mismatch' });
+    }
+
+    // 3. NOW IT IS SAFE TO FULFIL
     await db.orders.update({
       where: { id: orderId },
       data: {
         status: 'PAID',
         paymentContractId: contractId,
-        paymentChainAddress: chainAddress,
+        paymentChainAddress: payment.chainAddress,
         paymentAmount: amount,
-        paidAt: new Date(verifiedAt)
+        paidAt: new Date()
       }
     });
 
-    // 4. FULFILL ORDER
     await fulfillment.ship(orderId);
-    await email.sendConfirmation(email, orderId);
+    await email.sendConfirmation(order.email, orderId);
 
-    // 5. RESPOND SUCCESS
     res.json({ received: true });
 
   } catch (error) {
@@ -627,18 +648,145 @@ app.post('/api/conduit-webhook', async (req, res) => {
                 </div>
               </Fade>
 
+              <Fade delay={0.15}>
+                <div>
+                  <StepNumber n={3} />
+                  <h3 className="text-lg font-medium text-secondary-900 dark:text-white mb-2">Check a payment yourself</h3>
+                  <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-4">
+                    The same query, on its own. Public, unauthenticated, no key to request — give it
+                    a <code className="bg-secondary-100 dark:bg-secondary-800 px-1 rounded text-xs">contractid</code>{' '}
+                    and it tells you what was paid and to whom. Useful for reconciliation, for
+                    support, and for replaying anything a webhook missed.
+                  </p>
+                  <CodeBlock id="results-query-curl" language="bash">
+                    {`curl -X POST ${apiOrigin}/api/results \\
+  -H 'Content-Type: application/json' \\
+  -d '{"contractid": "507f1f77bcf86cd799439011"}'`}
+                  </CodeBlock>
+                  <p className="text-sm text-secondary-500 dark:text-secondary-400 mt-4 mb-3">
+                    Response:
+                  </p>
+                  <CodeBlock id="results-query-response" language="json">
+                    {`{
+  "count": 1,
+  "results": [
+    {
+      "contractid": "507f1f77bcf86cd799439011",
+      "chainAddress": "0x1234567890abcdef1234567890abcdef12345678",
+      "sellerWalletId": "0xYourWalletAddress",
+      "amount": 50000000.0,
+      "description": "Order 1234",
+      "currency": "microUSDC",
+      "state": "CLAIMED",
+      "chainId": "8453",
+      "createdate": 1705318200,
+      "maturity": 1705404600
+    }
+  ]
+}`}
+                  </CodeBlock>
+                  {/* Query fields — the request side of /api/results. */}
+                  <div className="overflow-x-auto mt-8">
+                    <h4 className="text-sm font-medium text-secondary-900 dark:text-white mb-3">Query fields</h4>
+                    <table className="min-w-full border border-secondary-200 dark:border-secondary-700 rounded-lg text-sm">
+                      <thead className="bg-secondary-100 dark:bg-secondary-800">
+                        <tr>
+                          <th className="px-4 py-3 text-left font-medium text-secondary-900 dark:text-white">Field</th>
+                          <th className="px-4 py-3 text-left font-medium text-secondary-900 dark:text-white">Type</th>
+                          <th className="px-4 py-3 text-left font-medium text-secondary-900 dark:text-white">Description</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-secondary-200 dark:divide-secondary-700">
+                        {[
+                          { f: 'contractid', t: 'string', d: 'Exact match on the contract id the checkout returns' },
+                          { f: 'chainAddress', t: 'string', d: 'Exact match on the escrow address' },
+                          { f: 'chainAddresses', t: 'string[]', d: 'The batch form. OR within the list, so one round trip fills in a whole page of contracts instead of one call each. Case-insensitive, because addresses read from event logs are lower case while records may be checksummed' },
+                          { f: 'sellerWalletId', t: 'string', d: 'Matches seller OR buyer, case-insensitively — this is how you list everything paid to your wallet' },
+                        ].map((row, i) => (
+                          <tr key={row.f} className={i % 2 === 1 ? 'bg-secondary-50 dark:bg-secondary-800/50' : ''}>
+                            <td className="px-4 py-3 font-mono text-secondary-900 dark:text-white">{row.f}</td>
+                            <td className="px-4 py-3 text-secondary-500 dark:text-secondary-400">{row.t}</td>
+                            <td className="px-4 py-3 text-secondary-500 dark:text-secondary-400">{row.d}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    <p className="text-xs text-secondary-500 dark:text-secondary-400 mt-3">
+                      All optional, but at least one is required — an empty body returns 400.
+                      Multiple fields combine with AND.
+                    </p>
+                  </div>
+
+                  {/* Response fields — every key ResultItem actually returns. */}
+                  <div className="overflow-x-auto mt-8">
+                    <h4 className="text-sm font-medium text-secondary-900 dark:text-white mb-3">Response fields</h4>
+                    <table className="min-w-full border border-secondary-200 dark:border-secondary-700 rounded-lg text-sm">
+                      <thead className="bg-secondary-100 dark:bg-secondary-800">
+                        <tr>
+                          <th className="px-4 py-3 text-left font-medium text-secondary-900 dark:text-white">Field</th>
+                          <th className="px-4 py-3 text-left font-medium text-secondary-900 dark:text-white">Type</th>
+                          <th className="px-4 py-3 text-left font-medium text-secondary-900 dark:text-white">Description</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-secondary-200 dark:divide-secondary-700">
+                        {[
+                          { f: 'contractid', t: 'string', d: 'The contract id' },
+                          { f: 'chainAddress', t: 'string', d: 'Escrow address on chain. Absent means it has not reached the chain yet — poll again, do not reject' },
+                          { f: 'sellerWalletId', t: 'string', d: 'Who gets paid. Compare against your own wallet' },
+                          { f: 'amount', t: 'number', d: 'In the units of currency below, so divide by 1,000,000 for a micro currency' },
+                          { f: 'description', t: 'string', d: 'What the payment was for' },
+                          { f: 'currency', t: 'string', d: 'e.g. microUSDC. There is no separate currencySymbol field' },
+                          { f: 'state', t: 'string', d: 'Lifecycle, not pass/fail — a completed payment reads CLAIMED. Test for NEVER_FUNDED, ERROR and FAILED rather than for one success value' },
+                          { f: 'chainId', t: 'string', d: 'e.g. 8453 for Base' },
+                          { f: 'createdate', t: 'number', d: 'Unix seconds when the record was made' },
+                          { f: 'maturity', t: 'number', d: 'Unix seconds when the cashflow unlocks. Distinct from createdate' },
+                        ].map((row, i) => (
+                          <tr key={row.f} className={i % 2 === 1 ? 'bg-secondary-50 dark:bg-secondary-800/50' : ''}>
+                            <td className="px-4 py-3 font-mono text-secondary-900 dark:text-white">{row.f}</td>
+                            <td className="px-4 py-3 text-secondary-500 dark:text-secondary-400">{row.t}</td>
+                            <td className="px-4 py-3 text-secondary-500 dark:text-secondary-400">{row.d}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <p className="text-xs text-secondary-500 dark:text-secondary-400 mt-4">
+                    <code className="bg-secondary-100 dark:bg-secondary-800 px-1 rounded">count: 0</code>{' '}
+                    means no such payment — treat it as unpaid, never as an error. You can also query
+                    by <code className="bg-secondary-100 dark:bg-secondary-800 px-1 rounded">chainAddress</code>, or by{' '}
+                    <code className="bg-secondary-100 dark:bg-secondary-800 px-1 rounded">sellerWalletId</code>{' '}
+                    to list everything paid to your wallet. Amounts in a{' '}
+                    <code className="bg-secondary-100 dark:bg-secondary-800 px-1 rounded">micro</code>-prefixed
+                    currency are in millionths, so divide by 1,000,000.{' '}
+                    <code className="bg-secondary-100 dark:bg-secondary-800 px-1 rounded">state</code>{' '}
+                    is the escrow&apos;s lifecycle, not a pass/fail — a completed payment reads{' '}
+                    <code className="bg-secondary-100 dark:bg-secondary-800 px-1 rounded">CLAIMED</code>,
+                    so check for the failure states rather than for one success value.
+                  </p>
+                </div>
+              </Fade>
+
               <Fade delay={0.2}>
                 <div>
                   <h3 className="text-lg font-medium text-secondary-900 dark:text-white mb-3">Webhook payload</h3>
                   <CodeBlock id="webhook-payload" language="json">
                     {`{
-  "transaction_hash": "0x1234...",
-  "contract_address": "0x5678...",
-  "contract_id": "abc123",
-  "order_id": "1234",
-  "expected_amount": 50.00,
-  "expected_recipient": "0x9abc...",
-  "merchant_wallet": "0xdef0..."
+  "contractId": "507f1f77bcf86cd799439011",
+  "chainAddress": "0x5678...",
+  "seller": "0xYourWalletAddress",
+  "amount": 50.00,
+  "amountRaw": 50000000,
+  "currencySymbol": "USDC",
+  "currencyRaw": "microUSDC",
+  "description": "Order 1234",
+  "state": "OK",
+  "verified": true,
+  "verifiedAt": "2026-01-15T10:30:00.000Z",
+  "orderId": "1234",
+  "email": "buyer@example.com",
+  "metadata": {},
+  "timestamp": 1705318200
 }`}
                   </CodeBlock>
                 </div>

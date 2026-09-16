@@ -12,6 +12,17 @@ interface ArbiterPanelProps {
   state: ArbiterState | null;
   loading: boolean;
   onChanged: () => Promise<void> | void;
+  /**
+   * Which side of this escrow is looking, so the panel can say whose nomination is whose.
+   *
+   * ⚠️ A SALE MOVES THE RECIPIENT, so this cannot be derived from the contract record alone —
+   *    after a sale the recipient is the LP, and the local record only learns that when
+   *    `OfferAccepted` reaches the index. The caller resolves it against the chain read.
+   *
+   * Null for anyone who is neither party, and for a viewer we could not place. The panel then
+   * falls back to naming both sides explicitly rather than guessing which one is "theirs".
+   */
+  viewerRole?: 'buyer' | 'recipient' | null;
 }
 
 /**
@@ -28,7 +39,13 @@ interface ArbiterPanelProps {
  *    should be written — legacy escrows cannot reach these states at all, since the marketplace
  *    only accepts clones matching the new codehash.
  */
-export default function ArbiterPanel({ contractAddress, state, loading, onChanged }: ArbiterPanelProps) {
+export default function ArbiterPanel({
+  contractAddress,
+  state,
+  loading,
+  onChanged,
+  viewerRole = null
+}: ArbiterPanelProps) {
   const t = useT();
   const { nominateArbiter, evictArbiter, seatDefaultArbiter } = useMarketplaceActions();
   const [candidate, setCandidate] = useState('');
@@ -68,7 +85,25 @@ export default function ArbiterPanel({ contractAddress, state, loading, onChange
   };
 
   const candidateIsValid = ethers.isAddress(candidate);
-  const otherPartyNomination = state.nominatedByBuyer || state.nominatedByRecipient;
+
+  /*
+   * ⚠️ WHOSE NOMINATION IS WHOSE. This used to be `nominatedByBuyer || nominatedByRecipient`,
+   *    which is not the other party — it is "the buyer's, else the recipient's", whoever is
+   *    looking. For a BUYER who had already nominated it returned their OWN choice, and the
+   *    match test below then told them "that arbiter is now seated" when re-nominating their
+   *    own candidate had seated nobody. A false claim about who can decide their dispute.
+   *
+   * Null role means we could not place the viewer, so neither nomination may be called theirs.
+   */
+  const mine =
+    viewerRole === 'buyer' ? state.nominatedByBuyer
+      : viewerRole === 'recipient' ? state.nominatedByRecipient
+        : null;
+  const theirs =
+    viewerRole === 'buyer' ? state.nominatedByRecipient
+      : viewerRole === 'recipient' ? state.nominatedByBuyer
+        : null;
+  const unplaced = viewerRole === null && (state.nominatedByBuyer || state.nominatedByRecipient);
 
   return (
     <div className="rounded-lg border border-gray-200 dark:border-secondary-700 p-4 space-y-4">
@@ -106,7 +141,53 @@ export default function ArbiterPanel({ contractAddress, state, loading, onChange
             </div>
           </div>
 
-          {otherPartyNomination && (
+          {/*
+            What each side has put forward. Naming the same address is the whole mechanism, so
+            not showing the other party's choice left the two of them to agree an address
+            somewhere else entirely and type it in twice.
+          */}
+          {theirs && (
+            <div className="rounded-md border border-gray-200 dark:border-secondary-700 p-3 text-sm space-y-2">
+              <div className="text-gray-700 dark:text-secondary-200">
+                {t('arbiterPanel.theyNominated')}{' '}
+                <span className="font-mono text-xs break-all">{theirs}</span>
+              </div>
+              <p className="text-xs text-gray-500 dark:text-secondary-400">
+                {t('arbiterPanel.matchSeatsThem')}
+              </p>
+              {/*
+                ⚠️ FILLS THE FIELD, DOES NOT NOMINATE. One click straight to a seating is the
+                   exact shape of the attack the warning above describes — the other party
+                   names their own confederate and this button agrees to it. Prefilling keeps
+                   the address in front of the user, and keeps the deliberate press on the
+                   Nominate button where it already was.
+              */}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={busy !== null}
+                onClick={() => setCandidate(theirs)}
+              >
+                {t('arbiterPanel.useThisAddress')}
+              </Button>
+            </div>
+          )}
+
+          {mine && (
+            <div className="text-sm text-gray-600 dark:text-secondary-300">
+              {t('arbiterPanel.youNominated')}{' '}
+              <span className="font-mono text-xs break-all">{mine}</span>
+              {!theirs && (
+                <span className="block text-xs text-gray-500 dark:text-secondary-400 mt-0.5">
+                  {t('arbiterPanel.waitingOnThem')}
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* Viewer not placed on either side: name both rather than imply one is theirs. */}
+          {unplaced && (
             <div className="text-sm text-gray-700 dark:text-secondary-200">
               {t('arbiterPanel.alreadyNominated')}{' '}
               {state.nominatedByBuyer && (
@@ -133,7 +214,9 @@ export default function ArbiterPanel({ contractAddress, state, loading, onChange
                 run(
                   'Nomination',
                   () => nominateArbiter(contractAddress, candidate),
-                  candidate.toLowerCase() === otherPartyNomination?.toLowerCase()
+                  // Only `theirs` can produce a match. Claiming one against our own standing
+                  // nomination announces a seating that did not happen.
+                  theirs && candidate.toLowerCase() === theirs.toLowerCase()
                     ? 'Nominations matched — that arbiter is now seated.'
                     : 'Nomination recorded. It seats them the moment the other party names the same address.'
                 )

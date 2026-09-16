@@ -320,7 +320,22 @@
           // 6. Verify expiry/payout date matches (if provided)
           if (this.currentPayment && this.currentPayment.expiryTimestamp) {
             const expectedExpiry = parseInt(this.currentPayment.expiryTimestamp);
-            const actualExpiry = parseInt(result.expiryTimestamp || result.payoutTimestamp);
+            const actualExpiry = parseInt(this.maturityOf(result));
+
+            // The field this reads is `maturity`; it used to be `expiryTimestamp` and this
+            // check went on asking for the old name long after the rename. That failed
+            // SILENTLY, which is the only reason it survived: parseInt(undefined) is NaN,
+            // every comparison against NaN is false, so `NaN > 60` said "within tolerance"
+            // and the check reported success without ever reading a date.
+            //
+            // So an unreadable date is now a failure, not a pass. A caller only reaches
+            // here by explicitly asking for the payout date to be verified, and a
+            // verification that cannot see its input has not verified anything.
+            if (!Number.isFinite(actualExpiry)) {
+              console.warn('⚠️ No payout date on the contract record, so it cannot be checked');
+              throw new Error('Security violation: Payout date could not be verified');
+            }
+
             // Allow 60 second tolerance for timing differences
             if (Math.abs(expectedExpiry - actualExpiry) > 60) {
               console.warn('⚠️ Expiry mismatch:', { expected: expectedExpiry, actual: actualExpiry });
@@ -352,7 +367,7 @@
             currencyRaw: result.currency, // Original currency from backend
             description: result.description,
             state: result.state,
-            expiryTimestamp: result.expiryTimestamp || result.payoutTimestamp,
+            expiryTimestamp: this.maturityOf(result),
             verified: true,
             verifiedAt: new Date().toISOString()
           };
@@ -376,6 +391,25 @@
 
       // Timeout reached
       throw new Error('Payment verification timeout - please contact support');
+    },
+
+    /**
+     * When the cashflow unlocks, from whichever name the record uses.
+     *
+     * resultservice returns `maturity`. It previously returned `expiryTimestamp`, and the
+     * older name is kept here so a deployment running an earlier build still verifies rather
+     * than starts rejecting payments — the fallbacks are for OLD data, not for absence.
+     *
+     * Returns undefined when the record carries no date at all. Callers must treat that as
+     * "cannot verify" and never as "verified": the previous code read the wrong name, got
+     * undefined, and NaN comparisons made every check pass.
+     *
+     * @param {Object} result - A contract record from /api/results
+     * @returns {number|string|undefined}
+     * @private
+     */
+    maturityOf: function(result) {
+      return result.maturity || result.expiryTimestamp || result.payoutTimestamp;
     },
 
     /**

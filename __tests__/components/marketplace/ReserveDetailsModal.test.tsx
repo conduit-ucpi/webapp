@@ -162,3 +162,56 @@ describe('ReserveDetailsModal', () => {
     expect(withDark.map((el) => el.getAttribute('class'))).toEqual([]);
   });
 });
+
+/**
+ * Which payment this reserve came from.
+ *
+ * ⚠️ "Reserve on a payment you sold" DESCRIBES EVERY ROW IDENTICALLY. A supplier who opened this
+ *    to find out which payment learns nothing from it — and selling handed the recipient role to
+ *    the LP, so the escrow has dropped out of their own contract list and there is nowhere else
+ *    to go and look.
+ */
+describe('identifying the payment', () => {
+  it('leads with what the payment was for', () => {
+    renderModal({ description: 'Oak dining table' });
+
+    expect(screen.getByRole('heading', { name: 'Oak dining table' })).toBeInTheDocument();
+  });
+
+  it('keeps saying what the screen is, in a caption above the name', () => {
+    // Demoted, not deleted: still the right answer to "what am I looking at", just not to
+    // "which one".
+    renderModal({ description: 'Oak dining table' });
+
+    expect(screen.getByText('Reserve on a payment you sold')).toBeInTheDocument();
+  });
+
+  it('falls back to the generic heading when there is no record to name', () => {
+    renderModal({ description: null });
+
+    expect(
+      screen.getByRole('heading', { name: 'Reserve on a payment you sold' })
+    ).toBeInTheDocument();
+  });
+
+  it('does not caption a placeholder with its own synonym', () => {
+    // The heading and the caption would otherwise both read "Reserve on a payment you sold".
+    renderModal({ description: null });
+
+    expect(screen.getAllByText('Reserve on a payment you sold')).toHaveLength(1);
+  });
+
+  it('falls back on a description that is only whitespace', () => {
+    renderModal({ description: '   ' });
+
+    expect(
+      screen.getByRole('heading', { name: 'Reserve on a payment you sold' })
+    ).toBeInTheDocument();
+  });
+
+  it('still shows the escrow address, which is what links it to the chain', () => {
+    renderModal({ description: 'Oak dining table' });
+
+    expect(screen.getByText(/Contract/)).toBeInTheDocument();
+  });
+});

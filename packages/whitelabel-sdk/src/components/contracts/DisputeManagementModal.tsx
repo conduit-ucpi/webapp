@@ -73,6 +73,26 @@ export default function DisputeManagementModal({ isOpen, onClose, contract, onRe
       .map((f) => ({ role: f.role, percent: f.percent as number }));
   })();
 
+  /**
+   * Which side of this escrow the viewer is, for the arbiter panel.
+   *
+   * ⚠️ THE CHAIN READ WINS. A sale moves the recipient to the LP, and the local contract record
+   *    only learns that when `OfferAccepted` reaches the index — so on exactly the escrows where
+   *    the arbiter seat is empty, the record is the thing most likely to be stale. Falls back to
+   *    it only when the settlement state has not loaded.
+   *
+   * Null for anyone who is neither party; the panel then names both sides rather than guessing.
+   */
+  const viewerRole: 'buyer' | 'recipient' | null = (() => {
+    const me = user?.walletAddress?.toLowerCase();
+    if (!me) return null;
+    const buyer = (settlement.data?.buyer ?? contract.buyerAddress)?.toLowerCase();
+    const recipient = (settlement.data?.recipient ?? contract.sellerAddress)?.toLowerCase();
+    if (buyer === me) return 'buyer';
+    if (recipient === me) return 'recipient';
+    return null;
+  })();
+
   const wouldSettleWith = othersFigures.find((f) => f.percent === figure);
   const alreadySettled = settlement.data?.resolvedBuyerPercentage != null;
 
@@ -220,6 +240,7 @@ export default function DisputeManagementModal({ isOpen, onClose, contract, onRe
                         contractAddress={contract.contractAddress}
                         state={arbiter.data}
                         loading={arbiter.loading}
+                        viewerRole={viewerRole}
                         onChanged={async () => {
                           await Promise.all([arbiter.refetch(), settlement.refetch()]);
                         }}

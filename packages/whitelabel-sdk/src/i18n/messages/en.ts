@@ -532,6 +532,13 @@ export const en = {
     'It happens in this transaction and cannot be undone. There is no register of approved arbiters and no check on who this address belongs to — only that they are not the buyer or recipient.',
   'arbiterPanel.decliningIsSafe':
     "Declining to nominate is always safe: if nobody agrees, the platform's default arbiter takes the seat once the window closes.",
+  'arbiterPanel.theyNominated': 'The other party has suggested:',
+  'arbiterPanel.youNominated': 'You have suggested:',
+  'arbiterPanel.matchSeatsThem':
+    'Nominating this same address seats them immediately — agreeing is the decision, not a step towards it.',
+  'arbiterPanel.useThisAddress': 'Use this address',
+  'arbiterPanel.waitingOnThem':
+    'They are seated as soon as the other party names the same address.',
   'arbiterPanel.alreadyNominated': 'Already nominated —',
   'pay.payFromThisWallet': 'Pay {amount} from this wallet',
   'pay.processing': 'Processing…',

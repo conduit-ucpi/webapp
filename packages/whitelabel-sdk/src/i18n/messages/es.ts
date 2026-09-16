@@ -632,6 +632,13 @@ export const es: Catalogue = {
     'Ocurre en esta transacción y no se puede deshacer. No existe un registro de árbitros aprobados ni comprobación de a quién pertenece esta dirección; solo se verifica que no sea el comprador ni el destinatario.',
   'arbiterPanel.decliningIsSafe':
     'No nominar a nadie siempre es seguro: si nadie se pone de acuerdo, el árbitro predeterminado de la plataforma toma el puesto cuando se cierra el plazo.',
+  'arbiterPanel.theyNominated': 'La otra parte ha propuesto:',
+  'arbiterPanel.youNominated': 'Tú has propuesto:',
+  'arbiterPanel.matchSeatsThem':
+    'Nominar esta misma dirección lo designa de inmediato: aceptar es la decisión, no un paso hacia ella.',
+  'arbiterPanel.useThisAddress': 'Usar esta dirección',
+  'arbiterPanel.waitingOnThem':
+    'Quedará designado en cuanto la otra parte nombre la misma dirección.',
   'arbiterPanel.alreadyNominated': 'Ya se nominó:',
   'pay.payFromThisWallet': 'Pagar {amount} desde esta billetera',
   'pay.processing': 'Procesando…',

@@ -261,10 +261,13 @@ export async function reserveCounterfactualAddress(
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
+    // Carry the status even when there is no body. A refusal here stops the payment before
+    // anything is signed, so "it did not work" is not a useful thing to be left holding —
+    // 403 and 400 mean very different things to whoever has to fix it.
+    const detail = errorData.error || `contractservice returned ${response.status}`;
     throw new Error(
-      errorData.error ||
-        'Could not record the escrow address before payment — refusing to send funds to an ' +
-          'address nothing knows about'
+      `Could not record the escrow address before payment (${detail}). Refusing to send funds ` +
+        'to an address nothing knows about.'
     );
   }
 

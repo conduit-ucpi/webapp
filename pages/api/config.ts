@@ -44,7 +44,7 @@ async function getTokenDetails(
  */
 async function getContractAddresses(
   chainServiceUrl: string
-): Promise<{ factoryAddress: string; implementationAddress: string }> {
+): Promise<{ factoryAddress: string; implementationAddress: string; defaultArbiterAddress: string }> {
   const url = `${chainServiceUrl}/api/chain/addresses`;
 
   const response = await fetch(url);
@@ -60,6 +60,10 @@ async function getContractAddresses(
 
   return {
     factoryAddress: data.factoryAddress,
+    // The arbiter every escrow is created with. Exposed because it is one of the terms an
+    // escrow's address is derived from, so the browser needs the same value chainservice
+    // uses or it computes a different address.
+    defaultArbiterAddress: data.defaultArbiterAddress,
     implementationAddress: data.implementationAddress
   };
 }
@@ -169,6 +173,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Contract addresses
       contractAddress: contractAddresses.implementationAddress,
       contractFactoryAddress: contractAddresses.factoryAddress,
+      defaultArbiterAddress: contractAddresses.defaultArbiterAddress,
       // Service URLs
       userServiceUrl: process.env.USER_SERVICE_URL,
       chainServiceUrl: process.env.CHAIN_SERVICE_URL,

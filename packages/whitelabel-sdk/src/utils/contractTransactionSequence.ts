@@ -14,6 +14,8 @@
  * - Proxy: Chainservice deposits and notifies in one call (step 3 only)
  */
 
+import { predictEscrowAddress } from '../lib/counterfactualAddress';
+
 interface ContractCreationParams {
   contractserviceId: string;
   tokenAddress: string;
@@ -188,6 +190,85 @@ export async function resolveOrCreateOnChainContract(
     alreadyExisted: false,
     contractCreationTxHash: txHash
   };
+}
+
+/**
+ * Work out where this escrow will live, and make sure somebody else knows.
+ *
+ * The address is a pure function of the escrow's terms (see counterfactualAddress), so this
+ * costs no RPC call, no transaction and no waiting — which is the whole point. What it
+ * replaces was: deploy the escrow, wait up to two minutes for the receipt, re-read
+ * contractservice through a retry loop because it 500s while it indexes the chain event, then
+ * reconcile the address chainservice returned against the one contractservice stored in case
+ * the notification between them had failed. All of that existed only because an address could
+ * not be known until a deployment had produced one.
+ *
+ * ⚠️ RECORDING IT WITH CONTRACTSERVICE IS NOT BOOKKEEPING, AND IT MUST HAPPEN BEFORE THE
+ *    TRANSFER. Sending tokens to an address with no code deployed at it triggers nothing at
+ *    all: an ERC20 transfer only moves a balance inside the token contract. If this browser
+ *    dies between paying and deploying, the sweep in contractservice is what finishes the job
+ *    — and it can only do that for an address it was told about. Record after transferring
+ *    and a crash in between leaves money somewhere nobody is looking.
+ *
+ * The write is idempotent, so a retry here is safe.
+ */
+export async function reserveCounterfactualAddress(
+  params: ResolveOrCreateParams,
+  options: {
+    authenticatedFetch: (url: string, init?: RequestInit) => Promise<Response>;
+    factoryAddress: string;
+    implementationAddress: string;
+    /** The arbiter chainservice will create the escrow with when none is supplied. */
+    defaultArbiterAddress: string;
+    onProgress?: (step: string, message: string, contractAddress?: string) => void;
+  }
+): Promise<ResolveOrCreateResult> {
+  const { authenticatedFetch, factoryAddress, implementationAddress, defaultArbiterAddress, onProgress } =
+    options;
+
+  // The arbiter is one of the terms the address is derived from, so guessing it is not an
+  // option: a wrong value here yields an address the factory will never deploy to.
+  const arbiter = params.arbiterAddress || defaultArbiterAddress;
+
+  if (!factoryAddress || !implementationAddress || !arbiter) {
+    throw new Error(
+      'Cannot compute the escrow address without the factory, implementation and arbiter addresses'
+    );
+  }
+
+  const contractAddress = predictEscrowAddress(factoryAddress, implementationAddress, {
+    tokenAddress: params.tokenAddress,
+    buyer: params.buyer,
+    seller: params.seller,
+    amount: params.amount,
+    expiryTimestamp: params.expiryTimestamp,
+    arbiter,
+    contractserviceId: params.contractserviceId
+  });
+
+  onProgress?.('address_reserved', `Escrow address: ${contractAddress}`, contractAddress);
+
+  const response = await authenticatedFetch(`/api/contracts/${params.contractserviceId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      chainAddress: contractAddress,
+      buyerAddress: params.buyer,
+      factoryAddress,
+      tokenAddress: params.tokenAddress
+    })
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(
+      errorData.error ||
+        'Could not record the escrow address before payment — refusing to send funds to an ' +
+          'address nothing knows about'
+    );
+  }
+
+  return { contractAddress, alreadyExisted: false };
 }
 
 /**

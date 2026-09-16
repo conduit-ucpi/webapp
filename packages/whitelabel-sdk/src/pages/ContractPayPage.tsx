@@ -360,6 +360,29 @@ export default function ContractPay() {
   });
 
   /**
+   * Resolve the escrow address as soon as the page can, so the QR is simply there.
+   *
+   * There is nothing to generate any more — the address is a function of the deal's terms —
+   * so "generate payment link" was asking the user to authorise a wait that no longer exists.
+   *
+   * ⚠️ RESOLVING CLAIMS THE CONTRACT for this wallet, because a QR whose address nothing has
+   *    recorded is one somebody can pay into and lose the money at. So opening a payment link
+   *    now claims it for the wallet that opened it, and a buyer who views on their phone and
+   *    then pays from a different wallet on a desktop will be refused. That was already true
+   *    the moment they pressed "generate" — it is simply true earlier now.
+   */
+  useEffect(() => {
+    if (!contract || !config || !address || !authenticatedFetch) return;
+    // Paying yourself is refused anyway, so do not claim the contract to find that out.
+    if (address.toLowerCase() === contract.sellerAddress?.toLowerCase()) return;
+    if (qr.qrContractAddress) return;
+    void qr.createContract();
+    // qr.createContract is stable per its own deps; listing the whole qr object would re-run
+    // this on every poll tick.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contract, config, address, authenticatedFetch, qr.qrContractAddress, qr.createContract]);
+
+  /**
    * Pay from the connected wallet.
    *
    * Settlement is identical to the external-wallet route: a plain ERC-20
@@ -783,6 +806,7 @@ export default function ContractPay() {
   // If user connected without choosing a method (e.g., already connected), default to wallet
   const effectiveMethod = paymentMethod || 'wallet';
 
+
   return (
     <div className="min-h-screen bg-white dark:bg-secondary-900 transition-colors">
       <Head><title>{pageTitle}</title><meta name="viewport" content="width=device-width, initial-scale=1" /></Head>
@@ -834,8 +858,15 @@ export default function ContractPay() {
           )}
 
           {/* ============================================================ */}
-          {/* STAGE 3a: Wallet-Connected Payment */}
+          {/* STAGE 3a: every way of paying, on one screen */}
           {/* ============================================================ */}
+          {/*
+              The QR used to live behind its own step, reached by pressing "generate payment
+              link", because producing an address meant deploying a contract — slow, and
+              costly enough that nobody would do it speculatively. The address is computed
+              from the deal's terms now, so there is nothing to generate and nothing to wait
+              for, and no reason for the options to be on separate screens.
+          */}
           {effectiveMethod === 'wallet' && (
             <>
               {/* Payment Progress Steps */}
@@ -881,6 +912,27 @@ export default function ContractPay() {
                 // escrow is ever deployed.
                 resolveEscrowAddress={async () => qr.qrContractAddress ?? (await qr.createContract()) ?? null}
               />
+
+              {/* Paying from somewhere else: the address, a QR for it, and the button that
+                  sweeps the funds in once they arrive. Previously a screen of its own. */}
+              {!isPaymentInProgress && !isSameAddress && (
+                <div className="mt-6 pt-6 border-t border-secondary-200 dark:border-secondary-700">
+                  <QrPaymentPanel
+                    qr={qr}
+                    networkName={networkName}
+                    tokenSymbol={selectedTokenSymbol}
+                    amountInTokens={amountInTokens}
+                    isMobileDevice={isMobileDevice}
+                    copiedAddress={copiedAddress}
+                    onCopyAddress={handleCopyAddress}
+                    createButtonLabel={t('pay.payButton')}
+                    createDisabled={isSameAddress}
+                    createNote={isSameAddress ? t('err.payYourself') : undefined}
+                    onCancel={() => router.push('/dashboard')}
+                    successMessage={t('pay.verifiedRedirectDashboard')}
+                  />
+                </div>
+              )}
             </>
           )}
 

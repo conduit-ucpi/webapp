@@ -145,6 +145,24 @@ export interface PendingContract {
   expiryTimestamp: number;
   chainId?: string;
   chainAddress?: string;
+  /**
+   * The wallet recorded as the escrow's buyer, set when the contract was claimed.
+   *
+   * Not the wallet that pays — the escrow never checks who sent the tokens, so a QR can be
+   * scanned and paid from anywhere. This is the one hashed into the address, and the one that
+   * may dispute and receives any refund.
+   */
+  buyerAddress?: string;
+  /**
+   * The factory `chainAddress` was derived from, and the token it was derived with.
+   *
+   * Both are terms the address is computed from, so they are fixed once an address is issued.
+   * Anything deploying the escrow later must use these rather than whatever is currently
+   * configured — every contracts release deploys a new factory, and an address is only
+   * reachable from its own.
+   */
+  factoryAddress?: string;
+  tokenAddress?: string;
   // Optional custom arbiter address chosen by the seller.
   // When present, this contract uses a non-default dispute resolver.
   arbiterAddress?: string;

@@ -340,16 +340,30 @@ export default function ContractPay() {
     // because a predicted address is only reachable from the factory that predicted it.
     activation: useMemo(() => ({
       endpoint: '/api/chain/deploy-and-activate',
+      /**
+       * These terms ARE the escrow's address, so they must be the ones it was derived from —
+       * not whatever this session happens to hold now.
+       *
+       * The named buyer is not the wallet that pays. checkAndActivate never looks at who sent
+       * the tokens, so a QR can be scanned and paid from anywhere; what fixes the address is
+       * the wallet recorded as buyer when the contract was claimed. Send the connected wallet
+       * instead and a payer who claimed on one device and activates on another computes a
+       * different address, deploys an empty escrow there, and leaves the money sitting at the
+       * original address with nothing able to reach it.
+       *
+       * Recorded values win; the session's own are the fallback for a contract this session
+       * just claimed, where the local copy has not caught up yet.
+       */
       buildBody: () => ({
-        tokenAddress: selectedTokenAddress,
-        buyer: address,
+        tokenAddress: contract?.tokenAddress || selectedTokenAddress,
+        buyer: contract?.buyerAddress || address,
         seller: contract?.sellerAddress,
         amount: String(contract?.amount ?? 0),
         expiryTimestamp: contract?.expiryTimestamp,
         description: contract?.description,
         ...(contract?.arbiterAddress ? { arbiter: contract.arbiterAddress } : {}),
         contractserviceId: contract?.id,
-        factoryAddress: config?.contractFactoryAddress
+        factoryAddress: contract?.factoryAddress || config?.contractFactoryAddress
       }),
     }), [contract, config, address, selectedTokenAddress]),
     onActivated: useCallback(() => {

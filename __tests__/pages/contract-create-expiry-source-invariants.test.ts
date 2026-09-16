@@ -1,4 +1,13 @@
 /**
+ * NOTE: handleLegacyPayment is gone — neither page ever called it, and the approve+deposit
+ * sequence it wrapped is reached through ContractAcceptance instead.
+ *
+ * The invariant itself matters more than it did. expiryTimestamp is now one of the terms the
+ * factory hashes into an escrow's CREATE2 address, so recomputing it from Date.now() no longer
+ * merely risks a mismatch against the stored record — it names a different escrow, at an
+ * address the funds were never sent to.
+ */
+/**
  * Source-level invariants for expiryTimestamp handling in contract-create.tsx.
  *
  * The runtime test (contract-create-expiry-consistency.test.tsx) only drives
@@ -82,7 +91,6 @@ describe('contract-create.tsx — expiryTimestamp handler invariants', () => {
   const DEPLOY_HANDLERS = [
     'createContract: useCallback',
     'const handleWalletPayment = async',
-    'const handleLegacyPayment = async',
   ];
 
   /**

@@ -22,7 +22,8 @@ import QrPaymentPanel from '@/components/contracts/QrPaymentPanel';
 import { usePaymentSteps } from '@/hooks/usePaymentSteps';
 import { usePayableContract } from '@/hooks/usePayableContract';
 import { toMicroUSDC, toUSDCForWeb3, formatDateTimeWithTZ, displayCurrency } from '@/utils/validation';
-import { resolveOrCreateOnChainContract } from '@/utils/contractTransactionSequence';
+import { reserveCounterfactualAddress } from '@/utils/contractTransactionSequence';
+import { resolveEscrowAddressSources } from '@/lib/escrow/escrowAddressSources';
 import { getNetworkName } from '@/utils/networkUtils';
 import { detectDevice } from '@/utils/deviceDetection';
 import { useT } from '../i18n';
@@ -61,7 +62,7 @@ export default function ContractPay() {
     approveUSDC, depositToContract, depositFundsAsProxy,
     getWeb3Service, transferToContract, getTokenBalance
   } = useSimpleEthers();
-  const { runDirectPayment, runLegacyPayment } = useContractPayment();
+  const { runDirectPayment } = useContractPayment();
 
   // State
   const [isPaymentInProgress, setIsPaymentInProgress] = useState(false);
@@ -129,7 +130,7 @@ export default function ContractPay() {
     { id: 'verify', label: t('status.verifying'), status: 'pending' },
     { id: 'transfer', label: t('status.transferring'), status: 'pending' },
     { id: 'confirm', label: t('status.confirming'), status: 'pending' },
-    { id: 'activate', label: t('status.activating'), status: 'pending' },
+    { id: 'activate', label: t('status.securingNow'), status: 'pending' },
     { id: 'complete', label: t('status.complete'), status: 'pending' }
   ]);
 
@@ -253,10 +254,15 @@ export default function ContractPay() {
     createContract: useCallback(async () => {
       if (!contract || !config || !address || !authenticatedFetch) return undefined;
       try {
-        // resolveOrCreateOnChainContract ensures we never deploy a second escrow
-        // when one is already linked to this pending contract, and that the QR
-        // address is the one contractservice considers authoritative.
-        const { contractAddress: resolvedAddress } = await resolveOrCreateOnChainContract(
+        // Computed, not deployed. The QR used to cost a deployment and a wait purely to
+        // obtain an address to draw in it - and paid that cost even for the codes nobody
+        // ever scans, which for a "pay whenever you like" flow is most of them.
+        const sources = resolveEscrowAddressSources({
+          factoryAddress: config.contractFactoryAddress,
+          implementationAddress: config.contractAddress,
+          defaultArbiterAddress: config.defaultArbiterAddress
+        });
+        const { contractAddress } = await reserveCounterfactualAddress(
           {
             contractserviceId: contract.id,
             tokenAddress: selectedTokenAddress,
@@ -267,16 +273,33 @@ export default function ContractPay() {
             description: contract.description,
             arbiterAddress: contract.arbiterAddress
           },
-          { authenticatedFetch, getWeb3Service }
+          { authenticatedFetch, ...sources }
         );
-        console.log('ContractPay: QR escrow address resolved:', resolvedAddress);
-        return resolvedAddress;
+        return contractAddress;
       } catch (error: any) {
         console.error('ContractPay: Failed to resolve contract for QR:', error);
         alert(error.message || t('err.prepareFailed'));
         return undefined;
       }
-    }, [contract, config, address, authenticatedFetch, selectedTokenAddress, getWeb3Service]),
+    }, [contract, config, address, authenticatedFetch, selectedTokenAddress, t]),
+    // Deploy the escrow onto whatever arrived, rather than activating one that was
+    // deployed up front. The terms travel with the call because the escrow does not exist
+    // yet - there is nothing on-chain to read them from - and the factory travels with it
+    // because a predicted address is only reachable from the factory that predicted it.
+    activation: useMemo(() => ({
+      endpoint: '/api/chain/deploy-and-activate',
+      buildBody: () => ({
+        tokenAddress: selectedTokenAddress,
+        buyer: address,
+        seller: contract?.sellerAddress,
+        amount: String(contract?.amount ?? 0),
+        expiryTimestamp: contract?.expiryTimestamp,
+        description: contract?.description,
+        ...(contract?.arbiterAddress ? { arbiter: contract.arbiterAddress } : {}),
+        contractserviceId: contract?.id,
+        factoryAddress: config?.contractFactoryAddress
+      }),
+    }), [contract, config, address, selectedTokenAddress]),
     onActivated: useCallback(() => {
       setTimeout(() => {
         router.push('/dashboard');
@@ -337,7 +360,7 @@ export default function ContractPay() {
       { id: 'verify', label: t('status.verifying'), status: 'pending' },
       { id: 'transfer', label: t('status.transferring'), status: 'pending' },
       { id: 'confirm', label: t('status.confirming'), status: 'pending' },
-      { id: 'activate', label: t('status.activating'), status: 'pending' },
+      { id: 'activate', label: t('status.securingNow'), status: 'pending' },
       { id: 'complete', label: t('status.complete'), status: 'pending' }
     ]);
 
@@ -358,9 +381,6 @@ export default function ContractPay() {
         requiredAmount: requiredAmount ?? 0,
         authenticatedFetch,
         transferToContract,
-        approveUSDC,
-        depositToContract,
-        depositFundsAsProxy,
         getWeb3Service,
         updatePaymentStep,
         setLoadingMessage,
@@ -386,62 +406,6 @@ export default function ContractPay() {
     );
   };
 
-  // Legacy payment handler (approve + deposit flow for backward compatibility)
-  const handleLegacyPayment = async () => {
-    if (!contract || !config || !address) {
-      console.error('ContractPay: Missing required data for payment');
-      return;
-    }
-
-    console.log('ContractPay: Starting legacy payment process');
-
-    // Reset payment steps to legacy steps (labels are page-specific).
-    setPaymentSteps([
-      { id: 'verify', label: t('status.verifying'), status: 'pending' },
-      { id: 'approve', label: t('status.approvingToken', { token: selectedTokenSymbol }), status: 'pending' },
-      { id: 'escrow', label: t('status.securing'), status: 'pending' },
-      { id: 'confirm', label: t('status.confirming'), status: 'pending' },
-      { id: 'complete', label: t('status.complete'), status: 'pending' }
-    ]);
-
-    await runLegacyPayment(
-      {
-        contractserviceId: contract.id,
-        tokenAddress: selectedTokenAddress,
-        buyer: address,
-        seller: contract.sellerAddress,
-        amount: contract.amount,
-        expiryTimestamp: contract.expiryTimestamp,
-        description: contract.description
-      },
-      {
-        selectedTokenSymbol,
-        tokenBalance,
-        requiredAmount: requiredAmount ?? 0,
-        authenticatedFetch,
-        transferToContract,
-        approveUSDC,
-        depositToContract,
-        depositFundsAsProxy,
-        getWeb3Service,
-        updatePaymentStep,
-        setLoadingMessage,
-        setBusy: setIsPaymentInProgress,
-        getActiveStep,
-        onSuccess: (result) => {
-          console.log('ContractPay: Legacy payment completed successfully:', result);
-          setLoadingMessage(t('status.completedRedirect'));
-          setTimeout(() => {
-            router.push('/dashboard');
-          }, 2000);
-        },
-        onError: (error) => {
-          console.error('ContractPay: Legacy payment failed:', error);
-          alert(error.message || t('err.paymentFailed'));
-        },
-      }
-    );
-  };
 
   // Copy contract address to clipboard
   const handleCopyAddress = async (addr: string) => {

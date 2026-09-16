@@ -1,5 +1,5 @@
 import { apiFetch } from '@/lib/apiFetch';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import { useConfig } from '@/components/auth/ConfigProvider';
@@ -7,6 +7,8 @@ import { useAuth } from '@/components/auth';
 import { useSimpleEthers } from '@/hooks/useSimpleEthers';
 import { useTokenSelection } from '@/hooks/useTokenSelection';
 import { useQrPayment } from '@/hooks/useQrPayment';
+import { reserveCounterfactualAddress } from '@/utils/contractTransactionSequence';
+import { resolveEscrowAddressSources } from '@/lib/escrow/escrowAddressSources';
 import { useLazyUserData } from '@/hooks/useLazyUserData';
 import { useTokenBalance } from '@/hooks/useTokenBalance';
 import { useContractPayment } from '@/hooks/useContractPayment';
@@ -63,7 +65,7 @@ export default function ContractCreate() {
   const { config } = useConfig();
   const { user, authenticatedFetch, disconnect, isLoading: authLoading, isLoadingUserData, isConnected, address, refreshUserData } = useAuth();
   const { approveUSDC, depositToContract, depositFundsAsProxy, getWeb3Service, transferToContract, getTokenBalance } = useSimpleEthers();
-  const { runDirectPayment, runLegacyPayment } = useContractPayment();
+  const { runDirectPayment } = useContractPayment();
   const { errors, validateForm, clearErrors } = useContractCreateValidation();
 
   // Query parameters
@@ -122,7 +124,7 @@ export default function ContractCreate() {
     { id: 'verify', label: t('status.verifying'), status: 'pending' },
     { id: 'transfer', label: `Transferring ${selectedTokenSymbol} to escrow`, status: 'pending' },
     { id: 'confirm', label: t('status.confirming'), status: 'pending' },
-    { id: 'activate', label: t('status.activating'), status: 'pending' },
+    { id: 'activate', label: t('status.securingNow'), status: 'pending' },
     { id: 'complete', label: t('status.complete'), status: 'pending' }
   ]);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(null);
@@ -205,64 +207,62 @@ export default function ContractCreate() {
     createContract: useCallback(async () => {
       if (!contractId || !config || !address || !authenticatedFetch) return undefined;
       if (pendingExpiryTimestamp === null) {
-        console.error('🔧 ContractCreate: pendingExpiryTimestamp not set; cannot deploy without the DB-stored value');
+        console.error('🔧 ContractCreate: pendingExpiryTimestamp not set; cannot derive an address without the DB-stored value');
         return undefined;
       }
       try {
-        // Reuse the expiryTimestamp stored in the pending contract to avoid drift
-        // between the DB value and the on-chain value (prevents ERROR status from
-        // expiryTimestampMismatch in contractservice).
-        const expiryTimestamp = pendingExpiryTimestamp;
-        const createResponse = await authenticatedFetch('/api/chain/create-contract', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
+        // The address is computed here rather than asked for, which changes what the old
+        // verifyEscrow call was defending against.
+        //
+        // That check existed because the address came back from the API, and a compromised
+        // API could return one it controlled. It read the deployed bytecode against a
+        // build-time RPC and refused anything that was not a clone of our pinned
+        // implementation holding the user's own terms.
+        //
+        // Nothing is deployed when a QR is shown now, so there is no bytecode to read. The
+        // defence has to move earlier instead: derive the address from build-time constants
+        // and the terms the user themselves entered, so the API never gets to influence it.
+        // resolveEscrowAddressSources is that step, and it refuses outright if what this
+        // build pins disagrees with what the API reports.
+        const sources = resolveEscrowAddressSources({
+          factoryAddress: config.contractFactoryAddress,
+          implementationAddress: config.contractAddress,
+          defaultArbiterAddress: config.defaultArbiterAddress
+        });
+        const { contractAddress } = await reserveCounterfactualAddress(
+          {
             contractserviceId: contractId,
             tokenAddress: selectedTokenAddress,
             buyer: address,
             seller: form.seller,
+            // Reuse the DB-stored expiry to avoid drift between the DB value and the
+            // on-chain value - and now also because it is part of the address.
             amount: toMicroUSDC(parseFloat(form.amount.trim())),
-            expiryTimestamp,
+            expiryTimestamp: pendingExpiryTimestamp,
             description: form.description
-          })
-        });
-        if (!createResponse.ok) {
-          const errorData = await createResponse.json().catch(() => ({}));
-          throw new Error(errorData.error || t('err.creationFailed'));
-        }
-        const createData = await createResponse.json();
-        console.log('ContractCreate: QR contract created:', createData);
-        const web3Service = await getWeb3Service();
-        if (createData.transactionHash) {
-          await web3Service.waitForTransaction(createData.transactionHash, 120000, contractId);
-        }
-
-        // The address came from the API. Before it is used for anything, check
-        // it against the chain — a compromised API could hand back an address it
-        // controls, or a genuine clone deployed with someone else's terms. Both
-        // halves are checked: that the code is our implementation, and that the
-        // buyer/seller/amount/token match what the user filled in. Read via our
-        // RPC, never via the API, or the check would be circular. Fails closed.
-        // No reader passed: verification uses its own build-time RPC, not the
-        // application's, whose endpoint the API supplies.
-        const verdict = await verifyEscrow(createData.contractAddress, {
-          buyer: address,
-          seller: form.seller,
-          amount: toMicroUSDC(parseFloat(form.amount.trim())),
-          token: selectedTokenAddress,
-        });
-        if (!verdict.ok) {
-          console.error('ContractCreate: escrow verification FAILED', verdict);
-          throw new Error(`Refusing to continue: ${verdict.detail}`);
-        }
-
-        return createData.contractAddress;
+          },
+          { authenticatedFetch, ...sources }
+        );
+        return contractAddress;
       } catch (error: any) {
-        console.error('ContractCreate: Failed to create contract for QR:', error);
+        console.error('ContractCreate: Failed to derive contract address for QR:', error);
         alert(error.message || t('err.createFailed'));
         return undefined;
       }
-    }, [contractId, config, address, authenticatedFetch, selectedTokenAddress, form, pendingExpiryTimestamp, getWeb3Service]),
+    }, [contractId, config, address, authenticatedFetch, selectedTokenAddress, form, pendingExpiryTimestamp, t]),
+    activation: useMemo(() => ({
+      endpoint: '/api/chain/deploy-and-activate',
+      buildBody: () => ({
+        tokenAddress: selectedTokenAddress,
+        buyer: address,
+        seller: form.seller,
+        amount: String(form.amount ? toMicroUSDC(parseFloat(form.amount.trim())) : 0),
+        expiryTimestamp: pendingExpiryTimestamp,
+        description: form.description,
+        contractserviceId: contractId,
+        factoryAddress: config?.contractFactoryAddress
+      }),
+    }), [selectedTokenAddress, address, form, pendingExpiryTimestamp, contractId, config]),
     onActivated: useCallback((contractAddress: string) => {
       // Send payment completed event, then redirect using the same logic as the
       // wallet path (iframe → close_modal, popup → window.close, WordPress →
@@ -453,7 +453,7 @@ export default function ContractCreate() {
       { id: 'verify', label: t('status.verifying'), status: 'pending' },
       { id: 'transfer', label: `Transferring ${selectedTokenSymbol} to escrow`, status: 'pending' },
       { id: 'confirm', label: t('status.confirming'), status: 'pending' },
-      { id: 'activate', label: t('status.activating'), status: 'pending' },
+      { id: 'activate', label: t('status.securingNow'), status: 'pending' },
       { id: 'complete', label: t('status.complete'), status: 'pending' }
     ]);
 
@@ -474,9 +474,6 @@ export default function ContractCreate() {
         requiredAmount: parseFloat(form.amount.trim()),
         authenticatedFetch,
         transferToContract,
-        approveUSDC,
-        depositToContract,
-        depositFundsAsProxy,
         getWeb3Service,
         updatePaymentStep,
         setLoadingMessage,
@@ -615,55 +612,6 @@ export default function ContractCreate() {
     }
   };
 
-  const handleLegacyPayment = async () => {
-    if (!contractId || !config) {
-      console.error('🔧 ContractCreate: Missing required data for payment');
-      return;
-    }
-    if (pendingExpiryTimestamp === null) {
-      console.error('🔧 ContractCreate: pendingExpiryTimestamp not set; cannot deploy without the DB-stored value');
-      return;
-    }
-
-    // Reset payment steps (labels are page-specific; the hook drives statuses).
-    setPaymentSteps([
-      { id: 'verify', label: t('status.verifying'), status: 'pending' },
-      { id: 'approve', label: t('status.approvingToken', { token: selectedTokenSymbol }), status: 'pending' },
-      { id: 'escrow', label: t('status.securing'), status: 'pending' },
-      { id: 'confirm', label: t('status.confirming'), status: 'pending' },
-      { id: 'complete', label: t('status.complete'), status: 'pending' }
-    ]);
-
-    await runLegacyPayment(
-      {
-        contractserviceId: contractId,
-        tokenAddress: selectedTokenAddress,
-        buyer: address || '',
-        seller: form.seller,
-        // Reuse the DB-stored expiry to avoid drift between DB and chain.
-        amount: toMicroUSDC(parseFloat(form.amount.trim())),
-        expiryTimestamp: pendingExpiryTimestamp,
-        description: form.description
-      },
-      {
-        selectedTokenSymbol,
-        tokenBalance,
-        requiredAmount: parseFloat(form.amount.trim()),
-        authenticatedFetch,
-        transferToContract,
-        approveUSDC,
-        depositToContract,
-        depositFundsAsProxy,
-        getWeb3Service,
-        updatePaymentStep,
-        setLoadingMessage,
-        setBusy: setIsLoading,
-        getActiveStep,
-        onSuccess: handlePaymentSuccess,
-        onError: handlePaymentError,
-      }
-    );
-  };
 
   const handleCancel = () => {
     sendPostMessage({ type: 'payment_cancelled' });

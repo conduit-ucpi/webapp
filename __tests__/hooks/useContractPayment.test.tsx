@@ -1,7 +1,7 @@
 /**
  * TDD spec for useContractPayment — the shared payment orchestration extracted
  * from contract-create.tsx and contract-pay.tsx (handleWalletPayment /
- * handleLegacyPayment).
+ * handleWalletPayment).
  *
  * The hook owns the SHARED core, identical between both pages:
  *   - reset steps → balance check (throw on insufficient, exact message) →
@@ -24,11 +24,9 @@ import * as sequence from '@/utils/contractTransactionSequence';
 
 jest.mock('@/utils/contractTransactionSequence', () => ({
   executeDirectPaymentSequence: jest.fn(),
-  executeContractTransactionSequence: jest.fn(),
 }));
 
 const mockDirect = sequence.executeDirectPaymentSequence as jest.Mock;
-const mockLegacy = sequence.executeContractTransactionSequence as jest.Mock;
 
 describe('useContractPayment', () => {
   let updatePaymentStep: jest.Mock;
@@ -79,7 +77,6 @@ describe('useContractPayment', () => {
     onError = jest.fn();
     getPaymentSteps = jest.fn().mockReturnValue(undefined);
     mockDirect.mockResolvedValue({ contractAddress: '0xEscrow', transferTxHash: '0xtx' });
-    mockLegacy.mockResolvedValue({ contractAddress: '0xEscrow', depositTxHash: '0xdep' });
   });
 
   afterEach(() => {
@@ -191,30 +188,4 @@ describe('useContractPayment', () => {
     });
   });
 
-  describe('runLegacyPayment', () => {
-    it('runs executeContractTransactionSequence with useProxyDeposit and calls onSuccess', async () => {
-      const { result } = renderHook(() => useContractPayment());
-      await act(async () => {
-        const p = result.current.runLegacyPayment(params, baseDeps());
-        await jest.runAllTimersAsync();
-        await p;
-      });
-
-      expect(mockLegacy).toHaveBeenCalledTimes(1);
-      expect(mockLegacy.mock.calls[0][1]).toMatchObject({ useProxyDeposit: true });
-      expect(onSuccess).toHaveBeenCalledWith({ contractAddress: '0xEscrow', depositTxHash: '0xdep' });
-    });
-
-    it('throws on insufficient balance before signing (legacy path)', async () => {
-      const { result } = renderHook(() => useContractPayment());
-      const deps = { ...baseDeps(), tokenBalance: '0', requiredAmount: 10 };
-      await act(async () => {
-        const p = result.current.runLegacyPayment(params, deps);
-        await jest.runAllTimersAsync();
-        await p;
-      });
-      expect(mockLegacy).not.toHaveBeenCalled();
-      expect(onError).toHaveBeenCalled();
-    });
-  });
 });

@@ -104,6 +104,7 @@ export const en = {
   'status.activating': 'Activating contract',
   'status.complete': 'Payment complete',
   'status.securing': 'Securing funds in escrow',
+  'status.securingNow': 'Securing your funds in escrow',
   'pay.loading': 'Loading payment request...',
   'pay.invalidLink': 'Invalid Payment Link',
   'pay.noId': 'No payment request ID was provided.',

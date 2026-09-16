@@ -60,7 +60,12 @@ jest.mock('@/components/auth', () => ({
   }),
 }));
 
+import { predictEscrowAddress } from '@/lib/counterfactualAddress';
+
 const USDC_ADDRESS = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
+const TEST_FACTORY = '0x2e234DAe75C793f67A35089C9d99245E1C58470b';
+const TEST_IMPLEMENTATION = '0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f';
+const TEST_ARBITER = '0x9bB8e809EA6F5A74f46027D8016641D9cE9A149C';
 
 jest.mock('@/components/auth/ConfigProvider', () => ({
   useConfig: () => ({
@@ -68,7 +73,9 @@ jest.mock('@/components/auth/ConfigProvider', () => ({
       chainId: 8453,
       rpcUrl: 'https://mainnet.base.org',
       usdcContractAddress: USDC_ADDRESS,
-      contractFactoryAddress: '0xFactory',
+      contractFactoryAddress: TEST_FACTORY,
+      contractAddress: TEST_IMPLEMENTATION,
+      defaultArbiterAddress: TEST_ARBITER,
       userServiceUrl: 'http://localhost:8977',
       chainServiceUrl: 'http://localhost:8978',
       contractServiceUrl: 'http://localhost:8080',
@@ -140,15 +147,33 @@ function getDbExpiry(): number | null {
 }
 
 /**
- * Extract the expiryTimestamp sent to /api/chain/create-contract (the on-chain write).
+ * The escrow address the page reserved.
+ *
+ * There is no longer an expiryTimestamp on the wire to inspect at this point: the escrow is
+ * not deployed when the QR is shown, and the expiry is consumed locally to compute where it
+ * will live. The address IS the expiry, along with every other term — so asserting it against
+ * an independently computed prediction is a strictly stronger check than reading a number out
+ * of a request body. Recompute the expiry from Date.now() and this no longer matches.
  */
-function getChainExpiry(): number | null {
+function getReservedAddress(): string | null {
   const call = mockAuthenticatedFetch.mock.calls.find(
-    (c) => c[0] === '/api/chain/create-contract' && c[1]?.method === 'POST',
+    (c) => typeof c[0] === 'string' && c[0].startsWith('/api/contracts/') && c[1]?.method === 'PATCH',
   );
   if (!call) return null;
-  const body = JSON.parse(call[1].body);
-  return body.expiryTimestamp;
+  return JSON.parse(call[1].body).chainAddress ?? null;
+}
+
+/** Where an escrow carrying this expiry, and the terms the test filled in, must live. */
+function addressForExpiry(expiryTimestamp: number): string {
+  return predictEscrowAddress(TEST_FACTORY, TEST_IMPLEMENTATION, {
+    tokenAddress: USDC_ADDRESS,
+    buyer: '0x1234567890123456789012345678901234567890',
+    seller: '0x9876543210987654321098765432109876543210',
+    amount: 10_000_000,
+    expiryTimestamp,
+    arbiter: TEST_ARBITER,
+    contractserviceId: 'test-contract-id',
+  });
 }
 
 describe('ContractCreate — expiryTimestamp consistency between DB and chain', () => {
@@ -162,6 +187,9 @@ describe('ContractCreate — expiryTimestamp consistency between DB and chain', 
           ok: true,
           json: () => Promise.resolve({ contractId: 'test-contract-id' }),
         });
+      }
+      if (url.startsWith('/api/contracts/') && options?.method === 'PATCH') {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ id: 'test-contract-id' }) });
       }
       if (url === '/api/chain/create-contract' && options?.method === 'POST') {
         return Promise.resolve({
@@ -228,12 +256,15 @@ describe('ContractCreate — expiryTimestamp consistency between DB and chain', 
       fireEvent.click(generateBtn);
     });
 
-    await waitFor(() => expect(getChainExpiry()).not.toBeNull(), { timeout: 5000 });
+    await waitFor(() => expect(getReservedAddress()).not.toBeNull(), { timeout: 5000 });
 
-    // CORRECTNESS: chain expiry == user-requested value
-    expect(getChainExpiry()).toBe(userRequestedExpiry);
-    // REGRESSION GUARD: DB expiry == chain expiry
-    expect(getChainExpiry()).toBe(getDbExpiry());
+    // CORRECTNESS: the address the buyer is sent to is the one the user-requested expiry
+    // produces. Any other expiry names a different escrow.
+    expect(getReservedAddress()).toBe(addressForExpiry(userRequestedExpiry));
+    // REGRESSION GUARD: the address is derived from the SAME expiry the DB holds. This is
+    // what the old "chain expiry == DB expiry" check meant, now that the expiry reaches the
+    // chain as part of the address rather than as a field.
+    expect(getReservedAddress()).toBe(addressForExpiry(getDbExpiry()!));
   });
 
   test('default path sends identical values to DB and chain even when wall-clock advances', async () => {
@@ -287,9 +318,9 @@ describe('ContractCreate — expiryTimestamp consistency between DB and chain', 
       fireEvent.click(generateBtn);
     });
 
-    await waitFor(() => expect(getChainExpiry()).not.toBeNull(), { timeout: 5000 });
+    await waitFor(() => expect(getReservedAddress()).not.toBeNull(), { timeout: 5000 });
 
     // REGRESSION GUARD: the two must be bit-for-bit identical, not just "close"
-    expect(getChainExpiry()).toBe(dbExpiry);
+    expect(getReservedAddress()).toBe(addressForExpiry(dbExpiry));
   });
 });

@@ -57,6 +57,15 @@ interface PaymentDeps {
   contractFactoryAddress?: string;
   implementationAddress?: string;
   defaultArbiterAddress?: string;
+  /**
+   * The escrow address, when the page derived and recorded it while waiting to be clicked.
+   *
+   * ⚠️ THE POINT OF PREPARING EARLY IS THAT THE CLICK DOES LESS. Deriving the address is free
+   *    and recording it is one request, and neither needs the user — so doing them on the click
+   *    put two round trips between pressing Pay and the wallet opening, for work that could
+   *    have finished while the page sat there.
+   */
+  preparedAddress?: string;
 }
 
 function assertSufficientBalance(deps: PaymentDeps): void {
@@ -70,10 +79,15 @@ function assertSufficientBalance(deps: PaymentDeps): void {
   }
 }
 
-async function runVerifyStep(deps: PaymentDeps): Promise<void> {
-  deps.updatePaymentStep('verify', 'active');
-  deps.setLoadingMessage('Verifying wallet connection...');
-  await new Promise((resolve) => setTimeout(resolve, 500));
+function markWalletChecked(deps: PaymentDeps): void {
+  // ⚠️ THIS USED TO SLEEP FOR HALF A SECOND AND CHECK NOTHING. The actual check is
+  //    assertSufficientBalance above, which is synchronous and runs against a balance the page
+  //    loaded long ago — so the pause existed only to let a tick mark appear at a readable
+  //    speed. It charged every payer 500ms to watch a checkbox, on the one screen where the
+  //    wait is the thing people complain about.
+  //
+  //    The step stays in the list because the check is real and worth showing; it is simply
+  //    already true by the time anyone presses the button.
   deps.updatePaymentStep('verify', 'completed');
 }
 
@@ -93,10 +107,10 @@ export function useContractPayment() {
       deps.setBusy(true);
       try {
         assertSufficientBalance(deps);
-        await runVerifyStep(deps);
+        markWalletChecked(deps);
 
         deps.updatePaymentStep('transfer', 'active');
-        deps.setLoadingMessage('Creating contract and transferring funds...');
+        deps.setLoadingMessage('Working out the escrow address...');
 
         // The escrow address is computed from these, so a missing one is not something to
         // paper over with a default: it would produce an address the factory can never deploy
@@ -117,6 +131,7 @@ export function useContractPayment() {
           factoryAddress: sources.factoryAddress,
           implementationAddress: sources.implementationAddress,
           defaultArbiterAddress: sources.defaultArbiterAddress,
+          preparedAddress: deps.preparedAddress,
           onProgress: (step, _message, _contractAddr) => {
             switch (step) {
               // The escrow is no longer deployed before payment, so there is no creation
@@ -127,22 +142,22 @@ export function useContractPayment() {
                 break;
               case 'transfer':
                 deps.updatePaymentStep('transfer', 'active');
-                deps.setLoadingMessage('Step 2: Transferring funds to escrow...');
+                deps.setLoadingMessage('Sending funds to the escrow address...');
                 break;
               case 'transfer_confirmation':
                 deps.updatePaymentStep('transfer', 'completed');
                 deps.updatePaymentStep('confirm', 'active');
-                deps.setLoadingMessage('Step 2.5: Confirming transfer...');
+                deps.setLoadingMessage('Waiting for your transfer to confirm...');
                 break;
               case 'activation':
                 deps.updatePaymentStep('confirm', 'completed');
                 deps.updatePaymentStep('activate', 'active');
-                deps.setLoadingMessage('Step 3: Creating escrow around your funds...');
+                deps.setLoadingMessage('Creating the escrow around your funds...');
                 break;
               case 'complete':
                 deps.updatePaymentStep('activate', 'completed');
                 deps.updatePaymentStep('complete', 'completed');
-                deps.setLoadingMessage('Payment completed successfully!');
+                deps.setLoadingMessage('Funds secured in escrow.');
                 break;
             }
           },

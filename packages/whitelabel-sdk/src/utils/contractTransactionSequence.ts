@@ -475,6 +475,13 @@ interface DirectPaymentOptions {
   factoryAddress: string;
   implementationAddress: string;
   defaultArbiterAddress: string;
+  /**
+   * The escrow address, if the page already derived and recorded it while idle.
+   *
+   * Omit it and the sequence does that work itself. Supplying it is what removes the two round
+   * trips between the user pressing Pay and their wallet opening.
+   */
+  preparedAddress?: string;
 }
 
 export async function executeDirectPaymentSequence(
@@ -491,21 +498,63 @@ export async function executeDirectPaymentSequence(
     defaultArbiterAddress
   } = options;
 
-  // Step 1: work out where the escrow will live, and tell contractservice before sending
-  // anything. A pure computation - no deployment, no receipt to wait for, and no round trip
-  // to discover an address that used to exist only once something had been deployed.
-  const { contractAddress } = await reserveCounterfactualAddress(params, {
-    authenticatedFetch,
-    factoryAddress,
-    implementationAddress,
-    defaultArbiterAddress,
-    onProgress
+  // Where the escrow will live, and contractservice told about it before anything is sent.
+  //
+  // ⚠️ ALWAYS DERIVED HERE, NEVER TAKEN ON TRUST. Deriving is a pure function of the terms
+  //    below and costs nothing, so there is no reason to skip it — and skipping it was a real
+  //    bug: `preparedAddress` comes from the page, which seeds it from the contract's RECORDED
+  //    chainAddress. That was derived from whatever the terms were when it was recorded, which
+  //    is not necessarily what is being paid now. A different token selected, or a record from
+  //    an earlier session, and the transfer goes to one address while the deploy targets
+  //    another — the money lands somewhere real and the activation reports "address holds 0".
+  //
+  //    So what `preparedAddress` saves is the RECORDING round trip, not the derivation. It is
+  //    honoured only when it matches; when it does not, the full reservation runs so that the
+  //    address actually being paid is the one on file.
+  const arbiter = params.arbiterAddress || defaultArbiterAddress;
+  const derivedAddress = predictEscrowAddress(factoryAddress, implementationAddress, {
+    tokenAddress: params.tokenAddress,
+    buyer: params.buyer,
+    seller: params.seller,
+    amount: params.amount,
+    expiryTimestamp: params.expiryTimestamp,
+    arbiter,
+    contractserviceId: params.contractserviceId
   });
+
+  const alreadyRecorded =
+    !!options.preparedAddress &&
+    options.preparedAddress.toLowerCase() === derivedAddress.toLowerCase();
+
+  if (!alreadyRecorded && options.preparedAddress) {
+    console.warn(
+      `🔧 DirectPayment: the prepared address ${options.preparedAddress} is not what these ` +
+        `terms derive to (${derivedAddress}) — recording the derived one instead.`
+    );
+  }
+
+  const contractAddress = alreadyRecorded
+    ? derivedAddress
+    : (
+        await reserveCounterfactualAddress(params, {
+          authenticatedFetch,
+          factoryAddress,
+          implementationAddress,
+          defaultArbiterAddress,
+          onProgress
+        })
+      ).contractAddress;
+
+  if (alreadyRecorded) {
+    // The step happened, just earlier. Marking it keeps the checklist honest rather than
+    // leaving a box unticked for work that is already complete.
+    onProgress?.('address_reserved', `Escrow address: ${contractAddress}`, contractAddress);
+  }
 
   // Step 2: the buyer's single signature. Nothing is deployed at this address yet, and that
   // is fine - an ERC20 transfer is a ledger entry inside the TOKEN contract, which does not
   // care whether the destination holds any code.
-  onProgress?.('transfer', 'Transferring funds to escrow...');
+  onProgress?.('transfer', 'Sending funds to the escrow address...');
   const transferTxHash = await transferToContract(
     params.tokenAddress,
     contractAddress,
@@ -513,7 +562,7 @@ export async function executeDirectPaymentSequence(
   );
 
   if (transferTxHash) {
-    onProgress?.('transfer_confirmation', 'Waiting for transfer to be confirmed...');
+    onProgress?.('transfer_confirmation', 'Waiting for your transfer to confirm...');
     const web3Service = await getWeb3Service();
     const receipt = await web3Service.waitForTransaction(transferTxHash, 120000, params.contractserviceId);
     if (!receipt) {
@@ -530,7 +579,7 @@ export async function executeDirectPaymentSequence(
   // address with no code and nothing can move them. If it fails, or this browser dies first,
   // the scheduled sweep finishes the job instead - which is exactly why the address was
   // recorded in step 1 rather than here.
-  onProgress?.('activation', 'Creating and activating escrow...');
+  onProgress?.('activation', 'Creating the escrow around your funds...');
   const activateResponse = await authenticatedFetch('/api/chain/deploy-and-activate', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

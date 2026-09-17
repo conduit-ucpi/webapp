@@ -11,6 +11,22 @@ import { useTokenBalance } from '@/hooks/useTokenBalance';
 import { useContractPayment } from '@/hooks/useContractPayment';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
+
+/**
+ * A value the page does not have yet.
+ *
+ * ⚠️ SIZED LIKE THE TEXT IT STANDS IN FOR, so the layout does not jump when the real value
+ *    arrives. The point of rendering the actual screen while it loads is that it stops being a
+ *    different screen; a placeholder that reflows defeats that.
+ */
+function PendingValue({ className = '' }: { className?: string }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={`inline-block align-middle rounded bg-secondary-100 dark:bg-secondary-700 animate-pulse ${className}`}
+    />
+  );
+}
 import ConnectPaymentStage from '@/components/contracts/ConnectPaymentStage';
 import PaymentRequestIntro from '@/components/contracts/PaymentRequestIntro';
 import PaymentActionPanel from '@/components/contracts/PaymentActionPanel';
@@ -138,9 +154,13 @@ export default function ContractPay() {
     getActiveStep,
   } = usePaymentSteps([
     { id: 'verify', label: t('status.verifying'), status: 'pending' },
-    // Worked out before anything is signed, so it is a step the user passes through rather
-    // than waits on. Listed because the next one sends real money to it, and "transferring to
-    // escrow" reads oddly with nothing before it.
+    // ⚠️ NOT "PREPARING" AN ADDRESS — nothing is prepared. The address is a pure function of
+    //    the escrow's terms, so it is already determined before the user does anything, and
+    //    deriving it takes no measurable time. What this step actually does is record it, so
+    //    that funds sent to an address with no contract at it can still be recovered.
+    //
+    //    It is shown because the next step sends real money there, and a payment whose
+    //    destination appeared from nowhere is not one anybody should feel good about.
     { id: 'address', label: t('status.derivingAddress'), status: 'pending' },
     { id: 'transfer', label: t('status.transferring'), status: 'pending' },
     { id: 'confirm', label: t('status.confirming'), status: 'pending' },
@@ -205,6 +225,11 @@ export default function ContractPay() {
         // swept in, which is the only reliable way to tell a completed payment
         // from one whose money is sitting in the contract untouched — the stored
         // record cannot distinguish them.
+        // ⚠️ NULL HERE IS THE ORDINARY CASE, NOT A FAULT. The address is derived from the
+        //    escrow's terms, so it is recorded long before anything is deployed to it — which
+        //    is the whole point, and is true for most of a quote's life. Reading it used to
+        //    throw "could not decode result data (value=0x)", which reads as a broken ABI and
+        //    is really just an escrow nobody has paid for yet.
         const web3 = await getWeb3Service();
         const state = await web3?.getContractState(escrowAddress);
         if (cancelled) return;
@@ -417,9 +442,8 @@ export default function ContractPay() {
     // Reset to the wallet-flow steps (labels are page-specific; the hook drives statuses).
     setPaymentSteps([
       { id: 'verify', label: t('status.verifying'), status: 'pending' },
-      // The escrow address is worked out before anything is signed, so it is a step the user
-      // passes through rather than one they wait on. It is listed because the next step sends
-      // real money to it — "transferring to escrow" reads oddly with nothing before it.
+      // See the comment on the initial step list: the address is derived, not prepared, and
+      // this step exists so the user sees where their money is about to go.
       { id: 'address', label: t('status.derivingAddress'), status: 'pending' },
       { id: 'transfer', label: t('status.transferring'), status: 'pending' },
       { id: 'confirm', label: t('status.confirming'), status: 'pending' },
@@ -445,6 +469,10 @@ export default function ContractPay() {
         authenticatedFetch,
         transferToContract,
         getWeb3Service,
+        // Already derived and recorded while the page sat idle — the same work the QR needed,
+        // so the click has none of it left to do. Without this the sequence repeats both,
+        // putting two round trips between pressing Pay and the wallet opening.
+        preparedAddress: qr.qrContractAddress ?? undefined,
         updatePaymentStep,
         setLoadingMessage,
         setBusy: setIsPaymentInProgress,
@@ -511,7 +539,14 @@ export default function ContractPay() {
   // spinner for the full rehydration timeout before being asked to connect.
   const returningFromPayment = isResumingPayment;
 
-  if (!config || ((authLoading || returningFromPayment) && !isConnected && !address && !authWaitElapsed)) {
+  // ⚠️ CONFIG NO LONGER GATES THE PAGE EITHER. It was `!config || (auth still resolving)`, so
+  //    a cold config cache held back the entire screen — and the only thing below that wants it
+  //    is the network name, which was already written to cope without one. What remains here is
+  //    purely the auth wait, and only for someone who may yet turn out to be signed in.
+  //
+  //    Deliberately not waiting for everyone: a genuinely signed-out visitor should not stare
+  //    at a spinner for the full rehydration timeout before being asked to connect.
+  if ((authLoading || returningFromPayment) && !isConnected && !address && !authWaitElapsed) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white dark:bg-secondary-900 transition-colors">
         <Head><title>{pageTitle}</title><meta name="viewport" content="width=device-width, initial-scale=1" /></Head>
@@ -544,20 +579,20 @@ export default function ContractPay() {
   // in — so someone who is already signed in has nothing to gain here and goes
   // straight through to the payment screen instead.
   // ================================================================
-  // Reading the escrow: say so rather than offering to take a payment that may
-  // already have been made. This is what a payer sees on returning from
-  // Coinbase, and the chooser here reads as "that failed".
-  if (paymentMethod === null && isCheckingEscrow) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-secondary-900 transition-colors">
-        <Head><title>{pageTitle}</title><meta name="viewport" content="width=device-width, initial-scale=1" /></Head>
-        <div className="text-center p-6">
-          <LoadingSpinner className="w-8 h-8 mx-auto mb-4" />
-          <p className="text-secondary-600 dark:text-secondary-300">{t('pay.checking')}</p>
-        </div>
-      </div>
-    );
-  }
+  // ⚠️ READING THE ESCROW NO LONGER HOLDS THE WHOLE PAGE BACK. This check asks the chain
+  //    whether the payment has already been made — worth knowing, and worth NOT gating first
+  //    paint on: it is an RPC call, and getWeb3Service() may initialise a provider, which on
+  //    mobile can mean waiting on the wallet itself. It was the fourth spinner in a row, after
+  //    config, auth and the contract fetch.
+  //
+  //    The page renders while it runs and the pay button is disabled until it answers, so
+  //    nobody can act on a screen whose premise is still being checked. When it does answer it
+  //    sets alreadyFunded or selects the QR method, and the page follows.
+  //
+  //    The trade is a brief moment where the method chooser is visible before the answer
+  //    arrives. That was always the fallback when the read FAILED — "leaving the chooser up
+  //    costs a click" — so it is a state the page already had to handle, now reached a second
+  //    earlier and with the buttons held.
 
   if (paymentMethod === null && !introDismissed && !isConnected && !address) {
     return (
@@ -703,51 +738,18 @@ export default function ContractPay() {
   // These only apply once the user is authenticated and we've attempted the contract fetch.
   // ================================================================
 
-  // Loading contract after auth
-  if (isLoadingContract) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-secondary-900 transition-colors">
-        <Head><title>{pageTitle}</title><meta name="viewport" content="width=device-width, initial-scale=1" /></Head>
-        <div className="text-center p-6">
-          <LoadingSpinner size="lg" />
-          <p className="mt-4 text-secondary-600 dark:text-secondary-300">{t('pay.loading')}</p>
-        </div>
-      </div>
-    );
-  }
+  // ⚠️ NO LOADING GATE HERE ANY MORE. The real screen renders while the contract is still
+  //    arriving, with the values it does not have yet shown as placeholders and every control
+  //    disabled. A substitute screen — a spinner, or a skeleton pretending to be this one — is
+  //    a second thing to keep in step with the first, and it always drifts.
+  //
+  //    Everything below therefore has to tolerate a null contract. That is what `pending`
+  //    means, and why the derived values are optional-chained rather than assumed.
 
-  // The escrow reports the deposit already swept in: there is nothing to pay.
-  if (alreadyFunded) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-secondary-900 transition-colors">
-        <Head><title>{pageTitle}</title><meta name="viewport" content="width=device-width, initial-scale=1" /></Head>
-        <div className="text-center p-6 max-w-md mx-auto">
-          <h2 className="text-xl font-semibold text-secondary-900 dark:text-white mb-4">{t('pay.alreadyComplete')}</h2>
-          <p className="text-secondary-600 dark:text-secondary-300 mb-6">
-            {t('pay.alreadyCompleteDetail')}
-          </p>
-          <Button onClick={() => router.push('/dashboard')} variant="outline">{t('common.goToDashboard')}</Button>
-        </div>
-      </div>
-    );
-  }
-
-  // Contract error
-  if (contractError) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-secondary-900 transition-colors">
-        <Head><title>{pageTitle}</title><meta name="viewport" content="width=device-width, initial-scale=1" /></Head>
-        <div className="text-center p-6 max-w-md mx-auto">
-          <h2 className="text-xl font-semibold text-red-600 mb-4">{t('pay.unableToProcess')}</h2>
-          <p className="text-secondary-600 dark:text-secondary-300 mb-6">{contractError}</p>
-          <Button onClick={() => router.push('/dashboard')} variant="outline">{t('common.goToDashboard')}</Button>
-        </div>
-      </div>
-    );
-  }
-
-  // Contract not found
-  if (!contract) {
+  // Contract not found — genuinely absent, as opposed to not here YET. Without the second
+  // half of this condition, removing the loading gate above would tell every visitor their
+  // payment did not exist for as long as the fetch took.
+  if (!contract && !isLoadingContract) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white dark:bg-secondary-900 transition-colors">
         <Head><title>{pageTitle}</title><meta name="viewport" content="width=device-width, initial-scale=1" /></Head>
@@ -768,8 +770,10 @@ export default function ContractPay() {
   const amountInTokens = requiredAmount ?? 0;
   const balanceFloat = parseFloat(tokenBalance);
   const hasInsufficientBalance = balanceFloat < amountInTokens;
-  const isInstantPayment = contract.expiryTimestamp === 0;
-  const isSameAddress = address?.toLowerCase() === contract.sellerAddress?.toLowerCase();
+  // Anything the controls would act on that we do not have yet.
+  const pending = !contract || !config;
+  const isInstantPayment = contract?.expiryTimestamp === 0;
+  const isSameAddress = !!contract && address?.toLowerCase() === contract.sellerAddress?.toLowerCase();
   const networkName = config ? getNetworkName(config.chainId) : t('common.unknownNetwork');
 
   /**
@@ -797,28 +801,40 @@ export default function ContractPay() {
             <div className="flex justify-between">
               <span className="text-secondary-600 dark:text-secondary-300">{t('common.amount')}</span>
               <span className="font-medium text-lg text-secondary-900 dark:text-white">
-                {displayCurrency(contract.amount, contract.currency || 'microUSDC')}
+                {contract
+                  ? displayCurrency(contract.amount, contract.currency || 'microUSDC')
+                  : <PendingValue className="w-24 h-6" />}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-secondary-600 dark:text-secondary-300">{t('common.seller')}</span>
-              <span className="text-sm font-mono text-secondary-900 dark:text-white">{contract.sellerAddress.slice(0, 6)}...{contract.sellerAddress.slice(-4)}</span>
+              <span className="text-sm font-mono text-secondary-900 dark:text-white">
+                {contract?.sellerAddress
+                  ? `${contract.sellerAddress.slice(0, 6)}...${contract.sellerAddress.slice(-4)}`
+                  : <PendingValue className="w-28 h-4" />}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-secondary-600 dark:text-secondary-300">{t('common.payoutDate')}</span>
               <span className="font-medium text-secondary-900 dark:text-white">
-                {isInstantPayment ? t('pay.instantNoDelay') : formatDateTimeWithTZ(contract.expiryTimestamp)}
+                {!contract
+                  ? <PendingValue className="w-32 h-5" />
+                  : isInstantPayment
+                    ? t('pay.instantNoDelay')
+                    : formatDateTimeWithTZ(contract.expiryTimestamp)}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-secondary-600 dark:text-secondary-300">{t('common.descriptionLabel')}</span>
-              <span className="text-right max-w-xs text-sm text-secondary-900 dark:text-white">{contract.description}</span>
+              <span className="text-right max-w-xs text-sm text-secondary-900 dark:text-white">
+                {contract ? contract.description : <PendingValue className="w-40 h-4" />}
+              </span>
             </div>
           </div>
 
           {/* Custom arbiter warning — only rendered when the seller has set a
               non-default arbiter address on the pending contract. */}
-          <CustomArbiterNotice arbiterAddress={contract.arbiterAddress} />
+          <CustomArbiterNotice arbiterAddress={contract?.arbiterAddress} />
 
           {/* Change payment method link (hidden while a payment is in progress) */}
           {!isPaymentInProgress && !qr.qrContractAddress && (
@@ -856,14 +872,14 @@ export default function ContractPay() {
                 <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md p-4 mb-6">
                   <p className="text-sm text-yellow-800 dark:text-yellow-300">
                     {t(isInstantPayment ? 'pay.escrowInstant' : 'pay.escrowHeld', {
-                      amount: displayCurrency(contract.amount, contract.currency || 'microUSDC'),
+                      amount: contract ? displayCurrency(contract.amount, contract.currency || 'microUSDC') : '',
                     })}
                   </p>
                 </div>
               )}
 
               <PaymentActionPanel
-                amountLabel={displayCurrency(contract.amount, contract.currency || 'microUSDC')}
+                amountLabel={contract ? displayCurrency(contract.amount, contract.currency || 'microUSDC') : ''}
                 amountInTokens={amountInTokens}
                 balanceFloat={balanceFloat}
                 tokenSymbol={selectedTokenSymbol}
@@ -876,6 +892,12 @@ export default function ContractPay() {
                 hasInsufficientBalance={hasInsufficientBalance}
                 isSameAddress={isSameAddress}
                 isPaymentInProgress={isPaymentInProgress}
+                // ⚠️ IN FLIGHT, NOT "NOT DONE YET". Keyed on the absence of an address, a
+                //    reservation that FAILED would leave this button disabled for good,
+                //    captioned as though it were still working — a dead screen behind a
+                //    reassuring message. Enabled-and-slow is a far better failure than that:
+                //    the sequence does the work inline and surfaces the real error.
+                isPreparing={pending || qr.isCreatingContract || isCheckingEscrow}
                 loadingMessage={loadingMessage}
                 onPay={handleWalletPayment}
                 // The QR is already below; nothing to switch to. Used by the onramp popup

@@ -64,7 +64,7 @@ export default function ContractCreate() {
   const router = useRouter();
   const { config } = useConfig();
   const { user, authenticatedFetch, disconnect, isLoading: authLoading, isLoadingUserData, isConnected, address, refreshUserData } = useAuth();
-  const { approveUSDC, depositToContract, depositFundsAsProxy, getWeb3Service, transferToContract, getTokenBalance } = useSimpleEthers();
+  const { approveUSDC, depositToContract, depositFundsAsProxy, getWeb3Service, transferToContract, prewarmTransferToContract, getTokenBalance } = useSimpleEthers();
   const { runDirectPayment } = useContractPayment();
   const { errors, validateForm, clearErrors } = useContractCreateValidation();
 
@@ -437,6 +437,51 @@ export default function ContractCreate() {
     }
   };
 
+  /**
+   * Work out the escrow address, and warm the transfer, the moment the terms are known.
+   *
+   * ⚠️ NONE OF THIS NEEDS THE USER, so none of it should happen on their click. The address is
+   *    a pure function of terms fixed when the pending contract was created, recording it is
+   *    one request, and the gas estimate is a read. Left until the button was pressed, all
+   *    three sat between "Pay" and the wallet opening — the only wait on this page that anyone
+   *    actually notices.
+   *
+   * ⚠️ RECORDING IS NOT MERE PREPARATION. It is what makes funds sent to an address with no
+   *    contract at it recoverable, so the sweep can finish a payment this browser did not.
+   *    Doing it earlier is also doing it more safely.
+   *
+   * Safe to repeat and safe to abandon: the address is derived rather than issued, and a warmed
+   * estimate that goes unused costs nothing.
+   */
+  useEffect(() => {
+    if (step !== 'payment') return;
+    if (!contractId || !config || !address || !authenticatedFetch) return;
+    if (pendingExpiryTimestamp === null) return;
+    if (qr.qrContractAddress) return;
+
+    let cancelled = false;
+    void (async () => {
+      const escrowAddress = await qr.createContract();
+      if (cancelled || !escrowAddress) return;
+      try {
+        await prewarmTransferToContract(
+          selectedTokenAddress,
+          escrowAddress,
+          String(toMicroUSDC(parseFloat(form.amount.trim())))
+        );
+      } catch {
+        // Work brought forward, not work required. A wrong guess simply goes unused.
+      }
+    })();
+
+    return () => { cancelled = true; };
+    // qr.createContract is stable per its own deps; listing the whole qr object would re-run
+    // this on every poll tick.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, contractId, config, address, authenticatedFetch, pendingExpiryTimestamp,
+      qr.qrContractAddress, qr.createContract, selectedTokenAddress, form.amount,
+      prewarmTransferToContract]);
+
   const handleWalletPayment = async () => {
     if (!contractId || !config) {
       console.error('ContractCreate: Missing required data for wallet payment');
@@ -477,6 +522,9 @@ export default function ContractCreate() {
         authenticatedFetch,
         transferToContract,
         getWeb3Service,
+        // Derived and recorded when the page reached its payment step, so the click has none of
+        // that work left — see the effect above.
+        preparedAddress: qr.qrContractAddress ?? undefined,
         updatePaymentStep,
         setLoadingMessage,
         setBusy: setIsLoading,
@@ -1046,7 +1094,12 @@ export default function ContractCreate() {
                   </Button>
                   <Button
                     onClick={handleWalletPayment}
-                    disabled={isLoading || isLoadingBalance || parseFloat(tokenBalance) < parseFloat(form.amount)}
+                    // ⚠️ IN FLIGHT, NOT "NOT DONE YET". Disabled only while the reservation is
+                    //    actually running: keyed on the absence of an address instead, a
+                    //    reservation that FAILED would leave this dead for good behind a
+                    //    reassuring caption. Enabled-and-slow is a much better failure — the
+                    //    sequence does the work inline and surfaces the real error.
+                    disabled={isLoading || qr.isCreatingContract || isLoadingBalance || parseFloat(tokenBalance) < parseFloat(form.amount)}
                     className="flex-1"
                     title={
                       parseFloat(tokenBalance) < parseFloat(form.amount)
@@ -1057,7 +1110,14 @@ export default function ContractCreate() {
                     {isLoading ? (
                       <>
                         <LoadingSpinner className="w-4 h-4 mr-2" />
-                        {loadingMessage?.match(/Step \d+/)?.[0] || 'Processing...'}
+                        {loadingMessage || 'Processing...'}
+                      </>
+                    ) : qr.isCreatingContract ? (
+                      // Named rather than silently greyed: a disabled button with no
+                      // explanation reads as broken, and this one is briefly unavailable.
+                      <>
+                        <LoadingSpinner className="w-4 h-4 mr-2" />
+                        {t('pay.preparing')}
                       </>
                     ) : (
                       `Pay $${form.amount} ${selectedTokenSymbol}`

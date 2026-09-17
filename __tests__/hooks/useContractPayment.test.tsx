@@ -86,7 +86,7 @@ describe('useContractPayment', () => {
   });
 
   describe('runDirectPayment', () => {
-    it('runs the verify step then executeDirectPaymentSequence and calls onSuccess with the result', async () => {
+    it('marks the wallet check done then runs the sequence and calls onSuccess with the result', async () => {
       const { result } = renderHook(() => useContractPayment());
 
       await act(async () => {
@@ -96,8 +96,11 @@ describe('useContractPayment', () => {
       });
 
       expect(setBusy).toHaveBeenCalledWith(true);
-      expect(updatePaymentStep).toHaveBeenCalledWith('verify', 'active');
+      // Completed without ever being 'active': the balance check is synchronous and runs
+      // against a figure the page already had, so there is nothing to show in progress. It
+      // used to sleep 500ms purely so the tick could be seen appearing.
       expect(updatePaymentStep).toHaveBeenCalledWith('verify', 'completed');
+      expect(updatePaymentStep).not.toHaveBeenCalledWith('verify', 'active');
       expect(mockDirect).toHaveBeenCalledTimes(1);
       // The params are passed through unchanged.
       expect(mockDirect.mock.calls[0][0]).toMatchObject(params);
@@ -188,4 +191,38 @@ describe('useContractPayment', () => {
     });
   });
 
+
+  describe('an address the page already prepared', () => {
+    /**
+     * ⚠️ THE CLICK SHOULD HAVE NOTHING LEFT TO DO BUT ASK FOR A SIGNATURE. The escrow address
+     *    is a pure function of terms the page already holds, and recording it is one request —
+     *    so the page does both while it sits idle, for the QR code. Not passing the result
+     *    through meant the sequence derived and recorded it a second time, putting two round
+     *    trips between pressing Pay and the wallet opening, for work already finished.
+     */
+    it('passes the prepared address through to the sequence', async () => {
+      const { result } = renderHook(() => useContractPayment());
+
+      await act(async () => {
+        await result.current.runDirectPayment(params, {
+          ...baseDeps(),
+          preparedAddress: '0xAlreadyKnown'
+        });
+      });
+
+      expect(mockDirect.mock.calls[0][1].preparedAddress).toBe('0xAlreadyKnown');
+    });
+
+    it('leaves it undefined when the page had not got there yet', async () => {
+      // An interrupted load, or a caller that never prepared. The sequence derives it itself
+      // and reaches the same address, because it comes from the terms rather than from anyone.
+      const { result } = renderHook(() => useContractPayment());
+
+      await act(async () => {
+        await result.current.runDirectPayment(params, baseDeps());
+      });
+
+      expect(mockDirect.mock.calls[0][1].preparedAddress).toBeUndefined();
+    });
+  });
 });

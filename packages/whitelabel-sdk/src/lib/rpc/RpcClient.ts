@@ -286,8 +286,31 @@ export class RpcClient {
     };
   }
 
-  /** The seven boolean escrow state flags, read in parallel. */
-  async getContractState(contractAddress: string): Promise<EscrowContractState> {
+  /**
+   * Whether an escrow has actually been deployed at an address.
+   *
+   * ⚠️ A RECORDED ADDRESS IS NOT A DEPLOYED ONE. Escrow addresses are derived from their terms,
+   *    so `chainAddress` is known — and stored — before anything exists there. Anything that
+   *    used to read "we have an address, therefore there is a contract" is now wrong for the
+   *    entire window between quoting a payment and receiving it, which is most of a quote's life.
+   */
+  async isDeployed(contractAddress: string): Promise<boolean> {
+    return (await this.provider.getCode(contractAddress)) !== '0x';
+  }
+
+  /**
+   * The seven boolean escrow state flags, read in parallel — or null if nothing is deployed
+   * at the address yet.
+   *
+   * ⚠️ NULL RATHER THAN A THROWN DECODE ERROR. Calling a method on an address with no code
+   *    returns `0x`, which ethers cannot decode: "could not decode result data (value=0x)".
+   *    That reads as a broken ABI or a bad RPC, and it is neither — it is the ordinary state of
+   *    every escrow that has not been paid for yet. Callers have to be able to tell "no escrow
+   *    here" from "the chain would not answer", and an exception says neither.
+   */
+  async getContractState(contractAddress: string): Promise<EscrowContractState | null> {
+    if (!(await this.isDeployed(contractAddress))) return null;
+
     const contract = new ethers.Contract(contractAddress, ESCROW_CONTRACT_ABI, this.provider);
     const [isExpired, canClaim, canDispute, isFunded, canDeposit, isDisputed, isClaimed] =
       await Promise.all([

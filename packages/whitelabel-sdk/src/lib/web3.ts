@@ -1025,6 +1025,99 @@ export class Web3Service {
    * Best-effort by design: a failure here is not the user's problem, and the send path will
    * simply do the work itself as before. Never throws.
    */
+  /**
+   * What a transaction needs in the wallet, buffered.
+   *
+   * Extracted so the page-load prewarm and the send path cannot arrive at different numbers —
+   * a prewarm that under-estimates tops up too little and the user waits for a second top-up
+   * anyway, which is the whole cost this was meant to remove.
+   */
+  /**
+   * The gas price to size a funding top-up against, or null if it cannot be determined.
+   *
+   * Null rather than a fallback: this is only used to decide whether to bring a top-up
+   * forward, and guessing high funds people who did not need it while guessing low leaves them
+   * waiting at the click anyway. The send path has its own, more careful, resolution.
+   */
+  private async gasPriceForFunding(): Promise<bigint | null> {
+    try {
+      if (!this.readProvider) return null;
+      const chainId = await this.readProvider.getNetwork().then((n) => n.chainId);
+      const isBaseNetwork = chainId === BigInt(8453) || chainId === BigInt(84532);
+      if (!isBaseNetwork) return this.getMaxGasPriceInWei();
+      return (await this.getReliableEIP1559FeeData()).maxFeePerGas;
+    } catch {
+      return null;
+    }
+  }
+
+  private bufferedGasCost(
+    gasEstimate: bigint,
+    gasPrice: bigint,
+    data: string
+  ): { totalGasNeeded: bigint; gasPriceBuffer: number } {
+    const baseGasPriceBuffer = parseFloat(this.config.gasPriceBuffer);
+
+    // Dispute functions need EXTRA buffer because they may trigger full resolution execution.
+    // Resolution votes need a modest one for 3-party voting logic: the RPC estimated 60k and
+    // 59.5k was used, which barely fit.
+    let gasPriceBuffer = baseGasPriceBuffer;
+    if (this.detectTransactionType(data) === 'submitResolutionVote') {
+      gasPriceBuffer = baseGasPriceBuffer * 1.5;
+    }
+
+    const fundingBufferPercent = Math.round(gasPriceBuffer * 100);
+    return {
+      totalGasNeeded: (gasEstimate * gasPrice * BigInt(fundingBufferPercent)) / BigInt(100),
+      gasPriceBuffer
+    };
+  }
+
+  /**
+   * Top the wallet up, if it is short. Returns whether anything was sent.
+   *
+   * ⚠️ SAFE TO CALL FROM THE PREWARM, AND ONLY IN THAT DIRECTION. Acting on "the balance is
+   *    short" is safe to get wrong: if it has since risen, we have sent a little ETH nobody
+   *    needed and the send path skips its own top-up. Acting on "the balance is fine" is NOT —
+   *    a balance can fall between a page loading and a button being pressed, and being wrong
+   *    optimistically means asking someone to sign a transaction that cannot pay for itself.
+   *
+   *    So the prewarm may fund, and may never authorise skipping. The send path always takes
+   *    its own reading.
+   */
+  private async topUpGasIfShort(userAddress: string, totalGasNeeded: bigint): Promise<boolean> {
+    const existingBalance = await this.readNativeBalance(userAddress);
+    if (existingBalance !== null && existingBalance >= totalGasNeeded) {
+      console.log(
+        `⛽ Wallet already holds ${Number(existingBalance) / 1e18} ETH, covering the ` +
+          `${(Number(totalGasNeeded) / 1e18).toExponential(4)} ETH needed — skipping the top-up.`
+      );
+      return false;
+    }
+
+    console.log('Requesting wallet funding from chainservice...');
+    const fundResponse = await apiFetch('/api/chain/fund-wallet', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        walletAddress: userAddress,
+        totalAmountNeededWei: totalGasNeeded.toString()
+      })
+    });
+
+    if (!fundResponse.ok) {
+      const errorData = await fundResponse.json().catch(() => ({}));
+      throw new Error(`Failed to fund wallet: ${errorData.error || fundResponse.statusText}`);
+    }
+
+    const fundResult = await fundResponse.json();
+    if (!fundResult.success) {
+      throw new Error(`Wallet funding failed: ${fundResult.error || 'Unknown error'}`);
+    }
+    return true;
+  }
+
   async prewarmTransaction(txParams: { to: string; data: string; value?: string }): Promise<void> {
     try {
       if (!this.provider) return;
@@ -1057,14 +1150,24 @@ export class Web3Service {
       this.prewarmedGas.set(Web3Service.gasKey(txParams.to, txParams.data), BigInt(body.result));
       console.log(`[Web3Service.prewarmTransaction] Estimated ahead of time: ${body.result}`);
 
-      // Read the gas balance too. Not cached — the send path takes its own reading, because a
-      // balance can change between a page loading and a button being pressed, and being wrong
-      // optimistically means asking the user to sign a transaction that cannot pay for
-      // itself. This is here to warm the connection and to put the number in the console
-      // while there is still time to do something about it.
-      const balance = await this.readNativeBalance(userAddress);
-      if (balance !== null) {
-        console.log(`[Web3Service.prewarmTransaction] Wallet gas balance: ${Number(balance) / 1e18} ETH`);
+      // ⚠️ AND THEN ACT ON IT. This used to read the balance, log it, and throw the answer
+      //    away — so the page knew a top-up would be needed and made the user wait for it
+      //    anyway. Funding is an on-chain transaction that has to confirm BEFORE their wallet
+      //    is even asked to sign, which is the largest part of the gap between pressing the
+      //    button and anything appearing.
+      //
+      //    Safe in this direction only. Acting on "short" costs a little ETH if the balance has
+      //    since risen, and the send path skips its own top-up. Acting on "fine" would not be:
+      //    the balance can fall, and being wrong optimistically means asking someone to sign a
+      //    transaction that cannot pay for itself. So this may fund, and may never authorise
+      //    skipping — the send path always takes its own reading.
+      const gasPrice = await this.gasPriceForFunding();
+      if (gasPrice === null) return;
+
+      const { totalGasNeeded } = this.bufferedGasCost(BigInt(body.result), gasPrice, txParams.data);
+      const funded = await this.topUpGasIfShort(userAddress, totalGasNeeded);
+      if (funded) {
+        console.log('[Web3Service.prewarmTransaction] Topped the wallet up before it was needed');
       }
     } catch (error) {
       console.debug('[Web3Service.prewarmTransaction] skipped:', error);
@@ -1262,20 +1365,9 @@ export class Web3Service {
     // Step 3: Calculate total gas needed with buffer from config
     // Use the configured GAS_PRICE_BUFFER for funding calculation
     // Apply EXTRA buffer for dispute-related functions that may trigger complex execution
-    const baseGasPriceBuffer = parseFloat(this.config.gasPriceBuffer);
     const transactionType = this.detectTransactionType(txParams.data);
-
-    // Dispute functions need EXTRA buffer because they may trigger full resolution execution
-    let gasPriceBuffer = baseGasPriceBuffer;
-    if (transactionType === 'submitResolutionVote') {
-      // Resolution votes need modest buffer for 3-party voting logic
-      // RPC estimated 60k and used 59.5k (barely ran out), so 1.5x should be sufficient
-      gasPriceBuffer = baseGasPriceBuffer * 1.5;
-      console.log(`⚖️  Applying 1.5x buffer multiplier for submitResolutionVote (3-party voting)`);
-    }
-
+    const { totalGasNeeded, gasPriceBuffer } = this.bufferedGasCost(gasEstimate, gasPrice, txParams.data);
     const fundingBufferPercent = Math.round(gasPriceBuffer * 100);
-    const totalGasNeeded = (gasEstimate * gasPrice * BigInt(fundingBufferPercent)) / BigInt(100);
 
     console.log(`💰 Using ${gasPriceBuffer}x (${fundingBufferPercent - 100}% extra) funding buffer from GAS_PRICE_BUFFER config`);
 
@@ -1301,44 +1393,11 @@ export class Web3Service {
     // chainservice sending ETH, confirming, and only then the user's own transfer. Paying
     // three times in a row bought three top-ups, even though the first left change behind.
     //
-    // A balance read is one cheap call against the same RPC the estimate used, and it is
-    // taken HERE rather than during the page-load prewarm on purpose: a balance can change
-    // between loading a page and pressing a button, and being wrong in the optimistic
-    // direction means asking the user to sign a transaction that cannot pay for itself.
-    const existingBalance = await this.readNativeBalance(userAddress);
-    const alreadyFunded = existingBalance !== null && existingBalance >= totalGasNeeded;
-
-    if (alreadyFunded) {
-      console.log(
-        `⛽ Wallet already holds ${Number(existingBalance) / 1e18} ETH, covering the ` +
-          `${totalGasNeededEth.toExponential(4)} ETH needed — skipping the top-up.`
-      );
-    }
-
-    if (!alreadyFunded) {
-      console.log('Requesting wallet funding from chainservice...');
-      const fundResponse = await apiFetch('/api/chain/fund-wallet', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          walletAddress: userAddress,
-          totalAmountNeededWei: totalGasNeeded.toString()
-        })
-      });
-
-      if (!fundResponse.ok) {
-        const errorData = await fundResponse.json().catch(() => ({}));
-        throw new Error(`Failed to fund wallet: ${errorData.error || fundResponse.statusText}`);
-      }
-
-      const fundResult = await fundResponse.json();
-      if (!fundResult.success) {
-        throw new Error(`Wallet funding failed: ${fundResult.error || 'Unknown error'}`);
-      }
-
-      console.log('Wallet funded successfully:', fundResult.message || 'Ready to send transaction');
-    }
+    // ⚠️ THE BALANCE IS READ HERE EVEN WHEN THE PREWARM ALREADY FUNDED. A balance can change
+    //    between a page loading and a button being pressed, and being wrong in the optimistic
+    //    direction means asking the user to sign a transaction that cannot pay for itself. The
+    //    prewarm may bring this work forward; it may never let us skip the check.
+    await this.topUpGasIfShort(userAddress, totalGasNeeded);
 
     // Step 5: Send transaction using the same unified ethers provider approach
     console.log('[Web3Service.fundAndSendTransaction] Sending transaction via unified ethers provider...');

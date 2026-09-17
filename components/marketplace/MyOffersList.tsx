@@ -119,7 +119,12 @@ export default function MyOffersList({ lpAddress }: MyOffersListProps) {
       const entries = await Promise.all(
         residualEscrowKey.split(',').map(async (escrow) => {
           try {
-            return [escrow, (await client.getContractState(escrow)).isClaimed] as const;
+            const state = await client.getContractState(escrow);
+            // Null means nothing is deployed there. Treated as "unknown, not ready" for the
+            // same reason a failed read is: an escrow that does not exist has certainly not
+            // settled, and claiming otherwise costs the user a reverted transaction.
+            if (!state) return null;
+            return [escrow, state.isClaimed] as const;
           } catch (e) {
             // Unknown, not ready. Leaving it absent keeps the control disabled, which costs
             // the user a wait; assuming settled would cost them a reverted transaction.

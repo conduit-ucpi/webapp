@@ -68,159 +68,218 @@ async function getContractAddresses(
   };
 }
 
+/**
+ * Build the config from scratch: a hop to chainservice for the deployed addresses, plus an
+ * on-chain read per enabled token.
+ *
+ * Extracted from the handler so the cache can refresh WITHOUT anybody waiting for it.
+ */
+async function buildConfig() {
+  const basePath = process.env.NEXT_PUBLIC_BASE_PATH === 'null' ? '' : (process.env.NEXT_PUBLIC_BASE_PATH || '/webapp');
+
+  // Validate critical configuration
+  if (!process.env.RPC_URL) {
+    throw new Error('RPC_URL environment variable is required but not set');
+  }
+  if (!process.env.CHAIN_SERVICE_URL) {
+    throw new Error('Chain service URL not configured');
+  }
+
+  // Parse token configuration from SUPPORTED_TOKENS env var (with fallback to legacy env vars)
+  let tokenConfigs: TokenConfig[] = [];
+
+  if (process.env.SUPPORTED_TOKENS) {
+    // Use new JSON configuration
+    tokenConfigs = parseTokensFromEnv(process.env.SUPPORTED_TOKENS);
+  } else {
+    // Fallback to legacy individual env vars
+    console.warn('⚠️ SUPPORTED_TOKENS not found, using legacy env vars');
+    const legacyTokens: TokenConfig[] = [];
+
+    if (process.env.USDC_CONTRACT_ADDRESS) {
+      legacyTokens.push({
+        symbol: 'USDC',
+        address: process.env.USDC_CONTRACT_ADDRESS,
+        name: 'USD Coin',
+        decimals: 6,
+        isDefault: process.env.DEFAULT_TOKEN_SYMBOL !== 'USDT',
+        enabled: true
+      });
+    }
+
+    if (process.env.USDT_CONTRACT_ADDRESS) {
+      legacyTokens.push({
+        symbol: 'USDT',
+        address: process.env.USDT_CONTRACT_ADDRESS,
+        name: 'Tether USD',
+        decimals: 6,
+        isDefault: process.env.DEFAULT_TOKEN_SYMBOL === 'USDT',
+        enabled: true
+      });
+    }
+
+    if (legacyTokens.length === 0) {
+      throw new Error('No token configuration found - neither SUPPORTED_TOKENS nor legacy env vars');
+    }
+
+    tokenConfigs = legacyTokens;
+  }
+
+  // Fetch contract addresses from chainservice
+  const contractAddresses = await getContractAddresses(process.env.CHAIN_SERVICE_URL);
+
+  // Fetch on-chain details for all enabled tokens in parallel
+  const enabledTokens = tokenConfigs.filter(t => t.enabled !== false);
+  const tokenDetailsPromises = enabledTokens.map(token =>
+    getTokenDetails(process.env.RPC_URL!.trim(), token.address, token.symbol)
+      .then(details => ({ ...token, ...details }))
+      .catch(err => {
+        console.error(`Failed to fetch details for ${token.symbol}:`, err);
+        return { ...token }; // Return config without on-chain details
+      })
+  );
+
+  const supportedTokens = await Promise.all(tokenDetailsPromises);
+
+  // Find the default token
+  const defaultToken = supportedTokens.find(t => t.isDefault) || supportedTokens[0];
+
+  // Legacy fields for backward compatibility
+  const usdcDetails = supportedTokens.find(t => t.symbol === 'USDC') || null;
+  const usdtDetails = supportedTokens.find(t => t.symbol === 'USDT') || null;
+
+  const chainId = parseInt(process.env.CHAIN_ID || '8453'); // Default: Base Mainnet
+
+  const config = {
+    chainId,
+    rpcUrl: process.env.RPC_URL?.trim(),
+    // New centralized token configuration
+    supportedTokens: supportedTokens,
+    defaultToken: defaultToken,
+    // Legacy fields for backward compatibility
+    usdcContractAddress: usdcDetails?.address,
+    usdtContractAddress: usdtDetails?.address,
+    usdcDetails: usdcDetails,
+    usdtDetails: usdtDetails,
+    tokenSymbol: defaultToken?.symbol || 'USDC',
+    defaultTokenSymbol: defaultToken?.symbol || 'USDC',
+    primaryToken: defaultToken,
+    // Contract addresses
+    contractAddress: contractAddresses.implementationAddress,
+    contractFactoryAddress: contractAddresses.factoryAddress,
+    defaultArbiterAddress: contractAddresses.defaultArbiterAddress,
+    // Service URLs
+    userServiceUrl: process.env.USER_SERVICE_URL,
+    chainServiceUrl: process.env.CHAIN_SERVICE_URL,
+    contractServiceUrl: process.env.CONTRACT_SERVICE_URL,
+    // Third-party services
+    moonPayApiKey: process.env.MOONPAY_API_KEY,
+    coinbaseProjectId: process.env.COINBASE_PROJECT_ID,
+    // Derived from CHAIN_ID so there is one place to set the chain. The env var
+    // is an escape hatch only — for a chain we have not mapped yet, or if
+    // Coinbase renames one. Undefined for chains Coinbase does not support
+    // (including every testnet), which hides the cash-out UI.
+    coinbaseNetwork: process.env.COINBASE_NETWORK || coinbaseNetworkForChainId(chainId),
+    walletConnectProjectId: process.env.WALLETCONNECT_PROJECT_ID,
+    neynarApiKey: process.env.NEYNAR_API_KEY,
+    // Gas configuration
+    minGasWei: process.env.MIN_GAS_WEI || '5',
+    maxGasPriceGwei: process.env.MAX_GAS_PRICE_GWEI || '0.001',
+    maxGasCostGwei: process.env.MAX_GAS_COST_GWEI || '0.15',
+    usdcGrantFoundryGas: process.env.USDC_GRANT_FOUNDRY_GAS || '150000',
+    depositFundsFoundryGas: process.env.DEPOSIT_FUNDS_FOUNDRY_GAS || '150000',
+    resolutionVoteFoundryGas: process.env.RESOLUTION_VOTE_FOUNDRY_GAS || '80000',
+    raiseDisputeFoundryGas: process.env.RAISE_DISPUTE_FOUNDRY_GAS || '150000',
+    claimFundsFoundryGas: process.env.CLAIM_FUNDS_FOUNDRY_GAS || '150000',
+    gasPriceBuffer: process.env.GAS_PRICE_BUFFER || '1',
+    // UI configuration
+    basePath,
+    // Release flags (see utils/featureFlags.ts) — the client reads them from here
+    projectsLive: isProjectsLive(),
+    emailVerificationLive: isEmailVerificationLive(),
+    explorerBaseUrl: process.env.EXPLORER_BASE_URL,
+    serviceLink: process.env.SERVICE_LINK || 'http://localhost:3000',
+    // Optional wallet services configuration
+    walletServicesShowWidget: process.env.WALLET_SERVICES_SHOW_WIDGET,
+    walletServicesButtonPosition: process.env.WALLET_SERVICES_BUTTON_POSITION,
+    walletServicesEnableKeyExport: process.env.WALLET_SERVICES_ENABLE_KEY_EXPORT,
+    walletServicesHideTopup: process.env.WALLET_SERVICES_HIDE_TOPUP,
+    // Build information
+    gitTag: process.env.GIT_TAG || 'unknown',
+    gitSha: process.env.GIT_SHA || 'unknown',
+    buildVersion: process.env.BUILD_VERSION || 'unknown'
+  };
+
+  return config;
+}
+
+/**
+ * Refresh in the background, at most one at a time.
+ *
+ * ⚠️ A FAILED REFRESH MUST NOT DISCARD WHAT WE HAVE. If chainservice is briefly unreachable,
+ *    keeping the previous config serving is far better than turning a slow dependency into a
+ *    dead front end — the values barely change, and the alternative is every page failing.
+ */
+let refreshing: Promise<void> | null = null;
+function refreshConfigInBackground(): void {
+  if (refreshing) return;
+  refreshing = buildConfig()
+    .then((data) => {
+      cachedConfig = { data, timestamp: Date.now() };
+    })
+    .catch((error) => {
+      console.error('Config background refresh failed; continuing to serve the previous value:', error);
+    })
+    .finally(() => {
+      refreshing = null;
+    });
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    // Return cached config if still valid
-    if (cachedConfig && (Date.now() - cachedConfig.timestamp) < CACHE_TTL_MS) {
+    if (cachedConfig) {
+      // ⚠️ STALE IS SERVED IMMEDIATELY AND REFRESHED BEHIND THE REQUEST. Expiring the cache
+      //    used to mean one unlucky visitor per window paid for a chainservice round trip plus
+      //    an on-chain read for every configured token — and paid it while the page they asked
+      //    for sat behind a spinner, because this gates first paint.
+      //
+      //    Nothing here changes between deploys except the contract addresses, and those were
+      //    already up to a TTL out of date by construction. Serving a few seconds older while
+      //    the replacement is fetched costs nothing that was not already true, and it means no
+      //    visitor ever waits for this again.
+      if (Date.now() - cachedConfig.timestamp >= CACHE_TTL_MS) {
+        refreshConfigInBackground();
+      }
       return res.status(200).json(cachedConfig.data);
     }
 
-    const basePath = process.env.NEXT_PUBLIC_BASE_PATH === 'null' ? '' : (process.env.NEXT_PUBLIC_BASE_PATH || '/webapp');
-
-    // Validate critical configuration
-    if (!process.env.RPC_URL) {
-      throw new Error('RPC_URL environment variable is required but not set');
-    }
-    if (!process.env.CHAIN_SERVICE_URL) {
-      console.error('CHAIN_SERVICE_URL is missing - required for fetching contract addresses');
-      return res.status(500).json({ error: 'Chain service URL not configured' });
-    }
-
-    // Parse token configuration from SUPPORTED_TOKENS env var (with fallback to legacy env vars)
-    let tokenConfigs: TokenConfig[] = [];
-
-    if (process.env.SUPPORTED_TOKENS) {
-      // Use new JSON configuration
-      tokenConfigs = parseTokensFromEnv(process.env.SUPPORTED_TOKENS);
-    } else {
-      // Fallback to legacy individual env vars
-      console.warn('⚠️ SUPPORTED_TOKENS not found, using legacy env vars');
-      const legacyTokens: TokenConfig[] = [];
-
-      if (process.env.USDC_CONTRACT_ADDRESS) {
-        legacyTokens.push({
-          symbol: 'USDC',
-          address: process.env.USDC_CONTRACT_ADDRESS,
-          name: 'USD Coin',
-          decimals: 6,
-          isDefault: process.env.DEFAULT_TOKEN_SYMBOL !== 'USDT',
-          enabled: true
-        });
-      }
-
-      if (process.env.USDT_CONTRACT_ADDRESS) {
-        legacyTokens.push({
-          symbol: 'USDT',
-          address: process.env.USDT_CONTRACT_ADDRESS,
-          name: 'Tether USD',
-          decimals: 6,
-          isDefault: process.env.DEFAULT_TOKEN_SYMBOL === 'USDT',
-          enabled: true
-        });
-      }
-
-      if (legacyTokens.length === 0) {
-        console.error('No token configuration found - neither SUPPORTED_TOKENS nor legacy env vars');
-        return res.status(500).json({ error: 'Token configuration not found' });
-      }
-
-      tokenConfigs = legacyTokens;
-    }
-
-    // Fetch contract addresses from chainservice
-    const contractAddresses = await getContractAddresses(process.env.CHAIN_SERVICE_URL);
-
-    // Fetch on-chain details for all enabled tokens in parallel
-    const enabledTokens = tokenConfigs.filter(t => t.enabled !== false);
-    const tokenDetailsPromises = enabledTokens.map(token =>
-      getTokenDetails(process.env.RPC_URL!.trim(), token.address, token.symbol)
-        .then(details => ({ ...token, ...details }))
-        .catch(err => {
-          console.error(`Failed to fetch details for ${token.symbol}:`, err);
-          return { ...token }; // Return config without on-chain details
-        })
-    );
-
-    const supportedTokens = await Promise.all(tokenDetailsPromises);
-
-    // Find the default token
-    const defaultToken = supportedTokens.find(t => t.isDefault) || supportedTokens[0];
-
-    // Legacy fields for backward compatibility
-    const usdcDetails = supportedTokens.find(t => t.symbol === 'USDC') || null;
-    const usdtDetails = supportedTokens.find(t => t.symbol === 'USDT') || null;
-
-    const chainId = parseInt(process.env.CHAIN_ID || '8453'); // Default: Base Mainnet
-
-    const config = {
-      chainId,
-      rpcUrl: process.env.RPC_URL?.trim(),
-      // New centralized token configuration
-      supportedTokens: supportedTokens,
-      defaultToken: defaultToken,
-      // Legacy fields for backward compatibility
-      usdcContractAddress: usdcDetails?.address,
-      usdtContractAddress: usdtDetails?.address,
-      usdcDetails: usdcDetails,
-      usdtDetails: usdtDetails,
-      tokenSymbol: defaultToken?.symbol || 'USDC',
-      defaultTokenSymbol: defaultToken?.symbol || 'USDC',
-      primaryToken: defaultToken,
-      // Contract addresses
-      contractAddress: contractAddresses.implementationAddress,
-      contractFactoryAddress: contractAddresses.factoryAddress,
-      defaultArbiterAddress: contractAddresses.defaultArbiterAddress,
-      // Service URLs
-      userServiceUrl: process.env.USER_SERVICE_URL,
-      chainServiceUrl: process.env.CHAIN_SERVICE_URL,
-      contractServiceUrl: process.env.CONTRACT_SERVICE_URL,
-      // Third-party services
-      moonPayApiKey: process.env.MOONPAY_API_KEY,
-      coinbaseProjectId: process.env.COINBASE_PROJECT_ID,
-      // Derived from CHAIN_ID so there is one place to set the chain. The env var
-      // is an escape hatch only — for a chain we have not mapped yet, or if
-      // Coinbase renames one. Undefined for chains Coinbase does not support
-      // (including every testnet), which hides the cash-out UI.
-      coinbaseNetwork: process.env.COINBASE_NETWORK || coinbaseNetworkForChainId(chainId),
-      walletConnectProjectId: process.env.WALLETCONNECT_PROJECT_ID,
-      neynarApiKey: process.env.NEYNAR_API_KEY,
-      // Gas configuration
-      minGasWei: process.env.MIN_GAS_WEI || '5',
-      maxGasPriceGwei: process.env.MAX_GAS_PRICE_GWEI || '0.001',
-      maxGasCostGwei: process.env.MAX_GAS_COST_GWEI || '0.15',
-      usdcGrantFoundryGas: process.env.USDC_GRANT_FOUNDRY_GAS || '150000',
-      depositFundsFoundryGas: process.env.DEPOSIT_FUNDS_FOUNDRY_GAS || '150000',
-      resolutionVoteFoundryGas: process.env.RESOLUTION_VOTE_FOUNDRY_GAS || '80000',
-      raiseDisputeFoundryGas: process.env.RAISE_DISPUTE_FOUNDRY_GAS || '150000',
-      claimFundsFoundryGas: process.env.CLAIM_FUNDS_FOUNDRY_GAS || '150000',
-      gasPriceBuffer: process.env.GAS_PRICE_BUFFER || '1',
-      // UI configuration
-      basePath,
-      // Release flags (see utils/featureFlags.ts) — the client reads them from here
-      projectsLive: isProjectsLive(),
-      emailVerificationLive: isEmailVerificationLive(),
-      explorerBaseUrl: process.env.EXPLORER_BASE_URL,
-      serviceLink: process.env.SERVICE_LINK || 'http://localhost:3000',
-      // Optional wallet services configuration
-      walletServicesShowWidget: process.env.WALLET_SERVICES_SHOW_WIDGET,
-      walletServicesButtonPosition: process.env.WALLET_SERVICES_BUTTON_POSITION,
-      walletServicesEnableKeyExport: process.env.WALLET_SERVICES_ENABLE_KEY_EXPORT,
-      walletServicesHideTopup: process.env.WALLET_SERVICES_HIDE_TOPUP,
-      // Build information
-      gitTag: process.env.GIT_TAG || 'unknown',
-      gitSha: process.env.GIT_SHA || 'unknown',
-      buildVersion: process.env.BUILD_VERSION || 'unknown'
-    };
-
-    // Cache the config for subsequent requests
-    cachedConfig = { data: config, timestamp: Date.now() };
-    res.status(200).json(config);
+    // Nothing cached at all: the very first request after a start. Warmed at module load
+    // below, so in practice this is rare.
+    const data = await buildConfig();
+    cachedConfig = { data, timestamp: Date.now() };
+    res.status(200).json(data);
   } catch (error) {
+    // ⚠️ SAY WHICH SETTING. Collapsing these into "Failed to load configuration" is how a
+    //    missing CHAIN_SERVICE_URL becomes an afternoon: the page fails to load, the message
+    //    names nothing, and the one person who could fix it in seconds has no idea which of a
+    //    dozen values is absent. Nothing here is more sensitive than the response body, which
+    //    already publishes the service URLs.
     console.error('Config loading error:', error);
-    res.status(500).json({ error: 'Failed to load configuration' });
+    const detail = error instanceof Error ? error.message : 'Failed to load configuration';
+    res.status(500).json({ error: detail });
   }
 }
+
+// ⚠️ BUILT BEFORE ANYONE ASKS. Otherwise the first visitor after every deploy pays for the
+//    whole thing, on a page that cannot render until it answers. Failure is ignored: the
+//    handler will try again, and a warm-up that throws must not stop the module loading.
+void buildConfig()
+  .then((data) => {
+    cachedConfig = { data, timestamp: Date.now() };
+    console.log('[config] warmed at startup');
+  })
+  .catch((error) => console.error('[config] startup warm-up failed; will build on first request:', error));

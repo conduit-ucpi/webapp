@@ -93,9 +93,12 @@ describe('Phase 1 behavior change: contract reads no longer require a wallet', (
       [sel('isDisputed')]: word(0),
       [sel('isClaimed')]: word(0),
     };
-    mock = installRpcWireMock((req) =>
-      req.method === 'eth_call' ? map[(req.params[0].data as string).slice(0, 10)] : undefined
-    );
+    mock = installRpcWireMock((req) => {
+      // Asked before the flags: state on an address with no code returns 0x and cannot be
+      // decoded, so the client checks for bytecode first and returns null when there is none.
+      if (req.method === 'eth_getCode') return '0x60006000';
+      return req.method === 'eth_call' ? map[(req.params[0].data as string).slice(0, 10)] : undefined;
+    });
 
     const state = await web3Service.getContractState(CONTRACT);
 

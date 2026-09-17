@@ -13,6 +13,7 @@
  * never deploy to.
  */
 
+import { predictEscrowAddress } from '@/lib/counterfactualAddress';
 import { executeDirectPaymentSequence } from '@/utils/contractTransactionSequence';
 
 const mockWaitForTransaction = jest.fn();
@@ -179,3 +180,72 @@ describe('executeDirectPaymentSequence - ordering', () => {
     ).toBe(false);
   });
 });
+
+describe('a prepared address that does not match the terms', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockAuthenticatedFetch.mockReset();
+    mockTransferToContract.mockReset();
+    mockWaitForTransaction.mockReset();
+    setupHappyPathMocks();
+  });
+
+  /**
+   * ⚠️ THE FAILURE THIS CAUSED, AND WHY IT LOOKED LIKE SOMETHING ELSE. The page seeds its
+   *    prepared address from the contract's RECORDED chainAddress, derived from whatever the
+   *    terms were when it was recorded — not necessarily what is being paid now. Trusting it
+   *    sent the transfer to one address while the deploy targeted another, and the activation
+   *    reported "Address holds 0 of the 1000 required" from a perfectly funded wallet. The
+   *    money had landed; it simply was not where we then looked.
+   *
+   *    Deriving is a pure function and free, so it always happens. A prepared value saves the
+   *    recording round trip and nothing else.
+   */
+  const STALE = '0x000000000000000000000000000000000000dEaD';
+
+  it('pays the address the terms derive to, never the stale one', async () => {
+    await executeDirectPaymentSequence(baseParams, { ...baseOptions, preparedAddress: STALE });
+
+    const paidTo = (mockTransferToContract.mock.calls[0] as any[])[1] as string;
+    expect(paidTo.toLowerCase()).not.toBe(STALE.toLowerCase());
+    // The deploy looks where the money went.
+    expect(paidTo.toLowerCase()).toBe(String(deployBodyAddress()).toLowerCase());
+  });
+
+  it('records the derived address, so the sweep can still find the funds', async () => {
+    await executeDirectPaymentSequence(baseParams, { ...baseOptions, preparedAddress: STALE });
+
+    const patch = mockAuthenticatedFetch.mock.calls.find((c: any[]) => c[1]?.method === 'PATCH');
+    expect(patch).toBeDefined();
+    const paidTo = (mockTransferToContract.mock.calls[0] as any[])[1] as string;
+    expect(JSON.parse(patch![1].body).chainAddress.toLowerCase()).toBe(paidTo.toLowerCase());
+  });
+
+  it('skips the recording round trip when it DOES match', async () => {
+    // First run derives and records, so we learn the correct address.
+    await executeDirectPaymentSequence(baseParams, baseOptions);
+    const correct = (mockTransferToContract.mock.calls[0] as any[])[1] as string;
+
+    jest.clearAllMocks();
+    setupHappyPathMocks();
+    await executeDirectPaymentSequence(baseParams, { ...baseOptions, preparedAddress: correct });
+
+    // The whole point of preparing early: no PATCH between the click and the wallet.
+    expect(mockAuthenticatedFetch.mock.calls.some((c: any[]) => c[1]?.method === 'PATCH')).toBe(false);
+    expect((mockTransferToContract.mock.calls[0] as any[])[1]).toBe(correct);
+  });
+});
+
+function deployBodyAddress(): string {
+  // The deploy names its terms rather than an address; re-derive from what it sent.
+  const body = deployBody();
+  return predictEscrowAddress(baseOptions.factoryAddress, baseOptions.implementationAddress, {
+    tokenAddress: body.tokenAddress,
+    buyer: body.buyer,
+    seller: body.seller,
+    amount: Number(body.amount),
+    expiryTimestamp: body.expiryTimestamp,
+    arbiter: body.arbiter || baseOptions.defaultArbiterAddress,
+    contractserviceId: body.contractserviceId
+  });
+}

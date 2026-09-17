@@ -22,6 +22,16 @@ interface PaymentActionPanelProps {
   hasInsufficientBalance: boolean;
   isSameAddress: boolean;
   isPaymentInProgress: boolean;
+  /**
+   * The page is still doing the work that used to happen on the click — deriving the escrow
+   * address, recording it, warming the gas estimate and topping the wallet up if it is short.
+   *
+   * ⚠️ DISABLED RATHER THAN SLOW. All of it finishes on its own in a moment, and a button that
+   *    works but then stalls for several seconds is a worse experience than one that is
+   *    briefly unavailable and then instant. Clicking early is not broken — the sequence does
+   *    the work inline — it is just the wait we went to some trouble to remove.
+   */
+  isPreparing?: boolean;
   loadingMessage?: string;
   onPay: () => void;
   /** Switches to the direct-to-contract route (link + QR). */
@@ -67,6 +77,7 @@ export default function PaymentActionPanel({
   hasInsufficientBalance,
   isSameAddress,
   isPaymentInProgress,
+  isPreparing = false,
   loadingMessage,
   onPay,
   onPayFromExternalWallet,
@@ -145,7 +156,8 @@ export default function PaymentActionPanel({
   };
 
   // Balance gates both wallet-dependent actions, in opposite directions.
-  const canPayFromThisWallet = !hasInsufficientBalance && !isSameAddress && !isLoadingBalance;
+  const canPayFromThisWallet =
+    !hasInsufficientBalance && !isSameAddress && !isLoadingBalance && !isPreparing;
   const canAddFunds = hasInsufficientBalance && !isLoadingBalance;
 
   const actionButton = 'w-full rounded-lg justify-center';
@@ -220,7 +232,14 @@ export default function PaymentActionPanel({
           {isPaymentInProgress ? (
             <>
               <LoadingSpinner className="w-4 h-4 mr-2" />
-              {loadingMessage?.match(/Step \d+/)?.[0] || t('pay.processing')}
+              {loadingMessage || t('pay.processing')}
+            </>
+          ) : isPreparing ? (
+            // Named rather than spinning on its own: a disabled button with no explanation
+            // reads as broken, and this one is unavailable for about a second.
+            <>
+              <LoadingSpinner className="w-4 h-4 mr-2" />
+              {t('pay.preparing')}
             </>
           ) : (
             t('pay.payFromThisWallet', { amount: amountLabel })

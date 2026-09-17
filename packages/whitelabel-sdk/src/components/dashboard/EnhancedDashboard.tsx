@@ -432,6 +432,44 @@ export default function EnhancedDashboard() {
     setShowDetailsModal(true);
   };
 
+  /**
+   * Open the contract a link named, once the list has arrived.
+   *
+   * ⚠️ THIS IS SOMEBODY ARRIVING COLD. An AP2 receipt carries a manage_url pointing here, and
+   *    the person following it may have no Conduit account and no idea which of their escrows
+   *    this is — they were handed a link by a payment they did not make themselves. Dropping
+   *    them on a list to go hunting is the difference between a dispute window they can use
+   *    and one they give up on.
+   *
+   * Matched on id or on chain address, because a caller holding a receipt has the escrow's
+   * address and may not have our id. Silent when nothing matches: a stale or mistyped link
+   * should leave the dashboard working normally rather than raising an error at someone who
+   * cannot do anything about it.
+   */
+  // Optional-chained: a router without a query is a shape this component should survive
+  // rather than crash on, and several callers construct one that way.
+  const requestedContract = router.query?.contract;
+  useEffect(() => {
+    if (isLoading || showDetailsModal) return;
+
+    const wanted = Array.isArray(requestedContract) ? requestedContract[0] : requestedContract;
+    if (!wanted) return;
+
+    const match = allContracts.find((contract) => {
+      const address = 'contractAddress' in contract ? contract.contractAddress : contract.chainAddress;
+      return (
+        contract.id === wanted ||
+        (!!address && address.toLowerCase() === wanted.toLowerCase())
+      );
+    });
+
+    if (match) handleViewDetails(match);
+    // handleViewDetails and showDetailsModal are deliberately absent: this should fire when the
+    // list arrives or the link changes, not every time the modal is closed — otherwise closing
+    // it would immediately reopen it and the page could not be escaped.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading, allContracts, requestedContract]);
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center py-20">

@@ -49,3 +49,6 @@ certificates
 # cannot be holding anything secret. robots.txt only escapes the rule above because it was
 # tracked before the rule existed; llms.txt had no such luck and was silently unstageable.
 !public/*.txt
+# Generated at build time from the running ap2service, never committed: one source of truth for
+# the MCP server card, so the published copy cannot drift from the one sent to the registry.
+public/.well-known/mcp.json

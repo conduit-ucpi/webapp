@@ -389,30 +389,29 @@ jobs:
         with:
           fetch-depth: 0
 
-      # The MCP server card published here is the SAME DOCUMENT as server.json in ap2service:
-      # one describes the server to crawlers that find it on the domain, the other to the
-      # registry. If they disagree, which one a directory believes depends on how it found us.
+      # ⚠️ GENERATED, NOT COMMITTED. The card and ap2service's server.json used to be two files
+      #    in two repositories describing one server — so which one a directory believed
+      #    depended on how it found us, and keeping them equal was somebody's job forever.
       #
-      # ⚠️ A WARNING, NOT A FAILURE. ap2service's main is legitimately ahead between an
-      #    unreleased change there and the pagesRelease-* tag that publishes the card, so
-      #    failing would block the very release that closes the gap. What must not happen is
-      #    publishing a card nobody noticed was stale.
-      - name: Note whether the MCP card still matches ap2service
-        continue-on-error: true
+      #    stabledrop.me is a static export with no /api at all, so it cannot proxy this the way
+      #    api.stabledrop.me proxies the JWKS. Fetching at build time is the next best thing:
+      #    one source of truth, and no copy in this repo to go stale.
+      #
+      #    Taken from the RUNNING service rather than from ap2service's main, so the card
+      #    describes what is actually deployed. A card advertising a tool surface that is merged
+      #    but not released sends an integrator looking for tools that are not there.
+      - name: Fetch the MCP server card from ap2service
         run: |
-          set -uo pipefail
-          UPSTREAM=https://raw.githubusercontent.com/conduit-ucpi/ap2service/main/server.json
-          if ! curl -sf --max-time 20 "$UPSTREAM" -o /tmp/upstream.json; then
-            echo "::warning::could not read server.json from ap2service; card not compared"
-            exit 0
-          fi
-          if diff -q /tmp/upstream.json public/.well-known/mcp.json >/dev/null 2>&1; then
-            echo "The card matches ap2service's server.json."
-          else
-            echo "::warning::public/.well-known/mcp.json differs from ap2service's server.json."
-            diff /tmp/upstream.json public/.well-known/mcp.json || true
-            echo "Copy it across before publishing: cp ../ap2service/server.json public/.well-known/mcp.json"
-          fi
+          set -euo pipefail
+          mkdir -p public/.well-known
+
+          # ⚠️ FAILS THE BUILD. Publishing Pages without the card is invisible from outside: a
+          #    crawler finds nothing and moves on, raising no error anywhere and leaving the
+          #    previous card in place until somebody happens to look.
+          curl -sf --max-time 30 https://api.stabledrop.me/.well-known/mcp.json \
+               -o public/.well-known/mcp.json
+
+          python3 -c "import json;d=json.load(open('public/.well-known/mcp.json'));print('card:',d['name'],d['version'])"
 
       - uses: actions/setup-node@v4
         with:

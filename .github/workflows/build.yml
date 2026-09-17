@@ -389,6 +389,31 @@ jobs:
         with:
           fetch-depth: 0
 
+      # The MCP server card published here is the SAME DOCUMENT as server.json in ap2service:
+      # one describes the server to crawlers that find it on the domain, the other to the
+      # registry. If they disagree, which one a directory believes depends on how it found us.
+      #
+      # ⚠️ A WARNING, NOT A FAILURE. ap2service's main is legitimately ahead between an
+      #    unreleased change there and the pagesRelease-* tag that publishes the card, so
+      #    failing would block the very release that closes the gap. What must not happen is
+      #    publishing a card nobody noticed was stale.
+      - name: Note whether the MCP card still matches ap2service
+        continue-on-error: true
+        run: |
+          set -uo pipefail
+          UPSTREAM=https://raw.githubusercontent.com/conduit-ucpi/ap2service/main/server.json
+          if ! curl -sf --max-time 20 "$UPSTREAM" -o /tmp/upstream.json; then
+            echo "::warning::could not read server.json from ap2service; card not compared"
+            exit 0
+          fi
+          if diff -q /tmp/upstream.json public/.well-known/mcp.json >/dev/null 2>&1; then
+            echo "The card matches ap2service's server.json."
+          else
+            echo "::warning::public/.well-known/mcp.json differs from ap2service's server.json."
+            diff /tmp/upstream.json public/.well-known/mcp.json || true
+            echo "Copy it across before publishing: cp ../ap2service/server.json public/.well-known/mcp.json"
+          fi
+
       - uses: actions/setup-node@v4
         with:
           node-version: '20'

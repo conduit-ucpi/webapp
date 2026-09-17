@@ -1,9 +1,10 @@
 {
-  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-07-09/server.schema.json",
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "me.stabledrop/escrow-payments",
+  "title": "Stabledrop escrow payments",
   "description": "Stablecoin payments held in escrow the buyer can dispute, with a signed receipt of what happened.",
-  "version": "1.0.16",
-  "website_url": "https://stabledrop.me",
+  "version": "1.0.18",
+  "websiteUrl": "https://stabledrop.me",
   "repository": {
     "url": "https://github.com/conduit-ucpi/ap2service",
     "source": "github"

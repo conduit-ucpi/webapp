@@ -45,3 +45,7 @@ certificates
 *.txt
 !CLAUDE.md
 !*.md
+# ...except the ones under public/, which are SERVED TO THE INTERNET by definition and so
+# cannot be holding anything secret. robots.txt only escapes the rule above because it was
+# tracked before the rule existed; llms.txt had no such luck and was silently unstageable.
+!public/*.txt

@@ -276,6 +276,7 @@ jobs:
             -e CHAIN_SERVICE_URL="${{ vars.CHAIN_SERVICE_URL }}" \\
             -e USER_SERVICE_URL="${{ vars.USER_SERVICE_URL }}" \\
             -e CONTRACT_SERVICE_URL="${{ vars.CONTRACT_SERVICE_URL }}" \\
+            -e AP2_SERVICE_URL="${{ vars.AP2_SERVICE_URL }}" \\
             -e MOONPAY_API_KEY="${{ secrets.MOONPAY_API_KEY }}" \\
             -e X_API_KEY="${{ secrets.X_API_KEY }}" \\
             -e GIT_TAG="${{ env.GIT_TAG }}" \\

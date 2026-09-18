@@ -4,7 +4,7 @@
  * This messenger fetches nonces from our backend /api/auth/siwe/nonce
  * instead of generating random nonces like InformalMessenger does.
  */
-import { apiFetch } from '@/lib/apiFetch';
+import { requestAuthNonce } from '@/lib/auth/walletAuthClient';
 
 import { InformalMessenger } from '@reown/appkit-siwx'
 import type { SIWXMessage } from '@reown/appkit-controllers'
@@ -156,12 +156,7 @@ async function getBackendNonce(input: SIWXMessage.Input): Promise<string> {
   mLog.info('BackendSIWXMessenger', '✅ Embedded wallet detected - proceeding with headless SIWX auth')
   mLog.info('BackendSIWXMessenger', 'Fetching nonce from backend')
 
-  const response = await apiFetch('/api/auth/siwe/nonce')
-  if (!response.ok) {
-    throw new Error(`Failed to get nonce: ${response.status}`)
-  }
-
-  const { nonce } = await response.json()
+  const nonce = await requestAuthNonce()
   mLog.info('BackendSIWXMessenger', 'Received nonce from backend', { nonce })
 
   return nonce

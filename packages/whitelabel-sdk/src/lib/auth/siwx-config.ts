@@ -6,7 +6,7 @@
  * - Better integration with AppKit
  * - Custom verifier calls our backend for authentication
  */
-import { apiFetch } from '@/lib/apiFetch';
+import { verifyAuthSignature } from '@/lib/auth/walletAuthClient';
 
 import { SIWXVerifier, DefaultSIWX } from '@reown/appkit-siwx'
 import type { SIWXSession } from '@reown/appkit-controllers'
@@ -115,13 +115,7 @@ class CustomBackendVerifier extends SIWXVerifier {
       })
 
       // Call our backend to verify the signature
-      const response = await apiFetch('/api/auth/siwe/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message, signature })
-      })
-
-      const isValid = response.ok
+      const isValid = await verifyAuthSignature(message, signature)
 
       if (isValid) {
         console.log('🔐 SIWX: ✅ Backend verification successful - user authenticated')
@@ -129,7 +123,7 @@ class CustomBackendVerifier extends SIWXVerifier {
         this.verifiedSignatures.set(signature, true) // Cache successful verification
         state.markAttempted(true)
       } else {
-        console.error('🔐 SIWX: ❌ Backend verification failed:', response.status)
+        console.error('🔐 SIWX: ❌ Backend verification refused the signature')
         state.markAttempted(false)
       }
 

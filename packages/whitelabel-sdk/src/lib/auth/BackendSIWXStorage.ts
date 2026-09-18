@@ -6,7 +6,7 @@
  * We cache the SIWX session object in sessionStorage so SIWX knows a session exists
  * without requesting a new signature.
  */
-import { apiFetch } from '@/lib/apiFetch';
+import { signOutOfBackend } from '@/lib/auth/walletAuthClient';
 
 import type { CaipNetworkId } from '@reown/appkit-common'
 import type { SIWXSession } from '@reown/appkit-controllers'
@@ -56,10 +56,7 @@ export class BackendSIWXStorage implements SIWXStorage {
       }
 
       // Call backend to clear AUTH-TOKEN cookie
-      await apiFetch('/api/auth/siwe/signout', {
-        method: 'POST',
-        credentials: 'include'
-      })
+      await signOutOfBackend()
 
       console.log('🔐 BackendSIWXStorage: ✅ Session deleted from backend')
     } catch (error) {
@@ -130,10 +127,7 @@ export class BackendSIWXStorage implements SIWXStorage {
         sessionStorage.removeItem(SIWX_SESSION_STORAGE_KEY)
       }
 
-      await apiFetch('/api/auth/siwe/signout', {
-        method: 'POST',
-        credentials: 'include'
-      })
+      await signOutOfBackend()
       return
     }
 

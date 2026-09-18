@@ -45,11 +45,6 @@ export class WalletConnectProvider implements UnifiedProvider {
   async connect(): Promise<ConnectionResult> {
     mLog.info('WalletConnectProvider', 'Connect called - opening WalletConnect modal');
 
-    // Reset SIWX verification state for new connection attempt
-    const { SIWXVerificationState } = await import('@/lib/auth/siwx-config');
-    SIWXVerificationState.getInstance().reset();
-    mLog.info('WalletConnectProvider', 'Reset SIWX verification state for new connection');
-
     try {
       const result = await this.reownProvider.connect();
 

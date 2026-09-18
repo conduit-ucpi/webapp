@@ -24,7 +24,7 @@
 
 import { ReownAuthentication } from '@reown/appkit-siwx'
 import type { SIWXSession } from '@reown/appkit-controllers'
-import { detectEmbeddedWallet } from './BackendSIWXMessenger'
+import { detectEmbeddedWallet } from './embeddedWalletDetection'
 import { mLog } from '@/utils/mobileLogger'
 
 export class EmbeddedOnlySIWX extends ReownAuthentication {

@@ -1,4 +1,3 @@
-import { apiFetch } from '@/lib/apiFetch';
 import { createAppKit } from '@reown/appkit'
 import { EthersAdapter } from '@reown/appkit-adapter-ethers'
 import { mainnet, base, sepolia, baseSepolia } from '@reown/appkit/networks'
@@ -6,9 +5,9 @@ import { ethers } from 'ethers'
 import { toHex } from '@/utils/hexUtils'
 import { detectDevice } from '@/utils/deviceDetection'
 import { wrapProviderWithMobileDeepLinks } from '@/utils/mobileDeepLinkProvider'
-import { createAppKitSIWXConfig } from '@/lib/auth/siwx-config'
 import { EmbeddedOnlySIWX } from '@/lib/auth/EmbeddedOnlySIWX'
-import { siweStatement, buildAuthTokenMessage } from '@/lib/auth/siwe-statement'
+import { buildAuthTokenMessage } from '@/lib/auth/siwe-statement'
+import { requestAuthNonce, buildSiweMessage, verifyAuthSignature } from '@/lib/auth/walletAuthClient'
 import { getSiteNameFromDomain } from '@/utils/siteName'
 import { mLog } from '@/utils/mobileLogger'
 import { classifyAuthError, type AuthFailure } from '@/lib/auth/classifyAuthError'
@@ -1074,39 +1073,20 @@ export class ReownWalletConnectProvider {
         console.warn('🔧 ReownWalletConnect: ⚠️ Could not verify network, proceeding anyway:', chainError)
       }
 
-      console.log('🔧 ReownWalletConnect: Creating SIWE message manually', { address })
-
-      // Step 1: Get a nonce from the backend
-      const nonceResponse = await apiFetch('/api/auth/siwe/nonce')
-      if (!nonceResponse.ok) {
-        console.error('🔧 ReownWalletConnect: Failed to get nonce')
-        return false
-      }
-      const { nonce } = await nonceResponse.json()
+      // Step 1: Get a nonce from the backend. A failure here throws into the catch below and
+      // is classified and reported like any other auth failure — previously an HTTP failure
+      // returned false silently, which is the one deliberate behaviour change in routing this
+      // through walletAuthClient.
+      const nonce = await requestAuthNonce()
       console.log('🔧 ReownWalletConnect: Got nonce from backend')
 
-      // Step 2: Create SIWE message manually (avoiding siwe library parser issues)
-      // Construct message string directly following EIP-4361 format
-      // ALWAYS use config chainId (not wallet's current network) for SIWE message
+      // Step 2: The message the backend parses. Built by the contract, not here, so that every
+      // provider produces the same bytes. Config chainId, never the wallet's current network.
       const chainId = this.config.chainId
-      const domain = window.location.host
-      const uri = window.location.origin
-      const issuedAt = new Date().toISOString()
+      const message = buildSiweMessage({ address, chainId, nonce })
 
-      // EIP-4361 SIWE message format with statement
-      const message = `${domain} wants you to sign in with your Ethereum account:
-${address}
-
-${siweStatement(chainId)}
-
-URI: ${uri}
-Version: 1
-Chain ID: ${chainId}
-Nonce: ${nonce}
-Issued At: ${issuedAt}`
-
-      console.log('🔧 ReownWalletConnect: SIWE message created manually', {
-        domain,
+      console.log('🔧 ReownWalletConnect: SIWE message created', {
+        domain: window.location.host,
         address,
         chainId,
         messageLength: message.length
@@ -1122,16 +1102,8 @@ Issued At: ${issuedAt}`
       console.log('🔧 ReownWalletConnect: Message signed by wallet')
 
       // Step 4: Send to backend for verification
-      const verifyResponse = await apiFetch('/api/auth/siwe/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message,
-          signature
-        })
-      })
-
-      if (!verifyResponse.ok) {
+      const verified = await verifyAuthSignature(message, signature)
+      if (!verified) {
         console.error('🔧 ReownWalletConnect: Backend verification failed')
         return false
       }

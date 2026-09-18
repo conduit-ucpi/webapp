@@ -19,8 +19,8 @@
  *
  * ⚠️ AUTH IS NOT ON THIS LIST, AND THAT IS THE POINT. The backend takes
  *    `{ message, signature }` and recovers the address; it has no idea which library signed.
- *    The SIWX classes below are adapters that let AppKit drive that contract — they are not the
- *    contract. `lib/auth/walletAuthClient.ts` is, and it imports nothing from Reown.
+ *    `lib/auth/walletAuthClient.ts` is that contract — nonce, message, verify — and it imports
+ *    nothing from Reown. The adapter's job is to obtain the signature and hand it over.
  */
 
 import fs from 'fs';
@@ -40,12 +40,10 @@ const SCAN_DIRS = ['components', 'pages', 'utils', 'lib', 'hooks', 'packages/whi
 const ADAPTERS = [
   // The connection itself. The only caller of createAppKit anywhere.
   'packages/whitelabel-sdk/src/components/auth/reownWalletConnect.tsx',
-  // SIWX adapters: AppKit insists on driving the session lifecycle, so these subclass its
-  // interfaces and delegate to walletAuthClient. A different provider needs none of them.
-  'packages/whitelabel-sdk/src/lib/auth/siwx-config.ts',
+  // Reown's OWN authentication, run for embedded wallets so Reown records the connection
+  // method and verified email. Not our session — see walletAuthClient. A different provider
+  // has nothing corresponding to this.
   'packages/whitelabel-sdk/src/lib/auth/EmbeddedOnlySIWX.ts',
-  'packages/whitelabel-sdk/src/lib/auth/BackendSIWXStorage.ts',
-  'packages/whitelabel-sdk/src/lib/auth/BackendSIWXMessenger.ts',
 ];
 
 const REOWN_IMPORT = /(?:import|require)\s*(?:[^'"]*from\s*)?\(?\s*['"]@reown\/[^'"]*['"]/;
@@ -143,6 +141,20 @@ describe('Reown is confined to its adapters', () => {
     // AppKit is a singleton that cannot be torn down and recreated, so a second construction
     // site is not a style problem — it is a race with no recovery.
     expect(callers).toEqual(['packages/whitelabel-sdk/src/components/auth/reownWalletConnect.tsx']);
+  });
+
+  it('the adapter proves ownership through the contract, not by hand', () => {
+    // ⚠️ THE ADAPTER USED TO FETCH THE NONCE, BUILD THE MESSAGE AND POST THE SIGNATURE INLINE,
+    //    while walletAuthClient held a second copy nothing called. Two definitions of what the
+    //    backend accepts, one of them dead, is how a second provider ends up producing a
+    //    message user-service cannot parse. The adapter may sign; it may not talk to /api/auth.
+    const adapter = fs.readFileSync(
+      path.join(ROOT, 'packages/whitelabel-sdk/src/components/auth/reownWalletConnect.tsx'),
+      'utf8'
+    );
+
+    expect(adapter).not.toMatch(/\/api\/auth\/siwe\//);
+    expect(adapter).toMatch(/from '@\/lib\/auth\/walletAuthClient'/);
   });
 
   it('the adapter module is imported only by the files that bridge it', () => {

@@ -469,9 +469,9 @@ Client-side JavaScript bundle that embeds **complete escrow management UI** into
 │   │
 │   ├── lib/
 │   │   ├── auth/
-│   │   │   ├── siwx-config.ts            # SIWX authentication
-│   │   │   ├── BackendSIWXStorage.ts     # Session storage
-│   │   │   └── BackendSIWXMessenger.ts   # Nonce fetching
+│   │   │   ├── walletAuthClient.ts       # Prove ownership to our backend (provider-agnostic)
+│   │   │   ├── EmbeddedOnlySIWX.ts       # Reown Authentication, embedded wallets only
+│   │   │   └── embeddedWalletDetection.ts # Embedded vs external wallet
 │   │   ├── web3.ts                       # Blockchain operations
 │   │   ├── api-client.ts                 # API calls to shared proxy
 │   │   └── config.ts                     # Widget configuration

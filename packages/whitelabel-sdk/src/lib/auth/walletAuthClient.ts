@@ -1,21 +1,24 @@
 import { apiFetch } from '@/lib/apiFetch';
+import { siweStatement } from '@/lib/auth/siwe-statement';
 
 /**
- * Proving wallet ownership to our backend. Three calls, and nothing provider-specific.
+ * Proving wallet ownership to our backend: nonce → message → (the provider signs) → verify.
  *
  * ⚠️ THIS IS THE WHOLE AUTH CONTRACT, AND IT IS NOT REOWN-SHAPED. The backend takes
  *    `{ message, signature }`, recovers the address from the signature, and issues a session.
  *    It has no idea which library produced either, and it does not need one — any holder of a
  *    private key can satisfy it.
  *
- *    That matters because AppKit's SIWX classes look like the auth system and are not. They are
- *    adapters: AppKit insists on driving the session lifecycle, so `BackendSIWXVerifier`,
- *    `BackendSIWXMessenger` and `BackendSIWXStorage` exist to let it call these three functions.
- *    A second provider does not need any of them — it signs, and calls these directly.
+ *    The one thing a provider brings is the signature. Everything else — where the nonce comes
+ *    from, what the message must look like, where it goes — is here, so a second provider reads
+ *    this file and nothing else.
  *
- * Keeping the calls here rather than inside those adapters is what makes that true in practice
- * rather than in principle. Before, swapping providers meant reading three AppKit subclasses to
- * find out what the backend actually wanted.
+ * ⚠️ WHAT THIS IS NOT: AppKit's SIWX. `EmbeddedOnlySIWX` runs Reown's OWN authentication for
+ *    embedded wallets, so that Reown records how the user connected and hands us a verified
+ *    email. It does not create our session. Our session is created here, by the provider's
+ *    `requestAuthentication()`. A first version of this estate had a second SIWX config that
+ *    tried to route AppKit's session lifecycle through these calls; it was never wired in and
+ *    has been deleted.
  */
 
 /** A nonce the backend will accept once, binding a signature to this login attempt. */
@@ -26,6 +29,39 @@ export async function requestAuthNonce(): Promise<string> {
   }
   const { nonce } = await response.json();
   return nonce;
+}
+
+/**
+ * The EIP-4361 message the wallet is asked to sign.
+ *
+ * ⚠️ USER-SERVICE PARSES THIS, AND WALLETS RENDER THEIR FRIENDLY SIGN-IN VIEW ONLY WHILE IT
+ *    PARSES. The header line, the field names and their order are fixed by the spec; the
+ *    statement is the one line that is ours (see siwe-statement.ts). Every provider must
+ *    produce exactly this, which is why it is built here and not in an adapter.
+ *
+ * `chainId` is the app's configured chain, never the wallet's current network: the session is
+ * for the chain the app runs on, whatever the wallet happens to be pointed at.
+ */
+export function buildSiweMessage(params: {
+  address: string;
+  chainId: number;
+  nonce: string;
+  issuedAt?: string;
+}): string {
+  const domain = window.location.host;
+  const uri = window.location.origin;
+  const issuedAt = params.issuedAt ?? new Date().toISOString();
+
+  return `${domain} wants you to sign in with your Ethereum account:
+${params.address}
+
+${siweStatement(params.chainId)}
+
+URI: ${uri}
+Version: 1
+Chain ID: ${params.chainId}
+Nonce: ${params.nonce}
+Issued At: ${issuedAt}`;
 }
 
 /**

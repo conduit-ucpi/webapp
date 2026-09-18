@@ -1,16 +1,16 @@
 /**
- * Tests for the embedded-wallet detection used by BackendSIWXMessenger.
+ * Tests for the embedded-wallet detection used by EmbeddedOnlySIWX.
  *
- * The messenger decides between:
- *   - Headless SIWX (embedded wallet → silent signature → backend cookie)
- *   - Lazy auth / SKIP nonce (external wallet → no SIWX, signature on first API call)
+ * It decides between:
+ *   - Reown Authentication (embedded wallet → headless signature, no prompt)
+ *   - Lazy auth (external wallet → no connect-time prompt, signature on first use)
  *
  * If detection misses a real embedded wallet (e.g. Reown email/Google login),
- * the user falls into the lazy-auth path which never actually triggers,
- * leaving them unauthenticated. These tests guard against that regression.
+ * the user is treated as external and never gets the headless path. These
+ * tests guard against that regression.
  */
 
-import { detectEmbeddedWallet } from '@/lib/auth/BackendSIWXMessenger'
+import { detectEmbeddedWallet } from '@/lib/auth/embeddedWalletDetection'
 
 function makeStorage(entries: Record<string, string>): Storage {
   const map = new Map(Object.entries(entries))

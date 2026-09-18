@@ -8,9 +8,6 @@ import { BackendAuthResult, AuthUser } from '@/lib/auth/types';
 import { TokenManager } from '@/lib/auth/core/TokenManager';
 import { AuthenticationExpiredError } from '@/lib/auth/errors/AuthenticationExpiredError';
 
-// Storage key for SIWX session cache (must match BackendSIWXStorage)
-const SIWX_SESSION_STORAGE_KEY = 'conduit_siwx_session';
-
 export class BackendClient {
   private static instance: BackendClient;
   private tokenManager: TokenManager;
@@ -186,12 +183,6 @@ export class BackendClient {
     // Detect expired JWT (backend session expired)
     if (response.status === 401) {
       console.log('🔐 BackendClient: JWT expired (401) - wallet still connected, need fresh signature');
-
-      // Clear cached SIWX session so it will request a new signature
-      if (typeof window !== 'undefined' && window.sessionStorage) {
-        sessionStorage.removeItem(SIWX_SESSION_STORAGE_KEY);
-        console.log('🔐 BackendClient: Cleared cached SIWX session from sessionStorage');
-      }
 
       // Throw specific error so caller can trigger re-authentication
       throw new AuthenticationExpiredError('Backend JWT expired - wallet still connected');

@@ -42,6 +42,12 @@ interface VectorCase {
 }
 
 describe('the shared counterfactual vectors', () => {
+  // ⚠️ TYPED AS A TUPLE ARRAY, not left to inference. `.map(c => [c.name, c])` widens to
+  //    `any[][]`, which `it.each` cannot narrow back to a two-argument callback — it typechecks
+  //    as "may have fewer elements" and fails the build while every test still passes. jest is
+  //    perfectly happy; only tsc notices.
+  const cases: [string, VectorCase][] = vectors.cases.map((c: VectorCase) => [c.name, c]);
+
   /**
    * ⚠️ A COPY IN FOUR REPOSITORIES IS A COPY THAT DRIFTS. Editing one to make a failing test
    *    pass is the obvious move when the numbers disagree, and it is exactly backwards — the
@@ -54,7 +60,7 @@ describe('the shared counterfactual vectors', () => {
     );
   });
 
-  it.each(vectors.cases.map((c: VectorCase) => [c.name, c]))(
+  it.each(cases)(
     'reproduces %s exactly',
     (_name: string, testCase: VectorCase) => {
       expect(
@@ -71,7 +77,7 @@ describe('the shared counterfactual vectors', () => {
     }
   );
 
-  it.each(vectors.cases.map((c: VectorCase) => [c.name, c]))(
+  it.each(cases)(
     'derives the externalId for %s exactly',
     (_name: string, testCase: VectorCase) => {
       expect(externalId(testCase.contractserviceId).toLowerCase()).toBe(

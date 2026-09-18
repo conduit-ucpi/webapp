@@ -5,6 +5,7 @@ import { apiFetch } from '@/lib/apiFetch';
 
 import React, { useState, useEffect } from 'react';
 import { AuthProvider as NewAuthProvider, useAuth as useNewAuth, BackendClient } from '@/lib/auth';
+import { ProviderHosts } from '@/lib/auth/react/ProviderHosts';
 import { AuthenticationExpiredError } from '@/lib/auth/errors/AuthenticationExpiredError';
 import { WalletSigningError } from '@/lib/auth/errors/WalletSigningError';
 import { useConfig } from './ConfigProvider';
@@ -414,7 +415,8 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
     chainId: config.chainId,
     rpcUrl: config.rpcUrl,
     explorerBaseUrl: config.explorerBaseUrl,
-    walletConnectProjectId: config.walletConnectProjectId
+    walletConnectProjectId: config.walletConnectProjectId,
+    privyAppId: config.privyAppId
   } : null;
 
   // CRITICAL: Always render the SAME component tree structure regardless of
@@ -424,6 +426,8 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
   return (
     <NewAuthProvider config={authConfig}>
       <AuthWrapper>{children}</AuthWrapper>
+      {/* Hooks-based wallet SDKs mount here, beside the app, so their arrival remounts nothing. */}
+      <ProviderHosts config={authConfig} />
     </NewAuthProvider>
   );
 }

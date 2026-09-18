@@ -181,6 +181,7 @@ async function buildConfig() {
     // (including every testnet), which hides the cash-out UI.
     coinbaseNetwork: process.env.COINBASE_NETWORK || coinbaseNetworkForChainId(chainId),
     walletConnectProjectId: process.env.WALLETCONNECT_PROJECT_ID,
+    privyAppId: process.env.PRIVY_APP_ID,
     neynarApiKey: process.env.NEYNAR_API_KEY,
     // Gas configuration
     minGasWei: process.env.MIN_GAS_WEI || '5',

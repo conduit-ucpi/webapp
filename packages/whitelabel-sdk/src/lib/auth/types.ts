@@ -67,11 +67,13 @@ export interface AuthConfig {
   rpcUrl: string;
   explorerBaseUrl: string;
   walletConnectProjectId?: string;
+  /** Set to route wallet connection through Privy instead of Reown. Served by /api/config. */
+  privyAppId?: string;
   usdcContractAddress?: string;
   usdtContractAddress?: string;
 }
 
-export type ProviderType = 'farcaster' | 'walletconnect';
+export type ProviderType = 'farcaster' | 'walletconnect' | 'privy';
 
 // React context types
 export interface AuthContextType {

@@ -1,5 +1,6 @@
 import { AuthConfig, ProviderType } from '@/lib/auth/types';
 import { UnifiedProvider } from '@/lib/auth/types/unified-provider';
+import type { ComponentType } from 'react';
 
 /**
  * Every wallet provider the app can use, as data.
@@ -46,6 +47,12 @@ export interface ProviderDescriptor {
 
   /** Imported only when it applies. */
   readonly load: (config: AuthConfig) => Promise<UnifiedProvider>;
+
+  /**
+   * A React subtree this provider needs mounted, for hooks-based SDKs. Rendered by
+   * `ProviderHosts` beside the app, never around it. Omit for imperative SDKs like AppKit.
+   */
+  readonly host?: () => Promise<ComponentType<{ config: AuthConfig }>>;
 }
 
 export const PROVIDERS: readonly ProviderDescriptor[] = [
@@ -65,13 +72,31 @@ export const PROVIDERS: readonly ProviderDescriptor[] = [
     type: 'walletconnect',
     // Handles everything else: external wallets, email and social through AppKit's embedded
     // accounts. Without a project id there is nothing to connect with.
-    applies: (config) => Boolean(config.walletConnectProjectId),
+    //
+    // ⚠️ STEPS ASIDE WHEN PRIVY IS CONFIGURED, rather than losing on priority. Both cover the
+    //    same ground, and registering both would construct AppKit — a singleton that cannot be
+    //    torn down — for a user who will only ever see Privy's modal.
+    applies: (config) => Boolean(config.walletConnectProjectId) && !config.privyAppId,
     priority: 10,
     required: true,
     load: async (config) => {
       const { WalletConnectProvider } = await import('@/lib/auth/providers/WalletConnectProvider');
       return new WalletConnectProvider(config) as unknown as UnifiedProvider;
     },
+  },
+  {
+    type: 'privy',
+    // The switch. Set PRIVY_APP_ID and this applies, Reown stands down; unset it and nothing
+    // here is loaded. Same ground as Reown — external wallets, email, social — so it outranks
+    // it, and Farcaster still wins inside a frame.
+    applies: (config) => Boolean(config.privyAppId),
+    priority: 20,
+    required: false,
+    load: async (config) => {
+      const { PrivyProvider } = await import('@/lib/auth/providers/PrivyProvider');
+      return new PrivyProvider(config);
+    },
+    host: async () => (await import('@/lib/auth/providers/privy/PrivyHost')).default,
   },
 ];
 

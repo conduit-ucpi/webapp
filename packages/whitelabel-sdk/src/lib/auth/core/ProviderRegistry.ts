@@ -51,7 +51,7 @@ export class ProviderRegistry {
 
     if (this.providers.size === 0) {
       throw new Error(
-        'No auth provider applies to this environment. Check walletConnectProjectId is set.'
+        'No auth provider applies to this environment. Check walletConnectProjectId or privyAppId is set.'
       );
     }
 

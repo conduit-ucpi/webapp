@@ -44,6 +44,7 @@ export interface Config {
   coinbaseProjectId?: string;
   coinbaseNetwork?: string; // Coinbase's network slug (e.g. "base") - see COINBASE_NETWORK
   walletConnectProjectId?: string;
+  privyAppId?: string;
   neynarApiKey?: string;
   // Gas configuration
   minGasWei: string;

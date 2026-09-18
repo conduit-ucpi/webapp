@@ -80,6 +80,7 @@ jobs:
           NEYNAR_API_KEY: ${{ secrets.NEYNAR_API_KEY }}
           NEYNAR_API_URL: ${{ vars.NEYNAR_API_URL }}
           WALLETCONNECT_PROJECT_ID: ${{ secrets.WALLETCONNECT_PROJECT_ID }}
+          PRIVY_APP_ID: ${{ vars.PRIVY_APP_ID }}
           BUILD_VERSION: ${{ env.BUILD_VERSION }}
           GIT_TAG: ${{ env.GIT_TAG }}
           GIT_SHA: ${{ env.GIT_SHA }}
@@ -303,6 +304,7 @@ jobs:
             -e NEYNAR_API_KEY="${{ secrets.NEYNAR_API_KEY }}" \\
             -e NEYNAR_API_URL="${{ vars.NEYNAR_API_URL }}" \\
             -e WALLETCONNECT_PROJECT_ID="${{ secrets.WALLETCONNECT_PROJECT_ID }}" \\
+            -e PRIVY_APP_ID="${{ vars.PRIVY_APP_ID }}" \\
             -e ALLOWED_FRAME_ANCESTORS="${{ vars.ALLOWED_FRAME_ANCESTORS }}" \\
             -e PROJECTS_LIVE="${{ vars.PROJECTS_LIVE }}" \\
             -e EMAIL_VERIFICATION_LIVE="${{ vars.EMAIL_VERIFICATION_LIVE }}" \\

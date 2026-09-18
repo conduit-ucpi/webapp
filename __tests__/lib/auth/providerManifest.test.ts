@@ -55,7 +55,10 @@ describe('the provider manifest', () => {
     // Matched on the import PATH, not the imported name — `UnifiedProvider` is a type and a
     // perfectly legitimate static import. Only `providers/` costs bundle weight.
     expect(source).not.toMatch(/^import[^;]*from '@\/lib\/auth\/providers\//m);
-    expect((source.match(/await import\(/g) || []).length).toBe(PROVIDERS.length);
+    // One dynamic import per provider, plus one per host — a host is a React subtree that
+    // costs as much bundle as the SDK it wraps.
+    const hosts = PROVIDERS.filter((p) => p.host).length;
+    expect((source.match(/await import\(/g) || []).length).toBe(PROVIDERS.length + hosts);
   });
 });
 

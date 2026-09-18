@@ -42,6 +42,9 @@ interface AuthContextValue {
   canFundWallet: () => boolean;
   /** Null when the provider has no on-ramp — callers check canFundWallet() first. */
   fundWallet: (request: FundWalletRequest) => Promise<FundWalletResult | null>;
+  /** Whether the connected wallet's key can be shown to its owner (embedded wallets only). */
+  canExportWallet: () => boolean;
+  exportWallet: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -446,6 +449,15 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
     if (typeof provider?.fundWallet !== 'function') return null;
     return provider.fundWallet(request);
   }, [authManager]);
+  const canExportWallet = useCallback((): boolean => {
+    const provider = authManager.getCurrentProvider();
+    return typeof provider?.exportWallet === 'function' && (provider.canExportWallet?.() ?? true);
+  }, [authManager]);
+  const exportWallet = useCallback(async (): Promise<void> => {
+    const provider = authManager.getCurrentProvider();
+    if (typeof provider?.exportWallet !== 'function') throw new Error('This wallet cannot be exported here');
+    await provider.exportWallet();
+  }, [authManager]);
   // Update user data from external source (e.g., after fetching from backend)
   const updateUserData = useCallback((userData: AuthUser) => {
     setUser(userData);
@@ -499,7 +511,10 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
     getProviderUserInfo,
     // Funding
     canFundWallet,
-    fundWallet
+    fundWallet,
+    // Key export
+    canExportWallet,
+    exportWallet
   }), [
     state,
     user,
@@ -516,7 +531,9 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
     showWalletUI,
     getProviderUserInfo,
     canFundWallet,
-    fundWallet
+    fundWallet,
+    canExportWallet,
+    exportWallet
   ]);
 
   return (

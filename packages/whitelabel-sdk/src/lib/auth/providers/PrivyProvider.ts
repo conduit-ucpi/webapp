@@ -235,6 +235,21 @@ export class PrivyProvider implements UnifiedProvider {
     return api.fundWallet(address, request);
   }
 
+  /** Only an embedded wallet has a key Privy can show; an external wallet's key is its own. */
+  canExportWallet(): boolean {
+    const s = privyBridge.getSnapshot();
+    return s.authenticated && Boolean(s.address) && s.embedded;
+  }
+
+  async exportWallet(): Promise<void> {
+    if (!this.canExportWallet()) throw new Error('No embedded wallet to export');
+    const address = await this.getAddress();
+    const api = privyBridge.getApi();
+    if (!api) throw new Error('Privy host is not mounted');
+    mLog.info('PrivyProvider', 'Opening Privy key export', { address });
+    await api.exportWallet(address);
+  }
+
   getUserInfo(): Record<string, unknown> | null {
     const { user } = privyBridge.getSnapshot();
     return user ? { ...user } : null;

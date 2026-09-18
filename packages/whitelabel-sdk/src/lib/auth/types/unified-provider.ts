@@ -99,6 +99,11 @@ export interface UnifiedProvider {
   // transfer). Present only where the provider offers one; the UI shows the option when it is.
   fundWallet?(request: FundWalletRequest): Promise<FundWalletResult>;
 
+  // Optional: let the user take the wallet's private key away (embedded wallets only). The
+  // provider shows the key in its own isolated UI; this app never sees it.
+  canExportWallet?(): boolean;
+  exportWallet?(): Promise<void>;
+
   // Optional: Manual authentication request (fallback for when auto-auth fails)
   requestAuthentication?(): Promise<boolean>;
 

@@ -76,7 +76,7 @@ export function userInfoFrom(user: User | null): PrivyUserInfo | null {
 }
 
 function PrivyBridge({ config }: { config: AuthConfig }) {
-  const { ready, authenticated, user } = usePrivy();
+  const { ready, authenticated, user, exportWallet } = usePrivy();
   const { wallets, ready: walletsReady } = useWallets();
   const { login } = useLogin({
     onComplete: () => privyBridge.loginCompleted(),
@@ -109,19 +109,21 @@ function PrivyBridge({ config }: { config: AuthConfig }) {
           options: { chain, asset, amount: request.amount }
         });
         return { status: result.status, transactionHash: result.transactionHash };
-      }
+      },
+      exportWallet: (address) => exportWallet({ address })
     });
     return () => privyBridge.registerApi(null);
-  }, [login, logout, active, fundWallet, chain]);
+  }, [login, logout, active, fundWallet, exportWallet, chain]);
 
   useEffect(() => {
     privyBridge.publish({
       ready: ready && walletsReady,
       authenticated,
       address: activeAddress,
+      embedded: active?.walletClientType === 'privy',
       user: userInfoFrom(user)
     });
-  }, [ready, walletsReady, authenticated, activeAddress, user]);
+  }, [ready, walletsReady, authenticated, activeAddress, active?.walletClientType, user]);
 
   return null;
 }

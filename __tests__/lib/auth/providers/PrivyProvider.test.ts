@@ -44,6 +44,7 @@ function fakeApi(overrides: Partial<PrivyBridgeApi> = {}) {
     getEthereumProvider: jest.fn().mockResolvedValue({ request }),
     switchChain: jest.fn().mockResolvedValue(undefined),
     fundWallet: jest.fn().mockResolvedValue({ status: 'completed', transactionHash: '0xtx' }),
+    exportWallet: jest.fn().mockResolvedValue(undefined),
     ...overrides
   };
   privyBridge.registerApi(api);
@@ -51,7 +52,7 @@ function fakeApi(overrides: Partial<PrivyBridgeApi> = {}) {
 }
 
 const ready = (extra: Partial<ReturnType<typeof privyBridge.getSnapshot>> = {}) =>
-  privyBridge.publish({ ready: true, authenticated: false, address: null, user: null, ...extra });
+  privyBridge.publish({ ready: true, authenticated: false, address: null, embedded: false, user: null, ...extra });
 
 /**
  * The modal is open — i.e. the class has called `login` and is now listening for an outcome.
@@ -192,7 +193,7 @@ describe('state', () => {
     ready({ authenticated: true, address: null }); // authenticated but no wallet yet: not connected
     ready({ authenticated: true, address: ADDRESS });
     ready({ authenticated: true, address: ADDRESS, user: { email: 'a@b.c' } }); // user only: no change
-    privyBridge.publish({ ready: true, authenticated: false, address: null, user: null });
+    privyBridge.publish({ ready: true, authenticated: false, address: null, embedded: false, user: null });
 
     expect(seen).toEqual([
       { isConnected: true, address: ADDRESS },
@@ -248,5 +249,27 @@ describe('fundWallet', () => {
     ready();
 
     await expect(new PrivyProvider(config).fundWallet({ amount: '1', asset: 'USDC', chainId: 8453 })).rejects.toThrow(/not connected/);
+  });
+});
+
+describe('exportWallet', () => {
+  it('is offered for an embedded wallet and opens the host export for its address', async () => {
+    const { api } = fakeApi();
+    ready({ authenticated: true, address: ADDRESS, embedded: true });
+    const provider = new PrivyProvider(config);
+
+    expect(provider.canExportWallet()).toBe(true);
+    await provider.exportWallet();
+    expect(api.exportWallet).toHaveBeenCalledWith(ADDRESS);
+  });
+
+  it("is not offered for an external wallet connected through Privy — that key is not Privy's to show", async () => {
+    const { api } = fakeApi();
+    ready({ authenticated: true, address: ADDRESS, embedded: false });
+    const provider = new PrivyProvider(config);
+
+    expect(provider.canExportWallet()).toBe(false);
+    await expect(provider.exportWallet()).rejects.toThrow(/No embedded wallet/);
+    expect(api.exportWallet).not.toHaveBeenCalled();
   });
 });

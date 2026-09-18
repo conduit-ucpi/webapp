@@ -26,6 +26,8 @@ export interface PrivySnapshot {
   authenticated: boolean;
   /** The active wallet's address, or null when there is none yet. */
   address: string | null;
+  /** Whether the active wallet is a Privy embedded wallet (exportable), not an external one. */
+  embedded: boolean;
   user: PrivyUserInfo | null;
 }
 
@@ -40,13 +42,15 @@ export interface PrivyBridgeApi {
   switchChain(chainId: number): Promise<void>;
   /** Privy's funding modal for `address`. Resolves when the user finishes or leaves it. */
   fundWallet(address: string, request: FundWalletRequest): Promise<FundWalletResult>;
+  /** Privy's export modal for `address` — the key is shown in Privy's iframe, never to us. */
+  exportWallet(address: string): Promise<void>;
 }
 
 export type LoginOutcome = { ok: true } | { ok: false; code: string };
 
 type Listener = (snapshot: PrivySnapshot) => void;
 
-const EMPTY: PrivySnapshot = { ready: false, authenticated: false, address: null, user: null };
+const EMPTY: PrivySnapshot = { ready: false, authenticated: false, address: null, embedded: false, user: null };
 
 let snapshot: PrivySnapshot = EMPTY;
 let api: PrivyBridgeApi | null = null;
@@ -72,6 +76,7 @@ export const privyBridge = {
       next.ready !== snapshot.ready ||
       next.authenticated !== snapshot.authenticated ||
       next.address !== snapshot.address ||
+      next.embedded !== snapshot.embedded ||
       next.user?.email !== snapshot.user?.email ||
       next.user?.name !== snapshot.user?.name ||
       next.user?.authProvider !== snapshot.user?.authProvider;

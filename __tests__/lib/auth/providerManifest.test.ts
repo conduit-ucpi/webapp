@@ -86,6 +86,54 @@ describe('ProviderRegistry knows nothing about individual providers', () => {
   });
 });
 
+describe('nothing asks for a provider by name', () => {
+  // ⚠️ FOUND IN A BROWSER, NOT BY A TEST. With PRIVY_APP_ID set, Reown stood down as designed
+  //    and the connect button did nothing: ConnectWalletEmbedded called connect('walletconnect').
+  //    The registry was provider-agnostic; four components were not. A provider's name may
+  //    appear in the manifest, in the provider's own files, and nowhere else that connects.
+  const fs = require('fs');
+  const path = require('path');
+  const ROOT = path.join(__dirname, '../../../');
+  const SCAN_DIRS = ['components', 'pages', 'hooks', 'lib', 'packages/whitelabel-sdk/src'];
+  const ALLOWED = /providerManifest\.ts$|\/lib\/auth\/providers\/|reownWalletConnect\.tsx$|farcasterAuth\.tsx$/;
+  const NAMES = PROVIDERS.map((p) => p.type).join('|');
+  const BY_NAME = new RegExp(`\\b(connect|getProvider)\\(\\s*'(${NAMES})'\\s*\\)`);
+
+  const files = (dir: string): string[] => {
+    const full = path.join(ROOT, dir);
+    if (!fs.existsSync(full)) return [];
+    const out: string[] = [];
+    const walk = (current: string) => {
+      for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
+        const p = path.join(current, entry.name);
+        if (entry.isDirectory()) {
+          if (['node_modules', '.next', 'dist', 'build', '__tests__'].includes(entry.name)) continue;
+          walk(p);
+        } else if (/\.(ts|tsx)$/.test(entry.name) && !/\.d\.ts$/.test(entry.name)) {
+          out.push(path.relative(ROOT, p));
+        }
+      }
+    };
+    walk(full);
+    return out;
+  };
+
+  it('no component, page or hook connects to a provider by name', () => {
+    const all = SCAN_DIRS.flatMap(files);
+    expect(all.length).toBeGreaterThan(100);
+
+    const code = (f: string) =>
+      fs
+        .readFileSync(path.join(ROOT, f), 'utf8')
+        .split('\n')
+        .filter((line: string) => !/^\s*(\/\/|\*|\/\*)/.test(line))
+        .join('\n');
+    const offenders = all.filter((f) => !ALLOWED.test(f) && BY_NAME.test(code(f)));
+
+    expect(offenders).toEqual([]);
+  });
+});
+
 describe('selection follows priority', () => {
   const registry = () => new ProviderRegistry();
 

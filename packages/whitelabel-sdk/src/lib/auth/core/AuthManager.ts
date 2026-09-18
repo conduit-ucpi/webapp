@@ -138,10 +138,19 @@ export class AuthManager {
     try {
       this.setState({ isLoading: true, error: null });
 
-      // Get provider (either preferred or best available)
-      const provider = preferredProvider
-        ? this.providerRegistry.getProvider(preferredProvider)
-        : this.providerRegistry.getBestProvider();
+      // The preferred provider if it registered, otherwise the manifest's choice.
+      //
+      // ⚠️ FALLS BACK RATHER THAN FAILING. A caller naming a provider that did not register —
+      //    Reown after PRIVY_APP_ID made it stand down — used to get "No auth provider
+      //    available" and a button that did nothing. Nothing a caller could name is a better
+      //    answer than the registry's, so the name is a preference, not a requirement.
+      const preferred = preferredProvider ? this.providerRegistry.getProvider(preferredProvider) : null;
+      if (preferredProvider && !preferred) {
+        mLog.warn('AuthManager', 'Preferred provider did not register; using the best available', {
+          preferredProvider
+        });
+      }
+      const provider = preferred ?? this.providerRegistry.getBestProvider();
 
       if (!provider) {
         mLog.error('AuthManager', 'No auth provider available');

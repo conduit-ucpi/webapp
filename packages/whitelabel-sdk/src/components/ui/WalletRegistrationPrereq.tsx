@@ -34,7 +34,7 @@ export default function WalletRegistrationPrereq() {
 
   const handleRegister = async () => {
     if (connect) {
-      await connect('walletconnect');
+      await connect();
     }
   };
 

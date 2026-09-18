@@ -208,7 +208,7 @@ export default function ConnectWalletEmbedded({
             await setConnectionMode(effectiveConnectionMode);
           }
 
-          const result = await connect('walletconnect');
+          const result = await connect();
           if (!result) {
             // Fallback no-op connect returned undefined - reset so we retry with real connect
             mLog.warn('ConnectWalletEmbedded', 'Auto-connect got no result (auth not ready), will retry');
@@ -290,11 +290,13 @@ export default function ConnectWalletEmbedded({
           }
 
           // Always use WalletConnect (handles social, email, and all wallets)
-          mLog.info('ConnectWalletEmbedded', 'Calling connect function with WalletConnect');
+          // No provider named: the registry picks by manifest priority. Naming one here was how
+          // a configured Privy produced "No auth provider available" — Reown had stood down.
+          mLog.info('ConnectWalletEmbedded', 'Calling connect');
           mLog.info('ConnectWalletEmbedded', 'SIWE enabled - authentication will happen automatically during connection');
           await mLog.forceFlush(); // Flush before calling (in case it hangs)
 
-          const connectionResult = await connect('walletconnect');
+          const connectionResult = await connect();
 
           // Handle undefined/null connectionResult (config loading failure or unexpected error)
           if (!connectionResult) {

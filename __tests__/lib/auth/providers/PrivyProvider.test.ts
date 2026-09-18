@@ -62,7 +62,10 @@ const ready = (extra: Partial<ReturnType<typeof privyBridge.getSnapshot>> = {}) 
  */
 const modalOpen = (login: jest.Mock) =>
   new Promise<void>((resolve) => {
-    const tick = () => (login.mock.calls.length > 0 ? resolve() : setTimeout(tick, 0));
+    const tick = (): void => {
+      if (login.mock.calls.length > 0) resolve();
+      else setTimeout(tick, 0);
+    };
     tick();
   });
 

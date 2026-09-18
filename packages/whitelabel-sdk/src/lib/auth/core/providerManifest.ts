@@ -1,0 +1,95 @@
+import { AuthConfig, ProviderType } from '@/lib/auth/types';
+import { UnifiedProvider } from '@/lib/auth/types/unified-provider';
+
+/**
+ * Every wallet provider the app can use, as data.
+ *
+ * ⚠️ ADDING ONE IS AN ENTRY IN THIS ARRAY AND NOTHING ELSE. It used to be five edits — the
+ *    `ProviderType` union, an `if` in `initialize()`, a `registerXProvider()` method, a branch
+ *    in `getBestProvider()`, and the provider itself — with three of those scattered inside the
+ *    registry's own logic. That is the difference between "swappable in principle" and
+ *    somebody actually doing it.
+ *
+ * ⚠️ `load` IS A DYNAMIC IMPORT ON PURPOSE. Each provider pulls a wallet SDK behind it, and a
+ *    static import would put every one of them in the bundle of a user who will only ever meet
+ *    one. Reown alone is not small.
+ */
+export interface ProviderDescriptor {
+  /** How this provider is asked for by name. */
+  readonly type: ProviderType;
+
+  /**
+   * Whether this provider applies at all, given the config and the environment it is running
+   * in. Returning false is ordinary — a Farcaster provider outside a frame, a provider whose
+   * project id is unset — and not an error.
+   */
+  readonly applies: (config: AuthConfig) => boolean;
+
+  /**
+   * Which provider wins when several apply. HIGHER RUNS FIRST.
+   *
+   * ⚠️ Ties are not resolved and must not exist: two providers claiming the same number would
+   *    be picked between by array order, which is invisible at the call site. The registry
+   *    refuses a manifest containing one rather than choosing quietly.
+   */
+  readonly priority: number;
+
+  /**
+   * Whether failing to register this one should stop the app.
+   *
+   * Farcaster is optional — outside a frame there is simply nothing to connect to. A wallet
+   * provider that cannot start when it is the only one that applies leaves a user with no way
+   * to sign in at all, which is worth failing loudly for rather than discovering at the first
+   * button press.
+   */
+  readonly required: boolean;
+
+  /** Imported only when it applies. */
+  readonly load: (config: AuthConfig) => Promise<UnifiedProvider>;
+}
+
+export const PROVIDERS: readonly ProviderDescriptor[] = [
+  {
+    type: 'farcaster',
+    // Inside a Farcaster frame the host wallet is the only one that can sign, so this wins
+    // wherever it applies.
+    applies: () => isInFarcaster(),
+    priority: 100,
+    required: false,
+    load: async (config) => {
+      const { FarcasterProvider } = await import('@/lib/auth/providers/FarcasterProvider');
+      return new FarcasterProvider(config) as unknown as UnifiedProvider;
+    },
+  },
+  {
+    type: 'walletconnect',
+    // Handles everything else: external wallets, email and social through AppKit's embedded
+    // accounts. Without a project id there is nothing to connect with.
+    applies: (config) => Boolean(config.walletConnectProjectId),
+    priority: 10,
+    required: true,
+    load: async (config) => {
+      const { WalletConnectProvider } = await import('@/lib/auth/providers/WalletConnectProvider');
+      return new WalletConnectProvider(config) as unknown as UnifiedProvider;
+    },
+  },
+];
+
+/**
+ * Whether we are running inside a Farcaster frame.
+ *
+ * Kept beside the descriptor that asks, rather than on the registry, so that the registry holds
+ * no knowledge of any particular provider.
+ */
+export function isInFarcaster(): boolean {
+  if (typeof window === 'undefined') return false;
+
+  // ⚠️ MOVED VERBATIM FROM ProviderRegistry, not rewritten. Frame detection decides which
+  //    wallet a user gets, and "tidying" it while relocating it would change who can sign in
+  //    without anything in the diff looking like a behaviour change.
+  return !!(
+    window.parent !== window &&
+    (window.navigator.userAgent.includes('farcaster') ||
+      window.location !== window.parent.location)
+  );
+}

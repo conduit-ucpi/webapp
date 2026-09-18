@@ -1,10 +1,18 @@
 /**
- * Provider registry for managing available auth providers
+ * Provider registry: turns the manifest into live providers, and knows nothing about any of
+ * them individually.
+ *
+ * ⚠️ NO PROVIDER IS NAMED IN THIS FILE, and that is the whole design. It used to hold an `if`
+ *    per provider in `initialize()`, a `registerXProvider()` each, and a branch per provider in
+ *    `getBestProvider()` — so adding one meant three edits here plus a union member plus the
+ *    provider itself, and forgetting the `getBestProvider()` branch produced a provider that
+ *    registered successfully and was never selected. Everything is `providerManifest.ts` now.
  */
 
 import { AuthConfig, ProviderType } from '@/lib/auth/types';
 import { UnifiedProvider } from '@/lib/auth/types/unified-provider';
 import { mLog } from '@/utils/mobileLogger';
+import { PROVIDERS, ProviderDescriptor } from './providerManifest';
 
 export class ProviderRegistry {
   private providers: Map<ProviderType, UnifiedProvider> = new Map();
@@ -16,43 +24,63 @@ export class ProviderRegistry {
       return;
     }
 
-    mLog.info('ProviderRegistry', 'Initializing providers');
+    assertDistinctPriorities();
 
-    const isInFarcaster = this.isInFarcaster();
-    // Reduced environment detection logging
+    // Highest priority first, so the order things register in is the order they are preferred.
+    const applicable = [...PROVIDERS]
+      .filter((descriptor) => descriptor.applies(config))
+      .sort((a, b) => b.priority - a.priority);
 
+    mLog.info('ProviderRegistry', 'Initializing providers', {
+      applicable: applicable.map((d) => d.type),
+    });
+
+    for (const descriptor of applicable) {
+      await this.register(descriptor, config);
+    }
+
+    // ⚠️ A REQUIRED PROVIDER THAT APPLIED AND DID NOT START IS FATAL. Carrying on leaves
+    //    somebody with no way to sign in at all, discovered at the first button press rather
+    //    than at startup — and by then the failure is several screens from its cause.
+    const missing = applicable.filter((d) => d.required && !this.providers.has(d.type));
+    if (missing.length > 0) {
+      throw new Error(
+        `Required auth provider(s) failed to register: ${missing.map((d) => d.type).join(', ')}`
+      );
+    }
+
+    if (this.providers.size === 0) {
+      throw new Error(
+        'No auth provider applies to this environment. Check walletConnectProjectId is set.'
+      );
+    }
+
+    this.initialized = true;
+    mLog.info('ProviderRegistry', '✅ Providers initialized', {
+      providerCount: this.providers.size,
+      providerTypes: Array.from(this.providers.keys()),
+    });
+  }
+
+  /**
+   * Load and start one provider.
+   *
+   * Failure is logged and swallowed here; whether it MATTERS is decided above, by `required`.
+   * An optional provider that cannot start is an ordinary outcome — a frame SDK that is not
+   * present, a network that is not reachable — and must not take the others down with it.
+   */
+  private async register(descriptor: ProviderDescriptor, config: AuthConfig): Promise<void> {
     try {
-      // Detect environment and register appropriate providers
-      if (isInFarcaster) {
-        mLog.info('ProviderRegistry', 'Detected Farcaster environment, registering Farcaster provider');
-        await this.registerFarcasterProvider(config);
-      } else {
-        // Register WalletConnect provider (handles ALL auth: social, email, wallets)
-        if (config.walletConnectProjectId) {
-          mLog.info('ProviderRegistry', 'WalletConnect project ID found, registering WalletConnect provider');
-          await this.registerWalletConnectProvider(config);
-
-          if (this.providers.has('walletconnect')) {
-            mLog.info('ProviderRegistry', 'WalletConnect provider registered successfully');
-          } else {
-            throw new Error('WalletConnect provider registration failed');
-          }
-        } else {
-          throw new Error('WalletConnect project ID is required');
-        }
-      }
-
-      this.initialized = true;
-      mLog.info('ProviderRegistry', '✅ Providers initialized', {
-        providerCount: this.providers.size,
-        providerTypes: Array.from(this.providers.keys())
-      });
+      mLog.info('ProviderRegistry', `Registering ${descriptor.type} provider`);
+      const provider = await descriptor.load(config);
+      await provider.initialize();
+      this.providers.set(descriptor.type, provider);
+      mLog.info('ProviderRegistry', `Registered ${descriptor.type} provider successfully`);
     } catch (error) {
-      mLog.error('ProviderRegistry', '❌ Provider initialization failed', {
+      mLog.error('ProviderRegistry', `Failed to register ${descriptor.type} provider`, {
         error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined
+        stack: error instanceof Error ? error.stack : undefined,
       });
-      throw error;
     }
   }
 
@@ -60,23 +88,19 @@ export class ProviderRegistry {
     return this.providers.get(type) || null;
   }
 
+  /**
+   * The provider to use, by manifest priority rather than by a chain of `if`s.
+   *
+   * ⚠️ THIS IS WHY PRIORITY IS DATA. The old version listed providers in an if/else here as
+   *    well as in initialize(), so a new provider could register perfectly and still never be
+   *    chosen — with nothing failing anywhere.
+   */
   getBestProvider(): UnifiedProvider | null {
-    // Return the first available provider
-    // Priority: farcaster (if in frame) -> walletconnect
-    let bestProvider: UnifiedProvider | null = null;
-    let selectedType: string = 'none';
+    const best = [...PROVIDERS]
+      .filter((descriptor) => this.providers.has(descriptor.type))
+      .sort((a, b) => b.priority - a.priority)[0];
 
-    if (this.providers.has('farcaster')) {
-      bestProvider = this.providers.get('farcaster')!;
-      selectedType = 'farcaster';
-    } else if (this.providers.has('walletconnect')) {
-      bestProvider = this.providers.get('walletconnect')!;
-      selectedType = 'walletconnect';
-    }
-
-    // Provider selection completed
-
-    return bestProvider;
+    return best ? this.providers.get(best.type)! : null;
   }
 
   getAllProviders(): UnifiedProvider[] {
@@ -86,61 +110,22 @@ export class ProviderRegistry {
   hasProvider(type: ProviderType): boolean {
     return this.providers.has(type);
   }
+}
 
-  private async registerWalletConnectProvider(config: AuthConfig): Promise<void> {
-    try {
-      mLog.info('ProviderRegistry', 'Registering WalletConnect provider');
-      // Dynamic import to avoid bundle size
-      const { WalletConnectProvider } = await import('@/lib/auth/providers/WalletConnectProvider');
-      mLog.debug('ProviderRegistry', 'WalletConnectProvider imported successfully');
-
-      const provider = new WalletConnectProvider(config);
-      mLog.debug('ProviderRegistry', 'WalletConnectProvider instance created');
-
-      await provider.initialize();
-      mLog.debug('ProviderRegistry', 'WalletConnectProvider initialized');
-
-      this.providers.set('walletconnect', provider);
-      mLog.info('ProviderRegistry', 'Registered WalletConnect provider successfully');
-    } catch (error) {
-      mLog.error('ProviderRegistry', 'Failed to register WalletConnect provider', {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined
-      });
+/**
+ * Two providers claiming the same priority would be ordered by their position in the array,
+ * which is invisible from the call site and changes when somebody tidies the list.
+ */
+function assertDistinctPriorities(): void {
+  const seen = new Map<number, ProviderType>();
+  for (const descriptor of PROVIDERS) {
+    const clash = seen.get(descriptor.priority);
+    if (clash) {
+      throw new Error(
+        `Auth providers '${clash}' and '${descriptor.type}' share priority ${descriptor.priority}. ` +
+          'Priorities decide which provider is used and must be distinct.'
+      );
     }
-  }
-
-  private async registerFarcasterProvider(config: AuthConfig): Promise<void> {
-    try {
-      mLog.info('ProviderRegistry', 'Registering Farcaster provider');
-      // Dynamic import to avoid bundle size
-      const { FarcasterProvider } = await import('@/lib/auth/providers/FarcasterProvider');
-      mLog.debug('ProviderRegistry', 'FarcasterProvider imported successfully');
-
-      const provider = new FarcasterProvider(config);
-      mLog.debug('ProviderRegistry', 'FarcasterProvider instance created');
-
-      await provider.initialize();
-      mLog.debug('ProviderRegistry', 'FarcasterProvider initialized');
-
-      this.providers.set('farcaster', provider);
-      mLog.info('ProviderRegistry', 'Registered Farcaster provider successfully');
-    } catch (error) {
-      mLog.error('ProviderRegistry', 'Failed to register Farcaster provider', {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined
-      });
-    }
-  }
-
-  private isInFarcaster(): boolean {
-    if (typeof window === 'undefined') return false;
-
-    // Check for Farcaster frame environment
-    return !!(
-      window.parent !== window &&
-      (window.navigator.userAgent.includes('farcaster') ||
-        window.location !== window.parent.location)
-    );
+    seen.set(descriptor.priority, descriptor.type);
   }
 }

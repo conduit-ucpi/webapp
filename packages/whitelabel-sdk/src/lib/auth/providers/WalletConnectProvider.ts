@@ -10,7 +10,8 @@ import {
   ProviderCapabilities,
   TransactionRequest
 } from '@/lib/auth/types/unified-provider';
-import { ReownWalletConnectProvider, ConnectionMode } from '@/components/auth/reownWalletConnect';
+import { ReownWalletConnectProvider } from '@/components/auth/reownWalletConnect';
+import type { ConnectionMode } from '@/lib/auth/types/unified-provider';
 import { ethers } from "ethers";
 import { mLog } from '@/utils/mobileLogger';
 

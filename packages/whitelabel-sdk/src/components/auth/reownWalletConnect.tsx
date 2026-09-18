@@ -16,7 +16,7 @@ import { reportAuthFailure } from '@/lib/auth/reportAuthFailure'
 export { classifyAuthError } from '@/lib/auth/classifyAuthError'
 export type { AuthFailure, AuthFailureKind } from '@/lib/auth/classifyAuthError'
 
-export type ConnectionMode = 'default' | 'wallet-only' | 'social-only'
+import type { ConnectionMode } from '@/lib/auth/types/unified-provider'
 
 export class ReownWalletConnectProvider {
   private appKit: any = null

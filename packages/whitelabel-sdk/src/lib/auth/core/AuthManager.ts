@@ -5,6 +5,7 @@
 
 import { AuthConfig, ProviderType } from '@/lib/auth/types';
 import {
+  ConnectionMode,
   UnifiedProvider,
   ConnectionResult,
   AuthState,
@@ -15,7 +16,6 @@ import { ProviderRegistry } from './ProviderRegistry';
 import { TokenManager } from './TokenManager';
 import { mLog } from '@/utils/mobileLogger';
 import { ethers } from 'ethers';
-import type { ConnectionMode } from '@/components/auth/reownWalletConnect';
 
 export class AuthManager {
   private static instance: AuthManager;
@@ -99,14 +99,18 @@ export class AuthManager {
   }
 
   /**
-   * Set the connection mode on the WalletConnect provider to control
-   * which options the Reown modal shows (wallets only, social only, or all).
+   * Narrow what the connect UI offers (wallets only, social only, or all).
+   *
+   * Delivered to the provider that connect() will use: the current one if connected, otherwise
+   * the one the registry would choose. Set before connect() by the choice cards, so "current"
+   * is usually null here and the fallback is the path that matters.
+   *
+   * ⚠️ NOT getProvider('walletconnect'). That is what this did, and it meant any other
+   *    provider's setConnectionMode was dead code nothing could detect.
    */
   async setConnectionMode(mode: ConnectionMode): Promise<void> {
-    const provider = this.providerRegistry.getProvider('walletconnect');
-    if (provider && 'setConnectionMode' in provider) {
-      await (provider as any).setConnectionMode(mode);
-    }
+    const provider = this.currentProvider ?? this.providerRegistry.getBestProvider();
+    await provider?.setConnectionMode?.(mode);
   }
 
   /**

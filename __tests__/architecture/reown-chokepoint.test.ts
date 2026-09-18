@@ -50,6 +50,28 @@ const ADAPTERS = [
 
 const REOWN_IMPORT = /(?:import|require)\s*(?:[^'"]*from\s*)?\(?\s*['"]@reown\/[^'"]*['"]/;
 
+/**
+ * The adapter MODULE, as distinct from the Reown PACKAGE. `reownWalletConnect.tsx` imports
+ * nothing a caller should want except through `UnifiedProvider`, and importing it directly is
+ * how Reown's vocabulary escapes without a single `@reown/` import appearing anywhere.
+ *
+ * ⚠️ THIS IS THE ONE THE FIRST VERSION MISSED. `AuthManager` imported `ConnectionMode` from
+ *    here — a type, so nothing bundled, and not an `@reown/` path, so the rule above was
+ *    satisfied — and then called `getProvider('walletconnect')` to deliver it. A second
+ *    provider's `setConnectionMode` was unreachable, and every test passed.
+ */
+const ADAPTER_MODULE = /from\s*['"](?:@\/components\/auth\/|\.\/)reownWalletConnect['"]/;
+const ADAPTER_MODULE_IMPORTERS = [
+  ...ADAPTERS,
+  // The UnifiedProvider implementation that wraps the adapter. It is the bridge, so it is the
+  // one place outside the adapters that is allowed to know the adapter exists.
+  'packages/whitelabel-sdk/src/lib/auth/providers/WalletConnectProvider.ts',
+];
+
+/** Where the registry, manager and token logic live. Nothing in here may name a provider. */
+const CORE_DIR = 'packages/whitelabel-sdk/src/lib/auth/core';
+const MANIFEST = `${CORE_DIR}/providerManifest.ts`;
+
 const sourceFiles = (dir: string): string[] => {
   const full = path.join(ROOT, dir);
   if (!fs.existsSync(full)) return [];
@@ -121,5 +143,34 @@ describe('Reown is confined to its adapters', () => {
     // AppKit is a singleton that cannot be torn down and recreated, so a second construction
     // site is not a style problem — it is a race with no recovery.
     expect(callers).toEqual(['packages/whitelabel-sdk/src/components/auth/reownWalletConnect.tsx']);
+  });
+
+  it('the adapter module is imported only by the files that bridge it', () => {
+    const offenders = files.filter(
+      (f) =>
+        !ADAPTER_MODULE_IMPORTERS.includes(f) &&
+        ADAPTER_MODULE.test(fs.readFileSync(path.join(ROOT, f), 'utf8'))
+    );
+
+    expect(offenders).toEqual([]);
+  });
+
+  it('core names no provider', () => {
+    // ⚠️ `getProvider('walletconnect')` is not an import and matches no path rule, and it is
+    //    the most direct way to make a second provider a no-op: whatever the manifest chose,
+    //    the call goes to the one that was there first. The manifest is the ONLY file in core
+    //    allowed to spell a provider's name.
+    const code = (f: string) =>
+      fs
+        .readFileSync(path.join(ROOT, f), 'utf8')
+        .split('\n')
+        .filter((line) => !/^\s*(\/\/|\*|\/\*)/.test(line))
+        .join('\n');
+
+    const offenders = files
+      .filter((f) => f.startsWith(CORE_DIR + '/') && f !== MANIFEST)
+      .filter((f) => /['"](walletconnect|farcaster|privy)['"]/.test(code(f)));
+
+    expect(offenders).toEqual([]);
   });
 });

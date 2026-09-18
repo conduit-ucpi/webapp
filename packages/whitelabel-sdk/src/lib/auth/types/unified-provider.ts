@@ -22,6 +22,8 @@ export interface TransactionRequest {
 /**
  * Provider capabilities - what operations the provider supports
  */
+export type ConnectionMode = 'default' | 'wallet-only' | 'social-only';
+
 export interface ProviderCapabilities {
   canSign: boolean;
   canTransact: boolean;
@@ -72,6 +74,15 @@ export interface UnifiedProvider {
   // Optional: Wallet switching (not all providers support this)
   switchWallet?(): Promise<ConnectionResult>;
 
+  // Optional: narrow what the connect UI offers — external wallets only, embedded (email /
+  // social) only, or everything. The choice cards set this BEFORE connect(), so it is
+  // delivered to whichever provider getBestProvider() will pick, not to a named one.
+  //
+  // ⚠️ THIS USED TO LIVE IN THE REOWN ADAPTER, and AuthManager reached it with
+  //    getProvider('walletconnect'). Any other provider's implementation was therefore never
+  //    called: the cards rendered, the user chose, nothing changed, nothing failed.
+  setConnectionMode?(mode: ConnectionMode): Promise<void>;
+
   // Optional: Manual authentication request (fallback for when auto-auth fails)
   requestAuthentication?(): Promise<boolean>;
 
@@ -87,14 +98,6 @@ export interface UnifiedProvider {
   ): () => void;
 }
 
-/**
- * Provider registry entry
- */
-export interface ProviderRegistration {
-  name: string;
-  provider: UnifiedProvider;
-  priority: number; // Lower is higher priority
-}
 
 /**
  * Auth state for React context

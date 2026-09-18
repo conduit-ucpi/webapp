@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import ConnectWalletEmbedded from '@/components/auth/ConnectWalletEmbedded';
+import { useAuth } from '@/components/auth';
 import { useT } from '../../i18n';
 
 const CARD_BUTTON =
@@ -36,6 +38,12 @@ export default function WalletChoiceCards({
   className = 'mt-10 mx-auto w-full max-w-md',
 }: WalletChoiceCardsProps) {
   const t = useT();
+  const { canConnectLegacyWallet } = useAuth();
+  /* The rescue route for people who signed up under the previous wallet provider: their
+     email/social login there opened a different wallet, and only that provider can open it
+     again. Ticked, the same button signs in the old way so /wallet can move the funds out. */
+  const [legacyWallet, setLegacyWallet] = useState(false);
+  const offerLegacy = canConnectLegacyWallet?.() === true;
 
   return (
     <div className={className}>
@@ -54,7 +62,25 @@ export default function WalletChoiceCards({
           className="mt-6"
           buttonClassName={CARD_BUTTON}
           onSuccess={onSuccess}
+          legacyWallet={legacyWallet}
         />
+        {offerLegacy && (
+          <label className="mt-4 flex items-start gap-2 text-sm text-secondary-600 dark:text-secondary-400 cursor-pointer">
+            <input
+              type="checkbox"
+              className="mt-0.5"
+              checked={legacyWallet}
+              onChange={(e) => setLegacyWallet(e.target.checked)}
+              aria-describedby="legacy-wallet-hint"
+            />
+            <span>
+              {t('wallet.legacyWallet')}
+              <span id="legacy-wallet-hint" className="block text-xs text-secondary-500 dark:text-secondary-500 mt-0.5">
+                {t('wallet.legacyWalletHint')}
+              </span>
+            </span>
+          </label>
+        )}
       </div>
 
       {/* Opens the connector modal in wallet-only mode - no social/email tiles. */}

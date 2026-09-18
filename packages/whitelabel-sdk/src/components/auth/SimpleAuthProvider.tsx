@@ -33,6 +33,7 @@ const defaultAuthValue = {
     error: null
   },
   connect: () => Promise.resolve(),
+  canConnectLegacyWallet: () => false,
   authenticateBackend: () => Promise.resolve(false),
   requestAuthentication: () => Promise.resolve(false), // Manual SIWX authentication trigger
   getLastAuthFailure: () => null,
@@ -217,6 +218,7 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
     state: newAuth.state, // Expose state object which includes providerName
     connect: newAuth.connect,
     setConnectionMode: newAuth.setConnectionMode,
+    canConnectLegacyWallet: newAuth.canConnectLegacyWallet,
     authenticateBackend: newAuth.authenticateBackend,
     requestAuthentication: newAuth.requestAuthentication, // Manually trigger SIWX authentication
     disconnect: newAuth.disconnect,

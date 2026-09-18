@@ -45,6 +45,9 @@ export const es: Catalogue = {
   'wallet.signInBlurb':
     'Crearemos una billetera segura que solo tú controlas, o reconectaremos la que ya tienes. No hay nada que instalar.',
   'wallet.continueSocial': 'Continuar con correo o redes sociales',
+  'wallet.legacyWallet': 'Ya me registré antes y necesito mi billetera anterior',
+  'wallet.legacyWalletHint':
+    'Marca esto si tienes fondos en una billetera de nuestro inicio de sesión anterior. Iniciarás sesión como antes y podrás retirar tus fondos desde la página Billetera.',
   'wallet.advanced': 'Conexión avanzada de billetera',
   'amount.requested': 'Monto solicitado',
   'amount.receiving': 'Monto a recibir',

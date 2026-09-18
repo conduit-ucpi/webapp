@@ -45,6 +45,16 @@ export interface ProviderDescriptor {
    */
   readonly required: boolean;
 
+  /**
+   * Whether, in this config, the provider is the LEGACY option rather than a contender.
+   *
+   * A legacy provider is not started at boot and never wins selection; it is loaded on demand
+   * when a user asks for a wallet they made under it (`connect({ legacyWallet: true })`), so
+   * that funds in an old embedded wallet stay reachable after the app moves to a new provider.
+   * Omit for a provider that is never legacy.
+   */
+  readonly legacy?: (config: AuthConfig) => boolean;
+
   /** Imported only when it applies. */
   readonly load: (config: AuthConfig) => Promise<UnifiedProvider>;
 
@@ -73,10 +83,13 @@ export const PROVIDERS: readonly ProviderDescriptor[] = [
     // Handles everything else: external wallets, email and social through AppKit's embedded
     // accounts. Without a project id there is nothing to connect with.
     //
-    // ⚠️ STEPS ASIDE WHEN PRIVY IS CONFIGURED, rather than losing on priority. Both cover the
-    //    same ground, and registering both would construct AppKit — a singleton that cannot be
-    //    torn down — for a user who will only ever see Privy's modal.
-    applies: (config) => Boolean(config.walletConnectProjectId) && !config.privyAppId,
+    // ⚠️ LEGACY WHEN PRIVY IS CONFIGURED, rather than losing on priority. Both cover the same
+    //    ground, and registering both at boot would construct AppKit — a singleton that cannot
+    //    be torn down — for a user who will only ever see Privy's modal. But people who signed
+    //    up under Reown have funds in Reown embedded wallets that only Reown can open, so it
+    //    stays loadable on request: the sign-in card's "old wallet" tick box.
+    applies: (config) => Boolean(config.walletConnectProjectId),
+    legacy: (config) => Boolean(config.privyAppId),
     priority: 10,
     required: true,
     load: async (config) => {

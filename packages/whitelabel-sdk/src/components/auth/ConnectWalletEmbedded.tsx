@@ -17,6 +17,12 @@ interface ConnectWalletEmbeddedProps {
   autoConnect?: boolean;
   preferredProvider?: 'dynamic' | 'walletconnect'; // Choose which provider to use
   connectionMode?: 'default' | 'wallet-only' | 'social-only';
+  /**
+   * Sign in through the provider the app moved away from, to reach a wallet made under it.
+   * Set by the sign-in card's tick box; the backend session may or may not follow, and the
+   * point is only that /wallet can then move the funds out.
+   */
+  legacyWallet?: boolean;
 }
 
 export default function ConnectWalletEmbedded({
@@ -29,7 +35,8 @@ export default function ConnectWalletEmbedded({
   onSuccess,
   autoConnect = false,
   preferredProvider,
-  connectionMode
+  connectionMode,
+  legacyWallet = false
 }: ConnectWalletEmbeddedProps) {
   const t = useT();
   const { user, isLoading, connect, isConnected, address, requestAuthentication, setConnectionMode } = useAuth();
@@ -208,7 +215,7 @@ export default function ConnectWalletEmbedded({
             await setConnectionMode(effectiveConnectionMode);
           }
 
-          const result = await connect();
+          const result = await connect(legacyWallet ? { legacyWallet: true } : undefined);
           if (!result) {
             // Fallback no-op connect returned undefined - reset so we retry with real connect
             mLog.warn('ConnectWalletEmbedded', 'Auto-connect got no result (auth not ready), will retry');
@@ -292,11 +299,11 @@ export default function ConnectWalletEmbedded({
           // Always use WalletConnect (handles social, email, and all wallets)
           // No provider named: the registry picks by manifest priority. Naming one here was how
           // a configured Privy produced "No auth provider available" — Reown had stood down.
-          mLog.info('ConnectWalletEmbedded', 'Calling connect');
+          mLog.info('ConnectWalletEmbedded', 'Calling connect', { legacyWallet });
           mLog.info('ConnectWalletEmbedded', 'SIWE enabled - authentication will happen automatically during connection');
           await mLog.forceFlush(); // Flush before calling (in case it hangs)
 
-          const connectionResult = await connect();
+          const connectionResult = await connect(legacyWallet ? { legacyWallet: true } : undefined);
 
           // Handle undefined/null connectionResult (config loading failure or unexpected error)
           if (!connectionResult) {

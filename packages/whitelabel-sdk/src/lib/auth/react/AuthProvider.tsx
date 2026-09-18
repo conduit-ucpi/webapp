@@ -6,7 +6,7 @@ import { apiFetch } from '@/lib/apiFetch';
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { AuthConfig, ProviderType } from '@/lib/auth/types';
 import { AuthState, AuthUser, ConnectionResult,  FundWalletRequest, FundWalletResult } from '@/lib/auth/types/unified-provider';
-import { AuthManager } from '@/lib/auth/core/AuthManager';
+import { AuthManager, type ConnectOptions } from '@/lib/auth/core/AuthManager';
 import { AuthService } from '@/lib/auth/backend/AuthService';
 import { ethers } from 'ethers';
 import { mLog } from '@/utils/mobileLogger';
@@ -22,8 +22,10 @@ interface AuthContextValue {
   address: string | null;
 
   // Actions
-  connect: () => Promise<ConnectionResult>;
+  connect: (options?: ConnectOptions) => Promise<ConnectionResult>;
   setConnectionMode: (mode: 'default' | 'wallet-only' | 'social-only') => Promise<void>;
+  /** Whether an "old wallet" route exists in this deployment — shows the tick box when true. */
+  canConnectLegacyWallet: () => boolean;
   authenticateBackend: (connectionResult?: ConnectionResult) => Promise<boolean>;
   requestAuthentication: () => Promise<boolean>; // Manually trigger SIWX authentication
   getLastAuthFailure: () => { kind: string; message: string } | null;
@@ -146,7 +148,7 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
 
   // No need to manage provider separately - it's cached in AuthManager
 
-  const connect = useCallback(async (preferredProvider?: ProviderType): Promise<ConnectionResult> => {
+  const connect = useCallback(async (options?: ConnectOptions): Promise<ConnectionResult> => {
     // Prevent multiple simultaneous connection attempts
     if (isConnecting) {
       console.log('🔧 AuthProvider: Connection already in progress, ignoring duplicate request');
@@ -166,7 +168,7 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
 
     try {
       // Connect with auth manager (wallet connection only - no backend auth yet)
-      const result = await authManager.connect(preferredProvider);
+      const result = await authManager.connect(undefined, options);
 
       if (result.success && result.address) {
         mLog.info('AuthProvider', '✅ Wallet connected successfully (lazy auth - backend JWT will be created on first API call)', {
@@ -476,6 +478,10 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
     () => authManager.getLastAuthFailure(),
     [authManager]
   );
+  const canConnectLegacyWallet = useCallback(
+    () => authManager.canConnectLegacyWallet(),
+    [authManager]
+  );
 
   // Memoize the context value so it only changes when its actual inputs change.
   // Previously this was a fresh object literal every render: AuthProvider
@@ -498,6 +504,7 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
     authenticateBackend,
     requestAuthentication,
     getLastAuthFailure,
+    canConnectLegacyWallet,
     disconnect,
     switchWallet,
     signMessage,

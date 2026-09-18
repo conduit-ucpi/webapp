@@ -17,6 +17,38 @@ import { TokenManager } from './TokenManager';
 import { mLog } from '@/utils/mobileLogger';
 import { ethers } from 'ethers';
 
+export interface ConnectOptions {
+  /**
+   * Sign in through the provider the app moved away from, to reach a wallet made under it.
+   * The sign-in card's "old wallet" tick box. Never the default and never inferred.
+   */
+  legacyWallet?: boolean;
+}
+
+/**
+ * Remembered across loads so the legacy provider is started at boot for the one user who
+ * needs their session restored, and for nobody else. Cleared on sign-out.
+ */
+const LEGACY_WALLET_KEY = 'auth.legacyWallet';
+
+function readLegacyWalletFlag(): boolean {
+  try {
+    return typeof window !== 'undefined' && window.localStorage.getItem(LEGACY_WALLET_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function writeLegacyWalletFlag(on: boolean): void {
+  try {
+    if (typeof window === 'undefined') return;
+    if (on) window.localStorage.setItem(LEGACY_WALLET_KEY, '1');
+    else window.localStorage.removeItem(LEGACY_WALLET_KEY);
+  } catch {
+    /* storage unavailable: the route still works for this load */
+  }
+}
+
 export class AuthManager {
   private static instance: AuthManager;
   private currentProvider: UnifiedProvider | null = null;
@@ -27,6 +59,8 @@ export class AuthManager {
   private isConnectInProgress: boolean = false;
   private connectionChangeUnsubscribes: Array<() => void> = [];
   private restoreGraceTimer: ReturnType<typeof setTimeout> | null = null;
+  /** The last mode the UI asked for; re-delivered to whichever provider connect() picks. */
+  private connectionMode: ConnectionMode | null = null;
   private restoreGraceActive: boolean = false;
   /**
    * How long to keep isLoading=true after restoreSession() finishes when a
@@ -74,7 +108,9 @@ export class AuthManager {
       this.setState({ isLoading: true, error: null });
 
       // Register available providers
-      await this.providerRegistry.initialize(config);
+      // A user who reached their old wallet last time needs its provider up before restore
+      // runs, or the session it kept cannot be seen. Everyone else never loads it.
+      await this.providerRegistry.initialize(config, { includeLegacy: readLegacyWalletFlag() });
 
       // Check for existing session
       await this.restoreSession();
@@ -109,14 +145,26 @@ export class AuthManager {
    *    provider's setConnectionMode was dead code nothing could detect.
    */
   async setConnectionMode(mode: ConnectionMode): Promise<void> {
+    // Remembered as well as delivered: connect() may pick a provider this never reached — the
+    // legacy one, loaded after the card set the mode — and hands it over then.
+    this.connectionMode = mode;
     const provider = this.currentProvider ?? this.providerRegistry.getBestProvider();
     await provider?.setConnectionMode?.(mode);
   }
 
+  /** Whether the sign-in card should offer the "old wallet" route at all. */
+  canConnectLegacyWallet(): boolean {
+    return this.providerRegistry.hasLegacyProvider();
+  }
+
   /**
-   * Connect using the best available provider
+   * Connect using the best available provider — or, with `legacyWallet`, the provider the app
+   * moved away from, for somebody whose funds are still in a wallet only it can open.
    */
-  async connect(preferredProvider?: ProviderType): Promise<ConnectionResult> {
+  async connect(
+    preferredProvider?: ProviderType,
+    options: ConnectOptions = {}
+  ): Promise<ConnectionResult> {
     // Prevent multiple simultaneous connection attempts at the manager level
     if (this.isConnectInProgress) {
       mLog.warn('AuthManager', 'Connection already in progress, blocking duplicate attempt');
@@ -150,13 +198,18 @@ export class AuthManager {
           preferredProvider
         });
       }
-      const provider = preferred ?? this.providerRegistry.getBestProvider();
+      // ⚠️ THE LEGACY ROUTE IS ASKED FOR, NEVER FALLEN INTO. It is a different wallet — the one
+      //    a person made under the previous provider — so reaching it by accident would sign
+      //    them into an account that is not the one they expect.
+      const provider = options.legacyWallet
+        ? await this.providerRegistry.getLegacyProvider()
+        : preferred ?? this.providerRegistry.getBestProvider();
 
       if (!provider) {
-        mLog.error('AuthManager', 'No auth provider available');
+        mLog.error('AuthManager', options.legacyWallet ? 'No legacy wallet provider is configured' : 'No auth provider available');
         return {
           success: false,
-          error: 'No auth provider available',
+          error: options.legacyWallet ? 'No legacy wallet provider is configured' : 'No auth provider available',
           capabilities: {
             canSign: false,
             canTransact: false,
@@ -166,7 +219,15 @@ export class AuthManager {
         };
       }
 
-      mLog.info('AuthManager', 'Using provider', { providerName: provider.getProviderName() });
+      mLog.info('AuthManager', 'Using provider', {
+        providerName: provider.getProviderName(),
+        legacyWallet: Boolean(options.legacyWallet)
+      });
+
+      // The mode the card chose, for a provider that was not there to receive it at the time.
+      if (this.connectionMode) {
+        await provider.setConnectionMode?.(this.connectionMode);
+      }
 
       // Force flush logs before connecting (in case connection hangs)
       await mLog.forceFlush();
@@ -177,6 +238,8 @@ export class AuthManager {
       if (result.success) {
         // Store the successful provider
         this.currentProvider = provider;
+        // So the next cold load starts the legacy provider too and can restore this session.
+        writeLegacyWalletFlag(Boolean(options.legacyWallet));
 
         // Update state - keep isLoading true, it will be cleared by authenticateBackend
         this.setState({
@@ -383,6 +446,8 @@ export class AuthManager {
 
       // Clear tokens
       this.tokenManager.clearToken();
+      // The old-wallet route is chosen per sign-in, not remembered past a sign-out.
+      writeLegacyWalletFlag(false);
 
       // Clear Web3Service state to prevent stale provider data
       try {

@@ -97,7 +97,14 @@ export const privyBridge = {
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
         unsubscribe();
-        reject(new Error(`Privy: timed out after ${timeoutMs}ms waiting for ${what}`));
+        // Say which half is missing. "host never registered" is our wiring (ProviderHosts did
+        // not mount PrivyHost); "host registered, Privy not ready" is Privy failing to
+        // initialise — app id, allowed origins — and the browser console will have its warning.
+        const s = snapshot;
+        const diagnosis = api
+          ? `host registered; ready=${s.ready} authenticated=${s.authenticated} address=${s.address ?? 'none'}`
+          : 'host never registered (PrivyHost not mounted, or ProviderHosts did not render it)';
+        reject(new Error(`Privy: timed out after ${timeoutMs}ms waiting for ${what} — ${diagnosis}`));
       }, timeoutMs);
       const unsubscribe = privyBridge.subscribe((s) => {
         if (!predicate(s)) return;

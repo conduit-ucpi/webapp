@@ -701,6 +701,22 @@ export default function FAQ() {
           "@type": "Answer",
           "text": "Yes. Create a test transaction for $0.001 — the fee is waived so you can see how it works risk-free."
         }
+      },
+      {
+        "@type": "Question",
+        "name": "Can I pay someone, or name who may dispute, using just their email address?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Yes. Wherever a payment asks for a wallet — the seller who gets paid, or the buyer who may dispute — you can give an email address instead. We convert it to the wallet that person owns, creating one for them if they have never signed in, and the same email always converts to the same wallet. This works when creating a payment request on the site, through the API, and through the MCP tools an agent uses."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "A payment was sent to my email address. How do I get the money?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Sign in with that email address, by email code or Google. The wallet tied to it already holds the payment. From the Wallet page you can send the funds anywhere, or export the wallet's key to use it elsewhere."
+        }
       }
     ]
   };
@@ -1824,6 +1840,22 @@ export default function FAQ() {
                 <FAQItem question="Can I test the merchant payment system first?">
                   <p className="text-sm text-secondary-500 dark:text-secondary-400 leading-relaxed">
                     Yes. Create a test transaction for $0.001 — the fee is waived so you can see how it works risk-free.
+                  </p>
+                </FAQItem>
+              </Fade>
+
+              <Fade delay={0.2}>
+                <FAQItem question="Can I pay someone, or name who may dispute, using just their email address?">
+                  <p className="text-sm text-secondary-500 dark:text-secondary-400 leading-relaxed">
+                    Yes. Wherever a payment asks for a wallet &mdash; the seller who gets paid, or the buyer who may dispute &mdash; you can give an email address instead. We convert it to the wallet that person owns, creating one for them if they have never signed in, and the same email always converts to the same wallet. This works when creating a payment request on the site, through the API, and through the MCP tools an agent uses.
+                  </p>
+                </FAQItem>
+              </Fade>
+
+              <Fade delay={0.25}>
+                <FAQItem question="A payment was sent to my email address. How do I get the money?">
+                  <p className="text-sm text-secondary-500 dark:text-secondary-400 leading-relaxed">
+                    Sign in with that email address, by email code or Google. The wallet tied to it already holds the payment. From the Wallet page you can send the funds anywhere, or export the wallet&apos;s key to use it elsewhere.
                   </p>
                 </FAQItem>
               </Fade>

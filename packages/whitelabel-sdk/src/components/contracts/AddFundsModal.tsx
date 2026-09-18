@@ -3,6 +3,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import Modal from '@/components/ui/Modal';
 import Button from '@/components/ui/Button';
 import { useConfig } from '@/components/auth/ConfigProvider';
+import { useAuth } from '@/components/auth/SimpleAuthProvider';
 import { ONRAMP_RETURN_MESSAGE, openCoinbaseOnramp } from '@/lib/coinbaseOnramp';
 import { useT } from '../../i18n';
 
@@ -64,6 +65,11 @@ export default function AddFundsModal({
   const [onrampLoading, setOnrampLoading] = useState(false);
 
   const showCoinbase = !!config?.coinbaseProjectId;
+  // The wallet provider's own on-ramp (Privy's funding modal). Absent for Reown, so the
+  // guard is on capability, not on provider name.
+  const { canFundWallet, fundWallet } = useAuth();
+  const showProviderFunding = typeof canFundWallet === 'function' && canFundWallet();
+  const [providerFundingBusy, setProviderFundingBusy] = useState(false);
   const shortfallBase = BigInt(Math.ceil(shortfall * 10 ** tokenDecimals));
 
   // EIP-681: carries the token, the network (chainId) and the exact amount, so a
@@ -94,6 +100,25 @@ export default function AddFundsModal({
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
   }, [onClose]);
+
+  const handleProviderFunding = async () => {
+    setOnrampError(null);
+    setProviderFundingBusy(true);
+    try {
+      const result = await fundWallet({
+        // Same rounding as the Coinbase route: ask for tokens, rounded up to the cent, so the
+        // escrow's >= balance gate cannot fail on dust.
+        amount: Math.max(Math.ceil(shortfall * 100) / 100, ONRAMP_MIN_CRYPTO).toFixed(2),
+        asset: tokenSymbol === 'USDC' ? 'USDC' : { erc20: tokenAddress },
+        chainId: chainId ?? config?.chainId ?? 0
+      });
+      if (result?.status === 'completed') onClose();
+    } catch (e) {
+      setOnrampError(e instanceof Error ? e.message : 'Could not open funding');
+    } finally {
+      setProviderFundingBusy(false);
+    }
+  };
 
   const handleOnramp = async () => {
     setOnrampError(null);
@@ -136,6 +161,17 @@ export default function AddFundsModal({
     >
       {!showTransfer ? (
         <div className="space-y-3">
+          {showProviderFunding && (
+            <button type="button" onClick={handleProviderFunding} disabled={providerFundingBusy} className={choiceBox}>
+              <p className="font-semibold text-secondary-900">
+                {providerFundingBusy ? 'Opening…' : 'Add funds with a card'}
+              </p>
+              <p className="mt-1 text-sm text-secondary-500">
+                Buy {tokenSymbol} with a card, Apple Pay or Google Pay
+              </p>
+            </button>
+          )}
+
           {showCoinbase && (
             <button type="button" onClick={handleOnramp} disabled={onrampLoading} className={choiceBox}>
               <p className="font-semibold text-secondary-900">

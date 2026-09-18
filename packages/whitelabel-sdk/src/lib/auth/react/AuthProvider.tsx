@@ -5,7 +5,7 @@ import { apiFetch } from '@/lib/apiFetch';
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { AuthConfig, ProviderType } from '@/lib/auth/types';
-import { AuthState, AuthUser, ConnectionResult } from '@/lib/auth/types/unified-provider';
+import { AuthState, AuthUser, ConnectionResult,  FundWalletRequest, FundWalletResult } from '@/lib/auth/types/unified-provider';
 import { AuthManager } from '@/lib/auth/core/AuthManager';
 import { AuthService } from '@/lib/auth/backend/AuthService';
 import { ethers } from 'ethers';
@@ -38,6 +38,10 @@ interface AuthContextValue {
 
   // Provider info
   getProviderUserInfo: () => Record<string, unknown> | null;
+  /** Whether the connected provider can put money in the wallet itself (Privy can; Reown cannot). */
+  canFundWallet: () => boolean;
+  /** Null when the provider has no on-ramp — callers check canFundWallet() first. */
+  fundWallet: (request: FundWalletRequest) => Promise<FundWalletResult | null>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -433,6 +437,15 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
     return null;
   }, [authManager]);
 
+  const canFundWallet = useCallback((): boolean => {
+    const provider = authManager.getCurrentProvider();
+    return typeof provider?.fundWallet === 'function';
+  }, [authManager]);
+  const fundWallet = useCallback(async (request: FundWalletRequest): Promise<FundWalletResult | null> => {
+    const provider = authManager.getCurrentProvider();
+    if (typeof provider?.fundWallet !== 'function') return null;
+    return provider.fundWallet(request);
+  }, [authManager]);
   // Update user data from external source (e.g., after fetching from backend)
   const updateUserData = useCallback((userData: AuthUser) => {
     setUser(userData);
@@ -483,7 +496,10 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
     showWalletUI,
 
     // Provider info
-    getProviderUserInfo
+    getProviderUserInfo,
+    // Funding
+    canFundWallet,
+    fundWallet
   }), [
     state,
     user,
@@ -498,7 +514,9 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
     updateUserData,
     getEthersProvider,
     showWalletUI,
-    getProviderUserInfo
+    getProviderUserInfo,
+    canFundWallet,
+    fundWallet
   ]);
 
   return (

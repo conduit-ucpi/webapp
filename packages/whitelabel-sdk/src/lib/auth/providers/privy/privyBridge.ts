@@ -1,4 +1,5 @@
 import type { ethers } from 'ethers';
+import type { FundWalletRequest, FundWalletResult } from '@/lib/auth/types/unified-provider';
 
 /**
  * The seam between Privy's React hooks and the imperative `PrivyProvider` class.
@@ -37,6 +38,8 @@ export interface PrivyBridgeApi {
   /** The active wallet's EIP-1193 provider, or null when there is no active wallet. */
   getEthereumProvider(): Promise<ethers.Eip1193Provider | null>;
   switchChain(chainId: number): Promise<void>;
+  /** Privy's funding modal for `address`. Resolves when the user finishes or leaves it. */
+  fundWallet(address: string, request: FundWalletRequest): Promise<FundWalletResult>;
 }
 
 export type LoginOutcome = { ok: true } | { ok: false; code: string };

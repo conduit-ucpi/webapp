@@ -43,6 +43,7 @@ function fakeApi(overrides: Partial<PrivyBridgeApi> = {}) {
     logout: jest.fn().mockResolvedValue(undefined),
     getEthereumProvider: jest.fn().mockResolvedValue({ request }),
     switchChain: jest.fn().mockResolvedValue(undefined),
+    fundWallet: jest.fn().mockResolvedValue({ status: 'completed', transactionHash: '0xtx' }),
     ...overrides
   };
   privyBridge.registerApi(api);
@@ -220,5 +221,32 @@ describe('state', () => {
 
     expect(first).not.toBeNull();
     expect(second).not.toBe(first);
+  });
+});
+
+describe('fundWallet', () => {
+  it('opens the host funding flow for the connected wallet', async () => {
+    const { api } = fakeApi();
+    ready({ authenticated: true, address: ADDRESS });
+
+    const result = await new PrivyProvider(config).fundWallet({ amount: '15.00', asset: 'USDC', chainId: 8453 });
+
+    expect(api.fundWallet).toHaveBeenCalledWith(ADDRESS, { amount: '15.00', asset: 'USDC', chainId: 8453 });
+    expect(result).toEqual({ status: 'completed', transactionHash: '0xtx' });
+  });
+
+  it('refuses a chain other than the app chain rather than funding the wrong network', async () => {
+    const { api } = fakeApi();
+    ready({ authenticated: true, address: ADDRESS });
+
+    await expect(new PrivyProvider(config).fundWallet({ amount: '1', asset: 'USDC', chainId: 1 })).rejects.toThrow(/app chain/);
+    expect(api.fundWallet).not.toHaveBeenCalled();
+  });
+
+  it('needs a connected wallet', async () => {
+    fakeApi();
+    ready();
+
+    await expect(new PrivyProvider(config).fundWallet({ amount: '1', asset: 'USDC', chainId: 8453 })).rejects.toThrow(/not connected/);
   });
 });

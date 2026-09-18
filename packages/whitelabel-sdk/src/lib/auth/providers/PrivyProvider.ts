@@ -4,6 +4,8 @@ import { AuthConfig } from '@/lib/auth/types';
 import {
   ConnectionMode,
   ConnectionResult,
+  FundWalletRequest,
+  FundWalletResult,
   ProviderCapabilities,
   TransactionRequest,
   UnifiedProvider
@@ -214,6 +216,23 @@ export class PrivyProvider implements UnifiedProvider {
       last = next;
       callback(next);
     });
+  }
+
+  /**
+   * Privy's funding modal — card (Stripe / MoonPay), exchange (Coinbase), or a transfer from
+   * another wallet, whichever the dashboard has enabled. The app's chain is fixed by config; a
+   * request for another chain is a programming error and is refused rather than quietly
+   * funding the wrong network.
+   */
+  async fundWallet(request: FundWalletRequest): Promise<FundWalletResult> {
+    if (request.chainId !== this.config.chainId) {
+      throw new Error(`fundWallet: chain ${request.chainId} is not the app chain ${this.config.chainId}`);
+    }
+    const address = await this.getAddress();
+    const api = privyBridge.getApi();
+    if (!api) throw new Error('Privy host is not mounted');
+    mLog.info('PrivyProvider', 'Opening Privy funding', { amount: request.amount, asset: request.asset });
+    return api.fundWallet(address, request);
   }
 
   getUserInfo(): Record<string, unknown> | null {

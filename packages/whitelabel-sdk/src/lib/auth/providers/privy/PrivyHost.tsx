@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { PrivyProvider, useLogin, useLogout, usePrivy, useWallets } from '@privy-io/react-auth';
+import React, { useEffect, useMemo } from 'react';
+import { PrivyProvider, useFundWallet, useLogin, useLogout, usePrivy, useWallets } from '@privy-io/react-auth';
 import type { ConnectedWallet, User } from '@privy-io/react-auth';
 
 import type { AuthConfig } from '@/lib/auth/types';
@@ -75,7 +75,7 @@ export function userInfoFrom(user: User | null): PrivyUserInfo | null {
   return { email, name, authProvider };
 }
 
-function PrivyBridge() {
+function PrivyBridge({ config }: { config: AuthConfig }) {
   const { ready, authenticated, user } = usePrivy();
   const { wallets, ready: walletsReady } = useWallets();
   const { login } = useLogin({
@@ -83,6 +83,9 @@ function PrivyBridge() {
     onError: (code) => privyBridge.loginFailed(String(code))
   });
   const { logout } = useLogout();
+  const { fundWallet } = useFundWallet();
+  // Memoised: a fresh chain object every render would re-register the API every render.
+  const chain = useMemo(() => chainFromConfig(config), [config.chainId, config.rpcUrl, config.explorerBaseUrl]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const active = pickWallet(user, wallets);
   const activeAddress = active?.address ?? null;
@@ -94,10 +97,22 @@ function PrivyBridge() {
       getEthereumProvider: async () => (active ? active.getEthereumProvider() : null),
       switchChain: async (chainId) => {
         if (active) await active.switchChain(chainId);
+      },
+      // The request names the app's chain by id; Privy wants the chain object, which we build
+      // from config rather than import, so the id must agree with it.
+      fundWallet: async (address, request) => {
+        // Privy types the erc20 address as `0x${string}`; ours is a plain string from config.
+        const asset =
+          typeof request.asset === 'object' ? { erc20: request.asset.erc20 as `0x${string}` } : request.asset;
+        const result = await fundWallet({
+          address,
+          options: { chain, asset, amount: request.amount }
+        });
+        return { status: result.status, transactionHash: result.transactionHash };
       }
     });
     return () => privyBridge.registerApi(null);
-  }, [login, logout, active]);
+  }, [login, logout, active, fundWallet, chain]);
 
   useEffect(() => {
     privyBridge.publish({
@@ -129,7 +144,7 @@ export default function PrivyHost({ config }: { config: AuthConfig }) {
         walletConnectCloudProjectId: config.walletConnectProjectId
       }}
     >
-      <PrivyBridge />
+      <PrivyBridge config={config} />
     </PrivyProvider>
   );
 }

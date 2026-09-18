@@ -24,6 +24,18 @@ export interface TransactionRequest {
  */
 export type ConnectionMode = 'default' | 'wallet-only' | 'social-only';
 
+/** What to put in the connected wallet, in whole tokens as a decimal string ("15" = 15 USDC). */
+export interface FundWalletRequest {
+  amount: string;
+  asset: 'USDC' | 'native-currency' | { erc20: string };
+  chainId: number;
+}
+
+export interface FundWalletResult {
+  status: 'completed' | 'cancelled';
+  transactionHash?: string;
+}
+
 export interface ProviderCapabilities {
   canSign: boolean;
   canTransact: boolean;
@@ -82,6 +94,10 @@ export interface UnifiedProvider {
   //    getProvider('walletconnect'). Any other provider's implementation was therefore never
   //    called: the cards rendered, the user chose, nothing changed, nothing failed.
   setConnectionMode?(mode: ConnectionMode): Promise<void>;
+
+  // Optional: put money in the wallet through the provider's own on-ramp (card, exchange,
+  // transfer). Present only where the provider offers one; the UI shows the option when it is.
+  fundWallet?(request: FundWalletRequest): Promise<FundWalletResult>;
 
   // Optional: Manual authentication request (fallback for when auto-auth fails)
   requestAuthentication?(): Promise<boolean>;

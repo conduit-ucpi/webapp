@@ -592,7 +592,14 @@ export async function executeDirectPaymentSequence(
       description: params.description,
       ...(params.arbiterAddress ? { arbiter: params.arbiterAddress } : {}),
       contractserviceId: params.contractserviceId,
-      factoryAddress
+      factoryAddress,
+      // ⚠️ THE TRANSFER HASH, SO CHAINSERVICE WAITS FOR IT. This browser saw the transfer
+      //    confirm through one RPC node; chainservice reads the balance through another, and
+      //    for a few seconds after a block the two can disagree. Without the hash chainservice
+      //    reads "holds 0 of the amount required" and refuses, and the person sees a failure
+      //    over money that had already landed (seen on cherry 2026-09-18). Given the hash it
+      //    waits for the receipt and retries the read before deciding.
+      ...(transferTxHash ? { fundingTxHash: transferTxHash } : {})
     })
   });
 

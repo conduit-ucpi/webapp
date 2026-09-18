@@ -106,6 +106,38 @@ describe('executeDirectPaymentSequence - arbiter wire format', () => {
   });
 });
 
+describe('executeDirectPaymentSequence - funding hash', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockAuthenticatedFetch.mockReset();
+    mockTransferToContract.mockReset();
+    mockWaitForTransaction.mockReset();
+  });
+
+  /**
+   * ⚠️ SEEN IN PRODUCTION. The transfer confirmed in this browser, chainservice read the escrow
+   * balance through a different RPC node a moment later, saw 0, and answered "Address holds 0
+   * of the 1000 required". Chainservice waits for the funding receipt and retries the read —
+   * but only when it is told which transaction to wait for.
+   */
+  it('names the transfer so chainservice waits for it instead of reading a stale balance', async () => {
+    setupHappyPathMocks();
+
+    await executeDirectPaymentSequence(baseParams, baseOptions);
+
+    expect(deployBody().fundingTxHash).toBe('0xTransferTxHash');
+  });
+
+  it('omits the hash when there was no transfer to wait for', async () => {
+    setupHappyPathMocks();
+    mockTransferToContract.mockResolvedValue(null);
+
+    await executeDirectPaymentSequence(baseParams, baseOptions);
+
+    expect('fundingTxHash' in deployBody()).toBe(false);
+  });
+});
+
 describe('executeDirectPaymentSequence - ordering', () => {
   beforeEach(() => {
     jest.clearAllMocks();

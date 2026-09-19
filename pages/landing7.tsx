@@ -33,7 +33,7 @@ export default function Landing7() {
       <SEO
         title="Conduit Escrow - Stablecoin Payments with Buyer Protection"
         description="Stablecoin checkout with buyer protection. No chargebacks, no floats, no freezes, no vetting. 1% flat fee. 10-minute setup. Gas-free transactions. Open source escrow on Base."
-        keywords="open source escrow, crypto escrow, blockchain escrow, USDC escrow, secure crypto payments, buyer protection, smart contract escrow, Base network escrow"
+        keywords="open source escrow, crypto escrow, blockchain escrow, USDC escrow, secure crypto payments, buyer protection, smart contract escrow, Base network escrow, MCP server, AI agent payments, agentic payments"
         canonical="/landing7"
         structuredData={structuredData}
       />
@@ -350,6 +350,86 @@ export default function Landing7() {
         </section>
 
         {/* ================================================================ */}
+        {/* FOR AGENTS                                                       */}
+        {/* ================================================================ */}
+        <section
+          className="border-t border-secondary-100 dark:border-secondary-800"
+          aria-label="For AI agents"
+        >
+          <div className="max-w-5xl mx-auto px-6 sm:px-8 py-24 lg:py-32">
+            <Fade>
+              <p className="text-xs tracking-[0.2em] uppercase text-secondary-400 dark:text-secondary-500 mb-6">
+                For AI agents
+              </p>
+              <h2
+                className="text-3xl sm:text-4xl font-light text-secondary-900 dark:text-white leading-snug max-w-2xl mb-6"
+                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+              >
+                Let an agent pay on your behalf. Keep the right to object.
+              </h2>
+              <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-16 max-w-md">
+                Stabledrop ships as an MCP server. Connect it to Claude, ChatGPT, Cursor or any MCP client and your agent can prepare, settle and verify escrow payments in plain conversation.
+              </p>
+            </Fade>
+
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-x-12 gap-y-10">
+              {[
+                {
+                  label: 'Pay an email address',
+                  text: 'Name the seller, or whoever may dispute, by email. The agent never needs to know a wallet address.',
+                },
+                {
+                  label: 'The server holds no key',
+                  text: 'It is handed a signed authorisation or the funds land at the address directly. An agent can no more move your money than a stranger can.',
+                },
+                {
+                  label: 'A person keeps the veto',
+                  text: 'Only the named buyer can dispute. Not the agent that paid, not whoever holds the receipt.',
+                },
+                {
+                  label: 'Signed receipt',
+                  text: 'Every settlement returns an AP2 receipt that anyone can verify, naming the payout and the fee.',
+                },
+                {
+                  label: 'No credential required',
+                  text: 'Streamable HTTP, no API key, no sign-up. The escrow address is a pure function of its terms, so there is nothing to authenticate.',
+                },
+                {
+                  label: 'Discoverable',
+                  text: 'Listed in the official MCP registry and published at /.well-known/mcp.json, so agents can find it on their own.',
+                },
+              ].map((item, i) => (
+                <Fade key={i} delay={i * 0.06}>
+                  <div>
+                    <h3 className="text-sm font-medium text-secondary-900 dark:text-white mb-1">
+                      {item.label}
+                    </h3>
+                    <p className="text-sm text-secondary-500 dark:text-secondary-400 leading-relaxed">
+                      {item.text}
+                    </p>
+                  </div>
+                </Fade>
+              ))}
+            </div>
+
+            <Fade delay={0.4}>
+              <div className="mt-12 flex flex-wrap gap-3">
+                <Link href="/plugins#mcp">
+                  <button className={btnPrimary}>Connect your agent</button>
+                </Link>
+                <a
+                  href="https://api.stabledrop.me/api/ap2/settle/doc"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <button className={btnOutline}>API reference</button>
+                </a>
+              </div>
+            </Fade>
+          </div>
+        </section>
+
+        {/* ================================================================ */}
         {/* PRICING                                                          */}
         {/* ================================================================ */}
         <section
@@ -453,6 +533,9 @@ export default function Landing7() {
                 </Link>
                 <Link href="/plugins" className="hover:text-secondary-600 dark:hover:text-secondary-300 transition-colors">
                   Integrations
+                </Link>
+                <Link href="/plugins#mcp" className="hover:text-secondary-600 dark:hover:text-secondary-300 transition-colors">
+                  API &amp; MCP
                 </Link>
                 <a
                   href="mailto:info@conduit-ucpi.com"

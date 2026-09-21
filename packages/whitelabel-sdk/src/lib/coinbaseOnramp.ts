@@ -128,15 +128,37 @@ function buildOnrampUrl(token: string, params: OpenCoinbaseOnrampParams): string
   // NO defaultAsset / defaultNetwork here — see COINBASE_ONRAMP_URL above. The
   // session token already pins both, and naming them again diverts UK buyers
   // into the US-only guest checkout.
-  url.searchParams.set('fiatCurrency', onrampFiatCurrency(params.fiatCurrency));
+  const currency = onrampFiatCurrency(params.fiatCurrency);
+  url.searchParams.set('fiatCurrency', currency);
   url.searchParams.set('redirectUrl', buildCoinbaseReturnUrl(ONRAMP_RETURN_ROUTE, params.returnPath));
 
-  // Coinbase ignores presetFiatAmount when presetCryptoAmount is present, so
-  // send one or the other rather than both.
-  if (params.presetCryptoAmount) {
-    url.searchParams.set('presetCryptoAmount', String(params.presetCryptoAmount));
-  } else if (params.presetFiatAmount) {
-    url.searchParams.set('presetFiatAmount', String(params.presetFiatAmount));
+  // ⚠️ A PRESET AMOUNT IS A US-ONLY FEATURE. Naming the amount tells Coinbase the
+  //    purchase needs no further input, and it answers by sending the buyer to
+  //    one-click checkout — /buy/one-click, which is its guest flow
+  //    (/v3/onramp/guest/*, "flow":"onramp_guest" in the page's own config).
+  //    Guest checkout is the pay-by-card-without-an-account path, and the same
+  //    config carries the line that decides everything here:
+  //
+  //        "guestCheckoutCountryAllowlist":["US"]
+  //
+  //    One country. A buyer anywhere else who is handed that flow is told
+  //    "Coinbase Onramp is not available in your country" and can go no further
+  //    — which is precisely what UK buyers saw, while Coinbase's own config API
+  //    lists GB as supported for card, Coinbase balance and fiat wallet (£2
+  //    minimum, measured 2026-09-21).
+  //
+  //    So the amount is preset only when we are quoting in US dollars. Everyone
+  //    else is taken to Coinbase's ordinary screen, signs in, and types the
+  //    amount — slower by one field, but it completes. The amount they need is
+  //    on our own payment screen in front of them.
+  if (currency === 'USD') {
+    // Coinbase ignores presetFiatAmount when presetCryptoAmount is present, so
+    // send one or the other rather than both.
+    if (params.presetCryptoAmount) {
+      url.searchParams.set('presetCryptoAmount', String(params.presetCryptoAmount));
+    } else if (params.presetFiatAmount) {
+      url.searchParams.set('presetFiatAmount', String(params.presetFiatAmount));
+    }
   }
   return url.toString();
 }

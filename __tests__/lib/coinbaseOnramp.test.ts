@@ -256,6 +256,32 @@ describe('openCoinbaseOnramp', () => {
       expect(url.searchParams.get('fiatCurrency')).toBe('GBP');
     });
 
+    /**
+     * Coinbase decides the buyer gets one-click checkout when the URL already
+     * names the amount, and one-click is its guest flow. The page's own config
+     * says `"guestCheckoutCountryAllowlist":["US"]` — a buyer anywhere else is
+     * told "not available in your country" and stops there. So outside dollars
+     * we send no amount and let them type it on Coinbase's ordinary screen.
+     */
+    it('sends no preset amount outside the US, where a preset forces guest checkout', async () => {
+      withLocale('en-GB');
+      await openCoinbaseOnramp({ destinationAddress: '0xabc', presetCryptoAmount: 10, presetFiatAmount: 8 });
+
+      const url = new URL(openSpy.mock.calls[0][0] as string);
+      expect(url.searchParams.get('fiatCurrency')).toBe('GBP');
+      expect(url.searchParams.get('presetCryptoAmount')).toBeNull();
+      expect(url.searchParams.get('presetFiatAmount')).toBeNull();
+    });
+
+    it('keeps the preset for dollar buyers, the one market guest checkout serves', async () => {
+      withLocale('en-US');
+      await openCoinbaseOnramp({ destinationAddress: '0xabc', presetCryptoAmount: 10 });
+
+      const url = new URL(openSpy.mock.calls[0][0] as string);
+      expect(url.searchParams.get('fiatCurrency')).toBe('USD');
+      expect(url.searchParams.get('presetCryptoAmount')).toBe('10');
+    });
+
     it('lets the caller choose the currency', async () => {
       await openCoinbaseOnramp({ destinationAddress: '0xabc', presetCryptoAmount: 10, fiatCurrency: 'eur' });
       expect(new URL((openSpy.mock.calls[0][0] as string)).searchParams.get('fiatCurrency')).toBe('EUR');

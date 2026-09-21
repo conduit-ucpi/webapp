@@ -215,4 +215,31 @@ describe('openCoinbaseOnramp', () => {
     expect(onPopupClosed).not.toHaveBeenCalled();
     jest.useRealTimers();
   });
+
+  describe('fiatCurrency', () => {
+    const withLocale = (language: string) =>
+      Object.defineProperty(window.navigator, 'language', { value: language, configurable: true });
+
+    afterEach(() => withLocale('en-US'));
+
+    it('quotes a UK user in GBP, from the browser locale', async () => {
+      withLocale('en-GB');
+      await openCoinbaseOnramp({ destinationAddress: '0xabc', presetCryptoAmount: 10 });
+      const url = new URL((openSpy.mock.calls[0][0] as string));
+      expect(url.searchParams.get('fiatCurrency')).toBe('GBP');
+      expect(url.searchParams.get('defaultAsset')).toBe('USDC');
+      expect(url.searchParams.get('defaultNetwork')).toBe('base');
+    });
+
+    it('lets the caller choose the currency', async () => {
+      await openCoinbaseOnramp({ destinationAddress: '0xabc', presetCryptoAmount: 10, fiatCurrency: 'eur' });
+      expect(new URL((openSpy.mock.calls[0][0] as string)).searchParams.get('fiatCurrency')).toBe('EUR');
+    });
+
+    it('falls back to USD for a currency Coinbase does not document', async () => {
+      withLocale('en-NZ');
+      await openCoinbaseOnramp({ destinationAddress: '0xabc', presetCryptoAmount: 10 });
+      expect(new URL((openSpy.mock.calls[0][0] as string)).searchParams.get('fiatCurrency')).toBe('USD');
+    });
+  });
 });

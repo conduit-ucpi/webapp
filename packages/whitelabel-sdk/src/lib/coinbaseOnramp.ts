@@ -1,4 +1,5 @@
 import { apiFetch } from '@/lib/apiFetch';
+import { detectUserCurrency } from '@/utils/currencyDetection';
 import {
   buildCoinbaseReturnUrl,
   openCoinbasePayUrl,
@@ -30,6 +31,16 @@ interface OpenCoinbaseOnrampParams {
   presetCryptoAmount?: number;
   /** Amount of fiat the user SPENDS, fees included. */
   presetFiatAmount?: number;
+  /**
+   * What the user pays IN. Defaults to the currency of their browser locale.
+   *
+   * Coinbase separates the asset (USDC on Base) from the money, and without this
+   * it quotes in USD. A UK account shown a USD quote answered "not available in
+   * your country" even though Coinbase's own options API lists USDC on Base for
+   * GBP by card in GB. Only the currencies Coinbase documents for presets are
+   * sent; anything else falls back to USD rather than guessing.
+   */
+  fiatCurrency?: string;
   /**
    * Where to put the user once Coinbase is done. Defaults to the page they left,
    * which is almost always what you want — they were part-way through paying.
@@ -71,11 +82,24 @@ async function fetchSessionToken(params: OpenCoinbaseOnrampParams): Promise<stri
   return data.token;
 }
 
+/** The fiat currencies Coinbase documents for its hosted onramp presets. */
+const COINBASE_FIAT_CURRENCIES = new Set(['USD', 'CAD', 'GBP', 'EUR']);
+
+/**
+ * The currency to quote in: the caller's choice, else the browser locale's, else
+ * USD. Exported for tests.
+ */
+export function onrampFiatCurrency(requested?: string): string {
+  const candidate = (requested ?? detectUserCurrency()).toUpperCase();
+  return COINBASE_FIAT_CURRENCIES.has(candidate) ? candidate : 'USD';
+}
+
 function buildOnrampUrl(token: string, params: OpenCoinbaseOnrampParams): string {
   const url = new URL(COINBASE_ONRAMP_URL);
   url.searchParams.set('sessionToken', token);
   url.searchParams.set('defaultNetwork', params.network ?? 'base');
   url.searchParams.set('defaultAsset', params.asset ?? 'USDC');
+  url.searchParams.set('fiatCurrency', onrampFiatCurrency(params.fiatCurrency));
   url.searchParams.set('redirectUrl', buildCoinbaseReturnUrl(ONRAMP_RETURN_ROUTE, params.returnPath));
 
   // Coinbase ignores presetFiatAmount when presetCryptoAmount is present, so

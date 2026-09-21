@@ -75,10 +75,8 @@ describe('openCoinbaseOnramp', () => {
 
     expect(openSpy).toHaveBeenCalledTimes(1);
     const [url, target, features] = openSpy.mock.calls[0];
-    expect(url).toContain('https://pay.coinbase.com/buy/select-asset');
+    expect(url).toContain('https://pay.coinbase.com/buy?');
     expect(url).toContain('sessionToken=cb-session-xyz');
-    expect(url).toContain('defaultNetwork=base');
-    expect(url).toContain('defaultAsset=USDC');
     expect(target).toBe('coinbase-onramp');
     expect(features).toContain('width=500');
     expect(features).toContain('height=700');
@@ -92,7 +90,7 @@ describe('openCoinbaseOnramp', () => {
     expect(openSpy).not.toHaveBeenCalled();
     expect(assignSpy).toHaveBeenCalledTimes(1);
     const redirectUrl = assignSpy.mock.calls[0][0];
-    expect(redirectUrl).toContain('https://pay.coinbase.com/buy/select-asset');
+    expect(redirectUrl).toContain('https://pay.coinbase.com/buy?');
     expect(redirectUrl).toContain('sessionToken=cb-session-xyz');
   });
 
@@ -104,7 +102,7 @@ describe('openCoinbaseOnramp', () => {
 
     expect(openSpy).toHaveBeenCalledTimes(1);
     expect(assignSpy).toHaveBeenCalledTimes(1);
-    expect(assignSpy.mock.calls[0][0]).toContain('https://pay.coinbase.com/buy/select-asset');
+    expect(assignSpy.mock.calls[0][0]).toContain('https://pay.coinbase.com/buy?');
   });
 
   it('throws when the session-token endpoint returns an error', async () => {
@@ -186,6 +184,35 @@ describe('openCoinbaseOnramp', () => {
     expect(url.searchParams.get('presetFiatAmount')).toBe('25');
   });
 
+  /**
+   * THE UK OUTAGE, PINNED.
+   *
+   * Coinbase reads the URL to decide which flow the buyer gets. An amount
+   * together with the asset and the network reads as "nothing left to choose",
+   * and it hands the buyer to guest checkout — the no-account debit card flow,
+   * which is US-only and answers everyone else with "not available in your
+   * country". Measured against the live service on 2026-09-21: with
+   * defaultAsset and defaultNetwork present the redirect chain ended at
+   * /v3/onramp/guest/card-details every time, and without them at /landing,
+   * which is the ordinary flow the UK can use.
+   *
+   * The asset and the network are not lost — they are pinned in the session
+   * token, which is the only thing that actually constrains where the money can
+   * go. This test exists so nobody helpfully adds them back to the URL.
+   */
+  it('does not name the asset or network in the URL, which would divert non-US buyers into guest checkout', async () => {
+    await openCoinbaseOnramp({ destinationAddress: VALID_ADDRESS, presetCryptoAmount: 10 });
+
+    const url = new URL(openSpy.mock.calls[0][0] as string);
+    expect(`${url.origin}${url.pathname}`).toBe('https://pay.coinbase.com/buy');
+    expect(url.searchParams.get('defaultAsset')).toBeNull();
+    expect(url.searchParams.get('defaultNetwork')).toBeNull();
+
+    // They belong here instead: the session token is what Coinbase enforces.
+    const body = JSON.parse(((global.fetch as jest.Mock).mock.calls[0][1] as { body: string }).body);
+    expect(body).toMatchObject({ asset: 'USDC', blockchain: 'base' });
+  });
+
   it('reports the popup closing so the caller can move the user on', async () => {
     jest.useFakeTimers();
     const fakePopup = { closed: false } as Window;
@@ -227,8 +254,6 @@ describe('openCoinbaseOnramp', () => {
       await openCoinbaseOnramp({ destinationAddress: '0xabc', presetCryptoAmount: 10 });
       const url = new URL((openSpy.mock.calls[0][0] as string));
       expect(url.searchParams.get('fiatCurrency')).toBe('GBP');
-      expect(url.searchParams.get('defaultAsset')).toBe('USDC');
-      expect(url.searchParams.get('defaultNetwork')).toBe('base');
     });
 
     it('lets the caller choose the currency', async () => {

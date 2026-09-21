@@ -6,7 +6,35 @@ import {
   _setRedirectForTesting,
 } from '@/lib/coinbasePayWindow';
 
-const COINBASE_ONRAMP_URL = 'https://pay.coinbase.com/buy/select-asset';
+/**
+ * WHERE WE SEND A BUYER, AND WHY IT IS THIS EXACT URL.
+ *
+ * `pay.coinbase.com/buy` is the front door. Coinbase then decides which of two
+ * flows to put the person in, and it decides from the URL:
+ *
+ *   • the ordinary flow  — /buy/select-asset → /landing, where the buyer signs
+ *     in to Coinbase and pays by card, Coinbase balance or fiat wallet. Works
+ *     in every country Coinbase serves, the UK included.
+ *   • GUEST CHECKOUT     — /v3/onramp/guest/card-details, the no-account debit
+ *     card flow. It is US-only, so everyone else is met with
+ *     "not available in your country" and can go no further.
+ *
+ * ⚠️ COINBASE ROUTES US INTO GUEST CHECKOUT WHEN THE URL FULLY SPECIFIES THE
+ *    PURCHASE — an amount together with the asset and network. Measured against
+ *    the live service on 2026-09-21 by following the redirects: adding
+ *    `defaultAsset` and `defaultNetwork` beside a preset amount turned
+ *    /buy into /v3/onramp/guest/card-details every time, and removing them left
+ *    it on /landing every time. Entering at /buy/select-asset was worse still:
+ *    a preset amount alone was enough to divert it.
+ *
+ * SO: the asset and the network are pinned in the SESSION TOKEN, where they
+ * belong (see fetchSessionToken — Coinbase only lets the buyer send USDC on
+ * base to the address we named), and they are deliberately NOT repeated as URL
+ * parameters. Nothing is lost: the destination, the asset and the chain are all
+ * already fixed. Putting them back reopens a UK-wide outage that reads like a
+ * Coinbase country restriction and is nothing of the kind.
+ */
+const COINBASE_ONRAMP_URL = 'https://pay.coinbase.com/buy';
 const ONRAMP_RETURN_ROUTE = '/onramp-return';
 
 // Re-exported so existing tests (and callers) keep importing the seam from here;
@@ -97,8 +125,9 @@ export function onrampFiatCurrency(requested?: string): string {
 function buildOnrampUrl(token: string, params: OpenCoinbaseOnrampParams): string {
   const url = new URL(COINBASE_ONRAMP_URL);
   url.searchParams.set('sessionToken', token);
-  url.searchParams.set('defaultNetwork', params.network ?? 'base');
-  url.searchParams.set('defaultAsset', params.asset ?? 'USDC');
+  // NO defaultAsset / defaultNetwork here — see COINBASE_ONRAMP_URL above. The
+  // session token already pins both, and naming them again diverts UK buyers
+  // into the US-only guest checkout.
   url.searchParams.set('fiatCurrency', onrampFiatCurrency(params.fiatCurrency));
   url.searchParams.set('redirectUrl', buildCoinbaseReturnUrl(ONRAMP_RETURN_ROUTE, params.returnPath));
 

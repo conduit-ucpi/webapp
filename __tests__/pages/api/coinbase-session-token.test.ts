@@ -144,7 +144,6 @@ describe('/api/coinbase/session-token', () => {
     expect(sentBody).toEqual({
       addresses: [{ address: VALID_ADDRESS, blockchains: ['base'] }],
       assets: ['USDC'],
-      clientIp: '203.0.113.42',
     });
   });
 
@@ -165,70 +164,44 @@ describe('/api/coinbase/session-token', () => {
     expect(sentBody.assets).toEqual(['ETH']);
   });
 
-  describe('clientIp parameter (required by Coinbase)', () => {
-    it('uses the first IP from x-forwarded-for (the originating client) when behind a proxy', async () => {
-      mockUserServiceOk();
-      // Caddy/proxy chain: client → caddy → app, so XFF is "client, caddy"
-      const { req, res } = makeReq({
-        cookie: 'AUTH-TOKEN=valid',
-        forwardedFor: '203.0.113.42, 10.0.0.1',
-      });
-
-      await handler(req, res);
-
-      expect(res._getStatusCode()).toBe(200);
-      const coinbaseCall = (global.fetch as jest.Mock).mock.calls.find(c => String(c[0]).includes('coinbase.com'));
-      const sentBody = JSON.parse(coinbaseCall![1].body);
-      expect(sentBody.clientIp).toBe('203.0.113.42');
+  /**
+   * ⚠️ NO clientIp — AND THE ABSENCE IS THE POINT.
+   *
+   *    Coinbase's own documented example of this call sends addresses and assets and nothing
+   *    else. The field binds a session to one client, which sounds protective and is not: we
+   *    would be sending the address OUR server saw, while Coinbase separately observes where
+   *    the browser arrives from. A proxy, a VPN, a corporate gateway or a mobile network that
+   *    egresses elsewhere makes those disagree, and the mismatch is silent.
+   *
+   *    The session is already scoped to one destination address and one asset, so the binding
+   *    buys nothing we need. Removed 2026-09-22 while chasing a UK onramp failure.
+   */
+  it('sends no clientIp, whatever the request headers say', async () => {
+    mockUserServiceOk();
+    const { req, res } = makeReq({
+      cookie: 'AUTH-TOKEN=valid',
+      forwardedFor: '203.0.113.42, 10.0.0.1',
+      realIp: '198.51.100.7',
     });
 
-    it('falls back to x-real-ip when x-forwarded-for is absent', async () => {
-      mockUserServiceOk();
-      const { req, res } = makeReq({ cookie: 'AUTH-TOKEN=valid', realIp: '198.51.100.7' });
+    await handler(req, res);
 
-      await handler(req, res);
+    expect(res._getStatusCode()).toBe(200);
+    const coinbaseCall = (global.fetch as jest.Mock).mock.calls.find(c => String(c[0]).includes('coinbase.com'));
+    const sentBody = JSON.parse(coinbaseCall![1].body);
+    expect(sentBody).not.toHaveProperty('clientIp');
+    expect(Object.keys(sentBody).sort()).toEqual(['addresses', 'assets']);
+  });
 
-      expect(res._getStatusCode()).toBe(200);
-      const coinbaseCall = (global.fetch as jest.Mock).mock.calls.find(c => String(c[0]).includes('coinbase.com'));
-      const sentBody = JSON.parse(coinbaseCall![1].body);
-      expect(sentBody.clientIp).toBe('198.51.100.7');
-    });
+  it('succeeds even when no client address can be determined at all', async () => {
+    // Previously this answered 400: no IP, no session. A field we no longer send must never be
+    // able to refuse a payment.
+    mockUserServiceOk();
+    const { req, res } = makeReq({ cookie: 'AUTH-TOKEN=valid' });
 
-    it('falls back to req.socket.remoteAddress when no forwarded headers are present', async () => {
-      mockUserServiceOk();
-      const { req, res } = makeReq({ cookie: 'AUTH-TOKEN=valid', socketAddress: '198.51.100.99' });
+    await handler(req, res);
 
-      await handler(req, res);
-
-      expect(res._getStatusCode()).toBe(200);
-      const coinbaseCall = (global.fetch as jest.Mock).mock.calls.find(c => String(c[0]).includes('coinbase.com'));
-      const sentBody = JSON.parse(coinbaseCall![1].body);
-      expect(sentBody.clientIp).toBe('198.51.100.99');
-    });
-
-    it('strips the ::ffff: IPv4-mapped IPv6 prefix from the socket address', async () => {
-      mockUserServiceOk();
-      const { req, res } = makeReq({ cookie: 'AUTH-TOKEN=valid', socketAddress: '::ffff:198.51.100.99' });
-
-      await handler(req, res);
-
-      expect(res._getStatusCode()).toBe(200);
-      const coinbaseCall = (global.fetch as jest.Mock).mock.calls.find(c => String(c[0]).includes('coinbase.com'));
-      const sentBody = JSON.parse(coinbaseCall![1].body);
-      expect(sentBody.clientIp).toBe('198.51.100.99');
-    });
-
-    it('trims whitespace from the forwarded IP', async () => {
-      mockUserServiceOk();
-      const { req, res } = makeReq({ cookie: 'AUTH-TOKEN=valid', forwardedFor: '  203.0.113.42  , 10.0.0.1' });
-
-      await handler(req, res);
-
-      expect(res._getStatusCode()).toBe(200);
-      const coinbaseCall = (global.fetch as jest.Mock).mock.calls.find(c => String(c[0]).includes('coinbase.com'));
-      const sentBody = JSON.parse(coinbaseCall![1].body);
-      expect(sentBody.clientIp).toBe('203.0.113.42');
-    });
+    expect(res._getStatusCode()).toBe(200);
   });
 
   it('returns 502 when Coinbase rejects the request', async () => {

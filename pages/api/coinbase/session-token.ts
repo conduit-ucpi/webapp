@@ -2,7 +2,6 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { requireAuth } from '@/utils/api-auth';
 import {
   cdpRequest,
-  extractClientIp,
   fetchIdentity,
   getCdpCredentials,
   isValidEvmAddress,
@@ -50,12 +49,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(400).json({ error: 'Invalid wallet address' });
   }
 
-  const clientIp = extractClientIp(req);
-  if (!clientIp) {
-    console.error('Unable to determine client IP for Coinbase session token');
-    return res.status(400).json({ error: 'Unable to determine client IP' });
-  }
-
+  /*
+   * ⚠️ NO clientIp IS SENT, DELIBERATELY.
+   *
+   * It is an optional field, and Coinbase's own documented example of this call omits it:
+   * addresses and assets, nothing else. Its purpose is to bind the session to one client so a
+   * quote cannot be redeemed elsewhere, which sounds like a security gain and is a liability
+   * here — we send the address OUR server saw, and Coinbase separately observes the address the
+   * browser arrives from. Those two agree only when nothing sits between them. A proxy, a VPN,
+   * a corporate gateway or a mobile network that egresses differently makes them disagree, and
+   * a mismatch is invisible: the session is simply treated as something other than what it is.
+   *
+   * We have no need of the binding — the session is already scoped to one destination address
+   * and one asset — so the safer choice is to let Coinbase use the connection it can actually
+   * see rather than our second-hand account of it.
+   */
   try {
     const coinbaseResponse = await cdpRequest({
       credentials,
@@ -64,7 +72,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       body: {
         addresses: [{ address, blockchains: [blockchain] }],
         assets: [asset],
-        clientIp,
       },
     });
 

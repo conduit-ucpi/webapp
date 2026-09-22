@@ -280,6 +280,33 @@ describe('openCoinbaseOnramp', () => {
       expect(url.searchParams.get('defaultNetwork')).toBeNull();
     });
 
+    /**
+     * ⚠️ REFUSING GUEST CHECKOUT, BY THEIR OWN CONDITION.
+     *
+     * Coinbase offers the guest flow when defaultPaymentMethod is "CARD" or is absent. We were
+     * sending nothing, so signed-out buyers were offered it — and guest checkout serves one
+     * country, the United States. A signed-out buyer on a Dutch address got a blank white screen
+     * (2026-09-22). Naming any other method makes that condition false and lands them on the
+     * ordinary sign-in page instead.
+     */
+    it('refuses guest checkout for a sterling buyer by naming a payment method', async () => {
+      withLocale('en-GB');
+      await openCoinbaseOnramp({ destinationAddress: '0xabc', presetCryptoAmount: 10 });
+
+      const url = new URL(openSpy.mock.calls[0][0] as string);
+      expect(url.searchParams.get('defaultPaymentMethod')).toBe('FIAT_WALLET');
+      // Still a default, not a restriction: the buyer can choose card once signed in.
+      expect(url.searchParams.get('presetCryptoAmount')).toBe('10');
+    });
+
+    it('leaves guest checkout available to dollar buyers, the one market it serves', async () => {
+      withLocale('en-US');
+      await openCoinbaseOnramp({ destinationAddress: '0xabc', presetCryptoAmount: 10 });
+
+      const url = new URL(openSpy.mock.calls[0][0] as string);
+      expect(url.searchParams.get('defaultPaymentMethod')).toBeNull();
+    });
+
     it('lets the caller choose the currency', async () => {
       await openCoinbaseOnramp({ destinationAddress: '0xabc', presetCryptoAmount: 10, fiatCurrency: 'eur' });
       expect(new URL((openSpy.mock.calls[0][0] as string)).searchParams.get('fiatCurrency')).toBe('EUR');

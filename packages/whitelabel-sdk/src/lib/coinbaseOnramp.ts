@@ -130,6 +130,35 @@ function buildOnrampUrl(token: string, params: OpenCoinbaseOnrampParams): string
   // into the US-only guest checkout.
   const currency = onrampFiatCurrency(params.fiatCurrency);
   url.searchParams.set('fiatCurrency', currency);
+
+  /*
+   * ⚠️ NAMING A PAYMENT METHOD IS HOW WE REFUSE GUEST CHECKOUT.
+   *
+   * Coinbase offers its guest flow — pay by card with no account — on this condition, from its
+   * own bundle:
+   *
+   *     isAllowedToUseGuestCheckout =
+   *       !killSwitch && guestCheckoutEnabled &&
+   *       ("CARD" === defaultPaymentMethod || undefined === defaultPaymentMethod)
+   *
+   * We were naming nothing, which is the `undefined` branch, so signed-out buyers were offered
+   * it. And guest checkout is allowlisted to one country: `"guestCheckoutCountryAllowlist":["US"]`.
+   * A signed-out buyer anywhere else is sent into a flow that cannot serve them — on 2026-09-22 a
+   * Dutch address produced a blank white screen, not even the restricted-country page their own
+   * bundle contains for the purpose.
+   *
+   * Naming any method other than CARD makes that condition false, so the guest route is never
+   * offered and the buyer lands on /landing, which asks them to sign in. FIAT_WALLET is an
+   * account-based method, which is the flow we want them in, and it is only a DEFAULT — the buyer
+   * can switch to card inside the widget once signed in.
+   *
+   * ⚠️ NOT for dollar buyers. Guest checkout is genuinely better where it works: card payment
+   *    with no Coinbase account at all. The allowlist says that is the United States, so dollar
+   *    buyers keep it and everyone else is steered to the flow that can actually serve them.
+   */
+  if (currency !== 'USD') {
+    url.searchParams.set('defaultPaymentMethod', 'FIAT_WALLET');
+  }
   url.searchParams.set('redirectUrl', buildCoinbaseReturnUrl(ONRAMP_RETURN_ROUTE, params.returnPath));
 
   /*

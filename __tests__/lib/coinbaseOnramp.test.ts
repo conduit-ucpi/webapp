@@ -257,29 +257,27 @@ describe('openCoinbaseOnramp', () => {
     });
 
     /**
-     * Coinbase decides the buyer gets one-click checkout when the URL already
-     * names the amount, and one-click is its guest flow. The page's own config
-     * says `"guestCheckoutCountryAllowlist":["US"]` — a buyer anywhere else is
-     * told "not available in your country" and stops there. So outside dollars
-     * we send no amount and let them type it on Coinbase's ordinary screen.
+     * ⚠️ THE AMOUNT IS SENT TO EVERYONE, AND WHAT MAKES THAT SAFE IS ELSEWHERE.
+     *
+     * Naming the amount together with the asset and the network tells Coinbase nothing is left
+     * to choose, and it routes the buyer to guest checkout, which its own page config
+     * allowlists to one country: `"guestCheckoutCountryAllowlist":["US"]`. The preset alone
+     * does not do that — measured against the live service twice, on 2026-09-21 and again on
+     * 2026-09-22.
+     *
+     * A first attempt at this fix sent the amount only to dollar buyers, which cost every other
+     * buyer their prefill and bought nothing. The asset and network staying out of the URL is
+     * the whole protection; see the sibling test below.
      */
-    it('sends no preset amount outside the US, where a preset forces guest checkout', async () => {
+    it('presets the amount for a sterling buyer, not only a dollar one', async () => {
       withLocale('en-GB');
-      await openCoinbaseOnramp({ destinationAddress: '0xabc', presetCryptoAmount: 10, presetFiatAmount: 8 });
-
-      const url = new URL(openSpy.mock.calls[0][0] as string);
-      expect(url.searchParams.get('fiatCurrency')).toBe('GBP');
-      expect(url.searchParams.get('presetCryptoAmount')).toBeNull();
-      expect(url.searchParams.get('presetFiatAmount')).toBeNull();
-    });
-
-    it('keeps the preset for dollar buyers, the one market guest checkout serves', async () => {
-      withLocale('en-US');
       await openCoinbaseOnramp({ destinationAddress: '0xabc', presetCryptoAmount: 10 });
 
       const url = new URL(openSpy.mock.calls[0][0] as string);
-      expect(url.searchParams.get('fiatCurrency')).toBe('USD');
+      expect(url.searchParams.get('fiatCurrency')).toBe('GBP');
       expect(url.searchParams.get('presetCryptoAmount')).toBe('10');
+      expect(url.searchParams.get('defaultAsset')).toBeNull();
+      expect(url.searchParams.get('defaultNetwork')).toBeNull();
     });
 
     it('lets the caller choose the currency', async () => {

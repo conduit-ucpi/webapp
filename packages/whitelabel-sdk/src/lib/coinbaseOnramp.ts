@@ -132,33 +132,29 @@ function buildOnrampUrl(token: string, params: OpenCoinbaseOnrampParams): string
   url.searchParams.set('fiatCurrency', currency);
   url.searchParams.set('redirectUrl', buildCoinbaseReturnUrl(ONRAMP_RETURN_ROUTE, params.returnPath));
 
-  // ⚠️ A PRESET AMOUNT IS A US-ONLY FEATURE. Naming the amount tells Coinbase the
-  //    purchase needs no further input, and it answers by sending the buyer to
-  //    one-click checkout — /buy/one-click, which is its guest flow
-  //    (/v3/onramp/guest/*, "flow":"onramp_guest" in the page's own config).
-  //    Guest checkout is the pay-by-card-without-an-account path, and the same
-  //    config carries the line that decides everything here:
-  //
-  //        "guestCheckoutCountryAllowlist":["US"]
-  //
-  //    One country. A buyer anywhere else who is handed that flow is told
-  //    "Coinbase Onramp is not available in your country" and can go no further
-  //    — which is precisely what UK buyers saw, while Coinbase's own config API
-  //    lists GB as supported for card, Coinbase balance and fiat wallet (£2
-  //    minimum, measured 2026-09-21).
-  //
-  //    So the amount is preset only when we are quoting in US dollars. Everyone
-  //    else is taken to Coinbase's ordinary screen, signs in, and types the
-  //    amount — slower by one field, but it completes. The amount they need is
-  //    on our own payment screen in front of them.
-  if (currency === 'USD') {
-    // Coinbase ignores presetFiatAmount when presetCryptoAmount is present, so
-    // send one or the other rather than both.
-    if (params.presetCryptoAmount) {
-      url.searchParams.set('presetCryptoAmount', String(params.presetCryptoAmount));
-    } else if (params.presetFiatAmount) {
-      url.searchParams.set('presetFiatAmount', String(params.presetFiatAmount));
-    }
+  /*
+   * The amount, preset so the buyer does not have to retype what they already owe.
+   *
+   * ⚠️ IT IS SAFE HERE ONLY BECAUSE THE ASSET AND NETWORK ARE NOT IN THE URL. Naming all three
+   *    tells Coinbase the purchase needs no further input, and it answers by routing the buyer
+   *    to one-click checkout, which is its guest flow — and guest checkout is allowlisted to a
+   *    single country, the United States (`"guestCheckoutCountryAllowlist":["US"]` in its own
+   *    page config). Measured against the live service, twice, on 2026-09-21 and again on
+   *    2026-09-22: with the asset and network present the redirect chain ends at
+   *    /v3/onramp/guest/card-details, and without them it ends at /landing, the ordinary flow.
+   *
+   *    An earlier fix over-corrected and sent the amount only for US dollar buyers, which cost
+   *    every other buyer the prefill for no benefit — the preset alone never triggered the guest
+   *    flow. Keep the asset and network out of the URL (they are pinned in the session token)
+   *    and the amount is free to stay.
+   *
+   * Coinbase ignores presetFiatAmount when presetCryptoAmount is present, so send one or the
+   * other rather than both.
+   */
+  if (params.presetCryptoAmount) {
+    url.searchParams.set('presetCryptoAmount', String(params.presetCryptoAmount));
+  } else if (params.presetFiatAmount) {
+    url.searchParams.set('presetFiatAmount', String(params.presetFiatAmount));
   }
   return url.toString();
 }

@@ -1,4 +1,13 @@
 /**
+ * NOTE: handleLegacyPayment is gone — neither page ever called it, and the approve+deposit
+ * sequence it wrapped is reached through ContractAcceptance instead.
+ *
+ * The invariant itself matters more than it did. expiryTimestamp is now one of the terms the
+ * factory hashes into an escrow's CREATE2 address, so recomputing it from Date.now() no longer
+ * merely risks a mismatch against the stored record — it names a different escrow, at an
+ * address the funds were never sent to.
+ */
+/**
  * Source-level invariants for expiryTimestamp handling in contract-create.tsx.
  *
  * The runtime test (contract-create-expiry-consistency.test.tsx) only drives
@@ -24,10 +33,25 @@
 import fs from 'fs';
 import path from 'path';
 
-const SOURCE_PATH = path.join(__dirname, '..', '..', 'pages', 'contract-create.tsx');
+// The page moved into the white-label SDK; pages/contract-create.tsx is now a
+// one-line route that mounts it. These are source-level invariants, so they have
+// to read the real implementation, not the route.
+const SOURCE_PATH = path.join(
+  __dirname, '..', '..', 'packages', 'whitelabel-sdk', 'src', 'pages', 'ContractCreatePage.tsx'
+);
 
 function loadSource(): string {
-  return fs.readFileSync(SOURCE_PATH, 'utf8');
+  const source = fs.readFileSync(SOURCE_PATH, 'utf8');
+  // Guard against pointing at a re-export stub. Every assertion below is a
+  // "source does not contain X" shape, so a tiny file would satisfy all of them
+  // and the suite would pass while checking nothing.
+  if (source.length < 10_000) {
+    throw new Error(
+      `${SOURCE_PATH} is only ${source.length} bytes — that is a stub, not the page. ` +
+        'These invariants must read the real implementation.'
+    );
+  }
+  return source;
 }
 
 /**
@@ -67,7 +91,6 @@ describe('contract-create.tsx — expiryTimestamp handler invariants', () => {
   const DEPLOY_HANDLERS = [
     'createContract: useCallback',
     'const handleWalletPayment = async',
-    'const handleLegacyPayment = async',
   ];
 
   /**

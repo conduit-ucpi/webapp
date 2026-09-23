@@ -8,7 +8,12 @@ const customJestConfig = {
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   testEnvironment: 'jsdom',
   moduleNameMapper: {
-    '^@/(.*)$': '<rootDir>/$1',
+    // Mirrors the tsconfig paths order: SDK first, app second.
+    '^@/(.*)$': ['<rootDir>/packages/whitelabel-sdk/src/$1', '<rootDir>/$1'],
+    // The white-label SDK is a workspace consumed as source, so tests resolve it
+    // the same way the app does rather than through a build artefact.
+    '^@conduit-ucpi/whitelabel-sdk$': '<rootDir>/packages/whitelabel-sdk/src/index.ts',
+    '^@conduit-ucpi/whitelabel-sdk/(.*)$': '<rootDir>/packages/whitelabel-sdk/src/$1',
     // Mock Wagmi and related ES modules
     '^wagmi$': '<rootDir>/__mocks__/wagmi.js',
     '^wagmi/chains$': '<rootDir>/__mocks__/wagmi-chains.js',

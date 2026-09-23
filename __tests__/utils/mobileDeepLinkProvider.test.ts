@@ -1,8 +1,8 @@
-import { wrapProviderWithMobileDeepLinks } from '../../utils/mobileDeepLinkProvider';
-import * as mobileDeepLinkProvider from '../../utils/mobileDeepLinkProvider';
+import { wrapProviderWithMobileDeepLinks } from '@/utils/mobileDeepLinkProvider';
+import * as mobileDeepLinkProvider from '@/utils/mobileDeepLinkProvider';
 
 // Mock device detection
-jest.mock('../../utils/deviceDetection', () => ({
+jest.mock('@/utils/deviceDetection', () => ({
   detectDevice: jest.fn(() => ({
     isMobile: true,
     isTablet: false,
@@ -11,7 +11,7 @@ jest.mock('../../utils/deviceDetection', () => ({
 }));
 
 // Mock mobile logger
-jest.mock('../../utils/mobileLogger', () => ({
+jest.mock('@/utils/mobileLogger', () => ({
   mLog: {
     info: jest.fn(),
     warn: jest.fn(),
@@ -437,7 +437,7 @@ describe('wrapProviderWithMobileDeepLinks', () => {
   describe('Desktop Device', () => {
     beforeEach(() => {
       // Mock device detection to return desktop
-      const deviceDetection = require('../../utils/deviceDetection');
+      const deviceDetection = require('@/utils/deviceDetection');
       deviceDetection.detectDevice.mockReturnValue({
         isMobile: false,
         isTablet: false,

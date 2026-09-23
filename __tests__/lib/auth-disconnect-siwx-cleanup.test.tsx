@@ -14,7 +14,6 @@
 import React from 'react';
 import { render, act, screen, waitFor } from '@testing-library/react';
 
-const SIWX_SESSION_STORAGE_KEY = 'conduit_siwx_session';
 
 // Mock fetch globally
 const mockFetch = jest.fn().mockResolvedValue({ ok: false, json: async () => ({}) });

@@ -7,12 +7,19 @@ import { useConfig } from '@/components/auth/ConfigProvider';
 import { displayCurrency } from '@/utils/currency';
 import { acceptableOffers, hoursUntil, reconciledLabel } from '@/utils/marketplace';
 import { AcceptFlowNotice, NetProceedsBreakdown } from '@/components/marketplace/OfferDisclosures';
+import OfferDetailsModal from '@/components/marketplace/OfferDetailsModal';
 import type { OfferView } from '@/types/marketplace';
 
 interface SellerOfferBookProps {
   escrowContract: string;
   /** What the escrow would pay at maturity, for the "instead of waiting" comparison. */
   maturityAmount?: number;
+  /**
+   * The escrow's gross amount. Only the detail view needs it — to show the platform fee as the
+   * difference between it and the payout, rather than asserting a fee rate the escrow may not
+   * have been created under.
+   */
+  nominalAmount?: number;
   maturity?: number;
   onAccepted?: () => Promise<void> | void;
 }
@@ -21,9 +28,9 @@ interface SellerOfferBookProps {
  * The offers standing on one escrow, from the seller's side (MARKETPLACE_OPENSPEC §15.6d).
  *
  * ⚠️ THE HEADLINE FIGURE IS THE SELLER'S NET, NOT THE OFFER (§8.5a, §13.10). The platform fee and
- *    any reserve come out of the LP's deposit before the seller sees it, so a seller shown
+ *    any residual come out of the LP's deposit before the seller sees it, so a seller shown
  *    "10,000" who receives 8,900 reads it as theft. Fee and holdback are separate fields on
- *    `OfferCreated` precisely so offers can be compared on both — a smaller offer with no reserve
+ *    `OfferCreated` precisely so offers can be compared on both — a smaller offer with no residual
  *    can be the better one.
  *
  * ⚠️ PENDING VAULTS ARE NOT OFFERS and never appear here (§5.0): the vault exists but the LP has
@@ -32,6 +39,7 @@ interface SellerOfferBookProps {
 export default function SellerOfferBook({
   escrowContract,
   maturityAmount,
+  nominalAmount,
   maturity,
   onAccepted
 }: SellerOfferBookProps) {
@@ -44,6 +52,7 @@ export default function SellerOfferBook({
   const [stage, setStage] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<OfferView | null>(null);
+  const [viewing, setViewing] = useState<OfferView | null>(null);
 
   const tokenSymbol = config?.tokenSymbol || 'USDC';
   const offers = acceptableOffers(data?.offers ?? []);
@@ -71,7 +80,28 @@ export default function SellerOfferBook({
       await acceptOffer(offer.vaultAddress);
 
       setConfirming(null);
-      await refetch();
+      setViewing(null);
+
+      /*
+       * ⚠️ RECONCILE, DON'T REFETCH. The book is contractservice's index, and `OfferAccepted`
+       *    has to travel chain → chainservice → contractservice before that index stops
+       *    calling this offer OPEN. A bare refetch re-reads a record that does not know about
+       *    the acceptance yet, so the offer comes back acceptable and the seller presses it
+       *    again — the second swap reverts, because the escrow has already changed hands, but
+       *    they have signed two more transactions to learn that.
+       *
+       *    `refresh` makes contractservice read the chain for this seller's escrows and ingest
+       *    what it finds, and only returns once that has happened — so the refetch it triggers
+       *    afterwards sees the acceptance. `acceptableOffers` then drops the offer for the
+       *    right reason: the index says ACCEPTED, not because the UI is hiding it.
+       *
+       *    It closes the losing offers in the same pass, which matters just as much: accepting
+       *    one sells the cashflow, so every other offer standing on it is dead in that moment.
+       */
+      // A failed reconcile calls no refetch of its own, so the book would otherwise sit
+      // un-re-read on exactly the path where it is most stale. Falling back keeps the screen
+      // honest: still showing the offer means the index genuinely has not caught up yet.
+      if (!(await refresh())) await refetch();
       await onAccepted?.();
     } catch (e: any) {
       setActionError(
@@ -89,7 +119,20 @@ export default function SellerOfferBook({
     setActionError(null);
     try {
       await rejectOffer(offer.vaultAddress);
-      await refetch();
+      setViewing(null);
+
+      /*
+       * Same staleness as accepting, and for the same reason: `reject()` goes from the
+       * seller's own wallet — the contract requires it — so chainservice never sees the
+       * transaction and `OfferRejected` reaches the index only when someone reconciles. A bare
+       * refetch brings the offer back OPEN, and the seller is looking at a bid they have
+       * already killed.
+       *
+       * It matters on the LP's side too: a rejection is what makes their capital withdrawable
+       * (§6.4), and nothing on-chain announces that. Until the rejection is indexed there is
+       * nothing to tell them from, so the money simply sits in the vault.
+       */
+      if (!(await refresh())) await refetch();
     } catch (e: any) {
       setActionError(e?.message || 'Declining did not go through.');
     } finally {
@@ -163,6 +206,9 @@ export default function SellerOfferBook({
                 </div>
 
                 <div className="flex gap-2 flex-shrink-0">
+                  <Button type="button" size="sm" variant="ghost" onClick={() => setViewing(offer)} disabled={isBusy}>
+                    View details
+                  </Button>
                   <Button type="button" size="sm" variant="outline" onClick={() => decline(offer)} disabled={isBusy}>
                     Decline
                   </Button>
@@ -211,6 +257,23 @@ export default function SellerOfferBook({
             </div>
           );
         })
+      )}
+
+      {/* One modal for whichever offer is being looked at, rather than one per row. */}
+      {viewing && (
+        <OfferDetailsModal
+          isOpen
+          onClose={() => setViewing(null)}
+          offer={viewing}
+          nominalAmount={nominalAmount}
+          payoutAmount={maturityAmount}
+          maturity={maturity}
+          tokenSymbol={tokenSymbol}
+          busy={busyVault === viewing.vaultAddress}
+          stage={busyVault === viewing.vaultAddress ? stage : null}
+          onAccept={() => accept(viewing)}
+          onDecline={() => decline(viewing)}
+        />
       )}
     </div>
   );

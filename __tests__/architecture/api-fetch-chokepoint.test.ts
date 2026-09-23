@@ -35,7 +35,14 @@ import path from 'path';
 const ROOT = path.join(__dirname, '../../');
 
 // Directories that contain application source we want to police.
-const SCAN_DIRS = ['components', 'pages', 'hooks', 'lib', 'utils', 'types'];
+const SCAN_DIRS = [
+  // App-side code.
+  'components', 'pages', 'utils', 'lib',
+  // The product surfaces moved into the white-label SDK. The rule has to
+  // follow them: a bare fetch() there is exactly as broken on the static
+  // build as it was when these files lived in the app.
+  'packages/whitelabel-sdk/src',
+];
 
 // Server-side code: not shipped to a browser, so a relative path is meaningless
 // rather than wrong. pages/api/** is the API itself.
@@ -50,10 +57,10 @@ const SERVER_PREFIXES = ['pages/api/', 'lib/server/'];
  * "fetch need not name apiUrl", never "this file may use relative /api paths".
  */
 const EXTERNAL_FETCH_EXCEPTIONS = [
-  'lib/web3.ts',                    // this.config.rpcUrl — blockchain node
-  'lib/rpc/RpcClient.ts',           // this.rpcUrl — blockchain node
-  'lib/auth/magicReachability.ts',  // MAGIC_PROBE_URL — third-party probe
-  'hooks/useExchangeRate.ts',       // exchangeRateApiUrl — third-party rates
+  'packages/whitelabel-sdk/src/lib/web3.ts',                    // this.config.rpcUrl — blockchain node
+  'packages/whitelabel-sdk/src/lib/rpc/RpcClient.ts',           // this.rpcUrl — blockchain node
+  'packages/whitelabel-sdk/src/lib/auth/magicReachability.ts',  // MAGIC_PROBE_URL — third-party probe
+  'packages/whitelabel-sdk/src/hooks/useExchangeRate.ts',       // exchangeRateApiUrl — third-party rates
   'utils/projectsServer.ts',        // fanout chain service, server-side
 ];
 
@@ -193,12 +200,48 @@ describe('Architecture: single API chokepoint (lib/apiFetch)', () => {
     }
   );
 
+  /*
+   * Rule 3 — the one the /liquidity 401 got through.
+   *
+   * Naming apiUrl fixes the ORIGIN; it does nothing about the SESSION. apiFetch is what sets
+   * `credentials: 'include'`, and without it the AUTH-TOKEN cookie does not travel: on the box
+   * the request is same-origin so cookies go anyway, but from the static host it is
+   * stabledrop.me → api.stabledrop.me and the cookie is dropped. requireAuth then finds
+   * nothing, and every authenticated read 401s — in production only, having passed every
+   * check in dev.
+   *
+   * A `fetch(apiUrl(x))` with no second argument is the exact shape: no options object means
+   * no credentials, with no judgement required. Calls that build their own options — the two
+   * auth clients do, deliberately — are left alone, because they set credentials there.
+   */
+  it.each(files)('%s never calls fetch(apiUrl(...)) without options', (relPath) => {
+    const content = fs.readFileSync(path.join(ROOT, relPath), 'utf-8');
+    const offenders: string[] = [];
+
+    content.split('\n').forEach((line, i) => {
+      // fetch(apiUrl(...)) closing immediately: no options object can follow.
+      if (/fetch\(\s*apiUrl\([^()]*\)\s*\)/.test(line)) {
+        offenders.push(`  Line ${i + 1}: ${line.trim().slice(0, 90)}`);
+      }
+    });
+
+    if (offenders.length) {
+      throw new Error(
+        `${relPath} calls fetch(apiUrl(...)) with no options, so it sends no cookies:\n` +
+          offenders.join('\n') +
+          `\n\nUse apiFetch(path), which sets credentials: 'include'. Without it the ` +
+          `session cookie is dropped cross-origin and the call 401s on the static host ` +
+          `while working perfectly on the box.`
+      );
+    }
+  });
+
   it('the external-fetch exception list stays small and deliberate', () => {
     expect(EXTERNAL_FETCH_EXCEPTIONS).toEqual([
-      'lib/web3.ts',
-      'lib/rpc/RpcClient.ts',
-      'lib/auth/magicReachability.ts',
-      'hooks/useExchangeRate.ts',
+      'packages/whitelabel-sdk/src/lib/web3.ts',
+      'packages/whitelabel-sdk/src/lib/rpc/RpcClient.ts',
+      'packages/whitelabel-sdk/src/lib/auth/magicReachability.ts',
+      'packages/whitelabel-sdk/src/hooks/useExchangeRate.ts',
       'utils/projectsServer.ts',
     ]);
   });

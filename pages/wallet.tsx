@@ -37,7 +37,9 @@ interface SendFormData {
 }
 
 export default function Wallet() {
-  const { user, state, isLoading: authLoading, getEthersProvider, showWalletUI } = useAuth();
+  const { user, state, isLoading: authLoading, getEthersProvider, showWalletUI, canExportWallet, exportWallet } = useAuth();
+  // Embedded wallets only: the provider shows the key in its own isolated UI, never to this app.
+  const showExport = typeof canExportWallet === 'function' && canExportWallet();
   const { fundAndSendTransaction, getNativeBalance, getTokenBalance, getUserAddress } = useSimpleEthers();
   const { isInFarcaster } = useFarcaster();
   const { config } = useConfig();
@@ -407,6 +409,21 @@ export default function Wallet() {
                   size="sm"
                 >
                   Manage Wallet
+                </Button>
+              )}
+              {showExport && (
+                <Button
+                  onClick={async () => {
+                    try {
+                      await exportWallet();
+                    } catch (error) {
+                      console.error('Failed to open key export:', error);
+                    }
+                  }}
+                  variant="outline"
+                  size="sm"
+                >
+                  Export keys
                 </Button>
               )}
               <Button

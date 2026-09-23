@@ -27,6 +27,20 @@
   // Error states that indicate payment failed
   const FAILED_STATES = ['NEVER_FUNDED', 'ERROR', 'FAILED'];
 
+  /**
+   * The states in which the money is genuinely in the escrow.
+   *
+   * An allowlist on purpose. The obvious alternative — accept anything that is not a known
+   * failure — treats every state nobody here has heard of as a completed payment, including
+   * ones added after a merchant last updated this file. Waiting on a state that turns out to
+   * be fine costs another poll; clearing one that is not costs goods shipped for money that
+   * never arrived.
+   *
+   * EXPIRED is deliberately absent: it covers both an escrow that matured with funds in it
+   * and a quote that simply lapsed, and those must not be confused.
+   */
+  const FUNDED_STATES = ['ACTIVE', 'DISPUTED', 'RESOLVED', 'CLAIMED', 'COMPLETED'];
+
   const ConduitCheckout = {
     config: {
       sellerAddress: null,
@@ -260,14 +274,24 @@
             throw new Error('Payment verification failed: Contract was never funded or encountered an error');
           }
 
-          // 2. Check if contract is on blockchain (has chainAddress)
-          if (!result.chainAddress) {
-            console.log('⏳ Contract not yet on blockchain (no chainAddress), polling again in', interval, 'ms');
+          // 2. Check the money actually arrived.
+          //
+          // ⚠️ chainAddress IS NOT THAT SIGNAL, though it used to be. An escrow's address is
+          //    now worked out from its terms and recorded when the buyer opens the payment
+          //    page, before they send anything — so waiting for it to appear would clear an
+          //    order the moment someone looked at it.
+          //
+          // `state` is the signal, and it is tested as an allowlist rather than by ruling out
+          // the failures. A state nobody here has heard of must not be read as payment: the
+          // cost of waiting for one that is fine is a slower poll, the cost of clearing one
+          // that is not is goods shipped for money that never arrived.
+          if (!FUNDED_STATES.includes(result.state)) {
+            console.log('⏳ Not funded yet (state: ' + result.state + '), polling again in', interval, 'ms');
             await this.sleep(interval);
             continue;
           }
 
-          console.log('✅ Contract found on blockchain:', result.chainAddress);
+          console.log('✅ Escrow funded:', result.chainAddress, '(' + result.state + ')');
 
           // 3. Security check: Seller address must match
           if (result.sellerWalletId.toLowerCase() !== this.config.sellerAddress.toLowerCase()) {
@@ -320,7 +344,22 @@
           // 6. Verify expiry/payout date matches (if provided)
           if (this.currentPayment && this.currentPayment.expiryTimestamp) {
             const expectedExpiry = parseInt(this.currentPayment.expiryTimestamp);
-            const actualExpiry = parseInt(result.expiryTimestamp || result.payoutTimestamp);
+            const actualExpiry = parseInt(this.maturityOf(result));
+
+            // The field this reads is `maturity`; it used to be `expiryTimestamp` and this
+            // check went on asking for the old name long after the rename. That failed
+            // SILENTLY, which is the only reason it survived: parseInt(undefined) is NaN,
+            // every comparison against NaN is false, so `NaN > 60` said "within tolerance"
+            // and the check reported success without ever reading a date.
+            //
+            // So an unreadable date is now a failure, not a pass. A caller only reaches
+            // here by explicitly asking for the payout date to be verified, and a
+            // verification that cannot see its input has not verified anything.
+            if (!Number.isFinite(actualExpiry)) {
+              console.warn('⚠️ No payout date on the contract record, so it cannot be checked');
+              throw new Error('Security violation: Payout date could not be verified');
+            }
+
             // Allow 60 second tolerance for timing differences
             if (Math.abs(expectedExpiry - actualExpiry) > 60) {
               console.warn('⚠️ Expiry mismatch:', { expected: expectedExpiry, actual: actualExpiry });
@@ -352,7 +391,7 @@
             currencyRaw: result.currency, // Original currency from backend
             description: result.description,
             state: result.state,
-            expiryTimestamp: result.expiryTimestamp || result.payoutTimestamp,
+            expiryTimestamp: this.maturityOf(result),
             verified: true,
             verifiedAt: new Date().toISOString()
           };
@@ -376,6 +415,25 @@
 
       // Timeout reached
       throw new Error('Payment verification timeout - please contact support');
+    },
+
+    /**
+     * When the cashflow unlocks, from whichever name the record uses.
+     *
+     * resultservice returns `maturity`. It previously returned `expiryTimestamp`, and the
+     * older name is kept here so a deployment running an earlier build still verifies rather
+     * than starts rejecting payments — the fallbacks are for OLD data, not for absence.
+     *
+     * Returns undefined when the record carries no date at all. Callers must treat that as
+     * "cannot verify" and never as "verified": the previous code read the wrong name, got
+     * undefined, and NaN comparisons made every check pass.
+     *
+     * @param {Object} result - A contract record from /api/results
+     * @returns {number|string|undefined}
+     * @private
+     */
+    maturityOf: function(result) {
+      return result.maturity || result.expiryTimestamp || result.payoutTimestamp;
     },
 
     /**

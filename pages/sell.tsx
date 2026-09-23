@@ -25,7 +25,7 @@ export default function Sell() {
       return;
     }
     if (connect) {
-      const result = await connect('walletconnect');
+      const result = await connect();
       if (result?.success) {
         router.push(destination);
       }

@@ -5,18 +5,18 @@ import { screen, fireEvent, waitFor } from '@testing-library/dom';
 jest.mock('next/router', () => ({
   useRouter: jest.fn(),
 }));
-jest.mock('../../../components/auth/ConfigProvider');
-jest.mock('../../../components/auth');
+jest.mock('@/components/auth/ConfigProvider');
+jest.mock('@/components/auth');
 // jest.mock('../../../components/auth/Web3AuthContextProvider'); // Not needed
 
 // SDK mocks are now handled in jest.setup.js
 
 import { useRouter } from 'next/router';
-import ContractActions from '../../../components/contracts/ContractActions';
-import { useConfig } from '../../../components/auth/ConfigProvider';
-import { useAuth } from '../../../components/auth';
+import ContractActions from '@/components/contracts/ContractActions';
+import { useConfig } from '@/components/auth/ConfigProvider';
+import { useAuth } from '@/components/auth';
 // import { useWeb3AuthInstance } from '../../../components/auth/Web3AuthContextProvider'; // Not needed
-import { Contract } from '../../../types';
+import { Contract } from '@/types';
 
 // Import the function from SDK for generating expected test values
 // This ensures consistency between what the component uses and what the test expects

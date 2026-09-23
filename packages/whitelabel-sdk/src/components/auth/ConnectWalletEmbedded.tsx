@@ -1,0 +1,403 @@
+import React, { useEffect, useState, useRef } from 'react';
+import { useAuth } from '@/components/auth';
+import Button from '@/components/ui/Button';
+import { mLog } from '@/utils/mobileLogger';
+import { isMagicReachable } from '@/lib/auth/magicReachability';
+import { reportAuthFailure } from '@/lib/auth/reportAuthFailure';
+import { useT } from '../../i18n';
+
+interface ConnectWalletEmbeddedProps {
+  buttonText?: string;
+  useSmartRouting?: boolean;
+  showTwoOptionLayout?: boolean;
+  className?: string;
+  buttonClassName?: string;
+  compact?: boolean;
+  onSuccess?: () => void;
+  autoConnect?: boolean;
+  preferredProvider?: 'dynamic' | 'walletconnect'; // Choose which provider to use
+  connectionMode?: 'default' | 'wallet-only' | 'social-only';
+  /**
+   * Sign in through the provider the app moved away from, to reach a wallet made under it.
+   * Set by the sign-in card's tick box; the backend session may or may not follow, and the
+   * point is only that /wallet can then move the funds out.
+   */
+  legacyWallet?: boolean;
+}
+
+export default function ConnectWalletEmbedded({
+  buttonText = "Get Started",
+  useSmartRouting = true,
+  showTwoOptionLayout = false,
+  className = "",
+  buttonClassName,
+  compact = false,
+  onSuccess,
+  autoConnect = false,
+  preferredProvider,
+  connectionMode,
+  legacyWallet = false
+}: ConnectWalletEmbeddedProps) {
+  const t = useT();
+  const { user, isLoading, connect, isConnected, address, requestAuthentication, setConnectionMode } = useAuth();
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
+
+  // Pre-flight: is magiclabs.com reachable? Reown's social-login embedded
+  // wallet delegates signing to it, so when it's blocked (BT Web Protect,
+  // NextDNS, ad-blockers, corporate firewalls), social/email login fails
+  // silently. Probe on mount and, if blocked, hide social options upfront
+  // and show the user a banner explaining what's happening.
+  const [magicBlocked, setMagicBlocked] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    isMagicReachable().then((ok) => {
+      if (cancelled) return;
+      if (!ok) {
+        setMagicBlocked(true);
+        reportAuthFailure(
+          'magic-blocked',
+          'pre-flight',
+          'tee.express.magiclabs.com unreachable from browser'
+        );
+        mLog.warn(
+          'ConnectWalletEmbedded',
+          '⚠️ magiclabs.com unreachable — disabling social-login options',
+          {}
+        );
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Effective connection mode: if magic is blocked, force wallet-only so
+  // the user isn't shown a Google/Apple/email button that will silently fail.
+  const effectiveConnectionMode = magicBlocked ? 'wallet-only' : connectionMode;
+
+  // Track if we've already handled OAuth redirect to prevent duplicate attempts
+  const oauthHandledRef = useRef(false);
+  const isHandlingOAuthRef = useRef(false);
+
+  // Auto-authenticate on OAuth redirect
+  useEffect(() => {
+    const handleOAuthRedirect = async () => {
+      // Use sessionStorage to prevent duplicate OAuth handling across ALL component instances
+      const oauthHandlingKey = 'oauth_redirect_handling';
+      const oauthHandledKey = 'oauth_redirect_handled';
+
+      // Check if OAuth is already being handled or has been handled
+      const isHandling = typeof window !== 'undefined' && sessionStorage.getItem(oauthHandlingKey);
+      const wasHandled = typeof window !== 'undefined' && sessionStorage.getItem(oauthHandledKey);
+
+      if (isHandling || wasHandled) {
+        return; // Another component instance is handling or has handled this
+      }
+
+      // Early exit if already handled locally
+      if (oauthHandledRef.current || isHandlingOAuthRef.current) {
+        return;
+      }
+
+      const urlParams = new URLSearchParams(window.location.search);
+      const isOAuthRedirect = urlParams.has('dynamicOauthCode') || urlParams.has('dynamicOauthState');
+
+      // Only log if OAuth redirect is detected AND we haven't logged yet this session
+      // Use sessionStorage to persist across component remounts
+      const hasLoggedKey = 'oauth_redirect_logged';
+      const hasLoggedThisSession = typeof window !== 'undefined' && sessionStorage.getItem(hasLoggedKey);
+
+      if (isOAuthRedirect && !hasLoggedThisSession) {
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem(hasLoggedKey, 'true');
+        }
+        mLog.info('ConnectWalletEmbedded', 'OAuth redirect detected', {
+          isConnected,
+          address,
+          hasUser: !!user,
+          willTriggerAuth: isConnected && address && !user
+        });
+      }
+
+      if (isOAuthRedirect && isConnected && address && !user) {
+        // Mark as being handled globally AND locally
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem(oauthHandlingKey, 'true');
+        }
+        isHandlingOAuthRef.current = true;
+
+        mLog.info('ConnectWalletEmbedded', 'OAuth redirect detected - SIWE should have authenticated automatically', {
+          isConnected,
+          address,
+          hasUser: !!user
+        });
+
+        // SIWE handles authentication automatically during connection
+        // Just wait a moment for the auth state to propagate, then call onSuccess
+        try {
+          setIsAuthenticating(true);
+
+          // Give a brief moment for SIWE session check to complete
+          await new Promise(resolve => setTimeout(resolve, 500));
+
+          mLog.info('ConnectWalletEmbedded', 'OAuth auto-authentication should be complete via SIWE');
+
+          // Mark as successfully handled globally AND locally
+          oauthHandledRef.current = true;
+          if (typeof window !== 'undefined') {
+            sessionStorage.setItem(oauthHandledKey, 'true');
+            sessionStorage.removeItem(oauthHandlingKey); // Clear handling flag
+          }
+
+          onSuccess?.();
+
+          // Clean up OAuth parameters from URL
+          if (window.history && window.history.replaceState) {
+            const cleanUrl = window.location.origin + window.location.pathname;
+            window.history.replaceState({}, document.title, cleanUrl);
+            mLog.info('ConnectWalletEmbedded', 'OAuth parameters auto-cleaned from URL');
+          }
+        } catch (error) {
+          mLog.error('ConnectWalletEmbedded', 'OAuth handling error', {
+            error: error instanceof Error ? error.message : String(error)
+          });
+
+          // Clear handling flag to allow retry
+          isHandlingOAuthRef.current = false;
+          if (typeof window !== 'undefined') {
+            sessionStorage.removeItem(oauthHandlingKey);
+          }
+        } finally {
+          setIsAuthenticating(false);
+        }
+      }
+    };
+
+    // Check immediately when conditions are met
+    handleOAuthRedirect();
+
+    // Only set up retry timeout if OAuth redirect is detected but conditions aren't met yet
+    const urlParams = new URLSearchParams(window.location.search);
+    const isOAuthRedirect = urlParams.has('dynamicOauthCode') || urlParams.has('dynamicOauthState');
+
+    let retryTimeout: NodeJS.Timeout | null = null;
+
+    if (isOAuthRedirect && (!isConnected || !address) && !oauthHandledRef.current) {
+      // Wait for Dynamic to establish connection, but only retry once after 2 seconds
+      retryTimeout = setTimeout(handleOAuthRedirect, 2000);
+    }
+
+    return () => {
+      if (retryTimeout) {
+        clearTimeout(retryTimeout);
+      }
+    };
+  }, [isConnected, address, user, onSuccess]);
+
+  // Auto-connect when autoConnect prop is true (e.g., from /sell or Shopify flow)
+  // Must include `connect` in deps so it re-fires when the real auth provider mounts
+  // (the fallback no-op connect resolves to undefined, so we only mark as triggered on real attempts)
+  const autoConnectTriggeredRef = useRef(false);
+  useEffect(() => {
+    if (autoConnect && !autoConnectTriggeredRef.current && !user && !isLoading && !isAuthenticating && connect) {
+      // Test if connect is the real function (fallback returns bare Promise.resolve())
+      // The real connect accepts a provider argument and returns ConnectionResult
+      // We mark triggered immediately to prevent duplicate calls during the same auth cycle
+      autoConnectTriggeredRef.current = true;
+      mLog.info('ConnectWalletEmbedded', 'Auto-connect triggered');
+
+      const doAutoConnect = async () => {
+        try {
+          // Set connection mode before connecting (controls which options are shown in modal)
+          // effectiveConnectionMode is forced to 'wallet-only' when magiclabs is blocked.
+          if (effectiveConnectionMode && setConnectionMode) {
+            mLog.info('ConnectWalletEmbedded', `Auto-connect setting connection mode: ${effectiveConnectionMode}`);
+            await setConnectionMode(effectiveConnectionMode);
+          }
+
+          const result = await connect(legacyWallet ? { legacyWallet: true } : undefined);
+          if (!result) {
+            // Fallback no-op connect returned undefined - reset so we retry with real connect
+            mLog.warn('ConnectWalletEmbedded', 'Auto-connect got no result (auth not ready), will retry');
+            autoConnectTriggeredRef.current = false;
+          } else if (result.success) {
+            mLog.info('ConnectWalletEmbedded', 'Auto-connect succeeded', { address: result.address });
+            onSuccess?.();
+          } else {
+            mLog.error('ConnectWalletEmbedded', 'Auto-connect failed', { error: result.error });
+          }
+        } catch (err: any) {
+          mLog.error('ConnectWalletEmbedded', 'Auto-connect error', {
+            error: err instanceof Error ? err.message : String(err)
+          });
+          autoConnectTriggeredRef.current = false;
+        }
+      };
+
+      doAutoConnect();
+    }
+  }, [autoConnect, isLoading, connect]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Don't show loading spinner during SSR - always render actual content for SEO/crawlers
+  if (user) {
+    return (
+      <div className="p-4 text-center">
+        <p className="text-green-600">✓ Wallet connected: {user.email || user.walletAddress}</p>
+      </div>
+    );
+  }
+
+  const handleConnect = async () => {
+    mLog.info('ConnectWalletEmbedded', 'Get Started button clicked');
+
+    try {
+      setIsAuthenticating(true);
+
+      // Check if this is an OAuth redirect - if so, skip the connect flow
+      const urlParams = new URLSearchParams(window.location.search);
+      const isOAuthRedirect = urlParams.has('dynamicOauthCode') || urlParams.has('dynamicOauthState');
+
+      if (isOAuthRedirect) {
+        mLog.info('ConnectWalletEmbedded', 'OAuth redirect detected, checking for auto-connection');
+
+        // Check if we're already connected (Dynamic auto-connects after OAuth)
+        if (isConnected && address) {
+          mLog.info('ConnectWalletEmbedded', 'Already connected after OAuth - SIWE should have authenticated automatically');
+
+          // SIWE handles authentication automatically
+          // Just wait a moment for auth state to propagate
+          await new Promise(resolve => setTimeout(resolve, 500));
+
+          mLog.info('ConnectWalletEmbedded', 'OAuth authentication should be complete via SIWE');
+          onSuccess?.();
+
+          // Clean up OAuth parameters from URL
+          if (window.history && window.history.replaceState) {
+            const cleanUrl = window.location.origin + window.location.pathname;
+            window.history.replaceState({}, document.title, cleanUrl);
+            mLog.info('ConnectWalletEmbedded', 'OAuth parameters cleaned from URL');
+          }
+
+          return;
+        } else {
+          mLog.warn('ConnectWalletEmbedded', 'OAuth redirect detected but not connected yet');
+        }
+      }
+
+      // Normal connection flow
+      mLog.debug('ConnectWalletEmbedded', 'Connect function availability', { hasConnect: !!connect });
+
+      if (connect) {
+        try {
+          // Set connection mode before opening the modal (controls which options are shown).
+          // effectiveConnectionMode is forced to 'wallet-only' when magiclabs is blocked.
+          if (effectiveConnectionMode && setConnectionMode) {
+            mLog.info('ConnectWalletEmbedded', `Setting connection mode: ${effectiveConnectionMode}`);
+            await setConnectionMode(effectiveConnectionMode);
+          }
+
+          // Always use WalletConnect (handles social, email, and all wallets)
+          // No provider named: the registry picks by manifest priority. Naming one here was how
+          // a configured Privy produced "No auth provider available" — Reown had stood down.
+          mLog.info('ConnectWalletEmbedded', 'Calling connect', { legacyWallet });
+          mLog.info('ConnectWalletEmbedded', 'SIWE enabled - authentication will happen automatically during connection');
+          await mLog.forceFlush(); // Flush before calling (in case it hangs)
+
+          const connectionResult = await connect(legacyWallet ? { legacyWallet: true } : undefined);
+
+          // Handle undefined/null connectionResult (config loading failure or unexpected error)
+          if (!connectionResult) {
+            mLog.error('ConnectWalletEmbedded', 'No connection result returned', {
+              error: 'connect() returned undefined or null - possible config loading failure'
+            });
+            return;
+          }
+
+          if (connectionResult.success) {
+            // LAZY AUTH: Wallet connected successfully
+            // Backend authentication will happen automatically on first API call via:
+            // - 401 response → BackendClient throws AuthenticationExpiredError
+            // - SimpleAuthProvider catches it → calls requestAuthentication()
+            // - Request automatically retried with fresh signature
+            mLog.info('ConnectWalletEmbedded', '✅ Wallet connected (lazy auth - backend JWT will be created on first API call)', {
+              address: connectionResult.address
+            });
+
+            // Call onSuccess immediately - don't wait for backend auth
+            onSuccess?.();
+          } else if (connectionResult.cancelled) {
+            // User closed the connect modal without choosing a wallet. The finally
+            // block below clears the busy state, which drops them back on the page
+            // they started from with the choices still in front of them.
+            mLog.info('ConnectWalletEmbedded', 'Wallet connection cancelled by user');
+          } else {
+            mLog.error('ConnectWalletEmbedded', 'Wallet connection failed', { error: connectionResult.error });
+          }
+
+          await mLog.forceFlush(); // Flush after completion
+        } catch (error) {
+          mLog.error('ConnectWalletEmbedded', 'Connect wallet error', {
+            error: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined
+          });
+          await mLog.forceFlush(); // Flush on error
+        }
+      } else {
+        mLog.error('ConnectWalletEmbedded', 'No connect function available');
+      }
+    } finally {
+      setIsAuthenticating(false);
+    }
+  };
+
+  const containerClass = compact
+    ? `${className} text-center`
+    : `p-4 text-center ${className}`;
+
+  // Don't include isLoading in isBusy for SSR/SEO - only show busy state after user interaction
+  const isBusy = isAuthenticating;
+
+  return (
+    <div className={containerClass}>
+      {buttonClassName ? (
+        <button
+          onClick={handleConnect}
+          className={buttonClassName}
+          disabled={isBusy || !connect}
+        >
+          {isBusy ? 'Connecting...' : buttonText}
+        </button>
+      ) : (
+        <Button
+          onClick={handleConnect}
+          className="px-6 py-2"
+          disabled={isBusy || !connect}
+        >
+          {isBusy ? 'Connecting...' : buttonText}
+        </Button>
+      )}
+      {!compact && (
+        <p className="mt-2 text-sm text-secondary-600 dark:text-secondary-400">
+          {magicBlocked
+            ? 'Connect your wallet to continue'
+            : 'Sign up with email or use your existing wallet'}
+        </p>
+      )}
+      {magicBlocked && !compact && (
+        <div
+          role="status"
+          className="mt-3 mx-auto max-w-md rounded-md border border-amber-300 bg-amber-50 p-3 text-left text-xs text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200"
+        >
+          <p className="font-semibold">{t('connectWalletEmbedded.emailSocialSignIn')}</p>
+          <p className="mt-1">
+            Your network appears to be blocking{' '}
+            <span className="font-mono">magiclabs.com</span>{t('connectWalletEmbedded.whichOurEmailSocial')}</p>
+          <p className="mt-1">
+            To restore email/social sign-in, try a different network, disable
+            ad blockers, or switch your DNS to <span className="font-mono">1.1.1.1</span>.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}

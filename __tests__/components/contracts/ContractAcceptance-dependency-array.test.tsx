@@ -5,6 +5,7 @@
 
 import React from 'react';
 import { render } from '@testing-library/react';
+import { sourceFile } from '@/test-utils/sourceFile';
 
 // Mock to prevent actual network calls
 jest.mock('@/components/auth', () => ({
@@ -43,7 +44,7 @@ describe('ContractAcceptance Dependency Array Safety', () => {
     const fs = require('fs');
     const path = require('path');
 
-    const componentPath = path.join(process.cwd(), 'components/contracts/ContractAcceptance.tsx');
+    const componentPath = sourceFile('components/contracts/ContractAcceptance.tsx');
     const componentSource = fs.readFileSync(componentPath, 'utf8');
 
     // Check that useEffect doesn't include getUSDCBalance in dependencies
@@ -104,7 +105,7 @@ describe('ContractAcceptance Dependency Array Safety', () => {
     const fs = require('fs');
     const path = require('path');
 
-    const componentPath = path.join(process.cwd(), 'components/contracts/ContractAcceptance.tsx');
+    const componentPath = sourceFile('components/contracts/ContractAcceptance.tsx');
     const componentSource = fs.readFileSync(componentPath, 'utf8');
 
     // Verify the specific line we fixed (using centralized token selection)

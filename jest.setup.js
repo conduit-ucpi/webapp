@@ -38,7 +38,7 @@ jest.mock('@reown/appkit/networks', () => ({
   base: {},
 }))
 
-jest.mock('./components/auth/reownWalletConnect', () => ({
+jest.mock('@/components/auth/reownWalletConnect', () => ({
   ReownWalletConnectProvider: jest.fn().mockImplementation(() => ({
     initialize: jest.fn().mockResolvedValue(undefined),
     connect: jest.fn().mockResolvedValue({ success: true }),
@@ -187,7 +187,7 @@ const createMockWeb3SDK = () => ({
 });
 
 // Mock useSimpleEthers hook (replacement for useWeb3SDK)
-jest.mock('./hooks/useSimpleEthers', () => ({
+jest.mock('@/hooks/useSimpleEthers', () => ({
   useSimpleEthers: () => ({
     provider: null,
     isReady: true,

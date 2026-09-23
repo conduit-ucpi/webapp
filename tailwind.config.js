@@ -3,34 +3,43 @@ module.exports = {
   content: [
     './pages/**/*.{js,ts,jsx,tsx,mdx}',
     './components/**/*.{js,ts,jsx,tsx,mdx}',
+    './packages/*/src/**/*.{js,ts,jsx,tsx,mdx}',
   ],
   darkMode: 'class',
   theme: {
     extend: {
       colors: {
+        // Themed through CSS custom properties so a tenant can restyle the app
+        // without recompiling Tailwind — see packages/whitelabel-sdk/src/theme/
+        // cssVars.ts. The <alpha-value> placeholder is what keeps `/50` opacity
+        // modifiers working through a variable.
+        //
+        // Defaults live at :root in styles/globals.css, so the first paint is
+        // correct before any JavaScript runs. BrandProvider applies only the
+        // deltas a tenant config specifies.
         primary: {
-          50: '#ecfdf5',
-          100: '#d1fae5',
-          200: '#a7f3d0',
-          300: '#6ee7b7',
-          400: '#34d399',
-          500: '#10b981',
-          600: '#059669',
-          700: '#047857',
-          800: '#065f46',
-          900: '#064e3b',
+          50: 'rgb(var(--wl-primary-50) / <alpha-value>)',
+          100: 'rgb(var(--wl-primary-100) / <alpha-value>)',
+          200: 'rgb(var(--wl-primary-200) / <alpha-value>)',
+          300: 'rgb(var(--wl-primary-300) / <alpha-value>)',
+          400: 'rgb(var(--wl-primary-400) / <alpha-value>)',
+          500: 'rgb(var(--wl-primary-500) / <alpha-value>)',
+          600: 'rgb(var(--wl-primary-600) / <alpha-value>)',
+          700: 'rgb(var(--wl-primary-700) / <alpha-value>)',
+          800: 'rgb(var(--wl-primary-800) / <alpha-value>)',
+          900: 'rgb(var(--wl-primary-900) / <alpha-value>)',
         },
         secondary: {
-          50: '#f8fafc',
-          100: '#f1f5f9',
-          200: '#e2e8f0',
-          300: '#cbd5e1',
-          400: '#94a3b8',
-          500: '#64748b',
-          600: '#475569',
-          700: '#334155',
-          800: '#1e293b',
-          900: '#0f172a',
+          50: 'rgb(var(--wl-secondary-50) / <alpha-value>)',
+          100: 'rgb(var(--wl-secondary-100) / <alpha-value>)',
+          200: 'rgb(var(--wl-secondary-200) / <alpha-value>)',
+          300: 'rgb(var(--wl-secondary-300) / <alpha-value>)',
+          400: 'rgb(var(--wl-secondary-400) / <alpha-value>)',
+          500: 'rgb(var(--wl-secondary-500) / <alpha-value>)',
+          600: 'rgb(var(--wl-secondary-600) / <alpha-value>)',
+          700: 'rgb(var(--wl-secondary-700) / <alpha-value>)',
+          800: 'rgb(var(--wl-secondary-800) / <alpha-value>)',
+          900: 'rgb(var(--wl-secondary-900) / <alpha-value>)',
         },
         success: {
           50: '#f0fdf4',

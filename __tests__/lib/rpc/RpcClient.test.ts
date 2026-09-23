@@ -185,6 +185,9 @@ describe('RpcClient', () => {
       };
 
       mock = installRpcWireMock((req) => {
+        // Asked first: reading state off an address with no code returns 0x, which ethers
+        // cannot decode. Some bytecode here means "an escrow is deployed".
+        if (req.method === 'eth_getCode') return '0x60006000';
         if (req.method === 'eth_call') {
           const selector = (req.params[0].data as string).slice(0, 10);
           return bySelector[selector];
@@ -313,6 +316,32 @@ describe('RpcClient', () => {
       mockFetch.mockResolvedValueOnce({ ok: false, json: () => Promise.resolve({ result: '0x186a0' }) });
       const client = new RpcClient(RPC_URL);
       expect(await client.getRawGasPriceWithFallback()).toBe(BigInt('1000000000'));
+    });
+  });
+
+  describe('getContractState on an address with no contract', () => {
+    /**
+     * ⚠️ THE ORDINARY STATE OF AN UNPAID ESCROW, NOT A FAULT. Addresses are derived from the
+     *    escrow's terms, so one is known and recorded long before anything is deployed to it —
+     *    which is true for most of a quote's life. Reading state there used to throw
+     *    "could not decode result data (value=0x)", which reads as a broken ABI or a bad RPC
+     *    and is neither.
+     */
+    it('returns null rather than failing to decode 0x', async () => {
+      mock = installRpcWireMock((req) => {
+        if (req.method === 'eth_getCode') return '0x';
+        return undefined;
+      });
+
+      const client = new RpcClient(RPC_URL);
+
+      await expect(client.getContractState(CONTRACT)).resolves.toBeNull();
+    });
+
+    it('reports the address as not deployed', async () => {
+      mock = installRpcWireMock((req) => (req.method === 'eth_getCode' ? '0x' : undefined));
+
+      await expect(new RpcClient(RPC_URL).isDeployed(CONTRACT)).resolves.toBe(false);
     });
   });
 });

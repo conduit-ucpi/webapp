@@ -24,7 +24,14 @@
     ],
     "paths": {
       "@/*": [
+        "./packages/whitelabel-sdk/src/*",
         "./*"
+      ],
+      "@conduit-ucpi/whitelabel-sdk": [
+        "./packages/whitelabel-sdk/src/index.ts"
+      ],
+      "@conduit-ucpi/whitelabel-sdk/*": [
+        "./packages/whitelabel-sdk/src/*"
       ]
     },
     "types": [

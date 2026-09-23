@@ -98,7 +98,9 @@ describe('/api/config - chainservice contract addresses integration', () => {
     // Should return 500 error
     expect(res._getStatusCode()).toBe(500);
     const responseData = JSON.parse(res._getData());
-    expect(responseData.error).toBe('Failed to load configuration');
+    // The specific cause, not a generic failure: this endpoint gates first paint, so
+    // "something went wrong" costs whoever is debugging it the whole diagnosis.
+    expect(responseData.error).toBe('Chainservice returned incomplete contract addresses');
   });
 
   it('should fail if chainservice is unavailable', async () => {
@@ -114,7 +116,9 @@ describe('/api/config - chainservice contract addresses integration', () => {
     // Should return 500 error
     expect(res._getStatusCode()).toBe(500);
     const responseData = JSON.parse(res._getData());
-    expect(responseData.error).toBe('Failed to load configuration');
+    // The specific cause, not a generic failure: this endpoint gates first paint, so
+    // "something went wrong" costs whoever is debugging it the whole diagnosis.
+    expect(responseData.error).toBe('Network error');
   });
 
   it('should fail if chainservice returns non-200 status', async () => {
@@ -133,7 +137,9 @@ describe('/api/config - chainservice contract addresses integration', () => {
     // Should return 500 error
     expect(res._getStatusCode()).toBe(500);
     const responseData = JSON.parse(res._getData());
-    expect(responseData.error).toBe('Failed to load configuration');
+    // The specific cause, not a generic failure: this endpoint gates first paint, so
+    // "something went wrong" costs whoever is debugging it the whole diagnosis.
+    expect(responseData.error).toBe('Chainservice returned status 503');
   });
 
   it('should fail if CHAIN_SERVICE_URL is not configured', async () => {

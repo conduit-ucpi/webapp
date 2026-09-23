@@ -3,7 +3,7 @@
  */
 
 import { createMocks } from 'node-mocks-http';
-import handler from '../pages/api/auth/identity';
+import handler from '@/pages/api/auth/identity';
 
 // Mock fetch globally
 global.fetch = jest.fn();

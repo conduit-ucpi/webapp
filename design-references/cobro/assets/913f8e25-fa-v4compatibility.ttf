@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="/cobro-favicon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Primary SEO -->
+    <title>COBRO — Acepta pagos digitales en Venezuela | payments.com.ve</title>
+    <meta name="description" content="COBRO es la plataforma de pagos para negocios venezolanos. Acepta Zelle, USDT, tarjetas internacionales y transferencias. Cobra en línea sin fronteras. Configúrate en minutos." />
+    <meta name="keywords" content="pagos digitales Venezuela, cobrar en línea Venezuela, Zelle Venezuela, USDT pagos, plataforma de cobros Venezuela" />
+    <meta name="author" content="COBRO — Latido Capital" />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://payments.com.ve/" />
+    <meta http-equiv="last-modified" content="2026-04-08" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://payments.com.ve/" />
+    <meta property="og:title" content="COBRO — Acepta pagos digitales en Venezuela | payments.com.ve" />
+    <meta property="og:description" content="La plataforma de pagos para negocios venezolanos. Acepta Zelle, USDT, tarjetas internacionales y más. Sin comisiones ocultas. Configuración en minutos." />
+    <meta property="og:image" content="https://payments.com.ve/og-image.png" />
+    <meta property="og:locale" content="es_VE" />
+    <meta property="og:site_name" content="COBRO" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="https://payments.com.ve/" />
+    <meta name="twitter:title" content="COBRO — Acepta pagos digitales en Venezuela" />
+    <meta name="twitter:description" content="La plataforma de pagos para negocios venezolanos. Acepta Zelle, USDT, tarjetas internacionales y más." />
+    <meta name="twitter:image" content="https://payments.com.ve/og-image.png" />
+
+    <!-- Geo / Local SEO -->
+    <meta name="geo.region" content="VE" />
+    <meta name="geo.placename" content="Venezuela" />
+    <meta name="geo.position" content="8.0;-66.0" />
+    <meta name="ICBM" content="8.0, -66.0" />
+
+    <!-- Fonts & Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/remixicon/4.5.0/remixicon.min.css">
+    <meta name="google-site-verification" content="b9SdzF4ma0zmLEQzHMI0ktaf40b8oF8QIkJvSc9vMeM" />
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-QRHEQ3EPX2"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-QRHEQ3EPX2', {
+        send_page_view: false,
+        allow_google_signals: true,
+        allow_ad_personalization_signals: false,
+        cookie_flags: 'SameSite=None;Secure',
+        transport_type: 'beacon',
+        referrer: document.referrer || undefined
+      });
+    </script>
+        <meta name="readdy-project-version" content="9e22896a9c9574f7a30848e2574166c8:0623c6ecb9d48856600ecf0d927ac8c8:4e3a4a6acf37c7a956caa57d215b51a522fdd9da53b391fe4a489bfbe6dcb43e11e9f30c0af11081ef6351291feeaf912388094f1308de75cb8a562f1f160fe6"><script>
+          window.EventReportingConfig = {
+            projectId: 'a6ad0270-09b9-4412-9fdd-39829f3fa08e',
+            domain: 'https://readdy.ai',
+            debug: false
+          };
+        </script>
+        <script defer src="https://public.readdy.ai/analysis/event-reporting.min.js"></script>
+          <script type="module" crossorigin src="/assets/index-DXrcZ_9t.js"></script>
+          <link rel="stylesheet" crossorigin href="/assets/index-18X1N0sD.css">
+        </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>

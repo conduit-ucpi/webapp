@@ -1,8 +1,8 @@
-import { wrapProviderWithMobileDeepLinks } from '../../utils/mobileDeepLinkProvider';
-import { mLog } from '../../utils/mobileLogger';
+import { wrapProviderWithMobileDeepLinks } from '@/utils/mobileDeepLinkProvider';
+import { mLog } from '@/utils/mobileLogger';
 
 // Mock device detection
-jest.mock('../../utils/deviceDetection', () => ({
+jest.mock('@/utils/deviceDetection', () => ({
   detectDevice: jest.fn(() => ({
     isMobile: true,
     isTablet: false,
@@ -11,7 +11,7 @@ jest.mock('../../utils/deviceDetection', () => ({
 }));
 
 // Mock mobile logger
-jest.mock('../../utils/mobileLogger', () => ({
+jest.mock('@/utils/mobileLogger', () => ({
   mLog: {
     info: jest.fn(),
     warn: jest.fn(),

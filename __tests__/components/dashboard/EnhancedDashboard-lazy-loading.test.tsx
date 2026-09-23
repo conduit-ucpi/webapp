@@ -39,13 +39,6 @@ jest.mock('@/components/auth', () => ({
   useAuth: jest.fn(),
 }));
 
-// Mock ProgressChecklist
-jest.mock('@/components/onboarding/ProgressChecklist', () => {
-  return function MockProgressChecklist() {
-    return null;
-  };
-});
-
 // Mock ContractAcceptance
 jest.mock('@/components/contracts/ContractAcceptance', () => {
   return function MockContractAcceptance() {

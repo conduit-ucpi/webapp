@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import crypto from 'crypto';
-import { deleteMerchantSettings } from '../../../../lib/mongodb';
+import { deleteMerchantSettings } from '@/lib/mongodb';
 
 function verifyShopifyWebhook(req: NextApiRequest): boolean {
   const hmacHeader = req.headers['x-shopify-hmac-sha256'] as string;

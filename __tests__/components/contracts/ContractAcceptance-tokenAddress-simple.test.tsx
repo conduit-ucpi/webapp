@@ -4,6 +4,7 @@
  */
 
 import { formatCurrency, formatDateTimeWithTZ, toMicroUSDC } from '@/utils/validation';
+import { sourceFile } from '@/test-utils/sourceFile';
 
 describe('ContractAcceptance tokenAddress Regression - Data Structure', () => {
   it('should document the exact CreateContractRequest structure required by chainservice', () => {
@@ -102,7 +103,7 @@ describe('ContractAcceptance tokenAddress Regression - Data Structure', () => {
     const fs = require('fs');
     const path = require('path');
 
-    const componentPath = path.join(process.cwd(), 'components/contracts/ContractAcceptance.tsx');
+    const componentPath = sourceFile('components/contracts/ContractAcceptance.tsx');
     const componentSource = fs.readFileSync(componentPath, 'utf8');
 
     // Verify the fix is present (using centralized token selection)

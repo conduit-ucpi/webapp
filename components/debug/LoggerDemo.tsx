@@ -1,6 +1,6 @@
 import React from 'react';
 import { useFarcasterLogger } from '@/hooks/useFarcasterLogger';
-import { useFarcaster } from '../farcaster/FarcasterDetectionProvider';
+import { useFarcaster } from '@/components/farcaster/FarcasterDetectionProvider';
 
 /**
  * Demo component to test the Farcaster logging system

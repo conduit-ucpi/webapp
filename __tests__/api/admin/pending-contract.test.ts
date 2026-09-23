@@ -3,7 +3,7 @@
  */
 
 import { createMocks } from 'node-mocks-http';
-import handler from '../../../pages/api/admin/pending-contract';
+import handler from '@/pages/api/admin/pending-contract';
 
 // Mock fetch globally
 global.fetch = jest.fn();

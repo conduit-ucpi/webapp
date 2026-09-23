@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback, useMemo } from 'react';
-import { useFarcaster } from '../farcaster/FarcasterDetectionProvider';
+import { useFarcaster } from '@/components/farcaster/FarcasterDetectionProvider';
 import { setLoggerInstance } from '@/utils/farcasterLogger';
 
 declare global {

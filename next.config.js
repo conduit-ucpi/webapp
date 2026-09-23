@@ -42,6 +42,16 @@ const serverOnlyConfig = {
       {
         source: '/early-payment-offer2',
         destination: '/early-payment-offer2.html'
+      },
+      // Captured design reference, served raw so it renders without the app's
+      // header, providers or any of our chrome. There is deliberately no page
+      // component behind this — a page would be wrapped by Layout.
+      //
+      // Rewrites are a server feature, so this exists on the box build only;
+      // the static export has no equivalent. See design-references/README.md.
+      {
+        source: '/cobro-demo',
+        destination: '/api/design-reference/cobro/index.html'
       }
     ]
   },
@@ -121,6 +131,13 @@ const staticExportConfig = {
 
 const nextConfig = {
   reactStrictMode: false,
+
+  // The white-label SDK is consumed as TypeScript source through the npm
+  // workspace rather than as a built artefact, so Next has to compile it the
+  // same way it compiles the app. Keeping it unbuilt is deliberate while it is
+  // dogfooded here: there is no publish step to run before a change takes
+  // effect, and no chance of the app running against a stale build.
+  transpilePackages: ['@conduit-ucpi/whitelabel-sdk'],
 
   // Derive the build ID from the commit instead of letting Next generate a
   // random one. Two reasons, both about being able to check what is live:

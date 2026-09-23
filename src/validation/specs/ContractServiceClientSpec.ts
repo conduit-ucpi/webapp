@@ -1,4 +1,4 @@
-import { ExpectedEndpoint } from '../types';
+import { ExpectedEndpoint } from '@/src/validation/types';
 
 /**
  * Defines the expected API endpoints for the Contract Service that the webapp depends on.

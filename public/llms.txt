@@ -1,0 +1,45 @@
+# Stabledrop — escrow payments with a dispute window
+
+> Stablecoin payments that a human can dispute for a stated period. The money sits in a
+> non-custodial escrow on Base, and a signed receipt attests to what happened. Built so that
+> agents can pay on a person's behalf while the PERSON keeps the right to object.
+
+Payments settle in USDC on Base (chain 8453). The escrow's address is a pure function of its
+terms — token, buyer, seller, amount, maturity, arbiter and an id — so the terms *are* the
+address. That is what lets a payer sign a destination before anything exists at it, and why no
+credential is needed to use the service: a request whose terms derive anywhere else is refused.
+
+## For agents
+
+- [MCP endpoint](https://api.stabledrop.me/api/ap2/mcp): tools for working out where a payment
+  must go, settling one, checking what happened and verifying a receipt. Streamable HTTP, no
+  authentication. The server holds no key and cannot sign — it is handed a signature, or the
+  funds are transferred to the address directly.
+- [Server card](https://stabledrop.me/.well-known/mcp.json): endpoint, transports and
+  capabilities, for automatic discovery.
+- [API reference](https://api.stabledrop.me/api/ap2/settle/doc): the same operations over plain
+  HTTP, with the OpenAPI spec at `/api/ap2/openapi.json`.
+
+## What an agent should know before paying
+
+- **Two ways to fund an escrow.** Transfer the tokens to the address from any wallet, or hand
+  over the payer's signed EIP-3009 authorization and we relay it — in which case the payer
+  needs no gas at all.
+- **The seller does not receive the full amount.** The escrow factory charges
+  `max(1% of amount, 0.30 of one token)` at creation. The receipt reports the payout and names
+  the fee, and the two reconcile to the sum authorised.
+- **Only one wallet can dispute.** Whoever is named as the nominal buyer, and nobody else —
+  not the agent that paid, not whoever holds the receipt. For an agentic payment this should be
+  the person, not the agent.
+- **A maturity of 0 means no recourse at all**, deliberately and irreversibly. There is no
+  default: the request must say which.
+
+## Pages
+
+- [How it works](https://stabledrop.me/how-it-works/): an escrow payment start to finish
+- [FAQ](https://stabledrop.me/faq/): fees, disputes, timing
+- [Arbitration policy](https://stabledrop.me/arbitration-policy/): how a dispute is decided, by
+  whom, and on what evidence
+- [Terms of service](https://stabledrop.me/terms-of-service/)
+- [Privacy policy](https://stabledrop.me/privacy-policy/)
+- [Plugins](https://stabledrop.me/plugins/): WordPress and Shopify integrations

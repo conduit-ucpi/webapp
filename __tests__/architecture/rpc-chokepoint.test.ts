@@ -31,13 +31,20 @@ import path from 'path';
 const ROOT = path.join(__dirname, '../../');
 
 // Directories that contain application source we want to police.
-const SCAN_DIRS = ['components', 'pages', 'hooks', 'lib', 'utils'];
+const SCAN_DIRS = [
+  // App-side code.
+  'components', 'pages', 'utils', 'lib',
+  // The product tree moved into the white-label SDK, and that is where the
+  // web3 and RPC code now lives. Scanning only the app roots left this rule
+  // passing while checking almost nothing.
+  'packages/whitelabel-sdk/src',
+];
 
 // Paths (relative to repo root, posix-style) allowed to hold direct RPC.
-const ALLOWED_PREFIXES = ['lib/rpc/'];
+const ALLOWED_PREFIXES = ['packages/whitelabel-sdk/src/lib/rpc/'];
 
 // The one documented holdout (see header). Remove when Phase 2 migrates it.
-const DOCUMENTED_EXCEPTIONS = ['lib/web3.ts'];
+const DOCUMENTED_EXCEPTIONS = ['packages/whitelabel-sdk/src/lib/web3.ts'];
 
 const findSourceFiles = (dir: string): string[] => {
   const out: string[] = [];
@@ -107,6 +114,6 @@ describe('Architecture: single RPC chokepoint (lib/rpc)', () => {
   it('the documented exception list stays minimal (only web3.ts internals remain)', () => {
     // Guards against silently adding new exceptions. If you migrate web3.ts in
     // Phase 2, shrink this list (ideally to empty) rather than growing it.
-    expect(DOCUMENTED_EXCEPTIONS).toEqual(['lib/web3.ts']);
+    expect(DOCUMENTED_EXCEPTIONS).toEqual(['packages/whitelabel-sdk/src/lib/web3.ts']);
   });
 });

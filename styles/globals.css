@@ -4,6 +4,42 @@
 @tailwind components;
 @tailwind utilities;
 
+/* White-label theme defaults.
+ *
+ * Tailwind's primary/secondary colours resolve to these variables (see
+ * tailwind.config.js), so a tenant restyles the app by overriding them rather
+ * than by recompiling Tailwind. They are written here as well as in the SDK so
+ * the very first paint is correct on the static build, before any JavaScript
+ * has run; BrandProvider then applies only a tenant's deltas.
+ *
+ * Generated from packages/whitelabel-sdk/src/config/defaults.ts — edit there.
+ */
+:root {
+  --wl-primary-50: 236 253 245;
+  --wl-primary-100: 209 250 229;
+  --wl-primary-200: 167 243 208;
+  --wl-primary-300: 110 231 183;
+  --wl-primary-400: 52 211 153;
+  --wl-primary-500: 16 185 129;
+  --wl-primary-600: 5 150 105;
+  --wl-primary-700: 4 120 87;
+  --wl-primary-800: 6 95 70;
+  --wl-primary-900: 6 78 59;
+  --wl-secondary-50: 248 250 252;
+  --wl-secondary-100: 241 245 249;
+  --wl-secondary-200: 226 232 240;
+  --wl-secondary-300: 203 213 225;
+  --wl-secondary-400: 148 163 184;
+  --wl-secondary-500: 100 116 139;
+  --wl-secondary-600: 71 85 105;
+  --wl-secondary-700: 51 65 85;
+  --wl-secondary-800: 30 41 59;
+  --wl-secondary-900: 15 23 42;
+  --wl-radius: 0.5rem;
+  --wl-font: Inter, system-ui, -apple-system, sans-serif;
+  --wl-font-heading: Inter, system-ui, -apple-system, sans-serif;
+}
+
 /* Custom scrollbar hide for tabs */
 .scrollbar-hide {
   -ms-overflow-style: none;

@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { shopifyApi, ApiVersion } from '@shopify/shopify-api';
-import { saveMerchantSettings } from '../../../lib/mongodb';
+import { saveMerchantSettings } from '@/lib/mongodb';
 import '@shopify/shopify-api/adapters/node';
 
 const shopify = shopifyApi({

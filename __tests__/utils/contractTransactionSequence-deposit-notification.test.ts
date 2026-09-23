@@ -1,4 +1,4 @@
-import { executeContractTransactionSequence } from '../../utils/contractTransactionSequence';
+import { executeContractTransactionSequence } from '@/utils/contractTransactionSequence';
 
 // Mock all the required functions
 const mockAuthenticatedFetch = jest.fn();

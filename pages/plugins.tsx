@@ -17,16 +17,22 @@ function Collapsible({
   children,
   defaultOpen = false,
   className = '',
+  id,
 }: {
   eyebrow: string;
   heading?: string;
   children: ReactNode;
   defaultOpen?: boolean;
   className?: string;
+  id?: string;
 }) {
   const [open, setOpen] = useState(defaultOpen);
+  // The hash is only known on the client, so a section linked as /plugins#id opens after mount.
+  useEffect(() => {
+    if (defaultOpen) setOpen(true);
+  }, [defaultOpen]);
   return (
-    <div className={className}>
+    <div className={className} id={id}>
       <button
         type="button"
         onClick={() => setOpen(!open)}
@@ -87,9 +93,12 @@ function Collapsible({
 // Page
 // ---------------------------------------------------------------------------
 
+// The same remote the server card (ap2service/server.json) and llms.txt advertise.
+const MCP_URL = 'https://api.stabledrop.me/api/ap2/mcp';
+
 export default function Plugins() {
-  const pageTitle = "Smart Contract Escrow SDK for WordPress & Shopify | Non-Custodial Developer Tools";
-  const pageDescription = "Non-custodial blockchain escrow infrastructure for e-commerce. Open-source developer tools for WordPress and Shopify integration. Smart contract-based buyer protection without custody of funds. Educational resources for implementing blockchain escrow.";
+  const pageTitle = "Escrow Payments for WordPress, Shopify & AI Agents (MCP) | Non-Custodial Developer Tools";
+  const pageDescription = "Non-custodial blockchain escrow infrastructure for e-commerce and AI agents. Open-source developer tools for WordPress and Shopify, plus an MCP server so Claude, ChatGPT or any agent can pay with buyer protection. Smart contract-based buyer protection without custody of funds.";
   const pageUrl = "https://conduit-ucpi.com/plugins";
   const imageUrl = "https://conduit-ucpi.com/og-plugins.png";
 
@@ -114,6 +123,7 @@ export default function Plugins() {
       "Non-custodial smart contract infrastructure",
       "Open-source blockchain escrow SDK",
       "WordPress and Shopify developer integration tools",
+      "MCP server for AI agents (Claude, ChatGPT, Cursor)",
       "Audited smart contracts on Base network",
       "Direct wallet-to-wallet settlement (no custody)",
       "Automated dispute resolution logic",
@@ -131,6 +141,11 @@ export default function Plugins() {
 
   useScrollTracking();
   useTimeTracking();
+
+  const [hash, setHash] = useState('');
+  useEffect(() => {
+    setHash(window.location.hash);
+  }, []);
 
   useEffect(() => {
     const redditPixelId = process.env.NEXT_PUBLIC_REDDIT_PIXEL_ID;
@@ -161,7 +176,7 @@ export default function Plugins() {
         <title>{pageTitle}</title>
         <meta name="title" content={pageTitle} />
         <meta name="description" content={pageDescription} />
-        <meta name="keywords" content="blockchain escrow SDK, smart contract developer tools, non-custodial infrastructure, WordPress blockchain integration, Shopify Web3 tools, escrow smart contracts, decentralized buyer protection, WooCommerce blockchain plugin, Base network SDK, open-source escrow infrastructure" />
+        <meta name="keywords" content="blockchain escrow SDK, smart contract developer tools, non-custodial infrastructure, WordPress blockchain integration, Shopify Web3 tools, escrow smart contracts, decentralized buyer protection, WooCommerce blockchain plugin, Base network SDK, open-source escrow infrastructure, MCP server, Model Context Protocol payments, AI agent payments, agentic commerce" />
         <link rel="canonical" href={pageUrl} />
         <meta property="og:type" content="website" />
         <meta property="og:url" content={pageUrl} />
@@ -207,7 +222,7 @@ export default function Plugins() {
                 className="mt-6 text-base text-secondary-500 dark:text-secondary-400 max-w-xl leading-relaxed"
                 style={{ fontFamily: "'Newsreader', Georgia, serif" }}
               >
-                WordPress. Shopify. Any website. Under 5 minutes.
+                WordPress. Shopify. Any website. Any AI agent. Under 5 minutes.
               </p>
             </Fade>
           </div>
@@ -281,7 +296,7 @@ export default function Plugins() {
 
               {/* JavaScript SDK */}
               <Fade delay={0.2}>
-                <div className="py-6 last:pb-0">
+                <div className="py-6">
                   <Collapsible eyebrow="Any website">
                     <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-10 max-w-md">
                       Add secure USDC payments with built-in buyer protection using 3 lines of code.
@@ -311,6 +326,100 @@ export default function Plugins() {
                     <Link href="/integrate">
                       <button className={btnPrimary}>View Integration Guide</button>
                     </Link>
+                  </Collapsible>
+                </div>
+              </Fade>
+
+              {/* MCP server */}
+              <Fade delay={0.3}>
+                <div className="py-6 last:pb-0">
+                  <Collapsible eyebrow="AI agents (MCP)" id="mcp" defaultOpen={hash === '#mcp'}>
+                    <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-6 max-w-md">
+                      Stabledrop is an MCP server. Connect it to Claude, ChatGPT, Cursor or any MCP client and the agent gets tools to prepare an escrow payment, settle it, check what happened and verify the receipt. No API key, no sign-up: the server holds no key and can only act on a signature the payer provides.
+                    </p>
+
+                    <p className="text-xs tracking-[0.2em] uppercase text-secondary-400 dark:text-secondary-500 mb-2">
+                      Endpoint
+                    </p>
+                    <div className="mb-8">
+                      <pre className="bg-secondary-900 dark:bg-secondary-800 text-green-400 p-6 rounded-lg overflow-x-auto text-xs sm:text-sm leading-relaxed">
+                        <code>{MCP_URL}</code>
+                      </pre>
+                    </div>
+
+                    <p className="text-xs tracking-[0.2em] uppercase text-secondary-400 dark:text-secondary-500 mb-2">
+                      Claude Code
+                    </p>
+                    <div className="mb-8">
+                      <pre className="bg-secondary-900 dark:bg-secondary-800 text-green-400 p-6 rounded-lg overflow-x-auto text-xs sm:text-sm leading-relaxed">
+                        <code>{`claude mcp add --transport http stabledrop ${MCP_URL}`}</code>
+                      </pre>
+                    </div>
+
+                    <p className="text-xs tracking-[0.2em] uppercase text-secondary-400 dark:text-secondary-500 mb-2">
+                      Cursor, Windsurf and other JSON configs
+                    </p>
+                    <div className="mb-8">
+                      <pre className="bg-secondary-900 dark:bg-secondary-800 text-green-400 p-6 rounded-lg overflow-x-auto text-xs sm:text-sm leading-relaxed">
+                        <code>{`{
+  "mcpServers": {
+    "stabledrop": {
+      "url": "${MCP_URL}"
+    }
+  }
+}`}</code>
+                      </pre>
+                    </div>
+
+                    <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-10 max-w-md">
+                      In Claude.ai or ChatGPT, add a custom connector and paste the endpoint URL. Then ask the agent to pay someone by email address with a dispute window, and it will do the rest.
+                    </p>
+
+                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-x-12 gap-y-8 mb-10">
+                      {[
+                        { name: 'prepare_escrow_payment', text: 'Where the money must go and what the seller will receive, before anyone signs.' },
+                        { name: 'settle_escrow_payment', text: 'Relay the payer\'s signed authorisation, or confirm a direct transfer.' },
+                        { name: 'check_escrow_payment', text: 'What happened to a payment in flight.' },
+                        { name: 'verify_escrow_receipt', text: 'Check a signed AP2 receipt from anywhere.' },
+                        { name: 'payment_qr', text: 'A QR code a human can scan to fund the escrow.' },
+                        { name: 'read_published_page', text: 'The FAQ, arbitration policy and terms, for the agent to read.' },
+                      ].map((tool) => (
+                        <div key={tool.name}>
+                          <h3 className="text-sm font-medium text-secondary-900 dark:text-white mb-1 font-mono">
+                            {tool.name}
+                          </h3>
+                          <p className="text-sm text-secondary-500 dark:text-secondary-400 leading-relaxed">
+                            {tool.text}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="flex items-center gap-6 flex-wrap">
+                      <a
+                        href="https://api.stabledrop.me/api/ap2/settle/doc"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <button className={btnPrimary}>API Reference</button>
+                      </a>
+                      <a
+                        href="/.well-known/mcp.json"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-colors"
+                      >
+                        Server card &rarr;
+                      </a>
+                      <a
+                        href="https://registry.modelcontextprotocol.io/?search=stabledrop"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-colors"
+                      >
+                        MCP registry &rarr;
+                      </a>
+                    </div>
                   </Collapsible>
                 </div>
               </Fade>
@@ -358,7 +467,7 @@ export default function Plugins() {
                   {[
                     {
                       label: 'Rapid integration',
-                      text: 'Production-ready plugins with under 5 minutes integration time. Single-line SDK for WordPress, Shopify, or any website.',
+                      text: 'Production-ready plugins with under 5 minutes integration time. Single-line SDK for WordPress, Shopify, or any website. One URL for any MCP-capable AI agent.',
                     },
                     {
                       label: 'Transparent pricing',

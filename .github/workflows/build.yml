@@ -80,6 +80,7 @@ jobs:
           NEYNAR_API_KEY: ${{ secrets.NEYNAR_API_KEY }}
           NEYNAR_API_URL: ${{ vars.NEYNAR_API_URL }}
           WALLETCONNECT_PROJECT_ID: ${{ secrets.WALLETCONNECT_PROJECT_ID }}
+          PRIVY_APP_ID: ${{ vars.PRIVY_APP_ID }}
           BUILD_VERSION: ${{ env.BUILD_VERSION }}
           GIT_TAG: ${{ env.GIT_TAG }}
           GIT_SHA: ${{ env.GIT_SHA }}
@@ -276,6 +277,7 @@ jobs:
             -e CHAIN_SERVICE_URL="${{ vars.CHAIN_SERVICE_URL }}" \\
             -e USER_SERVICE_URL="${{ vars.USER_SERVICE_URL }}" \\
             -e CONTRACT_SERVICE_URL="${{ vars.CONTRACT_SERVICE_URL }}" \\
+            -e AP2_SERVICE_URL="${{ vars.AP2_SERVICE_URL }}" \\
             -e MOONPAY_API_KEY="${{ secrets.MOONPAY_API_KEY }}" \\
             -e X_API_KEY="${{ secrets.X_API_KEY }}" \\
             -e GIT_TAG="${{ env.GIT_TAG }}" \\
@@ -302,6 +304,7 @@ jobs:
             -e NEYNAR_API_KEY="${{ secrets.NEYNAR_API_KEY }}" \\
             -e NEYNAR_API_URL="${{ vars.NEYNAR_API_URL }}" \\
             -e WALLETCONNECT_PROJECT_ID="${{ secrets.WALLETCONNECT_PROJECT_ID }}" \\
+            -e PRIVY_APP_ID="${{ vars.PRIVY_APP_ID }}" \\
             -e ALLOWED_FRAME_ANCESTORS="${{ vars.ALLOWED_FRAME_ANCESTORS }}" \\
             -e PROJECTS_LIVE="${{ vars.PROJECTS_LIVE }}" \\
             -e EMAIL_VERIFICATION_LIVE="${{ vars.EMAIL_VERIFICATION_LIVE }}" \\
@@ -367,13 +370,18 @@ jobs:
       startsWith(github.ref, 'refs/tags/pagesRelease-')
     runs-on: ubuntu-latest
     environment:
+      # Every NEXT_PUBLIC_* var below resolves against THIS environment, so the name stays
+      # even while it publishes to two hosts. Renaming means moving all of them.
       name: github-pages
+      # Pages is still the live site, so its URL is the one worth surfacing on the run.
       url: ${{ steps.deployment.outputs.page_url }}
     permissions:
       contents: read
+      # GitHub Pages' OIDC upload. Cloudflare authenticates with an API token and needs
+      # neither, but both deploys run from this job.
       pages: write
       id-token: write
-    # One Pages deployment at a time; never cancel a run that is mid-publish.
+    # One deployment at a time; never cancel a run that is mid-publish.
     concurrency:
       group: github-pages
       cancel-in-progress: false
@@ -382,6 +390,30 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      # ⚠️ GENERATED, NOT COMMITTED. The card and ap2service's server.json used to be two files
+      #    in two repositories describing one server — so which one a directory believed
+      #    depended on how it found us, and keeping them equal was somebody's job forever.
+      #
+      #    stabledrop.me is a static export with no /api at all, so it cannot proxy this the way
+      #    api.stabledrop.me proxies the JWKS. Fetching at build time is the next best thing:
+      #    one source of truth, and no copy in this repo to go stale.
+      #
+      #    Taken from the RUNNING service rather than from ap2service's main, so the card
+      #    describes what is actually deployed. A card advertising a tool surface that is merged
+      #    but not released sends an integrator looking for tools that are not there.
+      - name: Fetch the MCP server card from ap2service
+        run: |
+          set -euo pipefail
+          mkdir -p public/.well-known
+
+          # ⚠️ FAILS THE BUILD. Publishing Pages without the card is invisible from outside: a
+          #    crawler finds nothing and moves on, raising no error anywhere and leaving the
+          #    previous card in place until somebody happens to look.
+          curl -sf --max-time 30 https://api.stabledrop.me/.well-known/mcp.json \
+               -o public/.well-known/mcp.json
+
+          python3 -c "import json;d=json.load(open('public/.well-known/mcp.json'));print('card:',d['name'],d['version'])"
 
       - uses: actions/setup-node@v4
         with:
@@ -478,10 +510,15 @@ jobs:
           npm ci --legacy-peer-deps
           npm run build:static
 
-          # Client-side routing fallback. Pages serves 404.html for any path it
-          # has no file for; making it the app shell lets the router resolve
-          # dynamic routes such as /projects/<groupId>, which the export can only
-          # emit as a literal "[groupId]" directory.
+          # Client-side routing fallback. Cloudflare Pages serves 404.html for
+          # any path it has no file for, so making it the app shell lets the
+          # router resolve dynamic routes such as /projects/<groupId>, which the
+          # export can only emit as a literal "[groupId]" directory.
+          #
+          # It is served with a 404 STATUS, which browsers ignore and crawlers
+          # and uptime monitors do not. Cloudflare supports a _redirects file
+          # (`/* /index.html 200`) that does this properly; worth switching to
+          # once the host move itself is proven.
           cp out/index.html out/404.html
 
           # Tells Pages to serve _next/* verbatim rather than running the paths
@@ -497,3 +534,30 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+      # ── Cloudflare Pages, in parallel with the above while it is validated ──
+      #
+      # ⚠️ SECOND, AND SKIPPED UNTIL IT IS CONFIGURED. Pages is the live site; a Cloudflare
+      #    misconfiguration must not fail a release that has already published successfully.
+      #    The `if` means the step does not exist until CLOUDFLARE_PAGES_PROJECT is set, so
+      #    the run is green rather than red-with-a-skip while the account is still being set
+      #    up — and turning it on is one variable, with no workflow edit.
+      #
+      #    Delete the GitHub Pages steps above once Cloudflare has served real traffic.
+      - name: Deploy to Cloudflare Pages
+        if: vars.CLOUDFLARE_PAGES_PROJECT != ''
+        id: cloudflare
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          # Pinned so a deploy cannot change underneath a release. The action otherwise
+          # resolves its own version at run time, which is how the same tag can behave
+          # differently a week apart.
+          wranglerVersion: '3.90.0'
+          # --branch decides production vs preview, and it is NOT the git ref.
+          # This job runs on a pagesRelease-v* TAG, so letting wrangler infer the
+          # branch would publish every release as a preview on a URL nobody
+          # visits, leaving the live site on the previous build with the run
+          # still green. It must name the project's production branch.
+          command: pages deploy out --project-name=${{ vars.CLOUDFLARE_PAGES_PROJECT }} --branch=main

@@ -48,6 +48,32 @@ describe('DisputeCasePanel', () => {
     expect(screen.queryByText('Decide this case')).toBeNull();
   });
 
+  it('opens a notice to show the email as sent, or says why there is none', async () => {
+    fetchMock.mockResolvedValueOnce(json(200, detail('AWAITING_RESPONSE', {
+      notices: [
+        { kind: 'DISPUTE_OPENED', party: 'buyer', recipientWallet: '0xb', channel: 'email', sentAt: 3, messageId: 're_1', outcome: 'sent', deadline: 30,
+          subject: 'Dispute on your escrow: response needed by 9 October', body: '<p>A dispute has been raised.</p>' },
+        { kind: 'DISPUTE_OPENED', party: 'seller', recipientWallet: '0xs', channel: 'email', sentAt: 3, messageId: null, outcome: 'no-address', deadline: 30 },
+        { kind: 'DEADLINE_REMINDER', party: 'buyer', recipientWallet: '0xb', channel: 'email', sentAt: 4, messageId: 're_0', outcome: 'sent', deadline: 30 },
+      ],
+    })));
+    render(<DisputeCasePanel contractId="c1" onClose={() => {}} />);
+    await waitFor(() => expect(screen.getByText(/DISPUTE_OPENED → buyer/)).toBeTruthy());
+
+    fireEvent.click(screen.getByText(/DISPUTE_OPENED → buyer/));
+    expect(screen.getByText('Dispute on your escrow: response needed by 9 October')).toBeTruthy();
+    const frame = screen.getByTitle('DISPUTE_OPENED to buyer') as HTMLIFrameElement;
+    expect(frame.getAttribute('srcdoc')).toBe('<p>A dispute has been raised.</p>');
+    expect(frame.getAttribute('sandbox')).toBe('');
+
+    fireEvent.click(screen.getByText(/DISPUTE_OPENED → seller/));
+    expect(screen.getByText(/no verified email address/)).toBeTruthy();
+    expect(screen.queryByTitle('DISPUTE_OPENED to buyer')).toBeNull();
+
+    fireEvent.click(screen.getByText(/DEADLINE_REMINDER → buyer/));
+    expect(screen.getByText(/Content not recorded/)).toBeTruthy();
+  });
+
   it('an escalated case offers the decision form and posts the reviewer decision', async () => {
     fetchMock
       .mockResolvedValueOnce(json(200, detail('ESCALATED')))

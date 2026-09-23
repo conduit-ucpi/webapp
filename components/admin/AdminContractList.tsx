@@ -197,21 +197,21 @@ export default function AdminContractList({ onContractSelect }: AdminContractLis
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'ACTIVE':
-        return 'bg-green-100 text-green-800';
+        return 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300';
       case 'DEPLOYED':
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300';
       case 'PENDING':
-        return 'bg-yellow-100 text-yellow-800';
+        return 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300';
       case 'EXPIRED':
-        return 'bg-red-100 text-red-800';
+        return 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300';
       case 'DISPUTED':
-        return 'bg-red-100 text-red-800';
+        return 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300';
       case 'RESOLVED':
-        return 'bg-purple-100 text-purple-800';
+        return 'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300';
       case 'CLAIMED':
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-gray-100 dark:bg-secondary-800 text-gray-800 dark:text-secondary-200';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-gray-100 dark:bg-secondary-800 text-gray-800 dark:text-secondary-200';
     }
   };
 
@@ -226,7 +226,7 @@ export default function AdminContractList({ onContractSelect }: AdminContractLis
   if (error) {
     return (
       <div className="text-center py-20">
-        <div className="text-red-600 mb-4">{error}</div>
+        <div className="text-red-600 dark:text-red-400 mb-4">{error}</div>
         <Button onClick={fetchContracts} variant="outline">
           Try Again
         </Button>
@@ -235,13 +235,13 @@ export default function AdminContractList({ onContractSelect }: AdminContractLis
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+    <div className="bg-white dark:bg-secondary-900 rounded-lg shadow-sm border border-gray-200 dark:border-secondary-700">
       {/* Header and Controls */}
-      <div className="p-6 border-b border-gray-200">
+      <div className="p-6 border-b border-gray-200 dark:border-secondary-700">
         <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-gray-900">All Contracts</h2>
-            <p className="text-sm text-gray-600">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">All Contracts</h2>
+            <p className="text-sm text-gray-600 dark:text-secondary-300">
               Showing {paginatedContracts.length} of {sortedContracts.length} contracts
             </p>
           </div>
@@ -259,7 +259,7 @@ export default function AdminContractList({ onContractSelect }: AdminContractLis
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="px-3 py-2 border border-gray-300 dark:border-secondary-600 bg-white text-secondary-900 dark:bg-secondary-800 dark:text-white rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
               <option value="ALL">All Status</option>
               <option value="ACTIVE">Active</option>
@@ -274,7 +274,7 @@ export default function AdminContractList({ onContractSelect }: AdminContractLis
             <select
               value={hasChainAddress}
               onChange={(e) => setHasChainAddress(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="px-3 py-2 border border-gray-300 dark:border-secondary-600 bg-white text-secondary-900 dark:bg-secondary-800 dark:text-white rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
               <option value="ALL">All Types</option>
               <option value="YES">On-Chain</option>
@@ -286,95 +286,95 @@ export default function AdminContractList({ onContractSelect }: AdminContractLis
 
       {/* Table */}
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+        <table className="min-w-full divide-y divide-gray-200 dark:divide-secondary-700">
+          <thead className="bg-gray-50 dark:bg-secondary-800">
             <tr>
               <th 
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-secondary-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-secondary-700"
                 onClick={() => handleSort('createdAt')}
               >
                 Created {sortField === 'createdAt' && (sortDirection === 'asc' ? '↑' : '↓')}
               </th>
               <th 
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-secondary-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-secondary-700"
                 onClick={() => handleSort('amount')}
               >
                 Amount {sortField === 'amount' && (sortDirection === 'asc' ? '↑' : '↓')}
               </th>
               <th 
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-secondary-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-secondary-700"
                 onClick={() => handleSort('sellerEmail')}
               >
                 Seller {sortField === 'sellerEmail' && (sortDirection === 'asc' ? '↑' : '↓')}
               </th>
               <th 
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-secondary-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-secondary-700"
                 onClick={() => handleSort('buyerEmail')}
               >
                 Buyer {sortField === 'buyerEmail' && (sortDirection === 'asc' ? '↑' : '↓')}
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-secondary-400 uppercase tracking-wider">
                 Seller Address
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-secondary-400 uppercase tracking-wider">
                 Buyer Address
               </th>
               <th 
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-secondary-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-secondary-700"
                 onClick={() => handleSort('expiryTimestamp')}
               >
                 Expiry {sortField === 'expiryTimestamp' && (sortDirection === 'asc' ? '↑' : '↓')}
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-secondary-400 uppercase tracking-wider">
                 Status
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-secondary-400 uppercase tracking-wider">
                 Blockchain Status
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-secondary-400 uppercase tracking-wider">
                 Description
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-secondary-400 uppercase tracking-wider">
                 Contract Address
               </th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className="bg-white dark:bg-secondary-900 divide-y divide-gray-200 dark:divide-secondary-700">
             {paginatedContracts.map((contract) => {
               const status = contract.status || 'UNKNOWN';
               return (
                 <tr 
                   key={contract.id} 
-                  className="hover:bg-gray-50 cursor-pointer"
+                  className="hover:bg-gray-50 dark:hover:bg-secondary-800 cursor-pointer"
                   onClick={() => onContractSelect?.(contract)}
                 >
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                     {formatDateTimeWithTZ(contract.createdAt)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                     {displayCurrency(contract.amount, 'microUSDC')}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                     {contract.sellerEmail}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                     {contract.buyerEmail || '-'}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                     {contract.sellerAddress ? (
                       <ExpandableHash hash={contract.sellerAddress} />
                     ) : (
                       '-'
                     )}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                     {contract.buyerAddress ? (
                       <ExpandableHash hash={contract.buyerAddress} />
                     ) : (
                       '-'
                     )}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                     {formatDateTimeWithTZ(contract.expiryTimestamp)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -386,30 +386,30 @@ export default function AdminContractList({ onContractSelect }: AdminContractLis
                     <div className="flex flex-col space-y-1">
                       {contract.blockchainQueryError ? (
                         <div className="flex items-center space-x-1">
-                          <span className="inline-flex px-2 py-1 text-xs font-medium rounded bg-red-100 text-red-800">
+                          <span className="inline-flex px-2 py-1 text-xs font-medium rounded bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300">
                             Error
                           </span>
-                          <span className="text-xs text-red-600" title={contract.blockchainQueryError}>
+                          <span className="text-xs text-red-600 dark:text-red-400" title={contract.blockchainQueryError}>
                             Query Failed
                           </span>
                         </div>
                       ) : contract.chainAddress ? (
                         <div className="flex items-center space-x-1">
-                          <span className="inline-flex px-2 py-1 text-xs font-medium rounded bg-green-100 text-green-800">
+                          <span className="inline-flex px-2 py-1 text-xs font-medium rounded bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300">
                             Synced
                           </span>
                         </div>
                       ) : (
-                        <span className="inline-flex px-2 py-1 text-xs font-medium rounded bg-gray-100 text-gray-800">
+                        <span className="inline-flex px-2 py-1 text-xs font-medium rounded bg-gray-100 dark:bg-secondary-800 text-gray-800 dark:text-secondary-200">
                           Pending
                         </span>
                       )}
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">
+                  <td className="px-6 py-4 text-sm text-gray-900 dark:text-white max-w-xs truncate">
                     {contract.description}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                     {contract.chainAddress ? (
                       <ExpandableHash hash={contract.chainAddress} />
                     ) : (
@@ -425,23 +425,23 @@ export default function AdminContractList({ onContractSelect }: AdminContractLis
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+        <div className="px-6 py-4 border-t border-gray-200 dark:border-secondary-700 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-700">Show</span>
+            <span className="text-sm text-gray-700 dark:text-secondary-300">Show</span>
             <select
               value={itemsPerPage}
               onChange={(e) => {
                 setItemsPerPage(Number(e.target.value));
                 setCurrentPage(1);
               }}
-              className="px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="px-2 py-1 border border-gray-300 dark:border-secondary-600 bg-white text-secondary-900 dark:bg-secondary-800 dark:text-white rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
               <option value={10}>10</option>
               <option value={25}>25</option>
               <option value={50}>50</option>
               <option value={100}>100</option>
             </select>
-            <span className="text-sm text-gray-700">per page</span>
+            <span className="text-sm text-gray-700 dark:text-secondary-300">per page</span>
           </div>
           
           <div className="flex items-center gap-2">
@@ -454,7 +454,7 @@ export default function AdminContractList({ onContractSelect }: AdminContractLis
               Previous
             </Button>
             
-            <span className="text-sm text-gray-700">
+            <span className="text-sm text-gray-700 dark:text-secondary-300">
               Page {currentPage} of {totalPages}
             </span>
             
@@ -473,7 +473,7 @@ export default function AdminContractList({ onContractSelect }: AdminContractLis
       {/* Empty State */}
       {sortedContracts.length === 0 && (
         <div className="text-center py-20">
-          <div className="text-gray-600 mb-4">
+          <div className="text-gray-600 dark:text-secondary-300 mb-4">
             {searchTerm || statusFilter !== 'ALL' || hasChainAddress !== 'ALL' 
               ? 'No contracts match your filters' 
               : 'No contracts found'

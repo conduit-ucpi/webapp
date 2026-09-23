@@ -95,17 +95,17 @@ export default function DisputeQueue({ onSelect, refreshKey = 0 }: DisputeQueueP
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-      <div className="p-6 border-b border-gray-200">
+    <div className="bg-white dark:bg-secondary-900 rounded-lg shadow-sm border border-gray-200 dark:border-secondary-700">
+      <div className="p-6 border-b border-gray-200 dark:border-secondary-700">
         <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <h2 className="text-lg font-semibold text-gray-900">Dispute Arbitration</h2>
-              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Dispute Arbitration</h2>
+              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300">
                 DEFAULT ARBITER
               </span>
             </div>
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-gray-600 dark:text-secondary-300">
               {rows.length} open dispute{rows.length === 1 ? '' : 's'} the default arbiter is responsible for, oldest past maturity first.
               {readyCount > 0 && ` ${readyCount} ready to execute.`}
             </p>
@@ -120,29 +120,29 @@ export default function DisputeQueue({ onSelect, refreshKey = 0 }: DisputeQueueP
           </div>
         </div>
 
-        {error && <div className="mt-4 text-sm text-red-600">{error}</div>}
+        {error && <div className="mt-4 text-sm text-red-600 dark:text-red-400">{error}</div>}
 
         {sweep && (
-          <div className="mt-4 text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded p-3">
+          <div className="mt-4 text-sm text-gray-700 dark:text-secondary-300 bg-gray-50 dark:bg-secondary-800 border border-gray-200 dark:border-secondary-700 rounded p-3">
             Sweep at {formatDateTimeWithTZ(sweep.at)}: {sweep.queued} queued, {sweep.changed} changed, {sweep.failed} failed.
           </div>
         )}
 
         {release && (
-          <div className="mt-4 text-sm bg-orange-50 border border-orange-200 rounded p-3 space-y-1">
-            {release.error && <div className="text-red-700">{release.error}</div>}
+          <div className="mt-4 text-sm bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded p-3 space-y-1">
+            {release.error && <div className="text-red-700 dark:text-red-400">{release.error}</div>}
             {release.proposed.length > 0 && (
-              <div className="text-gray-800">
+              <div className="text-gray-800 dark:text-secondary-200">
                 Proposed {release.proposed.length} vote(s) as Safe transaction nonce {release.nonce}.{' '}
                 {release.safeAppUrl && (
-                  <a href={release.safeAppUrl} target="_blank" rel="noopener noreferrer" className="text-primary-600 underline">
+                  <a href={release.safeAppUrl} target="_blank" rel="noopener noreferrer" className="text-primary-600 dark:text-primary-400 underline">
                     Confirm in the Safe app
                   </a>
                 )}
               </div>
             )}
             {Object.keys(release.rejected).length > 0 && (
-              <div className="text-gray-700">
+              <div className="text-gray-700 dark:text-secondary-300">
                 Rejected by chainservice: {Object.entries(release.rejected).map(([addr, why]) => `${addr}: ${why}`).join('; ')}
               </div>
             )}
@@ -151,32 +151,32 @@ export default function DisputeQueue({ onSelect, refreshKey = 0 }: DisputeQueueP
       </div>
 
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+        <table className="min-w-full divide-y divide-gray-200 dark:divide-secondary-700">
+          <thead className="bg-gray-50 dark:bg-secondary-800">
             <tr>
               {['Escrow', 'Description', 'Amount', 'Past maturity', 'Status', 'Rule', 'Split', 'Next deadline'].map((h) => (
-                <th key={h} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{h}</th>
+                <th key={h} className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-secondary-400 uppercase tracking-wider">{h}</th>
               ))}
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className="bg-white dark:bg-secondary-900 divide-y divide-gray-200 dark:divide-secondary-700">
             {rows.map((r) => {
               const deadline = r.status === 'HOLD' ? r.holdDeadline : r.responseDeadline;
               return (
-                <tr key={r.contractId} className="hover:bg-gray-50 cursor-pointer transition-colors" onClick={() => onSelect?.(r.contractId)} data-testid={`dispute-row-${r.contractId}`}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {r.escrowAddress ? <ExpandableHash hash={r.escrowAddress} /> : <span className="text-gray-400">-</span>}
+                <tr key={r.contractId} className="hover:bg-gray-50 dark:hover:bg-secondary-800 cursor-pointer transition-colors" onClick={() => onSelect?.(r.contractId)} data-testid={`dispute-row-${r.contractId}`}>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                    {r.escrowAddress ? <ExpandableHash hash={r.escrowAddress} /> : <span className="text-gray-400 dark:text-secondary-500">-</span>}
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-900 max-w-xs"><div className="truncate" title={r.description}>{r.description}</div></td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{displayCurrency(Number(r.amountMicro), 'microUSDC')}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{r.daysPastMaturity > 0 ? `${r.daysPastMaturity} d` : '-'}</td>
+                  <td className="px-6 py-4 text-sm text-gray-900 dark:text-white max-w-xs"><div className="truncate" title={r.description}>{r.description}</div></td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{displayCurrency(Number(r.amountMicro), 'microUSDC')}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">{r.daysPastMaturity > 0 ? `${r.daysPastMaturity} d` : '-'}</td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${disputeStatusColor(r.status)}`}>{r.status ?? 'NOT SEEN'}</span>
-                    {r.escalationReason && <div className="text-xs text-red-700 mt-1">{r.escalationReason}</div>}
+                    {r.escalationReason && <div className="text-xs text-red-700 dark:text-red-400 mt-1">{r.escalationReason}</div>}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{r.caseApplied ?? '-'}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{r.buyerPercentage != null ? `${r.buyerPercentage}% buyer` : '-'}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{deadline ? formatDateTimeWithTZ(deadline) : '-'}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">{r.caseApplied ?? '-'}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">{r.buyerPercentage != null ? `${r.buyerPercentage}% buyer` : '-'}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">{deadline ? formatDateTimeWithTZ(deadline) : '-'}</td>
                 </tr>
               );
             })}
@@ -185,7 +185,7 @@ export default function DisputeQueue({ onSelect, refreshKey = 0 }: DisputeQueueP
       </div>
 
       {rows.length === 0 && !error && (
-        <div className="text-center py-12 text-gray-600">No open disputes for the default arbiter.</div>
+        <div className="text-center py-12 text-gray-600 dark:text-secondary-300">No open disputes for the default arbiter.</div>
       )}
     </div>
   );

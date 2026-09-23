@@ -33,6 +33,9 @@ export interface DisputeNotice {
   messageId: string | null;
   outcome: 'sent' | 'failed' | 'no-address';
   deadline: number | null;
+  /** What the party was told, as rendered by emailservice. Absent on no-address attempts and older notices. */
+  subject?: string | null;
+  body?: string | null;
 }
 
 export interface DisputeDecisionRecord {
@@ -134,25 +137,25 @@ export interface SweepSummary {
 export function disputeStatusColor(status: DisputeCaseStatus | null): string {
   switch (status) {
     case 'ESCALATED':
-      return 'bg-red-100 text-red-800';
+      return 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300';
     case 'READY_TO_EXECUTE':
-      return 'bg-orange-100 text-orange-800';
+      return 'bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300';
     case 'HOLD':
     case 'PROPOSED':
     case 'VOTED_AWAITING_MATCH':
-      return 'bg-blue-100 text-blue-800';
+      return 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300';
     case 'AWAITING_SEAT':
     case 'AWAITING_RESPONSE':
     case 'OPEN':
-      return 'bg-yellow-100 text-yellow-800';
+      return 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300';
     case 'EXECUTED':
     case 'SETTLED':
-      return 'bg-green-100 text-green-800';
+      return 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300';
     case 'OUT_OF_SCOPE':
     case 'UNREADABLE':
     case 'DEPARTED':
-      return 'bg-gray-100 text-gray-800';
+      return 'bg-gray-100 dark:bg-secondary-800 text-gray-800 dark:text-secondary-200';
     default:
-      return 'bg-gray-100 text-gray-500';
+      return 'bg-gray-100 dark:bg-secondary-800 text-gray-500 dark:text-secondary-400';
   }
 }

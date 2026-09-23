@@ -118,7 +118,7 @@ export default function TermsOfService({ lastUpdated }: { lastUpdated: string })
               <li>Loss of funds or cryptocurrencies</li>
               <li>Smart contract failures or exploits</li>
               <li>Network downtime or service interruptions</li>
-              <li>Third-party service failures (Web3Auth, MoonPay, etc.)</li>
+              <li>Third-party service failures (Privy, Coinbase, etc.)</li>
               <li>User error or misuse of the platform</li>
             </ul>
           </section>
@@ -141,7 +141,7 @@ export default function TermsOfService({ lastUpdated }: { lastUpdated: string })
           <section className="mb-8">
             <h2 className="text-2xl font-semibold text-secondary-900 dark:text-white mb-4">8. Third-Party Services</h2>
             <p className="text-secondary-700 dark:text-secondary-200 mb-4">
-              The Service integrates with third-party providers including Web3Auth, MoonPay, and others. 
+              The Service integrates with third-party providers including Privy, Coinbase, and others. 
               Your use of these services is subject to their respective terms of service and privacy policies. 
               We are not responsible for the actions or policies of these third parties.
             </p>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import { useConfig } from '@/components/auth/ConfigProvider';
@@ -230,11 +230,13 @@ export default function ContractPay() {
         //    is the whole point, and is true for most of a quote's life. Reading it used to
         //    throw "could not decode result data (value=0x)", which reads as a broken ABI and
         //    is really just an escrow nobody has paid for yet.
+        // isFunded alone: this screen needs nothing else from the escrow, and asking for all
+        // seven flags put seven calls in the batch where one does.
         const web3 = await getWeb3Service();
-        const state = await web3?.getContractState(escrowAddress);
+        const funded = await web3?.isEscrowFunded(escrowAddress);
         if (cancelled) return;
 
-        if (state?.isFunded) {
+        if (funded) {
           setAlreadyFunded(true);
           return;
         }
@@ -289,6 +291,10 @@ export default function ContractPay() {
    * destination and calldata it was taken against, and if the user never pays it is simply
    * discarded.
    */
+  // The one transfer already warmed. A refetch hands back new `contract`/`config` objects with
+  // the same terms; estimating the identical transaction again is pure RPC load.
+  const prewarmedFor = useRef<string | null>(null);
+
   useEffect(() => {
     if (!contract || !config || !address || !selectedTokenAddress) return;
 
@@ -314,6 +320,9 @@ export default function ContractPay() {
           }
         );
         if (cancelled) return;
+        const key = [selectedTokenAddress, escrowAddress, String(contract.amount)].join('|').toLowerCase();
+        if (prewarmedFor.current === key) return;
+        prewarmedFor.current = key;
         await prewarmTransferToContract(selectedTokenAddress, escrowAddress, String(contract.amount));
       } catch {
         // Nothing to report: this is work brought forward, not work required.

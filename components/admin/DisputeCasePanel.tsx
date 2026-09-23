@@ -155,15 +155,14 @@ export default function DisputeCasePanel({ contractId, onClose, onChanged }: Dis
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             {(['BUYER', 'SELLER'] as const).map((party) => {
-              const key = party.toLowerCase();
               const vote = party === 'BUYER' ? facts.chain.buyerVote : facts.chain.sellerVote;
               const wallet = party === 'BUYER' ? facts.chain.buyer : facts.chain.seller;
               return (
                 <div key={party} className="border border-gray-200 dark:border-secondary-700 rounded-lg p-4 text-sm">
                   <div className="flex items-center justify-between mb-2">
                     <span className="font-semibold text-gray-900 dark:text-white">{party === 'BUYER' ? 'Buyer' : 'Seller'}</span>
-                    <span className={`text-xs px-2 py-0.5 rounded ${facts.reachability[key] === 'VERIFIED' ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' : 'bg-gray-100 dark:bg-secondary-800 text-gray-700 dark:text-secondary-300'}`}>
-                      {facts.reachability[key] === 'VERIFIED' ? 'verified email' : 'no verified email'}
+                    <span className={`text-xs px-2 py-0.5 rounded ${facts.reachability[party] === 'VERIFIED' ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' : 'bg-gray-100 dark:bg-secondary-800 text-gray-700 dark:text-secondary-300'}`}>
+                      {facts.reachability[party] === 'VERIFIED' ? 'verified email' : 'no verified email'}
                     </span>
                   </div>
                   {wallet && <div className="mb-2"><ExpandableHash hash={wallet} /></div>}

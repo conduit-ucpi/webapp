@@ -4,7 +4,7 @@ import { Config } from '@/types';
 // WalletProvider removed - using ethers.BrowserProvider directly
 import { toHex, toHexString, ensureHexPrefix } from '@/utils/hexUtils';
 import { mLog } from '@/utils/mobileLogger';
-import { RpcClient } from '@/lib/rpc/RpcClient';
+import { RpcClient, readProviderFor } from '@/lib/rpc/RpcClient';
 import { withWalletPrompt } from '@/lib/auth/walletPromptChannel';
 import { buildAuthTokenMessage } from '@/lib/auth/siwe-statement';
 
@@ -144,9 +144,9 @@ export class Web3Service {
   private constructor(config: Config) {
     this.config = config;
     // Initialize read-only provider immediately (no wallet needed)
-    this.readProvider = new ethers.JsonRpcProvider(config.rpcUrl);
+    this.readProvider = readProviderFor(config.rpcUrl, config.chainId);
     // Single owner of read-only RPC — balance/token/contract reads delegate here.
-    this.rpcClient = new RpcClient(config.rpcUrl);
+    this.rpcClient = new RpcClient(config.rpcUrl, config.chainId);
     console.log('[Web3Service] Read-only RPC provider created (no wallet access)');
   }
 
@@ -696,6 +696,10 @@ export class Web3Service {
 
   // Check various contract states.
   // Reads via the read-only RPC owner; no connected wallet required.
+  async isEscrowFunded(contractAddress: string) {
+    return await this.rpcClient.isEscrowFunded(contractAddress);
+  }
+
   async getContractState(contractAddress: string) {
     return await this.rpcClient.getContractState(contractAddress);
   }

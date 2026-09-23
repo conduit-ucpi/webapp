@@ -21,7 +21,7 @@ const detail = (status: string, extra: Partial<any> = {}) => ({
       { party: 'SELLER', reason: 'Delivered, tracking 1Z999', refundPercent: 0, timestamp: 60, wallet: '0xs' },
     ],
     chain: { status: 'DISPUTED', seated: true, isDefaultArbiter: true, buyerVote: null, sellerVote: 0, arbiterVote: null, consensusReached: false, buyer: '0xb', seller: '0xs' },
-    reachability: { buyer: 'VERIFIED', seller: 'UNVERIFIED' },
+    reachability: { BUYER: 'VERIFIED', SELLER: 'UNVERIFIED' },
   },
   disputeCase: {
     status, escrowAddress: '0xabc', openedAt: 1, seatedAt: 2, responseDeadline: 30, holdDeadline: null, action: 'ESCALATE', caseApplied: null, buyerPercentage: null,

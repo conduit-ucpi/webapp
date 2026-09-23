@@ -106,17 +106,55 @@ const ERC20_METADATA_ABI = [
   'function name() view returns (string)',
 ];
 
+/**
+ * The read-only provider. With a known chain it is pinned (`staticNetwork`): otherwise ethers
+ * sends `eth_chainId` ahead of its requests to discover what it was already told — seven of
+ * them on one pay-page load, each one more request against the endpoint's rate limit.
+ */
+/** Decimals by `rpcUrl|token`. Module-wide: the fact belongs to the token, not to a client. */
+const decimalsCache = new Map<string, Promise<bigint>>();
+
+/** For tests, which reuse one token address with different decimals — no real token can. */
+export function clearDecimalsCache(): void {
+  decimalsCache.clear();
+}
+
+export function readProviderFor(rpcUrl: string, chainId?: number): ethers.JsonRpcProvider {
+  // Number(): a string would be taken as a network NAME ("8453" is not one) and throw.
+  const id = Number(chainId);
+  return Number.isInteger(id) && id > 0
+    ? new ethers.JsonRpcProvider(rpcUrl, id, { staticNetwork: true })
+    : new ethers.JsonRpcProvider(rpcUrl);
+}
+
 export class RpcClient {
   private readonly provider: ethers.JsonRpcProvider;
   private readonly rpcUrl: string;
 
-  constructor(rpcUrl: string) {
+  constructor(rpcUrl: string, chainId?: number) {
     // Mirror the prior Web3Service.readProvider behavior exactly: pass the
     // configured rpcUrl straight to ethers (which tolerates an absent URL,
     // e.g. during provider-switching teardown with an empty config). We do not
     // throw here, so constructing Web3Service never regresses on empty config.
     this.rpcUrl = rpcUrl;
-    this.provider = new ethers.JsonRpcProvider(rpcUrl);
+    this.provider = readProviderFor(rpcUrl, chainId);
+  }
+
+  /**
+   * Token decimals never change, so each token is asked once per endpoint — across every client,
+   * since a page builds several — and remembered. Asking on every balance read doubled the calls
+   * behind every balance on screen.
+   */
+  private decimalsOf(tokenAddress: string, token: ethers.Contract): Promise<bigint> {
+    const key = this.rpcUrl + '|' + tokenAddress.toLowerCase();
+    let cached = decimalsCache.get(key);
+    if (!cached) {
+      cached = token.decimals().then((d: bigint | number) => BigInt(d));
+      // A failed read is not a fact about the token; let the next caller ask again.
+      cached.catch(() => decimalsCache.delete(key));
+      decimalsCache.set(key, cached);
+    }
+    return cached;
   }
 
   /** Underlying read-only provider, for the few low-level reads that need it. */
@@ -196,8 +234,7 @@ export class RpcClient {
   /** ERC-20 balance, formatted with the token's own decimals. */
   async getTokenBalance(userAddress: string, tokenAddress: string): Promise<string> {
     const token = new ethers.Contract(tokenAddress, ERC20_ABI, this.provider);
-    const balance = await token.balanceOf(userAddress);
-    const decimals = await token.decimals();
+    const [balance, decimals] = await Promise.all([token.balanceOf(userAddress), this.decimalsOf(tokenAddress, token)]);
     return ethers.formatUnits(balance, decimals);
   }
 
@@ -227,8 +264,7 @@ export class RpcClient {
     tokenAddress: string
   ): Promise<string> {
     const token = new ethers.Contract(tokenAddress, ERC20_ABI, this.provider);
-    const allowance = await token.allowance(userAddress, spenderAddress);
-    const decimals = await token.decimals();
+    const [allowance, decimals] = await Promise.all([token.allowance(userAddress, spenderAddress), this.decimalsOf(tokenAddress, token)]);
     return ethers.formatUnits(allowance, decimals);
   }
 
@@ -308,6 +344,17 @@ export class RpcClient {
    *    every escrow that has not been paid for yet. Callers have to be able to tell "no escrow
    *    here" from "the chain would not answer", and an exception says neither.
    */
+  /**
+   * Just `isFunded()`, for a screen that needs to know whether a payment has landed and nothing
+   * else. Null when nothing is deployed there yet — the ordinary state of an unpaid escrow.
+   * One call where [getContractState] makes seven.
+   */
+  async isEscrowFunded(contractAddress: string): Promise<boolean | null> {
+    if (!(await this.isDeployed(contractAddress))) return null;
+    const contract = new ethers.Contract(contractAddress, ESCROW_CONTRACT_ABI, this.provider);
+    return await contract.isFunded();
+  }
+
   async getContractState(contractAddress: string): Promise<EscrowContractState | null> {
     if (!(await this.isDeployed(contractAddress))) return null;
 

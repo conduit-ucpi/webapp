@@ -71,6 +71,7 @@ export interface DisputeCase {
   escalationReason: string | null;
   safeTxHash: string | null;
   executionTxHash: string | null;
+  /** As stored on the case: wire names, lower case — `{ buyer: 'verified', seller: 'unverified' }`. */
   reachability: Record<string, string>;
   notices: DisputeNotice[];
   decisions: DisputeDecisionRecord[];
@@ -107,7 +108,11 @@ export interface DisputeFacts {
     buyer: string | null;
     seller: string | null;
   };
-  reachability: Record<string, string>;
+  /**
+   * Keyed by disputeservice's enum names, upper case — `{ BUYER: 'VERIFIED', SELLER: 'UNVERIFIED' }`.
+   * Not the stored case's `reachability`, which uses the wire names and lower case.
+   */
+  reachability: Partial<Record<'BUYER' | 'SELLER', 'VERIFIED' | 'UNVERIFIED'>>;
 }
 
 export interface DisputeCaseDetail {

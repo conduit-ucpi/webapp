@@ -231,14 +231,18 @@ export function useSimpleEthers() {
      * Same transaction the button will send, estimated early. Safe to call speculatively and
      * safe to call repeatedly: it never throws, and a wrong guess simply goes unused.
      */
-    prewarmTransferToContract: async (tokenAddress: string, contractAddress: string, amount: string) => {
+    // ⚠️ MEMOISED BECAUSE PAGES LIST IT AS AN EFFECT DEPENDENCY. As a plain function it was a new
+    //    identity on every render, so the pay page's prewarm effect re-ran on every render — 20
+    //    estimates (about 100 RPC calls) in the first 40 seconds of one page, enough to get the
+    //    public Base RPC to start refusing the reads the page actually needs.
+    prewarmTransferToContract: useCallback(async (tokenAddress: string, contractAddress: string, amount: string) => {
       const tokenInterface = new ethers.Interface([
         'function transfer(address to, uint256 amount) external returns (bool)'
       ]);
       const data = tokenInterface.encodeFunctionData('transfer', [contractAddress, amount]);
       const web3Service = await getWeb3Service();
       await web3Service.prewarmTransaction({ to: tokenAddress, data, value: '0' });
-    },
+    }, [getWeb3Service]),
 
     transferToContract: async (tokenAddress: string, contractAddress: string, amount: string) => {
       console.log('');

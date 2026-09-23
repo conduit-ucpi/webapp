@@ -15,7 +15,7 @@ import {
   word,
   encodeString,
 } from '@/test-utils/rpcWireMock';
-import { RpcClient } from '@/lib/rpc/RpcClient';
+import { RpcClient, readProviderFor, clearDecimalsCache } from '@/lib/rpc/RpcClient';
 
 const RPC_URL = 'https://mainnet.base.org';
 const USER = '0x1234567890123456789012345678901234567890';
@@ -29,6 +29,7 @@ describe('RpcClient', () => {
   afterEach(() => {
     mock?.restore();
     jest.clearAllMocks();
+    clearDecimalsCache();
   });
 
   describe('getTokenBalance', () => {
@@ -316,6 +317,89 @@ describe('RpcClient', () => {
       mockFetch.mockResolvedValueOnce({ ok: false, json: () => Promise.resolve({ result: '0x186a0' }) });
       const client = new RpcClient(RPC_URL);
       expect(await client.getRawGasPriceWithFallback()).toBe(BigInt('1000000000'));
+    });
+  });
+
+  /**
+   * The pay page's load used to put ~20 reads on the wire, a batch of ten among them — enough for
+   * the public Base RPC to answer "over rate limit" to most of the batch, which ethers reports as
+   * CALL_EXCEPTION "missing revert data" and which left the Pay button disabled. These pin the
+   * three cuts.
+   */
+  describe('keeping reads off the wire', () => {
+    it('asks a token for its decimals once, however many balances are read', async () => {
+      mock = installRpcWireMock((req) => {
+        if (req.method === 'eth_call') {
+          const data: string = req.params[0].data;
+          if (data.startsWith(SELECTORS.balanceOf)) return word(1_000);
+          if (data.startsWith(SELECTORS.decimals)) return word(6);
+        }
+        return undefined;
+      });
+      // Separate clients, as a page builds them: the cache belongs to the token, not the client.
+      await new RpcClient(RPC_URL).getTokenBalance(USER, TOKEN);
+      await new RpcClient(RPC_URL).getTokenBalance(SPENDER, TOKEN);
+      await new RpcClient(RPC_URL).getTokenBalance(USER, TOKEN.toUpperCase().replace('0X', '0x'));
+
+      const decimalsCalls = mock.ethCalls.filter((r) => r.params[0].data.startsWith(SELECTORS.decimals));
+      expect(decimalsCalls).toHaveLength(1);
+      expect(mock.ethCalls.filter((r) => r.params[0].data.startsWith(SELECTORS.balanceOf))).toHaveLength(3);
+    });
+
+    it('asks again after a failed decimals read - a failure is not a fact about the token', async () => {
+      let failNext = true;
+      mock = installRpcWireMock((req) => {
+        if (req.method === 'eth_call') {
+          const data: string = req.params[0].data;
+          if (data.startsWith(SELECTORS.balanceOf)) return word(1_000);
+          if (data.startsWith(SELECTORS.decimals)) {
+            if (failNext) { failNext = false; throw new Error('over rate limit'); }
+            return word(6);
+          }
+        }
+        return undefined;
+      });
+      const client = new RpcClient(RPC_URL);
+
+      await expect(client.getTokenBalance(USER, TOKEN)).rejects.toThrow();
+      await expect(client.getTokenBalance(USER, TOKEN)).resolves.toBe('0.001');
+    });
+
+    it('isEscrowFunded makes one call, not the seven getContractState makes', async () => {
+      const { ethers } = require('ethers');
+      const isFunded = new ethers.Interface(['function isFunded() view returns (bool)']).getFunction('isFunded')!.selector;
+      mock = installRpcWireMock((req) => {
+        if (req.method === 'eth_getCode') return '0x60006000';
+        if (req.method === 'eth_call' && req.params[0].data.startsWith(isFunded)) return word(1);
+        return undefined;
+      });
+
+      await expect(new RpcClient(RPC_URL).isEscrowFunded(CONTRACT)).resolves.toBe(true);
+      expect(mock.ethCalls).toHaveLength(1);
+    });
+
+    it('isEscrowFunded is null, not an error, where nothing is deployed yet', async () => {
+      mock = installRpcWireMock((req) => (req.method === 'eth_getCode' ? '0x' : undefined));
+      await expect(new RpcClient(RPC_URL).isEscrowFunded(CONTRACT)).resolves.toBeNull();
+      expect(mock.ethCalls).toHaveLength(0);
+    });
+
+    it('with a known chain the provider never asks eth_chainId', async () => {
+      mock = installRpcWireMock((req) => {
+        if (req.method === 'eth_call') return word(6);
+        return undefined;
+      });
+
+      const client = new RpcClient(RPC_URL, 8453);
+      await client.getTokenBalance(USER, TOKEN);
+      expect(await client.getChainId()).toBe(8453);
+
+      expect(mock.requests.filter((r) => r.method === 'eth_chainId')).toHaveLength(0);
+    });
+
+    it('a chain id that arrives as a string is still pinned, not mistaken for a network name', async () => {
+      const provider = readProviderFor(RPC_URL, '8453' as unknown as number);
+      expect((await provider.getNetwork()).chainId).toBe(BigInt(8453));
     });
   });
 

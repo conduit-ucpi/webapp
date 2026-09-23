@@ -26,6 +26,16 @@ export default function Layout({ children }: LayoutProps) {
     );
   }
 
+  // The landing experiments carry their own Stripe-style top bar and footer; the site
+  // header on top of that would be two navs. They keep the email prompt like any page.
+  if (router.pathname.startsWith('/landing-test-')) {
+    return (
+      <div className="min-h-screen">
+        <EmailPromptManager children={children} />
+      </div>
+    );
+  }
+
   // Don't use main layout for plugin pages
   if (router.pathname === '/contract-create') {
     return (

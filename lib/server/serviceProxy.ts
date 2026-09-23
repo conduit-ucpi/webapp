@@ -14,7 +14,7 @@ import { extractAuthToken, requireAuth } from '@/utils/api-auth';
  *    wallet, funded by it) and you READ marketplace state from contractservice. The UI never
  *    reads the chain for marketplace data, and never asks chainservice for an offer book.
  */
-type Service = 'chain' | 'contract' | 'user' | 'ap2';
+type Service = 'chain' | 'contract' | 'user' | 'ap2' | 'dispute';
 
 interface ProxyOptions {
   /** Which backend answers this — chainservice does things, contractservice serves reads. */
@@ -42,6 +42,10 @@ function baseUrlFor(service: Service): string | undefined {
       return process.env.USER_SERVICE_URL;
     case 'ap2':
       return process.env.AP2_SERVICE_URL;
+    // The arbiter service's admin API. Internal only: the browser reaches it through these
+    // routes, never directly, and the service itself insists on an admin identity.
+    case 'dispute':
+      return process.env.DISPUTE_SERVICE_URL;
   }
 }
 

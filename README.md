@@ -73,6 +73,7 @@ CONTRACT_FACTORY_ADDRESS=0x...    # Deployed factory contract
 USER_SERVICE_URL=http://localhost:8977      # Authentication service
 CHAIN_SERVICE_URL=http://localhost:8978     # Blockchain relay service
 CONTRACT_SERVICE_URL=http://localhost:8080  # Contract management service
+DISPUTE_SERVICE_URL=http://localhost:8981   # Arbiter service (admin routes under /api/admin/disputes)
 X_API_KEY=your_chain_service_api_key_here   # Chain service API key
 ```
 

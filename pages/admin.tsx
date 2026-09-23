@@ -9,6 +9,8 @@ import Input from '@/components/ui/Input';
 import ContractCard from '@/components/contracts/ContractCard';
 import PendingContractCard from '@/components/contracts/PendingContractCard';
 import AdminDatabaseList from '@/components/admin/AdminDatabaseList';
+import DisputeQueue from '@/components/admin/DisputeQueue';
+import DisputeCasePanel from '@/components/admin/DisputeCasePanel';
 import { normalizeTimestamp } from '@/utils/validation';
 import DisputeResolutionModal from '@/components/admin/DisputeResolutionModal';
 import { Contract, PendingContract } from '@/types';
@@ -40,6 +42,8 @@ export default function AdminPage() {
     chainservice: any;
   } | null>(null);
   const [isLoadingRawData, setIsLoadingRawData] = useState(false);
+  const [selectedDispute, setSelectedDispute] = useState<string | null>(null);
+  const [disputeRefreshKey, setDisputeRefreshKey] = useState(0);
 
   const fetchDetailedContract = async (contractId: string) => {
     setIsLoadingDetails(true);
@@ -164,6 +168,18 @@ export default function AdminPage() {
             </div>
           </div>
         </div>
+
+        {/* Dispute arbitration: the queue, and the selected case */}
+        <div className="mb-8">
+          <DisputeQueue onSelect={setSelectedDispute} refreshKey={disputeRefreshKey} />
+        </div>
+        {selectedDispute && (
+          <DisputeCasePanel
+            contractId={selectedDispute}
+            onClose={() => setSelectedDispute(null)}
+            onChanged={() => setDisputeRefreshKey((k) => k + 1)}
+          />
+        )}
 
         {/* Contract List */}
         <div className="mb-8">

@@ -25,15 +25,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     const authToken = requireAuth(req);
 
+    // The user's own session, and no service key: chainservice accepts a Bearer token on this
+    // read, and a key the browser-facing app does not need is one fewer place for it to leak
+    // from. (Sending one it did not recognise also logged a rejection on every read.)
     const headers: Record<string, string> = {
       'Authorization': `Bearer ${authToken}`,
       'Cookie': req.headers.cookie || '',
       'Accept': 'application/json'
     };
-
-    if (process.env.X_API_KEY) {
-      headers['X-API-Key'] = process.env.X_API_KEY;
-    }
 
     const response = await fetch(
       `${process.env.CHAIN_SERVICE_URL}/api/chain/contract/${contractAddress}/arbiter`,

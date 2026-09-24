@@ -34,7 +34,11 @@ export default function DisputeCasePanel({ contractId, onClose, onChanged }: Dis
     setError('');
     try {
       const response = await apiFetch(`/api/admin/disputes/${encodeURIComponent(contractId)}`);
-      if (!response.ok) throw new Error(response.status === 404 ? 'Case not found' : `Failed to load the case: ${response.status}`);
+      if (!response.ok) {
+        // 503 carries the reason: the chain could not be read just now, and a retry is the fix.
+        const body = await response.json().catch(() => null);
+        throw new Error(response.status === 404 ? 'Case not found' : body?.error || `Failed to load the case: ${response.status}`);
+      }
       setDetail(await response.json());
     } catch (e: any) {
       setError(e.message || 'Failed to load the case');

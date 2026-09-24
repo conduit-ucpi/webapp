@@ -34,11 +34,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const contentType = response.headers.get('content-type');
     const text = await response.text();
 
+    // Not the body: it is the user's email, wallet and userType, on every page load.
     console.log('🔍 Response from user service:', {
       status: response.status,
       contentType,
-      bodyLength: text.length,
-      bodyPreview: text.substring(0, 200)
+      bodyLength: text.length
     });
 
     // Try to parse as JSON, fallback to error object

@@ -19,20 +19,28 @@ export function clearConfigCache() {
  * @param rpcUrl RPC endpoint URL
  * @param tokenAddress Token contract address
  * @param tokenLabel Label for logging (e.g., "USDC", "USDT")
+ * @param chainId Chain the RPC serves — pins the provider (see below)
  * @returns Token details (symbol, decimals, name)
  */
 async function getTokenDetails(
   rpcUrl: string,
   tokenAddress: string,
-  tokenLabel: string
+  tokenLabel: string,
+  chainId: number
 ): Promise<TokenDetails | null> {
+  // ⚠️ PINNED AND DESTROYED. Unpinned, ethers discovers the network itself, and when the RPC
+  //    fails that discovery it retries every second FOREVER — logging "failed to detect
+  //    network" each time. One per token per config refresh, none ever torn down: that was
+  //    the flood in the server log.
+  const rpcClient = new RpcClient(rpcUrl, chainId);
   try {
     // Read via the single read-RPC owner (RpcClient) instead of a local provider.
-    const rpcClient = new RpcClient(rpcUrl);
     return await rpcClient.getTokenMetadata(tokenAddress);
   } catch (error) {
     console.error(`Failed to fetch ${tokenLabel} token details:`, error);
     return null;
+  } finally {
+    rpcClient.getProvider().destroy();
   }
 }
 
@@ -128,10 +136,12 @@ async function buildConfig() {
   // Fetch contract addresses from chainservice
   const contractAddresses = await getContractAddresses(process.env.CHAIN_SERVICE_URL);
 
+  const chainId = parseInt(process.env.CHAIN_ID || '8453'); // Default: Base Mainnet
+
   // Fetch on-chain details for all enabled tokens in parallel
   const enabledTokens = tokenConfigs.filter(t => t.enabled !== false);
   const tokenDetailsPromises = enabledTokens.map(token =>
-    getTokenDetails(process.env.RPC_URL!.trim(), token.address, token.symbol)
+    getTokenDetails(process.env.RPC_URL!.trim(), token.address, token.symbol, chainId)
       .then(details => ({ ...token, ...details }))
       .catch(err => {
         console.error(`Failed to fetch details for ${token.symbol}:`, err);
@@ -147,8 +157,6 @@ async function buildConfig() {
   // Legacy fields for backward compatibility
   const usdcDetails = supportedTokens.find(t => t.symbol === 'USDC') || null;
   const usdtDetails = supportedTokens.find(t => t.symbol === 'USDT') || null;
-
-  const chainId = parseInt(process.env.CHAIN_ID || '8453'); // Default: Base Mainnet
 
   const config = {
     chainId,

@@ -125,7 +125,8 @@ export default function DisputeQueue({ onSelect, refreshKey = 0 }: DisputeQueueP
         {sweep && (
           <div className="mt-4 text-sm text-gray-700 dark:text-secondary-300 bg-gray-50 dark:bg-secondary-800 border border-gray-200 dark:border-secondary-700 rounded p-3">
             Sweep at {formatDateTimeWithTZ(sweep.at)}: {sweep.queued} queued, {sweep.changed} changed, {sweep.failed} failed
-            {sweep.skipped ? `, ${sweep.skipped} skipped — the chain could not be read for them; the next sweep tries again` : ''}.
+            {sweep.skipped ? `, ${sweep.skipped} skipped — the chain could not be read for them; the next sweep tries again` : ''}
+            {sweep.ignored ? `, ${sweep.ignored} legacy escrow${sweep.ignored === 1 ? '' : 's'} ignored` : ''}.
           </div>
         )}
 

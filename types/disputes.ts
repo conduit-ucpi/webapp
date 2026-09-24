@@ -137,6 +137,8 @@ export interface SweepSummary {
   failed: number;
   /** Cases left untouched because their chain facts could not be read this pass; `after` is 'skipped'. */
   skipped?: number;
+  /** Escrows on the superseded implementation, which the arbiter does not handle at all. */
+  ignored?: number;
   results: Array<{ contractId: string; before: string | null; after: string; note: string | null }>;
 }
 

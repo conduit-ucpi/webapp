@@ -3,9 +3,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 /**
  * QR-payment subsystem shared by contract-create and contract-pay.
  *
- * Owns the timing machinery (countdown, balance polling), the activation
- * round-trip to /api/chain/check-and-activate, and the QR pure helpers
- * (EIP-681 URI, countdown formatting). The page-specific differences are
+ * Owns the balance polling, the activation round-trip to
+ * /api/chain/check-and-activate, and the EIP-681 URI helper. The page-specific differences are
  * injected:
  *   - `createContract`   how the on-chain escrow is produced for this page
  *                        (create POSTs /api/chain/create-contract; pay uses
@@ -21,12 +20,43 @@ import { useState, useEffect, useCallback, useRef } from 'react';
  *
  * checkAndActivate reads the escrow's token balance before it will spend
  * anything — see the comment on the call itself. Both callers (the "I have
- * paid" button and the countdown auto-fire) get that gate.
+ * paid" button and the balance poll's automatic sweep) get that gate.
  */
 export type QrActivationStatus = 'idle' | 'checking' | 'success' | 'waiting';
 
-const COUNTDOWN_SECONDS = 240;
-const POLL_INTERVAL_MS = 10_000;
+/** Poll every `everyMs` until `untilMs` after the run started. */
+interface PollPhase {
+  untilMs: number;
+  everyMs: number;
+}
+
+/**
+ * How often to look for the payment. Briskly while the payer is most likely mid-transfer,
+ * tapering off, then not at all: after seven minutes the page waits for "I have paid".
+ */
+const INITIAL_POLL_SCHEDULE: readonly PollPhase[] = [
+  { untilMs: 2 * 60_000, everyMs: 10_000 },
+  { untilMs: 5 * 60_000, everyMs: 20_000 },
+  { untilMs: 7 * 60_000, everyMs: 30_000 },
+];
+
+/**
+ * After "I have paid" finds nothing yet. The payer has just said the money is on its way, so
+ * keep looking for a couple of minutes — a transfer can be sent but not yet confirmed.
+ */
+const AFTER_PRESS_POLL_SCHEDULE: readonly PollPhase[] = [{ untilMs: 2 * 60_000, everyMs: 20_000 }];
+
+/** The wait before the next poll, or null when the schedule has run out. */
+function nextPollDelay(schedule: readonly PollPhase[], elapsedMs: number): number | null {
+  const phase = schedule.find((p) => elapsedMs + p.everyMs <= p.untilMs);
+  return phase ? phase.everyMs : null;
+}
+
+interface PollRun {
+  schedule: readonly PollPhase[];
+  /** Read straight away. False after a button press, which has only just read. */
+  pollFirst: boolean;
+}
 
 /**
  * Which backend call turns a funded address live, and what to send it.
@@ -34,7 +64,7 @@ const POLL_INTERVAL_MS = 10_000;
  * Defaults to the escrow's `checkAndActivate`. The marketplace overrides it with
  * `fund-offer` on an OfferVault, because the two flows are the same shape: money arrives by
  * direct transfer, and a permissionless call then observes the balance and flips the state.
- * Everything else in this hook — the countdown, the balance poll, the "I have paid" gate —
+ * Everything else in this hook — the balance poll, the "I have paid" gate —
  * is identical for both, and duplicating it is how one of them ends up without the
  * balance-before-gas check below.
  */
@@ -71,7 +101,6 @@ interface UseQrPaymentParams {
 
 interface UseQrPaymentResult {
   qrContractAddress: string | null;
-  qrCountdown: number;
   qrPaymentDetected: boolean;
   qrActivationStatus: QrActivationStatus;
   isCreatingContract: boolean;
@@ -87,9 +116,10 @@ interface UseQrPaymentResult {
   /** Resolves the escrow address and also returns it, for callers that need to
    *  act on it immediately rather than wait for the state update. */
   createContract: () => Promise<string | undefined>;
+  /** The "I have paid" button: checks now, and if nothing has arrived yet, polls every 20s
+   *  for two minutes. */
   checkAndActivate: () => Promise<void>;
   buildEip681Uri: () => string;
-  formatCountdown: (seconds: number) => string;
 }
 
 export function useQrPayment(params: UseQrPaymentParams): UseQrPaymentResult {
@@ -113,31 +143,28 @@ export function useQrPayment(params: UseQrPaymentParams): UseQrPaymentResult {
     if (!existingContractAddress) return;
     setQrContractAddress((current) => current ?? existingContractAddress);
   }, [existingContractAddress]);
-  const [qrCountdown, setQrCountdown] = useState(COUNTDOWN_SECONDS);
   const [qrPaymentDetected, setQrPaymentDetected] = useState(false);
   const [qrActivationStatus, setQrActivationStatus] = useState<QrActivationStatus>('idle');
   const [hasCheckedBalance, setHasCheckedBalance] = useState(false);
   const [isCreatingContract, setIsCreatingContract] = useState(false);
+  const [pollRun, setPollRun] = useState<PollRun>({ schedule: INITIAL_POLL_SCHEDULE, pollFirst: true });
   const qrPollingRef = useRef<NodeJS.Timeout | null>(null);
-  const qrCountdownRef = useRef<NodeJS.Timeout | null>(null);
 
   // getTokenBalance comes from useSimpleEthers, which returns a fresh object
-  // each render. Held in a ref so checkAndActivate below does not have to take
-  // it as a dependency — checkAndActivate is itself a dependency of the
-  // countdown effect, which would then re-create its interval every render.
+  // each render. Held in a ref so activate below does not have to take
+  // it as a dependency and change identity every render.
   const getTokenBalanceRef = useRef(getTokenBalance);
   useEffect(() => {
     getTokenBalanceRef.current = getTokenBalance;
   });
 
   // Same treatment, same reason: callers pass this as an object literal, so a fresh identity
-  // every render would make checkAndActivate unstable — and checkAndActivate is a dependency
-  // of the countdown effect below, which would then re-create its interval on every render.
+  // every render would make activate unstable.
   const activationRef = useRef(activation);
 
   // Held in a ref for the same reason as getTokenBalance: naming it as a
   // dependency of the polling effect would rebuild the interval every render.
-  const checkAndActivateRef = useRef<() => Promise<void>>(async () => {});
+  const activateRef = useRef<() => Promise<boolean>>(async () => false);
 
   // Fires the sweep at most once per mounted verification, so a poll that keeps
   // seeing the same funded balance does not resubmit while the first is in flight.
@@ -146,8 +173,9 @@ export function useQrPayment(params: UseQrPaymentParams): UseQrPaymentResult {
     activationRef.current = activation;
   });
 
-  const checkAndActivate = useCallback(async () => {
-    if (!qrContractAddress || !authenticatedFetch) return;
+  /** Resolves true once the backend has activated the escrow. */
+  const activate = useCallback(async (): Promise<boolean> => {
+    if (!qrContractAddress || !authenticatedFetch) return false;
 
     setQrActivationStatus('checking');
 
@@ -172,7 +200,7 @@ export function useQrPayment(params: UseQrPaymentParams): UseQrPaymentResult {
 
       if (!funded) {
         setQrActivationStatus('waiting');
-        return;
+        return false;
       }
 
       const target = activationRef.current;
@@ -186,23 +214,30 @@ export function useQrPayment(params: UseQrPaymentParams): UseQrPaymentResult {
 
       if (data.success) {
         setQrActivationStatus('success');
-        if (qrPollingRef.current) clearInterval(qrPollingRef.current);
-        if (qrCountdownRef.current) clearInterval(qrCountdownRef.current);
+        if (qrPollingRef.current) clearTimeout(qrPollingRef.current);
         onActivated(qrContractAddress);
-      } else {
-        setQrActivationStatus('waiting');
+        return true;
       }
+      setQrActivationStatus('waiting');
+      return false;
     } catch (error) {
       console.error(`useQrPayment: ${activationRef.current.endpoint} failed:`, error);
       setQrActivationStatus('waiting');
+      return false;
     }
   }, [qrContractAddress, authenticatedFetch, selectedTokenAddress, requiredAmount, onActivated]);
 
   // Keep the ref pointing at the current closure without making the polling
   // effect depend on it.
   useEffect(() => {
-    checkAndActivateRef.current = checkAndActivate;
-  }, [checkAndActivate]);
+    activateRef.current = activate;
+  }, [activate]);
+
+  // A fresh object every press, so pressing again restarts the two minutes.
+  const checkAndActivate = useCallback(async () => {
+    if (await activate()) return;
+    setPollRun({ schedule: AFTER_PRESS_POLL_SCHEDULE, pollFirst: false });
+  }, [activate]);
 
   // Returns the resolved escrow address as well as storing it, so a caller that
   // needs to act on it immediately — signing a transfer to it from the
@@ -213,7 +248,6 @@ export function useQrPayment(params: UseQrPaymentParams): UseQrPaymentResult {
       const resolved = await createContractImpl();
       if (resolved) {
         setQrContractAddress(resolved);
-        setQrCountdown(COUNTDOWN_SECONDS);
       }
       return resolved;
     } finally {
@@ -221,37 +255,36 @@ export function useQrPayment(params: UseQrPaymentParams): UseQrPaymentResult {
     }
   }, [createContractImpl]);
 
-  // Cleanup polling/countdown on unmount.
+  // Hold the panel back until the first read for this escrow lands. Its own effect, so that a
+  // button press restarting the poll below does not put the spinner back.
   useEffect(() => {
-    return () => {
-      if (qrPollingRef.current) clearInterval(qrPollingRef.current);
-      if (qrCountdownRef.current) clearInterval(qrCountdownRef.current);
+    setHasCheckedBalance(false);
+  }, [qrContractAddress, selectedTokenAddress, requiredAmount]);
+
+  /*
+   * Balance polling, on the current run's schedule (INITIAL_POLL_SCHEDULE, or
+   * AFTER_PRESS_POLL_SCHEDULE once "I have paid" has found nothing), then stop.
+   *
+   * ⚠️ THE ACTIVATION STATUS IS NOT A DEPENDENCY, only whether it has succeeded. Every status
+   *    change used to restart this effect, and each restart reset hasCheckedBalance — which the
+   *    panel reads as "hide everything behind a spinner". A hidden 4-minute countdown then
+   *    re-fired checkAndActivate on every tick once it reached zero (each status change rebuilt
+   *    it at 0), so after four minutes the QR code and the spinner swapped places every second
+   *    for as long as the page was open. The countdown is gone: this poll already sweeps the
+   *    moment the money lands, which is all the countdown was ever for.
+   */
+  const isActivated = qrActivationStatus === 'success';
+  useEffect(() => {
+    if (!qrContractAddress || !selectedTokenAddress || isActivated) return;
+
+    let cancelled = false;
+    const startedAt = Date.now();
+
+    const scheduleNext = () => {
+      if (cancelled) return;
+      const delay = nextPollDelay(pollRun.schedule, Date.now() - startedAt);
+      if (delay !== null) qrPollingRef.current = setTimeout(pollBalance, delay);
     };
-  }, []);
-
-  // Countdown timer: ticks once per second; auto-fires activation at zero.
-  useEffect(() => {
-    if (!qrContractAddress || qrActivationStatus === 'success') return;
-
-    qrCountdownRef.current = setInterval(() => {
-      setQrCountdown((prev) => {
-        if (prev <= 1) {
-          if (qrCountdownRef.current) clearInterval(qrCountdownRef.current);
-          checkAndActivate();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => {
-      if (qrCountdownRef.current) clearInterval(qrCountdownRef.current);
-    };
-  }, [qrContractAddress, qrActivationStatus, checkAndActivate]);
-
-  // Balance polling: every 10s (and immediately), flag payment once funded.
-  useEffect(() => {
-    if (!qrContractAddress || !selectedTokenAddress || qrActivationStatus === 'success') return;
 
     const pollBalance = async () => {
       try {
@@ -266,14 +299,13 @@ export function useQrPayment(params: UseQrPaymentParams): UseQrPaymentResult {
           // sweep. Run it rather than asking the payer to confirm something the
           // chain has already told us — this is the case where someone arrives
           // at a contract funded on an earlier visit and would otherwise have to
-          // press a button to claim funds they had already sent. The countdown
-          // fires the same call at zero; this just does not make them wait.
+          // press a button to claim funds they had already sent.
           //
-          // checkAndActivate re-reads the balance before spending any gas, so
+          // activate re-reads the balance before spending any gas, so
           // there is no risk in calling it on the strength of this poll.
           if (!autoActivatedRef.current) {
             autoActivatedRef.current = true;
-            void checkAndActivateRef.current();
+            void activateRef.current();
           }
         }
       } catch (error) {
@@ -282,37 +314,31 @@ export function useQrPayment(params: UseQrPaymentParams): UseQrPaymentResult {
         // Resolved either way: an unreadable balance must not hold the panel
         // back forever, it just means we cannot skip it.
         setHasCheckedBalance(true);
+        scheduleNext();
       }
     };
 
-    setHasCheckedBalance(false);
-    qrPollingRef.current = setInterval(pollBalance, POLL_INTERVAL_MS);
-    pollBalance();
+    if (pollRun.pollFirst) pollBalance();
+    else scheduleNext();
 
     return () => {
-      if (qrPollingRef.current) clearInterval(qrPollingRef.current);
+      cancelled = true;
+      if (qrPollingRef.current) clearTimeout(qrPollingRef.current);
     };
     // NOTE: getTokenBalance is intentionally NOT a dependency. useSimpleEthers
     // returns a fresh object each render, so including it re-creates the
     // polling interval (and immediately re-polls) on every render — a loop.
     // The primitive deps capture every input that should restart polling.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [qrContractAddress, selectedTokenAddress, requiredAmount, qrActivationStatus]);
+  }, [qrContractAddress, selectedTokenAddress, requiredAmount, isActivated, pollRun]);
 
   const buildEip681Uri = useCallback((): string => {
     if (!qrContractAddress || !selectedTokenAddress || chainId === undefined) return '';
     return `ethereum:${selectedTokenAddress}@${chainId}/transfer?address=${qrContractAddress}&uint256=${requiredAmountMicro}`;
   }, [qrContractAddress, selectedTokenAddress, chainId, requiredAmountMicro]);
 
-  const formatCountdown = useCallback((seconds: number): string => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  }, []);
-
   return {
     qrContractAddress,
-    qrCountdown,
     qrPaymentDetected,
     qrActivationStatus,
     isCreatingContract,
@@ -320,6 +346,5 @@ export function useQrPayment(params: UseQrPaymentParams): UseQrPaymentResult {
     createContract,
     checkAndActivate,
     buildEip681Uri,
-    formatCountdown,
   };
 }

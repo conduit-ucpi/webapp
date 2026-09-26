@@ -48,6 +48,61 @@ describe('DisputeCasePanel', () => {
     expect(screen.queryByText('Decide this case')).toBeNull();
   });
 
+  it('puts each filing\'s proposed split beside its message, and says when there is none', async () => {
+    const d = detail('HOLD');
+    d.facts.filings.push({ party: 'SELLER', reason: 'Will reply later', refundPercent: null, timestamp: 70, wallet: '0xs' } as any);
+    fetchMock.mockResolvedValueOnce(json(200, d));
+    render(<DisputeCasePanel contractId="c1" onClose={() => {}} />);
+    await waitFor(() => expect(screen.getByText('One widget arrived, wrong colour')).toBeTruthy());
+    const beside = (message: string) => screen.getByText(message).closest('li')!.textContent;
+    expect(beside('One widget arrived, wrong colour')).toContain('100% to buyer');
+    expect(beside('Delivered, tracking 1Z999')).toContain('0% to buyer');
+    expect(beside('Will reply later')).toContain('no figure');
+  });
+
+  it('a held email says so, shows a count, and Send posts its index then re-reads the case', async () => {
+    const d = detail('AWAITING_RESPONSE', {
+      escalationReason: null,
+      notices: [
+        { kind: 'DISPUTE_OPENED', party: 'buyer', recipientWallet: '0xb', channel: 'email', sentAt: 3, messageId: 're_1', outcome: 'sent', deadline: 30 },
+        { kind: 'DISPUTE_OPENED', party: 'seller', recipientWallet: '0xs', channel: 'email', sentAt: 3, messageId: null, outcome: 'held', deadline: 30, subject: 'A dispute', body: '<p>hi</p>' },
+      ],
+    });
+    fetchMock.mockResolvedValueOnce(json(200, d)).mockResolvedValueOnce(json(200, {})).mockResolvedValueOnce(json(200, d));
+    render(<DisputeCasePanel contractId="c1" onClose={() => {}} />);
+    await waitFor(() => expect(screen.getByText('1 email(s) waiting for your approval.')).toBeTruthy());
+    expect(screen.getByText('held — not sent')).toBeTruthy();
+
+    fireEvent.click(screen.getByLabelText('Send DISPUTE_OPENED to seller'));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
+    const [url, init] = fetchMock.mock.calls[1];
+    expect(url).toBe('/api/admin/disputes/c1/send-notice');
+    expect(JSON.parse(init.body)).toEqual({ index: 1 });
+  });
+
+  it('a decision held for review can be approved exactly as recommended', async () => {
+    const d = detail('ESCALATED', { escalationReason: 'REVIEW_REQUIRED', caseApplied: 'D3', buyerPercentage: 100, reasoning: 'Nobody answered a specific case.' });
+    fetchMock.mockResolvedValueOnce(json(200, d)).mockResolvedValueOnce(json(200, {})).mockResolvedValueOnce(json(200, d));
+    render(<DisputeCasePanel contractId="c1" onClose={() => {}} />);
+    await waitFor(() => expect(screen.getByText('Approve as recommended')).toBeTruthy());
+    expect(screen.getByText(/Recommended: D3, 100% to buyer/)).toBeTruthy();
+    fireEvent.click(screen.getByText('Approve as recommended'));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
+    const [url, init] = fetchMock.mock.calls[1];
+    expect(url).toBe('/api/admin/disputes/c1/decide');
+    expect(JSON.parse(init.body)).toEqual({ buyerPercentage: 100, reasoning: 'Nobody answered a specific case.' });
+  });
+
+  it('an escalation that is not a held decision offers the recommendation only as a starting point', async () => {
+    const d = detail('ESCALATED', { escalationReason: 'MODELS_DISAGREE', caseApplied: 'D5', buyerPercentage: 100, reasoning: 'x\n\nFor the reviewer: a second model reached 60%.' });
+    fetchMock.mockResolvedValueOnce(json(200, d));
+    render(<DisputeCasePanel contractId="c1" onClose={() => {}} />);
+    await waitFor(() => expect(screen.getByText('Edit before deciding')).toBeTruthy());
+    expect(screen.queryByText('Approve as recommended')).toBeNull();
+    fireEvent.click(screen.getByText('Edit before deciding'));
+    expect((screen.getByLabelText('Buyer percentage') as HTMLInputElement).value).toBe('100');
+  });
+
   it('opens a notice to show the email as sent, or says why there is none', async () => {
     fetchMock.mockResolvedValueOnce(json(200, detail('AWAITING_RESPONSE', {
       notices: [

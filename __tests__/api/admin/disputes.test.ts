@@ -2,6 +2,7 @@ import { createMocks } from 'node-mocks-http';
 import queueHandler from '@/pages/api/admin/disputes/index';
 import releaseHandler from '@/pages/api/admin/disputes/release';
 import decideHandler from '@/pages/api/admin/disputes/[id]/decide';
+import sendNoticeHandler from '@/pages/api/admin/disputes/[id]/send-notice';
 
 global.fetch = jest.fn();
 const mockFetch = global.fetch as jest.MockedFunction<typeof fetch>;
@@ -68,6 +69,22 @@ describe('/api/admin/disputes', () => {
     await decideHandler(req as any, res as any);
     expect(res._getStatusCode()).toBe(200);
     expect(mockFetch.mock.calls[0][0]).toBe('http://disputeservice:8981/api/disputes/c1/decide');
+  });
+
+  it('send-notice forwards to the held notice by index, and refuses a bad index before calling anything', async () => {
+    const { req: bad, res: badRes } = createMocks({ method: 'POST', headers: { cookie: 'AUTH-TOKEN=tok' }, query: { id: 'c1' }, body: { index: 'x' } });
+    await sendNoticeHandler(bad as any, badRes as any);
+    expect(badRes._getStatusCode()).toBe(400);
+    expect(mockFetch).not.toHaveBeenCalled();
+
+    mockFetch.mockResolvedValueOnce(upstream(200, { status: 'AWAITING_RESPONSE' }));
+    const { req, res } = createMocks({ method: 'POST', headers: { cookie: 'AUTH-TOKEN=tok' }, query: { id: 'c1' }, body: { index: 2 } });
+    await sendNoticeHandler(req as any, res as any);
+    expect(res._getStatusCode()).toBe(200);
+    const [url, init] = mockFetch.mock.calls[0];
+    expect(url).toBe('http://disputeservice:8981/api/disputes/c1/notices/2/send');
+    expect((init as RequestInit).method).toBe('POST');
+    expect((init as RequestInit).headers).toMatchObject({ Authorization: 'Bearer tok' });
   });
 
   it('is a configuration error, not a crash, when the service URL is unset', async () => {

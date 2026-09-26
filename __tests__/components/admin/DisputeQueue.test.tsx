@@ -38,6 +38,13 @@ describe('DisputeQueue', () => {
     expect(onSelect).toHaveBeenCalledWith('c2');
   });
 
+  it('flags a decision waiting for approval and emails waiting to be sent', async () => {
+    fetchMock.mockResolvedValueOnce(json(200, [row({ status: 'ESCALATED', escalationReason: 'REVIEW_REQUIRED', heldNotices: 2 })]));
+    render(<DisputeQueue />);
+    await waitFor(() => expect(screen.getByText('Decision awaiting your approval')).toBeTruthy());
+    expect(screen.getByText('2 email(s) awaiting approval')).toBeTruthy();
+  });
+
   it('release asks for confirmation, posts to the Node API and shows the Safe app link', async () => {
     fetchMock
       .mockResolvedValueOnce(json(200, [row()]))

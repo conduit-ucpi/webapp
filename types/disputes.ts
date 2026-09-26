@@ -22,6 +22,8 @@ export interface DisputeSummary {
   responseDeadline: number | null;
   holdDeadline: number | null;
   safeTxHash: string | null;
+  /** Emails rendered and held for review, waiting for an admin to send them (DISPUTE_NOTICE_MODE=review). */
+  heldNotices?: number;
 }
 
 export interface DisputeNotice {
@@ -31,7 +33,8 @@ export interface DisputeNotice {
   channel: string;
   sentAt: number;
   messageId: string | null;
-  outcome: 'sent' | 'failed' | 'no-address';
+  /** held: rendered and waiting for an admin to send it. superseded: a newer one replaced it before it went; never sent. */
+  outcome: 'sent' | 'failed' | 'no-address' | 'held' | 'superseded';
   deadline: number | null;
   /** What the party was told, as rendered by emailservice. Absent on no-address attempts and older notices. */
   subject?: string | null;

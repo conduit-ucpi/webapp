@@ -174,7 +174,8 @@ export default function DisputeQueue({ onSelect, refreshKey = 0 }: DisputeQueueP
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">{r.daysPastMaturity > 0 ? `${r.daysPastMaturity} d` : '-'}</td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${disputeStatusColor(r.status)}`}>{r.status ?? 'NOT SEEN'}</span>
-                    {r.escalationReason && <div className="text-xs text-red-700 dark:text-red-400 mt-1">{r.escalationReason}</div>}
+                    {r.escalationReason && <div className="text-xs text-red-700 dark:text-red-400 mt-1">{r.escalationReason === 'REVIEW_REQUIRED' ? 'Decision awaiting your approval' : r.escalationReason}</div>}
+                    {(r.heldNotices ?? 0) > 0 && <div className="text-xs text-amber-700 dark:text-amber-400 mt-1">{r.heldNotices} email(s) awaiting approval</div>}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">{r.caseApplied ?? '-'}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">{r.buyerPercentage != null ? `${r.buyerPercentage}% buyer` : '-'}</td>

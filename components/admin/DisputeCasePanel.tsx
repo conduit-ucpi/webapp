@@ -67,13 +67,14 @@ export default function DisputeCasePanel({ contractId, onClose, onChanged }: Dis
     }
   };
 
-  const decide = async () => {
-    const pct = Number(buyerPercentage);
+  const decide = async (asRecommended?: { buyerPercentage: number; reasoning: string }) => {
+    const pct = asRecommended ? asRecommended.buyerPercentage : Number(buyerPercentage);
+    const why = asRecommended ? asRecommended.reasoning : reasoning;
     if (!Number.isInteger(pct) || pct < 0 || pct > 100) {
       setError('Buyer percentage must be a whole number from 0 to 100');
       return;
     }
-    if (!reasoning.trim()) {
+    if (!why.trim()) {
       setError('Reasoning is required; it is what the losing party reads');
       return;
     }
@@ -83,7 +84,7 @@ export default function DisputeCasePanel({ contractId, onClose, onChanged }: Dis
       const response = await apiFetch(`/api/admin/disputes/${encodeURIComponent(contractId)}/decide`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ buyerPercentage: pct, reasoning: reasoning.trim() }),
+        body: JSON.stringify({ buyerPercentage: pct, reasoning: why.trim() }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data?.error || `Decision failed: ${response.status}`);
@@ -93,6 +94,27 @@ export default function DisputeCasePanel({ contractId, onClose, onChanged }: Dis
       onChanged?.();
     } catch (e: any) {
       setError(e.message || 'Decision failed');
+    } finally {
+      setIsWorking(false);
+    }
+  };
+
+  /** Sends one email the service held for review. Its clock starts now, on the service side. */
+  const sendNotice = async (index: number) => {
+    setIsWorking(true);
+    setError('');
+    try {
+      const response = await apiFetch(`/api/admin/disputes/${encodeURIComponent(contractId)}/send-notice`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ index }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.error || `Send failed: ${response.status}`);
+      await load();
+      onChanged?.();
+    } catch (e: any) {
+      setError(e.message || 'Send failed');
     } finally {
       setIsWorking(false);
     }
@@ -177,8 +199,17 @@ export default function DisputeCasePanel({ contractId, onClose, onChanged }: Dis
                     <ul className="space-y-2">
                       {partyFilings(party).map((f, i) => (
                         <li key={i} className="bg-gray-50 dark:bg-secondary-800 rounded p-2">
-                          <div className="text-xs text-gray-500 dark:text-secondary-400">{formatDateTimeWithTZ(f.timestamp)}{f.refundPercent != null && ` · proposes ${f.refundPercent}% to buyer`}</div>
-                          <div className="text-gray-800 dark:text-secondary-200 whitespace-pre-wrap">{f.reason || <span className="text-gray-400 dark:text-secondary-500">(no text)</span>}</div>
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="text-xs text-gray-500 dark:text-secondary-400">{formatDateTimeWithTZ(f.timestamp)}</div>
+                              <div className="text-gray-800 dark:text-secondary-200 whitespace-pre-wrap">{f.reason || <span className="text-gray-400 dark:text-secondary-500">(no text)</span>}</div>
+                            </div>
+                            {/* The figure is the point of each filing, so it sits beside the words, and a
+                                missing one says so rather than vanishing. */}
+                            <span className={`shrink-0 text-xs font-medium px-2 py-0.5 rounded whitespace-nowrap ${f.refundPercent != null ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300' : 'bg-gray-100 dark:bg-secondary-700 text-gray-500 dark:text-secondary-400'}`}>
+                              {f.refundPercent != null ? `${f.refundPercent}% to buyer` : 'no figure'}
+                            </span>
+                          </div>
                         </li>
                       ))}
                     </ul>
@@ -188,12 +219,40 @@ export default function DisputeCasePanel({ contractId, onClose, onChanged }: Dis
             })}
           </div>
 
+          {c && c.notices.some((n) => n.outcome === 'held') && (
+            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4 mb-6 text-sm text-amber-900 dark:text-amber-200">
+              <span className="font-semibold">{c.notices.filter((n) => n.outcome === 'held').length} email(s) waiting for your approval.</span>{' '}
+              Nothing reaches the parties until you send it, and each deadline runs from when its email goes. Open one below to read it, then Send.
+            </div>
+          )}
+
           {c?.status === 'ESCALATED' && (
             <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-6">
               <h3 className="text-md font-semibold text-red-900 dark:text-red-200 mb-1">Decide this case</h3>
               <p className="text-sm text-red-800 dark:text-red-300 mb-3">
                 Escalated: {c.escalationReason}. Your decision is recorded under your identity and both parties get the hold window before it can be released. Write the reasoning for the losing party.
               </p>
+              {c.buyerPercentage != null && c.reasoning && (
+                <div className="bg-white dark:bg-secondary-800 border border-red-200 dark:border-red-800 rounded-md p-3 mb-3 text-sm">
+                  <div className="font-medium text-gray-900 dark:text-white mb-1">
+                    Recommended: {c.caseApplied ?? 'decision'}, {c.buyerPercentage}% to buyer
+                    {c.decisions.length > 0 && <span className="font-normal text-gray-500 dark:text-secondary-400"> · by {c.decisions[c.decisions.length - 1].decider}</span>}
+                  </div>
+                  <div className="text-gray-800 dark:text-secondary-200 whitespace-pre-wrap mb-2">{c.reasoning}</div>
+                  <div className="flex flex-wrap gap-2">
+                    {/* Only a decision the review gate held carries party-facing reasoning as it stands; other
+                        escalations may include notes for the reviewer, so they are a starting point, not an approval. */}
+                    {c.escalationReason === 'REVIEW_REQUIRED' && (
+                      <Button onClick={() => decide({ buyerPercentage: c.buyerPercentage!, reasoning: c.reasoning! })} disabled={isWorking} size="sm" className="bg-green-700 hover:bg-green-800 text-white">
+                        Approve as recommended
+                      </Button>
+                    )}
+                    <Button variant="outline" size="sm" disabled={isWorking} onClick={() => { setBuyerPercentage(String(c.buyerPercentage)); setReasoning(c.reasoning!); }}>
+                      Edit before deciding
+                    </Button>
+                  </div>
+                </div>
+              )}
               <div className="flex flex-col sm:flex-row gap-3">
                 <Input type="number" min={0} max={100} placeholder="% to buyer" value={buyerPercentage} onChange={(e) => setBuyerPercentage(e.target.value)} className="w-full sm:w-32" aria-label="Buyer percentage" />
                 <textarea
@@ -204,7 +263,7 @@ export default function DisputeCasePanel({ contractId, onClose, onChanged }: Dis
                   className="flex-1 px-3 py-2 border border-gray-300 dark:border-secondary-600 bg-white text-secondary-900 dark:bg-secondary-800 dark:text-white rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                   rows={3}
                 />
-                <Button onClick={decide} disabled={isWorking} size="sm" className="bg-red-600 hover:bg-red-700 text-white">Record decision</Button>
+                <Button onClick={() => decide()} disabled={isWorking} size="sm" className="bg-red-600 hover:bg-red-700 text-white">Record decision</Button>
               </div>
             </div>
           )}
@@ -213,7 +272,7 @@ export default function DisputeCasePanel({ contractId, onClose, onChanged }: Dis
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="border border-gray-200 dark:border-secondary-700 rounded-lg p-4 text-sm">
                 <div className="font-semibold text-gray-900 dark:text-white mb-2">Notices</div>
-                {c.notices.length === 0 ? <div className="text-gray-500 dark:text-secondary-400">None sent.</div> : (
+                {c.notices.length === 0 ? <div className="text-gray-500 dark:text-secondary-400">None yet.</div> : (
                   <ul className="space-y-1">
                     {c.notices.map((n, i) => (
                       <li key={i}>
@@ -226,8 +285,14 @@ export default function DisputeCasePanel({ contractId, onClose, onChanged }: Dis
                           >
                             {openNotice === i ? '▾' : '▸'} {n.kind} → {n.party}
                           </button>
-                          <span className={n.outcome === 'sent' ? 'text-green-700 dark:text-green-400' : n.outcome === 'failed' ? 'text-red-700 dark:text-red-400' : 'text-gray-500 dark:text-secondary-400'}>{n.outcome}{n.messageId && ` · ${n.messageId}`}</span>
-                          <span className="text-gray-500 dark:text-secondary-400">{formatDateTimeWithTZ(n.sentAt)}</span>
+                          <span className={n.outcome === 'sent' ? 'text-green-700 dark:text-green-400' : n.outcome === 'failed' ? 'text-red-700 dark:text-red-400' : n.outcome === 'held' ? 'text-amber-700 dark:text-amber-400 font-medium' : 'text-gray-500 dark:text-secondary-400'}>
+                            {n.outcome === 'held' ? 'held — not sent' : n.outcome === 'superseded' ? 'superseded — never sent' : n.outcome}{n.messageId && ` · ${n.messageId}`}
+                          </span>
+                          {n.outcome === 'held' ? (
+                            <Button size="sm" onClick={() => sendNotice(i)} disabled={isWorking} aria-label={`Send ${n.kind} to ${n.party}`}>Send</Button>
+                          ) : (
+                            <span className="text-gray-500 dark:text-secondary-400">{formatDateTimeWithTZ(n.sentAt)}</span>
+                          )}
                         </div>
                         {openNotice === i && (
                           <div className="mt-2 mb-3 border border-gray-200 dark:border-secondary-700 rounded">

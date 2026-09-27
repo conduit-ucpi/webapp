@@ -255,8 +255,9 @@ export default function SiteNav({ className = '', forceDark = false }: Props) {
                   )}
                 </div>
               ) : (
+                // "Dashboard", not "Sign in": the same door for new and returning visitors, and it signs them in.
                 <Link href="/dashboard" className="px-3 py-2 text-sm text-secondary-900 dark:text-white hover:opacity-80">
-                  Sign in
+                  Dashboard
                 </Link>
               )}
               <Link href="/create" className={`${btnPrimary} !px-4 !py-2 !text-sm`}>
@@ -300,7 +301,7 @@ export default function SiteNav({ className = '', forceDark = false }: Props) {
               <div className="flex gap-3 pt-2">
                 {!signedIn && (
                   <Link href="/dashboard" className="flex-1 inline-flex items-center justify-center px-4 py-3 text-sm font-medium border border-secondary-300 dark:border-secondary-600 rounded-[var(--wl-button-radius)] text-secondary-900 dark:text-white" onClick={closeAll}>
-                    Sign in
+                    Dashboard
                   </Link>
                 )}
                 <Link href="/create" className={`${btnPrimary} flex-1 !px-4`} onClick={closeAll}>

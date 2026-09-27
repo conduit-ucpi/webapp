@@ -62,9 +62,10 @@ describe('SiteNav', () => {
     expect(within(screen.getByRole('menu')).getByText('Projects')).toBeInTheDocument();
   });
 
-  it('offers Sign in when signed out', () => {
+  it('offers Dashboard (not "Sign in") when signed out', () => {
     render(<SiteNav />);
-    expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/dashboard');
+    expect(screen.getByRole('link', { name: 'Dashboard' })).toHaveAttribute('href', '/dashboard');
+    expect(screen.queryByText('Sign in')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Account menu' })).toBeNull();
   });
 
@@ -73,7 +74,7 @@ describe('SiteNav', () => {
     render(<SiteNav />);
     const account = screen.getByRole('button', { name: 'Account menu' });
     expect(account).toHaveTextContent('@sam');
-    expect(screen.queryByRole('link', { name: 'Sign in' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Dashboard' })).toBeNull();
 
     fireEvent.click(account);
     const menu = screen.getByRole('menu');

@@ -1,7 +1,2 @@
-import CoinbaseReturnScreen from '@/components/coinbase/CoinbaseReturnScreen';
-import { ONRAMP_RETURN_MESSAGE } from '@/lib/coinbaseOnramp';
-
-/** Coinbase's redirectUrl target after a buy. See CoinbaseReturnScreen. */
-export default function OnrampReturnPage() {
-  return <CoinbaseReturnScreen message={ONRAMP_RETURN_MESSAGE} />;
-}
+/** Route for the SDK's OnrampReturnPage: where Coinbase returns a buyer after paying by card. */
+export { OnrampReturnPage as default } from '@conduit-ucpi/whitelabel-sdk';

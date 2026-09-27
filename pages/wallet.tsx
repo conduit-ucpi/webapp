@@ -8,7 +8,7 @@ import Input from '@/components/ui/Input';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import ExpandableHash from '@/components/ui/ExpandableHash';
 import TokenGuide from '@/components/ui/TokenGuide';
-import CashOutPanel from '@/components/wallet/CashOutPanel';
+import { CashOutPanel } from '@conduit-ucpi/whitelabel-sdk';
 import { ethers } from 'ethers';
 import { RpcClient } from '@/lib/rpc/RpcClient';
 import { useFarcaster } from '@/components/farcaster/FarcasterDetectionProvider';

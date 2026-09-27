@@ -12,3 +12,8 @@ export { default as CreatePage } from './CreatePage';
 export { default as ContractCreatePage } from './ContractCreatePage';
 export { default as DashboardPage } from './DashboardPage';
 export { default as ContractPayPage } from './ContractPayPage';
+// Where Coinbase returns a buyer after paying by card, or a seller after cashing out. A tenant
+// using either flow must mount these at /onramp-return and /offramp-return: the SDK's Coinbase
+// code sends people back to exactly those paths.
+export { default as OnrampReturnPage } from './OnrampReturnPage';
+export { default as OfframpReturnPage } from './OfframpReturnPage';

@@ -371,17 +371,13 @@ jobs:
       startsWith(github.ref, 'refs/tags/pagesRelease-')
     runs-on: ubuntu-latest
     environment:
-      # Every NEXT_PUBLIC_* var below resolves against THIS environment, so the name stays
-      # even while it publishes to two hosts. Renaming means moving all of them.
+      # Named for the old host. Every NEXT_PUBLIC_* var and the Cloudflare secrets below
+      # resolve against THIS environment, and its approval gate is what guards a release,
+      # so the name stays. Renaming means moving all of them.
       name: github-pages
-      # Pages is still the live site, so its URL is the one worth surfacing on the run.
-      url: ${{ steps.deployment.outputs.page_url }}
+      url: https://stabledrop.me
     permissions:
       contents: read
-      # GitHub Pages' OIDC upload. Cloudflare authenticates with an API token and needs
-      # neither, but both deploys run from this job.
-      pages: write
-      id-token: write
     # One deployment at a time; never cancel a run that is mid-publish.
     concurrency:
       group: github-pages
@@ -522,31 +518,21 @@ jobs:
           # once the host move itself is proven.
           cp out/index.html out/404.html
 
-          # Tells Pages to serve _next/* verbatim rather than running the paths
-          # through Jekyll, which ignores underscore-prefixed directories.
-          touch out/.nojekyll
-
-      - uses: actions/configure-pages@v5
-
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: out
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
-
-      # ── Cloudflare Pages, in parallel with the above while it is validated ──
+      # ── Cloudflare Pages: the live site ──────────────────────────────────────────────
       #
-      # ⚠️ SECOND, AND SKIPPED UNTIL IT IS CONFIGURED. Pages is the live site; a Cloudflare
-      #    misconfiguration must not fail a release that has already published successfully.
-      #    The `if` means the step does not exist until CLOUDFLARE_PAGES_PROJECT is set, so
-      #    the run is green rather than red-with-a-skip while the account is still being set
-      #    up — and turning it on is one variable, with no workflow edit.
-      #
-      #    Delete the GitHub Pages steps above once Cloudflare has served real traffic.
+      # The only host. GitHub Pages was retired after Cloudflare took over stabledrop.me.
+      # Without the project name the release would build and then publish nowhere while
+      # looking finished, so a missing setting fails the run here instead.
+      - name: Check the Cloudflare project is configured
+        env:
+          CLOUDFLARE_PAGES_PROJECT: ${{ vars.CLOUDFLARE_PAGES_PROJECT }}
+        run: |
+          if [ -z "${CLOUDFLARE_PAGES_PROJECT}" ]; then
+            echo "CLOUDFLARE_PAGES_PROJECT is not set on the github-pages environment; nothing would be published." >&2
+            exit 1
+          fi
+
       - name: Deploy to Cloudflare Pages
-        if: vars.CLOUDFLARE_PAGES_PROJECT != ''
         id: cloudflare
         uses: cloudflare/wrangler-action@v3
         with:

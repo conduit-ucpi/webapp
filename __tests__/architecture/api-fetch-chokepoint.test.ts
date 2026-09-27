@@ -56,6 +56,14 @@ const SERVER_PREFIXES = ['pages/api/', 'lib/server/'];
  * NOTE: rule 1 still applies to these files. An exception here only means
  * "fetch need not name apiUrl", never "this file may use relative /api paths".
  */
+/**
+ * Code samples shown to integrators — `<CodeBlock>{`...`}</CodeBlock>` — are text on the page
+ * for someone else's server to run, not requests this app makes, so they are not scanned. The
+ * sample is blanked line for line, so reported line numbers still match the file.
+ */
+const stripCodeSamples = (content: string): string =>
+  content.replace(/<CodeBlock\b[^>]*>\s*\{`[\s\S]*?`\}\s*<\/CodeBlock>/g, (sample) => sample.replace(/[^\n]/g, ' '));
+
 const EXTERNAL_FETCH_EXCEPTIONS = [
   'packages/whitelabel-sdk/src/lib/web3.ts',                    // this.config.rpcUrl — blockchain node
   'packages/whitelabel-sdk/src/lib/rpc/RpcClient.ts',           // this.rpcUrl — blockchain node
@@ -183,10 +191,22 @@ describe('Architecture: single API chokepoint (lib/apiFetch)', () => {
   });
 
   // Rule 2 — the one that catches a helper taking a caller-supplied path.
+  it('ignores fetch inside an integrator code sample, and nothing else', () => {
+    const page = [
+      "const a = await fetch('/api/real');",
+      '<CodeBlock id="x">',
+      "  {`const r = await fetch('https://api.example/api/results');`}",
+      '</CodeBlock>',
+      "const b = await fetch(apiUrl('/api/ok'));",
+    ].join('\n');
+    const found = fetchFirstArgs(stripCodeSamples(page)).map(({ arg, line }) => `${line}:${arg}`);
+    expect(found).toEqual(["1:'/api/real'", "5:apiUrl('/api/ok')"]);
+  });
+
   it.each(files.filter((f) => !EXTERNAL_FETCH_EXCEPTIONS.includes(f)))(
     '%s routes every fetch through apiUrl()',
     (relPath) => {
-      const content = fs.readFileSync(path.join(ROOT, relPath), 'utf-8');
+      const content = stripCodeSamples(fs.readFileSync(path.join(ROOT, relPath), 'utf-8'));
       const offenders = fetchFirstArgs(content).filter(({ arg }) => !arg.startsWith('apiUrl('));
       if (offenders.length) {
         throw new Error(

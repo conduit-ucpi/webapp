@@ -114,7 +114,7 @@ export default function IntegratePage() {
               </h1>
               <p
                 className="mt-6 text-base text-secondary-500 dark:text-secondary-400 max-w-xl leading-relaxed"
-                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
                 Include one script, configure your wallet, and start accepting payments. No backend integration required.
               </p>
@@ -147,7 +147,7 @@ export default function IntegratePage() {
               </p>
               <h2
                 className="text-3xl sm:text-4xl font-light text-secondary-900 dark:text-white leading-snug max-w-2xl mb-4"
-                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
                 Three steps to accepting payments.
               </h2>
@@ -256,7 +256,7 @@ export default function IntegratePage() {
               </p>
               <h2
                 className="text-3xl sm:text-4xl font-light text-secondary-900 dark:text-white leading-snug max-w-2xl mb-10"
-                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
                 Choose how checkout appears.
               </h2>
@@ -304,7 +304,7 @@ export default function IntegratePage() {
               </p>
               <h2
                 className="text-3xl sm:text-4xl font-light text-secondary-900 dark:text-white leading-snug max-w-2xl mb-10"
-                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
                 Common integration patterns.
               </h2>
@@ -415,7 +415,7 @@ export default function IntegratePage() {
               </p>
               <h2
                 className="text-3xl sm:text-4xl font-light text-secondary-900 dark:text-white leading-snug max-w-2xl mb-10"
-                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
                 Configuration options.
               </h2>
@@ -525,7 +525,7 @@ export default function IntegratePage() {
               </p>
               <h2
                 className="text-3xl sm:text-4xl font-light text-secondary-900 dark:text-white leading-snug max-w-2xl mb-4"
-                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
                 Webhook-based order fulfillment.
               </h2>
@@ -812,7 +812,7 @@ app.post('/api/conduit-webhook', async (req, res) => {
               </p>
               <h2
                 className="text-3xl sm:text-4xl font-light text-secondary-900 dark:text-white leading-snug max-w-2xl mb-10"
-                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
                 What verified data means.
               </h2>
@@ -864,7 +864,7 @@ app.post('/api/conduit-webhook', async (req, res) => {
               </p>
               <h2
                 className="text-3xl sm:text-4xl font-light text-secondary-900 dark:text-white leading-snug max-w-2xl mb-16"
-                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
                 Built-in protection for every transaction.
               </h2>
@@ -960,7 +960,7 @@ app.post('/api/conduit-webhook', async (req, res) => {
               </p>
               <h2
                 className="text-3xl sm:text-4xl font-light text-secondary-900 dark:text-white leading-snug max-w-2xl mb-10"
-                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
                 Frequently asked questions.
               </h2>
@@ -1023,7 +1023,7 @@ app.post('/api/conduit-webhook', async (req, res) => {
             <Fade>
               <h2
                 className="text-3xl sm:text-4xl font-light text-secondary-900 dark:text-white leading-snug mb-3"
-                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
                 Ready to integrate?
               </h2>
@@ -1066,10 +1066,10 @@ app.post('/api/conduit-webhook', async (req, res) => {
                   Source code
                 </a>
                 <a
-                  href="mailto:info@conduit-ucpi.com"
+                  href="mailto:info@stabledrop.me"
                   className="hover:text-secondary-600 dark:hover:text-secondary-300 transition-colors"
                 >
-                  info@conduit-ucpi.com
+                  info@stabledrop.me
                 </a>
               </div>
             </Fade>

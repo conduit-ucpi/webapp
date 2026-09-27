@@ -420,8 +420,8 @@ export default function Landing2() {
                   100% open source &mdash; audit every line
                 </a>
                 <p className="text-sm text-secondary-400">
-                  <a href="mailto:info@conduit-ucpi.com" className="hover:text-secondary-600 dark:hover:text-secondary-300 transition-colors">
-                    info@conduit-ucpi.com
+                  <a href="mailto:info@stabledrop.me" className="hover:text-secondary-600 dark:hover:text-secondary-300 transition-colors">
+                    info@stabledrop.me
                   </a>
                 </p>
               </div>

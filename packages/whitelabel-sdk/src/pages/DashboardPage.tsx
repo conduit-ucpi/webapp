@@ -63,7 +63,7 @@ export default function Dashboard2({ beforeContracts }: DashboardPageProps = {})
             <p className="text-xs tracking-[0.2em] uppercase text-secondary-400 dark:text-secondary-500 mb-6">{t('dashboardPage.dashboard')}</p>
             <h1
               className="text-3xl sm:text-4xl font-light text-secondary-900 dark:text-white leading-snug mb-4"
-              style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+              style={{ fontFamily: 'var(--wl-font-accent)' }}
             >{t('dashboardPage.connectYourWalletTo')}</h1>
             <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-10 max-w-md mx-auto">{t('dashboardPage.youNeedToConnect')}</p>
             {/* Same wallet gate as /create and /contract-pay - signing in is the
@@ -89,48 +89,48 @@ export default function Dashboard2({ beforeContracts }: DashboardPageProps = {})
         /* ── Design tokens ── */
         .dashboard2-flat {
           --d-surface: transparent;
-          --d-divider: #f1f5f9;
-          --d-btn-bg: #0f172a;
-          --d-btn-bg-hover: #334155;
-          --d-btn-fg: #fff;
-          --d-outline-border: #cbd5e1;
-          --d-outline-fg: #334155;
-          --d-outline-hover: #f8fafc;
-          --d-tab-active: #0f172a;
-          --d-tab-text: #0f172a;
-          --d-badge-bg: #f1f5f9;
-          --d-badge-fg: #0f172a;
-          --d-icon-bg: #f1f5f9;
-          --d-icon-fg: #334155;
-          --d-input-bg: #fff;
-          --d-input-border: #cbd5e1;
-          --d-input-fg: #0f172a;
-          --d-input-placeholder: #94a3b8;
-          --d-text-primary: #0f172a;
-          --d-text-secondary: #64748b;
+          --d-divider: rgb(var(--wl-secondary-100));
+          --d-btn-bg: var(--wl-button-bg);
+          --d-btn-bg-hover: var(--wl-button-hover-bg);
+          --d-btn-fg: var(--wl-button-fg);
+          --d-outline-border: rgb(var(--wl-secondary-300));
+          --d-outline-fg: rgb(var(--wl-secondary-700));
+          --d-outline-hover: rgb(var(--wl-secondary-50));
+          --d-tab-active: rgb(var(--wl-secondary-900));
+          --d-tab-text: rgb(var(--wl-secondary-900));
+          --d-badge-bg: rgb(var(--wl-secondary-100));
+          --d-badge-fg: rgb(var(--wl-secondary-900));
+          --d-icon-bg: rgb(var(--wl-secondary-100));
+          --d-icon-fg: rgb(var(--wl-secondary-700));
+          --d-input-bg: rgb(var(--wl-white));
+          --d-input-border: rgb(var(--wl-secondary-300));
+          --d-input-fg: rgb(var(--wl-secondary-900));
+          --d-input-placeholder: rgb(var(--wl-secondary-400));
+          --d-text-primary: rgb(var(--wl-secondary-900));
+          --d-text-secondary: rgb(var(--wl-secondary-500));
           --d-card-bg: transparent;
         }
         .dark .dashboard2-flat {
           --d-surface: transparent;
-          --d-divider: #1e293b;
-          --d-btn-bg: #fff;
-          --d-btn-bg-hover: #f1f5f9;
-          --d-btn-fg: #0f172a;
-          --d-outline-border: #475569;
-          --d-outline-fg: #cbd5e1;
-          --d-outline-hover: #1e293b;
-          --d-tab-active: #fff;
-          --d-tab-text: #fff;
-          --d-badge-bg: #1e293b;
-          --d-badge-fg: #e2e8f0;
-          --d-icon-bg: #1e293b;
-          --d-icon-fg: #94a3b8;
-          --d-input-bg: #0f172a;
-          --d-input-border: #334155;
-          --d-input-fg: #f1f5f9;
-          --d-input-placeholder: #64748b;
-          --d-text-primary: #f8fafc;
-          --d-text-secondary: #94a3b8;
+          --d-divider: rgb(var(--wl-secondary-800));
+          --d-btn-bg: var(--wl-button-dark-bg);
+          --d-btn-bg-hover: var(--wl-button-dark-hover-bg);
+          --d-btn-fg: var(--wl-button-dark-fg);
+          --d-outline-border: rgb(var(--wl-secondary-600));
+          --d-outline-fg: rgb(var(--wl-secondary-300));
+          --d-outline-hover: rgb(var(--wl-secondary-800));
+          --d-tab-active: rgb(var(--wl-white));
+          --d-tab-text: rgb(var(--wl-white));
+          --d-badge-bg: rgb(var(--wl-secondary-800));
+          --d-badge-fg: rgb(var(--wl-secondary-200));
+          --d-icon-bg: rgb(var(--wl-secondary-800));
+          --d-icon-fg: rgb(var(--wl-secondary-400));
+          --d-input-bg: rgb(var(--wl-secondary-900));
+          --d-input-border: rgb(var(--wl-secondary-700));
+          --d-input-fg: rgb(var(--wl-secondary-100));
+          --d-input-placeholder: rgb(var(--wl-secondary-500));
+          --d-text-primary: rgb(var(--wl-secondary-50));
+          --d-text-secondary: rgb(var(--wl-secondary-400));
           --d-card-bg: transparent;
         }
 
@@ -181,7 +181,8 @@ export default function Dashboard2({ beforeContracts }: DashboardPageProps = {})
           background-color: var(--d-input-bg) !important;
           border-color: var(--d-input-border) !important;
           color: var(--d-input-fg) !important;
-          border-radius: 0 !important;
+          /* Square in the default look; follows the theme's button corners otherwise. */
+          border-radius: var(--wl-button-radius) !important;
         }
         .dashboard2-flat input[type="text"]::placeholder {
           color: var(--d-input-placeholder) !important;
@@ -213,7 +214,7 @@ export default function Dashboard2({ beforeContracts }: DashboardPageProps = {})
                 >{t('dashboardPage.yourContracts')}</h1>
                 <p
                   className="mt-4 text-sm text-secondary-500 dark:text-secondary-400 max-w-md leading-relaxed"
-                  style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                  style={{ fontFamily: 'var(--wl-font-accent)' }}
                 >{t('dashboardPage.manageEscrowContractsAnd')}</p>
               </div>
 

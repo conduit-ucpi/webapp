@@ -6,13 +6,14 @@
 
 /* White-label theme defaults.
  *
- * Tailwind's primary/secondary colours resolve to these variables (see
- * tailwind.config.js), so a tenant restyles the app by overriding them rather
- * than by recompiling Tailwind. They are written here as well as in the SDK so
+ * Tailwind's colours, fonts and rounding resolve to these variables (see
+ * tailwind.config.js), so a tenant or a look restyles the app by overriding them
+ * rather than by recompiling Tailwind. They are written here as well as in the SDK so
  * the very first paint is correct on the static build, before any JavaScript
  * has run; BrandProvider then applies only a tenant's deltas.
  *
- * Generated from packages/whitelabel-sdk/src/config/defaults.ts — edit there.
+ * Generated from packages/whitelabel-sdk/src/config/defaults.ts — edit there, then
+ * regenerate: __tests__/whitelabel/globals-theme-baseline.test.ts fails until they match.
  */
 :root {
   --wl-primary-50: 236 253 245;
@@ -35,9 +36,161 @@
   --wl-secondary-700: 51 65 85;
   --wl-secondary-800: 30 41 59;
   --wl-secondary-900: 15 23 42;
+  --wl-gray-50: 249 250 251;
+  --wl-gray-100: 243 244 246;
+  --wl-gray-200: 229 231 235;
+  --wl-gray-300: 209 213 219;
+  --wl-gray-400: 156 163 175;
+  --wl-gray-500: 107 114 128;
+  --wl-gray-600: 75 85 99;
+  --wl-gray-700: 55 65 81;
+  --wl-gray-800: 31 41 55;
+  --wl-gray-900: 17 24 39;
+  --wl-gray-950: 3 7 18;
+  --wl-neutral-50: 250 250 250;
+  --wl-neutral-100: 245 245 245;
+  --wl-neutral-200: 229 229 229;
+  --wl-neutral-300: 212 212 212;
+  --wl-neutral-400: 163 163 163;
+  --wl-neutral-500: 115 115 115;
+  --wl-neutral-600: 82 82 82;
+  --wl-neutral-700: 64 64 64;
+  --wl-neutral-800: 38 38 38;
+  --wl-neutral-900: 23 23 23;
+  --wl-neutral-950: 10 10 10;
+  --wl-red-50: 254 242 242;
+  --wl-red-100: 254 226 226;
+  --wl-red-200: 254 202 202;
+  --wl-red-300: 252 165 165;
+  --wl-red-400: 248 113 113;
+  --wl-red-500: 239 68 68;
+  --wl-red-600: 220 38 38;
+  --wl-red-700: 185 28 28;
+  --wl-red-800: 153 27 27;
+  --wl-red-900: 127 29 29;
+  --wl-red-950: 69 10 10;
+  --wl-orange-50: 255 247 237;
+  --wl-orange-100: 255 237 213;
+  --wl-orange-200: 254 215 170;
+  --wl-orange-300: 253 186 116;
+  --wl-orange-400: 251 146 60;
+  --wl-orange-500: 249 115 22;
+  --wl-orange-600: 234 88 12;
+  --wl-orange-700: 194 65 12;
+  --wl-orange-800: 154 52 18;
+  --wl-orange-900: 124 45 18;
+  --wl-orange-950: 67 20 7;
+  --wl-amber-50: 255 251 235;
+  --wl-amber-100: 254 243 199;
+  --wl-amber-200: 253 230 138;
+  --wl-amber-300: 252 211 77;
+  --wl-amber-400: 251 191 36;
+  --wl-amber-500: 245 158 11;
+  --wl-amber-600: 217 119 6;
+  --wl-amber-700: 180 83 9;
+  --wl-amber-800: 146 64 14;
+  --wl-amber-900: 120 53 15;
+  --wl-amber-950: 69 26 3;
+  --wl-yellow-50: 254 252 232;
+  --wl-yellow-100: 254 249 195;
+  --wl-yellow-200: 254 240 138;
+  --wl-yellow-300: 253 224 71;
+  --wl-yellow-400: 250 204 21;
+  --wl-yellow-500: 234 179 8;
+  --wl-yellow-600: 202 138 4;
+  --wl-yellow-700: 161 98 7;
+  --wl-yellow-800: 133 77 14;
+  --wl-yellow-900: 113 63 18;
+  --wl-yellow-950: 66 32 6;
+  --wl-green-50: 240 253 244;
+  --wl-green-100: 220 252 231;
+  --wl-green-200: 187 247 208;
+  --wl-green-300: 134 239 172;
+  --wl-green-400: 74 222 128;
+  --wl-green-500: 34 197 94;
+  --wl-green-600: 22 163 74;
+  --wl-green-700: 21 128 61;
+  --wl-green-800: 22 101 52;
+  --wl-green-900: 20 83 45;
+  --wl-green-950: 5 46 22;
+  --wl-emerald-50: 236 253 245;
+  --wl-emerald-100: 209 250 229;
+  --wl-emerald-200: 167 243 208;
+  --wl-emerald-300: 110 231 183;
+  --wl-emerald-400: 52 211 153;
+  --wl-emerald-500: 16 185 129;
+  --wl-emerald-600: 5 150 105;
+  --wl-emerald-700: 4 120 87;
+  --wl-emerald-800: 6 95 70;
+  --wl-emerald-900: 6 78 59;
+  --wl-emerald-950: 2 44 34;
+  --wl-blue-50: 239 246 255;
+  --wl-blue-100: 219 234 254;
+  --wl-blue-200: 191 219 254;
+  --wl-blue-300: 147 197 253;
+  --wl-blue-400: 96 165 250;
+  --wl-blue-500: 59 130 246;
+  --wl-blue-600: 37 99 235;
+  --wl-blue-700: 29 78 216;
+  --wl-blue-800: 30 64 175;
+  --wl-blue-900: 30 58 138;
+  --wl-blue-950: 23 37 84;
+  --wl-indigo-50: 238 242 255;
+  --wl-indigo-100: 224 231 255;
+  --wl-indigo-200: 199 210 254;
+  --wl-indigo-300: 165 180 252;
+  --wl-indigo-400: 129 140 248;
+  --wl-indigo-500: 99 102 241;
+  --wl-indigo-600: 79 70 229;
+  --wl-indigo-700: 67 56 202;
+  --wl-indigo-800: 55 48 163;
+  --wl-indigo-900: 49 46 129;
+  --wl-indigo-950: 30 27 75;
+  --wl-purple-50: 250 245 255;
+  --wl-purple-100: 243 232 255;
+  --wl-purple-200: 233 213 255;
+  --wl-purple-300: 216 180 254;
+  --wl-purple-400: 192 132 252;
+  --wl-purple-500: 168 85 247;
+  --wl-purple-600: 147 51 234;
+  --wl-purple-700: 126 34 206;
+  --wl-purple-800: 107 33 168;
+  --wl-purple-900: 88 28 135;
+  --wl-purple-950: 59 7 100;
+  --wl-pink-50: 253 242 248;
+  --wl-pink-100: 252 231 243;
+  --wl-pink-200: 251 207 232;
+  --wl-pink-300: 249 168 212;
+  --wl-pink-400: 244 114 182;
+  --wl-pink-500: 236 72 153;
+  --wl-pink-600: 219 39 119;
+  --wl-pink-700: 190 24 93;
+  --wl-pink-800: 157 23 77;
+  --wl-pink-900: 131 24 67;
+  --wl-pink-950: 80 7 36;
+  --wl-success-50: 240 253 244;
+  --wl-success-500: 34 197 94;
+  --wl-success-600: 22 163 74;
+  --wl-warning-50: 255 251 235;
+  --wl-warning-500: 245 158 11;
+  --wl-warning-600: 217 119 6;
+  --wl-error-50: 254 242 242;
+  --wl-error-500: 239 68 68;
+  --wl-error-600: 220 38 38;
+  --wl-white: 255 255 255;
+  --wl-black: 0 0 0;
   --wl-radius: 0.5rem;
   --wl-font: Inter, system-ui, -apple-system, sans-serif;
   --wl-font-heading: Inter, system-ui, -apple-system, sans-serif;
+  --wl-font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --wl-font-accent: 'Newsreader', Georgia, serif;
+  --wl-button-radius: 0px;
+  --wl-button-bg: rgb(var(--wl-secondary-900));
+  --wl-button-fg: rgb(var(--wl-white));
+  --wl-button-hover-bg: rgb(var(--wl-secondary-700));
+  --wl-button-dark-bg: rgb(var(--wl-white));
+  --wl-button-dark-fg: rgb(var(--wl-secondary-900));
+  --wl-button-dark-hover-bg: rgb(var(--wl-secondary-100));
 }
 
 /* Custom scrollbar hide for tabs */

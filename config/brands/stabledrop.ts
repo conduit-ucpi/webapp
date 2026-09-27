@@ -1,4 +1,5 @@
 import { defineBrand } from '@conduit-ucpi/whitelabel-sdk';
+import { APP_PAGES_LOOK } from '@/config/looks';
 
 /**
  * Stabledrop's own brand, expressed in exactly the format a tenant would use.
@@ -7,9 +8,8 @@ import { defineBrand } from '@conduit-ucpi/whitelabel-sdk';
  * contract we hand a white-label customer, so a gap in that contract shows up
  * here first rather than in a partner's integration.
  *
- * Colours are omitted on purpose — the SDK's defaults ARE this palette (they
- * are generated from tailwind.config.js), so restating them would be a second
- * copy to keep in step. A tenant supplies theirs here.
+ * Its theme is whichever look config/looks/index.ts assigns to the app pages.
+ * A tenant supplies theirs here directly.
  */
 const brand = defineBrand({
   id: 'stabledrop',
@@ -21,11 +21,9 @@ const brand = defineBrand({
   // the API host for the static build.
   apiBaseUrl: process.env.NEXT_PUBLIC_API_BASE_URL || '',
 
-  theme: {
-    // Inherit the default ramps; override only what is genuinely ours.
-    radius: '0.5rem',
-    fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
-  },
+  // Every page but the landing page wears this. The look itself, and the switch between
+  // looks, live in config/looks.
+  theme: APP_PAGES_LOOK.app,
 
   assets: {
     logo: '/icon-512.png',

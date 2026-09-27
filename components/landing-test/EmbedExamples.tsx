@@ -62,7 +62,7 @@ export default function EmbedExamples({ className = '', layout = 'tabs' }: Props
 
   if (layout === 'side') {
     return (
-      <div className={`grid lg:grid-cols-[220px_1fr] gap-6 ${className}`} data-testid="embed-examples">
+      <div className={`grid grid-cols-[minmax(0,1fr)] lg:grid-cols-[220px_minmax(0,1fr)] gap-6 ${className}`} data-testid="embed-examples">
         <div role="tablist" aria-label="Where to embed" className="flex lg:flex-col gap-1 flex-wrap">
           {EMBED_EXAMPLES.map((e) => tab(e.key, e.label))}
         </div>

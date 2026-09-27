@@ -49,7 +49,7 @@ export default function WalletRegistrationPrereq() {
         <p className="text-xs tracking-[0.2em] uppercase text-secondary-400 dark:text-secondary-500 mb-6">{t('walletRegistrationPrereq.prerequisites')}</p>
         <h2
           className="text-3xl sm:text-4xl font-light text-secondary-900 dark:text-white leading-snug max-w-2xl mb-4"
-          style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+          style={{ fontFamily: 'var(--wl-font-accent)' }}
         >
           {registered
             ? 'This wallet is going to receive your payments:'

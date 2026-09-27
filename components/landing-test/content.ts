@@ -14,7 +14,7 @@ export const SOURCE_URL = 'https://github.com/conduit-ucpi/contracts';
 export const API_DOC_URL = 'https://api.stabledrop.me/api/ap2/settle/doc';
 export const MCP_URL = 'https://api.stabledrop.me/api/ap2/mcp';
 export const WORDPRESS_PLUGIN_URL = 'https://wordpress.org/plugins/usdc-payments-with-buyer-protection/';
-export const CONTACT_EMAIL = 'info@conduit-ucpi.com';
+export const CONTACT_EMAIL = 'info@stabledrop.me';
 
 /**
  * "Make payment" — paying someone rather than asking to be paid. The flow does not exist

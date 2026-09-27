@@ -41,7 +41,7 @@ export default function Demos() {
               </h1>
               <p
                 className="mt-6 text-base text-secondary-500 dark:text-secondary-400 max-w-xl leading-relaxed"
-                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
                 Watch how escrow checkout works in WordPress and Shopify.
               </p>
@@ -61,7 +61,7 @@ export default function Demos() {
               </p>
               <h2
                 className="text-2xl sm:text-3xl font-light text-secondary-900 dark:text-white leading-snug max-w-2xl mb-8"
-                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
                 Escrow checkout for WooCommerce
               </h2>
@@ -105,7 +105,7 @@ export default function Demos() {
               </p>
               <h2
                 className="text-2xl sm:text-3xl font-light text-secondary-900 dark:text-white leading-snug max-w-2xl mb-8"
-                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
                 Escrow checkout for Shopify
               </h2>

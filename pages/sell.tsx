@@ -78,7 +78,7 @@ export default function Sell() {
               <motion.p
                 variants={heroChild}
                 className="mt-6 text-base text-secondary-500 dark:text-secondary-400 max-w-xl leading-relaxed"
-                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
                 Send a payment request, your buyer pays into a time-locked escrow, and you get paid automatically on the payout date. 1&nbsp;% fee. No middleman holding your money.
               </motion.p>
@@ -175,7 +175,7 @@ export default function Sell() {
               </p>
               <h2
                 className="text-3xl sm:text-4xl font-light text-secondary-900 dark:text-white leading-snug max-w-2xl mb-16"
-                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
                 Get paid without giving up control.
               </h2>
@@ -237,7 +237,7 @@ export default function Sell() {
               </p>
               <h2
                 className="text-3xl sm:text-4xl font-light text-secondary-900 dark:text-white leading-snug max-w-2xl mb-16"
-                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
                 From freelancers to storefronts.
               </h2>
@@ -340,7 +340,7 @@ export default function Sell() {
             <Fade>
               <h2
                 className="text-3xl sm:text-4xl font-light text-secondary-900 dark:text-white leading-snug mb-3"
-                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
                 Ready to get paid?
               </h2>
@@ -371,10 +371,10 @@ export default function Sell() {
                   Source code
                 </a>
                 <a
-                  href="mailto:info@conduit-ucpi.com"
+                  href="mailto:info@stabledrop.me"
                   className="hover:text-secondary-600 dark:hover:text-secondary-300 transition-colors"
                 >
-                  info@conduit-ucpi.com
+                  info@stabledrop.me
                 </a>
               </div>
             </Fade>

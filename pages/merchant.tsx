@@ -63,7 +63,7 @@ export default function Merchant() {
               <motion.p
                 variants={heroChild}
                 className="mt-6 text-base text-secondary-500 dark:text-secondary-400 max-w-xl leading-relaxed"
-                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
                 A wallet address on your site won&apos;t convert&nbsp;&mdash; buyers don&apos;t trust it. We give them buyer protection, a familiar checkout with wallet, network and currency selected automatically, and zero gas fees. No vetting, 1&nbsp;% flat fee, 10-minute setup.
               </motion.p>
@@ -173,7 +173,7 @@ export default function Merchant() {
               </p>
               <h2
                 className="text-3xl sm:text-4xl font-light text-secondary-900 dark:text-white leading-snug mb-3"
-                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
                 See what your customers see.
               </h2>
@@ -227,7 +227,7 @@ export default function Merchant() {
               </p>
               <h2
                 className="text-3xl sm:text-4xl font-light text-secondary-900 dark:text-white leading-snug max-w-2xl mb-16"
-                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
                 Everything traditional processors take from you, we don&apos;t.
               </h2>
@@ -300,7 +300,7 @@ export default function Merchant() {
               </p>
               <h2
                 className="text-3xl sm:text-4xl font-light text-secondary-900 dark:text-white leading-snug max-w-2xl mb-16"
-                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
                 Pay with stablecoins and actually be protected.
               </h2>
@@ -416,7 +416,7 @@ export default function Merchant() {
             <Fade>
               <h2
                 className="text-3xl sm:text-4xl font-light text-secondary-900 dark:text-white leading-snug mb-3"
-                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
                 Add stablecoin checkout to your store.
               </h2>
@@ -449,10 +449,10 @@ export default function Merchant() {
                   Integrations
                 </Link>
                 <a
-                  href="mailto:info@conduit-ucpi.com"
+                  href="mailto:info@stabledrop.me"
                   className="hover:text-secondary-600 dark:hover:text-secondary-300 transition-colors"
                 >
-                  info@conduit-ucpi.com
+                  info@stabledrop.me
                 </a>
               </div>
             </Fade>

@@ -31,7 +31,7 @@ export default function AudienceTabs({ className = '', columns = 2, showEverywhe
               type="button"
               aria-selected={selected}
               onClick={() => setActive(a.key)}
-              className={`px-5 py-2 text-sm font-medium rounded-full transition-colors ${
+              className={`px-4 sm:px-5 py-2 text-sm font-medium rounded-full transition-colors ${
                 selected ? `${lt.accentBg} text-[color:var(--lt-accent-fg)]` : `${lt.muted} hover:text-[color:var(--lt-fg)]`
               }`}
             >

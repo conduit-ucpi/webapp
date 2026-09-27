@@ -273,7 +273,7 @@ export default function FAQ() {
         "name": "What if I need help with technical issues that aren't disputes?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "Technical support is available by emailing info@conduit-ucpi.com"
+          "text": "Technical support is available by emailing info@stabledrop.me"
         }
       },
       {
@@ -281,7 +281,7 @@ export default function FAQ() {
         "name": "Can I get proper receipts/invoices for business transactions?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "That sounds like a great enhancement. Email us at info@conduit-ucpi.com to discuss your needs."
+          "text": "That sounds like a great enhancement. Email us at info@stabledrop.me to discuss your needs."
         }
       },
       {
@@ -771,7 +771,7 @@ export default function FAQ() {
               </p>
               <h2
                 className="text-2xl sm:text-3xl font-light text-secondary-900 dark:text-white leading-snug max-w-2xl mb-4"
-                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
                 How the escrow system works.
               </h2>
@@ -819,7 +819,7 @@ export default function FAQ() {
               </p>
               <h2
                 className="text-2xl sm:text-3xl font-light text-secondary-900 dark:text-white leading-snug max-w-2xl mb-4"
-                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
                 Timelines and cancellation.
               </h2>
@@ -867,7 +867,7 @@ export default function FAQ() {
               </p>
               <h2
                 className="text-2xl sm:text-3xl font-light text-secondary-900 dark:text-white leading-snug max-w-2xl mb-4"
-                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
                 Platform reliability and edge cases.
               </h2>
@@ -915,7 +915,7 @@ export default function FAQ() {
               </p>
               <h2
                 className="text-2xl sm:text-3xl font-light text-secondary-900 dark:text-white leading-snug max-w-2xl mb-4"
-                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
                 Fees and payment options.
               </h2>
@@ -955,7 +955,7 @@ export default function FAQ() {
               </p>
               <h2
                 className="text-2xl sm:text-3xl font-light text-secondary-900 dark:text-white leading-snug max-w-2xl mb-4"
-                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
                 When things go wrong.
               </h2>
@@ -1027,7 +1027,7 @@ export default function FAQ() {
               </p>
               <h2
                 className="text-2xl sm:text-3xl font-light text-secondary-900 dark:text-white leading-snug max-w-2xl mb-4"
-                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
                 Cross-border transactions and legal questions.
               </h2>
@@ -1067,7 +1067,7 @@ export default function FAQ() {
               </p>
               <h2
                 className="text-2xl sm:text-3xl font-light text-secondary-900 dark:text-white leading-snug max-w-2xl mb-4"
-                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
                 Data, code audits, and transparency.
               </h2>
@@ -1147,7 +1147,7 @@ export default function FAQ() {
               </p>
               <h2
                 className="text-2xl sm:text-3xl font-light text-secondary-900 dark:text-white leading-snug max-w-2xl mb-4"
-                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
                 Help and practical guidance.
               </h2>
@@ -1157,7 +1157,7 @@ export default function FAQ() {
               <Fade>
                 <FAQItem question="What if I need help with technical issues that aren't disputes?">
                   <p className="text-sm text-secondary-500 dark:text-secondary-400 leading-relaxed">
-                    Technical support is available by emailing <a href="mailto:info@conduit-ucpi.com" className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 underline">info@conduit-ucpi.com</a>
+                    Technical support is available by emailing <a href="mailto:info@stabledrop.me" className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 underline">info@stabledrop.me</a>
                   </p>
                 </FAQItem>
               </Fade>
@@ -1165,7 +1165,7 @@ export default function FAQ() {
               <Fade delay={0.05}>
                 <FAQItem question="Can I get proper receipts/invoices for business transactions?">
                   <p className="text-sm text-secondary-500 dark:text-secondary-400 leading-relaxed">
-                    That sounds like a great enhancement. Email us at <a href="mailto:info@conduit-ucpi.com" className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 underline">info@conduit-ucpi.com</a> to discuss your needs.
+                    That sounds like a great enhancement. Email us at <a href="mailto:info@stabledrop.me" className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 underline">info@stabledrop.me</a> to discuss your needs.
                   </p>
                 </FAQItem>
               </Fade>
@@ -1219,7 +1219,7 @@ export default function FAQ() {
               </p>
               <h2
                 className="text-2xl sm:text-3xl font-light text-secondary-900 dark:text-white leading-snug max-w-2xl mb-4"
-                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
                 Your first transaction.
               </h2>
@@ -1291,7 +1291,7 @@ export default function FAQ() {
               </p>
               <h2
                 className="text-2xl sm:text-3xl font-light text-secondary-900 dark:text-white leading-snug max-w-2xl mb-4"
-                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
                 Is this right for you?
               </h2>
@@ -1347,7 +1347,7 @@ export default function FAQ() {
               </p>
               <h2
                 className="text-2xl sm:text-3xl font-light text-secondary-900 dark:text-white leading-snug max-w-2xl mb-4"
-                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
                 Uptime and infrastructure.
               </h2>
@@ -1379,7 +1379,7 @@ export default function FAQ() {
               </p>
               <h2
                 className="text-2xl sm:text-3xl font-light text-secondary-900 dark:text-white leading-snug max-w-2xl mb-4"
-                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
                 Start accepting payments in minutes.
               </h2>
@@ -1459,7 +1459,7 @@ export default function FAQ() {
               </p>
               <h2
                 className="text-2xl sm:text-3xl font-light text-secondary-900 dark:text-white leading-snug max-w-2xl mb-4"
-                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
                 Payments, disputes, and chargebacks.
               </h2>
@@ -1533,7 +1533,7 @@ export default function FAQ() {
               </p>
               <h2
                 className="text-2xl sm:text-3xl font-light text-secondary-900 dark:text-white leading-snug max-w-2xl mb-4"
-                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
                 USDC, USDT, and off-ramping.
               </h2>
@@ -1629,7 +1629,7 @@ export default function FAQ() {
               </p>
               <h2
                 className="text-2xl sm:text-3xl font-light text-secondary-900 dark:text-white leading-snug max-w-2xl mb-4"
-                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
                 Push payments eliminate fraud at the root.
               </h2>
@@ -1693,7 +1693,7 @@ export default function FAQ() {
               </p>
               <h2
                 className="text-2xl sm:text-3xl font-light text-secondary-900 dark:text-white leading-snug max-w-2xl mb-4"
-                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
                 Non-custodial by design.
               </h2>
@@ -1757,7 +1757,7 @@ export default function FAQ() {
               </p>
               <h2
                 className="text-2xl sm:text-3xl font-light text-secondary-900 dark:text-white leading-snug max-w-2xl mb-4"
-                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
                 Verify, don&apos;t trust.
               </h2>
@@ -1797,7 +1797,7 @@ export default function FAQ() {
               </p>
               <h2
                 className="text-2xl sm:text-3xl font-light text-secondary-900 dark:text-white leading-snug max-w-2xl mb-4"
-                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
                 How this stacks up.
               </h2>
@@ -1877,12 +1877,12 @@ export default function FAQ() {
               </p>
               <h2
                 className="text-2xl sm:text-3xl font-light text-secondary-900 dark:text-white leading-snug max-w-2xl mb-4"
-                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
                 Still have questions?
               </h2>
               <p className="text-sm text-secondary-500 dark:text-secondary-400 leading-relaxed">
-                Contact our support team at <a href="mailto:info@conduit-ucpi.com" className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 underline">info@conduit-ucpi.com</a> for additional assistance.
+                Contact our support team at <a href="mailto:info@stabledrop.me" className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 underline">info@stabledrop.me</a> for additional assistance.
               </p>
             </Fade>
           </div>
@@ -1899,7 +1899,7 @@ export default function FAQ() {
                   Home
                 </Link>
                 <a
-                  href="mailto:info@conduit-ucpi.com"
+                  href="mailto:info@stabledrop.me"
                   className="hover:text-secondary-600 dark:hover:text-secondary-300 transition-colors"
                 >
                   Technical support

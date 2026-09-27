@@ -38,6 +38,18 @@ import {
  * they all share.
  */
 
+// The homepage (landing-test-16) carries the site-wide nav, which reads the router, auth and config.
+jest.mock('next/router', () => ({
+  useRouter: () => ({ pathname: '/', push: jest.fn(), events: { on: jest.fn(), off: jest.fn() } }),
+}));
+jest.mock('@/components/auth', () => ({
+  useAuth: () => ({ user: null, isConnected: false, disconnect: jest.fn(), switchWallet: jest.fn(), state: {} }),
+}));
+jest.mock('@/components/auth/ConfigProvider', () => ({ useConfig: () => ({ config: { projectsLive: true } }) }));
+jest.mock('@/components/navigation/NavigationProvider', () => ({
+  useNavigation: () => ({ canGoBack: false, goBack: jest.fn() }),
+}));
+
 jest.mock('framer-motion', () => {
   const React = require('react');
   const STRIP = new Set(['initial', 'animate', 'exit', 'transition', 'variants', 'whileInView', 'viewport', 'whileHover', 'whileTap', 'layout']);
@@ -215,7 +227,7 @@ describe.each(PAGES)('%s', (_name, Page) => {
     }
     expect(screen.getByRole('link', { name: /Explore plugins/i })).toHaveAttribute('href', '/plugins');
     const links = hrefs();
-    for (const h of ['/how-it-works', '/faq', '/plugins', '/plugins#mcp', '/terms-of-service', '/privacy-policy', 'mailto:info@conduit-ucpi.com', SOURCE_URL]) {
+    for (const h of ['/how-it-works', '/faq', '/plugins', '/plugins#mcp', '/terms-of-service', '/privacy-policy', 'mailto:info@stabledrop.me', SOURCE_URL]) {
       expect(links).toContain(h);
     }
   });

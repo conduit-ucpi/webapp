@@ -7,7 +7,7 @@ import Fade from '@/components/ui/Fade';
 import { financialServiceSchema, articleSchema } from '@/utils/structuredData';
 import { getSiteNameFromDomain } from '@/utils/siteName';
 import { isr } from '@/utils/isr';
-import LandingNav from '@/components/landing-test/LandingNav';
+import SiteNav from '@/components/layout/SiteNav';
 import EscrowEstimator from '@/components/landing-test/EscrowEstimator';
 import EscrowTimeline from '@/components/landing-test/EscrowTimeline';
 import AudienceTabs from '@/components/landing-test/AudienceTabs';
@@ -15,7 +15,7 @@ import EmbedExamples from '@/components/landing-test/EmbedExamples';
 import DemoButtons from '@/components/landing-test/DemoButtons';
 import LandingFooter from '@/components/landing-test/LandingFooter';
 import { lt, themeCss } from '@/components/landing-test/theme';
-import { BENTO, BENTO_FONTS_HREF } from '@/components/landing-test/themes';
+import { LANDING_PAGE_LOOK } from '@/config/looks';
 import { Announcement, Chapter, CheckoutMock, HoverChapter, ScrollyHero, card, section } from '@/components/landing-test/scrolly';
 import {
   AGENT_INTRO,
@@ -52,14 +52,18 @@ export default function Home() {
     <>
       <SEO title={SEO_TITLE_GETPAID} description={SEO_DESCRIPTION_GETPAID} keywords={SEO_KEYWORDS} canonical="/" structuredData={[financialServiceSchema, articleSchema]} />
       <Head>
-        {/* eslint-disable-next-line @next/next/no-page-custom-font -- one experiment page, one face; not a site-wide font */}
-        <link href={BENTO_FONTS_HREF} rel="stylesheet" />
-        <style>{themeCss(ID, BENTO, BENTO)}</style>
+        {/* The landing page's look is chosen in config/looks/index.ts. */}
+        {LANDING_PAGE_LOOK.fontsHref && (
+          // eslint-disable-next-line @next/next/no-page-custom-font -- this page's own face, not a site-wide font
+          <link href={LANDING_PAGE_LOOK.fontsHref} rel="stylesheet" />
+        )}
+        <style>{themeCss(ID, LANDING_PAGE_LOOK.landing, LANDING_PAGE_LOOK.landing)}</style>
       </Head>
 
       <div id={ID} className={`${lt.bg} ${lt.fg}`} style={{ fontFamily: 'var(--lt-font)' }}>
         <Announcement />
-        <LandingNav brand={siteName} signInLabel="My dashboard" className={`sticky top-0 z-40 bg-[#131313]/85 backdrop-blur border-b ${lt.border}`} />
+        {/* The site-wide bar, dark here because this page is. */}
+        <SiteNav forceDark className="sticky top-0 z-40" />
 
         <ScrollyHero
           brand={siteName}

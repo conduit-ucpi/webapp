@@ -403,7 +403,7 @@ export default function Landing1() {
               <h2 className="text-2xl font-bold text-secondary-900 dark:text-white mb-4">Questions?</h2>
               <div className="flex flex-wrap gap-4 justify-center">
                 <a
-                  href="mailto:info@conduit-ucpi.com"
+                  href="mailto:info@stabledrop.me"
                   className="inline-flex items-center px-6 py-3 bg-primary-500 hover:bg-primary-600 text-white font-semibold rounded-lg transition-colors"
                 >
                   <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">

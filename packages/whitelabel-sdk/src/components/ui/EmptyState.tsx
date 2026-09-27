@@ -94,13 +94,13 @@ export default function EmptyState({
 function ContractIllustration() {
   return (
     <svg className="w-full h-full" viewBox="0 0 96 96" fill="none">
-      <circle cx="48" cy="48" r="48" fill="#f0fdf4" />
-      <rect x="28" y="20" width="40" height="52" rx="4" fill="white" stroke="#d1d5db" strokeWidth="2" />
-      <rect x="32" y="28" width="24" height="3" rx="1.5" fill="#10b981" />
-      <rect x="32" y="36" width="32" height="2" rx="1" fill="#e5e7eb" />
-      <rect x="32" y="42" width="28" height="2" rx="1" fill="#e5e7eb" />
-      <rect x="32" y="48" width="24" height="2" rx="1" fill="#e5e7eb" />
-      <circle cx="56" cy="60" r="8" fill="#10b981" />
+      <circle cx="48" cy="48" r="48" fill="rgb(var(--wl-green-50))" />
+      <rect x="28" y="20" width="40" height="52" rx="4" fill="white" stroke="rgb(var(--wl-gray-300))" strokeWidth="2" />
+      <rect x="32" y="28" width="24" height="3" rx="1.5" fill="rgb(var(--wl-primary-500))" />
+      <rect x="32" y="36" width="32" height="2" rx="1" fill="rgb(var(--wl-gray-200))" />
+      <rect x="32" y="42" width="28" height="2" rx="1" fill="rgb(var(--wl-gray-200))" />
+      <rect x="32" y="48" width="24" height="2" rx="1" fill="rgb(var(--wl-gray-200))" />
+      <circle cx="56" cy="60" r="8" fill="rgb(var(--wl-primary-500))" />
       <path d="m52 60 2 2 4-4" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
@@ -109,10 +109,10 @@ function ContractIllustration() {
 function SearchIllustration() {
   return (
     <svg className="w-full h-full" viewBox="0 0 96 96" fill="none">
-      <circle cx="48" cy="48" r="48" fill="#fef3c7" />
-      <circle cx="42" cy="42" r="14" fill="none" stroke="#f59e0b" strokeWidth="3" />
-      <path d="m52 52 8 8" stroke="#f59e0b" strokeWidth="3" strokeLinecap="round" />
-      <circle cx="42" cy="42" r="8" fill="#fbbf24" opacity="0.2" />
+      <circle cx="48" cy="48" r="48" fill="rgb(var(--wl-amber-100))" />
+      <circle cx="42" cy="42" r="14" fill="none" stroke="rgb(var(--wl-amber-500))" strokeWidth="3" />
+      <path d="m52 52 8 8" stroke="rgb(var(--wl-amber-500))" strokeWidth="3" strokeLinecap="round" />
+      <circle cx="42" cy="42" r="8" fill="rgb(var(--wl-amber-400))" opacity="0.2" />
     </svg>
   );
 }
@@ -120,9 +120,9 @@ function SearchIllustration() {
 function ErrorIllustration() {
   return (
     <svg className="w-full h-full" viewBox="0 0 96 96" fill="none">
-      <circle cx="48" cy="48" r="48" fill="#fef2f2" />
-      <circle cx="48" cy="48" r="20" fill="none" stroke="#ef4444" strokeWidth="3" />
-      <path d="M48 40v8m0 4h.01" stroke="#ef4444" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="48" cy="48" r="48" fill="rgb(var(--wl-red-50))" />
+      <circle cx="48" cy="48" r="20" fill="none" stroke="rgb(var(--wl-red-500))" strokeWidth="3" />
+      <path d="M48 40v8m0 4h.01" stroke="rgb(var(--wl-red-500))" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -130,10 +130,10 @@ function ErrorIllustration() {
 function FilterEmptyIllustration() {
   return (
     <svg className="w-full h-full" viewBox="0 0 96 96" fill="none">
-      <circle cx="48" cy="48" r="48" fill="#eff6ff" />
-      <path d="M24 32h48l-16 16v12l-8 4v-16L24 32z" fill="#3b82f6" opacity="0.7" />
-      <circle cx="64" cy="24" r="8" fill="#f3f4f6" stroke="#6b7280" strokeWidth="2" />
-      <path d="m62 24 2 2 4-4" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="48" cy="48" r="48" fill="rgb(var(--wl-blue-50))" />
+      <path d="M24 32h48l-16 16v12l-8 4v-16L24 32z" fill="rgb(var(--wl-blue-500))" opacity="0.7" />
+      <circle cx="64" cy="24" r="8" fill="rgb(var(--wl-gray-100))" stroke="rgb(var(--wl-gray-500))" strokeWidth="2" />
+      <path d="m62 24 2 2 4-4" stroke="rgb(var(--wl-gray-500))" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

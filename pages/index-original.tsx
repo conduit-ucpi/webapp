@@ -526,7 +526,7 @@ export default function Home() {
                   <p className="text-xl text-secondary-700">Need help or have questions?</p>
                   <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
                     <a 
-                      href="mailto:info@conduit-ucpi.com"
+                      href="mailto:info@stabledrop.me"
                       className="inline-flex items-center px-6 py-3 bg-primary-500 hover:bg-primary-600 text-white font-semibold rounded-lg transition-colors"
                     >
                       <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">

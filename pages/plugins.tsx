@@ -46,7 +46,7 @@ function Collapsible({
             <div className="flex items-start justify-between gap-4">
               <h2
                 className="text-2xl sm:text-3xl font-light text-secondary-900 dark:text-white leading-snug max-w-2xl"
-                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
                 {heading}
               </h2>
@@ -220,7 +220,7 @@ export default function Plugins() {
               </h1>
               <p
                 className="mt-6 text-base text-secondary-500 dark:text-secondary-400 max-w-xl leading-relaxed"
-                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
                 WordPress. Shopify. Any website. Any AI agent. Under 5 minutes.
               </p>
@@ -606,7 +606,7 @@ export default function Plugins() {
                   FAQ
                 </Link>
                 <a
-                  href="mailto:info@conduit-ucpi.com"
+                  href="mailto:info@stabledrop.me"
                   className="hover:text-secondary-600 dark:hover:text-secondary-300 transition-colors"
                 >
                   Technical support

@@ -167,7 +167,7 @@ function FAQSection() {
 
       <div className="mt-8 p-6 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
         <h4 className="text-lg font-semibold text-secondary-900 dark:text-white mb-3">Still have questions?</h4>
-        <p className="text-secondary-600 dark:text-secondary-300">Contact our support team at info@conduit-ucpi.com for additional assistance.</p>
+        <p className="text-secondary-600 dark:text-secondary-300">Contact our support team at info@stabledrop.me for additional assistance.</p>
       </div>
     </div>
   )
@@ -402,7 +402,7 @@ function ArbitrationSection() {
           <h3 className="text-xl font-semibold text-secondary-800 dark:text-secondary-100 mb-4">Contact Information</h3>
           <div className="space-y-2 text-secondary-600 dark:text-secondary-300">
             <p>
-              <strong>Technical Support:</strong> info@conduit-ucpi.com<br/>
+              <strong>Technical Support:</strong> info@stabledrop.me<br/>
               <strong>Platform Issues:</strong> Include contract reference number and description of the problem
             </p>
             <p>

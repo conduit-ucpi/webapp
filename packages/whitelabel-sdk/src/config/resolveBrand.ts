@@ -1,4 +1,4 @@
-import { BrandConfig, ResolvedBrand, BrandTheme, PartialBrandTheme } from './types';
+import { BrandConfig, ResolvedBrand, BrandTheme, PartialBrandTheme, PaletteName } from './types';
 import { DEFAULT_THEME } from './defaults';
 
 /**
@@ -36,6 +36,13 @@ function mergeTheme(theme: PartialBrandTheme | undefined): BrandTheme {
     // usable ramp either side of it.
     primary: { ...DEFAULT_THEME.primary, ...(theme?.primary ?? {}) },
     secondary: { ...DEFAULT_THEME.secondary, ...(theme?.secondary ?? {}) },
+    palettes: Object.fromEntries(
+      (Object.keys(DEFAULT_THEME.palettes) as PaletteName[]).map((name) => [
+        name,
+        { ...DEFAULT_THEME.palettes[name], ...(theme?.palettes?.[name] ?? {}) },
+      ])
+    ) as BrandTheme['palettes'],
+    button: { ...DEFAULT_THEME.button, ...(theme?.button ?? {}) },
   };
 }
 

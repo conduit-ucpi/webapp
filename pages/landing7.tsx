@@ -63,7 +63,7 @@ export default function Landing7() {
               <motion.p
                 variants={heroChild}
                 className="mt-6 text-base text-secondary-500 dark:text-secondary-400 max-w-xl leading-relaxed"
-                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
                 Create a payment request in a few clicks. Funds sit in escrow until the payout date&nbsp;&mdash; your buyer is protected, and you can&apos;t be charged back. No vetting, no gas fees.
               </motion.p>
@@ -182,7 +182,7 @@ export default function Landing7() {
               </p>
               <h2
                 className="text-3xl sm:text-4xl font-light text-secondary-900 dark:text-white leading-snug mb-3"
-                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
                 See what your customers see.
               </h2>
@@ -236,7 +236,7 @@ export default function Landing7() {
               </p>
               <h2
                 className="text-3xl sm:text-4xl font-light text-secondary-900 dark:text-white leading-snug max-w-2xl mb-16"
-                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
                 Everything traditional processors take from you, we don&apos;t.
               </h2>
@@ -309,7 +309,7 @@ export default function Landing7() {
               </p>
               <h2
                 className="text-3xl sm:text-4xl font-light text-secondary-900 dark:text-white leading-snug max-w-2xl mb-16"
-                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
                 Pay with stablecoins and actually be protected.
               </h2>
@@ -363,7 +363,7 @@ export default function Landing7() {
               </p>
               <h2
                 className="text-3xl sm:text-4xl font-light text-secondary-900 dark:text-white leading-snug max-w-2xl mb-6"
-                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
                 Let an agent pay on your behalf. Keep the right to object.
               </h2>
@@ -502,7 +502,7 @@ export default function Landing7() {
             <Fade>
               <h2
                 className="text-3xl sm:text-4xl font-light text-secondary-900 dark:text-white leading-snug mb-3"
-                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
                 Add stablecoin checkout to your store.
               </h2>
@@ -538,10 +538,10 @@ export default function Landing7() {
                   API &amp; MCP
                 </Link>
                 <a
-                  href="mailto:info@conduit-ucpi.com"
+                  href="mailto:info@stabledrop.me"
                   className="hover:text-secondary-600 dark:hover:text-secondary-300 transition-colors"
                 >
-                  info@conduit-ucpi.com
+                  info@stabledrop.me
                 </a>
               </div>
             </Fade>

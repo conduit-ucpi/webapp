@@ -14,6 +14,8 @@ import { captureConsoleForMobile } from '@/utils/mobileLogger';
 import { BrandProvider, BrandI18nProvider } from '@conduit-ucpi/whitelabel-sdk';
 import { BRANDS, DEFAULT_BRAND_ID, WHITE_LABEL_ROUTES } from '@/config/brands';
 import { useRouter } from 'next/router';
+import Head from 'next/head';
+import { APP_PAGES_LOOK } from '@/config/looks';
 
 interface ClientOnlyAppProps {
   Component: any;
@@ -45,6 +47,13 @@ export default function ClientOnlyApp({ Component, pageProps }: ClientOnlyAppPro
       <BrandI18nProvider children={
       <ThemeProvider children={
         <>
+          {/* A look set in a face the site does not load globally brings its own stylesheet. */}
+          {APP_PAGES_LOOK.fontsHref && (
+            <Head>
+              {/* eslint-disable-next-line @next/next/no-page-custom-font -- the app pages' chosen look */}
+              <link href={APP_PAGES_LOOK.fontsHref} rel="stylesheet" />
+            </Head>
+          )}
           <FarcasterReady />
           <FarcasterDetectionProvider children={
             <ConfigProvider children={

@@ -116,7 +116,7 @@ export default function InstallButton() {
               </h1>
               <p
                 className="mt-6 text-base text-secondary-500 dark:text-secondary-400 max-w-xl leading-relaxed"
-                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
                 No monthly fees. 1% per transaction. Enterprise-grade escrow protection on every sale.
               </p>
@@ -149,7 +149,7 @@ export default function InstallButton() {
                 </p>
                 <h2
                   className="text-3xl sm:text-4xl font-light text-secondary-900 dark:text-white leading-snug max-w-2xl mb-4"
-                  style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                  style={{ fontFamily: 'var(--wl-font-accent)' }}
                 >
                   Authorize store access.
                 </h2>
@@ -212,7 +212,7 @@ export default function InstallButton() {
               </p>
               <h2
                 className="text-3xl sm:text-4xl font-light text-secondary-900 dark:text-white leading-snug max-w-2xl mb-10"
-                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
                 Theme integration methods.
               </h2>
@@ -333,7 +333,7 @@ export default function InstallButton() {
               </p>
               <h2
                 className="text-3xl sm:text-4xl font-light text-secondary-900 dark:text-white leading-snug mb-8"
-                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
                 How it looks on product pages.
               </h2>

@@ -34,11 +34,53 @@ export interface ColorScale {
   900: RgbTriple;
 }
 
+/**
+ * The other colour families the components use by name (Tailwind's own `gray-*`, `blue-*`,
+ * `red-*`…). They are themed the same way as primary and secondary, so a look can restyle every
+ * colour on a page without the components changing; their defaults are Tailwind's stock values,
+ * so a theme that leaves them alone looks exactly as it always has.
+ *
+ * success / warning / error carry only the steps tailwind.config.js has always defined (50, 500,
+ * 600). Classes naming other steps have never produced CSS, and defining them would start
+ * colouring elements that have always been uncoloured.
+ */
+export type PaletteName =
+  | 'gray' | 'neutral' | 'red' | 'orange' | 'amber' | 'yellow' | 'green' | 'emerald'
+  | 'blue' | 'indigo' | 'purple' | 'pink' | 'success' | 'warning' | 'error';
+
+/** Step ("50" … "950") to RGB triple. */
+export type Palette = Record<string, RgbTriple>;
+
+/**
+ * The primary button. Its own settings because it is not the accent colour: the app's main
+ * action has always been dark neutral on light, light on dark. Values are CSS colours, so a
+ * default can refer to a theme variable ("rgb(var(--wl-secondary-900))") and follow it.
+ */
+export interface ButtonTheme {
+  radius: string;
+  bg: string;
+  fg: string;
+  hoverBg: string;
+  darkBg: string;
+  darkFg: string;
+  darkHoverBg: string;
+}
+
 export interface BrandTheme {
   /** Accent family: primary actions, links, active states. */
   primary: ColorScale;
   /** Neutral family: text, surfaces, borders. */
   secondary: ColorScale;
+  /** Every other named colour family. See PaletteName. */
+  palettes: Record<PaletteName, Palette>;
+  /** `white` and `black` as used in classes (bg-white, text-black/50…). */
+  white: RgbTriple;
+  black: RgbTriple;
+  /** CSS font stack for code and addresses (`font-mono`). */
+  monoFontFamily: string;
+  /** The accent face used for display lines and quotes (Newsreader in the default look). */
+  accentFontFamily: string;
+  button: ButtonTheme;
   /**
    * Corner radius applied to buttons, inputs and cards, as a CSS length.
    * A surprising amount of a brand's character sits here — '0' reads as
@@ -52,9 +94,11 @@ export interface BrandTheme {
 }
 
 /** A theme as a tenant authors it: any subset, down to a single colour step. */
-export type PartialBrandTheme = Partial<Omit<BrandTheme, 'primary' | 'secondary'>> & {
+export type PartialBrandTheme = Partial<Omit<BrandTheme, 'primary' | 'secondary' | 'palettes' | 'button'>> & {
   primary?: Partial<ColorScale>;
   secondary?: Partial<ColorScale>;
+  palettes?: Partial<Record<PaletteName, Palette>>;
+  button?: Partial<ButtonTheme>;
 };
 
 export interface BrandAssets {

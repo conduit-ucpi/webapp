@@ -60,7 +60,7 @@ export function ScrollyHero({ eyebrowText, headline, sub, primary, secondary, br
   return (
     <section className={`${section} pt-16 pb-16 lg:pt-24`} aria-label="Hero">
       <div className="grid lg:grid-cols-12 gap-12 items-center">
-        <motion.div className="lg:col-span-6" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+        <motion.div className="lg:col-span-6 min-w-0" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
           <p className={eyebrow}>{eyebrowText}</p>
           <h1 className={`mt-5 text-4xl sm:text-5xl lg:text-[3.9rem] font-medium tracking-tight leading-[1.02] ${lt.fg}`}>{headline}</h1>
           <p className={`mt-6 text-lg leading-relaxed max-w-xl ${lt.muted}`}>{sub}</p>
@@ -77,7 +77,7 @@ export function ScrollyHero({ eyebrowText, headline, sub, primary, secondary, br
           )}
           <ProofPoints className="mt-10" />
         </motion.div>
-        <motion.div className="lg:col-span-6" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.15 }}>
+        <motion.div className="lg:col-span-6 min-w-0" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.15 }}>
           {right}
         </motion.div>
       </div>
@@ -105,7 +105,8 @@ export function Chapter({ id, label, title, ariaLabel, children, aside, split = 
   return (
     <section id={id} className={`border-t ${lt.border}`} aria-label={ariaLabel}>
       <div className={`${section} py-20 grid lg:grid-cols-12 gap-10`}>
-        <div className={left}>
+        {/* min-w-0: a grid column otherwise grows to its widest content (a code line, a table) and the page scrolls sideways on a phone. */}
+        <div className={`${left} min-w-0`}>
           <div className="lg:sticky lg:top-28">
             <Fade>
               <p className={eyebrow}>{label}</p>
@@ -114,7 +115,7 @@ export function Chapter({ id, label, title, ariaLabel, children, aside, split = 
             </Fade>
           </div>
         </div>
-        <div className={`${rightCol} space-y-4`}>{aside}</div>
+        <div className={`${rightCol} min-w-0 space-y-4`}>{aside}</div>
       </div>
     </section>
   );

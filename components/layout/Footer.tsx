@@ -29,7 +29,7 @@ export default function Footer() {
             <Link href="/privacy-policy" className="hover:text-secondary-600 dark:hover:text-secondary-300 transition-colors">
               Privacy Policy
             </Link>
-            <a href="mailto:info@conduit-ucpi.com" className="hover:text-secondary-600 dark:hover:text-secondary-300 transition-colors">
+            <a href="mailto:info@stabledrop.me" className="hover:text-secondary-600 dark:hover:text-secondary-300 transition-colors">
               Contact
             </a>
           </div>

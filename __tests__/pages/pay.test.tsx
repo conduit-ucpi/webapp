@@ -110,6 +110,8 @@ function signIn(connected = true) {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  // clearAllMocks keeps queued answers; a test that queues one it never uses would leak it.
+  mockCall.mockReset();
   mockRouter.query = {};
   mockRouter.asPath = '/pay';
   mockBalances.wallet = '100.0';
@@ -257,6 +259,65 @@ describe('/pay', () => {
     expect(await screen.findByText(/can't be signed for right now/)).toBeInTheDocument();
     // The transfer routes do not need a signature, so they are still there.
     expect(screen.getByText('Or pay from another wallet')).toBeInTheDocument();
+  });
+
+  it.each([
+    ['0.5', false],
+    ['0.002', false],
+    ['0.001', true],
+    ['1', true],
+  ])('checks the site rule before asking ap2service: %s allowed=%s', async (value, allowed) => {
+    mockCall.mockResolvedValueOnce(prepared());
+    render(<PayPage />);
+    fireEvent.change(screen.getByPlaceholderText('Email address or wallet (0x…)'), { target: { value: 'seller@example.com' } });
+    fireEvent.change(screen.getByPlaceholderText("What's this payment for?"), { target: { value: 'Logo design' } });
+    fireEvent.change(screen.getByPlaceholderText('0.0000'), { target: { value } });
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+    if (allowed) {
+      await waitFor(() => expect(mockCall).toHaveBeenCalled());
+    } else {
+      expect(await screen.findByText('Enter $1.00 or more, or exactly 0.001 for a free test')).toBeInTheDocument();
+      expect(mockCall).not.toHaveBeenCalled();
+    }
+  });
+
+  it('refuses an amount below the minimum under the amount field, before there is anything to pay', async () => {
+    mockCall.mockResolvedValueOnce({
+      error: 'settlement_refused',
+      retryable: false,
+      message:
+        'The minimum payment is 1 USD. This one is below the minimum (1000 base units, under 1000000 at 6 decimals): we pay gas...',
+    });
+    render(<PayPage />);
+    fill();
+
+    expect(await screen.findByText('The minimum payment is 1 USD.')).toBeInTheDocument();
+    // Still on the form: no review, no address, nothing to pay into.
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeInTheDocument();
+    expect(screen.queryByText('Confirm payment')).toBeNull();
+    expect(showToast).not.toHaveBeenCalled();
+
+    // Changing the amount clears it.
+    fireEvent.change(screen.getByPlaceholderText('0.0000'), { target: { value: '5' } });
+    expect(screen.queryByText('The minimum payment is 1 USD.')).toBeNull();
+  });
+
+  it('says why settle refused a transfer, instead of "no payment found"', async () => {
+    mockCall
+      .mockResolvedValueOnce(prepared())
+      .mockResolvedValueOnce({ error: 'settlement_refused', message: 'The minimum payment is 1 USD. …' });
+    render(<PayPage />);
+    fill();
+    const paid = await screen.findByRole('button', { name: 'I have paid' });
+
+    mockBalances.escrow = '10';
+    fireEvent.click(paid);
+
+    await waitFor(() =>
+      expect(showToast).toHaveBeenCalledWith(expect.objectContaining({ message: 'The minimum payment is 1 USD. …' }))
+    );
+    expect(screen.queryByText('Paid into escrow', { selector: 'h2' })).toBeNull();
   });
 
   it("shows prepare's refusal and stays on the form", async () => {

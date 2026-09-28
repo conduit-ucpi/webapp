@@ -19,6 +19,7 @@ import { useQrPayment } from '@/hooks/useQrPayment';
 import { usePaymentSteps } from '@/hooks/usePaymentSteps';
 import { isValidEmail, isValidWalletAddress, getDefaultTimestamp, formatDateTimeWithTZ } from '@/utils/validation';
 import { getNetworkName } from '@/utils/networkUtils';
+import { MIN_AMOUNT, TEST_AMOUNT, formatUsd, isAllowedAmount, parseAmount } from '@/utils/escrowFees';
 import { callAp2Tool, isAp2ToolError } from '../lib/ap2Mcp';
 import { decodePayResume, encodePayResume } from '../lib/payResume';
 import { useT } from '../i18n';
@@ -74,6 +75,15 @@ interface Settled {
 
 type Stage = 'details' | 'review' | 'done';
 
+/** A prepare refusal that is about how much, and so belongs under the amount field. */
+function isAmountRefusal(result: { error: string; message?: string }): boolean {
+  return result.error === 'amount_too_small' || /^The minimum payment is/.test(result.message ?? '');
+}
+
+function firstSentence(message?: string): string | undefined {
+  return message?.split(/(?<=\.)\s/)[0];
+}
+
 export default function PayPage() {
   const t = useT();
   const router = useRouter();
@@ -97,6 +107,7 @@ export default function PayPage() {
   const [payoutTimestamp, setPayoutTimestamp] = useState(getDefaultTimestamp());
   const [description, setDescription] = useState('');
   const [sellerError, setSellerError] = useState<string>();
+  const [amountError, setAmountError] = useState<string>();
 
   const [stage, setStage] = useState<Stage>('details');
   const [busy, setBusy] = useState<'prepare' | 'pay' | null>(null);
@@ -140,6 +151,14 @@ export default function PayPage() {
       return;
     }
     setSellerError(undefined);
+    // The site's own rule, the one the request form uses: $1 or more, or exactly the free test
+    // amount. ap2service applies the same rule; checking here saves the round trip.
+    const parsed = parseAmount(amount);
+    if (parsed === null || !isAllowedAmount(parsed)) {
+      setAmountError(t('validation.amountRange', { min: formatUsd(MIN_AMOUNT), test: TEST_AMOUNT }));
+      return;
+    }
+    setAmountError(undefined);
     setBusy('prepare');
     try {
       const result = await callAp2Tool<Prepared>('prepare_escrow_payment', {
@@ -147,7 +166,13 @@ export default function PayPage() {
         payer,
         ...(externalId ? { external_id: externalId } : {}),
       });
-      if (isAp2ToolError(result)) return fail(result.message);
+      if (isAp2ToolError(result)) {
+        // An amount ap2service will not escrow (below its minimum, or its fee floor) is said
+        // against the amount, and the buyer stays on the form: they never get an address to
+        // pay into. Its first sentence is written for a person; the rest is for developers.
+        if (isAmountRefusal(result)) return setAmountError(firstSentence(result.message));
+        return fail(result.message);
+      }
       setPrepared(result);
       setStage('review');
     } catch (error: any) {
@@ -201,7 +226,12 @@ export default function PayPage() {
       ...terms(),
       external_id: prepared.external_id,
     });
-    if (isAp2ToolError(result)) return false;
+    if (isAp2ToolError(result)) {
+      // The money may well be there — this ran because the balance check saw it. Say why settle
+      // turned it down, rather than letting the panel read it as "no payment found".
+      fail(result.message);
+      return false;
+    }
     setSettled(result);
     return true;
     // terms() reads the same state these name.
@@ -353,14 +383,17 @@ export default function PayPage() {
             </div>
             <PaymentTermsForm
               amount={amount}
-              onAmountChange={setAmount}
+              onAmountChange={(value) => {
+                setAmount(value);
+                setAmountError(undefined);
+              }}
               payoutTimestamp={payoutTimestamp}
               onPayoutTimestampChange={setPayoutTimestamp}
               description={description}
               onDescriptionChange={setDescription}
               showFeeGuidance={false}
               amountLabels={{ requested: t('push.amountFiat'), receiving: t('push.amountToken') }}
-              errors={{}}
+              errors={{ amount: amountError }}
               tokenSymbol={selectedTokenSymbol}
               tokenOptions={availableTokens.map((token) => token.symbol)}
               onTokenChange={setTokenSymbol}

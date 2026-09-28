@@ -29,12 +29,10 @@ function PendingValue({ className = '' }: { className?: string }) {
 }
 import ConnectPaymentStage from '@/components/contracts/ConnectPaymentStage';
 import PaymentRequestIntro from '@/components/contracts/PaymentRequestIntro';
-import PaymentActionPanel from '@/components/contracts/PaymentActionPanel';
+import PaymentOptions from '@/components/contracts/PaymentOptions';
 import WalletChoiceCards from '@/components/auth/WalletChoiceCards';
 import CreateProgressSteps, { PAY_JOURNEY_STEPS } from '@/components/contracts/CreateProgressSteps';
 import CustomArbiterNotice from '@/components/contracts/CustomArbiterNotice';
-import PaymentProgress from '@/components/contracts/PaymentProgress';
-import QrPaymentPanel from '@/components/contracts/QrPaymentPanel';
 import { usePaymentSteps } from '@/hooks/usePaymentSteps';
 import { usePayableContract } from '@/hooks/usePayableContract';
 import { toMicroUSDC, toUSDCForWeb3, formatDateTimeWithTZ, displayCurrency } from '@/utils/validation';
@@ -42,7 +40,6 @@ import { reserveCounterfactualAddress } from '@/utils/contractTransactionSequenc
 import { predictEscrowAddress } from '@/lib/counterfactualAddress';
 import { resolveEscrowAddressSources } from '@/lib/escrow/escrowAddressSources';
 import { getNetworkName } from '@/utils/networkUtils';
-import { detectDevice } from '@/utils/deviceDetection';
 import { useT } from '../i18n';
 import { useOptionalBrand, useBrandSource } from '../theme/BrandProvider';
 import { getSiteNameFromDomain } from '@/utils/siteName';
@@ -132,8 +129,6 @@ export default function ContractPay() {
   // QR flow state. The QR-payment subsystem (countdown, balance polling,
   // activation) lives in useQrPayment; the page keeps only the bits that are
   // not part of that subsystem (mobile-vs-deeplink rendering, clipboard copy).
-  const [isMobileDevice, setIsMobileDevice] = useState(false);
-  const [copiedAddress, setCopiedAddress] = useState(false);
 
   // Fetch + validate the payable contract by id (one-shot, lazy-auth aware).
   const { contract, isLoadingContract, contractError } = usePayableContract({
@@ -507,22 +502,6 @@ export default function ContractPay() {
   };
 
 
-  // Copy contract address to clipboard
-  const handleCopyAddress = async (addr: string) => {
-    try {
-      await navigator.clipboard.writeText(addr);
-      setCopiedAddress(true);
-      setTimeout(() => setCopiedAddress(false), 2000);
-    } catch (err) {
-      console.error('Failed to copy address:', err);
-    }
-  };
-
-  // Detect mobile device for QR code vs deep link rendering
-  useEffect(() => {
-    const device = detectDevice();
-    setIsMobileDevice(device.isMobile || device.isTablet);
-  }, []);
 
   // Bound the wait on wallet rehydration — see AUTH_REHYDRATE_TIMEOUT_MS.
   useEffect(() => {
@@ -867,97 +846,52 @@ export default function ContractPay() {
               from the deal's terms now, so there is nothing to generate and nothing to wait
               for, and no reason for the options to be on separate screens.
           */}
-          {(
-            <>
-              {/* Payment Progress Steps */}
-              {isPaymentInProgress && (
-                <PaymentProgress steps={paymentSteps} loadingMessage={loadingMessage} />
-              )}
-
-              {/* Escrow reassurance. Stated once for the whole screen: the
-                  signed-in wallet is the contract's buyer whichever route the
-                  funds take, so this holds for all three. */}
-              {!isPaymentInProgress && !hasInsufficientBalance && !isSameAddress && (
-                <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md p-4 mb-6">
-                  <p className="text-sm text-yellow-800 dark:text-yellow-300">
-                    {t(isInstantPayment ? 'pay.escrowInstant' : 'pay.escrowHeld', {
-                      amount: contract ? displayCurrency(contract.amount, contract.currency || 'microUSDC') : '',
-                    })}
-                  </p>
-                </div>
-              )}
-
-              <PaymentActionPanel
-                amountLabel={contract ? displayCurrency(contract.amount, contract.currency || 'microUSDC') : ''}
-                amountInTokens={amountInTokens}
-                balanceFloat={balanceFloat}
-                tokenSymbol={selectedTokenSymbol}
-                tokenAddress={selectedTokenAddress}
-                tokenDecimals={selectedToken?.decimals ?? 6}
-                chainId={config?.chainId}
-                walletAddress={address || ''}
-                networkName={networkName}
-                isLoadingBalance={isLoadingBalance}
-                hasInsufficientBalance={hasInsufficientBalance}
-                isSameAddress={isSameAddress}
-                isPaymentInProgress={isPaymentInProgress}
-                // ⚠️ IN FLIGHT, NOT "NOT DONE YET". Keyed on the absence of an address, a
-                //    reservation that FAILED would leave this button disabled for good,
-                //    captioned as though it were still working — a dead screen behind a
-                //    reassuring message. Enabled-and-slow is a far better failure than that:
-                //    the sequence does the work inline and surfaces the real error.
-                isPreparing={pending || qr.isCreatingContract || isCheckingEscrow}
-                loadingMessage={loadingMessage}
-                onPay={handleWalletPayment}
-                // The QR is already below; nothing to switch to. Used by the onramp popup
-                // handler as its "closed" callback, so it must stay callable.
-                onPayFromExternalWallet={() => {
-                  document.getElementById('pay-from-elsewhere')?.scrollIntoView({ behavior: 'smooth' });
-                }}
-                // Come back onto the payment screen rather than the intro: the funds will
-                // have landed but still need sweeping in, and that button is here.
-                addFundsReturnPath={brandedHref(`/contract-pay?contractId=${contractId}&resuming=1`)}
-                // Reuses the QR route's resolver, so Coinbase is sent to the
-                // address contractservice considers authoritative and no second
-                // escrow is ever deployed.
-                resolveEscrowAddress={async () => qr.qrContractAddress ?? (await qr.createContract()) ?? null}
-              />
-
-              {/* Paying from somewhere else: the address, a QR for it, and the button that
-                  sweeps the funds in once they arrive. Previously a screen of its own.
-
-                  Framed as one block on purpose. Both methods inside it are fire-and-forget
-                  from our side — we cannot see an external transfer land — so pressing "I
-                  have paid" is what actually secures the money. Left loose beneath the other
-                  options, that button reads as unrelated to the code and address above it. */}
-              {!isPaymentInProgress && !isSameAddress && (
-                <div
-                  id="pay-from-elsewhere"
-                  className="mt-8 rounded-lg border border-secondary-300 dark:border-secondary-600 bg-secondary-50 dark:bg-secondary-800/50 p-5"
-                >
-                  <h3 className="text-base font-semibold text-secondary-900 dark:text-white mb-1">
-                    {t('pay.elsewhereHeading')}
-                  </h3>
-                  <p className="text-sm text-secondary-600 dark:text-secondary-300 mb-4">
-                    {t('pay.elsewhereLead')}
-                  </p>
-                  <QrPaymentPanel
-                    qr={qr}
-                    networkName={networkName}
-                    tokenSymbol={selectedTokenSymbol}
-                    amountInTokens={amountInTokens}
-                    isMobileDevice={isMobileDevice}
-                    copiedAddress={copiedAddress}
-                    onCopyAddress={handleCopyAddress}
-                    createButtonLabel={t('pay.payButton')}
-                    createDisabled={isSameAddress}
-                    createNote={isSameAddress ? t('err.payYourself') : undefined}
-                    successMessage={t('pay.verifiedRedirectDashboard')}
-                  />
-                </div>
-              )}
-            </>
-          )}
+          <PaymentOptions
+            paymentSteps={paymentSteps}
+            reassurance={t(isInstantPayment ? 'pay.escrowInstant' : 'pay.escrowHeld', {
+              amount: contract ? displayCurrency(contract.amount, contract.currency || 'microUSDC') : '',
+            })}
+            amountLabel={contract ? displayCurrency(contract.amount, contract.currency || 'microUSDC') : ''}
+            amountInTokens={amountInTokens}
+            balanceFloat={balanceFloat}
+            tokenSymbol={selectedTokenSymbol}
+            tokenAddress={selectedTokenAddress}
+            tokenDecimals={selectedToken?.decimals ?? 6}
+            chainId={config?.chainId}
+            walletAddress={address || ''}
+            networkName={networkName}
+            isLoadingBalance={isLoadingBalance}
+            hasInsufficientBalance={hasInsufficientBalance}
+            isSameAddress={isSameAddress}
+            isPaymentInProgress={isPaymentInProgress}
+            // ⚠️ IN FLIGHT, NOT "NOT DONE YET". Keyed on the absence of an address, a
+            //    reservation that FAILED would leave this button disabled for good,
+            //    captioned as though it were still working — a dead screen behind a
+            //    reassuring message. Enabled-and-slow is a far better failure than that:
+            //    the sequence does the work inline and surfaces the real error.
+            isPreparing={pending || qr.isCreatingContract || isCheckingEscrow}
+            loadingMessage={loadingMessage}
+            onPay={handleWalletPayment}
+            // The QR is already below; nothing to switch to. Used by the onramp popup
+            // handler as its "closed" callback, so it must stay callable.
+            onPayFromExternalWallet={() => {
+              document.getElementById('pay-from-elsewhere')?.scrollIntoView({ behavior: 'smooth' });
+            }}
+            // Come back onto the payment screen rather than the intro: the funds will
+            // have landed but still need sweeping in, and that button is here.
+            addFundsReturnPath={brandedHref(`/contract-pay?contractId=${contractId}&resuming=1`)}
+            // Reuses the QR route's resolver, so Coinbase is sent to the
+            // address contractservice considers authoritative and no second
+            // escrow is ever deployed.
+            resolveEscrowAddress={async () => qr.qrContractAddress ?? (await qr.createContract()) ?? null}
+            elsewhere={{
+              qr,
+              createButtonLabel: t('pay.payButton'),
+              createDisabled: isSameAddress,
+              createNote: isSameAddress ? t('err.payYourself') : undefined,
+              successMessage: t('pay.verifiedRedirectDashboard'),
+            }}
+          />
 
           {/* There is no separate QR screen any more. It existed because the escrow had to be
               deployed before an address could be shown, so paying from elsewhere meant a

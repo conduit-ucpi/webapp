@@ -20,6 +20,12 @@ interface ReviewRequestProps {
   payoutTimestamp: number;
   isInstantPayment: boolean;
   onEdit: () => void;
+  /** Heading; defaults to the seller's "Confirm Request Details". */
+  title?: string;
+  /** Rows after release and description, e.g. who is paid and the fee (/pay). */
+  extraRows?: { label: string; value: string }[];
+  /** The "What happens next?" text; defaults to the seller's. null leaves the box out. */
+  nextBody?: string | null;
 }
 
 export default function ReviewRequest({
@@ -30,6 +36,9 @@ export default function ReviewRequest({
   payoutTimestamp,
   isInstantPayment,
   onEdit,
+  title,
+  extraRows = [],
+  nextBody,
 }: ReviewRequestProps) {
   const t = useT();
   const { rate } = useExchangeRate('USD', tokenSymbol);
@@ -51,7 +60,7 @@ export default function ReviewRequest({
           </svg>
         </button>
         <h2 className="text-2xl sm:text-3xl font-semibold text-secondary-900 dark:text-white">
-          {t('review.title')}
+          {title ?? t('review.title')}
         </h2>
       </div>
 
@@ -82,17 +91,27 @@ export default function ReviewRequest({
               {description}
             </span>
           </div>
+          {extraRows.map((row) => (
+            <div key={row.label} className="flex items-start justify-between gap-6">
+              <span className="text-sm text-secondary-500 dark:text-secondary-400">{row.label}</span>
+              <span className="text-sm font-semibold text-secondary-900 dark:text-white text-right break-all">
+                {row.value}
+              </span>
+            </div>
+          ))}
         </div>
       </div>
 
-      <div className="mt-5 rounded-2xl border-2 border-primary-500 bg-white dark:bg-secondary-900 p-5 sm:p-6">
-        <h3 className="text-base font-semibold text-secondary-900 dark:text-white">
-          {t('review.next')}
-        </h3>
-        <p className="mt-2 text-sm text-secondary-600 dark:text-secondary-300 leading-relaxed">
-          {t('review.nextBody')}
-        </p>
-      </div>
+      {nextBody !== null && (
+        <div className="mt-5 rounded-2xl border-2 border-primary-500 bg-white dark:bg-secondary-900 p-5 sm:p-6">
+          <h3 className="text-base font-semibold text-secondary-900 dark:text-white">
+            {t('review.next')}
+          </h3>
+          <p className="mt-2 text-sm text-secondary-600 dark:text-secondary-300 leading-relaxed">
+            {nextBody ?? t('review.nextBody')}
+          </p>
+        </div>
+      )}
     </div>
   );
 }

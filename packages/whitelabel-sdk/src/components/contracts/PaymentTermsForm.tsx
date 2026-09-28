@@ -26,8 +26,16 @@ interface PaymentTermsFormProps {
   onInstantPaymentChange?: (instant: boolean) => void;
   description: string;
   onDescriptionChange: (value: string) => void;
-  arbiterAddress: string;
-  onArbiterChange: (value: string) => void;
+  /** Omit both to hide the arbiter override, for flows that do not take one (/pay). */
+  arbiterAddress?: string;
+  onArbiterChange?: (value: string) => void;
+  /**
+   * The fee and "you receive" guidance under the amount — the SELLER's view. Off where the
+   * person filling this in is the payer and the fee is quoted separately (/pay).
+   */
+  showFeeGuidance?: boolean;
+  /** Headings over the two amount fields; the seller's wording when omitted. */
+  amountLabels?: { requested: string; receiving: string };
   errors: {
     amount?: string;
     expiry?: string;
@@ -56,6 +64,8 @@ export default function PaymentTermsForm({
   onDescriptionChange,
   arbiterAddress,
   onArbiterChange,
+  showFeeGuidance = true,
+  amountLabels,
   errors,
   tokenSymbol,
   tokenOptions,
@@ -78,14 +88,17 @@ export default function PaymentTermsForm({
           onTokenChange={onTokenChange}
           networkLabel={networkLabel}
           balanceText={balanceText}
+          splitLabels={amountLabels}
           error={errors.amount}
         />
 
-        <AmountGuidance
-          amount={amount}
-          tokenSymbol={tokenSymbol}
-          onUseTestAmount={() => onAmountChange(String(TEST_AMOUNT))}
-        />
+        {showFeeGuidance && (
+          <AmountGuidance
+            amount={amount}
+            tokenSymbol={tokenSymbol}
+            onUseTestAmount={() => onAmountChange(String(TEST_AMOUNT))}
+          />
+        )}
       </div>
 
       <div className="rounded-xl border border-secondary-200 dark:border-secondary-700 p-4">
@@ -124,11 +137,13 @@ export default function PaymentTermsForm({
         )}
       </div>
 
-      <AdvancedOptions
-        arbiterAddress={arbiterAddress}
-        onArbiterChange={onArbiterChange}
-        arbiterError={errors.arbiterAddress}
-      />
+      {onArbiterChange && (
+        <AdvancedOptions
+          arbiterAddress={arbiterAddress ?? ''}
+          onArbiterChange={onArbiterChange}
+          arbiterError={errors.arbiterAddress}
+        />
+      )}
     </div>
   );
 }

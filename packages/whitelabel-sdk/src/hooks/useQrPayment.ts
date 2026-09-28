@@ -69,9 +69,15 @@ interface PollRun {
  * balance-before-gas check below.
  */
 interface QrActivationTarget {
+  /** Named in logs. For a POST target, the API path it is sent to. */
   endpoint: string;
   /** The request body, given the address the money was sent to. */
-  buildBody: (fundedAddress: string) => Record<string, unknown>;
+  buildBody?: (fundedAddress: string) => Record<string, unknown>;
+  /**
+   * Activate some other way than a POST expecting `{ success }` — /pay settles through
+   * ap2service's MCP tool. Resolves true once activated. Runs behind the same balance gate.
+   */
+  run?: (fundedAddress: string) => Promise<boolean>;
 }
 
 const ESCROW_ACTIVATION: QrActivationTarget = {
@@ -175,7 +181,7 @@ export function useQrPayment(params: UseQrPaymentParams): UseQrPaymentResult {
 
   /** Resolves true once the backend has activated the escrow. */
   const activate = useCallback(async (): Promise<boolean> => {
-    if (!qrContractAddress || !authenticatedFetch) return false;
+    if (!qrContractAddress || (!authenticatedFetch && !activationRef.current.run)) return false;
 
     setQrActivationStatus('checking');
 
@@ -204,15 +210,19 @@ export function useQrPayment(params: UseQrPaymentParams): UseQrPaymentResult {
       }
 
       const target = activationRef.current;
-      const response = await authenticatedFetch(target.endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(target.buildBody(qrContractAddress)),
-      });
+      const activated = target.run
+        ? await target.run(qrContractAddress)
+        : (
+            await (
+              await authenticatedFetch!(target.endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(target.buildBody?.(qrContractAddress) ?? {}),
+              })
+            ).json()
+          ).success;
 
-      const data = await response.json();
-
-      if (data.success) {
+      if (activated) {
         setQrActivationStatus('success');
         if (qrPollingRef.current) clearTimeout(qrPollingRef.current);
         onActivated(qrContractAddress);

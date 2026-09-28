@@ -425,6 +425,62 @@ describe('useQrPayment', () => {
     });
   });
 
+  describe('a function activation (/pay settles through ap2service)', () => {
+    const run = jest.fn();
+    const withRun = () => ({ ...baseParams(), activation: { endpoint: 'ap2 settle', run } });
+
+    beforeEach(() => run.mockReset());
+
+    it('runs it with the funded address instead of POSTing, and reports success', async () => {
+      mockGetTokenBalance.mockResolvedValue('10');
+      run.mockResolvedValue(true);
+      const { result } = renderHook(() => useQrPayment(withRun()));
+      await act(async () => {
+        await result.current.createContract();
+      });
+
+      await act(async () => {
+        await result.current.checkAndActivate();
+      });
+
+      expect(run).toHaveBeenCalledWith('0xEscrow');
+      expect(mockAuthenticatedFetch).not.toHaveBeenCalled();
+      expect(result.current.qrActivationStatus).toBe('success');
+      expect(mockOnActivated).toHaveBeenCalledWith('0xEscrow');
+    });
+
+    it('sits behind the same balance gate: nothing is run on an unfunded address', async () => {
+      mockGetTokenBalance.mockResolvedValue('9.99');
+      const { result } = renderHook(() => useQrPayment(withRun()));
+      await act(async () => {
+        await result.current.createContract();
+      });
+
+      await act(async () => {
+        await result.current.checkAndActivate();
+      });
+
+      expect(run).not.toHaveBeenCalled();
+      expect(result.current.qrActivationStatus).toBe('waiting');
+    });
+
+    it('waits, rather than succeeding, when the run reports not activated', async () => {
+      mockGetTokenBalance.mockResolvedValue('10');
+      run.mockResolvedValue(false);
+      const { result } = renderHook(() => useQrPayment(withRun()));
+      await act(async () => {
+        await result.current.createContract();
+      });
+
+      await act(async () => {
+        await result.current.checkAndActivate();
+      });
+
+      expect(result.current.qrActivationStatus).toBe('waiting');
+      expect(mockOnActivated).not.toHaveBeenCalled();
+    });
+  });
+
   describe('checkAndActivate', () => {
     // Activation only reaches the backend on a funded escrow; the unfunded
     // paths are covered by the gas-safety block above.

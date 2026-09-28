@@ -21,6 +21,8 @@ interface CurrencyAmountInputProps {
   helpText?: string;
   /** Label for the payment amount field (defaults to "Payment amount") */
   paymentLabel?: string;
+  /** The two headings of the split layout; default to the seller's "Requested" / "Receiving". */
+  splitLabels?: { requested: string; receiving: string };
   /**
    * 'stacked' (default) keeps the original vertical layout.
    * 'split' renders the two amounts side by side with a swap control between
@@ -50,6 +52,7 @@ export default function CurrencyAmountInput({
   label,
   helpText,
   paymentLabel,
+  splitLabels,
   layout = 'stacked',
   networkLabel,
   balanceText,
@@ -145,7 +148,7 @@ export default function CurrencyAmountInput({
         <div className="relative grid gap-3 sm:grid-cols-2">
           {/* Requested - in the user's own currency */}
           <div className={boxClass}>
-            <p className="text-sm text-secondary-500 dark:text-secondary-400">{t('amount.requested')}</p>
+            <p className="text-sm text-secondary-500 dark:text-secondary-400">{splitLabels?.requested ?? t('amount.requested')}</p>
             <div className="mt-2 flex items-baseline gap-2">
               <input
                 type="number"
@@ -190,7 +193,7 @@ export default function CurrencyAmountInput({
 
           {/* Receiving - the token actually escrowed */}
           <div className={boxClass}>
-            <p className="text-sm text-secondary-500 dark:text-secondary-400">{t('amount.receiving')}</p>
+            <p className="text-sm text-secondary-500 dark:text-secondary-400">{splitLabels?.receiving ?? t('amount.receiving')}</p>
             <div className="mt-2 flex items-baseline gap-2">
               <input
                 type="number"

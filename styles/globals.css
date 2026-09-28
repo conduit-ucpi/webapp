@@ -193,6 +193,16 @@
   --wl-button-dark-hover-bg: rgb(var(--wl-secondary-100));
 }
 
+/* Native form controls (the datetime-local picker, its calendar icon and popup,
+ * scrollbars) follow color-scheme, not our Tailwind classes. Without this they stay
+ * light-themed under .dark and the picker icon renders black on the dark input. */
+html {
+  color-scheme: light;
+}
+html.dark {
+  color-scheme: dark;
+}
+
 /* Custom scrollbar hide for tabs */
 .scrollbar-hide {
   -ms-overflow-style: none;

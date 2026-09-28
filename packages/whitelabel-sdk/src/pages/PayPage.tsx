@@ -113,6 +113,8 @@ export default function PayPage() {
   const [busy, setBusy] = useState<'prepare' | 'pay' | null>(null);
   const [prepared, setPrepared] = useState<Prepared | null>(null);
   const [settled, setSettled] = useState<Settled | null>(null);
+  /** The terms `prepared` was quoted for, to tell a real change from pressing Continue again. */
+  const preparedFor = useRef<string | null>(null);
 
   const networkLabel = config ? getNetworkName(config.chainId) : undefined;
   const payer = user?.walletAddress || address;
@@ -143,8 +145,17 @@ export default function PayPage() {
   const fail = (message?: string) =>
     showToast({ type: 'error', title: t('push.failed'), message: message || t('wizard.genericError') });
 
-  /** `externalId` when resuming: the same id gives the same escrow, and the same reservation. */
-  const handlePrepare = async (externalId?: string) => {
+  /**
+   * `externalId` when resuming: the same id gives the same escrow, and the same reservation.
+   *
+   * ⚠️ UNCHANGED TERMS KEEP THEIR ESCROW. Going back to the form and pressing Continue again
+   *    used to mint a new id — a second escrow, a second reservation, another test-payment
+   *    allowance used — and any address already shown for the first was now the wrong one. The
+   *    id is new only when the terms actually changed.
+   */
+  const handlePrepare = async (resumeId?: string) => {
+    const unchanged = prepared && preparedFor.current === JSON.stringify(terms());
+    const externalId = resumeId ?? (unchanged ? prepared.external_id : undefined);
     const s = seller.trim();
     if (!isValidEmail(s) && !isValidWalletAddress(s)) {
       setSellerError(t('push.errSeller'));
@@ -173,6 +184,7 @@ export default function PayPage() {
         if (isAmountRefusal(result)) return setAmountError(firstSentence(result.message));
         return fail(result.message);
       }
+      preparedFor.current = JSON.stringify(terms());
       setPrepared(result);
       setStage('review');
     } catch (error: any) {

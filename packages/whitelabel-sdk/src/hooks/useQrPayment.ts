@@ -144,13 +144,31 @@ export function useQrPayment(params: UseQrPaymentParams): UseQrPaymentResult {
 
   const [qrContractAddress, setQrContractAddress] = useState<string | null>(existingContractAddress);
 
-  // The address arrives with the contract fetch, which resolves after mount.
-  useEffect(() => {
-    if (!existingContractAddress) return;
-    setQrContractAddress((current) => current ?? existingContractAddress);
-  }, [existingContractAddress]);
   const [qrPaymentDetected, setQrPaymentDetected] = useState(false);
   const [qrActivationStatus, setQrActivationStatus] = useState<QrActivationStatus>('idle');
+
+  /*
+   * The address arrives with the contract fetch, which resolves after mount.
+   *
+   * ⚠️ AND IT CAN CHANGE, WHICH MUST REPLACE WHAT IS SHOWN. /pay prepares a new escrow when the
+   *    terms change; keeping the first address meant the QR and copy button offered an escrow
+   *    the page had moved on from, while "I have paid" checked the new one — so a buyer paid
+   *    an address the page was no longer looking at. A changed address starts detection again.
+   */
+  const lastExistingRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!existingContractAddress) return;
+    const previous = lastExistingRef.current;
+    lastExistingRef.current = existingContractAddress;
+    if (previous && previous.toLowerCase() !== existingContractAddress.toLowerCase()) {
+      setQrContractAddress(existingContractAddress);
+      setQrPaymentDetected(false);
+      setQrActivationStatus('idle');
+      autoActivatedRef.current = false;
+      return;
+    }
+    setQrContractAddress((current) => current ?? existingContractAddress);
+  }, [existingContractAddress]);
   const [hasCheckedBalance, setHasCheckedBalance] = useState(false);
   const [isCreatingContract, setIsCreatingContract] = useState(false);
   const [pollRun, setPollRun] = useState<PollRun>({ schedule: INITIAL_POLL_SCHEDULE, pollFirst: true });

@@ -204,6 +204,39 @@ describe('/pay', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: /from this wallet/ })).toBeDisabled());
   });
 
+  it('going back and pressing Continue with the same terms keeps the same escrow', async () => {
+    mockCall.mockResolvedValue(prepared());
+    render(<PayPage />);
+    fill();
+    await screen.findByText('Confirm payment');
+
+    fireEvent.click(screen.getByLabelText('Back to payment terms'));
+    fireEvent.click(await screen.findByRole('button', { name: 'Continue' }));
+    await screen.findByText('Confirm payment');
+
+    expect(mockCall.mock.calls[0][1]).not.toHaveProperty('external_id');
+    expect(mockCall.mock.calls[1][1]).toMatchObject({ external_id: 'mcp-123' });
+  });
+
+  it('changed terms get a new escrow, and the address shown follows it', async () => {
+    const SECOND = '0x704AAAD9b0E82d6d889417FEd58b4a410C73258A';
+    mockCall
+      .mockResolvedValueOnce(prepared())
+      .mockResolvedValueOnce(prepared({}, { escrow_address: SECOND, external_id: 'mcp-456' }));
+    render(<PayPage />);
+    fill();
+    expect(await screen.findByDisplayValue(ESCROW)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText('Back to payment terms'));
+    fireEvent.change(await screen.findByPlaceholderText('0.0000'), { target: { value: '20' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+    // The bug: the panel kept offering the first escrow while settle checked the second.
+    expect(await screen.findByDisplayValue(SECOND)).toBeInTheDocument();
+    expect(screen.queryByDisplayValue(ESCROW)).toBeNull();
+    expect(mockCall.mock.calls[1][1]).not.toHaveProperty('external_id');
+  });
+
   it('offers the escrow address and QR for paying from any other wallet', async () => {
     mockCall.mockResolvedValueOnce(prepared());
     render(<PayPage />);

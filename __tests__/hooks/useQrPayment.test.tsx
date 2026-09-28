@@ -425,6 +425,27 @@ describe('useQrPayment', () => {
     });
   });
 
+  describe('when the escrow it is given changes', () => {
+    it('shows and watches the new escrow, and starts detection again', async () => {
+      mockGetTokenBalance.mockResolvedValue('10');
+      const { result, rerender } = renderHook(
+        ({ existing }) => useQrPayment({ ...baseParams(), existingContractAddress: existing }),
+        { initialProps: { existing: '0xFirst' } }
+      );
+      await act(async () => {});
+      expect(result.current.qrContractAddress).toBe('0xFirst');
+
+      mockGetTokenBalance.mockResolvedValue('0');
+      rerender({ existing: '0xSecond' });
+      await act(async () => {});
+
+      // The address a buyer is shown is the one "I have paid" checks.
+      expect(result.current.qrContractAddress).toBe('0xSecond');
+      expect(result.current.qrPaymentDetected).toBe(false);
+      expect(mockGetTokenBalance).toHaveBeenLastCalledWith('0xSecond', '0xToken');
+    });
+  });
+
   describe('a function activation (/pay settles through ap2service)', () => {
     const run = jest.fn();
     const withRun = () => ({ ...baseParams(), activation: { endpoint: 'ap2 settle', run } });

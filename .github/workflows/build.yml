@@ -44,7 +44,13 @@ jobs:
         id: env_vars
         run: |
           echo "ENV_TAG=latest" >> $GITHUB_ENV
-          echo "SHA_TAG=${GITHUB_SHA::8}" >> $GITHUB_ENV
+          # ⚠️ ONE TAG PER BUILD, NOT PER COMMIT. Build-time vars (every NEXT_PUBLIC_*, and
+          #    ALLOWED_FRAME_ANCESTORS, which Next bakes into the route headers) change the image
+          #    without changing the commit. With a commit-only tag, re-running a deploy after
+          #    changing a var rebuilt and pushed the new image under the old tag, the deploy
+          #    step found that tag already on the box, skipped the transfer, and restarted the
+          #    OLD image — green run, stale site. Run id + attempt make every build distinct.
+          echo "SHA_TAG=${GITHUB_SHA::8}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" >> $GITHUB_ENV
           echo "REPO_LOWER=$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
           echo "GIT_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo '')" >> $GITHUB_ENV
           echo "GIT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV

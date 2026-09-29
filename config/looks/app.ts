@@ -7,7 +7,7 @@ import type { Look } from './types';
 const app: Look = {
   name: 'app',
 
-  // What the app pages render today. Moved here unchanged from config/brands/stabledrop.ts.
+  // The SDK's default look for the app pages.
   // Colours are omitted on purpose: the SDK's defaults ARE this palette, so restating them
   // would be a second copy to keep in step.
   app: {

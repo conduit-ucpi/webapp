@@ -7,6 +7,7 @@ import {
 } from './resolveLocale';
 import { CATALOGUES, MessageKey } from './messages';
 import { interpolate } from './interpolate';
+import { sanitizeOverrides } from './messageOverrides';
 
 /**
  * Locale resolution and message lookup.
@@ -35,9 +36,11 @@ export interface I18nProviderProps {
   children: React.ReactNode;
   /** Usually the active brand's `locale`. */
   brandLocale?: string | null;
+  /** The active brand's rewording of catalogue strings, per locale. See messageOverrides.ts. */
+  messageOverrides?: Partial<Record<string, Record<string, string>>> | null;
 }
 
-export function I18nProvider({ children, brandLocale }: I18nProviderProps) {
+export function I18nProvider({ children, brandLocale, messageOverrides }: I18nProviderProps) {
   const [resolution, setResolution] = useState<LocaleResolution>({
     locale: DEFAULT_LOCALE,
     source: 'default',
@@ -64,15 +67,22 @@ export function I18nProvider({ children, brandLocale }: I18nProviderProps) {
 
   const value = useMemo<I18nContextValue>(() => {
     const catalogue = CATALOGUES[resolution.locale] ?? CATALOGUES[DEFAULT_LOCALE];
+    const { accepted, rejected } = sanitizeOverrides(
+      messageOverrides?.[resolution.locale],
+      catalogue as Record<string, string>
+    );
+    if (rejected.length && process.env.NODE_ENV !== 'production') {
+      console.warn(`[i18n] brand message overrides dropped for '${resolution.locale}':`, rejected);
+    }
     const t: TranslateFn = (key, vars) => {
       // Falling back to English is better than rendering a key at someone, and
       // the Catalogue type means a missing translation is a compile error
       // rather than something discovered here.
-      const template = catalogue[key] ?? CATALOGUES[DEFAULT_LOCALE][key] ?? key;
+      const template = accepted[key] ?? catalogue[key] ?? CATALOGUES[DEFAULT_LOCALE][key] ?? key;
       return interpolate(template, vars);
     };
     return { locale: resolution.locale, source: resolution.source, t };
-  }, [resolution]);
+  }, [resolution, messageOverrides]);
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
 }

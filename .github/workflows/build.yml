@@ -7,27 +7,27 @@ on:
       - 'test*'
       - 'farcaster-test*'
       - 'cherry*'
-      # Client-only release: builds and publishes GitHub Pages WITHOUT touching
-      # any box. See the deploy-github-pages job for when to reach for it.
-      - 'pagesRelease-v*'
-  # Manual runs deploy ONLY to GitHub Pages: the box job below is skipped for
-  # workflow_dispatch. Lets the Pages build be exercised without shipping to
+      # Client-only release: builds and publishes to Cloudflare Pages WITHOUT touching
+      # any box. See the deploy-cloudflare job for when to reach for it.
+      - 'cloudflareRelease-v*'
+  # Manual runs deploy ONLY to Cloudflare: the box job below is skipped for
+  # workflow_dispatch. Lets the static build be exercised without shipping to
   # production, which a tag push would do (plan Phase 2 step 9).
   workflow_dispatch:
 
 jobs:
   build-and-deploy:
-    # Tag pushes only. A manual run is for validating Pages in isolation and
+    # Tag pushes only. A manual run is for validating the Cloudflare build in isolation and
     # must never touch the production box.
     #
-    # pagesRelease-* is excluded for a sharper reason than "it is a client tag":
+    # cloudflareRelease-* is excluded for a sharper reason than "it is a client tag":
     # the `environment:` expression below has no case for that prefix, so it
     # would fall through to its `'test'` default and a client release would
     # silently redeploy the TEST box. Excluding the tag here is what makes the
     # client lane client-only.
     if: >-
       github.event_name != 'workflow_dispatch' &&
-      !startsWith(github.ref, 'refs/tags/pagesRelease-')
+      !startsWith(github.ref, 'refs/tags/cloudflareRelease-')
     runs-on: ubuntu-latest
     environment: ${{ startsWith(github.ref, 'refs/tags/v') && 'production' || startsWith(github.ref, 'refs/tags/cherry') && 'cherry' || startsWith(github.ref, 'refs/tags/test') && 'test' || startsWith(github.ref, 'refs/tags/farcaster-test') && 'test_on_prod' || 'test' }}
     permissions:
@@ -279,6 +279,7 @@ jobs:
             -e CONTRACT_SERVICE_URL="${{ vars.CONTRACT_SERVICE_URL }}" \\
             -e AP2_SERVICE_URL="${{ vars.AP2_SERVICE_URL }}" \\
             -e DISPUTE_SERVICE_URL="${{ vars.DISPUTE_SERVICE_URL }}" \\
+            -e WHITELABEL_SERVICE_URL="${{ vars.WHITELABEL_SERVICE_URL }}" \\
             -e MOONPAY_API_KEY="${{ secrets.MOONPAY_API_KEY }}" \\
             -e X_API_KEY="${{ secrets.X_API_KEY }}" \\
             -e GIT_TAG="${{ env.GIT_TAG }}" \\
@@ -332,10 +333,9 @@ jobs:
           $SSH "chmod +x /dev/shm/deploy_script.sh && /dev/shm/deploy_script.sh && rm /dev/shm/deploy_script.sh"
 
   # ---------------------------------------------------------------------------
-  # GitHub Pages deploy — the client release, on its own tag. Publishes the
-  # static export to the repo's Pages URL while stabledrop.me keeps being served
-  # from the box, so the two can be compared before any DNS change
-  # (STATIC_FRONTEND_MIGRATION_PLAN.md, Phase 2 step 8).
+  # Cloudflare Pages deploy — the client release, on its own tag. Publishes the
+  # static export to stabledrop.me. (It started life as a GitHub Pages deploy,
+  # STATIC_FRONTEND_MIGRATION_PLAN.md Phase 2 step 8; that host is retired.)
   #
   # No `needs:` on build-and-deploy, and none is possible: the two jobs no longer
   # share a trigger, so on any given run exactly one of them is live. Ordering
@@ -347,12 +347,12 @@ jobs:
   # here because this repo is public; they are unavailable on private repos under
   # the Team plan.
   # ---------------------------------------------------------------------------
-  deploy-github-pages:
-    # pagesRelease-v* only (plus manual runs). The client and the box are now
-    # separate releases: pagesRelease-v* publishes Pages and touches no box,
+  deploy-cloudflare:
+    # cloudflareRelease-v* only (plus manual runs). The client and the box are now
+    # separate releases: cloudflareRelease-v* publishes to Cloudflare and touches no box,
     # cherry-v* deploys webapp-prod and publishes nothing.
     #
-    # Pages deliberately does NOT ride cherry-v* any more. What it must not ride
+    # The client deliberately does NOT ride cherry-v* any more. What it must not ride
     # is test*/farcaster-test*, which deploy webapp-test: publishing the client
     # on those would push it ahead of the webapp-prod API that api.stabledrop.me
     # actually proxies. That is the drift the Client/API version rows expose, and
@@ -362,13 +362,13 @@ jobs:
     # The discipline this hands back to the release, since one tag no longer
     # moves both: a change spanning client and API is TWO tags, API first.
     # Tag cherry-v* and let webapp-prod come up serving the new endpoint, then
-    # tag pagesRelease-v* to publish the client that calls it. Reversing the
-    # order puts a bundle on Pages calling something that 404s until the box
+    # tag cloudflareRelease-v* to publish the client that calls it. Reversing the
+    # order puts a bundle on Cloudflare calling something that 404s until the box
     # deploy lands. A client-only change (copy, styling, a fix inside the
-    # bundle) is just the one pagesRelease-v* tag.
+    # bundle) is just the one cloudflareRelease-v* tag.
     if: >-
       github.event_name == 'workflow_dispatch' ||
-      startsWith(github.ref, 'refs/tags/pagesRelease-')
+      startsWith(github.ref, 'refs/tags/cloudflareRelease-')
     runs-on: ubuntu-latest
     environment:
       # Named for the old host. Every NEXT_PUBLIC_* var and the Cloudflare secrets below
@@ -380,7 +380,7 @@ jobs:
       contents: read
     # One deployment at a time; never cancel a run that is mid-publish.
     concurrency:
-      group: github-pages
+      group: deploy-cloudflare
       cancel-in-progress: false
 
     steps:
@@ -543,7 +543,7 @@ jobs:
           # differently a week apart.
           wranglerVersion: '3.90.0'
           # --branch decides production vs preview, and it is NOT the git ref.
-          # This job runs on a pagesRelease-v* TAG, so letting wrangler infer the
+          # This job runs on a cloudflareRelease-v* TAG, so letting wrangler infer the
           # branch would publish every release as a preview on a URL nobody
           # visits, leaving the live site on the previous build with the run
           # still green. It must name the project's production branch.

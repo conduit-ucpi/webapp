@@ -9,10 +9,11 @@ export const LOOKS = { app, landing };
 /*
  * ── Which part of the site wears which look ──────────────────────────────────────────────
  *
- * The switch. Point either line at any entry in LOOKS. Nothing else in the site names a look:
- * the landing page reads LANDING_PAGE_LOOK, and Stabledrop's brand config (config/brands/
- * stabledrop.ts) reads APP_PAGES_LOOK for every other page. Partner brands such as COBRO
- * keep their own themes and are not affected.
+ * The landing page reads LANDING_PAGE_LOOK. Point it at any entry in LOOKS.
+ *
+ * The app pages no longer read a look: they wear the `stabledrop` brand record, which lives in
+ * the white-label service alongside every partner's (see config/brands). To give the app pages
+ * a look from here, copy its `app` theme (and `fontsHref` as `fonts.stylesheetHref`) into that
+ * record.
  */
 export const LANDING_PAGE_LOOK = LOOKS.landing;
-export const APP_PAGES_LOOK = LOOKS.landing;

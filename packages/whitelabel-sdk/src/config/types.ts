@@ -101,6 +101,33 @@ export type PartialBrandTheme = Partial<Omit<BrandTheme, 'primary' | 'secondary'
   button?: Partial<ButtonTheme>;
 };
 
+/**
+ * How the faces a theme names get loaded. The theme's font stacks only name
+ * families; without this, a partner's face renders only where the visitor
+ * happens to have it installed.
+ */
+export interface BrandFonts {
+  /** A stylesheet on https://fonts.googleapis.com. */
+  stylesheetHref?: string;
+  /** Font files uploaded to the white-label service. */
+  faces?: FontFaceRef[];
+}
+
+export interface FontFaceRef {
+  /** The family name the theme's font stacks refer to. */
+  family: string;
+  /** `400`, or a variable range such as `100 900`. */
+  weight?: string;
+  style?: 'normal' | 'italic';
+  /** Uploaded woff2 asset id; a URL once resolved. */
+  asset: string;
+}
+
+/**
+ * Images. As authored in the white-label service each is an uploaded asset id
+ * or a path on our own site; resolveBrand turns ids into URLs, so components
+ * only ever see something they can put in `src`.
+ */
 export interface BrandAssets {
   /** Wordmark or logo for light surfaces. Falls back to the brand name as text. */
   logo?: string;
@@ -161,9 +188,9 @@ export interface BrandConfig {
   /** BCP 47 tag, e.g. 'en' or 'es-VE'. Reserved for the locale work. */
   locale?: string;
   /**
-   * Origin of the Node API. Empty string means same-origin, which is what the
-   * box build wants; the static build sets it to the API host. Mirrors
-   * NEXT_PUBLIC_API_BASE_URL so the two cannot disagree.
+   * @deprecated Never read, and never accepted from the white-label service:
+   * the API origin is deployment config (NEXT_PUBLIC_API_BASE_URL), and a brand
+   * record able to set it could point the app's API calls anywhere.
    */
   apiBaseUrl?: string;
 
@@ -178,6 +205,16 @@ export interface BrandConfig {
   copy?: BrandCopy;
   links?: BrandLinks;
   features?: BrandFeatures;
+  fonts?: BrandFonts;
+  /**
+   * Overrides of the SDK's i18n catalogue, per locale:
+   * `{ es: { 'create.title': '…' } }`. Applied by I18nProvider, which drops a
+   * key the catalogue does not have and an override whose `{placeholders}`
+   * differ from the string it replaces — see i18n/messageOverrides.ts.
+   */
+  messages?: Partial<Record<string, Record<string, string>>>;
+  /** https URLs a completed flow may send the visitor back to. */
+  returnUrls?: string[];
 }
 
 /** A config with every optional branch filled in, as the components consume it. */

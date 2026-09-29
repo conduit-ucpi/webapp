@@ -15,7 +15,8 @@ import { BrandProvider, BrandI18nProvider } from '@conduit-ucpi/whitelabel-sdk';
 import { BRANDS, DEFAULT_BRAND_ID, WHITE_LABEL_ROUTES } from '@/config/brands';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
-import { APP_PAGES_LOOK } from '@/config/looks';
+
+const DEFAULT_FONTS_HREF = BRANDS[DEFAULT_BRAND_ID]?.fonts?.stylesheetHref;
 
 interface ClientOnlyAppProps {
   Component: any;
@@ -43,15 +44,17 @@ export default function ClientOnlyApp({ Component, pageProps }: ClientOnlyAppPro
   
   return (
     <ErrorBoundary children={
-      <BrandProvider brands={BRANDS} defaultBrandId={DEFAULT_BRAND_ID} routeBrandId={routeBrandId} children={
+      <BrandProvider brands={BRANDS} defaultBrandId={DEFAULT_BRAND_ID} routeBrandId={routeBrandId} remote children={
       <BrandI18nProvider children={
       <ThemeProvider children={
         <>
-          {/* A look set in a face the site does not load globally brings its own stylesheet. */}
-          {APP_PAGES_LOOK.fontsHref && (
+          {/* Our own brand's faces, in the pre-rendered HTML so the first paint is already in
+              them. Any brand's faces, ours included, are also applied by BrandProvider once the
+              brand is resolved — that is what loads a partner's. */}
+          {DEFAULT_FONTS_HREF && (
             <Head>
-              {/* eslint-disable-next-line @next/next/no-page-custom-font -- the app pages' chosen look */}
-              <link href={APP_PAGES_LOOK.fontsHref} rel="stylesheet" />
+              {/* eslint-disable-next-line @next/next/no-page-custom-font -- the default brand's faces */}
+              <link href={DEFAULT_FONTS_HREF} rel="stylesheet" />
             </Head>
           )}
           <FarcasterReady />

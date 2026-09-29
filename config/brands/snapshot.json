@@ -1,0 +1,134 @@
+{
+  "brands": {
+    "stabledrop": {
+      "version": 0,
+      "config": {
+        "id": "stabledrop",
+        "name": "Stabledrop.me",
+        "tagline": "Escrow-backed payments",
+        "locale": "en",
+        "theme": {
+          "primary": {
+            "50": "250 255 236",
+            "100": "244 255 216",
+            "200": "233 255 177",
+            "300": "222 255 139",
+            "400": "211 255 100",
+            "500": "200 255 61",
+            "600": "118 150 22",
+            "700": "89 113 17",
+            "800": "64 81 13",
+            "900": "42 53 9"
+          },
+          "secondary": {
+            "50": "245 245 242",
+            "100": "236 236 231",
+            "200": "224 224 218",
+            "300": "196 196 190",
+            "400": "154 154 148",
+            "500": "107 107 102",
+            "600": "68 68 63",
+            "700": "44 44 41",
+            "800": "29 29 27",
+            "900": "19 19 19",
+            "950": "12 12 12"
+          },
+          "palettes": {
+            "gray": {
+              "50": "245 245 242",
+              "100": "236 236 231",
+              "200": "224 224 218",
+              "300": "196 196 190",
+              "400": "154 154 148",
+              "500": "107 107 102",
+              "600": "68 68 63",
+              "700": "44 44 41",
+              "800": "29 29 27",
+              "900": "19 19 19",
+              "950": "12 12 12"
+            },
+            "neutral": {
+              "50": "245 245 242",
+              "100": "236 236 231",
+              "200": "224 224 218",
+              "300": "196 196 190",
+              "400": "154 154 148",
+              "500": "107 107 102",
+              "600": "68 68 63",
+              "700": "44 44 41",
+              "800": "29 29 27",
+              "900": "19 19 19",
+              "950": "12 12 12"
+            }
+          },
+          "radius": "20px",
+          "fontFamily": "'Space Grotesk', Inter, system-ui, sans-serif",
+          "headingFontFamily": "'Space Grotesk', Inter, system-ui, sans-serif",
+          "monoFontFamily": "'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace",
+          "accentFontFamily": "'Space Grotesk', Inter, system-ui, sans-serif",
+          "button": {
+            "radius": "12px",
+            "bg": "rgb(200 255 61)",
+            "fg": "rgb(19 19 19)",
+            "hoverBg": "rgb(211 255 100)",
+            "darkBg": "rgb(200 255 61)",
+            "darkFg": "rgb(19 19 19)",
+            "darkHoverBg": "rgb(211 255 100)"
+          }
+        },
+        "assets": {
+          "logo": "/icon-512.png",
+          "favicon": "/favicon.ico",
+          "ogImage": "/preview.png",
+          "logoHeight": "1.75rem"
+        },
+        "copy": {
+          "operatorNote": "Escrow contracts operated by Conduit UCPI on Base."
+        },
+        "links": {
+          "terms": "/terms-of-service",
+          "privacy": "/privacy-policy",
+          "arbitration": "/arbitration-policy"
+        },
+        "fonts": {
+          "stylesheetHref": "https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+        }
+      }
+    },
+    "cobro": {
+      "version": 0,
+      "config": {
+        "id": "cobro",
+        "name": "COBRO",
+        "tagline": "Cobra con protección",
+        "locale": "es",
+        "theme": {
+          "secondary": {
+            "900": "17 17 17"
+          },
+          "fontFamily": "'Manrope', ui-sans-serif, system-ui, sans-serif",
+          "primary": {
+            "50": "230 250 244",
+            "100": "196 243 228",
+            "200": "150 233 209",
+            "300": "94 220 186",
+            "400": "45 208 166",
+            "500": "0 200 150",
+            "600": "0 168 126",
+            "700": "0 133 100",
+            "800": "0 100 76",
+            "900": "0 72 55"
+          }
+        },
+        "copy": {
+          "operatorNote": "Escrow contracts operated by Conduit UCPI on Base."
+        },
+        "links": {
+          "terms": "/terms-of-service",
+          "privacy": "/privacy-policy",
+          "arbitration": "/arbitration-policy"
+        }
+      }
+    }
+  }
+}

@@ -1,4 +1,5 @@
 import { BrandConfig } from './types';
+import { BRAND_ID_PATTERN } from './remoteBrand';
 
 /**
  * Resolving which brand a visitor should see.
@@ -60,6 +61,14 @@ export interface ResolveBrandInput {
   routeBrandId?: string | null;
   registry: BrandRegistry;
   fallbackId: string;
+  /**
+   * Accept a well-formed id the registry does not hold. Set when brands come
+   * from the white-label service: the bundled registry is only a snapshot, so a
+   * partner added since the last build is not in it, and the provider fetches
+   * it instead. An id the service then reports missing falls back to the
+   * default there, so a forged parameter still cannot produce a half-brand.
+   */
+  allowUnlisted?: boolean;
 }
 
 function firstQueryValue(search: string | undefined): string | null {
@@ -88,9 +97,11 @@ export function resolveBrandId({
   routeBrandId,
   registry,
   fallbackId,
+  allowUnlisted = false,
 }: ResolveBrandInput): BrandResolution {
   const known = (id: string | null | undefined): id is string =>
-    !!id && Object.prototype.hasOwnProperty.call(registry, id);
+    !!id &&
+    (Object.prototype.hasOwnProperty.call(registry, id) || (allowUnlisted && BRAND_ID_PATTERN.test(id)));
 
   // A pinned route outranks everything, including the query. /create-cobro is
   // COBRO's page; `?b=stabledrop` on it would otherwise hand a partner's URL

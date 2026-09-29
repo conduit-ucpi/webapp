@@ -1,21 +1,32 @@
-import { BrandRegistry } from '@conduit-ucpi/whitelabel-sdk';
-import stabledrop from './stabledrop';
-import cobro from './cobro';
+import { BrandConfig, BrandRegistry } from '@conduit-ucpi/whitelabel-sdk';
+import snapshot from './snapshot.json';
 
 /**
- * Every brand this deployment will render, keyed by the id a partner puts in
- * their link (`?b=cobro`).
+ * Brands are edited in the white-label service (../whitelabelservice), not here.
+ * Our own brand is the `stabledrop` record there, in the same format as every
+ * partner's.
  *
- * This doubles as the allowlist. An id that is not here resolves to the
- * default, so a forged parameter cannot produce a half-branded page — which
- * matters, because anyone can put anything in a query string.
+ * snapshot.json is a copy of those records bundled into the build, for two
+ * reasons: the first paint needs no request, and the site keeps its branding if
+ * the service is down. BrandProvider (with `remote`) fetches the live record on
+ * top of it, so a stale snapshot shows an old brand for one request, not a
+ * wrong one.
+ *
+ * Refresh it after changing a brand in the service:
+ *
+ *     WHITELABEL_URL=https://api.stabledrop.me WHITELABEL_ADMIN_KEY=… node scripts/brands/pull.mjs
+ *
+ * and push an edited snapshot back with scripts/brands/push.mjs.
+ *
+ * With `remote`, an id that is not here is still fetched, so a partner added
+ * since the last build works without one. An id the service does not know
+ * resolves to the default, so a forged `?b=` cannot produce a half-branded page.
  */
-export const BRANDS: BrandRegistry = {
-  [stabledrop.id]: stabledrop,
-  [cobro.id]: cobro,
-};
+export const BRANDS: BrandRegistry = Object.fromEntries(
+  Object.entries(snapshot.brands).map(([id, entry]) => [id, entry.config as BrandConfig])
+);
 
-export const DEFAULT_BRAND_ID = stabledrop.id;
+export const DEFAULT_BRAND_ID = 'stabledrop';
 
 /**
  * Routes that exist to carry one partner's branding, mapped to that brand.
@@ -30,7 +41,5 @@ export const DEFAULT_BRAND_ID = stabledrop.id;
  * stays COBRO's page.
  */
 export const WHITE_LABEL_ROUTES: Record<string, string> = {
-  '/create-cobro': cobro.id,
+  '/create-cobro': 'cobro',
 };
-
-export { stabledrop, cobro };

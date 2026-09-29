@@ -29,6 +29,8 @@ export interface UseBrandResolutionOptions {
   contractBrandId?: string | null;
   /** A brand fixed by the route, for pages dedicated to one partner. */
   routeBrandId?: string | null;
+  /** See ResolveBrandInput.allowUnlisted. */
+  allowUnlisted?: boolean;
 }
 
 export function useBrandResolution({
@@ -36,7 +38,8 @@ export function useBrandResolution({
   fallbackId,
   contractBrandId,
   routeBrandId,
-}: UseBrandResolutionOptions): BrandResolution {
+  allowUnlisted = false,
+}: UseBrandResolutionOptions): BrandResolution & { settled: boolean } {
   // Starts at the fallback, matching what the server rendered, and only moves
   // after hydration.
   //
@@ -51,6 +54,10 @@ export function useBrandResolution({
     id: fallbackId,
     source: 'default',
   });
+  // False until the URL has been read. Before that the id is the fallback only
+  // because the server could not know better, so nothing should act on it —
+  // fetching our brand on a partner's page, for one.
+  const [settled, setSettled] = useState(false);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -69,12 +76,14 @@ export function useBrandResolution({
       routeBrandId,
       registry,
       fallbackId,
+      allowUnlisted,
     });
 
     setResolution((prev) =>
       prev.id === next.id && prev.source === next.source ? prev : next
     );
-  }, [registry, fallbackId, contractBrandId, routeBrandId]);
+    setSettled(true);
+  }, [registry, fallbackId, contractBrandId, routeBrandId, allowUnlisted]);
 
-  return resolution;
+  return { ...resolution, settled };
 }

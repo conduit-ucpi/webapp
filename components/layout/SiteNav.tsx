@@ -205,7 +205,7 @@ export default function SiteNav({ className = '', forceDark = false }: Props) {
                 </Link>
               </div>
 
-              <ul className="hidden md:flex items-center gap-1">
+              <ul className="hidden xl:flex items-center gap-1">
                 {groups.map((group) => {
                   const isOpen = open === group.label;
                   return (
@@ -236,7 +236,7 @@ export default function SiteNav({ className = '', forceDark = false }: Props) {
               </ul>
             </div>
 
-            <div className="hidden md:flex items-center gap-3">
+            <div className="hidden xl:flex items-center gap-3">
               {signedIn ? (
                 <div className="relative">
                   <button
@@ -269,7 +269,7 @@ export default function SiteNav({ className = '', forceDark = false }: Props) {
 
             <button
               type="button"
-              className="md:hidden p-2 rounded-lg text-secondary-700 dark:text-secondary-200 hover:bg-secondary-100 dark:hover:bg-secondary-800"
+              className="xl:hidden p-2 rounded-lg text-secondary-700 dark:text-secondary-200 hover:bg-secondary-100 dark:hover:bg-secondary-800"
               aria-label={mobile ? 'Close menu' : 'Open menu'}
               aria-expanded={mobile}
               onClick={() => setMobile((m) => !m)}
@@ -286,7 +286,7 @@ export default function SiteNav({ className = '', forceDark = false }: Props) {
         </div>
 
         {mobile && (
-          <div className="md:hidden border-t border-secondary-200 dark:border-secondary-800 bg-white dark:bg-secondary-900 max-h-[calc(100vh-4rem)] overflow-y-auto">
+          <div className="xl:hidden border-t border-secondary-200 dark:border-secondary-800 bg-white dark:bg-secondary-900 max-h-[calc(100vh-4rem)] overflow-y-auto">
             <div className="px-4 py-4 space-y-6">
               {signedIn && (
                 <div className="pb-4 border-b border-secondary-200 dark:border-secondary-800">{accountSection}</div>

@@ -414,6 +414,102 @@
           "stylesheetHref": "https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
         }
       }
+    },
+    "escrow-me": {
+      "version": 0,
+      "config": {
+        "id": "escrow-me",
+        "name": "Escrow Me",
+        "tagline": "Buyer-protected checkout",
+        "locale": "en",
+        "theme": {
+          "primary": {
+            "50": "252 243 237",
+            "100": "248 226 212",
+            "200": "240 196 170",
+            "300": "228 156 120",
+            "400": "206 115 76",
+            "500": "180 83 42",
+            "600": "156 68 32",
+            "700": "126 54 26",
+            "800": "96 42 21",
+            "900": "68 30 16"
+          },
+          "secondary": {
+            "50": "250 247 242",
+            "100": "246 241 233",
+            "200": "224 214 198",
+            "300": "201 185 159",
+            "400": "160 143 118",
+            "500": "138 122 100",
+            "600": "107 92 73",
+            "700": "78 65 50",
+            "800": "58 46 34",
+            "900": "43 33 24",
+            "950": "28 21 15"
+          },
+          "palettes": {
+            "gray": {
+              "50": "250 247 242",
+              "100": "246 241 233",
+              "200": "224 214 198",
+              "300": "201 185 159",
+              "400": "160 143 118",
+              "500": "138 122 100",
+              "600": "107 92 73",
+              "700": "78 65 50",
+              "800": "58 46 34",
+              "900": "43 33 24",
+              "950": "28 21 15"
+            },
+            "neutral": {
+              "50": "250 247 242",
+              "100": "246 241 233",
+              "200": "224 214 198",
+              "300": "201 185 159",
+              "400": "160 143 118",
+              "500": "138 122 100",
+              "600": "107 92 73",
+              "700": "78 65 50",
+              "800": "58 46 34",
+              "900": "43 33 24",
+              "950": "28 21 15"
+            }
+          },
+          "white": "255 253 249",
+          "black": "28 21 15",
+          "radius": "4px",
+          "fontFamily": "'Source Serif 4', Georgia, 'Times New Roman', serif",
+          "headingFontFamily": "'Fraunces', Georgia, serif",
+          "accentFontFamily": "'Fraunces', Georgia, serif",
+          "monoFontFamily": "'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace",
+          "button": {
+            "radius": "2px",
+            "bg": "rgb(180 83 42)",
+            "fg": "rgb(255 253 249)",
+            "hoverBg": "rgb(156 68 32)",
+            "darkBg": "rgb(206 115 76)",
+            "darkFg": "rgb(28 21 15)",
+            "darkHoverBg": "rgb(228 156 120)"
+          }
+        },
+        "fonts": {
+          "stylesheetHref": "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=IBM+Plex+Mono:wght@400;500&display=swap"
+        },
+        "copy": {
+          "createTitle": "Request a protected payment",
+          "createSubtitle": "The buyer's money is held in escrow until they confirm the order arrived.",
+          "operatorNote": "Escrow contracts operated by Conduit UCPI on Base."
+        },
+        "links": {
+          "terms": "/terms-of-service",
+          "privacy": "/privacy-policy",
+          "arbitration": "/arbitration-policy"
+        },
+        "returnUrls": [
+          "https://escrow-me.com"
+        ]
+      }
     }
   }
 }

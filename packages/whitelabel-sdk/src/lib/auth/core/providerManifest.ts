@@ -122,12 +122,27 @@ export const PROVIDERS: readonly ProviderDescriptor[] = [
 export function isInFarcaster(): boolean {
   if (typeof window === 'undefined') return false;
 
-  // ⚠️ MOVED VERBATIM FROM ProviderRegistry, not rewritten. Frame detection decides which
-  //    wallet a user gets, and "tidying" it while relocating it would change who can sign in
-  //    without anything in the diff looking like a behaviour change.
-  return !!(
-    window.parent !== window &&
-    (window.navigator.userAgent.includes('farcaster') ||
-      window.location !== window.parent.location)
-  );
+  // ⚠️ BEING IN A FRAME IS NOT BEING IN FARCASTER. This used to also accept
+  //    `window.location !== window.parent.location`, which compares two Location objects and
+  //    so is true in every iframe. Every partner embed — escrow-me.com, the WordPress and
+  //    Shopify iframes — was handed the Farcaster provider, a stub that "connects" a
+  //    placeholder address and never opens Privy.
+  //
+  //    A frame counts only with a Farcaster signal of its own: the SDK global, a Farcaster
+  //    client's user agent, or the frame URL parameters. Same signals as
+  //    components/farcaster/FarcasterDetectionProvider.
+  if (window.parent === window) return false;
+
+  let sdkPresent = false;
+  try {
+    sdkPresent = Boolean((window as unknown as { __farcaster__?: unknown }).__farcaster__);
+  } catch {
+    // A hostile or odd global must not break wallet selection.
+  }
+
+  const farcasterClient = /farcaster|warpcast/i.test(window.navigator.userAgent);
+  const params = new URLSearchParams(window.location.search);
+  const farcasterParam = params.has('fc_frame') || params.has('farcaster');
+
+  return sdkPresent || farcasterClient || farcasterParam;
 }

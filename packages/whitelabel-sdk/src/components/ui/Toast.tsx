@@ -133,26 +133,36 @@ function ToastItem({ toast, onDismiss }: ToastItemProps) {
     )
   };
 
-  const colors = {
-    success: 'bg-success-50 text-success-900 border-success-200',
-    error: 'bg-error-50 text-error-900 border-error-200',
-    warning: 'bg-warning-50 text-warning-900 border-warning-200',
-    info: 'bg-info-50 text-info-900 border-info-200'
+  /* The surface is the brand's own — its white, text and border neutrals — so a toast sits in
+     whatever look the page wears. Only the stripe and icon carry the meaning.
+
+     ⚠️ ONLY STEPS THAT EXIST. success / warning / error define 50, 500 and 600 and nothing
+        else (tailwind.config.js), and there is no `info` family at all. This used to ask for
+        text-*-900, border-*-200 and info-*, which compile to nothing: the text and border
+        fell through to defaults and an info toast had no background. Info takes the brand's
+        accent instead. */
+  const stripes = {
+    success: 'border-l-success-500',
+    error: 'border-l-error-500',
+    warning: 'border-l-warning-500',
+    info: 'border-l-primary-500'
   };
 
   const iconColors = {
     success: 'text-success-600',
     error: 'text-error-600',
     warning: 'text-warning-600',
-    info: 'text-info-600'
+    info: 'text-primary-600'
   };
 
   return (
     <div
       className={`
-        w-full sm:w-96 pointer-events-auto rounded-lg border shadow-lg
+        w-full sm:w-96 pointer-events-auto rounded-lg border border-l-4 shadow-lg
+        bg-white text-secondary-900 border-secondary-200
+        dark:bg-secondary-900 dark:text-white dark:border-y-secondary-700 dark:border-r-secondary-700
         transform transition-all duration-300 ease-out
-        ${colors[toast.type]}
+        ${stripes[toast.type]}
         ${isVisible ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'}
       `}
       role="alert"
@@ -167,7 +177,7 @@ function ToastItem({ toast, onDismiss }: ToastItemProps) {
               {toast.title}
             </p>
             {toast.message && (
-              <p className="mt-1 text-sm opacity-90">
+              <p className="mt-1 text-sm text-secondary-600 dark:text-secondary-300">
                 {toast.message}
               </p>
             )}

@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import ConnectWalletEmbedded from '@/components/auth/ConnectWalletEmbedded';
 import { useAuth } from '@/components/auth';
 import { useT } from '../../i18n';
+import { isInIframe } from '@/utils/deviceDetection';
 
 const CARD_BUTTON =
   'w-full rounded-lg border border-secondary-300 dark:border-secondary-600 px-6 py-3 text-sm font-semibold ' +
@@ -45,6 +46,16 @@ export default function WalletChoiceCards({
   const [legacyWallet, setLegacyWallet] = useState(false);
   const offerLegacy = canConnectLegacyWallet?.() === true;
 
+  /* Inside a partner's iframe Google and Apple cannot sign in — both refuse to render in a
+     frame, and Privy has no popup mode — so PrivyProvider drops them and this card says
+     "email" and offers the same page in a new tab, where they work. `?b=` rides along in the
+     URL, so the tab keeps the partner's branding. Set after mount: the static export renders
+     unframed, and reading window during render would mismatch on hydration. */
+  const [newTabHref, setNewTabHref] = useState<string | null>(null);
+  useEffect(() => {
+    if (isInIframe()) setNewTabHref(window.location.href);
+  }, []);
+
   return (
     <div className={className}>
       <div className="rounded-2xl border-2 border-primary-500 bg-white dark:bg-secondary-900 p-6 flex flex-col">
@@ -58,12 +69,22 @@ export default function WalletChoiceCards({
           compact
           connectionMode="social-only"
           useSmartRouting={false}
-          buttonText={t('wallet.continueSocial')}
+          buttonText={t(newTabHref ? 'wallet.continueEmail' : 'wallet.continueSocial')}
           className="mt-6"
           buttonClassName={CARD_BUTTON}
           onSuccess={onSuccess}
           legacyWallet={legacyWallet}
         />
+        {newTabHref && (
+          <a
+            href={newTabHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`mt-4 self-center ${ADVANCED_BUTTON}`}
+          >
+            {t('wallet.socialNewTab')}
+          </a>
+        )}
         {offerLegacy && (
           <label className="mt-4 flex items-start gap-2 text-sm text-secondary-600 dark:text-secondary-400 cursor-pointer">
             <input

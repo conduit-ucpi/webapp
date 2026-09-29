@@ -30,6 +30,8 @@ export const en = {
   'wallet.signInBlurb':
     "We'll create a secure wallet that only you control, or reconnect the one you already have. Nothing to install.",
   'wallet.continueSocial': 'Continue with email or social login',
+  'wallet.continueEmail': 'Continue with email',
+  'wallet.socialNewTab': 'Prefer Google or Apple? Open in a new tab',
   'wallet.legacyWallet': 'I signed up before and need my old wallet',
   'wallet.legacyWalletHint':
     'Tick this if you have funds in a wallet from our previous sign-in. You will sign in the old way and can move your funds out from the Wallet page.',

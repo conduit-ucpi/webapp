@@ -24,7 +24,7 @@ jest.mock('@/lib/auth/reportAuthFailure', () => ({
   reportAuthFailure: (...a: unknown[]) => reportAuthFailure(...a)
 }));
 
-import { PrivyProvider } from '@/lib/auth/providers/PrivyProvider';
+import { PrivyProvider, loginMethodsFor } from '@/lib/auth/providers/PrivyProvider';
 import { privyBridge, type PrivyBridgeApi } from '@/lib/auth/providers/privy/privyBridge';
 import type { AuthConfig } from '@/lib/auth/types';
 
@@ -271,5 +271,20 @@ describe('exportWallet', () => {
     expect(provider.canExportWallet()).toBe(false);
     await expect(provider.exportWallet()).rejects.toThrow(/No embedded wallet/);
     expect(api.exportWallet).not.toHaveBeenCalled();
+  });
+});
+
+describe('login methods inside a partner iframe', () => {
+  // Google and Apple navigate the frame to their own pages and refuse to render there, so a
+  // framed modal offering them has tiles that can only fail.
+  it('drops Google and Apple when framed', () => {
+    expect(loginMethodsFor('social-only', true)).toEqual(['email']);
+    expect(loginMethodsFor('default', true)).toEqual(['email', 'wallet']);
+    expect(loginMethodsFor('wallet-only', true)).toEqual(['wallet']);
+  });
+
+  it('keeps every method at the top level', () => {
+    expect(loginMethodsFor('social-only', false)).toEqual(['email', 'google', 'apple']);
+    expect(loginMethodsFor('default', false)).toEqual(['email', 'google', 'apple', 'wallet']);
   });
 });

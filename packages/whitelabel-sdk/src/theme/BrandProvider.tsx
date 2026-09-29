@@ -60,6 +60,8 @@ type BrandProviderProps = {
       contractBrandId?: string | null;
       /** Partner this route is dedicated to, when it is one. */
       routeBrandId?: string | null;
+      /** Our own other domains, each worn as its own brand. See ResolveBrandInput.hostBrands. */
+      hostBrands?: Record<string, string>;
       /** Fetch the live record from the white-label service. `brands` is then the bundled snapshot. */
       remote?: boolean;
       /** Test seam for the fetch. */
@@ -89,6 +91,7 @@ export function BrandProvider(props: BrandProviderProps) {
     contractBrandId: props.brand ? undefined : props.contractBrandId,
     routeBrandId: props.brand ? undefined : props.routeBrandId,
     allowUnlisted: remote,
+    hostBrands: props.brand ? undefined : props.hostBrands,
   });
 
   const [live, setLive] = useState<Record<string, LiveEntry>>({});
@@ -178,7 +181,19 @@ export function useOptionalBrand(): ResolvedBrand | null {
   return useContext(BrandContext)?.brand ?? null;
 }
 
-/** Where the active brand came from — route, contract, query or default. */
+/** Where the active brand came from — route, contract, query, host or default. */
 export function useBrandSource(): BrandSource | null {
   return useContext(BrandContext)?.source ?? null;
+}
+
+/**
+ * The active brand when it is a partner's — chosen by a link, a pinned route or
+ * the contract — rather than one of our own sites (the default, or a domain of
+ * ours). For the few things only a partner changes, such as swapping our
+ * wordmark for their logo.
+ */
+export function usePartnerBrand(): ResolvedBrand | null {
+  const ctx = useContext(BrandContext);
+  if (!ctx || ctx.source === 'default' || ctx.source === 'host') return null;
+  return ctx.brand;
 }

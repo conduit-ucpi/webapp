@@ -41,7 +41,7 @@ import { predictEscrowAddress } from '@/lib/counterfactualAddress';
 import { resolveEscrowAddressSources } from '@/lib/escrow/escrowAddressSources';
 import { getNetworkName } from '@/utils/networkUtils';
 import { useT } from '../i18n';
-import { useOptionalBrand, useBrandSource } from '../theme/BrandProvider';
+import { useOptionalBrand } from '../theme/BrandProvider';
 import { getSiteNameFromDomain } from '@/utils/siteName';
 import { useBrandedHref } from '../theme';
 
@@ -61,12 +61,11 @@ export default function ContractPay() {
   const t = useT();
   const brandedHref = useBrandedHref();
 
-  // A selected partner names itself on the pay button; otherwise the hostname
-  // does, so the other first-party domains keep their own names.
+  // The brand names the pay button: a partner's, or the one our own domain maps
+  // to, so the other first-party domains keep their own names.
   const brand = useOptionalBrand();
-  const brandSource = useBrandSource();
   const payBrandName =
-    brand && brandSource && brandSource !== 'default' ? brand.name : getSiteNameFromDomain();
+    brand?.name ?? getSiteNameFromDomain();
 
   const router = useRouter();
   const { contractId } = router.query;

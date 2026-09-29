@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
-import { useOptionalBrand, useBrandSource } from '@conduit-ucpi/whitelabel-sdk';
+import { useOptionalBrand, usePartnerBrand } from '@conduit-ucpi/whitelabel-sdk';
 import { useAuth } from '@/components/auth';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { useNavigation } from '@/components/navigation/NavigationProvider';
@@ -73,13 +73,15 @@ export default function SiteNav({ className = '', forceDark = false }: Props) {
   const [siteName, setSiteName] = useState(SSR_DEFAULT_SITE_NAME);
   useEffect(() => setSiteName(getSiteNameFromDomain()), []);
 
-  // A partner brand overrides the wordmark; otherwise the hostname names the site. Only an
-  // explicitly selected brand counts as a partner — the default must not override the domain.
+  // The active brand names the site: a partner's, or the record our own domain maps to
+  // (stabledrop.me, conduit-ucpi.com, instantescrow.nz… — see HOST_BRANDS in config/brands).
+  // The hostname helper only covers the moment before a brand is resolved.
+  //
+  // Only a partner swaps our text wordmark for a logo; our own domains keep the wordmark.
   const brand = useOptionalBrand();
-  const brandSource = useBrandSource();
-  const partnerBrand = brand && brandSource && brandSource !== 'default' ? brand : null;
-  const displayName = partnerBrand ? partnerBrand.name : siteName;
-  const displaySubtitle = partnerBrand?.tagline ?? 'Conduit UCPI';
+  const partnerBrand = usePartnerBrand();
+  const displayName = brand?.name ?? siteName;
+  const displaySubtitle = brand?.tagline ?? '';
   const partnerLogo = partnerBrand?.assets.logo;
 
   const { canGoBack, goBack } = useNavigation();

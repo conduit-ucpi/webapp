@@ -29,6 +29,23 @@ export const BRANDS: BrandRegistry = Object.fromEntries(
 export const DEFAULT_BRAND_ID = 'stabledrop';
 
 /**
+ * Our own domains, each worn as its own brand record. A domain matches itself
+ * and its subdomains (`test.conduit-ucpi.com` → `conduit-ucpi`); anything
+ * unlisted, localhost included, is the default. A partner link (`?b=`) opened
+ * on any of them is still the partner's page.
+ *
+ * These records are ordinary brands in the white-label service. They started
+ * as copies of `stabledrop` with their own names, so a change to our look has
+ * to be made to each.
+ */
+export const HOST_BRANDS: Record<string, string> = {
+  'stabledrop.me': 'stabledrop',
+  'conduit-ucpi.com': 'conduit-ucpi',
+  'instantescrow.nz': 'instantescrow',
+  'usdcbay.com': 'usdcbay',
+};
+
+/**
  * Routes that exist to carry one partner's branding, mapped to that brand.
  *
  * Two things read this, and they have to agree or the page is incoherent:

@@ -42,7 +42,7 @@ export const BRAND_QUERY_KEYS = ['b', 'brand'] as const;
 /** Only still referenced so a previously stuck tab can be cleared. */
 export const BRAND_STORAGE_KEY = 'wl:brand';
 
-export type BrandSource = 'route' | 'query' | 'contract' | 'default';
+export type BrandSource = 'route' | 'query' | 'contract' | 'host' | 'default';
 
 export interface BrandResolution {
   id: string;
@@ -61,6 +61,14 @@ export interface ResolveBrandInput {
   routeBrandId?: string | null;
   registry: BrandRegistry;
   fallbackId: string;
+  /** `window.location.hostname`. */
+  hostname?: string;
+  /**
+   * Domain → brand id, for sites that are ours but go by another name
+   * (`instantescrow.nz` → `instantescrow`). A domain matches itself and its
+   * subdomains, so `test.conduit-ucpi.com` is `conduit-ucpi.com`'s brand.
+   */
+  hostBrands?: Record<string, string>;
   /**
    * Accept a well-formed id the registry does not hold. Set when brands come
    * from the white-label service: the bundled registry is only a snapshot, so a
@@ -98,6 +106,8 @@ export function resolveBrandId({
   registry,
   fallbackId,
   allowUnlisted = false,
+  hostname,
+  hostBrands,
 }: ResolveBrandInput): BrandResolution {
   const known = (id: string | null | undefined): id is string =>
     !!id &&
@@ -113,5 +123,27 @@ export function resolveBrandId({
   const fromQuery = firstQueryValue(search);
   if (known(fromQuery)) return { id: fromQuery, source: 'query' };
 
+  // Below every explicit choice: the domain only says which of our own sites
+  // this is, and a partner link opened on it is still the partner's page.
+  const fromHost = brandForHost(hostname, hostBrands);
+  if (known(fromHost)) return { id: fromHost, source: 'host' };
+
   return { id: fallbackId, source: 'default' };
+}
+
+/** The brand a hostname maps to: exact domain or any subdomain of it. Longest match wins. */
+export function brandForHost(
+  hostname: string | undefined,
+  hostBrands: Record<string, string> | undefined
+): string | null {
+  if (!hostname || !hostBrands) return null;
+  const host = hostname.toLowerCase();
+  let best: { domain: string; id: string } | null = null;
+  for (const [domain, id] of Object.entries(hostBrands)) {
+    const d = domain.toLowerCase();
+    if ((host === d || host.endsWith(`.${d}`)) && (!best || d.length > best.domain.length)) {
+      best = { domain: d, id };
+    }
+  }
+  return best?.id ?? null;
 }

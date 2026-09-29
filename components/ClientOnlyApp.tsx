@@ -12,7 +12,7 @@ import { NavigationProvider } from '@/components/navigation/NavigationProvider';
 import { EthersProvider } from '@/components/providers/EthersProvider';
 import { captureConsoleForMobile } from '@/utils/mobileLogger';
 import { BrandProvider, BrandI18nProvider } from '@conduit-ucpi/whitelabel-sdk';
-import { BRANDS, DEFAULT_BRAND_ID, WHITE_LABEL_ROUTES } from '@/config/brands';
+import { BRANDS, DEFAULT_BRAND_ID, HOST_BRANDS, WHITE_LABEL_ROUTES } from '@/config/brands';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 
@@ -44,7 +44,7 @@ export default function ClientOnlyApp({ Component, pageProps }: ClientOnlyAppPro
   
   return (
     <ErrorBoundary children={
-      <BrandProvider brands={BRANDS} defaultBrandId={DEFAULT_BRAND_ID} routeBrandId={routeBrandId} remote children={
+      <BrandProvider brands={BRANDS} defaultBrandId={DEFAULT_BRAND_ID} routeBrandId={routeBrandId} hostBrands={HOST_BRANDS} remote children={
       <BrandI18nProvider children={
       <ThemeProvider children={
         <>

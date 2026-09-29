@@ -16,7 +16,7 @@ jest.mock('@/components/navigation/NavigationProvider', () => ({
 jest.mock('@/components/theme/ThemeToggle', () => () => <button type="button">theme</button>);
 jest.mock('@conduit-ucpi/whitelabel-sdk', () => ({
   useOptionalBrand: () => null,
-  useBrandSource: () => 'default',
+  usePartnerBrand: () => null,
 }));
 jest.mock('@/lib/buildVersion', () => ({
   CLIENT_GIT_TAG: 'v9.9.9',

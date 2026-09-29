@@ -8,7 +8,7 @@ import { useEffect, useRef, useState } from 'react';
 import { QRCodeCanvas, QRCodeSVG } from 'qrcode.react';
 import { getSiteNameFromDomain } from '@/utils/siteName';
 import { useT } from '../../i18n';
-import { useOptionalBrand, useBrandSource } from '../../theme/BrandProvider';
+import { useOptionalBrand } from '../../theme/BrandProvider';
 
 interface SendRequestScreenProps {
   paymentLink: string;
@@ -81,9 +81,8 @@ export default function SendRequestScreen({
   }, []);
 
   const brand = useOptionalBrand();
-  const brandSource = useBrandSource();
   const siteName =
-    brand && brandSource && brandSource !== 'default' ? brand.name : getSiteNameFromDomain();
+    brand?.name ?? getSiteNameFromDomain();
 
   const downloadPdf = async () => {
     setPdfBusy(true);

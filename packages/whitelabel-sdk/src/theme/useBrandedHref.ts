@@ -14,7 +14,9 @@ export function useBrandedHref(): (path: string) => string {
   const source = useBrandSource();
 
   // 'default' means nothing asked for this brand, so there is nothing to carry.
-  const brandId = brand && source && source !== 'default' ? brand.id : null;
+  // A brand our own domain implies is not carried: the link opens on that
+  // domain, which implies it again.
+  const brandId = brand && source && source !== 'default' && source !== 'host' ? brand.id : null;
 
   return useCallback((path: string) => withBrandParam(path, brandId), [brandId]);
 }

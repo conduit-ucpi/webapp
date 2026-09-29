@@ -31,6 +31,8 @@ export interface UseBrandResolutionOptions {
   routeBrandId?: string | null;
   /** See ResolveBrandInput.allowUnlisted. */
   allowUnlisted?: boolean;
+  /** See ResolveBrandInput.hostBrands. */
+  hostBrands?: Record<string, string>;
 }
 
 export function useBrandResolution({
@@ -39,6 +41,7 @@ export function useBrandResolution({
   contractBrandId,
   routeBrandId,
   allowUnlisted = false,
+  hostBrands,
 }: UseBrandResolutionOptions): BrandResolution & { settled: boolean } {
   // Starts at the fallback, matching what the server rendered, and only moves
   // after hydration.
@@ -77,13 +80,15 @@ export function useBrandResolution({
       registry,
       fallbackId,
       allowUnlisted,
+      hostname: window.location.hostname,
+      hostBrands,
     });
 
     setResolution((prev) =>
       prev.id === next.id && prev.source === next.source ? prev : next
     );
     setSettled(true);
-  }, [registry, fallbackId, contractBrandId, routeBrandId, allowUnlisted]);
+  }, [registry, fallbackId, contractBrandId, routeBrandId, allowUnlisted, hostBrands]);
 
   return { ...resolution, settled };
 }

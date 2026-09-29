@@ -31,7 +31,7 @@ import { buildWordPressStatusUrl as buildWpStatusUrl } from '@/utils/wordpressSt
 import { safeRedirectUrl } from '@/utils/safeRedirect';
 import { verifyEscrow } from '@/lib/escrow/verifyEscrow';
 import { useT } from '../i18n';
-import { useOptionalBrand, useBrandSource } from '../theme/BrandProvider';
+import { useOptionalBrand } from '../theme/BrandProvider';
 import { getSiteNameFromDomain } from '@/utils/siteName';
 
 interface ContractCreateForm {
@@ -57,9 +57,8 @@ export default function ContractCreate() {
   // The tab title is the partner's too — a COBRO customer should not see our
   // name in their browser chrome.
   const brand = useOptionalBrand();
-  const brandSource = useBrandSource();
   const brandName =
-    brand && brandSource && brandSource !== 'default' ? brand.name : getSiteNameFromDomain();
+    brand?.name ?? getSiteNameFromDomain();
 
   const router = useRouter();
   const { config } = useConfig();

@@ -3,6 +3,7 @@ export { DEFAULT_THEME } from './defaults';
 export { resolveBrand, defineBrand } from './resolveBrand';
 export {
   resolveBrandId,
+  brandForHost,
   BRAND_QUERY_KEYS,
   BRAND_STORAGE_KEY,
 } from './registry';

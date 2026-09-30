@@ -67,9 +67,8 @@ export default function Home() {
 
         <ScrollyHero
           brand={siteName}
-          eyebrowText="Payments with buyer protection"
-          headline={<>Get paid. <span className={lt.accentText}>Your buyer is protected. You can&apos;t be charged back.</span></>}
-          sub="A payment request in a few clicks, or put a checkout on your site in ten minutes. The money waits in escrow until the payout date; nothing can pull it back out."
+          headline={<>Pay anyone, <span className={lt.accentText}>stay protected</span></>}
+          sub="Make and receive protected payments in seconds, add a checkout to your site in minutes."
           primary={{ href: '/create', label: 'Request payment' }}
           secondary={{ href: '#demo', label: 'See the checkout' }}
           right={<EscrowTimeline />}

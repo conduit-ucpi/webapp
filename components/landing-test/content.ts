@@ -75,7 +75,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: 'WordPress plugin', href: WORDPRESS_PLUGIN_URL, external: true },
       { label: 'Shopify', href: '/shopify/install-button' },
       { label: 'API reference', href: API_DOC_URL, external: true },
-      { label: 'Source code', href: SOURCE_URL, external: true },
+      { label: 'Open source', href: SOURCE_URL, external: true },
     ],
   },
   {
@@ -297,7 +297,7 @@ claude mcp add --transport http stabledrop ${MCP_URL}
 ];
 
 export const FOOTER_LINKS: NavLink[] = [
-  { label: 'Source code', href: SOURCE_URL, external: true },
+  { label: 'Open source', href: SOURCE_URL, external: true },
   { label: 'How it works', href: '/how-it-works' },
   { label: 'FAQ', href: '/faq' },
   { label: 'Integrations', href: '/plugins' },

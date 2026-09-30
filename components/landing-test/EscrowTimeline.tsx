@@ -90,7 +90,7 @@ export default function EscrowTimeline({ stage: controlled }: { stage?: number }
         <span className={lt.muted}>Seller wallet</span>
         <span className={`font-medium ${released ? lt.accentText : lt.fg}`}>{released ? '+$1,188.00' : '—'}</span>
       </div>
-      <p className={`mt-4 text-[11px] ${lt.muted}`}>The buyer can dispute before day 14 and freeze the funds. After that, nothing can.</p>
+      <p className={`mt-4 text-[11px] ${lt.muted}`}>The buyer can dispute before release date and freeze the funds. After that, nothing can.</p>
     </div>
   );
 }

@@ -41,7 +41,7 @@ import { predictEscrowAddress } from '@/lib/counterfactualAddress';
 import { resolveEscrowAddressSources } from '@/lib/escrow/escrowAddressSources';
 import { getNetworkName } from '@/utils/networkUtils';
 import { useT } from '../i18n';
-import { useOptionalBrand } from '../theme/BrandProvider';
+import { useOptionalBrand, useContractBrand } from '../theme/BrandProvider';
 import { getSiteNameFromDomain } from '@/utils/siteName';
 import { useBrandedHref } from '../theme';
 
@@ -136,6 +136,8 @@ export default function ContractPay() {
     address,
     authenticatedFetch,
   });
+  // The payer sees the partner the request was made under, even from a link that lost its ?b=.
+  useContractBrand(contract?.brandId);
 
 
 

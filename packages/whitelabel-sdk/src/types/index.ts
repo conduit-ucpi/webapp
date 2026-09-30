@@ -167,6 +167,8 @@ export interface PendingContract {
   // Optional custom arbiter address chosen by the seller.
   // When present, this contract uses a non-default dispute resolver.
   arbiterAddress?: string;
+  /** White-label partner the contract was created under; absent for our own brand. */
+  brandId?: string | null;
   description: string;
   createdAt: number;
   createdBy: string;

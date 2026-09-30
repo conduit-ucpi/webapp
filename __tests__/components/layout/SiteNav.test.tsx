@@ -14,9 +14,10 @@ jest.mock('@/components/navigation/NavigationProvider', () => ({
   useNavigation: () => ({ canGoBack: false, goBack: jest.fn() }),
 }));
 jest.mock('@/components/theme/ThemeToggle', () => () => <button type="button">theme</button>);
+const mockPartner = jest.fn().mockReturnValue(null);
 jest.mock('@conduit-ucpi/whitelabel-sdk', () => ({
-  useOptionalBrand: () => null,
-  usePartnerBrand: () => null,
+  useOptionalBrand: () => mockPartner(),
+  usePartnerBrand: () => mockPartner(),
 }));
 jest.mock('@/lib/buildVersion', () => ({
   CLIENT_GIT_TAG: 'v9.9.9',
@@ -34,6 +35,7 @@ function signIn(user: Record<string, unknown> = { email: 'sam@example.com', user
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockPartner.mockReturnValue(null);
   mockUseAuth.mockReturnValue({ user: null, disconnect, switchWallet: jest.fn(), isConnected: false, state: {} });
   mockUseConfig.mockReturnValue({ config: { gitTag: 'v1.2.3', gitSha: 'def5678', projectsLive: false, emailVerificationLive: false } });
 });
@@ -144,6 +146,16 @@ describe('SiteNav', () => {
       expect(links()).toHaveClass('max-xl:invisible');
       expect(menuButton()).toHaveClass('xl:hidden');
     });
+  });
+
+  it("on a partner's pages, drops our marketing menus and makes the dashboard home", () => {
+    mockPartner.mockReturnValue({ id: 'escrow-me', name: 'Escrow Me', tagline: 'Buyer-protected checkout', assets: {} });
+    render(<SiteNav />);
+    expect(screen.queryByRole('button', { name: /Products/ })).toBeNull();
+    expect(screen.queryByText('Pricing')).toBeNull();
+    expect(screen.getByText('Escrow Me').closest('a')).toHaveAttribute('href', '/dashboard');
+    expect(screen.getAllByText('Request payment').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Dashboard').length).toBeGreaterThan(0);
   });
 
   it('can be forced dark for a page that is dark by design', () => {

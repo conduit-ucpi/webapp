@@ -23,7 +23,7 @@ import { MIN_AMOUNT, TEST_AMOUNT, formatUsd, isAllowedAmount, parseAmount } from
 import { callAp2Tool, isAp2ToolError } from '../lib/ap2Mcp';
 import { decodePayResume, encodePayResume } from '../lib/payResume';
 import { useT } from '../i18n';
-import { useBrandedHref } from '../theme';
+import { useBrandedHref, usePartnerBrand } from '../theme';
 
 /**
  * /pay — a buyer pushes a payment to a seller, into an escrow they can dispute.
@@ -90,6 +90,9 @@ export default function PayPage() {
   const { config } = useConfig();
   const { isLoading, isConnected, address, user, authenticatedFetch } = useAuth();
   const brandedHref = useBrandedHref();
+  // The partner this payment is made under, recorded on the contract. Not a term: it moves no address.
+  const brandId = usePartnerBrand()?.id;
+  const attribution = brandId ? { brand: brandId } : {};
   const { getWeb3Service, getTokenBalance } = useSimpleEthers();
   const { showToast } = useToast();
 
@@ -174,6 +177,7 @@ export default function PayPage() {
     try {
       const result = await callAp2Tool<Prepared>('prepare_escrow_payment', {
         ...terms(),
+        ...attribution,
         payer,
         ...(externalId ? { external_id: externalId } : {}),
       });
@@ -210,6 +214,7 @@ export default function PayPage() {
       updateStep('settle', 'active');
       const result = await callAp2Tool<Settled>('settle_escrow_payment', {
         ...terms(),
+        ...attribution,
         external_id: prepared.external_id,
         authorization: signing.authorization,
         signature,
@@ -236,6 +241,7 @@ export default function PayPage() {
     if (!prepared) return false;
     const result = await callAp2Tool<Settled>('settle_escrow_payment', {
       ...terms(),
+      ...attribution,
       external_id: prepared.external_id,
     });
     if (isAp2ToolError(result)) {
@@ -248,7 +254,7 @@ export default function PayPage() {
     return true;
     // terms() reads the same state these name.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [prepared, seller, baseUnits, payoutTimestamp, payer, selectedTokenSymbol, description]);
+  }, [prepared, seller, baseUnits, payoutTimestamp, payer, selectedTokenSymbol, description, brandId]);
 
   const qr = useQrPayment({
     authenticatedFetch,

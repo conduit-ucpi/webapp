@@ -171,6 +171,38 @@ describe('/pay', () => {
     expect(screen.getByText('0.300000 USDC')).toBeInTheDocument();
   });
 
+  it("records the partner a payment is made under, alongside the terms, not as one of them", async () => {
+    const { BrandProvider } = jest.requireActual('@conduit-ucpi/whitelabel-sdk');
+    window.history.replaceState({}, '', '/pay?b=escrow-me');
+    mockCall.mockResolvedValueOnce(prepared()).mockResolvedValueOnce({
+      escrow_address: ESCROW,
+      receipt: { contract_id: 'c-1' },
+    });
+    try {
+      render(
+        <BrandProvider
+          brands={{ stabledrop: { id: 'stabledrop', name: 'Stabledrop.me' }, 'escrow-me': { id: 'escrow-me', name: 'Escrow Me' } }}
+          defaultBrandId="stabledrop"
+        >
+          <PayPage />
+        </BrandProvider>
+      );
+      fill();
+      await screen.findByText('Confirm payment');
+      expect(mockCall.mock.calls[0][1]).toMatchObject({ brand: 'escrow-me', description: 'Logo design' });
+    } finally {
+      window.history.replaceState({}, '', '/');
+    }
+  });
+
+  it('sends no brand on our own pages', async () => {
+    mockCall.mockResolvedValueOnce(prepared());
+    render(<PayPage />);
+    fill();
+    await screen.findByText('Confirm payment');
+    expect(mockCall.mock.calls[0][1]).not.toHaveProperty('brand');
+  });
+
   it('signs exactly what prepare returned and settles the same terms with it', async () => {
     mockCall.mockResolvedValueOnce(prepared()).mockResolvedValueOnce({
       status: 'settled',

@@ -13,6 +13,7 @@ import {
 } from '@/utils/validation';
 import { useCreateContractValidation } from './useContractValidation';
 import { useT } from '../i18n';
+import { usePartnerBrand } from '../theme/BrandProvider';
 
 interface CreateContractForm {
   buyerEmail: string;
@@ -28,6 +29,8 @@ export function useCreateContract() {
   const { config } = useConfig();
   const { user, authenticatedFetch } = useAuth();
   const { errors, validateForm, clearErrors } = useCreateContractValidation();
+  // Recorded on the contract: the white-label partner it was created under.
+  const brandId = usePartnerBrand()?.id;
 
   const [form, setForm] = useState<CreateContractForm>({
     buyerEmail: '',
@@ -100,7 +103,8 @@ export function useCreateContract() {
         currencySymbol: config.tokenSymbol || 'USDC',
         description: form.description,
         expiryTimestamp: form.payoutTimestamp,
-        serviceLink: config.serviceLink
+        serviceLink: config.serviceLink,
+        ...(brandId ? { brandId } : {})
       };
 
       if (!authenticatedFetch) {
@@ -131,7 +135,7 @@ export function useCreateContract() {
       setIsLoading(false);
       setLoadingMessage('');
     }
-  }, [form, config, user, authenticatedFetch, validateForm, router]);
+  }, [form, config, user, authenticatedFetch, validateForm, router, brandId]);
 
   return {
     // Form state

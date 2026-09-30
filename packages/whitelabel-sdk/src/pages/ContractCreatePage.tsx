@@ -31,7 +31,7 @@ import { buildWordPressStatusUrl as buildWpStatusUrl } from '@/utils/wordpressSt
 import { safeRedirectUrl } from '@/utils/safeRedirect';
 import { verifyEscrow } from '@/lib/escrow/verifyEscrow';
 import { useT } from '../i18n';
-import { useOptionalBrand } from '../theme/BrandProvider';
+import { useOptionalBrand, usePartnerBrand } from '../theme/BrandProvider';
 import { getSiteNameFromDomain } from '@/utils/siteName';
 
 interface ContractCreateForm {
@@ -57,6 +57,8 @@ export default function ContractCreate() {
   // The tab title is the partner's too — a COBRO customer should not see our
   // name in their browser chrome.
   const brand = useOptionalBrand();
+  // Recorded on the contract: the white-label partner it was created under.
+  const brandId = usePartnerBrand()?.id;
   const brandName =
     brand?.name ?? getSiteNameFromDomain();
 
@@ -609,7 +611,8 @@ export default function ContractCreate() {
         serviceLink: config.serviceLink,
         productName: order_id ? `Order #${order_id}` : undefined,
         state: "OK",
-        suppressSending: true
+        suppressSending: true,
+        ...(brandId ? { brandId } : {})
       };
 
       if (!authenticatedFetch) {

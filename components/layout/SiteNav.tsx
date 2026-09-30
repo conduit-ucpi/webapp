@@ -103,7 +103,11 @@ export default function SiteNav({ className = '', forceDark = false }: Props) {
 
   // Pricing is a section of the homepage: an in-page anchor there, a link to it from elsewhere.
   const pricingHref = router.pathname === '/' ? SITE_NAV_PRICING.href.slice(1) : SITE_NAV_PRICING.href;
-  const groups = siteNavGroups({ projectsLive: config?.projectsLive === true });
+  // StableDrop's own marketing (products, solutions, resources, pricing) isn't a partner's product:
+  // their bar is their brand, the app's actions and the account menu. Their home is the dashboard.
+  const marketing = !partnerBrand;
+  const groups = marketing ? siteNavGroups({ projectsLive: config?.projectsLive === true }) : [];
+  const homeHref = marketing ? '/' : '/dashboard';
   const account = accountLinks({ emailVerificationLive: config?.emailVerificationLive === true, isAdmin });
 
   // Close on a click outside, Escape, or navigating somewhere.
@@ -198,7 +202,7 @@ export default function SiteNav({ className = '', forceDark = false }: Props) {
                     <ArrowLeftIcon className="w-5 h-5 text-secondary-600 dark:text-secondary-300" />
                   </button>
                 )}
-                <Link href="/" className="flex flex-col">
+                <Link href={homeHref} className="flex flex-col">
                   {partnerLogo ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={partnerLogo} alt={displayName} style={{ height: partnerBrand?.assets.logoHeight ?? '1.75rem' }} className="w-auto" />
@@ -234,9 +238,11 @@ export default function SiteNav({ className = '', forceDark = false }: Props) {
                     </li>
                   );
                 })}
-                <li>
-                  <a href={pricingHref} className={barItemClass}>{SITE_NAV_PRICING.label}</a>
-                </li>
+                {marketing && (
+                  <li>
+                    <a href={pricingHref} className={barItemClass}>{SITE_NAV_PRICING.label}</a>
+                  </li>
+                )}
               </ul>
             </div>
 
@@ -303,7 +309,7 @@ export default function SiteNav({ className = '', forceDark = false }: Props) {
                   ))}
                 </div>
               ))}
-              <a href={pricingHref} className={itemClass} onClick={closeAll}>{SITE_NAV_PRICING.label}</a>
+              {marketing && <a href={pricingHref} className={itemClass} onClick={closeAll}>{SITE_NAV_PRICING.label}</a>}
               <div className="flex gap-3 pt-2">
                 {!signedIn && (
                   <Link href="/dashboard" className="flex-1 inline-flex items-center justify-center px-4 py-3 text-sm font-medium border border-secondary-300 dark:border-secondary-600 rounded-[var(--wl-button-radius)] text-secondary-900 dark:text-white" onClick={closeAll}>

@@ -37,7 +37,7 @@ import { useSimpleEthers } from '@/hooks/useSimpleEthers';
 import { emailsEqual } from '@/utils/address';
 import { useT } from '../../i18n';
 import type { MessageKey } from '../../i18n';
-import { useBrandedHref } from '../../theme';
+import { useBrandedHref, usePartnerBrand } from '../../theme';
 
 interface CreateContractForm {
   buyerEmail: string;
@@ -78,6 +78,8 @@ const stepKeys: { id: string; title: MessageKey; description: MessageKey }[] = [
 export default function CreateContractWizard() {
   const t = useT();
   const brandedHref = useBrandedHref();
+  // Recorded on the contract: the white-label partner it was created under.
+  const brandId = usePartnerBrand()?.id;
 
   // Translated here rather than inside Wizard: Wizard is shared with callers
   // that pass their own already-worded steps, so it must not assume keys.
@@ -359,6 +361,7 @@ export default function CreateContractWizard() {
         // the seller in the same transaction instead of funding an escrow.
         expiryTimestamp: isInstantPayment ? 0 : form.payoutTimestamp,
         serviceLink: config.serviceLink,
+        ...(brandId ? { brandId } : {}),
         ...(form.arbiterAddress.trim() ? { arbiterAddress: ethers.getAddress(form.arbiterAddress.trim()) } : {})
       };
 

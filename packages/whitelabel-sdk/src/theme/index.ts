@@ -1,4 +1,4 @@
-export { BrandProvider, useBrand, useOptionalBrand, useBrandSource, usePartnerBrand } from './BrandProvider';
+export { BrandProvider, useBrand, useOptionalBrand, useBrandSource, usePartnerBrand, useContractBrand } from './BrandProvider';
 export { useBrandResolution } from './useBrandResolution';
 export { useBrandedHref } from './useBrandedHref';
 export { withBrandParam } from './brandedHref';

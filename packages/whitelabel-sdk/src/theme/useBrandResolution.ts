@@ -1,10 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import Router from 'next/router';
 import {
   BrandRegistry,
   BrandResolution,
   BRAND_STORAGE_KEY,
   resolveBrandId,
 } from '../config/registry';
+import { withBrandParam } from './brandedHref';
 
 /**
  * Resolve the active brand from the URL on every page load.
@@ -17,9 +19,13 @@ import {
  * that loading a clean /create kept showing the last partner until the tab was
  * closed. The URL says who you are; nothing else does.
  *
- * The consequence to know about: an in-app link that drops the parameter drops
- * the branding with it. The fix for that is to carry the parameter on those
- * links, or to read the partner off the contract, not to make the brand sticky.
+ * In-app navigation carries it, though. Once a partner's brand is showing — from
+ * the query, a pinned route or the contract — a client-side move to a page whose
+ * URL names no brand keeps that partner and writes `?b=` into the new URL, so the
+ * whole app (dashboard, account pages, create, pay) stays theirs without every
+ * link having to remember the parameter, and a refresh keeps it too. That is not
+ * stickiness: it lives only as long as the page does, so a fresh load of a clean
+ * URL is still ours.
  */
 
 export interface UseBrandResolutionOptions {
@@ -61,6 +67,8 @@ export function useBrandResolution({
   // because the server could not know better, so nothing should act on it —
   // fetching our brand on a partner's page, for one.
   const [settled, setSettled] = useState(false);
+  // The partner in view, for carrying across in-app navigation. Never our own brand.
+  const carried = useRef<string | null>(null);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -73,21 +81,41 @@ export function useBrandResolution({
       /* Storage unavailable — nothing to clear. */
     }
 
-    const next = resolveBrandId({
-      search: window.location.search,
-      contractBrandId,
-      routeBrandId,
-      registry,
-      fallbackId,
-      allowUnlisted,
-      hostname: window.location.hostname,
-      hostBrands,
-    });
+    const resolve = () => {
+      const next = resolveBrandId({
+        search: window.location.search,
+        contractBrandId,
+        routeBrandId,
+        registry,
+        fallbackId,
+        allowUnlisted,
+        hostname: window.location.hostname,
+        hostBrands,
+      });
+      const partner = next.source !== 'default' && next.source !== 'host';
+      if (!partner && carried.current) {
+        // Arrived here in-app from a partner's page: keep the partner and put it in
+        // the URL. The replace comes back through here and resolves from the query.
+        // Resolution is left as it is meanwhile, so the page never flashes ours.
+        const here = window.location.pathname + window.location.search + window.location.hash;
+        try {
+          void Router.replace(withBrandParam(here, carried.current), undefined, { shallow: true, scroll: false });
+          return;
+        } catch {
+          // No Next router mounted (a host that isn't a Next app): nothing to carry with.
+        }
+      }
+      carried.current = partner ? next.id : null;
+      setResolution((prev) =>
+        prev.id === next.id && prev.source === next.source ? prev : next
+      );
+      setSettled(true);
+    };
 
-    setResolution((prev) =>
-      prev.id === next.id && prev.source === next.source ? prev : next
-    );
-    setSettled(true);
+    resolve();
+    // The singleton, not useRouter(): the provider also runs outside a mounted Next router.
+    Router?.events?.on('routeChangeComplete', resolve);
+    return () => Router?.events?.off('routeChangeComplete', resolve);
   }, [registry, fallbackId, contractBrandId, routeBrandId, allowUnlisted, hostBrands]);
 
   return { ...resolution, settled };

@@ -42,6 +42,9 @@ interface BrandContextValue {
 
 const BrandContext = createContext<BrandContextValue | null>(null);
 
+/** Lets a page below report the partner recorded on the contract it shows. See useContractBrand. */
+const ContractBrandContext = createContext<((brandId: string | null) => void) | null>(null);
+
 type BrandProviderProps = {
   children: React.ReactNode;
 } & (
@@ -85,10 +88,14 @@ export function BrandProvider(props: BrandProviderProps) {
   const remote = !props.brand && !!props.remote;
   const fetchImpl = (!props.brand && props.fetchBrandImpl) || fetchBrand;
 
+  // The partner on the contract in view, as reported by the page showing it (useContractBrand).
+  // A contractBrandId passed as a prop wins: it was decided above the page.
+  const [reportedContractBrand, setReportedContractBrand] = useState<string | null>(null);
+
   const { id, source, settled } = useBrandResolution({
     registry,
     fallbackId,
-    contractBrandId: props.brand ? undefined : props.contractBrandId,
+    contractBrandId: props.brand ? undefined : props.contractBrandId ?? reportedContractBrand,
     routeBrandId: props.brand ? undefined : props.routeBrandId,
     allowUnlisted: remote,
     hostBrands: props.brand ? undefined : props.hostBrands,
@@ -147,6 +154,7 @@ export function BrandProvider(props: BrandProviderProps) {
   // contents` keeps it out of layout; `visibility` is inherited through it.
   return (
     <BrandContext.Provider value={value}>
+     <ContractBrandContext.Provider value={setReportedContractBrand}>
       <div
         data-wl-brand={value.brand.id}
         aria-busy={loading || undefined}
@@ -154,6 +162,7 @@ export function BrandProvider(props: BrandProviderProps) {
       >
         {children}
       </div>
+     </ContractBrandContext.Provider>
     </BrandContext.Provider>
   );
 }
@@ -179,6 +188,23 @@ export function useBrand(): ResolvedBrand {
 /** The brand if there is one, otherwise null. For chrome that is shared with non-SDK pages. */
 export function useOptionalBrand(): ResolvedBrand | null {
   return useContext(BrandContext)?.brand ?? null;
+}
+
+/**
+ * Show the partner recorded on the contract in view, whatever the URL says.
+ *
+ * For payment pages: a payer arrives days later from a link that may have lost its `?b=`, and the
+ * contract is the one signal they cannot edit (see resolveBrandId). Pass the record's `brandId`
+ * once it has loaded; null or undefined leaves the brand to the URL. Cleared when the page goes.
+ */
+export function useContractBrand(brandId: string | null | undefined): void {
+  const report = useContext(ContractBrandContext);
+  const id = brandId?.trim().toLowerCase() || null;
+  useEffect(() => {
+    if (!report) return;
+    report(id);
+    return () => report(null);
+  }, [report, id]);
 }
 
 /** Where the active brand came from — route, contract, query, host or default. */

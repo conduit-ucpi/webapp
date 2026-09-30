@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { NAV_GROUPS, NAV_PRICING, NavLink } from './content';
 import { lt } from './theme';
+import { useBarFit } from '@/components/layout/useBarFit';
 
 interface Props {
   /** The wordmark. */
@@ -34,13 +35,15 @@ function ItemLink({ item, onClick, className }: { item: NavLink; onClick?: () =>
 
 /**
  * The Stripe / Mercury top bar: Products, Solutions, Developers, Resources as dropdowns,
- * Pricing as a plain link, sign-in on the right and one primary button. Below `md` it
- * collapses to a menu button and a full list — the dropdown pattern is a desktop one.
+ * Pricing as a plain link, sign-in on the right and one primary button. Whenever that doesn't
+ * fit on one line it collapses to a menu button and a full list — the dropdown pattern is a desktop one.
  */
 export default function LandingNav({ brand, className = '', ctaLabel = 'Request payment', signInLabel = 'Sign in' }: Props) {
   const [open, setOpen] = useState<string | null>(null);
   const [mobile, setMobile] = useState(false);
   const barRef = useRef<HTMLDivElement>(null);
+  // brand gap-8 = 32px
+  const { rowRef, brandRef, linksRef, actionsRef, barPart, menuPart, rowClip } = useBarFit(32, () => setMobile(false));
 
   useEffect(() => {
     if (!open) return;
@@ -61,13 +64,15 @@ export default function LandingNav({ brand, className = '', ctaLabel = 'Request 
   return (
     <nav className={`w-full ${className}`} aria-label="Primary" ref={barRef}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          <div className="flex items-center gap-8">
-            <Link href="/" className={`text-lg font-semibold tracking-tight ${lt.fg}`} style={{ fontFamily: 'var(--lt-font-display)' }}>
-              {brand}
-            </Link>
+        <div ref={rowRef} className={`relative flex items-center justify-between h-16 ${rowClip}`}>
+          <div className="flex items-center gap-8 min-w-0">
+            <div ref={brandRef} className="shrink-0 whitespace-nowrap">
+              <Link href="/" className={`text-lg font-semibold tracking-tight ${lt.fg}`} style={{ fontFamily: 'var(--lt-font-display)' }}>
+                {brand}
+              </Link>
+            </div>
 
-            <ul className="hidden md:flex items-center gap-1">
+            <ul ref={linksRef} className={`${barPart} items-center gap-1 whitespace-nowrap`}>
               {NAV_GROUPS.map((group) => {
                 const isOpen = open === group.label;
                 return (
@@ -105,7 +110,7 @@ export default function LandingNav({ brand, className = '', ctaLabel = 'Request 
             </ul>
           </div>
 
-          <div className="hidden md:flex items-center gap-3">
+          <div ref={actionsRef} className={`${barPart} right-0 items-center gap-3 whitespace-nowrap`}>
             <Link href="/dashboard" className={`px-3 py-2 text-sm ${lt.fg} hover:opacity-80`}>
               {signInLabel}
             </Link>
@@ -116,7 +121,7 @@ export default function LandingNav({ brand, className = '', ctaLabel = 'Request 
 
           <button
             type="button"
-            className={`md:hidden p-2 ${lt.fg}`}
+            className={`${menuPart} p-2 ${lt.fg}`}
             aria-label={mobile ? 'Close menu' : 'Open menu'}
             aria-expanded={mobile}
             onClick={() => setMobile((m) => !m)}
@@ -133,7 +138,7 @@ export default function LandingNav({ brand, className = '', ctaLabel = 'Request 
       </div>
 
       {mobile && (
-        <div className={`md:hidden border-t ${lt.border} ${lt.card}`}>
+        <div className={`${menuPart} border-t ${lt.border} ${lt.card}`}>
           <div className="px-4 py-4 space-y-6">
             {NAV_GROUPS.map((group) => (
               <div key={group.label}>

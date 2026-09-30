@@ -10,6 +10,7 @@ import ThemeToggle from '@/components/theme/ThemeToggle';
 import { CLIENT_GIT_TAG, CLIENT_GIT_SHA, formatVersion } from '@/lib/buildVersion';
 import { btnPrimary } from '@/utils/landingStyles';
 import { getSiteNameFromDomain } from '@/utils/siteName';
+import { useBarFit } from './useBarFit';
 import { accountLinks, siteNavGroups, SITE_NAV_PRICING, SiteNavLink } from './siteNavLinks';
 
 const SSR_DEFAULT_SITE_NAME = 'Instant Escrow';
@@ -58,7 +59,7 @@ function NavItemLink({ item, onClick }: { item: SiteNavLink; onClick?: () => voi
 
 /**
  * The site's top bar, on every page: the landing page's layout (grouped dropdowns, pricing, one
- * primary button), collapsing to a menu button below `md`, plus the account section the old app
+ * primary button), collapsing to a menu button whenever that doesn't fit on one line, plus the account section the old app
  * drawer had — who is signed in, their account pages, dark mode, switch wallet, logout, and the
  * client and API versions.
  *
@@ -69,6 +70,9 @@ export default function SiteNav({ className = '', forceDark = false }: Props) {
   const [open, setOpen] = useState<string | null>(null);
   const [mobile, setMobile] = useState(false);
   const barRef = useRef<HTMLDivElement>(null);
+
+  // Collapses to the menu button whenever the full bar doesn't fit (brand gap-6 = 24px).
+  const { rowRef, brandRef, linksRef, actionsRef, barPart, menuPart, rowClip } = useBarFit(24, () => setMobile(false));
 
   const [siteName, setSiteName] = useState(SSR_DEFAULT_SITE_NAME);
   useEffect(() => setSiteName(getSiteNameFromDomain()), []);
@@ -181,9 +185,9 @@ export default function SiteNav({ className = '', forceDark = false }: Props) {
         ref={barRef}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
+          <div ref={rowRef} className={`relative flex items-center justify-between h-16 ${rowClip}`}>
             <div className="flex items-center gap-6 min-w-0">
-              <div className="flex items-center">
+              <div ref={brandRef} className="flex items-center shrink-0 whitespace-nowrap">
                 {canGoBack && (
                   <button
                     type="button"
@@ -205,7 +209,7 @@ export default function SiteNav({ className = '', forceDark = false }: Props) {
                 </Link>
               </div>
 
-              <ul className="hidden xl:flex items-center gap-1">
+              <ul ref={linksRef} className={`${barPart} items-center gap-1 whitespace-nowrap`}>
                 {groups.map((group) => {
                   const isOpen = open === group.label;
                   return (
@@ -236,7 +240,7 @@ export default function SiteNav({ className = '', forceDark = false }: Props) {
               </ul>
             </div>
 
-            <div className="hidden xl:flex items-center gap-3">
+            <div ref={actionsRef} className={`${barPart} right-0 items-center gap-3 whitespace-nowrap`}>
               {signedIn ? (
                 <div className="relative">
                   <button
@@ -269,7 +273,7 @@ export default function SiteNav({ className = '', forceDark = false }: Props) {
 
             <button
               type="button"
-              className="xl:hidden p-2 rounded-lg text-secondary-700 dark:text-secondary-200 hover:bg-secondary-100 dark:hover:bg-secondary-800"
+              className={`${menuPart} p-2 rounded-lg text-secondary-700 dark:text-secondary-200 hover:bg-secondary-100 dark:hover:bg-secondary-800`}
               aria-label={mobile ? 'Close menu' : 'Open menu'}
               aria-expanded={mobile}
               onClick={() => setMobile((m) => !m)}
@@ -286,7 +290,7 @@ export default function SiteNav({ className = '', forceDark = false }: Props) {
         </div>
 
         {mobile && (
-          <div className="xl:hidden border-t border-secondary-200 dark:border-secondary-800 bg-white dark:bg-secondary-900 max-h-[calc(100vh-4rem)] overflow-y-auto">
+          <div className={`${menuPart} border-t border-secondary-200 dark:border-secondary-800 bg-white dark:bg-secondary-900 max-h-[calc(100vh-4rem)] overflow-y-auto`}>
             <div className="px-4 py-4 space-y-6">
               {signedIn && (
                 <div className="pb-4 border-b border-secondary-200 dark:border-secondary-800">{accountSection}</div>

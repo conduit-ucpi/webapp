@@ -112,6 +112,40 @@ describe('SiteNav', () => {
     }
   });
 
+  describe('collapses by measuring whether the bar fits, not by breakpoint', () => {
+    // jsdom has no layout: give the row a width and every bar part a natural width.
+    const widths = (row: number, part: number) => {
+      jest.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockImplementation(function (this: HTMLElement) {
+        return this.classList.contains('h-16') ? row : 0;
+      });
+      jest.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockReturnValue(part);
+    };
+    afterEach(() => jest.restoreAllMocks());
+    const links = () => screen.getByRole('button', { name: /Products/ }).closest('ul')!;
+    const menuButton = () => screen.getByRole('button', { name: 'Open menu' });
+
+    it('shows the full bar and no menu button when brand, links and actions fit on one line', () => {
+      widths(1000, 200); // 3 × 200 + 48 of gaps = 648
+      render(<SiteNav />);
+      expect(links()).not.toHaveClass('invisible');
+      expect(menuButton()).toHaveClass('hidden');
+    });
+
+    it('keeps the bar laid out but invisible, and offers the menu, when they do not', () => {
+      widths(600, 200);
+      render(<SiteNav />);
+      expect(links()).toHaveClass('invisible', 'absolute');
+      expect(menuButton()).not.toHaveClass('hidden');
+    });
+
+    it('falls back to the xl breakpoint before anything has been measured', () => {
+      widths(0, 200);
+      render(<SiteNav />);
+      expect(links()).toHaveClass('max-xl:invisible');
+      expect(menuButton()).toHaveClass('xl:hidden');
+    });
+  });
+
   it('can be forced dark for a page that is dark by design', () => {
     const { container } = render(<SiteNav forceDark />);
     expect(container.firstChild).toHaveClass('dark');

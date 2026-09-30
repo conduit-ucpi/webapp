@@ -43,11 +43,6 @@ jest.mock('@/components/ui/Toast', () => ({
   ToastProvider: ({ children }: any) => <>{children}</>,
 }));
 
-jest.mock('@/components/ui/WalletInfo', () => ({
-  __esModule: true,
-  default: () => <div data-testid="wallet-info-stub" />,
-}));
-
 import { useRouter } from 'next/router';
 import CreateContractWizard from '@/components/contracts/CreateContractWizard';
 import { useConfig } from '@/components/auth/ConfigProvider';

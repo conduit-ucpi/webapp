@@ -17,11 +17,11 @@ import { useTokenBalance } from '@/hooks/useTokenBalance';
 import { useTokenSelection } from '@/hooks/useTokenSelection';
 import { useQrPayment } from '@/hooks/useQrPayment';
 import { usePaymentSteps } from '@/hooks/usePaymentSteps';
-import { isValidEmail, isValidWalletAddress, getDefaultTimestamp, formatDateTimeWithTZ } from '@/utils/validation';
+import { isValidEmail, isValidWalletAddress, isValidDescription, addressesEqual, getDefaultTimestamp, formatDateTimeWithTZ } from '@/utils/validation';
 import { getNetworkName } from '@/utils/networkUtils';
 import { MIN_AMOUNT, TEST_AMOUNT, formatUsd, isAllowedAmount, parseAmount } from '@/utils/escrowFees';
 import { callAp2Tool, isAp2ToolError } from '../lib/ap2Mcp';
-import { decodePayResume, encodePayResume } from '../lib/payResume';
+import { decodePayResume, encodePayResume, withPayResume } from '../lib/payResume';
 import { useT } from '../i18n';
 import { useBrandedHref, usePartnerBrand } from '../theme';
 
@@ -71,6 +71,42 @@ interface Prepared {
 
 interface Settled {
   dispute?: { where?: string };
+  /** The receipt's claims, beside the signed JWT. The JWT is authoritative; this is for acting on. */
+  receipt_claims?: {
+    'stabledrop.escrow'?: { contract_id?: string; escrow_account?: string; funding_tx_hash?: string };
+  };
+}
+
+/** What a checkout needs to tell its merchant about a payment that has landed. */
+export interface PaidEscrow {
+  /** contractservice's id: what conduit-checkout.js verifies by, and what the Shopify order records. */
+  contractId?: string;
+  escrowAddress: string;
+  /** The funding transfer. Absent when the money arrived by transfer before settle was called. */
+  txHash?: string;
+}
+
+/**
+ * /pay inside a merchant's checkout (/contract-create). The terms come from the merchant and are
+ * not the buyer's to change, and what happens afterwards (postMessage, webhook, redirects) is the
+ * checkout's business, so it is handed back through these.
+ */
+export interface PayCheckout {
+  terms: { seller: string; amount: string; description: string; expiryTimestamp: number; tokenSymbol?: string };
+  onPaid: (paid: PaidEscrow) => void;
+  /** `prepare`: the payment could not be set up, and the buyer can try again here. `pay`: paying failed. */
+  onFailed: (message: string, phase: 'prepare' | 'pay') => void;
+  onCancel: () => void;
+}
+
+/** The receipt's escrow block as a checkout wants it. Accounts are CAIP-10; the address is the last part. */
+export function paidEscrowFrom(settled: Settled | null, fallbackAddress: string): PaidEscrow {
+  const escrow = settled?.receipt_claims?.['stabledrop.escrow'];
+  return {
+    contractId: escrow?.contract_id,
+    escrowAddress: escrow?.escrow_account?.split(':').pop() || fallbackAddress,
+    txHash: escrow?.funding_tx_hash,
+  };
 }
 
 type Stage = 'details' | 'review' | 'done';
@@ -84,7 +120,7 @@ function firstSentence(message?: string): string | undefined {
   return message?.split(/(?<=\.)\s/)[0];
 }
 
-export default function PayPage() {
+export default function PayPage({ checkout }: { checkout?: PayCheckout } = {}) {
   const t = useT();
   const router = useRouter();
   const { config } = useConfig();
@@ -96,7 +132,7 @@ export default function PayPage() {
   const { getWeb3Service, getTokenBalance } = useSimpleEthers();
   const { showToast } = useToast();
 
-  const [tokenSymbol, setTokenSymbol] = useState<string | undefined>();
+  const [tokenSymbol, setTokenSymbol] = useState<string | undefined>(checkout?.terms.tokenSymbol);
   const { selectedToken, selectedTokenSymbol, availableTokens } = useTokenSelection(config, tokenSymbol);
   const { tokenBalance, isLoadingBalance } = useTokenBalance({
     enabled: !!config?.rpcUrl,
@@ -105,10 +141,10 @@ export default function PayPage() {
     getTokenBalance,
   });
 
-  const [seller, setSeller] = useState('');
-  const [amount, setAmount] = useState('');
-  const [payoutTimestamp, setPayoutTimestamp] = useState(getDefaultTimestamp());
-  const [description, setDescription] = useState('');
+  const [seller, setSeller] = useState(checkout?.terms.seller ?? '');
+  const [amount, setAmount] = useState(checkout?.terms.amount ?? '');
+  const [payoutTimestamp, setPayoutTimestamp] = useState(checkout?.terms.expiryTimestamp ?? getDefaultTimestamp());
+  const [description, setDescription] = useState(checkout?.terms.description ?? '');
   const [sellerError, setSellerError] = useState<string>();
   const [amountError, setAmountError] = useState<string>();
 
@@ -145,8 +181,21 @@ export default function PayPage() {
     description: description.trim(),
   });
 
-  const fail = (message?: string) =>
-    showToast({ type: 'error', title: t('push.failed'), message: message || t('wizard.genericError') });
+  /** Why a checkout's payment could not be set up: its terms have no form to show an error on. */
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+
+  const fail = (message?: string) => {
+    const said = message || t('wizard.genericError');
+    showToast({ type: 'error', title: t('push.failed'), message: said });
+    if (checkout) {
+      setCheckoutError(said);
+      checkout.onFailed(said, stage === 'review' ? 'pay' : 'prepare');
+    }
+  };
+
+  /** A problem with one field: said under it on /pay, and as a failure in a checkout, where the merchant set it. */
+  const fieldError = (set: (message: string | undefined) => void, message?: string) =>
+    checkout ? fail(message) : set(message);
 
   /**
    * `externalId` when resuming: the same id gives the same escrow, and the same reservation.
@@ -161,7 +210,16 @@ export default function PayPage() {
     const externalId = resumeId ?? (unchanged ? prepared.external_id : undefined);
     const s = seller.trim();
     if (!isValidEmail(s) && !isValidWalletAddress(s)) {
-      setSellerError(t('push.errSeller'));
+      fieldError(setSellerError, t('push.errSeller'));
+      return;
+    }
+    if (isValidWalletAddress(s) && payer && addressesEqual(s, payer)) {
+      fieldError(setSellerError, t('validation.payToOwnWallet', { seller: s, buyer: payer }));
+      return;
+    }
+    // The form limits what the buyer types; a merchant's link is checked here.
+    if (checkout && !isValidDescription(description)) {
+      fail(t('wizard.errDescription'));
       return;
     }
     setSellerError(undefined);
@@ -169,10 +227,11 @@ export default function PayPage() {
     // amount. ap2service applies the same rule; checking here saves the round trip.
     const parsed = parseAmount(amount);
     if (parsed === null || !isAllowedAmount(parsed)) {
-      setAmountError(t('validation.amountRange', { min: formatUsd(MIN_AMOUNT), test: TEST_AMOUNT }));
+      fieldError(setAmountError, t('validation.amountRange', { min: formatUsd(MIN_AMOUNT), test: TEST_AMOUNT }));
       return;
     }
     setAmountError(undefined);
+    setCheckoutError(null);
     setBusy('prepare');
     try {
       const result = await callAp2Tool<Prepared>('prepare_escrow_payment', {
@@ -185,7 +244,7 @@ export default function PayPage() {
         // An amount ap2service will not escrow (below its minimum, or its fee floor) is said
         // against the amount, and the buyer stays on the form: they never get an address to
         // pay into. Its first sentence is written for a person; the rest is for developers.
-        if (isAmountRefusal(result)) return setAmountError(firstSentence(result.message));
+        if (isAmountRefusal(result)) return fieldError(setAmountError, firstSentence(result.message));
         return fail(result.message);
       }
       preparedFor.current = JSON.stringify(terms());
@@ -276,18 +335,19 @@ export default function PayPage() {
    * is refilled into the form first; prepare runs on the next render, once the form (and the
    * token it selects) actually holds those values.
    */
-  const resumeHref = prepared
-    ? brandedHref(
-        `/pay?resume=${encodePayResume({
-          seller: seller.trim(),
-          amount: amount.trim(),
-          expiryTimestamp: payoutTimestamp,
-          description: description.trim(),
-          tokenSymbol: selectedTokenSymbol,
-          externalId: prepared.external_id,
-        })}`
-      )
-    : brandedHref('/pay');
+  const resumeParam = prepared
+    ? encodePayResume({
+        seller: seller.trim(),
+        amount: amount.trim(),
+        expiryTimestamp: payoutTimestamp,
+        description: description.trim(),
+        tokenSymbol: selectedTokenSymbol,
+        externalId: prepared.external_id,
+      })
+    : null;
+  const resumeHref = checkout
+    ? withPayResume(router.asPath, resumeParam)
+    : brandedHref(resumeParam ? `/pay?resume=${resumeParam}` : '/pay');
 
   const [resumingId, setResumingId] = useState<string | null>(null);
   const [resumingToken, setResumingToken] = useState<string | null>(null);
@@ -321,12 +381,48 @@ export default function PayPage() {
   // The address bar follows the screen: the payment's own link while it is being paid, plain
   // /pay once it is done, so a refresh never offers a finished payment again. Left alone on the
   // form, so a ?resume= link survives signing in before it has been picked up.
+  //
+  // ⚠️ NEVER IN A CHECKOUT. Its URL carries the merchant's return address and order id, and its
+  //    path is what the layout recognises to drop our header and footer inside their page.
   useEffect(() => {
+    if (checkout) return;
     if (!router.isReady || (stage === 'review' && !prepared) || stage === 'details') return;
     const want = stage === 'review' ? resumeHref : brandedHref('/pay');
     if (router.asPath !== want) void router.replace(want, undefined, { shallow: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stage, prepared, resumeHref, router.isReady]);
+
+  /*
+   * A checkout has no form to fill: its terms are the merchant's. Prepare runs once the payer is
+   * signed in and the merchant's token is the selected one (the amount's base units depend on its
+   * decimals) — unless a resume is about to, with the external id that keeps the same escrow.
+   */
+  const checkoutPrepared = useRef(false);
+  useEffect(() => {
+    if (!checkout || checkoutPrepared.current || !router.isReady) return;
+    // The resume effect prepares this one, with its external id; a second, id-less prepare
+    // would quote a different escrow.
+    if (decodePayResume(router.query.resume)) {
+      checkoutPrepared.current = true;
+      return;
+    }
+    if (!payer || !config || busy || stage !== 'details') return;
+    const wanted = checkout.terms.tokenSymbol;
+    if (wanted && selectedTokenSymbol.toUpperCase() !== wanted.toUpperCase()) return;
+    checkoutPrepared.current = true;
+    void handlePrepare();
+    // handlePrepare reads the checkout's terms from this same render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [checkout, router.isReady, router.query.resume, payer, config, busy, stage, selectedTokenSymbol]);
+
+  // Handed to the checkout once, when the escrow exists: the receipt says which one it is.
+  const handedOff = useRef(false);
+  useEffect(() => {
+    if (!checkout || stage !== 'done' || handedOff.current || !prepared) return;
+    handedOff.current = true;
+    checkout.onPaid(paidEscrowFrom(settled, prepared.escrow_address));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [checkout, stage, settled, prepared]);
 
   // The receipt's link selects this payment on the dashboard. Its path and query only, so a
   // partner brand's site keeps its own domain rather than following the link to ours.
@@ -370,6 +466,11 @@ export default function PayPage() {
           <p className="mt-3 text-secondary-500 dark:text-secondary-400">{t('push.signInBlurb')}</p>
         </div>
         <WalletChoiceCards />
+        {checkout && (
+          <div className="mt-6 flex justify-center">
+            <Button variant="outline" onClick={checkout.onCancel}>{t('common.cancel')}</Button>
+          </div>
+        )}
       </div>
     );
   }
@@ -382,7 +483,23 @@ export default function PayPage() {
           steps={PUSH_JOURNEY_STEPS}
         />
 
-        {stage === 'details' && (
+        {stage === 'details' && checkout && (
+          <div className="rounded-2xl border border-secondary-200 dark:border-secondary-700 bg-white dark:bg-secondary-900 p-6 sm:p-8 text-center">
+            {checkoutError ? (
+              <>
+                <p className="text-error-600 dark:text-error-400">{checkoutError}</p>
+                <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
+                  <Button onClick={() => handlePrepare()} disabled={busy !== null}>{t('push.retry')}</Button>
+                  <Button variant="outline" onClick={checkout.onCancel}>{t('common.cancel')}</Button>
+                </div>
+              </>
+            ) : (
+              <p className="text-secondary-600 dark:text-secondary-300">{t('push.checkoutPreparing')}</p>
+            )}
+          </div>
+        )}
+
+        {stage === 'details' && !checkout && (
           <>
             <div className="text-center mb-6">
               <h2 className="text-2xl sm:text-3xl font-semibold text-secondary-900 dark:text-white">{t('push.title')}</h2>
@@ -439,8 +556,8 @@ export default function PayPage() {
               networkLabel={networkLabel}
               description={description}
               payoutTimestamp={payoutTimestamp}
-              isInstantPayment={false}
-              onEdit={() => setStage('details')}
+              isInstantPayment={payoutTimestamp === 0}
+              onEdit={checkout ? undefined : () => setStage('details')}
               extraRows={[
                 { label: t('push.paying'), value: seller.trim() },
                 { label: t('push.sellerReceives'), value: prepared.seller_receives_estimate },
@@ -458,7 +575,7 @@ export default function PayPage() {
             <div className="mt-8">
               <PaymentOptions
                 paymentSteps={paymentSteps}
-                reassurance={t('pay.escrowHeld', { amount: `${amount} ${selectedTokenSymbol}` })}
+                reassurance={t(payoutTimestamp === 0 ? 'pay.escrowInstant' : 'pay.escrowHeld', { amount: `${amount} ${selectedTokenSymbol}` })}
                 amountLabel={`${amount} ${selectedTokenSymbol}`}
                 amountInTokens={amountInTokens}
                 balanceFloat={balanceFloat}
@@ -494,6 +611,11 @@ export default function PayPage() {
                 }
               />
             </div>
+            {checkout && (
+              <div className="mt-6 flex justify-center">
+                <Button variant="outline" onClick={checkout.onCancel} disabled={busy === 'pay'}>{t('common.cancel')}</Button>
+              </div>
+            )}
           </>
         )}
 
@@ -501,21 +623,26 @@ export default function PayPage() {
           <div className="rounded-2xl border border-secondary-200 dark:border-secondary-700 bg-white dark:bg-secondary-900 p-6 sm:p-8 text-center">
             <h2 className="text-2xl sm:text-3xl font-semibold text-secondary-900 dark:text-white">{t('push.doneTitle')}</h2>
             <p className="mt-3 text-secondary-600 dark:text-secondary-300">
-              {t('push.doneBody', {
-                amount,
-                token: selectedTokenSymbol,
-                seller: seller.trim(),
-                date: formatDateTimeWithTZ(payoutTimestamp),
-              })}
+              {payoutTimestamp === 0
+                ? t('push.doneInstantBody', { amount, token: selectedTokenSymbol, seller: seller.trim() })
+                : t('push.doneBody', {
+                    amount,
+                    token: selectedTokenSymbol,
+                    seller: seller.trim(),
+                    date: formatDateTimeWithTZ(payoutTimestamp),
+                  })}
             </p>
-            <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
-              <Button onClick={viewPayment} className="w-full sm:w-auto px-8">
-                {t('push.viewPayment')}
-              </Button>
-              <Button variant="outline" onClick={reset} className="w-full sm:w-auto px-8">
-                {t('push.another')}
-              </Button>
-            </div>
+            {/* A checkout takes the buyer back to the merchant from here. */}
+            {!checkout && (
+              <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
+                <Button onClick={viewPayment} className="w-full sm:w-auto px-8">
+                  {t('push.viewPayment')}
+                </Button>
+                <Button variant="outline" onClick={reset} className="w-full sm:w-auto px-8">
+                  {t('push.another')}
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </div>

@@ -1,46 +1,28 @@
 import { apiFetch } from '@/lib/apiFetch';
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
-import { useConfig } from '@/components/auth/ConfigProvider';
 import { useAuth } from '@/components/auth';
-import { useSimpleEthers } from '@/hooks/useSimpleEthers';
-import { useTokenSelection } from '@/hooks/useTokenSelection';
-import { useQrPayment } from '@/hooks/useQrPayment';
-import { reserveCounterfactualAddress } from '@/utils/contractTransactionSequence';
-import { resolveEscrowAddressSources } from '@/lib/escrow/escrowAddressSources';
-import { useLazyUserData } from '@/hooks/useLazyUserData';
-import { useTokenBalance } from '@/hooks/useTokenBalance';
-import { useContractPayment } from '@/hooks/useContractPayment';
-import PaymentProgress from '@/components/contracts/PaymentProgress';
-import QrPaymentPanel from '@/components/contracts/QrPaymentPanel';
-import { usePaymentSteps } from '@/hooks/usePaymentSteps';
-import Input from '@/components/ui/Input';
-import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
-import ConnectPaymentStage from '@/components/contracts/ConnectPaymentStage';
-import PaymentMethodChoice from '@/components/contracts/PaymentMethodChoice';
-import WalletInfo from '@/components/ui/WalletInfo';
-import TokenGuide from '@/components/ui/TokenGuide';
-import CurrencyAmountInput from '@/components/ui/CurrencyAmountInput';
-import { isValidWalletAddress, toMicroUSDC, toUSDCForWeb3, formatDateTimeWithTZ, displayCurrency } from '@/utils/validation';
-import { useContractCreateValidation } from '@/hooks/useContractValidation';
-import { getNetworkName } from '@/utils/networkUtils';
-import { detectDevice } from '@/utils/deviceDetection';
 import { buildWordPressStatusUrl as buildWpStatusUrl } from '@/utils/wordpressStatusUrl';
 import { safeRedirectUrl } from '@/utils/safeRedirect';
-import { verifyEscrow } from '@/lib/escrow/verifyEscrow';
+import PayPage, { PaidEscrow, PayCheckout } from './PayPage';
 import { useT } from '../i18n';
-import { useOptionalBrand, usePartnerBrand } from '../theme/BrandProvider';
+import { useBrandedHref, useOptionalBrand } from '../theme';
 import { getSiteNameFromDomain } from '@/utils/siteName';
 
-interface ContractCreateForm {
-  seller: string;
-  amount: string;
-  description: string;
-}
-
-// FormErrors type now imported from validation hook
+/**
+ * /contract-create — a merchant's checkout: /pay with the merchant's terms, inside their page.
+ *
+ * ⚠️ THE PAYMENT IS /pay's. This page only translates. The URL parameters, postMessage events,
+ *    webhook call, Shopify order and WordPress redirects in CONTRACT_CREATE_API.md are the
+ *    contract with plugins already installed on merchants' sites, so they are kept exactly;
+ *    everything between "the buyer is signed in" and "the escrow exists" is PayPage, the same
+ *    path the site and AI agents use.
+ *
+ * ⚠️ THE PATH MATTERS. Layout drops our header and footer on /contract-create, which is what lets
+ *    it sit inside a merchant's iframe or popup; PayPage never rewrites the URL in checkout mode.
+ */
 
 interface PostMessageEvent {
   type: 'contract_created' | 'payment_completed' | 'payment_cancelled' | 'payment_error' | 'close_modal';
@@ -48,1127 +30,253 @@ interface PostMessageEvent {
   error?: string;
 }
 
+const str = (value: string | string[] | undefined) => (typeof value === 'string' ? value : undefined);
 
-type PaymentMethod = 'wallet' | 'qr' | null;
+/** `epoch_expiry`: 0 for instant, a future timestamp, or — missing or unusable — seven days out. */
+function payoutFrom(epochExpiry: string | undefined): number {
+  const fallback = Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60;
+  if (epochExpiry === undefined) return fallback;
+  const parsed = parseInt(epochExpiry, 10);
+  if (!isNaN(parsed) && (parsed === 0 || parsed > Math.floor(Date.now() / 1000))) return parsed;
+  console.warn('Invalid or past epoch_expiry provided:', epochExpiry);
+  return fallback;
+}
 
 export default function ContractCreate() {
-  const t = useT();
-
-  // The tab title is the partner's too — a COBRO customer should not see our
-  // name in their browser chrome.
-  const brand = useOptionalBrand();
-  // Recorded on the contract: the white-label partner it was created under.
-  const brandId = usePartnerBrand()?.id;
-  const brandName =
-    brand?.name ?? getSiteNameFromDomain();
-
   const router = useRouter();
-  const { config } = useConfig();
-  const { user, authenticatedFetch, disconnect, isLoading: authLoading, isLoadingUserData, isConnected, address, refreshUserData } = useAuth();
-  const { approveUSDC, depositToContract, depositFundsAsProxy, getWeb3Service, transferToContract, prewarmTransferToContract, getTokenBalance } = useSimpleEthers();
-  const { runDirectPayment } = useContractPayment();
-  const { errors, validateForm, clearErrors } = useContractCreateValidation();
+  const brandedHref = useBrandedHref();
+  const seller = str(router.query.seller);
+  const amount = str(router.query.amount);
+  const description = str(router.query.description);
+  const complete = !!(seller && amount && description);
 
-  // Query parameters
-  const {
-    seller,
-    amount,
-    description,
-    email: queryEmail,
-    return: returnUrl,
-    order_id,
-    epoch_expiry,
-    shop,
-    product_id,
-    variant_id,
-    title,
-    quantity,
-    webhook_url,
-    wordpress_source,
-    tokenSymbol: queryTokenSymbol
-  } = router.query;
+  // No merchant terms, no checkout: someone arriving from a search result wants to pay someone.
+  useEffect(() => {
+    if (router.isReady && !complete) void router.replace(brandedHref('/pay'));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router.isReady, complete]);
 
-  // Use centralized token selection logic
-  const {
-    selectedToken,
-    selectedTokenSymbol,
-    selectedTokenAddress,
-    availableTokens
-  } = useTokenSelection(config, queryTokenSymbol as string | undefined);
+  if (!router.isReady || !complete) return <CheckoutShell embedded={false} loading />;
+  // A WordPress checkout that cannot tell the store it was paid is a plugin misconfiguration,
+  // and taking the money anyway would leave an order nobody can reconcile.
+  const q = router.query;
+  if (str(q.wordpress_source) === 'true' && (!str(q.webhook_url) || !str(q.order_id))) {
+    return (
+      <CheckoutShell embedded={false}>
+        <p className="max-w-md mx-auto p-6 text-center text-error-600 dark:text-error-400">
+          Configuration error: this WordPress checkout link is missing its {!str(q.webhook_url) ? 'webhook URL' : 'order ID'}.
+        </p>
+      </CheckoutShell>
+    );
+  }
+  return <Checkout seller={seller} amount={amount} description={description} />;
+}
 
-  const networkName = config ? getNetworkName(config.chainId) : t('common.unknownNetwork');
+function CheckoutShell({ embedded, loading, children }: { embedded: boolean; loading?: boolean; children?: React.ReactNode }) {
+  const t = useT();
+  const brand = useOptionalBrand();
+  // The tab title is the partner's too — a COBRO customer should not see our name in their browser chrome.
+  const brandName = brand?.name ?? getSiteNameFromDomain();
+  return (
+    <div className={`min-h-screen transition-colors ${embedded ? 'bg-secondary-50 dark:bg-secondary-800' : 'bg-white dark:bg-secondary-900'}`}>
+      <Head>
+        <title>{t('checkout.docTitle', { brand: brandName })}</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+      </Head>
+      {loading ? (
+        <div className="min-h-screen flex items-center justify-center text-center p-6">
+          <div>
+            <LoadingSpinner size="lg" />
+            <p className="mt-4 text-secondary-600 dark:text-secondary-300">{t('checkout.initializing')}</p>
+          </div>
+        </div>
+      ) : (
+        children
+      )}
+    </div>
+  );
+}
 
-  // Check if we're in an iframe or popup
+function Checkout({ seller, amount, description }: { seller: string; amount: string; description: string }) {
+  const router = useRouter();
+  const { user, authenticatedFetch } = useAuth();
+  const q = router.query;
+  const returnUrl = str(q.return);
+  const orderId = str(q.order_id);
+  const wordpressSource = str(q.wordpress_source);
+  const webhookUrl = str(q.webhook_url);
+  const shop = str(q.shop);
+
+  // Fixed once: a default payout recomputed on every render would be a different escrow each time.
+  const [expiryTimestamp] = useState(() => payoutFrom(str(q.epoch_expiry)));
+
   const [isInIframe, setIsInIframe] = useState(false);
   const [isInPopup, setIsInPopup] = useState(false);
-  
-  // Form state
-  const [form, setForm] = useState<ContractCreateForm>({
-    seller: '',
-    amount: '',
-    description: ''
-  });
-  // errors now provided by useContractCreateValidation hook
-  const [isLoading, setIsLoading] = useState(false);
-  const [loadingMessage, setLoadingMessage] = useState('');
-  const [contractId, setContractId] = useState<string | null>(null);
-  const [pendingExpiryTimestamp, setPendingExpiryTimestamp] = useState<number | null>(null);
-  const [step, setStep] = useState<'create' | 'payment'>('create');
-  // Payment step state + update algorithm live in usePaymentSteps; the initial
-  // (wallet-flow) labels are page-specific.
-  const {
-    steps: paymentSteps,
-    updateStep: updatePaymentStep,
-    setSteps: setPaymentSteps,
-    getActiveStep,
-  } = usePaymentSteps([
-    { id: 'verify', label: t('status.verifying'), status: 'pending' },
-    { id: 'address', label: t('status.derivingAddress'), status: 'pending' },
-    { id: 'transfer', label: `Transferring ${selectedTokenSymbol} to escrow`, status: 'pending' },
-    { id: 'confirm', label: t('status.confirming'), status: 'pending' },
-    { id: 'activate', label: t('status.securingNow'), status: 'pending' },
-    { id: 'complete', label: t('status.complete'), status: 'pending' }
-  ]);
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(null);
-  const [showTokenGuide, setShowTokenGuide] = useState(false);
-  // QR flow state. The QR-payment subsystem (countdown, balance polling,
-  // activation) lives in useQrPayment; the page keeps only the bits outside
-  // that subsystem (mobile-vs-deeplink rendering, clipboard copy).
-  const [isMobileDevice, setIsMobileDevice] = useState(false);
-  const [copiedAddress, setCopiedAddress] = useState(false);
-
-  // Don't clear auth on mount - let existing session persist
-  // This prevents unnecessary signature requests when user already authenticated
-  // The auth system will handle expired sessions automatically via refreshUserData
-
-  // Initialize form from query parameters
-  useEffect(() => {
-    if (seller && amount && description) {
-      setForm({
-        seller: seller as string,
-        amount: amount as string,
-        description: description as string
-      });
-    }
-  }, [seller, amount, description]);
-
-  // Token balance (read-only), fetched as soon as a wallet is connected and the
-  // RPC is configured. The hook internally also requires address + tokenAddress.
-  const { tokenBalance, isLoadingBalance } = useTokenBalance({
-    enabled: !!config?.rpcUrl,
-    address,
-    tokenAddress: selectedTokenAddress,
-    getTokenBalance,
-  });
-
-  // Detect iframe and popup environment
   useEffect(() => {
     setIsInIframe(window !== window.parent);
     setIsInPopup(window.opener !== null);
   }, []);
 
-  // Lazy-auth one-shot user-data fetch (triggers SIWX if no session exists).
-  useLazyUserData({ isConnected, address, user, refreshUserData });
+  // To the iframe's parent, or the popup's opener.
+  const sendPostMessage = useCallback(
+    (event: PostMessageEvent) => {
+      if (isInIframe && window.parent) window.parent.postMessage(event, '*');
+      if (isInPopup && window.opener) window.opener.postMessage(event, '*');
+    },
+    [isInIframe, isInPopup]
+  );
 
-  // Send postMessage to parent window (iframe) or opener (popup)
-  const sendPostMessage = (event: PostMessageEvent) => {
-    // Send to iframe parent
-    if (isInIframe && window.parent) {
-      window.parent.postMessage(event, '*');
-    }
+  const statusUrl = useCallback(
+    (status: 'completed' | 'cancelled' | 'error', extra: Record<string, string> = {}) =>
+      buildWpStatusUrl(status, { returnUrl, orderId, wordpressSource }, extra),
+    [returnUrl, orderId, wordpressSource]
+  );
 
-    // Send to popup opener
-    if (isInPopup && window.opener) {
-      window.opener.postMessage(event, '*');
-    }
-  };
+  const onPaid = useCallback(
+    async (paid: PaidEscrow) => {
+      const txHash = paid.txHash;
 
-  // Build WordPress payment-status redirect URLs via the shared util, injecting
-  // this page's embed context (the pure URL logic + its tests live in
-  // utils/wordpressStatusUrl.ts).
-  const buildWordPressStatusUrl = (
-    status: 'completed' | 'cancelled' | 'error',
-    additionalParams: Record<string, string> = {}
-  ): string =>
-    buildWpStatusUrl(status, { returnUrl, orderId: order_id, wordpressSource: wordpress_source }, additionalParams);
-
-  // validateForm function now provided by useContractCreateValidation hook
-
-  // QR-payment subsystem (countdown, balance polling, activation). The page
-  // injects how the on-chain contract is created (POST /api/chain/create-contract
-  // using the DB-stored expiry) and what happens on activation (postMessage +
-  // WordPress/iframe/popup/dashboard redirect). Timing lives in the hook;
-  // behavior is unchanged from the previous inline implementation.
-  const qr = useQrPayment({
-    authenticatedFetch,
-    getTokenBalance,
-    selectedTokenAddress,
-    chainId: config?.chainId,
-    requiredAmount: parseFloat(form.amount) || 0,
-    requiredAmountMicro: form.amount ? toMicroUSDC(parseFloat(form.amount.trim())) : 0,
-    createContract: useCallback(async () => {
-      if (!contractId || !config || !address || !authenticatedFetch) return undefined;
-      if (pendingExpiryTimestamp === null) {
-        console.error('🔧 ContractCreate: pendingExpiryTimestamp not set; cannot derive an address without the DB-stored value');
-        return undefined;
+      // Webhook verification — only with a funding transaction to verify, as before: a transfer
+      // that arrived before settle has none, and the merchant's plugin verifies the escrow itself.
+      if (txHash && webhookUrl && authenticatedFetch) {
+        try {
+          const response = await authenticatedFetch('/api/payment/verify-and-webhook', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              transaction_hash: txHash,
+              contract_address: paid.escrowAddress,
+              contract_hash: paid.escrowAddress,
+              contract_id: paid.contractId,
+              webhook_url: webhookUrl,
+              order_id: parseInt(orderId || '0'),
+              expected_amount: parseFloat(amount),
+              expected_recipient: paid.escrowAddress,
+              merchant_wallet: seller,
+            }),
+          });
+          if (!response.ok) console.error('ContractCreate: Payment verification failed:', await response.text());
+        } catch (error) {
+          console.error('ContractCreate: Payment verification error:', error);
+        }
       }
-      try {
-        // The address is computed here rather than asked for, which changes what the old
-        // verifyEscrow call was defending against.
-        //
-        // That check existed because the address came back from the API, and a compromised
-        // API could return one it controlled. It read the deployed bytecode against a
-        // build-time RPC and refused anything that was not a clone of our pinned
-        // implementation holding the user's own terms.
-        //
-        // Nothing is deployed when a QR is shown now, so there is no bytecode to read. The
-        // defence has to move earlier instead: derive the address from build-time constants
-        // and the terms the user themselves entered, so the API never gets to influence it.
-        // resolveEscrowAddressSources is that step, and it refuses outright if what this
-        // build pins disagrees with what the API reports.
-        const sources = resolveEscrowAddressSources({
-          factoryAddress: config.contractFactoryAddress,
-          implementationAddress: config.contractAddress,
-          defaultArbiterAddress: config.defaultArbiterAddress
-        });
-        const { contractAddress } = await reserveCounterfactualAddress(
-          {
-            contractserviceId: contractId,
-            tokenAddress: selectedTokenAddress,
-            buyer: address,
-            seller: form.seller,
-            // Reuse the DB-stored expiry to avoid drift between the DB value and the
-            // on-chain value - and now also because it is part of the address.
-            amount: toMicroUSDC(parseFloat(form.amount.trim())),
-            expiryTimestamp: pendingExpiryTimestamp,
-            description: form.description
-          },
-          { authenticatedFetch, ...sources }
-        );
-        return contractAddress;
-      } catch (error: any) {
-        console.error('ContractCreate: Failed to derive contract address for QR:', error);
-        alert(error.message || t('err.createFailed'));
-        return undefined;
+
+      if (shop) {
+        try {
+          await apiFetch('/api/shopify/create-order', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              shop,
+              orderId,
+              contractId: paid.contractId,
+              productId: str(q.product_id),
+              variantId: str(q.variant_id),
+              title: str(q.title) || description,
+              price: amount,
+              quantity: parseInt(str(q.quantity) || '1'),
+              buyerEmail: user?.email || str(q.email),
+              transactionHash: txHash,
+            }),
+          });
+        } catch (error) {
+          console.error('ContractCreate: Failed to create Shopify order:', error);
+        }
       }
-    }, [contractId, config, address, authenticatedFetch, selectedTokenAddress, form, pendingExpiryTimestamp, t]),
-    activation: useMemo(() => ({
-      endpoint: '/api/chain/deploy-and-activate',
-      buildBody: () => ({
-        tokenAddress: selectedTokenAddress,
-        buyer: address,
-        seller: form.seller,
-        amount: String(form.amount ? toMicroUSDC(parseFloat(form.amount.trim())) : 0),
-        expiryTimestamp: pendingExpiryTimestamp,
-        description: form.description,
-        contractserviceId: contractId,
-        factoryAddress: config?.contractFactoryAddress
-      }),
-    }), [selectedTokenAddress, address, form, pendingExpiryTimestamp, contractId, config]),
-    onActivated: useCallback((contractAddress: string) => {
-      // Send payment completed event, then redirect using the same logic as the
-      // wallet path (iframe → close_modal, popup → window.close, WordPress →
-      // status URL, otherwise → dashboard).
+
+      // contract_created used to precede funding; the escrow now exists only once it is funded,
+      // so both are sent here, in their old order.
+      sendPostMessage({
+        type: 'contract_created',
+        data: { contract_id: paid.contractId, amount, description, seller, orderId },
+      });
       sendPostMessage({
         type: 'payment_completed',
         data: {
-          contractId,
-          amount: form.amount,
-          description: form.description,
-          seller: form.seller,
-          orderId: order_id,
-          contractAddress
-        }
+          contractId: paid.contractId,
+          amount,
+          description,
+          seller,
+          orderId,
+          transactionHash: txHash,
+          contractAddress: paid.escrowAddress,
+        },
       });
+
       setTimeout(() => {
         if (isInIframe) {
           sendPostMessage({ type: 'close_modal' });
         } else if (isInPopup) {
           window.close();
-        } else if (returnUrl && typeof returnUrl === 'string') {
-          const completedUrl = buildWordPressStatusUrl('completed', {
-            contract_id: contractId || '',
-            contract_hash: contractAddress || ''
-          });
-          window.location.href = safeRedirectUrl(completedUrl);
+        } else if (returnUrl) {
+          window.location.href = safeRedirectUrl(
+            statusUrl('completed', {
+              contract_id: paid.contractId || '',
+              contract_hash: paid.escrowAddress,
+              tx_hash: txHash || '',
+            })
+          );
         } else {
           router.push('/dashboard');
         }
       }, 2000);
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [contractId, form, order_id, isInIframe, isInPopup, returnUrl, router]),
-  });
-
-  // Create's success tail: webhook verification, Shopify order, postMessage, and
-  // the iframe/popup/WordPress/dashboard redirect. Injected into the shared
-  // payment hook as onSuccess so the orchestration stays shared while these
-  // embed-specific side-effects remain here.
-  const handlePaymentSuccess = async (result: any) => {
-    console.log('ContractCreate: Payment completed:', result);
-
-    // The transaction hash field differs by path: the direct/wallet sequence
-    // returns transferTxHash; the legacy approve+deposit sequence returns
-    // depositTxHash. They are mutually exclusive, so pick whichever is present.
-    const txHash = result?.depositTxHash ?? result?.transferTxHash;
-
-    // Webhook verification (if webhook_url provided)
-    if (txHash && webhook_url && authenticatedFetch) {
-      console.log('ContractCreate: Sending verification webhook');
-      try {
-        const verifyResponse = await authenticatedFetch('/api/payment/verify-and-webhook', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            transaction_hash: txHash,
-            contract_address: result.contractAddress,
-            contract_hash: result.contractAddress,
-            contract_id: contractId,
-            webhook_url: webhook_url,
-            order_id: parseInt(order_id as string || '0'),
-            expected_amount: parseFloat(form.amount),
-            expected_recipient: result.contractAddress,
-            merchant_wallet: form.seller
-          })
-        });
-
-        if (!verifyResponse.ok) {
-          console.error('ContractCreate: Payment verification failed:', await verifyResponse.text());
-        } else {
-          const verifyResult = await verifyResponse.json();
-          console.log('ContractCreate: Payment verification sent:', verifyResult);
-        }
-      } catch (verifyError) {
-        console.error('ContractCreate: Payment verification error:', verifyError);
-      }
-    }
-
-    // Shopify order creation
-    if (shop) {
-      console.log('ContractCreate: Creating Shopify order for shop:', shop);
-      try {
-        const orderResponse = await apiFetch('/api/shopify/create-order', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            shop: shop as string,
-            orderId: order_id as string,
-            contractId,
-            productId: product_id as string,
-            variantId: variant_id as string,
-            title: title as string || form.description,
-            price: form.amount,
-            quantity: parseInt((quantity as string) || '1'),
-            buyerEmail: user?.email || queryEmail as string,
-            transactionHash: txHash
-          })
-        });
-
-        const orderData = await orderResponse.json();
-        console.log('ContractCreate: Shopify order result:', orderData);
-      } catch (orderError) {
-        console.error('ContractCreate: Failed to create Shopify order:', orderError);
-      }
-    }
-
-    // Send payment completed postMessage
-    sendPostMessage({
-      type: 'payment_completed',
-      data: {
-        contractId,
-        amount: form.amount,
-        description: form.description,
-        seller: form.seller,
-        orderId: order_id,
-        transactionHash: txHash
-      }
-    });
-
-    setLoadingMessage(t('status.completedRedirect'));
-
-    // Handle redirect (same logic as existing handlePayment)
-    if (isInIframe) {
-      setTimeout(() => {
-        sendPostMessage({ type: 'close_modal' });
-      }, 2000);
-    } else if (isInPopup) {
-      setTimeout(() => {
-        window.close();
-      }, 2000);
-    } else {
-      if (returnUrl && typeof returnUrl === 'string') {
-        const completedUrl = buildWordPressStatusUrl('completed', {
-          contract_id: contractId || '',
-          contract_hash: result?.contractAddress || '',
-          tx_hash: txHash || ''
-        });
-        window.location.href = safeRedirectUrl(completedUrl);
-      } else {
-        router.push('/dashboard');
-      }
-    }
-  };
-
-  // Create's error tail: postMessage error + WordPress error redirect / alert.
-  const handlePaymentError = (error: Error) => {
-    console.error('ContractCreate: Payment failed:', error);
-
-    sendPostMessage({
-      type: 'payment_error',
-      error: error.message || t('err.paymentFailed')
-    });
-
-    // WordPress error redirect
-    if (wordpress_source === 'true' && returnUrl && typeof returnUrl === 'string') {
-      const errorUrl = buildWordPressStatusUrl('error', {
-        error: encodeURIComponent(error.message || t('err.paymentFailed'))
-      });
-
-      if (isInPopup && window.opener) {
-        window.opener.location.href = safeRedirectUrl(errorUrl);
-        window.close();
-      } else if (!isInIframe) {
-        window.location.href = safeRedirectUrl(errorUrl);
-      }
-    } else {
-      if (isInPopup) {
-        setTimeout(() => window.close(), 2000);
-      } else if (!isInIframe) {
-        alert(error.message || t('err.paymentFailed'));
-      }
-    }
-  };
-
-  /**
-   * Work out the escrow address, and warm the transfer, the moment the terms are known.
-   *
-   * ⚠️ NONE OF THIS NEEDS THE USER, so none of it should happen on their click. The address is
-   *    a pure function of terms fixed when the pending contract was created, recording it is
-   *    one request, and the gas estimate is a read. Left until the button was pressed, all
-   *    three sat between "Pay" and the wallet opening — the only wait on this page that anyone
-   *    actually notices.
-   *
-   * ⚠️ RECORDING IS NOT MERE PREPARATION. It is what makes funds sent to an address with no
-   *    contract at it recoverable, so the sweep can finish a payment this browser did not.
-   *    Doing it earlier is also doing it more safely.
-   *
-   * Safe to repeat and safe to abandon: the address is derived rather than issued, and a warmed
-   * estimate that goes unused costs nothing.
-   */
-  useEffect(() => {
-    if (step !== 'payment') return;
-    if (!contractId || !config || !address || !authenticatedFetch) return;
-    if (pendingExpiryTimestamp === null) return;
-    if (qr.qrContractAddress) return;
-
-    let cancelled = false;
-    void (async () => {
-      const escrowAddress = await qr.createContract();
-      if (cancelled || !escrowAddress) return;
-      try {
-        await prewarmTransferToContract(
-          selectedTokenAddress,
-          escrowAddress,
-          String(toMicroUSDC(parseFloat(form.amount.trim())))
-        );
-      } catch {
-        // Work brought forward, not work required. A wrong guess simply goes unused.
-      }
-    })();
-
-    return () => { cancelled = true; };
-    // qr.createContract is stable per its own deps; listing the whole qr object would re-run
-    // this on every poll tick.
+    },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, contractId, config, address, authenticatedFetch, pendingExpiryTimestamp,
-      qr.qrContractAddress, qr.createContract, selectedTokenAddress, form.amount,
-      prewarmTransferToContract]);
+    [authenticatedFetch, user?.email, sendPostMessage, statusUrl, isInIframe, isInPopup]
+  );
 
-  const handleWalletPayment = async () => {
-    if (!contractId || !config) {
-      console.error('ContractCreate: Missing required data for wallet payment');
-      return;
-    }
-    if (pendingExpiryTimestamp === null) {
-      console.error('ContractCreate: pendingExpiryTimestamp not set; cannot deploy without the DB-stored value');
-      return;
-    }
-
-    console.log('ContractCreate: Starting wallet payment (direct transfer)');
-
-    // Reset payment steps (labels are page-specific; the hook drives statuses).
-    setPaymentSteps([
-      { id: 'verify', label: t('status.verifying'), status: 'pending' },
-      { id: 'address', label: t('status.derivingAddress'), status: 'pending' },
-      { id: 'transfer', label: `Transferring ${selectedTokenSymbol} to escrow`, status: 'pending' },
-      { id: 'confirm', label: t('status.confirming'), status: 'pending' },
-      { id: 'activate', label: t('status.securingNow'), status: 'pending' },
-      { id: 'complete', label: t('status.complete'), status: 'pending' }
-    ]);
-
-    await runDirectPayment(
-      {
-        contractserviceId: contractId,
-        tokenAddress: selectedTokenAddress,
-        buyer: address || '',
-        seller: form.seller,
-        // Reuse the DB-stored expiry to avoid drift between DB and chain.
-        amount: toMicroUSDC(parseFloat(form.amount.trim())),
-        expiryTimestamp: pendingExpiryTimestamp,
-        description: form.description
-      },
-      {
-        selectedTokenSymbol,
-        tokenBalance,
-        requiredAmount: parseFloat(form.amount.trim()),
-        authenticatedFetch,
-        transferToContract,
-        getWeb3Service,
-        // Derived and recorded when the page reached its payment step, so the click has none of
-        // that work left — see the effect above.
-        preparedAddress: qr.qrContractAddress ?? undefined,
-        updatePaymentStep,
-        setLoadingMessage,
-        setBusy: setIsLoading,
-        getActiveStep,
-        // The escrow's address is computed from these, so they travel with the payment
-        // rather than being looked up inside the hook.
-        contractFactoryAddress: config?.contractFactoryAddress,
-        implementationAddress: config?.contractAddress,
-        defaultArbiterAddress: config?.defaultArbiterAddress,
-        onSuccess: handlePaymentSuccess,
-        onError: handlePaymentError,
-      }
-    );
-  };
-
-  const handleCopyAddress = async (addr: string) => {
-    try {
-      await navigator.clipboard.writeText(addr);
-      setCopiedAddress(true);
-      setTimeout(() => setCopiedAddress(false), 2000);
-    } catch (err) {
-      console.error('Failed to copy address:', err);
-    }
-  };
-
-  // Detect mobile device for QR code vs deep link rendering
-  useEffect(() => {
-    const device = detectDevice();
-    setIsMobileDevice(device.isMobile || device.isTablet);
-  }, []);
-
-  const handleCreateContract = async () => {
-    const formValid = validateForm(
-      form,
-      { wordpress_source, webhook_url, order_id },
-      { walletAddress: address } // Pass buyer wallet address for validation
-    );
-
-    if (!formValid || !config) {
-      return;
-    }
-
-    setIsLoading(true);
-
-    try {
-      // Validate config before proceeding
-      if (!selectedTokenAddress) {
-        throw new Error(`${selectedTokenSymbol} contract address not configured. Please check server configuration.`);
-      }
-      
-      // Check if wallet is connected and has address
-      setLoadingMessage(t('status.initializing'));
-
-      if (!address) {
-        throw new Error(t('err.connectFirst'));
-      }
-      
-      // Create pending contract via Contract Service
-      setLoadingMessage(t('status.creatingEscrow'));
-      
-      // Parse epoch_expiry from query params if provided and valid
-      let expiryTimestamp = Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60); // Default to 7 days
-
-      if (epoch_expiry !== undefined) {
-        const parsedExpiry = parseInt(epoch_expiry as string, 10);
-        // Allow 0 for instant payments, or any future timestamp
-        if (!isNaN(parsedExpiry) && (parsedExpiry === 0 || parsedExpiry > Math.floor(Date.now() / 1000))) {
-          expiryTimestamp = parsedExpiry;
-        } else {
-          console.warn('Invalid or past epoch_expiry provided:', epoch_expiry);
+  const onFailed = useCallback(
+    (message: string, phase: 'prepare' | 'pay') => {
+      sendPostMessage({ type: 'payment_error', error: message });
+      // Setting up failed: the buyer can try again here, as they could before.
+      if (phase === 'prepare') return;
+      if (wordpressSource === 'true' && returnUrl) {
+        const errorUrl = safeRedirectUrl(statusUrl('error', { error: encodeURIComponent(message) }));
+        if (isInPopup && window.opener) {
+          window.opener.location.href = errorUrl;
+          window.close();
+        } else if (!isInIframe) {
+          window.location.href = errorUrl;
         }
+      } else if (isInPopup) {
+        setTimeout(() => window.close(), 2000);
       }
-      
-      const pendingContractRequest = {
-        buyerEmail: user?.email || (queryEmail as string) || 'noemail@notsupplied.com', // Prefer authenticated user's email
-        sellerAddress: form.seller, // Backend will handle email lookup from wallet address
-        amount: toMicroUSDC(parseFloat(form.amount.trim())), // Convert to microUSDC format
-        currency: `micro${selectedTokenSymbol}`,
-        currencySymbol: selectedTokenSymbol,
-        description: form.description,
-        expiryTimestamp: expiryTimestamp,
-        chainId: config.chainId?.toString() || "8453",
-        serviceLink: config.serviceLink,
-        productName: order_id ? `Order #${order_id}` : undefined,
-        state: "OK",
-        suppressSending: true,
-        ...(brandId ? { brandId } : {})
-      };
+    },
+    [sendPostMessage, wordpressSource, returnUrl, statusUrl, isInIframe, isInPopup]
+  );
 
-      if (!authenticatedFetch) {
-        throw new Error('authenticatedFetch is not available');
-      }
-      
-      const response = await authenticatedFetch('/api/contracts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(pendingContractRequest)
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || t('err.createFailed'));
-      }
-
-      const result = await response.json();
-
-      // Use result.contractId or result.id depending on what the backend returns
-      const contractId = result.contractId || result.id;
-
-      setContractId(contractId);
-      setPendingExpiryTimestamp(expiryTimestamp);
-      setStep('payment');
-      
-      // Send contract created event
-      sendPostMessage({
-        type: 'contract_created',
-        data: {
-          contract_id: contractId, // Use contract_id to match the expected field name
-          amount: form.amount,
-          description: form.description,
-          seller: form.seller,
-          orderId: order_id
-        }
-      });
-      
-    } catch (error: any) {
-      console.error('Contract creation failed:', error);
-      sendPostMessage({
-        type: 'payment_error',
-        error: error.message || t('err.createFailed')
-      });
-      alert(error.message || t('err.createFailed'));
-    } finally {
-      setIsLoading(false);
-      setLoadingMessage('');
-    }
-  };
-
-
-  const handleCancel = () => {
+  const onCancel = useCallback(() => {
     sendPostMessage({ type: 'payment_cancelled' });
-
     if (isInIframe) {
       sendPostMessage({ type: 'close_modal' });
     } else if (isInPopup) {
-      // In popup - close popup (SDK will handle displaying cancellation message)
-      if (window.opener && wordpress_source === 'true' && returnUrl && typeof returnUrl === 'string') {
-        // For WordPress integration, redirect to cancelled status page
-        const cancelUrl = buildWordPressStatusUrl('cancelled');
-        window.opener.location.href = safeRedirectUrl(cancelUrl);
+      // WordPress wants its cancelled status page; the SDK shows its own message in the parent.
+      if (window.opener && wordpressSource === 'true' && returnUrl) {
+        window.opener.location.href = safeRedirectUrl(statusUrl('cancelled'));
       }
-      // Close popup (SDK will show cancellation message in parent window)
       window.close();
+    } else if (returnUrl) {
+      window.location.href = safeRedirectUrl(statusUrl('cancelled'));
     } else {
-      if (returnUrl && typeof returnUrl === 'string') {
-        // Build WordPress status URL for cancelled payment
-        const cancelUrl = buildWordPressStatusUrl('cancelled');
-        window.location.href = safeRedirectUrl(cancelUrl);
-      } else {
-        router.push('/dashboard');
-      }
+      router.push('/dashboard');
     }
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sendPostMessage, isInIframe, isInPopup, wordpressSource, returnUrl, statusUrl]);
 
-  // Loading screen for initialization - show if config is missing OR (auth is still initializing AND wallet not connected)
-  // With lazy auth, we only show loading if wallet hasn't connected yet
-  if (!config || (authLoading && !isConnected && !address)) {
-    return (
-      <div className={`min-h-screen flex items-center justify-center transition-colors ${isInIframe || isInPopup ? 'bg-secondary-50 dark:bg-secondary-800' : 'bg-white dark:bg-secondary-900'}`}>
-        <Head children={
-          <>
-            <title>{t('checkout.docTitle', { brand: brandName })}</title>
-            <meta name="viewport" content="width=device-width, initial-scale=1" />
-          </>
-        } />
-        <div className="text-center p-6">
-          <LoadingSpinner size="lg" />
-          <p className="mt-4 text-secondary-600 dark:text-secondary-300">{t('checkout.initializing')}</p>
-        </div>
-      </div>
-    );
-  }
-
-  // ================================================================
-  // STAGE 1: Payment Method Choice (before auth or when not connected)
-  // Same pattern as contract-pay.tsx — choice comes FIRST
-  // ================================================================
-  if (!isConnected && !address) {
-    // If payment method not chosen yet, show choice
-    if (paymentMethod === null) {
-      return (
-        <div className={`min-h-screen flex items-center justify-center transition-colors ${isInIframe || isInPopup ? 'bg-secondary-50 dark:bg-secondary-800' : 'bg-white dark:bg-secondary-900'}`}>
-          <Head children={
-            <>
-              <title>{t('checkout.docTitle', { brand: brandName })}</title>
-              <meta name="viewport" content="width=device-width, initial-scale=1" />
-            </>
-          } />
-          <div className="p-6 max-w-md mx-auto">
-            {/* Buyer protection callout */}
-            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6 text-left">
-              <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-200 mb-2">
-                {t('checkout.secureEscrow')}
-              </h3>
-              <ul className="text-sm text-blue-800 dark:text-blue-300 space-y-1">
-                <li>{t('checkout.protected')}</li>
-                <li>{t('checkout.canDispute')}</li>
-                <li>{t('checkout.noGas')}</li>
-              </ul>
-            </div>
-
-            <h2 className="text-lg font-semibold text-secondary-900 dark:text-white mb-4 text-center">{t('checkout.howPay')}</h2>
-
-            <PaymentMethodChoice
-              walletTitle={t('checkout.connectMyWallet')}
-              walletSubtitle={t('checkout.payDirectly')}
-              onSelect={setPaymentMethod}
-            />
-          </div>
-        </div>
-      );
-    }
-
-    // ================================================================
-    // STAGE 2: Authentication (after payment method chosen)
-    // ================================================================
-    return (
-      <div className={`min-h-screen flex items-center justify-center transition-colors ${isInIframe || isInPopup ? 'bg-secondary-50 dark:bg-secondary-800' : 'bg-white dark:bg-secondary-900'}`}>
-        <Head children={
-          <>
-            <title>{t('checkout.docTitle', { brand: brandName })}</title>
-            <meta name="viewport" content="width=device-width, initial-scale=1" />
-          </>
-        } />
-        <ConnectPaymentStage
-          paymentMethod={paymentMethod}
-          onBack={() => setPaymentMethod(null)}
-          onConnectSuccess={() => {
-            // Page re-renders into the form once auth state updates.
-          }}
-        />
-      </div>
-    );
-  }
+  const checkout = useMemo<PayCheckout>(
+    () => ({
+      terms: { seller, amount, description, expiryTimestamp, tokenSymbol: str(q.tokenSymbol) },
+      onPaid,
+      onFailed,
+      onCancel,
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [seller, amount, description, expiryTimestamp, q.tokenSymbol, onPaid, onFailed, onCancel]
+  );
 
   return (
-    <div className={`transition-colors ${isInIframe || isInPopup ? 'min-h-screen bg-secondary-50 dark:bg-secondary-800' : 'min-h-screen bg-white dark:bg-secondary-900'}`}>
-      <Head children={
-        <>
-          <title>{t('checkout.docTitle', { brand: brandName })}</title>
-          <meta name="viewport" content="width=device-width, initial-scale=1" />
-        </>
-      } />
-
-      <div className={`${isInIframe || isInPopup ? 'p-4' : 'container mx-auto p-6'} max-w-md mx-auto`}>
-        {step === 'create' ? (
-          <>
-            {/* Wallet Info Section */}
-            <WalletInfo
-              className="mb-4"
-              tokenSymbol={selectedTokenSymbol}
-              tokenAddress={selectedTokenAddress}
-            />
-
-            {/* Logout Button */}
-            <div className="flex justify-end mb-4">
-              <Button
-                onClick={async () => {
-                  await disconnect();
-                  // The page will re-render and show the auth screen
-                }}
-                variant="outline"
-                size="sm"
-                className="text-secondary-600 dark:text-secondary-300 hover:text-secondary-800 dark:hover:text-secondary-100"
-              >
-                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                </svg>
-                {t('checkout.logout')}
-              </Button>
-            </div>
-
-            <div className="bg-white dark:bg-secondary-900 rounded-lg shadow-sm dark:shadow-none border border-secondary-200 dark:border-secondary-700 p-6">
-              <h2 className="text-xl font-semibold text-secondary-900 dark:text-white mb-4">
-                {isInIframe || isInPopup ? t('checkout.escrowProtected') : t('checkout.paymentAgreement')}
-              </h2>
-              
-              <div className="space-y-4">
-              <div>
-                <Input
-                  label={t('checkout.sellerWalletAddress')}
-                  type="text"
-                  value={form.seller}
-                  onChange={(e) => setForm(prev => ({ ...prev, seller: e.target.value }))}
-                  placeholder="0x..."
-                  error={errors.seller}
-                  disabled={isLoading || !!seller} // Disable if provided via query param
-                />
-              </div>
-
-              <div>
-                <CurrencyAmountInput
-                  label={`Amount (${selectedTokenSymbol})`}
-                  value={form.amount}
-                  onChange={(value) => setForm(prev => ({ ...prev, amount: value }))}
-                  tokenSymbol={selectedTokenSymbol}
-                  error={errors.amount}
-                  disabled={isLoading || !!amount} // Disable if provided via query param
-                  helpText={isInIframe || isInPopup ? t('checkout.secureEscrow') : t('checkout.feeNote')}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-secondary-700 dark:text-secondary-200 mb-2">
-                  Description ({form.description.length}/160)
-                </label>
-                <textarea
-                  className="w-full border border-secondary-300 dark:border-secondary-600 dark:bg-secondary-800 dark:text-white rounded-md px-3 py-2 text-sm"
-                  rows={3}
-                  maxLength={160}
-                  value={form.description}
-                  onChange={(e) => setForm(prev => ({ ...prev, description: e.target.value }))}
-                  placeholder={t('checkout.descPlaceholder')}
-                  disabled={isLoading || !!description} // Disable if provided via query param
-                />
-                {errors.description && <p className="text-sm text-red-600 mt-1">{errors.description}</p>}
-              </div>
-
-              <div className="bg-secondary-50 dark:bg-secondary-800 border border-secondary-200 dark:border-secondary-700 rounded-md p-3">
-                <p className="text-sm text-secondary-700 dark:text-secondary-200">
-                  <strong>{t('common.payoutDate')}</strong>
-                </p>
-                <p className="text-sm text-secondary-900 dark:text-white">
-                  {(() => {
-                    // Calculate expiry timestamp (same logic as in handleCreateContract)
-                    let expiryTimestamp = Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60); // Default to 7 days
-                    if (epoch_expiry !== undefined) {
-                      const parsedExpiry = parseInt(epoch_expiry as string, 10);
-                      // Allow 0 for instant payments, or any future timestamp
-                      if (!isNaN(parsedExpiry) && (parsedExpiry === 0 || parsedExpiry > Math.floor(Date.now() / 1000))) {
-                        expiryTimestamp = parsedExpiry;
-                      }
-                    }
-                    return expiryTimestamp === 0 ? 'Instant' : formatDateTimeWithTZ(expiryTimestamp);
-                  })()}
-                </p>
-                <p className="text-xs text-secondary-500 dark:text-secondary-400 mt-1">
-                  {epoch_expiry === '0' || parseInt(epoch_expiry as string || '') === 0
-                    ? t('checkout.releaseImmediate')
-                    : t('checkout.releaseNote')
-                  }
-                </p>
-              </div>
-
-              {order_id && (
-                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md p-3">
-                  <p className="text-sm text-blue-800 dark:text-blue-300">
-                    <strong>{t('checkout.orderId')}</strong> {order_id}
-                  </p>
-                </div>
-              )}
-
-              {/* Balance warning on create step */}
-              {form.amount && parseFloat(form.amount) > 0 && !isLoadingBalance && parseFloat(tokenBalance) < parseFloat(form.amount) && (
-                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md mb-4">
-                  <div className="p-3">
-                    <p className="text-sm text-red-800 dark:text-red-300 font-medium">
-                      ⚠️ Insufficient {selectedTokenSymbol} Balance
-                    </p>
-                    <p className="text-xs text-red-700 dark:text-red-400 mt-1">
-                      You need {parseFloat(form.amount).toFixed(4)} {selectedTokenSymbol} but only have {parseFloat(tokenBalance).toFixed(4)} {selectedTokenSymbol}.
-                      Please add {(parseFloat(form.amount) - parseFloat(tokenBalance)).toFixed(4)} {selectedTokenSymbol} to your wallet.
-                    </p>
-                  </div>
-
-                  {/* Expandable guide section */}
-                  <div className="border-t border-red-200 dark:border-red-800 p-3">
-                    <Button
-                      onClick={() => setShowTokenGuide(!showTokenGuide)}
-                      variant="outline"
-                      className="w-full"
-                    >
-                      {showTokenGuide ? `Hide guide` : `Show me how to add ${selectedTokenSymbol} to my wallet`}
-                    </Button>
-                    {showTokenGuide && (
-                      <div className="mt-3">
-                        <TokenGuide currency={selectedTokenSymbol} />
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              <div className="flex space-x-3 pt-4">
-                <Button
-                  onClick={handleCancel}
-                  variant="outline"
-                  className="flex-1"
-                  disabled={isLoading}
-                >
-                  {t('common.cancel')}
-                </Button>
-                <Button
-                  onClick={handleCreateContract}
-                  disabled={isLoading || !address}
-                  className="flex-1"
-                  title={
-                    !address ? t('err.connectFirst') :
-                    ''
-                  }
-                >
-                  {isLoading ? (
-                    <>
-                      <LoadingSpinner className="w-4 h-4 mr-2" />
-                      {loadingMessage?.match(/Step \d+/)?.[0] || 'Processing...'}
-                    </>
-                  ) : (
-                    isInIframe || isInPopup ? t('checkout.createPayment') : 'Pay'
-                  )}
-                </Button>
-              </div>
-            </div>
-            </div>
-          </>
-        ) : (
-          <div className="bg-white dark:bg-secondary-900 rounded-lg shadow-sm dark:shadow-none border border-secondary-200 dark:border-secondary-700 p-6">
-            <h2 className="text-xl font-semibold text-secondary-900 dark:text-white mb-4">{t('checkout.completePayment')}</h2>
-
-            {/* Contract summary - always shown */}
-            <div className="space-y-3 mb-6">
-              {/* Amount */}
-              <div className="flex justify-between">
-                <span className="text-secondary-600 dark:text-secondary-300">{t('common.amount')}</span>
-                <span className="font-medium text-secondary-900 dark:text-white">${form.amount} {selectedTokenSymbol}</span>
-              </div>
-              {/* Balance - only shown for wallet method */}
-              {(paymentMethod === null || paymentMethod === 'wallet') && (
-                <div className="flex justify-between">
-                  <span className="text-secondary-600 dark:text-secondary-300">{t('checkout.yourBalance')}</span>
-                  <span className={`font-medium ${parseFloat(tokenBalance) < parseFloat(form.amount) ? 'text-red-600' : 'text-green-600'}`}>
-                    {isLoadingBalance ? (
-                      <span className="animate-pulse">{t('common.loading')}</span>
-                    ) : (
-                      `${parseFloat(tokenBalance).toFixed(4)} ${selectedTokenSymbol}`
-                    )}
-                  </span>
-                </div>
-              )}
-              {/* Seller */}
-              <div className="flex justify-between">
-                <span className="text-secondary-600 dark:text-secondary-300">{t('common.seller')}</span>
-                <span className="text-sm font-mono text-secondary-900 dark:text-white">{form.seller.slice(0, 6)}...{form.seller.slice(-4)}</span>
-              </div>
-              {/* Payout Date */}
-              <div className="flex justify-between">
-                <span className="text-secondary-600 dark:text-secondary-300">{t('common.payoutDate')}</span>
-                <span className="font-medium text-secondary-900 dark:text-white">
-                  {(() => {
-                    let expiryTimestamp = Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60);
-                    if (epoch_expiry !== undefined) {
-                      const parsedExpiry = parseInt(epoch_expiry as string, 10);
-                      if (!isNaN(parsedExpiry) && (parsedExpiry === 0 || parsedExpiry > Math.floor(Date.now() / 1000))) {
-                        expiryTimestamp = parsedExpiry;
-                      }
-                    }
-                    return expiryTimestamp === 0 ? 'Instant' : formatDateTimeWithTZ(expiryTimestamp);
-                  })()}
-                </span>
-              </div>
-              {/* Description */}
-              <div className="flex justify-between">
-                <span className="text-secondary-600 dark:text-secondary-300">{t('common.descriptionLabel')}</span>
-                <span className="text-right max-w-xs text-sm text-secondary-900 dark:text-white">{form.description}</span>
-              </div>
-              {order_id && (
-                <div className="flex justify-between">
-                  <span className="text-secondary-600 dark:text-secondary-300">{t('checkout.orderId')}</span>
-                  <span className="text-sm text-secondary-900 dark:text-white">{order_id}</span>
-                </div>
-              )}
-            </div>
-
-            {/* PAYMENT METHOD CHOICE (when paymentMethod === null) */}
-            {paymentMethod === null && (
-              <>
-                <h3 className="text-lg font-semibold text-secondary-900 dark:text-white mb-4 text-center">{t('checkout.howPay')}</h3>
-                <PaymentMethodChoice
-                  walletTitle={t('checkout.payWithConnected')}
-                  walletSubtitle={t('checkout.transferDirectly')}
-                  onSelect={setPaymentMethod}
-                />
-              </>
-            )}
-
-            {/* WALLET PAYMENT UI (when paymentMethod === 'wallet') */}
-            {paymentMethod === 'wallet' && (
-              <>
-                {/* Payment method switcher (when not in progress and no QR contract created) */}
-                {!isLoading && !qr.qrContractAddress && (
-                  <div className="flex mb-6 bg-secondary-100 dark:bg-secondary-800 rounded-lg p-1">
-                    <button
-                      onClick={() => setPaymentMethod('wallet')}
-                      className="flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors bg-white dark:bg-secondary-700 text-secondary-900 dark:text-white shadow-sm"
-                    >
-                      {t('checkout.walletTransfer')}
-                    </button>
-                    <button
-                      onClick={() => setPaymentMethod('qr')}
-                      className="flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors text-secondary-500 dark:text-secondary-400 hover:text-secondary-700 dark:hover:text-secondary-200"
-                    >
-                      {t('checkout.qrCode')}
-                    </button>
-                  </div>
-                )}
-
-                {/* Payment Progress Steps */}
-                {isLoading && (
-                  <PaymentProgress steps={paymentSteps} loadingMessage={loadingMessage} />
-                )}
-
-                {/* Balance warning / escrow info */}
-                {parseFloat(tokenBalance) < parseFloat(form.amount) ? (
-                  <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md mb-6">
-                    <div className="p-4">
-                      <p className="text-sm text-red-800 dark:text-red-300 font-medium">{t('checkout.insufficientBalance')}</p>
-                      <p className="text-sm text-red-700 dark:text-red-400 mt-1">
-                        You need {parseFloat(form.amount).toFixed(4)} {selectedTokenSymbol} but only have {parseFloat(tokenBalance).toFixed(4)} {selectedTokenSymbol}.
-                        Please add {(parseFloat(form.amount) - parseFloat(tokenBalance)).toFixed(4)} {selectedTokenSymbol} to your wallet before proceeding.
-                      </p>
-                    </div>
-                    <div className="border-t border-red-200 dark:border-red-800 p-3">
-                      <Button
-                        onClick={() => setShowTokenGuide(!showTokenGuide)}
-                        variant="outline"
-                        className="w-full"
-                      >
-                        {showTokenGuide ? `Hide guide` : `Show me how to add ${selectedTokenSymbol} to my wallet`}
-                      </Button>
-                      {showTokenGuide && (
-                        <div className="mt-3">
-                          <TokenGuide currency={selectedTokenSymbol} />
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ) : !isLoading && (
-                  <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md p-4 mb-6">
-                    <p className="text-sm text-yellow-800 dark:text-yellow-300">
-                      {(() => {
-                        const parsedExpiry = epoch_expiry !== undefined ? parseInt(epoch_expiry as string, 10) : -1;
-                        const isInstant = parsedExpiry === 0;
-                        const amount = `$${form.amount} ${selectedTokenSymbol}`;
-                        return t(isInstant ? 'pay.escrowInstant' : 'pay.escrowHeld', { amount });
-                      })()}
-                    </p>
-                  </div>
-                )}
-
-                {/* Action Buttons */}
-                <div className="flex space-x-3">
-                  <Button
-                    onClick={handleCancel}
-                    variant="outline"
-                    className="flex-1"
-                    disabled={isLoading}
-                  >
-                    {t('common.cancel')}
-                  </Button>
-                  <Button
-                    onClick={handleWalletPayment}
-                    // ⚠️ IN FLIGHT, NOT "NOT DONE YET". Disabled only while the reservation is
-                    //    actually running: keyed on the absence of an address instead, a
-                    //    reservation that FAILED would leave this dead for good behind a
-                    //    reassuring caption. Enabled-and-slow is a much better failure — the
-                    //    sequence does the work inline and surfaces the real error.
-                    disabled={isLoading || qr.isCreatingContract || isLoadingBalance || parseFloat(tokenBalance) < parseFloat(form.amount)}
-                    className="flex-1"
-                    title={
-                      parseFloat(tokenBalance) < parseFloat(form.amount)
-                        ? `Insufficient balance: need ${form.amount} ${selectedTokenSymbol}, have ${parseFloat(tokenBalance).toFixed(4)} ${selectedTokenSymbol}`
-                        : ''
-                    }
-                  >
-                    {isLoading ? (
-                      <>
-                        <LoadingSpinner className="w-4 h-4 mr-2" />
-                        {loadingMessage || 'Processing...'}
-                      </>
-                    ) : qr.isCreatingContract ? (
-                      // Named rather than silently greyed: a disabled button with no
-                      // explanation reads as broken, and this one is briefly unavailable.
-                      <>
-                        <LoadingSpinner className="w-4 h-4 mr-2" />
-                        {t('pay.preparing')}
-                      </>
-                    ) : (
-                      `Pay $${form.amount} ${selectedTokenSymbol}`
-                    )}
-                  </Button>
-                </div>
-              </>
-            )}
-
-            {/* QR PAYMENT UI (when paymentMethod === 'qr') */}
-            {paymentMethod === 'qr' && (
-              <>
-                {/* Payment method switcher (when not creating and no QR contract yet) */}
-                {!qr.isCreatingContract && !qr.qrContractAddress && (
-                  <div className="flex mb-6 bg-secondary-100 dark:bg-secondary-800 rounded-lg p-1">
-                    <button
-                      onClick={() => setPaymentMethod('wallet')}
-                      className="flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors text-secondary-500 dark:text-secondary-400 hover:text-secondary-700 dark:hover:text-secondary-200"
-                    >
-                      {t('checkout.walletTransfer')}
-                    </button>
-                    <button
-                      onClick={() => setPaymentMethod('qr')}
-                      className="flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors bg-white dark:bg-secondary-700 text-secondary-900 dark:text-white shadow-sm"
-                    >
-                      {t('checkout.qrCode')}
-                    </button>
-                  </div>
-                )}
-
-                {/* Step 1: Create the contract first */}
-                <QrPaymentPanel
-                  qr={qr}
-                  networkName={networkName}
-                  tokenSymbol={selectedTokenSymbol}
-                  amountInTokens={parseFloat(form.amount)}
-                  isMobileDevice={isMobileDevice}
-                  copiedAddress={copiedAddress}
-                  onCopyAddress={handleCopyAddress}
-                  createButtonLabel={t('checkout.generateLink')}
-                  createDisabled={false}
-                  onCancel={handleCancel}
-                  successMessage={t('pay.verifiedRedirect')}
-                />
-              </>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
+    <CheckoutShell embedded={isInIframe || isInPopup}>
+      <PayPage checkout={checkout} />
+    </CheckoutShell>
   );
 }

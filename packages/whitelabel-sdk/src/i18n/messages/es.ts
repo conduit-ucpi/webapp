@@ -324,7 +324,6 @@ export const es: Catalogue = {
 
   'walletRegistrationPrereq.prerequisites': 'Requisitos previos',
   'walletRegistrationPrereq.registerADifferentAddress': 'Registrar otra dirección',
-  'walletRegistrationPrereq.firstTransactionsFree': 'Las primeras 100 transacciones son gratis',
   'walletRegistrationPrereq.registerMyWallet': 'Registrar mi billetera',
   'walletRegistrationPrereq.walletRegistration': 'Registro de billetera',
 
@@ -728,4 +727,7 @@ export const es: Catalogue = {
   'push.doneBody': '{amount} {token} quedan en custodia para {seller}. Se liberan en {date} salvo que lo disputes antes.',
   'push.viewPayment': 'Ver este pago',
   'push.another': 'Hacer otro pago',
+  'push.checkoutPreparing': 'Preparando tu pago…',
+  'push.retry': 'Reintentar',
+  'push.doneInstantBody': 'Se pagaron {amount} {token} a {seller}.',
 };

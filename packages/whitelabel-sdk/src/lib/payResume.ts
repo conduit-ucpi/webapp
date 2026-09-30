@@ -62,3 +62,13 @@ export function decodePayResume(encoded: unknown): PayResume | null {
     return null;
   }
 }
+
+/**
+ * A checkout's own URL with the payment added: every merchant parameter (return address, order
+ * id) kept, and any earlier `resume` replaced. /contract-create comes back here, not to /pay.
+ */
+export function withPayResume(asPath: string, resume: string | null): string {
+  const url = new URL(asPath, 'http://checkout.local');
+  if (resume) url.searchParams.set('resume', resume);
+  return `${url.pathname}${url.search}`;
+}

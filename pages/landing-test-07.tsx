@@ -106,7 +106,7 @@ export default function LandingTest07() {
                 </label>
                 <div className="mt-3 grid sm:grid-cols-2 gap-3">
                   <Link href="/create" className={lt.btnPrimary}>Request payment</Link>
-                  <button type="button" className={lt.btnSecondary} onClick={() => window.open(demoCheckoutUrl(window.location.origin), '_blank')}>
+                  <button type="button" className={lt.btnSecondary} onClick={() => window.open(demoCheckoutUrl(window.location.origin), '_blank', 'noopener')}>
                     Launch demo checkout
                   </button>
                 </div>

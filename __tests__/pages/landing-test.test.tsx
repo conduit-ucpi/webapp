@@ -28,7 +28,7 @@ import {
   PRICING_ROWS,
   PROOF_POINTS,
   SOURCE_URL,
-  VIDEO_URL,
+  VIDEO_ID,
 } from '@/components/landing-test/content';
 
 /*
@@ -185,7 +185,11 @@ describe.each(PAGES)('%s', (_name, Page) => {
     expect(url).toContain('/contract-create?seller=0x4f118f99a4e8bb384061bcfe081e3bbdec28482d');
     expect(url).toContain('amount=0.001');
     expect(openSpy.mock.calls[0][1]).toBe('_blank');
-    expect(screen.getByRole('link', { name: 'Watch video instead' })).toHaveAttribute('href', VIDEO_URL);
+    // No opener: Privy would treat the checkout as its sign-in popup and never finish a Google login.
+    expect(openSpy.mock.calls[0][2]).toBe('noopener');
+    // The video plays in place: the thumbnail swaps for the embedded player on click.
+    fireEvent.click(screen.getByRole('button', { name: 'Play the walkthrough video' }));
+    expect(screen.getByTitle('Walkthrough video')).toHaveAttribute('src', expect.stringContaining(`/embed/${VIDEO_ID}`));
     expect(hrefs()).toContain('/merchant-savings-calculator');
     expect(screen.getByText(/Pay \$0\.001 USDC/)).toBeInTheDocument();
   });

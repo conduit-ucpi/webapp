@@ -19,7 +19,8 @@ interface ReviewRequestProps {
   /** Unix seconds; ignored when isInstantPayment */
   payoutTimestamp: number;
   isInstantPayment: boolean;
-  onEdit: () => void;
+  /** The back arrow. Omitted where the terms are not the reader's to edit (a merchant's checkout). */
+  onEdit?: () => void;
   /** Heading; defaults to the seller's "Confirm Request Details". */
   title?: string;
   /** Rows after release and description, e.g. who is paid and the fee (/pay). */
@@ -49,16 +50,18 @@ export default function ReviewRequest({
   return (
     <div className="max-w-xl mx-auto">
       <div className="flex items-center justify-center gap-3 mb-8">
-        <button
-          type="button"
-          onClick={onEdit}
-          aria-label={t('review.backAria')}
-          className="text-secondary-500 dark:text-secondary-400 hover:text-secondary-900 dark:hover:text-white transition-colors"
-        >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-          </svg>
-        </button>
+        {onEdit && (
+          <button
+            type="button"
+            onClick={onEdit}
+            aria-label={t('review.backAria')}
+            className="text-secondary-500 dark:text-secondary-400 hover:text-secondary-900 dark:hover:text-white transition-colors"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+          </button>
+        )}
         <h2 className="text-2xl sm:text-3xl font-semibold text-secondary-900 dark:text-white">
           {title ?? t('review.title')}
         </h2>

@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import { VIDEO_URL, demoCheckoutUrl } from './content';
+import { demoCheckoutUrl } from './content';
+import VideoEmbed from './VideoEmbed';
 import { lt } from './theme';
 
 interface Props {
@@ -10,7 +11,7 @@ interface Props {
 
 /**
  * The live demo: opens the real checkout for a $0.001 USDC payment in a new tab, the
- * walkthrough video, and the savings calculator. Same three actions on every landing.
+ * savings calculator, and the walkthrough video in a small click-to-play window. Same three actions on every landing.
  */
 export default function DemoButtons({ className = '', primaryClass = lt.btnPrimary, outlineClass = lt.btnSecondary }: Props) {
   return (
@@ -19,18 +20,19 @@ export default function DemoButtons({ className = '', primaryClass = lt.btnPrima
         <button
           type="button"
           className={primaryClass}
-          onClick={() => window.open(demoCheckoutUrl(window.location.origin), '_blank')}
+          // ⚠️ noopener. With this page as a same-origin opener, Privy takes the checkout for its
+          //    own sign-in popup and posts the Google result back here instead of logging in.
+          onClick={() => window.open(demoCheckoutUrl(window.location.origin), '_blank', 'noopener')}
         >
           See what your customers see
         </button>
-        <a href={VIDEO_URL} target="_blank" rel="noopener noreferrer" className={outlineClass}>
-          Watch video instead
-        </a>
         <Link href="/merchant-savings-calculator" className={outlineClass}>
           Calculate savings
         </Link>
       </div>
       <p className={`mt-3 text-xs ${lt.muted}`}>Pay $0.001 USDC (try for free)</p>
+      <p className={`mt-6 mb-2 text-xs ${lt.muted}`}>Or watch it instead</p>
+      <VideoEmbed />
     </div>
   );
 }

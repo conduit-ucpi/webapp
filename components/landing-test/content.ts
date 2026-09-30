@@ -9,7 +9,8 @@
  */
 
 export const DEMO_SELLER = '0x4f118f99a4e8bb384061bcfe081e3bbdec28482d';
-export const VIDEO_URL = 'https://youtu.be/uUSlf3FmazQ';
+export const VIDEO_ID = 'uUSlf3FmazQ';
+export const VIDEO_URL = `https://youtu.be/${VIDEO_ID}`;
 export const SOURCE_URL = 'https://github.com/conduit-ucpi/contracts';
 export const API_DOC_URL = 'https://api.stabledrop.me/api/ap2/settle/doc';
 export const MCP_URL = 'https://api.stabledrop.me/api/ap2/mcp';
@@ -96,18 +97,18 @@ export const PROOF_POINTS = ['1% flat fee', 'No vetting', 'Put a checkout on you
 export const HOW_IT_WORKS = [
   {
     num: '01',
-    title: 'Create',
-    desc: 'Seller sets an amount and a payout date — typically a day after expected delivery, so the buyer has time to check the goods.',
+    title: 'Create the payment terms',
+    desc: 'Initiator sets the price and a payment date, usually immediately or 2-14 days later.',
   },
   {
     num: '02',
-    title: 'Fund',
-    desc: 'Buyer pays into a smart contract. Funds are locked — neither party can touch them until the payout date.',
+    title: 'Fund the contract',
+    desc: "The buyer's payment is locked until the goods arrive.",
   },
   {
     num: '03',
-    title: 'Release',
-    desc: 'On the payout date, seller gets paid automatically. If something went wrong, buyer can raise a dispute before that date to freeze the funds.',
+    title: 'Payout',
+    desc: "On the agreed date, the seller is paid automatically. If something's wrong, the buyer can freeze the payment before then. Most issues are sorted between buyer and seller, but if they can't agree, an independent arbitrator decides.",
   },
 ];
 
@@ -128,6 +129,13 @@ export const FEE_COMPARISON = [
   { item: 'Rolling reserve', processor: '20–30% held', us: 'None' },
   { item: 'Settlement', processor: '2–3 days', us: 'Seconds, on payout date' },
   { item: 'Approval', processor: 'Days of KYB', us: 'None' },
+];
+
+/** Both sides of a payment, and what happens when it goes wrong. The homepage's first section under the hero. */
+export const BOTH_SIDES_POINTS = [
+  { label: 'Buyers', text: 'Pay any supplier with confidence, no vetting needed. Your money is held until the goods arrive or the work is done.' },
+  { label: 'Sellers', text: 'See the money is committed before you ship or deliver.' },
+  { label: 'If something goes wrong', text: "Freeze the funds and agree a fix together. If you can't agree, an independent arbiter decides." },
 ];
 
 export const BUYER_POINTS = [

@@ -291,7 +291,6 @@ export const en = {
   'walletInfo.network': 'Network:',
   'walletRegistrationPrereq.prerequisites': 'Prerequisites',
   'walletRegistrationPrereq.registerADifferentAddress': 'Register a different address',
-  'walletRegistrationPrereq.firstTransactionsFree': 'First 100 transactions free',
   'walletRegistrationPrereq.registerMyWallet': 'Register My Wallet',
   'walletRegistrationPrereq.walletRegistration': 'Wallet registration',
   'wizard.processing': 'Processing...',
@@ -627,6 +626,9 @@ export const en = {
   'push.doneBody': '{amount} {token} is held in escrow for {seller}. It releases to them on {date} unless you dispute it before then.',
   'push.viewPayment': 'View this payment',
   'push.another': 'Make another payment',
+  'push.checkoutPreparing': 'Setting up your payment…',
+  'push.retry': 'Try again',
+  'push.doneInstantBody': '{amount} {token} has been paid to {seller}.',
 } as const;
 
 export type MessageKey = keyof typeof en;

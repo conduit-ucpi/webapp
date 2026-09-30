@@ -22,6 +22,7 @@ import {
   AGENT_POINTS,
   API_DOC_URL,
   BENEFITS,
+  BOTH_SIDES_POINTS,
   BUYER_POINTS,
   HOW_IT_WORKS,
   MERCHANT_POINTS,
@@ -76,10 +77,20 @@ export default function Home() {
         />
 
         <HoverChapter
+          label="Protection"
+          title="Protected on both sides."
+          ariaLabel="Protection on both sides"
+          fallback="Buyers, sellers, and what happens when it goes wrong. Point at one."
+          items={BOTH_SIDES_POINTS}
+          columns={1}
+          titlesOnly
+        />
+
+        <HoverChapter
           label="How it works"
           title="Three steps. Point at one for the detail."
           ariaLabel="How it works"
-          fallback="Create, fund, release. Point at a step."
+          fallback="Create, fund, payout. Point at a step."
           items={HOW_IT_WORKS.map((s) => ({ label: s.title, text: s.desc }))}
           columns={1}
           titlesOnly
@@ -89,7 +100,7 @@ export default function Home() {
         <Chapter
           id="demo"
           label="Live demo"
-          title="See what your customers see."
+          title="Merchants: see what your customers see when using Stabledrop's checkout"
           ariaLabel="Try the checkout"
           aside={
             <>

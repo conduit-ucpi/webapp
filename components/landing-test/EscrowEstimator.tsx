@@ -12,6 +12,13 @@ const CARD_RATE = 0.029;
 const CARD_FIXED = 0.3;
 
 /**
+ * A traditional (human, custodial) escrow service as the second comparison: a percentage
+ * of the deal with a minimum fee, whichever is larger. Round numbers, same spirit as above.
+ */
+const ESCROW_RATE = 0.1;
+const ESCROW_MIN = 50;
+
+/**
  * Indicative discount an LP might ask to buy a locked payment before its payout date:
  * the risk-free rate plus a spread, pro-rated by days locked. The marketplace prices
  * each offer individually; this is the order of magnitude, labelled as such.
@@ -51,11 +58,12 @@ export default function EscrowEstimator({ className = '', ctaLabel = 'Request th
     const fee = amount >= MIN_AMOUNT ? feeFor(amount) : 0;
     const net = amount >= MIN_AMOUNT ? netFor(amount) : 0;
     const card = amount > 0 ? amount * CARD_RATE + CARD_FIXED : 0;
+    const escrow = amount > 0 ? Math.max(amount * ESCROW_RATE, ESCROW_MIN) : 0;
     const saving = Math.max(0, card - fee);
     const lpRate = (RISK_FREE + LP_SPREAD) / 100;
     const discount = net * lpRate * (days / 365);
     const early = Math.max(0, net - discount);
-    return { fee, net, card, saving, discount, early, lpApr: RISK_FREE + LP_SPREAD };
+    return { fee, net, card, escrow, saving, discount, early, lpApr: RISK_FREE + LP_SPREAD };
   }, [amount, days]);
 
   const feeIsFloor = amount >= MIN_AMOUNT && m.fee === MIN_FEE && amount * FEE_RATE < MIN_FEE;
@@ -143,20 +151,28 @@ export default function EscrowEstimator({ className = '', ctaLabel = 'Request th
           </span>
         </div>
         <div className={row}>
+          <span className={`text-sm ${lt.muted}`}>Traditional escrow would take</span>
+          <span className={`text-sm font-medium ${lt.fg}`} data-testid="estimator-escrow">
+            {money(m.escrow)}
+            <span className={`ml-2 text-xs ${lt.muted}`}>{ESCROW_RATE * 100}%, ${ESCROW_MIN} min</span>
+          </span>
+        </div>
+        <div className={row}>
           <span className={`text-sm ${lt.muted}`}>You keep</span>
           <span className={`text-sm font-semibold ${lt.accentText}`} data-testid="estimator-saving">
             +{money(m.saving)} more
+            <span className={`ml-2 text-xs font-normal ${lt.muted}`}>vs card</span>
           </span>
         </div>
         {showLiquidity && (
           <div className={row}>
             <div>
-              <span className={`block text-sm ${lt.muted}`}>Need it today? Sell the payment early</span>
-              <span className={`block text-xs ${lt.muted}`}>indicative, at ~{m.lpApr.toFixed(2)}% a year for {days} days</span>
+              <span className={`block text-sm ${lt.muted}`}>Need it today? Offer it for sale early,</span>
+              <span className={`block text-xs ${lt.muted}`}>
+                indicative, at ~{m.lpApr.toFixed(2)}% a year for {days} day{days === 1 ? '' : 's'} ={' '}
+                <span className={`font-medium ${lt.fg}`} data-testid="estimator-early">{money(m.early)}</span>
+              </span>
             </div>
-            <span className={`text-sm font-medium ${lt.fg}`} data-testid="estimator-early">
-              ≈ {money(m.early)}
-            </span>
           </div>
         )}
         <div className={row}>

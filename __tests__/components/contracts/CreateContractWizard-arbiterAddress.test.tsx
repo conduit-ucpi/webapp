@@ -45,12 +45,6 @@ jest.mock('@/components/ui/Toast', () => ({
   ToastProvider: ({ children }: any) => <>{children}</>,
 }));
 
-// WalletInfo hits lots of hooks — not relevant to this validation test
-jest.mock('@/components/ui/WalletInfo', () => ({
-  __esModule: true,
-  default: () => <div data-testid="wallet-info-stub" />,
-}));
-
 import { useRouter } from 'next/router';
 import CreateContractWizard from '@/components/contracts/CreateContractWizard';
 import { useConfig } from '@/components/auth/ConfigProvider';

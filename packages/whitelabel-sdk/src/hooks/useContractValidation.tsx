@@ -17,34 +17,12 @@ export interface CreateContractErrors {
   description?: string;
 }
 
-export interface ContractCreateErrors {
-  seller?: string;
-  amount?: string;
-  description?: string;
-  arbiterAddress?: string;
-}
-
 // Form data types
 export interface CreateContractForm {
   buyerEmail: string;
   amount: string;
   payoutTimestamp: number;
   description: string;
-}
-
-export interface ContractCreateForm {
-  seller: string;
-  amount: string;
-  description: string;
-  // Optional advanced override for the dispute resolver. Blank/undefined ⇒ use system default.
-  arbiterAddress?: string;
-}
-
-// WordPress validation context
-export interface WordPressValidationContext {
-  wordpress_source?: string | string[];
-  webhook_url?: string | string[];
-  order_id?: string | string[];
 }
 
 /**
@@ -107,84 +85,6 @@ export function useCreateContractValidation() {
     // Validate description
     if (!isValidDescription(form.description)) {
       newErrors.description = 'Description must be 1-160 characters';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  }, []);
-
-  const clearErrors = useCallback(() => {
-    setErrors({});
-  }, []);
-
-  return {
-    errors,
-    validateForm,
-    clearErrors
-  };
-}
-
-/**
- * Hook for validating contract-create forms (WordPress plugin)
- * Handles business validation logic separate from UI components
- */
-export function useContractCreateValidation() {
-  const t = useT();
-  const [errors, setErrors] = useState<ContractCreateErrors>({});
-
-  const validateForm = useCallback((
-    form: ContractCreateForm,
-    wordpressContext?: WordPressValidationContext,
-    buyerInfo?: { walletAddress?: string }
-  ): boolean => {
-    const newErrors: ContractCreateErrors = {};
-
-    // Validate seller (must be wallet address)
-    if (!isValidWalletAddress(form.seller)) {
-      newErrors.seller = 'Invalid seller wallet address';
-    }
-
-    // Check if buyer and seller are the same person (if buyer info provided)
-    if (buyerInfo?.walletAddress && isValidWalletAddress(form.seller)) {
-      if (addressesEqual(form.seller, buyerInfo.walletAddress)) {
-        newErrors.seller = t('validation.payToOwnWallet', {
-          seller: form.seller,
-          buyer: buyerInfo.walletAddress,
-        });
-      }
-    }
-
-    // Validate amount
-    if (!isValidAmount(form.amount)) {
-      newErrors.amount = 'Invalid amount';
-    }
-
-    // Validate description
-    if (!isValidDescription(form.description)) {
-      newErrors.description = 'Description must be 1-160 characters';
-    }
-
-    // Validate optional arbiter wallet address (advanced field)
-    // If blank/whitespace-only: skip — this is an optional override.
-    // If provided: must be a valid Ethereum address.
-    const trimmedArbiter = form.arbiterAddress?.trim() ?? '';
-    if (trimmedArbiter.length > 0 && !isValidWalletAddress(trimmedArbiter)) {
-      newErrors.arbiterAddress = 'Invalid arbiter wallet address';
-    }
-
-    // Validate WordPress integration parameters if applicable
-    if (wordpressContext?.wordpress_source === 'true') {
-      if (!wordpressContext.webhook_url) {
-        console.error('WordPress integration missing webhook_url parameter');
-        alert('Configuration error: Missing webhook URL for WordPress integration');
-        return false;
-      }
-
-      if (!wordpressContext.order_id) {
-        console.error('WordPress integration missing order_id parameter');
-        alert('Configuration error: Missing order ID for WordPress integration');
-        return false;
-      }
     }
 
     setErrors(newErrors);

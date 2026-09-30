@@ -168,7 +168,7 @@ export default function LandingTest02() {
                 <button
                   type="button"
                   className={`${lt.btnOutline} !border-white/25 !text-[#f4f3ee] hover:!bg-white/10`}
-                  onClick={() => window.open(demoCheckoutUrl(window.location.origin), '_blank')}
+                  onClick={() => window.open(demoCheckoutUrl(window.location.origin), '_blank', 'noopener')}
                 >
                   Launch demo
                 </button>

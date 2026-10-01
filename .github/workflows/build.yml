@@ -44,24 +44,46 @@ jobs:
         id: env_vars
         run: |
           echo "ENV_TAG=latest" >> $GITHUB_ENV
-          # ⚠️ ONE TAG PER BUILD, NOT PER COMMIT. Build-time vars (every NEXT_PUBLIC_*, and
-          #    ALLOWED_FRAME_ANCESTORS, which Next bakes into the route headers) change the image
-          #    without changing the commit. With a commit-only tag, re-running a deploy after
-          #    changing a var rebuilt and pushed the new image under the old tag, the deploy
-          #    step found that tag already on the box, skipped the transfer, and restarted the
-          #    OLD image — green run, stale site. Run id + attempt make every build distinct.
-          echo "SHA_TAG=${GITHUB_SHA::8}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" >> $GITHUB_ENV
+          # ⚠️ ONE IMAGE PER COMMIT, NAMED BY ITS SHA (decided 1 Oct 2026, replacing one tag per
+          #    run). Built once; every later tag of the same commit deploys that image.
+          #    Consequence, accepted: build-time vars (every NEXT_PUBLIC_*, and
+          #    ALLOWED_FRAME_ANCESTORS, which Next bakes into the route headers) are those of the
+          #    run that first built the commit. Changing one needs a new commit to take effect.
+          echo "SHA_TAG=${GITHUB_SHA::8}" >> $GITHUB_ENV
           echo "REPO_LOWER=$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
           echo "GIT_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo '')" >> $GITHUB_ENV
           echo "GIT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
 
+      # Docker steps  
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Is this commit's image already built?
+        id: image
+        run: |
+          if docker buildx imagetools inspect "ghcr.io/${REPO_LOWER}:${SHA_TAG}" >/dev/null 2>&1; then
+            echo "ghcr.io/${REPO_LOWER}:${SHA_TAG} exists; it will be deployed, not rebuilt."
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
       # Build step for test and production
       - name: Setup Node.js and build
+        if: steps.image.outputs.exists != 'true'
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
       - name: Install and build
+        if: steps.image.outputs.exists != 'true'
         env:
           CHAIN_ID: ${{ vars.CHAIN_ID }}
           RPC_URL: ${{ vars.RPC_URL }}
@@ -163,18 +185,8 @@ jobs:
           ls -la .next/standalone/public/ || echo "No public directory in standalone"
           ls -la .next/standalone/public/payment_gateway.png || echo "payment_gateway.png not found"
 
-      # Docker steps  
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
       - name: Build and push image
+        if: steps.image.outputs.exists != 'true'
         uses: nick-invision/retry@v3
         with:
           timeout_minutes: 2

@@ -11,6 +11,7 @@ import ContractActions from './ContractActions';
 import FarcasterNameDisplay from '@/components/ui/FarcasterNameDisplay';
 import { useT } from '../../i18n';
 import { useBrandedHref } from '../../theme';
+import { payHref } from '../../utils/payHref';
 
 interface ContractDetailsModalProps {
   isOpen: boolean;
@@ -42,7 +43,7 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
   const generatePaymentLink = (): string => {
     if (!contract.id) return '';
     const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
-    return `${baseUrl}${brandedHref(`/contract-pay?contractId=${contract.id}`)}`;
+    return `${baseUrl}${payHref(contract, brandedHref)}`;
   };
 
   // Copy payment link to clipboard

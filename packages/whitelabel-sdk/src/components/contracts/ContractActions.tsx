@@ -10,6 +10,7 @@ import DisputeModal from './DisputeModal';
 import DisputeManagementModal from './DisputeManagementModal';
 import { formatDateTimeWithTZ } from '@/utils/validation';
 import { useBrandedHref } from '../../theme';
+import { payHref } from '../../utils/payHref';
 import { useT } from '../../i18n';
 
 interface ContractActionsProps {
@@ -273,7 +274,7 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
         return (
           <Button
             size="sm"
-            onClick={() => router.push(brandedHref(`/contract-pay?contractId=${contract.id}`))}
+            onClick={() => router.push(payHref(contract, brandedHref)!)}
             className="w-full"
           >
             {contract.ctaLabel || 'Complete Payment'}
@@ -292,7 +293,7 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
         return (
           <Button
             size="sm"
-            onClick={() => router.push(brandedHref(`/contract-pay?contractId=${contract.id}`))}
+            onClick={() => router.push(payHref(contract, brandedHref)!)}
             className="w-full"
           >
             {contract.ctaLabel || 'Complete Payment'}

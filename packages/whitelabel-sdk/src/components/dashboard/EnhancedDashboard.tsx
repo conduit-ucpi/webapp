@@ -26,6 +26,7 @@ import { buildReportCsv, ReportRow } from '@/components/dashboard/reportExport';
 import { WalletSigningError } from '@/lib/auth/errors/WalletSigningError';
 import { useT } from '../../i18n';
 import { useBrandedHref } from '../../theme';
+import { payHref } from '../../utils/payHref';
 
 type StatusFilter = 'ALL' | 'ACTION_NEEDED' | 'ACTIVE' | 'COMPLETED' | 'DISPUTED';
 
@@ -409,7 +410,7 @@ export default function EnhancedDashboard() {
     // backend's ctaType on a pending contract, which would otherwise open the details
     // modal instead of paying.
     if ((action === 'accept' || (isPending && action === 'view-details')) && contract.id) {
-      router.push(brandedHref(`/contract-pay?contractId=${contract.id}`));
+      router.push(payHref(contract, brandedHref)!);
     } else if (action === 'manage' && 'contractAddress' in contract) {
       setContractToManage(contract as Contract);
       setShowManageDispute(true);

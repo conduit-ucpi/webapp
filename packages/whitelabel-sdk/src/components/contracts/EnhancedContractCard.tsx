@@ -8,6 +8,7 @@ import FarcasterNameDisplay from '@/components/ui/FarcasterNameDisplay';
 import { emailsEqual } from '@/utils/address';
 import { useT } from '../../i18n';
 import { useBrandedHref } from '../../theme';
+import { payHref } from '../../utils/payHref';
 import Modal from '@/components/ui/Modal';
 import SendRequestScreen from '@/components/contracts/SendRequestScreen';
 import { useConfig } from '@/components/auth/ConfigProvider';
@@ -97,7 +98,7 @@ export default function EnhancedContractCard({
 
   const paymentLink =
     typeof window !== 'undefined' && contract.id
-      ? `${window.location.origin}${brandedHref(`/contract-pay?contractId=${contract.id}`)}`
+      ? `${window.location.origin}${payHref(contract, brandedHref)}`
       : '';
 
   // Use backend-provided CTA information only

@@ -43,6 +43,7 @@ export function transformCombinedContractItem(item: any): UnifiedContract | null
       ctaType: item.ctaType,
       ctaLabel: item.ctaLabel,
       ctaVariant: item.ctaVariant,
+      payLink: item.payLink,
     } as PendingContract;
     return pendingContract;
   }
@@ -73,6 +74,7 @@ export function transformCombinedContractItem(item: any): UnifiedContract | null
     ctaType: item.ctaType,
     ctaLabel: item.ctaLabel,
     ctaVariant: item.ctaVariant,
+    payLink: item.payLink,
   };
   return regularContract;
 }

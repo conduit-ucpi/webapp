@@ -134,6 +134,8 @@ export interface Contract {
   ctaType?: string;
   ctaLabel?: string;
   ctaVariant?: string;
+  /** Where to pay it when /contract-pay cannot (an unpaid ap2service request). See utils/payHref. */
+  payLink?: string | null;
 }
 
 export interface PendingContract {
@@ -186,6 +188,8 @@ export interface PendingContract {
   ctaType?: string;
   ctaLabel?: string;
   ctaVariant?: string;
+  /** Where to pay it when /contract-pay cannot (an unpaid ap2service request). See utils/payHref. */
+  payLink?: string | null;
 }
 
 export interface CreateContractRequest {

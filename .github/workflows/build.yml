@@ -152,38 +152,7 @@ jobs:
           COINBASE_PROJECT_ID: ${{ vars.COINBASE_PROJECT_ID }}
           COINBASE_API_KEY_ID: ${{ secrets.COINBASE_API_KEY_ID }}
           COINBASE_API_KEY_SECRET: ${{ secrets.COINBASE_API_KEY_SECRET }}
-        run: |
-          npm ci --legacy-peer-deps
-
-          # The Farcaster manifest is NOT generated here any more. It is a
-          # committed file, public/.well-known/farcaster.json.
-          #
-          # It used to be written by a heredoc at this point, which meant the box
-          # build and the Pages build could disagree about it: Pages has no such
-          # step and always shipped the committed file, while this job silently
-          # overwrote it. Two builds, two manifests, one of them invisible in the
-          # repo. One committed file is the whole fix.
-          echo "=== Farcaster manifest (committed) ==="
-          cat public/.well-known/farcaster.json
-
-          npm run build
-          mkdir -p .next/standalone
-          # Debug: Check what files exist before copying
-          echo "=== Checking build output ==="
-          ls -la .next/
-          ls -la .next/static/ || echo "No .next/static directory"
-          find .next/static -name "*.css" || echo "No CSS files found"
-          # Copy static assets required for standalone build
-          mkdir -p .next/standalone/.next
-          cp -r .next/static .next/standalone/.next/static || echo "Failed to copy static"
-          cp -r public .next/standalone/public || echo "Failed to copy public"
-          # Debug: Check what was copied
-          echo "=== Checking copied files ==="
-          ls -la .next/standalone/.next/static/ || echo "No copied static files"
-          find .next/standalone -name "*.css" || echo "No CSS files in standalone"
-          echo "=== Checking public files ==="
-          ls -la .next/standalone/public/ || echo "No public directory in standalone"
-          ls -la .next/standalone/public/payment_gateway.png || echo "payment_gateway.png not found"
+        run: scripts/build-server-bundle.sh
 
       - name: Build and push image
         if: steps.image.outputs.exists != 'true'
@@ -352,6 +321,211 @@ jobs:
           retry 3 scp -o BatchMode=yes /tmp/deploy_script.sh gituser@${{ vars.VM_IP }}:/dev/shm/deploy_script.sh
           $SSH "chmod +x /dev/shm/deploy_script.sh && /dev/shm/deploy_script.sh && rm /dev/shm/deploy_script.sh"
 
+
+      # ── The static site, built once per commit for the Cloudflare release ────────────
+      #
+      # The cherry release builds stabledrop.me's static export and stores it as an image named
+      # by the commit SHA (scripts/static-site-image.sh). A cloudflareRelease-* tag on the same
+      # commit then deploys that instead of building again. When the Cloudflare release comes
+      # first it stores the static site itself, and this finds it and builds nothing.
+      #
+      # ⚠️ AFTER THE BOX DEPLOY, AND NEVER ITS FAILURE. It does not delay webapp-prod, and if it
+      #    cannot build (settings missing on this environment, a flaky npm) the release stays
+      #    green: the Cloudflare release simply builds for itself, as it always did.
+      #
+      # ⚠️ ITS SETTINGS COME FROM THIS (cherry) ENVIRONMENT, not github-pages: a job reads only
+      #    its own environment's vars. NEXT_PUBLIC_API_BASE_URL and PAGES_BASE_PATH must be set
+      #    here too, with the github-pages values, or this step skips.
+      - name: Is this commit's static site already built?
+        id: static_site
+        if: startsWith(github.ref, 'refs/tags/cherry')
+        continue-on-error: true
+        run: |
+          if scripts/static-site-image.sh exists; then
+            echo "This commit's static site is already stored; nothing to build."
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Node for the static site
+        if: startsWith(github.ref, 'refs/tags/cherry') && steps.static_site.outputs.exists == 'false'
+        continue-on-error: true
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build and store the static site for Cloudflare
+        if: startsWith(github.ref, 'refs/tags/cherry') && steps.static_site.outputs.exists == 'false'
+        continue-on-error: true
+        env:
+          NEXT_PUBLIC_API_BASE_URL: ${{ vars.NEXT_PUBLIC_API_BASE_URL }}
+          NEXT_PUBLIC_BASE_PATH: ${{ vars.PAGES_BASE_PATH }}
+          NEXT_PUBLIC_APP_URL: ${{ vars.NEXT_PUBLIC_APP_URL }}
+          NEXT_PUBLIC_REDDIT_PIXEL_ID: ${{ vars.NEXT_PUBLIC_REDDIT_PIXEL_ID }}
+          NEXT_PUBLIC_EXCHANGE_RATE_API_URL: ${{ vars.NEXT_PUBLIC_EXCHANGE_RATE_API_URL }}
+          NEXT_PUBLIC_MOBILE_DEBUG_LOGGING: ${{ vars.NEXT_PUBLIC_MOBILE_DEBUG_LOGGING }}
+          NEXT_PUBLIC_EMBEDDED_SIWX: ${{ vars.NEXT_PUBLIC_EMBEDDED_SIWX }}
+          NEXT_PUBLIC_RPC_URL: ${{ vars.RPC_URL }}
+          NEXT_PUBLIC_ESCROW_IMPLEMENTATION_ADDRESS: ${{ vars.ESCROW_IMPLEMENTATION_ADDRESS }}
+        run: |
+          set -euo pipefail
+          if [ -z "${NEXT_PUBLIC_API_BASE_URL}" ]; then
+            echo "::warning::NEXT_PUBLIC_API_BASE_URL is not set on the cherry environment, so the static site was not built here. The Cloudflare release will build it itself."
+            exit 0
+          fi
+          scripts/build-static-export.sh
+          scripts/static-site-image.sh push
+
+  # ---------------------------------------------------------------------------
+  # The server image, built by a Cloudflare release when its commit has none yet.
+  #
+  # Either release can come first. When cherry-v* comes first it builds the server image and also
+  # stores the static site; this job is the other way round: when cloudflareRelease-* comes first,
+  # it builds the server image a later cherry release of the same commit then deploys without
+  # building. It deploys nothing.
+  #
+  # ⚠️ UNDER THE cherry ENVIRONMENT, IN ITS OWN JOB. The server build needs the box's settings and
+  #    secrets (MONGODB_URI, SESSION_SECRET, the Coinbase keys…). They stay on cherry: the
+  #    Cloudflare job's environment holds public values only, because its output is world-readable.
+  #
+  # ⚠️ NEVER THE CLOUDFLARE RELEASE'S FAILURE: no `needs`, and continue-on-error. If it cannot
+  #    build, the cherry release builds for itself, as it always did.
+  # ---------------------------------------------------------------------------
+  build-server-image:
+    if: startsWith(github.ref, 'refs/tags/cloudflareRelease-')
+    runs-on: ubuntu-latest
+    environment: cherry
+    continue-on-error: true
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Name this commit's server image
+        run: |
+          echo "SHA_TAG=${GITHUB_SHA::8}" >> $GITHUB_ENV
+          echo "REPO_LOWER=$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+          echo "GIT_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo '')" >> $GITHUB_ENV
+          echo "GIT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Is this commit's image already built?
+        id: image
+        run: |
+          if docker buildx imagetools inspect "ghcr.io/${REPO_LOWER}:${SHA_TAG}" >/dev/null 2>&1; then
+            echo "ghcr.io/${REPO_LOWER}:${SHA_TAG} exists; nothing to build."
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Node.js
+        if: steps.image.outputs.exists != 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # The same settings the box release builds with (see build-and-deploy's "Install and build").
+      - name: Build the server
+        if: steps.image.outputs.exists != 'true'
+        env:
+          CHAIN_ID: ${{ vars.CHAIN_ID }}
+          RPC_URL: ${{ vars.RPC_URL }}
+          SUPPORTED_TOKENS: ${{ vars.SUPPORTED_TOKENS }}
+          USDC_CONTRACT_ADDRESS: ${{ vars.USDC_CONTRACT_ADDRESS }}
+          USDT_CONTRACT_ADDRESS: ${{ vars.USDT_CONTRACT_ADDRESS }}
+          DEFAULT_TOKEN_SYMBOL: ${{ vars.DEFAULT_TOKEN_SYMBOL }}
+          USER_SERVICE_URL: ${{ vars.USER_SERVICE_URL }}
+          CHAIN_SERVICE_URL: ${{ vars.CHAIN_SERVICE_URL }}
+          CONTRACT_SERVICE_URL: ${{ vars.CONTRACT_SERVICE_URL }}
+          MOONPAY_API_KEY: ${{ secrets.MOONPAY_API_KEY }}
+          X_API_KEY: ${{ secrets.X_API_KEY }}
+          MIN_GAS_WEI: ${{ vars.MIN_GAS_WEI }}
+          MAX_GAS_PRICE_GWEI: ${{ vars.MAX_GAS_PRICE_GWEI }}
+          MAX_GAS_COST_GWEI: ${{ vars.MAX_GAS_COST_GWEI }}
+          USDC_GRANT_FOUNDRY_GAS: ${{ vars.USDC_GRANT_FOUNDRY_GAS }}
+          DEPOSIT_FUNDS_FOUNDRY_GAS: ${{ vars.DEPOSIT_FUNDS_FOUNDRY_GAS }}
+          RESOLUTION_VOTE_FOUNDRY_GAS: ${{ vars.RESOLUTION_VOTE_FOUNDRY_GAS }}
+          RAISE_DISPUTE_FOUNDRY_GAS: ${{ vars.RAISE_DISPUTE_FOUNDRY_GAS }}
+          CLAIM_FUNDS_FOUNDRY_GAS: ${{ vars.CLAIM_FUNDS_FOUNDRY_GAS }}
+          GAS_PRICE_BUFFER: ${{ vars.GAS_PRICE_BUFFER }}
+          NEYNAR_API_KEY: ${{ secrets.NEYNAR_API_KEY }}
+          NEYNAR_API_URL: ${{ vars.NEYNAR_API_URL }}
+          WALLETCONNECT_PROJECT_ID: ${{ secrets.WALLETCONNECT_PROJECT_ID }}
+          PRIVY_APP_ID: ${{ vars.PRIVY_APP_ID }}
+          BUILD_VERSION: ${{ env.BUILD_VERSION }}
+          GIT_TAG: ${{ env.GIT_TAG }}
+          GIT_SHA: ${{ env.GIT_SHA }}
+          # Same values again as NEXT_PUBLIC_*, so the bundle can report its own
+          # version rather than only the API's. Next inlines NEXT_PUBLIC_* at
+          # build time; GIT_TAG/GIT_SHA above stay server-side for /api/config.
+          # The trust anchor for escrow verification. MUST be build-time
+          # (NEXT_PUBLIC_*, inlined into the bundle) and MUST NOT be served from
+          # /api/config: if the same API that supplies a clone address also
+          # supplied the implementation to check it against, a compromised API
+          # would return a matching pair and the check would compare its own
+          # answer to itself. See lib/escrow/verifyEscrowClone.ts.
+          NEXT_PUBLIC_ESCROW_IMPLEMENTATION_ADDRESS: ${{ vars.ESCROW_IMPLEMENTATION_ADDRESS }}
+          # The RPC escrow verification reads through. MUST be build-time: the
+          # app's own RPC endpoint comes from /api/config, so a compromised API
+          # could point verification at a node it controls and have it confirm
+          # whatever it liked. See lib/escrow/verificationRpc.ts.
+          NEXT_PUBLIC_RPC_URL: ${{ vars.RPC_URL }}
+          NEXT_PUBLIC_GIT_TAG: ${{ env.GIT_TAG }}
+          NEXT_PUBLIC_GIT_SHA: ${{ env.GIT_SHA }}
+          NEXT_PUBLIC_BASE_PATH: ${{ vars.NEXT_PUBLIC_BASE_PATH }}
+          PRODUCT_NAME: ${{ vars.PRODUCT_NAME }}
+          SERVICE_LINK: ${{ vars.SERVICE_LINK }}
+          ALLOWED_FRAME_ANCESTORS: ${{ vars.ALLOWED_FRAME_ANCESTORS }}
+          SHOPIFY_CLIENT_ID: ${{ secrets.SHOPIFY_CLIENT_ID }}
+          SHOPIFY_CLIENT_SECRET: ${{ secrets.SHOPIFY_CLIENT_SECRET }}
+          SHOPIFY_NAME: ${{ vars.SHOPIFY_NAME }}
+          SHOPIFY_SCOPES: ${{ vars.SHOPIFY_SCOPES }}
+          SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          NEXT_PUBLIC_APP_URL: ${{ vars.NEXT_PUBLIC_APP_URL }}
+          NEXT_PUBLIC_REDDIT_PIXEL_ID: ${{ vars.NEXT_PUBLIC_REDDIT_PIXEL_ID }}
+          NEXT_PUBLIC_EXCHANGE_RATE_API_URL: ${{ vars.NEXT_PUBLIC_EXCHANGE_RATE_API_URL }}
+          # Mobile debug logging. Next inlines NEXT_PUBLIC_* at build time, so
+          # this has to be present HERE - setting it on the running container
+          # does nothing. Unset resolves to '' which is not 'true', so the
+          # pipeline stays off unless a repo/environment variable turns it on.
+          NEXT_PUBLIC_MOBILE_DEBUG_LOGGING: ${{ vars.NEXT_PUBLIC_MOBILE_DEBUG_LOGGING }}
+          # Set to 'false' to disable SIWX for embedded email/social wallets too.
+          NEXT_PUBLIC_EMBEDDED_SIWX: ${{ vars.NEXT_PUBLIC_EMBEDDED_SIWX }}
+          COINBASE_PROJECT_ID: ${{ vars.COINBASE_PROJECT_ID }}
+          COINBASE_API_KEY_ID: ${{ secrets.COINBASE_API_KEY_ID }}
+          COINBASE_API_KEY_SECRET: ${{ secrets.COINBASE_API_KEY_SECRET }}
+        run: scripts/build-server-bundle.sh
+
+      - name: Build and push the server image
+        if: steps.image.outputs.exists != 'true'
+        uses: nick-invision/retry@v3
+        with:
+          timeout_minutes: 2
+          max_attempts: 3
+          retry_on: error
+          command: |
+            docker buildx build \
+              --platform linux/amd64,linux/arm64 \
+              --file Dockerfile \
+              --push \
+              --tag ghcr.io/${{ env.REPO_LOWER }}:${{ env.SHA_TAG }} \
+              .
+
   # ---------------------------------------------------------------------------
   # Cloudflare Pages deploy — the client release, on its own tag. Publishes the
   # static export to stabledrop.me. (It started life as a GitHub Pages deploy,
@@ -398,6 +572,8 @@ jobs:
       url: https://stabledrop.me
     permissions:
       contents: read
+      # Reads this commit's stored static site; stores it when it has to build it itself.
+      packages: write
     # One deployment at a time; never cancel a run that is mid-publish.
     concurrency:
       group: deploy-cloudflare
@@ -408,135 +584,64 @@ jobs:
         with:
           fetch-depth: 0
 
-      # ⚠️ GENERATED, NOT COMMITTED. The card and ap2service's server.json used to be two files
-      #    in two repositories describing one server — so which one a directory believed
-      #    depended on how it found us, and keeping them equal was somebody's job forever.
+      # ── The static site: the one the cherry release stored, or built here ─────────────
       #
-      #    stabledrop.me is a static export with no /api at all, so it cannot proxy this the way
-      #    api.stabledrop.me proxies the JWKS. Fetching at build time is the next best thing:
-      #    one source of truth, and no copy in this repo to go stale.
-      #
-      #    Taken from the RUNNING service rather than from ap2service's main, so the card
-      #    describes what is actually deployed. A card advertising a tool surface that is merged
-      #    but not released sends an integrator looking for tools that are not there.
-      - name: Fetch the MCP server card from ap2service
+      # The cherry release builds out/ once per commit and stores it as an image named by the
+      # SHA. Found, it is deployed as it is: no npm ci, no build. Not found (no cherry release on
+      # this commit yet), it is built here and stored, so the next release of this commit
+      # reuses it. The build itself is scripts/build-static-export.sh, shared with cherry.
+      - name: Name this commit's static site
         run: |
-          set -euo pipefail
-          mkdir -p public/.well-known
+          echo "REPO_LOWER=$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+          echo "SHA_TAG=${GITHUB_SHA::8}" >> $GITHUB_ENV
 
-          # ⚠️ FAILS THE BUILD. Publishing Pages without the card is invisible from outside: a
-          #    crawler finds nothing and moves on, raising no error anywhere and leaving the
-          #    previous card in place until somebody happens to look.
-          curl -sf --max-time 30 https://api.stabledrop.me/.well-known/mcp.json \
-               -o public/.well-known/mcp.json
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-          python3 -c "import json;d=json.load(open('public/.well-known/mcp.json'));print('card:',d['name'],d['version'])"
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Is this commit's static site already built?
+        id: static_site
+        run: |
+          if scripts/static-site-image.sh exists; then
+            echo "Stored by an earlier release of this commit; it will be deployed, not rebuilt."
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Use the stored static site
+        if: steps.static_site.outputs.exists == 'true'
+        run: scripts/static-site-image.sh pull
 
       - uses: actions/setup-node@v4
+        if: steps.static_site.outputs.exists != 'true'
         with:
           node-version: '20'
 
+      # Only NEXT_PUBLIC_* values: the output is world-readable static files. NEVER return anything
+      # from getStaticProps that is not already public (see the comments in the build script).
       - name: Build static export
+        if: steps.static_site.outputs.exists != 'true'
         env:
-          # STATIC_EXPORT flips next.config.js to `output: 'export'`. Without it
-          # this would build the standalone server bundle and there would be
-          # nothing in out/ to publish.
-          STATIC_EXPORT: 'true'
-
-          # The static bundle has no API of its own — every apiFetch() call is
-          # rewritten against this. Must point at the box (see the
-          # api.stabledrop.me block in the caddy repo). If unset the calls fall
-          # back to relative paths and 404 against Pages.
           NEXT_PUBLIC_API_BASE_URL: ${{ vars.NEXT_PUBLIC_API_BASE_URL }}
-
-          # '/webapp' while validating on the default <org>.github.io/webapp URL;
-          # empty once a custom domain serves the site from its root.
           NEXT_PUBLIC_BASE_PATH: ${{ vars.PAGES_BASE_PATH }}
-
-          # Only NEXT_PUBLIC_* vars are passed. Everything server-side stays out
-          # of this build on purpose: its output is published as world-readable
-          # static files, and Next inlines NEXT_PUBLIC_* into the client bundle.
-          #
-          # This used to add "every getStaticProps here returns `props: {}`, so no
-          # build-time data reaches the HTML — keep it that way." That is no longer
-          # literally true: the legal pages now pass a `lastUpdated` / `dateModified`
-          # derived from git (lib/server/lastTextChange.ts). Deliberate, and the
-          # rule it was protecting is intact — a commit date is already public in
-          # the repo, so nothing secret reaches the HTML.
-          #
-          # The rule, stated as what it actually guards: NEVER return anything from
-          # getStaticProps that is not already public. Server-side env vars and
-          # secrets in particular — they would be baked into world-readable static
-          # files, and unlike a NEXT_PUBLIC_ name, nothing in the name warns you.
           NEXT_PUBLIC_APP_URL: ${{ vars.NEXT_PUBLIC_APP_URL }}
           NEXT_PUBLIC_REDDIT_PIXEL_ID: ${{ vars.NEXT_PUBLIC_REDDIT_PIXEL_ID }}
           NEXT_PUBLIC_EXCHANGE_RATE_API_URL: ${{ vars.NEXT_PUBLIC_EXCHANGE_RATE_API_URL }}
           NEXT_PUBLIC_MOBILE_DEBUG_LOGGING: ${{ vars.NEXT_PUBLIC_MOBILE_DEBUG_LOGGING }}
           NEXT_PUBLIC_EMBEDDED_SIWX: ${{ vars.NEXT_PUBLIC_EMBEDDED_SIWX }}
-          # The RPC escrow verification reads through. MUST be build-time: the
-          # app's own RPC endpoint comes from /api/config, so a compromised API
-          # could point verification at a node it controls and have it confirm
-          # whatever it liked. See lib/escrow/verificationRpc.ts.
           NEXT_PUBLIC_RPC_URL: ${{ vars.RPC_URL }}
-          # The trust anchor for escrow verification. MUST be build-time
-          # (NEXT_PUBLIC_*, inlined into the bundle) and MUST NOT be served from
-          # /api/config: if the same API that supplies a clone address also
-          # supplied the implementation to check it against, a compromised API
-          # would return a matching pair and the check would compare its own
-          # answer to itself. See lib/escrow/verifyEscrowClone.ts.
           NEXT_PUBLIC_ESCROW_IMPLEMENTATION_ADDRESS: ${{ vars.ESCROW_IMPLEMENTATION_ADDRESS }}
         run: |
           set -euo pipefail
-
-          # Stamp this bundle with its own version. The API reports its own
-          # separately via /api/config, and the two are different deployments —
-          # showing only the API's is what made a current Pages build look weeks
-          # stale in the UI.
-          export NEXT_PUBLIC_GIT_TAG="$(git describe --tags --abbrev=0 2>/dev/null || echo '')"
-          export NEXT_PUBLIC_GIT_SHA="$(git rev-parse --short HEAD)"
-          echo "Building client version: ${NEXT_PUBLIC_GIT_TAG:-<no tag>} ${NEXT_PUBLIC_GIT_SHA}"
-
-          if [ -z "${NEXT_PUBLIC_API_BASE_URL}" ]; then
-            echo "NEXT_PUBLIC_API_BASE_URL is not set — the published site would" >&2
-            echo "issue relative /api/* calls against Pages and every one would 404." >&2
-            exit 1
-          fi
-
-          # The escrow trust anchor. Empty here means the bundle cannot verify
-          # any contract address and refuses every signature — a build that looks
-          # fine and breaks at the worst moment. Note `vars` resolves against
-          # THIS job's environment (github-pages), not cherry: the value has to
-          # be set on github-pages specifically.
-          # Same reasoning: without a build-time RPC, verification has no
-          # independent view of the chain and refuses everything.
-          if [ -z "${NEXT_PUBLIC_RPC_URL}" ]; then
-            echo "NEXT_PUBLIC_RPC_URL is not set." >&2
-            echo "Set RPC_URL on the github-pages environment. Verification must" >&2
-            echo "read the chain through an endpoint the API cannot choose." >&2
-            exit 1
-          fi
-
-          if [ -z "${NEXT_PUBLIC_ESCROW_IMPLEMENTATION_ADDRESS}" ]; then
-            echo "NEXT_PUBLIC_ESCROW_IMPLEMENTATION_ADDRESS is not set." >&2
-            echo "Set ESCROW_IMPLEMENTATION_ADDRESS on the github-pages environment." >&2
-            echo "Without it every escrow verification fails closed and no contract" >&2
-            echo "can be created from the published site." >&2
-            exit 1
-          fi
-
-          npm ci --legacy-peer-deps
-          npm run build:static
-
-          # Client-side routing fallback. Cloudflare Pages serves 404.html for
-          # any path it has no file for, so making it the app shell lets the
-          # router resolve dynamic routes such as /projects/<groupId>, which the
-          # export can only emit as a literal "[groupId]" directory.
-          #
-          # It is served with a 404 STATUS, which browsers ignore and crawlers
-          # and uptime monitors do not. Cloudflare supports a _redirects file
-          # (`/* /index.html 200`) that does this properly; worth switching to
-          # once the host move itself is proven.
-          cp out/index.html out/404.html
+          scripts/build-static-export.sh
+          scripts/static-site-image.sh push
 
       # ── Cloudflare Pages: the live site ──────────────────────────────────────────────
       #

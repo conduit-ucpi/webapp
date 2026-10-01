@@ -24,6 +24,12 @@ export interface PayResume {
   description: string;
   tokenSymbol: string;
   externalId: string;
+  /**
+   * Who may dispute, when it is not whoever signs in to pay: a payment REQUEST names its buyer up
+   * front (ap2service's prepare, or contractservice's request email), and that wallet is one of
+   * the terms. Absent on a buyer's own /pay payment, where the payer is the nominal buyer.
+   */
+  nominalBuyer?: string;
 }
 
 function toBase64Url(text: string): string {
@@ -54,10 +60,11 @@ export function decodePayResume(encoded: unknown): PayResume | null {
       Number.isInteger(value.expiryTimestamp) && value.expiryTimestamp >= 0 &&
       typeof value.description === 'string' &&
       typeof value.tokenSymbol === 'string' && value.tokenSymbol !== '' &&
-      typeof value.externalId === 'string' && value.externalId !== '';
+      typeof value.externalId === 'string' && value.externalId !== '' &&
+      (value.nominalBuyer === undefined || (typeof value.nominalBuyer === 'string' && value.nominalBuyer.trim() !== ''));
     if (!ok) return null;
-    const { seller, amount, expiryTimestamp, description, tokenSymbol, externalId } = value;
-    return { seller, amount, expiryTimestamp, description, tokenSymbol, externalId };
+    const { seller, amount, expiryTimestamp, description, tokenSymbol, externalId, nominalBuyer } = value;
+    return { seller, amount, expiryTimestamp, description, tokenSymbol, externalId, ...(nominalBuyer ? { nominalBuyer } : {}) };
   } catch {
     return null;
   }

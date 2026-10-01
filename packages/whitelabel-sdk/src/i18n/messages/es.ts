@@ -727,6 +727,7 @@ export const es: Catalogue = {
   'push.doneBody': '{amount} {token} quedan en custodia para {seller}. Se liberan en {date} salvo que lo disputes antes.',
   'push.viewPayment': 'Ver este pago',
   'push.another': 'Hacer otro pago',
+  'push.disputer': 'Quién puede disputar',
   'push.checkoutPreparing': 'Preparando tu pago…',
   'push.retry': 'Reintentar',
   'push.doneInstantBody': 'Se pagaron {amount} {token} a {seller}.',

@@ -145,6 +145,8 @@ export default function PayPage({ checkout }: { checkout?: PayCheckout } = {}) {
   const [amount, setAmount] = useState(checkout?.terms.amount ?? '');
   const [payoutTimestamp, setPayoutTimestamp] = useState(checkout?.terms.expiryTimestamp ?? getDefaultTimestamp());
   const [description, setDescription] = useState(checkout?.terms.description ?? '');
+  /** A request's named buyer, from its link. Unset, the signed-in payer is the nominal buyer. */
+  const [nominalBuyer, setNominalBuyer] = useState<string | undefined>();
   const [sellerError, setSellerError] = useState<string>();
   const [amountError, setAmountError] = useState<string>();
 
@@ -176,7 +178,7 @@ export default function PayPage({ checkout }: { checkout?: PayCheckout } = {}) {
     seller: seller.trim(),
     amount: baseUnits,
     expiry_timestamp: payoutTimestamp,
-    nominal_buyer: payer,
+    nominal_buyer: nominalBuyer ?? payer,
     token_symbol: selectedTokenSymbol,
     description: description.trim(),
   });
@@ -313,7 +315,7 @@ export default function PayPage({ checkout }: { checkout?: PayCheckout } = {}) {
     return true;
     // terms() reads the same state these name.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [prepared, seller, baseUnits, payoutTimestamp, payer, selectedTokenSymbol, description, brandId]);
+  }, [prepared, seller, baseUnits, payoutTimestamp, payer, nominalBuyer, selectedTokenSymbol, description, brandId]);
 
   const qr = useQrPayment({
     authenticatedFetch,
@@ -343,6 +345,7 @@ export default function PayPage({ checkout }: { checkout?: PayCheckout } = {}) {
         description: description.trim(),
         tokenSymbol: selectedTokenSymbol,
         externalId: prepared.external_id,
+        ...(nominalBuyer ? { nominalBuyer } : {}),
       })
     : null;
   const resumeHref = checkout
@@ -362,6 +365,7 @@ export default function PayPage({ checkout }: { checkout?: PayCheckout } = {}) {
     setPayoutTimestamp(resume.expiryTimestamp);
     setDescription(resume.description);
     setTokenSymbol(resume.tokenSymbol);
+    setNominalBuyer(resume.nominalBuyer);
     setResumingToken(resume.tokenSymbol);
     setResumingId(resume.externalId);
   }, [router.isReady, router.query.resume]);
@@ -439,6 +443,7 @@ export default function PayPage({ checkout }: { checkout?: PayCheckout } = {}) {
     setAmount('');
     setDescription('');
     setPayoutTimestamp(getDefaultTimestamp());
+    setNominalBuyer(undefined);
     setPrepared(null);
     setSettled(null);
     setStage('details');
@@ -560,6 +565,10 @@ export default function PayPage({ checkout }: { checkout?: PayCheckout } = {}) {
               onEdit={checkout ? undefined : () => setStage('details')}
               extraRows={[
                 { label: t('push.paying'), value: seller.trim() },
+                // A request names who may dispute; say so when it is not the wallet paying.
+                ...(nominalBuyer && !(payer && addressesEqual(nominalBuyer, payer))
+                  ? [{ label: t('push.disputer'), value: nominalBuyer }]
+                  : []),
                 { label: t('push.sellerReceives'), value: prepared.seller_receives_estimate },
                 { label: t('push.fee'), value: prepared.platform_fee_estimate },
               ]}

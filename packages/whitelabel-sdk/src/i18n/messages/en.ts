@@ -626,6 +626,7 @@ export const en = {
   'push.doneBody': '{amount} {token} is held in escrow for {seller}. It releases to them on {date} unless you dispute it before then.',
   'push.viewPayment': 'View this payment',
   'push.another': 'Make another payment',
+  'push.disputer': 'Who can dispute',
   'push.checkoutPreparing': 'Setting up your payment…',
   'push.retry': 'Try again',
   'push.doneInstantBody': '{amount} {token} has been paid to {seller}.',

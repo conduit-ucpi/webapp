@@ -476,6 +476,57 @@ describe('/pay', () => {
 });
 
 /*
+ * A payment REQUEST's link: made by ap2service's prepare (or contractservice's request email),
+ * naming the buyer up front. Whoever signs in to pay, the escrow is the one the request named.
+ */
+describe('/pay from a request link', () => {
+  // Made by ap2service's mcp_server._pay_link — the two sides must agree on the format.
+  const FROM_PYTHON =
+    'eyJzZWxsZXIiOiJtZXJjaGFudEBleGFtcGxlLmNvbSIsImFtb3VudCI6IjEyLjUiLCJleHBpcnlUaW1lc3RhbXAiOjE3OTM1MDAwMDAsImRlc2NyaXB0aW9uIjoiTG9nbyBkZXNpZ24gXHUyMDE0IGRyYWZ0IDIiLCJ0b2tlblN5bWJvbCI6IlVTREMiLCJleHRlcm5hbElkIjoibWNwLTFmMDQiLCJub21pbmFsQnV5ZXIiOiIweDM5QzMyMzZBMkY3RkNFNENjMjE1YTI0ZkZiMzJhQzQ4NjQ2YjIyODgifQ';
+  const NAMED_BUYER = '0x39C3236A2F7FCE4Cc215a24fFb32aC48646b2288';
+
+  it("reads ap2service's link exactly", () => {
+    expect(decodePayResume(FROM_PYTHON)).toEqual({
+      seller: 'merchant@example.com',
+      amount: '12.5',
+      expiryTimestamp: 1793500000,
+      description: 'Logo design — draft 2',
+      tokenSymbol: 'USDC',
+      externalId: 'mcp-1f04',
+      nominalBuyer: NAMED_BUYER,
+    });
+  });
+
+  it('quotes the escrow the request named, with the signed-in wallet only as the payer', async () => {
+    mockRouter.query = { resume: FROM_PYTHON };
+    mockCall.mockResolvedValue(prepared());
+    render(<PayPage />);
+
+    await screen.findByText('Confirm payment');
+    expect(mockCall.mock.calls[0][1]).toMatchObject({
+      seller: 'merchant@example.com',
+      amount: 12_500_000,
+      nominal_buyer: NAMED_BUYER,
+      payer: PAYER,
+      external_id: 'mcp-1f04',
+    });
+    expect(screen.getByText('Who can dispute')).toBeInTheDocument();
+    expect(screen.getByText(NAMED_BUYER)).toBeInTheDocument();
+  });
+
+  it('keeps the named buyer when it puts the payment back in the address bar', async () => {
+    mockRouter.query = { resume: FROM_PYTHON };
+    mockCall.mockResolvedValue(prepared());
+    render(<PayPage />);
+    await screen.findByText('Confirm payment');
+
+    await waitFor(() => expect(replace).toHaveBeenCalled());
+    const url = replace.mock.calls.at(-1)[0] as string;
+    expect(decodePayResume(new URL(url, 'https://x').searchParams.get('resume'))).toMatchObject({ nominalBuyer: NAMED_BUYER });
+  });
+});
+
+/*
  * /pay inside a merchant's checkout (/contract-create). The terms are the merchant's, so there is
  * no form; what happens after is the checkout's, so it is handed back rather than done here.
  */

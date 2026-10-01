@@ -225,6 +225,15 @@ export default function Plugins() {
               >
                 WordPress. Shopify. Any website. Any AI agent. Under 5 minutes.
               </p>
+              {/* In plain sight, not only inside a collapsed panel: developers come here looking for it. */}
+              <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-3">
+                <a href={API_DOCS_URL} target="_blank" rel="noopener noreferrer">
+                  <button className={btnOutline}>API reference</button>
+                </a>
+                <span className="text-sm text-secondary-500 dark:text-secondary-400">
+                  Building it yourself? Prepare, fund and settle payments over HTTP.
+                </span>
+              </div>
             </Fade>
           </div>
         </section>
@@ -620,6 +629,9 @@ export default function Plugins() {
                 >
                   API reference
                 </a>
+                <Link href="/white-label" className="hover:text-secondary-600 dark:hover:text-secondary-300 transition-colors">
+                  White-label partners
+                </Link>
                 <a
                   href="mailto:info@stabledrop.me"
                   className="hover:text-secondary-600 dark:hover:text-secondary-300 transition-colors"

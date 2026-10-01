@@ -300,6 +300,8 @@ jobs:
             -e WHITELABEL_SERVICE_URL="${{ vars.WHITELABEL_SERVICE_URL }}" \\
             -e MOONPAY_API_KEY="${{ secrets.MOONPAY_API_KEY }}" \\
             -e X_API_KEY="${{ secrets.X_API_KEY }}" \\
+            -e EMAIL_SERVICE_URL="${{ vars.EMAIL_SERVICE_URL }}" \\
+            -e TO_EMAILSERVICE_API_KEY="${{ secrets.TO_EMAILSERVICE_API_KEY }}" \\
             -e GIT_TAG="${{ env.GIT_TAG }}" \\
             -e GIT_SHA="${{ env.GIT_SHA }}" \\
             -e COOKIE_DOMAIN="${{ vars.COOKIE_DOMAIN }}" \\

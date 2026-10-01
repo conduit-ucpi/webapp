@@ -1177,6 +1177,9 @@ app.post('/api/conduit-webhook', async (req, res) => {
                 >
                   API reference
                 </a>
+                <Link href="/white-label" className="hover:text-secondary-600 dark:hover:text-secondary-300 transition-colors">
+                  White-label partners
+                </Link>
                 <a
                   href="https://github.com/conduit-ucpi/contracts"
                   target="_blank"

@@ -26,6 +26,7 @@ const staticPages = [
   // Integration & plugin pages
   { path: '/integrate', priority: '0.8', changefreq: 'weekly' },
   { path: '/plugins', priority: '0.8', changefreq: 'weekly' },
+  { path: '/white-label', priority: '0.6', changefreq: 'monthly' },
   { path: '/plugin', priority: '0.8', changefreq: 'weekly' },
   { path: '/shopify', priority: '0.8', changefreq: 'weekly' },
   { path: '/wordpress', priority: '0.8', changefreq: 'weekly' },

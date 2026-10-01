@@ -1,6 +1,7 @@
 /** A partner's white-label request: their brand config JSON, email address and domains, as an email to us. */
 import {
   attachmentProblem,
+  describeJsonError,
   buildPayload,
   EMPTY_REQUEST,
   WHITE_LABEL_INBOX,
@@ -75,4 +76,37 @@ it('checks attachments against the same limits emailservice does', () => {
   expect(attachmentProblem([file('payload.exe')])).toMatch(/not a PNG/);
   expect(attachmentProblem([file('big.png', 1_000_001)])).toMatch(/larger than 1 MB/);
   expect(attachmentProblem(Array.from({ length: 7 }, (_, i) => file(`l${i}.png`)))).toMatch(/at most 6/);
+});
+
+describe('saying where a pasted config went wrong', () => {
+  // The config a partner actually pasted: \' is not a JSON escape.
+  const PASTED = [
+    '{"id":"cobro","name":"COBRO","theme":',
+    '  {"secondary":{"900":"17 17 17"},',
+    '    "fontFamily":"\\\'Manrope\\\', ui-sans-serif"',
+    '  }',
+    '}',
+  ].join('\n');
+
+  it('names the line and column, and says how to fix a backslashed apostrophe', () => {
+    const problem = validateRequest({ ...READY, configJson: PASTED }).configJson ?? '';
+    expect(problem).toMatch(/^The brand config is not valid JSON at line 3, column \d+\./);
+    expect(problem).toContain("Write ' on its own");
+  });
+
+  it("reads Firefox's line-and-column wording too, and copes with Safari's, which has neither", () => {
+    expect(describeJsonError('{}', new SyntaxError('JSON.parse: bad escaped character at line 9 column 20 of the JSON data')))
+      .toBe('The brand config is not valid JSON at line 9, column 20.');
+    expect(describeJsonError('{}', new SyntaxError("JSON Parse error: Invalid escape character '")))
+      .toBe('The brand config is not valid JSON.');
+  });
+
+  it('points out a trailing comma and single-quoted names', () => {
+    expect(describeJsonError('{"id":"a",}', new SyntaxError('x'))).toContain('Remove the comma');
+    expect(describeJsonError("{'id':'a'}", new SyntaxError('x'))).toContain('double quotes');
+  });
+
+  it('accepts the same config once the backslashes are gone', () => {
+    expect(validateRequest({ ...READY, configJson: PASTED.split("\\'").join("'") }).configJson).toBeUndefined();
+  });
 });

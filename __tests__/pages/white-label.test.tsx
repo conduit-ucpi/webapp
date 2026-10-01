@@ -89,11 +89,12 @@ describe('the request form', () => {
     expect(mockApiFetch).not.toHaveBeenCalled();
   });
 
-  it('says what is wrong with a config that cannot be used', () => {
+  it('says where a config is wrong, and how to fix it', () => {
     render(<WhiteLabelGuide />);
-    fireEvent.change(screen.getByLabelText('Brand config'), { target: { value: '{not json' } });
+    const pasted = '{"id":"cobro","name":"COBRO",\n "theme":{"fontFamily":"\\\'Manrope\\\', sans-serif"}}';
+    fireEvent.change(screen.getByLabelText('Brand config'), { target: { value: pasted } });
     fireEvent.blur(screen.getByLabelText('Brand config'));
-    expect(screen.getByText('The brand config is not valid JSON.')).toBeInTheDocument();
+    expect(screen.getByText(/^The brand config is not valid JSON at line 2, column \d+\. Write ' on its own/)).toBeInTheDocument();
   });
 
   it('sends it to our route, with no recipient in it, and says it went', async () => {

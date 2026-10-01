@@ -40,14 +40,44 @@ export function parseDomains(text: string): string[] {
     .filter(Boolean);
 }
 
+/**
+ * Where a JSON paste went wrong, in terms a person can find: line and column, plus the fix for the
+ * mistakes people actually make. Browsers word parse errors differently — Chrome and Node give a
+ * character position, Firefox a line and column, Safari neither — so every form is handled.
+ */
+export function describeJsonError(json: string, error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  let line: number | null = null;
+  let column: number | null = null;
+  const lineColumn = /line (\d+) column (\d+)/i.exec(message);
+  const position = /position (\d+)/i.exec(message);
+  if (lineColumn) {
+    line = Number(lineColumn[1]);
+    column = Number(lineColumn[2]);
+  } else if (position) {
+    const before = json.slice(0, Number(position[1]));
+    line = before.split('\n').length;
+    column = before.length - before.lastIndexOf('\n');
+  }
+
+  // The fix for the mistakes people make when typing JSON by hand.
+  const hints: string[] = [];
+  if (json.includes("\\'")) hints.push("Write ' on its own: \\' is not allowed in JSON.");
+  if (/,\s*[}\]]/.test(json)) hints.push('Remove the comma before a closing } or ].');
+  if (/'[^'"\n]*'\s*:/.test(json)) hints.push('Use double quotes around names, not single quotes.');
+
+  const where = line !== null && column !== null ? ` at line ${line}, column ${column}` : '';
+  return [`The brand config is not valid JSON${where}.`, ...hints].join(' ');
+}
+
 /** The config as an object, or why it cannot be used. Needs an `id` (the brand id) and a `name`. */
 export function parseConfig(json: string): { config: Record<string, unknown> } | { error: string } {
   if (!json.trim()) return { error: 'Paste your brand config.' };
   let value: unknown;
   try {
     value = JSON.parse(json);
-  } catch {
-    return { error: 'The brand config is not valid JSON.' };
+  } catch (e) {
+    return { error: describeJsonError(json, e) };
   }
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     return { error: 'The brand config must be a JSON object.' };

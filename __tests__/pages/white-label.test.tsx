@@ -34,6 +34,18 @@ it('lays out all seven steps and who does each', () => {
   expect(text()).toContain('ALLOWED_FRAME_ANCESTORS');
 });
 
+it('says who does every step, in words', () => {
+  const { container } = render(<WhiteLabelGuide />);
+  const who = (id: string) => container.querySelector(`section#${id} .who`)?.textContent ?? '';
+  expect(who('brand-pack')).toMatch(/Who does this:.*You \(the partner\).*fill in the form/);
+  expect(who('create-brand')).toMatch(/Stabledrop \(us\).*Nothing for you to do here/);
+  expect(who('domains')).toMatch(/Stabledrop \(us\).*Nothing for you to do here/);
+  expect(who('pages')).toMatch(/You \(the partner\).*your own website/);
+  expect(who('payments')).toMatch(/Your merchants/);
+  expect(who('confirm')).toMatch(/Your merchants.*You \(the partner\)/);
+  expect(who('test')).toMatch(/You \(the partner\).*Stabledrop \(us\)/);
+});
+
 it('uses a placeholder brand on our own site', () => {
   render(<WhiteLabelGuide />);
   expect(text()).toContain("var BRAND = 'your-brand'");

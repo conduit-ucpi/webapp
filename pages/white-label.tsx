@@ -19,10 +19,11 @@ const TEST = 'https://test.conduit-ucpi.com';
 
 type Role = 'partner' | 'us' | 'merchant';
 
-const CHIP: Record<Role, { label: string; className: string }> = {
-  partner: { label: 'Partner', className: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200' },
-  us: { label: 'Us', className: 'bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-200' },
-  merchant: { label: 'Merchant', className: 'bg-violet-100 text-violet-800 dark:bg-violet-900/40 dark:text-violet-200' },
+// Named from the partner's side: they are the one reading this page.
+const CHIP: Record<Role, { label: string; className: string; edge: string }> = {
+  partner: { label: 'You (the partner)', className: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200', edge: 'border-amber-400' },
+  us: { label: 'Stabledrop (us)', className: 'bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-200', edge: 'border-teal-500' },
+  merchant: { label: 'Your merchants', className: 'bg-violet-100 text-violet-800 dark:bg-violet-900/40 dark:text-violet-200', edge: 'border-violet-400' },
 };
 
 function Chip({ role }: { role: Role }) {
@@ -63,17 +64,27 @@ function Snippet({ label, children }: { label: string; children: string }) {
   );
 }
 
-function Step({ id, n, title, roles, children }: { id: string; n: string; title: string; roles: Role[]; children: ReactNode }) {
+/**
+ * One step, owned by someone. The owner is said three ways — chips, a "Who does this" sentence and
+ * a coloured edge — because a partner skimming for "what do I have to do" must not miss it.
+ */
+function Step({ id, n, title, roles, who, children }: { id: string; n: string; title: string; roles: Role[]; who: ReactNode; children: ReactNode }) {
   return (
     <section id={id} className="border-t border-secondary-200 dark:border-secondary-700 pt-8 pb-2">
-      <div className="flex flex-wrap items-baseline gap-x-4 gap-y-2 mb-4">
-        <span className="font-semibold text-primary-600 dark:text-primary-400 tabular-nums">{n}</span>
-        <h2 className="text-2xl font-semibold text-secondary-900 dark:text-white">{title}</h2>
-        {roles.map((role) => (
-          <Chip key={role} role={role} />
-        ))}
+      <div className={`border-l-4 ${CHIP[roles[0]].edge} pl-4 sm:pl-5`}>
+        <div className="flex flex-wrap items-baseline gap-x-4 gap-y-2 mb-3">
+          <span className="font-semibold text-primary-600 dark:text-primary-400 tabular-nums">{n}</span>
+          <h2 className="text-2xl font-semibold text-secondary-900 dark:text-white">{title}</h2>
+        </div>
+        <p className="who flex flex-wrap items-center gap-2 mb-5 text-sm text-secondary-800 dark:text-secondary-200">
+          <span className="font-semibold uppercase tracking-wider text-xs text-secondary-500 dark:text-secondary-400">Who does this:</span>
+          {roles.map((role) => (
+            <Chip key={role} role={role} />
+          ))}
+          <span>{who}</span>
+        </p>
+        <div className="text-secondary-700 dark:text-secondary-300 space-y-4">{children}</div>
       </div>
-      <div className="text-secondary-700 dark:text-secondary-300 space-y-4">{children}</div>
     </section>
   );
 }
@@ -161,9 +172,9 @@ export default function WhiteLabelGuide() {
           <div className="grid sm:grid-cols-3 gap-3 mb-10" aria-label="Who does what">
             {(
               [
-                ['partner', 'The white-label brand. Supplies the brand and hosts the pages.'],
-                ['us', 'The Stabledrop team. Sets up the brand and allows the partner’s domains.'],
-                ['merchant', 'The partner’s customers who take payments, through links, a checkout button or the API.'],
+                ['partner', 'The white-label brand, reading this. You request your brand (step 1) and host the pages on your site (step 4).'],
+                ['us', 'The Stabledrop team. We set up your brand and allow your domains (steps 2 and 3). Nothing for you to do there.'],
+                ['merchant', 'Your customers who take payments, through links, a checkout button or the API (steps 5 and 6).'],
               ] as [Role, string][]
             ).map(([role, text]) => (
               <div key={role} className="border border-secondary-200 dark:border-secondary-700 rounded-lg p-4 min-w-0">
@@ -179,16 +190,16 @@ export default function WhiteLabelGuide() {
                 <tr className="text-left text-xs uppercase tracking-wider text-secondary-500 dark:text-secondary-400">
                   <th className="px-4 py-2 font-semibold">#</th>
                   <th className="px-4 py-2 font-semibold">Step</th>
-                  <th className="px-4 py-2 font-semibold">Who</th>
+                  <th className="px-4 py-2 font-semibold">Who does it</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-secondary-200 dark:divide-secondary-700 text-secondary-800 dark:text-secondary-200">
                 {(
                   [
-                    ['1', 'Request your brand: paste your config', ['partner']],
-                    ['2', 'Create the brand in the white-label service', ['us']],
-                    ['3', 'Allow the partner’s domains', ['us']],
-                    ['4', 'Host the framed pages', ['partner']],
+                    ['1', 'Request your brand: paste your config and send', ['partner']],
+                    ['2', 'Create your brand', ['us']],
+                    ['3', 'Allow your domains', ['us']],
+                    ['4', 'Host the framed pages on your site', ['partner']],
                     ['5', 'Take payments', ['merchant']],
                     ['6', 'Confirm payments', ['merchant', 'partner']],
                     ['7', 'Test end to end', ['partner', 'us']],
@@ -204,7 +215,7 @@ export default function WhiteLabelGuide() {
             </table>
           </div>
 
-          <Step id="brand-pack" n="Step 1" title="Request your brand" roles={['partner']}>
+          <Step id="brand-pack" n="Step 1" title="Request your brand" roles={['partner']} who="You, the partner: fill in the form below and send it.">
             <p>
               Paste your brand config, add your email address and domains, and send us the email this builds. We set up
               your brand and allow your domains (steps 2 and 3), then reply to confirm.
@@ -213,7 +224,7 @@ export default function WhiteLabelGuide() {
             <p>Nothing you send can change a payment&apos;s terms, fee, arbiter or verification. Branding only changes how the pages look and read.</p>
           </Step>
 
-          <Step id="create-brand" n="Step 2" title="Create the brand in the white-label service" roles={['us']}>
+          <Step id="create-brand" n="Step 2" title="We create your brand" roles={['us']} who="Stabledrop, once your request arrives. Nothing for you to do here; this is how we do it.">
             <ol className="list-decimal pl-5 space-y-1">
               <li>Upload the image and font files to the service (<C>POST /api/brands/{'{id}'}/assets</C>); each upload returns an asset id.</li>
               <li>Add the brand to <C>webapp/config/brands/snapshot.json</C>, referring to those asset ids. Pull first, because pushing replaces the whole record.</li>
@@ -227,7 +238,7 @@ WHITELABEL_URL=${API} WHITELABEL_ADMIN_KEY=… node scripts/brands/push.mjs ${br
             <p>Theme colours are <C>&quot;R G B&quot;</C> triples in <C>primary</C> and <C>secondary</C> ramps. Use the test service&apos;s address for the test environment.</p>
           </Step>
 
-          <Step id="domains" n="Step 3" title="Allow the partner's domains" roles={['us']}>
+          <Step id="domains" n="Step 3" title="We allow your domains" roles={['us']} who="Stabledrop. Nothing for you to do here; we email you when your pages can go live.">
             <ul className="list-disc pl-5 space-y-1">
               <li><strong>Frame allow-list</strong>: add every partner domain to the webapp&apos;s <C>ALLOWED_FRAME_ANCESTORS</C> variable, in each environment the partner will use (test and production), then redeploy the webapp. Without this the browser shows an empty frame.</li>
               <li><strong>Privy</strong>: add the domains to the allowed origins in the Privy dashboard.</li>
@@ -237,7 +248,7 @@ WHITELABEL_URL=${API} WHITELABEL_ADMIN_KEY=… node scripts/brands/push.mjs ${br
             </p>
           </Step>
 
-          <Step id="pages" n="Step 4" title="Host the framed pages" roles={['partner']}>
+          <Step id="pages" n="Step 4" title="Host the framed pages on your site" roles={['partner']} who="You, the partner, on your own website: copy these pages into it.">
             <p>
               Each page on your site frames one of ours with your brand id. Keep the <C>allow</C> attribute: without{' '}
               <C>clipboard-write</C> the copy buttons fail inside your page.
@@ -264,7 +275,7 @@ WHITELABEL_URL=${API} WHITELABEL_ADMIN_KEY=… node scripts/brands/push.mjs ${br
             <p>For testing, use <C>{TEST}</C> in place of <C>{SITE}</C>.</p>
           </Step>
 
-          <Step id="payments" n="Step 5" title="Take payments" roles={['merchant']}>
+          <Step id="payments" n="Step 5" title="Your merchants take payments" roles={['merchant']} who="Your merchants, on their own sites. Share this step with them, or point them at your integrate page from step 4, which shows the same with your brand filled in.">
             <p>Merchants can use any of three routes. All of them record the payment under the partner&apos;s brand.</p>
 
             <H3>A. A link to the partner&apos;s checkout page</H3>
@@ -348,12 +359,12 @@ WHITELABEL_URL=${API} WHITELABEL_ADMIN_KEY=… node scripts/brands/push.mjs ${br
             </p>
           </Step>
 
-          <Step id="confirm" n="Step 6" title="Confirm payments" roles={['merchant', 'partner']}>
+          <Step id="confirm" n="Step 6" title="Confirm payments" roles={['merchant', 'partner']} who="Your merchants check each payment before shipping. You can see every payment made under your brand.">
             <p>Check a payment before shipping anything. The results service is public and needs no key. Treat it as the source of truth; a webhook only tells you to look.</p>
-            <Snippet label="one payment (merchant)">{`curl -X POST ${API}/api/results \\
+            <Snippet label="your merchants · check one payment">{`curl -X POST ${API}/api/results \\
   -H 'Content-Type: application/json' \\
   -d '{"contractid": "507f1f77bcf86cd799439011"}'`}</Snippet>
-            <Snippet label="all payments made under your brand (partner)">{`curl -X POST ${API}/api/results \\
+            <Snippet label="you · every payment made under your brand">{`curl -X POST ${API}/api/results \\
   -H 'Content-Type: application/json' \\
   -d '{"brandId": "${brand}"}'`}</Snippet>
             <p>
@@ -363,7 +374,7 @@ WHITELABEL_URL=${API} WHITELABEL_ADMIN_KEY=… node scripts/brands/push.mjs ${br
             </p>
           </Step>
 
-          <Step id="test" n="Step 7" title="Test end to end" roles={['partner', 'us']}>
+          <Step id="test" n="Step 7" title="Test end to end" roles={['partner', 'us']} who="You run these checks on your pages; we fix anything on our side. An empty frame means step 3 is not done yet: tell us.">
             <ul className="list-disc pl-5 space-y-1">
               <li>Each hosted page shows our page inside it, in the partner&apos;s branding (an empty frame means the domain is not on the allow-list yet).</li>
               <li><C>your-site/contract-create?seller=…&amp;amount=0.001&amp;description=Test</C> opens a checkout for the free test amount.</li>

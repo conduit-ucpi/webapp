@@ -10,6 +10,7 @@ import { getSiteNameFromDomain } from '@/utils/siteName';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import WalletRegistrationPrereq from '@/components/ui/WalletRegistrationPrereq';
 import { API_BASE } from '@/lib/apiFetch';
+import { useOptionalBrand, usePartnerBrand } from '@conduit-ucpi/whitelabel-sdk';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -69,7 +70,10 @@ export default function IntegratePage() {
   const [modeTab, setModeTab] = useState('popup');
 
   const { config } = useConfig();
-  const siteName = getSiteNameFromDomain();
+  // Named from the brand's own record in the white-label service, as the other pages are; the
+  // hostname only when there is no brand at all.
+  const brand = useOptionalBrand();
+  const siteName = brand?.name ?? getSiteNameFromDomain();
   const origin = typeof window !== 'undefined' ? window.location.origin : 'https://app.instantescrow.nz';
   /*
    * ⚠️ THE API HOST, NOT THE APP HOST. `/api/results` on the app origin is the Next proxy, and
@@ -78,6 +82,26 @@ export default function IntegratePage() {
    *    show. Falls back to the deployed host for the box build, where API_BASE is empty.
    */
   const apiOrigin = API_BASE || 'https://api.stabledrop.me';
+  /*
+   * A white-label partner's merchants copy these samples from the partner's framed page, so the
+   * partner's brand goes into them: the checkout then shows the partner's branding and records the
+   * payment as made under them. Our own brands need no brand option.
+   *
+   * ⚠️ FROM THE BRAND'S RECORD, NOT THE ADDRESS BAR. usePartnerBrand only answers when `?b=` (or
+   *    the route) names a brand the white-label service actually holds, and the id is that
+   *    record's — so a mistyped `?b=` puts no brand in the samples rather than a wrong one.
+   */
+  const partnerBrand = usePartnerBrand();
+  const partnerBrandId = partnerBrand?.id;
+  // A partner's own support contact, from their record; ours otherwise.
+  const support = partnerBrand?.links.support;
+  const supportHref = support || 'mailto:info@stabledrop.me';
+  const supportLabel = support ? support.replace(/^mailto:/, '') : 'info@stabledrop.me';
+  const brandOption = partnerBrandId
+    ? `\n\n    // Your partner brand: its branding on the checkout, and payments attributed to it\n    brand: '${partnerBrandId}',`
+    : '';
+  const brandOptionCompact = partnerBrandId ? `\n  brand: '${partnerBrandId}',` : '';
+  const brandField = partnerBrandId ? `,\n    "brand": "${partnerBrandId}"` : '';
 
   const currencyList = config?.supportedTokens?.length
     ? config.supportedTokens.map(t => t.symbol).join('/')
@@ -184,7 +208,7 @@ export default function IntegratePage() {
     sellerAddress: '0xYourWalletAddressHere',
 
     // REQUIRED: Base URL of checkout page
-    baseUrl: '${origin}',
+    baseUrl: '${origin}',${brandOption}
 
     // RECOMMENDED: Auto-send verified payment to your backend
     webhookUrl: 'https://yoursite.com/api/conduit-webhook',
@@ -442,6 +466,7 @@ export default function IntegratePage() {
                       {[
                         { opt: 'sellerAddress', type: 'string', req: true, def: '-', desc: 'Your wallet address to receive payments' },
                         { opt: 'baseUrl', type: 'string', req: true, def: '-', desc: 'Base URL of checkout page' },
+                        { opt: 'brand', type: 'string', req: false, def: '-', desc: "A white-label partner's brand id: the checkout shows its branding and payments are attributed to it" },
                         { opt: 'webhookUrl', type: 'string', req: false, def: '-', desc: 'Webhook URL for payment verification' },
                         { opt: 'webhookSecret', type: 'string', req: false, def: '-', desc: 'Optional HMAC secret for webhook signatures. Set in the browser, so confirm against /api/results before fulfilling' },
                         { opt: 'tokenSymbol', type: 'string', req: false, def: "'USDC'", desc: "'USDC' or 'USDT'" },
@@ -516,6 +541,91 @@ export default function IntegratePage() {
         {/* ================================================================ */}
         <section
           className="border-t border-secondary-100 dark:border-secondary-800"
+          aria-label="Server-side payments"
+        >
+          <div className="max-w-5xl mx-auto px-6 sm:px-8 py-16 lg:py-20">
+            <Fade>
+              <p className="text-xs tracking-[0.2em] uppercase text-secondary-400 dark:text-secondary-500 mb-6">
+                Server-side
+              </p>
+              <h2
+                className="text-3xl sm:text-4xl font-light text-secondary-900 dark:text-white leading-snug max-w-2xl mb-4"
+                style={{ fontFamily: 'var(--wl-font-accent)' }}
+              >
+                No script: prepare, fund, settle.
+              </h2>
+              <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-12 max-w-xl">
+                With a backend you can skip the checkout script. Call{' '}
+                <code className="bg-secondary-100 dark:bg-secondary-800 px-1 rounded text-xs">/api/ap2/prepare</code> with the
+                terms; it answers with where the money goes, how to fund it, a link that opens the payment for your
+                customer, and the exact request that creates the escrow once paid. No sign-in or API key is needed.
+              </p>
+            </Fade>
+            <div className="space-y-12">
+              <Fade>
+                <div>
+                  <StepNumber n={1} />
+                  <h3 className="text-lg font-medium text-secondary-900 dark:text-white mb-2">Prepare the payment</h3>
+                  <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-4">
+                    Amounts are in the token&apos;s base units (1 USDC = 1000000). The seller and buyer may be wallets or
+                    email addresses; the buyer is who can dispute.
+                  </p>
+                  <CodeBlock id="server-prepare" language="bash">
+                    {`curl -X POST ${apiOrigin}/api/ap2/prepare \\
+  -H 'Content-Type: application/json' \\
+  -d '{
+    "seller": "0xYourWalletAddress",
+    "nominal_buyer": "customer@example.com",
+    "amount": 50000000,
+    "expiry_timestamp": 1893456000,
+    "description": "Order #1042"${brandField}
+  }'`}
+                  </CodeBlock>
+                </div>
+              </Fade>
+              <Fade delay={0.1}>
+                <div>
+                  <StepNumber n={2} />
+                  <h3 className="text-lg font-medium text-secondary-900 dark:text-white mb-2">Get paid</h3>
+                  <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-4">
+                    Send your customer <code className="bg-secondary-100 dark:bg-secondary-800 px-1 rounded text-xs">share_with_payer.pay_link</code>{' '}
+                    (or a QR of it): it opens this exact payment, and they pay by wallet, card or transfer. Or fund{' '}
+                    <code className="bg-secondary-100 dark:bg-secondary-800 px-1 rounded text-xs">escrow_address</code> yourself
+                    using <code className="bg-secondary-100 dark:bg-secondary-800 px-1 rounded text-xs">fund_by_transfer</code>.
+                  </p>
+                </div>
+              </Fade>
+              <Fade delay={0.2}>
+                <div>
+                  <StepNumber n={3} />
+                  <h3 className="text-lg font-medium text-secondary-900 dark:text-white mb-2">Settle</h3>
+                  <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-4">
+                    Once the money has arrived, send the request in the answer&apos;s{' '}
+                    <code className="bg-secondary-100 dark:bg-secondary-800 px-1 rounded text-xs">settle</code> block, unchanged:{' '}
+                    <code className="bg-secondary-100 dark:bg-secondary-800 px-1 rounded text-xs">POST /api/ap2/settle</code>. It
+                    creates the escrow and returns a signed receipt. Sent too early, it says what the address holds and spends
+                    nothing; if you never send it, a funded escrow is still activated within about 30 minutes.
+                  </p>
+                  <p className="text-sm text-secondary-500 dark:text-secondary-400">
+                    Every field is described in the{' '}
+                    <a
+                      href={`${apiOrigin}/api/ap2/settle/doc`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline hover:text-primary-600 dark:hover:text-primary-400"
+                    >
+                      API reference
+                    </a>
+                    .
+                  </p>
+                </div>
+              </Fade>
+            </div>
+          </div>
+        </section>
+
+        <section
+          className="border-t border-secondary-100 dark:border-secondary-800"
           aria-label="Webhook integration"
         >
           <div className="max-w-5xl mx-auto px-6 sm:px-8 py-16 lg:py-20">
@@ -548,7 +658,7 @@ export default function IntegratePage() {
                   <CodeBlock id="webhook-init">
                     {`ConduitCheckout.init({
   sellerAddress: '0xYourWalletAddress',
-  baseUrl: '${origin}',
+  baseUrl: '${origin}',${brandOptionCompact}
 
   // Webhook config
   webhookUrl: 'https://yoursite.com/api/conduit-webhook',
@@ -1066,10 +1176,10 @@ app.post('/api/conduit-webhook', async (req, res) => {
                   Source code
                 </a>
                 <a
-                  href="mailto:info@stabledrop.me"
+                  href={supportHref}
                   className="hover:text-secondary-600 dark:hover:text-secondary-300 transition-colors"
                 >
-                  info@stabledrop.me
+                  {supportLabel}
                 </a>
               </div>
             </Fade>

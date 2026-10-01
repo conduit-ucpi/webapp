@@ -7,6 +7,7 @@
  *   ConduitCheckout.init({
  *     sellerAddress: '0x4f118f99a4e8bb384061bcfe081e3bbdec28482d',
  *     baseUrl: 'https://yoursite.com', // Your webapp deployment URL
+ *     brand: 'your-brand-id', // Optional: a white-label partner's brand id
  *     verifyPayment: true, // Enable backend verification (default: true)
  *     onSuccess: function(data) { console.log('Payment completed!', data); },
  *     onError: function(error) { console.log('Payment failed:', error); },
@@ -45,6 +46,7 @@
     config: {
       sellerAddress: null,
       baseUrl: null,
+      brand: null, // Optional white-label partner brand id: their branding, and payments attributed to them
       tokenSymbol: 'USDC', // 'USDC' or 'USDT'
       expiryDays: 7, // Default expiry in days
       mode: 'popup', // 'popup' or 'redirect'
@@ -68,6 +70,8 @@
      * @param {Object} options - Configuration options
      * @param {string} options.sellerAddress - Merchant wallet address (required)
      * @param {string} options.baseUrl - Base URL of the checkout page (required)
+     * @param {string} [options.brand] - White-label partner brand id (e.g. 'escrow-me'): the checkout
+     *   shows that partner's branding and the payment is recorded as made under them
      * @param {string} [options.tokenSymbol='USDC'] - Token to use ('USDC' or 'USDT')
      * @param {number} [options.expiryDays=7] - Days until auto-release to seller
      * @param {string} [options.mode='popup'] - Display mode: 'popup' or 'redirect'
@@ -150,6 +154,13 @@
       url.searchParams.set('amount', params.amount.toString());
       url.searchParams.set('description', params.description);
       url.searchParams.set('tokenSymbol', params.tokenSymbol || this.config.tokenSymbol);
+
+      // A white-label partner's brand, as the site reads it everywhere else (`?b=`): their branding
+      // on the checkout, and the payment attributed to them. Only a well-formed brand id is sent,
+      // because the checkout drops anything else and a typo should not reach the URL looking valid.
+      if (this.config.brand && /^[a-z0-9-]{2,32}$/.test(this.config.brand)) {
+        url.searchParams.set('b', this.config.brand);
+      }
 
       // Optional parameters
       if (params.orderId) {

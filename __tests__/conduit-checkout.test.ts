@@ -37,6 +37,7 @@ describe('ConduitCheckout SDK', () => {
     ConduitCheckout.config = {
       sellerAddress: null,
       baseUrl: null,
+      brand: null,
       tokenSymbol: 'USDC',
       expiryDays: 7,
       mode: 'popup',
@@ -780,6 +781,30 @@ describe('ConduitCheckout SDK', () => {
       });
 
       expect(ConduitCheckout.currentPayment.tokenSymbol).toBe('USDC');
+    });
+  });
+
+  describe('White-label brand', () => {
+    const init = (extra: Record<string, unknown> = {}) =>
+      ConduitCheckout.init({ sellerAddress: '0xSELLER', baseUrl: 'https://stabledrop.me', ...extra });
+    const checkoutUrl = () =>
+      new URL(ConduitCheckout.buildCheckoutUrl({ amount: '50.00', description: 'Premium Plan' }));
+
+    it("sends a partner's brand as b=, which the checkout reads for branding and attribution", () => {
+      init({ brand: 'escrow-me' });
+      const url = checkoutUrl();
+      expect(url.pathname).toBe('/contract-create');
+      expect(url.searchParams.get('b')).toBe('escrow-me');
+    });
+
+    it('sends no brand when none is configured', () => {
+      init();
+      expect(checkoutUrl().searchParams.has('b')).toBe(false);
+    });
+
+    it('drops a malformed brand rather than sending it looking valid', () => {
+      init({ brand: 'Escrow Me!' });
+      expect(checkoutUrl().searchParams.has('b')).toBe(false);
     });
   });
 

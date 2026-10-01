@@ -10,6 +10,7 @@ import { getSiteNameFromDomain } from '@/utils/siteName';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import WalletRegistrationPrereq from '@/components/ui/WalletRegistrationPrereq';
 import { API_BASE } from '@/lib/apiFetch';
+import { API_DOCS_URL } from '@/lib/apiDocs';
 import { useOptionalBrand, usePartnerBrand } from '@conduit-ucpi/whitelabel-sdk';
 
 // ---------------------------------------------------------------------------
@@ -147,6 +148,7 @@ export default function IntegratePage() {
                 <span>No backend required</span>
                 <span>Webhook support</span>
                 <a href="/checkout-example.html" target="_blank" rel="noopener noreferrer" className="hover:text-secondary-600 dark:hover:text-secondary-300 transition-colors underline">Live demo</a>
+                <a href={API_DOCS_URL} target="_blank" rel="noopener noreferrer" className="hover:text-secondary-600 dark:hover:text-secondary-300 transition-colors underline">API reference</a>
               </div>
             </Fade>
           </div>
@@ -609,7 +611,7 @@ export default function IntegratePage() {
                   <p className="text-sm text-secondary-500 dark:text-secondary-400">
                     Every field is described in the{' '}
                     <a
-                      href={`${apiOrigin}/api/ap2/settle/doc`}
+                      href={API_DOCS_URL}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="underline hover:text-primary-600 dark:hover:text-primary-400"
@@ -1167,6 +1169,14 @@ app.post('/api/conduit-webhook', async (req, res) => {
                 <Link href="/shopify/install-button" className="hover:text-secondary-600 dark:hover:text-secondary-300 transition-colors">
                   Shopify integration
                 </Link>
+                <a
+                  href={API_DOCS_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-secondary-600 dark:hover:text-secondary-300 transition-colors"
+                >
+                  API reference
+                </a>
                 <a
                   href="https://github.com/conduit-ucpi/contracts"
                   target="_blank"

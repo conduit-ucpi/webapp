@@ -20,6 +20,7 @@ jest.mock('@/components/ui/Fade', () => ({ children }: { children: React.ReactNo
 jest.mock('next/router', () => ({ useRouter: () => ({ pathname: '/integrate', query: {}, asPath: '/integrate' }) }));
 
 import IntegratePage from '@/pages/integrate';
+import { API_DOCS_URL } from '@/lib/apiDocs';
 
 const text = () => document.body.textContent || '';
 
@@ -49,7 +50,10 @@ describe('/integrate', () => {
     const { container } = render(<IntegratePage />);
     expect(text()).toContain('/api/ap2/prepare');
     expect(text()).toContain('POST /api/ap2/settle');
-    const reference = Array.from(container.querySelectorAll('a')).find((a) => a.textContent === 'API reference');
-    expect(reference?.getAttribute('href')).toMatch(/\/api\/ap2\/settle\/doc$/);
+    // Linked from the hero, the server-side section and the resource links — all to the one reference.
+    const references = Array.from(container.querySelectorAll('a')).filter((a) => a.textContent === 'API reference');
+    expect(references.length).toBe(3);
+    references.forEach((a) => expect(a.getAttribute('href')).toBe(API_DOCS_URL));
+    expect(API_DOCS_URL).toMatch(/^https:\/\/[^/]+\/api\/ap2\/settle\/doc$/);
   });
 });

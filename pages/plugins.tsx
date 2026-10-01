@@ -5,7 +5,8 @@ import { initRedditPixel, trackConversion } from '@/lib/tracking';
 import { useScrollTracking, useTimeTracking } from '@/hooks/usePageTracking';
 import { motion, AnimatePresence } from 'framer-motion';
 import Fade from '@/components/ui/Fade';
-import { btnPrimary } from '@/utils/landingStyles';
+import { btnOutline, btnPrimary } from '@/utils/landingStyles';
+import { API_DOCS_URL } from '@/lib/apiDocs';
 
 // ---------------------------------------------------------------------------
 // Collapsible section — eyebrow + heading always visible, content toggles
@@ -323,9 +324,15 @@ export default function Plugins() {
                       </pre>
                     </div>
 
-                    <Link href="/integrate">
-                      <button className={btnPrimary}>View Integration Guide</button>
-                    </Link>
+                    <div className="flex flex-wrap gap-3">
+                      <Link href="/integrate">
+                        <button className={btnPrimary}>View Integration Guide</button>
+                      </Link>
+                      {/* No script at all: prepare, fund and settle from a server, as described here. */}
+                      <a href={API_DOCS_URL} target="_blank" rel="noopener noreferrer">
+                        <button className={btnOutline}>API Reference</button>
+                      </a>
+                    </div>
                   </Collapsible>
                 </div>
               </Fade>
@@ -397,7 +404,7 @@ export default function Plugins() {
 
                     <div className="flex items-center gap-6 flex-wrap">
                       <a
-                        href="https://api.stabledrop.me/api/ap2/settle/doc"
+                        href={API_DOCS_URL}
                         target="_blank"
                         rel="noopener noreferrer"
                       >
@@ -605,6 +612,14 @@ export default function Plugins() {
                 <Link href="/faq" className="hover:text-secondary-600 dark:hover:text-secondary-300 transition-colors">
                   FAQ
                 </Link>
+                <a
+                  href={API_DOCS_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-secondary-600 dark:hover:text-secondary-300 transition-colors"
+                >
+                  API reference
+                </a>
                 <a
                   href="mailto:info@stabledrop.me"
                   className="hover:text-secondary-600 dark:hover:text-secondary-300 transition-colors"

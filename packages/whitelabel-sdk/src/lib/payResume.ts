@@ -30,6 +30,8 @@ export interface PayResume {
    * the terms. Absent on a buyer's own /pay payment, where the payer is the nominal buyer.
    */
   nominalBuyer?: string;
+  /** Who decides a dispute, when the seller chose one. A term: absent means the default arbiter. */
+  arbiter?: string;
 }
 
 function toBase64Url(text: string): string {
@@ -61,10 +63,20 @@ export function decodePayResume(encoded: unknown): PayResume | null {
       typeof value.description === 'string' &&
       typeof value.tokenSymbol === 'string' && value.tokenSymbol !== '' &&
       typeof value.externalId === 'string' && value.externalId !== '' &&
-      (value.nominalBuyer === undefined || (typeof value.nominalBuyer === 'string' && value.nominalBuyer.trim() !== ''));
+      (value.nominalBuyer === undefined || (typeof value.nominalBuyer === 'string' && value.nominalBuyer.trim() !== '')) &&
+      (value.arbiter === undefined || (typeof value.arbiter === 'string' && /^0x[0-9a-fA-F]{40}$/.test(value.arbiter)));
     if (!ok) return null;
-    const { seller, amount, expiryTimestamp, description, tokenSymbol, externalId, nominalBuyer } = value;
-    return { seller, amount, expiryTimestamp, description, tokenSymbol, externalId, ...(nominalBuyer ? { nominalBuyer } : {}) };
+    const { seller, amount, expiryTimestamp, description, tokenSymbol, externalId, nominalBuyer, arbiter } = value;
+    return {
+      seller,
+      amount,
+      expiryTimestamp,
+      description,
+      tokenSymbol,
+      externalId,
+      ...(nominalBuyer ? { nominalBuyer } : {}),
+      ...(arbiter ? { arbiter } : {}),
+    };
   } catch {
     return null;
   }

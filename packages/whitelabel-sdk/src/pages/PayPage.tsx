@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/router';
 import { ethers } from 'ethers';
 import { useAuth } from '@/components/auth';
@@ -20,7 +20,7 @@ import { usePaymentSteps } from '@/hooks/usePaymentSteps';
 import { isValidEmail, isValidWalletAddress, isValidDescription, addressesEqual, getDefaultTimestamp, formatDateTimeWithTZ } from '@/utils/validation';
 import { getNetworkName } from '@/utils/networkUtils';
 import { MIN_AMOUNT, TEST_AMOUNT, formatUsd, isAllowedAmount, parseAmount } from '@/utils/escrowFees';
-import { callAp2Tool, isAp2ToolError } from '../lib/ap2Mcp';
+import { callAp2Tool, isAp2ToolError, type Ap2ToolError } from '../lib/ap2Mcp';
 import { decodePayResume, encodePayResume, withPayResume } from '../lib/payResume';
 import { useT } from '../i18n';
 import { useBrandedHref, usePartnerBrand } from '../theme';
@@ -99,6 +99,33 @@ export interface PayCheckout {
   onCancel: () => void;
 }
 
+/**
+ * /pay for a payment request (/contract-pay): a seller's stored request, paid by whoever opened
+ * its link. ap2service takes every term from the stored request and makes the signed-in wallet
+ * its buyer; these are here to show, and because settle is sent the terms again.
+ */
+export interface PayRequest {
+  /** contractservice's id: the request, and the external id its escrow address derives from. */
+  id: string;
+  terms: {
+    /** The seller's wallet, as stored. */
+    seller: string;
+    /** In whole tokens, for showing ("12.5"). */
+    amount: string;
+    /** Exactly as stored: the figure the address derives from, never re-parsed from `amount`. */
+    amountBaseUnits: number;
+    description: string;
+    expiryTimestamp: number;
+    tokenSymbol?: string;
+    /** Only when the seller chose one; absent means the default arbiter. */
+    arbiter?: string;
+  };
+  /** How to name the seller to the payer: their email, when the request has one. */
+  sellerLabel?: string;
+  /** Shown above the ways of paying: a custom arbiter's notice, say. */
+  notice?: ReactNode;
+}
+
 /** The receipt's escrow block as a checkout wants it. Accounts are CAIP-10; the address is the last part. */
 export function paidEscrowFrom(settled: Settled | null, fallbackAddress: string): PaidEscrow {
   const escrow = settled?.receipt_claims?.['stabledrop.escrow'];
@@ -120,7 +147,7 @@ function firstSentence(message?: string): string | undefined {
   return message?.split(/(?<=\.)\s/)[0];
 }
 
-export default function PayPage({ checkout }: { checkout?: PayCheckout } = {}) {
+export default function PayPage({ checkout, request }: { checkout?: PayCheckout; request?: PayRequest } = {}) {
   const t = useT();
   const router = useRouter();
   const { config } = useConfig();
@@ -132,7 +159,9 @@ export default function PayPage({ checkout }: { checkout?: PayCheckout } = {}) {
   const { getWeb3Service, getTokenBalance } = useSimpleEthers();
   const { showToast } = useToast();
 
-  const [tokenSymbol, setTokenSymbol] = useState<string | undefined>(checkout?.terms.tokenSymbol);
+  // A checkout's terms are the merchant's, a request's the seller's: either way not the payer's to edit.
+  const locked = checkout?.terms ?? request?.terms;
+  const [tokenSymbol, setTokenSymbol] = useState<string | undefined>(locked?.tokenSymbol);
   const { selectedToken, selectedTokenSymbol, availableTokens } = useTokenSelection(config, tokenSymbol);
   const { tokenBalance, isLoadingBalance } = useTokenBalance({
     enabled: !!config?.rpcUrl,
@@ -141,10 +170,12 @@ export default function PayPage({ checkout }: { checkout?: PayCheckout } = {}) {
     getTokenBalance,
   });
 
-  const [seller, setSeller] = useState(checkout?.terms.seller ?? '');
-  const [amount, setAmount] = useState(checkout?.terms.amount ?? '');
-  const [payoutTimestamp, setPayoutTimestamp] = useState(checkout?.terms.expiryTimestamp ?? getDefaultTimestamp());
-  const [description, setDescription] = useState(checkout?.terms.description ?? '');
+  const [seller, setSeller] = useState(locked?.seller ?? '');
+  const [amount, setAmount] = useState(locked?.amount ?? '');
+  const [payoutTimestamp, setPayoutTimestamp] = useState(locked?.expiryTimestamp ?? getDefaultTimestamp());
+  const [description, setDescription] = useState(locked?.description ?? '');
+  /** Who decides a dispute, when not the default arbiter. A term: it moves the address. */
+  const [arbiter, setArbiter] = useState<string | undefined>(request?.terms.arbiter);
   /** A request's named buyer, from its link. Unset, the signed-in payer is the nominal buyer. */
   const [nominalBuyer, setNominalBuyer] = useState<string | undefined>();
   const [sellerError, setSellerError] = useState<string>();
@@ -166,6 +197,7 @@ export default function PayPage({ checkout }: { checkout?: PayCheckout } = {}) {
   const amountInTokens = parseFloat(amount) || 0;
   const balanceFloat = parseFloat(tokenBalance) || 0;
   const baseUnits = (() => {
+    if (request) return request.terms.amountBaseUnits;
     try {
       return Number(ethers.parseUnits(amount.trim() || '0', selectedToken?.decimals ?? 6));
     } catch {
@@ -181,6 +213,7 @@ export default function PayPage({ checkout }: { checkout?: PayCheckout } = {}) {
     nominal_buyer: nominalBuyer ?? payer,
     token_symbol: selectedTokenSymbol,
     description: description.trim(),
+    ...(arbiter ? { arbiter } : {}),
   });
 
   /** Why a checkout's payment could not be set up: its terms have no form to show an error on. */
@@ -189,15 +222,33 @@ export default function PayPage({ checkout }: { checkout?: PayCheckout } = {}) {
   const fail = (message?: string) => {
     const said = message || t('wizard.genericError');
     showToast({ type: 'error', title: t('push.failed'), message: said });
-    if (checkout) {
-      setCheckoutError(said);
-      checkout.onFailed(said, stage === 'review' ? 'pay' : 'prepare');
-    }
+    if (checkout || request) setCheckoutError(said);
+    checkout?.onFailed(said, stage === 'review' ? 'pay' : 'prepare');
   };
 
   /** A problem with one field: said under it on /pay, and as a failure in a checkout, where the merchant set it. */
   const fieldError = (set: (message: string | undefined) => void, message?: string) =>
-    checkout ? fail(message) : set(message);
+    locked ? fail(message) : set(message);
+
+  /**
+   * A request's prepare: ap2service makes the signed-in wallet its buyer and answers as
+   * prepare_escrow_payment does. HTTP rather than the MCP tool, because claiming the request is
+   * done AS the buyer and the tools carry nobody's session.
+   */
+  const prepareRequest = async (id: string): Promise<Prepared | Ap2ToolError> => {
+    if (!authenticatedFetch) return { error: 'not_signed_in', message: t('err.notAuthenticated') };
+    const response = await authenticatedFetch(`/api/ap2/request/${encodeURIComponent(id)}/prepare`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ payer }),
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      // ap2service says why in `detail`; the proxy's own refusals use `error`.
+      return { error: 'request_refused', message: typeof body.detail === 'string' ? body.detail : body.error };
+    }
+    return body as Prepared;
+  };
 
   /**
    * `externalId` when resuming: the same id gives the same escrow, and the same reservation.
@@ -227,8 +278,10 @@ export default function PayPage({ checkout }: { checkout?: PayCheckout } = {}) {
     setSellerError(undefined);
     // The site's own rule, the one the request form uses: $1 or more, or exactly the free test
     // amount. ap2service applies the same rule; checking here saves the round trip.
+    // A request's amount is the seller's, already accepted when it was made; ap2service checks
+    // it again against the stored figure.
     const parsed = parseAmount(amount);
-    if (parsed === null || !isAllowedAmount(parsed)) {
+    if (!request && (parsed === null || !isAllowedAmount(parsed))) {
       fieldError(setAmountError, t('validation.amountRange', { min: formatUsd(MIN_AMOUNT), test: TEST_AMOUNT }));
       return;
     }
@@ -236,12 +289,14 @@ export default function PayPage({ checkout }: { checkout?: PayCheckout } = {}) {
     setCheckoutError(null);
     setBusy('prepare');
     try {
-      const result = await callAp2Tool<Prepared>('prepare_escrow_payment', {
-        ...terms(),
-        ...attribution,
-        payer,
-        ...(externalId ? { external_id: externalId } : {}),
-      });
+      const result = request
+        ? await prepareRequest(request.id)
+        : await callAp2Tool<Prepared>('prepare_escrow_payment', {
+            ...terms(),
+            ...attribution,
+            payer,
+            ...(externalId ? { external_id: externalId } : {}),
+          });
       if (isAp2ToolError(result)) {
         // An amount ap2service will not escrow (below its minimum, or its fee floor) is said
         // against the amount, and the buyer stays on the form: they never get an address to
@@ -315,7 +370,7 @@ export default function PayPage({ checkout }: { checkout?: PayCheckout } = {}) {
     return true;
     // terms() reads the same state these name.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [prepared, seller, baseUnits, payoutTimestamp, payer, nominalBuyer, selectedTokenSymbol, description, brandId]);
+  }, [prepared, seller, baseUnits, payoutTimestamp, payer, nominalBuyer, selectedTokenSymbol, description, brandId, arbiter]);
 
   const qr = useQrPayment({
     authenticatedFetch,
@@ -346,11 +401,15 @@ export default function PayPage({ checkout }: { checkout?: PayCheckout } = {}) {
         tokenSymbol: selectedTokenSymbol,
         externalId: prepared.external_id,
         ...(nominalBuyer ? { nominalBuyer } : {}),
+        ...(arbiter ? { arbiter } : {}),
       })
     : null;
-  const resumeHref = checkout
-    ? withPayResume(router.asPath, resumeParam)
-    : brandedHref(resumeParam ? `/pay?resume=${resumeParam}` : '/pay');
+  // A request comes back to its own link: preparing it again finds the same buyer and escrow.
+  const resumeHref = request
+    ? router.asPath
+    : checkout
+      ? withPayResume(router.asPath, resumeParam)
+      : brandedHref(resumeParam ? `/pay?resume=${resumeParam}` : '/pay');
 
   const [resumingId, setResumingId] = useState<string | null>(null);
   const [resumingToken, setResumingToken] = useState<string | null>(null);
@@ -358,6 +417,8 @@ export default function PayPage({ checkout }: { checkout?: PayCheckout } = {}) {
   useEffect(() => {
     if (resumeRead.current || !router.isReady) return;
     resumeRead.current = true;
+    // A request's terms are the stored ones, whatever a ?resume= says.
+    if (request) return;
     const resume = decodePayResume(router.query.resume);
     if (!resume) return;
     setSeller(resume.seller);
@@ -366,6 +427,7 @@ export default function PayPage({ checkout }: { checkout?: PayCheckout } = {}) {
     setDescription(resume.description);
     setTokenSymbol(resume.tokenSymbol);
     setNominalBuyer(resume.nominalBuyer);
+    setArbiter(resume.arbiter);
     setResumingToken(resume.tokenSymbol);
     setResumingId(resume.externalId);
   }, [router.isReady, router.query.resume]);
@@ -388,8 +450,9 @@ export default function PayPage({ checkout }: { checkout?: PayCheckout } = {}) {
   //
   // ⚠️ NEVER IN A CHECKOUT. Its URL carries the merchant's return address and order id, and its
   //    path is what the layout recognises to drop our header and footer inside their page.
+  // ⚠️ NOR ON A REQUEST. Its link is /contract-pay?contractId=, which is what the seller sent.
   useEffect(() => {
-    if (checkout) return;
+    if (checkout || request) return;
     if (!router.isReady || (stage === 'review' && !prepared) || stage === 'details') return;
     const want = stage === 'review' ? resumeHref : brandedHref('/pay');
     if (router.asPath !== want) void router.replace(want, undefined, { shallow: true });
@@ -403,21 +466,21 @@ export default function PayPage({ checkout }: { checkout?: PayCheckout } = {}) {
    */
   const checkoutPrepared = useRef(false);
   useEffect(() => {
-    if (!checkout || checkoutPrepared.current || !router.isReady) return;
+    if (!locked || checkoutPrepared.current || !router.isReady) return;
     // The resume effect prepares this one, with its external id; a second, id-less prepare
-    // would quote a different escrow.
-    if (decodePayResume(router.query.resume)) {
+    // would quote a different escrow. (A request's id is fixed, so it never resumes.)
+    if (checkout && decodePayResume(router.query.resume)) {
       checkoutPrepared.current = true;
       return;
     }
     if (!payer || !config || busy || stage !== 'details') return;
-    const wanted = checkout.terms.tokenSymbol;
+    const wanted = locked.tokenSymbol;
     if (wanted && selectedTokenSymbol.toUpperCase() !== wanted.toUpperCase()) return;
     checkoutPrepared.current = true;
     void handlePrepare();
-    // handlePrepare reads the checkout's terms from this same render.
+    // handlePrepare reads the locked terms from this same render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [checkout, router.isReady, router.query.resume, payer, config, busy, stage, selectedTokenSymbol]);
+  }, [locked, router.isReady, router.query.resume, payer, config, busy, stage, selectedTokenSymbol]);
 
   // Handed to the checkout once, when the escrow exists: the receipt says which one it is.
   const handedOff = useRef(false);
@@ -488,14 +551,14 @@ export default function PayPage({ checkout }: { checkout?: PayCheckout } = {}) {
           steps={PUSH_JOURNEY_STEPS}
         />
 
-        {stage === 'details' && checkout && (
+        {stage === 'details' && locked && (
           <div className="rounded-2xl border border-secondary-200 dark:border-secondary-700 bg-white dark:bg-secondary-900 p-6 sm:p-8 text-center">
             {checkoutError ? (
               <>
                 <p className="text-error-600 dark:text-error-400">{checkoutError}</p>
                 <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
                   <Button onClick={() => handlePrepare()} disabled={busy !== null}>{t('push.retry')}</Button>
-                  <Button variant="outline" onClick={checkout.onCancel}>{t('common.cancel')}</Button>
+                  {checkout && <Button variant="outline" onClick={checkout.onCancel}>{t('common.cancel')}</Button>}
                 </div>
               </>
             ) : (
@@ -504,7 +567,7 @@ export default function PayPage({ checkout }: { checkout?: PayCheckout } = {}) {
           </div>
         )}
 
-        {stage === 'details' && !checkout && (
+        {stage === 'details' && !locked && (
           <>
             <div className="text-center mb-6">
               <h2 className="text-2xl sm:text-3xl font-semibold text-secondary-900 dark:text-white">{t('push.title')}</h2>
@@ -562,9 +625,9 @@ export default function PayPage({ checkout }: { checkout?: PayCheckout } = {}) {
               description={description}
               payoutTimestamp={payoutTimestamp}
               isInstantPayment={payoutTimestamp === 0}
-              onEdit={checkout ? undefined : () => setStage('details')}
+              onEdit={locked ? undefined : () => setStage('details')}
               extraRows={[
-                { label: t('push.paying'), value: seller.trim() },
+                { label: t('push.paying'), value: request?.sellerLabel || seller.trim() },
                 // A request names who may dispute; say so when it is not the wallet paying.
                 ...(nominalBuyer && !(payer && addressesEqual(nominalBuyer, payer))
                   ? [{ label: t('push.disputer'), value: nominalBuyer }]
@@ -578,6 +641,7 @@ export default function PayPage({ checkout }: { checkout?: PayCheckout } = {}) {
             {/* No typed data means ap2service could not build the authorization (the token has
                 no EIP-712 domain, or the chain was unreadable). Said, not left as a dead button;
                 the transfer routes below still work. */}
+            {request?.notice && <div className="mt-5">{request.notice}</div>}
             {!signing?.typed_data && (
               <p className="mt-5 text-sm text-error-600 dark:text-error-400 text-center">{t('push.cannotSign')}</p>
             )}
@@ -633,11 +697,11 @@ export default function PayPage({ checkout }: { checkout?: PayCheckout } = {}) {
             <h2 className="text-2xl sm:text-3xl font-semibold text-secondary-900 dark:text-white">{t('push.doneTitle')}</h2>
             <p className="mt-3 text-secondary-600 dark:text-secondary-300">
               {payoutTimestamp === 0
-                ? t('push.doneInstantBody', { amount, token: selectedTokenSymbol, seller: seller.trim() })
+                ? t('push.doneInstantBody', { amount, token: selectedTokenSymbol, seller: request?.sellerLabel || seller.trim() })
                 : t('push.doneBody', {
                     amount,
                     token: selectedTokenSymbol,
-                    seller: seller.trim(),
+                    seller: request?.sellerLabel || seller.trim(),
                     date: formatDateTimeWithTZ(payoutTimestamp),
                   })}
             </p>
@@ -647,9 +711,12 @@ export default function PayPage({ checkout }: { checkout?: PayCheckout } = {}) {
                 <Button onClick={viewPayment} className="w-full sm:w-auto px-8">
                   {t('push.viewPayment')}
                 </Button>
-                <Button variant="outline" onClick={reset} className="w-full sm:w-auto px-8">
-                  {t('push.another')}
-                </Button>
+                {/* A request was for one payment; another starts on /pay. */}
+                {!request && (
+                  <Button variant="outline" onClick={reset} className="w-full sm:w-auto px-8">
+                    {t('push.another')}
+                  </Button>
+                )}
               </div>
             )}
           </div>

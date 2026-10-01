@@ -149,6 +149,8 @@ export const es: Catalogue = {
   'pay.unableToProcess': 'No se pudo procesar el pago',
   'pay.notFound': 'Solicitud de pago no encontrada',
   'pay.notFoundDetail': 'No se encontró la solicitud de pago.',
+  'pay.expiredTitle': 'Solicitud de pago vencida',
+  'pay.expiredDetail': 'Esta solicitud de pago ha vencido y ya no se puede pagar. Pide al vendedor que te envíe una nueva.',
   'pay.requestHeading': 'Solicitud de pago',
   'pay.changeMethod': 'Cambiar el método de pago',
   'checkout.initializing': 'Iniciando el sistema de pago seguro...',
@@ -250,6 +252,8 @@ export const es: Catalogue = {
   'msg.whatFor': 'Motivo: {description}',
   'msg.payWithQr': 'Para pagar, abre el enlace de abajo o escanea el código QR adjunto:',
   'msg.payLink': 'Para pagar, abre este enlace:',
+  'msg.instantNote':
+    'Es un pago instantáneo: me llega en cuanto pagas y no se puede disputar ni revertir.',
   'msg.escrowNote':
     'Tu pago queda retenido en depósito en garantía hasta la fecha acordada. Si algo sale mal, puedes abrir una disputa antes de esa fecha para congelar los fondos.',
 

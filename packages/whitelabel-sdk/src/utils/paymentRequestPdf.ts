@@ -19,6 +19,13 @@
 export interface PaymentRequestDoc {
   /** Human amount with token symbol, e.g. "25 USDC". */
   formattedAmount: string;
+  /** The token being requested, named in the explanation: not every request is in USDC. */
+  tokenSymbol: string;
+  /**
+   * Paid straight to the seller, with no holding period and no dispute. The escrow wording
+   * ("held until", "raise a dispute") would promise the buyer recourse they do not have.
+   */
+  instant?: boolean;
   description: string;
   paymentLink: string;
   /** Data URL for the QR PNG, from the off-screen canvas on the send screen. */
@@ -69,11 +76,6 @@ export async function downloadPaymentRequestPdf(doc: PaymentRequestDoc): Promise
   ink(INK);
   pdf.text(doc.siteName, M, y);
 
-  pdf.setFont('helvetica', 'normal');
-  pdf.setFontSize(8);
-  ink(GREEN);
-  pdf.text('Conduit UCPI', M, y + 4.5);
-
   pdf.setFont('helvetica', 'bold');
   pdf.setFontSize(9);
   ink(FAINT);
@@ -113,7 +115,8 @@ export async function downloadPaymentRequestPdf(doc: PaymentRequestDoc): Promise
 
   y += 5;
   if (doc.description) detail('For', doc.description);
-  if (doc.payoutDate) detail('Funds released', doc.payoutDate);
+  if (doc.instant) detail('Funds released', 'Instantly, when you pay');
+  else if (doc.payoutDate) detail('Funds released', doc.payoutDate);
   if (doc.networkLabel) detail('Network', doc.networkLabel);
 
   // ---- How to pay ----------------------------------------------------------
@@ -175,10 +178,14 @@ export async function downloadPaymentRequestPdf(doc: PaymentRequestDoc): Promise
   pdf.setFont('helvetica', 'normal');
   ink(MUTED);
   y = para(
-    `${doc.siteName} is an escrow service for stablecoin payments. Rather than paying the seller ` +
-      'directly, your payment is held by a smart contract and only released to them on the agreed ' +
-      'date below — so you are not sending money into thin air, and the seller is not waiting on a ' +
-      'bank. Payments are made in USDC, a stablecoin pegged to the US dollar.',
+    doc.instant
+      ? `${doc.siteName} handles stablecoin payments through a smart contract. This one is an ` +
+          'instant payment: it goes to the seller as soon as you pay, with no holding period. ' +
+          `It is paid in ${doc.tokenSymbol}, a stablecoin.`
+      : `${doc.siteName} is an escrow service for stablecoin payments. Rather than paying the seller ` +
+          'directly, your payment is held by a smart contract and only released to them on the agreed ' +
+          'date above — so you are not sending money into thin air, and the seller is not waiting on a ' +
+          `bank. It is paid in ${doc.tokenSymbol}, a stablecoin.`,
     M,
     y,
     CONTENT_W,
@@ -191,15 +198,23 @@ export async function downloadPaymentRequestPdf(doc: PaymentRequestDoc): Promise
   pdf.setFont('helvetica', 'bold');
   pdf.setFontSize(11.5);
   ink(INK);
-  pdf.text('How you are protected', M, y);
+  pdf.text(doc.instant ? 'Before you pay' : 'How you are protected', M, y);
 
   y += 7;
-  const bullets = [
-    'Your funds are held by an open-source smart contract — not by the seller, and not by us.',
-    'The money is released to the seller automatically on the payout date shown above.',
-    'If something goes wrong, you can raise a dispute before that date to freeze the funds.',
-    'The contracts keep running even if our servers do not. Nobody can seize or reverse them.',
-  ];
+  // ⚠️ AN INSTANT PAYMENT HAS NO DISPUTE WINDOW. Telling its buyer they can freeze the funds would
+  //    be a promise the contract cannot keep.
+  const bullets = doc.instant
+    ? [
+        'This payment goes straight to the seller when you pay. It cannot be disputed or reversed.',
+        'Only pay if you know the seller and are happy with what you are paying for.',
+        'It is made through an open-source smart contract, which sends it only to this seller.',
+      ]
+    : [
+        'Your funds are held by an open-source smart contract — not by the seller, and not by us.',
+        'The money is released to the seller automatically on the payout date shown above.',
+        'If something goes wrong, you can raise a dispute before that date to freeze the funds.',
+        'The contracts keep running even if our servers do not. Nobody can seize or reverse them.',
+      ];
   pdf.setFont('helvetica', 'normal');
   pdf.setFontSize(9.5);
   for (const b of bullets) {

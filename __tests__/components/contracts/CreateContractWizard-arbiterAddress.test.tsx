@@ -193,7 +193,7 @@ describe('CreateContractWizard - arbiterAddress (advanced option)', () => {
   it('omits arbiterAddress from POST body entirely when blank', async () => {
     const authenticatedFetch = jest.fn().mockResolvedValue({
       ok: true,
-      json: jest.fn().mockResolvedValue({ contractId: 'abc-123' }),
+      json: jest.fn().mockResolvedValue({ request_id: 'abc-123' }),
     });
     mockUseAuth.mockReturnValue(buildAuth(authenticatedFetch) as any);
 
@@ -224,13 +224,13 @@ describe('CreateContractWizard - arbiterAddress (advanced option)', () => {
     const [, options] = authenticatedFetch.mock.calls[0];
     const body = JSON.parse(options.body);
 
-    expect(body).not.toHaveProperty('arbiterAddress');
+    expect(body).not.toHaveProperty('arbiter');
   });
 
   it('includes a checksummed arbiterAddress in the POST body when provided', async () => {
     const authenticatedFetch = jest.fn().mockResolvedValue({
       ok: true,
-      json: jest.fn().mockResolvedValue({ contractId: 'abc-123' }),
+      json: jest.fn().mockResolvedValue({ request_id: 'abc-123' }),
     });
     mockUseAuth.mockReturnValue(buildAuth(authenticatedFetch) as any);
 
@@ -259,6 +259,6 @@ describe('CreateContractWizard - arbiterAddress (advanced option)', () => {
     const [, options] = authenticatedFetch.mock.calls[0];
     const body = JSON.parse(options.body);
 
-    expect(body.arbiterAddress).toBe(VALID_ARBITER);
+    expect(body.arbiter).toBe(VALID_ARBITER);
   });
 });

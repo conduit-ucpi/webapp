@@ -38,7 +38,16 @@ if [ -z "${NEXT_PUBLIC_ESCROW_IMPLEMENTATION_ADDRESS:-}" ]; then
 fi
 
 export STATIC_EXPORT=true
-npm ci --legacy-peer-deps
+
+# The cherry release runs this straight after its server build, which has just installed exactly
+# these packages in this workspace (scripts/build-server-bundle.sh, `npm ci`). Installing them again
+# costs a minute and changes nothing. A fresh checkout — the Cloudflare release, or a cherry run
+# whose server image already existed — has no node_modules and installs as usual.
+if [ -f node_modules/.package-lock.json ]; then
+  echo "Packages already installed by this job's server build; not reinstalling."
+else
+  npm ci --legacy-peer-deps
+fi
 npm run build:static
 
 # Client-side routing fallback: Pages serves 404.html for any path it has no file for, so the

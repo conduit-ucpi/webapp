@@ -679,3 +679,116 @@ describe('/pay in a checkout', () => {
     expect(mockCall.mock.calls[0][1]).toMatchObject({ expiry_timestamp: 0 });
   });
 });
+
+describe('/pay for a payment request (/contract-pay)', () => {
+  const SELLER = '0x742d35cc6634c0532925a3b844bc9e7595f0beb0';
+  const ARBITER = '0x1111111111111111111111111111111111111111';
+  const request = (overrides: Record<string, unknown> = {}) => ({
+    id: '507f1f77bcf86cd799439011',
+    terms: {
+      seller: SELLER,
+      amount: '10',
+      amountBaseUnits: 10_000_000,
+      description: 'Logo design',
+      expiryTimestamp: 1900000000,
+      tokenSymbol: 'USDC',
+      arbiter: ARBITER,
+      ...overrides,
+    },
+    sellerLabel: 'seller@example.com',
+  });
+  let fetchMock: jest.Mock;
+  const answers = (status: number, body: unknown) =>
+    fetchMock.mockResolvedValueOnce({ ok: status < 400, status, json: async () => body });
+
+  beforeEach(() => {
+    mockRouter.asPath = '/contract-pay?contractId=507f1f77bcf86cd799439011';
+    fetchMock = jest.fn();
+    (useAuth as jest.Mock).mockReturnValue({
+      user: { email: 'buyer@example.com', walletAddress: PAYER },
+      isLoading: false,
+      isConnected: true,
+      address: PAYER,
+      authenticatedFetch: fetchMock,
+    });
+  });
+
+  it('prepares the stored request as the signed-in buyer, not through the MCP tool', async () => {
+    answers(200, prepared({}, { external_id: '507f1f77bcf86cd799439011' }));
+    render(<PayPage request={request()} />);
+
+    await screen.findByText('Confirm payment');
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe('/api/ap2/request/507f1f77bcf86cd799439011/prepare');
+    expect(JSON.parse(init.body)).toEqual({ payer: PAYER });
+    expect(mockCall).not.toHaveBeenCalled();
+    // The seller by name, and no way to edit what they asked for.
+    expect(screen.getByText('seller@example.com')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Back to payment terms')).toBeNull();
+  });
+
+  it('settles with the stored terms exactly — arbiter, request id and base units included', async () => {
+    answers(200, prepared({}, { external_id: '507f1f77bcf86cd799439011' }));
+    mockCall.mockResolvedValueOnce({ status: 'settled', dispute: { where: '/dashboard?contract=x' } });
+    render(<PayPage request={request()} />);
+    fireEvent.click(await screen.findByRole('button', { name: /from this wallet/ }));
+
+    await screen.findByText('Paid into escrow', { selector: 'h2' });
+    const [tool, args] = mockCall.mock.calls[0];
+    expect(tool).toBe('settle_escrow_payment');
+    expect(args).toMatchObject({
+      seller: SELLER,
+      amount: 10_000_000,
+      expiry_timestamp: 1900000000,
+      nominal_buyer: PAYER,
+      description: 'Logo design',
+      arbiter: ARBITER,
+      external_id: '507f1f77bcf86cd799439011',
+    });
+    // One payment per request: nothing offers another, and the link stays the seller's.
+    expect(screen.queryByRole('button', { name: 'Make another payment' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'View this payment' })).toBeInTheDocument();
+    expect(replace).not.toHaveBeenCalled();
+  });
+
+  it('leaves the arbiter out when the seller did not choose one', async () => {
+    answers(200, prepared({}, { external_id: '507f1f77bcf86cd799439011' }));
+    mockCall.mockResolvedValueOnce({ status: 'settled' });
+    render(<PayPage request={request({ arbiter: undefined })} />);
+    fireEvent.click(await screen.findByRole('button', { name: /from this wallet/ }));
+
+    await screen.findByText('Paid into escrow', { selector: 'h2' });
+    expect(mockCall.mock.calls[0][1]).not.toHaveProperty('arbiter');
+  });
+
+  it("says why ap2service refused, and offers to try again without a cancel that goes nowhere", async () => {
+    answers(409, { detail: 'This request has already been paid.' });
+    render(<PayPage request={request()} />);
+
+    expect(await screen.findByText('This request has already been paid.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Cancel' })).toBeNull();
+  });
+
+  it('refuses a request that pays the signed-in wallet itself, before asking anything', async () => {
+    render(<PayPage request={request({ seller: PAYER })} />);
+    expect(await screen.findByText(/cannot make a payment to yourself/)).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('a /pay link carrying a chosen arbiter', () => {
+  it('reads it back, and refuses one that is not an address', () => {
+    const base = {
+      seller: '0x742d35cc6634c0532925a3b844bc9e7595f0beb0',
+      amount: '10',
+      expiryTimestamp: 1900000000,
+      description: 'Logo design',
+      tokenSymbol: 'USDC',
+      externalId: 'mcp-1',
+    };
+    const arbiter = '0x1111111111111111111111111111111111111111';
+    expect(decodePayResume(encodePayResume({ ...base, arbiter }))).toEqual({ ...base, arbiter });
+    expect(decodePayResume(encodePayResume({ ...base, arbiter: 'the usual one' }))).toBeNull();
+  });
+});

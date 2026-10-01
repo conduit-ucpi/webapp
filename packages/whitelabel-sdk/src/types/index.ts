@@ -144,6 +144,8 @@ export interface PendingContract {
   buyerEmail?: string;
   amount: number;
   currency: string;
+  /** The token's symbol, e.g. USDC. Absent on old records, which were all USDC. */
+  currencySymbol?: string;
   sellerAddress: string;
   expiryTimestamp: number;
   chainId?: string;

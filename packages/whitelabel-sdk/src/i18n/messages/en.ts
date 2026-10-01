@@ -133,6 +133,8 @@ export const en = {
   'pay.unableToProcess': 'Unable to Process Payment',
   'pay.notFound': 'Payment Request Not Found',
   'pay.notFoundDetail': 'The payment request could not be found.',
+  'pay.expiredTitle': 'Payment Request Expired',
+  'pay.expiredDetail': 'This payment request has expired and can no longer be paid. Ask the seller to send a new one.',
   'pay.requestHeading': 'Payment Request',
   'pay.changeMethod': 'Change payment method',
   'checkout.initializing': 'Initializing secure payment system...',
@@ -235,6 +237,8 @@ export const en = {
   'msg.whatFor': "What it's for: {description}",
   'msg.payWithQr': 'To pay, open the link below or scan the attached QR code:',
   'msg.payLink': 'To pay, open this link:',
+  'msg.instantNote':
+    'This is an instant payment: it goes straight to me when you pay, and cannot be disputed or reversed.',
   'msg.escrowNote':
     'Your payment is held in escrow until the agreed payout date — if something goes wrong, you can raise a dispute before then to freeze the funds.',
   'emptyState.noMatchesFound': 'No matches found',

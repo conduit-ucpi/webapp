@@ -346,41 +346,40 @@ export default function CreateContractWizard() {
         throw new Error(t('err.noWalletAddress'));
       }
       
-      const pendingContractRequest = {
-        buyerEmail: noBuyerEmail
-          ? 'createdempty@conduit-ucpi.com'
-          : (form.buyerType === 'email' ? form.buyerEmail : (form.buyerFid ? `${form.buyerFid}@farcaster.xyz` : '')),
-        buyerFarcasterHandle: form.buyerType === 'farcaster' ? form.buyerEmail : '',
-        sellerEmail: user.email,
-        sellerAddress: user.walletAddress,
+      // ⚠️ THROUGH ap2service, THE SAME SERVICE THAT TAKES THE PAYMENT. It stores the request in
+      //    contractservice as this seller, with no buyer: whoever opens the link and pays first
+      //    becomes the buyer. (The email and Farcaster buyer modes are unreachable — noBuyerEmail
+      //    is always true — and this endpoint does not take a buyer.)
+      const paymentRequest = {
+        // Token base units, which for a 6-decimal token are contractservice's micro-units.
         amount: toMicroUSDC(parseFloat(form.amount.trim())),
-        currency: `micro${selectedTokenSymbol}`,
-        currencySymbol: selectedTokenSymbol,
+        token_symbol: selectedTokenSymbol,
         description: form.description,
         // Zero is EscrowContract's instant-transfer sentinel: the deposit pays
         // the seller in the same transaction instead of funding an escrow.
-        expiryTimestamp: isInstantPayment ? 0 : form.payoutTimestamp,
-        serviceLink: config.serviceLink,
-        ...(brandId ? { brandId } : {}),
-        ...(form.arbiterAddress.trim() ? { arbiterAddress: ethers.getAddress(form.arbiterAddress.trim()) } : {})
+        expiry_timestamp: isInstantPayment ? 0 : form.payoutTimestamp,
+        ...(brandId ? { brand: brandId } : {}),
+        ...(form.arbiterAddress.trim() ? { arbiter: ethers.getAddress(form.arbiterAddress.trim()) } : {})
       };
 
       if (!authenticatedFetch) {
         throw new Error(t('err.notAuthenticated'));
       }
-      const response = await authenticatedFetch('/api/contracts', {
+      const response = await authenticatedFetch('/api/ap2/request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(pendingContractRequest)
+        body: JSON.stringify(paymentRequest)
       });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || t('err.createFailed'));
+        // ap2service says why in `detail`; the proxy's own refusals use `error`.
+        const reason = typeof errorData.detail === 'string' ? errorData.detail : errorData.error;
+        throw new Error(reason || t('err.createFailed'));
       }
 
       const responseData = await response.json();
-      const contractId = responseData.contractId || responseData.id;
+      const contractId = responseData.request_id;
 
       setCreatedContractId(contractId);
       setShowSuccessScreen(true);
@@ -505,8 +504,9 @@ export default function CreateContractWizard() {
           networkLabel={config ? getNetworkName(config.chainId) : undefined}
           description={form.description}
           payoutLabel={
-            form.payoutTimestamp ? formatDateTimeWithTZ(form.payoutTimestamp) : undefined
+            !isInstantPayment && form.payoutTimestamp ? formatDateTimeWithTZ(form.payoutTimestamp) : undefined
           }
+          instant={isInstantPayment}
           copied={paymentLinkCopied}
           onCopy={handleCopyPaymentLink}
           onDone={() => router.push('/dashboard')}

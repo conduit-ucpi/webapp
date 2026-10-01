@@ -6,7 +6,7 @@
  * signed-in wallet, and the wallet must sign exactly the typed data prepare returned.
  */
 
-import { render } from '@testing-library/react';
+import { act, render } from '@testing-library/react';
 import { screen, fireEvent, waitFor } from '@testing-library/dom';
 import { ethers } from 'ethers';
 
@@ -107,6 +107,10 @@ function signIn(connected = true) {
     address: connected ? PAYER : null,
   });
 }
+
+afterEach(() => {
+  jest.useRealTimers();
+});
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -294,6 +298,56 @@ describe('/pay', () => {
     expect(tool).toBe('settle_escrow_payment');
     const { payer: _payer, ...terms } = prepareArgs;
     expect(settleArgs).toEqual({ ...terms, external_id: 'mcp-123' });
+  });
+
+  it('never settles the transfer route under a wallet payment that is still settling', async () => {
+    jest.useFakeTimers();
+    // test, 1 Oct: the wallet's relayed transfer landed, the balance check saw it and settled
+    // too, and the two raced to one deploy — the loser flashed "already known" at the payer.
+    let finishWalletSettle: (value: unknown) => void = () => {};
+    mockCall
+      .mockResolvedValueOnce(prepared())
+      .mockImplementationOnce(() => new Promise((resolve) => (finishWalletSettle = resolve)));
+    render(<PayPage />);
+    fill();
+    fireEvent.click(await screen.findByRole('button', { name: /from this wallet/ }));
+    await waitFor(() => expect(mockCall).toHaveBeenCalledTimes(2));
+
+    // The relayed transfer has landed; the balance poll finds it while the wallet's settle runs.
+    mockBalances.escrow = '10';
+    await act(async () => {
+      jest.advanceTimersByTime(10_000);
+    });
+    finishWalletSettle({ status: 'settled' });
+
+    await screen.findByText('Paid into escrow', { selector: 'h2' });
+    const settles = mockCall.mock.calls.filter(([tool]) => tool === 'settle_escrow_payment');
+    expect(settles).toHaveLength(1);
+    expect(settles[0][1]).toHaveProperty('signature');
+  });
+
+  it('settles the money itself if the wallet payment failed after it moved', async () => {
+    jest.useFakeTimers();
+    let failWalletSettle: (value: unknown) => void = () => {};
+    mockCall
+      .mockResolvedValueOnce(prepared())
+      .mockImplementationOnce(() => new Promise((resolve) => (failWalletSettle = resolve)))
+      .mockResolvedValueOnce({ status: 'settled' });
+    render(<PayPage />);
+    fill();
+    fireEvent.click(await screen.findByRole('button', { name: /from this wallet/ }));
+    await waitFor(() => expect(mockCall).toHaveBeenCalledTimes(2));
+
+    mockBalances.escrow = '10';
+    await act(async () => {
+      jest.advanceTimersByTime(10_000);
+    });
+    failWalletSettle({ error: 'service_unavailable', message: 'deploy failed' });
+
+    await screen.findByText('Paid into escrow', { selector: 'h2' });
+    const settles = mockCall.mock.calls.filter(([tool]) => tool === 'settle_escrow_payment');
+    expect(settles).toHaveLength(2);
+    expect(settles[1][1]).not.toHaveProperty('signature');
   });
 
   it('does not settle an address that holds nothing yet', async () => {

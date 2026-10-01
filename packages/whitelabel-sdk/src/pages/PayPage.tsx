@@ -314,9 +314,33 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
     }
   };
 
+  /**
+   * The wallet payment in flight, resolving true once it has settled.
+   *
+   * ⚠️ THE BALANCE POLL MUST NOT SETTLE UNDER IT. The relayed transfer lands at the escrow address
+   *    before this payment's own settle creates the escrow, and the poll sees that money. Settling
+   *    too, it raced this one to the same deploy (test, 1 Oct: two identical transactions, one
+   *    refused as "already known" and flashed as an error). The poll waits for this instead.
+   */
+  const walletPayment = useRef<Promise<boolean> | null>(null);
+
   /** Paying from the signed-in wallet: it signs what prepare returned, and settle relays it. */
   const handleWalletPay = async () => {
     if (!prepared || !signing?.typed_data) return fail(t('push.cannotSign'));
+    const payment = payFromWallet(prepared, signing);
+    walletPayment.current = payment;
+    try {
+      await payment;
+    } finally {
+      walletPayment.current = null;
+    }
+  };
+
+  const payFromWallet = async (
+    prepared: Prepared,
+    signing: Exclude<Prepared['fund_by_signature'], string>
+  ): Promise<boolean> => {
+    if (!signing.typed_data) return false;
     setBusy('pay');
     setSteps([
       { id: 'sign', label: t('push.signing'), status: 'active' },
@@ -337,13 +361,16 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
       });
       if (isAp2ToolError(result)) {
         updateStep('settle', 'error');
-        return fail(result.message);
+        fail(result.message);
+        return false;
       }
       updateStep('settle', 'completed');
       setSettled(result);
       setStage('done');
+      return true;
     } catch (error: any) {
       fail(error.message);
+      return false;
     } finally {
       setBusy(null);
     }
@@ -355,6 +382,10 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
    */
   const settleTransfer = useCallback(async (): Promise<boolean> => {
     if (!prepared) return false;
+    // The money the poll saw may be the wallet payment's own transfer: let that payment finish.
+    // Only if it failed after the money moved does this settle what is there.
+    const inFlight = walletPayment.current;
+    if (inFlight && (await inFlight)) return true;
     const result = await callAp2Tool<Settled>('settle_escrow_payment', {
       ...terms(),
       ...attribution,

@@ -66,6 +66,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: 'Person to person', href: '/p2p', description: 'Sell to a stranger without the risk' },
       { label: 'B2B invoices', href: '/b2b', description: 'Get paid on day one' },
       { label: 'AI agents', href: '/plugins#mcp', description: 'Let an agent pay with a human veto' },
+      { label: 'Whitelabel', href: '/white-label', description: 'Run payments under your own brand' },
     ],
   },
   {
@@ -76,6 +77,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: 'WordPress plugin', href: WORDPRESS_PLUGIN_URL, external: true },
       { label: 'Shopify', href: '/shopify/install-button' },
       { label: 'API reference', href: API_DOC_URL, external: true },
+      { label: 'Whitelabel', href: '/white-label', description: 'Embed our pages under your brand' },
       { label: 'Open source', href: SOURCE_URL, external: true },
     ],
   },

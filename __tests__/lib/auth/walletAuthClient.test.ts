@@ -20,7 +20,7 @@ describe('buildSiweMessage', () => {
       `localhost wants you to sign in with your Ethereum account:
 0xc9D0602A87E55116F633b1A1F95D083Eb115f942
 
-No funds move and no payments are approved. Signing only proves you own this wallet on Base.
+Sign to accept the Stabledrop Terms of Service (https://stabledrop.me/terms-of-service/).
 
 URI: http://localhost
 Version: 1
@@ -30,10 +30,10 @@ Issued At: 2026-09-18T10:00:00.000Z`
     );
   });
 
-  it('names no chain it does not recognise', () => {
+  it('carries the terms URL user-service requires before it will open a session', () => {
     const message = buildSiweMessage({ address: '0xabc', chainId: 12345, nonce: 'n' });
 
-    expect(message).toContain('Signing only proves you own this wallet.\n');
+    expect(message.split('\n')[3]).toContain('https://stabledrop.me/terms-of-service/');
     expect(message).toContain('Chain ID: 12345');
   });
 });

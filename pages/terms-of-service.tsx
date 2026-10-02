@@ -46,7 +46,7 @@ export default function TermsOfService({ lastUpdated }: { lastUpdated: string })
           <section className="mb-8">
             <h2 className="text-2xl font-semibold text-secondary-900 dark:text-white mb-4">1. Acceptance of Terms</h2>
             <p className="text-secondary-700 dark:text-secondary-200 mb-4">
-              By accessing and using Conduit UCPI ("the Service"), you accept and agree to be bound by the terms 
+              By accessing and using Stabledrop at stabledrop.me ("the Service"), operated by Conduit UCPI Ltd, you accept and agree to be bound by the terms 
               and provision of this agreement. If you do not agree to abide by the above, please do not use this service.
             </p>
           </section>
@@ -54,7 +54,7 @@ export default function TermsOfService({ lastUpdated }: { lastUpdated: string })
           <section className="mb-8">
             <h2 className="text-2xl font-semibold text-secondary-900 dark:text-white mb-4">2. Description of Service</h2>
             <p className="text-secondary-700 dark:text-secondary-200 mb-4">
-              Conduit UCPI is a decentralized escrow platform that enables users to create time-delayed escrow 
+              Stabledrop is a decentralized escrow platform that enables users to create time-delayed escrow 
               contracts on EVM-compatible blockchains. The Service facilitates:
             </p>
             <ul className="list-disc pl-6 text-secondary-700 dark:text-secondary-200 space-y-2">
@@ -111,7 +111,7 @@ export default function TermsOfService({ lastUpdated }: { lastUpdated: string })
           <section className="mb-8">
             <h2 className="text-2xl font-semibold text-secondary-900 dark:text-white mb-4">6. Limitation of Liability</h2>
             <p className="text-secondary-700 dark:text-secondary-200 mb-4">
-              To the maximum extent permitted by law, Conduit UCPI and its operators shall not be liable for any 
+              To the maximum extent permitted by law, Conduit UCPI Ltd and its operators shall not be liable for any 
               direct, indirect, incidental, special, consequential, or punitive damages, including but not limited to:
             </p>
             <ul className="list-disc pl-6 text-secondary-700 dark:text-secondary-200 space-y-2">

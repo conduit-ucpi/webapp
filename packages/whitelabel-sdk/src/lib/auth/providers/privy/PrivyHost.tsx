@@ -2,6 +2,7 @@ import React, { useEffect, useMemo } from 'react';
 import { PrivyProvider, useFundWallet, useLogin, useLogout, usePrivy, useWallets } from '@privy-io/react-auth';
 import type { ConnectedWallet, User } from '@privy-io/react-auth';
 
+import { TERMS_URL } from '@/lib/auth/siwe-statement';
 import type { AuthConfig } from '@/lib/auth/types';
 import { privyBridge, type PrivyUserInfo } from './privyBridge';
 
@@ -137,6 +138,8 @@ export default function PrivyHost({ config }: { config: AuthConfig }) {
       appId={config.privyAppId}
       config={{
         appearance: { walletChainType: 'ethereum-only' },
+        // Linked from the modal's footer. The signature that follows login is what accepts them.
+        legal: { termsAndConditionsUrl: TERMS_URL },
         // An embedded wallet for anyone who arrives without one — the email/social users. A
         // wallet login already has a wallet and gets none.
         embeddedWallets: { ethereum: { createOnLogin: 'users-without-wallets' } },

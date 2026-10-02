@@ -1,57 +1,23 @@
 /**
+ * Where the Terms of Service are published. Absolute, because the app is also served from
+ * merchant embeds and partner domains, and the terms are Stabledrop's wherever it runs.
+ */
+export const TERMS_URL = 'https://stabledrop.me/terms-of-service/';
+
+/**
  * Shared SIWE message statement shown in wallet signature prompts.
  *
  * EIP-4361 puts this between the `<domain> wants you to sign in...` header
- * and the URI/Version/Chain ID/Nonce/Issued At fields. Keep it short and
- * reassuring — many users see "signature request" and think funds will move.
+ * and the URI/Version/Chain ID/Nonce/Issued At fields.
  *
- * Name neither the app nor the chain here. The header line above it already
- * renders window.location.host, which is whatever domain served the app —
- * a merchant embed, a preview deploy, localhost — so a hardcoded product name
- * would contradict it. The chain likewise varies (mainnet, Base, Sepolia,
- * Base Sepolia) and is already stated in the Chain ID field.
+ * ⚠️ THE SIGNATURE IS THE ACCEPTANCE OF THE TERMS. user-service refuses a sign-in whose
+ *    statement does not carry TERMS_URL, and records the signed message as the proof. Change
+ *    the wording freely; drop the URL and every sign-in fails.
  *
- * Kept to one line on purpose: wallets truncate long statements, and this one
- * has to survive that intact.
- *
- * Funds first, ownership second. AppKit collapses the message box and cuts it
- * off a line or two in, having already said "prove you own this wallet" twice
- * in its own chrome above — so ownership-first spent the only visible line
- * repeating AppKit, and the part it never states got hidden behind the chevron.
+ * Kept to one line on purpose: EIP-4361 forbids a newline in the statement, and wallets
+ * truncate long ones — the URL has to survive that intact.
  */
-export const SIWE_STATEMENT = 'No funds move and no payments are approved. Signing only proves you own this wallet.';
-
-/**
- * Chain names as a person would say them, not as the network calls itself.
- * Kept here beside the copy rather than reusing getNetworkName(), which says
- * "Base Mainnet"/"Sepolia Testnet" for logs and would read as jargon in a
- * wallet prompt.
- */
-const CHAIN_DISPLAY_NAMES: Record<number, string> = {
-  1: 'Ethereum',
-  8453: 'Base',
-  11155111: 'Sepolia',
-  84532: 'Base Sepolia'
-};
-
-/**
- * The statement, naming the chain when we can.
- *
- * EIP-4361 fixes the header line above it as "...sign in with your Ethereum
- * account:", which reads oddly to someone who came here to use Base. That
- * literal cannot be reworded — user-service parses the message, and wallets
- * render their friendly sign-in view only while it parses — so the chain is
- * named here instead, on the one line that is ours.
- *
- * An unrecognised chain falls back to the chain-less statement: "on Chain
- * 12345" would be worse than saying nothing.
- */
-export function siweStatement(chainId?: number): string {
-  const chain = chainId === undefined ? undefined : CHAIN_DISPLAY_NAMES[chainId];
-  if (!chain) return SIWE_STATEMENT;
-
-  return `No funds move and no payments are approved. Signing only proves you own this wallet on ${chain}.`;
-}
+export const SIWE_STATEMENT = `Sign to accept the Stabledrop Terms of Service (${TERMS_URL}).`;
 
 /**
  * Message signed to mint a `signature_auth` token (the fallback auth path used

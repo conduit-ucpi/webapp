@@ -1,5 +1,5 @@
 import { apiFetch } from '@/lib/apiFetch';
-import { siweStatement } from '@/lib/auth/siwe-statement';
+import { SIWE_STATEMENT } from '@/lib/auth/siwe-statement';
 
 /**
  * Proving wallet ownership to our backend: nonce → message → (the provider signs) → verify.
@@ -55,7 +55,7 @@ export function buildSiweMessage(params: {
   return `${domain} wants you to sign in with your Ethereum account:
 ${params.address}
 
-${siweStatement(params.chainId)}
+${SIWE_STATEMENT}
 
 URI: ${uri}
 Version: 1

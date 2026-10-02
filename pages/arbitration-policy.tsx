@@ -3,6 +3,7 @@ import SEO from '@/components/SEO'
 import { GetStaticProps } from 'next'
 import { isr } from '@/utils/isr';
 import { lastTextChangeISO } from '@/lib/server/lastTextChange';
+import PublishedRules from '@/components/arbitration/PublishedRules';
 
 export default function ArbitrationPolicy({ dateModified }: { dateModified: string }) {
   // Comprehensive structured data for SEO and AI bots
@@ -313,6 +314,11 @@ export default function ArbitrationPolicy({ dateModified }: { dateModified: stri
                     </ul>
                   </div>
                 </div>
+              </section>
+
+              <section id="rules" className="bg-white dark:bg-secondary-800 rounded-lg shadow-sm dark:shadow-none p-6 mb-6">
+                <h2 className="text-2xl font-semibold text-secondary-800 dark:text-secondary-100 mb-4">The Arbitration Rules</h2>
+                <PublishedRules />
               </section>
 
               <section className="bg-white dark:bg-secondary-800 rounded-lg shadow-sm dark:shadow-none p-6 mb-6">

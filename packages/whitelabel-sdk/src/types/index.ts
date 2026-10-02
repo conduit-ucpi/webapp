@@ -60,6 +60,7 @@ export interface Config {
   basePath: string;
   explorerBaseUrl: string;
   serviceLink: string;
+  termsVersion?: string | null; // Terms of Service version (commit SHA prefix) a SIWE sign-in names
   siteName?: string; // Site branding name (e.g., "Instant Escrow", "USDCBAY")
   // Release flags
   projectsLive?: boolean; // Projects (fan-out) feature; false/absent = hidden

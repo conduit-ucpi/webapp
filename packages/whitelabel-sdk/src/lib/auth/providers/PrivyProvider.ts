@@ -283,7 +283,8 @@ export class PrivyProvider implements UnifiedProvider {
         address,
         chainId: this.config.chainId,
         nonce,
-        serviceLink: this.config.serviceLink
+        serviceLink: this.config.serviceLink,
+        termsVersion: this.config.termsVersion
       });
       const signature = await this.signMessage(message);
       const verified = await verifyAuthSignature(message, signature);

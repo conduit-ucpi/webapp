@@ -1083,7 +1083,13 @@ export class ReownWalletConnectProvider {
       // Step 2: The message the backend parses. Built by the contract, not here, so that every
       // provider produces the same bytes. Config chainId, never the wallet's current network.
       const chainId = this.config.chainId
-      const message = buildSiweMessage({ address, chainId, nonce })
+      const message = buildSiweMessage({
+        address,
+        chainId,
+        nonce,
+        serviceLink: this.config.serviceLink,
+        termsVersion: this.config.termsVersion
+      })
 
       console.log('🔧 ReownWalletConnect: SIWE message created', {
         domain: window.location.host,

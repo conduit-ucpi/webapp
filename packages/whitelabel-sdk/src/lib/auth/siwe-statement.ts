@@ -38,11 +38,18 @@ export function setTermsServiceLink(serviceLink: string | null | undefined): voi
  *    statement does not carry its own site's termsUrl(), and records the signed message as
  *    the proof. Change the wording freely; drop the URL and every sign-in fails.
  *
+ * `version` is the terms version from /api/config: the commit that last changed the terms page,
+ * which the page also shows. user-service reads it back out of the signed statement and keeps
+ * the first and latest acceptance of each version, so it must stay `version <hex>` exactly.
+ * Absent (a build without git), the statement names none and user-service records it unversioned.
+ *
  * Kept to one line on purpose: EIP-4361 forbids a newline in the statement, and wallets
  * truncate long ones — the URL has to survive that intact.
  */
-export function siweStatement(terms: string): string {
-  return `Sign to accept the Stabledrop Terms of Service (${terms}).`;
+export function siweStatement(terms: string, version?: string | null): string {
+  return version
+    ? `Sign to accept the Stabledrop Terms of Service (${terms}, version ${version}).`
+    : `Sign to accept the Stabledrop Terms of Service (${terms}).`;
 }
 
 /**

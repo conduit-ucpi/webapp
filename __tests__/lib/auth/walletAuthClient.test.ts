@@ -46,6 +46,20 @@ Issued At: 2026-09-18T10:00:00.000Z`
     );
   });
 
+  it('names the terms version config serves, in the exact form user-service reads back', () => {
+    const message = buildSiweMessage({
+      address: '0xabc',
+      chainId: 8453,
+      nonce: 'n',
+      serviceLink: 'https://stabledrop.me',
+      termsVersion: '1988a9f34b7a'
+    });
+
+    expect(message.split('\n')[3]).toBe(
+      'Sign to accept the Stabledrop Terms of Service (https://stabledrop.me/terms-of-service/, version 1988a9f34b7a).'
+    );
+  });
+
   it('falls back to the site the app is running on when config names none', () => {
     // jsdom runs at http://localhost.
     expect(termsUrl(undefined)).toBe('http://localhost/terms-of-service/');

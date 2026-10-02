@@ -208,6 +208,8 @@ async function buildConfig() {
     emailVerificationLive: isEmailVerificationLive(),
     explorerBaseUrl: process.env.EXPLORER_BASE_URL,
     serviceLink: process.env.SERVICE_LINK || 'http://localhost:3000',
+    // The Terms of Service version a sign-in accepts (next.config.js); the SIWE statement names it
+    termsVersion: process.env.TERMS_VERSION || null,
     // Optional wallet services configuration
     walletServicesShowWidget: process.env.WALLET_SERVICES_SHOW_WIDGET,
     walletServicesButtonPosition: process.env.WALLET_SERVICES_BUTTON_POSITION,

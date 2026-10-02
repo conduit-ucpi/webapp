@@ -71,6 +71,8 @@ export interface AuthConfig {
   privyAppId?: string;
   /** The site, from /api/config. Its `/terms-of-service/` is what signing in accepts. */
   serviceLink?: string;
+  /** The Terms of Service version, from /api/config. The SIWE statement names it. */
+  termsVersion?: string | null;
   usdcContractAddress?: string;
   usdtContractAddress?: string;
 }

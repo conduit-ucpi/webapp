@@ -1,5 +1,7 @@
 /** @type {import('next').NextConfig} */
 
+const { gitFileVersion, TERMS_FILE, TERMS_VERSION_LENGTH } = require('./lib/server/gitFileVersion');
+
 
 // Static-export mode, used only by the GitHub Pages build. Unset everywhere else,
 // so the production box keeps building exactly as before while both deployments
@@ -159,6 +161,14 @@ const nextConfig = {
   // bundle as NEXT_PUBLIC_GIT_SHA and reported by /api/config, so nothing new
   // is disclosed.
   generateBuildId: () => process.env.NEXT_PUBLIC_GIT_SHA || null,
+
+  // The Terms of Service version: the commit that last changed the terms page, from the same
+  // lookup the page itself shows. /api/config serves it, and every SIWE sign-in names it, so
+  // user-service can record which terms each wallet accepted. Inlined at build because the
+  // running container has no git history. Empty without git; the statement then names no version.
+  env: {
+    TERMS_VERSION: gitFileVersion(TERMS_FILE)?.sha.slice(0, TERMS_VERSION_LENGTH) ?? '',
+  },
 
   ...(isStaticExport ? staticExportConfig : serverOnlyConfig),
 };

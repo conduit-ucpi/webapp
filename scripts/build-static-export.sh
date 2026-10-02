@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 # Builds the static site (out/) that Cloudflare Pages serves at stabledrop.me.
 #
-# Run by two jobs in .github/workflows/build.yml, from one place so they cannot drift:
-#   - the cherry release, which builds it once per commit and stores it as an image;
-#   - the Cloudflare release, only when no image exists yet for its commit.
+# Run by the cherry release in .github/workflows/build.yml, which stores the result as an image
+# the Cloudflare release publishes. The Cloudflare release never builds.
 #
 # Reads the NEXT_PUBLIC_* values from the environment the calling step passes. Only
 # NEXT_PUBLIC_* values belong here: the output is world-readable static files.

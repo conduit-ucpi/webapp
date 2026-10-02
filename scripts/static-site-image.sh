@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
-# The static site (out/) stored as an image named by commit SHA, so it is built once per commit:
-# the cherry release builds and pushes it; the Cloudflare release pulls it instead of rebuilding.
+# The static site (out/) stored as an image named <environment>-<sha>, so it is built once per
+# commit: the cherry release builds and pushes it; the Cloudflare release only ever pulls it.
 #
 #   static-site-image.sh exists   # exit 0 if this commit's image is in the registry
-#   static-site-image.sh push     # out/ -> ghcr.io/<repo>-static:<sha>
-#   static-site-image.sh pull     # ghcr.io/<repo>-static:<sha> -> out/
+#   static-site-image.sh push     # out/ -> ghcr.io/<repo>-static:<IMAGE_TAG>
+#   static-site-image.sh pull     # ghcr.io/<repo>-static:<IMAGE_TAG> -> out/
 #
 # It carries files and nothing else (FROM scratch): Cloudflare Pages still receives files.
-# Needs REPO_LOWER and SHA_TAG, and a docker login to ghcr.io.
+# Needs REPO_LOWER and IMAGE_TAG (cherry-<sha>), and a docker login to ghcr.io.
 set -euo pipefail
 
-IMAGE="ghcr.io/${REPO_LOWER}-static:${SHA_TAG}"
+IMAGE="ghcr.io/${REPO_LOWER}-static:${IMAGE_TAG}"
 
 case "${1:-}" in
   exists)

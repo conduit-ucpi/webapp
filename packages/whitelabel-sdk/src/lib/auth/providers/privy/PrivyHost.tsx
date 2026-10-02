@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo } from 'react';
-import { PrivyProvider, useFundWallet, useLogin, useLogout, usePrivy, useWallets } from '@privy-io/react-auth';
-import type { ConnectedWallet, User } from '@privy-io/react-auth';
+import { PrivyProvider, useFundWallet, useLogin, useLogout, usePrivy, useSignTypedData, useWallets } from '@privy-io/react-auth';
+import type { ConnectedWallet, SignTypedDataParams, User } from '@privy-io/react-auth';
+import type { ethers } from 'ethers';
 
 import { termsUrl } from '@/lib/auth/siwe-statement';
 import type { AuthConfig } from '@/lib/auth/types';
@@ -76,6 +77,50 @@ export function userInfoFrom(user: User | null): PrivyUserInfo | null {
   return { email, name, authProvider };
 }
 
+/**
+ * What Privy's signature prompt says under its title. Its default — "Signing this message will
+ * not cost you any fees." — reads as if the payment itself were free, when what is free is the gas.
+ */
+export const SIGN_PROMPT_DESCRIPTION = "Signing this message won't cost you any gas fees.";
+
+type SignTypedData = (
+  input: SignTypedDataParams,
+  options: { address: string; uiOptions: { description: string } }
+) => Promise<{ signature: string }>;
+
+/**
+ * The embedded wallet's EIP-1193 provider, with `eth_signTypedData_v4` sent through Privy's own
+ * `signTypedData` so its prompt carries SIGN_PROMPT_DESCRIPTION.
+ *
+ * ⚠️ HERE, NOT AT THE CALL SITE. Callers sign through ethers over the plain provider (the payment
+ *    authorization in PayPage among them), and that route has no way to pass Privy UI options —
+ *    it always shows Privy's default text. Every other request goes through untouched.
+ */
+export function withSignPrompt(
+  provider: ethers.Eip1193Provider,
+  signTypedData: SignTypedData,
+  address: string
+): ethers.Eip1193Provider {
+  const request: ethers.Eip1193Provider['request'] = async (args) => {
+    if (args.method !== 'eth_signTypedData_v4') return provider.request(args);
+    // ethers sends [address, JSON]; some callers send the object itself.
+    const [, data] = (args.params ?? []) as [string, string | SignTypedDataParams];
+    const typed = typeof data === 'string' ? (JSON.parse(data) as SignTypedDataParams) : data;
+    const { signature } = await signTypedData(typed, {
+      address,
+      uiOptions: { description: SIGN_PROMPT_DESCRIPTION }
+    });
+    return signature;
+  };
+  return new Proxy(provider, {
+    get(target, prop, receiver) {
+      if (prop === 'request') return request;
+      const value = Reflect.get(target, prop, receiver);
+      return typeof value === 'function' ? value.bind(target) : value;
+    }
+  });
+}
+
 function PrivyBridge({ config }: { config: AuthConfig }) {
   const { ready, authenticated, user, exportWallet } = usePrivy();
   const { wallets, ready: walletsReady } = useWallets();
@@ -85,6 +130,7 @@ function PrivyBridge({ config }: { config: AuthConfig }) {
   });
   const { logout } = useLogout();
   const { fundWallet } = useFundWallet();
+  const { signTypedData } = useSignTypedData();
   // Memoised: a fresh chain object every render would re-register the API every render.
   const chain = useMemo(() => chainFromConfig(config), [config.chainId, config.rpcUrl, config.explorerBaseUrl]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -95,7 +141,12 @@ function PrivyBridge({ config }: { config: AuthConfig }) {
     privyBridge.registerApi({
       login: (options) => login({ loginMethods: [...options.loginMethods] }),
       logout,
-      getEthereumProvider: async () => (active ? active.getEthereumProvider() : null),
+      getEthereumProvider: async () => {
+        if (!active) return null;
+        const provider = await active.getEthereumProvider();
+        // Only Privy's own wallet shows Privy's prompt; an external wallet shows its own.
+        return active.walletClientType === 'privy' ? withSignPrompt(provider, signTypedData, active.address) : provider;
+      },
       switchChain: async (chainId) => {
         if (active) await active.switchChain(chainId);
       },
@@ -114,7 +165,7 @@ function PrivyBridge({ config }: { config: AuthConfig }) {
       exportWallet: (address) => exportWallet({ address })
     });
     return () => privyBridge.registerApi(null);
-  }, [login, logout, active, fundWallet, exportWallet, chain]);
+  }, [login, logout, active, fundWallet, exportWallet, chain, signTypedData]);
 
   useEffect(() => {
     privyBridge.publish({

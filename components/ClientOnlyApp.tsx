@@ -7,6 +7,7 @@ import { ToastProvider } from '@/components/ui/Toast';
 import { ThemeProvider } from '@/components/theme/ThemeProvider';
 import { TourProvider } from '@/components/onboarding/TourProvider';
 import FarcasterReady from '@/components/farcaster/FarcasterReady';
+import CookieConsent from '@/components/consent/CookieConsent';
 import { FarcasterDetectionProvider } from '@/components/farcaster/FarcasterDetectionProvider';
 import { NavigationProvider } from '@/components/navigation/NavigationProvider';
 import { EthersProvider } from '@/components/providers/EthersProvider';
@@ -58,6 +59,8 @@ export default function ClientOnlyApp({ Component, pageProps }: ClientOnlyAppPro
             </Head>
           )}
           <FarcasterReady />
+          {/* Not inside Shopify's admin iframe: no banner there, so no analytics either. */}
+          {router.pathname !== '/shopify/embedded' && <CookieConsent />}
           <FarcasterDetectionProvider children={
             <ConfigProvider children={
               <EthersProvider children={

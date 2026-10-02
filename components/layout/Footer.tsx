@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { getChainShortName } from '@/utils/chainNames';
+import { openConsentSettings } from '@/lib/consent';
 
 const SSR_DEFAULT_CHAIN_NAME = 'blockchain';
 
@@ -29,6 +30,9 @@ export default function Footer() {
             <Link href="/privacy-policy" className="hover:text-secondary-600 dark:hover:text-secondary-300 transition-colors">
               Privacy Policy
             </Link>
+            <button type="button" onClick={openConsentSettings} className="hover:text-secondary-600 dark:hover:text-secondary-300 transition-colors">
+              Cookie settings
+            </button>
             <a href="mailto:info@stabledrop.me" className="hover:text-secondary-600 dark:hover:text-secondary-300 transition-colors">
               Contact
             </a>

@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { FOOTER_LINKS } from './content';
 import { lt } from './theme';
+import { openConsentSettings } from '@/lib/consent';
 
 interface Props {
   className?: string;
@@ -33,6 +34,15 @@ export default function LandingFooter({ className = '', brand }: Props) {
               )}
             </li>
           ))}
+          <li>
+            <button
+              type="button"
+              onClick={openConsentSettings}
+              className={`${lt.muted} hover:text-[color:var(--lt-fg)] transition-colors`}
+            >
+              Cookie settings
+            </button>
+          </li>
         </ul>
       </div>
     </footer>

@@ -30,15 +30,7 @@ export default class CustomDocument extends Document<DocumentProps> {
   return (
     <Html lang="en" translate="no">
       <Head>
-        {/* Google Analytics 4 */}
-        <script async src="https://www.googletagmanager.com/gtag/js?id=G-C5RP49B2R8"></script>
-        <script dangerouslySetInnerHTML={{
-          __html: `window.dataLayer = window.dataLayer || [];
-function gtag(){dataLayer.push(arguments);}
-gtag('js', new Date());
-gtag('config', 'G-C5RP49B2R8');`
-        }} />
-        {/* End Google Analytics 4 */}
+        {/* Google Analytics loads only after cookie consent — see components/consent/CookieConsent.tsx */}
 
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />

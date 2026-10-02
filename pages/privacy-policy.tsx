@@ -1,4 +1,5 @@
 import { lastTextChange } from '@/lib/server/lastTextChange';
+import { openConsentSettings } from '@/lib/consent';
 
 /**
  * Build-time only; Next strips getStaticProps and its imports from the client
@@ -78,8 +79,35 @@ export default function PrivacyPolicy({ lastUpdated }: { lastUpdated: string }) 
             </p>
           </section>
 
+          <section id="cookies" className="mb-8">
+            <h2 className="text-2xl font-semibold text-secondary-900 dark:text-white mb-4">6. Cookies</h2>
+            <p className="text-secondary-700 dark:text-secondary-200 mb-4">
+              We use a small number of cookies and similar browser storage:
+            </p>
+            <ul className="list-disc pl-6 text-secondary-700 dark:text-secondary-200 space-y-2 mb-4">
+              <li>
+                <strong>Strictly necessary</strong> &mdash; <code>AUTH-TOKEN</code> keeps you signed in;{' '}
+                <code>cookie_consent</code> remembers your cookie choice for six months; your wallet connection and
+                display theme are kept in your browser&rsquo;s local storage. These are needed for the site to work and
+                are always on.
+              </li>
+              <li>
+                <strong>Analytics (optional)</strong> &mdash; Google Analytics (<code>_ga</code>,{' '}
+                <code>_ga_*</code>) measures how the site is used. These are set only if you accept them, and are
+                deleted if you later reject them.
+              </li>
+            </ul>
+            <p className="text-secondary-700 dark:text-secondary-200">
+              You can change your choice at any time:{' '}
+              <button type="button" onClick={openConsentSettings} className="text-primary-600 hover:text-primary-500 underline">
+                Cookie settings
+              </button>
+              .
+            </p>
+          </section>
+
           <section className="mb-8">
-            <h2 className="text-2xl font-semibold text-secondary-900 dark:text-white mb-4">6. Your Rights</h2>
+            <h2 className="text-2xl font-semibold text-secondary-900 dark:text-white mb-4">7. Your Rights</h2>
             <p className="text-secondary-700 dark:text-secondary-200 mb-4">
               You have the right to:
             </p>
@@ -92,7 +120,7 @@ export default function PrivacyPolicy({ lastUpdated }: { lastUpdated: string }) 
           </section>
 
           <section className="mb-8">
-            <h2 className="text-2xl font-semibold text-secondary-900 dark:text-white mb-4">7. Contact Us</h2>
+            <h2 className="text-2xl font-semibold text-secondary-900 dark:text-white mb-4">8. Contact Us</h2>
             <p className="text-secondary-700 dark:text-secondary-200">
               If you have any questions about this Privacy Policy or our data practices, please contact us at{' '}
               <a href="mailto:privacy@conduit-ucpi.com" className="text-primary-600 hover:text-primary-500">
@@ -102,7 +130,7 @@ export default function PrivacyPolicy({ lastUpdated }: { lastUpdated: string }) 
           </section>
 
           <section className="mb-8">
-            <h2 className="text-2xl font-semibold text-secondary-900 dark:text-white mb-4">8. Changes to This Policy</h2>
+            <h2 className="text-2xl font-semibold text-secondary-900 dark:text-white mb-4">9. Changes to This Policy</h2>
             <p className="text-secondary-700 dark:text-secondary-200">
               We may update this Privacy Policy from time to time. We will notify you of any changes by posting the 
               new Privacy Policy on this page and updating the "Last Updated" date.

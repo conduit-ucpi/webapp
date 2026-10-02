@@ -138,13 +138,13 @@ describe('agreeing to their suggestion', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /use this address/i }));
 
-    expect(screen.getByLabelText(/nominate an arbiter/i)).toHaveValue(BUYERS_PICK);
+    expect(screen.getByLabelText(/nominate a tiebreaker/i)).toHaveValue(BUYERS_PICK);
     expect(nominateArbiter).not.toHaveBeenCalled();
   });
 
   it('still keeps the warning about who the address belongs to', () => {
     show({ nominatedByBuyer: BUYERS_PICK }, 'recipient');
 
-    expect(screen.getByText(/no register of approved arbiters/i)).toBeInTheDocument();
+    expect(screen.getByText(/no register of approved tiebreakers/i)).toBeInTheDocument();
   });
 });

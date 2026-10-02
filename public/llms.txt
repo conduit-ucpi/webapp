@@ -5,7 +5,7 @@
 > agents can pay on a person's behalf while the PERSON keeps the right to object.
 
 Payments settle in USDC on Base (chain 8453). The escrow's address is a pure function of its
-terms — token, buyer, seller, amount, maturity, arbiter and an id — so the terms *are* the
+terms — token, buyer, seller, amount, maturity, tiebreaker and an id — so the terms *are* the
 address. That is what lets a payer sign a destination before anything exists at it, and why no
 credential is needed to use the service: a request whose terms derive anywhere else is refused.
 
@@ -38,7 +38,7 @@ credential is needed to use the service: a request whose terms derive anywhere e
 
 - [How it works](https://stabledrop.me/how-it-works/): an escrow payment start to finish
 - [FAQ](https://stabledrop.me/faq/): fees, disputes, timing
-- [Arbitration policy](https://stabledrop.me/arbitration-policy/): how a dispute is decided, by
+- [Dispute policy](https://stabledrop.me/dispute-policy/): how a dispute is decided, by
   whom, and on what evidence
 - [Terms of service](https://stabledrop.me/terms-of-service/)
 - [Privacy policy](https://stabledrop.me/privacy-policy/)

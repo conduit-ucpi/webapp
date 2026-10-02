@@ -1,6 +1,6 @@
 /**
- * The arbitration rules exactly as disputeservice serves them at /policy/rules, through
- * /api/arbitration/rules. The text is ARBITRATION_POLICY.md's own; the site keeps no copy.
+ * The dispute rules exactly as disputeservice serves them at /policy/rules, through
+ * /api/dispute-rules. The text is ARBITRATION_POLICY.md's own; the site keeps no copy.
  */
 
 export interface RuleSection {

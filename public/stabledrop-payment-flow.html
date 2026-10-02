@@ -281,8 +281,8 @@
     <div class="num alt">C</div>
     <div class="card is-dispute">
       <h3>The split is decided by a 2-of-3 vote</h3>
-      <p class="who">Buyer · Seller · Arbiter (a neutral tie-breaker)</p>
-      <p>Each contract has three voters: the buyer, the seller, and a neutral <b>arbiter</b> who can only help decide — never take the funds. <b>Each vote is signed by that party's own wallet</b>, so nobody can vote on anyone else's behalf. When any <b>two of the three agree</b> on how to split the money (e.g. full refund, full payment, or anything in between like 60/40), that decision is locked in.</p>
+      <p class="who">Buyer · Seller · Tiebreaker (neutral)</p>
+      <p>Each contract has three voters: the buyer, the seller, and a neutral <b>tiebreaker</b> who can only help decide — never take the funds. <b>Each vote is signed by that party's own wallet</b>, so nobody can vote on anyone else's behalf. When any <b>two of the three agree</b> on how to split the money (e.g. full refund, full payment, or anything in between like 60/40), that decision is locked in.</p>
       <div class="tags">
         <span class="tag onchain">On-chain</span>
         <span class="tag sign">Each vote signed by its own wallet</span>
@@ -297,7 +297,7 @@
     <div class="card is-dispute">
       <h3>Funds are released — only ever to buyer and seller</h3>
       <p class="who">Buyer and/or Seller · paid directly on-chain</p>
-      <p>Once two matching signed votes are in, the agreed split is paid out straight from the vault to the buyer and/or the seller. The blockchain <b>physically prevents</b> the money from going anywhere else — not to the arbiter, not to StableDrop. The two shares always add up to 100% of the escrow.</p>
+      <p>Once two matching signed votes are in, the agreed split is paid out straight from the vault to the buyer and/or the seller. The blockchain <b>physically prevents</b> the money from going anywhere else — not to the tiebreaker, not to StableDrop. The two shares always add up to 100% of the escrow.</p>
       <div class="tags">
         <span class="tag onchain">On-chain</span>
         <span class="tag sign">Released by the parties' signatures</span>
@@ -307,7 +307,7 @@
   </div>
 
   <div class="banner">
-    <b>Non-custodial, end to end — even in a dispute.</b> StableDrop never holds your money and <b>has no power to move it</b>. Money goes into the vault only when the buyer authorises it, and comes out only on the terms fixed when they did — to the seller after the release date, or split between buyer and seller by a 2-of-3 vote signed by their own wallets. Funds go buyer&nbsp;→&nbsp;vault&nbsp;→&nbsp;seller (or back to the buyer if a dispute is resolved that way), all on the blockchain, controlled only by code and your signatures. The arbiter and StableDrop can help <i>decide</i> a dispute, but the contract makes it impossible for them to <i>take</i> the funds. We just handle the easy parts — the request, the notifications, setting up the empty vault, and covering the blockchain fees so you don't have to.
+    <b>Non-custodial, end to end — even in a dispute.</b> StableDrop never holds your money and <b>has no power to move it</b>. Money goes into the vault only when the buyer authorises it, and comes out only on the terms fixed when they did — to the seller after the release date, or split between buyer and seller by a 2-of-3 vote signed by their own wallets. Funds go buyer&nbsp;→&nbsp;vault&nbsp;→&nbsp;seller (or back to the buyer if a dispute is resolved that way), all on the blockchain, controlled only by code and your signatures. The tiebreaker and StableDrop can help <i>decide</i> a dispute, but the contract makes it impossible for them to <i>take</i> the funds. We just handle the easy parts — the request, the notifications, setting up the empty vault, and covering the blockchain fees so you don't have to.
   </div>
 </div>
 </body>

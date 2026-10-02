@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { apiFetch } from '@/lib/apiFetch';
-import RulesMarkdown from '@/components/arbitration/RulesMarkdown';
-import { PolicyRules } from '@/types/policyRules';
+import RulesMarkdown from '@/components/dispute-rules/RulesMarkdown';
+import { PolicyRules } from '@/types/disputeRules';
 
 /**
  * The rules a dispute is decided by, fetched from disputeservice when the page is viewed.
@@ -33,13 +33,13 @@ export function VersionLine({ rules }: { rules: PolicyRules }) {
   );
 }
 
-export default function PublishedRules() {
+export default function DisputeRules() {
   const [rules, setRules] = useState<PolicyRules | null>(null);
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    apiFetch('/api/arbitration/rules')
+    apiFetch('/api/dispute-rules')
       .then(async (response) => {
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const body = (await response.json()) as PolicyRules;

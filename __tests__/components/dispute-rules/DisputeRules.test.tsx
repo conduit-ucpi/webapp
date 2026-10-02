@@ -1,7 +1,7 @@
 import { render } from '@testing-library/react';
 import { screen, waitFor } from '@testing-library/dom';
-import PublishedRules from '@/components/arbitration/PublishedRules';
-import RulesMarkdown, { parseBlocks } from '@/components/arbitration/RulesMarkdown';
+import DisputeRules from '@/components/dispute-rules/DisputeRules';
+import RulesMarkdown, { parseBlocks } from '@/components/dispute-rules/RulesMarkdown';
 
 const json = (status: number, body: unknown) => ({ ok: status < 400, status, json: async () => body } as Response);
 const SHA = '2b8b926f4c20e08f03593209460f05a7d4941545';
@@ -57,7 +57,7 @@ describe('RulesMarkdown', () => {
   });
 });
 
-describe('PublishedRules', () => {
+describe('DisputeRules', () => {
   const fetchMock = jest.fn();
   beforeEach(() => {
     fetchMock.mockReset();
@@ -66,9 +66,9 @@ describe('PublishedRules', () => {
 
   it('shows the sections disputeservice serves, under the commit that last changed them', async () => {
     fetchMock.mockResolvedValueOnce(json(200, rules()));
-    render(<PublishedRules />);
+    render(<DisputeRules />);
     await waitFor(() => expect(screen.getByTestId('rules-section-3')).toBeTruthy());
-    expect(fetchMock.mock.calls[0][0]).toBe('/api/arbitration/rules');
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/dispute-rules');
     expect(screen.getByText('§3 Jurisdiction — checked before anything else')).toBeTruthy();
     expect(screen.getByText('The last substantive filing that nobody answered carries.').tagName).toBe('STRONG');
     const version = screen.getByTestId('rules-version');
@@ -79,19 +79,19 @@ describe('PublishedRules', () => {
 
   it('says so when the text is not exactly what the version names', async () => {
     fetchMock.mockResolvedValueOnce(json(200, rules({ policyModified: true })));
-    render(<PublishedRules />);
+    render(<DisputeRules />);
     await waitFor(() => expect(screen.getByTestId('rules-version').parentElement?.textContent).toContain('uncommitted changes'));
   });
 
   it('says the version is unknown rather than inventing one', async () => {
     fetchMock.mockResolvedValueOnce(json(200, rules({ policySha: null, policyCommittedAt: null })));
-    render(<PublishedRules />);
+    render(<DisputeRules />);
     await waitFor(() => expect(screen.getByText('Rules version: unknown.')).toBeTruthy());
   });
 
   it('shows a plain failure, and no rules, when the service cannot be reached', async () => {
     fetchMock.mockResolvedValueOnce(json(503, { error: 'unavailable' }));
-    render(<PublishedRules />);
+    render(<DisputeRules />);
     await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());
     expect(screen.queryByTestId('rules-section-3')).toBeNull();
   });

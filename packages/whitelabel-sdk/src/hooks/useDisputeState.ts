@@ -48,11 +48,11 @@ export function useArbiterState(contractAddress?: string | null): Fetched<Arbite
     try {
       const response = await apiFetch(`/api/chain/contract/${contractAddress}/arbiter`);
       const body = await response.json();
-      if (!response.ok) throw new Error(body.error || `Failed to read arbiter state (${response.status})`);
+      if (!response.ok) throw new Error(body.error || `Failed to read tiebreaker state (${response.status})`);
       setData(body as ArbiterState);
       return body as ArbiterState;
     } catch (e: any) {
-      setError(e.message || 'Failed to read arbiter state');
+      setError(e.message || 'Failed to read tiebreaker state');
       return null;
     } finally {
       setLoading(false);

@@ -70,7 +70,7 @@ export default function StandingFiguresPanel({
     { role: 'Buyer', address: state.buyer, percent: state.buyerVote, isYou: isYou(state.buyer) },
     { role: 'Recipient', address: state.recipient, percent: state.recipientVote, isYou: isYou(state.recipient) },
     ...(state.arbiter
-      ? [{ role: 'Arbiter', address: state.arbiter, percent: state.arbiterVote, isYou: isYou(state.arbiter) }]
+      ? [{ role: 'Tiebreaker', address: state.arbiter, percent: state.arbiterVote, isYou: isYou(state.arbiter) }]
       : [])
   ];
 

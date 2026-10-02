@@ -157,7 +157,7 @@ export default function DisputeCasePanel({ contractId, onClose, onChanged }: Dis
               <div className="flex justify-between"><span className="text-gray-600 dark:text-secondary-300">Amount</span><span>{displayCurrency(Number(facts.amountMicro), 'microUSDC')}</span></div>
               <div className="flex justify-between"><span className="text-gray-600 dark:text-secondary-300">Maturity</span><span>{formatDateTimeWithTZ(facts.expiryTimestamp)}{facts.daysPastMaturity > 0 && ` (${facts.daysPastMaturity} d ago)`}</span></div>
               <div className="flex justify-between"><span className="text-gray-600 dark:text-secondary-300">Chain status</span><span>{facts.chain.status ?? 'unreadable'}</span></div>
-              <div className="flex justify-between"><span className="text-gray-600 dark:text-secondary-300">Arbiter seat</span><span>{facts.chain.seated ? (facts.chain.isDefaultArbiter ? 'default Safe' : 'someone else') : 'empty'}</span></div>
+              <div className="flex justify-between"><span className="text-gray-600 dark:text-secondary-300">Tiebreaker seat</span><span>{facts.chain.seated ? (facts.chain.isDefaultArbiter ? 'default Safe' : 'someone else') : 'empty'}</span></div>
               <div className="text-gray-800 dark:text-secondary-200 pt-2">{facts.description}</div>
             </div>
 
@@ -174,7 +174,7 @@ export default function DisputeCasePanel({ contractId, onClose, onChanged }: Dis
                   {c.reasoning && <div className="text-gray-800 dark:text-secondary-200 pt-2 italic">{c.reasoning}</div>}
                 </>
               ) : (
-                <div className="text-gray-600 dark:text-secondary-300">Not yet seen by the arbiter service. Run a pass to open it.</div>
+                <div className="text-gray-600 dark:text-secondary-300">Not yet seen by the tiebreaker service. Run a pass to open it.</div>
               )}
             </div>
           </div>

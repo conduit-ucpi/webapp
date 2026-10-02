@@ -61,7 +61,7 @@ export default function ArbiterPanel({
   if (!state || (!state.canNominate && !state.canSeatDefaultArbiter && !state.canEvictArbiter && state.seated)) {
     return state?.seated ? (
       <div className="text-sm text-gray-600 dark:text-secondary-300">
-        Arbiter seated: <span className="font-mono text-xs">{state.arbiter}</span>
+        Tiebreaker seated: <span className="font-mono text-xs">{state.arbiter}</span>
       </div>
     ) : null;
   }
@@ -217,7 +217,7 @@ export default function ArbiterPanel({
                   // Only `theirs` can produce a match. Claiming one against our own standing
                   // nomination announces a seating that did not happen.
                   theirs && candidate.toLowerCase() === theirs.toLowerCase()
-                    ? 'Nominations matched — that arbiter is now seated.'
+                    ? 'Nominations matched — that tiebreaker is now seated.'
                     : 'Nomination recorded. It seats them the moment the other party names the same address.'
                 )
               }
@@ -237,7 +237,7 @@ export default function ArbiterPanel({
         <div className="space-y-2">
           <p className="text-sm text-gray-700 dark:text-secondary-200">
             The 72-hour nomination window has passed without agreement. Anyone may now seat the
-            platform&apos;s default arbiter — a multisig that acts only as a third voter.
+            platform&apos;s default tiebreaker — a multisig that acts only as a third voter.
           </p>
           <Button
             type="button"
@@ -250,11 +250,11 @@ export default function ArbiterPanel({
                   const result = await seatDefaultArbiter(contractAddress);
                   if (!result.success) throw new Error(result.error || 'Seating failed');
                 },
-                'The default arbiter is seated and can now vote.'
+                'The default tiebreaker is seated and can now vote.'
               )
             }
           >
-            {busy === 'Seating' ? <LoadingSpinner className="w-4 h-4" /> : 'Seat the default arbiter'}
+            {busy === 'Seating' ? <LoadingSpinner className="w-4 h-4" /> : 'Seat the default tiebreaker'}
           </Button>
         </div>
       )}
@@ -263,7 +263,7 @@ export default function ArbiterPanel({
       {state.canEvictArbiter && (
         <div className="space-y-2">
           <p className="text-sm text-gray-700 dark:text-secondary-200">
-            This arbiter has been silent for 30 days
+            This tiebreaker has been silent for 30 days
             {state.lastArbiterActionAt
               ? ` (last active ${formatTimestamp(state.lastArbiterActionAt).date})`
               : ''}
@@ -282,14 +282,14 @@ export default function ArbiterPanel({
               )
             }
           >
-            {busy === 'Eviction' ? <LoadingSpinner className="w-4 h-4" /> : 'Request a new arbiter'}
+            {busy === 'Eviction' ? <LoadingSpinner className="w-4 h-4" /> : 'Request a new tiebreaker'}
           </Button>
         </div>
       )}
 
       {!state.seated && state.nominationDeadline && !state.canSeatDefaultArbiter && (
         <p className="text-xs text-gray-500 dark:text-secondary-400">
-          If no one agrees, the default arbiter becomes seatable after{' '}
+          If no one agrees, the default tiebreaker becomes seatable after{' '}
           {formatTimestamp(state.nominationDeadline).date} at{' '}
           {formatTimestamp(state.nominationDeadline).time}.
         </p>

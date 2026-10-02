@@ -1,7 +1,7 @@
 import { Fragment, ReactNode } from 'react';
 
 /**
- * The Markdown the arbitration policy is written in, as React elements.
+ * The Markdown the dispute policy (ARBITRATION_POLICY.md) is written in, as React elements.
  *
  * Deliberately small: headings, paragraphs, flat lists, quotes, bold, italic and code — what the
  * policy uses. Built from elements, never `dangerouslySetInnerHTML`, because the text arrives from

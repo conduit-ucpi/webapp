@@ -58,7 +58,7 @@ const REGIMES = {
     cap: 93,
     rate: 7,
     blurb:
-      "Two to three years of dispute data, approved arbitrators only, audited contract. Prices like forfaiting paper — risk-free plus 250–500bp.",
+      "Two to three years of dispute data, approved tiebreakers only, audited contract. Prices like forfaiting paper — risk-free plus 250–500bp.",
   },
 } as const;
 
@@ -885,7 +885,7 @@ ${signOff || "[your name]"}`;
                 the funder's discount buys another {pct(Math.max(0, m.breakeven * 100 - (100 - cap)), 1)} because
                 it advanced less than its cap. Past {pct(m.breakeven * 100, 1)} the
                 funder is out of pocket. A full refund costs it {money(m.advance)} —
-                which no cap fixes, and is what an approved-arbitrator requirement
+                which no cap fixes, and is what an approved-tiebreaker requirement
                 is for.
               </p>
               <div style={{ overflowX: "auto", marginTop: 10 }}>

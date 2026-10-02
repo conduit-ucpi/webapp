@@ -48,7 +48,7 @@ export default function CustomArbiterNotice({ arbiterAddress }: CustomArbiterNot
       <p className="text-sm font-medium text-yellow-800 dark:text-yellow-300">{t('customArbiterNotice.customDisputeResolver')}</p>
       <p className="text-sm text-yellow-800 dark:text-yellow-300 mt-1">{t('customArbiterNotice.thisContractUsesA')}</p>
       <p className="text-sm text-yellow-800 dark:text-yellow-300 mt-2">
-        Arbiter:{' '}
+        Tiebreaker:{' '}
         <span
           className="font-mono break-all"
           data-testid="custom-arbiter-address"

@@ -20,7 +20,7 @@ const staticPages = [
   // High priority pages
   { path: '', priority: '1.0', changefreq: 'daily' },  // homepage
   { path: '/faq', priority: '0.9', changefreq: 'weekly' },
-  { path: '/arbitration-policy', priority: '0.9', changefreq: 'weekly' },
+  { path: '/dispute-policy', priority: '0.9', changefreq: 'weekly' },
   { path: '/merchant-savings-calculator', priority: '0.9', changefreq: 'weekly' },
 
   // Integration & plugin pages

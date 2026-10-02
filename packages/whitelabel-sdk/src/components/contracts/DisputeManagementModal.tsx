@@ -67,7 +67,7 @@ export default function DisputeManagementModal({ isOpen, onClose, contract, onRe
     return [
       { role: 'the buyer', address: state.buyer, percent: state.buyerVote },
       { role: 'the recipient', address: state.recipient, percent: state.recipientVote },
-      { role: 'the arbiter', address: state.arbiter, percent: state.arbiterVote }
+      { role: 'the tiebreaker', address: state.arbiter, percent: state.arbiterVote }
     ]
       .filter((f) => f.percent !== null && f.address && f.address.toLowerCase() !== me)
       .map((f) => ({ role: f.role, percent: f.percent as number }));

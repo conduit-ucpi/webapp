@@ -66,7 +66,7 @@ export default function DisputeQueue({ onSelect, refreshKey = 0 }: DisputeQueueP
   const readyCount = rows.filter((r) => r.status === 'READY_TO_EXECUTE').length;
 
   const releaseBatch = async () => {
-    if (!window.confirm(`Propose ${readyCount} vote(s) to the arbiter Safe? A second Safe owner will still have to confirm, but once they do the votes are final.`)) return;
+    if (!window.confirm(`Propose ${readyCount} vote(s) to the tiebreaker Safe? A second Safe owner will still have to confirm, but once they do the votes are final.`)) return;
     setIsReleasing(true);
     setRelease(null);
     try {
@@ -106,7 +106,7 @@ export default function DisputeQueue({ onSelect, refreshKey = 0 }: DisputeQueueP
               </span>
             </div>
             <p className="text-sm text-gray-600 dark:text-secondary-300">
-              {rows.length} open dispute{rows.length === 1 ? '' : 's'} the default arbiter is responsible for, oldest past maturity first.
+              {rows.length} open dispute{rows.length === 1 ? '' : 's'} the default tiebreaker is responsible for, oldest past maturity first.
               {readyCount > 0 && ` ${readyCount} ready to execute.`}
             </p>
           </div>
@@ -188,7 +188,7 @@ export default function DisputeQueue({ onSelect, refreshKey = 0 }: DisputeQueueP
       </div>
 
       {rows.length === 0 && !error && (
-        <div className="text-center py-12 text-gray-600 dark:text-secondary-300">No open disputes for the default arbiter.</div>
+        <div className="text-center py-12 text-gray-600 dark:text-secondary-300">No open disputes for the default tiebreaker.</div>
       )}
     </div>
   );

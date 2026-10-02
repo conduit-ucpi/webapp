@@ -144,7 +144,7 @@ describe('CreateContractWizard - arbiterAddress (advanced option)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /advanced options/i }));
     expect(screen.getByPlaceholderText('0x...')).toBeInTheDocument();
-    expect(screen.getByText(/arbiter wallet address/i)).toBeInTheDocument();
+    expect(screen.getByText(/tiebreaker wallet address/i)).toBeInTheDocument();
   });
 
   it('accepts the form with no arbiter (it is optional)', async () => {
@@ -175,7 +175,7 @@ describe('CreateContractWizard - arbiterAddress (advanced option)', () => {
     clickContinue();
 
     expect(screen.queryByRole('button', { name: /create payment request/i })).not.toBeInTheDocument();
-    expect(screen.getByText(/invalid arbiter wallet address/i)).toBeInTheDocument();
+    expect(screen.getByText(/invalid tiebreaker wallet address/i)).toBeInTheDocument();
   });
 
   it('sends no arbiter when none was given', async () => {

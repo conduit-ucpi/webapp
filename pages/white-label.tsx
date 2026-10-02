@@ -130,7 +130,7 @@ export default function WhiteLabelGuide() {
     "support": "mailto:support@your-site.example",
     "terms": "/terms-of-service",
     "privacy": "/privacy-policy",
-    "arbitration": "/arbitration-policy"
+    "arbitration": "/dispute-policy"
   }
 }`;
 
@@ -221,7 +221,7 @@ export default function WhiteLabelGuide() {
               your brand and allow your domains (steps 2 and 3), then reply to confirm.
             </p>
             <BrandRequestForm example={exampleConfig} />
-            <p>Nothing you send can change a payment&apos;s terms, fee, arbiter or verification. Branding only changes how the pages look and read.</p>
+            <p>Nothing you send can change a payment&apos;s terms, fee, tiebreaker or verification. Branding only changes how the pages look and read.</p>
           </Step>
 
           <Step id="create-brand" n="Step 2" title="We create your brand" roles={['us']} who="Stabledrop, once your request arrives. Nothing for you to do here; this is how we do it.">

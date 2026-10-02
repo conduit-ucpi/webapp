@@ -76,7 +76,7 @@ export function EvidenceAsymmetryNotice({ daysToMaturity }: { daysToMaturity: nu
       <p className="mt-1">
         Until then the buyer can dispute this payment, and if they do you inherit a dispute you
         cannot evidence: you were not party to the work and hold none of the correspondence. Your
-        levers are the residual you hold back, care in agreeing an arbiter, and buying short-dated.
+        levers are the residual you hold back, care in agreeing a tiebreaker, and buying short-dated.
       </p>
       <p className="mt-2 text-xs">
         A deeper discount mechanically reduces what an attacker could take from you.

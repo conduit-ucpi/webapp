@@ -1,5 +1,5 @@
 import { createMocks } from 'node-mocks-http';
-import rulesHandler from '@/pages/api/arbitration/rules';
+import rulesHandler from '@/pages/api/dispute-rules';
 
 global.fetch = jest.fn();
 const mockFetch = global.fetch as jest.MockedFunction<typeof fetch>;
@@ -8,7 +8,7 @@ const upstream = (status: number, body: unknown) =>
   ({ status, text: async () => JSON.stringify(body) } as unknown as Response);
 
 /** The public policy page reads the rules through this route, before anyone has signed in. */
-describe('/api/arbitration/rules', () => {
+describe('/api/dispute-rules', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     process.env.DISPUTE_SERVICE_URL = 'http://disputeservice:8981';

@@ -299,7 +299,7 @@ export function DisputedContractsEmptyState() {
       description="That's a good thing! None of your contracts are currently in dispute. This means all parties are satisfied with their transactions."
       secondaryAction={{
         label: "Learn About Disputes",
-        href: "/arbitration-policy"
+        href: "/dispute-policy"
       }}
     />
   );

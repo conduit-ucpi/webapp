@@ -565,7 +565,7 @@ export default function Plugins() {
 
                 <div className="mt-12">
                   <Link
-                    href="/arbitration-policy"
+                    href="/dispute-policy"
                     className="text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-colors"
                   >
                     View arbitration framework and dispute resolution procedures &rarr;

@@ -229,7 +229,7 @@ export default function LandingTest07() {
             </div>
             <Fade delay={0.3}>
               <div className="mt-6">
-                <Link href="/arbitration-policy" className={lt.btnSecondary}>Read the arbitration policy</Link>
+                <Link href="/dispute-policy" className={lt.btnSecondary}>Read the dispute policy</Link>
               </div>
             </Fade>
           </div>

@@ -65,6 +65,13 @@ const serverOnlyConfig = {
         source: '/whats-wrong-with-payments',
         destination: 'https://medium.com/@charliepank/whats-wrong-with-payments-e2ea2bbeec87',
         permanent: true, // 301 permanent redirect
+      },
+      // The policy page was renamed. Old links, search results and white-label brand records still
+      // point here. The static export has no redirects; pages/arbitration-policy.tsx covers it there.
+      {
+        source: '/arbitration-policy',
+        destination: '/dispute-policy',
+        permanent: true,
       }
     ]
   },

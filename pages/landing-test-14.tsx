@@ -115,7 +115,7 @@ export default function LandingTest14() {
           ariaLabel="What happens on a dispute"
           items={DISPUTE_FLOW.map((d) => ({ label: d.title, text: d.text }))}
         >
-          <Link href="/arbitration-policy" className={lt.btnSecondary}>Read the arbitration policy</Link>
+          <Link href="/dispute-policy" className={lt.btnSecondary}>Read the dispute policy</Link>
         </ScrollLinked>
 
         <Chapter id="demo" label="Live demo" title="See what your customers see." ariaLabel="Try the checkout" aside={<CheckoutMock />}>

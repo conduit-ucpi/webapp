@@ -2,7 +2,7 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { methodGuard, proxyToService } from '@/lib/server/serviceProxy';
 
 /**
- * The arbitration rules, as disputeservice publishes them from ARBITRATION_POLICY.md, with the
+ * The dispute rules, as disputeservice publishes them from ARBITRATION_POLICY.md, with the
  * commit that last changed the policy.
  *
  * ⚠️ requiresAuth: false. This is the public policy page's content: it reads nothing about anybody,

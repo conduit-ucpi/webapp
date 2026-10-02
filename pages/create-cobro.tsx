@@ -118,7 +118,7 @@ export default function CreateWhiteLabelPage() {
         <span className="ml-auto flex gap-5 text-xs text-white/40">
           <Link href="/terms-of-service" className="hover:text-white transition-colors">{t('wl.footerTerms')}</Link>
           <Link href="/privacy-policy" className="hover:text-white transition-colors">{t('wl.footerPrivacy')}</Link>
-          <Link href="/arbitration-policy" className="hover:text-white transition-colors">{t('wl.footerDisputes')}</Link>
+          <Link href="/dispute-policy" className="hover:text-white transition-colors">{t('wl.footerDisputes')}</Link>
         </span>
       </div>
     </footer>

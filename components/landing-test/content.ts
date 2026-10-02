@@ -110,7 +110,7 @@ export const HOW_IT_WORKS = [
   {
     num: '03',
     title: 'Payout',
-    desc: "On the agreed date, the seller is paid automatically. If something's wrong, the buyer can freeze the payment before then. Most issues are sorted between buyer and seller, but if they can't agree, an independent tiebreaker decides.",
+    desc: "On the agreed date, the seller is paid automatically. If something's wrong, the buyer can freeze the payment before then. Most issues are sorted between buyer and seller, but if they can't agree, an independent tiebreaker casts the third vote.",
   },
 ];
 
@@ -137,7 +137,7 @@ export const FEE_COMPARISON = [
 export const BOTH_SIDES_POINTS = [
   { label: 'Buyers', text: 'Pay any supplier with confidence, no vetting needed. Your money is held until the goods arrive or the work is done.' },
   { label: 'Sellers', text: 'See the money is committed before you ship or deliver.' },
-  { label: 'If something goes wrong', text: "Freeze the funds and agree a fix together. If you can't agree, an independent tiebreaker decides." },
+  { label: 'If something goes wrong', text: "Freeze the funds and agree a fix together. If you can't agree, an independent tiebreaker casts the third vote." },
 ];
 
 export const BUYER_POINTS = [

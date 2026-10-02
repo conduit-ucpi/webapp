@@ -375,7 +375,7 @@ export const en = {
   'createContract.youCanSearchFor': 'You can search for Farcaster users or enter an email address',
   'createContract.briefDescriptionOfThe': 'Brief description of the escrow agreement...',
   'customArbiterNotice.customDisputeResolver': 'Custom dispute resolver',
-  'customArbiterNotice.thisContractUsesA': 'This contract uses a non-standard tiebreaker chosen by the seller. If a dispute arises, they — not the application admin — will decide the outcome. Verify you trust this tiebreaker before paying.',
+  'customArbiterNotice.thisContractUsesA': 'This contract uses a non-standard tiebreaker chosen by the seller. If a dispute arises, they — not the application admin — cast the third vote, which settles it when it matches yours or the seller\'s. Verify you trust this tiebreaker before paying.',
   'customArbiterNotice.copyArbiterAddress': 'Copy tiebreaker address',
   'disputeManagementModal.settleThisDispute': 'Settle this dispute',
   'disputeManagementModal.product': 'Product:',

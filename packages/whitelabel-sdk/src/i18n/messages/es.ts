@@ -92,7 +92,7 @@ export const es: Catalogue = {
   'wizard.created': '¡Solicitud de pago creada!',
   'wizard.createFailed': 'No se pudo crear la solicitud de pago',
   'wizard.errDescription': 'La descripción debe tener entre 1 y 160 caracteres',
-  'wizard.errArbiter': 'La dirección de billetera del árbitro no es válida',
+  'wizard.errArbiter': 'La dirección de billetera del tercero de desempate no es válida',
   'wizard.errAmount': 'Ingresa un monto válido',
   'wizard.errDate': 'Selecciona una fecha y hora válidas',
   'wizard.errPast': 'La fecha de liberación debe ser futura',
@@ -210,7 +210,7 @@ export const es: Catalogue = {
   'terms.advancedOptions': 'Opciones avanzadas',
   'common.progress': 'Progreso',
   'pay.payButton': 'Pagar',
-  'terms.arbiterAddress': 'Dirección de billetera del árbitro',
+  'terms.arbiterAddress': 'Dirección de billetera del tercero de desempate',
   'terms.arbiterHelp':
     'Opcional: reemplaza al resolutor de disputas. Déjalo en blanco para usar el predeterminado.',
   'review.nextBody':
@@ -337,9 +337,9 @@ export const es: Catalogue = {
   'addFundsModal.orSendManuallyTo': 'O envía manualmente a esta dirección',
   'addFundsModal.back': 'Atrás',
 
-  'arbiterPanel.readingTheArbiterSeat': 'Consultando el puesto de árbitro…',
-  'arbiterPanel.arbiterSeat': 'Puesto de árbitro',
-  'arbiterPanel.nominateAnArbiter': 'Nominar un árbitro',
+  'arbiterPanel.readingTheArbiterSeat': 'Consultando el puesto del tercero de desempate…',
+  'arbiterPanel.arbiterSeat': 'Puesto del tercero de desempate',
+  'arbiterPanel.nominateAnArbiter': 'Nominar un tercero de desempate',
   'arbiterPanel.namingTheSameAddress':
     'Nombrar la misma dirección que la otra parte lo designa de inmediato.',
   'arbiterPanel.thatIsNotA': 'Esa no es una dirección de billetera válida.',
@@ -429,8 +429,8 @@ export const es: Catalogue = {
 
   'customArbiterNotice.customDisputeResolver': 'Resolutor de disputas personalizado',
   'customArbiterNotice.thisContractUsesA':
-    'Este contrato usa un árbitro no estándar elegido por el vendedor. Si surge una disputa, será él, y no el administrador de la aplicación, quien decida el resultado. Verifica que confías en este árbitro antes de pagar.',
-  'customArbiterNotice.copyArbiterAddress': 'Copiar la dirección del árbitro',
+    'Este contrato usa un tercero de desempate no estándar elegido por el vendedor. Si surge una disputa, será él, y no el administrador de la aplicación, quien emita el tercer voto, que resuelve la disputa cuando coincide con el tuyo o con el del vendedor. Verifica que confías en este tercero de desempate antes de pagar.',
+  'customArbiterNotice.copyArbiterAddress': 'Copiar la dirección del tercero de desempate',
 
   'disputeManagementModal.settleThisDispute': 'Resolver esta disputa',
   'disputeManagementModal.product': 'Producto:',
@@ -509,7 +509,7 @@ export const es: Catalogue = {
   'standingFiguresPanel.nobodyHasSubmittedA': 'Todavía nadie ha enviado una cifra.',
   'standingFiguresPanel.noFigureSubmitted': 'Sin cifra enviada',
   'standingFiguresPanel.noArbiterIsSeated':
-    'No hay árbitro designado, así que solo el comprador y el destinatario pueden resolverlo entre ellos.',
+    'No hay tercero de desempate designado, así que solo el comprador y el destinatario pueden resolverlo entre ellos.',
 
   'connectWalletEmbedded.emailSocialSignIn': 'Inicio de sesión con correo y redes no disponible',
   'connectWalletEmbedded.whichOurEmailSocial':
@@ -640,11 +640,11 @@ export const es: Catalogue = {
     'Terminarás en Coinbase. ¿Es tu primera vez en Coinbase? Verificarán tu identidad una sola vez.',
   'arbiterPanel.seated': 'Designado:',
   'arbiterPanel.seatEmpty':
-    'El puesto está vacío. El flujo de fondos de este depósito en garantía se vendió, lo que deja al árbitro sin su puesto automáticamente. El comprador y el destinatario pueden acordar un reemplazo, o esperar al árbitro predeterminado.',
+    'El puesto está vacío. El flujo de fondos de este depósito en garantía se vendió, lo que deja al tercero de desempate sin su puesto automáticamente. El comprador y el destinatario pueden acordar un reemplazo, o esperar al tercero de desempate predeterminado.',
   'arbiterPanel.nominationWarningBody':
-    'Ocurre en esta transacción y no se puede deshacer. No existe un registro de árbitros aprobados ni comprobación de a quién pertenece esta dirección; solo se verifica que no sea el comprador ni el destinatario.',
+    'Ocurre en esta transacción y no se puede deshacer. No existe un registro de terceros de desempate aprobados ni comprobación de a quién pertenece esta dirección; solo se verifica que no sea el comprador ni el destinatario.',
   'arbiterPanel.decliningIsSafe':
-    'No nominar a nadie siempre es seguro: si nadie se pone de acuerdo, el árbitro predeterminado de la plataforma toma el puesto cuando se cierra el plazo.',
+    'No nominar a nadie siempre es seguro: si nadie se pone de acuerdo, el tercero de desempate predeterminado de la plataforma toma el puesto cuando se cierra el plazo.',
   'arbiterPanel.theyNominated': 'La otra parte ha propuesto:',
   'arbiterPanel.youNominated': 'Tú has propuesto:',
   'arbiterPanel.matchSeatsThem':

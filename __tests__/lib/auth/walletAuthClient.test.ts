@@ -1,3 +1,4 @@
+import { termsUrl } from '@/lib/auth/siwe-statement';
 import { buildSiweMessage } from '@/lib/auth/walletAuthClient';
 
 /**
@@ -13,6 +14,7 @@ describe('buildSiweMessage', () => {
       address: '0xc9D0602A87E55116F633b1A1F95D083Eb115f942',
       chainId: 8453,
       nonce: 'abc123',
+      serviceLink: 'https://stabledrop.me',
       issuedAt: '2026-09-18T10:00:00.000Z'
     });
 
@@ -30,10 +32,23 @@ Issued At: 2026-09-18T10:00:00.000Z`
     );
   });
 
-  it('carries the terms URL user-service requires before it will open a session', () => {
-    const message = buildSiweMessage({ address: '0xabc', chainId: 12345, nonce: 'n' });
+  it("names this deployment's own terms, from the site config serves, path and all ignored", () => {
+    // Test's serviceLink has carried /dashboard; the terms are at the site root regardless.
+    const message = buildSiweMessage({
+      address: '0xabc',
+      chainId: 84532,
+      nonce: 'n',
+      serviceLink: 'https://test.conduit-ucpi.com/dashboard'
+    });
 
-    expect(message.split('\n')[3]).toContain('https://stabledrop.me/terms-of-service/');
-    expect(message).toContain('Chain ID: 12345');
+    expect(message.split('\n')[3]).toBe(
+      'Sign to accept the Stabledrop Terms of Service (https://test.conduit-ucpi.com/terms-of-service/).'
+    );
+  });
+
+  it('falls back to the site the app is running on when config names none', () => {
+    // jsdom runs at http://localhost.
+    expect(termsUrl(undefined)).toBe('http://localhost/terms-of-service/');
+    expect(termsUrl('not a url')).toBe('http://localhost/terms-of-service/');
   });
 });

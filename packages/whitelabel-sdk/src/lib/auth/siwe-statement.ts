@@ -1,23 +1,49 @@
 /**
- * Where the Terms of Service are published. Absolute, because the app is also served from
- * merchant embeds and partner domains, and the terms are Stabledrop's wherever it runs.
+ * This deployment's Terms of Service: `<site>/terms-of-service/`, where the site is the
+ * `serviceLink` /api/config serves — the same site user-service expects (its APP_BASE_URL), so
+ * test signs test's terms and production signs production's.
+ *
+ * Only the origin is used: test's serviceLink has carried a `/dashboard` path. With no usable
+ * link, the page the app is running on is the best guess at its own site.
  */
-export const TERMS_URL = 'https://stabledrop.me/terms-of-service/';
+export function termsUrl(serviceLink?: string | null): string {
+  let origin: string | null = null;
+  try {
+    if (serviceLink) origin = new URL(serviceLink).origin;
+  } catch {
+    origin = null;
+  }
+  if (!origin) origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
+  return `${origin}/terms-of-service/`;
+}
 
 /**
- * Shared SIWE message statement shown in wallet signature prompts.
+ * The site the fallback signature message names, set once config is known (AuthManager does).
+ * The SIWE path does not use this: it is handed the site explicitly, because user-service
+ * refuses a sign-in that names the wrong one.
+ */
+let configuredServiceLink: string | null = null;
+
+export function setTermsServiceLink(serviceLink: string | null | undefined): void {
+  configuredServiceLink = serviceLink || null;
+}
+
+/**
+ * The SIWE message statement shown in wallet signature prompts.
  *
  * EIP-4361 puts this between the `<domain> wants you to sign in...` header
  * and the URI/Version/Chain ID/Nonce/Issued At fields.
  *
  * ⚠️ THE SIGNATURE IS THE ACCEPTANCE OF THE TERMS. user-service refuses a sign-in whose
- *    statement does not carry TERMS_URL, and records the signed message as the proof. Change
- *    the wording freely; drop the URL and every sign-in fails.
+ *    statement does not carry its own site's termsUrl(), and records the signed message as
+ *    the proof. Change the wording freely; drop the URL and every sign-in fails.
  *
  * Kept to one line on purpose: EIP-4361 forbids a newline in the statement, and wallets
  * truncate long ones — the URL has to survive that intact.
  */
-export const SIWE_STATEMENT = `Sign to accept the Stabledrop Terms of Service (${TERMS_URL}).`;
+export function siweStatement(terms: string): string {
+  return `Sign to accept the Stabledrop Terms of Service (${terms}).`;
+}
 
 /**
  * Message signed to mint a `signature_auth` token (the fallback auth path used
@@ -43,7 +69,7 @@ export function buildAuthTokenMessage(params: {
 
   return `${domain}
 
-${SIWE_STATEMENT}
+${siweStatement(termsUrl(configuredServiceLink))}
 
 Wallet: ${params.address}
 Issued: ${params.timestamp}

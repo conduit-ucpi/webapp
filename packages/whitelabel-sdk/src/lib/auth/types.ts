@@ -69,6 +69,8 @@ export interface AuthConfig {
   walletConnectProjectId?: string;
   /** Set to route wallet connection through Privy instead of Reown. Served by /api/config. */
   privyAppId?: string;
+  /** The site, from /api/config. Its `/terms-of-service/` is what signing in accepts. */
+  serviceLink?: string;
   usdcContractAddress?: string;
   usdtContractAddress?: string;
 }

@@ -279,7 +279,12 @@ export class PrivyProvider implements UnifiedProvider {
       }
       const address = await this.getAddress();
       const nonce = await requestAuthNonce();
-      const message = buildSiweMessage({ address, chainId: this.config.chainId, nonce });
+      const message = buildSiweMessage({
+        address,
+        chainId: this.config.chainId,
+        nonce,
+        serviceLink: this.config.serviceLink
+      });
       const signature = await this.signMessage(message);
       const verified = await verifyAuthSignature(message, signature);
       if (!verified) {

@@ -11,7 +11,7 @@ import {
   AuthState,
   AuthUser
 } from '@/lib/auth/types/unified-provider';
-import { buildAuthTokenMessage } from '@/lib/auth/siwe-statement';
+import { buildAuthTokenMessage, setTermsServiceLink } from '@/lib/auth/siwe-statement';
 import { ProviderRegistry } from './ProviderRegistry';
 import { TokenManager } from './TokenManager';
 import { mLog } from '@/utils/mobileLogger';
@@ -102,6 +102,7 @@ export class AuthManager {
    * Initialize the auth manager with configuration
    */
   async initialize(config: AuthConfig): Promise<void> {
+    setTermsServiceLink(config.serviceLink);
     console.log('🔧 AuthManager: Initializing with config');
 
     try {

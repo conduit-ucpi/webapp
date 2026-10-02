@@ -426,7 +426,8 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
     rpcUrl: config.rpcUrl,
     explorerBaseUrl: config.explorerBaseUrl,
     walletConnectProjectId: config.walletConnectProjectId,
-    privyAppId: config.privyAppId
+    privyAppId: config.privyAppId,
+    serviceLink: config.serviceLink
   } : null;
 
   // CRITICAL: Always render the SAME component tree structure regardless of

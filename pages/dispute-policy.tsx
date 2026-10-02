@@ -10,10 +10,10 @@ export default function DisputePolicy({ dateModified }: { dateModified: string }
   const structuredData = {
     "@context": "https://schema.org",
     "@type": "Article",
-    "headline": "Instant Escrow Auto-Arbitration System - Complete Dispute Resolution Policy",
+    "headline": "Dispute Management System - Complete Dispute Resolution Policy",
     "alternativeHeadline": "How Crypto Escrow Disputes are Resolved Through Direct Buyer-Seller Negotiation",
-    "description": "Comprehensive guide to our auto-arbitration dispute resolution system for cryptocurrency escrow payments. Buyers and sellers negotiate directly through the platform with funds frozen until mutual agreement is reached. No admin decisions required for most disputes.",
-    "articleBody": "Our auto-arbitration system empowers buyers and sellers to resolve disputes directly. Once funds are in dispute, they're frozen until both parties agree on a refund amount. The system automatically executes the agreed resolution without requiring admin intervention. When both parties enter the same refund amount, the dispute automatically resolves and distributes funds accordingly. Disputes can only be raised before the payout date, providing protection without the unfair penalties of traditional chargeback systems. The auto-arbitration process: 1) Buyer raises dispute with comment and refund suggestion, 2) Seller gets notified by email, 3) Both parties negotiate through dashboard comments and refund proposals, 4) When both agree on same refund amount, automatic resolution and payout occurs. Common dispute scenarios include: non-delivery (typical outcome 100% refund if no proof), wrong or damaged items (50-100% refund depending on severity), quality disputes (10-30% partial refund for minor issues), and accidental purchases (100% if caught early). If parties cannot agree, funds remain frozen indefinitely motivating compromise. For high-value disputes, parties can jointly use external arbitration services, then both enter the tiebreaker's decided amount for automatic execution. The system handles every case at least as well as traditional chargebacks, with key advantages: merchants not punished with fees for defending themselves, buyers still get protection, settlement is instant and costs fractions of a cent instead of 1.5-3.5%, disputes can only be raised before payout (not 180 days after like chargebacks), and once funds are released the transaction is final. Best practices for quick resolution: buyers should raise disputes promptly with clear explanations and reasonable requests, sellers should respond within 24 hours with delivery proof and fair counter-offers. The system is available 24/7 with disputes auto-resolving the moment both parties reach agreement.",
+    "description": "Comprehensive guide to our dispute management system for cryptocurrency escrow payments. Buyers and sellers negotiate directly through the platform; funds stay frozen until two of the three votes (buyer, seller and a tiebreaker) name the same split.",
+    "articleBody": "Our dispute management system empowers buyers and sellers to resolve disputes directly. Once funds are in dispute, they're frozen until two of the three votes (buyer, seller and the tiebreaker) name the same split. The system automatically executes the agreed resolution without requiring admin intervention. When both parties enter the same refund percentage, the dispute automatically resolves and distributes funds accordingly. Only the buyer can raise a dispute, and only before the payout date, providing protection without the unfair penalties of traditional chargeback systems. The dispute process: 1) Buyer raises dispute with comment and refund suggestion, 2) Seller gets notified by email, 3) Both parties negotiate through dashboard comments and refund proposals, 4) When two of the three votes match, automatic resolution and payout occurs. If the parties cannot agree, the tiebreaker decides under the published dispute rules. For high-value disputes, parties can jointly use an external dispute-resolution service, then both enter that service's decided amount for automatic execution. The system handles every case at least as well as traditional chargebacks, with key advantages: merchants not punished with fees for defending themselves, buyers still get protection, settlement is instant, there is no extra fee for raising or defending a dispute, disputes can only be raised before payout (not 180 days after like chargebacks), and once funds are released the transaction is final. Best practices for quick resolution: buyers should raise disputes promptly with clear explanations and reasonable requests, sellers should respond within 24 hours with delivery proof and fair counter-offers. The system is available 24/7 with disputes auto-resolving the moment both parties reach agreement.",
     "author": {
       "@type": "Organization",
       "name": "Conduit Escrow",
@@ -29,11 +29,11 @@ export default function DisputePolicy({ dateModified }: { dateModified: string }
     },
     "datePublished": "2024-01-01",
     "dateModified": dateModified,
-    "keywords": "crypto escrow disputes, blockchain arbitration, escrow dispute resolution, USDC refund process, buyer seller negotiation, smart contract disputes, automatic arbitration, chargeback alternative, cryptocurrency buyer protection, escrow mediation, automated negotiation, frozen funds, dispute management, refund agreements",
+    "keywords": "crypto escrow disputes, blockchain dispute resolution, escrow dispute resolution, USDC refund process, buyer seller negotiation, smart contract disputes, automatic dispute resolution, chargeback alternative, cryptocurrency buyer protection, escrow mediation, automated negotiation, frozen funds, dispute management, refund agreements",
     "about": {
       "@type": "Thing",
       "name": "Cryptocurrency Escrow Dispute Resolution",
-      "description": "Automated arbitration system for resolving payment disputes in blockchain-based escrow transactions"
+      "description": "Automated system for resolving payment disputes in blockchain-based escrow transactions"
     },
     "mainEntityOfPage": {
       "@type": "WebPage",
@@ -44,9 +44,9 @@ export default function DisputePolicy({ dateModified }: { dateModified: string }
   return (
     <>
       <SEO
-        title="Dispute Resolution & Arbitration Policy | Conduit Escrow"
-        description="How our auto-arbitration system resolves crypto escrow disputes. Buyers and sellers negotiate directly through the platform. Funds frozen until mutual agreement reached."
-        keywords="crypto escrow disputes, blockchain arbitration, escrow dispute resolution, USDC refund process, buyer seller negotiation, smart contract disputes, automatic arbitration"
+        title="Dispute Resolution Policy | Conduit Escrow"
+        description="How our dispute management system resolves crypto escrow disputes. Buyers and sellers negotiate directly through the platform, and a tiebreaker decides when they cannot agree."
+        keywords="crypto escrow disputes, blockchain dispute resolution, escrow dispute resolution, USDC refund process, buyer seller negotiation, smart contract disputes, automatic dispute resolution"
         canonical="/dispute-policy"
         structuredData={structuredData}
       />
@@ -54,37 +54,37 @@ export default function DisputePolicy({ dateModified }: { dateModified: string }
       <div className="min-h-screen bg-white dark:bg-secondary-900 py-12 transition-colors">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-4xl mx-auto">
-            <h1 className="text-4xl font-bold text-secondary-900 dark:text-white mb-2">Instant Escrow Auto-Arbitration System</h1>
+            <h1 className="text-4xl font-bold text-secondary-900 dark:text-white mb-2">Dispute Management System</h1>
             <p className="text-lg text-secondary-600 dark:text-secondary-300 mb-8 italic">How Disputes Work - For Buyers and Sellers</p>
             
             <div className="prose prose-lg max-w-none">
               <section className="bg-white dark:bg-secondary-800 rounded-lg shadow-sm dark:shadow-none p-6 mb-6">
                 <h2 className="text-2xl font-semibold text-secondary-800 dark:text-secondary-100 mb-4">Overview</h2>
                 <p className="text-secondary-600 dark:text-secondary-300 mb-2">
-                  Our auto-arbitration system empowers buyers and sellers to resolve disputes directly. <strong>Once funds are in dispute, they're frozen until both parties agree on a refund amount.</strong> The system automatically executes the agreed resolution without requiring admin intervention.
+                  Our dispute management system empowers buyers and sellers to resolve disputes directly. <strong>Once funds are in dispute, they're frozen until two of the three votes (buyer, seller and the tiebreaker) name the same split.</strong> The system automatically executes the agreed resolution without requiring admin intervention.
                 </p>
               </section>
 
               <section className="bg-white dark:bg-secondary-800 rounded-lg shadow-sm dark:shadow-none p-6 mb-6">
-                <h2 className="text-2xl font-semibold text-secondary-800 dark:text-secondary-100 mb-4">How the Auto-Arbitration System Works</h2>
+                <h2 className="text-2xl font-semibold text-secondary-800 dark:text-secondary-100 mb-4">How the Dispute Management System Works</h2>
                 
                 <div className="space-y-4">
                   <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
                     <p className="text-secondary-700 dark:text-secondary-200">
-                      <strong>Key Innovation:</strong> When both parties enter the same refund amount, the dispute automatically resolves and distributes funds accordingly. No waiting for admin decisions.
+                      <strong>Key Innovation:</strong> When both parties enter the same refund percentage, the dispute automatically resolves and distributes funds accordingly. No waiting for admin decisions.
                     </p>
                   </div>
 
                   <div>
                     <h3 className="text-xl font-semibold text-secondary-700 dark:text-secondary-200 mb-2">Step-by-Step Process</h3>
                     <ol className="list-decimal list-inside text-secondary-600 dark:text-secondary-300 space-y-2">
-                      <li><strong>Buyer raises dispute</strong> - Enters a comment explaining the issue and suggests a refund amount</li>
+                      <li><strong>Buyer raises dispute</strong> - Enters a comment explaining the issue and suggests a refund percentage. Only the buyer can raise a dispute, and only before the payout date</li>
                       <li><strong>Seller gets notified</strong> - Receives email alert about the dispute</li>
                       <li><strong>Both parties negotiate</strong> - Through the dashboard, each can:
                         <ul className="list-disc list-inside ml-6 mt-1">
                           <li>View all comments and refund suggestions history</li>
                           <li>Add new comments to explain their position</li>
-                          <li>Submit refund amount proposals</li>
+                          <li>Submit refund percentage proposals</li>
                         </ul>
                       </li>
                       <li><strong>Automatic resolution</strong> - When both enter the same amount, funds distribute instantly</li>
@@ -94,9 +94,10 @@ export default function DisputePolicy({ dateModified }: { dateModified: string }
                   <div>
                     <h3 className="text-xl font-semibold text-secondary-700 dark:text-secondary-200 mb-2">Understanding Refund Amounts</h3>
                     <ul className="list-disc list-inside text-secondary-600 dark:text-secondary-300 space-y-1">
-                      <li><strong>Refund amount</strong> = How much goes back to the buyer</li>
-                      <li><strong>Remaining amount</strong> = Automatically goes to the seller</li>
-                      <li><strong>Example:</strong> On a $100 contract, agreeing on $30 refund means buyer gets $30, seller gets $70</li>
+                      <li><strong>Refund percentage</strong> = The whole percentage (0-100%) of the escrow that goes back to the buyer</li>
+                      <li><strong>The rest</strong> = Automatically goes to the seller</li>
+                      <li><strong>The platform fee comes first:</strong> the split applies to the amount held after the 1% platform fee (at least $0.30)</li>
+                      <li><strong>Example:</strong> On a $100 contract the fee is $1, so agreeing on a 30% refund means the buyer gets $29.70 and the seller $69.30</li>
                     </ul>
                   </div>
                 </div>
@@ -119,7 +120,7 @@ export default function DisputePolicy({ dateModified }: { dateModified: string }
                 <div className="mb-4">
                   <h3 className="text-xl font-semibold text-secondary-700 dark:text-secondary-200 mb-2">How Sellers Should Respond</h3>
                   <ul className="list-disc list-inside text-secondary-600 dark:text-secondary-300 space-y-1">
-                    <li><strong>Legitimate issues</strong> - Agree to appropriate refund amount quickly</li>
+                    <li><strong>Legitimate issues</strong> - Agree to an appropriate refund percentage quickly</li>
                     <li><strong>Delivery completed</strong> - Provide tracking info in comments, suggest 0% refund</li>
                     <li><strong>Partial fault</strong> - Propose partial refund that's fair to both parties</li>
                     <li><strong>Buyer error</strong> - Explain in comments but consider goodwill partial refund</li>
@@ -143,7 +144,7 @@ export default function DisputePolicy({ dateModified }: { dateModified: string }
                     <ul className="list-disc list-inside text-secondary-600 dark:text-secondary-300 space-y-1">
                       <li><strong>View history</strong> - See all previous comments and refund suggestions from both parties</li>
                       <li><strong>Add comments</strong> - Explain your position, provide evidence, respond to the other party</li>
-                      <li><strong>Propose refund amount</strong> - Enter what you think is fair (can be updated anytime)</li>
+                      <li><strong>Propose a refund percentage</strong> - Enter what you think is fair (can be changed until two votes match)</li>
                       <li><strong>Track progress</strong> - See how close you are to agreement</li>
                     </ul>
                   </div>
@@ -151,8 +152,8 @@ export default function DisputePolicy({ dateModified }: { dateModified: string }
                   <div>
                     <h3 className="text-xl font-semibold text-secondary-700 dark:text-secondary-200 mb-2">Negotiation Tips</h3>
                     <ul className="list-disc list-inside text-secondary-600 dark:text-secondary-300 space-y-1">
-                      <li><strong>Be specific</strong> - Clearly explain why you're suggesting your refund amount</li>
-                      <li><strong>Provide evidence</strong> - Reference tracking numbers, photos, or communications</li>
+                      <li><strong>Be specific</strong> - Clearly explain why you're suggesting your refund percentage</li>
+                      <li><strong>Give checkable details</strong> - Tracking numbers, order numbers, dates. Comments are text only, up to 160 characters, so nothing can be attached</li>
                       <li><strong>Stay professional</strong> - Constructive dialogue leads to faster resolution</li>
                       <li><strong>Consider compromise</strong> - Meeting in the middle often works for both parties</li>
                       <li><strong>Update proposals</strong> - You can change your refund suggestion anytime before agreement</li>
@@ -212,28 +213,28 @@ export default function DisputePolicy({ dateModified }: { dateModified: string }
                 
                 <div className="space-y-4">
                   <div>
-                    <h3 className="text-xl font-semibold text-secondary-700 dark:text-secondary-200 mb-2">Funds Remain Frozen</h3>
+                    <h3 className="text-xl font-semibold text-secondary-700 dark:text-secondary-200 mb-2">The Tiebreaker Decides</h3>
                     <p className="text-secondary-600 dark:text-secondary-300">
-                      If you can't reach agreement, funds stay frozen indefinitely. Neither party can access them until you both enter the same refund amount. This motivates finding a reasonable compromise.
+                      Every disputed escrow has a third voter, the tiebreaker: StableDrop&apos;s default tiebreaker, unless the seller named a different one when creating the payment. If you can&apos;t reach agreement, the tiebreaker votes for a split under the dispute rules below, and the escrow pays out as soon as its vote matches one of yours. Agreeing between yourselves is still the fastest way out, and you can do it at any point before the tiebreaker&apos;s vote is matched.
                     </p>
                   </div>
 
                   <div>
-                    <h3 className="text-xl font-semibold text-secondary-700 dark:text-secondary-200 mb-2">External Arbitration Option</h3>
+                    <h3 className="text-xl font-semibold text-secondary-700 dark:text-secondary-200 mb-2">External Dispute Resolution Option</h3>
                     <p className="text-secondary-600 dark:text-secondary-300 mb-2">
-                      For high-value disputes where agreement seems impossible, you can jointly choose to use a professional arbitration service. This is entirely separate from our platform:
+                      For high-value disputes where agreement seems impossible, you can jointly choose to use a professional dispute-resolution service. This is entirely separate from our platform:
                     </p>
                     <ul className="list-disc list-inside text-secondary-600 dark:text-secondary-300 space-y-1">
-                      <li>Both parties agree to use external arbitration</li>
-                      <li>Select and pay for arbitration service together</li>
-                      <li>Tiebreaker reviews evidence and makes decision</li>
-                      <li>Both parties then enter the tiebreaker's decided refund amount</li>
+                      <li>Both parties agree to use an external service</li>
+                      <li>Select and pay for that service together</li>
+                      <li>The service reviews the evidence and makes a decision</li>
+                      <li>Both parties then enter the decided refund percentage</li>
                       <li>System automatically executes the resolution</li>
                     </ul>
                     
                     <div className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg mt-2">
                       <p className="text-secondary-700 dark:text-secondary-200 text-sm">
-                        <strong>Note:</strong> External arbitration is rarely needed. Most disputes resolve through direct negotiation as both parties have incentive to reach agreement and unlock the funds.
+                        <strong>Note:</strong> An external service is rarely needed. Most disputes resolve through direct negotiation as both parties have incentive to reach agreement and unlock the funds.
                       </p>
                     </div>
                   </div>
@@ -241,13 +242,15 @@ export default function DisputePolicy({ dateModified }: { dateModified: string }
                   <div>
                     <h3 className="text-xl font-semibold text-secondary-700 dark:text-secondary-200 mb-2">Admin Support</h3>
                     <p className="text-secondary-600 dark:text-secondary-300">
-                      While admins don't make allocation decisions in the auto-arbitration system, they can:
+                      Support staff cannot move funds or carry out a resolution on anyone&apos;s behalf. The escrow pays out
+                      only when two of the three votes (buyer, seller and tiebreaker) name the same split, and each vote is
+                      signed by its own wallet. If you and the other party have agreed a split, enter it yourselves and it pays
+                      out straight away. Support can:
                     </p>
                     <ul className="list-disc list-inside text-secondary-600 dark:text-secondary-300 space-y-1">
                       <li>Help facilitate communication if one party is unresponsive</li>
                       <li>Provide guidance on using the dispute management features</li>
                       <li>Assist with technical issues accessing the platform</li>
-                      <li>Execute resolutions in special circumstances (both parties email agreeing to specific allocation)</li>
                     </ul>
                   </div>
                 </div>
@@ -263,7 +266,7 @@ export default function DisputePolicy({ dateModified }: { dateModified: string }
                       <li>Raise disputes promptly when issues arise</li>
                       <li>Clearly explain the problem in your initial comment</li>
                       <li>Start with a reasonable refund request</li>
-                      <li>Provide evidence (order details, photos, etc.)</li>
+                      <li>Give checkable details (order number, tracking number, dates)</li>
                       <li>Be willing to compromise for partial issues</li>
                       <li>Respond promptly to seller's proposals</li>
                     </ul>
@@ -329,7 +332,7 @@ export default function DisputePolicy({ dateModified }: { dateModified: string }
                     <strong>Platform Issues:</strong> Include contract reference number and description of the problem
                   </p>
                   <p>
-                    <strong>Note:</strong> Support staff cannot make dispute allocation decisions - resolutions must come from mutual agreement through the auto-arbitration system.
+                    <strong>Note:</strong> Support staff cannot move funds or carry out a resolution for anyone. A dispute pays out only when two of the three votes (buyer, seller and tiebreaker) name the same split.
                   </p>
                 </div>
               </section>

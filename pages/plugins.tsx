@@ -398,7 +398,7 @@ export default function Plugins() {
                         { name: 'check_escrow_payment', text: 'What happened to a payment in flight.' },
                         { name: 'verify_escrow_receipt', text: 'Check a signed AP2 receipt from anywhere.' },
                         { name: 'payment_qr', text: 'A QR code a human can scan to fund the escrow.' },
-                        { name: 'read_published_page', text: 'The FAQ, arbitration policy and terms, for the agent to read.' },
+                        { name: 'read_published_page', text: 'The FAQ, dispute policy and terms, for the agent to read.' },
                       ].map((tool) => (
                         <div key={tool.name}>
                           <h3 className="text-sm font-medium text-secondary-900 dark:text-white mb-1 font-mono">
@@ -546,7 +546,7 @@ export default function Plugins() {
                     {
                       num: '03',
                       title: 'Settle',
-                      desc: 'Undisputed transactions settle automatically after the protection period. Disputed transactions enter structured arbitration with blockchain-recorded resolution.',
+                      desc: 'Undisputed transactions settle automatically after the protection period. Disputed transactions enter a structured dispute process with blockchain-recorded resolution.',
                     },
                   ].map((step, i) => (
                     <div key={step.num}>
@@ -568,7 +568,7 @@ export default function Plugins() {
                     href="/dispute-policy"
                     className="text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-colors"
                   >
-                    View arbitration framework and dispute resolution procedures &rarr;
+                    View the dispute policy and dispute resolution procedures &rarr;
                   </Link>
                 </div>
               </Collapsible>

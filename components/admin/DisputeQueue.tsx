@@ -100,7 +100,7 @@ export default function DisputeQueue({ onSelect, refreshKey = 0 }: DisputeQueueP
         <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Dispute Arbitration</h2>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Dispute Management</h2>
               <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300">
                 DEFAULT ARBITER
               </span>

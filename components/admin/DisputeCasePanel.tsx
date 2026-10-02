@@ -15,7 +15,7 @@ interface DisputeCasePanelProps {
 }
 
 /**
- * One case: the decision brief's inputs side by side (§8b of the arbitration policy — "is this
+ * One case: the decision brief's inputs side by side (§8b of the dispute policy — "is this
  * a fair account of the case?"), the record so far, and the two things an admin can do to it:
  * run a pass, and decide it when it has been escalated. A decision entered here goes through
  * the same hold window as a rules decision; nothing is cast from this screen.

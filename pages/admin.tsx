@@ -169,7 +169,7 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {/* Dispute arbitration: the queue, and the selected case */}
+        {/* Dispute management: the queue, and the selected case */}
         <div className="mb-8">
           <DisputeQueue onSelect={setSelectedDispute} refreshKey={disputeRefreshKey} />
         </div>

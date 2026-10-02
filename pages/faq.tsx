@@ -82,7 +82,7 @@ export default function FAQ() {
         "name": "How do I know the admin team won't just steal my money?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "The smart contract code is verified and published on the blockchain. You can see that only the seller or admin can claim funds, and the admin can only allocate disputed funds to either the buyer or seller - never to themselves. The code prevents theft. Additionally, our auto-arbitration system means disputes can resolve automatically when both parties agree, without admin intervention."
+          "text": "The smart contract code is verified and published on the blockchain. You can see that only the seller or admin can claim funds, and the admin can only allocate disputed funds to either the buyer or seller - never to themselves. The code prevents theft. Additionally, our dispute management system means disputes can resolve automatically when both parties agree, without admin intervention."
         }
       },
       {
@@ -90,7 +90,7 @@ export default function FAQ() {
         "name": "Who exactly makes dispute decisions and what are their qualifications?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "Disputes use our auto-arbitration system. When you raise a dispute, you suggest a refund amount and explain your position. The other party can respond with their suggestion. You can both see the history of comments and suggestions in your dashboard. When you both enter the same refund amount, the dispute automatically resolves and distributes the funds accordingly. Full details at our arbitration policy page."
+          "text": "Disputes use our dispute management system. When you raise a dispute, you suggest a refund amount and explain your position. The other party can respond with their suggestion. You can both see the history of comments and suggestions in your dashboard. When you both enter the same refund amount, the dispute automatically resolves and distributes the funds accordingly. Full details at our dispute policy page."
         }
       },
       // Timing and Process
@@ -215,15 +215,15 @@ export default function FAQ() {
         "name": "What about international transactions and different countries' laws?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "This is an escrow money transfer service, not an arbitration service. Legal arbitration is between buyer and seller. Once resolution has been agreed (with or without legal involvement), funds are allocated according to that agreement."
+          "text": "This is an escrow money transfer service, not a legal dispute-resolution service. Formal legal proceedings are between buyer and seller. Once resolution has been agreed (with or without legal involvement), funds are allocated according to that agreement."
         }
       },
       {
         "@type": "Question",
-        "name": "What if expensive items need legal arbitration?",
+        "name": "What if expensive items need a formal legal resolution?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "The contracts are technically owned by the buyer. If buyer and seller can't reach agreement, legal arbitration between them is their responsibility. The conclusion of that process informs our admin team how to allocate disputed funds."
+          "text": "The contracts are technically owned by the buyer. If buyer and seller can't reach agreement, formal legal proceedings between them are their responsibility. The conclusion of that process informs our admin team how to allocate disputed funds."
         }
       },
       // Privacy and Security
@@ -789,7 +789,7 @@ export default function FAQ() {
               <Fade delay={0.05}>
                 <FAQItem question="How do I know the admin team won't just steal my money?">
                   <p className="text-sm text-secondary-500 dark:text-secondary-400 leading-relaxed">
-                    The smart contract code is verified and published on the blockchain. You can see that only the seller or admin can claim funds, and the admin can only allocate disputed funds to either the buyer or seller - never to themselves. The code prevents theft. Additionally, our auto-arbitration system means disputes can resolve automatically when both parties agree, without admin intervention.
+                    The smart contract code is verified and published on the blockchain. You can see that only the seller or admin can claim funds, and the admin can only allocate disputed funds to either the buyer or seller - never to themselves. The code prevents theft. Additionally, our dispute management system means disputes can resolve automatically when both parties agree, without admin intervention.
                   </p>
                 </FAQItem>
               </Fade>
@@ -797,7 +797,7 @@ export default function FAQ() {
               <Fade delay={0.1}>
                 <FAQItem question="Who exactly makes dispute decisions and what are their qualifications?">
                   <p className="text-sm text-secondary-500 dark:text-secondary-400 leading-relaxed">
-                    Disputes use our auto-arbitration system. When you raise a dispute, you suggest a refund amount and explain your position. The other party can respond with their suggestion. You can both see the history of comments and suggestions in your dashboard. When you both enter the same refund amount, the dispute automatically resolves and distributes the funds accordingly. Full details at <Link href="/arbitration-policy" className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 underline">our arbitration policy page</Link>.
+                    Disputes use our dispute management system. When you raise a dispute, you suggest a refund amount and explain your position. The other party can respond with their suggestion. You can both see the history of comments and suggestions in your dashboard. When you both enter the same refund amount, the dispute automatically resolves and distributes the funds accordingly. Full details at <Link href="/dispute-policy" className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 underline">our dispute policy page</Link>.
                   </p>
                 </FAQItem>
               </Fade>
@@ -1037,15 +1037,15 @@ export default function FAQ() {
               <Fade>
                 <FAQItem question="What about international transactions and different countries' laws?">
                   <p className="text-sm text-secondary-500 dark:text-secondary-400 leading-relaxed">
-                    This is an escrow money transfer service, not an arbitration service. Legal arbitration is between buyer and seller. Once resolution has been agreed (with or without legal involvement), funds are allocated according to that agreement.
+                    This is an escrow money transfer service, not a legal dispute-resolution service. Formal legal proceedings are between buyer and seller. Once resolution has been agreed (with or without legal involvement), funds are allocated according to that agreement.
                   </p>
                 </FAQItem>
               </Fade>
 
               <Fade delay={0.05}>
-                <FAQItem question="What if expensive items need legal arbitration?">
+                <FAQItem question="What if expensive items need a formal legal resolution?">
                   <p className="text-sm text-secondary-500 dark:text-secondary-400 leading-relaxed">
-                    The contracts are technically owned by the buyer. If buyer and seller can&apos;t reach agreement, legal arbitration between them is their responsibility. The conclusion of that process informs our admin team how to allocate disputed funds.
+                    The contracts are technically owned by the buyer. If buyer and seller can&apos;t reach agreement, formal legal proceedings between them are their responsibility. The conclusion of that process informs our admin team how to allocate disputed funds.
                   </p>
                 </FAQItem>
               </Fade>

@@ -8,7 +8,7 @@ const sections = {
   faq: 'FAQ',
   terms: 'Terms & Conditions',
   privacy: 'Privacy Policy',
-  arbitration: 'Arbitration'
+  arbitration: 'Dispute policy'
 }
 
 interface FAQItem {
@@ -31,11 +31,11 @@ const getFaqSections = (chainName: string, explorerUrl: string): FAQSection[] =>
       },
       {
         question: "How do I know the admin team won't just steal my money?",
-        answer: "The smart contract code is verified and published on the blockchain. You can see that only the seller or admin can claim funds, and the admin can only allocate disputed funds to either the buyer or seller - never to themselves. The code prevents theft. Additionally, our auto-arbitration system means disputes can resolve automatically when both parties agree, without admin intervention."
+        answer: "The smart contract code is verified and published on the blockchain. You can see that only the seller or admin can claim funds, and the admin can only allocate disputed funds to either the buyer or seller - never to themselves. The code prevents theft. Additionally, our dispute management system means disputes can resolve automatically when both parties agree, without admin intervention."
       },
       {
         question: "Who exactly makes dispute decisions and what are their qualifications?",
-        answer: "Disputes use our auto-arbitration system. When you raise a dispute, you suggest a refund amount and explain your position. The other party can respond with their suggestion. You can both see the history of comments and suggestions in your dashboard. When you both enter the same refund amount, the dispute automatically resolves and distributes the funds accordingly. Full details at https://app.instantescrow.nz/arbitration-policy."
+        answer: "Disputes use our dispute management system. When you raise a dispute, you suggest a refund amount and explain your position. The other party can respond with their suggestion. You can both see the history of comments and suggestions in your dashboard. When you both enter the same refund amount, the dispute automatically resolves and distributes the funds accordingly. Full details at https://app.instantescrow.nz/dispute-policy."
       }
     ]
   },
@@ -91,7 +91,7 @@ export default function PluginPage({ lastUpdated }: { lastUpdated: string }) {
       <Head children={
         <>
           <title>Plugin Information - Conduit UCPI</title>
-          <meta name="description" content="FAQ, Terms & Conditions, Privacy Policy, and Arbitration information for Conduit UCPI" />
+          <meta name="description" content="FAQ, Terms & Conditions, Privacy Policy, and dispute policy information for Conduit UCPI" />
         </>
       } />
 
@@ -342,19 +342,19 @@ function PrivacySection({ lastUpdated }: { lastUpdated: string }) {
 function ArbitrationSection() {
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-secondary-900 dark:text-white">Instant Escrow Auto-Arbitration System</h2>
+      <h2 className="text-2xl font-bold text-secondary-900 dark:text-white">Dispute Management System</h2>
       <p className="text-lg text-secondary-600 dark:text-secondary-300 italic">How Disputes Work - For Buyers and Sellers</p>
       
       <div className="prose max-w-none">
         <section className="bg-white dark:bg-secondary-800/50 border border-secondary-200 dark:border-secondary-700 rounded-lg p-6 mb-6">
           <h3 className="text-xl font-semibold text-secondary-800 dark:text-secondary-100 mb-4">Overview</h3>
           <p className="text-secondary-600 dark:text-secondary-300 mb-2">
-            Our auto-arbitration system empowers buyers and sellers to resolve disputes directly. <strong>Once funds are in dispute, they're frozen until both parties agree on a refund amount.</strong> The system automatically executes the agreed resolution without requiring admin intervention.
+            Our dispute management system empowers buyers and sellers to resolve disputes directly. <strong>Once funds are in dispute, they're frozen until both parties agree on a refund amount.</strong> The system automatically executes the agreed resolution without requiring admin intervention.
           </p>
         </section>
 
         <section className="bg-white dark:bg-secondary-800/50 border border-secondary-200 dark:border-secondary-700 rounded-lg p-6 mb-6">
-          <h3 className="text-xl font-semibold text-secondary-800 dark:text-secondary-100 mb-4">How the Auto-Arbitration System Works</h3>
+          <h3 className="text-xl font-semibold text-secondary-800 dark:text-secondary-100 mb-4">How the Dispute Management System Works</h3>
           
           <div className="space-y-4">
             <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
@@ -406,7 +406,7 @@ function ArbitrationSection() {
               <strong>Platform Issues:</strong> Include contract reference number and description of the problem
             </p>
             <p>
-              <strong>Note:</strong> Support staff cannot make dispute allocation decisions - resolutions must come from mutual agreement through the auto-arbitration system.
+              <strong>Note:</strong> Support staff cannot move funds or carry out a resolution for anyone. A dispute pays out only when two of the three votes (buyer, seller and tiebreaker) name the same split.
             </p>
           </div>
         </section>

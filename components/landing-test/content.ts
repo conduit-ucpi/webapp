@@ -207,7 +207,7 @@ export const AUDIENCES: Array<{ key: AudienceKey; label: string; headline: strin
       { title: 'Online stores', text: 'A WordPress or Shopify plugin, or one script tag on any site. Checkout with buyer protection, no chargebacks.', href: '/merchant', cta: 'For merchants' },
       { title: 'Startups paying contractors', text: 'Pay by email address, with a payout date the contractor can see. No bank onboarding for either side.', href: '/create', cta: 'Request payment' },
       { title: 'B2B invoices, paid on day one', text: 'Your customer funds the invoice into escrow up front; you sell the claim for cash today and keep the tail.', href: '/early-payment-offer', cta: 'Early payment' },
-      { title: 'Enterprise and high-value work', text: 'Milestone escrow for complex projects, with an arbitration policy and a dispute window on every stage.', href: '/projects', cta: 'Projects' },
+      { title: 'Enterprise and high-value work', text: 'Milestone escrow for complex projects, with a dispute policy and a dispute window on every stage.', href: '/projects', cta: 'Projects' },
     ],
   },
   {

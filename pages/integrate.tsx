@@ -986,7 +986,7 @@ app.post('/api/conduit-webhook', async (req, res) => {
               {[
                 {
                   label: 'Buyer protection',
-                  items: ['Funds held in escrow smart contract', 'Time-delayed release (default 7 days)', 'Dispute mechanism', 'Admin arbitration'],
+                  items: ['Funds held in escrow smart contract', 'Time-delayed release (default 7 days)', 'Dispute mechanism', 'Independent tiebreaker'],
                 },
                 {
                   label: 'No gas fees',

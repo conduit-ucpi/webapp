@@ -39,5 +39,6 @@ describe('dispute policy page', () => {
     expect(screen.getByTestId('seo-title').textContent).toBe('Dispute Policy | COBRO');
     expect(container.textContent).toContain('On COBRO it is COBRO’s default tiebreaker'.replace('’', "'"));
     expect(container.textContent).not.toMatch(/StableDrop|Stabledrop|Conduit/);
+    expect(container.textContent).toContain('The contract cannot be changed once it is created, by anyone, including COBRO. It has no owner, no admin key and no way to be upgraded. Its rules are fixed in its code.');
   });
 });

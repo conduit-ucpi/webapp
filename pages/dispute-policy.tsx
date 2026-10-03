@@ -24,6 +24,7 @@ const threeVotes = (brand: string) =>
 
 const part1 = (brand: string): ReactNode[] => [
   <>Each payment is its own contract on the blockchain. It records a buyer, a seller and a tiebreaker.</>,
+  <><strong>The contract cannot be changed once it is created, by anyone, including {brand}.</strong> It has no owner, no admin key and no way to be upgraded. Its rules are fixed in its code.</>,
   <>When the buyer pays, the platform fee is deducted and the contract holds the rest. The fee is 1% of the amount, with a minimum of 0.30 of the payment&apos;s token. Amounts of 0.001 of the token or less carry no fee.</>,
   <>If there is no dispute, after the payout date the amount held can be released, and only to the seller.</>,
   <><strong>Raising a dispute:</strong> only the buyer can, only once, and only before the payout date. A payment with no payout date (an instant payment) cannot be disputed. A dispute cannot be withdrawn.</>,

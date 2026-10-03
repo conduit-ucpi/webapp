@@ -29,6 +29,6 @@ describe('dispute wording', () => {
 
   it.each(PAGES)('%s never says the tiebreaker decides: it casts one vote of three, which pays out only when a party matches it', (page) => {
     const source = readFileSync(join(process.cwd(), page), 'utf8');
-    expect(source).not.toMatch(/tiebreaker (decides|will decide)/i);
+    expect(source).not.toMatch(/tiebreaker (decides|will decide)(?! how| its vote)/i);
   });
 });

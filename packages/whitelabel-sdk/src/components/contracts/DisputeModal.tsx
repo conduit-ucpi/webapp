@@ -91,8 +91,10 @@ export default function DisputeModal({ isOpen, onClose, onSubmit, isSubmitting =
                 <div className="space-y-4">
                   <div>
                     <label htmlFor="reason" className="block text-sm font-medium text-gray-700 dark:text-secondary-200 mb-1">{t('disputeModal.disputeReason')}</label>
+                    <p id="reason-privacy" className="text-xs text-gray-600 dark:text-secondary-300 mb-1">{t('dispute.noPersonalDetails')}</p>
                     <textarea
                       id="reason"
+                      aria-describedby="reason-privacy"
                       className="w-full px-3 py-2 border border-gray-300 dark:border-secondary-600 bg-white dark:bg-secondary-900 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-secondary-400 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                       rows={3}
                       maxLength={160}
@@ -142,6 +144,7 @@ export default function DisputeModal({ isOpen, onClose, onSubmit, isSubmitting =
                     <div className="mt-1 text-xs text-gray-500 dark:text-secondary-400">
                       Buyer gets {refundPercent}%, Seller gets {100 - refundPercent}%
                     </div>
+                    <p className="mt-1 text-xs text-gray-600 dark:text-secondary-300">{t('disputeModal.figureIsYourVote')}</p>
                     {errors.split && (
                       <div className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.split}</div>
                     )}

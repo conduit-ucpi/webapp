@@ -1,361 +1,132 @@
-import Layout from '@/components/layout/Layout'
 import SEO from '@/components/SEO'
 import { GetStaticProps } from 'next'
+import { ReactNode } from 'react';
 import { isr } from '@/utils/isr';
 import { lastTextChangeISO } from '@/lib/server/lastTextChange';
 import DisputeRules from '@/components/dispute-rules/DisputeRules';
+import { useBrand } from '@conduit-ucpi/whitelabel-sdk';
+
+/**
+ * The dispute policy, in three parts.
+ *
+ * Parts 1 and 2 state what the escrow contract (EscrowContract, created by EscrowContractFactory)
+ * does, and nothing else: no reasons, no advice. Every statement is checked against the contract
+ * source. Part 3 is served live by disputeservice from DISPUTE_POLICY.md, under the commit that
+ * last changed it, and applies only when the platform's default tiebreaker holds the seat.
+ *
+ * Every name comes from the visitor's brand. The fee sentence names nobody: the fee goes to the
+ * platform's fee wallet, and on some brands part of it to a partner.
+ */
+
+/** Said at the start of the page and again at the end, word for word. */
+const threeVotes = (brand: string) =>
+  `The contract has three votes of equal standing: the buyer's, the seller's, and the tiebreaker's (a party you nominate, or ${brand}'s default). Funds are released when any two of the three agree.`;
+
+const part1 = (brand: string): ReactNode[] => [
+  <>Each payment is its own contract on the blockchain. It records a buyer, a seller and a tiebreaker.</>,
+  <>When the buyer pays, the platform fee is deducted and the contract holds the rest. The fee is 1% of the amount, with a minimum of 0.30 of the payment&apos;s token. Amounts of 0.001 of the token or less carry no fee.</>,
+  <>If there is no dispute, after the payout date the amount held can be released, and only to the seller.</>,
+  <><strong>Raising a dispute:</strong> only the buyer can, only once, and only before the payout date. A payment with no payout date (an instant payment) cannot be disputed. A dispute cannot be withdrawn.</>,
+  <><strong>Voting:</strong> while a dispute is open, the buyer, the seller and the tiebreaker can each vote. A vote is a whole number from 0 to 100: the percentage of the amount held that goes to the buyer. The rest goes to the seller.</>,
+  <>Each of them can change their vote any number of times. The contract keeps only each one&apos;s latest vote. It stores a number, with no message.</>,
+  <><strong>The moment any two of the three latest votes are the same number,</strong> the contract pays out that split in the same transaction. The payout is final.</>,
+  <>If nobody holds the tiebreaker seat, only the buyer&apos;s and the seller&apos;s votes count.</>,
+  <>The money can only go to the buyer and the seller.</>,
+  <>There is no time limit. While no two votes match, the money stays in the contract.</>,
+  <>The seller can move their payout to another wallet, including during a dispute. That wallet becomes the seller for voting, and it starts with no vote.</>,
+  <><strong>On the {brand} site:</strong> raising a dispute also sends the percentage you enter as your vote, from your own wallet. Each figure you enter on the dispute screen after that is sent as your vote in the same way. The reason you give each time is saved in {brand}&apos;s records alongside it, not in the contract.</>,
+];
+
+const part2 = (brand: string): ReactNode[] => [
+  <><strong>At creation:</strong> the tiebreaker is set when the payment is created. On {brand} it is {brand}&apos;s default tiebreaker, unless the seller enters a different wallet address. The tiebreaker can never be the buyer or the seller.</>,
+  <><strong>When the seat empties:</strong> only when the payout is sold through the {brand} marketplace, or when a tiebreaker is removed (point 3). The seller moving their payout to another wallet does not empty it.</>,
+  <><strong>Removal:</strong> during a dispute, the buyer or the seller can remove the tiebreaker if it has not voted for 30 days. Those 30 days count from the latest of: when it took the seat, its last vote, or when the dispute was raised. Removing it does not move any money.</>,
+  <><strong>Filling an empty seat:</strong> the buyer and the seller each nominate a wallet address, and either can change their nomination. When both name the same address, that wallet takes the seat. It cannot be the buyer or the seller. If the seller&apos;s payout moves to another wallet, the seller&apos;s nomination is cleared.</>,
+  <><strong>The default tiebreaker:</strong> if the seat is empty during a dispute, anyone can put {brand}&apos;s default tiebreaker in it once 72 hours have passed. The 72 hours count from when the dispute was raised, or from when the seat emptied if that happened during the dispute. Until the default is actually seated, a matching nomination still takes the seat.</>,
+  <>A newly seated tiebreaker starts with no vote. A removed tiebreaker&apos;s vote no longer counts.</>,
+  <>Once a tiebreaker holds the seat, it cannot be replaced by agreement. It can only be removed under point 3.</>,
+];
+
+function Part({ number, title, children }: { number: number; title: string; children: ReactNode }) {
+  return (
+    <section id={`part-${number}`} className="bg-white dark:bg-secondary-800 rounded-lg shadow-sm dark:shadow-none p-6 mb-6">
+      <h2 className="text-2xl font-semibold text-secondary-800 dark:text-secondary-100 mb-4">
+        Part {number}. {title}
+      </h2>
+      {children}
+    </section>
+  );
+}
+
+function Points({ items }: { items: ReactNode[] }) {
+  return (
+    <ol className="list-decimal pl-6 space-y-2 text-secondary-600 dark:text-secondary-300">
+      {items.map((item, i) => <li key={i}>{item}</li>)}
+    </ol>
+  );
+}
 
 export default function DisputePolicy({ dateModified }: { dateModified: string }) {
-  // Comprehensive structured data for SEO and AI bots
+  const brand = useBrand().name;
   const structuredData = {
     "@context": "https://schema.org",
     "@type": "Article",
-    "headline": "Dispute Management System - Complete Dispute Resolution Policy",
-    "alternativeHeadline": "How Crypto Escrow Disputes are Resolved Through Direct Buyer-Seller Negotiation",
-    "description": "Comprehensive guide to our dispute management system for cryptocurrency escrow payments. Buyers and sellers negotiate directly through the platform; funds stay frozen until two of the three votes (buyer, seller and a tiebreaker) name the same split.",
-    "articleBody": "Our dispute management system empowers buyers and sellers to resolve disputes directly. Once funds are in dispute, they're frozen until two of the three votes (buyer, seller and the tiebreaker) name the same split. The system automatically executes the agreed resolution without requiring admin intervention. When both parties enter the same refund percentage, the dispute automatically resolves and distributes funds accordingly. Only the buyer can raise a dispute, and only before the payout date, providing protection without the unfair penalties of traditional chargeback systems. The dispute process: 1) Buyer raises dispute with comment and refund suggestion, 2) Seller gets notified by email, 3) Both parties negotiate through dashboard comments and refund proposals, 4) When two of the three votes match, automatic resolution and payout occurs. If the parties cannot agree, the tiebreaker votes under the published dispute rules; its vote pays out only when the buyer's or the seller's vote matches it. For high-value disputes, parties can jointly use an external dispute-resolution service, then both enter that service's decided amount for automatic execution. The system handles every case at least as well as traditional chargebacks, with key advantages: merchants not punished with fees for defending themselves, buyers still get protection, settlement is instant, there is no extra fee for raising or defending a dispute, disputes can only be raised before payout (not 180 days after like chargebacks), and once funds are released the transaction is final. Best practices for quick resolution: buyers should raise disputes promptly with clear explanations and reasonable requests, sellers should respond within 24 hours with delivery proof and fair counter-offers. The system is available 24/7 with disputes auto-resolving the moment both parties reach agreement.",
-    "author": {
-      "@type": "Organization",
-      "name": "Conduit Escrow",
-      "url": "https://conduit-ucpi.com"
-    },
-    "publisher": {
-      "@type": "Organization",
-      "name": "Conduit Escrow",
-      "logo": {
-        "@type": "ImageObject",
-        "url": "https://conduit-ucpi.com/icon.png"
-      }
-    },
-    "datePublished": "2024-01-01",
-    "dateModified": dateModified,
-    "keywords": "crypto escrow disputes, blockchain dispute resolution, escrow dispute resolution, USDC refund process, buyer seller negotiation, smart contract disputes, automatic dispute resolution, chargeback alternative, cryptocurrency buyer protection, escrow mediation, automated negotiation, frozen funds, dispute management, refund agreements",
-    "about": {
-      "@type": "Thing",
-      "name": "Cryptocurrency Escrow Dispute Resolution",
-      "description": "Automated system for resolving payment disputes in blockchain-based escrow transactions"
-    },
-    "mainEntityOfPage": {
-      "@type": "WebPage",
-      "@id": "https://conduit-ucpi.com/dispute-policy"
-    }
+    "headline": "Dispute Policy",
+    "description": `How disputes work in a ${brand} escrow payment: the contract's three-party voting, how the tiebreaker is appointed and changed, and how ${brand}'s default tiebreaker decides its vote.`,
+    "publisher": { "@type": "Organization", "name": brand },
+    "dateModified": dateModified
   };
 
   return (
     <>
       <SEO
-        title="Dispute Resolution Policy | Conduit Escrow"
-        description="How our dispute management system resolves crypto escrow disputes. Buyers and sellers negotiate directly through the platform, and a tiebreaker casts the third vote when they cannot agree."
-        keywords="crypto escrow disputes, blockchain dispute resolution, escrow dispute resolution, USDC refund process, buyer seller negotiation, smart contract disputes, automatic dispute resolution"
+        title={`Dispute Policy | ${brand}`}
+        description={`How disputes work in a ${brand} escrow payment: three-party voting in the contract, how the tiebreaker is appointed and changed, and how ${brand}'s default tiebreaker decides its vote.`}
+        keywords="escrow dispute, dispute policy, tiebreaker, USDC escrow, smart contract dispute"
         canonical="/dispute-policy"
         structuredData={structuredData}
       />
-      <Layout children={
       <div className="min-h-screen bg-white dark:bg-secondary-900 py-12 transition-colors">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-4xl mx-auto">
             <h1 className="text-4xl font-bold text-secondary-900 dark:text-white mb-2">Dispute Management System</h1>
-            <p className="text-lg text-secondary-600 dark:text-secondary-300 mb-8 italic">How Disputes Work - For Buyers and Sellers</p>
-            
-            <div className="prose prose-lg max-w-none">
-              <section className="bg-white dark:bg-secondary-800 rounded-lg shadow-sm dark:shadow-none p-6 mb-6">
-                <h2 className="text-2xl font-semibold text-secondary-800 dark:text-secondary-100 mb-4">Overview</h2>
-                <p className="text-secondary-600 dark:text-secondary-300 mb-2">
-                  Our dispute management system empowers buyers and sellers to resolve disputes directly. <strong>Once funds are in dispute, they're frozen until two of the three votes (buyer, seller and the tiebreaker) name the same split.</strong> The system automatically executes the agreed resolution without requiring admin intervention.
-                </p>
-              </section>
+            <p id="three-votes-intro" className="text-lg text-secondary-700 dark:text-secondary-200 mb-2">{threeVotes(brand)}</p>
+            <p className="text-lg text-secondary-600 dark:text-secondary-300 mb-8">
+              This page covers {brand} escrow payments.
+            </p>
 
-              <section className="bg-white dark:bg-secondary-800 rounded-lg shadow-sm dark:shadow-none p-6 mb-6">
-                <h2 className="text-2xl font-semibold text-secondary-800 dark:text-secondary-100 mb-4">How the Dispute Management System Works</h2>
-                
-                <div className="space-y-4">
-                  <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                    <p className="text-secondary-700 dark:text-secondary-200">
-                      <strong>Key Innovation:</strong> When both parties enter the same refund percentage, the dispute automatically resolves and distributes funds accordingly. No waiting for admin decisions.
-                    </p>
-                  </div>
+            <Part number={1} title="How a dispute works in the escrow contract">
+              <Points items={part1(brand)} />
+            </Part>
 
-                  <div>
-                    <h3 className="text-xl font-semibold text-secondary-700 dark:text-secondary-200 mb-2">Step-by-Step Process</h3>
-                    <ol className="list-decimal list-inside text-secondary-600 dark:text-secondary-300 space-y-2">
-                      <li><strong>Buyer raises dispute</strong> - Enters a comment explaining the issue and suggests a refund percentage. Only the buyer can raise a dispute, and only before the payout date</li>
-                      <li><strong>Seller gets notified</strong> - Receives email alert about the dispute</li>
-                      <li><strong>Both parties negotiate</strong> - Through the dashboard, each can:
-                        <ul className="list-disc list-inside ml-6 mt-1">
-                          <li>View all comments and refund suggestions history</li>
-                          <li>Add new comments to explain their position</li>
-                          <li>Submit refund percentage proposals</li>
-                        </ul>
-                      </li>
-                      <li><strong>Automatic resolution</strong> - When both enter the same amount, funds distribute instantly</li>
-                    </ol>
-                  </div>
+            <Part number={2} title="How the tiebreaker is appointed and changed">
+              <Points items={part2(brand)} />
+            </Part>
 
-                  <div>
-                    <h3 className="text-xl font-semibold text-secondary-700 dark:text-secondary-200 mb-2">Understanding Refund Amounts</h3>
-                    <ul className="list-disc list-inside text-secondary-600 dark:text-secondary-300 space-y-1">
-                      <li><strong>Refund percentage</strong> = The whole percentage (0-100%) of the escrow that goes back to the buyer</li>
-                      <li><strong>The rest</strong> = Automatically goes to the seller</li>
-                      <li><strong>The platform fee comes first:</strong> the split applies to the amount held after the 1% platform fee (at least $0.30)</li>
-                      <li><strong>Example:</strong> On a $100 contract the fee is $1, so agreeing on a 30% refund means the buyer gets $29.70 and the seller $69.30</li>
-                    </ul>
-                  </div>
-                </div>
-              </section>
+            <Part number={3} title={`How ${brand}'s default tiebreaker votes`}>
+              <DisputeRules />
+            </Part>
 
-              <section className="bg-white dark:bg-secondary-800 rounded-lg shadow-sm dark:shadow-none p-6 mb-6">
-                <h2 className="text-2xl font-semibold text-secondary-800 dark:text-secondary-100 mb-4">When to Raise a Dispute</h2>
-                
-                <div className="mb-4">
-                  <h3 className="text-xl font-semibold text-secondary-700 dark:text-secondary-200 mb-2">Common Reasons for Buyers</h3>
-                  <ul className="list-disc list-inside text-secondary-600 dark:text-secondary-300 space-y-1">
-                    <li><strong>Non-delivery</strong> - Item never arrived (suggest 100% refund)</li>
-                    <li><strong>Wrong item</strong> - Received something different (negotiate partial or full refund)</li>
-                    <li><strong>Quality issues</strong> - Item not as described (negotiate appropriate compensation)</li>
-                    <li><strong>Seller unresponsive</strong> - No communication after payment (start with 100% refund request)</li>
-                    <li><strong>Accidental payment</strong> - Made an error (request 100% refund with explanation)</li>
-                  </ul>
-                </div>
-
-                <div className="mb-4">
-                  <h3 className="text-xl font-semibold text-secondary-700 dark:text-secondary-200 mb-2">How Sellers Should Respond</h3>
-                  <ul className="list-disc list-inside text-secondary-600 dark:text-secondary-300 space-y-1">
-                    <li><strong>Legitimate issues</strong> - Agree to an appropriate refund percentage quickly</li>
-                    <li><strong>Delivery completed</strong> - Provide tracking info in comments, suggest 0% refund</li>
-                    <li><strong>Partial fault</strong> - Propose partial refund that's fair to both parties</li>
-                    <li><strong>Buyer error</strong> - Explain in comments but consider goodwill partial refund</li>
-                  </ul>
-                </div>
-
-                <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                  <p className="text-secondary-700 dark:text-secondary-200">
-                    <strong>Pro Tip:</strong> Starting with reasonable proposals speeds resolution. Extreme positions may prolong negotiations.
-                  </p>
-                </div>
-              </section>
-
-              <section className="bg-white dark:bg-secondary-800 rounded-lg shadow-sm dark:shadow-none p-6 mb-6">
-                <h2 className="text-2xl font-semibold text-secondary-800 dark:text-secondary-100 mb-4">Managing Your Dispute</h2>
-                
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="text-xl font-semibold text-secondary-700 dark:text-secondary-200 mb-2">Through Your Dashboard</h3>
-                    <p className="text-secondary-600 dark:text-secondary-300 mb-2">Click "Manage Dispute" on any disputed contract to:</p>
-                    <ul className="list-disc list-inside text-secondary-600 dark:text-secondary-300 space-y-1">
-                      <li><strong>View history</strong> - See all previous comments and refund suggestions from both parties</li>
-                      <li><strong>Add comments</strong> - Explain your position, provide evidence, respond to the other party</li>
-                      <li><strong>Propose a refund percentage</strong> - Enter what you think is fair (can be changed until two votes match)</li>
-                      <li><strong>Track progress</strong> - See how close you are to agreement</li>
-                    </ul>
-                  </div>
-
-                  <div>
-                    <h3 className="text-xl font-semibold text-secondary-700 dark:text-secondary-200 mb-2">Negotiation Tips</h3>
-                    <ul className="list-disc list-inside text-secondary-600 dark:text-secondary-300 space-y-1">
-                      <li><strong>Be specific</strong> - Clearly explain why you're suggesting your refund percentage</li>
-                      <li><strong>Give checkable details</strong> - Tracking numbers, order numbers, dates. Comments are text only, up to 160 characters, so nothing can be attached</li>
-                      <li><strong>Stay professional</strong> - Constructive dialogue leads to faster resolution</li>
-                      <li><strong>Consider compromise</strong> - Meeting in the middle often works for both parties</li>
-                      <li><strong>Update proposals</strong> - You can change your refund suggestion anytime before agreement</li>
-                    </ul>
-                  </div>
-                </div>
-              </section>
-
-              <section className="bg-white dark:bg-secondary-800 rounded-lg shadow-sm dark:shadow-none p-6 mb-6">
-                <h2 className="text-2xl font-semibold text-secondary-800 dark:text-secondary-100 mb-4">Common Dispute Scenarios and Resolutions</h2>
-                
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="text-xl font-semibold text-secondary-700 dark:text-secondary-200 mb-2">Item Never Delivered</h3>
-                    <ul className="list-disc list-inside text-secondary-600 dark:text-secondary-300 space-y-1">
-                      <li><strong>Buyer action:</strong> Raise dispute with 100% refund request, explain non-delivery</li>
-                      <li><strong>Seller with proof:</strong> Share tracking in comments, propose 0% refund</li>
-                      <li><strong>Seller without proof:</strong> Accept 100% refund to resolve quickly</li>
-                      <li><strong>Typical outcome:</strong> 100% refund if no delivery proof exists</li>
-                    </ul>
-                  </div>
-
-                  <div>
-                    <h3 className="text-xl font-semibold text-secondary-700 dark:text-secondary-200 mb-2">Wrong or Damaged Item</h3>
-                    <ul className="list-disc list-inside text-secondary-600 dark:text-secondary-300 space-y-1">
-                      <li><strong>Buyer action:</strong> Explain issue, suggest refund based on item's value/condition</li>
-                      <li><strong>Seller options:</strong> Offer full refund with return, or partial refund to keep item</li>
-                      <li><strong>Negotiation:</strong> Discuss return shipping costs and item value</li>
-                      <li><strong>Typical outcome:</strong> 50-100% refund depending on severity</li>
-                    </ul>
-                  </div>
-
-                  <div>
-                    <h3 className="text-xl font-semibold text-secondary-700 dark:text-secondary-200 mb-2">Quality Disputes</h3>
-                    <ul className="list-disc list-inside text-secondary-600 dark:text-secondary-300 space-y-1">
-                      <li><strong>Buyer action:</strong> Detail quality issues, propose partial refund</li>
-                      <li><strong>Seller response:</strong> Evaluate claim, counter with fair adjustment</li>
-                      <li><strong>Resolution path:</strong> Often settle on 10-30% refund for minor issues</li>
-                      <li><strong>Alternative:</strong> Full refund upon return if quality is unacceptable</li>
-                    </ul>
-                  </div>
-
-                  <div>
-                    <h3 className="text-xl font-semibold text-secondary-700 dark:text-secondary-200 mb-2">Accidental Purchase</h3>
-                    <ul className="list-disc list-inside text-secondary-600 dark:text-secondary-300 space-y-1">
-                      <li><strong>Buyer action:</strong> Immediately dispute with 100% refund, explain the error</li>
-                      <li><strong>Seller consideration:</strong> If not shipped, agreeing to full refund is reasonable</li>
-                      <li><strong>If already shipped:</strong> Negotiate return process or partial refund</li>
-                      <li><strong>Typical outcome:</strong> 100% if caught early, negotiated if shipped</li>
-                    </ul>
-                  </div>
-                </div>
-              </section>
-
-              <section className="bg-white dark:bg-secondary-800 rounded-lg shadow-sm dark:shadow-none p-6 mb-6">
-                <h2 className="text-2xl font-semibold text-secondary-800 dark:text-secondary-100 mb-4">What If We Can't Agree?</h2>
-                
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="text-xl font-semibold text-secondary-700 dark:text-secondary-200 mb-2">The Tiebreaker Votes</h3>
-                    <p className="text-secondary-600 dark:text-secondary-300">
-                      Every disputed escrow has a third voter, the tiebreaker: StableDrop&apos;s default tiebreaker, unless the seller named a different one when creating the payment. If you can&apos;t reach agreement, the tiebreaker votes for a split under the dispute rules below. Its vote is one of three and does not decide the outcome on its own: the escrow pays out only when your vote or the other party&apos;s matches it. Until then the two of you can still agree a different split, and if you do, that is what pays out. The dispute rules apply only when StableDrop&apos;s default tiebreaker holds the seat.
-                    </p>
-                  </div>
-
-                  <div>
-                    <h3 className="text-xl font-semibold text-secondary-700 dark:text-secondary-200 mb-2">External Dispute Resolution Option</h3>
-                    <p className="text-secondary-600 dark:text-secondary-300 mb-2">
-                      For high-value disputes where agreement seems impossible, you can jointly choose to use a professional dispute-resolution service. This is entirely separate from our platform:
-                    </p>
-                    <ul className="list-disc list-inside text-secondary-600 dark:text-secondary-300 space-y-1">
-                      <li>Both parties agree to use an external service</li>
-                      <li>Select and pay for that service together</li>
-                      <li>The service reviews the evidence and makes a decision</li>
-                      <li>Both parties then enter the decided refund percentage</li>
-                      <li>System automatically executes the resolution</li>
-                    </ul>
-                    
-                    <div className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg mt-2">
-                      <p className="text-secondary-700 dark:text-secondary-200 text-sm">
-                        <strong>Note:</strong> An external service is rarely needed. Most disputes resolve through direct negotiation as both parties have incentive to reach agreement and unlock the funds.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h3 className="text-xl font-semibold text-secondary-700 dark:text-secondary-200 mb-2">Admin Support</h3>
-                    <p className="text-secondary-600 dark:text-secondary-300">
-                      Support staff cannot move funds or carry out a resolution on anyone&apos;s behalf. The escrow pays out
-                      only when two of the three votes (buyer, seller and tiebreaker) name the same split, and each vote is
-                      signed by its own wallet. If you and the other party have agreed a split, enter it yourselves and it pays
-                      out straight away. Support can:
-                    </p>
-                    <ul className="list-disc list-inside text-secondary-600 dark:text-secondary-300 space-y-1">
-                      <li>Help facilitate communication if one party is unresponsive</li>
-                      <li>Provide guidance on using the dispute management features</li>
-                      <li>Assist with technical issues accessing the platform</li>
-                    </ul>
-                  </div>
-                </div>
-              </section>
-
-              <section className="bg-white dark:bg-secondary-800 rounded-lg shadow-sm dark:shadow-none p-6 mb-6">
-                <h2 className="text-2xl font-semibold text-secondary-800 dark:text-secondary-100 mb-4">Best Practices for Quick Resolution</h2>
-                
-                <div className="grid md:grid-cols-2 gap-6">
-                  <div>
-                    <h3 className="text-xl font-semibold text-secondary-700 dark:text-secondary-200 mb-2">For Buyers</h3>
-                    <ul className="list-disc list-inside text-secondary-600 dark:text-secondary-300 space-y-1">
-                      <li>Raise disputes promptly when issues arise</li>
-                      <li>Clearly explain the problem in your initial comment</li>
-                      <li>Start with a reasonable refund request</li>
-                      <li>Give checkable details (order number, tracking number, dates)</li>
-                      <li>Be willing to compromise for partial issues</li>
-                      <li>Respond promptly to seller's proposals</li>
-                    </ul>
-                  </div>
-
-                  <div>
-                    <h3 className="text-xl font-semibold text-secondary-700 dark:text-secondary-200 mb-2">For Sellers</h3>
-                    <ul className="list-disc list-inside text-secondary-600 dark:text-secondary-300 space-y-1">
-                      <li>Respond to disputes within 24 hours</li>
-                      <li>Provide delivery proof when available</li>
-                      <li>Acknowledge legitimate issues honestly</li>
-                      <li>Make fair counter-offers quickly</li>
-                      <li>Consider customer satisfaction and reputation</li>
-                      <li>Document your shipping and handling process</li>
-                    </ul>
-                  </div>
-                </div>
-
-                <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg mt-4">
-                  <p className="text-secondary-700 dark:text-secondary-200">
-                    <strong>Remember:</strong> The faster you reach agreement, the sooner funds are released. Both parties benefit from quick, fair resolution.
-                  </p>
-                </div>
-              </section>
-
-              <section className="bg-white dark:bg-secondary-800 rounded-lg shadow-sm dark:shadow-none p-6 mb-6">
-                <h2 className="text-2xl font-semibold text-secondary-800 dark:text-secondary-100 mb-4">Preventing Disputes</h2>
-                
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="text-xl font-semibold text-secondary-700 dark:text-secondary-200 mb-2">Clear Communication</h3>
-                    <ul className="list-disc list-inside text-secondary-600 dark:text-secondary-300 space-y-1">
-                      <li><strong>Sellers:</strong> Provide detailed, accurate descriptions</li>
-                      <li><strong>Buyers:</strong> Ask questions before funding contracts</li>
-                      <li><strong>Both:</strong> Confirm delivery addresses and timelines</li>
-                      <li><strong>Both:</strong> Document agreements about quality standards</li>
-                    </ul>
-                  </div>
-
-                  <div>
-                    <h3 className="text-xl font-semibold text-secondary-700 dark:text-secondary-200 mb-2">Proper Documentation</h3>
-                    <ul className="list-disc list-inside text-secondary-600 dark:text-secondary-300 space-y-1">
-                      <li>Save product descriptions and photos</li>
-                      <li>Keep shipping receipts and tracking numbers</li>
-                      <li>Screenshot important communications</li>
-                      <li>Photo items before shipping (sellers)</li>
-                      <li>Photo items upon receipt (buyers)</li>
-                    </ul>
-                  </div>
-                </div>
-              </section>
-
-              <section id="rules" className="bg-white dark:bg-secondary-800 rounded-lg shadow-sm dark:shadow-none p-6 mb-6">
-                <h2 className="text-2xl font-semibold text-secondary-800 dark:text-secondary-100 mb-4">The Dispute Rules</h2>
-                <DisputeRules />
-              </section>
-
-              <section className="bg-white dark:bg-secondary-800 rounded-lg shadow-sm dark:shadow-none p-6 mb-6">
-                <h2 className="text-2xl font-semibold text-secondary-800 dark:text-secondary-100 mb-4">Contact Information</h2>
-                <div className="space-y-2 text-secondary-600 dark:text-secondary-300">
-                  <p>
-                    <strong>Technical Support:</strong> info@instantescrow.nz<br/>
-                    <strong>Platform Issues:</strong> Include contract reference number and description of the problem
-                  </p>
-                  <p>
-                    <strong>Note:</strong> Support staff cannot move funds or carry out a resolution for anyone. A dispute pays out only when two of the three votes (buyer, seller and tiebreaker) name the same split.
-                  </p>
-                </div>
-              </section>
-            </div>
+            <section id="one-vote" className="bg-white dark:bg-secondary-800 rounded-lg shadow-sm dark:shadow-none p-6 mb-6">
+              <h2 className="text-2xl font-semibold text-secondary-800 dark:text-secondary-100 mb-4">Remember: the tiebreaker has one vote of three</h2>
+              <p className="text-secondary-600 dark:text-secondary-300">{threeVotes(brand)}</p>
+            </section>
           </div>
         </div>
       </div>
-    } />
     </>
   )
 }
 
 // Static generation for SEO.
 //
-// `dateModified` was `new Date().toISOString().split('T')[0]` in the component
-// body, so the JSON-LD told search engines this policy was revised on whatever
-// day the build ran. Derived from git instead — see lib/server/lastTextChange.ts
-// for why, and for the file-granularity caveat.
+// `dateModified` comes from git, so it changes only when this file does; see
+// lib/server/lastTextChange.ts for why, and for the file-granularity caveat.
 export const getStaticProps: GetStaticProps = async () => {
   return {
     props: {
-      dateModified: lastTextChangeISO('pages/dispute-policy.tsx', '2026-09-07'),
+      dateModified: lastTextChangeISO('pages/dispute-policy.tsx', '2026-10-03'),
     },
     ...isr(86400), // Revalidate daily
   };
-};
+}

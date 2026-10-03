@@ -186,3 +186,12 @@ describe('Submitting a settlement figure', () => {
     expect(await screen.findByText(/Settled at 40% to the buyer/i)).toBeInTheDocument();
   });
 });
+
+describe('What a party is asked not to write', () => {
+  it('asks for no names, addresses or contact details, next to the box they write in', () => {
+    renderModal();
+    const box = screen.getByPlaceholderText('Explain your position in the dispute...');
+    const hint = document.getElementById(box.getAttribute('aria-describedby') || '');
+    expect(hint?.textContent).toBe("Don't include names, addresses or contact details. They aren't needed to decide the dispute.");
+  });
+});

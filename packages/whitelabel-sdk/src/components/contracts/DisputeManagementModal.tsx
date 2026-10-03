@@ -317,8 +317,10 @@ export default function DisputeManagementModal({ isOpen, onClose, contract, onRe
                       <form onSubmit={startSubmission} className="space-y-4">
                         <div>
                           <label htmlFor="reason" className="block text-sm font-medium text-gray-700 dark:text-secondary-200 mb-1">{t('disputeManagementModal.yourCommentMaxCharacters')}</label>
+                          <p id="reason-privacy" className="text-xs text-gray-600 dark:text-secondary-300 mb-1">{t('dispute.noPersonalDetails')}</p>
                           <textarea
                             id="reason"
+                            aria-describedby="reason-privacy"
                             value={reason}
                             onChange={(e) => setReason(e.target.value)}
                             maxLength={160}

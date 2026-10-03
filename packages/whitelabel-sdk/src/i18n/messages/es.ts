@@ -451,8 +451,10 @@ export const es: Catalogue = {
   'disputeManagementModal.explainYourPositionIn': 'Explica tu posición en la disputa...',
 
   'disputeModal.raiseADispute': 'Abrir una disputa',
+  'dispute.noPersonalDetails': 'No incluyas nombres, direcciones ni datos de contacto. No hacen falta para resolver la disputa.',
   'disputeModal.disputeReason': 'Motivo de la disputa',
-  'disputeModal.suggestedSplitToBuyer': 'Reparto sugerido (% para el comprador)',
+  'disputeModal.suggestedSplitToBuyer': 'Tu voto (% para el comprador)',
+  'disputeModal.figureIsYourVote': 'Se envía al contrato como tu voto. Si el vendedor o el tercero de desempate votan la misma cifra, el contrato paga ese reparto de inmediato. Puedes cambiar tu voto hasta entonces.',
   'disputeModal.pleaseDescribeTheReason': 'Describe el motivo de esta disputa...',
 
   'enhancedContractCard.yourRole': 'Tu rol',

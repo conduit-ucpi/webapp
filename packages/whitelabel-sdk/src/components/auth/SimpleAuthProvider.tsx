@@ -322,16 +322,6 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
         throw new Error('Contract address, user address, reason, and refund percent are required');
       }
 
-      // Import ethers for encoding
-      const { ethers } = await import('ethers');
-
-      // Encode the raiseDispute function call using hardcoded ABI (takes no parameters)
-      const escrowAbi = [
-        "function raiseDispute() external"
-      ];
-      const contractInterface = new ethers.Interface(escrowAbi);
-      const data = contractInterface.encodeFunctionData('raiseDispute', []);
-
       // Get ethers provider directly from auth (avoid circular dependency)
       const ethersProvider = await newAuth.getEthersProvider();
       if (!ethersProvider) {
@@ -348,45 +338,30 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
         await web3Service.initialize(ethersProvider);
       }
 
-      // Step 1: Execute blockchain transaction using Web3Service directly
-      const txHash = await web3Service.fundAndSendTransaction({
-        to: params.contractAddress,
-        data,
-        value: '0' // No value needed for raising dispute
-      });
-
-      // Step 2: Notify contractservice about the dispute (if contract ID is provided)
-      if (params.contract?.id) {
-        console.log('Notifying contractservice about dispute...');
-
-        try {
-          const disputeEntry = {
-            timestamp: Math.floor(Date.now() / 1000),
-            reason: params.reason || 'Dispute raised on blockchain',
-            refundPercent: params.refundPercent || 0
-          };
-
-          const response = await backendClient.authenticatedFetch(`/api/contracts/${params.contract.id}/dispute`, {
-            method: 'PATCH',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(disputeEntry)
-          });
-
-          if (!response.ok) {
-            console.error('Contract service notification failed:', await response.text());
-            // Don't throw - the blockchain transaction succeeded
-          } else {
-            console.log('✅ Contract service notified about dispute');
+      // Raise the dispute, then cast the buyer's figure as their vote, then record it.
+      const { raiseDisputeAndVote } = await import('@/lib/raiseDispute');
+      return raiseDisputeAndVote(
+        {
+          send: (tx) => web3Service.fundAndSendTransaction(tx),
+          record: async (contractId, entry) => {
+            try {
+              const response = await backendClient.authenticatedFetch(`/api/contracts/${contractId}/dispute`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(entry)
+              });
+              if (!response.ok) {
+                // Don't throw - the blockchain transactions succeeded
+                console.error('Contract service notification failed:', await response.text());
+              }
+            } catch (error) {
+              // Don't throw - the blockchain transactions succeeded
+              console.error('Failed to notify contract service:', error);
+            }
           }
-        } catch (error) {
-          console.error('Failed to notify contract service:', error);
-          // Don't throw - the blockchain transaction succeeded
-        }
-      }
-
-      return txHash;
+        },
+        { contractAddress: params.contractAddress, reason: params.reason, refundPercent: params.refundPercent, contractId: params.contract?.id }
+      );
     }
   }), [
     // Depend on backendUserData and isLoadingUserData for clean re-renders

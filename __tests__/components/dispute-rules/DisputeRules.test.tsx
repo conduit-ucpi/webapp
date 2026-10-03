@@ -1,6 +1,8 @@
 import { render } from '@testing-library/react';
 import { screen, waitFor } from '@testing-library/dom';
 import DisputeRules from '@/components/dispute-rules/DisputeRules';
+
+jest.mock('@conduit-ucpi/whitelabel-sdk', () => ({ useBrand: () => ({ name: 'COBRO' }) }));
 import RulesMarkdown, { parseBlocks } from '@/components/dispute-rules/RulesMarkdown';
 
 const json = (status: number, body: unknown) => ({ ok: status < 400, status, json: async () => body } as Response);
@@ -75,6 +77,16 @@ describe('DisputeRules', () => {
     expect(version.textContent).toBe(SHA.slice(0, 12));
     expect(version.getAttribute('title')).toBe(SHA);
     expect(version.parentElement?.textContent).toBe(`Rules version ${SHA.slice(0, 12)}, last changed 25 September 2026.`);
+  });
+
+  it("shows the visitor's brand where the served text names the default one, and changes nothing else", async () => {
+    fetchMock.mockResolvedValueOnce(json(200, rules({
+      sections: [{ number: '2a', title: 'What these rules cover', markdown: "These rules decide one thing: how Stabledrop.me's default tiebreaker casts its vote." }],
+    })));
+    render(<DisputeRules />);
+    await waitFor(() => expect(screen.getByTestId('rules-section-2a')).toBeTruthy());
+    expect(screen.getByTestId('rules-section-2a').textContent).toContain("These rules decide one thing: how COBRO's default tiebreaker casts its vote.");
+    expect(screen.getByTestId('rules-section-2a').textContent).not.toContain('Stabledrop.me');
   });
 
   it('says so when the text is not exactly what the version names', async () => {

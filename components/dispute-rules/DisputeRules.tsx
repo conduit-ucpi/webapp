@@ -2,6 +2,16 @@ import { useEffect, useState } from 'react';
 import { apiFetch } from '@/lib/apiFetch';
 import RulesMarkdown from '@/components/dispute-rules/RulesMarkdown';
 import { PolicyRules } from '@/types/disputeRules';
+import { useBrand } from '@conduit-ucpi/whitelabel-sdk';
+
+/**
+ * The served text names the platform's default brand. The page takes every name from the visitor's
+ * brand, so that name is swapped for theirs; nothing else in the text is changed.
+ */
+export const SERVED_BRAND = 'Stabledrop.me';
+export function inBrand(text: string, brand: string): string {
+  return text.split(SERVED_BRAND).join(brand);
+}
 
 /**
  * The rules a dispute is decided by, fetched from disputeservice when the page is viewed.
@@ -34,6 +44,7 @@ export function VersionLine({ rules }: { rules: PolicyRules }) {
 }
 
 export default function DisputeRules() {
+  const brand = useBrand().name;
   const [rules, setRules] = useState<PolicyRules | null>(null);
   const [failed, setFailed] = useState(false);
 
@@ -69,9 +80,9 @@ export default function DisputeRules() {
       {rules.sections.map((section) => (
         <div key={section.number} className="mb-6" data-testid={`rules-section-${section.number}`}>
           <h3 className="text-xl font-semibold text-secondary-700 dark:text-secondary-200 mb-2">
-            §{section.number} {section.title}
+            §{section.number} {inBrand(section.title, brand)}
           </h3>
-          <RulesMarkdown markdown={section.markdown} />
+          <RulesMarkdown markdown={inBrand(section.markdown, brand)} />
         </div>
       ))}
     </div>

@@ -26,13 +26,16 @@ interface ArbiterPanelProps {
 }
 
 /**
- * The arbiter seat on a sold escrow (MARKETPLACE_OPENSPEC §15.6c, §3.3).
+ * The arbiter seat (MARKETPLACE_OPENSPEC §15.6c, §3.3).
  *
- * These screens exist because a marketplace sale empties the arbiter seat. `transferRecipientFrom`
- * unseats the incumbent in the same transaction as the sale — automatically, not on objection —
- * because in the §8.1a attack the seller *is* the adversary and would otherwise bundle the sale,
- * a dispute and a pre-loaded arbiter's vote into one block. Every path back to a seat then runs
- * through the new recipient.
+ * Two things happen here. A marketplace sale empties the seat: `transferRecipientFrom` unseats the
+ * incumbent in the same transaction as the sale — automatically, not on objection — because in the
+ * §8.1a attack the seller *is* the adversary and would otherwise bundle the sale, a dispute and a
+ * pre-loaded arbiter's vote into one block. Every path back to a seat then runs through the new
+ * recipient. And on ANY live escrow, sold or not, buyer and recipient may jointly replace whoever
+ * holds the seat by naming the same address (§3.3A1b) — the platform's default included. That is
+ * how a party who does not want the default tiebreaker deciding their case leaves it, with the
+ * other party's consent.
  *
  * ⚠️ DRIVEN ENTIRELY OFF THE `can*` FLAGS. Show a control when its flag is true; that is the whole
  *    rule. A legacy escrow returns every flag false, so no legacy-specific UI is needed and none
@@ -113,6 +116,9 @@ export default function ArbiterPanel({
           {state.seated ? (
             <>
               {t('arbiterPanel.seated')} <span className="font-mono text-xs">{state.arbiter}</span>
+              {state.canNominate && (
+                <span className="block mt-1">{t('arbiterPanel.seatedReplaceable')}</span>
+              )}
             </>
           ) : (
             <>
@@ -122,7 +128,8 @@ export default function ArbiterPanel({
         </p>
       </div>
 
-      {/* Nominate — matching names seat that candidate instantly, in the nominating transaction. */}
+      {/* Nominate — matching names seat that candidate instantly, in the nominating transaction,
+          replacing the incumbent if the seat is occupied (§3.3A1b). */}
       {state.canNominate && (
         <div className="space-y-2">
           <label htmlFor="arbiter-candidate" className="block text-sm font-medium text-gray-700 dark:text-secondary-200">{t('arbiterPanel.nominateAnArbiter')}</label>

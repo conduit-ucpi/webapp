@@ -641,6 +641,8 @@ export const es: Catalogue = {
   'paymentActionPanel.coinbaseNote':
     'Terminarás en Coinbase. ¿Es tu primera vez en Coinbase? Verificarán tu identidad una sola vez.',
   'arbiterPanel.seated': 'Designado:',
+  'arbiterPanel.seatedReplaceable':
+    'Si tú y la otra parte nombráis la misma dirección nueva, esta reemplaza de inmediato al tercero de desempate designado. Ninguno de los dos puede cambiarlo por su cuenta.',
   'arbiterPanel.seatEmpty':
     'El puesto está vacío. El flujo de fondos de este depósito en garantía se vendió, lo que deja al tercero de desempate sin su puesto automáticamente. El comprador y el destinatario pueden acordar un reemplazo, o esperar al tercero de desempate predeterminado.',
   'arbiterPanel.nominationWarningBody':

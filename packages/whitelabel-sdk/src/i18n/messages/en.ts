@@ -541,6 +541,8 @@ export const en = {
   'paymentActionPanel.coinbaseNote':
     "You'll finish on Coinbase. New to Coinbase? They'll verify your ID once.",
   'arbiterPanel.seated': 'Seated:',
+  'arbiterPanel.seatedReplaceable':
+    'If you and the other party both name the same new address, they replace the seated tiebreaker immediately. Neither of you can change it alone.',
   'arbiterPanel.seatEmpty':
     "The seat is empty. This escrow's cashflow was sold, which unseats the tiebreaker automatically. Buyer and recipient can agree a replacement, or wait for the default tiebreaker.",
   'arbiterPanel.nominationWarningBody':

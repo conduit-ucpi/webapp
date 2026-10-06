@@ -75,7 +75,8 @@ export function useMarketplaceActions() {
   // ── Arbiter seat (§15.6c) ──────────────────────────────────────────────────
 
   /**
-   * Name a candidate for the empty arbiter seat.
+   * Name a candidate for the arbiter seat — empty or occupied. A match replaces the incumbent
+   * (§3.3A1b); the only address the contract refuses is the one already seated.
    *
    * ⚠️ A MATCH SEATS THEM IMMEDIATELY, in this transaction, irreversibly. Nominating the address
    *    the other party already named is not a step towards agreement — it is the agreement.

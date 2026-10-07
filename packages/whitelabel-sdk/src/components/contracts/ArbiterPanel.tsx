@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ethers } from 'ethers';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
@@ -6,6 +6,16 @@ import { useMarketplaceActions } from '@/hooks/useMarketplaceActions';
 import { formatTimestamp } from '@/utils/validation';
 import type { ArbiterState } from '@/types/marketplace';
 import { useT } from '../../i18n';
+
+// Fast feedback only; userservice decides what an email is.
+const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+
+/** What the email in the field names, looked up as the party types (never creating a wallet). */
+type EmailPreview =
+  | { email: string; status: 'looking' }
+  | { email: string; status: 'found'; wallet: string }
+  | { email: string; status: 'new' }
+  | { email: string; status: 'error'; message: string };
 
 interface ArbiterPanelProps {
   contractAddress: string;
@@ -60,13 +70,42 @@ export default function ArbiterPanel({
   onResigned
 }: ArbiterPanelProps) {
   const t = useT();
-  const { nominateArbiter, evictArbiter, resignArbiter, seatDefaultArbiter } = useMarketplaceActions();
+  const { nominateArbiter, resolveArbiterEmail, evictArbiter, resignArbiter, seatDefaultArbiter } = useMarketplaceActions();
   const [candidate, setCandidate] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [confirmingResign, setConfirmingResign] = useState(false);
+  const [preview, setPreview] = useState<EmailPreview | null>(null);
   const isArbiter = viewerRole === 'arbiter';
+
+  /*
+   * The live lookup. The other party's choice is only ever shown as a wallet, so a party who was
+   * told "it's mediator@example.com" needs to see which wallet that email is before agreeing.
+   * Debounced, stale answers dropped, and create: false — a half-typed address must never get a
+   * wallet made for it. The wallet is only made on Nominate.
+   */
+  useEffect(() => {
+    if (!EMAIL.test(candidate)) {
+      setPreview(null);
+      return;
+    }
+    setPreview({ email: candidate, status: 'looking' });
+    let current = true;
+    const timer = setTimeout(async () => {
+      try {
+        const wallet = await resolveArbiterEmail(candidate, { create: false });
+        if (current) setPreview(wallet ? { email: candidate, status: 'found', wallet } : { email: candidate, status: 'new' });
+      } catch (e: any) {
+        if (current) setPreview({ email: candidate, status: 'error', message: e?.message || t('arbiterPanel.lookupFailed') });
+      }
+    }, 400);
+    return () => {
+      current = false;
+      clearTimeout(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [candidate, resolveArbiterEmail]);
 
   if (loading && !state) {
     return <div className="text-sm text-gray-500 dark:text-secondary-400">{t('arbiterPanel.readingTheArbiterSeat')}</div>;
@@ -82,13 +121,14 @@ export default function ArbiterPanel({
     ) : null;
   }
 
-  const run = async (label: string, action: () => Promise<unknown>, success: string) => {
+  /** `success` may be worked out from what the action returned, e.g. the wallet an email named. */
+  const run = async <T,>(label: string, action: () => Promise<T>, success: string | ((result: T) => string)) => {
     setBusy(label);
     setError(null);
     setNotice(null);
     try {
-      await action();
-      setNotice(success);
+      const result = await action();
+      setNotice(typeof success === 'function' ? success(result) : success);
       await onChanged();
     } catch (e: any) {
       // A nomination racing a seat-default is an ordinary race, not a fault: a late match still
@@ -100,7 +140,11 @@ export default function ArbiterPanel({
     }
   };
 
-  const candidateIsValid = ethers.isAddress(candidate);
+  // A tiebreaker may be named by email: a wallet is made for it if need be on Nominate, and the
+  // wallet is what goes on chain.
+  const candidateIsEmail = EMAIL.test(candidate);
+  const candidateIsValid = ethers.isAddress(candidate) || candidateIsEmail;
+  const shownPreview = preview && preview.email === candidate ? preview : null;
 
   /*
    * ⚠️ WHOSE NOMINATION IS WHOSE. This used to be `nominatedByBuyer || nominatedByRecipient`,
@@ -120,6 +164,12 @@ export default function ArbiterPanel({
       : viewerRole === 'recipient' ? state.nominatedByBuyer
         : null;
   const unplaced = viewerRole === null && (state.nominatedByBuyer || state.nominatedByRecipient);
+
+  // The wallet the field names, as far as we know yet, and whether it is the other party's pick.
+  const candidateWallet = candidateIsEmail
+    ? (shownPreview?.status === 'found' ? shownPreview.wallet : null)
+    : (ethers.isAddress(candidate) ? candidate : null);
+  const matchesTheirs = !!theirs && !!candidateWallet && candidateWallet.toLowerCase() === theirs.toLowerCase();
 
   return (
     <div className="rounded-lg border border-gray-200 dark:border-secondary-700 p-4 space-y-4">
@@ -231,6 +281,9 @@ export default function ArbiterPanel({
               <p className="text-xs text-gray-500 dark:text-secondary-400">
                 {t('arbiterPanel.matchSeatsThem')}
               </p>
+              <p className="text-xs text-gray-500 dark:text-secondary-400">
+                {t('arbiterPanel.theirsByEmailHint')}
+              </p>
               {/*
                 ⚠️ FILLS THE FIELD, DOES NOT NOMINATE. One click straight to a seating is the
                    exact shape of the attack the warning above describes — the other party
@@ -280,7 +333,7 @@ export default function ArbiterPanel({
               id="arbiter-candidate"
               value={candidate}
               onChange={(e) => setCandidate(e.target.value.trim())}
-              placeholder="0x…"
+              placeholder={t('arbiterPanel.candidatePlaceholder')}
               className="flex-1 px-3 py-2 font-mono text-sm border border-gray-300 dark:border-secondary-700 bg-white dark:bg-secondary-900 text-gray-900 dark:text-white rounded-md"
             />
             <Button
@@ -289,18 +342,58 @@ export default function ArbiterPanel({
               onClick={() =>
                 run(
                   'Nomination',
-                  () => nominateArbiter(contractAddress, candidate),
+                  async () => {
+                    const wallet = candidateIsEmail ? await resolveArbiterEmail(candidate, { create: true }) : candidate;
+                    if (!wallet) throw new Error(t('arbiterPanel.lookupFailed'));
+                    await nominateArbiter(contractAddress, wallet);
+                    return wallet;
+                  },
                   // Only `theirs` can produce a match. Claiming one against our own standing
                   // nomination announces a seating that did not happen.
-                  theirs && candidate.toLowerCase() === theirs.toLowerCase()
-                    ? 'Nominations matched — that tiebreaker is now seated.'
-                    : 'Nomination recorded. It seats them the moment the other party names the same address.'
+                  (wallet) =>
+                    theirs && wallet.toLowerCase() === theirs.toLowerCase()
+                      ? 'Nominations matched — that tiebreaker is now seated.'
+                      : candidateIsEmail
+                        ? `Nomination recorded for ${candidate} (wallet ${wallet}). It seats them the moment the other party names the same email or address.`
+                        : 'Nomination recorded. It seats them the moment the other party names the same address.'
                 )
               }
             >
               {busy === 'Nomination' ? <LoadingSpinner className="w-4 h-4" /> : 'Nominate'}
             </Button>
           </div>
+
+          {/* Who the email in the field is, live, and whether that is who the other party named. */}
+          {shownPreview && (
+            <div aria-live="polite" className="rounded-md bg-gray-50 dark:bg-secondary-800 p-3 text-sm space-y-1">
+              {shownPreview.status === 'looking' && (
+                <div className="flex items-center gap-2 text-gray-600 dark:text-secondary-300">
+                  <LoadingSpinner className="w-3 h-3" /> {t('arbiterPanel.lookingUp', { email: shownPreview.email })}
+                </div>
+              )}
+              {shownPreview.status === 'found' && (
+                <div className="text-gray-700 dark:text-secondary-200">
+                  {t('arbiterPanel.emailHasWallet', { email: shownPreview.email })}{' '}
+                  <span className="font-mono text-xs break-all">{shownPreview.wallet}</span>
+                </div>
+              )}
+              {shownPreview.status === 'new' && (
+                <div className="text-gray-700 dark:text-secondary-200">{t('arbiterPanel.emailIsNew', { email: shownPreview.email })}</div>
+              )}
+              {shownPreview.status === 'error' && (
+                <div className="text-red-600 dark:text-red-400">{shownPreview.message}</div>
+              )}
+            </div>
+          )}
+
+          {/* Against the other party's pick: the one comparison that decides whether Nominate seats someone. */}
+          {theirs && candidateIsValid && (matchesTheirs ? (
+            <p className="text-sm font-medium text-green-700 dark:text-green-400">✓ {t('arbiterPanel.sameAsTheirs')}</p>
+          ) : (candidateWallet || shownPreview?.status === 'new') && (
+            <p className="text-sm text-amber-700 dark:text-amber-300">{t('arbiterPanel.notTheirs')}</p>
+          ))}
+
+          <p className="text-xs text-gray-500 dark:text-secondary-400">{t('arbiterPanel.emailNomineeHint')}</p>
 
           {candidate && !candidateIsValid && (
             <p className="text-xs text-red-600 dark:text-red-400">{t('arbiterPanel.thatIsNotA')}</p>

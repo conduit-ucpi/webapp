@@ -342,7 +342,19 @@ export const es: Catalogue = {
   'arbiterPanel.nominateAnArbiter': 'Nominar un tercero de desempate',
   'arbiterPanel.namingTheSameAddress':
     'Nombrar la misma dirección que la otra parte lo designa de inmediato.',
-  'arbiterPanel.thatIsNotA': 'Esa no es una dirección de billetera válida.',
+  'arbiterPanel.thatIsNotA': 'Esa no es una dirección de billetera ni un correo electrónico válidos.',
+  'arbiterPanel.candidatePlaceholder': '0x… o nombre@ejemplo.com',
+  'arbiterPanel.theirsByEmailHint':
+    'Se muestra como dirección de billetera aunque la otra parte haya indicado a la persona por correo electrónico. Si le han dicho quién es, escriba su correo abajo: le mostraremos si es la misma billetera.',
+  'arbiterPanel.lookingUp': 'Buscando {email}…',
+  'arbiterPanel.emailHasWallet': 'La billetera de StableDrop de {email} es',
+  'arbiterPanel.emailIsNew':
+    '{email} aún no ha iniciado sesión en StableDrop. Al nominarlo se crea una billetera para esa persona, que ocupa el puesto al iniciar sesión con este correo.',
+  'arbiterPanel.sameAsTheirs': 'Es la persona que sugirió la otra parte. Nominarla ahora la sienta en el puesto.',
+  'arbiterPanel.notTheirs': 'No es la persona que sugirió la otra parte.',
+  'arbiterPanel.lookupFailed': 'No se pudo buscar ese correo ahora. Inténtelo de nuevo o use una dirección de billetera.',
+  'arbiterPanel.emailNomineeHint':
+    'Puede indicarlo por dirección de billetera o por correo electrónico. Si nunca ha usado StableDrop, se crea una billetera para ese correo y ocupa el puesto al iniciar sesión con él. Si ambos escriben el mismo correo, han nombrado a la misma persona.',
 
   'connectPaymentStage.signInToProtect':
     'Inicia sesión para proteger tu pago: si alguna vez hay un problema, podrás abrir una disputa.',

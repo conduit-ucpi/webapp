@@ -87,6 +87,32 @@ export function useMarketplaceActions() {
     [send]
   );
 
+  /**
+   * The wallet a tiebreaker given by email will be nominated as. userservice owns the mapping, so
+   * the same email always names the same wallet: two parties who type the same address nominate
+   * the same person, and that person reaches the seat by signing in with it.
+   *
+   * `create: false` is the live preview while the party types: it only looks up, and answers null
+   * for an email nobody has signed in with, so a half-typed address never gets a wallet made for
+   * it. `create: true` is Nominate, and makes the wallet if there is none yet.
+   */
+  const resolveArbiterEmail = useCallback(
+    async (email: string, { create }: { create: boolean }): Promise<string | null> => {
+      const response = await apiFetch('/api/users/wallet-for-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, create })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (response.status === 404 && !create) return null;
+      if (!response.ok || !data?.walletAddress) {
+        throw new Error(data?.error || `Could not find a wallet for ${email} (${response.status})`);
+      }
+      return data.walletAddress as string;
+    },
+    []
+  );
+
   /** Clear a seat whose arbiter has been silent 30 days. Moves no funds and closes nothing. */
   const evictArbiter = useCallback(
     (escrowAddress: string) => send(escrowAddress, escrowInterface, 'evictArbiter'),
@@ -299,6 +325,7 @@ export function useMarketplaceActions() {
   return {
     submitSettlementVote,
     nominateArbiter,
+    resolveArbiterEmail,
     evictArbiter,
     resignArbiter,
     seatDefaultArbiter,

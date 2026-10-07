@@ -305,7 +305,19 @@ export const en = {
   'arbiterPanel.arbiterSeat': 'Tiebreaker seat',
   'arbiterPanel.nominateAnArbiter': 'Nominate a tiebreaker',
   'arbiterPanel.namingTheSameAddress': 'Naming the same address as the other party seats them immediately.',
-  'arbiterPanel.thatIsNotA': 'That is not a valid wallet address.',
+  'arbiterPanel.thatIsNotA': 'That is not a valid wallet address or email address.',
+  'arbiterPanel.candidatePlaceholder': '0x… or name@example.com',
+  'arbiterPanel.theirsByEmailHint':
+    "This shows as a wallet address even if they named the person by email. If they've told you who it is, type that person's email below: we'll show you whether it is the same wallet.",
+  'arbiterPanel.lookingUp': 'Looking up {email}…',
+  'arbiterPanel.emailHasWallet': '{email} has the StableDrop wallet',
+  'arbiterPanel.emailIsNew':
+    '{email} has not signed in to StableDrop yet. Nominating makes a wallet for them, and they take the seat by signing in with this email.',
+  'arbiterPanel.sameAsTheirs': 'This is the person the other party suggested. Nominating now seats them.',
+  'arbiterPanel.notTheirs': 'This is not the person the other party suggested.',
+  'arbiterPanel.lookupFailed': 'Could not look up that email right now. Try again, or use a wallet address.',
+  'arbiterPanel.emailNomineeHint':
+    "You can name them by wallet address or by email. If they have never used StableDrop, a wallet is made for that email and they take the seat by signing in with it. If you both type the same email, you have named the same person.",
   'connectPaymentStage.signInToProtect': 'Sign in to protect your payment -- if there is ever a problem, you will be able to raise a dispute.',
   'connectPaymentStage.backToPaymentOptions': 'Back to payment options',
   'contractAcceptance.contractAcceptedSuccessfully': 'Contract accepted successfully!',

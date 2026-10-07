@@ -30,11 +30,16 @@ async function handleSubmitDisputeEntry(req: NextApiRequest, res: NextApiRespons
       timestamp: req.body.timestamp || Date.now() // Add timestamp if not provided
     };
     
-    if (!disputeEntry.reason || disputeEntry.refundPercent === undefined) {
-      return res.status(400).json({ error: 'Missing required fields: reason, refundPercent' });
+    if (!disputeEntry.reason) {
+      return res.status(400).json({ error: 'Missing required field: reason' });
     }
 
-    if (disputeEntry.refundPercent < 0 || disputeEntry.refundPercent > 100) {
+    // A null figure is a note without a vote (contractservice renders it as "No figure
+    // submitted"): the tiebreaker's resignation, for one. It must never be coerced to 0,
+    // which would read as a real vote of everything to the seller.
+    if (disputeEntry.refundPercent == null) {
+      disputeEntry.refundPercent = null;
+    } else if (disputeEntry.refundPercent < 0 || disputeEntry.refundPercent > 100) {
       return res.status(400).json({ error: 'refundPercent must be between 0 and 100' });
     }
 

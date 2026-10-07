@@ -3,6 +3,8 @@ import { useT } from '../../i18n';
 
 interface CustomArbiterNoticeProps {
   arbiterAddress?: string | null;
+  /** Shown beside the wallet when the seller named the tiebreaker by email: who they chose, not only where it resolved. */
+  arbiterEmail?: string | null;
 }
 
 /**
@@ -19,7 +21,7 @@ interface CustomArbiterNoticeProps {
  * verify it before paying. A small copy button lets them copy the full
  * address to the clipboard.
  */
-export default function CustomArbiterNotice({ arbiterAddress }: CustomArbiterNoticeProps) {
+export default function CustomArbiterNotice({ arbiterAddress, arbiterEmail }: CustomArbiterNoticeProps) {
   const t = useT();
   const [isCopied, setIsCopied] = useState(false);
 
@@ -49,6 +51,11 @@ export default function CustomArbiterNotice({ arbiterAddress }: CustomArbiterNot
       <p className="text-sm text-yellow-800 dark:text-yellow-300 mt-1">{t('customArbiterNotice.thisContractUsesA')}</p>
       <p className="text-sm text-yellow-800 dark:text-yellow-300 mt-2">
         Tiebreaker:{' '}
+        {arbiterEmail ? (
+          <>
+            <span data-testid="custom-arbiter-email">{arbiterEmail}</span>{' '}
+          </>
+        ) : null}
         <span
           className="font-mono break-all"
           data-testid="custom-arbiter-address"

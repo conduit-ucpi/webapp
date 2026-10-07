@@ -257,12 +257,13 @@ export default function CreateContractWizard() {
           newErrors.description = t('wizard.errDescription');
         }
 
-        // Validate optional arbiter wallet address (advanced field)
+        // Validate the optional tiebreaker (advanced field): a wallet address or an email.
         // If blank/whitespace-only: skip — this is an optional override.
-        // If provided: must be a valid Ethereum address.
+        // An email is resolved to that person's wallet by contractservice when the request is
+        // stored (it is part of the escrow's address, so it must be a wallet before any quote).
         {
           const trimmedArbiter = form.arbiterAddress.trim();
-          if (trimmedArbiter.length > 0 && !isValidWalletAddress(trimmedArbiter)) {
+          if (trimmedArbiter.length > 0 && !isValidWalletAddress(trimmedArbiter) && !isValidEmail(trimmedArbiter)) {
             newErrors.arbiterAddress = t('wizard.errArbiter');
           }
         }
@@ -359,7 +360,14 @@ export default function CreateContractWizard() {
         // the seller in the same transaction instead of funding an escrow.
         expiry_timestamp: isInstantPayment ? 0 : form.payoutTimestamp,
         ...(brandId ? { brand: brandId } : {}),
-        ...(form.arbiterAddress.trim() ? { arbiter: ethers.getAddress(form.arbiterAddress.trim()) } : {})
+        // A wallet goes checksummed; an email goes as typed (lower-cased), for contractservice to resolve.
+        ...(form.arbiterAddress.trim()
+          ? {
+              arbiter: isValidWalletAddress(form.arbiterAddress.trim())
+                ? ethers.getAddress(form.arbiterAddress.trim())
+                : form.arbiterAddress.trim().toLowerCase()
+            }
+          : {})
       };
 
       if (!authenticatedFetch) {

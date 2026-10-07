@@ -21,8 +21,17 @@ interface ArbiterPanelProps {
    *
    * Null for anyone who is neither party, and for a viewer we could not place. The panel then
    * falls back to naming both sides explicitly rather than guessing which one is "theirs".
+   *
+   * `'arbiter'` is the seated tiebreaker looking at their own seat: no nominating (the contract
+   * refuses a non-party), no evicting, and a resign control instead (§3.3A1c).
    */
-  viewerRole?: 'buyer' | 'recipient' | null;
+  viewerRole?: 'buyer' | 'recipient' | 'arbiter' | null;
+  /**
+   * Called after a resignation lands on-chain, before the state is re-read: the caller records
+   * it with contractservice so the parties see it in the dispute log. A failure here never
+   * undoes what is on-chain.
+   */
+  onResigned?: () => Promise<void> | void;
 }
 
 /**
@@ -47,21 +56,25 @@ export default function ArbiterPanel({
   state,
   loading,
   onChanged,
-  viewerRole = null
+  viewerRole = null,
+  onResigned
 }: ArbiterPanelProps) {
   const t = useT();
-  const { nominateArbiter, evictArbiter, seatDefaultArbiter } = useMarketplaceActions();
+  const { nominateArbiter, evictArbiter, resignArbiter, seatDefaultArbiter } = useMarketplaceActions();
   const [candidate, setCandidate] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [confirmingResign, setConfirmingResign] = useState(false);
+  const isArbiter = viewerRole === 'arbiter';
 
   if (loading && !state) {
     return <div className="text-sm text-gray-500 dark:text-secondary-400">{t('arbiterPanel.readingTheArbiterSeat')}</div>;
   }
 
   // Nothing to offer: either not a marketplace-capable escrow, or no action is currently live.
-  if (!state || (!state.canNominate && !state.canSeatDefaultArbiter && !state.canEvictArbiter && state.seated)) {
+  // The seated arbiter always has one action - resigning - so their view never collapses.
+  if (!state || (!isArbiter && !state.canNominate && !state.canSeatDefaultArbiter && !state.canEvictArbiter && state.seated)) {
     return state?.seated ? (
       <div className="text-sm text-gray-600 dark:text-secondary-300">
         Tiebreaker seated: <span className="font-mono text-xs">{state.arbiter}</span>
@@ -128,9 +141,65 @@ export default function ArbiterPanel({
         </p>
       </div>
 
+      {/* The arbiter's own seat: step down (§3.3A1c). Two clicks, because it clears the seat
+          and drops their standing vote the moment it lands. */}
+      {isArbiter && state.seated && (
+        <div className="rounded-md border border-gray-200 dark:border-secondary-700 p-3 space-y-2">
+          <p className="text-sm text-gray-700 dark:text-secondary-200">{t('arbiterPanel.youHoldTheSeat')}</p>
+          <p className="text-xs text-gray-500 dark:text-secondary-400">{t('arbiterPanel.resignExplainer')}</p>
+          {!confirmingResign ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={busy !== null}
+              onClick={() => setConfirmingResign(true)}
+            >
+              {t('arbiterPanel.resign')}
+            </Button>
+          ) : (
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={busy !== null}
+                onClick={() => setConfirmingResign(false)}
+              >
+                {t('disputeManagementModal.cancel')}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                disabled={busy !== null}
+                onClick={() =>
+                  run(
+                    'Resignation',
+                    async () => {
+                      await resignArbiter(contractAddress);
+                      setConfirmingResign(false);
+                      // On-chain first, record second - and the record never gates anything.
+                      try {
+                        await onResigned?.();
+                      } catch (e) {
+                        console.error('Resignation is on-chain but recording it failed:', e);
+                      }
+                    },
+                    t('arbiterPanel.resigned')
+                  )
+                }
+              >
+                {busy === 'Resignation' ? <LoadingSpinner className="w-4 h-4" /> : t('arbiterPanel.resignConfirm')}
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Nominate — matching names seat that candidate instantly, in the nominating transaction,
-          replacing the incumbent if the seat is occupied (§3.3A1b). */}
-      {state.canNominate && (
+          replacing the incumbent if the seat is occupied (§3.3A1b). Parties only: the contract
+          refuses a nomination from the arbiter. */}
+      {state.canNominate && !isArbiter && (
         <div className="space-y-2">
           <label htmlFor="arbiter-candidate" className="block text-sm font-medium text-gray-700 dark:text-secondary-200">{t('arbiterPanel.nominateAnArbiter')}</label>
 
@@ -267,7 +336,7 @@ export default function ArbiterPanel({
       )}
 
       {/* Eviction — the remedy for a seated-but-silent arbiter. It swaps a voter; it moves no funds. */}
-      {state.canEvictArbiter && (
+      {state.canEvictArbiter && !isArbiter && (
         <div className="space-y-2">
           <p className="text-sm text-gray-700 dark:text-secondary-200">
             This tiebreaker has been silent for 30 days

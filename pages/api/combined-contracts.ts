@@ -28,8 +28,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // SECURITY: Never log headers - they contain bearer tokens and API keys
 
+    // `?role=arbiter` lists the escrows naming the viewer as tiebreaker instead of their own
+    // (contractservice README). Whitelisted rather than forwarded blind.
+    const role = req.query.role === 'arbiter' ? '?role=arbiter' : '';
+
     // Fetch all contracts from the unified contracts endpoint
-    const contractsResponse = await fetch(`${process.env.CONTRACT_SERVICE_URL}/api/contracts/combined-contracts`, {
+    const contractsResponse = await fetch(`${process.env.CONTRACT_SERVICE_URL}/api/contracts/combined-contracts${role}`, {
       method: 'GET',
       headers
     });

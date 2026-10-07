@@ -54,6 +54,9 @@ export interface AccountLink {
 export function accountLinks({ emailVerificationLive, isAdmin }: { emailVerificationLive: boolean; isAdmin: boolean }): AccountLink[] {
   return [
     { label: 'Dashboard', href: '/dashboard' },
+    // Disputes the user has been named tiebreaker on. Everyone gets the link: whether they hold
+    // any seat is only known once the page asks contractservice.
+    { label: 'Disputes', href: '/disputes' },
     { label: 'Wallet', href: '/wallet' },
     { label: 'Get paid early', href: '/offers' },
     ...(emailVerificationLive ? [{ label: 'Verify email', href: '/email-verification' }] : []),

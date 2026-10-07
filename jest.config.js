@@ -29,6 +29,11 @@ const customJestConfig = {
     // Mock Reown AppKit SIWX for Jest
     '^@reown/appkit-siwx$': '<rootDir>/__mocks__/reown-appkit-siwx.js',
   },
+  // `next build` (output: standalone) copies packages/whitelabel-sdk and __mocks__ into
+  // .next/standalone. next/jest keeps .next out of the test paths but not out of the haste
+  // module map, so after a local build every `@conduit-ucpi/whitelabel-sdk` lookup finds two
+  // packages and the suite refuses to run. Keep the build out of the map.
+  modulePathIgnorePatterns: ['<rootDir>/.next/'],
   // Increase timeout for Web3Auth crypto operations
   testTimeout: 30000,
   // Reduce concurrent workers to prevent crypto conflicts

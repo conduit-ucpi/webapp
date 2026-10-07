@@ -103,7 +103,7 @@ describe('CreateContractWizard - arbiterAddress (advanced option)', () => {
 
     if (typeof arbiter === 'string') {
       fireEvent.click(screen.getByRole('button', { name: /advanced options/i }));
-      fireEvent.change(screen.getByPlaceholderText('0x...'), { target: { value: arbiter } });
+      fireEvent.change(screen.getByPlaceholderText('0x... or name@example.com'), { target: { value: arbiter } });
     }
   };
 
@@ -134,7 +134,7 @@ describe('CreateContractWizard - arbiterAddress (advanced option)', () => {
     mockUseAuth.mockReturnValue(buildAuth(jest.fn()) as any);
     render(<CreateContractWizard />);
 
-    expect(screen.queryByPlaceholderText('0x...')).not.toBeInTheDocument();
+    expect(screen.queryByPlaceholderText('0x... or name@example.com')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /advanced options/i })).toBeInTheDocument();
   });
 
@@ -143,8 +143,8 @@ describe('CreateContractWizard - arbiterAddress (advanced option)', () => {
     render(<CreateContractWizard />);
 
     fireEvent.click(screen.getByRole('button', { name: /advanced options/i }));
-    expect(screen.getByPlaceholderText('0x...')).toBeInTheDocument();
-    expect(screen.getByText(/tiebreaker wallet address/i)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('0x... or name@example.com')).toBeInTheDocument();
+    expect(screen.getByText(/^tiebreaker$/i)).toBeInTheDocument();
   });
 
   it('accepts the form with no arbiter (it is optional)', async () => {
@@ -167,7 +167,7 @@ describe('CreateContractWizard - arbiterAddress (advanced option)', () => {
     expect(await submitButton()).toBeInTheDocument();
   });
 
-  it('stays on the form and says why when the arbiter address is invalid', () => {
+  it('stays on the form and says why when the arbiter is neither a wallet nor an email', () => {
     mockUseAuth.mockReturnValue(buildAuth(jest.fn()) as any);
     render(<CreateContractWizard />);
 
@@ -175,7 +175,18 @@ describe('CreateContractWizard - arbiterAddress (advanced option)', () => {
     clickContinue();
 
     expect(screen.queryByRole('button', { name: /create payment request/i })).not.toBeInTheDocument();
-    expect(screen.getByText(/invalid tiebreaker wallet address/i)).toBeInTheDocument();
+    expect(screen.getByText(/enter a wallet address or an email address/i)).toBeInTheDocument();
+  });
+
+  it('accepts an email as the tiebreaker and sends it as typed, lower-cased, for contractservice to resolve', async () => {
+    const authenticatedFetch = okFetch();
+    mockUseAuth.mockReturnValue(buildAuth(authenticatedFetch) as any);
+    render(<CreateContractWizard />);
+
+    fillForm('  Mediator@Example.com ');
+    clickContinue();
+
+    expect((await postedBody(authenticatedFetch)).arbiter).toBe('mediator@example.com');
   });
 
   it('sends no arbiter when none was given', async () => {

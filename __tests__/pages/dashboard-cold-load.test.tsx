@@ -40,6 +40,20 @@ jest.mock('@/components/dashboard/EnhancedDashboard', () => {
   };
 });
 
+// The dashboard route mounts ReservesOwedList above the contracts, which reads the config.
+jest.mock('@/components/auth/ConfigProvider', () => ({
+  useConfig: jest.fn(() => ({
+    config: { chainId: 84532, rpcUrl: 'https://sepolia.base.org', serviceLink: 'http://localhost:3000' },
+    isLoading: false,
+  })),
+  ConfigProvider: ({ children }: { children: React.ReactNode }) => children,
+}));
+jest.mock('@/components/marketplace/ReservesOwedList', () => {
+  return function MockReservesOwedList() {
+    return <div data-testid="reserves-owed" />;
+  };
+});
+
 jest.mock('@/components/auth/ConnectWalletEmbedded', () => {
   return function MockConnectWalletEmbedded() {
     return <div data-testid="connect-wallet-embedded" />;
@@ -73,7 +87,8 @@ function rendersLoadingSkeleton(container: HTMLElement) {
 }
 
 function rendersConnectPrompt() {
-  return screen.queryByTestId('connect-wallet-embedded') !== null;
+  // The sign-in card offers more than one way in, so the connect component appears more than once.
+  return screen.queryAllByTestId('connect-wallet-embedded').length > 0;
 }
 
 function rendersDashboardContent() {

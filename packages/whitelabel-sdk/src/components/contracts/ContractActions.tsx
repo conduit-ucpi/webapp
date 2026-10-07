@@ -6,7 +6,9 @@ import { useAuth } from '@/components/auth';
 import { ESCROW_CONTRACT_ABI } from '@conduit-ucpi/sdk';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import Modal from '@/components/ui/Modal';
 import DisputeModal from './DisputeModal';
+import { SETTLED_IN_CASH_REASON } from '@/lib/cashSettlement';
 import DisputeManagementModal from './DisputeManagementModal';
 import { formatDateTimeWithTZ } from '@/utils/validation';
 import { useBrandedHref } from '../../theme';
@@ -34,6 +36,7 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
   const [loadingMessage, setLoadingMessage] = useState('');
   const [hasError, setHasError] = useState(false);
   const [showDisputeModal, setShowDisputeModal] = useState(false);
+  const [showCashSettlementModal, setShowCashSettlementModal] = useState(false);
   const [showDisputeManagementModal, setShowDisputeManagementModal] = useState(false);
 
   const isPending = !('contractAddress' in contract);
@@ -129,6 +132,7 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
       setIsLoading(false);
       setLoadingMessage('');
       setShowDisputeModal(false);
+      setShowCashSettlementModal(false);
     } catch (error: any) {
       console.error('❌ Dispute failed:', error);
       setHasError(true);
@@ -207,7 +211,7 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
   switch (contract.ctaType) {
     case 'RAISE_DISPUTE':
       return (
-        <>
+        <div className="space-y-2">
           <Button
             variant="outline"
             size="sm"
@@ -224,13 +228,62 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
               contract.ctaLabel || 'Raise Dispute'
             )}
           </Button>
+          {/*
+            "I settled in cash": the same dispute path with its arguments fixed — 100% to the buyer
+            and the sentinel reason from lib/cashSettlement.ts, which the seller's screen and
+            disputeservice recognise. It is not a refund button: the buyer's 100% is one vote, and
+            the seller (or a tiebreaker) must match it before anything moves. The dialog says so.
+          */}
+          {isBuyer && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowCashSettlementModal(true)}
+              disabled={isLoading}
+              className="w-full"
+            >
+              {t('contractActions.settledInCash')}
+            </Button>
+          )}
           <DisputeModal
             isOpen={showDisputeModal}
             onClose={() => setShowDisputeModal(false)}
             onSubmit={handleRaiseDispute}
             isSubmitting={isLoading}
           />
-        </>
+          <Modal
+            isOpen={showCashSettlementModal}
+            onClose={() => { if (!isLoading) setShowCashSettlementModal(false); }}
+            title={t('contractActions.settledInCashTitle')}
+            size="small"
+          >
+            <p className="text-sm text-gray-700">{t('contractActions.settledInCashBody')}</p>
+            <div className="flex justify-end space-x-3 mt-6">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowCashSettlementModal(false)}
+                disabled={isLoading}
+              >
+                {t('contractActions.settledInCashCancel')}
+              </Button>
+              <Button
+                type="button"
+                onClick={() => handleRaiseDispute(SETTLED_IN_CASH_REASON, 100)}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <>
+                    <LoadingSpinner className="w-4 h-4 mr-2" />
+                    {loadingMessage}
+                  </>
+                ) : (
+                  t('contractActions.settledInCashConfirm')
+                )}
+              </Button>
+            </div>
+          </Modal>
+        </div>
       );
 
     case 'CLAIM_FUNDS':

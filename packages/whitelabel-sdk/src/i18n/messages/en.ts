@@ -77,7 +77,7 @@ export const en = {
   'wizard.created': 'Payment request created!',
   'wizard.createFailed': 'Failed to create payment request',
   'wizard.errDescription': 'Description must be 1-160 characters',
-  'wizard.errArbiter': 'Invalid tiebreaker wallet address',
+  'wizard.errArbiter': 'Enter a wallet address or an email address for the tiebreaker',
   'wizard.errAmount': 'Please enter a valid amount',
   'wizard.errDate': 'Please select a valid date and time',
   'wizard.errPast': 'Payout time must be in the future',
@@ -195,9 +195,9 @@ export const en = {
   'terms.advancedOptions': 'Advanced Options',
   'common.progress': 'Progress',
   'pay.payButton': 'Pay',
-  'terms.arbiterAddress': 'Tiebreaker Wallet Address',
+  'terms.arbiterAddress': 'Tiebreaker',
   'terms.arbiterHelp':
-    'Optional override for the dispute resolver. Leave blank to use the system default.',
+    'Optional. The person who holds the third vote if there is a dispute: a wallet address, or an email address — they will be given a wallet and invited if they have never signed in. Leave blank to use the system default.',
   'review.nextBody':
     "You'll get a QR code and link to share. Once the buyer pays, funds are held in escrow and release to your wallet automatically — no extra step from you.",
   'send.title': 'Now send this to your buyer',
@@ -541,6 +541,27 @@ export const en = {
   'paymentActionPanel.coinbaseNote':
     "You'll finish on Coinbase. New to Coinbase? They'll verify your ID once.",
   'arbiterPanel.seated': 'Seated:',
+  'arbiterPanel.youHoldTheSeat': 'You hold the tiebreaker seat on this escrow.',
+  'arbiterPanel.resignExplainer':
+    'Resigning clears the seat. Any figure you have submitted stops counting at once, and the parties can agree a replacement or, 72 hours into a dispute, seat the default tiebreaker. This moves no funds.',
+  'arbiterPanel.resign': 'Resign as tiebreaker',
+  'arbiterPanel.resignConfirm': 'Yes, resign',
+  'arbiterPanel.resigned': 'You have left the seat.',
+  'disputeManagementModal.castYourVote': 'Cast your tiebreaker vote',
+  'disputeManagementModal.arbiterVoteNote':
+    "You are the tiebreaker. Your figure is one of three; if it matches the buyer's or the seller's, the escrow pays out at that number immediately. Give your reasons — both parties will read them.",
+  'arbiterDisputes.title': 'Disputes',
+  'arbiterDisputes.subtitle': 'Escrows where you hold the tiebreaker seat. Your vote is one of three; two matching votes release the money.',
+  'arbiterDisputes.signIn': 'Sign in to see the disputes you have been asked to decide.',
+  'arbiterDisputes.goToDashboard': 'Go to the dashboard to sign in',
+  'arbiterDisputes.needsDecision': 'Needs your decision',
+  'arbiterDisputes.otherSeats': 'Other escrows naming you as tiebreaker',
+  'arbiterDisputes.none': 'Nobody has named you as a tiebreaker yet.',
+  'arbiterDisputes.review': 'Review dispute',
+  'arbiterDisputes.view': 'View',
+  'arbiterDisputes.releaseDate': 'release',
+  'arbiterDisputes.filings': '{count} entries in the dispute log',
+  'arbiterDisputes.loadFailed': 'Could not load your disputes. Please try again.',
   'arbiterPanel.seatedReplaceable':
     'If you and the other party both name the same new address, they replace the seated tiebreaker immediately. Neither of you can change it alone.',
   'arbiterPanel.seatEmpty':
@@ -593,6 +614,16 @@ export const en = {
   'qrPaymentPanel.sendExactly': 'Send exactly {amount} {token} -- do not send more or less.',
   'status.checkingContract': 'Checking contract status...',
   'status.successRedirecting': 'Success! Redirecting...',
+  'contractActions.settledInCash': 'I settled in cash',
+  'contractActions.settledInCashTitle': 'Did you settle this in cash?',
+  'contractActions.settledInCashBody':
+    'This raises a dispute and puts your request for a 100% refund on-chain, with the reason "I settled in cash". The escrow stays locked until the seller confirms by matching 100%, or a tiebreaker rules. Nothing is refunded on your word alone.',
+  'contractActions.settledInCashConfirm': 'Yes, raise it',
+  'contractActions.settledInCashCancel': 'Cancel',
+  'disputeManagementModal.cashClaimTitle': 'The buyer says you settled in cash',
+  'disputeManagementModal.cashClaimBody':
+    'They have put 100% to the buyer on-chain with the reason "I settled in cash". If that is right, confirming matches their figure and refunds the escrow to them immediately. If it is not, submit your own figure below instead.',
+  'disputeManagementModal.confirmCashSettlement': 'Confirm cash settlement',
   'status.raisingDispute': 'Raising dispute...',
   'status.claimingFunds': 'Claiming funds...',
   'status.initializing': 'Initializing...',

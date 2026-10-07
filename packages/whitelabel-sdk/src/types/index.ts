@@ -93,6 +93,8 @@ export interface Contract {
   contractAddress: string;
   buyerAddress: string;
   sellerAddress: string;
+  /** Tiebreaker named on the record at creation; absent means the platform default. A seat taken later by nomination is on-chain only. */
+  arbiterAddress?: string;
   amount: number;
   expiryTimestamp: number;
   description: string;
@@ -172,6 +174,8 @@ export interface PendingContract {
   // Optional custom arbiter address chosen by the seller.
   // When present, this contract uses a non-default dispute resolver.
   arbiterAddress?: string;
+  /** The email the tiebreaker was given as, when it was; arbiterAddress is the wallet it resolved to. */
+  arbiterEmail?: string | null;
   /** White-label partner the contract was created under; absent for our own brand. */
   brandId?: string | null;
   description: string;
@@ -242,7 +246,8 @@ export interface ResolveDisputeRequest {
 export interface SubmitDisputeEntryRequest {
   timestamp: number;
   reason: string;
-  refundPercent: number;
+  /** Null records a note without a vote, such as the tiebreaker resigning. Never 0 for "none". */
+  refundPercent: number | null;
 }
 
 export interface TransferUSDCRequest {

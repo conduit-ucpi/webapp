@@ -53,7 +53,7 @@ function requestFrom(contract: PendingContract, decimals: number | undefined): P
     },
     sellerLabel:
       contract.sellerEmail && !PLACEHOLDER_EMAIL.test(contract.sellerEmail) ? contract.sellerEmail : undefined,
-    notice: <CustomArbiterNotice arbiterAddress={contract.arbiterAddress} />,
+    notice: <CustomArbiterNotice arbiterAddress={contract.arbiterAddress} arbiterEmail={contract.arbiterEmail} />,
   };
 }
 

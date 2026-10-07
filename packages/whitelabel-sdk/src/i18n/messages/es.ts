@@ -92,7 +92,7 @@ export const es: Catalogue = {
   'wizard.created': '¡Solicitud de pago creada!',
   'wizard.createFailed': 'No se pudo crear la solicitud de pago',
   'wizard.errDescription': 'La descripción debe tener entre 1 y 160 caracteres',
-  'wizard.errArbiter': 'La dirección de billetera del tercero de desempate no es válida',
+  'wizard.errArbiter': 'Introduce una dirección de billetera o un correo electrónico para el tercero de desempate',
   'wizard.errAmount': 'Ingresa un monto válido',
   'wizard.errDate': 'Selecciona una fecha y hora válidas',
   'wizard.errPast': 'La fecha de liberación debe ser futura',
@@ -210,9 +210,9 @@ export const es: Catalogue = {
   'terms.advancedOptions': 'Opciones avanzadas',
   'common.progress': 'Progreso',
   'pay.payButton': 'Pagar',
-  'terms.arbiterAddress': 'Dirección de billetera del tercero de desempate',
+  'terms.arbiterAddress': 'Tercero de desempate',
   'terms.arbiterHelp':
-    'Opcional: reemplaza al resolutor de disputas. Déjalo en blanco para usar el predeterminado.',
+    'Opcional. Quien tiene el tercer voto si hay una disputa: una dirección de billetera o un correo electrónico (si nunca ha iniciado sesión, se le creará una billetera y se le invitará). Déjalo en blanco para usar el predeterminado.',
   'review.nextBody':
     'Recibirás un código QR y un enlace para compartir. Cuando el comprador pague, los fondos quedan en depósito en garantía y se liberan a tu billetera automáticamente, sin que tengas que hacer nada más.',
   'send.title': 'Ahora envíaselo a tu comprador',
@@ -641,6 +641,27 @@ export const es: Catalogue = {
   'paymentActionPanel.coinbaseNote':
     'Terminarás en Coinbase. ¿Es tu primera vez en Coinbase? Verificarán tu identidad una sola vez.',
   'arbiterPanel.seated': 'Designado:',
+  'arbiterPanel.youHoldTheSeat': 'Ocupas el puesto de tercero de desempate en este depósito en garantía.',
+  'arbiterPanel.resignExplainer':
+    'Renunciar deja el puesto vacío. Cualquier cifra que hayas enviado deja de contar de inmediato, y las partes pueden acordar un reemplazo o, 72 horas después de abrirse la disputa, designar al tercero de desempate predeterminado. No mueve fondos.',
+  'arbiterPanel.resign': 'Renunciar como tercero de desempate',
+  'arbiterPanel.resignConfirm': 'Sí, renunciar',
+  'arbiterPanel.resigned': 'Has dejado el puesto.',
+  'disputeManagementModal.castYourVote': 'Emite tu voto de desempate',
+  'disputeManagementModal.arbiterVoteNote':
+    'Eres el tercero de desempate. Tu cifra es una de tres; si coincide con la del comprador o la del vendedor, el depósito en garantía se paga con esa cifra de inmediato. Explica tus motivos: ambas partes los leerán.',
+  'arbiterDisputes.title': 'Disputas',
+  'arbiterDisputes.subtitle': 'Depósitos en garantía en los que ocupas el puesto de tercero de desempate. Tu voto es uno de tres; dos votos coincidentes liberan el dinero.',
+  'arbiterDisputes.signIn': 'Inicia sesión para ver las disputas que te han pedido decidir.',
+  'arbiterDisputes.goToDashboard': 'Ir al panel para iniciar sesión',
+  'arbiterDisputes.needsDecision': 'Requieren tu decisión',
+  'arbiterDisputes.otherSeats': 'Otros depósitos en garantía que te nombran tercero de desempate',
+  'arbiterDisputes.none': 'Nadie te ha nombrado tercero de desempate todavía.',
+  'arbiterDisputes.review': 'Revisar la disputa',
+  'arbiterDisputes.view': 'Ver',
+  'arbiterDisputes.releaseDate': 'liberación',
+  'arbiterDisputes.filings': '{count} entradas en el registro de la disputa',
+  'arbiterDisputes.loadFailed': 'No se pudieron cargar tus disputas. Inténtalo de nuevo.',
   'arbiterPanel.seatedReplaceable':
     'Si tú y la otra parte nombráis la misma dirección nueva, esta reemplaza de inmediato al tercero de desempate designado. Ninguno de los dos puede cambiarlo por su cuenta.',
   'arbiterPanel.seatEmpty':
@@ -694,6 +715,16 @@ export const es: Catalogue = {
   'qrPaymentPanel.sendExactly': 'Envía exactamente {amount} {token}: ni más ni menos.',
   'status.checkingContract': 'Comprobando el estado del contrato...',
   'status.successRedirecting': '¡Listo! Redirigiendo...',
+  'contractActions.settledInCash': 'Pagué en efectivo',
+  'contractActions.settledInCashTitle': '¿Liquidaste este pago en efectivo?',
+  'contractActions.settledInCashBody':
+    'Esto abre una disputa y registra en la cadena tu solicitud de reembolso del 100 %, con el motivo "I settled in cash". El depósito en garantía permanece bloqueado hasta que el vendedor lo confirme igualando el 100 %, o hasta que decida un tercero de desempate. Nada se reembolsa solo con tu palabra.',
+  'contractActions.settledInCashConfirm': 'Sí, abrir la disputa',
+  'contractActions.settledInCashCancel': 'Cancelar',
+  'disputeManagementModal.cashClaimTitle': 'El comprador dice que pagó en efectivo',
+  'disputeManagementModal.cashClaimBody':
+    'Ha registrado en la cadena un 100 % para el comprador con el motivo "I settled in cash". Si es correcto, confirmar iguala su cifra y le reembolsa el depósito en garantía de inmediato. Si no lo es, envía tu propia cifra más abajo.',
+  'disputeManagementModal.confirmCashSettlement': 'Confirmar el pago en efectivo',
   'status.raisingDispute': 'Abriendo la disputa...',
   'status.claimingFunds': 'Reclamando los fondos...',
   'status.initializing': 'Inicializando...',

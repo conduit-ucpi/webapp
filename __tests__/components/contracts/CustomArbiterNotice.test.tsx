@@ -5,6 +5,12 @@ import CustomArbiterNotice from '@/components/contracts/CustomArbiterNotice';
 const VALID_ARBITER = '0x4f11cEf6E89CB7F4050E89BA88A5f2Fe1e53482d';
 
 describe('CustomArbiterNotice', () => {
+  it('shows the email the tiebreaker was named by, beside the wallet it resolved to', () => {
+    render(<CustomArbiterNotice arbiterAddress={VALID_ARBITER} arbiterEmail="mediator@example.com" />);
+    expect(screen.getByTestId('custom-arbiter-email')).toHaveTextContent('mediator@example.com');
+    expect(screen.getByTestId('custom-arbiter-address')).toHaveTextContent(VALID_ARBITER);
+  });
+
   it('renders the warning banner when arbiterAddress is provided', () => {
     render(<CustomArbiterNotice arbiterAddress={VALID_ARBITER} />);
 

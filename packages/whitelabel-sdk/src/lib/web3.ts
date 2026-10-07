@@ -52,6 +52,7 @@ export const ESCROW_CONTRACT_ABI = [
   'function resolvedBuyerPercentage() view returns (uint8)',
   'function nominateArbiter(address candidate)',
   'function evictArbiter()',
+  'function resignArbiter()',
   'function seatDefaultArbiter()',
   'function approveRecipientTransfer(address operator, address newRecipient)',
 

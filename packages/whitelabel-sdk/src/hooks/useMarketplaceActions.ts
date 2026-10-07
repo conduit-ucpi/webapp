@@ -94,6 +94,15 @@ export function useMarketplaceActions() {
   );
 
   /**
+   * The seated arbiter steps down (§3.3A1c). Only the arbiter's own wallet can send it; the seat
+   * is empty afterwards exactly as after an eviction, and their standing vote stops counting.
+   */
+  const resignArbiter = useCallback(
+    (escrowAddress: string) => send(escrowAddress, escrowInterface, 'resignArbiter'),
+    [send]
+  );
+
+  /**
    * Fire the permissionless fallback from the platform relayer — the one dispute action the
    * platform sends itself, because it needs no signature and can only seat the Safe.
    *
@@ -291,6 +300,7 @@ export function useMarketplaceActions() {
     submitSettlementVote,
     nominateArbiter,
     evictArbiter,
+    resignArbiter,
     seatDefaultArbiter,
     createOfferVault,
     fundOffer,

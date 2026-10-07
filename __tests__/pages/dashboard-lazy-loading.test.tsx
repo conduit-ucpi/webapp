@@ -171,7 +171,8 @@ describe('Dashboard - Lazy Loading', () => {
     // Should show connect wallet message
     expect(screen.getByText(/Connect your wallet to continue/i)).toBeInTheDocument();
     expect(screen.getByText(/You need to connect your wallet/i)).toBeInTheDocument();
-    expect(screen.getByTestId('connect-wallet')).toBeInTheDocument();
+    // More than one way in on the sign-in card, so more than one connect component.
+    expect(screen.getAllByTestId('connect-wallet').length).toBeGreaterThan(0);
   });
 
   it('shows dashboard content when isConnected = true (even if user is null - lazy loading)', () => {

@@ -9,6 +9,10 @@ import FarcasterNameDisplay from '@/components/ui/FarcasterNameDisplay';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { useAuth } from '@/components/auth';
 import { useMarketplaceActions } from '@/hooks/useMarketplaceActions';
+import { CASH_SETTLEMENT_CONFIRMED_REASON, isCashSettlementClaim } from '@/lib/cashSettlement';
+
+/** What the dispute log shows when the tiebreaker steps down. A note, not a vote: no figure. */
+export const ARBITER_RESIGNED_REASON = 'Resigned as tiebreaker';
 import { useArbiterState, useSettlementState } from '@/hooks/useDisputeState';
 import StandingFiguresPanel from '@/components/contracts/StandingFiguresPanel';
 import ArbiterPanel from '@/components/contracts/ArbiterPanel';
@@ -81,17 +85,39 @@ export default function DisputeManagementModal({ isOpen, onClose, contract, onRe
    *    the arbiter seat is empty, the record is the thing most likely to be stale. Falls back to
    *    it only when the settlement state has not loaded.
    *
+   * `'arbiter'` when the connected wallet holds the seat (chain read first, record second): the
+   * tiebreaker uses this same screen to read both sides, vote, and resign (§3.3A1c).
+   *
    * Null for anyone who is neither party; the panel then names both sides rather than guessing.
    */
-  const viewerRole: 'buyer' | 'recipient' | null = (() => {
+  const viewerRole: 'buyer' | 'recipient' | 'arbiter' | null = (() => {
     const me = user?.walletAddress?.toLowerCase();
     if (!me) return null;
     const buyer = (settlement.data?.buyer ?? contract.buyerAddress)?.toLowerCase();
     const recipient = (settlement.data?.recipient ?? contract.sellerAddress)?.toLowerCase();
+    const seated = (settlement.data?.arbiter ?? arbiter.data?.arbiter ?? contract.arbiterAddress)?.toLowerCase();
     if (buyer === me) return 'buyer';
     if (recipient === me) return 'recipient';
+    if (seated && seated === me) return 'arbiter';
     return null;
   })();
+  const isArbiter = viewerRole === 'arbiter';
+
+  /** The dispute log is the record all three voters read; a resignation belongs in it. */
+  const recordResignation = async () => {
+    if (!contract.id) return;
+    const entry: SubmitDisputeEntryRequest = {
+      timestamp: Math.floor(Date.now() / 1000),
+      reason: ARBITER_RESIGNED_REASON,
+      refundPercent: null
+    };
+    const response = await apiFetch(`/api/contracts/${contract.id}/dispute`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(entry)
+    });
+    if (!response.ok) throw new Error(`recording resignation failed: ${response.status}`);
+  };
 
   const wouldSettleWith = othersFigures.find((f) => f.percent === figure);
   const alreadySettled = settlement.data?.resolvedBuyerPercentage != null;
@@ -163,6 +189,29 @@ export default function DisputeManagementModal({ isOpen, onClose, contract, onRe
   };
 
   const sortedDisputes = contract.disputes ? [...contract.disputes].sort((a, b) => a.timestamp - b.timestamp) : [];
+
+  /**
+   * The buyer's "I settled in cash" shortcut, seen from the seller's side (lib/cashSettlement.ts).
+   *
+   * Shown only to the recipient, only while unsettled, and only when BOTH halves of the shortcut
+   * are present: the buyer's 100% is standing on-chain (the half that pays out) and the record
+   * carries the sentinel reason (the half that says why). A 100% vote with any other reason is an
+   * ordinary dispute and gets the ordinary form.
+   */
+  const cashSettlementClaimed =
+    viewerRole === 'recipient' &&
+    !alreadySettled &&
+    settlement.data?.buyerVote === 100 &&
+    sortedDisputes.some((d) => isCashSettlementClaim(d.reason) && d.refundPercent === 100);
+
+  /** One click to line up the matching figure; the ordinary confirmation step still follows. */
+  const confirmCashSettlement = () => {
+    setReason(CASH_SETTLEMENT_CONFIRMED_REASON);
+    setRefundPercent(100);
+    setError(null);
+    setOutcome(null);
+    setConfirming(true);
+  };
 
   return (
     <Transition appear show={isOpen} as={Fragment}>
@@ -241,8 +290,10 @@ export default function DisputeManagementModal({ isOpen, onClose, contract, onRe
                         state={arbiter.data}
                         loading={arbiter.loading}
                         viewerRole={viewerRole}
+                        onResigned={recordResignation}
                         onChanged={async () => {
                           await Promise.all([arbiter.refetch(), settlement.refetch()]);
+                          onRefresh();
                         }}
                       />
                     </div>
@@ -295,10 +346,33 @@ export default function DisputeManagementModal({ isOpen, onClose, contract, onRe
                     </div>
                   )}
 
+                  {/* The buyer says they paid in cash: offer the matching 100% in one step. */}
+                  {cashSettlementClaimed && (
+                    <div className="mb-6 rounded-lg border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 p-4">
+                      <h3 className="font-medium text-green-900 dark:text-green-200 mb-1">{t('disputeManagementModal.cashClaimTitle')}</h3>
+                      <p className="text-sm text-green-800 dark:text-green-300">{t('disputeManagementModal.cashClaimBody')}</p>
+                      <div className="mt-3">
+                        <Button
+                          type="button"
+                          onClick={confirmCashSettlement}
+                          disabled={isSubmitting || confirming}
+                          className="bg-green-600 hover:bg-green-700"
+                        >
+                          {t('disputeManagementModal.confirmCashSettlement')}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Submit a settlement figure */}
                   {!alreadySettled && (
                     <div className="border-t border-gray-200 dark:border-secondary-700 pt-6">
-                      <h3 className="font-medium text-gray-900 dark:text-white mb-2">{t('disputeManagementModal.submitYourSettlementFigure')}</h3>
+                      <h3 className="font-medium text-gray-900 dark:text-white mb-2">
+                        {isArbiter ? t('disputeManagementModal.castYourVote') : t('disputeManagementModal.submitYourSettlementFigure')}
+                      </h3>
+                      {isArbiter && (
+                        <p className="text-sm text-gray-600 dark:text-secondary-300 mb-3">{t('disputeManagementModal.arbiterVoteNote')}</p>
+                      )}
 
                       {/*
                         ⚠️ THE SINGLE MOST IMPORTANT THING ON THIS SCREEN (§15.6b). The contract

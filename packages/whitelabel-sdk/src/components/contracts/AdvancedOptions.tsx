@@ -64,7 +64,7 @@ export default function AdvancedOptions({
             type="text"
             value={arbiterAddress}
             onChange={(e) => onArbiterChange(e.target.value)}
-            placeholder="0x..."
+            placeholder="0x... or name@example.com"
             error={arbiterError}
             helpText={t('terms.arbiterHelp')}
           />

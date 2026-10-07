@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react';
+import { render, fireEvent, waitFor } from '@testing-library/react';
 import { screen } from '@testing-library/dom';
 import DisputeManagementModal from '@/components/contracts/DisputeManagementModal';
 
@@ -7,11 +7,14 @@ import DisputeManagementModal from '@/components/contracts/DisputeManagementModa
  * figure form is framed as their vote, and the arbiter panel offers resignation rather than the
  * parties' nomination control. Both sides' filings are shown exactly as they are to the parties.
  */
+const mockResignArbiter = jest.fn();
 jest.mock('@/hooks/useMarketplaceActions', () => ({
   useMarketplaceActions: () => ({
-    submitSettlementVote: jest.fn(), nominateArbiter: jest.fn(), evictArbiter: jest.fn(), resignArbiter: jest.fn(), seatDefaultArbiter: jest.fn()
+    submitSettlementVote: jest.fn(), nominateArbiter: jest.fn(), evictArbiter: jest.fn(), resignArbiter: mockResignArbiter, seatDefaultArbiter: jest.fn()
   })
 }));
+const mockApiFetch = jest.fn();
+jest.mock('@/lib/apiFetch', () => ({ apiFetch: (...args: unknown[]) => mockApiFetch(...args) }));
 jest.mock('@/hooks/useDisputeState', () => ({
   useSettlementState: () => ({
     data: { buyer: '0xbuyer', recipient: '0xseller', arbiter: '0xarbiter', buyerVote: 100, recipientVote: 0, arbiterVote: null, resolvedBuyerPercentage: null },
@@ -50,5 +53,46 @@ describe('DisputeManagementModal for the seated tiebreaker', () => {
     expect(screen.getByRole('button', { name: 'Resign as tiebreaker' })).toBeInTheDocument();
     // Not a party: no nominating.
     expect(screen.queryByRole('button', { name: 'Nominate' })).toBeNull();
+  });
+
+  /**
+   * contractservice lists the arbiter's /disputes screen by the seat it has recorded, so after a
+   * seat action it is told to re-read the chain - and before the list is refreshed, or the list
+   * comes back with the escrow the arbiter just left.
+   */
+  it('after resigning, records the note, has the seat re-read, then refreshes the list', async () => {
+    const calls: string[] = [];
+    mockResignArbiter.mockImplementation(async () => { calls.push('chain'); return '0xtx'; });
+    mockApiFetch.mockImplementation(async (path: string) => { calls.push(path); return { ok: true, status: 200 }; });
+    const onRefresh = jest.fn(() => { calls.push('list'); });
+
+    render(<DisputeManagementModal isOpen onClose={jest.fn()} contract={contract} onRefresh={onRefresh} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Resign as tiebreaker' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Yes, resign' }));
+
+    await waitFor(() => expect(onRefresh).toHaveBeenCalled());
+    expect(calls).toEqual([
+      'chain',
+      '/api/contracts/contract-1/dispute',
+      '/api/contracts/contract-1/arbiter-seat/refresh',
+      'list'
+    ]);
+    expect(mockApiFetch).toHaveBeenCalledWith('/api/contracts/contract-1/arbiter-seat/refresh', { method: 'POST' });
+  });
+
+  it('a failed seat refresh still refreshes the list', async () => {
+    mockResignArbiter.mockResolvedValue('0xtx');
+    mockApiFetch.mockImplementation(async (path: string) =>
+      path.endsWith('/arbiter-seat/refresh') ? { ok: false, status: 503 } : { ok: true, status: 200 });
+    const onRefresh = jest.fn();
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    render(<DisputeManagementModal isOpen onClose={jest.fn()} contract={contract} onRefresh={onRefresh} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Resign as tiebreaker' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Yes, resign' }));
+
+    await waitFor(() => expect(onRefresh).toHaveBeenCalled());
+    expect(errorSpy).toHaveBeenCalledWith('Arbiter seat refresh failed: 503');
+    errorSpy.mockRestore();
   });
 });

@@ -119,6 +119,22 @@ export default function DisputeManagementModal({ isOpen, onClose, contract, onRe
     if (!response.ok) throw new Error(`recording resignation failed: ${response.status}`);
   };
 
+  /**
+   * After any seat action, have contractservice re-read the seat from the chain. Its arbiter
+   * /disputes listing is built from the seat it has recorded, so without this a resigned
+   * tiebreaker keeps the escrow and a newly seated one cannot find it until the hourly sweep.
+   * Never gates anything: the chain already holds the outcome.
+   */
+  const refreshSeatRecord = async () => {
+    if (!contract.id) return;
+    try {
+      const response = await apiFetch(`/api/contracts/${contract.id}/arbiter-seat/refresh`, { method: 'POST' });
+      if (!response.ok) console.error(`Arbiter seat refresh failed: ${response.status}`);
+    } catch (e) {
+      console.error('Arbiter seat refresh failed:', e);
+    }
+  };
+
   const wouldSettleWith = othersFigures.find((f) => f.percent === figure);
   const alreadySettled = settlement.data?.resolvedBuyerPercentage != null;
 
@@ -292,7 +308,7 @@ export default function DisputeManagementModal({ isOpen, onClose, contract, onRe
                         viewerRole={viewerRole}
                         onResigned={recordResignation}
                         onChanged={async () => {
-                          await Promise.all([arbiter.refetch(), settlement.refetch()]);
+                          await Promise.all([arbiter.refetch(), settlement.refetch(), refreshSeatRecord()]);
                           onRefresh();
                         }}
                       />

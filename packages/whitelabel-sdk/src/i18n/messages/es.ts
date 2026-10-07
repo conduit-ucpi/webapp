@@ -352,6 +352,15 @@ export const es: Catalogue = {
     '{email} aún no ha iniciado sesión en StableDrop. Al nominarlo se crea una billetera para esa persona, que ocupa el puesto al iniciar sesión con este correo.',
   'arbiterPanel.sameAsTheirs': 'Es la persona que sugirió la otra parte. Nominarla ahora la sienta en el puesto.',
   'arbiterPanel.notTheirs': 'No es la persona que sugirió la otra parte.',
+  'arbiterPanel.candidateIsBuyer': 'Es el comprador de este depósito en garantía; una parte no puede ser el árbitro de desempate.',
+  'arbiterPanel.candidateIsSeller': 'Es el vendedor de este depósito en garantía; una parte no puede ser el árbitro de desempate.',
+  'arbiterPanel.candidateIsSeated': 'Es el árbitro de desempate que ya ocupa el puesto en este depósito; nomine a otra persona.',
+  'arbiterPanel.refusedCandidate':
+    'El depósito rechazó {address}: no se puede nominar a una parte del depósito ni al árbitro que ya ocupa el puesto. No se envió nada.',
+  'arbiterPanel.refusedNotParty':
+    'El depósito lo rechazó porque se habría enviado desde la billetera {address}, que no es ni el comprador ni el vendedor de este depósito. Solo ellos pueden nominar. Inicie sesión con la billetera que es parte de este depósito e inténtelo de nuevo. No se envió nada.',
+  'arbiterPanel.refusedNotOpen':
+    'Este depósito ya no admite nominaciones: se ha liquidado o pagado, o nunca se financió. No se envió nada.',
   'arbiterPanel.lookupFailed': 'No se pudo buscar ese correo ahora. Inténtelo de nuevo o use una dirección de billetera.',
   'arbiterPanel.emailNomineeHint':
     'Puede indicarlo por dirección de billetera o por correo electrónico. Si nunca ha usado StableDrop, se crea una billetera para ese correo y ocupa el puesto al iniciar sesión con él. Si ambos escriben el mismo correo, han nombrado a la misma persona.',

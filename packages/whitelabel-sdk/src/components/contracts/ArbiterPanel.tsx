@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { ethers } from 'ethers';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
-import { useMarketplaceActions } from '@/hooks/useMarketplaceActions';
+import { useMarketplaceActions, type ContractRefusedError } from '@/hooks/useMarketplaceActions';
 import { formatTimestamp } from '@/utils/validation';
 import type { ArbiterState } from '@/types/marketplace';
 import { useT } from '../../i18n';
@@ -42,6 +42,13 @@ interface ArbiterPanelProps {
    * undoes what is on-chain.
    */
   onResigned?: () => Promise<void> | void;
+  /**
+   * The escrow's buyer and recipient as the chain has them (the caller's read, which wins over
+   * the local record after a sale). The contract refuses either of them as a tiebreaker, so the
+   * panel refuses them first, before anybody signs anything.
+   */
+  buyerAddress?: string | null;
+  recipientAddress?: string | null;
 }
 
 /**
@@ -67,7 +74,9 @@ export default function ArbiterPanel({
   loading,
   onChanged,
   viewerRole = null,
-  onResigned
+  onResigned,
+  buyerAddress = null,
+  recipientAddress = null
 }: ArbiterPanelProps) {
   const t = useT();
   const { nominateArbiter, resolveArbiterEmail, evictArbiter, resignArbiter, seatDefaultArbiter } = useMarketplaceActions();
@@ -133,7 +142,7 @@ export default function ArbiterPanel({
     } catch (e: any) {
       // A nomination racing a seat-default is an ordinary race, not a fault: a late match still
       // wins right up until the fallback transaction actually executes.
-      setError(e?.message || t('arbiterPanel.actionFailed', { action: label }));
+      setError(explainRefusal(e) || e?.message || t('arbiterPanel.actionFailed', { action: label }));
       await onChanged();
     } finally {
       setBusy(null);
@@ -145,6 +154,23 @@ export default function ArbiterPanel({
   const candidateIsEmail = EMAIL.test(candidate);
   const candidateIsValid = ethers.isAddress(candidate) || candidateIsEmail;
   const shownPreview = preview && preview.email === candidate ? preview : null;
+
+  /** The escrow's own refusal, in words, when it gave one we know; null to fall back to the raw message. */
+  const explainRefusal = (e: unknown): string | null => {
+    // By name, not instanceof: the error crosses the hook boundary, which tests replace wholesale.
+    const reason = e instanceof Error && e.name === 'ContractRefusedError' ? (e as ContractRefusedError).reason : null;
+    if (!reason) return null;
+    switch (reason.name) {
+      case 'InvalidArbiterCandidate':
+        return t('arbiterPanel.refusedCandidate', { address: reason.args[0] });
+      case 'NotDisputeParty':
+        return t('arbiterPanel.refusedNotParty', { address: reason.args[0] });
+      case 'NotFundedOrAlreadyProcessed':
+        return t('arbiterPanel.refusedNotOpen');
+      default:
+        return null;
+    }
+  };
 
   /*
    * ⚠️ WHOSE NOMINATION IS WHOSE. This used to be `nominatedByBuyer || nominatedByRecipient`,
@@ -170,6 +196,15 @@ export default function ArbiterPanel({
     ? (shownPreview?.status === 'found' ? shownPreview.wallet : null)
     : (ethers.isAddress(candidate) ? candidate : null);
   const matchesTheirs = !!theirs && !!candidateWallet && candidateWallet.toLowerCase() === theirs.toLowerCase();
+
+  // ⚠️ THE CONTRACT'S OWN RULE, CHECKED FIRST: a party, or whoever already holds the seat, cannot be
+  //    nominated (InvalidArbiterCandidate). Saying so here beats a signature that is bound to revert.
+  const same = (a: string | null | undefined) => !!a && !!candidateWallet && a.toLowerCase() === candidateWallet.toLowerCase();
+  const candidateIsParty: 'buyer' | 'seller' | 'seated' | null =
+    same(buyerAddress) ? 'buyer'
+      : same(recipientAddress) ? 'seller'
+        : state.seated && same(state.arbiter) ? 'seated'
+          : null;
 
   return (
     <div className="rounded-lg border border-gray-200 dark:border-secondary-700 p-4 space-y-4">
@@ -338,7 +373,7 @@ export default function ArbiterPanel({
             />
             <Button
               type="button"
-              disabled={!candidateIsValid || busy !== null}
+              disabled={!candidateIsValid || candidateIsParty !== null || busy !== null}
               onClick={() =>
                 run(
                   'Nomination',
@@ -386,8 +421,16 @@ export default function ArbiterPanel({
             </div>
           )}
 
+          {candidateIsParty && (
+            <p className="text-sm font-medium text-red-600 dark:text-red-400">
+              {candidateIsParty === 'buyer' ? t('arbiterPanel.candidateIsBuyer')
+                : candidateIsParty === 'seller' ? t('arbiterPanel.candidateIsSeller')
+                  : t('arbiterPanel.candidateIsSeated')}
+            </p>
+          )}
+
           {/* Against the other party's pick: the one comparison that decides whether Nominate seats someone. */}
-          {theirs && candidateIsValid && (matchesTheirs ? (
+          {theirs && candidateIsValid && !candidateIsParty && (matchesTheirs ? (
             <p className="text-sm font-medium text-green-700 dark:text-green-400">✓ {t('arbiterPanel.sameAsTheirs')}</p>
           ) : (candidateWallet || shownPreview?.status === 'new') && (
             <p className="text-sm text-amber-700 dark:text-amber-300">{t('arbiterPanel.notTheirs')}</p>

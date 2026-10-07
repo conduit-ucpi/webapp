@@ -315,6 +315,15 @@ export const en = {
     '{email} has not signed in to StableDrop yet. Nominating makes a wallet for them, and they take the seat by signing in with this email.',
   'arbiterPanel.sameAsTheirs': 'This is the person the other party suggested. Nominating now seats them.',
   'arbiterPanel.notTheirs': 'This is not the person the other party suggested.',
+  'arbiterPanel.candidateIsBuyer': "That's the buyer on this escrow; a party can't be the tiebreaker.",
+  'arbiterPanel.candidateIsSeller': "That's the seller on this escrow; a party can't be the tiebreaker.",
+  'arbiterPanel.candidateIsSeated': "That's the tiebreaker already seated on this escrow; nominate someone else.",
+  'arbiterPanel.refusedCandidate':
+    "The escrow refused {address}: a party to the escrow, or the tiebreaker already seated, can't be nominated. Nothing was sent.",
+  'arbiterPanel.refusedNotParty':
+    'The escrow refused this because it would have come from wallet {address}, which is not the buyer or the seller on this escrow. Only they can nominate. Sign in with the wallet that is a party to this escrow and try again. Nothing was sent.',
+  'arbiterPanel.refusedNotOpen':
+    'This escrow is no longer open for nominations: it has been settled or paid out, or was never funded. Nothing was sent.',
   'arbiterPanel.lookupFailed': 'Could not look up that email right now. Try again, or use a wallet address.',
   'arbiterPanel.emailNomineeHint':
     "You can name them by wallet address or by email. If they have never used StableDrop, a wallet is made for that email and they take the seat by signing in with it. If you both type the same email, you have named the same person.",

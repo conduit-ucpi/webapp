@@ -90,11 +90,13 @@ export default function DisputeManagementModal({ isOpen, onClose, contract, onRe
    *
    * Null for anyone who is neither party; the panel then names both sides rather than guessing.
    */
+  const chainBuyer = settlement.data?.buyer ?? contract.buyerAddress ?? null;
+  const chainRecipient = settlement.data?.recipient ?? contract.sellerAddress ?? null;
   const viewerRole: 'buyer' | 'recipient' | 'arbiter' | null = (() => {
     const me = user?.walletAddress?.toLowerCase();
     if (!me) return null;
-    const buyer = (settlement.data?.buyer ?? contract.buyerAddress)?.toLowerCase();
-    const recipient = (settlement.data?.recipient ?? contract.sellerAddress)?.toLowerCase();
+    const buyer = chainBuyer?.toLowerCase();
+    const recipient = chainRecipient?.toLowerCase();
     const seated = (settlement.data?.arbiter ?? arbiter.data?.arbiter ?? contract.arbiterAddress)?.toLowerCase();
     if (buyer === me) return 'buyer';
     if (recipient === me) return 'recipient';
@@ -306,6 +308,8 @@ export default function DisputeManagementModal({ isOpen, onClose, contract, onRe
                         state={arbiter.data}
                         loading={arbiter.loading}
                         viewerRole={viewerRole}
+                        buyerAddress={chainBuyer}
+                        recipientAddress={chainRecipient}
                         onResigned={recordResignation}
                         onChanged={async () => {
                           await Promise.all([arbiter.refetch(), settlement.refetch(), refreshSeatRecord()]);

@@ -122,9 +122,20 @@ import { formatWeiAsEthForLogging, formatGweiAsEthForLogging } from '@/utils/log
  * instead of an error message.
  */
 export class EstimationRevertedError extends Error {
-  constructor(message: string) {
+  /**
+   * The revert data the RPC returned (a custom error's selector and arguments), when it gave
+   * any. "execution reverted" says nothing; this is what says why, once decoded against the
+   * contract's errors.
+   */
+  readonly data?: string;
+  /** The address the estimate was made from: the wallet the transaction would have come from. */
+  readonly from?: string;
+
+  constructor(message: string, data?: string, from?: string) {
     super(message);
     this.name = 'EstimationRevertedError';
+    this.data = data;
+    this.from = from;
   }
 }
 
@@ -1244,7 +1255,9 @@ export class Web3Service {
             //    cannot decode either) presents it as an opaque native-value transfer.
             //    Surface it instead: the revert reason is the actual diagnosis.
             throw new EstimationRevertedError(
-              estimateData.error.message || 'The transaction would fail on-chain.'
+              estimateData.error.message || 'The transaction would fail on-chain.',
+              typeof estimateData.error.data === 'string' ? estimateData.error.data : undefined,
+              userAddress
             );
           }
           if (estimateData.result) {

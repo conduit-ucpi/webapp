@@ -54,6 +54,9 @@ const state = (overrides: Partial<ArbiterState> = {}): ArbiterState =>
     ...overrides,
   }) as ArbiterState;
 
+const BUYER = '0xD36698991EF328275c8F9598A33B2378D7ecE183';
+const SELLER = '0x78A67E815db3D0D60F5018F1DbFF173fFB25afBD';
+
 const show = (s: Partial<ArbiterState>, viewerRole: 'buyer' | 'recipient' | null) =>
   render(
     <ArbiterPanel
@@ -62,6 +65,8 @@ const show = (s: Partial<ArbiterState>, viewerRole: 'buyer' | 'recipient' | null
       loading={false}
       onChanged={jest.fn()}
       viewerRole={viewerRole}
+      buyerAddress={BUYER}
+      recipientAddress={SELLER}
     />
   );
 
@@ -266,5 +271,92 @@ describe('naming a tiebreaker by email', () => {
       expect(screen.getByText(/This is the person the other party suggested/)).toBeInTheDocument();
       expect(resolveArbiterEmail).not.toHaveBeenCalled();
     });
+  });
+});
+
+describe('refusing a party before anybody signs', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    resolveArbiterEmail.mockReset();
+  });
+
+  const field = () => screen.getByLabelText(/nominate a tiebreaker/i);
+
+  it('says an email is the seller and disables Nominate', async () => {
+    // Production, 2026-10-07: charlie@stabledrop.me was the seller, and the escrow reverted.
+    resolveArbiterEmail.mockResolvedValue(SELLER.toLowerCase());
+    show({}, 'buyer');
+
+    await userEvent.type(field(), 'charlie@stabledrop.me');
+
+    expect(await screen.findByText("That's the seller on this escrow; a party can't be the tiebreaker.")).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Nominate' })).toBeDisabled();
+  });
+
+  it('says a pasted address is the buyer', async () => {
+    show({}, 'recipient');
+
+    await userEvent.type(field(), BUYER);
+
+    expect(screen.getByText("That's the buyer on this escrow; a party can't be the tiebreaker.")).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Nominate' })).toBeDisabled();
+  });
+
+  it('says when the candidate already holds the seat', async () => {
+    const seated = '0xeeee000000000000000000000000000000000005';
+    show({ seated: true, arbiter: seated }, 'buyer');
+
+    await userEvent.type(field(), seated);
+
+    expect(screen.getByText(/already seated on this escrow/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Nominate' })).toBeDisabled();
+  });
+
+  it('does not call a party "not the other party\u2019s pick" as well', async () => {
+    show({ nominatedByRecipient: RECIPIENTS_PICK }, 'buyer');
+
+    await userEvent.type(field(), SELLER);
+
+    expect(screen.queryByText('This is not the person the other party suggested.')).not.toBeInTheDocument();
+  });
+});
+
+describe('a refusal from the escrow, in words', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  const refusal = (name: string, args: string[]) =>
+    Object.assign(new Error('execution reverted'), { name: 'ContractRefusedError', reason: { name, args } });
+
+  const nominate = async (error: Error) => {
+    nominateArbiter.mockRejectedValue(error);
+    show({}, 'buyer');
+    await userEvent.type(screen.getByLabelText(/nominate a tiebreaker/i), '0x1111111111111111111111111111111111111111');
+    await userEvent.click(screen.getByRole('button', { name: 'Nominate' }));
+  };
+
+  it('names the wallet it would have come from when that wallet is not a party', async () => {
+    const sender = '0xa123f4464044115fda6d642cabab5702d39e019c';
+    await nominate(refusal('NotDisputeParty', [sender]));
+
+    expect(await screen.findByText(new RegExp(`would have come from wallet ${sender}, which is not the buyer or the seller`))).toBeInTheDocument();
+    expect(screen.queryByText('execution reverted')).not.toBeInTheDocument();
+  });
+
+  it('explains a refused candidate', async () => {
+    await nominate(refusal('InvalidArbiterCandidate', [SELLER]));
+
+    expect(await screen.findByText(new RegExp(`The escrow refused ${SELLER}`))).toBeInTheDocument();
+  });
+
+  it('explains an escrow that is no longer open', async () => {
+    await nominate(refusal('NotFundedOrAlreadyProcessed', []));
+
+    expect(await screen.findByText(/no longer open for nominations/)).toBeInTheDocument();
+  });
+
+  it('falls back to the raw message for anything else', async () => {
+    await nominate(new Error('user rejected the request'));
+
+    expect(await screen.findByText('user rejected the request')).toBeInTheDocument();
   });
 });

@@ -1,7 +1,7 @@
 import { apiFetch } from '@/lib/apiFetch';
 import { useCallback } from 'react';
 import { ethers } from 'ethers';
-import { ERC20_ABI, ESCROW_CONTRACT_ABI, OFFER_VAULT_ABI } from '@/lib/web3';
+import { ERC20_ABI, ESCROW_CONTRACT_ABI, OFFER_VAULT_ABI, EstimationRevertedError } from '@/lib/web3';
 import { useSimpleEthers } from '@/hooks/useSimpleEthers';
 import type { CreateOfferResponse } from '@/types/marketplace';
 
@@ -26,6 +26,43 @@ const escrowInterface = new ethers.Interface(ESCROW_CONTRACT_ABI);
 const vaultInterface = new ethers.Interface(OFFER_VAULT_ABI);
 const erc20Interface = new ethers.Interface(ERC20_ABI);
 
+/**
+ * The escrow's refusals that a party can actually cause from these screens. The ABI above carries
+ * functions only, so without these a refusal reaches the user as "execution reverted".
+ */
+const escrowErrors = new ethers.Interface([
+  'error InvalidArbiterCandidate(address candidate)',
+  'error NotDisputeParty(address caller)',
+  'error NotFundedOrAlreadyProcessed()'
+]);
+
+/**
+ * A transaction the chain refused, with the escrow's own reason when it gave one we know.
+ * `from` is the wallet it would have been sent from, which is the whole story for NotDisputeParty.
+ */
+export class ContractRefusedError extends Error {
+  constructor(
+    message: string,
+    readonly reason: { name: string; args: string[] } | null,
+    readonly from?: string
+  ) {
+    super(message);
+    this.name = 'ContractRefusedError';
+  }
+}
+
+function decodeRefusal(error: unknown): ContractRefusedError | null {
+  if (!(error instanceof EstimationRevertedError)) return null;
+  let reason: { name: string; args: string[] } | null = null;
+  try {
+    const parsed = error.data ? escrowErrors.parseError(error.data) : null;
+    if (parsed) reason = { name: parsed.name, args: parsed.args.map(String) };
+  } catch {
+    // Not one of ours: keep the RPC's own words.
+  }
+  return new ContractRefusedError(error.message, reason, error.from);
+}
+
 export interface RelayedResult {
   success: boolean;
   transactionHash?: string | null;
@@ -47,11 +84,15 @@ export function useMarketplaceActions() {
   const send = useCallback(
     async (to: string, abi: ethers.Interface, fn: string, args: unknown[] = []): Promise<string> => {
       const web3Service = await getWeb3Service();
-      return web3Service.fundAndSendTransaction({
-        to,
-        data: abi.encodeFunctionData(fn, args),
-        value: '0'
-      });
+      try {
+        return await web3Service.fundAndSendTransaction({
+          to,
+          data: abi.encodeFunctionData(fn, args),
+          value: '0'
+        });
+      } catch (error) {
+        throw decodeRefusal(error) ?? error;
+      }
     },
     [getWeb3Service]
   );

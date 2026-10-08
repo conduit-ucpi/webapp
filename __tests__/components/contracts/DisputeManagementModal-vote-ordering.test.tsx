@@ -166,6 +166,23 @@ describe('Submitting a settlement figure', () => {
     expect(disputeCalls).toHaveLength(0);
   });
 
+  it('says in words why the escrow refused the vote, and records nothing', async () => {
+    // Production, 2026-10-08: the vote would have come from a wallet that is not on the escrow.
+    const { ContractRefusedError } = jest.requireActual('@/hooks/useMarketplaceActions');
+    const wrong = '0xc9D0602A87E55116F633b1A1F95D083Eb115f942';
+    submitSettlementVote.mockRejectedValue(
+      new ContractRefusedError('execution reverted', { name: 'NotAuthorizedToVote', args: [] }, wrong)
+    );
+
+    renderModal();
+    composeFigure(25);
+    fireEvent.click(screen.getByRole('button', { name: /Confirm and sign/i }));
+
+    expect(await screen.findByText(new RegExp(`would have come from wallet ${wrong}`))).toBeInTheDocument();
+    expect(screen.queryByText(/^execution reverted$/)).not.toBeInTheDocument();
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
   it('reports settlement from a fresh chain read, not from what it just sent', async () => {
     // A second matching vote pays out in the same transaction, so the only honest source for
     // "did this settle" is the escrow itself after the send.

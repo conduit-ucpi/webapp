@@ -139,6 +139,24 @@ export class EstimationRevertedError extends Error {
   }
 }
 
+/**
+ * The transaction would cost more gas than MAX_GAS_COST_GWEI allows, so it was not sent.
+ *
+ * Thrown BEFORE the wallet is topped up: a transaction we are going to refuse must not first
+ * cost us a sponsorship. Nothing was sent and nothing was spent when this is thrown.
+ */
+export class GasCostCapError extends Error {
+  constructor(
+    message: string,
+    /** The worst case this transaction could cost: its buffered gas limit at the fee it would offer. */
+    readonly costWei: bigint,
+    readonly capWei: bigint
+  ) {
+    super(message);
+    this.name = 'GasCostCapError';
+  }
+}
+
 export class Web3Service {
   private static instance: Web3Service | null = null;
   private provider: ethers.BrowserProvider | null = null;
@@ -1180,7 +1198,12 @@ export class Web3Service {
       const gasPrice = await this.gasPriceForFunding();
       if (gasPrice === null) return;
 
-      const { totalGasNeeded } = this.bufferedGasCost(BigInt(body.result), gasPrice, txParams.data);
+      const { totalGasNeeded, gasPriceBuffer } = this.bufferedGasCost(BigInt(body.result), gasPrice, txParams.data);
+      // Never fund ahead what the send path would refuse over the cost cap: the throw lands in
+      // the catch below, and the send path raises it properly when the button is pressed.
+      if (!this.isInjectedWalletProvider()) {
+        this.assertWithinGasCostCap(BigInt(Math.round(Number(body.result) * gasPriceBuffer)), gasPrice);
+      }
       const funded = await this.topUpGasIfShort(userAddress, totalGasNeeded);
       if (funded) {
         console.log('[Web3Service.prewarmTransaction] Topped the wallet up before it was needed');
@@ -1415,6 +1438,18 @@ export class Web3Service {
     //    between a page loading and a button being pressed, and being wrong in the optimistic
     //    direction means asking the user to sign a transaction that cannot pay for itself. The
     //    prewarm may bring this work forward; it may never let us skip the check.
+    //
+    // ⚠️ THE COST CAP IS CHECKED BEFORE THE TOP-UP, NOT AFTER. It used to run just before the
+    //    send, after chainservice had already moved ETH into the wallet, so a transaction we
+    //    were going to refuse cost us a sponsorship first, and again on every retry.
+    //    The figure is the one the send would offer: the buffered gas limit at the fee chosen
+    //    above (custom providers send exactly these fees). Injected wallets price their own gas
+    //    and are not capped.
+    const bufferedGasLimit = BigInt(Math.round(Number(gasEstimate) * gasPriceBuffer));
+    if (!isInjectedWallet) {
+      this.assertWithinGasCostCap(bufferedGasLimit, gasPrice);
+    }
+
     await this.topUpGasIfShort(userAddress, totalGasNeeded);
 
     // Step 5: Send transaction using the same unified ethers provider approach
@@ -1428,10 +1463,7 @@ export class Web3Service {
       console.log('[Web3Service.fundAndSendTransaction] Getting user address from auth context (no getSigner call)');
       // Note: We removed "const signer = await this.provider.getSigner();" from here
 
-      // Apply gas buffer for transaction execution
-      // Use the SAME gasPriceBuffer calculated earlier (includes 5x multiplier for disputes)
-      const bufferedGasLimit = BigInt(Math.round(Number(gasEstimate) * gasPriceBuffer));
-
+      // The gas limit is the buffered one worked out (and checked against the cost cap) above.
       const originalCostEth = Number(gasEstimate * gasPrice) / 1e18;
       const bufferedCostEth = Number(bufferedGasLimit * gasPrice) / 1e18;
 
@@ -1490,68 +1522,6 @@ export class Web3Service {
           console.log('✅ Using gas price from funding calculation (fallback)');
           console.log(`   gasPrice: ${formatWeiAsEthForLogging(tx.gasPrice)} (${(Number(tx.gasPrice) / 1e9).toFixed(6)} gwei)`);
         }
-      }
-
-      // Validate transaction cost against MAX_GAS_COST_GWEI limit using buffered gas limit
-      // Skip validation for injected wallets since they handle their own gas pricing
-      if (isInjectedWallet) {
-        console.log('');
-        console.log('✅ TRANSACTION VALIDATION (INJECTED WALLET):');
-        console.log('─'.repeat(60));
-        console.log(`   Buffered Gas Limit: ${bufferedGasLimit.toString()} gas`);
-        console.log(`   Gas Price: Managed by wallet (not validated)`);
-        console.log(`   Status: ✅ SKIPPED - Wallet handles gas pricing`);
-        console.log('='.repeat(80));
-        console.log('');
-      } else {
-        // Validate for non-injected wallets
-        let transactionCostWei: bigint;
-        if (tx.maxFeePerGas) {
-          // EIP-1559 transaction
-          transactionCostWei = tx.maxFeePerGas * bufferedGasLimit;
-        } else if (tx.gasPrice) {
-          // Legacy transaction
-          transactionCostWei = tx.gasPrice * bufferedGasLimit;
-        } else {
-          throw new Error('No gas price set for transaction');
-        }
-
-        const maxAllowedCostWei = this.getMaxGasCostInWei();
-        const gasPriceUsed = tx.maxFeePerGas || tx.gasPrice || BigInt(0);
-
-        // Convert to ETH for display
-        const transactionCostEth = Number(transactionCostWei) / 1e18;
-        const maxAllowedCostEth = Number(maxAllowedCostWei) / 1e18;
-        const gasPriceUsedEth = Number(gasPriceUsed) / 1e18;
-
-        console.log('');
-        console.log('✅ FINAL TRANSACTION COST VALIDATION:');
-        console.log('─'.repeat(60));
-        console.log(`   Buffered Gas Limit: ${bufferedGasLimit.toString()} gas`);
-        console.log(`   Gas Price Used: ${gasPriceUsedEth.toExponential(4)} ETH`);
-        console.log(`   Transaction Cost: ${transactionCostEth.toExponential(4)} ETH`);
-        console.log(`   MAX_GAS_COST_GWEI Limit: ${maxAllowedCostEth.toExponential(4)} ETH`);
-        console.log(`   Headroom: ${((maxAllowedCostEth / transactionCostEth) * 100).toFixed(1)}% available`);
-        console.log('─'.repeat(60));
-
-        if (transactionCostWei > maxAllowedCostWei) {
-          console.log('');
-          console.log('❌ VALIDATION FAILED:');
-          console.log(`   Transaction cost ${transactionCostEth.toExponential(4)} ETH exceeds limit ${maxAllowedCostEth.toExponential(4)} ETH`);
-          console.log('='.repeat(80));
-          console.log('');
-
-          throw new Error(
-            `Transaction cost exceeds configured maximum. ` +
-            `Estimated cost: ${transactionCostEth.toExponential(4)} ETH (${bufferedGasLimit.toString()} gas × ${gasPriceUsedEth.toExponential(4)} ETH/gas), ` +
-            `Maximum allowed: ${maxAllowedCostEth.toExponential(4)} ETH. ` +
-            `Please contact support to adjust gas cost limits.`
-          );
-        }
-
-        console.log(`   Status: ✅ PASSED - Transaction within limits`);
-        console.log('='.repeat(80));
-        console.log('');
       }
 
       // MOBILE FIX: Call eth_sendTransaction directly to avoid hanging
@@ -1965,6 +1935,27 @@ export class Web3Service {
   private getMaxGasPriceInWei(): bigint {
     const maxGasPriceGwei = parseFloat(this.config.maxGasPriceGwei);
     return BigInt(Math.round(maxGasPriceGwei * 1000000000)); // Convert gwei to wei
+  }
+
+  /** Refuse, before anything is funded or sent, a transaction that could cost more than the cap. */
+  private assertWithinGasCostCap(gasLimit: bigint, feePerGas: bigint): void {
+    const costWei = gasLimit * feePerGas;
+    const capWei = this.getMaxGasCostInWei();
+    const costEth = Number(costWei) / 1e18;
+    const capEth = Number(capWei) / 1e18;
+    console.log(
+      `💸 Gas cost check: ${gasLimit.toString()} gas × ${(Number(feePerGas) / 1e9).toFixed(6)} gwei = ` +
+        `${costEth.toExponential(4)} ETH, limit ${capEth.toExponential(4)} ETH`
+    );
+    if (costWei > capWei) {
+      throw new GasCostCapError(
+        `Transaction cost exceeds configured maximum. ` +
+          `Estimated cost: ${costEth.toExponential(4)} ETH (${gasLimit.toString()} gas × ${(Number(feePerGas) / 1e18).toExponential(4)} ETH/gas), ` +
+          `Maximum allowed: ${capEth.toExponential(4)} ETH. Nothing was sent.`,
+        costWei,
+        capWei
+      );
+    }
   }
 
   /**

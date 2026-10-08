@@ -55,6 +55,29 @@ describe('a refused nomination says why', () => {
     }
   });
 
+  it('decodes a refused settlement vote, with the wallet it would have come from', async () => {
+    // Production, 2026-10-08: a vote sent from a wallet that is not on the escrow.
+    fundAndSendTransaction.mockRejectedValueOnce(new EstimationRevertedError('execution reverted', '0xae6660cc', SENDER));
+    const { result } = renderHook(() => useMarketplaceActions());
+
+    const e = await result.current.submitSettlementVote(ESCROW, 50).catch((x) => x);
+
+    expect(e.name).toBe('ContractRefusedError');
+    expect(e.reason).toEqual({ name: 'NotAuthorizedToVote', args: [] });
+    expect(e.from).toBe(SENDER);
+  });
+
+  it('decodes the other vote refusals', async () => {
+    const votes = new ethers.Interface([
+      'error ContractMustBeDisputed()',
+      'error ConsensusAlreadyReached()',
+      'error InvalidPercentage()'
+    ]);
+    for (const name of ['ContractMustBeDisputed', 'ConsensusAlreadyReached', 'InvalidPercentage']) {
+      expect((await refusedWith(votes.encodeErrorResult(name, []))).reason).toEqual({ name, args: [] });
+    }
+  });
+
   it('passes any other failure through untouched', async () => {
     const boom = new Error('user rejected the request');
     fundAndSendTransaction.mockRejectedValueOnce(boom);

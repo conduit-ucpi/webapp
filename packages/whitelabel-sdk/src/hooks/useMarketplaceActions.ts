@@ -33,12 +33,17 @@ const erc20Interface = new ethers.Interface(ERC20_ABI);
 const escrowErrors = new ethers.Interface([
   'error InvalidArbiterCandidate(address candidate)',
   'error NotDisputeParty(address caller)',
-  'error NotFundedOrAlreadyProcessed()'
+  'error NotFundedOrAlreadyProcessed()',
+  'error NotAuthorizedToVote()',
+  'error ContractMustBeDisputed()',
+  'error ConsensusAlreadyReached()',
+  'error InvalidPercentage()'
 ]);
 
 /**
  * A transaction the chain refused, with the escrow's own reason when it gave one we know.
- * `from` is the wallet it would have been sent from, which is the whole story for NotDisputeParty.
+ * `from` is the wallet it would have been sent from, which is the whole story for NotDisputeParty
+ * and NotAuthorizedToVote (neither of which says who asked).
  */
 export class ContractRefusedError extends Error {
   constructor(

@@ -3,6 +3,7 @@ import { ethers } from 'ethers';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { useMarketplaceActions, type ContractRefusedError } from '@/hooks/useMarketplaceActions';
+import { explainTransactionFailure } from '@/lib/explainTransactionFailure';
 import { formatTimestamp } from '@/utils/validation';
 import type { ArbiterState } from '@/types/marketplace';
 import { useT } from '../../i18n';
@@ -158,6 +159,8 @@ export default function ArbiterPanel({
   /** The escrow's own refusal, in words, when it gave one we know; null to fall back to the raw message. */
   const explainRefusal = (e: unknown): string | null => {
     // By name, not instanceof: the error crosses the hook boundary, which tests replace wholesale.
+    const shared = explainTransactionFailure(e, t);
+    if (shared) return shared;
     const reason = e instanceof Error && e.name === 'ContractRefusedError' ? (e as ContractRefusedError).reason : null;
     if (!reason) return null;
     switch (reason.name) {

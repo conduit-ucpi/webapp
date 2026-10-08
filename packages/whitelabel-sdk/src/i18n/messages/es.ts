@@ -723,6 +723,16 @@ export const es: Catalogue = {
   'validation.amountRange':
     'Ingresa {min} o más, o exactamente {test} para una prueba gratis',
   'err.tokenNotConfigured': 'No está configurada la dirección del token {token}',
+  'transaction.overGasCostCap':
+    'Esto cuesta más en comisiones de red ({cost} ETH) de lo que se te cubre actualmente ({cap} ETH). No se envió nada ni se cobró nada. Vuelve a intentarlo más tarde, cuando las comisiones puedan ser más bajas, o contacta con soporte.',
+  'transaction.refusedNotVoter':
+    'El depósito en garantía rechazó este voto porque se habría enviado desde la billetera {address}, que no es la del comprador, la del vendedor ni la del árbitro de desempate de este depósito. Cierra sesión, vuelve a iniciarla con la cuenta que es parte de este depósito e inténtalo de nuevo. No se envió nada.',
+  'transaction.unknownWallet':
+    'una billetera desconocida',
+  'transaction.refusedNotInDispute':
+    'Este depósito en garantía ya no está en disputa: ya se resolvió o se pagó, así que no queda nada que votar. No se envió nada.',
+  'transaction.refusedInvalidPercentage':
+    'El depósito en garantía solo acepta una cifra de 0 a 100. No se envió nada.',
   'disputeManagementModal.settledAt':
     'Se resolvió con {percent} % para el comprador; los fondos ya se movieron.',
   'disputeManagementModal.figureStanding':

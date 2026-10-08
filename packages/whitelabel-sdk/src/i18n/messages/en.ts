@@ -622,6 +622,16 @@ export const en = {
     'You cannot make a payment to yourself. The seller wallet address ({seller}) matches your connected wallet ({buyer}).',
   'validation.amountRange': 'Enter {min} or more, or exactly {test} for a free test',
   'err.tokenNotConfigured': 'Token {token} address not configured',
+  'transaction.overGasCostCap':
+    'This costs more in network fees ({cost} ETH) than is currently covered for you ({cap} ETH). Nothing was sent and nothing was charged. Try again later, when fees may be lower, or contact support.',
+  'transaction.refusedNotVoter':
+    'The escrow refused this vote because it would have come from wallet {address}, which is not the buyer, the seller or the tiebreaker on this escrow. Sign out, sign back in with the account that is a party to this escrow, and try again. Nothing was sent.',
+  'transaction.unknownWallet':
+    'an unknown wallet',
+  'transaction.refusedNotInDispute':
+    'This escrow is not in dispute any more: it has already been settled or paid out, so there is nothing left to vote on. Nothing was sent.',
+  'transaction.refusedInvalidPercentage':
+    'The escrow only accepts a figure from 0 to 100. Nothing was sent.',
   'disputeManagementModal.settledAt':
     'Settled at {percent}% to the buyer — the funds have moved.',
   'disputeManagementModal.figureStanding':

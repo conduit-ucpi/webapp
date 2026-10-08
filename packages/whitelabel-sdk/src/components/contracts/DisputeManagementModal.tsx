@@ -17,6 +17,7 @@ import { useArbiterState, useSettlementState } from '@/hooks/useDisputeState';
 import StandingFiguresPanel from '@/components/contracts/StandingFiguresPanel';
 import ArbiterPanel from '@/components/contracts/ArbiterPanel';
 import { useT } from '../../i18n';
+import { explainTransactionFailure } from '@/lib/explainTransactionFailure';
 
 interface DisputeManagementModalProps {
   isOpen: boolean;
@@ -199,7 +200,7 @@ export default function DisputeManagementModal({ isOpen, onClose, contract, onRe
       onRefresh();
     } catch (e: any) {
       console.error('Settlement vote failed:', e);
-      setError(e?.message || 'The transaction was not sent. Nothing has been recorded.');
+      setError(explainTransactionFailure(e, t) || e?.message || 'The transaction was not sent. Nothing has been recorded.');
       setConfirming(false);
     } finally {
       setIsSubmitting(false);

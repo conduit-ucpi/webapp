@@ -6,6 +6,8 @@ import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 import ExpandableHash from '@/components/ui/ExpandableHash';
 import { displayCurrency, formatDateTimeWithTZ, normalizeTimestamp } from '@/utils/validation';
+import { downloadCsv } from '@/utils/csv';
+import { buildAdminContractsCsv, adminContractsCsvFilename } from './adminContractsCsv';
 
 interface AdminDatabaseListProps {
   onContractSelect?: (contract: PendingContract) => void;
@@ -215,6 +217,11 @@ export default function AdminDatabaseList({ onContractSelect }: AdminDatabaseLis
     setCurrentPage(1); // Reset to first page when sorting changes
   };
 
+  /** Every row the list is showing (all pages, in its order), for sharing with colleagues. */
+  const handleExport = () => {
+    downloadCsv(adminContractsCsvFilename(dateRangeFilter), buildAdminContractsCsv(sortedContracts, getDerivedStatus));
+  };
+
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
   };
@@ -297,6 +304,16 @@ export default function AdminDatabaseList({ onContractSelect }: AdminDatabaseLis
               <option value="QUARTER">Past 3 Months</option>
               <option value="YEAR">Past Year</option>
             </select>
+
+            <Button
+              onClick={handleExport}
+              disabled={sortedContracts.length === 0}
+              variant="outline"
+              size="sm"
+              title="Download every contract matching the current search and filters, across all pages"
+            >
+              Export CSV ({sortedContracts.length})
+            </Button>
           </div>
         </div>
       </div>

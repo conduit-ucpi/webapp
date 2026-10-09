@@ -1176,7 +1176,7 @@ ${signOff || "[your name]"}`;
             on iwoca published rates (from 1.5%/month; representative 40% APR).
             Simple interest, actual/365. Estimates, not financial advice.
             <br />
-            <br />© 2026 Conduit UCPI. Secure escrow contracts on blockchain. Company
+            <br />© 2026 Conduit UCPI. Protected payments on blockchain. Company
             No. 880319.
           </p>
         </div>

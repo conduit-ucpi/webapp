@@ -14,7 +14,7 @@ export default function LandingFooter({ className = '', brand }: Props) {
     <footer className={`border-t ${lt.border} ${className}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
         <p className={`text-xs ${lt.muted}`}>
-          &copy; 2026 Conduit UCPI · {brand} · Secure escrow contracts on Base · Company No. 880319.
+          &copy; 2026 Conduit UCPI · {brand} · Protected payments on Base · Company No. 880319.
         </p>
         <ul className="flex flex-wrap gap-x-6 gap-y-2 text-xs">
           {FOOTER_LINKS.map((l) => (

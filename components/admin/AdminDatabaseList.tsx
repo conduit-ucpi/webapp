@@ -1,5 +1,5 @@
 import { apiFetch } from '@/lib/apiFetch';
-import { useState, useEffect, useMemo } from 'react';
+import { Fragment, useState, useEffect, useMemo } from 'react';
 import { PendingContract } from '@/types';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import Input from '@/components/ui/Input';
@@ -16,37 +16,87 @@ interface AdminDatabaseListProps {
 type SortField = 'createdAt' | 'expiryTimestamp' | 'amount' | 'sellerEmail' | 'buyerEmail' | 'description' | 'status';
 type SortDirection = 'asc' | 'desc';
 
-// Derive status from local contract data
-const getDerivedStatus = (contract: PendingContract) => {
-  const now = Date.now() / 1000;
-  
-  // If has chain address, it's deployed
-  if (contract.chainAddress) {
-    return 'DEPLOYED';
+/**
+ * The status contractservice computed for the row: the dashboard's, from the record and a chain
+ * read. It used to be guessed here from three fields (an address meant "DEPLOYED" whether or not
+ * anyone had paid, a buyer email "ACCEPTED" for ever). UNKNOWN until contractservice sends it.
+ */
+const statusOf = (contract: PendingContract): string => contract.status ?? 'UNKNOWN';
+
+/**
+ * In the order a payment moves through them: the filter, the badge's tooltip and the key under
+ * the heading. The meanings are contractservice's (ContractStatusCalculationService); keep them
+ * in step with it.
+ */
+const STATUSES: Array<{ value: string; label: string; meaning: string }> = [
+  {
+    value: 'PENDING_ACCEPTANCE',
+    label: 'Awaiting buyer',
+    meaning: 'Request created; nobody has taken it up yet, so no payment address has been issued. Payout date not yet passed.'
+  },
+  {
+    value: 'AWAITING_FUNDING',
+    label: 'Awaiting funding',
+    meaning: 'A payment address has been issued for a buyer, but no money has arrived in it yet.'
+  },
+  {
+    value: 'ACTIVE',
+    label: 'Active (funded)',
+    meaning: 'The money is held on chain and the payout date has not passed. The buyer can still raise a dispute.'
+  },
+  {
+    value: 'DISPUTED',
+    label: 'Disputed',
+    meaning: 'The buyer has raised a dispute. The money stays held until two of the three votes (buyer, seller, third voter) match.'
+  },
+  {
+    value: 'RESOLVED',
+    label: 'Resolved',
+    meaning: 'A dispute was settled by two matching votes, and the money was split and paid out as voted.'
+  },
+  {
+    value: 'EXPIRED',
+    label: 'Expired',
+    meaning: 'The payout date has passed. Either the request was never paid, or the money is still held and waiting to be paid out to the seller.'
+  },
+  {
+    value: 'CLAIMED',
+    label: 'Paid out',
+    meaning: 'The money has been released to the seller. Finished.'
+  },
+  {
+    value: 'ERROR',
+    label: 'Error',
+    meaning: 'The chain could not be read for this payment, or what it says disagrees with our record (buyer, seller or payout date). Includes older escrows chainservice can no longer read. Needs a look.'
+  },
+  {
+    value: 'UNKNOWN',
+    label: 'Unknown',
+    meaning: 'The status could not be worked out from the record and the chain.'
   }
-  
-  // If has buyer email, it's been accepted
-  if (contract.buyerEmail) {
-    return 'ACCEPTED';
-  }
-  
-  // Check if expired
-  if (contract.expiryTimestamp && now > contract.expiryTimestamp) {
-    return 'EXPIRED';
-  }
-  
-  return 'PENDING';
+];
+
+const statusLabel = (contract: PendingContract): string => {
+  const status = statusOf(contract);
+  return STATUSES.find((s) => s.value === status)?.label ?? status;
 };
+
+const statusMeaning = (status: string): string | undefined => STATUSES.find((s) => s.value === status)?.meaning;
 
 const getStatusColor = (status: string) => {
   switch (status) {
-    case 'DEPLOYED':
+    case 'ACTIVE':
+    case 'CLAIMED':
       return 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300';
-    case 'ACCEPTED':
-      return 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300';
-    case 'PENDING':
+    case 'PENDING_ACCEPTANCE':
+    case 'AWAITING_FUNDING':
       return 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300';
+    case 'DISPUTED':
+      return 'bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300';
+    case 'RESOLVED':
+      return 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300';
     case 'EXPIRED':
+    case 'ERROR':
       return 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300';
     default:
       return 'bg-gray-100 dark:bg-secondary-800 text-gray-800 dark:text-secondary-200';
@@ -150,8 +200,7 @@ export default function AdminDatabaseList({ onContractSelect }: AdminDatabaseLis
       );
 
       // Status filter
-      const derivedStatus = getDerivedStatus(contract);
-      const matchesStatus = statusFilter === 'ALL' || derivedStatus === statusFilter;
+      const matchesStatus = statusFilter === 'ALL' || statusOf(contract) === statusFilter;
 
       return matchesSearch && matchesStatus;
     });
@@ -165,8 +214,8 @@ export default function AdminDatabaseList({ onContractSelect }: AdminDatabaseLis
 
       // Special handling for derived status
       if (sortField === 'status') {
-        aValue = getDerivedStatus(a);
-        bValue = getDerivedStatus(b);
+        aValue = statusOf(a);
+        bValue = statusOf(b);
       } else {
         // Safe access to contract properties
         aValue = (a as any)[sortField];
@@ -219,7 +268,7 @@ export default function AdminDatabaseList({ onContractSelect }: AdminDatabaseLis
 
   /** Every row the list is showing (all pages, in its order), for sharing with colleagues. */
   const handleExport = () => {
-    downloadCsv(adminContractsCsvFilename(dateRangeFilter), buildAdminContractsCsv(sortedContracts, getDerivedStatus));
+    downloadCsv(adminContractsCsvFilename(dateRangeFilter), buildAdminContractsCsv(sortedContracts, statusLabel));
   };
 
   const handlePageChange = (page: number) => {
@@ -287,10 +336,9 @@ export default function AdminDatabaseList({ onContractSelect }: AdminDatabaseLis
               className="px-3 py-2 border border-gray-300 dark:border-secondary-600 bg-white text-secondary-900 dark:bg-secondary-800 dark:text-white rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
               <option value="ALL">All Status</option>
-              <option value="DEPLOYED">Deployed</option>
-              <option value="ACCEPTED">Accepted</option>
-              <option value="PENDING">Pending</option>
-              <option value="EXPIRED">Expired</option>
+              {STATUSES.map((s) => (
+                <option key={s.value} value={s.value}>{s.label}</option>
+              ))}
             </select>
             
             <select
@@ -317,6 +365,28 @@ export default function AdminDatabaseList({ onContractSelect }: AdminDatabaseLis
           </div>
         </div>
       </div>
+
+      {/* What each status means */}
+      <details className="px-6 py-3 border-b border-gray-200 dark:border-secondary-700 text-sm">
+        <summary className="cursor-pointer text-gray-700 dark:text-secondary-300 font-medium">
+          What the statuses mean
+        </summary>
+        <dl className="mt-3 grid gap-x-4 gap-y-2 sm:grid-cols-[max-content_1fr]">
+          {STATUSES.map((s) => (
+            <Fragment key={s.value}>
+              <dt>
+                <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(s.value)}`}>
+                  {s.label}
+                </span>
+              </dt>
+              <dd className="text-gray-600 dark:text-secondary-300">{s.meaning}</dd>
+            </Fragment>
+          ))}
+        </dl>
+        <p className="mt-3 text-xs text-gray-500 dark:text-secondary-400">
+          Worked out by contractservice from our record and a live chain read, the same way as on users&apos; dashboards.
+        </p>
+      </details>
 
       {/* Table */}
       <div className="overflow-x-auto">
@@ -375,7 +445,7 @@ export default function AdminDatabaseList({ onContractSelect }: AdminDatabaseLis
           </thead>
           <tbody className="bg-white dark:bg-secondary-900 divide-y divide-gray-200 dark:divide-secondary-700">
             {paginatedContracts.map((contract) => {
-              const derivedStatus = getDerivedStatus(contract);
+              const status = statusOf(contract);
               return (
                 <tr 
                   key={contract.id} 
@@ -401,8 +471,11 @@ export default function AdminDatabaseList({ onContractSelect }: AdminDatabaseLis
                     {contract.expiryTimestamp ? formatDateTimeWithTZ(contract.expiryTimestamp) : '-'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(derivedStatus)}`}>
-                      {derivedStatus}
+                    <span
+                      className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(status)}`}
+                      title={statusMeaning(status)}
+                    >
+                      {statusLabel(contract)}
                     </span>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-900 dark:text-white max-w-xs">

@@ -21,7 +21,8 @@ const row = (i: number, sellerEmail: string): any => ({
   description: `Job ${i}`,
   createdAt: 1791388160 + i,
   createdBy: 'x',
-  state: 'OK'
+  state: 'OK',
+  status: i === 99 ? 'DISPUTED' : 'ACTIVE'
 });
 
 beforeEach(() => {
@@ -50,4 +51,37 @@ it('exports only what the search leaves', async () => {
   const csv: string = (downloadCsv as jest.Mock).mock.calls[0][1];
   expect(csv.split('\r\n')).toHaveLength(2);
   expect(csv).toContain('bob@example.com');
+});
+
+it('shows and exports the status contractservice computed, in words, and filters by it', async () => {
+  render(<AdminDatabaseList />);
+  expect((await screen.findAllByText('Active (funded)')).length).toBeGreaterThan(0);
+
+  fireEvent.change(screen.getByDisplayValue('All Status'), { target: { value: 'DISPUTED' } });
+  fireEvent.click(await screen.findByRole('button', { name: /Export CSV \(1\)/ }));
+
+  const csv: string = (downloadCsv as jest.Mock).mock.calls[0][1];
+  expect(csv).toContain('"Disputed"');
+  expect(csv).toContain('bob@example.com');
+});
+
+it('says Unknown, not a guess, when contractservice has not sent a status', async () => {
+  (apiFetch as jest.Mock).mockResolvedValue({ ok: true, json: async () => [{ ...row(1, 'a@b.com'), status: undefined, chainAddress: '0xabc' }] });
+
+  render(<AdminDatabaseList />);
+
+  expect(await screen.findAllByText('Unknown')).not.toHaveLength(0);
+  expect(screen.queryByText('DEPLOYED')).not.toBeInTheDocument();
+});
+
+it('explains every status, in a key on the page and on each badge', async () => {
+  render(<AdminDatabaseList />);
+  fireEvent.click(await screen.findByText('What the statuses mean'));
+
+  for (const label of ['Awaiting buyer', 'Awaiting funding', 'Active (funded)', 'Disputed', 'Resolved', 'Expired', 'Paid out', 'Error', 'Unknown']) {
+    expect(screen.getAllByText(label).length).toBeGreaterThan(0);
+  }
+  expect(screen.getByText(/two of the three votes/)).toBeInTheDocument();
+  const badge = screen.getAllByText('Active (funded)').find((el) => el.closest('td'));
+  expect(badge?.getAttribute('title')).toMatch(/money is held on chain/);
 });

@@ -172,7 +172,11 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
 
   const [seller, setSeller] = useState(locked?.seller ?? '');
   const [amount, setAmount] = useState(locked?.amount ?? '');
-  const [payoutTimestamp, setPayoutTimestamp] = useState(locked?.expiryTimestamp ?? getDefaultTimestamp());
+  const [payoutTimestamp, setPayoutTimestamp] = useState(locked?.expiryTimestamp || getDefaultTimestamp());
+  /** Paid straight to the seller, no dispute window. Kept apart from the date so unticking it restores the date. */
+  const [instant, setInstant] = useState(locked?.expiryTimestamp === 0);
+  /** Zero is EscrowContract's instant-transfer sentinel. */
+  const expiryTimestamp = instant ? 0 : payoutTimestamp;
   const [description, setDescription] = useState(locked?.description ?? '');
   /** Who decides a dispute, when not the default arbiter. A term: it moves the address. */
   const [arbiter, setArbiter] = useState<string | undefined>(request?.terms.arbiter);
@@ -209,7 +213,7 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
   const terms = () => ({
     seller: seller.trim(),
     amount: baseUnits,
-    expiry_timestamp: payoutTimestamp,
+    expiry_timestamp: expiryTimestamp,
     nominal_buyer: nominalBuyer ?? payer,
     token_symbol: selectedTokenSymbol,
     description: description.trim(),
@@ -401,7 +405,7 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
     return true;
     // terms() reads the same state these name.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [prepared, seller, baseUnits, payoutTimestamp, payer, nominalBuyer, selectedTokenSymbol, description, brandId, arbiter]);
+  }, [prepared, seller, baseUnits, expiryTimestamp, payer, nominalBuyer, selectedTokenSymbol, description, brandId, arbiter]);
 
   const qr = useQrPayment({
     authenticatedFetch,
@@ -427,7 +431,7 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
     ? encodePayResume({
         seller: seller.trim(),
         amount: amount.trim(),
-        expiryTimestamp: payoutTimestamp,
+        expiryTimestamp,
         description: description.trim(),
         tokenSymbol: selectedTokenSymbol,
         externalId: prepared.external_id,
@@ -454,7 +458,8 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
     if (!resume) return;
     setSeller(resume.seller);
     setAmount(resume.amount);
-    setPayoutTimestamp(resume.expiryTimestamp);
+    setInstant(resume.expiryTimestamp === 0);
+    if (resume.expiryTimestamp !== 0) setPayoutTimestamp(resume.expiryTimestamp);
     setDescription(resume.description);
     setTokenSymbol(resume.tokenSymbol);
     setNominalBuyer(resume.nominalBuyer);
@@ -537,6 +542,7 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
     setAmount('');
     setDescription('');
     setPayoutTimestamp(getDefaultTimestamp());
+    setInstant(false);
     setNominalBuyer(undefined);
     setPrepared(null);
     setSettled(null);
@@ -623,6 +629,8 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
               }}
               payoutTimestamp={payoutTimestamp}
               onPayoutTimestampChange={setPayoutTimestamp}
+              instantPayment={instant}
+              onInstantPaymentChange={setInstant}
               description={description}
               onDescriptionChange={setDescription}
               showFeeGuidance={false}
@@ -654,8 +662,8 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
               tokenSymbol={selectedTokenSymbol}
               networkLabel={networkLabel}
               description={description}
-              payoutTimestamp={payoutTimestamp}
-              isInstantPayment={payoutTimestamp === 0}
+              payoutTimestamp={expiryTimestamp}
+              isInstantPayment={instant}
               onEdit={locked ? undefined : () => setStage('details')}
               extraRows={[
                 { label: t('push.paying'), value: request?.sellerLabel || seller.trim() },
@@ -679,7 +687,7 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
             <div className="mt-8">
               <PaymentOptions
                 paymentSteps={paymentSteps}
-                reassurance={t(payoutTimestamp === 0 ? 'pay.escrowInstant' : 'pay.escrowHeld', { amount: `${amount} ${selectedTokenSymbol}` })}
+                reassurance={t(instant ? 'pay.escrowInstant' : 'pay.escrowHeld', { amount: `${amount} ${selectedTokenSymbol}` })}
                 amountLabel={`${amount} ${selectedTokenSymbol}`}
                 amountInTokens={amountInTokens}
                 balanceFloat={balanceFloat}
@@ -727,13 +735,13 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
           <div className="rounded-2xl border border-secondary-200 dark:border-secondary-700 bg-white dark:bg-secondary-900 p-6 sm:p-8 text-center">
             <h2 className="text-2xl sm:text-3xl font-semibold text-secondary-900 dark:text-white">{t('push.doneTitle')}</h2>
             <p className="mt-3 text-secondary-600 dark:text-secondary-300">
-              {payoutTimestamp === 0
+              {instant
                 ? t('push.doneInstantBody', { amount, token: selectedTokenSymbol, seller: request?.sellerLabel || seller.trim() })
                 : t('push.doneBody', {
                     amount,
                     token: selectedTokenSymbol,
                     seller: request?.sellerLabel || seller.trim(),
-                    date: formatDateTimeWithTZ(payoutTimestamp),
+                    date: formatDateTimeWithTZ(expiryTimestamp),
                   })}
             </p>
             {/* A checkout takes the buyer back to the merchant from here. */}

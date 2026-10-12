@@ -175,6 +175,27 @@ describe('/pay', () => {
     expect(screen.getByText('0.300000 USDC')).toBeInTheDocument();
   });
 
+  it('offers an instant payment, as /create does: expiry 0, no dispute window', async () => {
+    mockCall.mockResolvedValueOnce(prepared());
+    render(<PayPage />);
+    fireEvent.click(screen.getByRole('radio', { name: 'Instantly' }));
+    fill();
+
+    await screen.findByText('Confirm payment');
+    expect(mockCall.mock.calls[0][1]).toMatchObject({ expiry_timestamp: 0 });
+  });
+
+  it('switching back from instant keeps the date that was picked', async () => {
+    mockCall.mockResolvedValueOnce(prepared());
+    render(<PayPage />);
+    fireEvent.click(screen.getByRole('radio', { name: 'Instantly' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'On a date' }));
+    fill();
+
+    await screen.findByText('Confirm payment');
+    expect(mockCall.mock.calls[0][1].expiry_timestamp).toBeGreaterThan(Date.now() / 1000);
+  });
+
   it("records the partner a payment is made under, alongside the terms, not as one of them", async () => {
     const { BrandProvider } = jest.requireActual('@conduit-ucpi/whitelabel-sdk');
     window.history.replaceState({}, '', '/pay?b=escrow-me');
@@ -496,6 +517,15 @@ describe('/pay', () => {
         nominal_buyer: PAYER,
         payer: PAYER,
       });
+    });
+
+    it('comes back to an instant payment as instant', async () => {
+      mockRouter.query = { resume: encodePayResume({ ...RESUME, expiryTimestamp: 0 }) };
+      mockCall.mockResolvedValueOnce(prepared());
+      render(<PayPage />);
+
+      await screen.findByText('Confirm payment');
+      expect(mockCall.mock.calls[0][1]).toMatchObject({ expiry_timestamp: 0, external_id: 'mcp-123' });
     });
 
     it('settles a card payment that landed while the buyer was at Coinbase', async () => {

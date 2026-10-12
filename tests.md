@@ -6,10 +6,13 @@ hand or by an agent: each test says what to do in which tab, and what must be tr
 ## Before a run
 
 - dave has already opened and signed in **two tabs** on the server under test:
-  - **SELLER** — the wallet that requests and receives payments.
-  - **BUYER** — a different wallet that pays.
-- Identify each tab by its URL/title at the start, read each tab's wallet address from the
-  dashboard or account menu, and use those addresses wherever a test says `SELLER_WALLET` or
+  - **SELLER** — signed in as `testSupplier@stabledrop.me` (`SELLER_EMAIL`): requests and
+    receives payments.
+  - **BUYER** — signed in as `testcustomer@stabledrop.me` (`BUYER_EMAIL`): pays.
+  - `fairperson@stabledrop.me` (`ARBITER_EMAIL`) — a third party used as a custom tiebreaker.
+    Nobody signs in as them.
+- Identify each tab by the signed-in email shown in its account menu or dashboard, read each
+  tab's wallet address there, and use those wherever a test says `SELLER_WALLET` or
   `BUYER_WALLET`. Never sign in, sign out or switch accounts in either tab.
 - Work on the origin the tabs are already on (`BASE`). Open extra pages in the same tab, or in a
   new tab that shares the same profile and session, never a fresh profile.
@@ -36,10 +39,24 @@ Result log format (append to the run report, not to this file):
 
 ---
 
+### Two accounts in one browser
+
+Both tabs are on the same site in the same Chrome profile, so they share its cookies and local
+storage: the app's session cookie and Privy's stored session belong to the site, not the tab.
+Whichever account signed in last is the one both tabs are really using, even if the other tab
+still shows its old account until it reloads. S-01 checks for this. If it fails, the two
+accounts need separate storage: two Chrome profiles (each with its own debugging port), or one
+account on a different origin (e.g. the test site and a localhost build pointed at it).
+
+---
+
 ## 1. Smoke
 
-**S-01 Both tabs are signed in.** In each tab open `BASE/dashboard`. Expect: the dashboard
-loads without a sign-in prompt, shows a wallet address, and the two addresses differ.
+**S-01 Both tabs are signed in, as different people.** In each tab open (or reload)
+`BASE/dashboard`. Expect: the dashboard loads without a sign-in prompt; SELLER shows
+`SELLER_EMAIL` and BUYER shows `BUYER_EMAIL`; the two wallet addresses differ. If, after the
+reload, both tabs show the same account, stop the run as BLOCKED: the two sessions are sharing
+one browser login (see "Two accounts in one browser" below).
 
 **S-02 Main pages render.** In BUYER open `/`, `/create`, `/pay`, `/dashboard` in turn. Expect:
 each renders its main heading (`/create`: "Request a Payment"; `/pay`: "Make a payment"), no
@@ -94,7 +111,7 @@ the moment the buyer pays" to show. Switch back to "On a date". Expect the previ
 date is still there.
 
 **C-04 Review and back.** Fill: amount `0.001`, description `UI test C-04`, release in about 10
-minutes, buyer email per the form (or the "no email" / QR option if offered). Continue. Expect
+minutes, buyer email `BUYER_EMAIL`. Continue. Expect
 "Confirm Request Details" showing the amount, the description and the release time. Use "Back
 to payment terms". Expect every field still filled.
 
@@ -116,9 +133,14 @@ Record the link as `REQUEST_INSTANT`. Expect the review step to say the release 
 **C-07 Custom tiebreaker validation.** Open "Advanced Options", enter `not-an-address` as the
 tiebreaker. Expect "Enter a wallet address or an email address for the tiebreaker". Clear it.
 
-**C-08 Request with a wallet as tiebreaker.** Create a 0.001 request whose tiebreaker is a
-third address (not SELLER or BUYER; any valid address dave nominates, or skip as BLOCKED).
-Record as `REQUEST_ARBITER`. Expect the review to show the tiebreaker.
+**C-08 Request with a custom tiebreaker.** Create a 0.001 request (description `UI test C-08`,
+buyer `BUYER_EMAIL`) and, under "Advanced Options", set the tiebreaker to `ARBITER_EMAIL`.
+Record as `REQUEST_ARBITER`. Expect the review to show the tiebreaker. An email tiebreaker is
+resolved to that person's wallet, so in R-08 the confirm screen shows a wallet address (or the
+email) for them, never `SELLER_WALLET` or `BUYER_WALLET`. Then try `SELLER_EMAIL` as the
+tiebreaker on a new request: expect "Create Payment Request" to fail with a message that the
+tiebreaker can't also be a party (contractservice refuses it before any address is quoted), and
+no request to be created.
 
 ---
 
@@ -178,9 +200,10 @@ release about 10 minutes ahead. Continue, pay from this wallet, approve the sign
 "Paid into escrow" naming the seller and the release date. Record the escrow as `ESCROW_P03`.
 Click "View this payment". Expect the dashboard with that payment visible.
 
-**P-04 Pay an email.** Seller = an email address dave nominates (or the SELLER account's email),
-amount `0.001`, release about 10 minutes ahead. Expect the confirm screen to show the email and
-the payment to complete as in P-03. Record as `ESCROW_P04`.
+**P-04 Pay an email.** Seller = `SELLER_EMAIL`, amount `0.001`, release about 10 minutes ahead.
+Expect the confirm screen to show the email and the payment to complete as in P-03. Record as
+`ESCROW_P04`. The email resolves to the SELLER account's wallet, so in SELLER's dashboard the
+payment appears against `SELLER_WALLET` (checked in D-01).
 
 **P-05 Instant payment.** As P-03 but choose "Instantly". Expect the confirm screen's release to
 read instant, the done screen to say it "has been paid to …", and no dispute option later (see

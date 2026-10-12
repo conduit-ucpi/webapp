@@ -46,6 +46,13 @@ jest.mock('@/components/auth', () => ({
   useAuth: () => ({ user: null, isConnected: false, disconnect: jest.fn(), switchWallet: jest.fn(), state: {} }),
 }));
 jest.mock('@/components/auth/ConfigProvider', () => ({ useConfig: () => ({ config: { projectsLive: true } }) }));
+// The fee is the escrow factory's answer (useFeeQuote → /api/fee-quote → chainservice), never a
+// rule in the page. These are the figures the factory gives for the amounts the tests type.
+const FACTORY_FEES: Record<number, number> = { 2500: 25, 100: 1, 10: 0.3, 1200: 12 };
+jest.mock('@/hooks/useFeeQuote', () => ({
+  useFeeQuote: (amount: number | null) =>
+    amount === null ? { state: 'idle' } : amount in FACTORY_FEES ? { state: 'quoted', fee: FACTORY_FEES[amount] } : { state: 'loading' },
+}));
 jest.mock('@/components/navigation/NavigationProvider', () => ({
   useNavigation: () => ({ canGoBack: false, goBack: jest.fn() }),
 }));
@@ -141,14 +148,14 @@ describe.each(PAGES)('%s', (_name, Page) => {
   it('F3: the estimator computes fee, net and the early-sale figure from its inputs', () => {
     render(<Page />);
     const est = screen.getByTestId('escrow-estimator');
-    // Default $2,500 at 1% → $2,475.00 to the seller.
+    // Default $2,500, and the factory's fee on it, → $2,475.00 to the seller.
     expect(within(est).getByTestId('estimator-net')).toHaveTextContent('2,475.00');
     fireEvent.change(within(est).getByLabelText('Amount the buyer pays'), { target: { value: '100' } });
     expect(within(est).getByTestId('estimator-net')).toHaveTextContent('99.00');
-    // Below $30 the $0.30 floor binds.
+    // Whatever the factory says on a small amount is what is shown — its minimum included.
     fireEvent.change(within(est).getByLabelText('Amount the buyer pays'), { target: { value: '10' } });
     expect(within(est).getByTestId('estimator-net')).toHaveTextContent('9.70');
-    expect(within(est).getByText(/0\.30 minimum/)).toBeInTheDocument();
+    expect(within(est).getByText(/0\.30 USDC/)).toBeInTheDocument();
     // Card comparison and early sale are present and the CTA goes to /create.
     expect(within(est).getByTestId('estimator-saving')).toBeInTheDocument();
     expect(within(est).getByTestId('estimator-early')).toBeInTheDocument();

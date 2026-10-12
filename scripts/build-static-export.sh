@@ -35,6 +35,11 @@ if [ -z "${NEXT_PUBLIC_ESCROW_IMPLEMENTATION_ADDRESS:-}" ]; then
   echo "NEXT_PUBLIC_ESCROW_IMPLEMENTATION_ADDRESS is not set (ESCROW_IMPLEMENTATION_ADDRESS on this environment)." >&2
   exit 1
 fi
+# The factory a genuine escrow must have been created by: without it the same, fail closed.
+if [ -z "${NEXT_PUBLIC_ESCROW_FACTORY_ADDRESS:-}" ]; then
+  echo "NEXT_PUBLIC_ESCROW_FACTORY_ADDRESS is not set (CONTRACT_FACTORY_ADDRESS on this environment)." >&2
+  exit 1
+fi
 
 export STATIC_EXPORT=true
 

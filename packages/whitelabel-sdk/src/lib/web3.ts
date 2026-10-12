@@ -20,6 +20,8 @@ export const ERC20_ABI = [
 
 // Escrow Contract ABI
 export const ESCROW_CONTRACT_ABI = [
+  // The factory that initialized this escrow (whoever called initialize first).
+  'function FACTORY() view returns (address)',
   'function getContractInfo() view returns (address _buyer, address _seller, uint256 _amount, uint256 _expiryTimestamp, bytes32 _descriptionHash, uint8 _currentState, uint256 _currentTimestamp)',
   'function isExpired() view returns (bool)',
   'function canClaim() view returns (bool)',
@@ -741,6 +743,12 @@ export class Web3Service {
   // See lib/escrow/verifyEscrowClone.ts.
   async getCode(address: string) {
     return await this.rpcClient.getCode(address);
+  }
+
+  // The factory that created an escrow, for verifying it came from ours.
+  // See lib/escrow/verifyEscrowFactory.ts.
+  async getEscrowFactory(contractAddress: string) {
+    return await this.rpcClient.getEscrowFactory(contractAddress);
   }
 
   // Raw, unformatted deal terms, for verifying a deployed escrow holds the deal

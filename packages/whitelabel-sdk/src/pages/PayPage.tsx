@@ -21,6 +21,7 @@ import { isValidEmail, isValidWalletAddress, isValidDescription, addressesEqual,
 import { getNetworkName } from '@/utils/networkUtils';
 import { MIN_AMOUNT, TEST_AMOUNT, formatUsd, isAllowedAmount, parseAmount } from '@/utils/escrowFees';
 import { callAp2Tool, isAp2ToolError, type Ap2ToolError } from '../lib/ap2Mcp';
+import { verifyAuthorizationTarget, verifyQuotedEscrowAddress } from '../lib/escrow/verifyQuotedEscrow';
 import { decodePayResume, encodePayResume, withPayResume } from '../lib/payResume';
 import { useT } from '../i18n';
 import { useBrandedHref, usePartnerBrand } from '../theme';
@@ -49,6 +50,8 @@ const PUSH_JOURNEY_STEPS: JourneyStep[] = [
 interface Prepared {
   escrow_address: string;
   external_id: string;
+  /** The externalId (bytes32) the factory was asked with: what lets this page ask it too. */
+  external_id_bytes32?: string;
   seller_receives_estimate: string;
   platform_fee_estimate: string;
   parties?: { seller?: { address: string } };
@@ -220,6 +223,21 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
     ...(arbiter ? { arbiter } : {}),
   });
 
+  /**
+   * The terms this page is paying on, for checking the quoted address against the factory.
+   * The seller's wallet is the one typed, or — for an email — the one prepare resolved it to;
+   * the arbiter the one chosen, or the deployment's default.
+   */
+  const quotedTerms = (result: Prepared) => ({
+    token: selectedToken?.address,
+    buyer: nominalBuyer ?? payer,
+    seller: isValidWalletAddress(seller.trim()) ? seller.trim() : result.parties?.seller?.address,
+    amount: BigInt(baseUnits),
+    expiryTimestamp: expiryTimestamp,
+    arbiter: arbiter ?? config?.defaultArbiterAddress,
+    externalId: result.external_id_bytes32,
+  });
+
   /** Why a checkout's payment could not be set up: its terms have no form to show an error on. */
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
@@ -308,6 +326,12 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
         if (isAmountRefusal(result)) return fieldError(setAmountError, firstSentence(result.message));
         return fail(result.message);
       }
+      // ⚠️ NOT TAKEN ON TRUST. The address came from the API; before it is shown or paid, the
+      //    factory this build pins is asked, through the RPC this build pins, where an escrow
+      //    with these terms lives. A compromised backend cannot swap in its own address without
+      //    also compromising this build. See lib/escrow/verifyQuotedEscrow.ts.
+      const quoted = await verifyQuotedEscrowAddress(result.escrow_address, quotedTerms(result));
+      if (!quoted.ok) return fail(`${t('push.addressUnverified')} ${quoted.detail}`);
       preparedFor.current = JSON.stringify(terms());
       setPrepared(result);
       setStage('review');
@@ -345,6 +369,18 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
     signing: Exclude<Prepared['fund_by_signature'], string>
   ): Promise<boolean> => {
     if (!signing.typed_data) return false;
+    // The authorization must pay the escrow just checked, this amount, in this token, from this
+    // wallet: the typed data comes from the API too.
+    const target = verifyAuthorizationTarget(signing.typed_data, {
+      escrow: prepared.escrow_address,
+      token: selectedToken?.address ?? '',
+      amount: BigInt(baseUnits),
+      payer: payer ?? '',
+    });
+    if (!target.ok) {
+      fail(`${t('push.addressUnverified')} ${target.detail}`);
+      return false;
+    }
     setBusy('pay');
     setSteps([
       { id: 'sign', label: t('push.signing'), status: 'active' },

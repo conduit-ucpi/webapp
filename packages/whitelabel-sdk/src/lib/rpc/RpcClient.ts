@@ -285,6 +285,54 @@ export class RpcClient {
   }
 
   /**
+   * Where the factory at `factory` says an escrow with these terms lives — its own
+   * getContractAddress view, read with an eth_call (no gas). The browser asks this of the
+   * factory IT pins, through the RPC IT pins, to check an address the API quoted; nothing here
+   * repeats the factory's arithmetic. See lib/escrow/verifyQuotedEscrow.ts.
+   */
+  async predictEscrowAddress(
+    factory: string,
+    terms: {
+      token: string;
+      buyer: string;
+      seller: string;
+      amount: bigint;
+      expiryTimestamp: bigint;
+      arbiter: string;
+      externalId: string;
+    }
+  ): Promise<string> {
+    const contract = new ethers.Contract(
+      factory,
+      [
+        'function getContractAddress(address tokenAddress, address buyer, address seller, uint256 amount, uint256 expiryTimestamp, address arbiter, bytes32 externalId) view returns (address)',
+      ],
+      this.provider
+    );
+    return await contract.getContractAddress(
+      terms.token,
+      terms.buyer,
+      terms.seller,
+      terms.amount,
+      terms.expiryTimestamp,
+      terms.arbiter,
+      terms.externalId
+    );
+  }
+
+  /**
+   * The factory that initialized an escrow: its `FACTORY()`, set to whoever called
+   * initialize() first. Our factory clones and initializes in one transaction, so for an
+   * escrow it created this is our factory; anything else was made by someone else's
+   * contract, which can initialize a genuine clone with any partner or fee it likes.
+   * See lib/escrow/verifyEscrowFactory.ts.
+   */
+  async getEscrowFactory(contractAddress: string): Promise<string> {
+    const contract = new ethers.Contract(contractAddress, ESCROW_CONTRACT_ABI, this.provider);
+    return await contract.FACTORY();
+  }
+
+  /**
    * The deal terms as deployed, RAW and unformatted.
    *
    * Deliberately separate from getContractInfo(), which formats the amount with

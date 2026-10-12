@@ -18,6 +18,7 @@
  */
 import { RpcClient } from '@/lib/rpc/RpcClient';
 import type { EscrowReader } from './verifyEscrow';
+import type { FactoryReader } from './verifyQuotedEscrow';
 
 /** Build-time RPC URL. Empty means verification cannot run and must refuse. */
 export function verificationRpcUrl(): string {
@@ -32,7 +33,7 @@ let cached: { url: string; client: RpcClient } | null = null;
  * application's RPC — that fallback would reintroduce exactly the hole this
  * exists to close.
  */
-export function getVerificationReader(): EscrowReader | null {
+export function getVerificationReader(): (EscrowReader & FactoryReader) | null {
   const url = verificationRpcUrl();
   if (!url) return null;
   if (!cached || cached.url !== url) {

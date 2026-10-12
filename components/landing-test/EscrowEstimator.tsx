@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { FEE_FLOOR_BREAKEVEN, FEE_RATE, MIN_AMOUNT, MIN_FEE, feeFor, netFor } from '@/utils/escrowFees';
+import { MIN_AMOUNT } from '@/utils/escrowFees';
+import { useFeeQuote } from '@/hooks/useFeeQuote';
 import { lt } from './theme';
 
 /**
@@ -54,9 +55,14 @@ export default function EscrowEstimator({ className = '', ctaLabel = 'Request th
     return Number.isFinite(n) ? n : 0;
   }, [amountText]);
 
+  // Our fee is the escrow factory's own figure, asked as the amount changes — never computed here.
+  const quote = useFeeQuote(amount >= MIN_AMOUNT ? amount : null, token);
+  const quotedFee = quote.state === 'quoted' ? quote.fee : null;
+  const feeKnown = amount < MIN_AMOUNT || quotedFee !== null;
+
   const m = useMemo(() => {
-    const fee = amount >= MIN_AMOUNT ? feeFor(amount) : 0;
-    const net = amount >= MIN_AMOUNT ? netFor(amount) : 0;
+    const fee = amount >= MIN_AMOUNT && quotedFee !== null ? quotedFee : 0;
+    const net = amount >= MIN_AMOUNT ? Math.max(0, amount - fee) : 0;
     const card = amount > 0 ? amount * CARD_RATE + CARD_FIXED : 0;
     const escrow = amount > 0 ? Math.max(amount * ESCROW_RATE, ESCROW_MIN) : 0;
     const saving = Math.max(0, card - fee);
@@ -64,9 +70,8 @@ export default function EscrowEstimator({ className = '', ctaLabel = 'Request th
     const discount = net * lpRate * (days / 365);
     const early = Math.max(0, net - discount);
     return { fee, net, card, escrow, saving, discount, early, lpApr: RISK_FREE + LP_SPREAD };
-  }, [amount, days]);
-
-  const feeIsFloor = amount >= MIN_AMOUNT && m.fee === MIN_FEE && amount * FEE_RATE < MIN_FEE;
+  }, [amount, days, quotedFee]);
+  const shown = (n: number) => (feeKnown ? money(n) : '…');
 
   const field = `w-full bg-transparent outline-none text-right font-semibold tracking-tight ${lt.fg}`;
   const label = `text-xs ${lt.muted}`;
@@ -114,7 +119,7 @@ export default function EscrowEstimator({ className = '', ctaLabel = 'Request th
         <div className="flex items-center justify-between mt-1">
           <span className={`text-sm ${lt.muted}`}>on the payout date</span>
           <output className={`text-3xl sm:text-4xl font-semibold tracking-tight ${lt.accentText}`} data-testid="estimator-net">
-            {money(m.net)}
+            {shown(m.net)}
           </output>
         </div>
       </label>
@@ -139,8 +144,7 @@ export default function EscrowEstimator({ className = '', ctaLabel = 'Request th
         <div className={row}>
           <span className={`text-sm ${lt.muted}`}>Our fee</span>
           <span className={`text-sm font-medium ${lt.fg}`}>
-            {money(m.fee)} {token}
-            <span className={`ml-2 text-xs ${lt.muted}`}>{feeIsFloor ? `${money(MIN_FEE)} minimum` : '1%'}</span>
+            {shown(m.fee)} {token}
           </span>
         </div>
         <div className={row}>
@@ -160,7 +164,7 @@ export default function EscrowEstimator({ className = '', ctaLabel = 'Request th
         <div className={row}>
           <span className={`text-sm ${lt.muted}`}>You keep</span>
           <span className={`text-sm font-semibold ${lt.accentText}`} data-testid="estimator-saving">
-            +{money(m.saving)} more
+            +{shown(m.saving)} more
             <span className={`ml-2 text-xs font-normal ${lt.muted}`}>vs card</span>
           </span>
         </div>
@@ -170,7 +174,7 @@ export default function EscrowEstimator({ className = '', ctaLabel = 'Request th
               <span className={`block text-sm ${lt.muted}`}>Need it today? Offer it for sale early,</span>
               <span className={`block text-xs ${lt.muted}`}>
                 indicative, at ~{m.lpApr.toFixed(2)}% a year for {days} day{days === 1 ? '' : 's'} ={' '}
-                <span className={`font-medium ${lt.fg}`} data-testid="estimator-early">{money(m.early)}</span>
+                <span className={`font-medium ${lt.fg}`} data-testid="estimator-early">{shown(m.early)}</span>
               </span>
             </div>
           </div>
@@ -185,7 +189,7 @@ export default function EscrowEstimator({ className = '', ctaLabel = 'Request th
         {ctaLabel}
       </Link>
       <p className={`mt-3 text-[11px] leading-relaxed ${lt.muted}`}>
-        Fee comes out of the amount funded; the buyer pays exactly what you ask. Below ${FEE_FLOOR_BREAKEVEN} the ${MIN_FEE.toFixed(2)} floor applies. Early-sale figure is an estimate; the liquidity marketplace prices each offer.
+        Fee comes out of the amount funded; the buyer pays exactly what you ask. Our fee is quoted by the escrow contract itself. Early-sale figure is an estimate; the liquidity marketplace prices each offer.
       </p>
     </div>
   );

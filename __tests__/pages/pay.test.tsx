@@ -52,6 +52,19 @@ jest.mock('@/components/ui/Toast', () => ({
 }));
 jest.mock('@/components/auth/WalletChoiceCards', () => () => <div data-testid="wallet-gate" />);
 
+// The factory this build pins, and the RPC it reads through: every quoted address is checked
+// against what this factory says before the page shows it or anyone signs. The fake factory
+// answers ESCROW unless a test says otherwise.
+const PINNED_FACTORY = '0x95B1d60FdaFd727378EF2c16108351b619F8F5e5';
+const DEFAULT_ARBITER = '0x9bB8e809EA6F5A74f46027D8016641D9cE9A149C';
+const SELLER_WALLET = '0xc9D0602A87E55116F633b1A1F95D083Eb115f942';
+const EXTERNAL_ID_BYTES32 = '0x' + 'ef'.repeat(32);
+const mockPredict = jest.fn();
+jest.mock('@/lib/escrow/verificationRpc', () => ({
+  getVerificationReader: () => ({ predictEscrowAddress: mockPredict }),
+}));
+process.env.NEXT_PUBLIC_ESCROW_FACTORY_ADDRESS = PINNED_FACTORY;
+
 import PayPage from '@/pages/pay';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { useAuth } from '@/components/auth';
@@ -87,6 +100,9 @@ const prepared = (overrides: Record<string, unknown> = {}, top: Record<string, u
   escrow_address: ESCROW,
   fund_by_transfer: { payment_uri: `ethereum:${USDC}@8453/transfer?address=${ESCROW}&uint256=10000000` },
   external_id: 'mcp-123',
+  external_id_bytes32: EXTERNAL_ID_BYTES32,
+  // What prepare resolved an email seller to; a wallet seller is used as typed.
+  parties: { seller: { address: SELLER_WALLET } },
   seller_receives_estimate: '9.700000 USDC',
   platform_fee_estimate: '0.300000 USDC',
   fund_by_signature: {
@@ -120,9 +136,12 @@ beforeEach(() => {
   mockRouter.asPath = '/pay';
   mockBalances.wallet = '100.0';
   mockBalances.escrow = '0';
+  mockPredict.mockReset();
+  mockPredict.mockResolvedValue(ESCROW);
   (useConfig as jest.Mock).mockReturnValue({
     config: {
       chainId: 8453,
+      defaultArbiterAddress: DEFAULT_ARBITER,
       rpcUrl: 'https://mainnet.base.org',
       supportedTokens: [{ symbol: 'USDC', address: USDC, decimals: 6, name: 'USD Coin', enabled: true }],
       defaultToken: { symbol: 'USDC', address: USDC, decimals: 6, name: 'USD Coin' },
@@ -280,6 +299,10 @@ describe('/pay', () => {
     mockCall
       .mockResolvedValueOnce(prepared())
       .mockResolvedValueOnce(prepared({}, { escrow_address: SECOND, external_id: 'mcp-456' }));
+    // The factory puts the new terms somewhere new, as the real one would.
+    mockPredict.mockImplementation(async (_factory: string, t: { amount: bigint }) =>
+      t.amount === BigInt(20_000_000) ? SECOND : ESCROW
+    );
     render(<PayPage />);
     fill();
     expect(await screen.findByDisplayValue(ESCROW)).toBeInTheDocument();
@@ -478,6 +501,77 @@ describe('/pay', () => {
     expect(mockCall).not.toHaveBeenCalled();
   });
 
+  // ── the quoted address is checked against the factory this build pins ────────────────
+
+  it('asks the pinned factory where the escrow lives, with the terms this page holds', async () => {
+    mockCall.mockResolvedValueOnce(prepared());
+    render(<PayPage />);
+    fill();
+    await screen.findByText('Confirm payment');
+
+    expect(mockPredict).toHaveBeenCalledTimes(1);
+    const [factory, terms] = mockPredict.mock.calls[0];
+    expect(factory).toBe(PINNED_FACTORY);
+    expect(terms).toEqual({
+      token: USDC,
+      buyer: PAYER,
+      seller: SELLER_WALLET, // the email's wallet, as prepare resolved it
+      amount: BigInt(10_000_000),
+      expiryTimestamp: expect.any(BigInt),
+      arbiter: DEFAULT_ARBITER,
+      externalId: EXTERNAL_ID_BYTES32,
+    });
+  });
+
+  it('a wallet seller is checked as typed, not as anything the API resolved', async () => {
+    mockCall.mockResolvedValueOnce(prepared());
+    render(<PayPage />);
+    fill('0x1111111111111111111111111111111111111111');
+    await screen.findByText('Confirm payment');
+    expect(mockPredict.mock.calls[0][1].seller).toBe('0x1111111111111111111111111111111111111111');
+  });
+
+  it('refuses an address the factory does not give for these terms, and shows nothing to pay', async () => {
+    const ATTACKER = '0x000000000000000000000000000000000000dEaD';
+    mockCall.mockResolvedValueOnce(prepared({}, { escrow_address: ATTACKER }));
+    render(<PayPage />);
+    fill();
+
+    await waitFor(() => expect(showToast).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' })));
+    expect(showToast.mock.calls.at(-1)[0].message).toMatch(/couldn't confirm this payment/);
+    expect(screen.queryByText('Confirm payment')).toBeNull();
+    expect(screen.queryByDisplayValue(ATTACKER)).toBeNull();
+  });
+
+  it('refuses when the factory cannot be asked, rather than trusting the API', async () => {
+    mockPredict.mockRejectedValue(new Error('rpc down'));
+    mockCall.mockResolvedValueOnce(prepared());
+    render(<PayPage />);
+    fill();
+
+    await waitFor(() => expect(showToast).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' })));
+    expect(screen.queryByText('Confirm payment')).toBeNull();
+  });
+
+  it('signs nothing when the authorization pays somewhere other than the checked escrow', async () => {
+    const ATTACKER = '0x000000000000000000000000000000000000dEaD';
+    const sign = jest.spyOn(payerWallet, 'signTypedData');
+    mockCall.mockResolvedValueOnce(
+      prepared({ typed_data: { ...typedData, message: { ...typedData.message, to: ATTACKER } } })
+    );
+    render(<PayPage />);
+    fill();
+    await screen.findByText('Confirm payment');
+
+    fireEvent.click(await screen.findByRole('button', { name: /Pay 10/ }));
+
+    await waitFor(() => expect(showToast).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' })));
+    expect(showToast.mock.calls.at(-1)[0].message).toMatch(/pays a different address/);
+    expect(sign).not.toHaveBeenCalled();
+    expect(mockCall).toHaveBeenCalledTimes(1); // nothing was settled
+    sign.mockRestore();
+  });
+
   describe('resuming from the URL', () => {
     const RESUME = {
       seller: 'seller@example.com',
@@ -655,6 +749,16 @@ describe('/pay in a checkout', () => {
     // The terms are not the buyer's to edit.
     expect(screen.queryByLabelText('Back to payment terms')).toBeNull();
     expect(mockCall).toHaveBeenCalledTimes(1);
+  });
+
+  it('fails the checkout when the quoted address is not the factory\'s, and offers nothing to pay', async () => {
+    mockCall.mockResolvedValueOnce(prepared({}, { escrow_address: '0x000000000000000000000000000000000000dEaD' }));
+    const h = handlers();
+    render(<PayPage checkout={{ terms: terms(), ...h }} />);
+
+    await waitFor(() => expect(h.onFailed).toHaveBeenCalled());
+    expect(h.onFailed.mock.calls[0][0]).toMatch(/couldn't confirm this payment/);
+    expect(screen.queryByText('Confirm payment')).toBeNull();
   });
 
   it('waits for sign-in, and can be cancelled from there', () => {

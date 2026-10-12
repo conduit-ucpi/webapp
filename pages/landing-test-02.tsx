@@ -8,7 +8,8 @@ import Fade from '@/components/ui/Fade';
 import { financialServiceSchema, articleSchema } from '@/utils/structuredData';
 import { getSiteNameFromDomain } from '@/utils/siteName';
 import { isr } from '@/utils/isr';
-import { feeFor, netFor, MIN_AMOUNT } from '@/utils/escrowFees';
+import { MIN_AMOUNT } from '@/utils/escrowFees';
+import { useFeeQuote } from '@/hooks/useFeeQuote';
 import LandingNav from '@/components/landing-test/LandingNav';
 import EscrowEstimator from '@/components/landing-test/EscrowEstimator';
 import AudienceTabs from '@/components/landing-test/AudienceTabs';
@@ -92,8 +93,9 @@ export default function LandingTest02() {
     const n = parseFloat(amountText.replace(/[^0-9.]/g, ''));
     return Number.isFinite(n) ? n : 0;
   }, [amountText]);
-  const net = amount >= MIN_AMOUNT ? netFor(amount) : 0;
-  const fee = amount >= MIN_AMOUNT ? feeFor(amount) : 0;
+  // The fee is the escrow factory's own figure, asked as the amount changes.
+  const quote = useFeeQuote(amount >= MIN_AMOUNT ? amount : null, 'USDC');
+  const fee = quote.state === 'quoted' ? quote.fee : null;
 
   return (
     <>
@@ -176,7 +178,7 @@ export default function LandingTest02() {
               <p className={`mt-4 text-sm ${hero.muted}`} aria-live="polite">
                 {amount >= MIN_AMOUNT ? (
                   <>
-                    You&apos;d receive <span className={`font-medium ${hero.fg}`}>{money(net)} USDC</span> on the payout date. Fee {money(fee)}. A card processor would take about {money(amount * 0.029 + 0.3)}.
+                    You&apos;d receive <span className={`font-medium ${hero.fg}`}>{fee !== null ? money(Math.max(0, amount - fee)) : '…'} USDC</span> on the payout date. Fee {fee !== null ? money(fee) : '…'}. A card processor would take about {money(amount * 0.029 + 0.3)}.
                   </>
                 ) : (
                   <>Enter an amount to see what you&apos;d receive.</>

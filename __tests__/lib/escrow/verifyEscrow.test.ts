@@ -1,12 +1,14 @@
 /**
  * The combined gate. These tests exist mostly to pin the ordering and the
- * fail-closed behaviour: each half is defeatable alone, so neither may be
- * skipped, and terms must never be read from a contract whose code has not been
- * established as ours.
+ * fail-closed behaviour: each part is defeatable alone, so none may be
+ * skipped, and terms must never be read from a contract whose code and factory
+ * have not been established as ours.
  */
 import { verifyEscrow } from '@/lib/escrow/verifyEscrow';
 
 const IMPL = '0x1234567890abcdef1234567890abcdef12345678';
+const FACTORY = '0x95b1d60fdafd727378ef2c16108351b619f8f5e5';
+const ROGUE_FACTORY = '0xdddddddddddddddddddddddddddddddddddddddd';
 const ADDR = '0xabcdefabcdefabcdefabcdefabcdefabcdefabcd';
 const BUYER = '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
 const SELLER = '0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
@@ -19,13 +21,15 @@ const cloneOf = (impl: string) =>
 const expected = { buyer: BUYER, seller: SELLER, amount: '5000000', token: TOKEN };
 const goodTerms = { buyer: BUYER, seller: SELLER, amount: BigInt(5000000), token: TOKEN };
 
-const readerWith = (code: string, terms: any) => ({
+const readerWith = (code: string, terms: any, factory: string = FACTORY) => ({
   getCode: jest.fn().mockResolvedValue(code),
+  getEscrowFactory: jest.fn().mockResolvedValue(factory),
   getEscrowTerms: jest.fn().mockResolvedValue(terms),
 });
 
 beforeAll(() => {
   process.env.NEXT_PUBLIC_ESCROW_IMPLEMENTATION_ADDRESS = IMPL;
+  process.env.NEXT_PUBLIC_ESCROW_FACTORY_ADDRESS = FACTORY;
 });
 
 describe('verifyEscrow', () => {
@@ -62,6 +66,7 @@ describe('verifyEscrow', () => {
   it('fails closed when the terms read throws', async () => {
     const r = {
       getCode: jest.fn().mockResolvedValue(cloneOf(IMPL)),
+      getEscrowFactory: jest.fn().mockResolvedValue(FACTORY),
       getEscrowTerms: jest.fn().mockRejectedValue(new Error('rpc down')),
     };
     const v = await verifyEscrow(ADDR, expected, r);
@@ -69,6 +74,52 @@ describe('verifyEscrow', () => {
     if (!v.ok) {
       expect(v.stage).toBe('terms');
       expect(v.detail).toContain('Refusing to proceed');
+    }
+  });
+
+  // ── the factory: a genuine clone, initialized by someone else's contract ──────────
+
+  it('rejects a genuine clone with the right terms that another factory created', async () => {
+    // The attack bytecode and terms together cannot see: someone's own factory clones our
+    // implementation and initializes it with the user's terms plus a partner and fee our
+    // signer never approved.
+    const r = readerWith(cloneOf(IMPL), goodTerms, ROGUE_FACTORY);
+    const v = await verifyEscrow(ADDR, expected, r);
+    expect(v.ok).toBe(false);
+    if (v.ok) throw new Error('unreachable');
+    expect(v.stage).toBe('factory');
+    expect(v.detail).toContain(ROGUE_FACTORY);
+    expect(r.getEscrowTerms).not.toHaveBeenCalled();
+  });
+
+  it('accepts our factory however it is capitalised', async () => {
+    const r = readerWith(cloneOf(IMPL), goodTerms, '0x95B1d60FdaFd727378EF2c16108351b619F8F5e5');
+    await expect(verifyEscrow(ADDR, expected, r)).resolves.toEqual({ ok: true });
+  });
+
+  it('fails closed when FACTORY() cannot be read', async () => {
+    const r = {
+      getCode: jest.fn().mockResolvedValue(cloneOf(IMPL)),
+      getEscrowFactory: jest.fn().mockRejectedValue(new Error('rpc down')),
+      getEscrowTerms: jest.fn().mockResolvedValue(goodTerms),
+    };
+    const v = await verifyEscrow(ADDR, expected, r);
+    expect(v.ok).toBe(false);
+    if (!v.ok) expect(v.stage).toBe('factory');
+  });
+
+  it('refuses when no factory is pinned in this build, rather than trusting any', async () => {
+    const saved = process.env.NEXT_PUBLIC_ESCROW_FACTORY_ADDRESS;
+    delete process.env.NEXT_PUBLIC_ESCROW_FACTORY_ADDRESS;
+    try {
+      const v = await verifyEscrow(ADDR, expected, readerWith(cloneOf(IMPL), goodTerms));
+      expect(v.ok).toBe(false);
+      if (!v.ok) {
+        expect(v.stage).toBe('factory');
+        expect(v.detail).toContain('NEXT_PUBLIC_ESCROW_FACTORY_ADDRESS');
+      }
+    } finally {
+      process.env.NEXT_PUBLIC_ESCROW_FACTORY_ADDRESS = saved;
     }
   });
 

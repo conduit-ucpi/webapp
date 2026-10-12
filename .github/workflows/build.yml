@@ -126,6 +126,11 @@ jobs:
           # would return a matching pair and the check would compare its own
           # answer to itself. See lib/escrow/verifyEscrowClone.ts.
           NEXT_PUBLIC_ESCROW_IMPLEMENTATION_ADDRESS: ${{ vars.ESCROW_IMPLEMENTATION_ADDRESS }}
+          # The factory a genuine escrow must have been created by, for the same reason and with
+          # the same rule: build-time only, never from /api/config. A clone of our implementation
+          # made by anyone else's factory carries whatever partner and fee that factory chose.
+          # See lib/escrow/verifyEscrowFactory.ts.
+          NEXT_PUBLIC_ESCROW_FACTORY_ADDRESS: ${{ vars.CONTRACT_FACTORY_ADDRESS }}
           # The RPC escrow verification reads through. MUST be build-time: the
           # app's own RPC endpoint comes from /api/config, so a compromised API
           # could point verification at a node it controls and have it confirm
@@ -214,6 +219,7 @@ jobs:
           NEXT_PUBLIC_EMBEDDED_SIWX: ${{ vars.NEXT_PUBLIC_EMBEDDED_SIWX }}
           NEXT_PUBLIC_RPC_URL: ${{ vars.RPC_URL }}
           NEXT_PUBLIC_ESCROW_IMPLEMENTATION_ADDRESS: ${{ vars.ESCROW_IMPLEMENTATION_ADDRESS }}
+          NEXT_PUBLIC_ESCROW_FACTORY_ADDRESS: ${{ vars.CONTRACT_FACTORY_ADDRESS }}
         run: |
           set -euo pipefail
           scripts/build-static-export.sh

@@ -13,6 +13,13 @@ import AmountGuidance from '@/components/contracts/AmountGuidance';
 import AdvancedOptions from '@/components/contracts/AdvancedOptions';
 import { WizardNavigation } from '@/components/ui/Wizard';
 
+// The fee is the escrow factory's answer (useFeeQuote → /api/fee-quote → chainservice). These
+// tests are about translation, so the factory's answer is given: 0.50 on 50.
+jest.mock('@/hooks/useFeeQuote', () => ({
+  useFeeQuote: (amount: number | null) =>
+    amount === null ? { state: 'idle' } : { state: 'quoted', fee: amount === 50 ? 0.5 : 0 },
+}));
+
 const inSpanish = (ui: React.ReactElement) =>
   render(<I18nProvider brandLocale="es">{ui}</I18nProvider>);
 
@@ -38,8 +45,8 @@ describe('the create form in Spanish', () => {
   });
 
   describe('amount guidance', () => {
-    // The empty state shows the minimum and the fee, which are interpolated —
-    // so this also covers a placeholder surviving translation.
+    // The empty state shows the minimum (interpolated, so this also covers a placeholder
+    // surviving translation) and says the fee appears as you type.
     it('translates the minimum and fee line', () => {
       inSpanish(<AmountGuidance amount="" onUseTestAmount={jest.fn()} />);
 

@@ -19,8 +19,10 @@ hand or by an agent: each test says what to do in which tab, and what must be tr
 
 ## Rules
 
-- **Money:** the only amount ever paid on-chain is the free test amount, **0.001**. Any test that
-  uses another amount stops at the confirm screen and never signs or sends.
+- **Money:** the only amount ever paid on-chain is the free test amount, **0.001**. The test
+  wallets hold under $1, so no amount above that is typed anywhere, and **nothing but 0.001 is
+  ever entered on `/pay` or a checkout link**: pressing Continue there puts an escrow on file,
+  and a larger one would sit on both dashboards as an unpayable pending payment.
 - **Wallet prompts:** approve a signature or transaction only when the test step says to. If a
   prompt appears that the test doesn't expect, reject it and record a failure.
 - **Evidence:** for every test, record PASS / FAIL / BLOCKED, a screenshot of the final state, and
@@ -28,6 +30,21 @@ hand or by an agent: each test says what to do in which tab, and what must be tr
 - **Stop conditions:** stop the run and report if a page asks to pay anything other than 0.001, if
   the "We couldn't confirm this payment with the escrow contract" message appears on a normal
   flow, or if an address shown for payment differs anywhere on the same screen.
+- **Keep the app tab in front** (`Page.bringToFront`) before every load. Chrome throttles a tab it
+  treats as backgrounded to about one timer a minute, and the app then takes minutes to start —
+  that looks exactly like a hang and is not one.
+- **Switching accounts** (one window, one account at a time): Logout is in the hamburger menu.
+  Then sign in with "Advanced wallet connection" → MetaMask, and in MetaMask's connect prompt
+  select only the account wanted (it may offer two). Approve Privy's sign-in message, then the
+  Terms of Service message. Check `/api/auth/identity` names the right email before carrying on.
+- **MetaMask clicks must be real mouse events** (`Input.dispatchMouseEvent`); a scripted
+  `.click()` does not register on its buttons. Every payment currently shows a red Blockaid
+  "High-risk approval" warning: press Confirm, tick "I have acknowledged the alerts", press the
+  dialog's Confirm, then press **Confirm again**. Before approving, check the request's To is the
+  escrow on screen and its Value is 1000 (0.001 USDC).
+- **Free test payments are capped per buyer per day** (`TEST_PAYMENTS_PER_BUYER_PER_DAY` on
+  ap2service, default 3, plus `TEST_PAYMENTS_PER_HOUR` across everyone). Every Continue on `/pay`
+  or a checkout counts, even ones never paid. Raise it on the test environment before a full run.
 - Tests are independent unless they say `Needs: <id>`. Things created by one test (requests,
   escrows) can be reused by later ones when noted.
 
@@ -79,19 +96,19 @@ and a "Send a free test instead" link. No fee figure is shown.
 **F-02 Below the minimum.** Type `0.5`. Expect "Payment requests start at $1.00." with the free
 test link, and the form can't be submitted.
 
-**F-03 Fee is quoted by the factory.** Type `50`. Expect the Fee line to show "…" briefly, then
-a figure (currently −$0.50), and "You receive" equal to amount minus fee ($49.50). Type `10`.
-Expect the fee to change to the minimum fee (currently −$0.30) and "You receive" $9.70. Record
-the figures shown, since the factory sets them.
+**F-03 Fee is quoted by the factory.** Type `5`. Expect the Fee line to show "…" briefly, then
+a figure (the factory's minimum fee, currently −$0.30), and "You receive" equal to amount minus
+fee ($4.70). Type `1`. Expect "You receive" $0.70. Record the figures shown, since the factory
+sets them. (Typing here creates nothing.)
 
-**F-04 Typing doesn't spam quotes.** With the Network domain enabled, type `1250` one digit at a
-time. Expect at most one or two `/api/fee-quote` requests, not one per keystroke.
+**F-04 Typing doesn't spam quotes.** With the Network domain enabled, type `1.25` one character
+at a time. Expect at most one or two `/api/fee-quote` requests, not one per keystroke.
 
 **F-05 Free test button.** Click "Send a free test instead". Expect the amount becomes `0.001`
 and the box reads "Test payment — all fees waived".
 
 **F-06 Fee service unavailable (optional).** Only if you can block `/api/fee-quote` with
-`Network.setBlockedURLs`: type `50`. Expect the Fee line to read "shown when you confirm" and
+`Network.setBlockedURLs`: type `5`. Expect the Fee line to read "shown when you confirm" and
 "You receive" to show "…". No made-up figure.
 
 ---
@@ -111,7 +128,7 @@ the moment the buyer pays" to show. Switch back to "On a date". Expect the previ
 date is still there.
 
 **C-04 Review and back.** Fill: amount `0.001`, description `UI test C-04`, release in about 10
-minutes, buyer email `BUYER_EMAIL`. Continue. Expect
+minutes. (There is no buyer field: the request is shared afterwards by link, QR or message.) Continue. Expect
 "Confirm Request Details" showing the amount, the description and the release time. Use "Back
 to payment terms". Expect every field still filled.
 
@@ -190,10 +207,11 @@ amount `0.5`: expect "Enter $1.00 or more, or exactly 0.001 for a free test" und
 None of these reaches the confirm screen.
 
 **P-02 Confirm screen, wallet seller (no spend).** Seller `SELLER_WALLET`, description `UI test
-P-02`, amount `25`, release about 10 minutes ahead. Continue. Expect "Confirm payment" with
-"Paying", "They receive" and "Platform fee" lines that add up to 25, and no "couldn't confirm"
-message. **Do not pay.** Use the back control, change the amount to `30`, continue. Expect a
-**different** escrow address from the first one.
+P-02`, amount `0.001`, release about 10 minutes ahead. Continue. Expect "Confirm payment" with
+"Paying", "They receive" and "Platform fee" lines (fee 0 on the test amount), and no "couldn't
+confirm" message. **Do not pay.** Use the back control, move the release time an hour later,
+continue. Expect a **different** escrow address from the first one (the release time is one of
+the terms the address depends on).
 
 **P-03 Pay a wallet, held.** Seller `SELLER_WALLET`, description `UI test P-03`, amount `0.001`,
 release about 10 minutes ahead. Continue, pay from this wallet, approve the signature. Expect
@@ -226,7 +244,8 @@ state that finds no payment and says so, without marking anything as paid.
 ## 6. Merchant checkout link — `/contract-create` (BUYER)
 
 **K-01 Checkout prepares with no form.** Open
-`/contract-create?seller=<SELLER_WALLET>&amount=0.001&order_id=UI-K01&return=https%3A%2F%2Fexample.com%2Fdone`.
+`/contract-create?seller=<SELLER_WALLET>&amount=0.001&description=UI%20test%20K-01&order_id=UI-K01&return=https%3A%2F%2Fexample.com%2Fdone`.
+(`description` is required: without it the link silently redirects to `/pay`.)
 Expect "Setting up your payment…" then a confirm screen with no editable terms and no back
 control. No "couldn't confirm" message.
 
@@ -234,9 +253,9 @@ control. No "couldn't confirm" message.
 exactly the return URL (`https://example.com/done`); only WordPress links (`wordpress_source=true`)
 get a `payment_status` parameter. Don't pay.
 
-**K-03 Pay a checkout.** Open the K-01 link again (new `order_id=UI-K03`), pay from this wallet,
+**K-03 Pay a checkout.** Open the K-01 link again (`description=UI%20test%20K-03`, `order_id=UI-K03`), pay from this wallet,
 approve the signature. Expect a redirect to the return URL. Then in SELLER's dashboard the
-payment appears with description "Order UI-K03" (or the order id in its description).
+payment appears with description "UI test K-03".
 
 ---
 
@@ -254,8 +273,10 @@ right chain.
 **D-03 Raise a dispute (buyer).** Needs: P-03, before its release time. In BUYER, raise a
 dispute on `ESCROW_P03` with reason text `UI test dispute — please ignore` and a refund
 percentage of 100. Note the "Don't include names, addresses or contact details" guidance.
-Approve any wallet prompt (no money moves). Expect "Raising dispute..." then the escrow shown as
-Disputed in BUYER, and in SELLER after a refresh.
+This is a buyer **transaction** paying a small Base gas fee (under $0.01 in ETH) — check the
+buyer has some ETH. Expect "Raising dispute..." to finish, and the escrow to show as Disputed in
+BUYER and SELLER; the dashboards can take several minutes to catch up with the chain, so check
+`isDisputed()` on-chain too.
 
 **D-04 Instant payments can't be disputed.** Needs: P-05 or R-07. Open the instant escrow's
 details in BUYER. Expect no dispute action.
@@ -278,8 +299,9 @@ screenshot (and wait ~300 ms after it, before measuring) of `/create`, `/pay`, a
 and `/dashboard`. Expect no horizontal scroll (`document.documentElement.scrollWidth <=
 innerWidth`), readable text and tappable buttons. Reset the override afterwards.
 
-**L-02 Dark mode.** With `Emulation.setEmulatedMedia` `prefers-color-scheme: dark`, screenshot
-the same pages. Expect no unreadable text (dark on dark) or invisible inputs. Reset afterwards.
+**L-02 Dark mode.** The app follows `localStorage.theme` before the system setting; if it is
+`light`, set it to `dark` for the test and restore it afterwards (or use `setEmulatedMedia`
+`prefers-color-scheme: dark` when no theme is stored). Screenshot the same pages. Expect no unreadable text (dark on dark) or invisible inputs. Reset afterwards.
 
 ---
 

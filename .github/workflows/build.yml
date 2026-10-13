@@ -150,6 +150,7 @@ jobs:
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
           NEXT_PUBLIC_APP_URL: ${{ vars.NEXT_PUBLIC_APP_URL }}
           NEXT_PUBLIC_REDDIT_PIXEL_ID: ${{ vars.NEXT_PUBLIC_REDDIT_PIXEL_ID }}
+          NEXT_PUBLIC_GA_MEASUREMENT_ID: ${{ vars.NEXT_PUBLIC_GA_MEASUREMENT_ID }}
           NEXT_PUBLIC_EXCHANGE_RATE_API_URL: ${{ vars.NEXT_PUBLIC_EXCHANGE_RATE_API_URL }}
           # Mobile debug logging. Next inlines NEXT_PUBLIC_* at build time, so
           # this has to be present HERE - setting it on the running container
@@ -214,6 +215,7 @@ jobs:
           NEXT_PUBLIC_BASE_PATH: ${{ vars.PAGES_BASE_PATH }}
           NEXT_PUBLIC_APP_URL: ${{ vars.NEXT_PUBLIC_APP_URL }}
           NEXT_PUBLIC_REDDIT_PIXEL_ID: ${{ vars.NEXT_PUBLIC_REDDIT_PIXEL_ID }}
+          NEXT_PUBLIC_GA_MEASUREMENT_ID: ${{ vars.NEXT_PUBLIC_GA_MEASUREMENT_ID }}
           NEXT_PUBLIC_EXCHANGE_RATE_API_URL: ${{ vars.NEXT_PUBLIC_EXCHANGE_RATE_API_URL }}
           NEXT_PUBLIC_MOBILE_DEBUG_LOGGING: ${{ vars.NEXT_PUBLIC_MOBILE_DEBUG_LOGGING }}
           NEXT_PUBLIC_EMBEDDED_SIWX: ${{ vars.NEXT_PUBLIC_EMBEDDED_SIWX }}

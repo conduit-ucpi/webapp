@@ -3,6 +3,7 @@ import Link from 'next/link';
 import {
   ConsentChoice,
   OPEN_CONSENT_EVENT,
+  analyticsEnabled,
   disableAnalytics,
   loadAnalytics,
   readConsent,
@@ -18,6 +19,9 @@ export default function CookieConsent() {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
+    // No measurement ID in this build: no analytics cookies, so nothing to ask about.
+    if (!analyticsEnabled()) return;
+
     const choice = readConsent();
     if (choice === 'granted') loadAnalytics();
     if (choice === null) setOpen(true);

@@ -7,12 +7,21 @@
  * again, in line with ICO/CNIL guidance on how long a choice may be relied on.
  *
  * Google Analytics is never loaded until the visitor has said yes.
+ *
+ * The measurement ID comes from NEXT_PUBLIC_GA_MEASUREMENT_ID, which Next
+ * inlines at build time, so it must be set when building, not on the running
+ * container. A build without it has no analytics at all, and so nothing to ask
+ * consent for: the banner stays hidden (see analyticsEnabled).
  */
 
 export type ConsentChoice = 'granted' | 'denied';
 
 export const CONSENT_COOKIE = 'cookie_consent';
-export const GA_MEASUREMENT_ID = 'G-C5RP49B2R8';
+export const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID?.trim() || '';
+
+export function analyticsEnabled(): boolean {
+  return GA_MEASUREMENT_ID !== '';
+}
 
 const CONSENT_MAX_AGE_SECONDS = 60 * 60 * 24 * 182;
 
@@ -46,6 +55,7 @@ declare global {
 let gaLoaded = false;
 
 export function loadAnalytics(): void {
+  if (!analyticsEnabled()) return;
   window[`ga-disable-${GA_MEASUREMENT_ID}`] = false;
   if (gaLoaded) return;
   gaLoaded = true;
@@ -71,6 +81,7 @@ export function loadAnalytics(): void {
  * parent of the current host is tried; the browser ignores the ones that miss.
  */
 export function disableAnalytics(): void {
+  if (!analyticsEnabled()) return;
   window[`ga-disable-${GA_MEASUREMENT_ID}`] = true;
 
   const gaCookies = document.cookie

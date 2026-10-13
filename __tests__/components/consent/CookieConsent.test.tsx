@@ -1,6 +1,10 @@
 import { render, screen, fireEvent, act } from '@testing-library/react';
-import CookieConsent from '@/components/consent/CookieConsent';
-import { CONSENT_COOKIE, GA_MEASUREMENT_ID, openConsentSettings, readConsent } from '@/lib/consent';
+
+// Next inlines the ID at build time; here it has to be in place before lib/consent is loaded,
+// so the modules are required below rather than imported (imports are hoisted above this line).
+process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID = 'G-TEST000000';
+const { default: CookieConsent } = require('@/components/consent/CookieConsent');
+const { CONSENT_COOKIE, GA_MEASUREMENT_ID, openConsentSettings, readConsent } = require('@/lib/consent');
 
 jest.mock('next/link', () => ({ children, href }: any) => <a href={href}>{children}</a>);
 
@@ -60,5 +64,20 @@ describe('CookieConsent', () => {
     expect(readConsent()).toBe('denied');
     expect(window[`ga-disable-${GA_MEASUREMENT_ID}`]).toBe(true);
     expect(document.cookie).not.toContain('_ga=');
+  });
+
+  it('loads nothing when the build has no measurement ID', () => {
+    const saved = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
+    delete process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
+    try {
+      jest.isolateModules(() => {
+        const consent = require('@/lib/consent');
+        expect(consent.analyticsEnabled()).toBe(false);
+        consent.loadAnalytics();
+      });
+      expect(gaScripts()).toHaveLength(0);
+    } finally {
+      process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID = saved;
+    }
   });
 });
